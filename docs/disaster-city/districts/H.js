@@ -37,13 +37,17 @@ function sheet() {
     };
 }
 
+/* THE SUPERHERO TOWER'S HEIGHT (2026-11-23, THE SKYLINE): the shaft 104.2 m (was 49), the parts over it raised 55.2 m, the upper shaft 30 m;
+   the beacon tops out at 175 m over the plaza */
+const HT = { shaft: 104.2, up: 55.2, top: 30 };
 /* ── THE BUILDINGS: id (the plan's) → { row, parts(door) } · row: what the plan's own row becomes ── */
 const B = {};
 
 /* 1 · NEWS OFFICE — an art-deco ziggurat: three setbacks in ivory stucco, copper-green cornices, window strips, a mast */
 B['P04-04-B1'] = { row: { storeys: 2 }, parts(door) { const a = sheet(), IV = 0xf2e6c8, CU = 0x5fae9c, GL = 0xa8c8e8;
     a.shell(28, 10.5, 28, STUCCO, IV, door); a.box(0, 10.5, 0, 29.2, 0.6, 29.2, ALU, CU, { under: true });
-    nycWedge(a);   // (11-15, NEW YORK: the setback tiers became a wedge tower with a globe on its roof, NYC below)
+    /* (11-15, NEW YORK: the setback tiers became a wedge tower with a globe on its roof; 11-23, THE SKYLINE: the wedge is the foot of the
+       Daily Globe Building, 140 m, its own row: TW below) */
     for (const s of [-1, 1]) for (const i of [-3, -1, 1, 3]) { a.box(i * 3.5, 1.4, s * 14.12, 2.2, 8.4, 0.2, G_TALL, GL); a.box(s * 14.12, 1.4, i * 3.5, 0.2, 8.4, 2.2, G_TALL, GL); }
     if (door) { const n = { S: [0, 1], N: [0, -1], W: [-1, 0], E: [1, 0] }[door.side], ew = n[0] !== 0, t = door.lx * (door.side === 'S' || door.side === 'W' ? 1 : -1);   // the marquee over the doorway
         a.box(ew ? n[0] * 15.6 : t, 3.3, ew ? (door.side === 'W' ? door.lx : -door.lx) : n[1] * 15.6, ew ? 3.2 : 9, 0.45, ew ? 9 : 3.2, GOLD, 0xffffff, { under: true }); }
@@ -68,15 +72,27 @@ B['P05-04-B3'] = { row: { solid: true }, parts() { const a = sheet(), OC = 0xe6c
 /* 5 · SUPERHERO TOWER — the district's weenie: a columned marble podium, a glass shaft with white fins, a round drum on the plaza corner,
        an overhanging observation ring, a gilt dome, pyramid and spire */
 B['P06-04-B1'] = { row: { storeys: 2 }, parts(door) {   // the walk-in lobby opens on the plaza (mondo 22:30 "keep the new lobby"); the story door THE TOWER stands at its lift bank (`joins` below)
-    const a = sheet(), GL = 0xcfe6ff, WH = 0xf6f8fb, MB = 0xf6f1e4;
+    /* THE SKYLINE (2026-11-23, mondo's OK on the skyline plan: "Build it, plus the mid-rise fill"): the tower rises to 175 m, the city's tallest.
+       The shaft and its corner drum are stretched (HT.shaft), everything above them stands HT.up higher, and a setback crown is added over the
+       observation ring: an upper glass shaft, a marble drum, a gilt dome ringed by a gilt halo, a spire and the red beacon at 175 m. */
+    const a = sheet(), GL = 0xcfe6ff, WH = 0xf6f8fb, MB = 0xf6f1e4, S = HT.shaft, Y = HT.up, T = HT.top;
     a.shell(28, 7, 28, MARBLE, MB, door); a.box(0, 7, 0, 31, 0.8, 31, MARBLE, 0xffffff, { under: true });
     a.cols(-14, 15.3, 14, 15.3, 9, 0.5, 7, MARBLE, 0xffffff); a.cols(-14, -15.3, 14, -15.3, 9, 0.5, 7, MARBLE, 0xffffff); a.cols(15.3, -10.5, 15.3, 10.5, 7, 0.5, 7, MARBLE, 0xffffff); a.cols(-15.3, -10.5, -15.3, 10.5, 7, 0.5, 7, MARBLE, 0xffffff);
-    a.box(0, 7.8, 0, 17.5, 49, 17.5, G_TALL, GL, { glow: 0.45 }); a.cyl(-8.75, 7.8, 8.75, 6, 56, G_SQ, 0xe0f0ff, { seg: 24 });
-    for (const c of [[1, 1], [1, -1], [-1, -1]]) a.box(c[0] * 9.2, 7.8, c[1] * 9.2, 1.4, 53, 1.4, ALU, WH);
-    for (let y = 21; y < 56; y += 10.5) a.box(0, y, 0, 18.4, 0.5, 18.4, ALU, WH, { under: true });
-    a.cyl(0, 56.8, 0, 15, 1.4, ALU, WH, { seg: 32 }); a.cyl(0, 58.2, 0, 12.5, 3.5, G_SQ, 0xe0f0ff, { seg: 32, glow: 0.5, cap: false }); a.cyl(0, 61.7, 0, 13.5, 0.8, ALU, WH, { seg: 32 });
-    a.box(0, 62.5, 0, 10.5, 7, 10.5, G_TALL, GL, { glow: 0.45 }); a.dome(-8.75, 63.8, 8.75, 6, 4.8, GOLD, 0xffffff, { roof: true }); a.roof('pyramid', 0, 69.5, 0, 10.5, 5.5, 10.5, GOLD, 0xffffff);
-    a.cyl(0, 75, 0, 0.35, 13, ALU, 0xffffff, { seg: 8, r2: 0.04 });
+    a.box(0, 7.8, 0, 17.5, S, 17.5, G_TALL, GL, { glow: 0.45 }); a.cyl(-8.75, 7.8, 8.75, 6, S + 7, G_SQ, 0xe0f0ff, { seg: 24 });
+    for (const c of [[1, 1], [1, -1], [-1, -1]]) a.box(c[0] * 9.2, 7.8, c[1] * 9.2, 1.4, S + 4, 1.4, ALU, WH);
+    for (let y = 21; y < 7.8 + S; y += 10.5) a.box(0, y, 0, 18.4, 0.5, 18.4, ALU, WH, { under: true });
+    a.cyl(0, 56.8 + Y, 0, 15, 1.4, ALU, WH, { seg: 32 }); a.cyl(0, 58.2 + Y, 0, 12.5, 3.5, G_SQ, 0xe0f0ff, { seg: 32, glow: 0.5, cap: false }); a.cyl(0, 61.7 + Y, 0, 13.5, 0.8, ALU, WH, { seg: 32 });
+    a.dome(-8.75, 63.8 + Y, 8.75, 6, 4.8, GOLD, 0xffffff, { roof: true });
+    /* the crown (new): the upper shaft with its fins, a white band, the marble drum, the gilt dome, the halo on four struts, the spire */
+    a.box(0, 62.5 + Y, 0, 10.5, T, 10.5, G_TALL, GL, { glow: 0.45 });
+    for (const c of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) a.box(c[0] * 5.6, 62.5 + Y, c[1] * 5.6, 0.9, T, 0.9, ALU, WH);
+    for (let y = 62.5 + Y + 10.5; y < 62.5 + Y + T - 1; y += 10.5) a.box(0, y, 0, 11.3, 0.4, 11.3, ALU, WH, { under: true });
+    const yc = 62.5 + Y + T;   // the crown's foot (~147 m)
+    a.box(0, yc, 0, 12.6, 1.2, 12.6, ALU, WH, { under: true }); a.cyl(0, yc + 1.2, 0, 5.6, 6.4, MARBLE, MB, { seg: 24 }); a.cyl(0, yc + 7.6, 0, 6.1, 0.5, MARBLE, 0xffffff, { seg: 24 });
+    a.dome(0, yc + 8.1, 0, 5.6, 4.6, GOLD, 0xffffff, { roof: true });
+    a.cyl(0, yc + 9.4, 0, 9.4, 0.7, GOLD, 0xffffff, { seg: 40, ri: 8.6 });                                                   // the halo
+    for (const c of [[1, 0], [-1, 0], [0, 1], [0, -1]]) a.box(c[0] * 7.2, yc + 9.55, c[1] * 7.2, c[0] ? 3.2 : 0.3, 0.3, c[1] ? 3.2 : 0.3, GOLD, 0xffffff);
+    a.cyl(0, yc + 12.7, 0, 0.55, 14.6, ALU, 0xffffff, { seg: 8, r2: 0.06 });                                                 // the spire, its tip under the beacon at 175 m
     a.box(0, 32, 8.85, 6.4, 7.2, 0.3, GOLD, 0xffffff); a.box(0, 33.6, 9.05, 3.6, 4, 0.2, null, 0xd0303a);       // the shield on the plaza face
     return a.P; } };
 
@@ -113,8 +129,19 @@ B['P04-05-B1'] = { row: { hollow: true, storeys: 2, doorSide: 'E', key: null }, 
     a.cyl(-3, 12.4, 5.5, 2.3, 3, MARBLE, 0xffffff, { seg: 18, r2: 2.75 }); a.cyl(-3, 15.3, 5.5, 2.5, 0.12, null, 0x5a3118, { seg: 18 }); a.box(0.3, 13.1, 5.5, 1.3, 1.8, 0.5, MARBLE, 0xffffff);   // the cup, its coffee, its handle
     return a.P; } };
 
-/* 9 · THE SHOP BLOCK — the pack's photo shop block at its true size (the tool's packFit), on the annex lot */
-B['P04-05-B2'] = { row: { pack: 'pack_bld_09', packSide: 'E' } };
+/* 9 · THE PENCIL (2026-11-23, THE SKYLINE; was the pack's photo shop block, pack_bld_09): a white stone lobby two storeys high with a glass
+       front on the avenue, and over it a very thin tower 9.5 m a side to 96 m, a white grid of square bays on dark glass. Two sheets. */
+B['P04-05-B2'] = { row: { hollow: true, storeys: 2, doorSide: 'E' }, parts(door) { const a = sheet(), K = kit(a), WS = 0xf4f2ea, DG = 0x7a8490;
+    a.shell(17.5, 7, 17.5, CONC1, WS, door); a.box(0, 7, 0, 17.9, 0.5, 17.9, CONC1, WS);
+    K.win('E', 8.75, K.clear(door, 'E', [-6.1, -3.05, 3.05, 6.1], 1.8), 0.4, 2.6, 5.6, G_SQ, DG, { glow: 0.3 });
+    for (const sd of ['N', 'S']) K.win(sd, 8.75, [-5.25, 0, 5.25], 3.9, 3.6, 2.6, G_SQ, DG, { glow: 0.3 });
+    const y0 = 7.5, H = 88.5, w = 9.5, e = w / 2;
+    a.box(0, y0, 0, w - 0.3, H, w - 0.3, G_SQ, DG, { glow: 0.3, uv: [3.15, 3.5] });
+    for (let y = y0 + 3.5; y < y0 + H; y += 3.5) a.box(0, y - 0.22, 0, w, 0.45, w, CONC1, WS, { top: false, under: false });   // a white band at every floor
+    for (const c of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) a.box(c[0] * (e - 0.3), y0, c[1] * (e - 0.3), 0.7, H, 0.7, CONC1, WS);
+    for (const u of [-1.55, 1.55]) for (const sd of ['N', 'S', 'E', 'W']) K.on(sd, e - 0.15, u, y0, 0.45, H, 0.3, CONC1, WS);
+    a.box(0, y0 + H, 0, w + 0.2, 0.6, w + 0.2, CONC1, WS);
+    return a.P; } };
 
 /* 11 · TRAINING HALL — a brick armory: four round turrets with cone caps, tall window bays, a gabled porch, red banners; the flat roof is the
         roof route, walked round a glass monitor */
@@ -149,12 +176,25 @@ B['P04-06-B1'] = { row: { storeys: 2, leaf: 'leaf_shabby_wood' }, parts(door) { 
     a.cyl(-2, h + 2.7, -6, 2, 3, WOOD, 0xb89068, { seg: 12, roof: true }); a.cyl(-2, h + 5.7, -6, 2.2, 1.4, null, 0x6a5848, { seg: 12, r2: 0, roof: true }); a.cyl(-2, h + 0.7, -6, 1.5, 2, METAL, 0x55585c, { seg: 4, cap: false, roof: true });
     return a.P; } };
 
-/* 14 · TOWNHOUSE ROW — three joined houses, each its own colour and gable, stoops and painted doors on the north walk */
-B['P04-06-B2'] = { row: { solid: true }, parts() { const a = sheet(), T = [0xe08a72, 0xf0dca0, 0x88a8c4], DR = [0x3a6a48, 0x8a2a2a, 0x2a427a];
-    for (let i = 0; i < 3; i++) { const x = -5.85 + i * 5.85, hh = 10.5 + (i === 1 ? 1.2 : 0), key = i === 1 ? PLASTER : BRICK;
-        a.box(x, 0, 0, 5.85, hh, 17.6, key, T[i], { top: false }); a.roof('gable', x, hh, 0, 17.6, 3, 5.85, i === 1 ? CORR2 : CORR, i === 1 ? 0xe07060 : 0x8098b0, { ry: 90, over: 0.25, keyEnd: key, tintEnd: T[i] });
-        a.box(x, 0, -9.6, 2.4, 0.5, 1.6, MARBLE, 0xd8d0c0); a.box(x - 0.9, 0.5, -8.86, 1.1, 2.3, 0.12, WOOD, DR[i]); a.box(x + 1.2, 1.4, -8.86, 1.5, 1.6, 0.1, G_SQ, 0xd8ecf8);
-        for (const y of [4.6, 7.8]) for (const o of [-1.3, 1.3]) a.box(x + o, y, -8.86, 1.3, 1.8, 0.1, G_SQ, 0xd8ecf8); }
+/* 14 · THE PREWAR (2026-11-23, THE SKYLINE; was the Townhouse row): a New York prewar apartment house, 80 m: a rusticated limestone ground
+       floor with its stoop and the real door on the north walk, fourteen floors of tan brick and windows to a limestone cornice, two setbacks,
+       a wooden water tower on top. Four sheets: the windowed brick, the limestone, the iron, the wood. */
+B['P04-06-B2'] = { row: { hollow: true, storeys: 1, doorSide: 'N' }, parts(door) { const a = sheet(), K = kit(a), BRK = 0xd2a27e, WD = 0x9a7450;
+    a.shell(17.5, 3.5, 17.5, STUCCO, LIME, door); K.plinth(17.5, 17.5, 0.5, door, STUCCO, LIME, 0.12);
+    for (const y of [1.6, 2.6]) K.course(17.5, 17.5, y, 0.08, 0.06, STUCCO, LIME);   // the rustication's joints
+    const tiers = [[17.6, 3.5, 49], [13, 53.2, 13.3], [9, 67.1, 6.4]];
+    tiers.forEach(([w, y, h], k) => { a.box(0, y, 0, w, h, w, G_RES2, BRK, { top: false, glow: 0.12, uv: [3.5, 3.5] });
+        a.box(0, y + h, 0, w + 0.8, 0.7, w + 0.8, STUCCO, LIME); if (k === 0) { K.course(17.6, 17.6, 3.5, 0.5, 0.18, STUCCO, LIME); K.course(17.6, 17.6, 17.5, 0.35, 0.12, STUCCO, LIME); K.course(17.6, 17.6, 45.5, 0.35, 0.12, STUCCO, LIME); }
+        for (const c of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) a.box(c[0] * (w / 2 - 0.2), y, c[1] * (w / 2 - 0.2), 0.7, h, 0.7, STUCCO, LIME); });   // limestone quoins
+    if (door) { const du = K.doorU(door);   // the entrance: a limestone threshold, iron area rails either side, a hood over the door (the doorway is at street level: no stoop to climb)
+        K.on('N', 8.75, du, 0, 2.6, 0.06, 1.2, STUCCO, LIME);
+        for (const o of [-1.35, 1.35]) { a.box(du + o, 0.5, -9.9, 0.06, 0.06, 1.4, METAL, IRON); a.P.push({ s: 'box', p: [du + o, 0.1, -10.5], size: [0.04, 0.9, 0.04], key: METAL, tint: IRON, n: 5, step: [0, 0, 0.3] }); }
+        K.on('N', 8.75, du, 2.75, 2.8, 0.22, 0.7, STUCCO, LIME, { under: true }); }
+    /* the water tower on the top setback: steel legs, a wooden tub with iron hoops, a cone roof */
+    const yt = 74.2; for (const c of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) a.cyl(c[0] * 1.3, yt, c[1] * 1.3, 0.1, 2.4, METAL, IRON, { seg: 5 });
+    a.box(0, yt + 2.4, 0, 3.4, 0.14, 3.4, METAL, IRON); a.cyl(0, yt + 2.54, 0, 1.7, 3.0, WOOD, WD, { seg: 14 });
+    for (const h of [0.5, 1.5, 2.5]) a.cyl(0, yt + 2.54 + h, 0, 1.76, 0.08, METAL, IRON, { seg: 14, ri: 1.66 });
+    a.cyl(0, yt + 5.54, 0, 1.9, 1.3, WOOD, WD, { seg: 14, r2: 0.15 });
     return a.P; } };
 
 /* 16 · TRANSIT COURT — the station: cream tile, a long canopy on the north front, a clock tower on the corner, a glass front; the flat roof is
@@ -168,12 +208,14 @@ B['P06-06-B1'] = { parts() { const a = sheet(), TL = 0xf6eed8, GR = 0x3f8a72;
     a.box(-3, 7.6, -11.6, 13, 2.2, 0.3, null, GR, { roof: true });                                                                                // the roof sign board (no lettering yet)
     return a.P; } };
 
-/* 17 · OFFICE COURT — a teal glass slab on stilts over a recessed lobby, sun fins, a round glass stair tower, a penthouse */
-B['P07-06-B1'] = { row: { storeys: 1 }, parts(door) { const a = sheet(), TQ = 0xa8f0e2;
+/* 17 · OFFICE COURT — a teal glass slab on stilts over a recessed lobby, sun fins, a round glass stair tower, a penthouse.
+       THE SKYLINE (2026-11-23): the same slab, OCH metres of it (was 21): the Office Court Tower, 110 m to its mast's tip */
+const OCH = 96.5;
+B['P07-06-B1'] = { row: { storeys: 1 }, parts(door) { const a = sheet(), TQ = 0xa8f0e2, R = 3.5 + OCH;
     a.shell(17.5, 3.5, 21, G_SQ, 0xe0f0ff, door, { glow: 0.35 }); a.cols(-9.6, -9.2, -9.6, 9.2, 5, 0.4, 3.5, CONC1, 0xf2f2ee);
-    a.box(-1, 3.5, 0, 19.6, 21, 21.1, G_SQ, TQ, { top: false, under: true, glow: 0.35 }); for (let i = -5; i <= 5; i++) a.box(-11.1, 3.5, i * 1.9, 0.7, 21, 0.18, ALU, 0xffffff);
-    a.box(-1, 24.5, 0, 20.4, 0.6, 21.9, CONC1, 0xf8f8f4, { under: true, roof: true }); a.box(2, 25.1, -3, 8, 3.2, 10, G_SQ, 0xe0f0ff, { glow: 0.3, roof: true }); a.box(2, 28.3, -3, 9.5, 0.4, 11.5, CONC1, 0xf8f8f4, { under: true, roof: true });
-    a.cyl(8.75, 0, 10.5, 3.4, 27, G_TALL, 0xd6f4ee, { seg: 18, glow: 0.35 }); a.cyl(8.75, 27, 10.5, 3.7, 0.5, CONC1, 0xf8f8f4, { seg: 18 });
+    a.box(-1, 3.5, 0, 19.6, OCH, 21.1, G_SQ, TQ, { top: false, under: true, glow: 0.35 }); for (let i = -5; i <= 5; i++) a.box(-11.1, 3.5, i * 1.9, 0.7, OCH, 0.18, ALU, 0xffffff);
+    a.box(-1, R, 0, 20.4, 0.6, 21.9, CONC1, 0xf8f8f4, { under: true, roof: true }); a.box(2, R + 0.6, -3, 8, 3.2, 10, G_SQ, 0xe0f0ff, { glow: 0.3, roof: true }); a.box(2, R + 3.8, -3, 9.5, 0.4, 11.5, CONC1, 0xf8f8f4, { under: true, roof: true });
+    a.cyl(8.75, 0, 10.5, 3.4, R + 2.5, G_TALL, 0xd6f4ee, { seg: 18, glow: 0.35 }); a.cyl(8.75, R + 2.5, 10.5, 3.7, 0.5, CONC1, 0xf8f8f4, { seg: 18 });
     return a.P; } };
 
 /* 18 · THE ANNEX — a small stone pavilion with a four-column porch and pediment; its flat roof is the roof route */
@@ -340,12 +382,12 @@ DET['P05-04-B3'] = a => { const K = kit(a), CRM = 0xfff2d2, GN = 0x5f9a72;
 /* 5 · SUPERHERO TOWER: a stepped base, an architrave and a gilt frieze on the podium, fins on the shaft, bands on the drum, a rail on the ring */
 DET['P06-04-B1'] = (a, door) => { const K = kit(a), WH = 0xf6f8fb;
     a.box(0, 0, 0, 32, 0.22, 32, MARBLE, 0xe2dccc, { keyTop: CHECK, tintTop: 0xffffff }); K.rTop(0, 7.8, 0, 30.6, 30.6, PAVER, 0xe6e2d8); K.parapet(0, 7.8, 0, 30.9, 30.9, 0.6, MARBLE, 0xffffff); K.course(28, 28, 6.15, 0.55, 1.35, MARBLE, 0xf2ecde); K.course(28, 28, 6.72, 0.14, 1.5, GOLD, 0xffffff);
-    K.sides(17.5, 17.5).forEach(([sd, half]) => K.pil(sd, half, [-5.8, -2.9, 2.9, 5.8], 7.8, 49, 0.22, 0.32, ALU, WH));
-    for (const y of [18, 28.5, 39, 49.5, 60]) a.cyl(-8.75, y, 8.75, 6.14, 0.4, ALU, WH, { seg: 24 });
-    a.cyl(0, 58.2, 0, 14.8, 1.1, ALU, WH, { seg: 32, ri: 14.68 }); a.cyl(0, 62.5, 0, 13.3, 0.9, ALU, WH, { seg: 32, ri: 13.2 });
+    K.sides(17.5, 17.5).forEach(([sd, half]) => K.pil(sd, half, [-5.8, -2.9, 2.9, 5.8], 7.8, HT.shaft, 0.22, 0.32, ALU, WH));
+    for (let y = 18; y < 7.8 + HT.shaft + 7; y += 10.5) a.cyl(-8.75, y, 8.75, 6.14, 0.4, ALU, WH, { seg: 24 });
+    a.cyl(0, 58.2 + HT.up, 0, 14.8, 1.1, ALU, WH, { seg: 32, ri: 14.68 }); a.cyl(0, 62.5 + HT.up, 0, 13.3, 0.9, ALU, WH, { seg: 32, ri: 13.2 });
+    K.sides(10.5, 10.5).forEach(([sd, half]) => K.pil(sd, half, [-2.6, 0, 2.6], 62.5 + HT.up, HT.top, 0.2, 0.28, ALU, WH));   // THE SKYLINE: fins on the upper shaft
     for (const c of [[1, 1], [1, -1], [-1, -1]]) K.rAC(c[0] * 12, 7.8, c[1] * 12); K.rVent(12, 7.85, 0); K.rVent(0, 7.85, -12); K.rDuct(12, 7.85, -5, 9, false); K.rDuct(4, 7.85, -12, 9, true);
     a.box(0, 31.8, 9.02, 6.9, 0.2, 0.34, ALU, WH); a.box(0, 39.2, 9.02, 6.9, 0.2, 0.34, ALU, WH);                       // the shield's frame
-    a.cyl(0, 87.6, 0, 0.3, 0.4, null, 0xff3020, { seg: 8, glow: 1 });
     if (door) { const du = K.doorU(door); K.pil(door.side, 14, [du - door.cw / 2 - 0.45, du + door.cw / 2 + 0.45], 0, 3.1, 0.5, 0.3, GOLD, 0xffffff); K.on(door.side, 14, du, 2.6, door.cw + 1.9, 0.5, 0.36, GOLD, 0xffffff); K.lamps(door, 14.2, 2.4); } };
 
 /* 6 · PRESS COURT: a kerb, slim mullions on the glass, a dark fascia on the floating roof, press steps, a dish on the roof */
@@ -424,22 +466,7 @@ DET['P04-06-B1'] = (a, door) => { const K = kit(a), h = 21, CRM = 0xe4d8be;
     if (door) { const du = K.doorU(door), hf = door.side === 'N' || door.side === 'S' ? 12.3 : 7.05; if (door.side !== 'E') K.awning(door.side, hf, du, 2.5, 3, 1.3, 0x7a2a2a, 0x7a2a2a); K.lamps(door, hf, 2.4); }
     K.rTop(0, h + 0.7, 0, 14.9, 25.4, TAR, 0xffffff); K.parapet(0, h + 0.7, 0, 15.1, 25.6, 0.5, BRICK, 0xd88470); K.rAC(-4, h + 0.75, -9); K.rHut(3, h + 0.7, 6, BRICK, 0xd88470); K.rVent(3, h + 0.7, -3); K.rVent(-4, h + 0.7, 4); K.rVent(4, h + 0.7, -9); };
 
-/* 14 · TOWNHOUSE ROW: sills and heads, door hoods, stoop rails, a cornice each, chimneys, back windows and doors, pipes between the houses */
-DET['P04-06-B2'] = a => { const K = kit(a), TR = [0xfff0e0, 0xf6f0e0, 0xeef4fa], DR = [0x3a6a48, 0x8a2a2a, 0x2a427a];
-    for (let i = 0; i < 3; i++) { const x = -5.85 + i * 5.85, hh = 10.5 + (i === 1 ? 1.2 : 0);
-        K.on('N', 8.8, x, 0, 5.95, 0.5, 0.1, MARBLE, STONE);
-        K.frames('N', 8.8, [x - 1.3, x + 1.3], 4.6, 1.3, 1.8, STUCCO, TR[i]); K.frames('N', 8.8, [x - 1.3, x + 1.3], 7.8, 1.3, 1.8, STUCCO, TR[i]); K.frames('N', 8.8, [x + 1.2], 1.4, 1.5, 1.6, STUCCO, TR[i]);
-        K.on('N', 8.8, x - 0.9, 2.95, 1.7, 0.14, 0.8, null, DR[i], { under: true }); K.on('N', 8.8, x - 0.9, 2.8, 1.4, 0.15, 0.2, STUCCO, TR[i]);
-        for (const o of [-1.15, 1.15]) { a.box(x + o, 1.38, -9.9, 0.06, 0.06, 1.4, METAL, DARK); a.P.push({ s: 'box', p: [x + o, 0.5, -10.55], size: [0.04, 0.88, 0.04], key: METAL, tint: DARK, n: 5, step: [0, 0, 0.325] }); }   // (11-16: a top rail on pickets; it was a solid plate)
-        K.on('N', 8.8, x, hh - 0.55, 5.85, 0.3, 0.3, STUCCO, TR[i]); K.on('N', 8.8, x, hh - 0.2, 5.95, 0.2, 0.45, STUCCO, TR[i]);
-        K.lamp('N', 8.8, x - 1.9, 2.5);
-        a.box(x + 1.9, hh + 0.4, 3, 0.9, 3.4, 0.9, BRICK, 0xc07860, { roof: true }); a.box(x + 1.9, hh + 3.8, 3, 1.1, 0.18, 1.1, CONC1, 0xd8d4c8, { roof: true }); a.cyl(x + 1.9, hh + 3.98, 3, 0.18, 0.45, null, 0x9a5a3c, { seg: 8, roof: true });
-        K.decal('S', 8.8, [x], 4.0, 4.2, 5.8, i === 1 ? DEC_R1 : DEC_R2); K.win('S', 8.8, [x + 1.2], 1.3, 1.3, 1.8, G_SQ, 0xd8ecf8); K.frames('S', 8.8, [x + 1.2], 1.3, 1.3, 1.8, STUCCO, TR[i]); K.ac('S', 8.8, x + 2.2, 4.4);
-        K.door('N', 8.93, x - 0.9, 0.5, 1.1, 2.3, [D_WOOD, D_RED, D_GREY][i]);
-        K.door('S', 8.8, x - 1.1, 0.25, 1.0, 2.1, D_GREY); K.on('S', 8.8, x - 1.1, 0, 1.6, 0.25, 1.0, MARBLE, STONE);
-        if (i) K.pipe('N', 8.8, x - 2.925, hh - 1.2); }
-    for (const sd of ['E', 'W']) { K.decal(sd, 8.775, [-4.6, 4.6], 4.0, 3.4, 5.6, DEC_R2); K.on(sd, 8.775, 0, 0, 17.7, 0.5, 0.1, MARBLE, STONE); }
-    K.on('S', 8.8, 0, 0, 17.6, 0.5, 0.1, MARBLE, STONE); };
+/* 14 · THE PREWAR: its dressing is in its own parts (THE SKYLINE, 11-23: the Townhouse row's sills, hoods, cornices and chimneys went with it) */
 
 /* 16 · TRANSIT COURT: a green tile foot and belt, piers, high windows, posts and a fascia on the canopy, bands and a louvre on the clock tower */
 DET['P06-06-B1'] = a => { const K = kit(a), TL2 = 0xfffaea, GR = 0x3f8a72, GD = 0x2c6a56;
@@ -460,14 +487,15 @@ DET['P06-06-B1'] = a => { const K = kit(a), TL2 = 0xfffaea, GR = 0x3f8a72, GD = 
 
 /* 17 · OFFICE COURT: white spandrel lines on every floor, mullions in the lobby, an entrance canopy, rings on the stair tower, roof kit and a mast */
 DET['P07-06-B1'] = (a, door) => { const K = kit(a), WH = 0xf8f8f4;
-    for (const y of steps(7, 21, 3.5)) a.box(-1, y - 0.12, 0, 19.78, 0.24, 21.28, CONC1, WH, { top: false, under: false });
+    for (const y of steps(7, OCH, 3.5)) a.box(-1, y - 0.12, 0, 19.78, 0.24, 21.28, CONC1, WH, { top: false, under: false });
     for (const sd of ['N', 'S']) K.pil(sd, 10.5, K.clear(door, sd, steps(-7, 7, 3.5), 1.3), 0, 3.5, 0.12, 0.14, ALU, 0xffffff);
     K.pil('E', 8.75, K.clear(door, 'E', steps(-7, 7, 3.5), 1.3), 0, 3.5, 0.12, 0.14, ALU, 0xffffff);
-    for (const y of steps(3.5, 24.5, 3.5)) a.cyl(8.75, y, 10.5, 3.48, 0.22, CONC1, WH, { seg: 18 });
+    for (const y of steps(3.5, 3.5 + OCH, 3.5)) a.cyl(8.75, y, 10.5, 3.48, 0.22, CONC1, WH, { seg: 18 });
     a.box(-9.6, 3.3, 0, 1.2, 0.2, 19.4, CONC1, WH, { under: true });
     if (door) { const du = K.doorU(door), hf = door.side === 'N' || door.side === 'S' ? 10.5 : 8.75; K.awning(door.side, hf, du, 2.75, 4.2, 2.2, 0xf8f8f4, 0x2f8a7a); K.lamps(door, hf, 2.4); }
-    K.rTop(-1, 25.1, 0, 20.2, 21.7, TAR, 0xffffff); K.rDuct(-4, 25.15, 4.5, 8, true); K.rAC(-7, 25.15, 9); K.rAC(-7, 25.1, 6); K.rAC(-7, 25.1, 3); K.rAC(-7, 25.1, -7); K.rVent(-3, 25.1, 8); K.rail(20.2, 21.7, 25.1, 0xd8dce0);
-    a.cyl(2, 28.7, -3, 0.1, 6, ALU, 0xffffff, { seg: 6, r2: 0.03, roof: true }); a.cyl(2, 34.6, -3, 0.22, 0.3, null, 0xff3020, { seg: 8, glow: 1 }); };
+    const R = 4.1 + OCH;   // the roof (THE SKYLINE: was 25.1)
+    K.rTop(-1, R, 0, 20.2, 21.7, TAR, 0xffffff); K.rDuct(-4, R + 0.05, 4.5, 8, true); K.rAC(-7, R + 0.05, 9); K.rAC(-7, R, 6); K.rAC(-7, R, 3); K.rAC(-7, R, -7); K.rVent(-3, R, 8); K.rail(20.2, 21.7, R, 0xd8dce0);
+    a.cyl(2, R + 3.6, -3, 0.1, 6, ALU, 0xffffff, { seg: 6, r2: 0.03, roof: true }); a.cyl(2, R + 9.5, -3, 0.22, 0.3, null, 0xff3020, { seg: 8, glow: 1 }); };
 
 /* 18 · THE ANNEX: a grey foot, tall windows in marble surrounds, dentils under the cornice, column bases, porch steps and a door, a balustrade */
 DET['P07-06-B2'] = a => { const K = kit(a), MW = 0xffffff;
@@ -712,6 +740,21 @@ IN['P07-06-B1'] = K => { const a = K.a; K.floor(PAVER, 0xffffff, 3.5);
     K.prop('curved_couch', ...K.at(0, 4), 270);
     K.glass(4, 4, 1, 'z'); { const [x, z] = K.at(5, 4); K.prop('conference_table', x, z, 0); K.prop('office_chair', x - 1.0, z - 0.5, 270); K.prop('office_chair', x - 1.0, z + 0.6, 270); K.prop('office_chair', x + 1.0, z, 90); }
     K.decor('potted_plant', 0, 0, -1, -1); K.decor('potted_plant', 5, 0, 1, -1); K.decor('office_plant', 0, 2, -1, 1); K.decor('water_cooler', 5, 2, 1, 1, 90); K.decor('trash_bin', 1, 4, 1, 1); };
+/* THE SKYLINE (11-23): the two new towers' lobbies, 5 x 5 squares each, the door in the last row. The lift core on the back wall (no doors past it:
+   the floors above are windows only), a desk, a place to sit; the walk from the door to the lifts stays clear. */
+/* 14 · THE PENCIL: a white marble lobby two storeys high, the lifts, a concierge desk to the right, a couch to the left */
+IN['P04-05-B2'] = K => { K.floor(CHECK, 0xffffff, 3.5);
+    K.lifts(1, 0, 3, 0xf2f0ea);
+    { const [x, z] = K.counter(3, 2, 2, 1, 0x2e3238, 0xf4f4f0); K.prop('computer_chair_grey', x, z - 0.2, 0); K.mon(x, 1.13, z + 1.0, 180); }
+    K.prop('curved_couch', ...K.at(0, 2), 270);
+    K.decor('potted_plant', 0, 0, -1, -1); K.decor('potted_plant', 4, 0, 1, -1); K.decor('office_plant', 0, 4, -1, 1); K.decor('trash_bin', 4, 4, 1, 1); };
+/* 20 · THE PREWAR: a low lobby, the lifts, the mailboxes, a doorman's desk, a bench */
+IN['P04-06-B2'] = K => { const a = K.a; K.floor(CHECK, 0xffffff, 3.5);
+    K.lifts(2, 0, 2, 0xe8dcc0);
+    { const [x, z] = K.at(0, 0, 2); a.box(x, 0.3, z, 6.4, 1.5, 1.0, GRILL, 0xc8a870); a.box(x, 1.8, z, 6.5, 0.06, 1.1, WOOD, 0x6a4a34); a.box(x, 0, z, 6.4, 0.3, 1.0, WOOD, 0x4a3020); K.ghost(x, z, 6.4, 1.2, 1.9); }   // the brass mailboxes
+    { const [x, z] = K.counter(4, 2, 1, 1, 0x4a3020, 0xe8dcc0); K.prop('office_chair', x, z - 0.2, 0); }
+    K.prop('park_bench', ...K.at(0, 3), 90);
+    K.decor('potted_plant', 4, 0, 1, -1); K.decor('potted_plant', 0, 4, -1, 1); K.decor('umbrella_stand', 4, 4, 1, 1); };
 /* 9 · DELIVERY YARD: the depot floor (9 x 3) */
 IN['P07-07-B1'] = K => { const a = K.a;
     for (const i of [0, 1, 3, 4, 6, 7]) { const [x, z] = K.at(i, 0); K.prop('ebd_gasstation_metal_shelving', x, z, 0); }
@@ -880,6 +923,15 @@ IN['P07-04-B2'] = K => { const at = K.at, PART = 0xf2e6d0, zF = at(0, 2)[1] + 1.
     K.rug(at(3, 3)[0], at(3, 3)[1] + 1.75, 10.5, 2.2, 'carpet', 0x7a5a3a, 1.5);
     for (const i of [1, 3, 5]) K.lamp(at(i, 3)[0], at(i, 3)[1] + 1.75, 1.2, 1.2, 0xfff0d0);
     K.wall('wall_clock', 'f', at(5, 4)[0], 2.2); K.put('doormat', K.dlx, K.D / 2 - 1.0, 0); K.put('umbrella_stand', K.dlx + 1.4, K.D / 2 - 0.6, 0); };
+/* THE SKYLINE lobbies: their paint and light */
+IN2['P04-05-B2'] = K => { const at = K.at;
+    K.liner(PAINT2(0xf2f0ea), { key: U('TileMarble1a'), tint: 0xe0dcd4, gain: 1.6 }, CEIL(), { dado: 1.2, rail: 0xb8b4ac });
+    for (const i of [0, 2, 4]) for (const j of [1, 3]) K.lamp(...at(i, j), 1.2, 1.2);
+    K.wall('directory_board', 'l', at(0, 1)[1], 1.0); K.wall('wall_clock', 'b', at(4, 0)[0], 2.8); K.wall('exit_sign', 'f', K.dlx, 2.45); K.put('rug_office', ...at(1, 2), 90); };
+IN2['P04-06-B2'] = K => { const at = K.at;
+    K.liner(PAINT2(0xe6dcc4), { key: WOOD, tint: 0x5a3a26, gain: 1.4 }, CEIL(0xfff4e0), { dado: 1.0, rail: 0x3a2a20 });
+    for (const i of [1, 3]) for (const j of [1, 3]) K.pendant(...at(i, j), 0.8, 0x2a2a2e);
+    K.sconce('l', at(0, 2)[1], 2.1); K.sconce('r', at(4, 2)[1], 2.1); K.wall('wall_clock', 'r', at(4, 1)[1], 2.4); K.put('doormat', K.dlx, K.D / 2 - 1.0, 0); };
 /* 9 · DELIVERY YARD: pale corrugated walls over a hazard band, cool strip lights down the walk, the pallet jack by the pallets, a hand truck, bundles
    of papers by the racks, the dispatch board */
 IN2['P07-07-B1'] = K => { const at = K.at;
@@ -910,18 +962,6 @@ IN2['P06-05-B1'] = K => { const a = K.a, at = K.at;
    Every building keeps its name, use, doors and roof route. NYC[bid] = a third parts list per building, NYC_TINT[bid] = its colour swaps,
    NYC_OPEN = more open pieces, NYC_PROPS = street props (blockers centred on whole 3.5 m squares, decor off centre). ── */
 const IRON = 0x24262a, LIME = 0xe8dcc0, TAN = 0xc9a074, CAB = 0xf2c200, CU_G = 0x5fae9c;
-const WEDGE = [[-10.5, -10.5], [4, -10.5], [10.5, 8.5], [8.5, 10.5], [-10.5, 4]];
-const wpts = k => WEDGE.map(q => [q[0] * k + 0.3 * (k - 1), q[1] * k + 0.3 * (k - 1)]);
-function nycWedge(a) { const y0 = 11.1, H = 24.5, R = y0 + H + 0.7, gx = -2.5, gz = -2.5;
-    a.P.push({ s: 'poly', p: [0, y0, 0], pts: wpts(0.985), h: H, key: G_TALL, tint: 0x8ea8c4, glow: 0.3, top: false });
-    for (let k = 1; k <= 7; k++) a.P.push({ s: 'poly', p: [0, y0 + k * 3.5 - 0.95, 0], pts: wpts(1), h: 0.95, key: STUCCO, tint: LIME, top: false });
-    a.P.push({ s: 'poly', p: [0, y0, 0], pts: wpts(1.01), h: 0.6, key: STUCCO, tint: LIME, top: false });
-    WEDGE.forEach(q => a.box(q[0] * 1.005, y0, q[1] * 1.005, 0.9, H, 0.9, STUCCO, 0xf2e8d0));
-    a.P.push({ s: 'poly', p: [0, y0 + H, 0], pts: wpts(1.05), h: 0.7, key: ALU, tint: CU_G, keyTop: U('TileGeneric3a'), tintTop: 0xffffff, roof: true });
-    a.cyl(gx, R, gz, 2.4, 1.4, STUCCO, LIME, { seg: 16, roof: true }); a.cyl(gx, R + 1.4, gz, 0.5, 0.9, ALU, CU_G, { seg: 10 });   // the globe: drum, neck, bowl, cap, two rings, a tip light
-    a.cyl(gx, R + 2.3, gz, 1.3, 1.1, ALU, CU_G, { seg: 20, r2: 2.6 }); a.cyl(gx, R + 3.4, gz, 2.6, 0.9, ALU, CU_G, { seg: 20, r2: 3.0 }); a.dome(gx, R + 4.3, gz, 3.0, 3.0, ALU, CU_G);
-    a.cyl(gx, R + 4.15, gz, 3.3, 0.3, ALU, 0x3f7a6c, { seg: 24, ri: 2.95 }); a.cyl(gx, R + 5.8, gz, 2.7, 0.2, ALU, 0x3f7a6c, { seg: 24, ri: 2.5 });
-    a.cyl(gx, R + 7.25, gz, 0.08, 1.6, ALU, 0xd8dce0, { seg: 5 }); a.cyl(gx, R + 8.85, gz, 0.2, 0.3, null, 0xff3020, { seg: 8, glow: 1 }); }
 /* a black iron fire escape on a wall facing ±z (s = +1 south, −1 north): a landing per floor, rails, a flight between floors, a drop ladder */
 function fireEscape(a, s, half, x0, w, floors) { const zo = s * (half + 1.28), np = Math.round(w / 0.35);
     for (let f = 1; f <= floors; f++) { const y = f * 3.5, z = s * (half + 0.65);
@@ -946,8 +986,8 @@ const NYC = {};
 NYC['P04-04-B1'] = a => { const K = kit(a);
     for (const sd of ['S', 'E']) { K.on(sd, 14.26, 0, 10.0, 26.4, 0.48, 0.14, METAL, IRON); const q = K.sign(sd, 14.3, 0, 10.03, 26, 0.42, TICK + ' · ' + TICK, '#ffc93a', '#0c0c0e'); q.glow = 0.9; } };
 /* the tower: a warm glow strip under each setback band and the ring, a red beacon on the spire */
-NYC['P06-04-B1'] = a => { for (const y of [21, 31.5, 42, 52.5]) a.box(0, y - 0.16, 0, 18.5, 0.16, 18.5, null, 0xffe2b0, { glow: 0.9, top: false });
-    a.cyl(0, 56.62, 0, 15.04, 0.18, null, 0xffe2b0, { seg: 32, ri: 14.9, glow: 0.9 }); a.cyl(0, 61.55, 0, 13.56, 0.15, null, 0xffe2b0, { seg: 32, ri: 13.4, glow: 0.9 }); a.dome(0, 88, 0, 0.55, 0.8, null, 0xff2a20, { glow: 1 }); };
+NYC['P06-04-B1'] = a => { for (let y = 21; y < 7.8 + HT.shaft; y += 10.5) a.box(0, y - 0.16, 0, 18.5, 0.16, 18.5, null, 0xffe2b0, { glow: 0.9, top: false });
+    a.cyl(0, 56.62 + HT.up, 0, 15.04, 0.18, null, 0xffe2b0, { seg: 32, ri: 14.9, glow: 0.9 }); a.cyl(0, 61.55 + HT.up, 0, 13.56, 0.15, null, 0xffe2b0, { seg: 32, ri: 13.4, glow: 0.9 }); a.dome(0, 174.6, 0, 0.55, 0.8, null, 0xff2a20, { glow: 1 }); };   // (THE SKYLINE, 11-23: the beacon at 175 m)
 /* the Training hall's west face is the plaza's east wall: a billboard stack on its roof edge and a ticker under its cornice */
 NYC['P06-05-B1'] = a => { const K = kit(a);
     for (const z of [-10.4, -4.5, 1.2, 10.4]) a.box(-12.9, 7.05, z, 0.2, 9.4, 0.2, METAL, IRON, { roof: true });
@@ -965,17 +1005,10 @@ NYC['P07-04-B1'] = a => { const K = kit(a); for (const x of [-3.6, 3.6]) a.cyl(x
 NYC['P07-04-B2'] = a => { fireEscape(a, 1, 12.25, 2.2, 7, 4); fireEscape(a, -1, 12.25, 2.2, 7, 4); };
 /* the apartment stair: tan brick (its iron stair stays); a second water tower */
 NYC['P04-06-B1'] = a => waterTower(a, 3.5, 21.7, -6.2, 1.6);
-/* the Townhouse row: brownstone, high stoops with iron rails and newels, iron area railings, a water tower */
-NYC['P04-06-B2'] = a => { for (let i = 0; i < 3; i++) { const x = -5.85 + i * 5.85;
-        a.box(x, 0, -10.65, 2.4, 0.25, 0.5, STUCCO, 0x8a5a44); for (const o of [-1.15, 1.15]) { a.box(x + o, 0, -10.85, 0.16, 1.45, 0.16, METAL, IRON); a.box(x + o, 1.45, -10.85, 0.24, 0.08, 0.24, METAL, IRON); }
-        /* (11-16: the area railings are bars: a top and a foot rail on pickets. They were solid black plates a metre wide beside each stoop) */
-        for (const o of [-2.3, 2.0]) { a.box(x + o, 0.9, -9.25, 1.0, 0.05, 0.05, METAL, IRON); a.box(x + o, 0.1, -9.25, 1.0, 0.04, 0.04, METAL, IRON); a.P.push({ s: 'box', p: [x + o - 0.47, 0, -9.25], size: [0.035, 0.98, 0.035], key: METAL, tint: IRON, n: 6, step: [0.188, 0, 0] }); } }
-    waterTower(a, 5.85, 10.5, 5.5, 3.4); };
 const NYC_TINT = {
     'P06-05-B1': { 0xc08468: TAN },
     'P04-06-B1': { 0xd88470: TAN, 0xffb098: 0xe8cfa8, 0x8a4a40: 0x6a5040 },
     'P07-04-B2': { 0xe6a288: 0xd4b088, 0xb86a58: 0xa8845c },
-    'P04-06-B2': { glow: 0.3, 0xe08a72: 0xc27c5c, 0xf0dca0: 0xb8805e, 0x88a8c4: 0xb87050, 0x8098b0: 0x4a4e54, 0xe07060: 0x4a4e54, 0xc07860: 0x7a4c3a, 0xfff0e0: 0xd8c4a8, 0xf6f0e0: 0xd8c4a8, 0xeef4fa: 0xd8c4a8 },
 };
 /* `glow` in a building's map (11-16): its sheets keep that much of their own light (the brownstone row faces north: it read as black) */
 const nycTint = (bid, P) => { const m = NYC_TINT[bid]; if (!m) return P; P.forEach(p => { ['tint', 'tintEnd', 'tintTop'].forEach(k => { if (p[k] != null && m[p[k]] != null) p[k] = m[p[k]]; });
@@ -1030,6 +1063,57 @@ const NYC_PROPS = [
     { key: 'newspaper_rack', x: -11.6, z: 55.45, face: 0 }, { key: 'newspaper_rack', x: 24.9, z: 70.55, face: 180 }, { key: 'newspaper_rack', x: -36.4, z: 70.55, face: 180 },
 ];
 
+/* ── THE SKYLINE (2026-11-23, mondo's OK at 17:00 on the skyline plan, https://claude.ai/artifact/YEe54svVhVbLufjHdfQ5QY: "Build it, plus the
+   mid-rise fill"). Hero Plaza's six towers, each a New York parody standing on a building that is already there and keeps its walk-in ground
+   floor as the lobby: 3 the Daily Globe Building (140 m, on the News office), 6 the Umpire State Building (125 m, on Apartments A), 10 the
+   Office Court Tower (110 m: the Office court's own slab, taller, in its parts), 12 the Pan-Ham Building (100 m, over the Transit court's back
+   half: the roof walk stays open), 14 the Pencil (96 m) and 20 the Prewar (80 m) (whole new buildings in B, on the old pack block and the
+   Townhouse row). The Superhero Tower rises to 175 m (HT). THE FRAME-RATE RULE: a tower is at most FOUR materials (one sheet + tint each),
+   so the arch row draws it as four meshes at most; no lamps (lit windows = the glass sheets' glow); nothing here repeats. TW[bid] = a tower
+   that is its own arch row over its building's row ('arch:<bid>:tower'). Names are working names; no lettering on the towers. ── */
+const TW = {};
+/* a convex outline scaled about (cx, cz) */
+const polyK = (pts, k, cx, cz) => pts.map(q => [Math.round((cx + (q[0] - cx) * k) * 1000) / 1000, Math.round((cz + (q[1] - cz) * k) * 1000) / 1000]);
+/* 3 · THE DAILY GLOBE BUILDING (Daily News Building + the globe): the 11-15 wedge, three setback tiers of glass between limestone floor bands
+   and corner piers, copper cornices, the copper globe with its two rings on a stone drum, a mast to 140 m. Glass, limestone, copper, dark copper. */
+const WEDGE = [[-10.5, -10.5], [4, -10.5], [10.5, 8.5], [8.5, 10.5], [-10.5, 4]];   // the News office's wedge (11-15)
+TW['P04-04-B1'] = () => { const a = sheet(), GLW = 0x8ea8c4, CU = 0x5fae9c, DK = 0x3f7a6c, gx = -0.5, gz = -0.5;
+    const tier = (k, y0, h) => { const P = polyK(WEDGE, k, 0, 0);
+        a.P.push({ s: 'poly', p: [0, y0, 0], pts: polyK(WEDGE, k * 0.985, 0, 0), h, key: G_TALL, tint: GLW, glow: 0.3, top: false });
+        for (let y = y0 + 3.5 - 0.95; y < y0 + h - 0.5; y += 3.5) a.P.push({ s: 'poly', p: [0, y, 0], pts: P, h: 0.95, key: STUCCO, tint: LIME, top: false });
+        P.forEach(q => a.box(q[0] * 1.005, y0, q[1] * 1.005, 0.9, h, 0.9, STUCCO, LIME));
+        a.P.push({ s: 'poly', p: [0, y0 + h, 0], pts: polyK(WEDGE, k * 1.05, 0, 0), h: 0.25, key: ALU, tint: CU, top: false });
+        a.P.push({ s: 'poly', p: [0, y0 + h + 0.25, 0], pts: polyK(WEDGE, k * 1.04, 0, 0), h: 0.45, key: STUCCO, tint: LIME });
+        return y0 + h + 0.7; };
+    a.P.push({ s: 'poly', p: [0, 11.1, 0], pts: polyK(WEDGE, 1.01, 0, 0), h: 0.6, key: STUCCO, tint: LIME, top: false });
+    let y = tier(1, 11.1, 45.5); y = tier(0.72, y, 35); y = tier(0.46, y, 21);
+    a.cyl(gx, y, gz, 3.0, 1.8, STUCCO, LIME, { seg: 16 }); a.cyl(gx, y + 1.8, gz, 0.8, 1.0, ALU, CU, { seg: 10 });
+    a.cyl(gx, y + 2.8, gz, 1.6, 3.2, ALU, CU, { seg: 20, r2: 4.6 }); a.dome(gx, y + 6, gz, 4.6, 4.6, ALU, CU);
+    a.cyl(gx, y + 5.7, gz, 5.3, 0.35, ALU, DK, { seg: 28, ri: 4.9 }); a.cyl(gx, y + 8.6, gz, 4.0, 0.25, ALU, DK, { seg: 24, ri: 3.7 });
+    a.cyl(gx, y + 10.6, gz, 0.16, 140 - (y + 10.6), ALU, DK, { seg: 6, r2: 0.04 });
+    return a.P; };
+/* 6 · THE UMPIRE STATE BUILDING (Empire State): Apartments A is its five-storey foot; four limestone setbacks of warm glass between close
+   piers, a mooring mast and its needle to 125 m. Glass, limestone, aluminium. */
+TW['P07-04-B2'] = () => { const a = sheet(), GW = 0xb4aea0, ST = 0xece2c8, AL = 0xd8dce0;
+    const tier = (w, d, y0, h) => { a.box(0, y0, 0, w - 0.2, h, d - 0.2, G_TALL, GW, { glow: 0.3, top: false });
+        for (const s of [-1, 1]) { for (let u = -w / 2 + 0.9; u <= w / 2 - 0.9 + 1e-6; u += (w - 1.8) / Math.max(1, Math.round((w - 1.8) / 1.75))) a.box(u, y0, s * (d / 2 + 0.05), 0.45, h, 0.4, STUCCO, ST);
+            for (let u = -d / 2 + 0.9; u <= d / 2 - 0.9 + 1e-6; u += (d - 1.8) / Math.max(1, Math.round((d - 1.8) / 1.75))) a.box(s * (w / 2 + 0.05), y0, u, 0.4, h, 0.45, STUCCO, ST); }
+        for (const c of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) a.box(c[0] * (w / 2 - 0.1), y0, c[1] * (d / 2 - 0.1), 1.1, h, 1.1, STUCCO, ST);
+        a.box(0, y0 + h, 0, w + 0.7, 0.6, d + 0.7, STUCCO, ST); return y0 + h + 0.6; };
+    let y = 18.8; y = tier(13, 19.5, y, 39.5); y = tier(10.5, 15, y, 30); y = tier(7.5, 10, y, 14); y = tier(5.5, 5.5, y, 5.5);
+    a.cyl(0, y, 0, 2.4, 5, ALU, AL, { seg: 16, r2: 1.8 }); a.cyl(0, y + 5, 0, 1.1, 3, ALU, AL, { seg: 12, r2: 0.8 }); a.cyl(0, y + 8, 0, 0.25, 125 - (y + 8), ALU, AL, { seg: 6, r2: 0.04 });
+    return a.P; };
+/* 12 · THE PAN-HAM BUILDING (the Pan Am / MetLife): an elongated octagon of glass behind close precast fins, two plant bands, over the
+   station's BACK half (squares x −10.5..10.5, z 1.75..12.25 of the Transit court: RF90, RF91 and the roof stair land on the north half, the
+   walk between them stays open; PANHAM_BLOCK = the walker's wall on those squares). From the station's roof (7 m) to 100 m. Glass, concrete. */
+const PANHAM = [[-10.5, 5], [-5, 1.75], [5, 1.75], [10.5, 5], [10.5, 9], [5, 12.25], [-5, 12.25], [-10.5, 9]], PANHAM_BLOCK = { dx: 0, dz: 7, w: 21, d: 10.5, storeys: 3 };
+TW['P06-06-B1'] = () => { const a = sheet(), GW = 0x8c98a8, CC = 0xd4d4cc, y0 = 7, top = 100;
+    a.P.push({ s: 'poly', p: [0, y0, 0], pts: polyK(PANHAM, 0.985, 0, 7), h: top - y0, key: G_TALL, tint: GW, glow: 0.3, top: false });
+    for (const s of [-1, 1]) for (let x = -4.5; x <= 4.51; x += 1.5) a.box(x, y0, 7 + s * 5.3, 0.35, top - y0, 0.5, CONC1, CC);   // the fins on the long faces
+    for (const s of [-1, 1]) for (const z of [5.75, 7, 8.25]) a.box(s * 10.55, y0, z, 0.5, top - y0, 0.35, CONC1, CC);
+    for (const [y, h] of [[y0, 4], [33, 3.2], [91, 3.6], [top - 0.8, 1.2]]) a.P.push({ s: 'poly', p: [0, y, 0], pts: polyK(PANHAM, 1.015, 0, 7), h, key: CONC1, tint: CC });   // the foot, the plant bands, the cap
+    return a.P; };
+
 /* ── build(ctx): the tool's hook, after every row exists. The plan's own row keeps the collision, the inside, the door and the walked roof with
    its outside switched off (`skin: false`); `row` says what else changes: storeys, leaf, solid (no inside), hollow + doorSide (an inside on that
    side), pack + packSide (a pack shop block; its row `w` IS its scale, kept within 0.9 to 1.15 of the block's own width), replace (smaller
@@ -1081,6 +1165,14 @@ function build(ctx) {
             RING_COURSE = false;
             if (def.props) def.props(c).forEach(q => props.push(R3(q)));
         });
+        /* THE SKYLINE: each TW tower is its own arch row on its building's middle (a roof-route building's at y 0, as its own row) */
+        Object.keys(TW).forEach(bid => { const info = bInfo.find(b => b.id === bid), row = features.find(r => r.id === 'dc:' + bid); if (!info || !row) { console.warn('H: no building for the tower', bid); return; }
+            features.push({ k: 'arch', id: 'arch:' + bid + ':tower', x: info.x, z: info.z, rot: 0, ...(row.k === 'plateau' ? { y: 0 } : {}), parts: LIFT(R3(TW[bid]())) }); nArch++;
+            if (bid === 'P06-06-B1') { const q = PANHAM_BLOCK; features.push({ k: 'texbuilding', id: 'dc:H:panham-w0', x: r3(info.x + q.dx), z: r3(info.z + q.dz), w: q.w, d: q.d, rot: 0, storeys: q.storeys, seed: 1, skin: false }); } });
+        /* THE MID-RISE FILL (THE SKYLINE, mondo "plus the mid-rise fill"): the district's three back-lot infill blocks (the tool's own `dc:in<n>`
+           rows, its urban sheets) go from two or three storeys to five to seven, so the side streets get walls. Every other building here is a
+           named one with its own roof. */
+        for (const [id, st] of [['dc:in66', 5], ['dc:in79', 7], ['dc:in80', 6]]) { const r = features.find(f => f.id === id); if (r && r.k === 'texbuilding') r.storeys = st; else console.warn('H: no infill row', id); }
         ctx.stationKiosk = () => LIFT(R3(dress(KIOSK(true), DET_OPEN.subway, null)));   // THE SUBWAY (2026-11-18): the open kiosk, for the tool's other stations
         (M.OPEN || []).forEach(o => {
             features.push({ k: 'arch', id: 'arch:' + M.district + ':' + o.id, x: o.x, z: o.z, rot: o.rot || 0, parts: LIFT(R3(dress(o.parts(), DET_OPEN[o.id.replace(/\d+$/, '')], null))) }); nArch++;
