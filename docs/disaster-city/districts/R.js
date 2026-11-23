@@ -548,20 +548,32 @@ function build(ctx) {
         a.done(); ghost(fr, W * 0.28, D / 2 + 1.4, 4, 1.5, 1.2);
     })();
 
+    /* ═══ THE SKYLINE (mondo 11-23 17:00 "Build it, plus the mid-rise fill"; plan https://claude.ai/artifact/YEe54svVhVbLufjHdfQ5QY) ·
+       13 · THE REVIVAL CENTER (Detroit's Renaissance Center): a tall round glass tower ringed by four shorter ones on the Repair Shops' brick
+       garage (its bays, its door and its inside untouched; the saw-tooth roof became a flat podium). Half its windows are dark: only some
+       floors of each tower are lit, the rest stand empty, and a COMING SOON banner has hung on it for years. 100 m. No lamps; FOUR
+       materials (the dark glass, the lit glass, the roof concrete, the banner), one mesh each. ═══ */
+    const revivalCenter = (a, W, gd) => {
+        const DK = { det: false, uv: [3.5, 3.5] }, GD = Object.assign({ key: K.winT, tint: 0xc8d4e0 }, DK), GL = Object.assign({ key: K.winT, tint: 0xffffff, glow: 0.55 }, DK), CN = { key: K.conc, tint: 0xd8d4cc, det: false };
+        const y0 = 6.0, sat = [[-9.4, -3.8], [9.4, -3.8], [-9.4, 3.8], [9.4, 3.8]];
+        a.box(0, y0, 0, W + 0.4, 0.5, gd + 0.4, K.conc, 0xd8d4cc, { under: true, det: false });                                  // the podium roof
+        a.cyl(0, y0 + 0.5, 0, 6.0, 93.5, GD.key, GD.tint, Object.assign({ seg: 28 }, DK));                                          // the core tower
+        [[0, 150, 0], [3.5, 110, 200], [7, 70, 300]].forEach(([dy, arc, a0]) => a.cyl(0, y0 + 4 + dy, 0, 6.04, 3.4, GL.key, GL.tint, Object.assign({ seg: 28, arc, a0, cap: false, n: 12, step: [0, 7.6, 0] }, GL)));   // the lit floors: a few, here and there
+        a.cyl(0, y0 + 94, 0, 6.5, 1.6, CN.key, CN.tint, { seg: 28, det: false }); a.cyl(0, y0 + 95.6, 0, 4.2, 4.4, GD.key, GD.tint, Object.assign({ seg: 20 }, DK));   // the crown ring + the drum (the revolving restaurant, shut)
+        sat.forEach(([x, z], i) => { a.cyl(x, y0 + 0.5, z, 3.3, 57, GD.key, GD.tint, Object.assign({ seg: 20 }, DK)); a.cyl(x, y0 + 57.5, z, 3.5, 0.9, CN.key, CN.tint, { seg: 20, det: false });
+            a.cyl(x, y0 + 6 + i * 3.6, z, 3.34, 3.2, GL.key, GL.tint, Object.assign({ seg: 20, arc: 140, a0: 40 + i * 90, cap: false, n: 4, step: [0, 11.2, 0] }, GL)); });
+        a.quad(0, y0 + 24, 6.1, 6.5, 1.45, 0, 'txt:COMING SOON|#f4ecd8|#b8322a|4.48', 0xffffff, { uv: 'fit', det: false });          // the banner, faded: hung there for years
+    };
     /* ════════ P02-02 THE REPAIR SHOPS (landmark): an auto garage, a sawtooth roof, three bays, an office, a sign pylon ════════ */
     (() => {
         const lot = frameOf('P02-02-B1'), W = lot.W, D = lot.D, gd = D - 6;
         const fr = lot.sub(0, 3, W, gd), row = solid('P02-02-B1', fr, 6.0, { walkin: true, leaf: 'leaf_security', keyIn: K.rib, floorIn: K.conc });
         const a = arch(fr, 'P02-02-B1'), GY = 0xe0e6ea, RD = 0xf04c3c, dr = doorOf(row), n = 4, tw = W / n;
         a.shell(W, 6.0, gd, K.brick, 0xd98a70, dr);                                                                     // DETROIT: an old car works, in brick
-        for (let i = 0; i < n; i++) {   // the saw teeth: a ribbed slope and a glazed upright each, running front to back
-            const cx = -W / 2 + tw * (i + 0.5);
-            a.roof('shed', cx, 6.0, 0, gd, 2.6, tw, K.rib, 0x7c8894, { ry: 270, keyEnd: K.winF, tintEnd: 0xffffff });
-        }
+        revivalCenter(a, W, gd);   // THE SKYLINE (11-23): the saw-tooth roof gave way to the Revival Center; the garage is its foot
         [-1, 1].forEach(s => { if (Math.abs(dr.lx - s * W * 0.3) < 3) return; a.panel('f', 0, 0, W, gd, s * W * 0.3, 0, 5.2, 4.2, K.metal, s < 0 ? 0xf4f4f4 : 0x3c3e42); });   // the roll-up doors
         a.panel('f', 0, 0, W, gd, 0, 4.55, W * 0.62, 1.15, 'txt:ENGINES REBUILT|#d8c8a8||' + (Math.round(W * 0.62 / 1.15 * 100) / 100), 0xffffff, { off: 0.1, kind: 'over', det: false });   // the ghost sign
-        a.box(-W * 0.28, 8.62, gd / 2 - 3.2, 3.0, 0.14, 5.6, K.metal, 0x40444a, { det: false }); a.box(-W * 0.28 - 1.3, 6.0, gd / 2 - 3.2, 0.16, 2.62, 5.4, K.metal, 0x40444a, { n: 2, step: [2.6, 0, 0], det: false });   // a deck over the teeth
-        propAt(fr, 'car_pack_6', -W * 0.28, gd / 2 - 3.2, fr.face, { y: 8.78 });                                         // the car body on the roof
+        propAt(fr, 'car_pack_6', -3.2, gd / 2 - 1.05, (fr.face + 90) % 360, { y: 6.5 });                                 // the car body on the roof (11-23: on the podium now, beside the towers)
         a.wins('lr', 0, 0, W, gd, 1.6, { n: 4, key: K.winF, ww: 2.4, wh: 1.8 });
         a.done();
         const b = arch(lot, 'P02-02-B1o');                                                                              // the front yard: the pylon, the tyres
