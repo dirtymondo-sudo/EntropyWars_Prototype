@@ -399,7 +399,7 @@ console.log('ends ' + JSON.stringify(ENDS));
      THE FAIRY FOREST (F, 6)        -> site_prebuilt_camelot_ow_fairy, a path east from the east gate to the Spring, 4 x 3 at -23,-1; the trail L4 on to
                                        the Woods' Clearing is the Woods zone's room site_ow_l4 (the link woods_camelot is that seam)
      THE FOREST (W, 8) + L7 (1)     -> site_prebuilt_camelot_ow_forest, a path south from the drawbridge, 4 x 5 at -26,3; L7 (one plot, rule 4: it joins
-                                       the district it touches) is built here and leads on to the Woods' Ritual Ground
+                                       the district it touches) is built here and leads on to the Woods' Bohemian Grove
    A plot keeps its name, its squares and every piece on it; its id is its place in its new room's grid. What is laid again is the tool's own:
    the joints between plots that touch now and did not (a trail three squares wide from each plot's own open ground), the open ground, the
    paint, the tree mass's kinds and the air (each box cut to the plots it covered and moved with them), the doors on the seams, the link ends.
@@ -439,7 +439,7 @@ const STAND = [
     { id: R_FAIRY, part: 'ow_fairy', label: 'THE FAIRY FOREST', sub: 'CAME A LOT · THE GLOWING WOODS EAST OF THE MOAT · 13 PLOTS', list: v13('camF'), letters: ['F'], spawn: 'P07-02', face: 90, gen: { depth: 8.75, maxTrees: 1800 },   /* (2026-11-20, the world polish plan, thread 3) 13 plots; its ways, clearings and heights = the room design, districts/F-room.js */
       parti: 'The forest that glows, east of the moat, as one walk: out of the east gate past the knoll to the pond, the fairy ring between its two knolls, the woods trail and the spring, where the trail goes on east to the Woods.' },
     { id: R_FOREST, part: 'ow_forest', label: 'THE FOREST', sub: 'CAME A LOT · THE CROWN’S ROAD SOUTH · 21 PLOTS', list: v13('camW').concat([{ wx: L7.wx, wy: L7.wy, name: 'The Forest Trail', district: 'W', level: 0, isNew: true, link: 'L7' }]), letters: ['W'], spawn: 'P03-07', spawnStep: [0, -1], face: 180, gen: { depth: 8.75, maxTrees: 2600 },   /* (2026-11-20, the world polish plan, thread 3) 21 plots, three wide; its ways, clearings and heights = the room design, districts/W-room.js */   /* ONE WORLD PHASE 5 (2026-11-17): the plot's hub square holds the Wayside Cross (district W); arriving there (the map's GO, an old save) stood the walker ON the cross, 2.2 m up. One square north, on the Crown's Road */
-      parti: 'The forest south of the moat, three plots wide: the Crown’s Road down from the drawbridge to the Glade, east under the Bluff and through the charcoal burners to the Woods’ Ritual Ground; west of it a hollow, east a bluff with a hunters’ stand, south a brook to wade and an old oak.' },
+      parti: 'The forest south of the moat, three plots wide: the Crown’s Road down from the drawbridge to the Glade, east under the Bluff and through the charcoal burners to the Woods’ Bohemian Grove; west of it a hollow, east a bluff with a hunters’ stand, south a brook to wade and an old oak.' },
 ];
 /* which plots move the same way (one room, one shift): a drawn row is cut only between plots that do not */
 const MOVE_OF = {}, CLASS_HEAD = {};
@@ -470,7 +470,7 @@ const OUT = {
                { plot: 'P02-01', side: 'N', k: [5, 6], id: 'ow_h_m28_m3', way: 'trail', room: 'site_ow_r12', ifRoom: 1, label: 'THE STONE PATH', sub: 'THE NORTH ROW · UP TO THE STONES', desc: 'A path goes north into the woods, and up out of them onto a bare plain.' } ],
     [R_PINES]: [ { plot: 'P07-00', side: 'N', k: [5, 6], id: 'ow_h_m25_m10', way: 'trail', room: R_L6, label: 'THE TRAIL · THE MOUNTAINS', sub: 'THE PASS · UP TO THE SKI LODGE', desc: 'The trail goes on north through the Pass, up out of the pines towards the mountains.' } ],   /* (2026-11-17, One World phase 5) the link `northpole_camelot` (the sleigh road, a jump from this plot's east side to the North Pole 30 plots away) is gone: the road north is the trail L6 up to the Ski Lodge, then the Polar Trail (R5) */
     [R_FAIRY]: [ { plot: 'P07-05', side: 'E', link: 'woods_camelot', end: 'b' } ],
-    [R_FOREST]: [ { plot: 'L7', side: 'E', id: 'ow_v_m22_6', way: 'trail', room: R_RITUAL, label: 'THE WOODS · THE RITUAL GROUND', sub: 'THE TRAIL EAST · THE MOUND', desc: 'A trail east through the trees, worn by feet going one way.' } ],
+    [R_FOREST]: [ { plot: 'L7', side: 'E', id: 'ow_v_m22_6', way: 'trail', room: R_RITUAL, label: 'THE WOODS · BOHEMIAN GROVE', sub: 'THE TRAIL EAST · THE MOUND', desc: 'A trail east through the trees, worn by feet going one way.' } ],
 };
 const GROUND_OF = {}; DISTRICTS.forEach(m => { if (m.ground) GROUND_OF[m._cmFile] = PAL.indexOf(m.ground) + 1; });   // a district's own ground sheet (its file's `ground`), as a paint value
 const ROOMS_OUT = [], STRAYS = SPLIT.map(s => 'a drawn row over several plots, turned: ' + s), LINKS_OUT = {}, CNT = {};
@@ -592,7 +592,7 @@ Object.keys(OUT).forEach(rid => { const o = roomOf(rid); OUT[rid].forEach(w => {
 /* 4. the doors the rooms carry from home (the mover stood them): the palace's four, the mirror, the dead tree */
 ROOMS_OUT.forEach(o => { o.R.doors.forEach(d => { const q = Object.assign({}, d); if (d.plot && d.side) (o.usedSides || (o.usedSides = new Set())).add(d.plot.col + ',' + d.plot.row + ':' + d.side.toUpperCase());   /* (2026-11-20) a wall door carried from home USES its plot's side: step 6b filled the Dead Tree's own path back to the trees (the door stood behind 14 m of forest) */
     delete q.side; delete q.plot;
-    if (q.id === 'deadtree') q.action = RITUAL_STANDS ? { room: R_RITUAL, at: 'lookingglass' } : q.action;   // (until the Woods' move lands, the door keeps the Woods room it had)   // THE DEAD TREE: the Woods' Ritual Ground stands in its own room now (the Woods zone thread, 2026-11-17)
+    if (q.id === 'deadtree') q.action = RITUAL_STANDS ? { room: R_RITUAL, at: 'lookingglass' } : q.action;   // (until the Woods' move lands, the door keeps the Woods room it had)   // THE DEAD TREE: the Woods' Bohemian Grove stands in its own room now (the Woods zone thread, 2026-11-17)
     o.doorsOut.unshift(q); }); });
 /* 5. THE RIDGE + THE PASS (district N's `cam:n:ridge`, stood as said above) */
 { const o = roomOf(R_PINES), R = o.R, rows = [], keep = [], drop = [];

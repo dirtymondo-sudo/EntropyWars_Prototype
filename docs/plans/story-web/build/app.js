@@ -137,6 +137,7 @@ function sanitizeBoard(b) {
   if (b.events && typeof b.events === 'object') { o.events = {}; Object.values(b.events).forEach(ev => { if (!ev || !ev.id) return; const id = String(ev.id).replace(/[^A-Za-z0-9_\-]/g, '_');
     o.events[id] = { id, title: String(ev.title || '').slice(0, 120), when: String(ev.when || '').slice(0, 60), t: num(ev.t, 0), text: String(ev.text || '').slice(0, 4000), refs: [...new Set((Array.isArray(ev.refs) ? ev.refs : []).map(r => remap[r] || String(r)).filter(r => o.nodes[r] && o.nodes[r].kind !== 'note'))], col: clamp(Math.round(num(ev.col, 0)), 0, GCOL.length - 1) }; }); }
   try { repairPlaces(o); } catch (e) {}
+  try { renamePlaces(o); } catch (e) {}
   return o;
 }
 function sanitizeState(x) {
@@ -1502,6 +1503,12 @@ const subOf = (z, d) => d && d.s && z.s ? z.s.find(s => s.k === d.s) : null;
 /* THE ZONES' OWN PARTS (2026-11-19, mondo: "how am i supposed to know if thats in heaven or hell or the vatican? They should just already
    be in their correct area"): a district from the map that sits right in its zone, in a zone with parts (Heaven + Hell + Vatican, Outer
    Space), moves into its part: his own Heaven / Hell / Vatican group when there is one, else a new one. Once a board (pfix). Nothing is deleted. */
+/* THE PLACES' NEW NAMES (2026-11-23, mondo picked one name: "Bohemian Grove"): a place group made from the map keeps the name it was
+   added with, so a place the game renamed is renamed here too, only while it still carries the old name (his own names stay) */
+const PLACE_RENAMES = { 'map:woods:G': ['The Ritual Ground', 'Bohemian Grove'] };
+function renamePlaces(b) {
+  Object.values(b.nodes || {}).forEach(n => { const r = n && n.kind === 'custom' && n.src && PLACE_RENAMES[n.src]; if (r && n.name === r[0]) n.name = r[1]; });
+}
 function repairPlaces(b) {
   if (b.pfix >= 1 || !PL.zones.length) return false;
   const G = Object.values(b.nodes).filter(n => n.kind === 'custom' && n.shape === 'group'), bySrc = src => G.find(n => n.src === src); let ch = false;

@@ -37,7 +37,7 @@ const OUT_DIR = path.join(REPO, 'Assets/ui/map');
 const ZONES = [
     { hub: 'city', layout: null, rooms: [{ room: 'site_prebuilt_downtown_streets', layer: 'surface', wx: 0, wy: -3, zx: 0, zy: 0, city: true }] },
     { hub: 'mountains', layout: 'mountains', rooms: [{ room: 'site_prebuilt_northpole_plots', layer: 'surface', wx: 0, wy: -28, zx: 0, zy: -28 }] },   // ONE WORLD PHASE 5 (2026-11-17): the waiting rows of retired rooms are gone from this table (the Mountains', the Woods', the Estate's, Leylines'); every re-laid room says its own place (`room.world`)
-    { hub: 'woods', layout: 'woods', rooms: [] },   // THE TEST SLICE (2026-11-17): the room is the Redwood Trail + the Ritual Ground now (6 x 3 plots, not moved yet); the Clearing and Dead Man's Cave are rooms of their own (`room.world`), so the waiting room is drawn clear of them
+    { hub: 'woods', layout: 'woods', rooms: [] },   // THE TEST SLICE (2026-11-17): the room is the Redwood Trail + Bohemian Grove now (6 x 3 plots, not moved yet); the Clearing and Dead Man's Cave are rooms of their own (`room.world`), so the waiting room is drawn clear of them
     { hub: 'kingdom', layout: 'camelot', rooms: [{ room: 'site_prebuilt_camelot_kingdom', layer: 'surface', wx: -29, wy: -3, zx: 0, zy: 0 }] },
     { hub: 'ranch', layout: 'estate', rooms: [] },   // THE TEST SLICE (2026-11-17): the room is the Haunted House + the Ranch now (6 x 3 plots, not moved yet); the Corn Fields and the Lake are rooms of their own (`room.world`)
     { hub: 'desert', layout: 'desert', rooms: [] },   // ONE WORLD 4.2 (2026-11-17): every Desert room says its own place (`room.world`): the four districts and the roads between them (site_ow_dh1..dh4, site_ow_r9); the Highway's room is retired

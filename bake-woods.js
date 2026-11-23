@@ -133,7 +133,7 @@ door('lemuria', 'P01-00', 'n', { way: 'trail', label: 'AGARTHA · THE CRYSTAL CI
     desc: 'A draught out of the rock shelf, warmer than the snow above it.' });
 /* THE OLD SITES RETIRED (2026-11-16, mondo: "can we remove all of the old sites from the game, if we already rebuilt them with plots"): the old Lodge room is
    Disaster City's Members club and the old Bohemian Grove is this district G (data.js DOOR_HQ.retired). The members' tunnel (was the one-way door `lodge`) is the
-   link `grove_lodge` now, two-way, from the lake's east shore to the Members club's garden; Room 333's circle (link `woods_ritual`, was on the retired Ritual Ground
+   link `grove_lodge` now, two-way, from the lake's east shore to the Members club's garden; Room 333's circle (link `woods_ritual`, was on the retired Bohemian Grove
    room) comes out at the Owl; DOOR HQ's Bohemian Grove bay door is a trail on the north wall over the lake's west shore (siteRooms.entry.prebuilt_bohemian_grove). */
 LINK_ENDS.grove_lodge = ['a', spur('P05-00', 'e'), 'THE MEMBERS\u2019 TUNNEL · UNDER THE LAWN TO THE CLUB'];
 LINK_ENDS.woods_ritual = ['a', spur('P05-01', 'e'), 'THE CIRCLE · ROOM 333'];
@@ -248,7 +248,7 @@ const sow = (key, n, sq, r, o) => features.push(Object.assign({ k: 'scatter', ke
 const DIST = d => PLAN.plots.filter(p => p.district === d).map(p => p.id);
 const zoneOf = (x0, y0, x1, y1) => ({ x0: gx(x0 * N), z0: gx(y0 * N), x1: gx(x1 * N), z1: gx(y1 * N) });   // a box of plots in metres (the tree zones, the air zones)
 Object.assign(ctx, { ground, freeSquares, taken, centre, near, put, dec, tree, full, native, hput, hdec, softAt, life, fly, sow, DIST, zoneOf, rnd });
-/* each district's own pieces: districts/<LETTER>.js dress(ctx) (THE CLEARING, THE REDWOOD TRAIL + MOUNT SHASTA, THE RITUAL GROUND + BOHEMIAN GROVE, DEAD MAN'S CAVE) */
+/* each district's own pieces: districts/<LETTER>.js dress(ctx) (THE CLEARING, THE REDWOOD TRAIL + MOUNT SHASTA, BOHEMIAN GROVE, DEAD MAN'S CAVE) */
 if (process.env.WOODS_DICE) console.log('rows before the dressing ' + features.length); SOW_SHIFT = SOW_BASE - features.length;
 stage('dress');
 
@@ -280,7 +280,7 @@ count.horror = props.length - h0;
    forest"; his OK on the four looks + "yes lets do per district particles"). Each district is its own wood:
    THE CLEARING = the friendly woods (birch, heal flowers, butterflies, bees, rabbits; fireflies in the air);
    THE REDWOOD TRAIL = ancient and overgrown (giants, thorn vine at the trunks, mushrooms on the logs, boulders; green spores, snow on the Snowline);
-   THE RITUAL GROUND = the fairy forest gone wrong (a glowing toadstool ring at the Stones, giant caps on the lake shore, crystals, moths, frogs; violet motes);
+   BOHEMIAN GROVE = the fairy forest gone wrong (a glowing toadstool ring at the Stones, giant caps on the lake shore, crystals, moths, frogs; violet motes);
    DEAD MAN'S CAVE = rot and thorns (bare trees, bramble, gas plants, spore caps, crows, frogs at the Pool; ash).
    The plants are the nature spells' own (the garden's thorn vine / gas plant / heal flower models, data.js catalogue woods_*). Small things only: nothing
    blocks a path, the new glows carry `noLight` (the room's ten real lights are spoken for). No apple tree (a Meshy tree). ── */
@@ -312,7 +312,7 @@ count.props = props.length; count.features = features.length; count.doors = door
    Here the result is stood where the One World map puts it (docs/plans/one-world/plots.json; the mover = ow-move.js):
      THE CLEARING (district C)      -> its own room at world plots -17..-13 x 0..4, a cross: the Stair north, the Fence Line south
      DEAD MAN'S CAVE (district M)   -> its own room at -12..-6 x 0..2: the dry creek, west to east, to the Storm Drain
-     THE REDWOOD TRAIL + THE RITUAL GROUND (T, G) stay as they stood (one room, 6 x 3 plots) until the Woods' own thread moves them
+     THE REDWOOD TRAIL + BOHEMIAN GROVE (T, G) stay as they stood (one room, 6 x 3 plots) until the Woods' own thread moves them
    A plot keeps its name, its squares and every piece on it; its id is its place in its new room's grid. What is laid again is the tool's
    own: the legs between plots (a leg to a side with nobody past it goes back to forest; a side with a new neighbour gets a leg from the
    plot's hub), the levels, the open ground, the paint, the room-wide scatter, the doors on the seams. Rules: docs/notes/areas-complexes.md
@@ -332,9 +332,9 @@ const PLAN3 = require('./docs/plans/world-polish/thread6/plan3.js');
 const v13new = (id, letter, x1) => PJ.districts.find(q => q.id === id).plots.filter(q => !q.was).map(q => { const p = PLAN3.PLOTS.find(o => o[0] === q.x + 17 && o[1] === q.y); if (!p || p[2] !== q.n) throw new Error('plots.json and plan 3 disagree on ' + q.n);
     return { key: q.x + ',' + q.y, wx: q.x, wy: q.y, name: q.n, district: letter, level: p[5], isNew: true }; });
 const R_CLEAR = 'site_prebuilt_fairy_forest_ow_clearing', R_REST = 'site_prebuilt_fairy_forest_plots', R_CORN = 'site_prebuilt_skinwalker_ow_lake';   // (2026-11-18: the Estate is one room, County Lane's)
-/* ONE WORLD, PHASE 3 (2026-11-17, BUILD_PLAN wave A, the Woods zone thread): the Redwood Trail and the Ritual Ground leave the old room (R_REST, now in
+/* ONE WORLD, PHASE 3 (2026-11-17, BUILD_PLAN wave A, the Woods zone thread): the Redwood Trail and Bohemian Grove leave the old room (R_REST, now in
    DOOR_HQ.retired) for their v13 places, and the Woods' wild links are built. R_RED = the Redwood Trail alone (9 plots: it cannot join the Clearing, whose
-   room is full by the triangle number, nor L3, which would make the box 13 plots tall). R_RIT = the Ritual Ground + the wild links L2 (from the Clearing)
+   room is full by the triangle number, nor L3, which would make the box 13 plots tall). R_RIT = Bohemian Grove + the wild links L2 (from the Clearing)
    and L5 (on to the Estate's Iron Gate), 18 plots. L1 (one plot, the Trail West's way north) stands in the Clearing's room (rule 4). L3 and L4 are route rooms
    of the kit (`node bake-route.js L3`, `L4`). */
 const R_RED = 'site_prebuilt_fairy_forest_ow_redwood', R_RIT = 'site_prebuilt_fairy_forest_ow_ritual', R_HOUSE = 'site_prebuilt_skinwalker_ow_house', R_CAMW = 'site_prebuilt_camelot_ow_forest';
@@ -358,8 +358,8 @@ const STAND = [
           '-16,0:N': { room: 'site_ow_r4', label: 'THE OLD ROAD', sub: 'THE TRAIL NORTH · ACROSS THE OLD ROAD', desc: 'The trail comes out of the trees onto a wide old road, and goes on north across it under much bigger trees.' },
           /* THE STAIR's north side (One World phase 4.1, 2026-11-17): the Old Road runs past the top of the Stair (the design's fork R4b) */
           'P02-04:N': { room: 'site_ow_r4', label: 'THE OLD ROAD', sub: 'THE STAIR · UP TO THE OLD ROAD', desc: 'At the top of the Stair the trees open on a wide old road: west to Came A Lot, east to the Vatican.' },
-          /* the wild link L2 starts on Deep woods, west's south side: the Ritual Ground's room */
-          'P00-04:S': { room: R_RIT, label: 'THE RITUAL GROUND', sub: 'THE TRAIL SOUTH-WEST · THE FIRE', desc: 'A narrow path, walked often and by many feet, all going the same way.' },
+          /* the wild link L2 starts on Deep woods, west's south side: Bohemian Grove's room */
+          'P00-04:S': { room: R_RIT, label: 'BOHEMIAN GROVE', sub: 'THE TRAIL SOUTH-WEST · THE FIRE', desc: 'A narrow path, walked often and by many feet, all going the same way.' },
           /* the wild link L4 comes in on Deep woods, west, from the north: its own route room (bake-route.js L4); the link woods_camelot is on L4's west end now */
           'P00-04:N': { room: 'site_ow_l4', label: 'THE TRAIL WEST · CAME A LOT', sub: 'THE TRAIL · WEST TO CAME A LOT', desc: 'The path goes west under the trees towards the castle.' },
           /* ONE WORLD PHASE 4.2 (2026-11-17, the south routes thread): the Valley Road (route R6, `node bake-route.js R6`) starts on the Tunnel Way's south side */
@@ -381,10 +381,10 @@ const STAND = [
       },
       /* two doors whose side is a joint now (the Shelf's north side is the Snowline; the Snowline's north is L3): each moves to a side with forest past it */
       doorAt: { lemuria: { plot: 'P01-00', side: 'E' } } },
-    /* THE RITUAL GROUND (district G), the ring round its hollow middle, with the wild link L2 from the Clearing (seven plots, down the column x -17 and west
+    /* BOHEMIAN GROVE (district G), the ring round its hollow middle, with the wild link L2 from the Clearing (seven plots, down the column x -17 and west
        along row 6 to the Stage and the lake's east shore) and L5 on south to the Estate's Iron Gate (two plots) */
-    { id: R_RIT, part: 'ow_ritual', label: 'THE RITUAL GROUND', sub: 'THE WOODS · THE RITUAL GROUND · 18 PLOTS', letters: ['G'], list: v13('G'), world: true, spawn: 'P04-01',
-      parti: 'The Ritual Ground, nine plots in a ring round a hollow nobody built on, and the two trails that reach it: the long path down from the Clearing, and the short one on south to the iron gate of the Estate.',
+    { id: R_RIT, part: 'ow_ritual', label: 'BOHEMIAN GROVE', sub: 'THE WOODS · BOHEMIAN GROVE · 18 PLOTS', letters: ['G'], list: v13('G'), world: true, spawn: 'P04-01',
+      parti: 'Bohemian Grove, nine plots in a ring round a hollow nobody built on, and the two trails that reach it: the long path down from the Clearing, and the short one on south to the iron gate of the Estate.',
       links: LINK('L2', [1, 2, 2, 3, 3, 4, 4]).concat(LINK('L5', 3)),
       seams: {
           '-17,2:N': { room: R_CLEAR, label: 'THE CLEARING', sub: 'THE PATH NORTH · AWAY FROM THE FIRE', desc: 'A narrow path out between the trees, away from the fire.' },
@@ -672,7 +672,7 @@ Object.keys(LINKS_OUT).forEach(id => { const [side, e] = LINKS_OUT[id], i = src.
     const re = new RegExp('(\\n +' + side + ": \\{ site: 'prebuilt_fairy_forest', part: )'[a-z0-9_]+', wall: '[a-z]+'(?:, (?:x|z|face): -?[\\d.]+)+(?:, passage: \\{ len: 3, deep: 1\\.2 \\})?"), m = re.exec(src.slice(i, i + 2500)); if (!m) throw new Error('no Woods end on link ' + id);
     const head = m[1] + "'" + e.part + "', wall: '" + e.wall + "'" + (e.x != null ? ', x: ' + e.x : '') + (e.z != null ? ', z: ' + e.z : '') + (e.face != null ? ', face: ' + e.face : '') + (e.passage ? ', passage: { len: 3, deep: 1.2 }' : '');
     src = src.slice(0, i + m.index) + head + src.slice(i + m.index + m[0].length); });
-/* DOOR HQ's Bohemian Grove bay door (2026-11-16; ONE WORLD, PHASE 3: on the Ritual Ground's room, the lake's west shore, its north side) */
+/* DOOR HQ's Bohemian Grove bay door (2026-11-16; ONE WORLD, PHASE 3: on Bohemian Grove's room, the lake's west shore, its north side) */
 { const b = BAYS_OUT.bay_grove, d = b && b.d, re = /(prebuilt_bohemian_grove: +\{ room: ')[a-z0-9_]+(', door: \{ id: 'bay_grove', )wall: '[a-z]+'(?:, (?:x|z|face): -?[\d.]+)+(?:, passage: \{ len: 3, deep: 1\.2 \})?/; if (!d || !re.test(src)) throw new Error('the Bohemian Grove bay row (siteRooms.entry) not found');
   src = src.replace(re, '$1' + b.room + "$2wall: '" + d.wall + "'" + (d.x != null ? ', x: ' + d.x : '') + (d.z != null ? ', z: ' + d.z : '') + (d.face != null ? ', face: ' + d.face : '') + (d.passage ? ', passage: { len: 3, deep: 1.2 }' : '')); }
 /* DOOR HQ's hollow tree (siteRooms.entry.prebuilt_fairy_forest wears the Clearing's `forest` door) */

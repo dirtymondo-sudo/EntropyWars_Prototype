@@ -118,7 +118,7 @@ module.exports = {
         ['ramp', 117, 18, -1.25, -1, 0, 'D'], ['ramp', 117, 19, -1.25, -1, 0, 'D'], ['ramp', 118, 18, -1.75, -1, 0, 'D'], ['ramp', 118, 19, -1.75, -1, 0, 'D'], ['set', 119, 18, 'd', -2], ['set', 119, 19, 'd', -2],
     ],
     /* the ways out: x, y, side, where to, level (their squares keep today's height) */
-    doors: [[41, 0, 'N', 'the Old Road', 2], [18, 0, 'N', 'the Redwood Trail', 2], [3, 12, 'N', 'Came A Lot', 1], [7, 23, 'S', 'the Ritual Ground', 1], [42, 59, 'S', 'The Estate', 0], [143, 16, 'E', 'Disaster City', 0], [125, 35, 'S', 'the Valley Road', 0]],
+    doors: [[41, 0, 'N', 'the Old Road', 2], [18, 0, 'N', 'the Redwood Trail', 2], [3, 12, 'N', 'Came A Lot', 1], [7, 23, 'S', 'Bohemian Grove', 1], [42, 59, 'S', 'The Estate', 0], [143, 16, 'E', 'Disaster City', 0], [125, 35, 'S', 'the Valley Road', 0]],
     bridges: [[[117, 17], [117, 20]], [[118, 17], [118, 20]], [[119, 17], [119, 20]]],
     /* ── what the first three drawers did not hold; added for the shared tool ── */
     landmarks: [

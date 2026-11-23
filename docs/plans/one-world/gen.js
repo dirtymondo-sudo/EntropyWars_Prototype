@@ -57,7 +57,7 @@ for (const z of [...SURF, ...ISL]) { const o = OFF[GROUPOF[z.id] || z.id]; z.x +
 // ── THE SPREAD (v11, mondo 11-17): a zone's districts stand apart across its own country, joined by the zone's trails ──
 // absolute plot coords (after the grow); each district keeps its plot count; the first id keeps the zone's id so the routes still land on it
 const SPREAD = {
-  woods: [['woods', 'The Clearing', -39, 1, 3, 3, 'dark'], ['woodsT', 'The Redwood Trail', -50, -25, 3, 3, 'dark'], ['woodsG', 'The Ritual Ground', -57, 15, 3, 3, 'dark'], ['woodsM', 'Dead Man’s Cave', -32, 10, 3, 3, 'dark']],
+  woods: [['woods', 'The Clearing', -39, 1, 3, 3, 'dark'], ['woodsT', 'The Redwood Trail', -50, -25, 3, 3, 'dark'], ['woodsG', 'Bohemian Grove', -57, 15, 3, 3, 'dark'], ['woodsM', 'Dead Man’s Cave', -32, 10, 3, 3, 'dark']],
   cam: [['cam', 'Castle + Village', -69, -10, 6, 6, 'forest'], ['camN', 'The Snowy Pines', -62, -31, 4, 2, 'snow'], ['camL', 'Looking-Glass Garden', -80, -5, 3, 2, 'forest'], ['camF', 'The Fairy Forest', -57, 0, 2, 3, 'forest'], ['camW', 'The Forest', -70, 9, 4, 2, 'forest']],
   estate: [['estate', 'The Lake', -40, 26, 3, 3, 'farm'], ['estC', 'The Corn Fields', -24, 34, 3, 3, 'farm'], ['estH', 'Haunted House', -54, 28, 3, 3, 'farm'], ['estR', 'The Ranch', -44, 40, 3, 3, 'farm']],
   mtn: [['mtn', 'Mount Olympus', -37, -40, 4, 3, 'snow'], ['mtnP', 'The Snowy Pass', -28, -51, 4, 3, 'snow'], ['mtnK', 'The Ski Lodge', -58, -43, 4, 3, 'snow'], ['shasta', 'Mount Shasta', -12, -45, 4, 5, 'snow']],
@@ -73,7 +73,7 @@ const ZONEOF = {}; const DNAME = {};
 // every plot of these districts placed on its own: [plot name (the district file's own name), x, y]; K = 1 coordinates
 var SHAPES = {
   // THE WOODS: the Clearing is the hub; the Redwood Trail climbs north to the Snowy Pass; Dead Man's Cave follows the creek east to the
-  // city; the Ritual Ground is a loop round its lake deep in the west, where Camelot's forest road and the Haunted House drive meet it
+  // city; Bohemian Grove is a loop round its lake deep in the west, where Camelot's forest road and the Haunted House drive meet it
   woods: [['Stair', -14, 0], ['Old Tree', -15, 1], ['Crossroads', -14, 1], ['Deep woods, east', -13, 1], ['Trail West', -16, 1], ['Deep woods, west', -17, 1], ['Campfire', -14, 2], ['Deep woods, south', -14, 3], ['Fence Line', -14, 4]],
   woodsT: [['Snowline', -17, -9], ['Shelf', -17, -8], ['Falls', -17, -7], ['Old Trees, north', -17, -6], ['Meadow', -17, -5], ['Creek, upper', -16, -5], ['Old Trees, south', -16, -4], ['Trail', -16, -3], ['Creek, lower', -16, -2]],
   woodsM: [['Culvert', -12, 1], ['Dry Creek, upper', -11, 1], ['Rocks', -11, 0], ['Dry Creek, lower', -10, 1], ['Hollow', -9, 1], ['Gully', -8, 1], ['Sewer Mouth', -7, 1], ['Tunnel Way', -7, 2], ['Storm Drain', -6, 1]],
@@ -810,7 +810,7 @@ function plotsExtract() {
     stone: ['ley', 'Leylines', 'Stonehenge', 'moves', LY, ['S']],
     ant: ['antarctica', 'Antarctica', 'Antarctica', 'stays', 'site_prebuilt_antarctica_plots', ['H', 'W', 'C', 'O', 'S', 'F']],
     woods: ['woods', 'The Woods', 'The Clearing', 'moves', WD, ['C']], woodsT: ['woods', 'The Woods', 'The Redwood Trail', 'moves', WD, ['T']],
-    woodsG: ['woods', 'The Woods', 'The Ritual Ground', 'moves', WD, ['G']], woodsM: ['woods', 'The Woods', 'Dead Man’s Cave', 'moves', WD, ['M']],
+    woodsG: ['woods', 'The Woods', 'Bohemian Grove', 'moves', WD, ['G']], woodsM: ['woods', 'The Woods', 'Dead Man’s Cave', 'moves', WD, ['M']],
     cam: ['kingdom', 'Came A Lot Kingdom', 'Castle + Village', 'moves', CM, ['K', 'T']], camN: ['kingdom', 'Came A Lot Kingdom', 'The Snowy Pines', 'moves', CM, ['N']],
     camL: ['kingdom', 'Came A Lot Kingdom', 'The Looking-Glass Garden', 'moves', CM, ['L']], camF: ['kingdom', 'Came A Lot Kingdom', 'The Fairy Forest', 'moves', CM, ['F']],
     camW: ['kingdom', 'Came A Lot Kingdom', 'The Forest', 'moves', CM, ['W']],
