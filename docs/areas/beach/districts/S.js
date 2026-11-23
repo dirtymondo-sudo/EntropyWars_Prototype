@@ -24,7 +24,7 @@
    pylons, a navy beam, "The Beach" to the sand, "DISASTER CITY · BAYSIDE" to the city), benches, a signpost, the snack cart, a telescope; the
    three BEACH HUTS (walk-in: aqua SURF, lemon SNOW CONES (mondo 11-16; was a sleeping hut), coral FLOATS; squares 2-9 x 50-51, fronts south; each a porch, a shuttered window, its
    word on a board, its number, its own door leaf); the LIFEGUARD HUT (walk-in, white boards, red band and roof, LIFEGUARD on the roof to the
-   sea, a railed veranda, the red-over-yellow flag; squares 15-16 x 65-66, door east) and the lifeguard chair; THE VOLLEYBALL COURT south of it
+   sea, a railed veranda, the city flag (11-23; was red over yellow); squares 15-16 x 65-66, door east) and the lifeguard chair; THE VOLLEYBALL COURT south of it
    (a drawn net, Bayside's way; squares 12-15 x 68-70 kept clear); the swim flags on the Surf; THE TIDE POOLS (five `dip` hollows the sea
    stands in, ringed with the graveyard pack's rocks); 51 palms less the islands'; umbrellas, loungers, surfboards, a camp fire, a sandbox, two
    rowboats, flamingos, shells and crabs; seals and a turtle in the shallows. People (12): mermaid (Tide Pools), starfish (Sandbar), siren (the Surf) + THE POLISH PASS's nine: homosapiens on the Boardwalk, at the huts,
@@ -186,7 +186,7 @@ build(ctx) {
       [0, 0.29, 0.58].forEach(y => In(B, 'beach_swim_ring', 2.6, 0.1, 0, y)); In(B, 'beach_air_mattress_blue', -0.2, -2.6, 90); In(B, 'beach_air_mattress_pink', -0.2, -2.6, 90, 0.25); In(B, 'beach_ball', -2.7, 0.2, 0); In(B, 'beach_ball', 0.4, -1.2, 40);
       In(B, 'beach_life_ring', -3.02, -0.9, 90, 1.5); In(B, 'beach_life_ring', -3.02, 0.9, 90, 1.5); In(B, 'price_tag', -2.6, 2.5, 150); [[-1.4, 0.4], [0.3, 0.9], [1.4, -0.3]].forEach(q => In(B, 'paper_lantern', q[0], q[1], 0, 1.9)); In(B, 'doormat', door0(B), 2.75, 0, 0.01); }
     /* THE LIFEGUARD HUT (the Shore's landmark, walk-in): white boards, a red band, a red roof with its name on a board to the sea, a railed
-       veranda, the red cross, the red-over-yellow flag */
+       veranda, the red cross, the city flag (11-23; was red over yellow) */
     GUARD = building('lifeguard', [B_GUARD[0], B_GUARD[1], B_GUARD[0] + 2, B_GUARD[1] + 2, 'E'], 3.2, { leaf: 'leaf_beige_wood' }, (a, w, d, door) => {
         wall(a, w, 3.2, d, WHITE, door);
         a.box(0, 0, 0, w - 0.1, 0.14, d - 0.1, FLR, 0xc8b490, { uv: [1.75, 1.75] });
@@ -205,7 +205,7 @@ build(ctx) {
         a.box(-2.75, 1.75, d / 2 + 0.07, 0.9, 0.3, 0.06, null, RED); a.box(-2.75, 1.45, d / 2 + 0.07, 0.3, 0.9, 0.06, null, RED);   // the red cross
         a.box(0, 4.0, d / 2 + 0.5, 4.6, 0.86, 0.1, null, WHITE); a.sign('LIFEGUARD', 0, 4.05, d / 2 + 0.56, 4.4, 0.76, '#ffffff', '#e8483c', 'way');
         a.cyl(-w / 2 - 0.5, 0, d / 2 + 2.6, 0.06, 6.4, null, WHITE, { seg: 6 });                                               // the flag: red over yellow (swim between the flags)
-        a.box(-w / 2 - 0.5 + 0.6, 5.85, d / 2 + 2.6, 1.1, 0.4, 0.03, null, RED, { ds: true }); a.box(-w / 2 - 0.5 + 0.6, 5.45, d / 2 + 2.6, 1.1, 0.4, 0.03, null, 0xffd23c, { ds: true });
+        a.box(-w / 2 - 0.5 + 0.6, 5.45, d / 2 + 2.6, 1.1, 0.8, 0.03, 'mark:flag:dc', 0xffffff, { ds: true });   // (11-23, mondo: the beach is in the city: Disaster City's flag, no red-over-yellow; it waves, THE ZONE FLAGS)
         a.box(door.lx, 2.42, d / 2 + 0.2, 0.5, 0.14, 0.22, null, 0xfff0c8, { glow: 1 });                                         // the lamp over the door
         a.cyl(0, 5.2, 0, 0.16, 0.26, null, 0xff3a30, { glow: 1, seg: 8 });                                                      // the red light on the roof's point
         inside(a, w, d, 2.5, 0xfff4e4, door, [['f', 2.0, 1.05, 1.3, 1.15]]);   // (its ceiling stands at 2.5, the huts' at 2.68: seen, a deck at 2.63 was hidden above it)
@@ -242,9 +242,9 @@ build(ctx) {
         for (const sx of [-1, 1]) for (const sz of [-1, 1]) torch(a, sx * 7.6, sz * 4.1);                                       // THE ATMOSPHERE PASS: a torch at each corner
     });
     for (let y = 68; y <= 70; y++) for (let x = 12; x <= 15; x++) taken.add(x + ':' + y);
-    /* THE SURF: the swim flags at the waterline either side of the pier's foot (red over yellow), the black-ball board */
+    /* THE SURF: the swim flags at the waterline either side of the pier's foot (the city flag since 11-23; were red over yellow), the black-ball board */
     [[17, 50], [17, 57]].forEach((q, i) => look('swimflag' + (i + 1), mx(q[0]), mz(q[1]), 270, a => {
-        a.cyl(0, 0, 0, 0.05, 3.4, null, WHITE, { seg: 6 }); a.box(0.5, 2.95, 0, 0.95, 0.36, 0.03, null, RED, { ds: true }); a.box(0.5, 2.59, 0, 0.95, 0.36, 0.03, null, 0xffd23c, { ds: true }); }));
+        a.cyl(0, 0, 0, 0.05, 3.4, null, WHITE, { seg: 6 }); a.box(0.5, 2.59, 0, 0.95, 0.72, 0.03, 'mark:flag:dc', 0xffffff, { ds: true }); }));   // (11-23: the city's flag, see the station's)
     /* THE TOWEL LINE east of the huts (drawn: the game has no towel model): two posts, a rope, four towels on it */
     look('towels', mx(11), gz(48), 0, a => { for (const sg of [-1, 1]) a.cyl(0, 0, sg * 2.6, 0.06, 2.0, WD2, 0xb89a74, { seg: 6 }); a.box(0, 1.9, 0, 0.03, 0.03, 5.2, null, ROPE);
         [[-1.8, RED, WHITE], [-0.6, 0x24a8a0, WHITE], [0.6, 0xffd23c, NAVY], [1.8, 0xff4a70, WHITE]].forEach(q => { a.box(0, 0.8, q[0], 0.02, 1.1, 0.8, null, q[1], { ds: true }); for (const y of [1.0, 1.35, 1.7]) a.box(0, y, q[0], 0.03, 0.09, 0.8, null, q[2], { ds: true }); }); });

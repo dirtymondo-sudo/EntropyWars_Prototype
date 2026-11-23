@@ -78879,9 +78879,47 @@ const ThreeRenderer = (function () {
     };
     var _hqFlagTexs = {}, _hqFlagMats = {};
     function _hqFlagDef(id) { var Z = (typeof ZONE_FLAGS !== 'undefined') ? ZONE_FLAGS : null; return (Z && Z.flags && Z.flags[id]) || null; }
+    /* THE HANGING BANNERS (2026-11-23, mondo: "camelot still has those red banners that dont match the flag"): a banner is the flag's arms on a
+       tall cloth cut to a swallowtail, its id 'banner:<flag>:<tall>' (tall = the cloth's height / width in quarter steps, so the arms keep their
+       shape on a squat banner and a long one). A flag with an `img` (the Came A Lot crest) gives its middle band (the arms) and its own field
+       and border colours, read off the picture; a flag drawn in code is drawn whole in the upper part. The cut is alpha (alphaTest). */
+    function _hqBannerPaint(g, W, H, F, art, img) {
+        var tail = H * 0.13, bd = Math.max(4, W * 0.06), field = '#1d3f9a', gold = '#e2b23a';
+        if (img && img.naturalWidth) {   // the picture's own colours: the field inside the border, the border
+            try { var cc = document.createElement('canvas'); cc.width = 8; cc.height = 8; var cg = cc.getContext('2d');
+                var pick = function (fx, fy) { cg.clearRect(0, 0, 8, 8); cg.drawImage(img, img.naturalWidth * fx, img.naturalHeight * fy, 4, 4, 0, 0, 8, 8); var d = cg.getImageData(4, 4, 1, 1).data; return 'rgb(' + d[0] + ',' + d[1] + ',' + d[2] + ')'; };
+                field = pick(0.12, 0.5); gold = pick(0.006, 0.5); } catch (e) {}
+        }
+        g.clearRect(0, 0, W, H); g.save();
+        g.beginPath(); g.moveTo(0, 0); g.lineTo(W, 0); g.lineTo(W, H); g.lineTo(W / 2, H - tail); g.lineTo(0, H); g.closePath(); g.clip();
+        g.fillStyle = field; g.fillRect(0, 0, W, H);
+        var body = H - tail;
+        if (img && img.naturalWidth && !art) {   // the arms: the picture's middle band, inside its border
+            var sx = img.naturalWidth * 0.3, sw = img.naturalWidth * 0.4, sy = img.naturalHeight * 0.05, sh = img.naturalHeight * 0.9;
+            var dw = W * 0.9, dh = dw * sh / sw; if (dh > body * 0.82) { dh = body * 0.82; dw = dh * sw / sh; }
+            g.drawImage(img, sx, sy, sw, sh, (W - dw) / 2, body * 0.48 - dh / 2, dw, dh);
+        } else if (art) {
+            var c2 = document.createElement('canvas'); c2.width = 300; c2.height = 200; art(c2.getContext('2d'), 300, 200, img);
+            var aw = W - bd * 2, ah = aw * 200 / 300; g.drawImage(c2, bd, body * 0.4 - ah / 2, aw, ah);
+        }
+        g.strokeStyle = gold; g.lineWidth = bd * 2; g.lineJoin = 'miter';   // the border: half of it inside the cut
+        g.beginPath(); g.moveTo(0, 0); g.lineTo(W, 0); g.lineTo(W, H); g.lineTo(W / 2, H - tail); g.lineTo(0, H); g.closePath(); g.stroke();
+        g.fillStyle = gold; g.fillRect(0, 0, W, bd * 1.6);   // the hem at the rod
+        g.restore();
+    }
     function _hqFlagTex(id) {
         if (_hqFlagTexs[id]) return _hqFlagTexs[id];
         if (id === 'dc') return (_hqFlagTexs[id] = _hqArchSignTex('mark:flag'));
+        if (String(id).indexOf('banner:') === 0) {
+            var bq = String(id).split(':'), BF = _hqFlagDef(bq[1]) || {}, tall = Math.max(1, Math.min(5, +bq[2] || 3)), BW = 192, BH = Math.round(BW * tall);
+            var bc = document.createElement('canvas'); bc.width = BW; bc.height = BH;
+            var bg = bc.getContext('2d'), bt = new THREE.CanvasTexture(bc); bt.anisotropy = 4; if (THREE.SRGBColorSpace) bt.colorSpace = THREE.SRGBColorSpace;
+            var bart = (bq[1] === 'dc') ? null : HQ_FLAG_ART[BF.art || bq[1]];
+            var bpaint = function (img) { _hqBannerPaint(bg, BW, BH, BF, bart, img); bt.needsUpdate = true; };
+            bpaint(null);
+            if (BF.img) { try { var BL = new THREE.ImageLoader(); BL.setCrossOrigin('anonymous'); BL.load('https://cdn.entropywars.net/Assets/' + BF.img, function (img) { bpaint(img); }, undefined, function () { console.warn('[FLAGS] the picture did not load', BF.img); }); } catch (e) {} }
+            return (_hqFlagTexs[id] = bt);
+        }
         var F = _hqFlagDef(id) || {}, W = 384, H = 256, c = document.createElement('canvas'); c.width = W; c.height = H;
         var g = c.getContext('2d'), t = new THREE.CanvasTexture(c); t.anisotropy = 4; if (THREE.SRGBColorSpace) t.colorSpace = THREE.SRGBColorSpace;
         var art = HQ_FLAG_ART[F.art || id];
@@ -78893,14 +78931,15 @@ const ThreeRenderer = (function () {
         return (_hqFlagTexs[id] = t);
     }
     /* the shared material of a flag's picture: Lambert (lit like the room), both faces, the wave hook. aEwFlag = (u along from the pole, v up). */
-    function _hqFlagMat(id, wM, ampM, U) {
-        var key = id + '|' + wM + '|' + ampM;
+    function _hqFlagMat(id, wM, ampM, U, kTurns) {
+        var key = id + '|' + wM + '|' + ampM + '|' + (kTurns || '');
         if (_hqFlagMats[key]) return _hqFlagMats[key];
         var m = new THREE.MeshLambertMaterial({ map: _hqFlagTex(id), side: THREE.DoubleSide });
+        if (String(id).indexOf('banner:') === 0) m.alphaTest = 0.5;   // the swallowtail
         m._ew_hzNear = true;
         var wave = !(typeof window !== 'undefined' && window.EW_HQ_NO_FLAG_WAVE);
         if (wave) {
-            var A = ampM * U, K = 2.7 * wM;   // the swing at the fly end (world units), the wave's turns across the sheet
+            var A = ampM * U, K = kTurns || 2.7 * wM;   // the swing at the fly end (world units), the wave's turns across the sheet (a banner: a slow sway, kTurns)
             m.onBeforeCompile = function (sh) {
                 sh.uniforms.uEwWind = _EW_WIND; sh.uniforms.uEwFlagA = { value: A }; sh.uniforms.uEwFlagK = { value: K }; sh.uniforms.uEwFlagW = { value: wM * U };
                 sh.vertexShader = 'uniform float uEwWind; uniform float uEwFlagA; uniform float uEwFlagK; uniform float uEwFlagW; attribute vec2 aEwFlag;\n' + sh.vertexShader
@@ -78934,6 +78973,33 @@ const ThreeRenderer = (function () {
         g.boundingSphere = null; g.computeBoundingSphere(); g.boundingSphere.radius += ampM * U * 1.5;   // the swing stays inside the cull sphere
         return m;
     }
+    /* one hanging banner: wM wide, hM long, its rod edge's left end on the group's origin, hanging down (-y), across +x. The wave runs from the rod
+       (aEwFlag.x = 0 at the top) to the swallowtail: a slow sway, not a flap. */
+    function _hqBannerCloth(id, wM, hM, U) {
+        var tall = Math.max(1, Math.min(5, Math.round(hM / Math.max(0.1, wM) * 4) / 4));
+        var g = new THREE.PlaneGeometry(wM * U, hM * U, 4, 12); g.translate(wM * U / 2, -hM * U / 2, 0);
+        var uv = g.attributes.uv, a = new Float32Array(uv.count * 2);
+        for (var i = 0; i < uv.count; i++) { a[i * 2] = 1 - uv.getY(i); a[i * 2 + 1] = uv.getX(i); }
+        g.setAttribute('aEwFlag', new THREE.BufferAttribute(a, 2));
+        var m = new THREE.Mesh(g, _hqFlagMat('banner:' + id + ':' + tall, hM, Math.min(0.06, 0.012 * hM), U, 3.2));
+        m.name = 'hq_flag'; m._ew_noBatch = true; m._ew_noInstance = true; m.castShadow = false; m.frustumCulled = true;
+        g.boundingSphere = null; g.computeBoundingSphere(); g.boundingSphere.radius += 0.2 * U;
+        return m;
+    }
+    /* the catalogue's `zone_banner`: the Meshy `banner`'s frame (an iron rod on two arms at the origin, the cloth hanging 2.5 m, 0.09 m off the
+       wall) with a zone's arms (data.js ZONE_FLAGS.banners swaps a room's `banner` rows to it) */
+    function _hqBannerProp(U, p) {
+        var id = (p && p.flag) || 'camelot', grp = new THREE.Group();
+        var iron = _hqFlagMats['pole|iron'] || (_hqFlagMats['pole|iron'] = new THREE.MeshLambertMaterial({ color: 0x2a2a2e }));
+        var gold = _hqFlagMats['pole|gold'] || (_hqFlagMats['pole|gold'] = new THREE.MeshLambertMaterial({ color: 0xd8b24a, emissive: 0x2a1e00 }));
+        var rod = new THREE.Mesh(new THREE.CylinderGeometry(0.025 * U, 0.025 * U, 1.3 * U, 8), iron); rod.rotation.z = Math.PI / 2; rod.position.set(0, 0, 0.09 * U); grp.add(rod);
+        [-1, 1].forEach(function (s) {
+            var arm = new THREE.Mesh(new THREE.CylinderGeometry(0.02 * U, 0.02 * U, 0.12 * U, 6), iron); arm.rotation.x = Math.PI / 2; arm.position.set(s * 0.5 * U, 0, 0.045 * U); grp.add(arm);
+            var fin = new THREE.Mesh(new THREE.SphereGeometry(0.045 * U, 8, 6), gold); fin.position.set(s * 0.66 * U, 0, 0.09 * U); grp.add(fin);
+        });
+        var cl = _hqBannerCloth(id, 1.1, 2.5, U); cl.position.set(-0.55 * U, -0.03 * U, 0.1 * U); grp.add(cl);
+        return grp;
+    }
     /* the pole (catalogue `zone_flag` / `zone_flag_hall`): a metal pole, a gold ball, the cloth near the top. Front = +x (the cloth flies there). */
     function _hqFlagPoleProp(U, p, hall) {
         var id = (p && p.flag) || 'dc', grp = new THREE.Group();
@@ -78951,9 +79017,22 @@ const ThreeRenderer = (function () {
        the city flag, the box and quads left out of the row's geometry. Read once, when the room is built. */
     function _hqArchFlagsOut(row, G, U) {
         if (!row || !row.parts || typeof window !== 'undefined' && window.EW_HQ_NO_ZONE_FLAGS) return row;
-        var hasFlag = false; for (var i = 0; i < row.parts.length; i++) { var q = row.parts[i]; if (q && q.s === 'quad' && q.key === 'mark:flag') { hasFlag = true; break; } }
+        var hasFlag = false; for (var i = 0; i < row.parts.length; i++) { var q = row.parts[i]; if (q && ((q.s === 'quad' && q.key === 'mark:flag') || (q.s === 'box' && /^mark:(flag|banner):/.test(q.key || '')))) { hasFlag = true; break; } }
         if (!hasFlag) return row;
         var D2R = Math.PI / 180, rc = Math.cos(-(row.rot || 0) * D2R), rs = Math.sin(-(row.rot || 0) * D2R), base = row.base || 0, drop = new Set();
+        /* a zone's flag on a tower (a box keyed 'mark:flag:<flag>': its hoist = the box's -x end) or a hanging banner ('mark:banner:<flag>': the
+           box is the cloth, its top on the rod); a part's own turn (ry) is kept, a roof part's cloth hides with the roof */
+        row.parts.forEach(function (q) {
+            var mk = q && q.s === 'box' && /^mark:(flag|banner):(.+)$/.exec(q.key || ''); if (!mk) return;
+            drop.add(q);
+            var pp = q.p || [0, 0, 0], sz = q.size || [2, 1.4, 0.03], ry = +q.ry || 0, pc = Math.cos(-ry * D2R), ps = Math.sin(-ry * D2R), top = mk[1] === 'banner' ? sz[1] : 0;
+            var lx = pp[0] - sz[0] / 2 * pc, lz = pp[2] + sz[0] / 2 * ps, wx = row.x + lx * rc + lz * rs, wz = row.z - lx * rs + lz * rc, gy = base;
+            if (typeof row.ground === 'function') { var gh = row.ground(wx, wz); if (isFinite(gh)) gy = gh; }
+            var cl = mk[1] === 'banner' ? _hqBannerCloth(mk[2], sz[0], sz[1], U) : _hqFlagCloth(mk[2], sz[0], sz[1], 0.17, U);
+            cl.position.set(wx * U, (gy + pp[1] + top) * U + 0.3, wz * U); cl.rotation.y = -((row.rot || 0) + ry) * D2R;
+            if (q.roof) { cl._ew_hqPart = 'ceil'; cl._ew_hqRoof = true; }
+            G.add(cl);
+        });
         row.parts.forEach(function (q) {
             if (!q || q.s !== 'quad' || q.key !== 'mark:flag') return;
             drop.add(q);
@@ -84764,7 +84843,8 @@ const ThreeRenderer = (function () {
     });
     Object.assign(_hqProcBuilders, {   // THE ZONE FLAGS (2026-11-23): the poles (_hqFlagPoleProp)
         zone_flag: function (U, p) { return _hqFlagPoleProp(U, p, false); },
-        zone_flag_hall: function (U, p) { return _hqFlagPoleProp(U, p, true); }
+        zone_flag_hall: function (U, p) { return _hqFlagPoleProp(U, p, true); },
+        zone_banner: function (U, p) { return _hqBannerProp(U, p); }
     });
     /* THE COLOURED FLAMES (2026-11-20): a torch / hearth row's flame hue: the row's `flame`, else its catalogue row's (null = the warm flame) */
     function _hqFlameOf(p) {
