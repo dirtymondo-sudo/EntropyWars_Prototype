@@ -2550,6 +2550,8 @@
                 if (out) out.action = back ? { room: fr, at: back.id } : { room: 'central_egress', at: 'elevator' };
                 if (out) out.label = String((DOOR_HQ.rooms[out.action.room] || {}).label || 'THE DOORS').toUpperCase();   // the plate over the doors names the floor (the replate rule)
             } catch (e) { console.warn('[HQ] car way out', e); } }
+            /* THE HOTEL (2026-11-23): the lift from the lobby builds a new hotel (data.js hotelBeforeGo: a new seed, ten new floors) */
+            try { if (typeof window.hotelBeforeGo === 'function') window.hotelBeforeGo(roomId, _hqCurRoom); } catch (e) { console.warn('[HOTEL] the lift', e); }
             _hqLastRoom = roomId;
             _hqLastDoor = at || null;
             window._hqClosePanel();
@@ -3814,6 +3816,19 @@
                 _hqPauseSay(`<b>NO</b> ${why}`, true); try { playSfx('uiError'); } catch (e) {}
             }
             _hqPauseRender();
+        }
+        /* THE HOTEL, A MYSTERY DUNGEON (2026-11-23, data.js HOTEL-MD): E on a guest room's safe takes its one roll of the floor-item
+           table into the bag (once a run); E on a made bed rests the standing members (the fallen stay down until the run ends). Offline. */
+        function _hotelAct(c) {
+            const H = c && c.hotel; if (!H) return;
+            if (H.act === 'loot') {
+                const r = _hqPartyTx(p => (typeof window.hotelLootTake === 'function') ? window.hotelLootTake(p, _hqCurRoom, H.cell) : null);
+                if (r && r.ok) { try { playSfx('uiButtonConfirm'); } catch (e) {} _hqToast(`<b>THE SAFE</b><span>${String(r.name).toUpperCase()} · INTO THE BAG</span>`, 3200); }
+                else _hqToast(`<b>THE SAFE</b><span>${r && r.reason === 'full' ? 'THE BAG IS FULL' : 'EMPTY'}</span>`, 2400);
+            } else if (H.act === 'rest') {
+                const r = _hqPartyTx(p => { if (typeof window.hqPartyEnsure === 'function') window.hqPartyEnsure(p, { last: _hqLastParty() }); return (typeof window.hotelRest === 'function') ? window.hotelRest(p) : null; });
+                if (r && r.ok) { try { playSfx('healRegen'); } catch (e) {} _hqToast(`<b>RESTED</b><span>${r.down ? 'THE STANDING AT FULL · THE FALLEN STAY DOWN' : 'PARTY AT FULL HP'}</span>`, 3200); }
+            }
         }
         /* THE COT (Medical): rest the party — the panel's button and the strip */
         window._hqPartyRest = function () {
@@ -9473,6 +9488,8 @@
             }
             /* THE PLOT DUNGEONS: a dial / a console / the model opens the board's panel */
             if (t && t.kind === 'counter' && t.counter && t.counter.proc === 'pd_act') { _pdAct(t.counter); return; }
+            /* THE HOTEL (2026-11-23): a guest room's safe (loot, once a run) or its bed (rest: the standing only, the fallen stay down) */
+            if (t && t.kind === 'counter' && t.counter && t.counter.proc === 'hotel_act') { _hotelAct(t.counter); return; }
             /* THE MARKER (2026-09-20): the floating crystal opens ITS OWN panel — the party, the checklist, FIGHT — never the terminal */
             if (t && t.kind === 'counter' && t.counter && t.counter.proc === 'battle_marker') { _hqOpenPanel(t); return; }
             if (t && t.kind === 'counter' && t.counter && t.counter.action && t.counter.action.overlay === 'training') {
