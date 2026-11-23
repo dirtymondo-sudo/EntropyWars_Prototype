@@ -4016,3 +4016,14 @@ All in three-renderer.js, F3 only (read when the text is made; the per-frame par
   worst single 169 ms (one landing is not split).
 - F3: dips mostly under the load card are left out of the steadiness ring, the rhythm and the cause tally (still listed, LOADING).
 - The 6.5 s load dips themselves (22,711 objects added, 216 shader builds, under the card) are the room's load, not touched here.
+
+## THE CARD HOLD + THE SPRITES' ONE SHAPE (2026-11-23, mondo's Downtown F3 on WebGPU: a 50.8 s load into Bayside, "skipped draws 495 (first: Sprite / SpriteMaterial: GPURenderPassEncoder.setIndexBuffer: Argument 1 is not an object.)")
+- **THE CARD HOLD** (three-renderer.js, the walk's draw): while the load card is up and the files still land (`!H.ready && !H.landed`,
+  not the way back from a fight), the room is drawn at most once a second, and a slow draw waits 3x its own time after it ends.
+  His load spent ~20 s of 33 s JS drawing the whole city under the card (scene + sun shadow draws, 165 frames). Cloud llvmpipe,
+  the Clearing with drawing ON (`EW_PROBE_DRAW_LOAD=1`): before, 105 / 322 files after 247 s (starved); after, all 333 files in
+  ~60 s, room ready 157 s (the settle after landing draws every frame as before). Off: `EW_LOAD_DRAW_ALL`.
+- **THE SPRITES' ONE SHAPE IS KEPT**: three gives every THREE.Sprite the same geometry; a clean-up disposing `o.geometry` on a removed
+  sprite freed it, and on the node renderer every later sprite draw had no index buffer (skipped). `_ewSpriteGeoKeep()` (init + first
+  skipped draw) makes that shared geometry's dispose a no-op; F3's renderer line: "sprite shape disposes refused N". Not reproduced
+  in the cloud (WebGPU there cannot hold the city): his next WebGPU F3 should show 0 skipped draws and some refusals.
