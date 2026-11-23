@@ -14735,3 +14735,34 @@ headless scan of every terrain room (each railing piece against the ground every
   `window.EW_RAIL_NO_FOLLOW = true` (set before the room loads) turns the fix off everywhere — the probe's "before" pictures.
 - Placed fence PROPS (`hw_fence`, `chain_fence`, `fence_with_gate`, ...) are single models standing on the ground at their place; not part of this.
 - No tool to rerun: every room's railings are compiled at load.
+
+## THE SUPERHERO TOWER, THE FLOORS (2026-11-23, step 1 of mondo's plan "Every door opens + a bigger Disaster City", picture 4; his go-ahead 11-23 16:42)
+
+- **WHAT IT IS:** the tower's floors are ONE stacked room, `site_prebuilt_hero_tower` (site prebuilt_downtown, part `hero_tower`), written by
+  `node bake-hero-tower.js` (`--dry-run` = counts + the walk check) between HERO-TOWER-BEGIN / END in data.js. The lobby (G) stays in the city
+  room as it was (districts/H.js IN['P06-04-B1']); the story door THE TOWER on its lift bank is unchanged.
+- **THE FLOORS** (8 x 8 squares, the tower's own footprint, the city's compass: a place here = the city place minus (21, -63); 5.25 m apart):
+  1 SECURITY (turnstiles across the floor, two metal-detector arches as the way through, the guard's desk, the camera desks, lockers) ·
+  2 PRESS + FAN MAIL (a stage with backdrop and podium, chairs, a camera; the mail room behind a glass wall: mailbox banks, sorting tables, sacks) ·
+  3 COSTUME DEPARTMENT (racks, the fitting stage and mirrors; the locker room behind a door) · 4 TRAINING FLOOR (the boxing ring, bags, weights,
+  racks, the sparring mat) · 5 THE LAB (benches with glassware and microscopes, servers; the clean room behind glass: robot arm, cryo tubes, the
+  tank) · 6 MONITOR ROOM (a wall of screens, four desks, the map table) · 7 PENTHOUSE (the boardroom table, the desk, the trophy case, the bar) ·
+  R THE ROOF (helipad with the `helicopter`, radar mast, dishes, flag, vents, the lift's machine room with a red beacon, a parapet all round).
+  Floor 1 stands 7 m over the plaza (one lobby high); the roof is at 36.75 in the room (about 60 m over the street). The floor list is the plan's
+  draft; mondo may change it. Natives come from Hero Plaza's Relationship Web list (police officer, cameraman, delivery boy, sidekick, antihero,
+  superhero ×3, eagleman), one or two a floor, no lines written for them.
+- **THE TOWER LIFT (the way between floors; a stair may not stand over a walked room):** a door with `lift: <room id>` opens THAT room's
+  `liftStops` panel (map.js `_hqLiftHtml` / `_hqLiftRide`). A stop in the room you are in = a short black fade and `ThreeRenderer.hq.liftHop(doorId)`
+  (three-renderer.js `_hqLiftHop`: you stand 1.4 m in front of that floor's lift door): NO loading. A stop in another room = `_hqGoRoom` (its
+  load card). The lobby's three lift doors (H.js `HERO_LIFTS`, ids `hero_lift_a/b/c`, pushed into `ctx.doors`, so the city's tool writes them)
+  load the tower at the floor picked; G in the tower goes back to `hero_lift_a`. A lift door's `action` is only the map's way (the panel opens
+  instead: `_hqDoorDirectAction` returns null for `d.lift`).
+- **ENGINE ROW ADDED: `onDeck: true` on a door** = it stands on an upper floor's slab at its `y`: the terrain compile lays NO door pad for it
+  (data.js, the door pads) and `hqTerrainDoorY` returns its `y`. Without it every floor's door flattened the field at the column under it to its
+  own height (all eight floors read 31.5 m).
+- **THE VIEW OUT:** the city's own drawn rows (arch + texbuilding, never an inside `:in`, never the tower's own) within 72 m of the tower are copied
+  into the room, set down 22.75 m (the plaza + the lobby), plus one asphalt sheet and the plaza's stone. A row with no height reads the city's
+  compiled field (a minute of the tool's run). `TOWER_VIEW=<m>` changes the reach. Rerun the tool when Hero Plaza's buildings change.
+- **WALK CHECK:** from each floor's lift door, every listed spot is reached on the walker's rule (31/31), nothing under floor 1, no NaN.
+- **NOT DONE / OPEN:** the tower's outside is raised to 175 m by the skyline thread: the floors may then move up to sit near its top (one number,
+  `DOWN` + `LEVELS`). No fire stair (the engine's one-height field). The Training floor is a look, not a fight arena yet.
