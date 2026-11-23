@@ -3082,3 +3082,17 @@ markers too". His picks on the mock-up: "definitely bottom right, north always u
   "THE QUARTERMASTER HAS NOT SIGNED…", the cache / tape / one-way-door / nav console explanations. `.hq-toast span:empty` hides an empty line.
 - RULE (again): no jokes, lore or explanation in a toast. NPC dialogue (`say`) is not a toast and is untouched.
 - Left as is: the door gun's key toasts (game-only keys), counter subs (they name what the counter does).
+
+### THE PLOT GO (2026-11-23, fast travel thread)
+mondo: "Im clicking on a square to travel to and its not taking me there, no go option shows up. It seems completely random" + "is it
+because im already in the zone i want to fast travel to". Two causes, both fixed in map.js:
+- A plot-built zone is ONE room (Disaster City, each Desert part), and the plot card offered GO only for ANOTHER room, so every plot
+  of the room you stood in had no GO and a second click did nothing. Now GO ▸ <PLOT> lands ON THE PLOT: in the same room at once,
+  in another room through its way in and then onto the plot (`_hqGoRoom(room, at, onReady)`). The landing is
+  `ThreeRenderer.hq.goSpot(x, z, rad)` (three-renderer.js): the nearest 1.75 m step to the plot's middle where a body stands
+  (inside the shell, ground not under the sea, no terrain wall, no blocker at feet or waist), 20 m out, then 36 m; a driven car
+  moves with you; a flown craft says LAND THE <KIND> FIRST. One-off read on a click (RULE #1e).
+- The district names, room names, door marks and YOU ARE HERE are drawn OVER the plots and are not plots: a click on one picked
+  nothing. `_zmNodeAt` now picks the plot (zone sheet) or the place (world sheet) under the pointer whatever is drawn on top.
+  The click wobble is 6 px (`HQ_MAP_CLICK_PX`, was 4: a trackpad tap on a 2x screen read as a drag).
+- A plot that cannot be travelled to says why on its card in red (`_zmWhyNot`: not built, rebuilt room, uncharted, no ground).

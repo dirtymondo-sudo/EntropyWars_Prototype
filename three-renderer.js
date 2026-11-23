@@ -107151,6 +107151,43 @@ const ThreeRenderer = (function () {
             v.project(cam);
             return { x: v.x * 0.5 + 0.5, y: 0.5 - v.y * 0.5, front: front, dist: dist, label: label };
         },
+        /* THE MAP'S PLOT GO (2026-11-23, mondo: "clicking on a square to travel to and its not taking me there, no go option
+           shows up"): a plot of the room you stand in is travelled to inside the room. The landing = the nearest square to the plot's
+           middle (x, z metres, room frame) where a body can stand: inside the shell, on ground (not under the sea), clear of the
+           terrain's walls and of every blocker (a one-off read on a click, never per frame: RULE #1e). `rad` = how far out to look.
+           A driven car is moved with you. Returns { ok, x, z, y, far } or { ok: false, why }. */
+        goSpot: function (cx, cz, rad) {
+            if (!_hq || !_hq.player || !_hq.room) return { ok: false, why: 'THE WALK IS NOT RUNNING' };
+            var V = _hq.vehicle;
+            if (V && V.on && V.kind !== 'car') return { ok: false, why: 'LAND THE ' + String(V.kind || 'craft').toUpperCase() + ' FIRST' };
+            var S = _hq.room.shell || { w: 1e9, d: 1e9 }, ti = _hq.terrain, sea = _hqSea(), R = rad || 20, step = 1.75;
+            var free = function (x, z) {
+                if (Math.abs(x) > S.w / 2 - 1.2 || Math.abs(z) > S.d / 2 - 1.2) return null;
+                var g = _hqTerrainGround(x, z); if (g == null || !isFinite(g)) g = _hqLevelY(S, 0);
+                if (ti) {
+                    if (sea && !sea.under && g < sea.y - 0.3) return null;   // under the water: not a place to stand
+                    var w = hqTerrainWallAt(ti, x, z, HQ_BODY_R, g, g + 1.8); if (w && g < w.top - 0.05) return null;
+                    if (typeof hqTerrainSolidAt === 'function' && hqTerrainSolidAt(ti, x, z, 0) && g < hqTerrainSolidTop(ti, x, z) - 0.05) return null;
+                }
+                if (!_hqAirClearOfBlockers(x, z, g + 0.02) || !_hqAirClearOfBlockers(x, z, g + 1.0)) return null;
+                return g;
+            };
+            var pts = [];
+            for (var dx = -R; dx <= R + 0.01; dx += step) for (var dz = -R; dz <= R + 0.01; dz += step) { var d = Math.hypot(dx, dz); if (d <= R + 0.01) pts.push([d, dx, dz]); }
+            pts.sort(function (a, b) { return a[0] - b[0]; });
+            for (var i = 0; i < pts.length; i++) {
+                var x = cx + pts[i][1], z = cz + pts[i][2], y = free(x, z);
+                if (y === null) continue;
+                /* two more squares round it free too, so the landing is not a gap between two props */
+                if (free(x + step, z) === null && free(x - step, z) === null) continue;
+                if (V && V.on && V.kind === 'car') { V.x = x; V.z = z; V.y = y; V.v = 0; V.vy = 0; V.wg = null; _hq.cam.init = false; _hq.dirty = true; }
+                var pl = _hq.player;
+                pl.x = x; pl.z = z; pl.y = pl.visY = y; pl.air = false; pl.vy = 0; pl.jumpT = -1; pl.moving = false;
+                _hq.cam.init = false; _hq.dirty = true;
+                return { ok: true, x: x, z: z, y: y, far: pts[i][0] };
+            }
+            return { ok: false, why: 'NOWHERE TO STAND ON THIS PLOT' };
+        },
         pos: function () { if (!_hq || !_hq.player) return null; var p = _hq.player; return { x: p.x, z: p.z, y: p.y, deg: _hqNormDeg(Math.atan2(p.x, -p.z) * 180 / Math.PI), r: Math.hypot(p.x, p.z),
                                   /* THE SAVE (2026-11-12): the part the walker stands in (a stage crossing rebases the metres), the heading as goTo's `face`, off the ground, the editor */
                                   room: (_hq.opts && _hq.opts.room) || null, face: _hqNormDeg((Math.PI - (p.yaw || 0)) * 180 / Math.PI), air: !!p.air, edit: !!(_hq.opts && _hq.opts.edit), ready: !!_hq.ready }; },
