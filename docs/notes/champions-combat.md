@@ -6377,3 +6377,20 @@ The Sewers (NOT yet placed as Sewers natives: the Sewers district files are held
   (`EW_DISABLE_3D_UNITS`); `--resume <dir>` carries a run on (writes `syncs.json`). Run with `EW_ALLOW_STALE=1` (a recycled tab
   reloads the page; main moving mid-run must not block it). 4 workers OOM on a cloud container; 3 workers ≈ 6 matches/min.
   Kill a run with `kill -9` (SIGTERM is caught). Harness logs + every pass's weights: /mnt/project-files/ai-training/run-20261122/.
+
+## THE ABOMINATION (2026-11-23, thread "Build the Abomination unit", plan https://claude.ai/artifact/QYFEt8LpeEnqzhViCt1zME)
+mondo OK'd the kit and named it ("Horror A" in the concepts round; Horror B is The Hollow, its own thread). Bruiser, reach 2 claw
+basic attack, poison resist / fire weak, families abomination (its own) + nightmares, cosmic, shadow. Home: The Sewers (a first pick,
+he did not name one). Stats first pass HP 1300, MP 150, ATK 150, DEF 110, M.DEF 90, INT 90, SPD 80.
+- THE LIMBS (battle.js block "THE ABOMINATION"): `unit.limbs` 0-6, no value = 4 (a plain number: the guest has it from the sync).
+  +1 when each of its turns ends (`_abRegrow`, called where the blitz advance stamps `_turnRound`). A hit of 20 % of its max HP or more
+  (not damage over time, not its own) takes one limb and lands 30 % smaller (`_abShed`, in applyDamageToUnit before the HP comes off).
+  HUD chip `LIMBS n/6`; the body shows the count (the arms are limbs 0-1, the back tentacles 2-5, so the tentacles go first).
+- Grasp T1 (range 3, 80 physical, Root 1; `limbsStaggerAt: 5` adds Stagger in the cast copy, `_abCastRow`). Many Mouths T2 (kind aoe,
+  self radius 1, 90 magic, `aoeLifeDrain` 0.5, `limbsPerHit: 1` = +1 limb for each enemy bitten, `_abOnHit` while `unit._abMouths`).
+  Bone Cage T3 (debuff range 4: Root 2, Silence 1, the new status `caged` 2; `_cageSrcId` names the Abomination, the renderer stands
+  its cage over the victim). Unfold T4 (barrage, self radius 5, through cover, 70 physical + Bleed 2 a hit; `limbsMin: 2` refuses
+  below 2, `limbsSpendAll`: the copy carries `_abHits`, `_abSpendNow` sets the limbs to 0, `_abUnfoldList` hits round robin).
+  Grasp and Unfold carry `bonusVsStatus` caged ×1.25.
+- CPU (ai.js scoreSpell, "THE LIMBS"): Grasp scored as its copy; Unfold worth limbs/3, halved under 4 limbs, and a body under 35 %
+  HP keeps its last 3. FINISHER 'Too Much Body' (sig blurryFootage).

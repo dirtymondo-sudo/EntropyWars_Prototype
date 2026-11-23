@@ -15444,6 +15444,92 @@
             _bearFx('wake', u);
             if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: u });
         }
+        /* ═══ THE ABOMINATION (2026-11-23, mondo OK'd the kit + named it; plan https://claude.ai/artifact/QYFEt8LpeEnqzhViCt1zME) ═══
+           TOO MUCH BODY. Host-side; the guest reads everything off the state sync: `unit.limbs` (a plain number, 0 to LIMBS_MAX,
+           no value = LIMBS_START), the `caged` status + unit._cageSrcId (an id). The texts go through the relayed
+           showFloatingTextForUnit, the looks through VFX.fire (relayed); the body itself shows the count (three-renderer.js THE
+           ABOMINATION hides the limbs it has lost). Notes: docs/notes/champions-combat.md "THE ABOMINATION".
+           - THE LIMBS: two arms, then up to four tentacles on its back. +1 when each of its turns ends (_abRegrow, from the
+             blitz advance where _turnRound is stamped).
+           - THE SHED (applyDamageToUnit, before the HP comes off): a hit of LIMBS_SHED_PCT of its max HP or more takes a limb
+             instead and is LIMBS_SHED_CUT smaller. Not damage over time, not its own hits. With 0 limbs nothing is shed.
+           - Grasp (`limbsStaggerAt`): at 5+ limbs the cast copy also Staggers (_abCastRow).
+           - Many Mouths (`limbsPerHit`): +1 limb for each enemy it bites (_abOnHit, while unit._abMouths is up).
+           - Unfold (`limbsSpendAll`, `limbsMin`): the cast copy carries the count (`_abHits`), the count goes to 0 once every
+             refusal has passed (_abSpendNow), and the barrage hits that many times, every enemy once before any twice
+             (_abUnfoldList). */
+        const LIMBS_MAX = 6, LIMBS_START = 4, LIMBS_SHED_PCT = 0.2, LIMBS_SHED_CUT = 0.3;
+        function getLimbs(u) {
+            if (!u || u.race !== 'abomination') return 0;
+            return u.limbs == null ? LIMBS_START : Math.max(0, Math.min(LIMBS_MAX, u.limbs | 0));
+        }
+        function _abFx(kind, u) {
+            try {
+                if (!u || state.phase !== 'battle' || _skipVisuals()) return;
+                const V = window.ThreeVFXEffects, id = kind === 'shed' ? 'abShed' : 'abGrow';
+                if (V && V.hasMapping && V.hasMapping(id, 'impact')) V.fire('impact', id, { tx: u.x, ty: u.y, casterId: u.id });
+            } catch (e) {}
+        }
+        function _abSetLimbs(u, n, why, fx) {
+            if (!u || u.race !== 'abomination') return 0;
+            const was = getLimbs(u), now = Math.max(0, Math.min(LIMBS_MAX, n | 0));
+            u.limbs = now;
+            if (now === was) return 0;
+            if (why) addLog(`🫀 ${_ctName(u)} ${why}: ${now} limb${now === 1 ? '' : 's'}.`);
+            if (fx) { _crFloat(u, `${now > was ? '🫀 +' + (now - was) : '🫀 −' + (was - now)} LIMB${Math.abs(now - was) === 1 ? '' : 'S'} (${now}/${LIMBS_MAX})`, now > was ? 'buff' : 'debuff'); _abFx(now > was ? 'grow' : 'shed', u); }
+            if (typeof markDirty === 'function') markDirty('hud', 'selectedUnit');
+            return now - was;
+        }
+        /* the blitz advance, the moment its turn is over: a stump grows back */
+        function _abRegrow(u) {
+            if (!_nrAlive(u) || u.race !== 'abomination' || u._abGrewRound === state.round) return;
+            u._abGrewRound = state.round;
+            if (getLimbs(u) < LIMBS_MAX) _abSetLimbs(u, getLimbs(u) + 1, 'grows a limb back', true);
+        }
+        /* applyDamageToUnit, before the HP comes off: the big hit takes a limb instead (returns the damage that lands) */
+        function _abShed(target, dmg, src, damageType, opts) {
+            if (!target || target.race !== 'abomination' || !(dmg > 0) || damageType === 'dot' || (opts && opts._linkEcho)) return dmg;
+            if (src && src.id === target.id) return dmg;
+            if (dmg < (target.maxHp || 0) * LIMBS_SHED_PCT || getLimbs(target) <= 0) return dmg;
+            const cut = Math.max(1, Math.round(dmg * (1 - LIMBS_SHED_CUT)));
+            _abSetLimbs(target, getLimbs(target) - 1, `sheds a limb and takes ${dmg - cut} less`, true);
+            return cut;
+        }
+        /* applyDamageToUnit, after the hit lands: Many Mouths grows one limb for each enemy it bites */
+        function _abOnHit(target, dmg, src) {
+            if (!src || !src._abMouths || src.race !== 'abomination' || !(dmg > 0) || !target || target.id === src.id || !isEnemyUnit(src, target)) return;
+            _abSetLimbs(src, getLimbs(src) + (src._abMouths | 0 || 1), '', true);
+        }
+        /* the cast's own copy (doSpell, where _streamCastRow is): the count baked in, nothing spent yet */
+        function _abCastRow(unit, spell) {
+            if (!spell || unit.race !== 'abomination') return spell;
+            const n = getLimbs(unit), s = Object.assign({}, spell);
+            if (spell.limbsStaggerAt && n >= spell.limbsStaggerAt) s.statusEffects = (spell.statusEffects || []).concat([{ id: 'stagger', duration: 1 }]);
+            if (spell.limbsSpendAll) s._abHits = n;
+            return s;
+        }
+        /* doSpell, once every refusal has passed: Unfold takes every limb; Many Mouths opens its mouths */
+        function _abSpendNow(unit, spell) {
+            if (!unit || unit.race !== 'abomination' || !spell) return;
+            if (spell.limbsSpendAll) {
+                const n = spell._abHits != null ? spell._abHits : getLimbs(unit);
+                _abSetLimbs(unit, 0, `pulls off all ${n} of its limbs`, false);
+            }
+            if (spell.limbsPerHit > 0) unit._abMouths = spell.limbsPerHit;
+        }
+        /* finishAction: the mouths close; a fresh Bone Cage leaves its shoulder (the renderer reads the victim's _cageSrcId) */
+        function _abAfterCast(unit, spell) {
+            if (!unit || unit.race !== 'abomination') return;
+            if (unit._abMouths) delete unit._abMouths;
+        }
+        /* Unfold's hits: `hits` long, round robin over the victims (each once before any twice) */
+        function _abUnfoldList(enemies, hits) {
+            const out = [], list = (enemies || []).filter(Boolean);
+            if (!list.length) return out;
+            for (let i = 0; i < Math.max(0, hits | 0); i++) out.push(list[i % list.length]);
+            return out;
+        }
+        window.getLimbs = getLimbs; window.LIMBS_MAX = LIMBS_MAX; window._abCastRow = _abCastRow;
         window._crCastRow = _crCastRow; window._crRoundEnd = _crRoundEnd;
         /* ═══ THE PLASTIC SURGEON (2026-11-23, mondo OK'd the kit: "okay yeah that's good") ═══ He operates on anyone. A `procedure`
            row (Botox, Makeover) works on an ally or an enemy (`anyTeam`, _kindMeta): the base row is the enemy cast and `onAlly` the
@@ -17784,7 +17870,7 @@
             'ice queen': 'magic', 'seraphim': 'magic', 'watcher': 'magic', 'occulus': 'magic',
             'shadow entity': 'magic', 'siren': 'magic', 'chosen one': 'magic', 'symbiote': 'magic',
             'voidweaver': 'throw',
-            'demon prince': 'claw', 'skinwalker': 'claw', 'bear': 'claw',   // 2026-11-23 THE BEAR: the paw rakes, never the fist sprite
+            'demon prince': 'claw', 'skinwalker': 'claw', 'bear': 'claw', 'abomination': 'claw',   // 2026-11-23 THE BEAR: the paw rakes, never the fist sprite; THE ABOMINATION's arm the same
             'cyclops': 'punch', 'juggernaut': 'punch', 'super sentai': 'punch', 'antihero': 'punch',
             'bigfoot': 'punch', 'giant': 'punch', 'werewolf': 'claw', 'catgirl': 'claw', 'ki fighter': 'punch',
             'pirate': 'ranged', 'nordic': 'ranged'   // 2026-10-18 — their models' attack is the quick-draw shot (kept when the reach fallback was fixed)
@@ -44497,6 +44583,7 @@
                 showFloatingTextForUnit(target, `${_res.absorbed}`, 'mp');
             }
 
+            if (target.race === 'abomination' && finalDamage > 0) finalDamage = _abShed(target, finalDamage, sourceUnit, damageType, opts);   // 🫀 THE ABOMINATION: a big hit takes a limb instead
             /* Indomitable Will (homosapien capstone): the first blow that
                would kill leaves the unit at 1 HP and consumes the status.
                HP + statuses ride state-sync, so guests see the survival. */
@@ -44924,6 +45011,7 @@
             if (target.hp <= 0) _lifeguardSave(target);   // 🛟 a Lifeguard On Duty pulls an ally out of a killing blow
             if (finalDamage > 0) _viralShare(target, finalDamage, opts);   // 📱 a Viral unit's hit is shared
             if (finalDamage > 0) _viewersOnHit(target, finalDamage, sourceUnit);   // 🎮 THE VIEWERS: the hitter's crowd, the clip
+            if (finalDamage > 0 && sourceUnit && sourceUnit._abMouths) _abOnHit(target, finalDamage, sourceUnit);   // 🫀 Many Mouths: a limb a bite
 
             if (opts.statusEffects || opts.status) {
                 let _stFx = opts.statusEffects || opts.status;
@@ -51496,6 +51584,7 @@
                 if (spell.tomb && unit._tombSpent) return 'The tomb is spent';   // ⚱ THE TOMB: once a match   // 📰 not today's headline
                 if (spell.hitsStatusOnly === 'payload' && !getHostileUnits(unit.player, unit).some(e => e && !e.dead && unitHasStatus(e, 'payload'))) return '🦠 No Payload out';
                 if (spell.viewersMin > 0 && getViewers(unit) < spell.viewersMin) return '🎮 Need ' + spell.viewersMin + ' viewers';   // 🎮 THE VIEWERS
+                if (spell.limbsMin > 0 && getLimbs(unit) < spell.limbsMin) return '🫀 Need ' + spell.limbsMin + ' limbs';   // 🫀 THE ABOMINATION: Unfold
                 if (spell.rewindTape > 0 && !getHostileUnits(unit.player, unit).some(e => e && !e.dead && _tvTapeAmount(e, spell) > 0)) return '📼 Nothing on tape';   // 📺 Rewind: no enemy took a hit last round
                 if (spell.partsCost > 0 && (unit._parts || 0) < spell.partsCost) return '🔩 Need ' + spell.partsCost + ' Parts';   // 🔧 Jury Rig (SPARE PARTS)
                 if (spell.id === 'nrOverdue' && !spell.overdueOf) return '📚 Nothing to renew';   // THE LOADED BOOK: no teammate has cast yet
@@ -66551,6 +66640,7 @@
                     _possessSettleSeats(null);   // THE HOME SIDE: its activation is over, the body goes home until the next one
                     if (_ctlUnit && !_ctlUnit.dead) _staggerSpendActivation(_ctlUnit);
                     if (_ctlUnit) _ctlUnit._turnRound = state.round;   // ONE ROUND = ONE TURN: its turn this round is spent (END TURN can leave AP)
+                    if (_ctlUnit && _ctlUnit.race === 'abomination') _abRegrow(_ctlUnit);   // 🫀 THE ABOMINATION: a limb grows back when its turn is over
                     if (_ctlUnit) astralSpendActivation(_ctlUnit);   // 👁 a projection lasts until the caster's next turn ends
                 }
                 clearSpellPick();
@@ -84966,6 +85056,8 @@
             if (spell && spell.id === 'nrOverdue') spell = _overdueCastRow(unit, spell);
             /* 🎮 THE VIEWERS: a streaming row casts a copy with the viewer count baked in (_streamCastRow) */
             if (spell && (spell.viewersSpend || spell.viewersMarkAt || spell.viewersHealPer || spell.viewersDmgPer)) spell = _streamCastRow(unit, spell);
+            /* 🫀 THE ABOMINATION: a limb row casts a copy with the count baked in (_abCastRow) */
+            if (spell && (spell.limbsStaggerAt || spell.limbsSpendAll)) spell = _abCastRow(unit, spell);
             /* 🎲📿 THE NEW RACES 4: a dice row / a stillness-spending row casts its own copy (_nr4CastRow) */
             if (spell && (spell.diceRoll || spell.stillnessSpend)) spell = _nr4CastRow(unit, spell);
             /* 🛡⚡ THE COMING RACES: Crowd Pleaser / Abyssal Overload bake their spend, Venom Injector its Stun (_crCastRow) */
@@ -85704,6 +85796,7 @@
                 _armPressCollector(unit);
             }
             _viewersSpendNow(unit, spell);   // 🎮 THE VIEWERS: a spending cast empties the count now (every refusal has passed)
+            _abSpendNow(unit, spell);   // 🫀 THE ABOMINATION: Unfold takes every limb now; Many Mouths opens
             if (spell.diceRoll) _diceRollNow(unit, spell);   // 🎲 THE HOT STREAK: the dice roll now (every refusal has passed)
 
             // Balance Lab: arm the per-cast spell telemetry collector (same
@@ -85749,6 +85842,7 @@
                 _crAfterCast(unit, spell);   // 🛡⚡ THE COMING RACES: Favor + Charge spent
                 if (unit.race === 'rat') unit._ratCastId = null;   // 👑 THE RAT KING
                 _bearAfterCast(unit, spell, x, y);   // 🐻 THE BEAR: Hibernate's sleep, Bear Hug's Root + Grudge
+                _abAfterCast(unit, spell);   // 🫀 THE ABOMINATION: the mouths close
                 _psAfterCast(unit, spell, x, y, z);   // 💉 THE PLASTIC SURGEON: Work Done, Liposuction's shield
                 if (spell.kind !== 'dash' && Array.isArray(spell.selfStatusAfter) && spell.selfStatusAfter.length && !unit.dead && state.phase === 'battle') {
                     applyStatusEffects(unit, spell.selfStatusAfter, `${spell.name}: `, unit);
@@ -87363,6 +87457,7 @@
                             tx: unit.x, ty: unit.y,
                             aoeRadius: _spellMaskOf(spell) ? _spellAoeReach(spell, 2) : (spell.aoeRadius != null ? spell.aoeRadius : 2),
                             aoeMask: _spellMaskOf(spell) || undefined,
+                            hits: spell.limbsSpendAll ? (spell._abHits | 0) : undefined,   // 🫀 Unfold: one burst a limb
                         });
                     }
                 }
@@ -87372,7 +87467,8 @@
                 // Victim list comes from the ONE shared filter (_barrageTargets):
                 // hitsWetOnly, 3D reach and LOS rules live there, so this handler
                 // and the menu greying can never disagree about who gets hit.
-                const enemies = _barrageTargets(unit, spell);
+                /* 🫀 Unfold: one hit a limb spent, every enemy once before any twice (_abUnfoldList) */
+                const enemies = spell.limbsSpendAll ? _abUnfoldList(_barrageTargets(unit, spell), spell._abHits) : _barrageTargets(unit, spell);
                 if (enemies.length === 0) {
                     _spellFocusCamera(unit, x, y);
                     addLog(`${_ctName(unit)} casts ${_ctSp(spell.name)} but no enemies are in range.`);
