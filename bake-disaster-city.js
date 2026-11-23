@@ -1209,14 +1209,43 @@ count.levels = lvCount;
       BEACH_ZONE = { x0: HALF, z0: -HALF, x1: r3(HALF + ROOM.east * C), z1: HALF, floor: UD.GROUND.floor, cliff: UD.GROUND.cliff, path: UD.GROUND.path, floorTint: '#dcdce0', pal: palOut.slice(0, 8), calmShade: true, out };
       const zi = lines.findIndex(l => /^ +zones: /.test(l)); if (zi < 0) throw new Error('ONE SAND: the zones line was not found'); lines[zi] = zonesLine();
       console.warn('[one sand] the beach strip is a calm-lit zone; ' + out.length + ' runs of boards and concrete stay the city\'s'); } }
+/* ── THE OPEN DOORS (docs/interiors/open-doors.js, 2026-11-23, the building-interiors plan step 2; mondo: "If there is a door the player should be
+   able to walk inside of it"): every painted door on the ground opens its building row there (hollow, the doorway at the door, a kit; its other
+   painted doors = `gaps` with their leaves), and every shut textured building with its own painted front opens on its front. Not here: Civic Center
+   (the second account's district), the Hotel (its own thread), the pack and prism buildings (their faces are a model's / a sprite's). ── */
+const openDoors = stage => { const KITS = require(path.join(REPO, 'docs/interiors/kits.js')), OPEN = require(path.join(REPO, 'docs/interiors/open-doors.js'));
+  const cl = v => Math.max(0, Math.min(N * 12 - 1, Math.floor((v + HALF) / C)));
+  const plotFor = f => { const m = /P\d\d-\d\d/.exec(String(f.id || '')); return (m && plotOf[m[0]]) || (typeof f.x === 'number' && Math.abs(f.x) < HALF && Math.abs(f.z) < HALF ? plotAtCell(cl(f.x), cl(f.z)) : null); };
+  const HELD = /^(dc:P08-00-B1|mall:|shore:)/, distOf = f => { const p = plotFor(f); return p ? p.d : ''; };
+  const skip = f => HELD.test(String(f.id || '')) || distOf(f) === 'C';
+  const STYLE_KIT = { office: 'office', tower: 'office', factory: 'workshop', stucco: 'flat', residential: 'flat' };
+  const nameOf = f => { const m = /P\d\d-\d\d-B\d/.exec(String(f.id || '')), p = m && plotOf[m[0].slice(0, 6)], b = p && p.buildings.find(q => q.id === m[0]); return (b && b.name) || (f.style === 'factory' ? 'workshop' : f.style === 'stucco' || f.style === 'residential' ? 'flat' : f.style === 'office' || f.style === 'tower' ? 'office' : ''); };
+  /* the doors find-doors.js found with their ground outside on another level than the floor inside (WALKIN-X, 11-23): windows (mondo's rule) */
+  const WINDOWS_AT = [[56.58, -252], [62.42, -252], [-40.42, -126], [-35.17, -126], [21, -7], [193.5, -217], [150.6, -175], [252, -140], [136.75, -126], [183.75, -84],
+      [239.25, -126], [247.25, -126], [84, -54.89], [141.5, -42], [188, -52.5]];
+  const R = OPEN({ features, KITS, nameOf, skip, windowsAt: WINDOWS_AT });
+  if (stage) { count.openDoorsLast = R.count; console.warn('[open doors, the last stage] ' + JSON.stringify(R.count)); if (process.env.DOORS_DUMP) R.say.forEach(l => console.log('DOORS ' + l)); return; }   // (the rows a district's `last` hook drew: its painted doors only)
+  /* THE SHUT FRONTS: a textured building drawn with its own outside and no inside (its style paints a door on its front) opens on its front;
+     TURN = the ones whose front faces no walked ground (find-doors.js: `sides walked`), turned to one that does */
+  const TURN = { 'dc:in39': 180 }; let nS = 0;
+  features.forEach(f => { if (!f || f.k !== 'texbuilding' || f.hollow || f.skin === false || f.doorsOnly || typeof f.y === 'number' || skip(f)) return;
+      if ((typeof f.key === 'string' && /^(pack_bld_\d\d|building_\d+|ancient_building|abandoned_building_\d|church_\d|shop)$/.test(f.key)) || /^walkin:/.test(String(f.id || ''))) return;
+      if (TURN[f.id]) f.rot = (((+f.rot || 0) + TURN[f.id]) % 360 + 360) % 360;
+      if ((+f.storeys || 2) > 2) f.inH = 6.68;
+      f.kit = KITS.kitFor(nameOf(f) || STYLE_KIT[f.style] || ''); f.kitSeed = f.id; nS++; });
+  count.openDoors = Object.assign({}, R.count, { fronts: nS });
+  console.warn('[open doors] ' + JSON.stringify(count.openDoors));
+  if (process.env.DOORS_DUMP) R.say.forEach(l => console.log('DOORS ' + l)); };
+openDoors();
 /* ── THE KITS (docs/interiors/kits.js, 2026-11-23, mondo: "If there is a door the player should be able to walk inside of it"): a walk-in row a
    district file marked `kit: 'shop' | 'flat' | 'office' | 'workshop' | 'kiosk' | 'clinic' | 'back'` (+ `kitSeed`, `kitTint`) is furnished here, after
    every district, before the polish: its arch row, its props and its ghost walls. A row with no `hollow` is opened (hollow + skin kept) first. ── */
-{ const KITS = require(path.join(REPO, 'docs/interiors/kits.js')); let nK = 0;
+const furnishKits = () => { const KITS = require(path.join(REPO, 'docs/interiors/kits.js')); let nK = 0;
   features.slice().forEach(f => { if (!f || f.k !== 'texbuilding' || !f.kit) return; f.hollow = true;
       const o = KITS.furnish(f, f.kit, { seed: f.kitSeed || f.id }); delete f.kit; delete f.kitSeed; delete f.kitTint;
       if (o.arch) features.push(o.arch); o.ghosts.forEach(g => features.push(g)); o.props.forEach(q => props.push(q)); nK++; });
-  if (nK) { count.kits = nK; console.warn('[kits] ' + nK + ' walk-ins furnished'); } }
+  if (nK) { count.kits = (count.kits || 0) + nK; console.warn('[kits] ' + nK + ' walk-ins furnished'); } };
+furnishKits();
 /* ── THE INTERIOR POLISH (docs/disaster-city/interior-polish.js; mondo 11-15: "rugs/carpets flickering ... do another polish pass on disaster
    city"): last of all, over every walk-in building whichever district wrote it: props beside a wall off the roof (`floor: true`), no two drawn
    faces on one plane, rugs onto the floor sheet, props onto the raised floor they stand in. It moves rows, it never drops one. ── */
@@ -1377,6 +1406,7 @@ if (!process.env.DC_NO_EXT) {
    stands where the game will draw it (a row glued to a prop, a hedge in a planter, is written at the prop's real place). The rows are written
    again; the polish and the passes before it are NOT run again, so a `last` hook adds only drawn rows they do not read and moves nothing. */
 if (DISTRICTS.some(m => typeof m.last === 'function')) { dcRun('last'); clearStations();
+    openDoors('last'); furnishKits();   // THE OPEN DOORS: the painted doors the `last` hooks drew (the bay's shutters), and a kit in any row they opened
     const pNow = lines.slice(propsLine).findIndex(l => l === "            ],");
     lines.splice(propsLine, pNow, ...props.map(f => "                " + J(f) + ","));
     squareFills(); doorwayClear(); railOnBridge();

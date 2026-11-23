@@ -48,8 +48,10 @@ function scan(D, id, reach) {
             const padNodes = (info.pads || []).map(p => [Math.round((p.x - info.x0) / info.res), Math.round((p.z - info.z0) / info.res)]);
             try { _hqTReachJump(info, padNodes, null, _hqTClimbLim(info, JP)).forEach((y, k) => { if (k < NN) { G[k] = y; reached++; } }); } catch (e) { G = null; } } }
     /* is the ground about (x, z) walked? any reached node within 0.9 m. null = not known (no walk) */
-    const walked = (x, z) => { if (!G) return null; const i0 = Math.round((x - info.x0) / info.res), j0 = Math.round((z - info.z0) / info.res), n = Math.max(1, Math.ceil(0.9 / info.res));
-        for (let j = j0 - n; j <= j0 + n; j++) for (let i = i0 - n; i <= i0 + n; i++) { if (i < 0 || j < 0 || i >= info.nx || j >= info.nz) continue; const y = G[j * info.nx + i]; if (y === y) return true; } return false; };
+    /* (2026-11-23, THE OPEN DOORS: \`y\` = the door's foot when known: the walked ground must be at that height, ±1.3 m, so a door on a roof hut
+       or a gallery is not "reached" by the street under it) */
+    const walked = (x, z, yy) => { if (!G) return null; const i0 = Math.round((x - info.x0) / info.res), j0 = Math.round((z - info.z0) / info.res), n = Math.max(1, Math.ceil(0.9 / info.res));
+        for (let j = j0 - n; j <= j0 + n; j++) for (let i = i0 - n; i <= i0 + n; i++) { if (i < 0 || j < 0 || i >= info.nx || j >= info.nz) continue; const y = G[j * info.nx + i]; if (y === y && (yy == null || Math.abs(y - yy) < 1.3)) return true; } return false; };
     const yes = v => v === null ? '?' : v ? 'yes' : 'NO';
     const lot = (f, lx, lz) => { const q = (+f.rot || 0) * D2R, c = Math.cos(q), s = Math.sin(q); return [f.x + lx * c - lz * s, f.z + lx * s + lz * c]; };
     /* a building's four sides: which open onto walked ground (1.4 m out of the middle of each) */
@@ -63,7 +65,9 @@ function scan(D, id, reach) {
         list.forEach(([lx, lz, nx, nz, nm]) => {
             const at = lot(f, lx, lz), out = lot(f, lx + nx * 1.4, lz + nz * 1.4), inn = lot(f, lx - nx * 1.2, lz - nz * 1.2);
             doorways.push(at);
-            const ro = walked(out[0], out[1]), ri = walked(inn[0], inn[1]);
+            /* (2026-11-23) the ground out of the doorway must be at the floor's height (±1.3 m): a door onto a hillside 6 m up is no way in */
+            const hAt = (x, z) => { if (!G) return null; const i = Math.round((x - info.x0) / info.res), j = Math.round((z - info.z0) / info.res); if (i < 0 || j < 0 || i >= info.nx || j >= info.nz) return null; const y = G[j * info.nx + i]; return y === y ? y : null; };
+            const fl = hAt(inn[0], inn[1]), ri = walked(inn[0], inn[1]), ro = walked(out[0], out[1], fl);
             const row = { kind: ro === false ? 'WALKIN-X' : 'OPEN', id: f.id || '', door: nm, x: r2(at[0]), z: r2(at[1]), reach: yes(ro), inside: yes(ri) };
             if (ro === false) row.sides = sides(f, w, d);
             (ro === false ? closed : open).push(row);
@@ -77,10 +81,13 @@ function scan(D, id, reach) {
             const sz = P.size || [1, 1, 1], at = lot(a, +P.p[0] || 0, +P.p[2] || 0);
             if (nearDoorway(at[0], at[1])) return;
             if (P.s === 'box' && (sz[1] || 0) < 1.2) return;   // a band / a sill in the sheet, not a door
+            if (/^urban:MetalShutter/.test(P.key) && (+P.p[1] || 0) >= 0.9) return;   // a window's shutter (the urban decay pass's roller shutters over the old shutter sheet), not a door
+            if ((+P.p[1] || 0) >= 0.5 && (+P.p[1] || 0) < 1.5 && (sz[1] || 0) < 2.0) return;   // a hatch, a shop window in a door's glass sheet (a kiosk's serving window): no doorway
+            const fy = (typeof a.y === 'number') ? a.y + (+P.p[1] || 0) : null;   // the door's foot in the room's heights (an arch row's \`y\` = its ground)
             /* the door's two sides: across its thin axis (a quad looks along its own +z) */
             const q = ((+a.rot || 0) + (+P.ry || 0)) * D2R, thinX = P.s === 'box' && (sz[0] || 1) < (sz[2] || 1), ax = thinX ? [Math.cos(q), Math.sin(q)] : [-Math.sin(q), Math.cos(q)];
             const half = (P.s === 'box' ? (thinX ? sz[0] : sz[2]) / 2 : 0) + 1.3;
-            const r0 = walked(at[0] + ax[0] * half, at[1] + ax[1] * half), r1 = walked(at[0] - ax[0] * half, at[1] - ax[1] * half);
+            const r0 = walked(at[0] + ax[0] * half, at[1] + ax[1] * half, fy), r1 = walked(at[0] - ax[0] * half, at[1] - ax[1] * half, fy);
             /* one door = its halves + a shutter's stacked bands: a part within 1.6 m of a door already listed in the same row joins it */
             const aid = a.id || '', twin = closed.find(r => r.kind === 'DRAWN' && r._a === aid && Math.hypot(r._x - at[0], r._z - at[1]) < 1.6);
             const rc = (r0 === null) ? '?' : (r0 || r1) ? 'yes' : 'NO';
