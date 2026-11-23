@@ -2789,7 +2789,7 @@ const RACE_MODELS_3D = {
   },
   'butterfly girl': {
     female: _mkUAL('butterfly_girl', 'butterfly_girl', {
-      model: 'https://cdn.entropywars.net/Assets/characters/races/butterfly_girl/female/Meshy_AI_butterfly_girl_Running.glb',
+      model: 'https://cdn.entropywars.net/Assets/characters/races/butterfly_girl/female/Meshy_AI_butterfly_girl_wings2_Running.glb',   // 2026-11-23 THE WING BONES (bake-wings.py): the same rig + two wing bones that beat
       heightRatio: 0.95, basicAttackKind: 'magic',
     }),
   },
@@ -2798,6 +2798,8 @@ const RACE_MODELS_3D = {
     male: _mkUAL('plastic_surgeon', 'plastic_surgeon', {
       model: 'https://cdn.entropywars.net/Assets/characters/races/plastic_surgeon/male/Meshy_AI_plastic_surgeon_Running.glb',
       heightRatio: 1.0, basicAttackKind: 'physical',
+      /* 2026-11-23 THE PLASTIC SURGEON: the basic attack is a scalpel flick, the scalpel prop already on R2, held (THE UNIT GEAR) */
+      procRig: 'unitGear', gear: { held: { url: 'https://cdn.entropywars.net/Assets/world/props/misc/scalpel.glb', len: 0.16, fit: 'max', rot: [0, 0, 1.5708], grip: 0.4 } },
     }),
   },
   /* THE NEW RACES 2 (2026-11-17, mondo's picks from the zone characters): Meshy image-to-3d (meshy-t2.5, a-pose) from a
@@ -8647,6 +8649,16 @@ const TRAP_TILE_SPRITES = {
             '<path d="M44 36 L38 44 L34 37 Z" fill="rgba(185,185,175,0.5)"/>' +
             '<path d="M26 26 L38 26 L32 33 Z" fill="none" stroke="rgba(160,160,150,0.45)" stroke-width="1.2"/>' +
             '<circle cx="32" cy="32" r="2.5" fill="rgba(220,220,210,0.5)"/>'
+        )
+    ],
+    /* 🦋 THE MONARCH's Sleeper Cell (2026-11-23): a chrysalis hung on the tile, its gold dots and the butterfly to come */
+    chrysalis: [
+        _terrainSvg(
+            '<circle cx="32" cy="32" r="19" fill="none" stroke="rgba(255,170,70,0.4)" stroke-width="1.5" stroke-dasharray="4 4"/>' +
+            '<ellipse cx="32" cy="33" rx="8" ry="14" fill="rgba(120,170,90,0.5)" stroke="rgba(230,255,200,0.6)" stroke-width="1.4"/>' +
+            '<path d="M25 27 Q32 31 39 27 M24 34 Q32 38 40 34 M26 41 Q32 44 38 41" fill="none" stroke="rgba(230,255,200,0.45)" stroke-width="1"/>' +
+            '<circle cx="29" cy="24" r="1.4" fill="rgba(255,210,90,0.85)"/><circle cx="35" cy="24" r="1.4" fill="rgba(255,210,90,0.85)"/>' +
+            '<path d="M32 19 L32 14" stroke="rgba(230,255,200,0.6)" stroke-width="1.4"/>'
         )
     ],
     frost: [
