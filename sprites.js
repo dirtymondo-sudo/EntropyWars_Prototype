@@ -148,6 +148,11 @@ const EW_ASSET_MOVES = [
   ['Assets/Sprites/Races/gladiator/', 'Assets/characters/races/gladiator/'],   // 2026-11-19 THE COMING RACES
   ['Assets/Sprites/Races/farmer/', 'Assets/characters/races/farmer/'],   // 2026-11-19 THE COMING RACES
   ['Assets/Sprites/Races/jellyfish_ufo/', 'Assets/characters/races/jellyfish_ufo/'],   // 2026-11-19 THE COMING RACES
+  ['Assets/Sprites/Races/bear/', 'Assets/characters/races/bear/'],   // 2026-11-23 THE COMING RACES 2
+  ['Assets/Sprites/Races/rat/', 'Assets/characters/races/rat/'],   // 2026-11-23 THE COMING RACES 2
+  ['Assets/Sprites/Races/monarch/', 'Assets/characters/races/monarch/'],   // 2026-11-23 THE COMING RACES 2
+  ['Assets/Sprites/Races/butterfly_girl/', 'Assets/characters/races/butterfly_girl/'],   // 2026-11-23 THE COMING RACES 2
+  ['Assets/Sprites/Races/plastic_surgeon/', 'Assets/characters/races/plastic_surgeon/'],   // 2026-11-23 THE COMING RACES 2
   ['Assets/Sprites/Races/librarian/', 'Assets/characters/races/librarian/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/televangelist/', 'Assets/characters/races/televangelist/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/influencer/', 'Assets/characters/races/influencer/'],   // 2026-11-17 THE NEW RACES 2
@@ -572,6 +577,11 @@ const RACE_SPRITE_GENDERS = {
   'gladiator': 'both',   // 2026-11-19 THE COMING RACES
   'farmer': 'male',   // 2026-11-19 THE COMING RACES
   'jellyfish ufo': 'male',   // 2026-11-19 THE COMING RACES
+  'bear': 'both',   // 2026-11-23 THE COMING RACES 2; THE BEAR'S COATS (11-23): the grizzly is the male side, the polar bear the female side
+  'rat': 'male',   // 2026-11-23 THE COMING RACES 2
+  'monarch': 'female',   // 2026-11-23 THE COMING RACES 2
+  'butterfly girl': 'female',   // 2026-11-23 THE COMING RACES 2
+  'plastic surgeon': 'male',   // 2026-11-23 THE COMING RACES 2
   'librarian': 'female',   // 2026-11-17 THE NEW RACES 2
   'televangelist': 'male',   // 2026-11-17 THE NEW RACES 2
   'influencer': 'female',   // 2026-11-17 THE NEW RACES 2
@@ -769,6 +779,11 @@ const _CHARACTER_SPRITES = {
   'gladiator': `${_S}/Races/gladiator/male/gladiator_m_px.png`,   // 2026-11-19 THE COMING RACES — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'farmer': `${_S}/Races/farmer/male/farmer_px.png`,   // 2026-11-19 THE COMING RACES — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'jellyfish ufo': `${_S}/Races/jellyfish_ufo/male/jellyfish_ufo_px.png`,   // 2026-11-19 THE COMING RACES — 128x128 pixel sprite (Sprite AI restyle of its 3D model's front render)
+  'bear': `${_S}/Races/bear/male/bear_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'rat': `${_S}/Races/rat/male/rat_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'monarch': `${_S}/Races/monarch/female/monarch_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'butterfly girl': `${_S}/Races/butterfly_girl/female/butterfly_girl_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'plastic surgeon': `${_S}/Races/plastic_surgeon/male/plastic_surgeon_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'librarian': `${_S}/Races/librarian/female/librarian_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'televangelist': `${_S}/Races/televangelist/male/televangelist_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'influencer': `${_S}/Races/influencer/female/influencer_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
@@ -890,6 +905,7 @@ const _NEW_FEMALE_SPRITES = {
   'cyborg': `${_S}/Races/cyborg/female/cyborg_f2_px.png`,
   'pharaoh': `${_S}/Races/pharaoh/female/pharaoh_f_px.png`,   // 2026-11-19 — Cleopatra (Sprite AI restyle of her model's front render)
   'mech': `${_S}/Races/mech/female/mech_f2_px2.png`,   // straight-on: Sprite AI restyle of her model's front render (the concept was turned)
+  'bear': `${_S}/Races/bear/polar/bear_polar_px.png`,   // 2026-11-23 THE BEAR'S COATS — the polar bear (the race's female side)
   'streamer': `${_S}/Races/streamer/female/egirl_f_px.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of the E-Girl's 3D model's front render)
   'vtuber': `${_S}/Races/vtuber/female/vtuber_f_px.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of her full Meshy 3D model's front render)
 };
@@ -2289,14 +2305,14 @@ const RACE_MODELS_3D = {
   // male model — see getRace3DModel(), which swaps this out for the human model
   // while getCurrentCyclePhase() === 'day'.
   'werewolf': {
-    male: _mk3d('Werewolf/male', 'werewolf', {
-      idle: 'Idle_10', walk: 'Running', jump: 'Regular_Jump', hit: 'Face_Punch_Reaction',
-      death: 'Dead', cast: 'Right_Hand_Sword_Slash', castMelee: 'Right_Hand_Sword_Slash',
-      // spare on R2: Idle_11, Knock_Down
-    }, { castTimeScale: 2.2, heightRatio: 1.3,      // large hulking beast
-         lib: { idle: { clip: 'Idle_10', lib: 2 },        // feral sway
-                walk: { clip: 'Zombie_Walk_Fwd_Loop', lib: 1, ts: 2.5 },
-                castMelee: { clip: 'Zombie_Scratch', lib: 1, ts: 1.5 } } }),
+    male: _mkUAL('werewolf/male', 'werewolf_m_v2', {   // 2026-11-23 THE COMING RACES 2: mondo's new concept A, no chain (Meshy, made + rigged by Claude);
+      // the old 'werewolf' rig + clips stay on R2 (Races/Werewolf/male/)
+      model: 'https://cdn.entropywars.net/Assets/characters/races/werewolf/male/Meshy_AI_werewolf_m_v2_Running.glb',
+      castTimeScale: 2.2, heightRatio: 1.3,      // large hulking beast
+      lib: { idle: { clip: 'Idle_10', lib: 2 },        // feral sway
+             walk: { clip: 'Zombie_Walk_Fwd_Loop', lib: 1, ts: 2.5 },
+             castMelee: { clip: 'Zombie_Scratch', lib: 1, ts: 1.5 } },
+    }),
   },
   // Catgirl — gun for ranged (native Gunslinger), left hook for melee,
   // backflip jump. Spare on R2: Right_Hand_Sword_Slash, Hit_Reaction, Regular_Jump.
@@ -2334,11 +2350,12 @@ const RACE_MODELS_3D = {
       model: `${_S}/Races/vampire/male/Meshy_AI_vampire_m_Running.glb`,
       heightRatio: 1.0, basicAttackKind: 'claw',
     }),
-    female: _mk3d('vampire/female', 'beautiful_attractive_', {
-      idle: 'Idle_6', walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction',
-      death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
-      castSupport: 'mage_soell_cast_1',
-    }, { heightRatio: 0.97,      // tall, elegant
+    // 2026-11-23 (mondo: "for vampire just replace the current model"): concept D (raven bangs, black velvet dress with red
+    // lace, sheer floor-length cape), Meshy made + rigged by Claude; the shared library animates her. Was
+    // _mk3d('vampire/female', 'beautiful_attractive_', {idle:'Idle_6', walk:'Running', ...}) (kept on R2).
+    female: _mkUAL('vampire/female', 'vampire_f', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/vampire/female/Meshy_AI_vampire_f_Running.glb',
+      heightRatio: 0.97,      // tall, elegant
          basicAttackKind: 'claw',   // fangs and nails, never a sword
          lib: { idle: { clip: 'Idle_FoldArms_Loop', lib: 1 },
                 castMelee: { clip: 'Zombie_Scratch', lib: 1, ts: 1.5 } } }),
@@ -2737,6 +2754,50 @@ const RACE_MODELS_3D = {
   'jellyfish ufo': {
     male: { model: `${_S}/Races/jellyfish_ufo/male/jellyfish_ufo.glb`, clips: { idle: `${_S}/Races/jellyfish_ufo/male/jellyfish_ufo.glb`, walk: `${_S}/Races/jellyfish_ufo/male/jellyfish_ufo.glb` },
       heightRatio: 1.1, yawOffset: 0, basicAttackKind: 'physical' },
+  },
+  /* THE COMING RACES 2 (2026-11-23, mondo's picks in thread "Make concept art for new characters"): models only, no kits: they are in
+     data.js EW_COMING_RACES until their spell threads finish (one thread a unit). Meshy image-to-3d (meshy-t2.5, a-pose) + Meshy
+     rigging; sources + scripts: project files char-concepts-20261123/. The Bear is ONE race: the grizzly is its model, the polar bear
+     its variant (BEAR_POLAR_3D below, ice spells for that look are the Bear thread's call). The Rat becomes the Rat King at enough
+     stacks (RAT_KING_3D below; the stacks are the Rat thread's call). */
+  'bear': {
+    male: _mkUAL('bear', 'bear', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/bear/male/Meshy_AI_bear_Running.glb',
+      heightRatio: 1.25, basicAttackKind: 'claw',
+    }),
+    /* THE BEAR'S COATS (2026-11-23, mondo OK'd "one Bear unit with two coats"): the polar bear is the race's female side, so it keeps
+       its own Ice spells (data.js RACE_GENDER_SPELLS) and a team can field one of each. BEAR_POLAR_3D below is this same def. */
+    female: _mkUAL('bear/polar', 'bear_polar', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/bear/polar/Meshy_AI_bear_polar_Running.glb',
+      heightRatio: 1.3, basicAttackKind: 'claw',
+    }),
+  },
+  'rat': {
+    male: _mkUAL('rat', 'rat', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/rat/male/Meshy_AI_rat_Running.glb',
+      heightRatio: 0.85, basicAttackKind: 'claw',
+    }),
+  },
+  'monarch': {
+    female: _mkUAL('monarch', 'monarch', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/monarch/female/Meshy_AI_monarch_Running.glb',
+      heightRatio: 0.97, basicAttackKind: 'magic',
+    }),
+  },
+  'butterfly girl': {
+    female: _mkUAL('butterfly_girl', 'butterfly_girl', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/butterfly_girl/female/Meshy_AI_butterfly_girl_wings2_Running.glb',   // 2026-11-23 THE WING BONES (bake-wings.py): the same rig + two wing bones that beat
+      heightRatio: 0.95, basicAttackKind: 'magic',
+    }),
+  },
+
+  'plastic surgeon': {
+    male: _mkUAL('plastic_surgeon', 'plastic_surgeon', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/plastic_surgeon/male/Meshy_AI_plastic_surgeon_Running.glb',
+      heightRatio: 1.0, basicAttackKind: 'physical',
+      /* 2026-11-23 THE PLASTIC SURGEON: the basic attack is a scalpel flick, the scalpel prop already on R2, held (THE UNIT GEAR) */
+      procRig: 'unitGear', gear: { held: { url: 'https://cdn.entropywars.net/Assets/world/props/misc/scalpel.glb', len: 0.16, fit: 'max', rot: [0, 0, 1.5708], grip: 0.4 } },
+    }),
   },
   /* THE NEW RACES 2 (2026-11-17, mondo's picks from the zone characters): Meshy image-to-3d (meshy-t2.5, a-pose) from a
      nano-banana-pro concept, rigged by the Meshy rigging API. The Boltzmann Brain has no body to rig: a still model.
@@ -6884,6 +6945,17 @@ const ICE_QUEEN_SUPER_3D = _mkUAL('icequeen', 'ice_queen_super', {
   heightRatio: 1.02, basicAttackKind: 'magic', transformFx: true,
 });
 if (typeof window !== 'undefined') { window.ewSuperOnBoard = ewSuperOnBoard; window.EW_SUPER_RACES = EW_SUPER_RACES; }
+/* THE BEAR'S POLAR LOOK + THE RAT KING (2026-11-23, THE COMING RACES 2). mondo: "I don't think the grizzly and polar bear need to be
+   separate, polar bear would just have access to some spells in the ice family" and "if he gets enough stacks he becomes the rat king".
+   Looks only: a unit whose appearance.form is 'polar' (a bear) or 'king' (a rat) wears these. What sets the form is each unit's spell
+   thread's job; give the unit's structural serial the form so the swap lands at once. Their pixel sprites are on R2 beside the models:
+   Races/bear/polar/bear_polar_px.png, Races/rat/king/rat_king_px.png. */
+const BEAR_POLAR_3D = RACE_MODELS_3D.bear.female;   // THE BEAR'S COATS (2026-11-23): the polar coat is the race's female side
+const RAT_KING_3D = _mkUAL('rat/king', 'rat_king', {
+  model: 'https://cdn.entropywars.net/Assets/characters/races/rat/king/Meshy_AI_rat_king_Running.glb',
+  heightRatio: 0.9, basicAttackKind: 'claw', transformFx: true,
+});
+if (typeof window !== 'undefined') { window.BEAR_POLAR_3D = BEAR_POLAR_3D; window.RAT_KING_3D = RAT_KING_3D; }
 const _castUnitDefs = {};
 function getRace3DModel(race, gender, appearance) {
   if (typeof window !== 'undefined' && window.EW_DISABLE_3D_UNITS) return null;
@@ -6905,6 +6977,8 @@ function getRace3DModel(race, gender, appearance) {
      side) stands on the board, every Ice Queen wears the ice sorceress supervillain. Looks only. three-renderer.js
      _computeUnitStructuralSerial hashes ewSuperOnBoard() for her, so the swap lands the moment a super joins or falls. */
   if (race === 'ice queen' && ewSuperOnBoard()) return ICE_QUEEN_SUPER_3D;
+  if (appearance && appearance.form === 'polar' && race === 'bear') return BEAR_POLAR_3D;   // THE BEAR'S POLAR LOOK (2026-11-23)
+  if (appearance && appearance.form === 'king' && race === 'rat') return RAT_KING_3D;   // THE RAT KING (2026-11-23)
   const custom = getCharacterAppearanceModel(race, gender, appearance);
   if (custom) return custom;
   // Werewolf transformation: a human (Homosapien Freelancer male) by day,
@@ -7466,6 +7540,11 @@ const RACE_SPRITES = {
   'gladiator': `${_S}/Races/gladiator/male/gladiator_m_px.png`,   // 2026-11-19 THE COMING RACES — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'farmer': `${_S}/Races/farmer/male/farmer_px.png`,   // 2026-11-19 THE COMING RACES — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'jellyfish ufo': `${_S}/Races/jellyfish_ufo/male/jellyfish_ufo_px.png`,   // 2026-11-19 THE COMING RACES — 128x128 pixel sprite (Sprite AI restyle of its 3D model's front render)
+  'bear': `${_S}/Races/bear/male/bear_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'rat': `${_S}/Races/rat/male/rat_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'monarch': `${_S}/Races/monarch/female/monarch_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'butterfly girl': `${_S}/Races/butterfly_girl/female/butterfly_girl_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'plastic surgeon': `${_S}/Races/plastic_surgeon/male/plastic_surgeon_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'librarian': `${_S}/Races/librarian/female/librarian_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'televangelist': `${_S}/Races/televangelist/male/televangelist_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'influencer': `${_S}/Races/influencer/female/influencer_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
@@ -8557,6 +8636,16 @@ const TRAP_TILE_SPRITES = {
             '<path d="M44 36 L38 44 L34 37 Z" fill="rgba(185,185,175,0.5)"/>' +
             '<path d="M26 26 L38 26 L32 33 Z" fill="none" stroke="rgba(160,160,150,0.45)" stroke-width="1.2"/>' +
             '<circle cx="32" cy="32" r="2.5" fill="rgba(220,220,210,0.5)"/>'
+        )
+    ],
+    /* 🦋 THE MONARCH's Sleeper Cell (2026-11-23): a chrysalis hung on the tile, its gold dots and the butterfly to come */
+    chrysalis: [
+        _terrainSvg(
+            '<circle cx="32" cy="32" r="19" fill="none" stroke="rgba(255,170,70,0.4)" stroke-width="1.5" stroke-dasharray="4 4"/>' +
+            '<ellipse cx="32" cy="33" rx="8" ry="14" fill="rgba(120,170,90,0.5)" stroke="rgba(230,255,200,0.6)" stroke-width="1.4"/>' +
+            '<path d="M25 27 Q32 31 39 27 M24 34 Q32 38 40 34 M26 41 Q32 44 38 41" fill="none" stroke="rgba(230,255,200,0.45)" stroke-width="1"/>' +
+            '<circle cx="29" cy="24" r="1.4" fill="rgba(255,210,90,0.85)"/><circle cx="35" cy="24" r="1.4" fill="rgba(255,210,90,0.85)"/>' +
+            '<path d="M32 19 L32 14" stroke="rgba(230,255,200,0.6)" stroke-width="1.4"/>'
         )
     ],
     frost: [

@@ -6172,6 +6172,30 @@ files `gladiator-farmer-concepts/gold.py`). The Jellyfish UFO has no Meshy rig: 
 waist, each copy skinned to its own 6-bone chain, and a 2 s looping clip `Sway` in the same file (`jelly.py`); its RACE_MODELS_3D row plays
 that clip as idle and walk (`clips.idle` = the file). Its claw arms do not move. Flight / hover height is the kit thread's call.
 
+## THE COMING RACES 2 (2026-11-23, thread "Make concept art for new characters")
+mondo picked Meshy concepts and said "wire them up and start a thread for each new one to come up with a plan for their unique
+spells/playstyle and vfx". Models + 128x128 Sprite AI sprites are IN for six new races, kits are NOT: data.js `EW_COMING_RACES` =
+`bear`, `rat`, `monarch`, `butterfly girl`, `plastic surgeon` (labels + a first-guess type in RACE_PROFILES; the
+Relationship Web lists them through fresh.js). One spell thread a unit (the coordinator started them 11-23); THE UNLOCK is the same as
+above (kit, then move the key into both AVAILABLE_RACES).
+- THE BEAR is ONE race (mondo: "polar bear would just have access to some spells in the ice family but they would both share the same
+  bear skill family"): the grizzly is RACE_MODELS_3D.bear.male, the polar bear is sprites.js `BEAR_POLAR_3D`, worn when the unit's
+  `appearance.form === 'polar'` (sprite `Races/bear/polar/bear_polar_px.png`). How a bear gets the polar look + its ice spells = the Bear thread.
+  UNLOCKED 11-23, see "THE BEAR" below: the polar coat is the race's FEMALE side (one of each per team, like Streamer/E-Girl).
+- THE RAT KING (mondo: "if he gets enough stacks he becomes the rat king"): sprites.js `RAT_KING_3D` (transformFx), worn when
+  `appearance.form === 'king'` (sprite `Races/rat/king/rat_king_px.png`). The stacks + the swap trigger = the Rat thread (also hash the form
+  into three-renderer.js `_computeUnitStructuralSerial`, like the Ice Queen's super form, so it swaps at once).
+  **DONE 11-23: the Rat is unlocked with his kit, see "THE RAT KING" below.**
+- THE WEREWOLF's male model was replaced by mondo's new concept A (no chain): `werewolf/male/Meshy_AI_werewolf_m_v2_Running.glb`, same lib
+  clips + scale + day form; the old rig stays on R2. The female VAMPIRE's new model is the Vampire thread's PR (mondo: "just replace the
+  current model"), file already on R2: `vampire/female/Meshy_AI_vampire_f_v2_Running.glb`.
+- THE HORRORS (two, unnamed) are NOT wired: mondo wants each built from separate moving parts like the Virus / Cursed TV. The ten Meshy parts
+  are on R2 at `Assets/characters/races/horror_a/parts/horror_a_{core,head,arm,tentacle,cage}.glb` and
+  `horror_b/parts/horror_b_{maw,mask,limb,fingers,shard}.glb` (unrigged; B's mask came out a whole head). Assembly + rig = the Horrors thread.
+- THE MANNEQUIN WAS CUT (mondo 11-23, "lets go ahead and cut this character concept"): unwired the same day; its model + sprite stay on R2
+  (`Assets/characters/races/mannequin/female/`), nothing reads them. The Plastic Surgeon is v2 (v1 read "burnt").
+- Sources, scripts (gen.py, models.py, sprites/run.py) and sheets: project files `char-concepts-20261123/`.
+
 ## THE COMING RACES, THE KITS (2026-11-19, the second account's thread "spell and combat plans for the coming races"; mondo OK'd the plans in the thread)
 mondo's words: the Jellyfish UFO "is too close to a stereotypical UFO. We already have grey for that. The jellyfish UFO is just an advanced
 sentient Jellyfish species that lives underwater" (so no abduction kit, types Anomaly + Tech, home The Deep); "I don't like trident thrust or
@@ -6219,6 +6243,121 @@ comments "LAB LOOP 11-21 PASS n"), Sacrifice, Spygear, Psychic, Dirty Fighting, 
 final lab's race spread is no wider than luck (5.05 pts from 50 on average, luck alone 5.21; races at ≤40 / ≥60 %: 23 → 19). 11-22 REVIEW: the race stat rows were put back (noise, the baseline was already inside luck), the spell family fixes kept, Boltzmann Brain's pool trim undone; see the notes file's top.
 How to run it, the method, every pass and every race: docs/notes/balance-loop-20261121.md (tools bal-analyze.js,
 bal-plan.js, bal-families.js; train_headless.js now saves the full tables and survives tab crashes).
+
+## THE MONARCH (2026-11-23, thread "Plan Monarch's spells and playstyle"; mondo OK'd the plan + mock-up: project files `monarch-kit/`)
+The first of THE COMING RACES 2 to get her kit: out of `EW_COMING_RACES`, into both AVAILABLE_RACES (data.js + server.js). A
+brainwashed 1960s pin-up sleeper agent of the D.U.M.B. (concept A). Human / Anomaly, class specialist, home D.U.M.B., price 450,
+psychic resist / fire weak, HP 1000 · MP 210 · ATK 95 · DEF 85 · M.DEF 140 · M.ATK 165 · VIS 4 · CRT 24 · SPD 120 (first pass on the
+specialist median; the balance loop owns it from here). Families: her own `monarchprogramming` (signature) + seduction, spygear,
+deepstate. Finisher Sweet Dreams borrows the `lullaby` staging. Rules: battle.js block "THE MONARCH" (before LEAPFROG).
+- 🦋 PROGRAMMED (STATUS_DEFS `programmed`): STACKS up to 3 (`stack: 'add'`, `ownTick`). Its onApply calls `_monProgramHold`, which sets
+  `_stHold.programmed = { r: round + 1, by: programmer, af: 1 }` by hand: THE FULL ROUND's own expiry takes it off after the programmer's
+  NEXT turn ends (and the target's turn in that round). Every landing starts the clock again (mondo's status rule: she has to keep feeding
+  it). `_setStatusHold` returns early for it, `_STATUS_HOLD_SKIP` lists it, the held countdown never takes a stack (`ownTick`), and
+  `_monStrayStacks` (from `_nrRoundEnd`) clears a stack nobody holds. Every landing draws `monProgram` (one ring a stack).
+- TREE: Butterfly Kiss (T1, 85 magic r2, +1) · Pendulum (aoe 3×3 r3, no damage, +1 + Slow 1, cd 2) / Kaleidoscope Wings (aoe round her,
+  Charm 1 + 1 stack, she Levitates 1 via selfStatusAfter, cd 3) · Trigger Word (buff, cd 3) / Sleeper Cell (placeTrap trapType
+  `chrysalis`, no hit, Root 1 + 2 stacks, 1 at a time) · Metamorphosis (buff, `chrysalis` status, cd 5) / Chaos Theory (delayed 5×5 r5,
+  110 + 30 a Programmed stack on her enemies when it goes off, cd 4; the plan called it The Butterfly Effect, renamed because the Butterfly
+  Girl's plan has a spell of that name). Pendulum shipped as a 3×3 area, not the mock-up's cone (no cone shape in the engine).
+- TRIGGER WORD (`triggerWord`, `_monTriggerWord`): refused before any cost with no Programmed enemy in sight (`_monProgrammedFoes(unit,
+  true)`: fog = team vision). Each one in sight, by stacks: 1 = Discord 1; 2 = `_monSleeperStrike`: its own basic attack (ATK × the basic
+  coefficient, the hit pipeline takes the defence) on its NEAREST ally in its own reach (`_oppStrikeCanReach`), itself with nobody in
+  reach; 3 = the same, then Asleep 1. A unit that cannot swing (stunned, frozen, asleep, climbing) gets the Discord. Stacks clear.
+- METAMORPHOSIS: STATUS_DEFS `chrysalis` (blockMove + blockAction = the activation skips, damageTakenMult 0.5). Its onRemove calls
+  `_monHatch`: Levitating + Quickened 2 rounds and `_monHatched` = her next Trigger Word counts every stack one higher (spent there).
+- DELTA ALTER (passive `deltaAlter`): applyDamageToUnit → `_monDeltaCheck`: the first time each battle (`state._monDeltaUsed`) she drops
+  under half HP: +2 ATK stages for 2 rounds and `_deltaCrit` (rollCrit returns true once: her next BASIC attack crits).
+- CPU (ai.js): `programmed` is priced in the status table (45 + 35 a stack it already has + a share of its output, ~0 at 3); Trigger Word =
+  25 / 100 / 150 per sleeper at 1 / 2 / 3 stacks (0 with none); Metamorphosis = hurt + stacks out, 0 with an enemy beside her.
+- VFX (three-vfx-effects.js "THE MONARCH", kill-switch `window.EW_NO_MONARCH_VFX`): the side colours (own cyan, enemy pink-orange) on the
+  spiral, the stained-glass wings, the rings and the chrysalis rim; the butterflies are the game's Butterfly_Monarch (`_bugRun`). Kiss:
+  a monarch flies the line; Pendulum: a spiral on a thread swings, then lies on the 3×3 and turns; Wings: two glass wings open behind
+  her; Trigger Word: a spiral snaps shut over her head, monarchs burst out of each sleeper; Sleeper Cell (sprites.js TRAP_TILE_SPRITES
+  `chrysalis` for the owner's sigil): a chrysalis closes and cracks; Metamorphosis wrap + hatch; Chaos Theory: one monarch circles the
+  mark (her side only), a swarm spirals out at the blast; Delta: a red triangle.
+- Online: all host-side; the stacks, holds, statuses and HP state-sync; every look rides `_sigVfxGeom` (fireGeometry is relayed).
+## THE BUTTERFLY GIRL (2026-11-23, her kit; mondo OK'd the plan "yeah thas fine")
+Plan page https://claude.ai/artifact/7V3xVKvFCkYrZ3wEDJJTqZ. She left EW_COMING_RACES for AVAILABLE_RACES (data.js + server.js).
+- Race `'butterfly girl'`, female, caster, flies (SKY_RACES), type anomaly, resists wind, weak to ice; families `morpho` (her own) + wind, nature,
+  insectoid; home biome forest (The Fairy Forest, The Woods); POINT_OF_ENTRY Fairy Forest; tree Flutter / Eyespots / Butterfly Effect / raceTornado.
+- **FLUTTER** (STATUS_DEFS `flutter`, badge FLU, `_flutter` 1-3 on the unit, `_flutterSrcId` = her id): grows by 1 at every round end
+  (battle.js `_bfRoundEnd`, after `_nrRoundEnd`); at 3 it touches down as a TWISTER (`_bfTwister`): MEDIUM wind magic on the carrier's 3x3, hits only
+  the carrier's side, push 1, one twister per carrier per wave; it keeps growing after she dies. Spells: Flutter (T1, 80 wind, range 4, +1),
+  Eyespots (T2, Fear radius 2 around her + Flutter), Butterfly Effect (T3, buff: every Flutter +1 now; refused with no carrier).
+- **FLASH AND VANISH** (PASSIVE_DEFS `flashAndVanish`): the first enemy hit makes her Invisible until her next turn, once every 2 rounds; not on dots,
+  link echoes, Broken or already Invisible (`_bfFlashVanish` in applyDamageToUnit, `_bfVanishEnds` at her turn start).
+- AI: ai.js values Butterfly Effect by the twisters it sets off and the bodies near them; Flutter targets in a crowd score higher.
+- VFX (three-vfx-effects.js, kill switch `EW_NO_BUTTERFLY_VFX`): a morpho flies to the target; 1-3 morphos orbit a carrier's head (THE SHOULDER keeper,
+  its own small list, no scene scan, fired from the relayed `nrFlutter:sync`); two owl eyespots open and blink; a tornado of morphos for the twister; a
+  blue flash for the vanish. Everything goes through `_sigVfxGeom` = relayed online.
+- Finisher **Specimen** (`sig: 'specimen'`, `_sigSpecimen3D`): a swarm lifts the target, a glass case drops over it, a pin, a brass label.
+- Her wings flap: model `Meshy_AI_butterfly_girl_wings2_Running.glb` (bake-wings.py, see models-assets.md "THE WING BONES"); three-renderer.js
+  `_gearTick` beats `ewwing_L/R` (folded back, then open). Probe + proof: /mnt/project-files/butterfly-girl/.
+## THE BEAR (2026-11-23, thread "Plan the Bear's spells", plan https://claude.ai/artifact/Ts9s6MzEHgCeX8SCqrtqu2)
+mondo: one Bear, grizzly + polar share the bear family, the polar gets some Ice spells, the grizzly "a few nature spells too".
+- TWO COATS = the race's two sides: male = Grizzly (🌲), female = Polar (❄). data.js RACE_PROFILES.bear `coats` + `raceGenderSym(race, g)`
+  (party builder title/half badge, HUD face label show 🌲/❄ instead of ♂/♀). A team may field one of each. sprites.js
+  RACE_MODELS_3D.bear.female = the polar model (`BEAR_POLAR_3D` is the same def; `appearance.form === 'polar'` still works).
+- THE RULE, DON'T POKE THE BEAR: status `grudge` (STATUS_DEFS, ID-stored `_grudgeSrcId`, ends when the bear dies via `_TIED_STATUS_FIELDS`)
+  sits on ONE enemy: the last one to hurt the bear (not dots / link echoes) or the Bear Hug target. battle.js "THE BEAR" block
+  (`_bearSetGrudge`, `_bearOnHurt`, `_bearAfterCast`, `_bearBeforeTurn`).
+- FAMILY `bear` (unique): Paw Swipe T1 (knock 1 + Stagger), Bear Hug T2 (target Rooted + Grudge, the bear Rooted too, cd 2), Hibernate T2
+  (heal 12 %, Sleep, AP 0; undisturbed to its next turn = +20 % HP + 1 cleanse, woken by a hit = +1 ATK 2 rounds and the hitter takes the
+  Grudge; the wake runs first thing in `_statusHoldsBeforeTurn`, before the sleep turn-skip), Bear Down T3 (charge 3, ×1.5 vs the Grudge holder).
+- POOLS: both = bear + beastabilities + apexpredator (minus Tail Whip, Death Roll, Jurassic Jaw). Grizzly (RACE_GENDER_SPELLS male): Thornlash,
+  Into the Green, Photosynthesis. Polar (female): Ice Slide, Shatter, Flash Freeze, Glacier Break, Snowborn. The rest of Nature / Ice is in
+  RACE_SPELL_EXCLUDES.bear. Stats bruiser (hp 1250, atk 125, def 120), resist ice, weak fire, finisher "Mauled".
+- AI (ai.js scoreOffensiveHit): hitting a bear that would grudge me costs 45; poking a hibernating bear is worth less than its wake heal; Bear Hug
+  on a fresh target +30.
+- VFX three-vfx-effects.js (after nrDeathRoll): brPawSwipe, brBearHug, brHibernate aura (Z's + leaves or snow by coat), brBearDown (dust line,
+  crack, heavy shake), brGrudgeMark, brWake, brRudeWake; own cyan / enemy pink-orange rims. No lie-down clip yet (the bear sleeps standing).
+
+## THE PLASTIC SURGEON (2026-11-23, thread "Plan the Plastic Surgeon's spells"; mondo OK'd the plan: "okay yeah that's good")
+Plan page: https://claude.ai/artifact/RyqA78f4Kb66y23z2Rcqzo. Specialist, Human, home Disaster Hills (Disaster City district N,
+one resident on H04-02), poison resist / fire weak, basic = the scalpel (held gear `Assets/world/props/misc/scalpel.glb`).
+- THE RULE, WORK DONE: every one of his spells on a unit, ally or enemy, gives it +1 Work Done (max 3; -1 at a round end when
+  none of his spells touched it, battle.js `_psRoundEnd`). At 3 = BOTCHED: Stun 1, stacks back to 0 (`_psAddWork`, VFX `psBotched`).
+  The surgeon spreads his work around or botches on purpose.
+- EITHER-SIDE SPELLS: a row with `procedure: true` + `anyTeam: true` (battle.js `_kindMeta` anyTeam branch: not offensive, not ally
+  only) can aim at anyone; doSpell swaps in a cast copy for the target's side (`_psCastRow` / `_psRowFor`, the `_crCastRow`
+  pattern): an ally gets the row's `onAlly` (heal / buff), damage and enemy statuses stripped.
+- Kit (RACE_TREE `psBotox, [psMakeover | psLiposuction], psAnesthesia, psFullProcedure`; families cosmeticsurgery (signature),
+  healingmagic, chemistry, maincharacter):
+  T1 Botox: enemy poison 70 + Slow 1 / ally heal 50 + DEF stage. T2 Makeover: swaps ATK <-> DEF and M.ATK <-> M.DEF 2 rounds
+  (status `makeover` on a foe, `makeoverAlly` on an ally; one swap, `_psMakeoverSwap`, undone by onRemove; onRemove runs BEFORE its
+  key goes, so it passes its own key). T2 Liposuction: physical 110 drain, the HP taken = Shield on the lowest-HP ally within 3
+  (else himself), capped at 50 % max HP. T3 Anesthesia: 3x3 Sleep 1, no damage. T4 The Full Procedure: radius 2, magic 150,
+  +25 % per Work Done on each body (`_psDmgMult`), gives Work Done to allies in it too (`workDoneAll`).
+- Finisher Before & After (`fin_plastic_surgeon`, sig thousandCuts + DOM overlay `#fin-ba`, battle.js `_finBeforeAfter`,
+  styles-cinematic.css "BEFORE & AFTER").
+- AI (ai.js): procedure rows pick ally or enemy (`_psPickTarget`), Makeover by stat gap (`_psMakeoverScore`), never botch an ally,
+  prefers an enemy at 2 (`_psWorkAdjust`).
+- VFX (three-vfx-effects.js after `nrMiracle`): psBotox, psMakeover, psLipo + psLipoGive, psAnesthesia, psFullProcedure (a surgery
+  lamp spotlight + marker sweeps), psBotched; side colours through `_ceoSides` (own cyan / enemy pink-orange).
+- Proof probe: /mnt/project-files/plastic-surgeon/probe_ps.js (pictures in proof/).
+
+## THE RAT KING (2026-11-23, thread "Plan the Rat and Rat King's spells"; mondo OK'd the plan + mock-up)
+Plan doc https://claude.ai/artifact/DCz9CabK8oczmeEWNQr5oe (project files `rat-king-plan/`). mondo's answers: the crown lasts until
+Mischief runs out; 5 stacks. `rat` is in data.js + server.js AVAILABLE_RACES (out of EW_COMING_RACES); male only; assassin; POINT_OF_ENTRY
+The Sewers (NOT yet placed as Sewers natives: the Sewers district files are held by another thread, see claims.md; a row for them).
+- THE RULE, MISCHIEF (battle.js block "THE RAT KING", after `_crCastRow`): +1 per damaging hit by the rat or by his summoned rats
+  (`sourceUnit` = the caster), +1 more when Gnaw hits a target that was already bleeding, +1 when an enemy goes down within 2 of him.
+  At 5 (`MISCHIEF_MAX`) he is CROWNED: `appearance = {...old, form: 'king'}` (a new object, the roster's look is not touched), heal 20 %,
+  +2 ATK / +1 DEF stage (getStatStageCount), the kit swaps slot for slot. A King loses 1 at each round end (`_ratRoundEnd` in the
+  `_nrRoundEnd` chain); at 0 the crown falls and the kit swaps back. Stun, Frozen or Feared on him scatters 2 (applyStatusPayload,
+  after the Skater's bail). resetUnitPowerState (map.js) clears it. HUD chip `MIS n/5` / `👑 KING · MIS n/5` (hud.js, after the brood chip).
+- THE KIT (data.js RACE_ABILITIES.rat, families `ratpack`, `poison`, `thievery`, `beastabilities`): Gnaw (T1, melee, bleed 2),
+  Scurry (T2 escape 3), Mischief of Rats (T3, summon 2 Sewer Rats, `summonCount`, cap 2, bites poison). THE KING's rows are
+  `RAT_KING_SPELLS` (family `ratking`), registered in SPELL_BY_ID only (the DOOR_GUN pattern: never pickable, never in a pool):
+  Plague Bite (bleed + poison), Carried by the Court (escape 4), Long Live the King (`longLiveKing {radius 4, dmg 70}`: every
+  enemy within 4 takes a bite, then Mischief goes to 0 and he is dethroned; refused with no enemy in reach). RAT_KING_SWAP / _BACK
+  swap `spells`, `_raceAbilities` and `_spellSlots`. ai.js scores Long Live the King by `window._ratKingPlan` (kills first).
+- `summonUnit` + `summonCount` (any summon row): calls that many, on free tiles nearest the caster; the cap dismisses the oldest.
+- THE COURT (three-renderer.js "THE RAT'S COURT", after the unit auras): one orbiting rat a Mischief stack (clones of the R2 prop
+  `Assets/world/animals/rat.glb`, `_ANIMALS.rat`, shared geometry); a crowned court gets a pink cord. Kill-switch `EW_NO_RAT_COURT`.
+  The structural serial hashes the king form so the model swaps at once.
+- FINISHER 'The Mischief' (sig pileOn). Affinity: poison resist, fire weak.
 
 ## THE 11-22 TRAINING PASSES (2026-11-22/23, mondo: "can you run the ai training for a few passes and make sure its getting better") — battle.js + ai.js weights, train_headless.js
 - Three SPSA passes of ~115 min each, 3 headless browsers, Arena 4v4 paired matches on the rotating PvP arenas, starting from the
