@@ -14735,3 +14735,30 @@ headless scan of every terrain room (each railing piece against the ground every
   `window.EW_RAIL_NO_FOLLOW = true` (set before the room loads) turns the fix off everywhere — the probe's "before" pictures.
 - Placed fence PROPS (`hw_fence`, `chain_fence`, `fence_with_gate`, ...) are single models standing on the ground at their place; not part of this.
 - No tool to rerun: every room's railings are compiled at load.
+
+## THE HOTEL, A MYSTERY DUNGEON (2026-11-23, building-interiors plan step 1)
+mondo 11-23: "Maybe one of could even be like a mystery dungeon, where each floor is a maze and you have to find the stairs to the next
+floor" · he picked THE HOTEL (the Financial district's luxury hotel, `dc:P08-00-B1`, 28 x 28 m) · plan https://claude.ai/artifact/RVPh8wvd9u6uAPj6QubPnd
+(picture 3 = `/mnt/project-files/building-interiors-plan/3_hotel_maze_floors.png`).
+- **The way in:** the LEFT LIFT on the lobby's back wall (F-inside.js draws both lifts). data.js `hotelInstall` adds the city room's
+  door `hotel_lift` (wall `free`, bare, no leaf) at load, worked out from the building's own texbuilding row, so it follows the building.
+  No district file and no bake tool was touched; rerunning `bake-disaster-city.js` does not lose it.
+- **The floors:** `site_prebuilt_hotel_f1` .. `f10`, box rooms BUILT AT LOAD (data.js block HOTEL-MD, the way pdInstall builds the plot
+  dungeons) and BUILT AGAIN from a new seed every time the lift is taken from the lobby (map.js `_hqGoRoom` -> `hotelBeforeGo`): a new
+  layout every visit. Sizes: floors 1-4 8 x 8 squares (the true footprint), 5-9 12 x 12, 10 16 x 16 (`HOTEL_MD.size`).
+- **On the squares:** one maze cell = one 3.5 m square; corridors one square wide; walls on the square lines (arch boxes + ghost wall
+  rows, the Desert insides' kit); a guest room is a DEAD END behind a 1.75 m doorway with a swinging `leaf_hotel` (the `doorsOnly`
+  carrier row). A few walls come out between corridor squares (`HOTEL_MD.braid`) so the floor loops. Never a crevice: the floor is flat.
+- **IN / UP:** IN = the south-west square, the lift door `lift` (down to the lobby = the run ends). UP = the stair door `up`
+  (`leaf_exit`) on the outer wall of the farthest dead end on the outer ring (BFS from IN). The top floor has no stairs: its guest at UP
+  is the boss (`npcSpots[].boss`).
+- **Guest rooms** (`HOTEL_MD.rooms` per size): LOOT = a `floor_safe` you OPEN once a run (one roll of the Mystery Dungeon's floor-item
+  table, `HOTEL_MD.loot`, into the bag); REST = a made bed (`psx_bed_2`): the standing get full HP / MP, THE FALLEN STAY DOWN until the
+  run ends (the mode's rule; data.js `hotelRest`); FIGHT = a native standing in the room (`stay`), its race from the city's own encounter
+  table at the run's start (`hotelGuests`), the fight seamless on the floor.
+- **The old Mystery Dungeon mode is untouched** (MD_DUNGEONS / generateMdFloor build battle boards of thick rooms and halls, not walls
+  on square lines, so the hotel has its own small maze maker, `hotelMaze`; the rules and the loot table are the mode's).
+- **Checked:** every square of every floor reachable from the lift and both doors' pads walked, 3 seeds x 10 floors (hqTerrainFeet, the
+  walker's rule). Console: `hotelNewRun(seed)`, `hotelRunState()`, `DOOR_HQ.rooms.site_prebuilt_hotel_f3.hotelMaze`.
+- **Not yet (plan step 3):** the boss SUITE (today the boss stands in a dead end), floor kinds (flooded, on fire), story notes in the
+  rest rooms, a guest book of the deepest floor. Leaving the hotel reloads the city until the Kits thread's parked room reaches building doors.

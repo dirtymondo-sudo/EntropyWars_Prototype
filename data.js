@@ -110141,7 +110141,7 @@ function hotelFloorRoom(f, seed, guests) {
     const boxDoor = (side, x, y) => (side === 'n' || side === 's') ? { wall: side, x: C(x) } : { wall: side, z: C(y) };
     const doors = [Object.assign({ id: 'lift', leaf: null, label: 'THE LOBBY', sub: 'THE LIFT · DOWN TO THE LOBBY · THE RUN ENDS',
         action: { room: H.city, at: 'hotel_lift' }, desc: 'The lift you came up in. It goes down, only down, and it does not say which floor it is on.' }, boxDoor('s', M.IN[0], M.IN[1]))];
-    { const lx = C(M.IN[0]), lz = r2(W / 2 - 0.35); props.push({ key: 'psx_elevator_buttons_1', x: r2(lx + 1.35), z: lz, y: 1.1, face: 0 }); }
+    { const lx = C(M.IN[0]), lz = r2(W / 2 - 0.35); props.push({ key: 'psx_elevator_buttons_1', x: r2(lx + 1.55), z: lz, y: 1.1, face: 0 }); }   // the lift's call buttons beside its doors (the pack's lift doorway prop was tried 11-23: it did not sit in the box wall's opening)
     if (!top) doors.push(Object.assign({ id: 'up', leaf: H.stairLeaf, label: 'FLOOR ' + (f + 1), sub: 'THE STAIRS · UP TO FLOOR ' + (f + 1),
         action: { room: H.room(f + 1), at: 'lift' }, desc: 'A fire door with a green sign over it. The stairs behind it go up one floor and stop.' }, boxDoor(outerSide(M.UP[0], M.UP[1]), M.UP[0], M.UP[1])));
     else {   /* THE TOP FLOOR: the boss waits where the stairs would be */
