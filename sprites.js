@@ -2352,11 +2352,12 @@ const RACE_MODELS_3D = {
       model: `${_S}/Races/vampire/male/Meshy_AI_vampire_m_Running.glb`,
       heightRatio: 1.0, basicAttackKind: 'claw',
     }),
-    female: _mk3d('vampire/female', 'beautiful_attractive_', {
-      idle: 'Idle_6', walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction',
-      death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
-      castSupport: 'mage_soell_cast_1',
-    }, { heightRatio: 0.97,      // tall, elegant
+    // 2026-11-23 (mondo: "for vampire just replace the current model"): concept D (raven bangs, black velvet dress with red
+    // lace, sheer floor-length cape), Meshy made + rigged by Claude; the shared library animates her. Was
+    // _mk3d('vampire/female', 'beautiful_attractive_', {idle:'Idle_6', walk:'Running', ...}) (kept on R2).
+    female: _mkUAL('vampire/female', 'vampire_f', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/vampire/female/Meshy_AI_vampire_f_Running.glb',
+      heightRatio: 0.97,      // tall, elegant
          basicAttackKind: 'claw',   // fangs and nails, never a sword
          lib: { idle: { clip: 'Idle_FoldArms_Loop', lib: 1 },
                 castMelee: { clip: 'Zombie_Scratch', lib: 1, ts: 1.5 } } }),
