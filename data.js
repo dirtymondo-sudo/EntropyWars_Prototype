@@ -32722,12 +32722,24 @@ const DOOR_HQ = {
            one by one, real size (`span` = the long side). The Trailer Park scene's six trailers (one cut per trailer, its door side to
            +Z = the row's `face`), Area 51's flight line and the Skinwalker fields; the Abandoned House's shell (its basement cut to the
            last metre, `hover: -1` sinks that metre under the ground), past the Haunted grounds' pines on the outer ground. */
-        trailer_home_1:    { file: 'ebd_trailerscene_trailer_0.glb', base: 'misc', span: 15.1, foot: 3.0, rect: { hw: 7.55, hd: 3.15 }, block: true },
-        trailer_home_2:    { file: 'ebd_trailerscene_trailer_1.glb', base: 'misc', span: 15.1, foot: 3.0, rect: { hw: 7.55, hd: 3.15 }, block: true },
-        trailer_home_3:    { file: 'ebd_trailerscene_trailer_2.glb', base: 'misc', span: 15.1, foot: 3.0, rect: { hw: 7.55, hd: 3.15 }, block: true },
-        trailer_home_4:    { file: 'ebd_trailerscene_trailer_3.glb', base: 'misc', span: 15.0, foot: 2.8, rect: { hw: 7.5, hd: 2.85 }, block: true },
-        trailer_home_5:    { file: 'ebd_trailerscene_trailer_4.glb', base: 'misc', span: 15.1, foot: 2.8, rect: { hw: 7.55, hd: 2.75 }, block: true },
-        trailer_home_6:    { file: 'ebd_trailerscene_trailer_5.glb', base: 'misc', span: 15.25, foot: 3.0, rect: { hw: 7.6, hd: 3.05 }, block: true },
+        trailer_home_1:    { file: 'ebd_trailerscene_trailer_0_open.glb', base: 'misc', span: 15.1, foot: 0, hover: -0.81 },   // walk-in (THE OPEN DOORS, 11-23): the front door is out, HQ_WALK_IN_PROPS hangs a leaf and lays its walls (outside, the bedroom and bathroom partitions); sunk 0.81 m so its floor is the ground (the walker climbs no porch step)
+        trailer_home_1_inside: { file: 'ebd_trailerscene_trailer_0_inside.glb', base: 'misc', span: 15.1, foot: 0, hover: -0.81 },   // the scene's own furniture, centred as the shell (no collision: the dining set stands inside the door)
+        trailer_home_1_shut: { file: 'ebd_trailerscene_trailer_0.glb', base: 'misc', span: 15.1, foot: 3.0, rect: { hw: 7.55, hd: 3.15 }, block: true },
+        trailer_home_2:    { file: 'ebd_trailerscene_trailer_1_open.glb', base: 'misc', span: 15.1, foot: 0, hover: -0.81 },   // walk-in (THE OPEN DOORS, 11-23): the front door is out, HQ_WALK_IN_PROPS hangs a leaf and lays its walls (outside, the bedroom and bathroom partitions); sunk 0.81 m so its floor is the ground (the walker climbs no porch step)
+        trailer_home_2_inside: { file: 'ebd_trailerscene_trailer_1_inside.glb', base: 'misc', span: 15.1, foot: 0, hover: -0.81 },   // the scene's own furniture, centred as the shell (no collision: the dining set stands inside the door)
+        trailer_home_2_shut: { file: 'ebd_trailerscene_trailer_1.glb', base: 'misc', span: 15.1, foot: 3.0, rect: { hw: 7.55, hd: 3.15 }, block: true },
+        trailer_home_3:    { file: 'ebd_trailerscene_trailer_2_open.glb', base: 'misc', span: 15.1, foot: 0, hover: -0.81 },   // walk-in (THE OPEN DOORS, 11-23): the front door is out, HQ_WALK_IN_PROPS hangs a leaf and lays its walls (outside, the bedroom and bathroom partitions); sunk 0.81 m so its floor is the ground (the walker climbs no porch step)
+        trailer_home_3_inside: { file: 'ebd_trailerscene_trailer_2_inside.glb', base: 'misc', span: 15.1, foot: 0, hover: -0.81 },   // the scene's own furniture, centred as the shell (no collision: the dining set stands inside the door)
+        trailer_home_3_shut: { file: 'ebd_trailerscene_trailer_2.glb', base: 'misc', span: 15.1, foot: 3.0, rect: { hw: 7.55, hd: 3.15 }, block: true },
+        trailer_home_4:    { file: 'ebd_trailerscene_trailer_3_open.glb', base: 'misc', span: 15.0, foot: 0, hover: -0.81 },   // walk-in (THE OPEN DOORS, 11-23): the front door is out, HQ_WALK_IN_PROPS hangs a leaf and lays its walls (outside, the bedroom and bathroom partitions); sunk 0.81 m so its floor is the ground (the walker climbs no porch step)
+        trailer_home_4_inside: { file: 'ebd_trailerscene_trailer_3_inside.glb', base: 'misc', span: 15.0, foot: 0, hover: -0.81 },   // the scene's own furniture, centred as the shell (no collision: the dining set stands inside the door)
+        trailer_home_4_shut: { file: 'ebd_trailerscene_trailer_3.glb', base: 'misc', span: 15.0, foot: 2.8, rect: { hw: 7.5, hd: 2.85 }, block: true },
+        trailer_home_5:    { file: 'ebd_trailerscene_trailer_4_open.glb', base: 'misc', span: 15.1, foot: 0, hover: -0.81 },   // walk-in (THE OPEN DOORS, 11-23): the front door is out, HQ_WALK_IN_PROPS hangs a leaf and lays its walls (outside, the bedroom and bathroom partitions); sunk 0.81 m so its floor is the ground (the walker climbs no porch step)
+        trailer_home_5_inside: { file: 'ebd_trailerscene_trailer_4_inside.glb', base: 'misc', span: 15.1, foot: 0, hover: -0.81 },   // the scene's own furniture, centred as the shell (no collision: the dining set stands inside the door)
+        trailer_home_5_shut: { file: 'ebd_trailerscene_trailer_4.glb', base: 'misc', span: 15.1, foot: 2.8, rect: { hw: 7.55, hd: 2.75 }, block: true },
+        trailer_home_6:    { file: 'ebd_trailerscene_trailer_5_open.glb', base: 'misc', span: 15.25, foot: 0, hover: -0.81 },   // walk-in (THE OPEN DOORS, 11-23): the front door is out, HQ_WALK_IN_PROPS hangs a leaf and lays its walls (outside, the bedroom and bathroom partitions); sunk 0.81 m so its floor is the ground (the walker climbs no porch step)
+        trailer_home_6_inside: { file: 'ebd_trailerscene_trailer_5_inside.glb', base: 'misc', span: 15.25, foot: 0, hover: -0.81 },   // the scene's own furniture, centred as the shell (no collision: the dining set stands inside the door)
+        trailer_home_6_shut: { file: 'ebd_trailerscene_trailer_5.glb', base: 'misc', span: 15.25, foot: 3.0, rect: { hw: 7.6, hd: 3.05 }, block: true },
         abandoned_house:   { file: 'ebd_abandonedhouse_house.glb', base: 'misc', span: 36.3, foot: 10, rect: { hw: 11.55, hd: 18.15 }, block: true, hover: -1 },
         /* THE CITY'S WHOLE BUILDINGS (2026-11-13, mondo: "Isnt there a pizza resturaunt and or gast station asset pack we downlaoded? Those
            definitely need to be buildings somewhere"): each Elbolilloduro scene's building from the outside (shell, doors, windows, signs; no
@@ -91303,7 +91315,7 @@ const HQ_WALK_IN_PROPS = {
        (the room draws its inside walls, floor and ceiling), a shell that is hollow already (the four Babel houses) is `bareIn`.
        Measured in the model's own metres from its vertices (x = its right, z = toward its door). Notes: areas-complexes.md "THE OPEN DOORS". */
     outhouse: {   // one person, one seat, one roll, last week's paper (the Camp wish list's privy; 13 stand in the world)
-        rooms: [{ x: 0, z: 0.03, w: 1.45, d: 1.6, h: 1.85, ceilH: 1.72, doorLx: 0, doorW: 0.86, doorH: 1.8, leaf: 'leaf_shabby_wood', liner: { keyIn: 'urban:WoodGeneric1b', floorIn: 'urban:WoodFlooring1d' } }],
+        rooms: [{ x: 0, z: 0.03, w: 1.45, d: 1.6, h: 1.85, ceilH: 1.72, doorLx: 0, doorW: 1.05, doorH: 1.8, leaf: 'leaf_shabby_wood', liner: { keyIn: 'urban:WoodGeneric1b', floorIn: 'urban:WoodFlooring1d' } }],
         furnish: [['psx_wooden_crate_1', 0, -0.42, 0], ['ebd_house_toilet_paper', 0.2, -0.42, 0, { y: 0.36 }], ['papers_b', -0.2, -0.4, 20, { y: 0.36 }], ['railway_lantern', 0.3, 0.2, 0]],
     },
     woods_cabin: {   // the cabin in the woods: one room, a cot, a cold stove, a lantern somebody left lit
@@ -91311,6 +91323,19 @@ const HQ_WALK_IN_PROPS = {
         boxes: [[-2.05, -1.15, -2.3, -0.4, 0.6], [1.45, 2.2, -2.45, -1.75, 1.6]],
         furnish: [['cot', -1.6, -1.35, 0], ['wood_stove', 1.8, -2.1, 0], ['psx_chair_mp_3', -0.6, -2.0, 0], ['railway_lantern', -1.9, 0.9, 0], ['psx_cobweb_1', 2.25, 1.2, 270, { wall: true, y: 2.0 }], ['fur_rug', -0.8, -0.6, 0]],
     },
+    /* THE TRAILERS (2026-11-23): the Trailer Park scene's own homes, open (bake-pack-pieces.py trailer_N_open + _inside): one row wall to wall
+       (living room, kitchen, bedroom, the bathroom at the far end behind its own wall). The floor stood 0.81 m up on its skirting and the walker
+       cannot climb the porch's steps (each rise is over a mesh step), so the open shell and its inside are SUNK 0.81 m (`hover`): the floor is
+       the ground. A sunk model has no mesh collider: the walls are the row and `walls` (the bedroom and bathroom partitions, their doorways open); the
+       furniture is decor (a collider on it shut the door: the dining set stands just inside it) */
+    /* (a walker's gap under ~1 m shuts: the 0.68 m body against the walls' 0.5 m cells stopped dead in the trailers' 0.87 m doorway; the
+       gap is 1.1 m, the leaf covers the pack's frame) */
+    trailer_home_1: { inside: 'trailer_home_1_inside', rooms: [{ x: -0.03, z: -1.015, w: 13.87, d: 3.44, h: 2.75, doorLx: 0.59, doorW: 1.1, doorH: 2.28, leaf: 'leaf_hollow_core' }], walls: [[-5.45, -2.735, -5.45, -1.885, 2.7], [-5.45, -0.985, -5.45, 0.705, 2.7], [3.9, -2.735, 3.9, -0.985, 2.7], [3.9, -0.085, 3.9, 0.705, 2.7]] },
+    trailer_home_2: { inside: 'trailer_home_2_inside', rooms: [{ x: -0.03, z: -0.839, w: 13.87, d: 3.45, h: 2.75, doorLx: 0.59, doorW: 1.1, doorH: 2.28, leaf: 'leaf_hollow_core' }], walls: [[-5.45, -2.564, -5.45, -1.714, 2.7], [-5.45, -0.814, -5.45, 0.886, 2.7], [3.9, -2.564, 3.9, -0.814, 2.7], [3.9, 0.086, 3.9, 0.886, 2.7]] },
+    trailer_home_3: { inside: 'trailer_home_3_inside', rooms: [{ x: -0.033, z: -0.837, w: 13.87, d: 3.44, h: 2.75, doorLx: 0.59, doorW: 1.1, doorH: 2.28, leaf: 'leaf_hollow_core' }], walls: [[-5.45, -2.557, -5.45, -1.707, 2.7], [-5.45, -0.807, -5.45, 0.883, 2.7], [3.9, -2.557, 3.9, -0.807, 2.7], [3.9, 0.093, 3.9, 0.883, 2.7]] },
+    trailer_home_4: { inside: 'trailer_home_4_inside', rooms: [{ x: -0.032, z: -0.489, w: 13.79, d: 3.45, h: 2.75, doorLx: 0.545, doorW: 1.1, doorH: 2.28, leaf: 'leaf_hollow_core' }], walls: [[-5.55, -2.214, -5.55, -1.364, 2.7], [-5.55, -0.464, -5.55, 1.236, 2.7], [3.85, -2.214, 3.85, -0.464, 2.7], [3.85, 0.436, 3.85, 1.236, 2.7]] },
+    trailer_home_5: { inside: 'trailer_home_5_inside', rooms: [{ x: -0.009, z: -0.625, w: 13.82, d: 3.45, h: 2.75, doorLx: 0.565, doorW: 1.1, doorH: 2.28, leaf: 'leaf_hollow_core' }], walls: [[-5.45, -2.35, -5.45, -1.5, 2.7], [-5.45, -0.6, -5.45, 1.1, 2.7], [3.9, -2.35, 3.9, -0.6, 2.7], [3.9, 0.3, 3.9, 1.1, 2.7]] },
+    trailer_home_6: { inside: 'trailer_home_6_inside', rooms: [{ x: 0.063, z: -0.945, w: 13.82, d: 3.44, h: 2.75, doorLx: 0.565, doorW: 1.1, doorH: 2.28, leaf: 'leaf_hollow_core' }], walls: [[-5.4, -2.665, -5.4, -1.815, 2.7], [-5.4, -0.915, -5.4, 0.775, 2.7], [3.95, -2.665, 3.95, -0.915, 2.7], [3.95, -0.015, 3.95, 0.775, 2.7]] },
     babel_house_small: {   // Babel's one-room house: a cot, baskets, a water jar, a rug (everybody in Babel speaks a different language; nobody here talks)
         rooms: [{ x: 0, z: 0, w: 5.2, d: 4.3, doorLx: 0, doorW: 1.35, doorH: 2.1, leaf: 'leaf_stable' }],   // hollow: the mesh's own inside walls
         boxes: [[-3.0, -1.1, -1.5, -0.6, 0.6]],
@@ -91323,7 +91348,7 @@ const HQ_WALK_IN_PROPS = {
         furnish: [['cot', -4.35, -1.0, 90], ['cot', 4.35, -1.0, 270], ['woven_baskets', -0.7, -1.4, 0], ['greek_amphora', 0.7, -1.5, 0], ['rug_round', -2.5, -0.5, 0], ['rug_round', 2.5, -0.5, 0], ['oil_lamp', 0, -1.6, 0]],
     },
     babel_house_stair: {   // the two-storey house: its ground room, the door on its +X side (the stair outside climbs to the roof's painted door)
-        rooms: [{ x: 0, z: -0.59, rot: 270, w: 4.7, d: 5.3, doorLx: -1.18, doorW: 0.96, doorH: 2.3, leaf: 'leaf_stable' }],
+        rooms: [{ x: 0, z: -0.59, rot: 270, w: 4.7, d: 5.3, doorLx: -1.18, doorW: 1.1, doorH: 2.3, leaf: 'leaf_stable' }],
         boxes: [[-2.4, -1.5, -2.85, -0.95, 0.6]],
         furnish: [['cot', -1.95, -1.9, 0], ['woven_baskets', 1.9, -2.4, 0], ['greek_amphora', -2.0, 1.0, 0], ['rug_round', 0.2, -1.2, 0]],
     },
@@ -99535,6 +99560,7 @@ function hqRoomPopulation(roomId, profile, opts) {
     opts = opts || {};
     const R = HQ_POPULATION_RULES, rooms = DOOR_HQ.rooms || {};
     const room = rooms[roomId]; if (!room) return { kind: 'none', site: null, hub: null, pool: [], tiers: {}, n: 0, draw: [], seed: 0 };
+    if (room.hotel) return { kind: 'none', site: null, hub: null, pool: [], tiers: {}, n: 0, draw: [], seed: 0 };   // THE HOTEL: its guests only, no city walkers (they came in at the city's own levels)
     const site = hqRoomSite(roomId);
     const hub = (typeof hqHubOf === 'function') ? hqHubOf(roomId) : null;
     const hubId = hub ? hub.id : null;
@@ -101993,7 +102019,7 @@ function hqRoomEncTable(roomId, skip) {
    the first one the room does not already show (THE CROWD CAP). A spot with a TALK (his own person), a cast or a clone keeps
    who it is; `spots: false` on the table keeps every placed person. Pure. */
 function hqSpotRaces(roomId, si, spot) {
-    if (!spot || !spot.race || spot.talk || spot.cast || spot.clone) return null;
+    if (!spot || !spot.race || spot.talk || spot.cast || spot.clone || spot.boss || spot.fixed) return null;   // (a boss is who he is: the hotel's Banker; `fixed`: the hotel's guests, drawn for their floor)
     const T = hqRoomEncTable(roomId); if (!T || !T.spots) return null;
     if (T.list.some(x => x.race === spot.race)) return null;
     const rnd = hqLevelRng(((typeof hqToday === 'function') ? hqToday() : '') + '|' + roomId + '|spotrace|' + si), left = T.list.slice(), out = [];
@@ -102678,6 +102704,7 @@ function hqClearedRecord(profile) {
    lands in the synced blob too. */
 function hqEncounterRecord(profile, ev) {
     if (!profile || !ev) return null;
+    if (ev.won && ev.room && ev.id && typeof hotelBossBeaten === 'function') { try { hotelBossBeaten(ev.room, ev.id); } catch (e) {} }   // THE HOTEL: the boss down opens the exit
     if (!profile.door || typeof profile.door !== 'object') profile.door = {};
     if (!profile.door.hq || typeof profile.door.hq !== 'object') profile.door.hq = { visits: 0, lastDoor: null, variantSeed: null, keys: 0 };
     const H = profile.door.hq;
@@ -102700,7 +102727,8 @@ function hqEncounterRecord(profile, ev) {
     if (ev.room && (ev.won || _bt.length)) {
         const C = H.cleared = hqClearedRecord(profile);
         let c = C[ev.room];
-        if (!c || typeof c !== 'object' || c.date !== date) c = C[ev.room] = { date, ids: [] };
+        const _hk = (typeof hotelRunKey === 'function') ? hotelRunKey(ev.room) : null;   // THE HOTEL: a floor's record is its run's
+        if (!c || typeof c !== 'object' || c.date !== date || (_hk != null && c.run !== _hk)) c = C[ev.room] = (_hk != null) ? { date, ids: [], run: _hk } : { date, ids: [] };
         if (!Array.isArray(c.ids)) c.ids = [];
         if (ev.won && ev.id && c.ids.indexOf(ev.id) < 0 && _away.indexOf(String(ev.id)) < 0) c.ids.push(String(ev.id));
         _bt.forEach(id => { if (c.ids.indexOf(id) < 0) c.ids.push(id); });
@@ -102738,6 +102766,7 @@ function hqEncounterCleared(profile, roomId, now) {
     if (!c || typeof c !== 'object') return null;
     const date = hqToday(now ? new Date(now) : undefined);
     if (c.date !== date) return null;
+    { const hk = (typeof hotelRunKey === 'function') ? hotelRunKey(roomId) : null; if (hk != null && c.run !== hk) return null; }   // THE HOTEL: beaten for this run only
     return { date: c.date, ids: Array.isArray(c.ids) ? c.ids.slice() : [] };
 }
 /* a room whose natives GUARD its finds: a wild room with a race-hinted spot (the
@@ -111569,11 +111598,18 @@ const HOTEL_MD = {
     loot: [['healPotion', 30], ['manaPotion', 20], ['entropyGrenade', 12], ['panacea', 10], ['adrenalStim', 8], ['unholyBane', 5], ['alienBane', 5], ['anomalyBane', 5], ['humanBane', 5]],
     /* the guests: the city's own encounter races (hqRoomNatives of the city at the run's start); these when it has none */
     guests: ['zombie', 'vampire', 'ghost', 'werewolf', 'demon'],
-    boss: null,                                          // the top floor's guest: null = the first of the guests
+    /* THE BOSS (mondo 11-23: "how the fuck am i supposed to know a random zombie is the boss? ... It should be the banker or the tech CEO"): the
+       hotel's owner waits at the top floor's far end, in front of THE EXIT (the penthouse lift to the lobby, shut until he is down). Bigger, named,
+       higher; beating him opens the exit and his safe (bossLoot, once a run). He is never one of the guests. */
+    boss: 'banker', bossGender: 'male', bossLabel: 'THE BANKER · BOSS', bossScale: 1.35,
+    bossLoot: [['panacea', 2], ['entropyGrenade', 2], ['adrenalStim', 2], ['healPotion', 3], ['manaPotion', 3]],
+    /* THE LEVELS (mondo 11-23: "the levels of the enemies need to increase as you go up each floor so it is an actual challenge"): the party's
+       level when the run starts is floor 1; every floor up adds perFloor; the boss stands `boss` levels over floor 10's guests */
+    lv: { perFloor: 1, boss: 3 },
     bed: 'couples_bed', bedTurn: 0,                     // the guest rooms' bed (the pack's double bed) and its turn so the headboard is on the wall
     hunt: 14,                                            // a guest that came for you keeps coming while you are this many squares away through the maze
 };
-let _hotelSeed = 0, _hotelRun = null;   // { seed, at, loot: {roomId|cell → true}, slept: {}, seen: {roomId → Uint8Array}, deepest }
+let _hotelSeed = 0, _hotelRun = null, _hotelBase = 1;   // { seed, at, loot: {roomId|cell → true}, slept: {}, seen: {roomId → Uint8Array}, deepest }
 /* the maze: N x N cells, open sides as a bitmask (1 n, 2 e, 4 s, 8 w). The guest rooms are laid first (rectangles a square apart), the
    corridors dug round them by a recursive backtracker from IN, a few walls taken out (braid), then each room gets its ways in. */
 function hotelMaze(N, seed, want) {
@@ -111658,13 +111694,15 @@ function hotelMaze(N, seed, want) {
     return { N, O, IN, UP, rooms, ways, RM, L, D };
 }
 /* one floor's room: the maze drawn on whole squares (walls on the lines, doors and holes into the guest rooms), its doors, lamps, furniture, guests */
-function hotelFloorRoom(f, seed, guests) {
+function hotelFloorRoom(f, seed, guests, base) {
     const H = HOTEL_MD, N = H.size(f), SQ = H.sq, W = N * SQ, T = H.wallT, DW = H.doorW, DH = H.doorH, hh = H.h, top = f >= H.floors, roomId = H.room(f);
     const r2 = v => Math.round(v * 100) / 100, X = i => r2(-W / 2 + i * SQ), C = i => r2(-W / 2 + (i + 0.5) * SQ);
     const R0 = H.rooms[N] || H.rooms[8], order = [];
     ['fight', 'loot', 'rest'].forEach(k => { for (let i = 0; i < (R0[k] | 0); i++) order.push(k); });
     const M = hotelMaze(N, ((seed | 0) * 31 + f * 7919) | 0, order.length), rng = _mfRng(((seed | 0) * 131 + f * 104729) | 0), ri = n => Math.floor(rng() * n);
     const F = [], P = [], props = [], counters = [], inner = [], npc = [], lights = [];
+    const LVC = (typeof LEVEL_CAP !== 'undefined') ? LEVEL_CAP : 100, b0 = Math.max(1, (base | 0) || ((typeof HQ_LEVEL_RULES !== 'undefined' && HQ_LEVEL_RULES.start) | 0) || 1);
+    const gLv = Math.max(1, Math.min(LVC, b0 + Math.round((f - 1) * H.lv.perFloor))), bossLv = Math.max(1, Math.min(LVC, b0 + Math.round((H.floors - 1) * H.lv.perFloor) + (H.lv.boss | 0)));   // THE LEVELS: this floor's guests, the boss
     const FACE = { n: 0, e: 90, s: 180, w: 270 }, OPP = { n: 's', s: 'n', e: 'w', w: 'e' }, OFF = { n: [0, -1], s: [0, 1], e: [1, 0], w: [-1, 0] };
     const wallPart = (x, z, sx, sz, y0, h) => { P.push({ s: 'box', p: [x, y0, z], size: [sx, h, sz], key: H.wallKey, tint: H.wallTint, uv: [3.5, 1.75] }); };
     const skirt = (x, z, sx, sz) => P.push({ s: 'box', p: [x, 0, z], size: [sx + 0.04, 0.14, sz + 0.04], tint: H.skirt });
@@ -111738,7 +111776,7 @@ function hotelFloorRoom(f, seed, guests) {
     /* THE GUEST ROOMS: what is inside (the gamble), the furniture against the walls of the squares no way in touches */
     const kinds = order.slice(); for (let i = kinds.length - 1; i > 0; i--) { const j = ri(i + 1); const t = kinds[i]; kinds[i] = kinds[j]; kinds[j] = t; }
     const roomInfo = [];
-    let fights = 0;
+    let fights = 0, bossIdx = -1;
     M.rooms.forEach((r, ix) => {
         const kind = kinds[ix] || 'empty', no = f * 100 + ix + 1;
         const doorCells = new Set(r.ways.map(w => w.c[0] + ',' + w.c[1]));
@@ -111779,7 +111817,7 @@ function hotelFloorRoom(f, seed, guests) {
             const cs = r.cells.filter(c => !usedCell[c[0] + ',' + c[1]]).sort((a, b) => (Math.abs(b[0] - d0[0]) + Math.abs(b[1] - d0[1])) - (Math.abs(a[0] - d0[0]) + Math.abs(a[1] - d0[1])));
             const c = cs[0] || r.cells[0], race = guests[(fights++ + ri(guests.length)) % guests.length];
             const fc = r.ways[0] ? FACE[r.ways[0].side] : 0;
-            npc.push({ x: C(c[0]), z: C(c[1]), face: fc, race, stay: true, hotelRoom: ix });
+            npc.push({ x: C(c[0]), z: C(c[1]), face: fc, race, stay: true, hotelRoom: ix, lvl: gLv, fixed: true });
             info.guest = { x: C(c[0]), z: C(c[1]), race };
         }
         roomInfo.push(info);
@@ -111790,9 +111828,12 @@ function hotelFloorRoom(f, seed, guests) {
     const doors = [Object.assign({ id: 'lift', leaf: null, label: 'THE LOBBY', sub: '', action: { room: H.city, at: 'hotel_lift' } }, boxDoor('s', M.IN[0], M.IN[1]))];
     { const lx = C(M.IN[0]), lz = r2(W / 2 - 0.35); props.push({ key: 'psx_elevator_buttons_1', x: r2(lx + 1.55), z: lz, y: 1.1, face: 0 }); }   // the lift's call buttons beside its doors
     if (!top) doors.push(Object.assign({ id: 'up', leaf: H.stairLeaf, label: 'FLOOR ' + (f + 1), sub: '', action: { room: H.room(f + 1), at: 'lift' } }, boxDoor(outerSide(M.UP[0], M.UP[1]), M.UP[0], M.UP[1])));
-    else {   /* THE TOP FLOOR: the boss waits where the stairs would be */
-        const cx = C(M.UP[0]), cz = C(M.UP[1]);
-        npc.push({ x: cx, z: cz, face: 180, race: H.boss || guests[0], stay: true, boss: true });
+    else {   /* THE TOP FLOOR: the boss waits where the stairs would be, in front of THE EXIT (shut until he is down: map.js _hqDoAction asks hotelTopGate) */
+        const cx = C(M.UP[0]), cz = C(M.UP[1]), side = outerSide(M.UP[0], M.UP[1]);
+        doors.push(Object.assign({ id: 'top', leaf: H.stairLeaf, label: 'THE EXIT · THE LOBBY', sub: '', action: { room: H.city, at: 'hotel_lift', hotelTop: true } }, boxDoor(side, M.UP[0], M.UP[1])));
+        bossIdx = npc.length;
+        const inS = ['n', 'e', 's', 'w'].find((q, j) => M.O[M.UP[1]][M.UP[0]] & [1, 2, 4, 8][j]) || OPP[side];   // he faces the way you come in
+        npc.push({ x: cx, z: cz, face: FACE[inS], race: H.boss, gender: H.bossGender, label: H.bossLabel, stay: true, boss: true, lvl: bossLv, scale: H.bossScale });
         props.push({ key: 'potted_plant', x: r2(cx + 1.2), z: r2(cz + 1.2) });
     }
     /* THE HALL GUESTS: a few stand in the corridors, never near the lift */
@@ -111800,7 +111841,7 @@ function hotelFloorRoom(f, seed, guests) {
     const hallC = corr.filter(c => M.L[c[1]][c[0]] >= 4 && !(c[0] === M.UP[0] && c[1] === M.UP[1]));
     for (let i = 0, n = H.hall[N] | 0; i < n && hallC.length; i++) {
         const c = hallC.splice(ri(hallC.length), 1)[0];
-        npc.push({ x: C(c[0]), z: C(c[1]), face: ri(4) * 90, race: guests[(fights++ + ri(guests.length)) % guests.length], stay: true });
+        npc.push({ x: C(c[0]), z: C(c[1]), face: ri(4) * 90, race: guests[(fights++ + ri(guests.length)) % guests.length], stay: true, lvl: gLv, fixed: true });
     }
     /* the lamps: the corridors first (spread evenly), then the rooms over their rugs */
     const nCorr = Math.min(6, H.lamps), step = Math.max(1, Math.floor(corr.length / nCorr));
@@ -111814,7 +111855,7 @@ function hotelFloorRoom(f, seed, guests) {
     return {
         label: 'THE HOTEL · FLOOR ' + f,
         sub: '',
-        kind: 'box', site: H.site, hotel: f, fieldSolid: true, losWalls: true,
+        kind: 'box', site: H.site, hotel: f, fieldSolid: true, losWalls: true, crowdAll: true, hotelLv: gLv, hotelBossId: bossIdx >= 0 ? 'hq-native-' + bossIdx : null,
         shell: {
             w: W, d: W, h: hh, wallH: hh, dadoH: 1.0,
             floor: H.floorKey, wall: H.wallKey, dado: 'urban:WoodPanelling1a', trim: 'wood', ceiling: H.ceiling,
@@ -111836,18 +111877,20 @@ function hotelGuests() {
     try { g = (typeof hqRoomNatives === 'function') ? (hqRoomNatives(HOTEL_MD.city) || []).slice() : []; } catch (e) { g = []; }
     if (typeof AVAILABLE_RACES !== 'undefined') g = g.filter(r => AVAILABLE_RACES.indexOf(r) >= 0);
     if (!g.length) g = HOTEL_MD.guests.filter(r => typeof AVAILABLE_RACES === 'undefined' || AVAILABLE_RACES.indexOf(r) >= 0);
+    g = g.filter(r => r !== HOTEL_MD.boss);
     return g.length ? g : ['zombie'];
 }
 /* build (or build again) every floor from a seed. The room objects are replaced, so the compiled floor plan goes with them;
    the room's version is bumped so a survey already under way is thrown away. Every door shuts again. */
-function hotelBuild(seed) {
+function hotelBuild(seed, base) {
     if (typeof DOOR_HQ === 'undefined' || !DOOR_HQ.rooms) return false;
     _hotelSeed = (seed | 0) || 1;
+    _hotelBase = Math.max(1, (base | 0) || _hotelBase || 1);
     const guests = hotelGuests();
     Object.keys(HQ_SHUT_OPEN).forEach(k => { if (k.indexOf('site_prebuilt_hotel_f') === 0) delete HQ_SHUT_OPEN[k]; });
     for (let f = 1; f <= HOTEL_MD.floors; f++) {
         const id = HOTEL_MD.room(f);
-        try { DOOR_HQ.rooms[id] = hotelFloorRoom(f, _hotelSeed, guests); } catch (e) { console.error('[HOTEL] floor ' + f, e); }
+        try { DOOR_HQ.rooms[id] = hotelFloorRoom(f, _hotelSeed, guests, _hotelBase); } catch (e) { console.error('[HOTEL] floor ' + f, e); }
         try { if (typeof HQ_ROOM_EDITS !== 'undefined' && HQ_ROOM_EDITS.rev) HQ_ROOM_EDITS.rev[id] = (HQ_ROOM_EDITS.rev[id] | 0) + 1; } catch (e) {}
         try { if (typeof _hqStageNearbyCache !== 'undefined') delete _hqStageNearbyCache[id]; } catch (e) {}
         try { if (typeof HQ_NPC_TEMPERS !== 'undefined') HQ_NPC_TEMPERS.rooms[id] = { all: 'brute', noGap: true, districts: {}, residents: {} }; } catch (e) {}   // EVERY GUEST COMES FOR YOU (mondo: "The enemies need to be aggro")
@@ -111857,18 +111900,18 @@ function hotelBuild(seed) {
 }
 function hotelIsFloor(roomId) { const r = roomId && (DOOR_HQ.rooms || {})[roomId]; return !!(r && r.hotel); }
 /* a run starts when the lift is taken from the lobby: a new seed, a new hotel */
-function hotelNewRun(seed) {
+function hotelNewRun(seed, partyLevel) {
     const s = (seed | 0) || ((Date.now() ^ Math.floor(Math.random() * 0x7fffffff)) | 0) || 7;
-    hotelBuild(s);
+    hotelBuild(s, partyLevel);
     _hotelRun = { seed: _hotelSeed, at: Date.now(), loot: {}, slept: {}, seen: {}, deepest: 1 };
     return _hotelRun;
 }
 function hotelRunState() { return _hotelRun; }
 function _hotelRunOn() { if (!_hotelRun) _hotelRun = { seed: _hotelSeed, at: Date.now(), loot: {}, slept: {}, seen: {}, deepest: 1 }; return _hotelRun; }
 /* the walk's hook (map.js _hqGoRoom): into floor 1 from outside the hotel = a new run; any floor = the deepest so far */
-function hotelBeforeGo(roomId, fromId) {
+function hotelBeforeGo(roomId, fromId, partyLevel) {
     if (!hotelIsFloor(roomId)) return null;
-    if (roomId === HOTEL_MD.room(1) && !hotelIsFloor(fromId)) hotelNewRun();
+    if (roomId === HOTEL_MD.room(1) && !hotelIsFloor(fromId)) hotelNewRun(0, partyLevel);
     _hotelRunOn().deepest = Math.max(_hotelRun.deepest, DOOR_HQ.rooms[roomId].hotel | 0);
     return _hotelRun;
 }
@@ -111950,6 +111993,23 @@ function hotelRest(profile, roomId, cell) {
     if (roomId) run.slept[k] = true;
     return { ok: true, n, down };
 }
+/* THE BOSS DOWN (data.js hqEncounterRecord, a won fight): the top floor's boss beaten = the exit opens. true when it was him. */
+function hotelBossBeaten(roomId, id) {
+    const r = roomId && (DOOR_HQ.rooms || {})[roomId]; if (!r || !r.hotel || !r.hotelBossId || String(id) !== r.hotelBossId) return false;
+    _hotelRunOn().bossDown = true; return true;
+}
+/* THE EXIT (map.js _hqDoAction, the top floor's `hotelTop` door): shut while the boss stands; the first time through, his safe goes in the bag.
+   { ok, reward: [{ item, name, n }] | null } */
+function hotelTopGate(profile) {
+    const run = _hotelRunOn(); if (!run.bossDown) return { ok: false, reason: 'boss' };
+    if (run.rewarded) return { ok: true, reward: null };
+    run.rewarded = true;
+    const got = [];
+    HOTEL_MD.bossLoot.forEach(([item, n]) => { const a = (typeof hqBagAdd === 'function' && profile) ? hqBagAdd(profile, item, n) : { ok: false }; if (a && a.ok) got.push({ item, n, name: (typeof ITEM_RULES !== 'undefined' && ITEM_RULES[item] && ITEM_RULES[item].name) || item }); });
+    return { ok: true, reward: got };
+}
+/* a hotel floor's beaten guests are beaten for THIS run only (hqEncounterCleared / hqEncounterRecord): a new run, a new hotel, new guests */
+function hotelRunKey(roomId) { return (roomId && hotelIsFloor(roomId)) ? (_hotelSeed | 0) : null; }
 /* the lobby's lift: a door of the city room on the left lift of the hotel's back wall (F-inside.js draws it), found from the
    building's own row so it follows the building */
 function hotelInstall() {
@@ -111970,7 +112030,7 @@ if (typeof window !== 'undefined') {
     window.HOTEL_MD = HOTEL_MD; window.hotelMaze = hotelMaze; window.hotelFloorRoom = hotelFloorRoom; window.hotelBuild = hotelBuild; window.hotelNewRun = hotelNewRun;
     window.hotelIsFloor = hotelIsFloor; window.hotelBeforeGo = hotelBeforeGo; window.hotelRunState = hotelRunState; window.hotelLootTake = hotelLootTake; window.hotelRest = hotelRest;
     window.hotelSeen = hotelSeen; window.hotelStepDir = hotelStepDir; window.hotelOpen = hotelOpen; window.hotelGateOpen = hotelGateOpen; window.hotelWayOpen = hotelWayOpen;
-    window.HQ_SHUT_OPEN = HQ_SHUT_OPEN;
+    window.HQ_SHUT_OPEN = HQ_SHUT_OPEN; window.hotelTopGate = hotelTopGate; window.hotelBossBeaten = hotelBossBeaten;
 }
 /* HOTEL-MD-END */
 if (typeof window !== 'undefined') {

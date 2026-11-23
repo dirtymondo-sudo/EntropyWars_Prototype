@@ -4027,3 +4027,23 @@ All in three-renderer.js, F3 only (read when the text is made; the per-frame par
   sprite freed it, and on the node renderer every later sprite draw had no index buffer (skipped). `_ewSpriteGeoKeep()` (init + first
   skipped draw) makes that shared geometry's dispose a no-op; F3's renderer line: "sprite shape disposes refused N". Not reproduced
   in the cloud (WebGPU there cannot hold the city): his next WebGPU F3 should show 0 skipped draws and some refusals.
+
+## THE BITMAPS GO WITH THE FILE (2026-11-23, mondo: "Game crashed, firefox crashed ... out of system memory and firefox was using 120gb")
+Thread cmsg_01XWpxyTn3nnw98znVzKdFjsHP9tobq3538S4ekoT4oFPo. Not today's code: THE MEMORY BUDGET (11-15, `_mmEvict` / `_mmRigEvict`,
+the leave sweep `_mmLeaveSweep`, the walk's `_mmTick`) has dropped idle model files since PR #1451/#1458, and every drop leaked.
+- three r186's GLTFLoader decodes a GLB's pictures into ImageBitmaps (Chrome, Firefox 98+, Safari 17+). Its docs: "image bitmaps are
+  not automatically GC-collected ... they require special handling during the disposal process". `texture.dispose()` frees the GPU
+  copy only. The drop disposed textures, geometries, materials and deleted the cache entry, never closed the bitmaps; the next room
+  (or the same room again) loads the file again and decodes new ones.
+- The budget is 700 MB and one room wears 600-1,100 MB of model files, so every room change drops 100-300 files (the leave sweep goes
+  to half the budget) and loads them back: the leak grows with each door, each fight hand-over, each walk over the budget.
+- MEASURED (cloud, Chromium, node renderer on WebGL2, `memprobe.js` in the thread's scratchpad: wraps createImageBitmap / close,
+  GPUDevice / GL create+destroy, samples every 10 s): the Clearing, then lobby / Clearing / lobby / Clearing. Live decoded pictures
+  BEFORE: 621 MB at the first ready, 675, 1,029, 1,069, 1,423 MB after the 4th change (+~200 MB every return to the Clearing), a
+  forced GC freed nothing (40 MB collected of 4,167 MB made). AFTER (same run): 642, 314, 637, 283, 637 MB: flat, every dropped picture handed back (3,523 MB closed). STILL OPEN: the JS heap grew ~1.1 GB over the 4 changes in BOTH runs (1,350 -> 2,430 MB, a forced GC freed nothing): a second, separate growth, next to chase.
+- THE FIX: `_mmCloseBitmaps(texs, mats)` in both drops closes the dropped file's ImageBitmaps, except a picture a drawn thing still
+  wears (the worn walk's set, `_mmWornRef`: a static batch draws a file's material on its own merged shape), so the GPU can still take
+  it again. Count: `ThreeRenderer.hq.mem().bmpClosed / bmpKept / bmpClosedMB`. Off: `window.EW_KEEP_DROPPED_BITMAPS`.
+- Other bitmap paths already closed theirs: `_capModelTextures` (the big-sheet cap), `_lowSheetCap`, the undrawn PBR sheets.
+- Not touched: `_disposeR` (room clean-up of objects whose textures the cache may still hand out again: closing there would break a
+  reuse). The node renderer on WebGL2 never deletes VAOs (`deleteVertexArray` 0 in the run): WebGL2-only, not his WebGPU path.

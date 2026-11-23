@@ -19,7 +19,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 
 | made by | human-made? | count |
 | --- | --- | --- |
-| Asset pack | yes | 1155 |
+| Asset pack | yes | 1167 |
 | Asset pack (author not recorded yet) | yes | 179 |
 | MakeHuman community asset | yes | 546 |
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
@@ -2675,6 +2675,29 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | weight_bench | `Assets/world/props/meshy/weight_bench.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3D) for the Disaster City interiors, Southside pass 2 (mondo 11-13 22:33: "make meshy versions of them"); claims list project files meshy/interior-claims.md |
 | wing_chun_dummy | `Assets/world/props/meshy/wing_chun_dummy.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3D) for the Disaster City interiors, Southside pass 2 (mondo 11-13 22:33: "make meshy versions of them"); claims list project files meshy/interior-claims.md |
 
+### Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) — Asset pack (18)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| trailer_home_1 | `Assets/world/packs/elbolilloduro/ebd_trailerscene_trailer_0_open.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
+| trailer_home_1_inside | `Assets/world/packs/elbolilloduro/ebd_trailerscene_trailer_0_inside.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
+| trailer_home_1_shut | `Assets/world/packs/elbolilloduro/ebd_trailerscene_trailer_0.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
+| trailer_home_2 | `Assets/world/packs/elbolilloduro/ebd_trailerscene_trailer_1_open.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
+| trailer_home_2_inside | `Assets/world/packs/elbolilloduro/ebd_trailerscene_trailer_1_inside.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
+| trailer_home_2_shut | `Assets/world/packs/elbolilloduro/ebd_trailerscene_trailer_1.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
+| trailer_home_3 | `Assets/world/packs/elbolilloduro/ebd_trailerscene_trailer_2_open.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
+| trailer_home_3_inside | `Assets/world/packs/elbolilloduro/ebd_trailerscene_trailer_2_inside.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
+| trailer_home_3_shut | `Assets/world/packs/elbolilloduro/ebd_trailerscene_trailer_2.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
+| trailer_home_4 | `Assets/world/packs/elbolilloduro/ebd_trailerscene_trailer_3_open.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
+| trailer_home_4_inside | `Assets/world/packs/elbolilloduro/ebd_trailerscene_trailer_3_inside.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
+| trailer_home_4_shut | `Assets/world/packs/elbolilloduro/ebd_trailerscene_trailer_3.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
+| trailer_home_5 | `Assets/world/packs/elbolilloduro/ebd_trailerscene_trailer_4_open.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
+| trailer_home_5_inside | `Assets/world/packs/elbolilloduro/ebd_trailerscene_trailer_4_inside.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
+| trailer_home_5_shut | `Assets/world/packs/elbolilloduro/ebd_trailerscene_trailer_4.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
+| trailer_home_6 | `Assets/world/packs/elbolilloduro/ebd_trailerscene_trailer_5_open.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
+| trailer_home_6_inside | `Assets/world/packs/elbolilloduro/ebd_trailerscene_trailer_5_inside.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
+| trailer_home_6_shut | `Assets/world/packs/elbolilloduro/ebd_trailerscene_trailer_5.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
+
 ### Pizzeria PSX / Gas Station / DINER / BurgerPiz / 6twelve / Tacos / Laundry / VHS Shop / House / Quequis House · Elbolilloduro · CC0 (the scene's whole building cut out in Blender by bake-pack-pieces.py city_*; Disaster City, docs/disaster-city/pack-claims.md) — Asset pack (17)
 
 | catalogue key | file (R2 bucket path) | made by | source |
@@ -2967,17 +2990,6 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | beach_cooler | `Assets/world/packs/elegantcrow_beach/beach_cooler.glb` | Asset pack | Beach Props Pack · Elegant Crow (itch.io, name your own price; the author OKs commercial use) · OBJ -> GLB by Claude (Disaster City Bayside interiors) |
 | beach_life_ring | `Assets/world/packs/elegantcrow_beach/beach_life_ring.glb` | Asset pack | Beach Props Pack · Elegant Crow (itch.io, name your own price; the author OKs commercial use) · OBJ -> GLB by Claude (Disaster City Bayside interiors) |
 | beach_swim_ring | `Assets/world/packs/elegantcrow_beach/beach_swim_ring.glb` | Asset pack | Beach Props Pack · Elegant Crow (itch.io, name your own price; the author OKs commercial use) · OBJ -> GLB by Claude (Disaster City Bayside interiors) |
-
-### Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) — Asset pack (6)
-
-| catalogue key | file (R2 bucket path) | made by | source |
-| --- | --- | --- | --- |
-| trailer_home_1 | `Assets/world/packs/elbolilloduro/ebd_trailerscene_trailer_0.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
-| trailer_home_2 | `Assets/world/packs/elbolilloduro/ebd_trailerscene_trailer_1.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
-| trailer_home_3 | `Assets/world/packs/elbolilloduro/ebd_trailerscene_trailer_2.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
-| trailer_home_4 | `Assets/world/packs/elbolilloduro/ebd_trailerscene_trailer_3.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
-| trailer_home_5 | `Assets/world/packs/elbolilloduro/ebd_trailerscene_trailer_4.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
-| trailer_home_6 | `Assets/world/packs/elbolilloduro/ebd_trailerscene_trailer_5.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
 
 ### Castle and Fort Builder Pack · McSteeg (itch.io) · free for games, credit given — Asset pack (5)
 

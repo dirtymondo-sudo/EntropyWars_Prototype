@@ -41061,6 +41061,33 @@ const ThreeRenderer = (function () {
         for (var a = 0; a < D.list.length; a++) { var x = D.list[a]; if (x && x.traverse) x.traverse(function (q) { _mmVisit(q, live2, worn2); }); }
         return live2;
     }
+    /* THE BITMAPS GO WITH THE FILE (2026-11-23, mondo: Firefox on his Mac reached 120 GB and the system ran out of memory).
+       three's GLTFLoader decodes every picture inside a GLB into an ImageBitmap (Firefox 98+, Chrome; three's own docs: "image
+       bitmaps are not automatically GC-collected ... they require special handling during the disposal process"). A texture's
+       dispose() frees the GPU copy only: the decoded pixels stay in the ImageBitmap until close() or a garbage collection, and
+       the collector does not see those pixels as memory it should hurry for. THE MEMORY BUDGET drops idle model files (on
+       leaving a room, and every few seconds while over the budget) and the next room loads them again: every drop left its
+       decoded sheets behind, every reload decoded new ones, so a session of walking between rooms piled up gigabytes that were
+       never given back (measured in the cloud: see rendering-loading-perf.md "THE BITMAPS GO WITH THE FILE"). A dropped file's
+       sheets are its own (the cache entry is deleted with them), so their bitmaps are closed here, with the dispose; a sheet
+       whose material or picture a drawn thing still wears (a static batch draws a file's material on its own merged shape, the
+       worn walk saw it: _mmWornRef) keeps its bitmap, so the GPU can take it again from the picture.
+       Count: ThreeRenderer.hq.mem().bmpClosed / bmpClosedMB. Off: window.EW_KEEP_DROPPED_BITMAPS. */
+    var _mmBmpClosed = 0, _mmBmpClosedB = 0, _mmBmpKept = 0, _mmWornRef = null;
+    function _mmCloseBitmaps(texs, mats) {
+        if (typeof ImageBitmap === 'undefined' || (typeof window !== 'undefined' && window.EW_KEEP_DROPPED_BITMAPS)) return;
+        var W = _mmWornRef, keep = null;
+        if (W && mats) for (var j = 0; j < mats.length; j++) { var m = mats[j]; if (!m || !W.has(m)) continue; for (var k in m) { var mt = m[k]; if (mt && mt.isTexture && mt.source) (keep || (keep = new Set())).add(mt.source); } }
+        if (W) { if (W._ewSrc == null) { var ws = W._ewSrc = new Set(); W.forEach(function (x) { if (x && x.isTexture && x.source) ws.add(x.source); }); }   // (read once a worn set)
+        }
+        for (var i = 0; i < texs.length; i++) {
+            var t = texs[i], src = t && t.source, im = src && src.data;
+            if (!im || !(im instanceof ImageBitmap) || !im.width) continue;
+            if ((keep && keep.has(src)) || (W && W._ewSrc.has(src))) { _mmBmpKept++; continue; }
+            var b = im.width * im.height * 4;
+            try { im.close(); _mmBmpClosed++; _mmBmpClosedB += b; } catch (x) {}
+        }
+    }
     function _mmEvict(url) {
         var e = _miscModelCache[url]; if (!e || !e.root) return 0;
         var geos = [], mats = [], texs = [];
@@ -41075,6 +41102,7 @@ const ThreeRenderer = (function () {
         });
         mats.forEach(function (m) { for (var k in m) { var t = m[k]; if (t && t.isTexture && texs.indexOf(t) < 0) texs.push(t); } });
         texs.forEach(function (t) { var dm = _cutoutDepthMats.get(t); if (dm) { _cutoutDepthMats.delete(t); try { dm.dispose(); } catch (x) {} } try { t.dispose(); } catch (x) {} });
+        _mmCloseBitmaps(texs, mats);   // THE BITMAPS GO WITH THE FILE
         geos.forEach(function (g) { try { g.dispose(); } catch (x) {} });
         mats.forEach(function (m) { try { m.dispose(); } catch (x) {} });
         delete _miscModelCache[url];
@@ -41089,7 +41117,7 @@ const ThreeRenderer = (function () {
         for (var u in _miscModelCache) { var e = _miscModelCache[u]; if (!e.root || e._ewPiece) continue; if (e.bytes == null) e.bytes = _mmBytes(e.root, {}); mb += e.bytes; n++; }
         for (var r in _unitGlbCache) { var ue = _unitGlbCache[r]; if (!ue || !ue.root) continue; if (ue._ew_mmBytes == null) ue._ew_mmBytes = _mmBytes(ue.root, seen); rb += ue._ew_mmBytes; rn++; }
         return { misc: { n: n, mb: +(mb / 1048576).toFixed(1) }, rigs: { n: rn, mb: +(rb / 1048576).toFixed(1) }, budget: _mmBudgetMB(),
-                 evicted: _mmEvicted, freedMB: +(_mmFreed / 1048576).toFixed(1), off: _mmOff(), undrawn: _hqPbrDropped, smallCapped: _hqSmallCapped };
+                 evicted: _mmEvicted, freedMB: +(_mmFreed / 1048576).toFixed(1), off: _mmOff(), undrawn: _hqPbrDropped, smallCapped: _hqSmallCapped, bmpClosed: _mmBmpClosed, bmpKept: _mmBmpKept, bmpClosedMB: +(_mmBmpClosedB / 1048576).toFixed(1) };
     }
     /* THE HOLDERS (2026-11-15, mondo: "Crashed inside the door main hall/lobby"; his readout: MEM 1726/700 MB in the Foyer, 2047/700
        in the Main Hall, Firefox M1 WebGPU). The readout said how much, never WHAT: nothing could be checked from a console paste.
@@ -41184,7 +41212,8 @@ const ThreeRenderer = (function () {
             list.push({ url: u, at: e.at || 0, bytes: e.bytes || 0, loading: !!e.loading, failed: !!e.failed, one: !!e._ewOneFile, x: !!(e.xcbs && e.xcbs.length), live: isLive });
         }
         _mmListRigs(H, live, list);
-        var go = _mmPick(list, Date.now(), 0, tot - cap * 0.5, 100000), before = _mmFreed;   // down to half the budget: the next room loads on top of what is kept
+        var go = _mmPick(list, Date.now(), 0, tot - cap * 0.5, 100000), before = _mmFreed;
+        _mmWornRef = live.worn || null;   // THE BITMAPS GO WITH THE FILE: what is still worn keeps its pictures   // down to half the budget: the next room loads on top of what is kept
         go.forEach(function (k) { if (k.slice(0, 2) === 'r|') _mmRigEvict(k.slice(2)); else _mmEvict(k); });
         if (go.length) { _objectsDirty = true; try { console.log('[ThreeRenderer] THE MEMORY BUDGET: left the room over the budget, ' + go.length + ' file(s) nothing wears dropped (' + ((_mmFreed - before) / 1048576).toFixed(0) + ' MB)'); } catch (x) {} }
         return go.length;
@@ -41220,6 +41249,7 @@ const ThreeRenderer = (function () {
         if (tot <= cap) return;
         if (_mmQueue.length) return;   // the last sweep's drops are still going
         var live = _mmLiveSliced(H); if (!live) { _mmAt = now - MM_EVERY_MS; return; }   // THE SLICED WORN WALK: on again next frame
+        _mmWornRef = live.worn || null;   // THE BITMAPS GO WITH THE FILE (the drops below go over the next frames: the same worn set)
         var list = [], t = Date.now(), idle = (typeof HQ_ENGINE_RULES !== 'undefined' && HQ_ENGINE_RULES.cacheIdleMs > 0) ? HQ_ENGINE_RULES.cacheIdleMs : 120000;
         tm = _lensSub('memory: worn list', tm);
         for (var u in _miscModelCache) {
@@ -41283,6 +41313,7 @@ const ThreeRenderer = (function () {
         });
         mats.forEach(function (m) { for (var k in m) { var t = m[k]; if (t && t.isTexture && texs.indexOf(t) < 0) texs.push(t); } });
         texs.forEach(function (t) { try { t.dispose(); } catch (x) {} });
+        _mmCloseBitmaps(texs, mats);   // THE BITMAPS GO WITH THE FILE
         geos.forEach(function (g) { try { g.dispose(); } catch (x) {} });
         mats.forEach(function (m) { try { m.dispose(); } catch (x) {} });
         delete _unitGlbCache[url];
@@ -87307,6 +87338,9 @@ const ThreeRenderer = (function () {
             sub: spec.sub || null, reach: spec.reach || 1.75, pose: spec.pose || null, cast: spec.cast || null, doing: spec.doing || null,
             spot: spec.spot || null, spotIndex: (spec.spotIndex != null) ? spec.spotIndex : -1, patrol: !!spec.patrol, rounds: null, away: false,   // THE ROUNDS (2026-09-19): the authored spot it stands at (its loop's first stop), a patrol agent, its loop record
         };
+        /* a spot's own fight level (`lvl`: the hotel's floors) and size (`scale`: the hotel's boss) */
+        if (spec.spot && (spec.spot.lvl | 0) > 0) ch.lvl = spec.spot.lvl | 0;
+        if (spec.spot && +spec.spot.scale > 0 && +spec.spot.scale !== 1) { entry.group.scale.multiplyScalar(+spec.spot.scale); ch.heightM *= +spec.spot.scale; ch.boss = !!spec.spot.boss; }
         _hq.chars.push(ch);
         if (spec.hold) _hqAttachHeld(ch, spec.hold);
         /* people are never a floor: the top sits above any jump apex */
@@ -89491,7 +89525,9 @@ const ThreeRenderer = (function () {
         try { var pop = (typeof hqRoomPopulation === 'function') ? hqRoomPopulation(rid, opts && opts.profile, { perfLow: !!(typeof window !== 'undefined' && window.EW_PERF_LOW) }) : null; if (pop) planned += pop.n | 0; } catch (e) {}
         var cap = (typeof hqRoomCrowdCap === 'function') ? hqRoomCrowdCap(rid, planned) : planned;
         if (typeof window !== 'undefined' && window.EW_HQ_NO_CROWD_CAP) cap = 999;
-        var L = { room: rid, cap: cap, n: 0, races: {}, day: (typeof hqToday === 'function') ? hqToday() : '' };
+        /* `crowdAll` (the hotel's floors, 2026-11-23): every placed guest stands, the same race more than once too (the cap left floor 10's boss out) */
+        var all = !!(room && room.crowdAll); if (all) cap = Math.max(cap, planned);
+        var L = { room: rid, cap: cap, n: 0, all: all, races: {}, day: (typeof hqToday === 'function') ? hqToday() : '' };
         /* THE OUTDOOR AREAS (2026-11-18, mondo on the Colosseum's crowd: "yes raise the body cap, I thought it was 20 anyway? and there is no one per
            race rule, there are already multiple of the same units in disaster city"): in a room built on plots a race stands as often as it is
            placed, and EVERY placed native is made; the cap (data.js HQ_CROWD_RULES.areaMax) is how many of them are SHOWN at once, the nearest
@@ -89500,12 +89536,12 @@ const ThreeRenderer = (function () {
         L.area = !!(room && room.plots) && !(typeof window !== 'undefined' && window.EW_HQ_AREA_OLD_CAP);
         L.placed = 0;
         L.left = function () { return Math.max(0, L.cap - L.n); };
-        L.has = function (rk) { return !L.area && !!L.races[rk]; };
+        L.has = function (rk) { return !L.area && !L.all && !!L.races[rk]; };
         /* take a body: false = the room is full, or this race already stands here (dupOk: the backup employees, a swarm; `placed`: a native at its own spot) */
         L.take = function (rk, dupOk, placed) {
             if (L.area && placed) { if (rk) L.races[rk] = (L.races[rk] || 0) + 1; L.n++; L.placed++; return true; }
             if (L.n >= L.cap) return false;
-            if (rk && rk !== 'men in black' && !dupOk && !L.area && L.races[rk]) return false;
+            if (rk && rk !== 'men in black' && !dupOk && !L.area && !L.all && L.races[rk]) return false;
             if (rk) L.races[rk] = (L.races[rk] || 0) + 1;
             L.n++;
             return true;
@@ -89612,7 +89648,7 @@ const ThreeRenderer = (function () {
                        own `y` (metres; a box over a tunnel, a gallery: a floor that is a BRIDGE, which a spot with no y never finds: it reads the
                        ground under it) and its `pose` (a sprites.js _CAST_POSES slot: `hqSit` on a throne) ride to the body. A spot with no y still
                        stands on what is under it (the ground, a row of seats). */
-                    _hqSpawnCharacter({ id: 'hq-native-' + si, kind: 'npc', race: rh, gender: hg, deg: spot.deg, r: spot.r, x: pX, z: pZ, level: spot.level || 0, y: (typeof spot.y === 'number') ? spot.y : undefined, pose: spot.pose || null, face: spot.face || 0, line: sayOf(spot), label: (spot.talk && spot.talk.name) || undefined, spot: spot, spotIndex: si });   // THE TALK (2026-10-08): the editor's name
+                    _hqSpawnCharacter({ id: 'hq-native-' + si, kind: 'npc', race: rh, gender: hg, deg: spot.deg, r: spot.r, x: pX, z: pZ, level: spot.level || 0, y: (typeof spot.y === 'number') ? spot.y : undefined, pose: spot.pose || null, face: spot.face || 0, line: sayOf(spot), label: spot.label || (spot.talk && spot.talk.name) || undefined, spot: spot, spotIndex: si });   // THE TALK (2026-10-08): the editor's name
                     var oi = owned.indexOf(rh); if (oi >= 0) owned.splice(oi, 1);
                 } else free.push(spot);
             });
