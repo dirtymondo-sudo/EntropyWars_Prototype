@@ -2,6 +2,10 @@
 > `docs/notes/balance-loop-20261123-state.json` (fresh: new AI PR #2470 + the 7 new units).** Baseline 1,400 matches (two 115-min labs),
 > true spread 2.6 pts (the 11-22 loop + new AI tightened it). New units: Butterfly Girl 63% (cut), Abomination 59%, Rat 52%, Monarch 48%,
 > The Hollow 45%, Plastic Surgeon 44%, Bear 41% (inside luck, unchanged). PASS 1: 24 races, 13 up, 11 down (Mothman 68% the most).
+> PASS 2 (1,484 matches on pass 1): true spread 2.6 -> 2.9 pts, so pass 1 was a wash (5 of its 24 overshot: Gambler, Annunaki,
+> Golem, Mushroom Girl, Ghost, halved; Mothman 68 -> 45%). Butterfly Girl (64%) and Eagleman (64%) did not move after their cuts: cut again.
+> 27 races: 9 up (Bear 36%, Boltzmann Brain 35%), 13 down (Abomination 59%), 5 halved. At ~2.5-3 pts the loop is at its floor for
+> two 2-hour labs a pass; past here a pass needs ~4 labs (~2,800 matches) or it only trades noise.
 
 > **THE 11-22 LOOP (mondo: "run a balance pass a couple times"), state = `docs/notes/balance-loop-20261122-state.json`.** Two 115-min labs
 > a pass (a tracked background task; a detached nohup run dies when the idle container suspends), pooled: baseline 1,081 matches,
