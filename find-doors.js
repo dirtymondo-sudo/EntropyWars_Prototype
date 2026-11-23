@@ -29,8 +29,9 @@ const OUT = path.resolve(opt('--out', path.join(__dirname, 'shots', 'doors')));
 const IDS = ARGS.filter((a, i) => !a.startsWith('--') && !['--out', '--jobs', '--zone'].includes(ARGS[i - 1]));
 /* the catalogue's whole buildings with a door of their own (a key that opens is in HQ_WALK_IN_PROPS and is left out). Add a new pack building here. */
 /* (11-23, THE OPEN DOORS: `thatched_hut` left the list: the Meshy hut has no door, only lattice windows on all four sides, and its floor stands on
-   stilts 0.7 m up with 1.2 m under the eaves: nobody walks in, and nothing on it says you should) */
-const BUILDING_PROPS = /^(city_(diner|burgerpiz|6twelve|laundry|vhs_shop|house|quequis_house|pizzeria_shut|gas_store_shut)|trailer_home_\d|abandoned_house|stilt_(hut|house|house_wide)|babel_house_\w+|lighthouse(_tall)?|xmas_house|ebd_buildings_bld_\d+|woods_cabin(_shut)?|outhouse(_shut)?|psx_toilet_cabin_mp_1|church_building|italian_building(_2)?)$/;
+   stilts 0.7 m up with 1.2 m under the eaves: nobody walks in, and nothing on it says you should); `lighthouse` / `lighthouse_tall` left too: the Meshy
+   lighthouse they wear is a striped tower on a rock with no door on any side) */
+const BUILDING_PROPS = /^(city_(diner|burgerpiz|6twelve|laundry|vhs_shop|house|quequis_house|pizzeria_shut|gas_store_shut)|trailer_home_\d(_shut)?|abandoned_house|stilt_(hut|house|house_wide)|babel_house_\w+|xmas_house|ebd_buildings_bld_\d+|woods_cabin(_shut)?|outhouse(_shut)?|psx_toilet_cabin_mp_1|church_building|italian_building(_2)?)$/;
 const DOOR_SHEET = /^urban:(Door|MetalShutter)/;
 
 function scan(D, id, reach) {

@@ -32722,12 +32722,24 @@ const DOOR_HQ = {
            one by one, real size (`span` = the long side). The Trailer Park scene's six trailers (one cut per trailer, its door side to
            +Z = the row's `face`), Area 51's flight line and the Skinwalker fields; the Abandoned House's shell (its basement cut to the
            last metre, `hover: -1` sinks that metre under the ground), past the Haunted grounds' pines on the outer ground. */
-        trailer_home_1:    { file: 'ebd_trailerscene_trailer_0.glb', base: 'misc', span: 15.1, foot: 3.0, rect: { hw: 7.55, hd: 3.15 }, block: true },
-        trailer_home_2:    { file: 'ebd_trailerscene_trailer_1.glb', base: 'misc', span: 15.1, foot: 3.0, rect: { hw: 7.55, hd: 3.15 }, block: true },
-        trailer_home_3:    { file: 'ebd_trailerscene_trailer_2.glb', base: 'misc', span: 15.1, foot: 3.0, rect: { hw: 7.55, hd: 3.15 }, block: true },
-        trailer_home_4:    { file: 'ebd_trailerscene_trailer_3.glb', base: 'misc', span: 15.0, foot: 2.8, rect: { hw: 7.5, hd: 2.85 }, block: true },
-        trailer_home_5:    { file: 'ebd_trailerscene_trailer_4.glb', base: 'misc', span: 15.1, foot: 2.8, rect: { hw: 7.55, hd: 2.75 }, block: true },
-        trailer_home_6:    { file: 'ebd_trailerscene_trailer_5.glb', base: 'misc', span: 15.25, foot: 3.0, rect: { hw: 7.6, hd: 3.05 }, block: true },
+        trailer_home_1:    { file: 'ebd_trailerscene_trailer_0_open.glb', base: 'misc', span: 15.1, foot: 0, hover: -0.81 },   // walk-in (THE OPEN DOORS, 11-23): the front door is out, HQ_WALK_IN_PROPS hangs a leaf and lays its walls (outside, the bedroom and bathroom partitions); sunk 0.81 m so its floor is the ground (the walker climbs no porch step)
+        trailer_home_1_inside: { file: 'ebd_trailerscene_trailer_0_inside.glb', base: 'misc', span: 15.1, foot: 0, hover: -0.81 },   // the scene's own furniture, centred as the shell (no collision: the dining set stands inside the door)
+        trailer_home_1_shut: { file: 'ebd_trailerscene_trailer_0.glb', base: 'misc', span: 15.1, foot: 3.0, rect: { hw: 7.55, hd: 3.15 }, block: true },
+        trailer_home_2:    { file: 'ebd_trailerscene_trailer_1_open.glb', base: 'misc', span: 15.1, foot: 0, hover: -0.81 },   // walk-in (THE OPEN DOORS, 11-23): the front door is out, HQ_WALK_IN_PROPS hangs a leaf and lays its walls (outside, the bedroom and bathroom partitions); sunk 0.81 m so its floor is the ground (the walker climbs no porch step)
+        trailer_home_2_inside: { file: 'ebd_trailerscene_trailer_1_inside.glb', base: 'misc', span: 15.1, foot: 0, hover: -0.81 },   // the scene's own furniture, centred as the shell (no collision: the dining set stands inside the door)
+        trailer_home_2_shut: { file: 'ebd_trailerscene_trailer_1.glb', base: 'misc', span: 15.1, foot: 3.0, rect: { hw: 7.55, hd: 3.15 }, block: true },
+        trailer_home_3:    { file: 'ebd_trailerscene_trailer_2_open.glb', base: 'misc', span: 15.1, foot: 0, hover: -0.81 },   // walk-in (THE OPEN DOORS, 11-23): the front door is out, HQ_WALK_IN_PROPS hangs a leaf and lays its walls (outside, the bedroom and bathroom partitions); sunk 0.81 m so its floor is the ground (the walker climbs no porch step)
+        trailer_home_3_inside: { file: 'ebd_trailerscene_trailer_2_inside.glb', base: 'misc', span: 15.1, foot: 0, hover: -0.81 },   // the scene's own furniture, centred as the shell (no collision: the dining set stands inside the door)
+        trailer_home_3_shut: { file: 'ebd_trailerscene_trailer_2.glb', base: 'misc', span: 15.1, foot: 3.0, rect: { hw: 7.55, hd: 3.15 }, block: true },
+        trailer_home_4:    { file: 'ebd_trailerscene_trailer_3_open.glb', base: 'misc', span: 15.0, foot: 0, hover: -0.81 },   // walk-in (THE OPEN DOORS, 11-23): the front door is out, HQ_WALK_IN_PROPS hangs a leaf and lays its walls (outside, the bedroom and bathroom partitions); sunk 0.81 m so its floor is the ground (the walker climbs no porch step)
+        trailer_home_4_inside: { file: 'ebd_trailerscene_trailer_3_inside.glb', base: 'misc', span: 15.0, foot: 0, hover: -0.81 },   // the scene's own furniture, centred as the shell (no collision: the dining set stands inside the door)
+        trailer_home_4_shut: { file: 'ebd_trailerscene_trailer_3.glb', base: 'misc', span: 15.0, foot: 2.8, rect: { hw: 7.5, hd: 2.85 }, block: true },
+        trailer_home_5:    { file: 'ebd_trailerscene_trailer_4_open.glb', base: 'misc', span: 15.1, foot: 0, hover: -0.81 },   // walk-in (THE OPEN DOORS, 11-23): the front door is out, HQ_WALK_IN_PROPS hangs a leaf and lays its walls (outside, the bedroom and bathroom partitions); sunk 0.81 m so its floor is the ground (the walker climbs no porch step)
+        trailer_home_5_inside: { file: 'ebd_trailerscene_trailer_4_inside.glb', base: 'misc', span: 15.1, foot: 0, hover: -0.81 },   // the scene's own furniture, centred as the shell (no collision: the dining set stands inside the door)
+        trailer_home_5_shut: { file: 'ebd_trailerscene_trailer_4.glb', base: 'misc', span: 15.1, foot: 2.8, rect: { hw: 7.55, hd: 2.75 }, block: true },
+        trailer_home_6:    { file: 'ebd_trailerscene_trailer_5_open.glb', base: 'misc', span: 15.25, foot: 0, hover: -0.81 },   // walk-in (THE OPEN DOORS, 11-23): the front door is out, HQ_WALK_IN_PROPS hangs a leaf and lays its walls (outside, the bedroom and bathroom partitions); sunk 0.81 m so its floor is the ground (the walker climbs no porch step)
+        trailer_home_6_inside: { file: 'ebd_trailerscene_trailer_5_inside.glb', base: 'misc', span: 15.25, foot: 0, hover: -0.81 },   // the scene's own furniture, centred as the shell (no collision: the dining set stands inside the door)
+        trailer_home_6_shut: { file: 'ebd_trailerscene_trailer_5.glb', base: 'misc', span: 15.25, foot: 3.0, rect: { hw: 7.6, hd: 3.05 }, block: true },
         abandoned_house:   { file: 'ebd_abandonedhouse_house.glb', base: 'misc', span: 36.3, foot: 10, rect: { hw: 11.55, hd: 18.15 }, block: true, hover: -1 },
         /* THE CITY'S WHOLE BUILDINGS (2026-11-13, mondo: "Isnt there a pizza resturaunt and or gast station asset pack we downlaoded? Those
            definitely need to be buildings somewhere"): each Elbolilloduro scene's building from the outside (shell, doors, windows, signs; no
@@ -90207,7 +90219,7 @@ const HQ_WALK_IN_PROPS = {
        (the room draws its inside walls, floor and ceiling), a shell that is hollow already (the four Babel houses) is `bareIn`.
        Measured in the model's own metres from its vertices (x = its right, z = toward its door). Notes: areas-complexes.md "THE OPEN DOORS". */
     outhouse: {   // one person, one seat, one roll, last week's paper (the Camp wish list's privy; 13 stand in the world)
-        rooms: [{ x: 0, z: 0.03, w: 1.45, d: 1.6, h: 1.85, ceilH: 1.72, doorLx: 0, doorW: 0.86, doorH: 1.8, leaf: 'leaf_shabby_wood', liner: { keyIn: 'urban:WoodGeneric1b', floorIn: 'urban:WoodFlooring1d' } }],
+        rooms: [{ x: 0, z: 0.03, w: 1.45, d: 1.6, h: 1.85, ceilH: 1.72, doorLx: 0, doorW: 1.05, doorH: 1.8, leaf: 'leaf_shabby_wood', liner: { keyIn: 'urban:WoodGeneric1b', floorIn: 'urban:WoodFlooring1d' } }],
         furnish: [['psx_wooden_crate_1', 0, -0.42, 0], ['ebd_house_toilet_paper', 0.2, -0.42, 0, { y: 0.36 }], ['papers_b', -0.2, -0.4, 20, { y: 0.36 }], ['railway_lantern', 0.3, 0.2, 0]],
     },
     woods_cabin: {   // the cabin in the woods: one room, a cot, a cold stove, a lantern somebody left lit
@@ -90215,6 +90227,19 @@ const HQ_WALK_IN_PROPS = {
         boxes: [[-2.05, -1.15, -2.3, -0.4, 0.6], [1.45, 2.2, -2.45, -1.75, 1.6]],
         furnish: [['cot', -1.6, -1.35, 0], ['wood_stove', 1.8, -2.1, 0], ['psx_chair_mp_3', -0.6, -2.0, 0], ['railway_lantern', -1.9, 0.9, 0], ['psx_cobweb_1', 2.25, 1.2, 270, { wall: true, y: 2.0 }], ['fur_rug', -0.8, -0.6, 0]],
     },
+    /* THE TRAILERS (2026-11-23): the Trailer Park scene's own homes, open (bake-pack-pieces.py trailer_N_open + _inside): one row wall to wall
+       (living room, kitchen, bedroom, the bathroom at the far end behind its own wall). The floor stood 0.81 m up on its skirting and the walker
+       cannot climb the porch's steps (each rise is over a mesh step), so the open shell and its inside are SUNK 0.81 m (`hover`): the floor is
+       the ground. A sunk model has no mesh collider: the walls are the row and `walls` (the bedroom and bathroom partitions, their doorways open); the
+       furniture is decor (a collider on it shut the door: the dining set stands just inside it) */
+    /* (a walker's gap under ~1 m shuts: the 0.68 m body against the walls' 0.5 m cells stopped dead in the trailers' 0.87 m doorway; the
+       gap is 1.1 m, the leaf covers the pack's frame) */
+    trailer_home_1: { inside: 'trailer_home_1_inside', rooms: [{ x: -0.03, z: -1.015, w: 13.87, d: 3.44, h: 2.75, doorLx: 0.59, doorW: 1.1, doorH: 2.28, leaf: 'leaf_hollow_core' }], walls: [[-5.45, -2.735, -5.45, -1.885, 2.7], [-5.45, -0.985, -5.45, 0.705, 2.7], [3.9, -2.735, 3.9, -0.985, 2.7], [3.9, -0.085, 3.9, 0.705, 2.7]] },
+    trailer_home_2: { inside: 'trailer_home_2_inside', rooms: [{ x: -0.03, z: -0.839, w: 13.87, d: 3.45, h: 2.75, doorLx: 0.59, doorW: 1.1, doorH: 2.28, leaf: 'leaf_hollow_core' }], walls: [[-5.45, -2.564, -5.45, -1.714, 2.7], [-5.45, -0.814, -5.45, 0.886, 2.7], [3.9, -2.564, 3.9, -0.814, 2.7], [3.9, 0.086, 3.9, 0.886, 2.7]] },
+    trailer_home_3: { inside: 'trailer_home_3_inside', rooms: [{ x: -0.033, z: -0.837, w: 13.87, d: 3.44, h: 2.75, doorLx: 0.59, doorW: 1.1, doorH: 2.28, leaf: 'leaf_hollow_core' }], walls: [[-5.45, -2.557, -5.45, -1.707, 2.7], [-5.45, -0.807, -5.45, 0.883, 2.7], [3.9, -2.557, 3.9, -0.807, 2.7], [3.9, 0.093, 3.9, 0.883, 2.7]] },
+    trailer_home_4: { inside: 'trailer_home_4_inside', rooms: [{ x: -0.032, z: -0.489, w: 13.79, d: 3.45, h: 2.75, doorLx: 0.545, doorW: 1.1, doorH: 2.28, leaf: 'leaf_hollow_core' }], walls: [[-5.55, -2.214, -5.55, -1.364, 2.7], [-5.55, -0.464, -5.55, 1.236, 2.7], [3.85, -2.214, 3.85, -0.464, 2.7], [3.85, 0.436, 3.85, 1.236, 2.7]] },
+    trailer_home_5: { inside: 'trailer_home_5_inside', rooms: [{ x: -0.009, z: -0.625, w: 13.82, d: 3.45, h: 2.75, doorLx: 0.565, doorW: 1.1, doorH: 2.28, leaf: 'leaf_hollow_core' }], walls: [[-5.45, -2.35, -5.45, -1.5, 2.7], [-5.45, -0.6, -5.45, 1.1, 2.7], [3.9, -2.35, 3.9, -0.6, 2.7], [3.9, 0.3, 3.9, 1.1, 2.7]] },
+    trailer_home_6: { inside: 'trailer_home_6_inside', rooms: [{ x: 0.063, z: -0.945, w: 13.82, d: 3.44, h: 2.75, doorLx: 0.565, doorW: 1.1, doorH: 2.28, leaf: 'leaf_hollow_core' }], walls: [[-5.4, -2.665, -5.4, -1.815, 2.7], [-5.4, -0.915, -5.4, 0.775, 2.7], [3.95, -2.665, 3.95, -0.915, 2.7], [3.95, -0.015, 3.95, 0.775, 2.7]] },
     babel_house_small: {   // Babel's one-room house: a cot, baskets, a water jar, a rug (everybody in Babel speaks a different language; nobody here talks)
         rooms: [{ x: 0, z: 0, w: 5.2, d: 4.3, doorLx: 0, doorW: 1.35, doorH: 2.1, leaf: 'leaf_stable' }],   // hollow: the mesh's own inside walls
         boxes: [[-3.0, -1.1, -1.5, -0.6, 0.6]],
@@ -90227,7 +90252,7 @@ const HQ_WALK_IN_PROPS = {
         furnish: [['cot', -4.35, -1.0, 90], ['cot', 4.35, -1.0, 270], ['woven_baskets', -0.7, -1.4, 0], ['greek_amphora', 0.7, -1.5, 0], ['rug_round', -2.5, -0.5, 0], ['rug_round', 2.5, -0.5, 0], ['oil_lamp', 0, -1.6, 0]],
     },
     babel_house_stair: {   // the two-storey house: its ground room, the door on its +X side (the stair outside climbs to the roof's painted door)
-        rooms: [{ x: 0, z: -0.59, rot: 270, w: 4.7, d: 5.3, doorLx: -1.18, doorW: 0.96, doorH: 2.3, leaf: 'leaf_stable' }],
+        rooms: [{ x: 0, z: -0.59, rot: 270, w: 4.7, d: 5.3, doorLx: -1.18, doorW: 1.1, doorH: 2.3, leaf: 'leaf_stable' }],
         boxes: [[-2.4, -1.5, -2.85, -0.95, 0.6]],
         furnish: [['cot', -1.95, -1.9, 0], ['woven_baskets', 1.9, -2.4, 0], ['greek_amphora', -2.0, 1.0, 0], ['rug_round', 0.2, -1.2, 0]],
     },

@@ -75,6 +75,21 @@ TRAILER_KEEP = r'^(Home|railing|Frame_Windows|Mesh|Frame_Door|Door|Door_Mesh|air
 # abandoned_house `hover: -1`; the rim's `sink`), so a slope never shows stilts. Its front (the porch on its short side, +X in the file) turns to +Z.
 JOBS += [('house', 'abandonedhouse', ['Casa!', 'Ventanas', 'm', 'Columnas', 'Barandal', 'Barandal.003'], -90, {'cut': 2.5})]
 JOBS += [('trailer_%d' % i, 'trailerscene', [{'near': 'Home' if i == 0 else 'Home_%02d' % i, 'pad': 1.2, 'keep': TRAILER_KEEP}], 90) for i in range(6)]
+# THE OPEN DOORS (2026-11-23, mondo: "If there is a door the player should be able to walk inside of it"): each trailer twice more, both
+# centred as the shut one (`frame` = TRAILER_KEEP): `_open` = the shell without its front door (data.js HQ_WALK_IN_PROPS hangs a swinging
+# leaf there), `_inside` = the scene's own furniture (kitchen, couch, TV, bed, bathroom), never the porch's bin bags, the washing line, the
+# roof's pipe or plates. Its floor stands 0.81 m over the shell's base, the porch steps (in the shell) climb to it. Marks: the inside (wall to
+# wall, the bathroom end included) and the front door, in each piece's own frame.
+TRAILER_OPEN = r'^(Home|railing|Frame_Windows|Mesh|Frame_Door|air-conditioning|Antenna|ladders|Fuse_box)'
+TRAILER_INSIDE = r'^(?!(Home|railing|Frame_Windows|Mesh|Frame_Door|Door|air-conditioning|Antenna|ladders|Fuse|Tub|Garbage|clothings|Stick|RoofingPlates|handle_Door|Cylinder\.035))'
+TRAILER_MARKS = [  # (room x0, x1, y0, y1), (door x0, x1, y0, y1) in the scene's metres
+    ((0.03, 3.47, -9.22, 4.65), (-0.06, 0.0, -3.31, -2.44)), ((21.39, 24.84, -9.22, 4.65), (21.31, 21.37, -3.31, -2.44)),
+    ((44.2, 47.64, -9.22, 4.65), (44.1, 44.16, -3.31, -2.44)), ((-0.16, 3.29, -48.01, -34.22), (-0.23, -0.18, -42.1, -41.22)),
+    ((21.39, 24.84, -47.64, -33.82), (21.31, 21.36, -41.73, -40.86)), ((44.2, 47.64, -48.01, -34.19), (44.1, 44.16, -42.1, -41.23))]
+for i in range(6):
+    near = 'Home' if i == 0 else 'Home_%02d' % i
+    JOBS += [('trailer_%d_open' % i, 'trailerscene', [{'near': near, 'pad': 1.2, 'keep': TRAILER_OPEN, 'frame': TRAILER_KEEP}], 90, {'marks': {'room': TRAILER_MARKS[i][0], 'door': TRAILER_MARKS[i][1]}}),
+             ('trailer_%d_inside' % i, 'trailerscene', [{'near': near, 'pad': 1.2, 'keep': TRAILER_INSIDE, 'frame': TRAILER_KEEP}], 90)]
 # THE MESHY AUDIT (2026-11-04, mondo: "You are supposed to document every single model and try to not use meshy models"): the
 # MODEL_LIST §10A stand-ins whose pack piece was named in 11-03's decor list (status `pack: …`) but never wired. Each proc WEARS its
 # piece (three-renderer.js _HQ_PACK_WEAR, Assets/world/packs/elbolilloduro/ebd_…), so its light / glow / collision stay. Front at +Z like the procs.
