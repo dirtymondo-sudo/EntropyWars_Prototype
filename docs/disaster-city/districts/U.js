@@ -122,7 +122,7 @@ module.exports.build = function (api) {
         box(0, 6.25, d / 2 + pd / 2, pw + 0.4, 0.9, pd + 0.2, MARB, { under: true }); gable(0, 7.15, d / 2 + pd / 2, pw + 0.4, pd + 0.2, 2.6, 'z', LEAD, MARB, 0.15);
         [-2.6, 0, 2.6].forEach(x => door('f', x, d / 2, DOORW, 2.2));
         box(0, 7, -1.5, 15, 1.4, 14, BRICK, { top: false }); vault(0, 8.4, -1.5, 14, 15, 3.4, 'z', LEAD, BRICK); tier(0, -1.5, 15, 14, 9.6);
-        /* NEW HAVEN: THE CARILLON TOWER, the district's tallest thing — a square sandstone shaft on a front corner of the hall (the corner no
+        /* NEW HAVEN: THE CARILLON TOWER, the district's second tallest thing (since the skyline, 11-23, the library's Bones Carillon is the tallest) — a square sandstone shaft on a front corner of the hall (the corner no
            roof route touches), slit windows up it, an open belfry with the bells hung in it, and an open stone CROWN: eight slender piers
            under a ring and a stone spirelet, a pinnacle on each corner. It blocks (one ghost block). About 60 parts would be a lot: 34. */
         const tw = 7, cs = [[-1, 1], [1, 1], [-1, -1], [1, -1]].map(([a, b]) => [a * (w / 2 - tw / 2 + 1.2), b * (d / 2 - tw / 2 + 0.6)]), cn = cs.find(q => routeFree(q[0], q[1], 8)) || cs[0], tx = cn[0], tz = cn[1];
@@ -146,7 +146,21 @@ module.exports.build = function (api) {
         for (let i = 0; i < 6; i++) { const x = -w / 2 + 0.5 + i * (w - 1) / 5; if (Math.abs(x) < 5.5 || x > w / 2 - 7) continue; box(x, 0, nz + nd / 2 + 0.5, 0.9, 7.5, 1.0, STONE); box(x, 7.5, nz + nd / 2 + 0.3, 0.9, 1.6, 0.6, MARB); }
         const rw = 14; box(0, 0, rz, rw, H - 1.5, rd, STONE, { top: false, faces: 'blr' }); gable(0, H - 1.5, rz, rw, rd + 0.6, 5.4, 'z', SLATE, STONE, 0.3); solid(0, rz, rw, rd, H - 1.5);
         [-1, 1].forEach(s => win(s < 0 ? 'l' : 'r', rz, 2.2, Math.floor((rd - 3.5) / T) * T, 5.2, rw / 2, GLT));
-        const tx = w / 2 - 3.2, tz = nz + nd / 2 - 2.2, ts = 6.4; box(tx, 0, tz, ts, 22, ts, STONE, { top: false }); box(tx, 22, tz, ts + 0.6, 0.5, ts + 0.6, MARB, { under: true }); pyramid(tx, 22.5, tz, ts + 0.5, 6.5, SLATE);
+        const tx = w / 2 - 3.2, tz = nz + nd / 2 - 2.2, ts = 6.4; box(tx, 0, tz, ts, 30, ts, STONE, { top: false }); box(tx, 30, tz, ts + 0.6, 0.5, ts + 0.6, MARB, { under: true });
+        /* THE SKYLINE (mondo 11-23 17:00 "Build it, plus the mid-rise fill"; plan https://claude.ai/artifact/YEe54svVhVbLufjHdfQ5QY) · 23 · THE BONES
+           CARILLON (Yale's Harkness Tower): the clock tower grows into a 60 m gothic bell tower, the district's tallest thing: the square shaft
+           (its clocks where they were) runs on to 30 m, an open belfry stage of tall pointed openings over it, then an eight-sided stone lantern on
+           slender piers and a slate spire, a pinnacle on every corner of each stage. All in the library's own four sheets (stone, granite, slate,
+           its glass), so the tower adds no material and no draw. */
+        [['f', tx, tz + ts / 2], ['r', tz, tx + ts / 2]].forEach(([f, cx, off]) => lancet(f, cx, 22.5, T, 5, off, GLT));
+        const bs = ts - 1.4, CN = [[-1, -1], [1, -1], [-1, 1], [1, 1]];
+        CN.forEach(([a, b]) => { box(tx + a * (ts / 2 - 0.45), 30.5, tz + b * (ts / 2 - 0.45), 0.9, 4, 0.9, STONE); pyramid(tx + a * (ts / 2 - 0.45), 34.5, tz + b * (ts / 2 - 0.45), 1.1, 2.6, STONE); });
+        box(tx, 30.5, tz, bs, 11, bs, STONE, { top: false });
+        [['f', tx, tz + bs / 2], ['b', tx, -(tz - bs / 2)], ['r', tz, tx + bs / 2], ['l', tz, -(tx - bs / 2)]].forEach(([f, cx, off]) => lancet(f, cx, 32.5, T, 6.5, off, GLT));
+        box(tx, 41.5, tz, bs + 0.6, 0.5, bs + 0.6, MARB, { under: true });
+        CN.forEach(([a, b]) => { box(tx + a * (bs / 2 - 0.35), 42, tz + b * (bs / 2 - 0.35), 0.7, 3.5, 0.7, STONE); pyramid(tx + a * (bs / 2 - 0.35), 45.5, tz + b * (bs / 2 - 0.35), 0.9, 2.2, STONE); });
+        cyl(tx, 42, tz, 1.9, 7, STONE, 8); P.push(Object.assign({ s: 'cyl', p: [r3(tx), 42, r3(tz)], r: 0.22, h: 7, seg: 6, cap: false, ring: { n: 8, r: 2.3, a0: 22.5 } }, look(STONE)));
+        cyl(tx, 49, tz, 2.6, 0.45, MARB, 8); cyl(tx, 49.45, tz, 2.2, 10.5, SLATE, 8, 0, { roof: true });
         [['f', tx, tz + ts / 2], ['r', tz, tx + ts / 2]].forEach(([f, cx, off]) => { const [p, ry] = FACE[f](cx, off + 0.06); P.push(Object.assign({ s: 'cyl', p: [p[0], 18.6, p[2]], r: 2.1, h: 0.12, seg: 20, ry: ry }, look(['calm_snow', 0xfff8e0]))); });
         /* the clock faces: a pale disc on its edge is not a part shape, so each face is a square stone-framed panel + two hands */
         [['f', tx, tz + ts / 2], ['r', tz, tx + ts / 2]].forEach(([f, cx, off]) => { panel(f, cx, 16.5, 4.2, 4.2, off + 0.02, ['calm_snow', 0xfff8e0]); panel(f, cx, 18.6, 0.22, 1.7, off + 0.06, [null, 0x202020]); panel(f, cx + 0.55, 18.5, 1.3, 0.22, off + 0.06, [null, 0x202020]); lancet(f, cx, 11.5, T, 3.5, off, GLT); });
