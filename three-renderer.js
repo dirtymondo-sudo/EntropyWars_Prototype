@@ -103792,6 +103792,19 @@ const ThreeRenderer = (function () {
         if (W.done) return true;
         var t0 = _alNow(), end = t0 + (!H.ready ? HQ_CARD_SLICE_MS : (HQ_STAGE_RULES.compileMs > 0) ? HQ_STAGE_RULES.compileMs : HQ_WARM_MS), n = 0;   // THE CARD WAITS: under the card the warm-up takes HQ_CARD_SLICE_MS a frame
         W.frames++;
+        /* THE WARM-UP USES THE FRAME'S LAMPS (2026-11-23, mondo's fight-start F3: "built: 4x MeshLambert node:wind on hq_batch | 2x
+           MeshLambert on hq_edge_road ..." in the Clearing, pieces the warm-up had built under the card): on the node renderer every
+           frame draws through THE ONE RIG's lamps (the room's own lights sit out of three's sight), and every look is keyed on that
+           list. The warm-up took the rig's lamps when it was made, which under the card is often BEFORE the rig exists (it is made
+           in the first drawn frame), so it compiled every material against the room's raw lights: a set no frame ever draws with,
+           and nothing it built was ever used. Whatever the walk's camera had not looked at yet was built the first time it was
+           seen, most of it at once when a fight's wide camera looked over the room. Now each step stands the rig for the room (what its
+           next frame does) and takes its lamps. Off: window.EW_WARM_RAW_LAMPS. */
+        if (_ewGpu && !_ewRigOff() && !(typeof window !== 'undefined' && window.EW_WARM_RAW_LAMPS)) {
+            try { if (H.scene && H.camera) _ewRigTick(H.scene, H.camera); } catch (eR) {}   // the rig as the room's next frame will stand it (made by the first drawn frame otherwise, often after the card)
+            var rigW = _ewRigLamps();
+            if (rigW && rigW.length) W.lights = rigW;
+        }
         try {
             while (W.i < W.objs.length) {
                 var o = W.objs[W.i++], ms = Array.isArray(o.material) ? o.material : [o.material];
@@ -103803,7 +103816,14 @@ const ThreeRenderer = (function () {
                 /* WEBGPU_PLAN W3: on the node chain the frame draws into the scene pass's target, so compile for that one */
                 var _wt = (ThreePost && ThreePost.warmTarget) ? ThreePost.warmTarget() : null, _wp = _wt ? renderer.getRenderTarget() : null;
                 if (_wt) renderer.setRenderTarget(_wt);
-                try { var _wpr = renderer.compile(W.fake, H.camera); if (_wpr && typeof _wpr.then === 'function') { W.flying = (W.flying || 0) + 1; var _wland = function () { W.flying--; }; _wpr.then(_wland, _wland); } } finally { if (_wt) renderer.setRenderTarget(_wp); }   // the node renderer's compile is a promise: a failure never goes uncaught
+                /* THE WARM-UP IN THE ROOM'S OWN SCENE (2026-11-23, same F3): on the node renderer what a look is built for is keyed on the
+                   SCENE it is drawn in (its fog, its lamps' list node, its clipping), and the stand-in scene was a different one, so its
+                   builds never matched a frame's. Now the piece is compiled in the room's own scene, which for that one call holds only
+                   the piece and the rig's lamps (its child list lent, put back before the call returns: three's compile reads the scene
+                   synchronously and only waits on the pipelines). Off: window.EW_WARM_FAKE (the stand-in, as before). */
+                var _wHS = (renderer.isWebGPURenderer && !(typeof window !== 'undefined' && window.EW_WARM_FAKE) && W.lights.length && W.lights[0].parent && W.lights[0].parent.parent === H.scene) ? H.scene : null, _wKids = null;
+                if (_wHS) { _wKids = _wHS.children; _wHS.children = [o, W.lights[0].parent]; }
+                try { var _wpr = renderer.compile(_wHS || W.fake, H.camera); if (_wpr && typeof _wpr.then === 'function') { W.flying = (W.flying || 0) + 1; var _wland = function () { W.flying--; }; _wpr.then(_wland, _wland); } } finally { if (_wKids) _wHS.children = _wKids; if (_wt) renderer.setRenderTarget(_wp); }   // the node renderer's compile is a promise: a failure never goes uncaught
                 n++;
                 if (_alNow() >= end) break;
             }
