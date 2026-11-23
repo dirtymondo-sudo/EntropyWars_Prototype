@@ -7902,6 +7902,7 @@ html.ew-mobile .pause-card { max-height: calc(100dvh - 16px); }
 .hq-zm .hq-zm-door { pointer-events: visiblePainted; }
 .hq-zm .hq-zm-here-ring { fill: none; stroke: #ffd040; stroke-width: .5; animation: hqZmHere 1.6s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
 .hq-zm .hq-zm-here-mark { fill: #ffd040; stroke: #000; stroke-width: .45; }
+.hq-zm-card .hq-zm-why { color: #ff7a7a; }
 @keyframes hqZmHere { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
 /* ONE MAP (11-23): the world sheet draws every zone's detail; the zoom turns each layer on (map.js _zmDetail) */
 .hq-zm-world:not(.zm-plots) .hq-zm-grid, .hq-zm-world:not(.zm-plots) .hq-zm-bord, .hq-zm-world:not(.zm-plots) .hq-zm-bord-under { display: none; }

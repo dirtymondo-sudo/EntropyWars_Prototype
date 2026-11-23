@@ -2535,7 +2535,7 @@
         /* THE AREA UNITS window (ui.js, 2026-10-24): the room the walk stands in, or null off the walk */
         window._hqCurRoomId = function () { try { const ed = window.EWEditor, es = (ed && ed.state) ? ed.state() : null; if (es && es.open && !es.playing) return null;   // the editor's viewport is not the walk
             return (state.gameState === GS.HQ && !_hqSuspended && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.active()) ? _hqCurRoom : null; } catch (e) { return null; } };
-        window._hqGoRoom = function (roomId, at) {
+        window._hqGoRoom = function (roomId, at, onReady) {
             { const _rt = _hqRetiredTo(roomId); if (_rt) { roomId = _rt; if (!(at && (DOOR_HQ.rooms[_rt].doors || []).some(d => d && d.id === at))) at = null; } }   /* a door id the new room kept (the Sewers' `pump`) still lands at that door (2026-11-16) */   // THE RETIRED ROOMS (data.js DOOR_HQ.retired)
             /* `site_<mapId>` is an alias since the board rooms went (2026-09-27): it walks into the site's entry part */
             if (!_hqRoomExists(roomId)) { try { const ent = (typeof window.hqSiteEntry === 'function') ? window.hqSiteEntry(roomId, at) : null; if (ent && ent.room) { roomId = ent.room; at = ent.at; } } catch (e) {} }
@@ -2557,7 +2557,7 @@
             window._hqClosePanel();
             _hqSetPrompt(null);
             try { if (typeof playDoorSfx === 'function') playDoorSfx('doorBuzz', { volume: 0.5 }); } catch (e) {}
-            return window._hqEnter({ room: roomId, at: at || null, quiet: true, from: 'walk' });
+            return window._hqEnter({ room: roomId, at: at || null, quiet: true, from: 'walk', onReady: (typeof onReady === 'function') ? onReady : undefined });   // THE MAP'S PLOT GO: lands on the plot once the room stands
         };
         /* EXIT on the strip: the building stops being home — Back buttons
            land on the main menu again until the next Play. */
@@ -6840,10 +6840,10 @@
         function _hqLiftHere(d, s) { return s.room === _hqCurRoom && (s.at === d.id || s.room !== d.lift); }
         function _hqLiftHtml(t) {
             const d = t.door, stops = _hqLiftStops(d), R = DOOR_HQ.rooms[d.lift] || {};
-            let html = `<div class="hq-panel-hd"><b>${_hqEsc(d.label || 'THE LIFT')}</b><span>${_hqEsc(String(R.label || '').replace(/^.*·\s*/, ''))}</span></div>`;
+            let html = `<div class="hq-panel-hd"><b>THE LIFT</b></div>`;   // mondo 11-23: the floor number and its name, nothing else
             html += '<div class="hq-rows">' + stops.map((s, i) => {
                 const chip = _hqLiftHere(d, s) ? '<i class="hq-lamp-chip st-stabilized">YOU ARE HERE</i>' : (_hqRoomExists(s.room) ? `<button class="hq-btn hq-btn-sm hq-btn-primary" data-liftstop="${i}">GO</button>` : '<i class="hq-lamp-chip st-clearance">OUT OF ORDER</i>');
-                return `<div class="hq-row hq-row-tray"><b>${_hqEsc(s.id)} · ${_hqEsc(s.label)}</b><span>${_hqEsc(s.sub || '')}</span>${chip}</div>`;
+                return `<div class="hq-row hq-row-tray"><b>${_hqEsc(s.id)} · ${_hqEsc(s.label)}</b>${chip}</div>`;
             }).join('') + '</div>';
             html += '<div class="hq-panel-actions"><button class="hq-btn" data-close="1">STEP BACK</button></div>';
             return html;
@@ -7877,7 +7877,7 @@
         const ZM_BASE = 'https://cdn.entropywars.net/Assets/ui/map/';
         const ZM_PX = 4;   // painted pixels a square
         const ZM_KIND_RGB = [null, [92, 142, 70], [64, 108, 62], [138, 112, 78], [206, 186, 132], [222, 230, 240], [132, 128, 120], [132, 134, 142], [146, 108, 72], [74, 66, 64], [98, 58, 48], [236, 236, 246], [176, 94, 62], [124, 104, 186], [212, 178, 84], [112, 122, 134]];
-        const _zm = { pic: {}, wait: {}, layer: 'surface', sel: null };
+        const _zm = { pic: {}, wait: {}, layer: 'surface', sel: null, why: null };
         const _zmOn = () => { try { return !window.EW_OLD_MAP && typeof HQ_ZONE_MAP !== 'undefined' && !!(HQ_ZONE_MAP && HQ_ZONE_MAP.zones); } catch (e) { return false; } };
         function _zmZone(areaId) { if (!_zmOn() || !areaId || !/^hub:/.test(areaId)) return null; const z = HQ_ZONE_MAP.zones[areaId.slice(4)]; return (z && z.rooms && z.rooms.length) ? z : null; }
         function _zmZoneOfRoom(roomId) { if (!_zmOn()) return null; for (const h in HQ_ZONE_MAP.zones) { const z = HQ_ZONE_MAP.zones[h]; const row = z.rooms.find(r => r.room === roomId); if (row) return { hub: h, zone: z, row }; } return null; }
@@ -8238,10 +8238,56 @@
         /* a plot picked: its card (a second click on the same plot = GO to that zone) */
         function _zmPick(key) {
             const m = /^z:([^:]+):(.+)$/.exec(key); if (!m) return;
-            if (_zm.sel === key && _hqMapCharted(m[1]) && m[1] !== _hqCurRoom) { _hqMap.anim++; try { playSfx('uiButtonConfirm'); } catch (e) {} window._hqDoAction({ room: m[1], at: _hqMapAt(m[1]) }, null); return; }
-            _zm.sel = key;
+            if (_zm.sel === key) { _zmGo(key); return; }
+            _zm.sel = key; _zm.why = null;
             try { playSfx('uiButtonHover'); } catch (e) {}
             _hqMapRerender();
+        }
+        /* THE PLOT GO (2026-11-23, mondo: "is it because im already in the zone i want to fast travel to that it wont let me do it?" —
+           yes: a zone like Disaster City is ONE room, and GO was offered only for another room, so every plot of the zone you stood
+           in had no GO and a second click did nothing). GO now lands ON THE PLOT: in the room you are in, at once (hq.goSpot finds
+           the nearest square of the plot a body can stand on); in another room, through its door and then onto the plot. A plot
+           that cannot be travelled to says why on its card instead of doing nothing. */
+        function _zmTarget(key) {
+            const m = /^z:([^:]+):(.+)$/.exec(key || ''); if (!m) return null;
+            const hit = _zmZoneOfRoom(m[1]); if (!hit) return null;
+            const p = _zmPlots(hit.row).find(q => q.id === m[2]); if (!p) return null;
+            return { key, room: m[1], row: hit.row, p, x: hit.row.ox + (p.c + 0.5) * 42, z: hit.row.oz + (p.r + 0.5) * 42 };
+        }
+        function _zmWhyNot(T) {
+            if (!T) return 'THIS PLOT IS NOT ON THE MAP TABLE';
+            if (!_hqRoomExists(T.room)) return 'THIS PLACE IS NOT BUILT YET';
+            if (_hqRetiredTo(T.room)) return 'THIS ROOM WAS REBUILT · THE MAP PICTURE IS OLD';
+            if (T.room !== _hqCurRoom && !_hqMapCharted(T.room)) return 'UNCHARTED · WALK A DOOR TO IT FIRST';
+            if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.hq || typeof ThreeRenderer.hq.goSpot !== 'function') return 'THE WALK IS NOT RUNNING';
+            return null;
+        }
+        function _zmLand(T) {
+            let r = null;
+            try { r = ThreeRenderer.hq.goSpot(T.x, T.z, 20); if (r && !r.ok && !/FIRST$/.test(r.why || '')) { const r2 = ThreeRenderer.hq.goSpot(T.x, T.z, 36); if (r2 && r2.ok) r = r2; } } catch (e) { console.warn('[MAP] the plot landing', e); r = null; }
+            return r || { ok: false, why: 'THE WALK DID NOT ANSWER' };
+        }
+        function _zmGo(key) {
+            const T = _zmTarget(key), why = _zmWhyNot(T);
+            const say = (text) => { _zm.sel = key; _zm.why = { key, text }; try { playSfx('uiError'); } catch (e) {} _hqMapRerender(); };
+            if (why) { say(why); return; }
+            const name = String(T.p.name).toUpperCase();
+            if (T.room === _hqCurRoom) {
+                const r = _zmLand(T);
+                if (!r.ok) { say(r.why); return; }
+                _hqMap.anim++; _zm.why = null;
+                try { playSfx('uiButtonConfirm'); } catch (e) {}
+                window._hqClosePanel();
+                try { _hqToast('<b>' + _hqEsc(name) + '</b>' + (r.far > 21 ? ' · THE NEAREST GROUND TO IT' : ''), 2200); } catch (e) {}
+                return;
+            }
+            _hqMap.anim++; _zm.why = null;
+            try { playSfx('uiButtonConfirm'); } catch (e) {}
+            window._hqGoRoom(T.room, _hqMapAt(T.room), () => setTimeout(() => {
+                if (_hqCurRoom !== T.room) return;
+                const r = _zmLand(T);
+                try { _hqToast(r.ok ? '<b>' + _hqEsc(name) + '</b>' : _hqEsc(name + ' · ' + r.why + ' · YOU ARE AT THE WAY IN'), 3200); } catch (e) {}
+            }, 60));
         }
         function _zmCardHtml(Z) {
             const D = Z.zone.districts || {}, label = String((DOOR_HQ.hubs[Z.hub] || {}).label || Z.hub);
@@ -8254,8 +8300,10 @@
                 html += `<div class="hq-map-card-hd"><b>${_hqEsc(String(p.name).toUpperCase())}</b><span>${_hqEsc(String(dn).toUpperCase())} · ${_hqEsc(rl)}</span></div>`;
                 if (doors.length) { html += '<div class="hq-rows">'; doors.forEach(d => { html += `<div class="hq-row"><b>${_hqEsc(d.kind === 'hq' ? 'DOOR HQ' : d.kind === 'inside' ? 'INSIDE' : 'WAY OUT')}</b><span>${_hqEsc(d.to)}</span></div>`; }); html += '</div>'; }
                 html += '<div class="hq-panel-actions">';
-                if (R.row.room !== _hqCurRoom && _hqMapCharted(R.row.room)) html += `<button class="hq-btn hq-btn-primary" data-room="${_hqEsc(R.row.room)}" data-at="${_hqEsc(_hqMapAt(R.row.room))}">GO ▸ ${_hqEsc(rl)}</button>`;
+                const key = 'z:' + R.row.room + ':' + p.id, why = (_zm.why && _zm.why.key === key) ? _zm.why.text : _zmWhyNot(_zmTarget(key));
+                if (!why) html += `<button class="hq-btn hq-btn-primary" data-zmgo="${_hqEsc(key)}">GO ▸ ${_hqEsc(String(p.name).toUpperCase())}</button>`;
                 html += `<button class="hq-btn" data-zmclear="1">◂ ALL OF ${_hqEsc(label.toUpperCase())}</button></div>`;
+                html += why ? `<p class="hq-panel-note hq-zm-why">CAN'T TRAVEL HERE · ${_hqEsc(why)}</p>` : `<p class="hq-panel-note">CLICK THE PLOT AGAIN OR PRESS GO</p>`;
                 return html + '</div>';
             }
             const plots = Z.rooms.reduce((a, r) => a + r.plots.length, 0);
@@ -8380,6 +8428,23 @@
             svg.setAttribute('viewBox', from.map(_hqMapF).join(' '));
             requestAnimationFrame(step);
         }
+        /* THE CLICK UNDER THE NAMES (2026-11-23, mondo: "Im clicking on a square to travel to and its not taking me there ... It seems
+           completely random"): a district's name, a room's name, a door mark and YOU ARE HERE are drawn OVER the plots and are no
+           plot themselves, so a click that landed on one picked nothing. The pick is now the plot (zone sheet) or the place (world
+           sheet) under the pointer, whatever is drawn on top. A click may also wobble up to 6 px (was 4: a trackpad tap on a 2x
+           screen moved further and was taken as a drag). */
+        const HQ_MAP_CLICK_PX = 6;
+        function _zmNodeAt(svg, p) {
+            if (!svg || !p || !svg.classList || !svg.classList.contains('hq-zm')) return null;
+            const D = _hqMap.drawn, U = HQ_MAP_U; if (!D) return null;
+            const rooms = D.zm === 'zone' ? D.rooms : (D.zm === 'world' && svg.classList.contains('zm-plots')) ? (D.zmPlaces || []).filter(z => z.st !== 'q').map(z => ({ row: z.row, R: z.R })) : [];   // ONE MAP: the world sheet's plots, once they are drawn (14 px a plot)
+            for (const { row, R, plots } of rooms) for (const q of (plots || _zmPlots(row))) {
+                const x = (R.gx + q.c) * U, y = (R.gy + q.r) * U;
+                if (p.x >= x && p.x < x + U && p.y >= y && p.y < y + U) return 'z:' + row.room + ':' + q.id;
+            }
+            if (svg.getAttribute('data-mode') === 'world') { const id = _hqMapWorldPlaceAt(p); return id ? 'w:' + id : null; }
+            return null;
+        }
         /* the officer's own hand on the map: wheel zooms about the cursor, a drag pans, a click picks a node */
         function _hqMapBind(svg) {
             const cur = () => (svg.getAttribute('viewBox') || '').split(/\s+/).map(Number);
@@ -8401,14 +8466,14 @@
             svg.addEventListener('pointerdown', (e) => {
                 if (e.button !== 0 || _hqMap.ptr) return;
                 _hqMap.anim++;
-                _hqMap.ptr = { x: e.clientX, y: e.clientY, v: cur(), moved: false, id: e.pointerId, node: e.target.closest('[data-mapnode]')?.getAttribute('data-mapnode') };
+                _hqMap.ptr = { x: e.clientX, y: e.clientY, v: cur(), moved: false, id: e.pointerId, node: e.target.closest('[data-mapnode]')?.getAttribute('data-mapnode') || _zmNodeAt(svg, toUser(e.clientX, e.clientY)) };
                 _hqMap.dragged = false;
                 try { svg.setPointerCapture(e.pointerId); } catch (err) {}
             });
             svg.addEventListener('pointermove', (e) => {
                 const P = _hqMap.ptr; if (!P || P.id !== e.pointerId) return;
                 const dx = e.clientX - P.x, dy = e.clientY - P.y;
-                if (!P.moved && Math.hypot(dx, dy) < 4) return;
+                if (!P.moved && Math.hypot(dx, dy) < HQ_MAP_CLICK_PX) return;
                 P.moved = true; _hqMap.dragged = true; _hqMap.anim++;
                 const r = svg.getBoundingClientRect(), s = Math.max(P.v[2] / (r.width || 1), P.v[3] / (r.height || 1));
                 _hqMapSetView(svg, [P.v[0] - dx * s, P.v[1] - dy * s, P.v[2], P.v[3]]);
@@ -8417,7 +8482,7 @@
                 const P = _hqMap.ptr; if (!P || P.id !== e.pointerId) return;
                 _hqMap.ptr = null;
                 try { svg.releasePointerCapture(P.id); } catch (err) {}
-                if (e.type !== 'pointercancel' && !P.moved && Math.hypot(e.clientX - P.x, e.clientY - P.y) < 4 && P.node) _hqMapTravel(P.node);
+                if (e.type !== 'pointercancel' && !P.moved && Math.hypot(e.clientX - P.x, e.clientY - P.y) < HQ_MAP_CLICK_PX && P.node) _hqMapTravel(P.node);
             };
             svg.addEventListener('pointerup', up); svg.addEventListener('pointercancel', up);
             svg.addEventListener('lostpointercapture', () => { _hqMap.ptr = null; });
@@ -9914,7 +9979,9 @@
             /* THE WORLD OVERVIEW: the sheets — WORLD / AREA (a place's rooms) */
             const zmLayer = e.target.closest('[data-zmlayer]');   // THE MAP REMAKE: the world's SURFACE / UNDERGROUND
             if (zmLayer) { _zm.layer = zmLayer.getAttribute('data-zmlayer') === 'under' ? 'under' : 'surface'; _hqMap.view = null; _hqMap.anim++; try { playSfx('uiButtonHover'); } catch (err) {} _hqMapRerender(); return; }
-            if (e.target.closest('[data-zmclear]')) { _zm.sel = null; _hqMapRerender(); return; }
+            if (e.target.closest('[data-zmclear]')) { _zm.sel = null; _zm.why = null; _hqMapRerender(); return; }
+            const zmGo = e.target.closest('[data-zmgo]');   // THE PLOT GO
+            if (zmGo && !zmGo.disabled) { _zmGo(zmGo.getAttribute('data-zmgo')); return; }
             const mapMode = e.target.closest('[data-mapmode]');
             if (mapMode) { const mode = mapMode.getAttribute('data-mapmode'); const area = mapMode.getAttribute('data-maparea'); if (mode === 'area') { if (!_hqMapOpenArea(area || _hqWorldHere())) { _hqMap.mode = 'area'; _hqMap.area = area || _hqWorldHere(); _hqMap.sel = null; _hqMap.view = null; _hqMap.anim++; _hqMapRerender(); } } else if (!_hqMapOpenWorld()) { _hqMap.mode = 'world'; _hqMap.view = null; _hqMap.anim++; _hqMapRerender(); } return; }
             const mapZoom = e.target.closest('[data-mapzoom]');
