@@ -6509,6 +6509,18 @@
             const _miss = Math.max(0, 1 - (unit.hp || 0) / Math.max(1, unit.maxHp || 1));
             return Math.min(200, 25 * _mu + 120 * _miss);
         }
+        /* 👑 Long Live the King (THE RAT KING, 2026-11-23): worth the bites it lands (kills count most); while the crown still has
+           Mischief to spare it is kept for a kill or a crown about to fall anyway (Mischief 1-2) */
+        if (kind === 'buff' && spell.longLiveKing) {
+            const _lk = (typeof window._ratKingPlan === 'function') ? window._ratKingPlan(unit, spell) : null;
+            if (!_lk || !_lk.bites.length) return 0;
+            const _per = {};
+            for (const e of _lk.bites) _per[e.id] = (_per[e.id] || 0) + _lk.dmg;
+            let _dmg = 0, _kills = 0;
+            for (const e of _lk.foes) { const d = _per[e.id] || 0; _dmg += Math.min(d, e.hp || 0); if (d >= (e.hp || 0) && d > 0) _kills++; }
+            const _keep = (unit.mischief | 0) >= 3 && !_kills;
+            return Math.round((_dmg * 0.55 + _kills * 160) * (_keep ? 0.35 : 1));
+        }
         if (kind === 'buff' && spell.unload) {
             const _ul = (typeof window._truckerUnloadPlan === 'function') ? window._truckerUnloadPlan(unit, spell) : null;
             if (!_ul || (!_ul.hits && !_ul.free)) return 0;

@@ -69105,6 +69105,186 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     };
     _spell3DGeometry['nrBoardSlam'].hitMs = 220;
 
+    /* ══ THE RAT KING'S LOOKS (2026-11-23, thread "Plan the Rat and Rat King's spells"; mondo OK'd the plan) ════════════════════
+       The rats are THE ANIMALS' `rat` (the wish list's Meshy sewer rat, Assets/world/animals/rat.glb), the jaws THE FANGS. Rings
+       that say whose it is run in the VIEWER's side colours (own cyan-blue, the other side pink-orange, _ratCols); blood, grime and
+       the rats keep their own colours. Small and low on the body: the caster, the target and the number stay clear.
+         · Gnaw: a small fast bite (THE FANGS), blood flecks. Plague Bite: the same bite, longer, and a sick green-brown cloud and
+           drips off the wound.
+         · Scurry (escape style 'scurry'): he skitters low across the board and a run of rats pours along the same line.
+           Carried by the Court (style 'court'): a carpet of rats under his feet carries him over everything, his ring under him.
+         · Mischief of Rats: a sewer grate opens on the square and the rat boils up out of it (the summon's own animal then stands).
+         · THE CROWNING (`nrRatCrown`, battle.js _ratCrown): rats pour out of a grate under him and spiral up his body, then the
+           side's ring; the model swaps to the Rat King on the renderer's transformFx ring. Dethroned (`nrRatCrown:fall`): the
+           rats scatter out to every side.
+         · Long Live the King: his ring opens wide, then under every enemy bitten a grate bursts and a rat leaps up at it.
+       Every piece rides fire() / fireGeometry (relayed by online.js, RULE #2) and draws only where the viewer sees the square.
+       Kill-switch: window.EW_NO_RAT_VFX (falls back to the generic looks). */
+    function _ratOff() { return _catOff('spells') || (typeof window !== 'undefined' && !!window.EW_NO_RAT_VFX); }
+    function _ratCols(u) { return _fx5Mine(u) ? { a: 0x5fe0ff, b: 0x3a7bff } : { a: 0xff4f8a, b: 0xff9a3a }; }
+    /* one sewer rat, `len` long, nose on +Z, feet on y = 0; null while the file streams (the first ask starts it) */
+    function _ratPiece(len, seed) {
+        var an = _animal('rat', len, { fit: 'length', seed: seed || 0 });
+        if (!an) return null;
+        an.ctl.still = true;
+        an.group.traverse(function (o) { if (o.geometry) o.geometry._ew_shared = true; if (o.isMesh) { o.castShadow = false; o.frustumCulled = false; } });
+        return an.group;
+    }
+    /* a sewer grate on the floor: a dark round hole and iron bars (the game's gunmetal sheet), `r` across; g.userData.set(open 0..1) */
+    function _ratGrate(r) {
+        var g = new THREE.Group();
+        var hole = new THREE.Mesh(new THREE.CircleGeometry(r, 18), new THREE.MeshBasicMaterial({ color: 0x050505, transparent: true, opacity: 0, depthWrite: false }));
+        hole.rotation.x = -Math.PI / 2; hole.position.y = 1.2; hole.renderOrder = 150; g.add(hole);
+        var barMat = new THREE.MeshLambertMaterial({ map: _sigTerrainTex('gunmetal.png', 1, 1), color: 0x8a8f96, transparent: true, opacity: 0 });
+        var lid = new THREE.Group(); lid.position.y = 1.6; g.add(lid);
+        for (var i = -2; i <= 2; i++) {
+            var w = Math.sqrt(Math.max(0.05, 1 - (i / 2.6) * (i / 2.6))) * r * 1.9;
+            var bar = new THREE.Mesh(new THREE.BoxGeometry(w, r * 0.07, r * 0.13), barMat);
+            bar.position.z = i * r * 0.36; lid.add(bar);
+        }
+        var rim = new THREE.Mesh(new THREE.TorusGeometry(r, r * 0.08, 5, 20), barMat);
+        rim.rotation.x = Math.PI / 2; rim.position.y = 1.6; g.add(rim);
+        g.userData.set = function (op, lift) { hole.material.opacity = 0.85 * op; barMat.opacity = op; lid.position.y = 1.6 + (lift || 0); lid.rotation.x = -(lift ? 1.1 * Math.min(1, lift / (r * 0.6)) : 0); };
+        return g;
+    }
+    /* a rat that bursts up out of the floor at (0, 0) of F and leaps toward +Z (yaw), on the clock el (ms from `t0`, `dur` long) */
+    function _ratLeap(F, yaw, t0, dur, len, seed) {
+        var rat = _ratPiece(len, seed); if (!rat) return null;
+        var hold = new THREE.Group(); hold.rotation.y = yaw; hold.add(rat); F.g.add(hold); rat.visible = false;
+        return function (el) {
+            var k = (el - t0) / dur;
+            if (k < 0 || k > 1) { rat.visible = false; return; }
+            rat.visible = true;
+            rat.position.set(0, F.ts * 0.55 * Math.sin(Math.PI * k) - len * 0.4 * (1 - k) * (1 - k), F.ts * 0.35 * k);
+            rat.rotation.x = -0.9 + 1.5 * k;   /* nose up out of the hole, nose down on the landing */
+        };
+    }
+    /* GNAW / PLAGUE BITE: the bite at the target (THE FANGS), small and quick */
+    _spell3DGeometry['nrGnaw'] = function (tx, ty) {
+        if (_ratOff()) return;
+        _sigJawsBite3D(tx, ty, { scale: 0.72, glowColor: 0x9a1515, gumTint: 0x6a2a2a, toothTint: 0xf0c84a, clenchMs: 200,
+            circleColor: 0x7a1010, sparkSprite: 'blood-fleck', flashPeak: 0.08, vcQuiet: true, plain: true });
+    };
+    _spell3DGeometry['nrPlagueBite'] = function (tx, ty) {
+        if (_ratOff()) return;
+        _sigJawsBite3D(tx, ty, { scale: 0.85, glowColor: 0x5a6a14, gumTint: 0x4a3a1a, toothTint: 0xe0b840, clenchMs: 320,
+            circleColor: 0x4a5a10, sparkSprite: 'blood-fleck', flashPeak: 0.08, vcQuiet: true, plain: true });
+        _capAt(260, function () {
+            _capPuff(tx, ty, 'smoke-soft', 9, { r: 0.28, h: 0.35, out: 30, vz0: 10, vz1: 45, s0: 14, s1: 22, sEnd: 40, op: 0.55, tint: 0x6d7a2a, ml0: 700, ml1: 1100, wander: 8 });
+            _capPuff(tx, ty, 'blood-fleck', 7, { r: 0.18, h: 0.5, out: 25, vz0: -40, vz1: -10, gravity: 260, s0: 4, s1: 7, sEnd: 3, op: 0.9, tint: 0x5c4a18, ml0: 400, ml1: 700 });
+            _capPuff(tx, ty, 'steel-spark', 6, { r: 0.35, h: 0.6, out: 50, vz0: -10, vz1: 20, s0: 2, s1: 3, sEnd: 2, op: 0.9, tint: 0x111111, ml0: 900, ml1: 1300, wander: 30 });   /* the flies */
+        });
+    };
+    _spell3DGeometry['nrGnaw'].hitMs = 140;
+    _spell3DGeometry['nrPlagueBite'].hitMs = 160;
+    SPELL_MAP['nrGnaw'] = { impact: '_slashMelee_impact' };
+    SPELL_MAP['nrPlagueBite'] = { impact: '_slashMelee_impact' };
+    /* SCURRY / CARRIED BY THE COURT: a run of rats along his line (the court rides under his body) */
+    function _ratRun(fx, fy, tx, ty, n, court, ms) {
+        if (_ratOff() || !_pzSeen(fx, fy) && !_pzSeen(tx, ty)) return;
+        var u = _fx5UnitAt(tx, ty) || _fx5UnitAt(fx, fy), C = _ratCols(u), F = _nrvFrame(fx, fy), ts = F.ts;
+        var wa = _worldPos(fx, fy), wb = _worldPos(tx, ty), dx = wb.x - wa.x, dz = wb.z - wa.z, yaw = Math.atan2(dx, dz);
+        var len = ts * (court ? 0.2 : 0.24), runs = [], id = u && u.id;
+        for (var i = 0; i < n; i++) {
+            var rat = _ratPiece(len, i * 1.3); if (!rat) break;
+            var hold = new THREE.Group(); hold.rotation.y = yaw; hold.add(rat); F.g.add(hold); rat.visible = false;
+            runs.push({ h: hold, r: rat, off: court ? ((i % 3) - 1) * ts * 0.14 : rn(-0.18, 0.18) * ts, lag: court ? (Math.floor(i / 3) - 1) * ts * 0.16 : 0, d: court ? 0 : i * 55 });
+        }
+        _capRing(fx, fy, C.a, 0.6, 320, 3);
+        var body = (court && id && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.unitBodyWorld) ? true : false;
+        _sigRunOwned(F.g, ms + 360, function (el) {
+            var p = body ? ThreeRenderer.unitBodyWorld(id) : null;
+            for (var j = 0; j < runs.length; j++) {
+                var R = runs[j], k = (el - R.d) / ms;
+                if (k < 0 || k > 1.15) { R.r.visible = false; continue; }
+                R.r.visible = true;
+                var kk = Math.min(1, k);
+                if (p && court) R.h.position.set(p.x - F.g.position.x, p.y - F.g.position.y - ts * 0.3, p.z - F.g.position.z);
+                else R.h.position.set(dx * kk, 0, dz * kk);
+                R.r.position.set(R.off, Math.abs(Math.sin(el * 0.03 + j)) * len * 0.12, R.lag + (k > 1 ? (k - 1) * ts * 1.2 : 0));
+            }
+        });
+        _capAt(ms, function () { _capRing(tx, ty, C.a, 0.75, 360, 3); _capPuff(tx, ty, 'dust-puff', 6, { r: 0.3, h: 0.04, out: 110, vz0: 5, vz1: 25, s0: 10, s1: 18, sEnd: 30, op: 0.45 }); });
+    }
+    _ESC_LOOKS.nrScurry = { style: 'scurry', ms: 560, draw: function (fx, fy, tx, ty) { _ratRun(fx, fy, tx, ty, 5, false, 520); } };
+    _ESC_LOOKS.nrCarriedByCourt = { style: 'court', ms: 720, draw: function (fx, fy, tx, ty) { _ratRun(fx, fy, tx, ty, 9, true, 680); } };
+    EFFECTS['nrScurry_tele'] = { arrivalDelayMs: 0, layers: [] };
+    EFFECTS['nrCarriedByCourt_tele'] = { arrivalDelayMs: 0, layers: [] };
+    SPELL_MAP['nrScurry'] = { teleport: 'nrScurry_tele' };
+    SPELL_MAP['nrCarriedByCourt'] = { teleport: 'nrCarriedByCourt_tele' };
+    /* MISCHIEF OF RATS: a grate opens where each rat is called and it climbs out */
+    function _ratGrateBurst(tx, ty, o) {
+        o = o || {};
+        if (_ratOff() || !_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, gr = _ratGrate(ts * 0.3); F.g.add(gr);
+        var leap = _ratLeap(F, o.yaw != null ? o.yaw : rn(0, Math.PI * 2), o.t0 || 120, o.dur || 460, ts * (o.len || 0.26), o.seed || 0);
+        var ms = (o.t0 || 120) + (o.dur || 460) + 380;
+        if (o.col != null) _capRing(tx, ty, o.col, 0.5, 300, 2);
+        _sigRunOwned(F.g, ms, function (el) {
+            var op = _sigClamp01(el / 90) * (1 - _sigClamp01((el - ms + 260) / 260));
+            gr.userData.set(op, el > (o.t0 || 120) - 40 && el < (o.t0 || 120) + 200 ? ts * 0.18 : 0);
+            if (leap) leap(el);
+        });
+        _capAt((o.t0 || 120) + 40, function () { _capPuff(tx, ty, 'smoke-soft', 5, { r: 0.15, h: 0.05, out: 20, vz0: 30, vz1: 70, s0: 10, s1: 16, sEnd: 28, op: 0.4, tint: 0x3a3a2a }); });
+    }
+    _PZ_SIGS.ratGrate = function (p) {   /* the summon branch fires 'aura' on each called square: the grate there, the rat climbing out */
+        if (!p || p.tx == null) return;
+        var u = null;
+        try { u = (typeof state !== 'undefined' && state.units) ? state.units.find(function (v) { return v && v.race === 'rat' && !v.dead && Math.max(Math.abs(v.x - p.tx), Math.abs(v.y - p.ty)) <= 3; }) : null; } catch (e) {}
+        _ratGrateBurst(p.tx, p.ty, { col: _ratCols(u).a, len: 0.3 });
+    };
+    EFFECTS['nrMischiefOfRats_aura'] = { aoeRadius: 0, layers: [], pzSig: 'ratGrate' };
+    SPELL_MAP['nrMischiefOfRats'] = { aura: 'nrMischiefOfRats_aura' };
+    /* THE CROWNING: rats out of a grate under him, spiralling up his body, then the side's ring */
+    _spell3DGeometry['nrRatCrown'] = function (tx, ty, r, x) {
+        if (_ratOff() || !_pzSeen(tx, ty)) return;
+        var u = _fx5UnitAt(tx, ty), C = _ratCols(u), F = _nrvFrame(tx, ty), ts = F.ts, gr = _ratGrate(ts * 0.36), rats = [];
+        F.g.add(gr);
+        for (var i = 0; i < 6; i++) { var rat = _ratPiece(ts * 0.2, i * 2.1); if (!rat) break; var h = new THREE.Group(); h.add(rat); F.g.add(h); rat.visible = false; rats.push({ h: h, r: rat, ph: i / 6 * Math.PI * 2, d: i * 70 }); }
+        var MS = 1250;
+        _sigRunOwned(F.g, MS, function (el) {
+            gr.userData.set(_sigClamp01(el / 120) * (1 - _sigClamp01((el - 1000) / 250)), 0);
+            for (var j = 0; j < rats.length; j++) {
+                var R = rats[j], k = (el - R.d) / 800;
+                if (k < 0 || k > 1) { R.r.visible = false; continue; }
+                R.r.visible = true;
+                var a = R.ph + k * Math.PI * 4, rad = ts * (0.34 - 0.12 * k);
+                R.h.position.set(Math.cos(a) * rad, ts * 1.15 * k, Math.sin(a) * rad);
+                R.h.rotation.set(0, -a, 0); R.r.rotation.x = -0.6;   /* climbing, nose up the spiral */
+            }
+        });
+        _capPuff(tx, ty, 'smoke-soft', 8, { r: 0.3, h: 0.05, out: 30, vz0: 20, vz1: 60, s0: 12, s1: 20, sEnd: 36, op: 0.45, tint: 0x3a3a2a });
+        _capAt(820, function () { _capRing(tx, ty, C.a, 1.0, 460, 4); _capRing(tx, ty, C.b, 0.7, 520, 30); _sigSparks(tx, ty, 'steel-spark', 10, { vxy: 120, vz0: 60, vz1: 180, gravity: 300, tint: 0xd8d8e0 }); });
+    };
+    _spell3DGeometry['nrRatCrown:fall'] = function (tx, ty) {
+        if (_ratOff() || !_pzSeen(tx, ty)) return;
+        var u = _fx5UnitAt(tx, ty), C = _ratCols(u), F = _nrvFrame(tx, ty), ts = F.ts, rats = [];
+        for (var i = 0; i < 6; i++) { var rat = _ratPiece(ts * 0.2, i * 1.9); if (!rat) break; var a = i / 6 * Math.PI * 2 + rn(-0.3, 0.3), h = new THREE.Group(); h.rotation.y = a; h.add(rat); F.g.add(h); rats.push({ r: rat, sp: rn(1.6, 2.4) }); }
+        _capRing(tx, ty, C.b, 0.6, 360, 3);
+        _capPuff(tx, ty, 'dust-puff', 6, { r: 0.3, h: 0.04, out: 120, vz0: 5, vz1: 25, s0: 10, s1: 18, sEnd: 30, op: 0.4 });
+        _sigRunOwned(F.g, 900, function (el) {
+            for (var j = 0; j < rats.length; j++) { var R = rats[j]; R.r.position.set(0, Math.abs(Math.sin(el * 0.03 + j)) * ts * 0.02, ts * (0.25 + R.sp * el / 900)); R.r.visible = el < 820; }
+        });
+    };
+    /* LONG LIVE THE KING: his ring opens wide, then a grate bursts under every enemy bitten and a rat leaps up at it */
+    _spell3DGeometry['nrLongLiveKing'] = function (tx, ty, r, x) {
+        if (_ratOff()) return;
+        x = x || {};
+        var u = _fx5UnitAt(tx, ty), C = _ratCols(u);
+        if (_pzSeen(tx, ty)) { _capRing(tx, ty, C.a, Math.max(1.5, (r || 4) * 0.9), 620, 4); _capRing(tx, ty, C.b, 0.8, 420, 26); }
+        var bites = Array.isArray(x.bites) ? x.bites : [], seen = {};
+        for (var i = 0; i < bites.length; i++) {
+            var b = bites[i]; if (!b) continue;
+            var key = b[0] + ',' + b[1], n = seen[key] = (seen[key] || 0) + 1;
+            (function (bx, by, k, i) {
+                _capAt(160 + i * 90, function () {
+                    _ratGrateBurst(bx, by, { col: C.a, yaw: _capYaw(bx, by, tx, ty) + Math.PI + rn(-0.5, 0.5), t0: 60, dur: 380, len: 0.28, seed: k * 3 });
+                    _capAt(260, function () { _capPuff(bx, by, 'blood-fleck', 5, { r: 0.15, h: 0.45, out: 70, vz0: 10, vz1: 60, gravity: 300, s0: 4, s1: 7, sEnd: 3, op: 0.9, tint: 0x8a1010 }); });
+                });
+            })(b[0], b[1], n, i);
+        }
+    };
+
     /* ══ THE DELIVERY BOY (2026-11-17, thread "Polish Delivery Boy spells and VFX"; mondo: "flesh out their unique spells and
        spell animations/vfx") ══ The Delivery family had no look of its own (the generic heal orb, the gold buff rings, the
        plain charge). Now every piece is his trade, on the P-Z hook (an EFFECTS def names a `pzSig`). The side reads from the

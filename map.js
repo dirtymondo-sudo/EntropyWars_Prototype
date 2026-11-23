@@ -18865,6 +18865,19 @@
                 unit._spriteFlipX = false;
             }
             delete unit._chessPiece;   // ♟ THE CHESS PIECE: a fresh life starts as the pawn again (battle.js chessPieceOf)
+            /* 👑 THE RAT KING (2026-11-23): a fresh life is the Rat, no Mischief (battle.js _ratOnDown does this on a fall by damage;
+               this catches every other road off the board). The King's rows go back to the Rat's slots. */
+            if (unit.race === 'rat') {
+                unit.mischief = 0;
+                if (unit.appearance && unit.appearance.form === 'king') {
+                    const _ra = Object.assign({}, unit.appearance); delete _ra.form; unit.appearance = _ra;
+                    const _rb = { nrPlagueBite: 'nrGnaw', nrCarriedByCourt: 'nrScurry', nrLongLiveKing: 'nrMischiefOfRats' };
+                    const _tw = (sp) => (sp && _rb[sp.id] && getSpellById(_rb[sp.id])) ? { ...getSpellById(_rb[sp.id]) } : sp;
+                    if (Array.isArray(unit.spells)) unit.spells = unit.spells.map(_tw);
+                    if (Array.isArray(unit._raceAbilities)) unit._raceAbilities = unit._raceAbilities.map(_tw);
+                    if (Array.isArray(unit._spellSlots)) unit._spellSlots = unit._spellSlots.map(id => _rb[id] || id);
+                }
+            }
         }
 
         /* ── NEXUS REWORK (2026-09-12) — where does this team come back? ──
