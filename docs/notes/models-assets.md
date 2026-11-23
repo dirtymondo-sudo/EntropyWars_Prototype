@@ -2279,3 +2279,10 @@ FLOWN (11-20, the Outer Space thread): every ship patrols Outer Space as its rac
 UFO_SAUCER_3D, the rest the old triangle) and none is placed or flyable; the bligblog dome is opaque (make it glass in code), the ball
 is matte grey (give it a mirror material), the Annunaki model lost some gold/lapis detail from its concept. Meshy: 447 credits before,
 90 after. Concepts, renders and scripts: project files `alien-ships/` (owner account only).
+
+## THE WING BONES (2026-11-23, bake-wings.py, the Butterfly Girl)
+`python3 -I bake-wings.py <in.glb> <out.glb> [--parent Spine] [--debug <dir>]` (numpy; edits the GLB directly with bake-sway.py's helpers). Finds the
+two biggest loose mesh pieces standing out to each side behind the back (the wings), adds bones `ewwing_L` / `ewwing_R` on the chest bone at each wing
+root and weights each wing 100 % to its bone. three-renderer.js `_swayScan` flags a root with ewwing_ bones; THE UNIT GEAR (`_gearTick`) swings them
+about the chest's up axis (folded back, open). LESSON: a new bone's inverse bind must be the inverse of its REAL world matrix (a Meshy armature is
+scaled 0.01): the first file (`..._wings_Running.glb`) used a plain -root inverse, shrank each wing 100x and the wings vanished; `..._wings2_` is right.

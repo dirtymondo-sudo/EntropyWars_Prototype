@@ -1113,10 +1113,16 @@
            enemy-aimed kind into an ally aim — the target drum, the painter and the column resolver read this meta, the kind
            branch reads the row. One cached meta per kind. */
         const _ALLY_ROW_KIND_META = {};
+        const _ANY_TEAM_KIND_META = {};
         function _kindMeta(spell) {
             if (spell && spell.hinge) return _HINGE_KIND_META;
             if (spell && spell.randomTargets && typeof spellRandomTargetsOf === 'function' && spellRandomTargetsOf(spell)) return _RANDOM_KIND_META;
             const _km0 = SPELL_KIND_META[spell?.kind] || { minRange: 1, offensive: true };
+            /* 💉 THE PLASTIC SURGEON: an `anyTeam` row (a procedure) takes an ally or an enemy; the cast becomes the right one (_psCastRow) */
+            if (spell && spell.anyTeam) {
+                return _ANY_TEAM_KIND_META[spell.kind] || (_ANY_TEAM_KIND_META[spell.kind] = Object.assign({}, _km0,
+                    { offensive: false, allyOnly: false, tileTargeted: false, selfCast: false }));
+            }
             if (spell && spell.allyOnly && !_km0.allyOnly) {
                 return _ALLY_ROW_KIND_META[spell.kind] || (_ALLY_ROW_KIND_META[spell.kind] = Object.assign({}, _km0,
                     { offensive: false, allyOnly: true, breaksStealth: false, fogExempt: true }));
@@ -10143,6 +10149,7 @@
             }
             stages += _passiveSituationalStages(unit, stat);
             if (stat === 'def' && unit.race === 'monk' && (unit.stillness | 0) > 0) stages += Math.min(3, unit.stillness | 0);   // 📿 THE STILLNESS
+            if (unit.race === 'rat' && unit.appearance && unit.appearance.form === 'king') { if (stat === 'atk') stages += 2; else if (stat === 'def') stages += 1; }   // 👑 THE RAT KING: the crown's stages
             return stages;
         }
 
@@ -11065,6 +11072,8 @@
             if (target._climb && meta.blockAction && payload.id !== 'climbing') knockOffClimber(target, `— ${meta.colorText || meta.label.toLowerCase()}`);
             /* 🛹 THE BAIL: a hold that stops the Skater rolling throws away her Momentum (_skaterBail) */
             if (target._momentum > 0 && _skaterBailOn(payload.id)) _skaterBail(target, meta);
+            /* 👑 THE RAT KING: Stun, Frozen or Feared scatter 2 of the Rat's Mischief */
+            if (target.race === 'rat' && (target.mischief | 0) > 0 && (payload.id === 'stun' || payload.id === 'frozen' || payload.id === 'feared') && Number(status[payload.id] || 0) > 0) _ratScatter(target, meta.colorText || meta.label.toLowerCase());
             /* 👁 THE RUDE AWAKENING (astral build 2): a status that stops a unit acting (Stun, Sleeping, Frozen...) or one on
                STATUS_DEFS.projecting.snapOn (Silence) breaks the projection. The spirit snaps home to its body, Spirit Walk's too. */
             if (payload.id !== 'projecting' && unitIsSpirit(target) && target._astralBodyId
@@ -14889,10 +14898,13 @@
                 else if (u.race === 'haunted doll') _dollCreep(u);
                 else if (u.race === 'monk') _monkStillness(u);   // 📿 THE STILLNESS
                 else if (u.race === 'gladiator' || u.race === 'farmer' || u.race === 'jellyfish ufo') _crRoundEnd(u);   // 🛡🌾⚡ THE COMING RACES
+                else if (u.race === 'rat') _ratRoundEnd(u);   // 👑 THE RAT KING: a king pays his court
+                if ((u.workDone | 0) > 0) _psRoundEnd(u);   // 💉 THE PLASTIC SURGEON: Work Done fades
                 if (u.status && u.status.dormant > 0) _cicadaBrood(u);
                 /* 📺 THE TAPE (the Cursed TV): this round's recording becomes last round's, the one Rewind plays back */
                 if (u._tapeNow || u._tapeLast) { u._tapeLast = u._tapeNow || 0; u._tapeNow = 0; }
             }
+            _bfRoundEnd();   // 🦋 THE BUTTERFLY EFFECT: every Flutter grows, the ones at 3 touch down
             if (typeof markDirty === 'function') markDirty('hud', 'selectedUnit');
         }
         /* ═══ THE CURSED TV (2026-11-17, mondo approved the kit) ═══ THE TAPE: applyDamageToUnit adds every point a unit takes to
@@ -15431,6 +15443,384 @@
             if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: u });
         }
         window._crCastRow = _crCastRow; window._crRoundEnd = _crRoundEnd;
+        /* ═══ THE PLASTIC SURGEON (2026-11-23, mondo OK'd the kit: "okay yeah that's good") ═══ He operates on anyone. A `procedure`
+           row (Botox, Makeover) works on an ally or an enemy (`anyTeam`, _kindMeta): the base row is the enemy cast and `onAlly` the
+           ally cast, picked by the body on the aimed square (_psCastRow, like _crCastRow). WORK DONE: every procedure that lands gives
+           the body 1 (`unit.workDone`, max 3); the third is BOTCHED (Stunned 1 round, back to 0); a body he leaves alone for a whole
+           round loses 1 (_psRoundEnd). Makeover swaps ATK <-> DEF and M.ATK <-> M.DEF in the unit's own numbers (_psMakeoverSwap,
+           Broken's way). Host-side: plain numbers + statuses ride the state sync, the texts showFloatingTextForUnit's relay (RULE #2).
+           Notes: docs/notes/champions-combat.md "THE PLASTIC SURGEON". */
+        const WORK_DONE_MAX = 3;
+        let _psCast = null;   // the cast in flight: { unitId, spellId, at, lipo: { id, hp } }
+        function _psFloat(u, txt, kind) { if (u && !u.dead && state.phase === 'battle' && !_skipVisuals()) showFloatingTextForUnit(u, txt, kind || 'debuff', { durationMs: 1200, jitterY: -30 }); }
+        function _psIsSurgeon(u) { return !!u && u.race === 'plastic surgeon'; }
+        /* the cast's own copy: a procedure row turns into its ally or its enemy cast by who stands on the aimed square */
+        function _psCastRow(unit, spell, x, y, z) {
+            if (!spell || !spell.procedure) return spell;
+            let t = null;
+            try { t = (typeof resolveUnitInColumn === 'function') ? resolveUnitInColumn(unit, x, y, z, { side: 'any' }) : null; } catch (e) { t = null; }
+            if (!t) t = unitAt(x, y, z) || unitAt(x, y);
+            return _psRowFor(unit, spell, t);
+        }
+        function _psRowFor(unit, spell, t) {
+            if (!spell || !spell.procedure) return spell;
+            const s = Object.assign({}, spell);
+            delete s.anyTeam; delete s.onAlly; delete s.procedure;
+            s._procedureOf = spell.id;
+            if (t && isAllyUnit(t, unit) && spell.onAlly) {
+                ['dmg', 'damageType', 'statusEffects', 'statStageBoost', 'element'].forEach(k => { delete s[k]; });
+                Object.assign(s, spell.onAlly);
+            }
+            return s;
+        }
+        window._psRowFor = _psRowFor;
+        /* doSpell, before the gates: remember what the cast needs after (the Liposuction body's HP) */
+        function _psBeginCast(unit, spell, x, y, z) {
+            _psCast = null;
+            if (!_psIsSurgeon(unit) || !spell) return;
+            _psCast = { unitId: unit.id, spellId: spell._procedureOf || spell.id, at: performance.now(), lipo: null };
+            if (spell.lipoShield) {
+                const t = unitAt(x, y, z) || unitAt(x, y);
+                if (t && !isAllyUnit(t, unit)) _psCast.lipo = { id: t.id, hp: Math.max(0, t.hp || 0) };
+            }
+        }
+        /* applyDamageToUnit: The Full Procedure hits +25% for each Work Done the body already had */
+        function _psDmgMult(src, target, opts) {
+            if (!_psIsSurgeon(src) || !target || !_psCast || _psCast.unitId !== src.id) return 1;
+            if (performance.now() - _psCast.at > 15000 || (opts && (opts._linkEcho || opts.damageType === 'dot'))) return 1;
+            const row = (src._raceAbilities || []).concat(src.spells || []).find(s => s && s.id === _psCast.spellId);
+            if (!row || !(row.workDoneScale > 0)) return 1;
+            return 1 + row.workDoneScale * Math.max(0, Math.min(WORK_DONE_MAX, target.workDone | 0));
+        }
+        /* WORK DONE: one more on a body; the third botches it */
+        function _psAddWork(surgeon, u) {
+            if (!_nrAlive(u) || u._isCube || u._summonStatic) return;
+            u.workDone = Math.min(WORK_DONE_MAX, (u.workDone | 0) + 1);
+            u._workRound = state.round || 0;
+            if (u.workDone >= WORK_DONE_MAX) {
+                u.workDone = 0;
+                addLog(`💉 ${_ctName(u)} has had too much work done: BOTCHED!`);
+                applyStatusPayload(u, { id: 'stun', duration: 1 }, 'Botched: ', surgeon);
+                _psFloat(u, '💉 BOTCHED', 'debuff');
+                try { if (window.ThreeVFXEffects && ThreeVFXEffects.fire) ThreeVFXEffects.fire('botched', 'psBotched', { tx: u.x, ty: u.y, sx: surgeon.x, sy: surgeon.y }); } catch (e) {}
+            } else {
+                _psFloat(u, `💉 WORK DONE ${u.workDone}`, isAllyUnit(u, surgeon) ? 'buff' : 'debuff');
+            }
+        }
+        /* finishAction: who the procedure landed on (+1 each), Liposuction's shield */
+        function _psAfterCast(unit, spell, x, y, z) {
+            const ctx = _psCast; _psCast = null;
+            if (!_psIsSurgeon(unit) || !spell || state.phase !== 'battle') return;
+            const id = spell._procedureOf || spell.id;
+            if (!/^ps[A-Z]/.test(id)) return;
+            const bodies = [];
+            if (spell.kind === 'aoe') {
+                const tiles = _spellMaskTiles(spell, x, y) || getSquareArea(x, y, spell.aoeRadius || 1);
+                const keys = new Set(tiles.map(t => t.x + ',' + t.y));
+                for (const u of (state.units || [])) {
+                    if (!_nrAlive(u) || u.id === unit.id || !keys.has(u.x + ',' + u.y)) continue;
+                    if (!spell.workDoneAll && isAllyUnit(u, unit)) continue;   // Anesthesia: the enemies it put under
+                    bodies.push(u);
+                }
+            } else {
+                const t = (ctx && ctx.lipo && unitFromId(ctx.lipo.id)) || unitAt(x, y, z) || unitAt(x, y);
+                if (t && t.id !== unit.id) bodies.push(t);
+            }
+            /* 🛡 Liposuction: every HP the cut took becomes a Shield on the ally lowest on HP within 3 (on him if nobody is near) */
+            if (spell.lipoShield && ctx && ctx.lipo) {
+                const v = unitFromId(ctx.lipo.id);
+                const taken = Math.max(0, ctx.lipo.hp - Math.max(0, v ? (v.hp || 0) : 0));
+                const amt = Math.round(taken * spell.lipoShield);
+                if (amt > 0 && _nrAlive(unit)) {
+                    let best = null;
+                    for (const a of (state.units || [])) {
+                        if (!_nrAlive(a) || a.id === unit.id || !isAllyUnit(a, unit) || !(a.maxHp > 0)) continue;
+                        if (Math.max(Math.abs(a.x - unit.x), Math.abs(a.y - unit.y)) > 3) continue;
+                        if (!best || a.hp / a.maxHp < best.hp / best.maxHp) best = a;
+                    }
+                    const to = best || unit;
+                    to.shield = Math.min((to.shield || 0) + amt, Math.max(amt, Math.floor((to.maxHp || 0) * 0.5)));
+                    addLog(`💉 ${_ctName(unit)} moves what he took to ${_ctName(to)}: a ${amt} HP Shield.`);
+                    _psFloat(to, `🛡 +${amt}`, 'buff');
+                    try { if (window.ThreeVFXEffects && ThreeVFXEffects.fire && v) ThreeVFXEffects.fire('lipo', 'psLiposuction', { sx: unit.x, sy: unit.y, cx: unit.x, cy: unit.y, tx: to.x, ty: to.y }); } catch (e) {}
+                    if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: to });
+                }
+            }
+            for (const u of bodies) _psAddWork(unit, u);
+        }
+        /* the round end: a body he did not touch this round heals a little (loses 1 Work Done) */
+        function _psRoundEnd(u) {
+            if (!u || !((u.workDone | 0) > 0)) return;
+            if (u._workRound === (state.round || 0)) return;
+            u.workDone = Math.max(0, (u.workDone | 0) - 1);
+        }
+        /* 💉 Makeover: ATK <-> DEF, M.ATK <-> M.DEF, in the unit's own numbers (once on, once off) */
+        function _psMakeoverSwap(unit, on, info) {
+            if (!unit) return;
+            if (on) {
+                if (unit._madeOver) return;
+                unit._madeOver = true;
+            } else {
+                if (!unit._madeOver) return;
+                const _other = (info && info.key === 'makeoverAlly') ? 'makeover' : (info && info.key === 'makeover') ? 'makeoverAlly' : null;
+                if (_other ? unitHasStatus(unit, _other) : (unitHasStatus(unit, 'makeover') || unitHasStatus(unit, 'makeoverAlly'))) return;   // the other id still holds it (onRemove runs before its own key goes)
+                delete unit._madeOver;
+            }
+            const a = unit.atk || 0, d = unit.def || 0, i = unit.intStat || 0, m = unit.mdef || 0;
+            unit.atk = d; unit.def = a; unit.intStat = m; unit.mdef = i;
+            if (on && !(info && info.refreshed)) {
+                addLog(`💉 ${_ctName(unit)} gets a Makeover: ATK ${a} ↔ DEF ${d}, M.ATK ${i} ↔ M.DEF ${m}.`);
+                _psFloat(unit, `💉 ATK ${unit.atk} · DEF ${unit.def}`, 'buff');
+            }
+            if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit });
+        }
+        window._psMakeoverSwap = _psMakeoverSwap; window._psRoundEnd = _psRoundEnd;
+        /* ═══ THE BUTTERFLY GIRL (2026-11-23, blue morpho; mondo OK'd the plan) ═══ THE BUTTERFLY EFFECT: small flaps now, a twister
+           later. A Flutter (STATUS_DEFS.flutter: the stack in unit._flutter, the caster's id in _flutterSrcId) grows by 1 at every
+           round end (_bfRoundEnd from _nrRoundEnd); at 3 it touches down (_bfTwister): MEDIUM wind magic damage to the carrier's
+           side in the 3x3 round it, the neighbours pushed 1 square out, one twister a unit a wave; then it is gone. Her death does
+           not stop it (the effect is already in motion). Butterfly Effect (`butterflyEffect`, the buff branch) grows every Flutter of
+           her side's at once. FLASH AND VANISH (her passive): the first enemy hit on her turns her Invisible until her next turn
+           starts, once every 2 rounds. Host-side; the status, _flutter and _flutterSrcId ride the snapshot, the looks go through
+           _sigVfxGeom (fireGeometry is relayed) and showFloatingTextForUnit. Notes: docs/notes/champions-combat.md "THE BUTTERFLY GIRL". */
+        const FLUTTER_MAX = 3, FLUTTER_TWISTER_DMG = 110, BF_VANISH_EVERY = 2;
+        const BF_TWISTER_ROW = { id: 'nrFlutterTwister', name: 'Twister', families: ['morpho'], spellType: 'anomaly', element: 'wind',
+            type: 'damage', kind: 'aoe', damageType: 'magic', dmg: FLUTTER_TWISTER_DMG, pushDistance: 1 };
+        function _bfSrc(u) { return (u && u._flutterSrcId != null && (state.units || []).find(x => x && x.id === u._flutterSrcId)) || null; }   // alive or not
+        /* STATUS_DEFS.flutter's onApply / onRemove: the stack's float and the morphos on the shoulder (three-vfx-effects.js) */
+        function _bfFlutterChanged(u, was) {
+            if (!u || state.phase !== 'battle') return;
+            const n = (u._flutter | 0);
+            if (n > (was | 0) && n > 0 && !u.dead && !_skipVisuals()) showFloatingTextForUnit(u, `🦋 FLUTTER ${n}`, 'debuff', { durationMs: 1000, jitterY: -20 });
+            const src = _bfSrc(u);
+            _sigVfxGeom('nrFlutter:sync', u.x, u.y, n, { uid: u.id, owner: src ? src.player : null });
+            /* a spell (Flutter, Eyespots) that adds the third stack sets it off too (11-23 review fix): a beat later, once the hit
+               that put it there has finished (the round end and Butterfly Effect run theirs in _bfGrow) */
+            if (!_bfGrowing && n >= FLUTTER_MAX && (was | 0) < FLUTTER_MAX) {
+                const uid = u.id;
+                setTimeout(() => {
+                    const c = (state.units || []).find(x => x && x.id === uid);
+                    if (!c || c.dead || c._dying || state.phase !== 'battle' || state.winner || (c._flutter | 0) < FLUTTER_MAX || !unitHasStatus(c, 'flutter')) return;
+                    _bfTwister(c, new Set());
+                    if (typeof checkWin === 'function') checkWin();
+                }, 650);
+            }
+        }
+        let _bfGrowing = false;
+        function _bfCarriers(side) {
+            return (state.units || []).filter(u => u && !u.dead && !u._dying && (u._flutter | 0) > 0 && unitHasStatus(u, 'flutter')
+                && (side == null || (() => { const s0 = _bfSrc(u); return !!s0 && sidesAllied(s0.player, side); })()));
+        }
+        function _bfGrow(list, why) {
+            const ready = [];
+            _bfGrowing = true;
+            try {
+                for (const c of list) {
+                    const was = c._flutter | 0;
+                    c._flutter = Math.min(FLUTTER_MAX, was + 1);
+                    _bfFlutterChanged(c, was);
+                    if (c._flutter >= FLUTTER_MAX) ready.push(c);
+                }
+            } finally { _bfGrowing = false; }
+            if (list.length) addLog(`🦋 ${list.length === 1 ? `The Flutter on ${_ctName(list[0])} grows` : `${list.length} Flutters grow`} ${why}${list.length === 1 ? ` (${list[0]._flutter} of ${FLUTTER_MAX})` : ''}.`);
+            if (ready.length) {
+                const hit = new Set();
+                for (const c of ready) _bfTwister(c, hit);
+                if (typeof checkWin === 'function') checkWin();
+            }
+            return ready.length;
+        }
+        /* at 3: the twister touches down on the carrier's 3x3 */
+        function _bfTwister(c, hit) {
+            if (!c || c.dead || c._dying) return;
+            const src = _bfSrc(c), cx = c.x, cy = c.y, side = c.player;
+            clearStatus(c, 'flutter');
+            if (c._flutter) { delete c._flutter; delete c._flutterSrcId; }
+            addLog(`🌪 The Flutter on ${_ctName(c)} touches down as a twister!`);
+            _sigVfxGeom('nrFlutter:twister', cx, cy, 1, { owner: src ? src.player : null });
+            if (!src) return;
+            const tiles = [];
+            for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (isInside(cx + dx, cy + dy)) tiles.push({ x: cx + dx, y: cy + dy });
+            const sp = spellPowerOf(src, BF_TWISTER_ROW);
+            _applyAoeDamage(src, BF_TWISTER_ROW, tiles, FLUTTER_TWISTER_DMG + sp, sp, {
+                rngRange: 30, minDmg: 32, pushFromCenter: { x: cx, y: cy },
+                findTarget: (t) => {
+                    const v = (state.units || []).find(u => u && !u.dead && !u._dying && u.x === t.x && u.y === t.y && sidesAllied(u.player, side) && !hit.has(u.id));
+                    if (v) hit.add(v.id);
+                    return v || null;
+                }
+            });
+        }
+        /* the round end (_nrRoundEnd): every Flutter grows */
+        function _bfRoundEnd() {
+            const list = _bfCarriers(null);
+            if (list.length) _bfGrow(list, 'with the round');
+        }
+        /* 🦋 Butterfly Effect (the buff branch): every Flutter of her side's grows now */
+        function _bfEffect(unit, spell) {
+            if (!_nrAlive(unit)) return;
+            const list = _bfCarriers(unit.player);
+            _sigVfxGeom('nrButterflyEffect:flap', unit.x, unit.y, 0, { owner: unit.player });
+            addLog(`🦋 ${_ctName(unit)} beats her wings once: the butterfly effect.`);
+            _bfGrow(list, 'at once');
+        }
+        function _bfEffectValue(unit) {   // ai.js: what the cast would do (carriers, twisters, bodies under them)
+            const list = _bfCarriers(unit ? unit.player : null);
+            let tw = 0, bodies = 0;
+            for (const c of list) {
+                if ((c._flutter | 0) + 1 < FLUTTER_MAX) continue;
+                tw++;
+                bodies += (state.units || []).filter(u => u && !u.dead && sidesAllied(u.player, c.player) && Math.max(Math.abs(u.x - c.x), Math.abs(u.y - c.y)) <= 1).length;
+            }
+            return { carriers: list.length, twisters: tw, bodies };
+        }
+        /* FLASH AND VANISH (applyDamageToUnit, a blow that landed on her) */
+        function _bfFlashVanish(target, src, opts) {
+            if (!target || target.race !== 'butterfly girl' || target.dead || !(target.hp > 0) || !src || !sidesHostile(src.player, target.player)) return;
+            if (opts && (opts._linkEcho || opts.damageType === 'dot')) return;
+            if (unitHasStatus(target, 'broken') || unitHasStatus(target, 'invisible')) return;
+            const r = state.round || 0;
+            if (target._bfVanishRound != null && r - target._bfVanishRound < BF_VANISH_EVERY) return;
+            target._bfVanishRound = r;
+            applyStatusPayload(target, { id: 'invisible', duration: 2 }, '🦋 Flash and Vanish: ', target);
+            if (!unitHasStatus(target, 'invisible')) return;
+            target._bfVanished = true;
+            addLog(`🦋 A blue flash, and ${_ctName(target)} is gone (Invisible until her next turn).`);
+            _sigVfxGeom('nrFlashVanish', target.x, target.y, 0, { owner: target.player });
+        }
+        /* her next turn starts: the vanish ends */
+        function _bfVanishEnds(unit) {
+            if (!unit || !unit._bfVanished) return;
+            delete unit._bfVanished;
+            if (unitHasStatus(unit, 'invisible')) clearStatus(unit, 'invisible');
+        }
+        window._bfFlutterChanged = _bfFlutterChanged; window._bfEffectValue = _bfEffectValue; window._bfRoundEnd = _bfRoundEnd;
+
+        /* ═══ THE RAT KING (2026-11-23, thread "Plan the Rat and Rat King's spells"; mondo: "The rat can have some sort of system where
+           if he gets enough stacks he becomes the rat king", plan OK'd 11-23) ═══ One new rule, MISCHIEF (a group of rats is a
+           mischief), host-side like THE COMING RACES: plain numbers and the unit's own appearance / spell rows, all riding the state
+           sync, so the guest's model, menu and chip follow by themselves; the texts go through showFloatingTextForUnit (relayed), the
+           looks through fireGeometry (relayed).
+             · +1 Mischief for every hit he or one of his summoned rats lands on an enemy (the rats' bites carry him as their source),
+               +1 more for Gnaw on a target already Bleeding (`gnawMischief`), +1 when any enemy within 2 of him goes down.
+             · At 5 the rats crown him on the spot (_ratCrown): unit.appearance.form = 'king' (sprites.js getRace3DModel → RAT_KING_3D;
+               three-renderer.js hashes it into the structural serial), +2 ATK / +1 DEF stage while crowned (getStatStageCount), a 20 %
+               heal, and his three Rat rows turn into the King's in the same slots (RAT_KING_SWAP, data.js RAT_KING_SPELLS).
+             · Crowned, every round end costs 1 Mischief; his hits refill it. At 0 the crown falls (_ratDethrone).
+             · Stun, Frozen or Feared scatter 2 Mischief (the Skater's bail rule, the other side's answer).
+             · Long Live the King (`longLiveKing`) spends it all: one bite a Mischief, spread over the enemies within 4, then the crown falls.
+             · Down = the crown falls and the count is 0 (he comes back as the Rat).
+           Notes: docs/notes/champions-combat.md "THE RAT KING". */
+        const MISCHIEF_MAX = 5, RAT_KING_HEAL = 0.2, RAT_SCAVENGE_R = 2, RAT_SCATTER = 2;
+        const RAT_KING_SWAP = { nrGnaw: 'nrPlagueBite', nrScurry: 'nrCarriedByCourt', nrMischiefOfRats: 'nrLongLiveKing' };
+        const RAT_KING_BACK = { nrPlagueBite: 'nrGnaw', nrCarriedByCourt: 'nrScurry', nrLongLiveKing: 'nrMischiefOfRats' };
+        function _ratIsKing(u) { return !!(u && u.race === 'rat' && u.appearance && u.appearance.form === 'king'); }
+        /* the slots: each row of the map becomes its twin (spells, the slot ids, the race rows), a fresh copy of the table's row */
+        function _ratSwapKit(u, map) {
+            const twin = (sp) => { if (!sp || !map[sp.id]) return sp; const t = getSpellById(map[sp.id]); return t ? Object.assign({}, t) : sp; };
+            if (Array.isArray(u.spells)) u.spells = u.spells.map(twin);
+            if (Array.isArray(u._raceAbilities)) u._raceAbilities = u._raceAbilities.map(twin);
+            if (Array.isArray(u._spellSlots)) u._spellSlots = u._spellSlots.map(id => map[id] || id);
+            if (state.selectedUnitId === u.id && state.selectedTool && typeof state.selectedTool === 'string') {
+                const was = Object.keys(map).map(k => getSpellById(k)).find(sp => sp && sp.name === state.selectedTool);
+                if (was) state.selectedTool = null;   // an armed Gnaw is not a Plague Bite: disarm, the menu re-reads the slot
+            }
+        }
+        function _ratCrown(u) {
+            if (!_nrAlive(u) || _ratIsKing(u)) return;
+            u.appearance = Object.assign({}, u.appearance || {}, { form: 'king' });   // a new object: never the roster's own look
+            _ratSwapKit(u, RAT_KING_SWAP);
+            u._ratCrownRound = state.round || 0;
+            const heal = Math.max(1, Math.round((u.maxHp || 0) * RAT_KING_HEAL));
+            if (u.hp < u.maxHp) applyHealingToUnit(u, heal, u, { preScaled: true });
+            addLog(`👑 The rats crown ${_ctName(u)}: THE RAT KING! +2 ATK and +1 DEF stage while the crown holds; his spells answer to a king now.`);
+            _crFloat(u, '👑 RAT KING', 'buff');
+            _sigVfxGeom('nrRatCrown', u.x, u.y, 0, { owner: u.player });
+            if (typeof markDirty === 'function') markDirty('hud', 'selectedUnit');
+            scheduleBoardRender();
+        }
+        function _ratDethrone(u, why) {
+            if (!u || !_ratIsKing(u)) return;
+            const a = Object.assign({}, u.appearance); delete a.form; u.appearance = a;
+            _ratSwapKit(u, RAT_KING_BACK);
+            if (why) addLog(`🐀 ${why}`);
+            if (!u.dead && u.hp > 0) _crFloat(u, '🐀 DETHRONED', 'damage');
+            _sigVfxGeom('nrRatCrown:fall', u.x, u.y, 0, { owner: u.player });
+            if (typeof markDirty === 'function') markDirty('hud', 'selectedUnit');
+            scheduleBoardRender();
+        }
+        function _ratGain(u, n) {
+            if (!_nrAlive(u) || u.race !== 'rat' || !(n > 0) || u._ratCashing) return;
+            const before = u.mischief | 0;
+            u.mischief = Math.min(MISCHIEF_MAX, before + n);
+            if (u.mischief === before) return;
+            _crFloat(u, `🐀 MISCHIEF ${u.mischief}`, 'buff');
+            if (u.mischief >= MISCHIEF_MAX && !_ratIsKing(u)) _ratCrown(u);
+        }
+        /* applyDamageToUnit, a blow that landed: his own hits and his rats' bites (sourceUnit = him) */
+        function _ratOnHit(src, target, opts, hadBleed) {
+            if (!src || src.race !== 'rat' || !target || src.id === target.id || !sidesHostile(src.player, target.player)) return;
+            if (target._isCube || target._summonStatic || (opts && (opts._linkEcho || opts.damageType === 'dot'))) return;
+            _ratGain(src, 1 + (hadBleed && src._ratCastId === 'nrGnaw' ? 1 : 0));
+        }
+        /* any enemy that goes down within 2 of a rat feeds him (the scavenger); a rat that goes down loses the crown and the count */
+        function _ratOnDown(target) {
+            if (!target) return;
+            if (target.race === 'rat') {
+                if (_ratIsKing(target)) _ratDethrone(target, `The crown rolls off ${_ctName(target)}. The court scatters.`);
+                target.mischief = 0;
+            }
+            for (const r of (state.units || [])) {
+                if (!r || r.race !== 'rat' || r.id === target.id || !_nrAlive(r) || !sidesHostile(r.player, target.player)) continue;
+                if (Math.max(Math.abs(r.x - target.x), Math.abs(r.y - target.y)) > RAT_SCAVENGE_R) continue;
+                _ratGain(r, 1);
+            }
+        }
+        /* the Skater's bail rule: a hold that stops him scatters 2 */
+        function _ratScatter(u, label) {
+            if (!u || u.race !== 'rat' || !((u.mischief | 0) > 0)) return;
+            u.mischief = Math.max(0, (u.mischief | 0) - RAT_SCATTER);
+            addLog(`🐀 ${_ctName(u)} is ${label || 'stopped'}: his rats scatter (Mischief ${u.mischief}).`);
+            _crFloat(u, `🐀 SCATTER −${RAT_SCATTER}`, 'damage');
+            if (u.mischief <= 0 && _ratIsKing(u)) _ratDethrone(u, `Nobody is left to hold up ${_ctName(u)}'s crown.`);
+        }
+        /* the round end (_nrRoundEnd): a king pays his court */
+        function _ratRoundEnd(u) {
+            if (!_nrAlive(u) || !_ratIsKing(u)) return;
+            u.mischief = Math.max(0, (u.mischief | 0) - 1);
+            if (u.mischief <= 0) _ratDethrone(u, `The court goes hungry and leaves ${_ctName(u)}: the crown falls.`);
+            else addLog(`👑 ${_ctName(u)} feeds his court: Mischief ${u.mischief}.`);
+        }
+        /* Long Live the King: who the bites go to (the forecast, the refusal, the CPU and the cast read the same plan) */
+        function _ratKingPlan(unit, spell) {
+            const L = spell && spell.longLiveKing; if (!L || !unit) return null;
+            const r = L.radius || 4, n = Math.max(0, unit.mischief | 0);
+            const foes = (state.units || []).filter(e => _nrAlive(e) && sidesHostile(unit.player, e.player) && !e._isCube
+                && Math.max(Math.abs(e.x - unit.x), Math.abs(e.y - unit.y)) <= r)
+                .sort((a, b) => (Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y)) - (Math.abs(b.x - unit.x) + Math.abs(b.y - unit.y)) || (a.hp - b.hp));
+            const bites = [];
+            if (foes.length) for (let i = 0; i < n; i++) bites.push(foes[i % foes.length]);
+            const dmg = calcFlatSpellDamage(L.dmg || 70, spellPowerOf(unit, spell), 16);
+            return { foes, bites, dmg, n };
+        }
+        function _ratLongLive(unit, spell) {
+            const P = _ratKingPlan(unit, spell); if (!P || !_nrAlive(unit)) return;
+            unit._ratCashing = true;   // the bites spend the court: they never feed it back
+            try {
+                _sigVfxGeom('nrLongLiveKing', unit.x, unit.y, (spell.longLiveKing.radius || 4), { owner: unit.player, bites: P.bites.map(e => [e.x, e.y]) });
+                let hits = 0;
+                for (const e of P.bites) {
+                    if (!_nrAlive(e)) continue;
+                    applyDamageToUnit(e, P.dmg, `${spell.name}: a rat bursts up under `, { sourceUnit: unit, damageType: 'physical', spellType: spell.spellType || null });
+                    hits++;
+                }
+                addLog(`👑 "Long live the king!" ${_ctName(unit)} spends his court: ${hits} rat${hits === 1 ? '' : 's'} burst up out of the floor.`);
+            } finally { unit._ratCashing = false; }
+            unit.mischief = 0;
+            _ratDethrone(unit, `${_ctName(unit)} gave the court everything. The crown falls.`);
+        }
+        function _ratOnBoard() { return (state.units || []).some(u => u && u.race === 'rat' && !u.dead); }
+        window._ratKingPlan = _ratKingPlan; window._ratIsKing = _ratIsKing; window.MISCHIEF_MAX = MISCHIEF_MAX;
         /* ═══ THE HAUNTED DOLL (2026-11-17, mondo approved the kit and asked for the pull-string spell) ═══ "Sits on the shelf, and
            moves when you look away." Host-side like the rest of THE NEW RACES 2: the squares, the facings, the statuses and the HP
            state-sync to the guest; the voice-box line comes from _nrHash (the unit id + the round), so the guest's log agrees.
@@ -20502,6 +20892,27 @@
             }
             return row;
         }
+        /* 💉 BEFORE & AFTER (2026-11-23, THE PLASTIC SURGEON's finisher): the screen splits like a clinic's ad, BEFORE on the left
+           over the victim as it was, AFTER on the right drawn in his side's marker lines, the clinic's lower third under it. Screen
+           chrome only (the 3D frame, the number, the caster and the victim stay as they are); both screens run doFinisher, so
+           both get it (styles-cinematic.css "BEFORE & AFTER"). */
+        try { window._finBeforeAfter = _finBeforeAfter; } catch (e) {}   // reachable from the console (a probe, a look)
+        function _finBeforeAfter(unit, target, totalMs) {
+            if (_skipVisuals() || typeof document === 'undefined') return;
+            try {
+                const old = document.getElementById('fin-ba'); if (old) old.remove();
+                const mine = !unit || unit.player === getViewerPlayer();
+                const el = document.createElement('div');
+                el.id = 'fin-ba'; el.className = 'fin-ba ' + (mine ? 'own' : 'foe');
+                el.style.setProperty('--fin-ba-ms', Math.round(totalMs) + 'ms');
+                el.innerHTML = '<div class="fin-ba-l"><b>BEFORE</b></div><div class="fin-ba-cut"></div>'
+                    + '<div class="fin-ba-r"><b>AFTER</b><svg viewBox="0 0 100 160" preserveAspectRatio="xMidYMid meet"><g fill="none" stroke-width="2.2" stroke-dasharray="6 5">'
+                    + '<circle cx="50" cy="32" r="18"/><rect x="30" y="54" width="40" height="92" rx="16"/><path d="M22 92 H78 M50 12 V150" stroke-dasharray="2 5"/></g></svg></div>'
+                    + '<div class="fin-ba-low"><span>DISASTER HILLS AESTHETICS</span><i>·</i><span>CONSULTATIONS AVAILABLE</span></div>';
+                document.body.appendChild(el);
+                window.setTimeout(() => { try { el.remove(); } catch (e) {} }, Math.max(1200, totalMs + 200));
+            } catch (e) {}
+        }
         function getFinisherTargets(unit) { return getEntropyStrikeTargets(unit); }
         function canUseFinisher(unit) {
             if (!unit || unit.dead || unit._dying) return false;
@@ -20710,6 +21121,7 @@
 
             /* the banner: the ⚛ chrome in the finisher's TYPE theme, the
                FINISHER kicker, the execution's name + tagline */
+            if (def.overlay === 'beforeAfter') _finBeforeAfter(unit, target, totalMs);   // 💉 the Plastic Surgeon's BEFORE | AFTER frame
             _ewsShowBanner(unit.player, totalMs, getEntropyStrikeType(def.type), {
                 kicker: '☠ FINISHER — ' + unitDisplayName(unit).toUpperCase(),
                 glyph: def.glyph, name: def.name, tagline: def.tagline, cls: 'ews-fin'
@@ -23134,6 +23546,44 @@
                     if (V.sigWhiteout3D) V.sigWhiteout3D(p.x, p.y, { color: 0x0a0806, ms: 800, peak: 0.45, sizeTiles: 5, shake: false });
                     c.insert('IN PIECES.', 'stamp', actionMs(1000));
                     for (let i = 0; i < 6; i++) c.at(actionMs(400 + i * 220), () => c.snd('itemThrow'));   // each piece into the hole
+                }
+            },
+            /* 🦋 SPECIMEN (2026-11-23, the Butterfly Girl; mondo OK'd "pinned in a glass display case"): her morphos lift the victim,
+               a glass display case drops over it, a pin drives down, and a paper label names what was collected */
+            specimen: {
+                chargeMs: 2000, strikeMs: 3800, resolveMs: 2600,
+                castSpell: { type: 'damage', dmg: 1, name: 'Specimen', kind: 'damage' },
+                siren(c) { c.snd('debuff'); c.dsnd('identSting'); c.grade('cool', actionMs(900)); },
+                charge(c) {
+                    const V = c.VFX, u = c.unit;
+                    if (V.sigMagicCircle3D) V.sigMagicCircle3D(u.x, u.y, { radiusPx: c.ts * 0.9, growMs: 240, holdMs: c.CHARGE_MS, fadeMs: 400, spin: true, color: 0x3a8bff, color2: 0x0a1430 });
+                    c.snd('buff');
+                },
+                cam(c) {
+                    const u = c.unit, p = c.pos(c.target);
+                    if (typeof cineWitnessCam === 'function') cineWitnessCam(c.target, { dist: 5.0, tilt: 66, duration: 700 }); else c.dive(c.target, 1.4, 300);   // the swarm coming in
+                    c.at(c.STRIKE_MS - actionMs(1600), () => { if (typeof cineFaceCam === 'function') cineFaceCam(c.target, { dist: 2.6, tilt: 78, cut: false, duration: 700 }); });   // the lift
+                    c.at(c.STRIKE_MS - actionMs(200), () => { c.slow(0.4, actionMs(360)); });
+                    c.at(c.STRIKE_MS + actionMs(400), () => { c.slowClear(); if (typeof cineCrane === 'function') cineCrane(c.target, { duration: actionMs(1400), tilt: 58, rise: 2.2 }); });   // the case, the pin, the label
+                    c.at(c.STRIKE_MS + actionMs(2000), () => { if (typeof cineEndCapReverse === 'function') cineEndCapReverse(u, c.target, {}); else if (typeof cineGodShot === 'function') cineGodShot(p, 6, { cut: false, duration: 520, tilt: 30 }); });
+                    return true;
+                },
+                stage(c) {
+                    const V = c.VFX, u = c.unit, p = c.pos(c.target);
+                    if (V.sigSpecimen3D) V.sigSpecimen3D(u.x, u.y, p.x, p.y, { ms: c.STRIKE_MS + actionMs(3600), swarmAt: actionMs(100), liftAt: c.STRIKE_MS - actionMs(1600), hitAt: c.STRIKE_MS });
+                    c.at(actionMs(100), () => { c.snd('buff'); c.insert('A RARE ONE', 'scripture', actionMs(1000)); });
+                    c.at(c.STRIKE_MS - actionMs(1600), () => c.snd('debuff'));
+                    c.at(c.STRIKE_MS - actionMs(400), () => c.insert('HOLD STILL.', 'stamp', actionMs(500)));
+                },
+                strike(c) {
+                    const p = c.pos(c.target);
+                    c.freeze(actionMs(180), { grade: 'cool' });
+                    c.ring(p.x, p.y, 0x3a8bff, { r1: c.ts * 2.0, ms: 520, torus: true });
+                    c.flash('#cfe8ff', 160, 0.45); c.kick(10, 240);
+                    c.snd('physicalAbilityDamage'); c.dsnd('slam');
+                },
+                resolve(c) {
+                    c.insert('PINNED AND LABELLED.', 'stamp', actionMs(1100));
                 }
             },
             theBridge: {
@@ -43680,6 +44130,8 @@
             if (_pressDamageCollector) _collectPressHit(opts.sourceUnit || null, target, opts);
 
             const sourceUnit_pre = opts.sourceUnit || null;
+            if (damage > 0 && sourceUnit_pre && sourceUnit_pre.race === 'plastic surgeon') damage = Math.max(1, Math.round(damage * _psDmgMult(sourceUnit_pre, target, opts)));   // 💉 The Full Procedure: +25% a Work Done
+            const _ratHadBleed = !!(sourceUnit_pre && sourceUnit_pre.race === 'rat' && unitHasStatus(target, 'bleed'));   // 👑 Gnaw's +1 on a target already Bleeding (read before this hit's own Bleed)
             if (damage > 0 && sourceUnit_pre && sourceUnit_pre.race === 'gladiator') damage = Math.max(1, Math.round(damage * _crFavorMult(sourceUnit_pre, target, opts)));   // 🛡 THE CROWD: +4% a Favor
             if (state.fogOfWar && !state.devAutoSim && sourceUnit_pre && sidesHostile(sourceUnit_pre.player, target.player)) {
                 const humanPlayer = getViewerPlayer();
@@ -43941,6 +44393,7 @@
 
             let _balHitRec = null;   // Balance Lab: this hit's element / effects / statuses, for the kill credit below
             if (finalDamage > 0) {
+                const _ratHpWas = target.hp;   // 👑 the scavenger counts the blow that took it down, once
                 target.hp -= finalDamage;
                 astralSyncHp();   // 👁 one HP bar for a body and its spirit
                 target._tookDamageThisRound = true;
@@ -43948,7 +44401,9 @@
                 target._tapeNow = (target._tapeNow || 0) + finalDamage;   // 📺 THE TAPE: what it took this round (the Cursed TV's Rewind plays last round's back)
                 if (sourceUnit && sourceUnit.race === 'wendigo' && sidesHostile(sourceUnit.player, target.player)) sourceUnit._fedRound = state.round || 0;   // 🦌 it fed
                 if (sourceUnit && sourceUnit.race === 'cameraman' && target.hp > 0) _camFilm(sourceUnit, target);   // 🎥 THE FOOTAGE
-                if (sourceUnit && (sourceUnit.race === 'gladiator' || sourceUnit.race === 'jellyfish ufo')) _crOnHit(sourceUnit, target, opts);   // 🛡⚡ THE COMING RACES: Favor, claw Charge
+                if (sourceUnit && (sourceUnit.race === 'gladiator' || sourceUnit.race === 'jellyfish ufo')) _crOnHit(sourceUnit, target, opts);
+                if (sourceUnit && sourceUnit.race === 'rat') _ratOnHit(sourceUnit, target, opts, _ratHadBleed);   // 👑 THE RAT KING: Mischief
+                if (target.hp <= 0 && _ratHpWas > 0 && (target.race === 'rat' || _ratOnBoard())) _ratOnDown(target);   // 👑 the scavenger, the fallen crown
 
                 /* ONE CAST, ONE LINE (playtest 2, mondo 2026-10-22: "ninefold scratch just needs one line"): a
                    multi-hit cast passes opts.logSink and its hits roll into one line with the total, written on
@@ -43979,6 +44434,7 @@
                     addLog(`👁️ ${_ctName(target)} is revealed — the hit gives them away!`, target.player);
                     if (typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(target, '👁️ Revealed!', 'debuff');
                 }
+                if (target.race === 'butterfly girl' && sourceUnit) _bfFlashVanish(target, sourceUnit, opts);   // 🦋 FLASH AND VANISH (after the reveal, so the hit that sets it off does not strip it)   // 🛡⚡ THE COMING RACES: Favor, claw Charge
 
                 if (sourceUnit) {
                     sourceUnit._trackDmgDealt = (sourceUnit._trackDmgDealt || 0) + finalDamage;
@@ -46847,6 +47303,7 @@
             hawk: { icon: '🦅', verb: 'dives at' }, wolf: { icon: '🐺', verb: 'bites' }, elephant: { icon: '🐘', verb: 'strikes' },
             creation: { icon: '🧟', verb: 'clubs' }, hound: { icon: '🐕', verb: 'bites' }, cultist: { icon: '🕯️', verb: 'strikes' },
             drone: { icon: '🐝', verb: 'stings' }, blob: { icon: '🟢', verb: 'strikes' }, replica: { icon: '🦠', verb: 'lashes' },   // 🦠 the Virus's Replica (2026-11-18)
+            rat: { icon: '🐀', verb: 'bites' },   // 👑 the Rat's Mischief of Rats (2026-11-23)
         };
         function _summonLook(key) { return SUMMON_LOOK[key] || { icon: '🧟', verb: 'strikes' }; }
         function _turretLogName(turret) {
@@ -66714,6 +67171,7 @@
                 state._blitzActiveUnitId = nextUnit.id;
                 try { cubeFocus(nextUnit); } catch (e) { console.warn('[CUBE] relay', e); }   // THE CUBE: the frame round this fighter's face
                 _popeGlassEnds(nextUnit);   // ⛪ the Popemobile's glass comes down when his next turn starts
+                _bfVanishEnds(nextUnit);   // 🦋 Flash and Vanish lasts until her next turn starts
                 if (_balanceSimMode) _balTurnStart(nextUnit);   // Balance Lab: turns + dry turns per race
                 _eorPhaseLabelHide();   // a unit is up: the end of round is over, its phase chip goes
                 if (typeof window !== 'undefined' && window._tutActive && typeof window._tutEvent === 'function') window._tutEvent('activation', { uid: nextUnit.id, player: nextUnit.player });
@@ -84369,6 +84827,10 @@
             if (spell && (spell.diceRoll || spell.stillnessSpend)) spell = _nr4CastRow(unit, spell);
             /* 🛡⚡ THE COMING RACES: Crowd Pleaser / Abyssal Overload bake their spend, Venom Injector its Stun (_crCastRow) */
             if (spell && (spell.favorSpend || spell.chargeSpend || spell.chargeStunAt)) spell = _crCastRow(unit, spell);
+            /* 💉 THE PLASTIC SURGEON: a procedure becomes its ally or enemy cast (_psCastRow); his casts remember what finishAction needs */
+            if (spell && spell.procedure) spell = _psCastRow(unit, spell, x, y, z);
+            _psBeginCast(unit, spell, x, y, z);
+            if (unit && unit.race === 'rat') unit._ratCastId = spell ? spell.id : null;   // 👑 THE RAT KING: Gnaw's bonus reads the cast
             /* Clash final authority: movement/positioning spells can never
                fire, whatever path armed them (kits are already stripped —
                this catches stale online/AI edge cases). */
@@ -85142,7 +85604,9 @@
                 if (spell.viewersGain > 0) _viewersAdd(unit, spell.viewersGain, 'gets hearts in the chat');
                 _nr4AfterCast(unit, spell);   // 🎲📿🔒 THE NEW RACES 4: the streak, the stillness, the ransom
                 _crAfterCast(unit, spell);   // 🛡⚡ THE COMING RACES: Favor + Charge spent
+                if (unit.race === 'rat') unit._ratCastId = null;   // 👑 THE RAT KING
                 _bearAfterCast(unit, spell, x, y);   // 🐻 THE BEAR: Hibernate's sleep, Bear Hug's Root + Grudge
+                _psAfterCast(unit, spell, x, y, z);   // 💉 THE PLASTIC SURGEON: Work Done, Liposuction's shield
                 if (spell.kind !== 'dash' && Array.isArray(spell.selfStatusAfter) && spell.selfStatusAfter.length && !unit.dead && state.phase === 'battle') {
                     applyStatusEffects(unit, spell.selfStatusAfter, `${spell.name}: `, unit);
                 }
@@ -85421,6 +85885,7 @@
                     }
                     // THE SPELL AUDIT Batch B: a heal row's own statusEffects land on the ally (Soothe's Regen)
                     if (spell.statusEffects && spell.statusEffects.length) applyStatusEffects(_ht, spell.statusEffects, `${spell.name}: `, unit);
+                    if (spell.statStageBoost && !_ht.dead) applyStatStageBoost(_ht, spell.statStageBoost, `${spell.name}: `, unit);   // 💉 Botox on an ally: +1 DEF
                     addLog(`${_ctName(unit)} casts ${_ctSp(spell.name)}, restoring ${healed} HP to ${_ctName(_ht)}.`);
                     _logCleansed(spell.name, _ht, _hcGone);   // THE CLEANSE LINE (playtest 11-07: Absolution logged only the heal)
                     /* THE SPELL AUDIT Batch D: healAdjacentDamage (Divine Light) — the light that mends the ally burns
@@ -85483,6 +85948,17 @@
                 if (spell.mopUp && !_janitorClean(unit, _janitorMopUpTiles(unit, spell), true)) {
                     if (!_silentReject) { addLog(`${_ctSp(spell.name)}: nothing to clean within ${spell.mopUp.radius || 2}.`, _clickSeat()); playErrorSfx(); }
                     return 0;
+                }
+                if (spell.butterflyEffect && !_bfCarriers(unit.player).length) {   // 🦋 nothing to speed up
+                    if (!_silentReject) { addLog(`${_ctSp(spell.name)}: no Flutter of her side's on the board.`, _clickSeat()); playErrorSfx(); }
+                    return 0;
+                }
+                if (spell.longLiveKing) {   // 👑 Long Live the King: a court to spend and an enemy in reach
+                    const _llk = _ratKingPlan(unit, spell);
+                    if (!_llk || !_llk.foes.length || !_llk.n) {
+                        if (!_silentReject) { addLog(`${_ctSp(spell.name)}: ${_llk && _llk.n ? `no enemy within ${spell.longLiveKing.radius || 4}` : 'no Mischief left to spend'}.`, _clickSeat()); playErrorSfx(); }
+                        return 0;
+                    }
                 }
                 if (spell.harvestMoon && !_crHarvestPlants(unit, spell).length) {
                     if (!_silentReject) { addLog(`${_ctSp(spell.name)}: no grown plant of ${_ctName(unit)}'s within ${spell.harvestMoon.radius || 4}.`, _clickSeat()); playErrorSfx(); }
@@ -85605,6 +86081,8 @@
                     if (spell.unload && !unit.dead) _truckerUnload(unit, spell);   // 🚚 Unload
                     if (spell.comeAtMe && !unit.dead) _crComeAtMe(unit, spell);   // 🛡 Come At Me
                     if (spell.harvestMoon && !unit.dead) _crHarvestMoon(unit, spell);   // 🌾 Harvest Moon
+                    if (spell.butterflyEffect && !unit.dead) _bfEffect(unit, spell);   // 🦋 Butterfly Effect
+                    if (spell.longLiveKing && !unit.dead) _ratLongLive(unit, spell);   // 👑 Long Live the King
                     if (spell.filterSwap && !_bt.dead) _influencerFilter(unit, _bt, spell);   // 🤳 Filter
                     if (spell.slimeRing && !unit.dead) { _sigVfxGeom('nrSaltProof:ring', unit.x, unit.y, 1, { owner: unit.player }); _slugRing(unit, spell); }   // 🐌 Salt-Proof Stance
                     markDirty('hud');
@@ -85890,7 +86368,8 @@
                 if (!state.turrets) state.turrets = [];
                 const _sCap = spell.maxActivePerCaster || 1;
                 const _sMine = state.turrets.filter(t => t.summon && t.casterUnitId === unit.id && t.spellId === spell.id);
-                while (_sMine.length >= _sCap) {
+                const _sCount = Math.max(1, Math.min(_sCap, spell.summonCount || 1));   // 👑 Mischief of Rats calls two at once (`summonCount`)
+                while (_sMine.length > _sCap - _sCount) {
                     const old = _sMine.shift();
                     addLog(`${_ctSp(old.spellName)} at ${coordLabel(old.x, old.y)} is dismissed.`);
                     state.turrets.splice(state.turrets.indexOf(old), 1);
@@ -85924,7 +86403,23 @@
                     const _stT = state.turrets[state.turrets.length - 1];
                     if (_stT) _stT.trailTerrain = { terrain: _sd.trailTerrain.terrain, radius: 0, rounds: _sd.trailTerrain.rounds || 3 };
                 }
-                showFloatingTextAtTile(x, y, `${_sd.key === 'hound' ? '🐕' : _sd.key === 'replica' ? '🦠' : '🧟'} ${_sName.toUpperCase()}`, 'damage', { durationMs: 1200 });
+                /* 👑 `summonCount` (Mischief of Rats): the rest come up on free squares beside the first, nearest the caster first */
+                if (_sCount > 1) {
+                    const _sFirst = state.turrets[state.turrets.length - 1];
+                    const _sNb = [];
+                    for (let _dy = -1; _dy <= 1; _dy++) for (let _dx = -1; _dx <= 1; _dx++) if (_dx || _dy) _sNb.push({ x: x + _dx, y: y + _dy });
+                    _sNb.sort((a, b) => (Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y)) - (Math.abs(b.x - unit.x) + Math.abs(b.y - unit.y)) || (a.y - b.y) || (a.x - b.x));
+                    let _sMore = _sCount - 1;
+                    for (const t of _sNb) {
+                        if (_sMore <= 0) break;
+                        if (!isInside(t.x, t.y) || !summonTileFree(t.x, t.y)) continue;
+                        state.turrets.push(Object.assign({}, _sFirst, { id: `summon_${_sd.key || 'pet'}_${state.round || 0}_${unit.id}_${randInt(99999)}`, x: t.x, y: t.y,
+                            hitStatus: _sFirst.hitStatus ? _sFirst.hitStatus.slice() : null, burstStatus: _sFirst.burstStatus ? _sFirst.burstStatus.slice() : null }));
+                        if (typeof window !== 'undefined' && window.ThreeVFXEffects && window.ThreeVFXEffects.hasMapping(spell.id, 'aura') && state.phase === 'battle' && !_skipVisuals()) window.ThreeVFXEffects.fire('aura', spell.id, { tx: t.x, ty: t.y });
+                        _sMore--;
+                    }
+                }
+                showFloatingTextAtTile(x, y, `${_sd.key === 'hound' ? '🐕' : _sd.key === 'replica' ? '🦠' : _sd.key === 'rat' ? '🐀' : '🧟'} ${_sName.toUpperCase()}`, 'damage', { durationMs: 1200 });
                 addLog(`${_ctName(unit)} calls ${_sName} to ${coordLabel(x, y)}! It hunts the nearest enemy at the end of every round — ${_sd.move || 3} tiles a round, ${_sHits} hits to destroy${_sd.armored ? ', physical blows count half' : ''}${_sd.reveals ? `, sniffs out invisible enemies within ${_sd.reveals}` : ''}.`, unit.player);
                 scheduleBoardRender();
                 completionDelay = actionMs(900);

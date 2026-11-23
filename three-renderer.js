@@ -7178,7 +7178,8 @@ const ThreeRenderer = (function () {
         wolf:  { key: 'wolf', len: 0.9, alt: 'dog' },
         hawk:  { key: 'eagle', len: 0.7, fly: 0.85, alt: 'crow' },   // THE EAGLE (mondo: "Use eagle for the hawk"): beats its wings over its tile, strikes talons first
         elephant: { key: 'elephant', len: 1.35 },   // (2026-10-27) mondo's elephant: a head and a half longer than its tile, the big top's biggest act
-        drone: { key: 'bumblebee', len: 0.8, fly: 0.6 },   // THE INSECTS (2026-10-27): the bee queen's Brood drone is mondo's bumblebee, a big one, buzzing over its tile
+        drone: { key: 'bumblebee', len: 0.8, fly: 0.6 },
+        rat: { key: 'rat', len: 0.42 },   // 👑 THE RAT KING (2026-11-23): Mischief of Rats' sewer rats, a big city rat   // THE INSECTS (2026-10-27): the bee queen's Brood drone is mondo's bumblebee, a big one, buzzing over its tile
         creation: { cast: 'frankenstein' }   // FRANKENSTEIN (2026-10-28): a cast rig, not an animal file (_castCreatureBuild), its def's heightRatio tall
     };
     var _summonSeen = {};   // turret id → { x, z, fa, hp } as last built: a moved summon runs the gap, a hurt one flinches
@@ -10612,6 +10613,66 @@ const ThreeRenderer = (function () {
     }
     window.EWPowerAura = { burst: _powerAuraBurst };
 
+
+    /* ══ THE RAT'S COURT (2026-11-23, THE RAT KING) ══ One sewer rat runs round the Rat's feet for each Mischief he holds (battle.js
+       unit.mischief, 0-5), so both seats read how close he is to the crown from across the board. Crowned, the court circles slower
+       and wider and their tails are knotted together (a cord through them, the real "rat king"). Read per frame from state.units (the
+       handful of units, never the scene: RULE #1e); a court is rebuilt only when the count, the crown or the unit's group changes.
+       The rats are THE ANIMALS' `rat` clones (shared geometry + materials, flagged so a unit rebuild's _disposeR leaves them).
+       Looks only; the guest reads the same synced numbers. Kill-switch: window.EW_NO_RAT_COURT. */
+    var _ratCourts = new Map();   // unit id → { group, parent, n, king }
+    function _ratCourtDrop(uid, c) { if (c && c.group && c.group.parent) c.group.parent.remove(c.group); _ratCourts.delete(uid); }
+    function _ratCourtBuild(entry, n, king, ts) {
+        var g = new THREE.Group(); g._ew_noInstance = true; g._ew_ratCourt = true;
+        var R = ts * (king ? 0.5 : 0.4), sp = king ? 0.55 : 1.15, len = ts * 0.24, rats = [];
+        for (var k = 0; k < n; k++) {
+            var an = _animalBuild('rat', len, { fit: 'length', seed: k * 1.7 });
+            if (!an) return null;
+            an.group.traverse(function (o) { if (o.geometry) o.geometry._ew_shared = true; if (o.isMesh) o.castShadow = false; });
+            an.ctl.still = true;   // the court runs its own ring (below), not the scurry about its spot
+            (function (grp, ph) {
+                an.ctl.onTick = function () {
+                    var t = an.ctl.t, a = ph + t * sp;
+                    grp.position.set(Math.cos(a) * R, Math.abs(Math.sin(t * 9 + ph * 3)) * len * 0.06, Math.sin(a) * R);
+                    grp.rotation.y = -a;   /* nose along the ring (the file's nose on +Z) */
+                };
+                an.ctl.onTick();
+            })(an.group, k / n * Math.PI * 2);
+            g.add(an.group); rats.push(an.group);
+        }
+        if (king && n > 1) {   /* the knot: a pink cord from tail to tail round the ring */
+            var pts = [];
+            for (var i = 0; i <= 48; i++) { var b = i / 48 * Math.PI * 2; pts.push(new THREE.Vector3(Math.cos(b) * R * 0.86, len * 0.08, Math.sin(b) * R * 0.86)); }
+            var cord = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true), 64, len * 0.035, 5, true),
+                new THREE.MeshLambertMaterial({ color: 0xd98c9a }));
+            cord._ew_pixelate = true;
+            var hold = new THREE.Group(); hold.add(cord); g.add(hold);
+            var tk = rats[0] && rats[0].userData && rats[0].userData.animal;
+            if (tk) { var prev = tk.onTick; tk.onTick = function () { prev(); hold.rotation.y = -(tk.t * sp); }; }
+        }
+        entry.group.add(g);
+        return g;
+    }
+    var _ratCourtWarm = false;
+    function _ratCourtTick() {
+        if (typeof state === 'undefined' || !state.units || !unitEntries) return;
+        var off = (typeof window !== 'undefined' && window.EW_NO_RAT_COURT) || !_animalsOn();
+        var seen = null;
+        for (var i = 0; i < state.units.length; i++) {
+            var u = state.units[i];
+            if (!u || u.race !== 'rat') continue;
+            if (!_ratCourtWarm && !off) { _ratCourtWarm = true; try { _animalLoad('rat'); } catch (e) {} }
+            (seen || (seen = {}))[u.id] = 1;
+            var n = (off || u.dead || u._dying) ? 0 : Math.max(0, Math.min(5, u.mischief | 0));
+            var king = !!(u.appearance && u.appearance.form === 'king');
+            var entry = unitEntries.get(u.id), cur = _ratCourts.get(u.id);
+            if (cur && (!entry || cur.parent !== entry.group || cur.n !== n || cur.king !== king)) { _ratCourtDrop(u.id, cur); cur = null; }
+            if (cur || !n || !entry || !entry.group || !_animalReady('rat')) continue;
+            var g = _ratCourtBuild(entry, n, king, CONFIG.tileSize || BASE_TILE);
+            if (g) _ratCourts.set(u.id, { group: g, parent: entry.group, n: n, king: king });
+        }
+        if (_ratCourts.size) _ratCourts.forEach(function (c, uid) { if (!seen || !seen[uid]) _ratCourtDrop(uid, c); });
+    }
     function _updateUnitAuras() {
         var now = performance.now();
         var dt = _auraLastT ? Math.min(0.1, (now - _auraLastT) / 1000) : 0.016;
@@ -15650,6 +15711,7 @@ const ThreeRenderer = (function () {
             if (u.status && u.status.filtered > 0 && u._filterRace) h = _hashStr(h, 'flt:' + u._filterRace + ':' + (u._filterGender || '') + ':' + _viewerPlayerNum());   // 🤳 THE FILTER
             if (u.race === 'werewolf') h = _hashStr(h, (typeof getCurrentCyclePhase === 'function') ? getCurrentCyclePhase() : 'night');
             if (u.race === 'ice queen' && typeof ewSuperOnBoard === 'function' && ewSuperOnBoard()) h = _hashInt(h, 37);   // THE ICE QUEEN'S SUPER FORM
+            if (u.race === 'rat' && u.appearance && u.appearance.form === 'king') h = _hashInt(h, 43);   // 👑 THE RAT KING: the crowning swaps the body at once
             if (u.status && u.status.submerged > 0) h = _hashInt(h, 31);   // 🐊 going under / surfacing re-seats the body (_submergedSink)
         }
         h = _hashVal(h, state.selectedUnitId || '');
@@ -17738,6 +17800,7 @@ const ThreeRenderer = (function () {
         if (made) root.userData.ewGear = true;
     }
     var _gearE = null;
+    var _gearQ = null, _gearAx = null;
     function _gearTick(S) {
         var G = S.gear; if (!G || !G.length) return;
         if (!_gearE) _gearE = new THREE.Euler(0, 0, 0, 'YZX');
@@ -17749,6 +17812,13 @@ const ThreeRenderer = (function () {
                 /* at rest swept back and a little up, a slow beat (the unicorn's) */
                 _gearE.set(0, sgn * (0.55 + 0.1 * Math.cos(ph)), sgn * (0.25 + 0.22 * Math.sin(ph)), 'YZX');
                 n.quaternion.setFromEuler(_gearE);
+            } else if (nm === 'ewwing_L' || nm === 'ewwing_R') {
+                /* THE WING BONES (2026-11-23, the Butterfly Girl): a slow butterfly beat, the two wings folding back behind her and
+                   opening again about the back's upright axis (the bone's baked frame is the chest's: +Y up), a little out of step */
+                var q0 = n.userData.ewq0, ws = nm === 'ewwing_L' ? 1 : -1, wb = 0.5 - 0.5 * Math.cos(t * 4.4 - (ws < 0 ? 0.12 : 0));
+                if (!_gearQ) { _gearQ = new THREE.Quaternion(); _gearAx = new THREE.Vector3(0, 1, 0); }
+                _gearQ.setFromAxisAngle(_gearAx, ws * (0.08 + 0.95 * wb * wb));
+                if (q0) n.quaternion.set(q0[0], q0[1], q0[2], q0[3]).multiply(_gearQ); else n.quaternion.copy(_gearQ);
             } else if (nm === 'ewGearHalo') {
                 n.position.y = 0.014 * (n.userData.ewH || 1.7) * Math.sin(t * 1.8);   // the mount's frame is the model's: metres of the file
                 n.rotation.y = t * 0.6;
@@ -19300,6 +19370,7 @@ const ThreeRenderer = (function () {
     function _swayScan(root) {
         var has = false;
         root.traverse(function (n) { if (!has && n.isBone && /^ewsway_c\d+_\d+$/.test(n.name)) has = true; });
+        root.traverse(function (n) { if (!has && n.isBone && /^ewwing_[LR]$/.test(n.name)) has = true; });   // THE WING BONES (bake-wings.py): the gear tick beats them
         if (root.userData.ewGear) has = true;   // THE UNIT GEAR: its parts move in the sway's tick
         root.userData.ewSway = has;
         return has;
@@ -19308,6 +19379,11 @@ const ThreeRenderer = (function () {
         var o = {}, k; for (k in _SW_DEF) o[k] = _SW_DEF[k]; if (opts) for (k in opts) o[k] = opts[k];
         var cols = {}, byName = {}, gear = [];
         model.traverse(function (n) { if (/^ewGear(WingL|WingR|Halo|Cape)$/.test(n.name || '')) gear.push(n); });   // THE UNIT GEAR
+        model.traverse(function (n) {   // THE WING BONES (2026-11-23, bake-wings.py: the Butterfly Girl): their baked turn kept to beat from
+            if (!n.isBone || !/^ewwing_[LR]$/.test(n.name || '')) return;
+            if (!n.userData.ewq0) n.userData.ewq0 = [n.quaternion.x, n.quaternion.y, n.quaternion.z, n.quaternion.w];
+            gear.push(n);
+        });
         model.traverse(function (n) {
             if (!n.isBone) return;
             byName[n.name] = n;
@@ -32392,7 +32468,7 @@ const ThreeRenderer = (function () {
        style). The look round the body (feathers, splash, bones, web) is three-vfx-effects.js _ESC_LOOKS. */
     /* kickflip was drawn by _escStyleAt but missing here, so the Skater's ollie fell back to the plain vault (the Karate Frog
        pass, 2026-11-17); frogleap / flykick = the Karate Frog's vault over his target and his flying kick's run-in */
-    var _ESC_STYLES = { fly: 1, swing: 1, eject: 1, dive: 1, blink: 1, kickflip: 1, frogleap: 1, flykick: 1 };
+    var _ESC_STYLES = { fly: 1, swing: 1, eject: 1, dive: 1, blink: 1, kickflip: 1, frogleap: 1, flykick: 1, scurry: 1, court: 1 };
     function _escSmooth(x) { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); }
     function _escStyleAt(style, u, ts) {
         var o = { h: _escSmooth(u), dy: 0, hide: false, gone: false, air: false };
@@ -32412,6 +32488,18 @@ const ThreeRenderer = (function () {
             else if (u < 0.9) o.dy = ts * 1.25 * Math.sin(Math.PI * (u - 0.12) / 0.78);
             else o.dy = -ts * 0.06 * Math.sin(Math.PI * (u - 0.9) / 0.1);
             o.air = u > 0.13 && u < 0.9;
+        }
+        else if (style === 'scurry') {
+            /* 🐀 Scurry: down low and quick, a skitter of small hops over whatever is in the way */
+            o.h = _escSmooth(u);
+            o.dy = ts * 0.1 * Math.abs(Math.sin(Math.PI * 3 * u)) + ts * 0.25 * Math.sin(Math.PI * u);
+            o.air = u > 0.05 && u < 0.95;
+        }
+        else if (style === 'court') {
+            /* 👑 Carried by the Court: lifted on a carpet of rats, carried level, set down */
+            o.h = _escSmooth((u - 0.1) / 0.8);
+            o.dy = ts * 0.32 * _escSmooth(u / 0.15) * (1 - _escSmooth((u - 0.85) / 0.15)) + ts * 0.03 * Math.sin(u * 40);
+            o.air = u > 0.08 && u < 0.95;
         }
         else if (style === 'flykick') {
             /* 🐸 Flying Kick: off the floor at once, a long low flight, still in the air as it reaches the victim (the kick) */
@@ -39539,7 +39627,10 @@ const ThreeRenderer = (function () {
         moth_frames:      { file: 'insects/Moth_Wing_Flap_Frames.glb', yaw: -Math.PI / 2, lift: 0.5, clips: { idle: 'Moth_Wing_Flap_Frames_Flap', fly: 'Moth_Wing_Flap_Frames_Flap' }, speed: 2, proc: 'buzz' },
         grasshopper:      { file: 'insects/Grasshopper_Green.glb',     yaw: -Math.PI / 2, lift: 0.5, proc: 'hop' },
         grasshopper_brown:{ file: 'insects/Grasshopper_Brown.glb',     yaw: -Math.PI / 2, lift: 0.5, proc: 'hop' },
-        grasshopper_jump: { file: 'insects/Grasshopper_Mid_Jump.glb',  yaw: -Math.PI / 2, lift: 0.5, proc: 'leap' }
+        grasshopper_jump: { file: 'insects/Grasshopper_Mid_Jump.glb',  yaw: -Math.PI / 2, lift: 0.5, proc: 'leap' },
+        /* 👑 THE RAT KING (2026-11-23): the wish list's Meshy sewer rat (Assets/world/props/meshy/wishlist/rat.glb, copied beside the
+           animals), no rig: the summons of Mischief of Rats and the Rat's court (_ratCourtTick) run it with the scurry */
+        rat:              { file: 'rat.glb', yaw: 0, proc: 'scurry' }
     };
     var _animalSeed = 0, _animalMatCache = new Map();
     function _animalsOn() { return !(typeof window !== 'undefined' && window.EW_NO_ANIMALS) && typeof THREE !== 'undefined' && typeof THREE.GLTFLoader === 'function'; }
@@ -56952,6 +57043,7 @@ const ThreeRenderer = (function () {
         _updateTrafficLights();
         _updateTorchFlames();
         _updateUnitAuras();
+        _ratCourtTick();   // 👑 THE RAT'S COURT
         _updateBombFuses();
         _updatePlateVisibility();
         _updatePlateEffBadges();

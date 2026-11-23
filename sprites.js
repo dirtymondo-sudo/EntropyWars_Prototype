@@ -2786,7 +2786,7 @@ const RACE_MODELS_3D = {
   },
   'butterfly girl': {
     female: _mkUAL('butterfly_girl', 'butterfly_girl', {
-      model: 'https://cdn.entropywars.net/Assets/characters/races/butterfly_girl/female/Meshy_AI_butterfly_girl_Running.glb',
+      model: 'https://cdn.entropywars.net/Assets/characters/races/butterfly_girl/female/Meshy_AI_butterfly_girl_wings2_Running.glb',   // 2026-11-23 THE WING BONES (bake-wings.py): the same rig + two wing bones that beat
       heightRatio: 0.95, basicAttackKind: 'magic',
     }),
   },
@@ -2795,6 +2795,8 @@ const RACE_MODELS_3D = {
     male: _mkUAL('plastic_surgeon', 'plastic_surgeon', {
       model: 'https://cdn.entropywars.net/Assets/characters/races/plastic_surgeon/male/Meshy_AI_plastic_surgeon_Running.glb',
       heightRatio: 1.0, basicAttackKind: 'physical',
+      /* 2026-11-23 THE PLASTIC SURGEON: the basic attack is a scalpel flick, the scalpel prop already on R2, held (THE UNIT GEAR) */
+      procRig: 'unitGear', gear: { held: { url: 'https://cdn.entropywars.net/Assets/world/props/misc/scalpel.glb', len: 0.16, fit: 'max', rot: [0, 0, 1.5708], grip: 0.4 } },
     }),
   },
   /* THE NEW RACES 2 (2026-11-17, mondo's picks from the zone characters): Meshy image-to-3d (meshy-t2.5, a-pose) from a
