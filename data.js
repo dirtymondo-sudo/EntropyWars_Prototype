@@ -100737,21 +100737,62 @@ function hqEncounterLead(enc) {
 function hqEncounterEndSpot(res, memberId) {
     const E = res && res.end;
     if (!E || !Array.isArray(E.units)) return null;
-    const u = (memberId == null) ? E.units.find(r => r && r.lead) : E.units.find(r => r && String(r.partyId) === String(memberId));
+    /* THE END SPOT (mondo 2026-11-23: "i want it to go back to the spot i ended the fight on"): the lead's row; a lead that is not on
+       the board at the end (benched, swapped out) hands it to the first party unit still standing, so the way back is still where the
+       fight ENDED, never the swing spot while anyone of the party stood */
+    let u = (memberId == null) ? E.units.find(r => r && r.lead) : E.units.find(r => r && String(r.partyId) === String(memberId));
+    if (!u && memberId == null) u = E.units.find(r => r && isFinite(+r.x) && isFinite(+r.z)) || null;
     if (!u || !isFinite(+u.x) || !isFinite(+u.z)) return null;
-    const w = res.walker || null;   // the strike's height is the feet's hint (_hqGoTo takes the walkable surface under the cell)
-    return { x: +u.x, z: +u.z, y: (w && isFinite(+w.y)) ? +w.y : null, face: isFinite(+u.face) ? +u.face : 0, swing: true };
+    const w = res.walker || null;
+    /* the feet's hint: the cell's own floor in room metres (the end rows read it off the field: a deck, the ground under it, a step up),
+       else the strike's height (_hqGoTo takes the walkable surface nearest it) */
+    const y = (u.y != null && isFinite(+u.y)) ? +u.y : ((w && isFinite(+w.y)) ? +w.y : null);
+    return { x: +u.x, z: +u.z, y, face: isFinite(+u.face) ? +u.face : 0, swing: true };
 }
-/* the end rows from the board: `units` = [{ partyId, x, y (board cell), facing {dx, dy}, lead }] → each cell centre and heading in the room */
-function hqEncounterEndRows(board, units) {
+/* the end rows from the board: `units` = [{ partyId, x, y (board cell), z (engine level), facing {dx, dy}, lead }] → each cell centre,
+   floor and heading in the room. `field` (optional) = the fight's raster record (PREBUILT_MAPS[fieldId].field: `cells`, `tops`, `lows`,
+   `lowLevels`): THE END SPOT (2026-11-23) — the row's `y` is the floor the unit stood on in room metres (a bridge deck's top, the ground
+   under it when the unit was down there: its level against `lowLevels`), and a cell the walk cannot stand on (rock / a wall '#', a
+   hazard '!' such as lava or a pit, outside the room '?') hands the row to the nearest standable cell (4 squares at most) */
+function hqEncounterEndCell(field, x, y, z) {
+    const F = field; x = Math.floor(+x); y = Math.floor(+y);
+    if (!F || !Array.isArray(F.cells) || !Array.isArray(F.tops)) return { x, y, m: null };
+    const H = F.cells.length, W = H ? String(F.cells[0]).length : 0;
+    const ok = (cx, cy) => {
+        if (cx < 0 || cy < 0 || cy >= H || cx >= W) return false;
+        const ch = String(F.cells[cy]).charAt(cx);
+        if (!(ch >= '0' && ch <= '9')) return false;
+        const t = F.tops[cy] ? F.tops[cy][cx] : null;
+        return t !== null && t !== undefined && isFinite(+t);
+    };
+    const floorM = (cx, cy) => {
+        const top = +F.tops[cy][cx];
+        const low = (Array.isArray(F.lows) && F.lows[cy]) ? F.lows[cy][cx] : null, ll = (Array.isArray(F.lowLevels) && F.lowLevels[cy]) ? F.lowLevels[cy][cx] : null;
+        /* THE TWO FLOORS: a unit at the lower floor's level (or a step over it) stood on the ground under the deck */
+        if (low !== null && low !== undefined && isFinite(+low) && ll !== null && ll !== undefined && z != null && isFinite(+z) && +z <= +ll + 1) return Math.round(+low * 1000) / 1000;
+        return Math.round(top * 1000) / 1000;
+    };
+    if (ok(x, y)) return { x, y, m: floorM(x, y) };
+    let best = null;
+    for (let r = 1; r <= 4 && !best; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r || !ok(x + dx, y + dy)) continue;
+        const d = dx * dx + dy * dy; if (!best || d < best.d) best = { x: x + dx, y: y + dy, d };
+    }
+    return best ? { x: best.x, y: best.y, m: floorM(best.x, best.y), moved: true } : { x, y, m: null };
+}
+function hqEncounterEndRows(board, units, field) {
     const TR = hqFieldTransform(board); if (!TR || !Array.isArray(units)) return null;
     const out = [];
     units.forEach(u => {
         if (!u || u.partyId == null || !isFinite(+u.x) || !isFinite(+u.y)) return;
-        const c = TR.centre({ x: +u.x, y: +u.y });
+        const cell = hqEncounterEndCell(field || null, +u.x, +u.y, (u.z != null && isFinite(+u.z)) ? +u.z : null);
+        const c = TR.centre({ x: cell.x, y: cell.y });
         let face = 0;
         if (u.facing && (isFinite(+u.facing.dx) || isFinite(+u.facing.dy))) { face = Math.atan2(+u.facing.dx || 0, -(+u.facing.dy || 0)) * 180 / Math.PI; face = ((face % 360) + 360) % 360; }
-        out.push({ partyId: u.partyId, x: Math.round(c.x * 1000) / 1000, z: Math.round(c.z * 1000) / 1000, face: Math.round(face * 100) / 100, lead: !!u.lead });
+        const row = { partyId: u.partyId, x: Math.round(c.x * 1000) / 1000, z: Math.round(c.z * 1000) / 1000, face: Math.round(face * 100) / 100, lead: !!u.lead };
+        if (cell.m !== null) row.y = cell.m;
+        if (cell.moved) row.moved = true;
+        out.push(row);
     });
     return out.length ? { units: out } : null;
 }

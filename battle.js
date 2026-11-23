@@ -27139,9 +27139,12 @@
                                     const ui = parseInt(String(u.id).split('-')[1], 10);
                                     const pm = (Number.isFinite(ui) && state.partyMeta && state.partyMeta[_escSeat]) ? state.partyMeta[_escSeat][ui] : null;
                                     if (!pm || !pm.partyId) return;
-                                    rows.push({ partyId: pm.partyId, x: u.x, y: u.y, facing: u.facing || null, lead: leadId != null && String(pm.partyId) === String(leadId) });
+                                    rows.push({ partyId: pm.partyId, x: u.x, y: u.y, z: (u.z != null && isFinite(+u.z)) ? +u.z : null, facing: u.facing || null, lead: leadId != null && String(pm.partyId) === String(leadId) });
                                 });
-                                _endRows = hqEncounterEndRows(erun.field.board, rows);
+                                /* THE END SPOT (2026-11-23): the fight's raster gives each row its floor in room metres and moves a row off a wall / a hazard */
+                                let _fRec = null;
+                                try { const fe = (erun.fieldId && typeof PREBUILT_MAPS !== 'undefined' && PREBUILT_MAPS) ? PREBUILT_MAPS[erun.fieldId] : null; _fRec = (fe && fe.field) || null; } catch (e) { _fRec = null; }
+                                _endRows = hqEncounterEndRows(erun.field.board, rows, _fRec);
                             }
                         } catch (e) { _endRows = null; }
                         window._hqEncounterResult = { won, site: erun.site, room: erun.room, race: erun.race, label: erun.label || erun.race, walker: erun.walker || null, party: partyRes,   // D1: the swing spot rides home; THE PARTY: what the fight did to it
