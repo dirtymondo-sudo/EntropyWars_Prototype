@@ -14735,3 +14735,22 @@ headless scan of every terrain room (each railing piece against the ground every
   `window.EW_RAIL_NO_FOLLOW = true` (set before the room loads) turns the fix off everywhere — the probe's "before" pictures.
 - Placed fence PROPS (`hw_fence`, `chain_fence`, `fence_with_gate`, ...) are single models standing on the ground at their place; not part of this.
 - No tool to rerun: every room's railings are compiled at load.
+
+## THE SKYLINE, THE SOUTH AND WEST TOWERS (2026-11-23, mondo 17:00 "Build it, plus the mid-rise fill")
+Plan: https://claude.ai/artifact/YEe54svVhVbLufjHdfQ5QY (sites `/mnt/project-files/skyline-plan/tools/towers.json`). This thread built the
+south and west six; Hero Plaza, Financial and the coast are other threads; Civic Center gets none (second account).
+- **How a tower stands**: on the roof of the building that was there. The building keeps its walls, door, inside and residents (the gym
+  hall, the Quarterback's and the Juggernaut's homes, the garage, the depot, the library nave); only the roof that was in the way went
+  (the gym's bow roof, the Box Office's roof plant, the Stage Door House's gable + chimney, the garage's saw teeth + the deck under the
+  roof car (the car now sits on the podium), the depot's glass monitor). The floors above are windows only. The collision row is unchanged.
+- **The six**, each in its district file, parts added to the building's own arch row:
+  2 Fears Tower (Willis), `S.js fearsTower()` on P06-10-B1, nine tubes in four heights, 145 m to the masts ·
+  8 Big John (Hancock), `S.js bigJohn()` on P06-09-B2, a square frustum (`cyl seg 4 ry 45` with `r2`) + `xBraces()`: each diagonal is ONE part,
+  a short steel box repeated up the face with the lean in its `step`, 120 m ·
+  22 The Corn Cob (Marina City), `S.js cornCob()` on P07-10-B2, parking spiral + petal balconies (`ring` + `n` on one part), 60 m ·
+  13 Revival Center (RenCen), `R.js revivalCenter()` on P02-02-B1, a core + four shorter rounds, lit floors as glowing arcs here and there,
+  a COMING SOON banner, 100 m · 17 Gusher Twin Towers (Pennzoil), `I.js gusherTwins()` on P02-10-B1, two bronze towers, opposite shed tops,
+  a 3 m slot, 90 m · 23 Bones Carillon (Harkness), `U.js B.library`, the clock tower grown to 60 m (belfry, octagonal lantern, spire).
+- **Frame rate**: one row draws one mesh per material, so a tower's cost is its NEW materials: Fears + Big John share the black glass and
+  steel (2 new), RenCen 4, Gusher 1, Corn Cob and the Carillon 0 (they wear their building's own sheets). No lamps. No far LOD for arch rows yet.
+- Seen in the game (probe pictures in the PR). The black glass reads black on purpose (Willis, Hancock); RenCen's shaded side reads dark too.

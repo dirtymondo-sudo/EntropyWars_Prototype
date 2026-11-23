@@ -17,6 +17,19 @@ exports.build = function (ctx) {
     const cyl = (x, y, z, r, h, key, tint, o) => Object.assign({ s: 'cyl', p: [r3(x), r3(y), r3(z)], r, h, key, tint }, o || {});
     const dome = (x, y, z, r, h, key, tint, o) => Object.assign({ s: 'dome', p: [r3(x), r3(y), r3(z)], r, h, key, tint }, o || {});
     const roof = (form, x, y, z, w, h, d, key, tint, o) => Object.assign({ s: 'roof', form, p: [r3(x), r3(y), r3(z)], size: [r3(w), r3(h), r3(d)], key, tint, roof: true }, o || {});
+    /* THE SKYLINE (mondo 11-23 17:00 "Build it, plus the mid-rise fill"; plan https://claude.ai/artifact/YEe54svVhVbLufjHdfQ5QY) ·
+       17 · THE GUSHER TWIN TOWERS (Houston's Pennzoil Place): two dark bronze glass towers with steep slanted tops, a three-metre slot between
+       them, standing on the Maintenance Depot's roof (its five bays, its door and its inside untouched). The slopes face opposite ways, so from
+       one side the pair reads as one block split in two. 90 m. No lamps; TWO materials (the bronze glass, the dark steel the depot already
+       wears), one mesh each. */
+    const gusherTwins = c => { const y0 = 7.4, h = 72.6, rise = 10, gap = 3, tw = Math.min(11.5, (c.fw - 1 - gap) / 2), td = Math.min(19.5, c.fd - 4.8), BR = U('GlassWindowTall1a'), BT = 0xa8865e, o = [];
+        [-1, 1].forEach(s => { const x = s * (gap + tw) / 2;
+            o.push(box(x, y0, 0, tw, h, td, BR, BT, { glow: 0.1, uv: [3.5, 3.5], top: false }),
+                roof('shed', x, y0 + h, 0, tw, rise, td, BR, BT, { ry: s < 0 ? 0 : 180, keyEnd: BR, tintEnd: BT, glow: 0.1, uv: [3.5, 3.5], roof: false }),
+                box(x, y0, 0, tw + 0.2, 1.0, td + 0.2, PLAIN, T.dark, { top: false }),                                                 // the steel foot
+                box(x, y0 + h - 0.5, 0, tw + 0.16, 0.5, td + 0.16, PLAIN, T.dark, { top: false }),                                   // the steel line where the slope starts
+                box(x - s * (tw / 2 + 0.05), y0, -td / 2, 0.3, h, 0.3, PLAIN, T.dark, { n: 2, step: [0, 0, r3(td)] })); });   // the slot's steel edges
+        return o; };
     const truss = (x, y, z, w, h, d, tint) => box(x, y, z, w, h, d, TRUSS, tint, { kind: 'over', ds: true });
     const bay = (x, z, w, h) => [box(x, 0, z, w + 0.5, h + 0.3, 0.1, PLAIN, T.dark), box(x, 0, z + 0.04, w, h, 0.1, TIN, 0xe2e4e6)];   // a roller door: a light ribbed panel in a dark frame, on the front
     const bayX = (x, z, w, h) => [box(x, 0, z, 0.1, h + 0.3, w + 0.5, PLAIN, T.dark), box(x + Math.sign(x) * 0.04, 0, z, 0.1, h, w, TIN, 0xe2e4e6)];   // … on a side wall
@@ -140,7 +153,7 @@ exports.build = function (ctx) {
             roof('barrel', 0, 0, 0, c.fd + 0.1, 5.6, c.fw + 0.1, TIN, T.silver, { ry: 90, roof: false, keyEnd: TIN, tintEnd: 0xb9bdc2, seg: 14 }), ...bay(0, c.fd / 2 + 0.1, 4.6, 3.8)] },
         'P02-10-B1': { inside: true, st: 2, leaf: 'leaf_exit', parts: c => [   // MAINTENANCE DEPOT: five roller-door bays, a raised glass monitor roof
             ...body(c, 7, U('MetalCorrugatedPainted5a'), 0xffffff), box(0, 7, 0, c.fw + 0.7, 0.4, c.fd + 0.7, U('ConcreteStriped2a'), 0xdddddd, { top: false, roof: true }),
-            box(0, 7.4, 0, c.fw - 1, 2, 8, U('GlassWindowFactory3a'), T.glass, { roof: true, top: false }), roof('gable', 0, 9.4, 0, c.fw, 1.3, 9, TIN, T.steel, { keyEnd: TIN }),
+            ...gusherTwins(c),   // THE SKYLINE (11-23): the glass monitor roof gave way to the Gusher Twin Towers; the depot is their foot
             ...[-11.6, -7.1, -2.6, 4.3, 8.9].flatMap(x => bay(x, c.fd / 2 + 0.1, 3.9, 4)), box(0, 4.7, c.fd / 2 + 0.35, c.fw - 1, 0.3, 0.6, PLAIN, T.yellow)] },
         'P03-10-B1': { inside: true, st: 2, leaf: 'leaf_exit', fit: c => [0, C / 2, c.fw, c.fd + C], parts: c => [   // HANGAR: a long arched hangar, its open end to the apron (7 m walls: the F22 inside stands 5 m)
             ...body(c, 7, TIN, T.silver, { top: TIN }), roof('barrel', 0, 7.1, 0, c.fw + 0.2, 4.2, c.fd + 0.2, TIN, 0xe6e8ea, { keyEnd: TIN, tintEnd: T.silver, seg: 14 }),
@@ -287,8 +300,8 @@ exports.build = function (ctx) {
             cyl(0, 5.5, -c.fd / 3, 0.35, 0.8, PLAIN, T.dark, { seg: 8, roof: true, n: 3, step: [0, 0, c.fd / 3] }), cyl(0, 6.3, -c.fd / 3, 0.55, 0.25, PLAIN, T.dark, { r2: 0.1, seg: 8, roof: true, n: 3, step: [0, 0, c.fd / 3] }),
             box(-2.6, 0, c.fd / 2 + 0.35, 0.25, 1, 0.25, PLAIN, T.yellow, { n: 2, step: [5.2, 0, 0] }), box(0, 1.6, -c.fd / 2 - 0.12, 3, 1.4, 0.1, U('GlassWindowFactory1a'), T.glass), ...frame(0, 1.6, -c.fd / 2 - 0.3, 0.01, 0.01, 1, T.dark).slice(0, 0)],
         'P02-10-B1': c => [...ring(c, 0, 0.6, 0.12, PLAIN, T.dark), ...corners(c, 0.6, 6.4, 0.5, PLAIN, T.dark), ...doorTrim(c, T.yellow), ...clr(c, [-9.35, -4.85, 6.6], 0).map(x => box(x, 0, c.fd / 2 + 0.16, 0.5, 4.7, 0.3, PLAIN, T.dark)),
-            ...[-11.6, -7.1, -2.6, 4.3, 8.9].flatMap((x, i) => [...sign(x, 5.3, c.fd / 2 + 0.12, 0.8, 0.8, T.white, null, String(i + 1), '#22262a'), ...lamp(x, 5.05, c.fd / 2 + 0.75)]), box(-c.fw / 2 + 0.5, 7.4, 4.06, 0.14, 2, 0.1, PLAIN, T.dark, { roof: true, n: 12, step: [(c.fw - 1) / 11, 0, 0] }),
-            box(-c.fw / 2 + 0.5, 7.4, -4.06, 0.14, 2, 0.1, PLAIN, T.dark, { roof: true, n: 12, step: [(c.fw - 1) / 11, 0, 0] }), box(c.fw / 2 + 0.1, 4, 0, 0.1, 1.5, c.fd - 3, U('GlassWindowFactory1a'), T.glass), box(-c.fw / 2 - 0.1, 4, 0, 0.1, 1.5, c.fd - 3, U('GlassWindowFactory1a'), T.glass),
+            ...[-11.6, -7.1, -2.6, 4.3, 8.9].flatMap((x, i) => [...sign(x, 5.3, c.fd / 2 + 0.12, 0.8, 0.8, T.white, null, String(i + 1), '#22262a'), ...lamp(x, 5.05, c.fd / 2 + 0.75)]),
+            box(c.fw / 2 + 0.1, 4, 0, 0.1, 1.5, c.fd - 3, U('GlassWindowFactory1a'), T.glass), box(-c.fw / 2 - 0.1, 4, 0, 0.1, 1.5, c.fd - 3, U('GlassWindowFactory1a'), T.glass),
             ...pipes(c, 7, 0.35), box(-13.9, 0, c.fd / 2 + 0.45, 0.25, 1, 0.25, PLAIN, T.yellow, { n: 4, step: [4.5, 0, 0] }), streaks(-c.fw / 2 + 2, 2, -c.fd / 2 - 0.09, 5, 5, (c.fw - 4) / 4), ladder(-c.fw / 2 - 0.16, -3, 7)],
         'P03-10-B1': c => [box(0, 0, c.fd / 2 + 0.2, c.fw + 0.4, 0.6, 0.4, CONC, 0xb8b0a0), box(0, 0, -c.fd / 2 - 0.2, c.fw + 0.4, 0.6, 0.4, CONC, 0xb8b0a0), ...doorTrim(c, T.steel),
             roof('barrel', -c.fw / 2 + 0.3, 7.1, 0, 0.35, 4.32, c.fd + 0.5, PLAIN, T.slate, { n: 8, step: [(c.fw - 0.6) / 7, 0, 0], seg: 14 }), box(c.fw / 2 + 0.14, 0, -5.7, 0.2, 6.2, 0.4, PLAIN, T.yellow, { n: 2, step: [0, 0, 11.4] }),

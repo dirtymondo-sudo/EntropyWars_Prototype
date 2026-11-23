@@ -67,6 +67,55 @@ exports.apply = (ctx) => {
        foundation is already there and is good"; 20:18: "roofs and ac units"). X[id] = the second and third layer of a building, added to its
        arch row: cornices and copings, sills and lintels, door surrounds and steps, wall lamps, gutters and downpipes, lettered signs
        (three-renderer.js THE LETTERING), roof plant (AC units, vents, hatches, tanks), flags. Nothing at ground level stands out past 0.8 m. ═══ */
+    /* ═══ THE SKYLINE (mondo 11-23 17:00 "Build it, plus the mid-rise fill"; plan https://claude.ai/artifact/YEe54svVhVbLufjHdfQ5QY, tower
+       sites /mnt/project-files/skyline-plan/tools/towers.json). Chicago's three towers stand on the roofs of the buildings that were here: each
+       building keeps its walls, its door and its inside (the gym hall, the Quarterback's and the Juggernaut's homes) as the tower's foot; the
+       floors above are windows only (no doors on them: mondo's "every door opens" holds). FRAME RATE (the plan's limit): a tower adds four
+       materials at most, and one row draws one mesh a material, so a tower is a few draws however many parts it has. No lamps. ═══ */
+    const SKY_BLACK = { key: G_TALL, tint: 0x8e96a4, glow: 0.14, uv: [3.5, 3.5] }, SKY_STEEL = { tint: 0x1e2024 };
+    /* X braces up the four faces of a square tower that narrows: centre cx, cz, from y0 to y1, half width hw0 at the foot and hw1 at the top,
+       nx crosses stacked. Each diagonal is ONE part: a short steel box repeated up the face (n + step), the face's lean in the step. */
+    const xBraces = (cx, cz, y0, y1, hw0, hw1, nx, look) => { const out = [], H = (y1 - y0) / nx, m = 46, hw = y => hw0 + (hw1 - hw0) * (y - y0) / (y1 - y0);
+        const turn = (f, u, o) => f === 'f' ? [u, o] : f === 'r' ? [o, -u] : f === 'b' ? [-u, -o] : [-o, u];
+        for (let k = 0; k < nx; k++) { const ya = y0 + k * H, yb = ya + H, ha = hw(ya), hb = hw(yb);
+            for (const sg of [1, -1]) ['f', 'r', 'b', 'l'].forEach(f => { const ua = -sg * (ha - 0.5), ub = sg * (hb - 0.5), du = (ub - ua) / (m - 1), dy = (H - 0.9) / (m - 1), dout = (hb - ha) / (m - 1);
+                const q = turn(f, ua, ha + 0.12), st = turn(f, du, dout), bw = Math.abs(du) + 0.35, ns = f === 'f' || f === 'b';
+                out.push(Object.assign({ s: 'box', p: [r3(cx + q[0]), r3(ya), r3(cz + q[1])], size: ns ? [r3(bw), r3(dy + 0.25), 0.3] : [0.3, r3(dy + 0.25), r3(bw)], n: m, step: [r3(st[0]), r3(dy), r3(st[1])] }, look)); });
+            /* the spandrel where two crosses meet: a steel band round the tower */
+            out.push(Object.assign({ s: 'cyl', p: [cx, r3(yb - 0.45), cz], r: r3((hb + 0.2) * Math.SQRT2), r2: r3((hw(yb + 0.9) + 0.2) * Math.SQRT2), h: 0.9, seg: 4, ry: 45, cap: false }, look)); }
+        return out; };
+    /* 2 · FEARS TOWER (Chicago's Willis Tower): nine black tubes, three by three, stopping at four heights, two white masts on the tallest pair.
+       It stands on the Training Gym's walls (the hall inside untouched). 145 m to the mast tips. Materials: the black glass, the roof sheet,
+       the steel bands, the masts' white (the slab's own). */
+    function fearsTower() { const o = [], y0 = 7, c = 8.4, top = { 128: [[0, 0], [-1, 0]], 107: [[1, 0], [0, -1], [0, 1]], 78: [[-1, -1], [1, 1]], 59: [[1, -1], [-1, 1]] };
+        Object.keys(top).forEach(hs => { const h = +hs, sz = r3(8.2 + h * 0.0016);   // a taller tube is a hair wider, so a lower one's side never shows through it
+            top[hs].forEach(([i, j]) => { o.push(Object.assign({ s: 'box', p: [i * c, y0, j * c], size: [sz, h, sz], keyTop: ROOFC }, SKY_BLACK));
+                o.push(Object.assign({ s: 'box', p: [i * c, y0 + h - 1.4, j * c], size: [r3(sz + 0.12), 1.4, r3(sz + 0.12)], top: false }, SKY_STEEL));   // the dark band at each setback (the plant floors)
+                o.push(Object.assign({ s: 'box', p: [i * c, y0 + 0.01, j * c], size: [r3(sz + 0.12), 1.2, r3(sz + 0.12)], top: false, n: Math.floor(h / 30), step: [0, 30, 0] }, SKY_STEEL)); }); });
+        o.push({ s: 'cyl', p: [-6.3, y0 + 128, 1.5], r: 0.42, r2: 0.18, h: 10, seg: 8, key: WHITE, tint: 0xffffff }, { s: 'cyl', p: [-2.1, y0 + 128, 1.5], r: 0.42, r2: 0.18, h: 10, seg: 8, key: WHITE, tint: 0xffffff });
+        return o; }
+    /* 8 · BIG JOHN (Chicago's John Hancock Center): a black tower that narrows all the way up, five X braces stacked on every face, two
+       antennas. It rises from the Box Office's roof behind its corner turret (the Quarterback's home below untouched). 120 m. Materials: the
+       black glass (the Fears Tower's), the steel, the roof sheet, the antennas' white (the turret's own). */
+    function bigJohn() { const cx = -1.3, cz = -1.3, y0 = 6.2, y1 = 106, h0 = 6.2, h1 = 4.2;
+        return [Object.assign({ s: 'cyl', p: [cx, y0, cz], r: r3(h0 * Math.SQRT2), r2: r3(h1 * Math.SQRT2), h: y1 - y0, seg: 4, ry: 45 }, SKY_BLACK),
+            ...xBraces(cx, cz, y0 + 0.6, y1 - 2, h0, h1 + 0.08 * (h0 - h1) / 5, 5, SKY_STEEL),
+            Object.assign({ s: 'box', p: [cx, y1, cz], size: [h1 * 2 + 0.3, 1.6, h1 * 2 + 0.3], keyTop: ROOFC }, SKY_STEEL),
+            { s: 'box', p: [cx, y1 + 1.6, cz], size: [4.4, 2.2, 4.4], key: WHITE },
+            { s: 'cyl', p: [cx - 1.4, y1 + 3.8, cz], r: 0.4, r2: 0.12, h: 11, seg: 8, key: WHITE }, { s: 'cyl', p: [cx + 1.4, y1 + 3.8, cz], r: 0.4, r2: 0.12, h: 11, seg: 8, key: WHITE }]; }
+    /* 22 · THE CORN COB (Chicago's Marina City): a round concrete tower, the lower floors an open parking spiral, the rest a flat round floor
+       ringed with scalloped balconies, every floor. It stands on the Stage Door House (the Juggernaut's home below untouched), its gable
+       gone for a flat roof. 60 m. Materials: all the house's own (its slate grey, its concrete trim, its window glass). */
+    function cornCob() { const y0 = 8.4, yp = 24.4, top = 58.4, PET = { key: CONC };
+        return [{ s: 'box', p: [0, y0, 0], size: [17.9, 0.5, 17.9], key: CONC, under: true },
+            { s: 'cyl', p: [0, y0 + 0.5, 0], r: 5.2, h: yp - y0 - 0.5, seg: 24, key: DARK, tint: 0x6a6f7c },                                   // the parking floors: dark, open
+            Object.assign({ s: 'cyl', p: [0, y0 + 2.8, 0], r: 7.6, h: 0.3, seg: 24, n: 6, step: [0, 2.6, 0] }, PET),                              // their slabs, edge on
+            Object.assign({ s: 'cyl', p: [0, y0 + 2.8, 0], r: 7.4, h: 1.0, seg: 24, cap: false, n: 6, step: [0, 2.6, 0] }, PET),                 // and their low walls
+            { s: 'cyl', p: [0, yp, 0], r: 6.0, h: top - yp, seg: 24, key: G_RES, uv: [1.75, 2.9] },                                              // the flats
+            Object.assign({ s: 'cyl', p: [0, yp + 2.6, 0], r: 1.7, h: 0.24, seg: 10, ring: { n: 16, r: 6.6 }, n: 12, step: [0, 2.9, 0] }, PET),  // the petals: a scalloped balcony a floor
+            Object.assign({ s: 'cyl', p: [0, yp + 2.84, 0], r: 1.7, h: 0.7, seg: 10, cap: false, ring: { n: 16, r: 6.6 }, n: 12, step: [0, 2.9, 0] }, PET),
+            Object.assign({ s: 'cyl', p: [0, top, 0], r: 7.6, h: 0.9, seg: 24 }, PET), { s: 'cyl', p: [0, top + 0.9, 0], r: 3.6, h: 1.8, seg: 16, key: DARK, tint: 0x6a6f7c }]; }
+
     const X = {};
     const LIMEST = 0xf2e6cc, STEEL = 0x4a5058, DARKM = 0x2a2e34, CREAM = 0xf2ead8, LAMP = 0xffe2a0;
     /* a point on a face: u = along it (left to right as you look at it), out = off the wall */
@@ -252,7 +301,7 @@ exports.apply = (ctx) => {
         o.push({ s: 'cyl', p: [7.9, 3.2, 7.9], r: 2.38, h: 0.3, seg: 20, key: GOLD, glow: 0.3 }, { s: 'cyl', p: [7.9, 7.9, 7.9], r: 2.42, h: 0.3, seg: 20, key: GOLD, glow: 0.3 }, { s: 'dome', p: [7.9, 11.6, 7.9], r: 0.4, seg: 8, rings: 4, key: GOLD, glow: 0.3 });
         o.push(bx('f', w, d, -1, 0, 15.6, 0.5, 0.08, { key: T_BLUE, tint: 0x6f90c8 }), bx('l', w, d, 0, 0, 17.6, 0.5, 0.08, { key: T_BLUE, tint: 0x6f90c8 }), bx('r', w, d, -1, 0, 15.6, 0.5, 0.08, { key: T_BLUE, tint: 0x6f90c8 }));
         o.push(signAt(-8.24, 6.6, 9.2, 90, 0.85, 2.6, 'T', '#f4f4f4', ''), signAt(-8.76, 6.6, 9.2, -90, 0.85, 2.6, 'T', '#f4f4f4', ''));
-        o.push(coping(18.1, 18.1, 6.2, WHITE), acRow(-6.5, 6.2, -6, 2, 2, 0), mat(-1, 6.2, -4.2, 13, 1.1), vent(-2, 6.2, -6.5), hatch(2, 6.2, -6), duct(-5.5, 6.2, -2.5, 4, true), pipe('b', w, d, -8.5, 5.6), pipe('b', w, d, 8.5, 5.6));
+        o.push(coping(18.1, 18.1, 6.2, WHITE), pipe('b', w, d, -8.5, 5.6), pipe('b', w, d, 8.5, 5.6));   // (11-23: the roof plant gave way to Big John)
         return o; };
     /* THE SPORTS CLINIC: the name in teal on the white wall, steel mullions on the glass corner and the ribbon, a steel coping, the cross
        pylon's name, a lit canopy edge, downpipes, louvres; plant on the glass corner's own roof */
@@ -268,11 +317,10 @@ exports.apply = (ctx) => {
        stone door surround with lamps and the canopy's hangers, ridge ventilators along the bow roof, gutters and downpipes at every other
        buttress, wall AC units and an extract fan on the back */
     X['P06-10-B1'] = () => { const w = 28, d = 28, f = row('P06-10-B1'), hx = -14 + (f.door - 0.5) * 1.75, o = [];
-        o.push(signAt(0, 10.35, 14.05, 0, 13, 1.1, 'TRAINING GYM', '#f2ead8', ''), signAt(0, 5.44, 14.17, 0, 12, 0.56, 'BOXING   WEIGHTS   WRESTLING', '#f2ead8', ''));
+        o.push(signAt(0, 7.3, 14.12, 0, 13, 1.1, 'TRAINING GYM', '#f2ead8', ''), signAt(0, 5.44, 14.17, 0, 12, 0.56, 'BOXING   WEIGHTS   WRESTLING', '#f2ead8', ''));
         ['l', 'r'].forEach(fc => o.push(trim(fc, w, d, 2.2, 2.2, 3.8, 7, { span: 21, key: CONC }), bx(fc, w, d, -12.25, 7, 1.5, 0.25, 1.0, { key: CONC, n: 8, st: 3.5 }), gutter(fc, w, d, 6.7, 29, DARKM), pipe(fc, w, d, -10.5, 6.7), pipe(fc, w, d, 3.5, 6.7)));
         o.push(trim('f', w, d, 2.6, 2.2, 3.4, 4, { span: 21, key: CONC }), surround('f', w, d, hx, 1.75, 2.3, CONC), lamp('f', w, d, hx - 1.9, 2.5), lamp('f', w, d, hx + 1.9, 2.5));
         o.push({ s: 'cyl', p: [hx - 2.7, 2.95, 16.4], r: 0.03, h: 2.3, seg: 4, tint: DARKM, n: 2, step: [5.4, 0, 0] });
-        o.push({ s: 'cyl', p: [0, 12.1, -9], r: 0.55, h: 0.7, seg: 10, tint: 0x6f8f6a, n: 4, step: [0, 0, 6] }, { s: 'cyl', p: [0, 12.8, -9], r: 0.85, r2: 0.2, h: 0.45, seg: 10, tint: 0x5a7a56, n: 4, step: [0, 0, 6] });
         o.push(wallAC('b', w, d, -8, 2.4), wallAC('b', w, d, -6.6, 2.4), wallAC('b', w, d, 7, 2.4), { s: 'cyl', p: [0, 4.4, -14.1], r: 0.9, h: 0.14, seg: 14, tint: DARKM }, bx('b', w, d, 0, 0, 28.2, 1.2, 0.12, { key: CONC }));
         return o; };
     /* THE BAND SHELL: tonight's banner on the lighting rig, speaker stacks either side of the stage, a row of footlights, stage steps, gilt
@@ -292,7 +340,6 @@ exports.apply = (ctx) => {
         o.push(trim('f', w, d, 1.0, 1.5, 1.9, 3, { span: 9, c: 2.5, key: CONC }), trim('f', w, d, 4.6, 1.5, 1.9, 5, { key: CONC }), trim('l', w, d, 4.6, 1.5, 1.9, 4, { key: CONC }), trim('r', w, d, 4.6, 1.5, 1.9, 4, { key: CONC }));
         o.push({ s: 'roof', form: 'gable', p: [-6, 2.75, 9.15], size: [2.2, 0.7, 0.8], over: 0.1, key: DARK, tint: 0x6a6f7c }, bx('f', w, d, -6.9, 2.3, 0.12, 0.45, 0.7, { tint: DARKM, n: 2, st: 1.8 }), lamp('f', w, d, -4.7, 2.0), bx('f', w, d, -7.3, 1.3, 0.5, 0.34, 0.04, { key: GOLD, glow: 0.3 }), bx('f', w, d, -6, 0, 2, 0.17, 0.6, { key: CONC }));
         o.push(bx('f', w, d, 0, 0, 17.7, 0.6, 0.1, { key: CONC }), bx('l', w, d, 0, 0, 17.7, 0.6, 0.1, { key: CONC }), bx('r', w, d, 0, 0, 17.7, 0.6, 0.1, { key: CONC }), bx('f', w, d, 0, 3.7, 17.7, 0.22, 0.1, { key: CONC }), bx('f', w, d, 0, 8.3, 17.7, 0.22, 0.1, { key: CONC }));
-        o.push({ s: 'box', p: [5, 8.4, -4], size: [1.3, 5.6, 1.3], key: T_OCHRE, tint: 0xc0a078 }, { s: 'box', p: [5, 14, -4], size: [1.6, 0.2, 1.6], key: CONC }, { s: 'cyl', p: [4.7, 14.2, -4], r: 0.18, h: 0.5, seg: 8, tint: 0xb86a4a, n: 2, step: [0.6, 0, 0] });
         o.push(gutter('l', w, d, 8.2, 18.4), gutter('r', w, d, 8.2, 18.4), pipe('l', w, d, 8.4, 8.2), pipe('r', w, d, -8.4, 8.2), wallAC('b', w, d, 4, 1.8), wallAC('b', w, d, -3, 5.2));
         return o; };
     /* THE STADIUM GATE: the name on the arch, lanterns on the piers, ball finials */
@@ -559,6 +606,7 @@ exports.apply = (ctx) => {
         panels('f', 17.5, 17.5, 1.0, 1.6, 1.6, 4, G_RES, { span: 8.6, c: -3 }),
         awning(-3, 3.0, 8.75, 11.5, 1.6, 0x2f5fd0, 0xf2ead8, 9),
         { s: 'box', p: [-8.5, 0, 9.2], size: [0.5, 9.5, 0.9], key: REDP, tint: 0xe2473a },
+        bigJohn(),
       ]); }
 
     /* ── P07-09 · THE SPORTS CLINIC: clean white panels over a blue tile base, a ribbon of teal glass, a rounded glass entrance corner, a disc
@@ -590,8 +638,8 @@ exports.apply = (ctx) => {
         panels('l', 28, 28, 2.2, 2.2, 3.8, 7, G_FAC, { span: 21, uv: [2.2, 3.8] }), panels('r', 28, 28, 2.2, 2.2, 3.8, 7, G_FAC, { span: 21, uv: [2.2, 3.8] }),
         panels('f', 28, 28, 2.6, 2.2, 3.4, 4, G_FAC, { span: 21, uv: [2.2, 3.4] }),
         slab(27.9, 27.9, 7, 0.05, WHITE, 0xffffff, ROOFC),
-        { s: 'roof', form: 'barrel', ry: 90, p: [0, 7, 0], size: [28, 5.2, 28], over: 0.6, key: M_GREEN, keyEnd: T_RED, tint: 0xffffff, uv: 3.5, seg: 14 },
-        { s: 'quad', p: [0, 7.6, 14.03], size: [10, 2.6], key: G_FAC1, uv: [2.5, 2.6] },
+        { s: 'box', p: [0, 7, 0], size: [28.1, 1.7, 28.1], top: false, key: T_RED, tint: 0xc98f7c },   // THE SKYLINE (11-23): a brick parapet where the bow roof was
+        fearsTower(),
         { s: 'box', p: [0, 5.4, 14.05], size: [28.2, 0.7, 0.2], key: REDP, tint: 0xe2473a },
         { s: 'box', p: [hx, 2.7, 15.3], size: [6, 0.25, 2.6], under: true, key: DARK, tint: 0x555555 },
       ]); }
@@ -635,9 +683,8 @@ exports.apply = (ctx) => {
     { const f = walkin('P07-10-B2', 2, 2);   // THE JUGGERNAUT'S HOME: a walk-in, the door where the blue door was painted
       B('P07-10-B2', f.x, f.z, f.rot, [
         walls(17.5, 8.4, 17.5, T_OCHRE, 0xd8b890, { door: [-6.125, 1.74, 2.2] }),
-        { s: 'roof', form: 'gable', ry: 90, p: [0, 8.4, 0], size: [17.5, 5.5, 17.5], over: 0.5, key: DARK, tint: 0x6a6f7c, keyEnd: T_OCHRE },
         panels('f', 17.5, 17.5, 1.0, 1.5, 1.9, 3, G_RES, { span: 9, c: 2.5 }), panels('f', 17.5, 17.5, 4.6, 1.5, 1.9, 5, G_RES),
-        { s: 'cyl', p: [0, 10.6, 8.78], r: 0.9, h: 0.06, seg: 16, key: G_SQ, tint: 0xffffff },
+        cornCob(),   // THE SKYLINE (11-23): the steep gable gave way to the Corn Cob; the house is its foot
 
         panels('l', 17.5, 17.5, 4.6, 1.5, 1.9, 4, G_RES), panels('r', 17.5, 17.5, 4.6, 1.5, 1.9, 4, G_RES),
       ]); }
