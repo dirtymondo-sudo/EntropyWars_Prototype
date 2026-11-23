@@ -3981,3 +3981,9 @@ copy flow as a control. `ThreeRenderer.hq.dev.fw()` = the walked room's state (`
   His 11:35 line only said `"Group" (10 meshes, 89 times)` for the rooms that keep resting.
 - Also in that F3: "GPU errors 1 ... Queue::submit ... Texture with '' label has been (destroyed)": one frame used a texture already
   destroyed. Once in a session; not traced here (candidates: the memory budget's drops, `_mmDrain`).
+- THE CHANGERS, NAMED (11-23, same F3: "changers moved out 59", "164 props (outside its bundle)"): the single prop draws downtown are
+  pieces THE CHANGERS OUT took out of their chunk's recording (values changed 3x in 20 s), drawn classic from then on. On HIS renderer
+  the parked cars are in their chunks (their lamps are rig point lamps); a classic-renderer census calls them "lamp" and misleads.
+  A dry city run in the cloud (classic, `EW_BUN_DRY`, 26 stops over 3 min) produced 0 changers, so which props they are is not
+  known. `_ewBunChgName` now files each changer under its prop model + what its materials carry (glow / fade / canvas / video /
+  node kind); the lens line "Re-recorded most" lists the top 10 (`ThreeRenderer.bundleChangers()`). Read that in his next F3.
