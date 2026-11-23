@@ -9427,6 +9427,9 @@ const ThreeRenderer = (function () {
         S.parent.add(mesh);
         return { mesh: mesh, blades: nB, tris: nB * TL / 3, cx: cx, cz: cz };
     }
+    /* THE CHAIN INSIDES (2026-11-23): the walk-in rows data.js lays inside a catalogue building (a pizzeria, a gas store) are not in the room's own
+       features, so the grass and the flora field add them to the buildings they keep clear (read once, when a field is set up) */
+    function _hqWalkInBoxRows(R) { try { return (typeof hqWalkInRows === 'function' && R) ? hqWalkInRows(R).rows.filter(function (f) { return f && f.k === 'texbuilding' && !f.doorsOnly; }) : []; } catch (e) { return []; } }
     function _hqGrassTick() {
         var H = _hq, T = H && H.room && H.room.terrain, on = false;
         try { on = !!(H && H.terrain && H.player && T && T.grassField && _ggOn() && !window.EW_NO_HQ_GRASS && typeof hqTerrainHeight === 'function'); } catch (e) { on = false; }
@@ -9436,7 +9439,7 @@ const ThreeRenderer = (function () {
         if (!S || S.H !== H || S.level !== _ggLevel || S.noRings !== noRings) {
             _hqGrassDrop();
             var LOW = (_ggLevel === 'low'), U = _hqUnits(), pr = _ggPressTex(1, 1), boxes = [], GL = LOW ? G0.low : G0;
-            ((T.features) || []).forEach(function (f) { if (f && (f.k === 'texbuilding' || (f.k === 'plateau' && f.bld && f.w > 0 && f.d > 0))) { var a = (f.rot || 0) * Math.PI / 180; boxes.push([f.x, f.z, f.w / 2 + 0.4, f.d / 2 + 0.4, Math.cos(a), Math.sin(a)]); } });
+            ((T.features) || []).concat(_hqWalkInBoxRows(H.room)).forEach(function (f) { if (f && (f.k === 'texbuilding' || (f.k === 'plateau' && f.bld && f.w > 0 && f.d > 0))) { var a = (f.rot || 0) * Math.PI / 180; boxes.push([f.x, f.z, f.w / 2 + 0.4, f.d / 2 + 0.4, Math.cos(a), Math.sin(a)]); } });
             var defs = noRings ? [{ to: LOW ? G0.old.low : G0.old.radiusM, band: 0.01, pad: 5 }] : (GL.rings || G0.rings);
             S = _hqGG = { H: H, level: _ggLevel, noRings: noRings, info: H.terrain, U: U, N: GL.perSquare || G0.perSquare,
                 width: (LOW ? GGRASS.low.width : GGRASS.width) * (LOW ? 1 : GGRASS.perTile / G0.perSquare), windK: (CONFIG.tileSize || BASE_TILE) / (3.5 * U),
@@ -9592,7 +9595,7 @@ const ThreeRenderer = (function () {
                 /* seen in the browser (11-20, Katana Island): a tree's leaf lift made the pale ferns and tufts glow white against the ground they stand on; a small plant takes the ground's own light */
                 _hqFFMat.color.setRGB(0.88, 0.9, 0.86); _hqFFMat.emissive.copy(_hqFFMat.color).multiplyScalar(0.05); }
             var info = H.terrain, boxes = [], paths = [], wet = false;
-            ((T.features) || []).forEach(function (f) {   // the room read ONCE: the buildings' boxes
+            ((T.features) || []).concat(_hqWalkInBoxRows(H.room)).forEach(function (f) {   // the room read ONCE: the buildings' boxes (+ THE CHAIN INSIDES' rows: no grass in a pizzeria)
                 if (f && (f.k === 'texbuilding' || (f.k === 'plateau' && f.bld && f.w > 0 && f.d > 0))) { var a = (f.rot || 0) * Math.PI / 180; boxes.push([f.x, f.z, f.w / 2 + 0.5, f.d / 2 + 0.5, Math.cos(a), Math.sin(a)]); }
             });
             (info.paths || []).forEach(function (p) { if (!p || !p.pts || p.pts.length < 2) return; var a0 = Infinity, a1 = -Infinity, b0 = Infinity, b1 = -Infinity, m = (p.w || 2) / 2 + 0.3; p.pts.forEach(function (q) { if (q[0] < a0) a0 = q[0]; if (q[0] > a1) a1 = q[0]; if (q[1] < b0) b0 = q[1]; if (q[1] > b1) b1 = q[1]; }); paths.push({ pts: p.pts, w: p.w || 2, x0: a0 - m, x1: a1 + m, z0: b0 - m, z1: b1 + m }); });
@@ -78038,6 +78041,7 @@ const ThreeRenderer = (function () {
        inside — each face's inside wall (`keyIn`) at the inner face of the walker's thin wall (data.js hqTexBuildingRows: 0.3 m thick,
        its outside face where the drawn face is), the doorway's sides and head, the ceiling under the roof slab and the floor (`floorIn`) */
     function _hqTexInside(lot, batch, W, faces, hol, H, hw, hd) {
+        if (lot.bareIn) return;   // THE CHAIN INSIDES (2026-11-23): a row laid inside a pack building that has its own inside walls, floor and ceiling draws none of its own
         var C = HQ_TEXB.cell, ti = 0.24, ki = lot.keyIn || 'urban:PlasterWallPainted1a', kf = lot.floorIn || 'urban:ConcreteStriped1b', Hc = Math.max(hol.doorH + 0.3, H - 0.32), dH = hol.doorH;
         var q = function (key, kind, a, b, c, d, uv) { batch.add(key, null, kind, [W(a[0], a[1], a[2]), W(b[0], b[1], b[2]), W(c[0], c[1], c[2]), W(d[0], d[1], d[2])], uv); };
         var wallRun = function (F, u0, u1, y0, y1) {   // a stretch of a face's inside: u along the face from its origin corner, y up
@@ -78071,7 +78075,7 @@ const ThreeRenderer = (function () {
             var prism = typeof hqTexbPrism === 'function' && hqTexbPrism(f);   // THE PRISM BUILDINGS: their walls by _hqBuildTexPrisms (they need the kit), their roof + parapet here (THE PRISM ROOFS, 2026-10-30)
             var seed = (f.seed != null) ? (f.seed | 0) : (typeof hqHash === 'function' ? hqHash(String(f.id || (f.x + ',' + f.z))) : 7), a = (seed >>> 0) || 1;
             var rng = function () { a = (a + 0x6D2B79F5) | 0; var t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
-            var lot = { x: f.x, z: f.z, w: Math.max(2, f.w || 8), d: Math.max(2, f.d || 8), rot: -((f.rot || 0) * Math.PI / 180), storeys: Math.max(1, Math.min(12, Math.round(f.storeys || 2))), base: f.base || 0, style: f.style || null, ruinP: (f.ruin != null) ? f.ruin : 0, h: f.h || 0, flat: !!f.flat, sheet: (!prism && typeof f.key === 'string' && f.key) ? f.key : null, roofOnly: prism, hollow: !!f.hollow && !prism, noSkin: f.skin === false && !prism, keyIn: f.keyIn || null, floorIn: f.floorIn || null, door: f.door, keyGround: f.keyGround, keyDoor: f.keyDoor, keyOver: f.keyOver };
+            var lot = { x: f.x, z: f.z, w: Math.max(2, f.w || 8), d: Math.max(2, f.d || 8), rot: -((f.rot || 0) * Math.PI / 180), storeys: Math.max(1, Math.min(12, Math.round(f.storeys || 2))), base: f.base || 0, style: f.style || null, ruinP: (f.ruin != null) ? f.ruin : 0, h: f.h || 0, flat: !!f.flat, sheet: (!prism && typeof f.key === 'string' && f.key) ? f.key : null, roofOnly: prism, hollow: !!f.hollow && !prism, noSkin: f.skin === false && !prism, keyIn: f.keyIn || null, floorIn: f.floorIn || null, door: f.door, doorLx: f.doorLx, doorW: f.doorW, doorH: f.doorH, bareIn: !!f.bareIn, keyGround: f.keyGround, keyDoor: f.keyDoor, keyOver: f.keyOver };
             _hqTexBuilding(lot, info, batch, rng, { neon: neonRoom }, U); n++;
         });
         batch.flush();
@@ -79067,7 +79071,7 @@ const ThreeRenderer = (function () {
                 n++;
             };
             try {
-                var w = Math.max(2, f.w || 8), d = Math.max(2, f.d || 8), hol = hqTexbDoor({ w: w, door: f.door }), q = -((f.rot || 0) * Math.PI / 180), c = Math.cos(q), s = Math.sin(q);
+                var w = Math.max(2, f.w || 8), d = Math.max(2, f.d || 8), hol = hqTexbDoor({ w: w, door: f.door, doorLx: f.doorLx, doorW: f.doorW, doorH: f.doorH }), q = -((f.rot || 0) * Math.PI / 180), c = Math.cos(q), s = Math.sin(q);
                 var lz = (d - 0.12) / 2 - 0.12, base = f.base || 0;
                 /* THE DESERT'S INSIDES (2026-11-15): a `doorsOnly` row has no front doorway of its own; an inner leaf's `y` = its sill over the row's foot (an upper floor's door) */
                 if (!f.doorsOnly) hang(cat, f.x + hol.lx * c + lz * s, f.z - hol.lx * s + lz * c, q, hol.cw - 0.04, hol.doorH, !!cat.double || !!f.leafDouble, base, f.id);
@@ -99496,7 +99500,7 @@ const ThreeRenderer = (function () {
         if (H._pcRooms) return H._pcRooms;
         var out = [], T = H.terrain, PR = _hqPropChunkRules();
         ((T && T.texb) || []).forEach(function (f) {
-            if (!f || !f.hollow || !(f.w > 0) || !(f.d > 0)) return;
+            if (!f || !f.hollow || f.bareIn || !(f.w > 0) || !(f.d > 0)) return;   // (THE CHAIN INSIDES, 11-23: a pack building's rooms are not closed rooms: its shell is the building's outside, seen from the street)
             var a = (f.rot || 0) * Math.PI / 180;
             out.push({ id: String(f.id || (f.x + ',' + f.z)), x: f.x, z: f.z, c: Math.cos(a), s: Math.sin(a), hw: f.w / 2 - PR.inset, hd: f.d / 2 - PR.inset, r: Math.hypot(f.w, f.d) / 2 });
         });
@@ -105976,10 +105980,18 @@ const ThreeRenderer = (function () {
            browser may still drop it (a lock loss during the swap is never the
            walker's ESC — see _hqOnLockChange, 2026-09-14 rev 4) */
         _hqRebuildAt = performance.now();   // EVERY entry (2026-09-25), not only room-to-room: the return from a fight / the menu re-parents the canvas too
-        if (_hq) { _hqKeepLock = true; try { _hqLeave(); } finally { _hqKeepLock = false; } }
+        var doorPark = false; try { doorPark = !!(_hq && opts.from === 'walk' && _hqDoorParkOk(_hq, opts.room || 'central_egress', D)); } catch (eDP) { doorPark = false; }
+        if (_hq && opts.from === 'walk' && !doorPark) { try { var dpW = _hqDoorParkWhy(_hq, opts.room || 'central_egress', D); if (dpW !== 'small') console.log('[HQ] door park: no (' + dpW + ')'); } catch (eDW) {} }   // THE PARKED CITY (2026-11-23): a big room walked out of into a building of it is kept whole for the way back
+        if (_hq) { _hqKeepLock = true; try { _hqLeave(doorPark ? { parkDoor: true } : undefined); } finally { _hqKeepLock = false; } }
         _hqHandoverDrop();   // THE HAND-OVER: a stash the battle never took
         if (active) { console.warn('[HQ] refusing to open over a live battle'); return false; }
-        if (_hqParked && (_hqParked.roomId !== (opts.room || 'central_egress') || opts.from !== 'return' || _hqParkOff() || !D.rooms[_hqParked.roomId])) _hqParkDrop();   // THE PARKED ROOM: not the way back into it
+        if (_hqParked) {   // THE PARKED ROOM: dropped unless this is the way back into it (THE PARKED CITY: or a walk on into another building room while it waits)
+            var PKt = opts.room || 'central_egress', PKk = !_hqParkOff() && !!D.rooms[_hqParked.roomId];
+            if (PKk) PKk = _hqParked.door
+                ? ((PKt === _hqParked.roomId && (opts.from === 'walk' || opts.from === 'return')) || (PKt !== _hqParked.roomId && opts.from === 'walk' && _hqRoomSmall(D.rooms[PKt]) && performance.now() - _hqParked.at < HQ_PARK_DOOR.keepMs))
+                : (PKt === _hqParked.roomId && opts.from === 'return');
+            if (!PKk) _hqParkDrop();
+        }
         /* THE BODIES CARRY OVER (2026-10-25): bodies parked for a fight that never took them go; coming back from a fight, the
            viewer's standing units park theirs for the walk (the walker takes its own body back when it is the one the walk lent) */
         _rigCarryDrop();
@@ -105995,7 +106007,7 @@ const ThreeRenderer = (function () {
         }
         var room = D.rooms[opts.room || 'central_egress'];
         if (!room) return false;
-        if (_hqParked) {   // THE PARKED ROOM: the way back resumes the walk the fight left standing
+        if (_hqParked && _hqParked.roomId === (opts.room || 'central_egress')) {   // THE PARKED ROOM: the way back resumes the walk the fight (or the building) left standing
             var PK = _hqParked;
             try { if (_hqResume(PK, opts, room)) return true; } catch (eR) { console.error('[HQ] the parked room could not be resumed — it is built again', eR); }
             _hq = null; _hqParked = PK; _hqParkDrop();
@@ -106509,8 +106521,31 @@ const ThreeRenderer = (function () {
     var _hqParked = null;   // { H, roomId, hfog: [x, y, z, w], ao, at, mats: [[material, fog, hzNear]] }
     var _HQ_PARK_SKIP = /^_ew_(b[A-Z]\w*|bv|bun\w*|ck\w*|st|chunk|pChunk|pcBld|sCell|dChunk|noDChunk|inst\w*|noInstance|lod\w*|reach\w*|mk\w*|rch\w*|sh[SCV]|hero\w*|rigMask|fbHost|noBatch|still\w*|parkClone)$/;
     function _hqParkOff() { return typeof window !== 'undefined' && !!window.EW_HQ_NO_PARK; }
+    /* THE PARKED CITY (2026-11-23, mondo's interiors plan: "leaving a loaded building doesn't reload the city"; step 1 of
+       https://claude.ai/artifact/RVPh8wvd9u6uAPj6QubPnd): a walk through a door from a BIG room (the chunks' rule, or a shell over `bigM2`)
+       into a SMALL room that has a door straight back into it (a building's own room: the Bayside Mall, the tower's lobby, the hotel's floors)
+       parks the big room exactly as a fight does. The way back resumes it (nothing built, nothing merged); a walk on into another small room
+       keeps it waiting (`keepMs`); anything else lets it go. Off: window.EW_HQ_NO_PARK_DOOR = true (every door rebuilds, as before). */
+    var HQ_PARK_DOOR = { bigM2: 40000, smallM2: 40000, keepMs: 20 * 60 * 1000 };
+    function _hqRoomSmall(R) { var S = R && R.shell; return !!(S && (+S.w || 0) * (+S.d || 0) <= HQ_PARK_DOOR.smallM2); }
+    /* why a walk did not park the room (the console line `[HQ] door park: no (...)`; 'small' = the room walked out of is not a big one, the usual case) */
+    function _hqDoorParkWhy(H, to, D) {
+        if (!H || !D) return 'no room'; if (typeof window !== 'undefined' && window.EW_HQ_NO_PARK_DOOR) return 'switched off'; if (_hqParkOff()) return 'park off';
+        if (!H.ready) return 'not ready'; if (H.stage) return 'stage'; if (H.ghost) return 'ghost';
+        var from = H.opts && H.opts.room, R = D.rooms[to], S0 = H.room && H.room.shell; if (!from || !R || to === from) return 'same room';
+        if (!(H.chunks || (S0 && (+S0.w || 0) * (+S0.d || 0) > HQ_PARK_DOOR.bigM2))) return 'small';
+        if (!_hqRoomSmall(R)) return 'target big';
+        return (R.doors || []).some(function (d) { return d && d.action && d.action.room === from; }) ? 'ok' : 'no door back';
+    }
+    function _hqDoorParkOk(H, to, D) {
+        if (!H || !D || (typeof window !== 'undefined' && window.EW_HQ_NO_PARK_DOOR) || _hqParkOff() || !H.ready || H.stage || H.ghost) return false;
+        var from = H.opts && H.opts.room, R = D.rooms[to], S0 = H.room && H.room.shell; if (!from || !R || to === from) return false;
+        if (!(H.chunks || (S0 && (+S0.w || 0) * (+S0.d || 0) > HQ_PARK_DOOR.bigM2))) return false;
+        if (!_hqRoomSmall(R)) return false;
+        return (R.doors || []).some(function (d) { return d && d.action && d.action.room === from; });
+    }
     function _hqParkOk(H, opts) {
-        try { return !!(opts && opts.handover && !_hqParkOff() && H && H.scene && H.ready && !H.ghost && _hqHandoverRules().handover && (!H.stage || (typeof window !== 'undefined' && !!window.EW_HQ_PARK_STAGE))); } catch (e) { return false; }   // EVERY room of any size (mondo 11-16: "why not small rooms too? the fix needs to be game wide"). A room with joined neighbours (the stage: the HQ wings, the plot dungeons) keeps the old hand-over until its copies (written: _hqParkPieces reads the parts through their roots) are proven in a fight: window.EW_HQ_PARK_STAGE = true tries them
+        try { return !!(opts && (opts.handover || opts.parkDoor) && !_hqParkOff() && H && H.scene && H.ready && !H.ghost && (opts.parkDoor || _hqHandoverRules().handover) && (!H.stage || (typeof window !== 'undefined' && !!window.EW_HQ_PARK_STAGE))); } catch (e) { return false; }   // EVERY room of any size (mondo 11-16: "why not small rooms too? the fix needs to be game wide"). A room with joined neighbours (the stage: the HQ wings, the plot dungeons) keeps the old hand-over until its copies (written: _hqParkPieces reads the parts through their roots) are proven in a fight: window.EW_HQ_PARK_STAGE = true tries them
     }
     /* a copy of a room piece for the fight: the three.js clone (same geometry, same materials), the piece's own flags, none of
        the walk's bookkeeping (the merge's hide, the chunk, the instance pass, the LOD level) */
@@ -106557,9 +106592,9 @@ const ThreeRenderer = (function () {
         return out;
     }
     /* park the walk (from _hqLeave, in place of the stash). `st` = what _hqLeave read before it reset the room's fog and AO */
-    function _hqParkStash(H, st) {
+    function _hqParkStash(H, st, door) {
         _hqHandoverDrop(); _hqParkDrop();
-        _hqParked = { H: H, roomId: (H.opts && H.opts.room) || 'central_egress', hfog: st.hfog, ao: st.ao, at: performance.now(), mats: [] };
+        _hqParked = { H: H, roomId: (H.opts && H.opts.room) || 'central_egress', hfog: st.hfog, ao: st.ao, at: performance.now(), mats: [], door: !!door };   // `door`: THE PARKED CITY (a building's door, not a fight)
         return true;
     }
     /* tear a parked room down (nobody came back to it): what _hqLeave does to a room that is left */
@@ -106733,7 +106768,7 @@ const ThreeRenderer = (function () {
         if (H.sky) _horizonFogDirty = true;   // an outdoor room drove the shared sky uniforms: the battle re-applies its fog
         try { renderer.setAnimationLoop(active ? renderFrame : null); } catch (e) {}
         if (!park) { try { _hqStageLeave(H); } catch (e) {} }   // THE STAGE: the neighbours' gates, the detached parts (THE PARKED ROOM keeps its stage standing)
-        var handed = park ? _hqParkStash(H, parkSt) : _hqHandoverStash(H, opts);   // THE HAND-OVER: the room's groups leave the scene before the disposal below (THE PARKED ROOM: nothing leaves, nothing is disposed)
+        var handed = park ? _hqParkStash(H, parkSt, !!(opts && opts.parkDoor)) : _hqHandoverStash(H, opts);   // THE HAND-OVER: the room's groups leave the scene before the disposal below (THE PARKED ROOM: nothing leaves, nothing is disposed)
         /* characters: evict their rig-cache records (ids are ours) — into a fight, the bodies are PARKED for it (THE BODIES CARRY OVER) */
         var carryRigs = !!(opts && opts.handover);
         H.chars.forEach(function (ch) {
@@ -106761,7 +106796,7 @@ const ThreeRenderer = (function () {
                 if (css2dRenderer) css2dRenderer.domElement.style.display = 'none';
             }
         } catch (e) {}
-        console.log('[HQ] left' + (park ? ' (the room PARKED for the fight: nothing handed back, nothing disposed)' : handed ? ' (the room handed to the battle)' : ''));
+        console.log('[HQ] left' + (park ? ' (the room PARKED for the ' + ((opts && opts.parkDoor) ? 'building' : 'fight') + ': nothing handed back, nothing disposed)' : handed ? ' (the room handed to the battle)' : ''));
         if (!handed && !(opts && opts.dissolve)) { try { _mmLeaveSweep(); } catch (e) { console.warn('[ThreeRenderer] the leave sweep failed', e); } }   // THE ROOM GIVES ITS FILES BACK WHEN YOU LEAVE
     }
     function _hqRefreshLamps(profile) {
