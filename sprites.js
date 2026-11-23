@@ -170,6 +170,7 @@ const EW_ASSET_MOVES = [
   ['Assets/Sprites/Races/samurai_slug/', 'Assets/characters/races/samurai_slug/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/cursed_tv/', 'Assets/characters/races/cursed_tv/'],   // 2026-11-17 📺 THE CURSED TV
   ['Assets/Sprites/Races/virus/', 'Assets/characters/races/virus/'],   // 2026-11-18 🦠 THE VIRUS
+  ['Assets/Sprites/Races/hollow/', 'Assets/characters/races/hollow/'],   // 2026-11-23 🎭 THE HOLLOW
   ['Assets/Sprites/Races/cicada_brood/', 'Assets/characters/races/cicada_brood/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/pope/', 'Assets/characters/races/pope/'],   // 2026-11-17 THE POPE
   ['Assets/Sprites/Races/ninja/', 'Assets/characters/races/ninja/'],   // 2026-11-17 THE NINJA
@@ -603,6 +604,7 @@ const RACE_SPRITE_GENDERS = {
   'haunted doll': 'female',   // 2026-11-17 THE HAUNTED DOLL
   'cursed tv': 'male',   // 2026-11-17 THE CURSED TV (one set; the model def sits under male)
   'virus': 'male',   // 2026-11-18 THE VIRUS (one body; the model def sits under male)
+  'hollow': 'male',   // 2026-11-23 THE HOLLOW (one body; the model def sits under male)
   'streamer': 'both',   // 2026-11-18 THE STREAMER + E-GIRL (one race: the Streamer is the male, the E-Girl the female)
   'vtuber': 'female',   // 2026-11-18 THE V-TUBER (female only for now, mondo 11-18)
   'lifeguard': 'both',   // 2026-11-16; the man 2026-11-17
@@ -805,6 +807,7 @@ const _CHARACTER_SPRITES = {
   'haunted doll': `${_S}/Races/haunted_doll/female/haunted_doll_px.png`,   // 2026-11-17 THE HAUNTED DOLL — 128x128 pixel sprite (Sprite AI restyle of its model render, PR #1910)
   'cursed tv': `${_S}/Races/cursed_tv/male/cursed_tv_px.png`,   // 2026-11-17 THE CURSED TV — 128x128 pixel sprite (Sprite AI restyle of its model render, straight on)
   'virus': `${_S}/Races/virus/male/virus_px.png`,   // 2026-11-18 THE VIRUS — 128x128 pixel sprite (Sprite AI restyle of its model render, straight on)
+  'hollow': `${_S}/Races/hollow/male/hollow_px.png`,   // 2026-11-23 THE HOLLOW — 128x128 pixel sprite (Sprite AI restyle of its model render, straight on)
   'seraphim': `${_S}/Races/seraphim/seraphim_px.png`,   // 2026-11-19 — the wheel within a wheel of eyes (Sprite AI restyle of its 3D design; the old winged pixel art seraphim.png stays on R2)
   'golem': `${_S}/Races/golem/golem_px.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of its stone 3D model's front render) (the red-armour golem.png stays on R2)
   'streamer': `${_S}/Races/streamer/male/streamer_m_px.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of his 3D model's front render)
@@ -2882,6 +2885,14 @@ const RACE_MODELS_3D = {
      metres, the body hovering 1 m up. */
   'virus': {
     male: { model: `${_S}/Races/virus/male/virus.glb`, clips: {}, procRig: 'virusBody', heightRatio: 1.15, yawOffset: 0, basicAttackKind: 'magic',
+      moveTimeScale: 1, castTimeScale: 1, deathTimeScale: 1, hitTimeScale: 1, jumpTimeScale: 1 },
+  },
+  /* 🎭 THE HOLLOW (2026-11-23, Horror B; mondo approved the plan + the name): no bones; procRig 'hollowBody' (three-renderer.js
+     THE HOLLOW) turns the maw ring, orbits the four sleeping masks (one goes missing for each mask out on an enemy), coils the
+     four limbs (three joints each) and sways the six bunches of the finger chandelier. Five Meshy parts put together in code
+     (models-assets.md "THE HOLLOW"). Front +Z, metres, the body hovering 2.1 m up. */
+  'hollow': {
+    male: { model: `${_S}/Races/hollow/male/hollow.glb`, clips: {}, procRig: 'hollowBody', heightRatio: 1.6, yawOffset: 0, basicAttackKind: 'magic',
       moveTimeScale: 1, castTimeScale: 1, deathTimeScale: 1, hitTimeScale: 1, jumpTimeScale: 1 },
   },
   'wendigo': {
@@ -7564,6 +7575,7 @@ const RACE_SPRITES = {
   'haunted doll': `${_S}/Races/haunted_doll/female/haunted_doll_px.png`,   // 2026-11-17 THE HAUNTED DOLL — 128x128 pixel sprite (PR #1910)
   'cursed tv': `${_S}/Races/cursed_tv/male/cursed_tv_px.png`,   // 2026-11-17 THE CURSED TV — 128x128 pixel sprite (Sprite AI restyle of its model render, straight on)
   'virus': `${_S}/Races/virus/male/virus_px.png`,   // 2026-11-18 THE VIRUS — 128x128 pixel sprite (Sprite AI restyle of its model render, straight on)
+  'hollow': `${_S}/Races/hollow/male/hollow_px.png`,   // 2026-11-23 THE HOLLOW — 128x128 pixel sprite (Sprite AI restyle of its model render, straight on)
   'seraphim': `${_S}/Races/seraphim/seraphim_px.png`,   // 2026-11-19 — the wheel within a wheel of eyes (Sprite AI restyle of its 3D design; the old winged pixel art seraphim.png stays on R2)
   'golem': `${_S}/Races/golem/golem_px.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of its stone 3D model's front render) (the red-armour golem.png stays on R2)
   'streamer': `${_S}/Races/streamer/male/streamer_m_px.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of his 3D model's front render)

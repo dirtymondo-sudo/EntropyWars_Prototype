@@ -4920,6 +4920,13 @@
             val += 40 + 35 * _pn;
         }
         if (sp && sp.hitsStatusOnly === 'payload' && tg.status && tg.status.payload > 0) val += Math.min(70, effHp(tg)) * landP;
+        /* 🎭 THE MASKS (2026-11-23, the Hollow): a fresh mask is worth a setup for Puppet Strings / Wake; the drag rows (Wake) are
+           worth the squares each Masked enemy would be dragged (Chebyshev distance - 1, up to dragToCaster) at dragDmgPer each */
+        if (sp && (sp.statusEffects || []).some(e => e && e.id === 'masked') && !(tg.status && tg.status.masked > 0)) val += 55;
+        if (sp && sp.dragToCaster > 0 && tg.status && tg.status.masked > 0) {
+            const _dsq = Math.min(sp.dragToCaster, Math.max(0, Math.max(Math.abs(tg.x - unit.x), Math.abs(tg.y - unit.y)) - 1));
+            val += _dsq * ((sp.dragDmgPer || 0) + 8) * landP;
+        }
         /* 🐻 THE BEAR (2026-11-23, DON'T POKE THE BEAR): a hit on a hibernating Bear stops the heal it would wake with (worth
            it), but wakes it angry (+1 ATK) and the hitter takes its Grudge (Bear Down ×1.5 on it); any hit on a Bear moves the
            Grudge to the hitter. A kill pays none of it. Bear Hug's Grudge is worth a little as a setup for Bear Down. */

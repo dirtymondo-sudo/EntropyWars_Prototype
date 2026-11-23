@@ -394,6 +394,7 @@ const FINISHERS = {
     'haunted doll':   { id: 'fin_haunted_doll', name: 'Lights Out', glyph: '🪆', type: 'anomaly', sig: 'possessedPhoto', built: true, tagline: 'PLAY WITH ME', desc: 'The lights go out. When they come back on, the doll is sitting on the victim\'s chest, and the victim is not moving.' },   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit) (borrows the possessedPhoto staging)
     'cursed tv':      { id: 'fin_cursed_tv', name: 'Off the Air', glyph: '📺', type: 'anomaly', sig: 'corruptedSave', built: true, tagline: 'WE NOW RETURN YOU TO YOUR REGULARLY SCHEDULED PROGRAMMING', desc: 'The screen shrinks to a white line, then a dot, and the victim goes with it. The test card comes up and the anthem plays.' },   // 2026-11-17 THE CURSED TV (mondo approved the kit) (borrows the corruptedSave staging)
     'virus':          { id: 'fin_virus', name: 'Format C:', glyph: '🦠', type: 'anomaly', sig: 'corruptedSave', built: true, tagline: 'ALL DATA ON THIS DRIVE WILL BE LOST', desc: 'A progress bar opens over the victim and fills, file by file, and then there is nothing left to delete.' },   // 2026-11-18 THE VIRUS (mondo approved the kit) (borrows the corruptedSave staging)
+    'hollow':         { id: 'fin_hollow', name: 'Lights Out', glyph: '🎭', type: 'anomaly', sig: 'devoured', built: true, tagline: 'SLEEP NOW', desc: 'A sleeping mask settles over the face, the eyes behind it close, and the maw takes what is left of the dream.' },   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name) (borrows the devoured staging)
     'streamer':       { id: 'fin_streamer', name: 'Banned', glyph: '🎮', type: 'anomaly', sig: 'corruptedSave', built: true, tagline: 'ACCOUNT SUSPENDED', desc: 'The chat floods, the mods wake up, and ACCOUNT SUSPENDED stamps down over the victim until nothing is left on the stream.' },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit) (borrows the corruptedSave staging)
     'vtuber':         { id: 'fin_vtuber', name: 'Graduation', glyph: '🎀', type: 'anomaly', sig: 'farewellTour', built: true, tagline: 'END OF STREAM', desc: 'She waves goodbye to the chat, the stream cuts to a pixel heart, and the victim\'s name card reads END OF STREAM.' },   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look) (borrows the farewellTour staging)
     'cameraman':      { id: 'fin_cameraman', name: "That's a Wrap", glyph: '🎥', type: 'human', sig: 'blurryFootage', built: true, tagline: 'CUT. PRINT.', desc: 'The light goes red, the lens racks in and the last frame is the victim, held forever.' },   // 2026-11-19 THE NEW RACES 3 (borrows the blurryFootage staging)
@@ -652,6 +653,7 @@ const RACE_ELEMENT_AFFINITY = {
     'haunted doll': { psychic: 'resist', fire: 'weak' },   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit): porcelain and old lace
     'cursed tv': { lightning: 'resist', water: 'weak' },   // 2026-11-17 THE CURSED TV (mondo approved the kit): it runs on the mains, and water in a set is the end of it
     'virus': { poison: 'resist', lightning: 'resist', water: 'weak' },   // 2026-11-18 THE VIRUS (mondo approved the kit): made of poison and current; water shorts it
+    'hollow': { psychic: 'resist', light: 'weak' },   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name): a dream that moves you; light wakes it
     'streamer': { sonic: 'resist', light: 'weak' },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit): the headset is on; never sees the sun
     'vtuber': { lightning: 'resist', water: 'weak' },   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look): lives on current; water shorts the projectors
     'cameraman': { light: 'resist', water: 'weak' },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models): the flash is his; water kills the camera
@@ -3038,6 +3040,10 @@ const RACE_PROFILES = {
         label: 'Virus',
         types: ['anomaly', 'tech']
     },
+    'hollow': {   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name)
+        label: 'The Hollow',
+        types: ['anomaly', 'alien']
+    },
     'streamer': {   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit): one race, the E-Girl is its female (like the Priest + the Nun)
         label: 'Streamer',
         labelMale: 'Streamer',
@@ -4004,7 +4010,7 @@ const RACE_MERGED = { 'nun': { race: 'priest', gender: 'female' } };
 /* 👁🌑 THE REALM WINDOW: races that SEE a Shadow Realm pair on their own turns (they cannot touch it). A projecting
    spirit both sees and touches (battle.js unitSeesRealm / unitCrossesRealm). */
 const REALM_SIGHT_RACES = ['ghost', 'shadow entity'];
-const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber', 'pharaoh', 'deep sea diver', 'gambler', 'hacker', 'monk', 'shogun', 'cameraman', 'mechanic', 'janitor', 'trucker', 'gladiator', 'farmer', 'jellyfish ufo', 'bear'];
+const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber', 'pharaoh', 'deep sea diver', 'gambler', 'hacker', 'monk', 'shogun', 'cameraman', 'mechanic', 'janitor', 'trucker', 'gladiator', 'farmer', 'jellyfish ufo', 'bear', 'hollow'];
 /* THE COMING RACES (2026-11-19, mondo: "wire them in the game at least in the relation web, give them sprite ai portraits ... my associate
    [does] their spell and combat plan on another account"): races whose model, sprite and name are in (sprites.js RACE_MODELS_3D,
    RACE_PROFILES) but whose kit is not. They are NOT playable: the Relationship Web lists them (docs/plans/story-web/build/fresh.js).
@@ -4030,6 +4036,7 @@ const RACE_KITS = {
     'ice queen': { range: 2 },   // race editor 2026-10-17: range 1 → 2
     'cursed tv': { range: 2 },   // 2026-11-17 THE CURSED TV (mondo approved the kit): the basic attack is a jolt down the power cable, and the cable reaches
     'virus': { range: 2 },   // 2026-11-18 THE VIRUS (mondo approved the kit): the basic attack is a lash of code from its tendrils, and they reach
+    'hollow': { range: 3 },   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name): the basic attack is a crystal sliver a finger flicks
     'streamer': { range: 1 },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit): the basic attack is a keyboard slam
     'vtuber': { range: 2 },   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look): the basic attack is a pixel heart bolt (magic: her Heart Bolt passive)
     'gambler': { range: 2 },   // 2026-11-19 THE NEW RACES 4: the basic attack is a flicked casino chip
@@ -4174,6 +4181,7 @@ const RACE_CLASS = {
     'haunted doll': 'assassin',   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit)
     'cursed tv': 'caster',   // 2026-11-17 THE CURSED TV (mondo approved the kit)
     'virus': 'specialist',   // 2026-11-18 THE VIRUS (mondo approved the kit)
+    'hollow': 'specialist',   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name) (a controller)
     'streamer': 'specialist',   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
     'vtuber': 'caster',   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
     'cameraman': 'ranged',   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
@@ -4249,6 +4257,7 @@ const RACE_TERRAIN_PREFERENCE = {
     'haunted doll': 'tree',   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit)
     'cursed tv': 'wasteland',   // 2026-11-17 THE CURSED TV (mondo approved the kit)
     'virus': 'wasteland',   // 2026-11-18 THE VIRUS (mondo approved the kit)
+    'hollow': 'tree',   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name) (as the Dreameater)
     'streamer': 'urban',   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
     'vtuber': 'urban',   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
     'cameraman': 'urban',   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
@@ -4660,6 +4669,7 @@ const RACE_BASE_STATS = {
     'haunted doll':       { hp:  880, mp: 180, atk:  70, def:  80, mdef: 110, int: 150, vision: 4, crt: 22, spd: 160 },   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit) — fragile and quick, a magic assassin
     'cursed tv':          { hp:  860, mp: 210, atk:  20, def:  85, mdef: 120, int: 156, vision: 4, crt: 15, spd: 140 },   // 2026-11-17 THE CURSED TV (mondo approved the kit) — frail and quick, a magic caster; LAB LOOP 11-22 PASS 4: HP 900→860, M.ATK 175→156 (55.4% over 240 games)
     'virus':              { hp:  860, mp: 220, atk:  40, def:  60, mdef: 160, int: 212, vision: 3, crt: 18, spd:  90 },   // 2026-11-18 THE VIRUS (mondo approved the kit) — first pass: a frail magic specialist; LAB LOOP 11-22 PASS 2: HP 780→860, M.ATK 180→212 (34.0% over 109 games)
+    'hollow':             { hp:  880, mp: 230, atk:  40, def:  70, mdef: 150, int: 190, vision: 3, crt: 15, spd: 100 },   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name) — first pass (the plan's numbers): a floating controller
     'streamer':           { hp:  990, mp: 200, atk: 125, def:  80, mdef: 100, int: 142, vision: 3, crt: 25, spd: 110 },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit) — first pass: a skirmisher who banks a crowd; LAB LOOP 11-22 PASS 4: HP 950→990, ATK 120→125, M.ATK 130→142 (44.9% over 244 games)
     'vtuber':             { hp:  820, mp: 240, atk:  30, def:  70, mdef: 150, int: 185, vision: 3, crt: 20, spd: 100 },   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look) — first pass: a frail caster who is never where she seems
     'cameraman':          { hp:  900, mp: 140, atk: 105, def:  78, mdef:  70, int:  60, vision: 5, crt: 26, spd: 125 },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models) — first pass on the ranged median (vision 5: he sees everything)
@@ -4847,6 +4857,7 @@ const RACE_PHYSIQUE = {
     'haunted doll':        { h: 1.10, w: 18 },   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit)
     'cursed tv':           { h: 1.45, w: 40 },   // 2026-11-17 THE CURSED TV (mondo approved the kit): the set on its cart, antennae up
     'virus':               { h: 1.50, w: 30 },   // 2026-11-18 THE VIRUS (mondo approved the kit): the spiked ball hovering, tendrils down
+    'hollow':              { h: 2.40, w: 60 },   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name): the maw ring hovering, the finger chandelier hanging under it
     'streamer':            { h: 1.76, w: 70 },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
     'vtuber':              { h: 1.64, w: 50 },   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
     'cameraman':           { h: 1.78, w: 78 },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
@@ -11114,6 +11125,34 @@ const RACE_ABILITIES = {
           ignoresLineOfSight: true, hitsStatusOnly: 'payload', animSlot: 'vrZeroDay',
           desc: 'The exploit nobody patched. Every enemy within 5 that carries a Payload takes MEDIUM magic damage, through cover, and its Payload goes off at once (70 more). Needs a Payload out. Cooldown: 3 rounds.' },
     ],
+    'hollow': [
+        /* THE MASKS (2026-11-23, THE HOLLOW, Horror B; mondo approved the plan 11-23 and named it): a floating controller. Lull
+           leaves one of its four sleeping masks on an enemy (Masked, 3 rounds, at most 4 out); Puppet Strings and Wake reach every
+           Masked enemy through cover and DRAG it toward the Hollow (`dragToCaster`; Wake +30 per square dragged, `dragDmgPer`, and
+           calls the masks home, `masksHome`); Shard Bloom grows crystal pillars on the empty squares of a 3x3 (raised 2, 2 rounds)
+           and Roots the Masked caught in it. battle.js THE MASKS. The body is Meshy parts that move on their own (three-renderer.js
+           THE HOLLOW). Notes: docs/notes/champions-combat.md "THE HOLLOW". */
+        { id: 'hlLull', name: 'Lull', tier: 1, families: ['hollow'], cost: 25, apCost: 1, spellType: 'anomaly',
+          element: 'psychic', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 70, range: 5, animSlot: 'hlLull',
+          statusEffects: [{ id: 'masked', duration: 3 }],
+          desc: 'A sleeping mask leaves the orbit and settles over the face. Deals WEAK psychic magic damage to a Single Enemy within 5 and leaves it Masked for 3 rounds. At most 4 masks out: a fifth calls the oldest home.' },
+        { id: 'hlStrings', name: 'Puppet Strings', tier: 2, families: ['hollow'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+          element: 'psychic', type: 'damage', kind: 'barrage', damageType: 'magic', dmg: 40, range: 0, aoeOriginSelf: true, aoeRadius: 6,
+          ignoresLineOfSight: true, hitsStatusOnly: 'masked', dragToCaster: 2, animSlot: 'hlStrings',
+          statusEffects: [{ id: 'slow', duration: 1 }],
+          desc: 'The finger chandelier drops strings on every Masked enemy within 6, through cover: each is pulled 2 tiles toward the Hollow, takes TINY magic damage and is Slowed for 1 round. Needs a mask out. Cooldown: 2 rounds.' },
+        { id: 'hlBloom', name: 'Shard Bloom', tier: 3, families: ['hollow'], cost: 75, apCost: 1, cooldownRounds: 3, spellType: 'anomaly',
+          element: 'psychic', type: 'damage', kind: 'terrainCreate', terrainType: 'crystal', squareFlood: true, aoeRadius: 1, range: 5,
+          dmg: 85, damageType: 'magic', terrainDeform: { centerDelta: 2, edgeDelta: 2 }, deformEmptyOnly: true, terrainRounds: 2,
+          growVfx: 'hlBloom:grow', animSlot: 'hlBloom',
+          statusEffects: [{ id: 'root', duration: 1, ifTargetHas: 'masked' }],
+          desc: 'Crystals burst out of a 3x3 within 5: WEAK magic damage to every enemy in it, and the empty tiles grow crystal pillars two levels high that block the way and the sight for 2 rounds. A Masked enemy caught in it is also Rooted for 1 round. Cooldown: 3 rounds.' },
+        { id: 'hlWake', name: 'Wake', tier: 4, families: ['hollow'], cost: 90, apCost: 1, cooldownRounds: 3, spellType: 'anomaly',
+          element: 'psychic', type: 'damage', kind: 'barrage', damageType: 'magic', dmg: 90, range: 0, aoeOriginSelf: true, aoeRadius: 7,
+          ignoresLineOfSight: true, hitsStatusOnly: 'masked', dragToCaster: 3, dragDmgPer: 30, masksHome: true, animSlot: 'hlWake',
+          statusEffects: [{ id: 'feared', duration: 1 }],
+          desc: 'Every mask opens its eyes and screams. Each Masked enemy within 7, through cover, is dragged up to 3 tiles toward the maw and takes MEDIUM magic damage, +30 for every tile it was dragged (a wall that stops it still counts that tile), then is Feared for 1 round. All the masks fly home. Needs a mask out. Cooldown: 3 rounds.' },
+    ],
     'streamer': [
         /* THE VIEWERS (2026-11-18, the Streamer + the E-Girl; mondo OK'd the kit 11-18): a count from 0 to 10 on the unit
            (unit.viewers, a plain number, so it rides the state sync). +1 for every hit it lands on an enemy, +2 for a KO, +1 when
@@ -15129,6 +15168,16 @@ const STATUS_DEFS = {
         colorText: 'carrying a payload — it spreads, then goes off',
         kind: 'debuff', category: 'status', stack: 'max',
         iconSrc: createStatusIconDataUri('🦠', '#10240f', '#d8ffd0', '#4ac04a')
+    },
+    /* 🎭 MASKED (2026-11-23, THE HOLLOW): one of the Hollow's sleeping masks floats over the face. It does nothing on its own:
+       Puppet Strings and Wake reach a Masked enemy through cover and drag it in. unit._maskSrcId = the Hollow's id (battle.js
+       THE MASKS). Both sides see it. */
+    masked: {
+        icon: '🎭', glyph: '🎭', short: 'MSK', label: 'Masked',
+        colorText: 'wears a sleeping mask — the Hollow can drag it in',
+        kind: 'debuff', category: 'status', stack: 'max',
+        iconSrc: createStatusIconDataUri('🎭', '#1a1030', '#f4eefc', '#9a6aff'),
+        onRemove(unit) { delete unit._maskSrcId; }
     },
     /* filtered (2026-11-17, the Influencer's Filter): wears another ally's look on the enemy's screen. The look is
        unit._filterLookId (an id, RULE #2) + _filterRace / _filterGender (a copy, so it holds if that ally falls). */
@@ -21542,6 +21591,7 @@ const EW_RACE_BIOMES = {
     'haunted doll': ['gothic'],   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit) — The Estate, the Haunted House
     'cursed tv': ['urban', 'gothic'],   // 2026-11-17 THE CURSED TV (mondo approved the kit) — Disaster City's pawn shops, the Haunted House's attic
     'virus': ['neon_city', 'astral'],   // 2026-11-18 THE VIRUS (mondo approved the kit) — The Internet's quarantine
+    'hollow': ['astral'],   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name) — The Astral Realm (its nightmares)
     'streamer': ['neon_city', 'urban'],   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit) — The Internet's stage
     'vtuber': ['neon_city', 'urban'],   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look) — The Internet, district V
     'cameraman': ['urban', 'forest', 'ranch'],   // 2026-11-19 THE NEW RACES 3 (mondo picked the models) — Disaster City, The Woods, the Lake
@@ -22217,6 +22267,7 @@ const RACE_TREE = {
     'haunted doll':  ['nrPinPrick', 'nrPlayWithMe', 'nrPullString', 'nrLookBehindYou'],   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit): its own four
     'cursed tv':     ['nrStaticBurst', 'nrEmergencyBroadcast', 'nrFastForward', 'nrRewind'],   // 2026-11-17 THE CURSED TV (mondo approved the kit): its own four
     'virus':         ['nrWorm', 'nrSelfReplicate', 'nrRansomware', 'nrZeroDay'],   // 2026-11-18 THE VIRUS (mondo approved the kit): its own four
+    'hollow':        ['hlLull', 'hlStrings', 'hlBloom', 'hlWake'],   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name): its own four
     'streamer':      ['nrClipIt', ['nrUwu', 'nrRageQuit'], 'nrDonationGoal', 'nrRaid'],   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit): the rung 2 pair is one of each version (RACE_GENDER_SPELLS)
     'vtuber':        ['nrKawaiiBeam', ['nrHoloProjector', 'nrSceneChange'], 'nrLoFiLoop', 'nrCollabStream'],   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
     'cameraman':     ['nrZoomIn', ['nrTiltShift', 'nrPhotographicEvidence'], 'nrMoneyShot', 'nrSayCheese'],   // 2026-11-19 THE NEW RACES 3
@@ -24353,6 +24404,16 @@ const SPELL_FAMILIES = {
         desc: 'A living computer virus: it plants payloads that copy themselves from body to body, splits off replicas, and sets them all off at once.',
         unique: 'virus',
         identity: { who: ['Virus', 'Worm', 'Trojan'], adj: ['Spiked', 'Glitching', 'Infectious'], look: ['a spiked ball of dark green crystal', 'a ring of red eyes', 'tendrils of broken code'], vibe: ['copies itself from body to body', 'sets everything off at once'] }
+    },
+    hollow: {   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name) — the Hollow's own
+        id: 'hollow',
+        name: 'The Hollow',
+        glyph: '🎭',
+        color: '#9a6aff',
+        kind: 'signature',
+        desc: 'A floating maw ringed with sleeping masks: it leaves a mask on an enemy, then drags the masked into its crystals and into its mouth.',
+        unique: 'hollow',
+        identity: { who: ['Hollow', 'Sleeper', 'Mask'], adj: ['Sleeping', 'Porcelain', 'Dreaming'], look: ['a black maw ringed with golden teeth', 'sleeping porcelain masks', 'a chandelier of pale fingers'], vibe: ['leaves its masks on you', 'drags the masked in'] }
     },
     vtubing: {   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look) — the V-Tuber's own
         id: 'vtubing',
@@ -26743,6 +26804,7 @@ const RACE_FAMILIES = {
     'haunted doll': ['hauntedtoy', 'haunted', 'blackmagic', 'trickery'],   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit)
     'cursed tv': ['cursedtv', 'haunted', 'lightning', 'glitch'],   // 2026-11-17 THE CURSED TV (mondo approved the kit)
     'virus': ['malware', 'computerhacking', 'glitch', 'internetaddiction'],   // 2026-11-18 THE VIRUS (mondo approved the kit)
+    'hollow': ['hollow', 'nightmares', 'astral', 'fractal'],   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name)
     'streamer': ['streaming', 'stagepresence', 'computerhacking', 'internetaddiction'],   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
     'vtuber': ['vtubing', 'stagepresence', 'computerhacking', 'internetaddiction'],   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
     'cameraman': ['cameraman', 'stagepresence', 'eyesight', 'internetaddiction'],   // 2026-11-19 THE NEW RACES 3
@@ -27393,6 +27455,7 @@ const CAMPAIGN_RACE_PRICES = {
   'haunted doll': 450,   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit)
   'cursed tv': 450,   // 2026-11-17 THE CURSED TV (mondo approved the kit)
   'virus': 450,   // 2026-11-18 THE VIRUS (mondo approved the kit)
+  'hollow': 500,   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name)
   'streamer': 400,   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
   'vtuber': 400,   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
   'cameraman': 350,   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
@@ -29390,7 +29453,7 @@ const DOOR_TEXT = {
         'superhero': 'Downtown', 'general': 'The Lodge', 'droid': 'Mars', 'antihero': 'Downtown',
         'conspiracy theorist': 'The Strip', 'overlord': 'Tower of Babel', 'chosen one': 'Mount Olympus', 'politician': 'The Lodge', 'banker': 'Downtown', 'sewer gator': 'The Sewers', 'skater': 'Downtown', 'tech ceo': 'Downtown', 'magician': 'The Strip', 'mole man': 'Hollow Earth', 'quetzalcoatl': 'Technoticlan', 'lifeguard': 'The Bermuda Triangle',   // banker + sewer gator + skater + tech ceo + magician + mole man + quetzalcoatl + lifeguard 2026-11-16
         'delivery boy': 'Downtown', 'librarian': 'Downtown', 'televangelist': 'Vatican City', 'influencer': 'Downtown', 'referee': 'Football Stadium', 'florida man': 'Downtown', 'boltzmann brain': 'The Singularity', 'wendigo': 'Mount Shasta', 'karate frog': 'The Sewers', 'samurai slug': 'The Sewers', 'cicada brood': 'Göbekli Tepe', 'pope': 'Vatican City',   // 2026-11-17 THE NEW RACES 2
-        'ninja': 'Downtown', 'delivery boy': 'Downtown', 'librarian': 'Downtown', 'televangelist': 'Vatican City', 'influencer': 'Downtown', 'referee': 'Football Stadium', 'florida man': 'Downtown', 'boltzmann brain': 'The Singularity', 'wendigo': 'Mount Shasta', 'karate frog': 'The Sewers', 'samurai slug': 'The Sewers', 'cicada brood': 'Göbekli Tepe', 'haunted doll': 'The Haunted House', 'cursed tv': 'The Haunted House', 'virus': 'The Internet', 'streamer': 'The Internet', 'vtuber': 'The Internet',   // 2026-11-17 THE NEW RACES 2
+        'ninja': 'Downtown', 'delivery boy': 'Downtown', 'librarian': 'Downtown', 'televangelist': 'Vatican City', 'influencer': 'Downtown', 'referee': 'Football Stadium', 'florida man': 'Downtown', 'boltzmann brain': 'The Singularity', 'wendigo': 'Mount Shasta', 'karate frog': 'The Sewers', 'samurai slug': 'The Sewers', 'cicada brood': 'Göbekli Tepe', 'haunted doll': 'The Haunted House', 'cursed tv': 'The Haunted House', 'virus': 'The Internet', 'hollow': 'The Looking-Glass', 'streamer': 'The Internet', 'vtuber': 'The Internet',   // 2026-11-17 THE NEW RACES 2
         'pharaoh': 'Pyramids of Giza', 'deep sea diver': 'Atlantis',   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
         'gladiator': 'Vatican City', 'farmer': 'Skinwalker Ranch', 'jellyfish ufo': 'Atlantis',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) (the Colosseum on the Vatican's plots; the Estate's fields; the Trench of The Deep)
         'bear': 'Mount Shasta',   // 2026-11-23 THE BEAR (mondo OK'd the kit) (the mountain's woods and its snow: both coats)
@@ -99814,7 +99877,7 @@ const HQ_NPC_PLACES = {
         'men in black @D:Onion Gate >D,B', 'men in black @D:Crawlers >D', 'demon m @D:The Bottom >D,C', 'demon m @D:Black Market stay', 'hacker @S:Login Screen >S,K', 'ghost m @S:Backup Tapes >S,H', 'ghost m @H:Dial-Up >H'],
     /* ── THE ASTRAL REALM ── */
     site_prebuilt_lookingglass_realm: ['occulus @S:High Thought >S,L,N', 'occulus @L:Reading >L', 'occulus @N:Stage >N', 'boltzmann brain @S:Open Sea >S,L', 'boltzmann brain @L:Not Yet Written stay', 'orb of light @S:Still Water >S,L', 'orb of light @L:Stacks >L',
-        'machine elves @L:Card Catalogue stay', 'dreameater @N:The Bed >N,S', 'telepath m @S:Thought-Forms >S', 'telepath f @S:Islands >S', 'shadow entity @N:Thing Under >N', 'flesheater @N:Maw >N', 'succubus m @N:Bad Nights >N', 'succubus f @N:Blood >N'],
+        'machine elves @L:Card Catalogue stay', 'dreameater @N:The Bed >N,S', 'telepath m @S:Thought-Forms >S', 'telepath f @S:Islands >S', 'shadow entity @N:Thing Under >N', 'flesheater @N:Maw >N', 'hollow @N:The Bed >N,S night', 'succubus m @N:Bad Nights >N', 'succubus f @N:Blood >N'],
     site_prebuilt_lookingglass_waiting: ['ghost m'],
     /* ── OUTER SPACE (one room, four worlds: no route crosses from one world to the next) ── */
     site_prebuilt_moon_plots: ['astronaut @M:Lander >M,C', 'astronaut @M:Habitat stay', 'grey @F:Saucer >F,C x2', 'bligblog @F:Dig >F', 'reptilian @F:Bore >F', 'mantid @C:The Crater >C,F',
