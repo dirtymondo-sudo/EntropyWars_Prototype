@@ -2551,7 +2551,7 @@
                 if (out) out.label = String((DOOR_HQ.rooms[out.action.room] || {}).label || 'THE DOORS').toUpperCase();   // the plate over the doors names the floor (the replate rule)
             } catch (e) { console.warn('[HQ] car way out', e); } }
             /* THE HOTEL (2026-11-23): the lift from the lobby builds a new hotel (data.js hotelBeforeGo: a new seed, ten new floors) */
-            try { if (typeof window.hotelBeforeGo === 'function') window.hotelBeforeGo(roomId, _hqCurRoom); } catch (e) { console.warn('[HOTEL] the lift', e); }
+            try { if (typeof window.hotelBeforeGo === 'function') window.hotelBeforeGo(roomId, _hqCurRoom, _hqPartyLevelNow()); } catch (e) { console.warn('[HOTEL] the lift', e); }
             _hqLastRoom = roomId;
             _hqLastDoor = at || null;
             window._hqClosePanel();
@@ -2940,6 +2940,9 @@
                 if (arrive && !eyeHere) arriveDrop();
                 if (window._hqEnter({ room: _hqLastRoom, at: _hqLastDoor, quiet: true, from: 'return', seamless: eyeHere ? arrive : null })) {
                     if (encRes && encRes.quest && encRes.quest.changes && encRes.quest.changes.length) { try { _questShow(encRes.quest.changes, 5200); } catch (e) {} }   // THE QUESTS: after the fight's own toast
+                    /* THE HOTEL: the boss down = the exit is open (data.js hotelBossBeaten, written by the fight's record) */
+                    try { const hr = (encRes && encRes.won && typeof window.hotelRunState === 'function') ? window.hotelRunState() : null;
+                        if (hr && hr.bossDown && !hr.bossToast) { hr.bossToast = true; setTimeout(() => { try { _hqToast('<b>THE BANKER IS DOWN</b><span>THE EXIT IS OPEN</span>', 4200); } catch (e) {} }, 4200); } } catch (e) {}
                     /* THE CROWD (NPC encounters step 7b): an Opportunist that watched a fight the party won weak comes to mug it (the built mugging, once a game day) */
                     if (encRes && encRes.won && encRes.crowdMug && encRes.crowdMug.id) { const cm = encRes.crowdMug, rm = encRes.room; setTimeout(() => { try {
                         if (state.gameState !== GS.HQ || _hqCurRoom !== rm || typeof window.hqNpcMugLine !== 'function' || !window.hqNpcMugLine(cm.race)) return;
@@ -9970,6 +9973,12 @@
                 if (from && from.kind === 'door') _hqRecordVisit(act.link ? ('link_' + act.link) : from.id);   // the collar charts the link it opened on (THE SHIP'S ONE DOOR)
                 if (from && from.kind === 'door' && from.door && from.door.station) _hqSubwayStair(from.door);   // THE SUBWAY (2026-11-18): the stair head's station goes on file
                 const at = act.at || (act.sector ? _hqBayEntry(act.sector) : null);
+                /* THE HOTEL'S EXIT (data.js hotelTopGate): shut while the boss stands; the first time through, his safe goes in the bag */
+                if (act.hotelTop && typeof window.hotelTopGate === 'function') {
+                    let g = null; _hqPartyTx(p => { g = window.hotelTopGate(p); return g; }); if (!g) g = window.hotelTopGate(null);
+                    if (!g || !g.ok) { _hqToast('<b>THE EXIT IS LOCKED</b><span>BEAT THE BANKER</span>', 2600); try { playSfx('uiError'); } catch (e) {} return; }
+                    if (g.reward && g.reward.length) setTimeout(() => { try { _hqToast('<b>THE HOTEL IS CLEARED</b><span>' + g.reward.map(x => _hqEsc(String(x.name).toUpperCase()) + ' ×' + x.n).join(' · ') + '</span>', 5200); playSfx('uiButtonConfirm'); } catch (e) {} }, 900);
+                }
                 /* a `way` seam voices its own kind (the creak, the rope) instead of the strike plate */
                 const waySfx = (from && from.kind === 'door' && from.door && from.door.way) ? _hqWayCat(from.door.way).sfx : null;
                 if (waySfx) { try { if (typeof playDoorSfx === 'function') playDoorSfx(waySfx, { volume: 0.9 }); } catch (e) {} }

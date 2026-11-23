@@ -87288,6 +87288,9 @@ const ThreeRenderer = (function () {
             sub: spec.sub || null, reach: spec.reach || 1.75, pose: spec.pose || null, cast: spec.cast || null, doing: spec.doing || null,
             spot: spec.spot || null, spotIndex: (spec.spotIndex != null) ? spec.spotIndex : -1, patrol: !!spec.patrol, rounds: null, away: false,   // THE ROUNDS (2026-09-19): the authored spot it stands at (its loop's first stop), a patrol agent, its loop record
         };
+        /* a spot's own fight level (`lvl`: the hotel's floors) and size (`scale`: the hotel's boss) */
+        if (spec.spot && (spec.spot.lvl | 0) > 0) ch.lvl = spec.spot.lvl | 0;
+        if (spec.spot && +spec.spot.scale > 0 && +spec.spot.scale !== 1) { entry.group.scale.multiplyScalar(+spec.spot.scale); ch.heightM *= +spec.spot.scale; ch.boss = !!spec.spot.boss; }
         _hq.chars.push(ch);
         if (spec.hold) _hqAttachHeld(ch, spec.hold);
         /* people are never a floor: the top sits above any jump apex */
@@ -89472,7 +89475,9 @@ const ThreeRenderer = (function () {
         try { var pop = (typeof hqRoomPopulation === 'function') ? hqRoomPopulation(rid, opts && opts.profile, { perfLow: !!(typeof window !== 'undefined' && window.EW_PERF_LOW) }) : null; if (pop) planned += pop.n | 0; } catch (e) {}
         var cap = (typeof hqRoomCrowdCap === 'function') ? hqRoomCrowdCap(rid, planned) : planned;
         if (typeof window !== 'undefined' && window.EW_HQ_NO_CROWD_CAP) cap = 999;
-        var L = { room: rid, cap: cap, n: 0, races: {}, day: (typeof hqToday === 'function') ? hqToday() : '' };
+        /* `crowdAll` (the hotel's floors, 2026-11-23): every placed guest stands, the same race more than once too (the cap left floor 10's boss out) */
+        var all = !!(room && room.crowdAll); if (all) cap = Math.max(cap, planned);
+        var L = { room: rid, cap: cap, n: 0, all: all, races: {}, day: (typeof hqToday === 'function') ? hqToday() : '' };
         /* THE OUTDOOR AREAS (2026-11-18, mondo on the Colosseum's crowd: "yes raise the body cap, I thought it was 20 anyway? and there is no one per
            race rule, there are already multiple of the same units in disaster city"): in a room built on plots a race stands as often as it is
            placed, and EVERY placed native is made; the cap (data.js HQ_CROWD_RULES.areaMax) is how many of them are SHOWN at once, the nearest
@@ -89481,12 +89486,12 @@ const ThreeRenderer = (function () {
         L.area = !!(room && room.plots) && !(typeof window !== 'undefined' && window.EW_HQ_AREA_OLD_CAP);
         L.placed = 0;
         L.left = function () { return Math.max(0, L.cap - L.n); };
-        L.has = function (rk) { return !L.area && !!L.races[rk]; };
+        L.has = function (rk) { return !L.area && !L.all && !!L.races[rk]; };
         /* take a body: false = the room is full, or this race already stands here (dupOk: the backup employees, a swarm; `placed`: a native at its own spot) */
         L.take = function (rk, dupOk, placed) {
             if (L.area && placed) { if (rk) L.races[rk] = (L.races[rk] || 0) + 1; L.n++; L.placed++; return true; }
             if (L.n >= L.cap) return false;
-            if (rk && rk !== 'men in black' && !dupOk && !L.area && L.races[rk]) return false;
+            if (rk && rk !== 'men in black' && !dupOk && !L.area && !L.all && L.races[rk]) return false;
             if (rk) L.races[rk] = (L.races[rk] || 0) + 1;
             L.n++;
             return true;
@@ -89593,7 +89598,7 @@ const ThreeRenderer = (function () {
                        own `y` (metres; a box over a tunnel, a gallery: a floor that is a BRIDGE, which a spot with no y never finds: it reads the
                        ground under it) and its `pose` (a sprites.js _CAST_POSES slot: `hqSit` on a throne) ride to the body. A spot with no y still
                        stands on what is under it (the ground, a row of seats). */
-                    _hqSpawnCharacter({ id: 'hq-native-' + si, kind: 'npc', race: rh, gender: hg, deg: spot.deg, r: spot.r, x: pX, z: pZ, level: spot.level || 0, y: (typeof spot.y === 'number') ? spot.y : undefined, pose: spot.pose || null, face: spot.face || 0, line: sayOf(spot), label: (spot.talk && spot.talk.name) || undefined, spot: spot, spotIndex: si });   // THE TALK (2026-10-08): the editor's name
+                    _hqSpawnCharacter({ id: 'hq-native-' + si, kind: 'npc', race: rh, gender: hg, deg: spot.deg, r: spot.r, x: pX, z: pZ, level: spot.level || 0, y: (typeof spot.y === 'number') ? spot.y : undefined, pose: spot.pose || null, face: spot.face || 0, line: sayOf(spot), label: spot.label || (spot.talk && spot.talk.name) || undefined, spot: spot, spotIndex: si });   // THE TALK (2026-10-08): the editor's name
                     var oi = owned.indexOf(rh); if (oi >= 0) owned.splice(oi, 1);
                 } else free.push(spot);
             });
