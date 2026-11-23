@@ -78857,10 +78857,6 @@ const ThreeRenderer = (function () {
         var cl = _hqFlagCloth(id, cw, ch, amp, U); cl.position.set(r * U, (H - 0.15 - ch) * U, 0); grp.add(cl);
         return grp;
     }
-    Object.assign(_hqProcBuilders, {
-        zone_flag: function (U, p) { return _hqFlagPoleProp(U, p, false); },
-        zone_flag_hall: function (U, p) { return _hqFlagPoleProp(U, p, true); }
-    });
     /* THE CITY FLAG WAVES: an architecture row's flag (C.js flag(): a box + two 'mark:flag' quads, one each way) becomes one waving sheet of
        the city flag, the box and quads left out of the row's geometry. Read once, when the room is built. */
     function _hqArchFlagsOut(row, G, U) {
@@ -84673,6 +84669,10 @@ const ThreeRenderer = (function () {
     Object.assign(_hqProcBuilders, {
         ew_rubiks_cube: function (U, p) { return _ewCubeProp(U, true, p); },
         ew_cube_piece: function (U, p) { return _ewCubeProp(U, false, p); },
+    });
+    Object.assign(_hqProcBuilders, {   // THE ZONE FLAGS (2026-11-23): the poles (_hqFlagPoleProp)
+        zone_flag: function (U, p) { return _hqFlagPoleProp(U, p, false); },
+        zone_flag_hall: function (U, p) { return _hqFlagPoleProp(U, p, true); }
     });
     /* THE COLOURED FLAMES (2026-11-20): a torch / hearth row's flame hue: the row's `flame`, else its catalogue row's (null = the warm flame) */
     function _hqFlameOf(p) {
