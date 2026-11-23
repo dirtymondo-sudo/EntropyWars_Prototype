@@ -3100,10 +3100,6 @@ const RACE_PROFILES = {
         label: 'Butterfly Girl',
         types: ['anomaly']   // 2026-11-23 THE BUTTERFLY GIRL: settled (her kit is Anomaly)
     },
-    'mannequin': {   // 2026-11-23 THE COMING RACES 2 — the Bayside Mall: a living shop-window mannequin
-        label: 'Mannequin',
-        types: ['anomaly']   // a first guess; the unit's spell thread settles it
-    },
     'plastic surgeon': {   // 2026-11-23 THE COMING RACES 2 — the Hollywood Hills
         label: 'Plastic Surgeon',
         types: ['human']   // a first guess; the unit's spell thread settles it
@@ -4013,7 +4009,7 @@ const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scie
    RACE_PROFILES) but whose kit is not. They are NOT playable: the Relationship Web lists them (docs/plans/story-web/build/fresh.js).
    To unlock one: give it its kit (RACE_ABILITIES, RACE_TREE, RACE_FAMILIES, stats, physique, prices, ...), MOVE it from here into
    AVAILABLE_RACES and server.js AVAILABLE_RACES. Notes: docs/notes/champions-combat.md "THE COMING RACES". */
-const EW_COMING_RACES = ['bear', 'rat', 'monarch', 'mannequin', 'plastic surgeon'];   // 2026-11-23 THE COMING RACES 2 (models in, kits not yet; one spell thread a unit; the Butterfly Girl got hers 11-23 and moved to AVAILABLE_RACES). 2026-11-19: the gladiator, the farmer and the jellyfish UFO got their kits and moved to AVAILABLE_RACES
+const EW_COMING_RACES = ['bear', 'rat', 'monarch', 'plastic surgeon'];   // 2026-11-23 THE COMING RACES 2 (the Mannequin was cut 11-23, mondo; the Butterfly Girl got her kit 11-23 and moved to AVAILABLE_RACES) (models in, kits not yet; one spell thread a unit). 2026-11-19: the gladiator, the farmer and the jellyfish UFO got their kits and moved to AVAILABLE_RACES
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
    default job's kit (JOB_KITS) gave it, so ranged races stay ranged: the old Sniper races reach 4 (kit 3 + the Sniper's

@@ -25,7 +25,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 1322 |
+| Meshy AI | no | 1321 |
 | Meshy AI, reworked by Claude | no | 10 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 90 |
@@ -154,7 +154,6 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | mad scientist — creator look also baked | `Assets/characters/races/homosapien/male/engineer/Meshy_AI_mad_scientist_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | mad scientist (female) — creator look also baked | `Assets/characters/races/homosapien/female/engineer/Meshy_AI_female_hot_asian_scie_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | magician | `Assets/characters/races/magician/male/Meshy_AI_magician_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES, mondo 2026-11-16 "make meshy models for the new races"; concepts in project files new-races/) |
-| mannequin (female) | `Assets/characters/races/mannequin/female/Meshy_AI_mannequin_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API from mondo's picked concepts (THE COMING RACES 2, 2026-11-23; the Bear's polar look + the Rat King are form looks; project files char-concepts-20261123/) |
 | mantid | `Assets/characters/races/mantid/male/Meshy_AI_mantid_realistic_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | marksman | `Assets/characters/animations/Meshy_AI_sniper_biped_Animation_Idle_5_withSkin.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | marksman (female) | `Assets/characters/races/homosapien/female/sniper/Meshy_AI_sniper_female_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
@@ -4482,7 +4481,7 @@ stand-ins (`keypad` carries the sticky-note code, `monitor_stack` its live feeds
 `lost_shelf`, `shag_rug`, `planter`, `false_window` are built to their rooms; a single pack model would drop those parts). Any of
 these can still go: mondo names it and how it should look.
 
-## 13. EVERY MODEL FILE ON R2 — the ones not named in the tables above (3530 of 6112, bucket `ewmusicsfx`, listed 2026-11-20)
+## 13. EVERY MODEL FILE ON R2 — the ones not named in the tables above (3531 of 6112, bucket `ewmusicsfx`, listed 2026-11-20)
 
 THE R2 AUDIT (2026-11-04, mondo: "You are supposed to document every single model"). Every model file in the bucket that the
 game tables above do not name, grouped by folder and why it is there. `node list-models.js --r2` re-lists the bucket into
