@@ -4927,6 +4927,14 @@
                 && Math.max(Math.abs(a.x - tg.x), Math.abs(a.y - tg.y)) <= 1).length;
             val += 30 + 40 * _fn + 20 * (tg._flutter | 0);
         }
+        /* 🐻 THE BEAR (2026-11-23, DON'T POKE THE BEAR): a hit on a hibernating Bear stops the heal it would wake with (worth
+           it), but wakes it angry (+1 ATK) and the hitter takes its Grudge (Bear Down ×1.5 on it); any hit on a Bear moves the
+           Grudge to the hitter. A kill pays none of it. Bear Hug's Grudge is worth a little as a setup for Bear Down. */
+        if (tg.race === 'bear' && est < effHp(tg) && !(unit.status && unit.status.grudge > 0 && unit._grudgeSrcId === tg.id)) {
+            val -= 45;   // the Grudge lands on me
+            if (tg._hibernate && tg.status && tg.status.sleep > 0) val += 0.2 * (tg.maxHp || 0) - 50;   // the heal stopped, the bear angry
+        }
+        if (sp && sp.bearHug && !(tg.status && tg.status.grudge > 0 && tg._grudgeSrcId === unit.id)) val += 30;
         return { est, val };
     }
 

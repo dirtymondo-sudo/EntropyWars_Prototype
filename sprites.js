@@ -577,7 +577,7 @@ const RACE_SPRITE_GENDERS = {
   'gladiator': 'both',   // 2026-11-19 THE COMING RACES
   'farmer': 'male',   // 2026-11-19 THE COMING RACES
   'jellyfish ufo': 'male',   // 2026-11-19 THE COMING RACES
-  'bear': 'male',   // 2026-11-23 THE COMING RACES 2
+  'bear': 'both',   // 2026-11-23 THE COMING RACES 2; THE BEAR'S COATS (11-23): the grizzly is the male side, the polar bear the female side
   'rat': 'male',   // 2026-11-23 THE COMING RACES 2
   'monarch': 'female',   // 2026-11-23 THE COMING RACES 2
   'butterfly girl': 'female',   // 2026-11-23 THE COMING RACES 2
@@ -905,6 +905,7 @@ const _NEW_FEMALE_SPRITES = {
   'cyborg': `${_S}/Races/cyborg/female/cyborg_f2_px.png`,
   'pharaoh': `${_S}/Races/pharaoh/female/pharaoh_f_px.png`,   // 2026-11-19 — Cleopatra (Sprite AI restyle of her model's front render)
   'mech': `${_S}/Races/mech/female/mech_f2_px2.png`,   // straight-on: Sprite AI restyle of her model's front render (the concept was turned)
+  'bear': `${_S}/Races/bear/polar/bear_polar_px.png`,   // 2026-11-23 THE BEAR'S COATS — the polar bear (the race's female side)
   'streamer': `${_S}/Races/streamer/female/egirl_f_px.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of the E-Girl's 3D model's front render)
   'vtuber': `${_S}/Races/vtuber/female/vtuber_f_px.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of her full Meshy 3D model's front render)
 };
@@ -2763,6 +2764,12 @@ const RACE_MODELS_3D = {
     male: _mkUAL('bear', 'bear', {
       model: 'https://cdn.entropywars.net/Assets/characters/races/bear/male/Meshy_AI_bear_Running.glb',
       heightRatio: 1.25, basicAttackKind: 'claw',
+    }),
+    /* THE BEAR'S COATS (2026-11-23, mondo OK'd "one Bear unit with two coats"): the polar bear is the race's female side, so it keeps
+       its own Ice spells (data.js RACE_GENDER_SPELLS) and a team can field one of each. BEAR_POLAR_3D below is this same def. */
+    female: _mkUAL('bear/polar', 'bear_polar', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/bear/polar/Meshy_AI_bear_polar_Running.glb',
+      heightRatio: 1.3, basicAttackKind: 'claw',
     }),
   },
   'rat': {
@@ -6941,10 +6948,7 @@ if (typeof window !== 'undefined') { window.ewSuperOnBoard = ewSuperOnBoard; win
    Looks only: a unit whose appearance.form is 'polar' (a bear) or 'king' (a rat) wears these. What sets the form is each unit's spell
    thread's job; give the unit's structural serial the form so the swap lands at once. Their pixel sprites are on R2 beside the models:
    Races/bear/polar/bear_polar_px.png, Races/rat/king/rat_king_px.png. */
-const BEAR_POLAR_3D = _mkUAL('bear/polar', 'bear_polar', {
-  model: 'https://cdn.entropywars.net/Assets/characters/races/bear/polar/Meshy_AI_bear_polar_Running.glb',
-  heightRatio: 1.3, basicAttackKind: 'claw',
-});
+const BEAR_POLAR_3D = RACE_MODELS_3D.bear.female;   // THE BEAR'S COATS (2026-11-23): the polar coat is the race's female side
 const RAT_KING_3D = _mkUAL('rat/king', 'rat_king', {
   model: 'https://cdn.entropywars.net/Assets/characters/races/rat/king/Meshy_AI_rat_king_Running.glb',
   heightRatio: 0.9, basicAttackKind: 'claw', transformFx: true,

@@ -13824,6 +13824,7 @@
         /* state.js getNextBlitzUnit, the moment a unit comes up: a hold that already covered its N turns (it landed
            before the target's turn) ends now, so the target never gets an extra turn under it (no second skipped turn). */
         function _statusHoldsBeforeTurn(u) {
+            if (u && u._hibernate) { try { _bearBeforeTurn(u); } catch (e) {} }   // 🐻 THE BEAR: an undisturbed Hibernate ends before the turn-skip check
             if (!u || !u._stHold || typeof u._stHold !== 'object') return;
             for (const key of Object.keys(u._stHold)) {
                 const h = u._stHold[key];
@@ -14046,7 +14047,7 @@
                 hi._stHold[key] = Object.assign({}, hLo, hHi ? { af: hHi.af } : {});
             } else if (hHi) delete hi._stHold[key];
         }
-        const _TIED_STATUS_FIELDS = [['taunt', '_tauntCasterId'], ['contract', '_contractCasterId'], ['voodoo', '_voodooAllyId'], ['soulBound', '_boundToId'], ['shorted', '_shortSrcId']];
+        const _TIED_STATUS_FIELDS = [['taunt', '_tauntCasterId'], ['contract', '_contractCasterId'], ['voodoo', '_voodooAllyId'], ['soulBound', '_boundToId'], ['shorted', '_shortSrcId'], ['grudge', '_grudgeSrcId']];   // 🐾 the Bear's Grudge (2026-11-23)
         /* 💰 THE LOANS (2026-11-16, the Banker): a unit going down settles the bank. A Debt it wore turns bad (the status's
            onRemove sees the body _dying and hands the lender the loss); a Short on it pays the short-seller 75 MP + 20% of
            their max HP. map.js defeatUnit calls this before the tied statuses end. Host-side; HP / MP state-sync to the guest,
@@ -15337,6 +15338,98 @@
                     _crFloat(u, `⚡ CHARGE ${u.charge}`, 'buff');
                 }
             }
+        }
+        /* ═══ THE BEAR (2026-11-23, mondo OK'd the kit; plan https://claude.ai/artifact/Ts9s6MzEHgCeX8SCqrtqu2) ═══ DON'T POKE
+           THE BEAR. Host-side; everything the guest needs rides the state sync (the `grudge` status + unit._grudgeSrcId, the
+           `sleep` status + unit._hibernate, plain fields) and the texts / VFX go through the relayed showFloatingTextForUnit and
+           VFX3D.fire. Notes: docs/notes/champions-combat.md "THE BEAR".
+           - THE GRUDGE: the last enemy to hurt a Bear (not a damage-over-time tick), or the one it grabbed with Bear Hug,
+             carries the `grudge` status; one a Bear (_bearSetGrudge moves it), it ends when that Bear goes down
+             (_TIED_STATUS_FIELDS). Bear Down's bonusVsStatus pays it off.
+           - HIBERNATE (`hibernate` on the row, kind selfHeal): the heal, then Sleep (a plain count of 2, own status, no hold) and
+             the rest of the turn is spent. Left alone, it wakes when its next activation comes up (state.js getNextBlitzUnit ->
+             _statusHoldsBeforeTurn -> _bearBeforeTurn, BEFORE the turn-skip check), heals wakeHealPct more and loses
+             wakeCleanse debuffs. Hit while asleep (applyDamageToUnit's wake), it wakes at once with +rudeAtk ATK stage for
+             rudeRounds rounds, and the hitter takes the Grudge.
+           - BEAR HUG (`bearHug`): the target is Rooted by the row; the Bear Roots itself for 2 (its next turn) and grudges it. */
+        function _bearFx(kind, u) {
+            try {
+                if (!u || state.phase !== 'battle' || _skipVisuals()) return;
+                const V = window.ThreeVFXEffects;
+                const id = kind === 'grudge' ? 'brGrudgeMark' : kind === 'wake' ? 'brWake' : 'brRudeWake';
+                if (V && V.hasMapping && V.hasMapping(id, 'impact')) V.fire('impact', id, { tx: u.x, ty: u.y, casterId: u.id });
+            } catch (e) {}
+        }
+        function _bearSetGrudge(bear, foe, why) {
+            if (!bear || bear.race !== 'bear' || !_nrAlive(bear) || !_nrAlive(foe) || foe.id === bear.id) return false;
+            if (!sidesHostile(bear.player, foe.player) || foe._isCube || foe._summonStatic) return false;
+            if (foe._grudgeSrcId === bear.id && unitHasStatus(foe, 'grudge')) return false;
+            for (const u of (state.units || [])) {   // one grudge a Bear: the old holder lets go
+                if (!u || u.id === foe.id || u._grudgeSrcId !== bear.id) continue;
+                if (unitHasStatus(u, 'grudge')) {
+                    clearStatus(u, 'grudge');
+                    if (u._stHold) delete u._stHold.grudge;
+                    if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: u });
+                }
+                delete u._grudgeSrcId;
+            }
+            applyStatusPayload(foe, { id: 'grudge', duration: 99 }, '', bear);
+            if (!unitHasStatus(foe, 'grudge')) return false;
+            foe._grudgeSrcId = bear.id;
+            if (why) addLog(`🐾 ${_ctName(bear)} holds a grudge against ${_ctName(foe)} ${why}.`);   // the status line already says who holds it
+            _crFloat(foe, '🐾 GRUDGE', 'debuff');
+            _bearFx('grudge', foe);
+            return true;
+        }
+        /* applyDamageToUnit, after the hit (and after the sleeper's wake): the Grudge + the rude awakening */
+        function _bearOnHurt(bear, src, damageType, opts, wasHibernating) {
+            if (!bear || bear.race !== 'bear' || !(bear.hp > 0) || bear._dying) return;
+            if (wasHibernating && bear._hibernate && !unitHasStatus(bear, 'sleep')) {
+                const h = bear._hibernate;
+                delete bear._hibernate;
+                applyStatStageBoost(bear, { atk: h.rudeAtk || 1 }, 'Rude awakening: ', bear, { rounds: h.rudeRounds || 2 });
+                addLog(`🐻 ${_ctName(bear)} is woken up and it is ANGRY: +${h.rudeAtk || 1} ATK for ${h.rudeRounds || 2} rounds.`);
+                _crFloat(bear, '😠 WOKEN UP', 'buff');
+                _bearFx('rude', bear);
+            }
+            if (damageType === 'dot' || (opts && opts._linkEcho)) return;
+            if (src && src.id !== bear.id) _bearSetGrudge(bear, src, wasHibernating ? 'for waking it' : '');
+        }
+        /* finishAction: Hibernate's sleep, Bear Hug's own Root + the Grudge */
+        function _bearAfterCast(unit, spell, x, y) {
+            if (!unit || unit.race !== 'bear' || !spell || !_nrAlive(unit)) return;
+            if (spell.hibernate) {
+                applyStatusPayload(unit, { id: 'sleep', duration: 2 }, `${spell.name}: `, unit);
+                if (unitHasStatus(unit, 'sleep')) {
+                    unit._hibernate = Object.assign({ r: state.round || 0 }, spell.hibernate);
+                    unit.ap = 0;   // asleep: the rest of the turn is spent
+                    addLog(`🐻 ${_ctName(unit)} curls up and goes to sleep. Leave it alone, or wake it up.`);
+                }
+            }
+            if (spell.bearHug) {
+                const t = unitAt(x, y);
+                if (t && t.id !== unit.id && _nrAlive(t) && sidesHostile(unit.player, t.player)) _bearSetGrudge(unit, t, '(Bear Hug)');
+                applyStatusPayload(unit, { id: 'root', duration: 2 }, `${spell.name}: `, unit);
+            }
+        }
+        /* state.js getNextBlitzUnit (through _statusHoldsBeforeTurn), the moment the Bear's activation comes up: a Bear that
+           slept undisturbed wakes now, before the turn-skip check, so the sleep never costs it this turn */
+        function _bearBeforeTurn(u) {
+            if (!u || u.race !== 'bear' || !u._hibernate) return;
+            const h = u._hibernate;
+            if (!unitHasStatus(u, 'sleep')) { delete u._hibernate; return; }   // woken some other way (a cleanse)
+            if ((state.round || 0) <= (h.r || 0)) return;
+            delete u._hibernate;
+            clearStatus(u, 'sleep');
+            if (u._stHold) delete u._stHold.sleep;
+            const healed = applyHealingToUnit(u, Math.max(1, Math.round((u.maxHp || 0) * (h.wakeHealPct || 0.2))), u, { preScaled: true });
+            const gone = getActiveStatusKeys(u).filter(k => STATUS_DEFS[k] && STATUS_DEFS[k].kind === 'debuff' && k !== 'captured').slice(0, h.wakeCleanse || 0);
+            for (const k of gone) clearStatus(u, k);
+            addLog(`🐻 ${_ctName(u)} wakes up well rested${healed ? `: +${healed} HP` : ''}.`);
+            _logCleansed('Hibernate', u, gone);
+            _crFloat(u, '🐻 WELL RESTED', 'heal');
+            _bearFx('wake', u);
+            if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: u });
         }
         window._crCastRow = _crCastRow; window._crRoundEnd = _crRoundEnd;
         /* ═══ THE BUTTERFLY GIRL (2026-11-23, blue morpho; mondo OK'd the plan) ═══ THE BUTTERFLY EFFECT: small flaps now, a twister
@@ -17273,7 +17366,7 @@
             'ice queen': 'magic', 'seraphim': 'magic', 'watcher': 'magic', 'occulus': 'magic',
             'shadow entity': 'magic', 'siren': 'magic', 'chosen one': 'magic', 'symbiote': 'magic',
             'voidweaver': 'throw',
-            'demon prince': 'claw', 'skinwalker': 'claw',
+            'demon prince': 'claw', 'skinwalker': 'claw', 'bear': 'claw',   // 2026-11-23 THE BEAR: the paw rakes, never the fist sprite
             'cyclops': 'punch', 'juggernaut': 'punch', 'super sentai': 'punch', 'antihero': 'punch',
             'bigfoot': 'punch', 'giant': 'punch', 'werewolf': 'claw', 'catgirl': 'claw', 'ki fighter': 'punch',
             'pirate': 'ranged', 'nordic': 'ranged'   // 2026-10-18 — their models' attack is the quick-draw shot (kept when the reach fallback was fixed)
@@ -44014,12 +44107,14 @@
                     _hitRiderFlush(_riders);
                 }
 
+                const _bearHib = target.race === 'bear' && !!target._hibernate && !!(target.status && target.status.sleep > 0);   // 🐻 THE BEAR
                 /* 💤 damage wakes a sleeper (mondo 2026-11-12); a projecting unit's body sleeps until its spirit is home */
                 if (target.status && target.status.sleep > 0 && !target._astralOfId && target.hp > 0 && STATUS_DEFS.sleep && STATUS_DEFS.sleep.wakeOnDamage) {
                     clearStatus(target, 'sleep');
                     if (target._stHold) delete target._stHold.sleep;
                     addLog(`💤 ${_ctName(target)} wakes up!`);
                 }
+                if (target.race === 'bear') _bearOnHurt(target, sourceUnit, damageType, opts, _bearHib);   // 🐻🐾 THE BEAR: the Grudge, the rude awakening
                 /* Taking a hit blows your cover: blood spatter and the stagger of
                    impact give a hidden unit away. Any damage dealt by an enemy
                    strips Invisible — AoE sweeps, traps and turrets are the
@@ -85193,6 +85288,7 @@
                 if (spell.viewersGain > 0) _viewersAdd(unit, spell.viewersGain, 'gets hearts in the chat');
                 _nr4AfterCast(unit, spell);   // 🎲📿🔒 THE NEW RACES 4: the streak, the stillness, the ransom
                 _crAfterCast(unit, spell);   // 🛡⚡ THE COMING RACES: Favor + Charge spent
+                _bearAfterCast(unit, spell, x, y);   // 🐻 THE BEAR: Hibernate's sleep, Bear Hug's Root + Grudge
                 if (spell.kind !== 'dash' && Array.isArray(spell.selfStatusAfter) && spell.selfStatusAfter.length && !unit.dead && state.phase === 'battle') {
                     applyStatusEffects(unit, spell.selfStatusAfter, `${spell.name}: `, unit);
                 }
