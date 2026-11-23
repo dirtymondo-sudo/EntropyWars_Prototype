@@ -3987,3 +3987,19 @@ copy flow as a control. `ThreeRenderer.hq.dev.fw()` = the walked room's state (`
   A dry city run in the cloud (classic, `EW_BUN_DRY`, 26 stops over 3 min) produced 0 changers, so which props they are is not
   known. `_ewBunChgName` now files each changer under its prop model + what its materials carry (glow / fade / canvas / video /
   node kind); the lens line "Re-recorded most" lists the top 10 (`ThreeRenderer.bundleChangers()`). Read that in his next F3.
+
+## THE WHERE LINE + THE DIPS' CAUSES (2026-11-23, mondo: "the game is above 60 fps everywhere except the city where it is like 45 fps ish, which i dont mind, the bigger issue is still frame drops/consistency ... Anything you can add to the f3 loadout that would help nail those issues down? Also ... a coordinate system for where I am, so whenever i send you a screenshot i can send you an f3 too")
+All in three-renderer.js, F3 only (read when the text is made; the per-frame part is a few number writes, no scene walk).
+- **WHERE** (third line of F3; `Copy where` copies the build + this line + the time alone): zone · room name (room id) · district,
+  plot [plot col,row] (HQ_ZONE_MAP, the map's own names) · `world map X, Y` = THE WORLD MAP'S PLOT GRID (HQ_ZONE_MAP row `wx, wy`
+  + (metres - `ox`/`oz`) / 42; north up, east and south +; the frame map.js draws YOU ARE HERE in) · `square` in the room (3.5 m,
+  the dip log's frame) · height · the walker's facing and the camera's (compass, N = -z). In a fight: IN A FIGHT, the round, the
+  active unit's board square, then the walked room the fight stands in (`_hqParked`). `_ewWhere()` / `_ewWhereText()`;
+  console: `ThreeRenderer.hq.dev.where()`. A dip's `at` also names its district now.
+- **Steadiness** (top of the dip block): the last 60 s of frame gaps (after a room's first 3 s): middle frame, 1 % / 0.1 % lows,
+  frames over 25 / 33 / 50 / 100 ms, and the worst gap of each 5 s oldest first (a beat shows as a pattern in that row).
+- **Dip rhythm**: the spacing of dip starts in one room; REGULAR when most sit near one spacing (a timer or a cycle, not a place).
+- **Dip causes**: over the kept dips (40), how often each part was in a dip's top four (+ its ms), and the slow gaps split into our
+  frame JS / our timers (setTimeout + setInterval, `_ewTmr.tot`, with the slowest timer's name) / outside our JS (GC, browser, GPU).
+- **Each dip** now says `(+N s)` since the dip before it, the worst frame's timers and outside-our-JS ms, the gaps' split, and
+  `lamp shadow sides drawn` (the hero lamp's cube sides drawn in the dip, `_heroStat.sidesDrawn`).
