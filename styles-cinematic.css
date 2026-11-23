@@ -5526,3 +5526,30 @@ body.ew-shots-place { cursor: copy; }
 #sedCover .sed-cover-l { font-size: 12px; letter-spacing: 0.12em; color: #ffd24a; min-height: 1.4em; overflow-wrap: anywhere; }
 #sedCover .sed-cover-x { margin-top: 6px; background: #000; color: #ff6b6b; border: 2px solid #ff4d4d; font: inherit; font-size: 12px; letter-spacing: 0.2em; padding: 8px 18px; cursor: pointer; }
 #sedCover .sed-cover-x:hover { background: #ff4d4d; color: #000; }
+
+/* ══ BEFORE & AFTER (2026-11-23, THE PLASTIC SURGEON's finisher; battle.js _finBeforeAfter) ══ a clinic ad's split frame over the
+   execution: BEFORE on the left, AFTER on the right in his side's marker lines (own cyan, the other side pink-orange), the clinic's
+   lilac lower third. Chrome only: nothing here fills the frame, so the caster, the victim and the number stay clear. */
+.fin-ba { position: fixed; inset: 0; z-index: 5190; pointer-events: none; --ba-c: #36e3ff; --ba-c2: #1d63ff;
+    animation: finBaLife var(--fin-ba-ms, 4000ms) linear forwards; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; }
+.fin-ba.foe { --ba-c: #fd1674; --ba-c2: #f9590f; }
+.fin-ba-l, .fin-ba-r { position: absolute; top: 9%; padding: 0 3.2vw; }
+.fin-ba-l { left: 0; }
+.fin-ba-r { right: 0; text-align: right; }
+.fin-ba b { display: block; font-weight: 800; letter-spacing: .08em; font-size: clamp(22px, 3.6vw, 52px); color: #fff;
+    text-shadow: 0 2px 0 #000, 0 0 12px rgba(0,0,0,.7); }
+.fin-ba-r b { color: var(--ba-c); }
+.fin-ba-r svg { position: absolute; right: 7vw; top: 9vh; width: clamp(70px, 9vw, 140px); height: auto; stroke: var(--ba-c); opacity: .85;
+    filter: drop-shadow(0 0 4px rgba(0,0,0,.8)); animation: finBaDraw 900ms ease-out 300ms both; }
+.fin-ba-cut { position: absolute; top: 0; bottom: 0; left: 50%; width: 3px; margin-left: -1.5px;
+    background: linear-gradient(180deg, transparent, var(--ba-c) 12%, var(--ba-c2) 88%, transparent);
+    box-shadow: 0 0 8px var(--ba-c); transform-origin: top; animation: finBaCut 420ms ease-out both; opacity: .8; }
+.fin-ba-low { position: absolute; left: 0; right: 0; bottom: 0; padding: 10px 3.2vw; background: rgba(0,0,0,.82);
+    border-top: 2px solid #c7a6ff; color: #c7a6ff; font-weight: 600; letter-spacing: .14em; font-size: clamp(11px, 1.3vw, 17px);
+    display: flex; gap: 14px; flex-wrap: wrap; animation: finBaLow 380ms ease-out 200ms both; }
+.fin-ba-low i { font-style: normal; opacity: .6; }
+@keyframes finBaLife { 0% { opacity: 0; } 6% { opacity: 1; } 88% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes finBaCut { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes finBaLow { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes finBaDraw { from { stroke-dashoffset: 120; opacity: 0; } to { stroke-dashoffset: 0; opacity: .85; } }
+@media (prefers-reduced-motion: reduce) { .fin-ba, .fin-ba * { animation-duration: 1ms !important; } }

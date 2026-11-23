@@ -77,7 +77,9 @@
             // 2026-10-06: Guard's one-round recovery buff.
             'guardRegen',
             // 2026-10-09: Broken (every passive switched off while it lasts).
-            'broken']);
+            'broken',
+            // 2026-11-23 THE BUTTERFLY GIRL: flutter (the growing twister on an enemy; its stack is unit._flutter)
+            'flutter']);
 
         const GAME_MODES = {
             normal: {

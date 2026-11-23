@@ -4072,6 +4072,14 @@ function _hrlgStatusChips(unit) {
   /* 🦗 THE BROOD (the Cicada Brood, 2026-11-17): the stacks it banked dug in, and what they add to Chorus */
   const brd = unit._brood | 0;
   if (brd > 0) chips.push({ key: 'brood', label: 'BROOD ' + brd + '/3', kind: 'up', title: 'Brood: Chorus deals +' + brd * 45 + ' damage and spends them.' });
+  /* 👑 THE RAT KING (2026-11-23): the Rat's Mischief and the crown (battle.js unit.mischief + appearance.form, ride the state sync) */
+  if (unit.race === 'rat' && !unit.dead) {
+    const mis = Math.max(0, Math.min(window.MISCHIEF_MAX || 5, unit.mischief | 0));
+    const king = !!(unit.appearance && unit.appearance.form === 'king');
+    chips.push({ key: 'mischief', label: (king ? '👑 KING · ' : '') + 'MIS ' + mis + '/' + (window.MISCHIEF_MAX || 5), kind: (mis > 0 || king) ? 'up' : 'dn',
+      title: king ? 'Rat King: +2 ATK and +1 DEF stage. Each round end costs 1 Mischief; at 0 the crown falls. Long Live the King spends it all.'
+                  : 'Mischief: +1 for each hit he or his rats land, +1 when an enemy within 2 goes down. At 5 he becomes the Rat King. Stun, Frozen or Feared scatter 2.' });
+  }
   /* 🎮 THE VIEWERS (the Streamer + the E-Girl, 2026-11-18): the crowd it banked (battle.js unit.viewers, rides the state sync) */
   if (unit.race === 'streamer' && !unit.dead) {
     const vw = Math.max(0, Math.min(window.VIEWERS_MAX || 10, unit.viewers | 0));
@@ -24350,7 +24358,7 @@ function faceLabel(key) {
   try { if (typeof getRaceLabel === 'function') l = getRaceLabel(race, gender) || race; } catch (e) {}
   let two = false;
   try { two = typeof getAvailableGendersForRace === 'function' && getAvailableGendersForRace(race).length > 1; } catch (e) {}
-  return String(l).replace(/\b\w/g, c => c.toUpperCase()) + (two ? (gender === 'female' ? ' ♀' : ' ♂') : '');
+  return String(l).replace(/\b\w/g, c => c.toUpperCase()) + (two ? ' ' + (typeof raceGenderSym === 'function' ? raceGenderSym(race, gender) : (gender === 'female' ? '♀' : '♂')) : '');   // THE COATS: the Bear's 🌲 / ❄
 }
 function faceUseDef(key) { return faceArt(faceSplit(key)) ? 'art' : db.faces.off ? 'sprite' : 'face'; }
 /* what a key shows now: [url, whole] (whole = the full sprite, drawn standing) */

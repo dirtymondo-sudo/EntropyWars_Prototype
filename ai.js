@@ -4927,6 +4927,21 @@
             val += 40 + 35 * _pn;
         }
         if (sp && sp.hitsStatusOnly === 'payload' && tg.status && tg.status.payload > 0) val += Math.min(70, effHp(tg)) * landP;
+        /* 🦋 THE BUTTERFLY GIRL (2026-11-23): a Flutter grows into a twister on the target's 3x3 (its side, one hit each): worth more
+           on a body in a crowd and on one that already carries 1-2 (the sooner it lands) */
+        if (sp && (sp.statusEffects || []).some(e => e && e.id === 'flutter') && (tg._flutter | 0) < 3) {
+            const _fn = (g.state.units || []).filter(a => a && !a.dead && a.id !== tg.id && _sidesAllied(a.player, tg.player)
+                && Math.max(Math.abs(a.x - tg.x), Math.abs(a.y - tg.y)) <= 1).length;
+            val += 30 + 40 * _fn + 20 * (tg._flutter | 0);
+        }
+        /* 🐻 THE BEAR (2026-11-23, DON'T POKE THE BEAR): a hit on a hibernating Bear stops the heal it would wake with (worth
+           it), but wakes it angry (+1 ATK) and the hitter takes its Grudge (Bear Down ×1.5 on it); any hit on a Bear moves the
+           Grudge to the hitter. A kill pays none of it. Bear Hug's Grudge is worth a little as a setup for Bear Down. */
+        if (tg.race === 'bear' && est < effHp(tg) && !(unit.status && unit.status.grudge > 0 && unit._grudgeSrcId === tg.id)) {
+            val -= 45;   // the Grudge lands on me
+            if (tg._hibernate && tg.status && tg.status.sleep > 0) val += 0.2 * (tg.maxHp || 0) - 50;   // the heal stopped, the bear angry
+        }
+        if (sp && sp.bearHug && !(tg.status && tg.status.grudge > 0 && tg._grudgeSrcId === unit.id)) val += 30;
         return { est, val };
     }
 
@@ -5837,7 +5852,7 @@
             const apCost = g.TargetQuery.apCost(spell);
             if (ap < apCost || !g.TargetQuery.canAfford(unit, spell) || unit.mp < _mpCost(unit, spell)) continue;
 
-            const target = _reaimSpellTarget(unit, spell, v, findSpellTarget(unit, spell, v));
+            const target = spell.procedure ? _psPickTarget(unit, spell, v) : _reaimSpellTarget(unit, spell, v, findSpellTarget(unit, spell, v));   // 💉 a procedure: ally or enemy
             const noTargetKinds = ['healAll', 'manaRestoreAll', 'barrage', 'warCry', 'encore', 'deployTurret', 'utility',
                 'escape', 'selfHeal', 'transform'];
             if (!target && !noTargetKinds.includes(spell.kind)) continue;
@@ -5953,7 +5968,65 @@
         }
         return 0;
     }
+    /* ═══ 💉 THE PLASTIC SURGEON (2026-11-23): a procedure (Botox, Makeover) takes an ally or an enemy, so the CPU scores every body the
+       drum lists (both sides) as the cast it would become (battle.js _psRowFor) and keeps the best. WORK DONE: the third botches,
+       so a body at 2 is a prize on the other side and off-limits on ours. ═══ */
+    try { window._psPickTarget = (u, s, v) => _psPickTarget(u, s, v || buildVision(u)); } catch (e) {}   // reachable from the console (a probe, a look)
+    function _psPickTarget(unit, spell, v) {
+        const g = G();
+        if (!g.TargetQuery || typeof g.TargetQuery.spellTargets !== 'function') return null;
+        let entries = [];
+        try { entries = g.TargetQuery.spellTargets(unit, spell) || []; } catch (e) { return null; }
+        const vis = new Set((v.visibleEnemies || []).map(e => e.id));
+        let best = null, bestS = 0, n = 0;
+        for (const en of entries) {
+            const t = en && en.unit;
+            if (!t || t.dead || t._dying || t.id === unit.id) continue;
+            const ally = _sidesAllied(t.player, unit.player);
+            if (!ally && (!vis.has(t.id) || isProtected(g, t))) continue;
+            if (++n > 16) break;
+            const sc = _scoreSpellAt(unit, spell, t, v);
+            if (sc > bestS) { bestS = sc; best = t; }
+        }
+        return best;
+    }
+    function _psMakeoverScore(unit, t, ally) {
+        if (!t || t.dead) return 0;
+        const g = G();
+        if (g.unitHasStatus && (g.unitHasStatus(t, 'makeover') || g.unitHasStatus(t, 'makeoverAlly'))) return 0;
+        const atk = t.atk || 0, def = t.def || 0, it = t.intStat || 0, md = t.mdef || 0;
+        if (ally) return Math.max(0, Math.max(def - atk, md - it) - 15) * 1.6;   // a tank that will hit like a hitter
+        const physical = atk >= it;
+        const d = physical ? atk - def : it - md;   // a hitter that will hit like a tank
+        return Math.max(0, d - 15) * 2.4;
+    }
+    function _psWorkAdjust(unit, spell, target, v, base) {
+        const id = spell._procedureOf || spell.id;
+        if (!/^ps[A-Z]/.test(id || '')) return base;
+        const wd = u => (u && u.workDone) | 0;
+        if (spell.kind === 'aoe' && target) {
+            let adj = 0;
+            const tiles = _aoeTilesAI(spell, target.x, target.y, spell.aoeRadius || 1);
+            const inA = u => tiles.some(t => t.x === u.x && t.y === u.y);
+            for (const e of (v.visibleEnemies || [])) if (e && !e.dead && inA(e) && wd(e) >= 2) adj += 110;
+            if (spell.workDoneAll) for (const a of (v.allies || [])) if (a && !a.dead && a.id !== unit.id && inA(a)) adj -= wd(a) >= 2 ? 260 : 20;
+            return base > 0 ? base + adj : base;
+        }
+        if (!target) return base;
+        const ally = _sidesAllied(target.player, unit.player);
+        if (ally) return wd(target) >= 2 ? 0 : base;   // never botch our own
+        return base > 0 ? base + (wd(target) >= 2 ? 150 : wd(target) * 20) : base;
+    }
     function scoreSpell(unit, spell, target, v) {
+        /* 💉 a procedure is scored as the cast it becomes on this body; Makeover by the stats it swaps */
+        if (spell && spell.procedure && typeof window._psRowFor === 'function') {
+            if (!target || target.id == null) return 0;
+            const ally = _sidesAllied(target.player, unit.player);
+            const row = window._psRowFor(unit, spell, target);
+            const base = spell.id === 'psMakeover' ? _psMakeoverScore(unit, target, ally) : _scoreSpellCore(unit, row, target, v);
+            return _psWorkAdjust(unit, row, target, v, base);
+        }
+        if (spell && unit && unit.race === 'plastic surgeon' && /^ps[A-Z]/.test(spell.id || '')) return _psWorkAdjust(unit, spell, target, v, _scoreSpellCore(unit, spell, target, v));
         /* 🎮 THE VIEWERS (the Streamer + the E-Girl): too small a crowd is no cast; a streaming row is scored as the copy it casts
            (battle.js _streamCastRow: the count baked into the mark / heal / damage); a spend waits for a bigger crowd while it can */
         if (spell && (spell.viewersSpend || spell.viewersMarkAt || spell.viewersHealPer || spell.viewersDmgPer) && typeof window._streamCastRow === 'function') {
@@ -6508,6 +6581,18 @@
             const _miss = Math.max(0, 1 - (unit.hp || 0) / Math.max(1, unit.maxHp || 1));
             return Math.min(200, 25 * _mu + 120 * _miss);
         }
+        /* 👑 Long Live the King (THE RAT KING, 2026-11-23): worth the bites it lands (kills count most); while the crown still has
+           Mischief to spare it is kept for a kill or a crown about to fall anyway (Mischief 1-2) */
+        if (kind === 'buff' && spell.longLiveKing) {
+            const _lk = (typeof window._ratKingPlan === 'function') ? window._ratKingPlan(unit, spell) : null;
+            if (!_lk || !_lk.bites.length) return 0;
+            const _per = {};
+            for (const e of _lk.bites) _per[e.id] = (_per[e.id] || 0) + _lk.dmg;
+            let _dmg = 0, _kills = 0;
+            for (const e of _lk.foes) { const d = _per[e.id] || 0; _dmg += Math.min(d, e.hp || 0); if (d >= (e.hp || 0) && d > 0) _kills++; }
+            const _keep = (unit.mischief | 0) >= 3 && !_kills;
+            return Math.round((_dmg * 0.55 + _kills * 160) * (_keep ? 0.35 : 1));
+        }
         if (kind === 'buff' && spell.unload) {
             const _ul = (typeof window._truckerUnloadPlan === 'function') ? window._truckerUnloadPlan(unit, spell) : null;
             if (!_ul || (!_ul.hits && !_ul.free)) return 0;
@@ -6539,6 +6624,14 @@
             const _obT = v.threatFn(unit.x, unit.y, unit.z);
             if (_obT.totalDmg >= unit.hp * 0.4) return 0;
             return 400 + 20 * Math.min(3, _obIn);
+        }
+        /* 🦋 THE BUTTERFLY GIRL (2026-11-23): Butterfly Effect is worth the twisters it sets off now (the bodies under each) and a
+           little for every Flutter it pushes along; nothing with no Flutter of her side's on the board (the engine refuses it) */
+        if (kind === 'buff' && spell.butterflyEffect) {
+            const _be = (typeof window._bfEffectValue === 'function') ? window._bfEffectValue(unit) : null;
+            if (!_be || !_be.carriers) return 0;
+            if (!_be.twisters) return _be.carriers >= 3 ? 60 : 0;
+            return 90 * _be.twisters + 70 * _be.bodies;
         }
         if (kind === 'buff' && target) {
             if (g.unitHasStatus(target, 'protect')) return 0;

@@ -6181,9 +6181,11 @@ above (kit, then move the key into both AVAILABLE_RACES).
 - THE BEAR is ONE race (mondo: "polar bear would just have access to some spells in the ice family but they would both share the same
   bear skill family"): the grizzly is RACE_MODELS_3D.bear.male, the polar bear is sprites.js `BEAR_POLAR_3D`, worn when the unit's
   `appearance.form === 'polar'` (sprite `Races/bear/polar/bear_polar_px.png`). How a bear gets the polar look + its ice spells = the Bear thread.
+  UNLOCKED 11-23, see "THE BEAR" below: the polar coat is the race's FEMALE side (one of each per team, like Streamer/E-Girl).
 - THE RAT KING (mondo: "if he gets enough stacks he becomes the rat king"): sprites.js `RAT_KING_3D` (transformFx), worn when
   `appearance.form === 'king'` (sprite `Races/rat/king/rat_king_px.png`). The stacks + the swap trigger = the Rat thread (also hash the form
   into three-renderer.js `_computeUnitStructuralSerial`, like the Ice Queen's super form, so it swaps at once).
+  **DONE 11-23: the Rat is unlocked with his kit, see "THE RAT KING" below.**
 - THE WEREWOLF's male model was replaced by mondo's new concept A (no chain): `werewolf/male/Meshy_AI_werewolf_m_v2_Running.glb`, same lib
   clips + scale + day form; the old rig stays on R2. The female VAMPIRE's new model is the Vampire thread's PR (mondo: "just replace the
   current model"), file already on R2: `vampire/female/Meshy_AI_vampire_f_v2_Running.glb`.
@@ -6275,3 +6277,84 @@ deepstate. Finisher Sweet Dreams borrows the `lullaby` staging. Rules: battle.js
   `chrysalis` for the owner's sigil): a chrysalis closes and cracks; Metamorphosis wrap + hatch; Chaos Theory: one monarch circles the
   mark (her side only), a swarm spirals out at the blast; Delta: a red triangle.
 - Online: all host-side; the stacks, holds, statuses and HP state-sync; every look rides `_sigVfxGeom` (fireGeometry is relayed).
+## THE BUTTERFLY GIRL (2026-11-23, her kit; mondo OK'd the plan "yeah thas fine")
+Plan page https://claude.ai/artifact/7V3xVKvFCkYrZ3wEDJJTqZ. She left EW_COMING_RACES for AVAILABLE_RACES (data.js + server.js).
+- Race `'butterfly girl'`, female, caster, flies (SKY_RACES), type anomaly, resists wind, weak to ice; families `morpho` (her own) + wind, nature,
+  insectoid; home biome forest (The Fairy Forest, The Woods); POINT_OF_ENTRY Fairy Forest; tree Flutter / Eyespots / Butterfly Effect / raceTornado.
+- **FLUTTER** (STATUS_DEFS `flutter`, badge FLU, `_flutter` 1-3 on the unit, `_flutterSrcId` = her id): grows by 1 at every round end
+  (battle.js `_bfRoundEnd`, after `_nrRoundEnd`); at 3 it touches down as a TWISTER (`_bfTwister`): MEDIUM wind magic on the carrier's 3x3, hits only
+  the carrier's side, push 1, one twister per carrier per wave; it keeps growing after she dies. Spells: Flutter (T1, 80 wind, range 4, +1),
+  Eyespots (T2, Fear radius 2 around her + Flutter), Butterfly Effect (T3, buff: every Flutter +1 now; refused with no carrier).
+- **FLASH AND VANISH** (PASSIVE_DEFS `flashAndVanish`): the first enemy hit makes her Invisible until her next turn, once every 2 rounds; not on dots,
+  link echoes, Broken or already Invisible (`_bfFlashVanish` in applyDamageToUnit, `_bfVanishEnds` at her turn start).
+- AI: ai.js values Butterfly Effect by the twisters it sets off and the bodies near them; Flutter targets in a crowd score higher.
+- VFX (three-vfx-effects.js, kill switch `EW_NO_BUTTERFLY_VFX`): a morpho flies to the target; 1-3 morphos orbit a carrier's head (THE SHOULDER keeper,
+  its own small list, no scene scan, fired from the relayed `nrFlutter:sync`); two owl eyespots open and blink; a tornado of morphos for the twister; a
+  blue flash for the vanish. Everything goes through `_sigVfxGeom` = relayed online.
+- Finisher **Specimen** (`sig: 'specimen'`, `_sigSpecimen3D`): a swarm lifts the target, a glass case drops over it, a pin, a brass label.
+- Her wings flap: model `Meshy_AI_butterfly_girl_wings2_Running.glb` (bake-wings.py, see models-assets.md "THE WING BONES"); three-renderer.js
+  `_gearTick` beats `ewwing_L/R` (folded back, then open). Probe + proof: /mnt/project-files/butterfly-girl/.
+## THE BEAR (2026-11-23, thread "Plan the Bear's spells", plan https://claude.ai/artifact/Ts9s6MzEHgCeX8SCqrtqu2)
+mondo: one Bear, grizzly + polar share the bear family, the polar gets some Ice spells, the grizzly "a few nature spells too".
+- TWO COATS = the race's two sides: male = Grizzly (🌲), female = Polar (❄). data.js RACE_PROFILES.bear `coats` + `raceGenderSym(race, g)`
+  (party builder title/half badge, HUD face label show 🌲/❄ instead of ♂/♀). A team may field one of each. sprites.js
+  RACE_MODELS_3D.bear.female = the polar model (`BEAR_POLAR_3D` is the same def; `appearance.form === 'polar'` still works).
+- THE RULE, DON'T POKE THE BEAR: status `grudge` (STATUS_DEFS, ID-stored `_grudgeSrcId`, ends when the bear dies via `_TIED_STATUS_FIELDS`)
+  sits on ONE enemy: the last one to hurt the bear (not dots / link echoes) or the Bear Hug target. battle.js "THE BEAR" block
+  (`_bearSetGrudge`, `_bearOnHurt`, `_bearAfterCast`, `_bearBeforeTurn`).
+- FAMILY `bear` (unique): Paw Swipe T1 (knock 1 + Stagger), Bear Hug T2 (target Rooted + Grudge, the bear Rooted too, cd 2), Hibernate T2
+  (heal 12 %, Sleep, AP 0; undisturbed to its next turn = +20 % HP + 1 cleanse, woken by a hit = +1 ATK 2 rounds and the hitter takes the
+  Grudge; the wake runs first thing in `_statusHoldsBeforeTurn`, before the sleep turn-skip), Bear Down T3 (charge 3, ×1.5 vs the Grudge holder).
+- POOLS: both = bear + beastabilities + apexpredator (minus Tail Whip, Death Roll, Jurassic Jaw). Grizzly (RACE_GENDER_SPELLS male): Thornlash,
+  Into the Green, Photosynthesis. Polar (female): Ice Slide, Shatter, Flash Freeze, Glacier Break, Snowborn. The rest of Nature / Ice is in
+  RACE_SPELL_EXCLUDES.bear. Stats bruiser (hp 1250, atk 125, def 120), resist ice, weak fire, finisher "Mauled".
+- AI (ai.js scoreOffensiveHit): hitting a bear that would grudge me costs 45; poking a hibernating bear is worth less than its wake heal; Bear Hug
+  on a fresh target +30.
+- VFX three-vfx-effects.js (after nrDeathRoll): brPawSwipe, brBearHug, brHibernate aura (Z's + leaves or snow by coat), brBearDown (dust line,
+  crack, heavy shake), brGrudgeMark, brWake, brRudeWake; own cyan / enemy pink-orange rims. No lie-down clip yet (the bear sleeps standing).
+
+## THE PLASTIC SURGEON (2026-11-23, thread "Plan the Plastic Surgeon's spells"; mondo OK'd the plan: "okay yeah that's good")
+Plan page: https://claude.ai/artifact/RyqA78f4Kb66y23z2Rcqzo. Specialist, Human, home Disaster Hills (Disaster City district N,
+one resident on H04-02), poison resist / fire weak, basic = the scalpel (held gear `Assets/world/props/misc/scalpel.glb`).
+- THE RULE, WORK DONE: every one of his spells on a unit, ally or enemy, gives it +1 Work Done (max 3; -1 at a round end when
+  none of his spells touched it, battle.js `_psRoundEnd`). At 3 = BOTCHED: Stun 1, stacks back to 0 (`_psAddWork`, VFX `psBotched`).
+  The surgeon spreads his work around or botches on purpose.
+- EITHER-SIDE SPELLS: a row with `procedure: true` + `anyTeam: true` (battle.js `_kindMeta` anyTeam branch: not offensive, not ally
+  only) can aim at anyone; doSpell swaps in a cast copy for the target's side (`_psCastRow` / `_psRowFor`, the `_crCastRow`
+  pattern): an ally gets the row's `onAlly` (heal / buff), damage and enemy statuses stripped.
+- Kit (RACE_TREE `psBotox, [psMakeover | psLiposuction], psAnesthesia, psFullProcedure`; families cosmeticsurgery (signature),
+  healingmagic, chemistry, maincharacter):
+  T1 Botox: enemy poison 70 + Slow 1 / ally heal 50 + DEF stage. T2 Makeover: swaps ATK <-> DEF and M.ATK <-> M.DEF 2 rounds
+  (status `makeover` on a foe, `makeoverAlly` on an ally; one swap, `_psMakeoverSwap`, undone by onRemove; onRemove runs BEFORE its
+  key goes, so it passes its own key). T2 Liposuction: physical 110 drain, the HP taken = Shield on the lowest-HP ally within 3
+  (else himself), capped at 50 % max HP. T3 Anesthesia: 3x3 Sleep 1, no damage. T4 The Full Procedure: radius 2, magic 150,
+  +25 % per Work Done on each body (`_psDmgMult`), gives Work Done to allies in it too (`workDoneAll`).
+- Finisher Before & After (`fin_plastic_surgeon`, sig thousandCuts + DOM overlay `#fin-ba`, battle.js `_finBeforeAfter`,
+  styles-cinematic.css "BEFORE & AFTER").
+- AI (ai.js): procedure rows pick ally or enemy (`_psPickTarget`), Makeover by stat gap (`_psMakeoverScore`), never botch an ally,
+  prefers an enemy at 2 (`_psWorkAdjust`).
+- VFX (three-vfx-effects.js after `nrMiracle`): psBotox, psMakeover, psLipo + psLipoGive, psAnesthesia, psFullProcedure (a surgery
+  lamp spotlight + marker sweeps), psBotched; side colours through `_ceoSides` (own cyan / enemy pink-orange).
+- Proof probe: /mnt/project-files/plastic-surgeon/probe_ps.js (pictures in proof/).
+
+## THE RAT KING (2026-11-23, thread "Plan the Rat and Rat King's spells"; mondo OK'd the plan + mock-up)
+Plan doc https://claude.ai/artifact/DCz9CabK8oczmeEWNQr5oe (project files `rat-king-plan/`). mondo's answers: the crown lasts until
+Mischief runs out; 5 stacks. `rat` is in data.js + server.js AVAILABLE_RACES (out of EW_COMING_RACES); male only; assassin; POINT_OF_ENTRY
+The Sewers (NOT yet placed as Sewers natives: the Sewers district files are held by another thread, see claims.md; a row for them).
+- THE RULE, MISCHIEF (battle.js block "THE RAT KING", after `_crCastRow`): +1 per damaging hit by the rat or by his summoned rats
+  (`sourceUnit` = the caster), +1 more when Gnaw hits a target that was already bleeding, +1 when an enemy goes down within 2 of him.
+  At 5 (`MISCHIEF_MAX`) he is CROWNED: `appearance = {...old, form: 'king'}` (a new object, the roster's look is not touched), heal 20 %,
+  +2 ATK / +1 DEF stage (getStatStageCount), the kit swaps slot for slot. A King loses 1 at each round end (`_ratRoundEnd` in the
+  `_nrRoundEnd` chain); at 0 the crown falls and the kit swaps back. Stun, Frozen or Feared on him scatters 2 (applyStatusPayload,
+  after the Skater's bail). resetUnitPowerState (map.js) clears it. HUD chip `MIS n/5` / `👑 KING · MIS n/5` (hud.js, after the brood chip).
+- THE KIT (data.js RACE_ABILITIES.rat, families `ratpack`, `poison`, `thievery`, `beastabilities`): Gnaw (T1, melee, bleed 2),
+  Scurry (T2 escape 3), Mischief of Rats (T3, summon 2 Sewer Rats, `summonCount`, cap 2, bites poison). THE KING's rows are
+  `RAT_KING_SPELLS` (family `ratking`), registered in SPELL_BY_ID only (the DOOR_GUN pattern: never pickable, never in a pool):
+  Plague Bite (bleed + poison), Carried by the Court (escape 4), Long Live the King (`longLiveKing {radius 4, dmg 70}`: every
+  enemy within 4 takes a bite, then Mischief goes to 0 and he is dethroned; refused with no enemy in reach). RAT_KING_SWAP / _BACK
+  swap `spells`, `_raceAbilities` and `_spellSlots`. ai.js scores Long Live the King by `window._ratKingPlan` (kills first).
+- `summonUnit` + `summonCount` (any summon row): calls that many, on free tiles nearest the caster; the cap dismisses the oldest.
+- THE COURT (three-renderer.js "THE RAT'S COURT", after the unit auras): one orbiting rat a Mischief stack (clones of the R2 prop
+  `Assets/world/animals/rat.glb`, `_ANIMALS.rat`, shared geometry); a crowned court gets a pink cord. Kill-switch `EW_NO_RAT_COURT`.
+  The structural serial hashes the king form so the model swaps at once.
+- FINISHER 'The Mischief' (sig pileOn). Affinity: poison resist, fire weak.

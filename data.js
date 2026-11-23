@@ -404,8 +404,12 @@ const FINISHERS = {
     'deep sea diver': { id: 'fin_deep_sea_diver', name: 'Crush Depth', glyph: '🤿', type: 'human', sig: 'poseidonsWrath', built: true, tagline: 'TOO DEEP, TOO FAST', desc: 'The board floods, the pressure comes down all at once, and the victim finds out what the helmet was for.' },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) (borrows the poseidonsWrath staging)
     'gladiator':      { id: 'fin_gladiator', name: 'Pollice Verso', glyph: '🛡', type: 'human', sig: 'thousandCuts', built: true, tagline: 'THE CROWD HAS SPOKEN', desc: 'The sand goes quiet, every face in the stands turns to the box, and the thumb goes down.' },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) (borrows the thousandCuts staging)
     'monarch':        { id: 'fin_monarch', name: 'Sweet Dreams', glyph: '🦋', type: 'anomaly', sig: 'lullaby', built: true, tagline: 'SLEEP NOW, AGENT', desc: 'The wings close round the victim like a chrysalis, the spiral turns on its shell, and when it cracks open only monarch butterflies come out.' },   // 2026-11-23 THE MONARCH (mondo OK'd the kit) (borrows the lullaby staging)
+    'bear':           { id: 'fin_bear', name: 'Mauled', glyph: '🐻', type: 'anomaly', sig: 'blurryFootage', built: true, tagline: 'YOU POKED THE BEAR', desc: 'The trees part, the bear stands up to its full height, and it comes down on the victim with everything it has.' },   // 2026-11-23 THE BEAR (mondo OK'd the kit) (borrows the blurryFootage staging)
     'farmer':         { id: 'fin_farmer', name: 'Reap What You Sow', glyph: '🌾', type: 'human', sig: 'gardenVariety', built: true, tagline: 'HARVEST TIME', desc: 'The field comes up all at once round the victim, and the pitchfork comes down with the season.' },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) (borrows the gardenVariety staging)
     'jellyfish ufo':  { id: 'fin_jellyfish_ufo', name: 'Abyssal Glow', glyph: '🪼', type: 'anomaly', sig: 'theBloom', built: true, tagline: 'LIGHTS IN THE DEEP', desc: 'The bell lights the victim from the inside like the things that live in the dark, brighter and brighter, then everything goes dark.' },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) (borrows the theBloom staging)
+    'plastic surgeon': { id: 'fin_plastic_surgeon', name: 'Before & After', glyph: '💉', type: 'human', sig: 'thousandCuts', built: true, overlay: 'beforeAfter', tagline: 'CONSULTATIONS AVAILABLE', desc: 'The scalpel moves faster than the eye. Marker lines, a thousand tiny cuts, and the after picture has nobody in it.' },   // 2026-11-23 THE PLASTIC SURGEON (mondo OK'd the kit) (borrows the thousandCuts staging; `overlay` = the BEFORE | AFTER frame, battle.js _finOverlay)
+    'butterfly girl': { id: 'fin_butterfly_girl', name: 'Specimen', glyph: '🦋', type: 'anomaly', sig: 'specimen', built: true, tagline: 'PINNED AND LABELLED', desc: 'A cloud of blue morphos lifts the victim off the board and sets it down pinned in a glass display case, a paper label under it. The collector gets collected.' },   // 2026-11-23 THE BUTTERFLY GIRL (mondo OK'd the kit)
+    'rat':            { id: 'fin_rat', name: 'The Mischief', glyph: '🐀', type: 'anomaly', sig: 'pileOn', built: true, tagline: 'LONG LIVE THE KING', lines: [['🧟 THEY COME OVER THE EDGE', '🐀 THEY COME UP THE DRAINS'], ['BRAAAINS', 'SQUEEEAK'], ['…AND OFF WITH THE PIECES.', '…AND OFF WITH THE CRUMBS.']], desc: 'Every grate on the board lifts at once. The rats pour up, cover the victim in one grey wave and carry off what is left down the drains.' },   // 2026-11-23 THE RAT KING (mondo OK'd the plan) (borrows the pileOn staging)
     'lifeguard':      { id: 'fin_lifeguard', name: 'Red Flag', glyph: '🛟', type: 'human', sig: 'theWave', built: true, tagline: 'EVERYBODY OUT OF THE WATER', desc: 'The whistle blows three times, the red flag goes up, and a wave the size of the boardwalk takes the one swimmer who did not listen.' },   // 2026-11-16 THE NEW RACES — borrows the wave staging
     'politician':     { id: 'fin_politician', name: 'The Motion Carries', glyph: '🗳', type: 'human', sig: 'motionCarries', built: true, tagline: 'ALL IN FAVOUR', desc: 'A gavel the size of a building. A vote nobody attended. The victim is expelled from reality on a technicality.' },
     'atlantean':      { id: 'fin_atlantean', name: 'Poseidon\'s Wrath', glyph: '🔱', type: 'anomaly', sig: 'poseidonsWrath', built: true, tagline: 'THE TRIDENT, FROM BELOW', desc: 'The board floods to the victim\'s knees, and the trident comes up through the floor.' },
@@ -662,8 +666,12 @@ const RACE_ELEMENT_AFFINITY = {
     'deep sea diver': { water: 'resist', lightning: 'weak' },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round): the suit is made for the sea; the metal tanks carry a shock
     'gladiator': { earth: 'resist', lightning: 'weak' },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): bronze plates on sand; lightning finds the bronze
     'monarch': { psychic: 'resist', fire: 'weak' },   // 2026-11-23 THE MONARCH (mondo OK'd the kit): a programmed mind keeps out other voices; the paper-thin wings burn
+    'bear': { ice: 'resist', fire: 'weak' },   // 2026-11-23 THE BEAR (mondo OK'd the kit): a thick winter coat; fur burns
     'farmer': { nature: 'resist', fire: 'weak' },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): a life in the fields; dry hay goes up
     'jellyfish ufo': { psychic: 'immune', lightning: 'resist', water: 'resist', earth: 'weak' },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): a jellyfish mind, a lightning bell, a sea creature on dry ground
+    'plastic surgeon': { poison: 'resist', fire: 'weak' },   // 2026-11-23 THE PLASTIC SURGEON (mondo OK'd the kit): a lifetime of Botox; the filler melts
+    'butterfly girl': { wind: 'resist', ice: 'weak' },   // 2026-11-23 THE BUTTERFLY GIRL (mondo OK'd the kit): she rides the wind; cold grounds a butterfly
+    'rat': { poison: 'resist', fire: 'weak' },   // 2026-11-23 THE RAT KING (mondo OK'd the plan): the sewers made him; fire clears a nest
     'lifeguard': { water: 'resist', lightning: 'weak' },   // 2026-11-16
     'crystal guardian': { earth: 'resist', sonic: 'weak' },   // 2026-09-30
     'jack o lantern': { fire: 'resist', water: 'weak' },   // 2026-09-30
@@ -3086,11 +3094,17 @@ const RACE_PROFILES = {
     },
     'bear': {   // 2026-11-23 THE COMING RACES 2 — one race: the grizzly, with the polar bear as its look (mondo 11-23)
         label: 'Bear',
-        types: ['anomaly']   // a first guess; the unit's spell thread settles it
+        /* THE COATS (2026-11-23, mondo OK'd: "one Bear unit with two coats", like the Streamer + the E-Girl): the grizzly is the
+           race's male side, the polar bear its female side, so each coat keeps its own spells through RACE_GENDER_SPELLS
+           (the polar's Ice, the grizzly's Nature) and a team may bring one of each. `coats` replaces the ♂ / ♀ marks (raceGenderSym). */
+        labelMale: 'Grizzly Bear',
+        labelFemale: 'Polar Bear',
+        coats: { male: '🌲', female: '❄' },
+        types: ['anomaly']
     },
     'rat': {   // 2026-11-23 THE COMING RACES 2 — grows into the Rat King with stacks (mondo 11-23)
         label: 'Rat',
-        types: ['anomaly']   // a first guess; the unit's spell thread settles it
+        types: ['anomaly']   // 2026-11-23 THE RAT KING: a rat man out of the sewers (the Sewer Gator's type)
     },
     'monarch': {   // 2026-11-23 THE COMING RACES 2 — the MK-Ultra sleeper agent of the D.U.M.B.
         label: 'Monarch',
@@ -3098,11 +3112,11 @@ const RACE_PROFILES = {
     },
     'butterfly girl': {   // 2026-11-23 THE COMING RACES 2
         label: 'Butterfly Girl',
-        types: ['anomaly']   // a first guess; the unit's spell thread settles it
+        types: ['anomaly']   // 2026-11-23 THE BUTTERFLY GIRL: settled (her kit is Anomaly)
     },
     'plastic surgeon': {   // 2026-11-23 THE COMING RACES 2 — the Hollywood Hills
         label: 'Plastic Surgeon',
-        types: ['human']   // a first guess; the unit's spell thread settles it
+        types: ['human']   // 2026-11-23 THE PLASTIC SURGEON (mondo OK'd the kit): Human
     },
     'haunted doll': {   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit)
         label: 'Haunted Doll',
@@ -3828,6 +3842,10 @@ const PASSIVE_DEFS = {
         stagePerRounds: { int: 1, every: 3 }, resetOnDeath: true,
         desc: 'The longer the experiment runs, the madder it gets: +1 M.ATK stage at the start of every 3rd round, permanent until death.',
     },
+    flashAndVanish: {   // 2026-11-23 THE BUTTERFLY GIRL (mondo OK'd the kit): the morpho's escape, battle.js _bfFlashVanish
+        id: 'flashAndVanish', icon: '🦋', name: 'Flash and Vanish',
+        desc: 'A blue flash, then the brown underside of the wings, and she is gone: the first time an enemy hits her, she turns Invisible until her next turn starts. Once every 2 rounds.',
+    },
     heartBolt: {   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
         id: 'heartBolt', icon: '💗', name: 'Heart Bolt',
         basicAttackMagic: true,
@@ -3927,6 +3945,7 @@ const RACE_PASSIVES = {
     'cowboy':        ['quickdraw'],
     'vtuber':        ['heartBolt'],   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
     'monarch':       ['deltaAlter'],   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
+    'butterfly girl': ['flashAndVanish'],   // 2026-11-23 THE BUTTERFLY GIRL (mondo OK'd the kit) — she flies too, so the slots are full
 };
 
 /* 💔 Broken (STATUS_DEFS.broken, 2026-10-09): while it lasts the unit has no passives at all. Raw status read — this is a
@@ -4003,13 +4022,13 @@ const RACE_MERGED = { 'nun': { race: 'priest', gender: 'female' } };
 /* 👁🌑 THE REALM WINDOW: races that SEE a Shadow Realm pair on their own turns (they cannot touch it). A projecting
    spirit both sees and touches (battle.js unitSeesRealm / unitCrossesRealm). */
 const REALM_SIGHT_RACES = ['ghost', 'shadow entity'];
-const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber', 'pharaoh', 'deep sea diver', 'gambler', 'hacker', 'monk', 'shogun', 'cameraman', 'mechanic', 'janitor', 'trucker', 'gladiator', 'farmer', 'jellyfish ufo', 'monarch'];
+const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber', 'pharaoh', 'deep sea diver', 'gambler', 'hacker', 'monk', 'shogun', 'cameraman', 'mechanic', 'janitor', 'trucker', 'gladiator', 'farmer', 'jellyfish ufo', 'bear', 'rat', 'butterfly girl', 'plastic surgeon', 'monarch'];
 /* THE COMING RACES (2026-11-19, mondo: "wire them in the game at least in the relation web, give them sprite ai portraits ... my associate
    [does] their spell and combat plan on another account"): races whose model, sprite and name are in (sprites.js RACE_MODELS_3D,
    RACE_PROFILES) but whose kit is not. They are NOT playable: the Relationship Web lists them (docs/plans/story-web/build/fresh.js).
    To unlock one: give it its kit (RACE_ABILITIES, RACE_TREE, RACE_FAMILIES, stats, physique, prices, ...), MOVE it from here into
    AVAILABLE_RACES and server.js AVAILABLE_RACES. Notes: docs/notes/champions-combat.md "THE COMING RACES". */
-const EW_COMING_RACES = ['bear', 'rat', 'butterfly girl', 'plastic surgeon'];   // 2026-11-23 THE COMING RACES 2 (the Mannequin was cut 11-23, mondo; the Monarch got her kit 11-23) (models in, kits not yet; one spell thread a unit). 2026-11-19: the gladiator, the farmer and the jellyfish UFO got their kits and moved to AVAILABLE_RACES
+const EW_COMING_RACES = [];   // 2026-11-23 THE COMING RACES 2 (the Mannequin was cut 11-23, mondo; the Bear, the Rat, the Butterfly Girl and the Monarch got their kits 11-23 and moved to AVAILABLE_RACES) (models in, kits not yet; one spell thread a unit). 2026-11-19: the gladiator, the farmer and the jellyfish UFO got their kits and moved to AVAILABLE_RACES
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
    default job's kit (JOB_KITS) gave it, so ranged races stay ranged: the old Sniper races reach 4 (kit 3 + the Sniper's
@@ -4180,10 +4199,14 @@ const RACE_CLASS = {
     'janitor': 'specialist',   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
     'trucker': 'tank',   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
     'jellyfish ufo': 'bruiser',   // 2026-11-19 THE COMING RACES (mondo: the jellyfishes' fighter class)
+    'plastic surgeon': 'specialist',   // 2026-11-23 THE PLASTIC SURGEON (mondo OK'd the kit): he reshapes the fight, ally or enemy
+    'butterfly girl': 'caster',   // 2026-11-23 THE BUTTERFLY GIRL (mondo OK'd the kit)
+    'rat': 'assassin',   // 2026-11-23 THE RAT KING (mondo OK'd the plan)
     'pharaoh': 'caster',   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
     'deep sea diver': 'specialist',   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round): the controller who makes moving hurt
     'gladiator': 'bruiser',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
     'monarch': 'specialist',   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
+    'bear': 'bruiser',   // 2026-11-23 THE BEAR (mondo OK'd the kit)
     'farmer': 'support',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): the field heals the team
     'lifeguard': 'support',   // 2026-11-16
     'politician': 'support',
@@ -4258,8 +4281,12 @@ const RACE_TERRAIN_PREFERENCE = {
     'deep sea diver': 'deep_water',   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round): the sealed helmet: never drowns (map.js unitIsDeepWaterAdapted)
     'gladiator': 'desert',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): the arena's sand
     'monarch': 'urban',   // 2026-11-23 THE MONARCH (mondo OK'd the kit): the D.U.M.B.'s halls
+    'bear': 'mountain',   // 2026-11-23 THE BEAR (mondo OK'd the kit): the grizzly's slopes, the polar's ice field
     'farmer': 'grass',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): the fields
     'jellyfish ufo': 'deep_water',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): a sea creature: never drowns (map.js unitIsDeepWaterAdapted)
+    'plastic surgeon': 'urban',   // 2026-11-23 THE PLASTIC SURGEON (mondo OK'd the kit): the Disaster Hills
+    'butterfly girl': 'tree',   // 2026-11-23 THE BUTTERFLY GIRL (mondo OK'd the kit): the forest, like the fairy
+    'rat': 'urban',   // 2026-11-23 THE RAT KING (mondo OK'd the plan): the sewers under the streets
     'lifeguard': 'water',   // 2026-11-16 THE NEW RACES — at home in the surf
     'siren': 'deep_water',
     'reptilian': 'water',
@@ -4669,8 +4696,12 @@ const RACE_BASE_STATS = {
     'deep sea diver':     { hp: 1020, mp: 180, atk: 110, def: 110, mdef: 100, int: 100, vision: 3, crt: 18, spd:  95 },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) — first pass: a sturdy controller, the harpoon on ATK, the water on INT; LAB LOOP 11-22 PASS 1: HP 1100→1060, ATK 120→115, M.ATK 130→115 (64.4% over 49 games); LAB LOOP 11-22 PASS 4: HP 1060→1020, ATK 115→110, M.ATK 115→100 (56.4% over 191 games)
     'gladiator':          { hp: 1180, mp: 120, atk: 104, def: 120, mdef:  85, int:  60, vision: 3, crt: 20, spd: 115 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — first pass on the bruiser median; LAB LOOP 11-22 PASS 2: HP 1250→1180, ATK 135→104 (64.9% over 113 games)
     'monarch':            { hp: 1000, mp: 210, atk:  95, def:  85, mdef: 140, int: 165, vision: 4, crt: 24, spd: 120 },   // 2026-11-23 THE MONARCH (mondo OK'd the kit) — first pass on the specialist median
+    'bear':               { hp: 1250, mp: 100, atk: 125, def: 120, mdef:  60, int:  70, vision: 3, crt: 15, spd: 105 },   // 2026-11-23 THE BEAR (mondo OK'd the kit) — first pass on the bruiser median: big and slow, soft to magic
     'farmer':             { hp: 1100, mp: 170, atk: 110, def: 105, mdef: 100, int: 115, vision: 3, crt: 15, spd: 100 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — first pass on the support median
     'jellyfish ufo':      { hp: 1030, mp: 150, atk: 105, def: 120, mdef: 130, int: 62, vision: 3, crt: 18, spd: 105 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — first pass: a bruiser with claws on ATK and the bell on M.ATK; LAB LOOP 11-22 PASS 1: HP 1200→1150, ATK 125→119, M.ATK 125→106 (68.6% over 49 games); LAB LOOP 11-22 PASS 2: HP 1150→1080, ATK 119→111, M.ATK 106→82 (70.1% over 62 games); LAB LOOP 11-22 PASS 4: HP 1080→1030, ATK 111→105, M.ATK 82→62 (60.3% over 131 games)
+    'plastic surgeon':    { hp:  950, mp: 220, atk:  45, def:  85, mdef: 120, int: 165, vision: 3, crt: 20, spd: 100 },   // 2026-11-23 THE PLASTIC SURGEON (mondo OK'd the kit) — first pass on the specialist median
+    'butterfly girl':     { hp:  880, mp: 230, atk:  30, def:  60, mdef: 140, int: 175, vision: 4, crt: 22, spd: 140 },   // 2026-11-23 THE BUTTERFLY GIRL (mondo OK'd the kit) — first pass on the caster median: fragile, quick, long sight
+    'rat':                { hp:  960, mp: 120, atk: 140, def:  85, mdef:  70, int:  55, vision: 3, crt: 24, spd: 160 },   // 2026-11-23 THE RAT KING (mondo OK'd the plan) — first pass between the Ninja and the Skater (a fast, fragile skirmisher; the crown adds +2 ATK / +1 DEF stage)
     'lifeguard':          { hp: 1250, mp: 190, atk:  60, def: 100, mdef: 115, int: 150, vision: 4, crt: 15, spd: 120 },   // 2026-11-16 THE NEW RACES — first pass on the support median (vision 4: she is on watch)
     'politician':         { hp: 1810, mp: 200, atk:  11, def:  141, mdef:  144, int:  200, vision: 3, crt: 26, spd: 48 },   // BALANCE PASS 2026-10-06: INT 66→72 (lab WR 39%); STATS26 PASS 2026-10-29: HP 1276→1700, M.ATK 132→200 (30% in STATS26; POWER -257 → about -75 of the median); STATS31 PASS 2026-10-30: HP 1700→1970 (34.5% in STATS31, 40.9% over 127 games since its last change; 2 physical / 2 magic damage spells; POWER +68); STATS32 PASS 2026-10-30: HP 1970→2070, MP 165→200, SPD 29→48 + fortify, raceRallyCommand, raceSurveillance excluded (37.9% in STATS32 (124 games), 37.9% over 124 games since its last change, 36% team-adjusted; POWER +79; a different lever: the STATS26 + STATS31 HP raises did not move it (37/34/38% over STATS30-32), 70% of its casts are utility: shared no-damage Fortify, Rally Command, Surveillance excluded (RACE_SPELL_EXCLUDES), MP for casts (4.97 a game, the fewest), SPD 29→48 (still move 1, acts earlier); + Nuclear Option 180→220); STATS33 PASS 2026-10-31: HP 2070→2110, MP 200→244, DEF 141→181 (48.9% in STATS33 (90 games), 51.8% team-adjusted; POWER held (+25): the STATS32 excludes undone (spells back in its pool) took -25 POWER, the stats give it back); STATS34 PASS 2026-11-01: HP 2110→1810, MP 244→200, DEF 181→141 (60.8% in STATS34 (107 games), 62.7% team-adjusted; POWER -82; the STATS33 HP/MP/DEF raise that held its POWER when its spells came back undone (it went 48.9% → 60.8%) + HP; survives 88% of games, 808 Cube damage a game, the most)
     'atlantean':          { hp: 1010, mp: 190, atk:  112, def:  66, mdef:  66, int:  88, vision: 2, crt: 20, spd: 157 },   // race editor 2026-10-17: DEF 66, HP 1346, MDEF 66; STATS29 PASS 2026-10-30: HP 1346→1150, M.ATK 117→100 (58% over STATS27-29 (183 games); 2.17 kills and 9.5 casts a game; + Crystal Resonator 110→95); LOOP PASS 1 2026-11-08: HP 1150→860, M.ATK 100→75 (61.2% in the 11-08 loop's baseline lab (103 games), 61.7% team-adjusted; POWER -85); LOOP PASS 2 2026-11-08: HP 860→1050, M.ATK 75→91 (40.7% in the loop's pass-1 lab (108 games), 39% team-adjusted; split the difference back toward the pre-pass stats (36% of the last change kept); POWER +56); LOOP PASS 4 2026-11-08: HP 1050→1010, M.ATK 91→88 (54.3% in the loop's labs since its last change (219 games), 55.4% team-adjusted; split the difference back toward the pre-pass stats (80% of the last change kept); POWER -12)
@@ -4856,8 +4887,12 @@ const RACE_PHYSIQUE = {
     'deep sea diver':      { h: 1.72, w: 62 },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
     'gladiator':           { h: 1.82, w: 88 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
     'monarch':             { h: 1.72, w: 58 },   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
+    'bear':                { h: 2.40, w: 360 },   // 2026-11-23 THE BEAR (mondo OK'd the kit): stood up on its hind legs
     'farmer':              { h: 1.78, w: 85 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
     'jellyfish ufo':       { h: 1.90, w: 60 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — a bell over a metal body; floats
+    'plastic surgeon':     { h: 1.80, w: 78 },   // 2026-11-23 THE PLASTIC SURGEON (mondo OK'd the kit)
+    'butterfly girl':      { h: 1.70, w: 52 },   // 2026-11-23 THE BUTTERFLY GIRL (mondo OK'd the kit)
+    'rat':                 { h: 1.60, w: 55 },   // 2026-11-23 THE RAT KING (mondo OK'd the plan)
     'lifeguard':           { h: 1.72, w: 60 },   // 2026-11-16
     'politician':          { h: 1.80, w: 90 },
     'atlantean':           { h: 2.00, w: 95 },
@@ -5333,6 +5368,16 @@ function getRaceLabel(race, gender) {
     if (gender === 'male' && p.labelMale) return p.labelMale;
     return p.label || race;
 }
+/* THE COATS (2026-11-23, the Bear): the mark shown beside a two-sided race's half. A race whose sides are coats, not genders
+   (RACE_PROFILES `coats`), shows its coat's mark (the Bear: 🌲 grizzly, ❄ polar); every other race keeps ♂ / ♀. */
+function raceGenderSym(race, gender) {
+    const p = RACE_PROFILES[race];
+    const g = gender === 'female' ? 'female' : 'male';
+    if (p && p.coats && p.coats[g]) return p.coats[g];
+    return g === 'female' ? '\u2640' : '\u2642';
+}
+function raceHasCoats(race) { const p = RACE_PROFILES[race]; return !!(p && p.coats); }
+if (typeof window !== 'undefined') { window.raceGenderSym = raceGenderSym; window.raceHasCoats = raceHasCoats; }
 
 /* ── Spell `element` tags ─────────────────────────────────────────────────
    Optional field on any spell: element: 'fire'|'ice'|'lightning'|'water'|
@@ -11287,6 +11332,27 @@ const RACE_ABILITIES = {
           element: 'water', type: 'damage', kind: 'linePush', damageType: 'magic', dmg: 130, range: 4, lineWidth: 1, pushDistance: 3,
           desc: 'The sea pushes back. Deals MEDIUM water magic damage to All Enemies in a 4-square line and shoves them 3 squares back. Cooldown: 2 rounds.' },
     ],
+    'bear': [
+        /* THE BEAR (2026-11-23, mondo OK'd the kit; plan https://claude.ai/artifact/Ts9s6MzEHgCeX8SCqrtqu2). DON'T POKE THE BEAR: the
+           last enemy to hurt it (or the Bear Hug target) carries its Grudge, and Bear Down hits that one ×1.5. Hibernate puts it to
+           sleep: left alone it wakes on its own turn healed more; hit, it wakes at once angry (+1 ATK) and the hitter takes the
+           Grudge. battle.js block "THE BEAR". Two coats, one race: the grizzly (male) and the polar bear (female). */
+        { id: 'brPawSwipe', name: 'Paw Swipe', tier: 1, families: ['bear'], cost: 25, apCost: 1, spellType: 'anomaly',
+          type: 'damage', kind: 'damage', damageType: 'physical', dmg: 100, range: 1, pushDistance: 1,
+          statusEffects: [{ id: 'stagger', duration: 1 }],
+          desc: 'One paw, all claws. Deals MEDIUM physical damage to a Single Enemy beside it, knocks it 1 tile back and Staggers it.' },
+        { id: 'brBearHug', name: 'Bear Hug', tier: 2, families: ['bear'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+          type: 'damage', kind: 'damage', damageType: 'physical', dmg: 110, range: 1, bearHug: true,
+          statusEffects: [{ id: 'root', duration: 1 }],
+          desc: 'It does not let go. Deals MEDIUM physical damage to a Single Enemy beside it. Both of them are Rooted until the Bear\'s next turn is over, and the target takes the Bear\'s Grudge. Cooldown: 2 rounds.' },
+        { id: 'brHibernate', name: 'Hibernate', tier: 2, families: ['bear'], cost: 50, apCost: 1, cooldownRounds: 3, spellType: 'anomaly',
+          type: 'heal', kind: 'selfHeal', range: 0, selfHealPct: 0.12,
+          hibernate: { wakeHealPct: 0.2, wakeCleanse: 1, rudeAtk: 1, rudeRounds: 2 },
+          desc: 'Curls up for a winter\'s sleep. Restores 12% of its max HP and falls asleep until its next turn. Left alone, it wakes healed another 20% and shakes off 1 debuff. Hit while asleep, it wakes at once with +1 ATK stage for 2 rounds, and whoever hit it takes the Grudge. Cooldown: 3 rounds.' },
+        _mkCharge({ id: 'brBearDown', name: 'Bear Down', tier: 3, families: ['bear'], cost: 75, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+          dmg: 160, range: 3, bonusVsStatus: { status: 'grudge', mult: 1.5 },
+          desc: 'Thirty-five miles an hour of bear. Charges up to 3 tiles at a Single Enemy and slams it for HEAVY physical damage. Deals bonus damage to the Bear\'s Grudge. Cooldown: 2 rounds.' }),
+    ],
     'gladiator': [
         /* THE CROWD (2026-11-19 THE COMING RACES, mondo OK'd the kit; he renamed Trident Thrust -> Sword Lunge, Ave Imperator ->
            Come At Me): Favor 0-5 (`unit.favor`). +1 for every hit he lands on an enemy, +2 more for a knockout; each Favor = +4%
@@ -11391,6 +11457,70 @@ const RACE_ABILITIES = {
           element: 'lightning', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 140, range: 0, aoeRadius: 2, aoeOriginSelf: true, chargeSpend: 50,
           statusIfTargetHas: { has: 'wet', status: [{ id: 'root', duration: 1 }] },
           desc: 'Everything the bell holds, all at once. Deals HEAVY lightning damage to All Enemies within 2 and spends all its Charge: +50 damage for each. Wet targets are Rooted for 1 round. Cooldown: 4 rounds.' },
+    ],
+    'plastic surgeon': [
+        /* WORK DONE (2026-11-23 THE PLASTIC SURGEON (mondo OK'd the kit)): every procedure of his that lands on a unit, ally or enemy, gives it 1 Work Done
+           (`unit.workDone`, max 3; a unit he does not touch for a whole round loses 1). The third is BOTCHED: Stunned for 1 round,
+           the count back to 0. A `procedure` row works on either side (`anyTeam`): the base row is the enemy cast, `onAlly` the ally
+           cast (battle.js _psCastRow). battle.js "THE PLASTIC SURGEON"; notes champions-combat.md "THE PLASTIC SURGEON". */
+        { id: 'psBotox', name: 'Botox', tier: 1, families: ['cosmeticsurgery'], cost: 25, apCost: 1, spellType: 'human',
+          element: 'poison', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 70, range: 2, procedure: true, anyTeam: true,
+          statusEffects: [{ id: 'slow', duration: 1 }],
+          onAlly: { type: 'heal', kind: 'heal', healAmt: 50, statStageBoost: { def: 1 } },
+          desc: 'A little something to smooth it out. On an enemy: WEAK magic damage and Slowed for 1 round. On an ally: a SMALL heal and +1 DEF stage. Range 2. +1 Work Done.' },
+        { id: 'psMakeover', name: 'Makeover', tier: 2, families: ['cosmeticsurgery'], cost: 45, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          type: 'debuff', kind: 'debuff', range: 3, procedure: true, anyTeam: true,
+          statusEffects: [{ id: 'makeover', duration: 2 }],
+          onAlly: { type: 'buff', kind: 'buff', statusEffects: [{ id: 'makeoverAlly', duration: 2 }] },
+          desc: 'A whole new you. Swaps a unit\'s ATK with its DEF and its M.ATK with its M.DEF for 2 rounds: a heavy hitter hits like a tank, a tank hits like a heavy hitter. Ally or enemy, range 3. +1 Work Done. Cooldown: 2 rounds.' },
+        { id: 'psLiposuction', name: 'Liposuction', tier: 2, families: ['cosmeticsurgery'], cost: 45, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          type: 'damage', kind: 'damage', damageType: 'physical', dmg: 110, range: 1, lipoShield: 1,
+          desc: 'In through a very small cut. Deals MEDIUM physical damage to an adjacent enemy, and every HP it takes becomes a Shield on the ally lowest on HP within 3 (on him if nobody is near). +1 Work Done. Cooldown: 2 rounds.' },
+        { id: 'psAnesthesia', name: 'Anesthesia', tier: 3, families: ['cosmeticsurgery'], cost: 70, apCost: 1, cooldownRounds: 3, spellType: 'human',
+          type: 'debuff', kind: 'aoe', range: 3, aoeRadius: 1, noDamage: true,
+          statusEffects: [{ id: 'sleep', duration: 1 }],
+          desc: 'Count back from ten. Every enemy in a 3×3 within 3 falls asleep for 1 round: Sleeping. Any damage wakes them. +1 Work Done on each. No damage. Cooldown: 3 rounds.' },
+        { id: 'psFullProcedure', name: 'The Full Procedure', tier: 4, families: ['cosmeticsurgery'], cost: 95, apCost: 1, cooldownRounds: 4, spellType: 'human',
+          type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 150, range: 4, aoeRadius: 2, workDoneAll: true, workDoneScale: 0.25,
+          desc: 'Everything, all at once. Every unit in a 5×5 within 4 gets +1 Work Done, his own team too. Enemies take HEAVY magic damage, +25% for each Work Done they already had. Anyone who reaches 3 is Botched at once. Cooldown: 4 rounds.' },
+    ],
+    'butterfly girl': [
+        /* THE BUTTERFLY EFFECT (2026-11-23, the Butterfly Girl, blue morpho; mondo OK'd the plan: "yeah thas fine"): small flaps now, a
+           twister later. Flutter and Eyespots leave a FLUTTER on an enemy (`flutter` status, the stack 1-3 in unit._flutter, the
+           caster's id in _flutterSrcId). Every Flutter grows by 1 at each round end (battle.js _bfRoundEnd from _nrRoundEnd); at 3 it
+           touches down: a twister on the 3x3 round the carrier (MEDIUM wind magic damage to the carrier's side in it, the neighbours
+           pushed 1 square out, one twister a unit a round end), then it clears. Cleanse / purge takes it off; her death does not.
+           Butterfly Effect grows every Flutter on the board by 1 at once. Passive Flash and Vanish (PASSIVE_DEFS). Notes:
+           docs/notes/champions-combat.md "THE BUTTERFLY GIRL". */
+        { id: 'nrFlutter', name: 'Flutter', tier: 1, families: ['morpho'], cost: 25, apCost: 1, spellType: 'anomaly',
+          element: 'wind', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 80, range: 4,
+          statusEffects: [{ id: 'flutter', duration: 9 }],
+          desc: 'A flap of her wings sends a ribbon of scales. Deals WEAK wind magic damage to a Single Enemy within 4 and puts a Flutter on it (or grows the one it has). A Flutter grows by 1 every round end; at 3 it touches down as a twister on the 3x3 round it.' },
+        { id: 'nrEyespots', name: 'Eyespots', tier: 2, families: ['morpho'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+          element: 'psychic', type: 'debuff', kind: 'aoe', noDamage: true, range: 0, aoeRadius: 2, aoeOriginSelf: true,
+          statusEffects: [{ id: 'feared', duration: 1 }, { id: 'flutter', duration: 9 }],
+          desc: 'She shows the owl eyes under her wings. All Enemies within 2 are Feared for 1 round and each gets a Flutter (or grows the one it has). Cooldown: 2 rounds.' },
+        { id: 'nrButterflyEffect', name: 'Butterfly Effect', tier: 3, families: ['morpho'], cost: 75, apCost: 1, cooldownRounds: 3, spellType: 'anomaly',
+          element: 'wind', type: 'buff', kind: 'buff', range: 0, noDamage: true, butterflyEffect: true,
+          desc: 'One flap, and everything she started speeds up. Every Flutter on the board grows by 1 right now; any that reach 3 touch down as twisters at once. No Flutter on the board: refused. Cooldown: 3 rounds.' },
+    ],
+    'rat': [
+        /* MISCHIEF (2026-11-23 THE RAT KING, mondo: "The rat can have some sort of system where if he gets enough stacks he becomes
+           the rat king"; plan OK'd 11-23): a group of rats is a mischief. +1 for every hit he or one of his rats lands on an enemy
+           (+1 more for Gnaw on a target already Bleeding), +1 when an enemy within 2 of him goes down. At 5 the rats crown him on
+           the spot: the RAT KING (his model, +2 ATK and +1 DEF stage, a 20% heal), and these three turn into the King's three in
+           the same slots (RAT_KING_SPELLS below). Stun, Frozen or Feared scatter 2. battle.js "THE RAT KING". */
+        { id: 'nrGnaw', name: 'Gnaw', tier: 1, families: ['ratpack'], cost: 25, apCost: 1, spellType: 'anomaly',
+          type: 'damage', kind: 'damage', damageType: 'physical', dmg: 95, range: 1, gnawMischief: 1,
+          statusEffects: [{ id: 'bleed', duration: 2 }],
+          desc: 'Yellow incisors, again and again. Deals WEAK physical damage to an adjacent enemy and makes it Bleed for 2 rounds. A target already Bleeding gives +1 more Mischief.' },
+        { id: 'nrScurry', name: 'Scurry', tier: 2, families: ['ratpack'], cost: 40, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+          type: 'utility', kind: 'escape', range: 0, teleportDistance: 3,
+          desc: 'Down on all fours and through whatever is in the way: over a gap, under a wall, between legs. Lands up to 3 squares away. Cooldown: 2 rounds.' },
+        { id: 'nrMischiefOfRats', name: 'Mischief of Rats', tier: 3, families: ['ratpack'], cost: 60, apCost: 1, cooldownRounds: 3, spellType: 'anomaly',
+          type: 'utility', kind: 'summonUnit', range: 2, summonCount: 2, maxActivePerCaster: 2,
+          summonDef: { key: 'rat', name: 'Sewer Rat', move: 4, dmg: 35, hits: 1, hitStatus: { id: 'poison', duration: 1 } },
+          desc: 'A grate lifts and two sewer rats boil out onto empty squares within 2 (the second beside the first). They hunt the nearest enemy every round end, 4 squares a round, and bite with a little Poison; one hit kills a rat. Every bite is +1 Mischief for him. Two at a time. Cooldown: 3 rounds.' },
     ],
     'haunted doll': [
         /* NOBODY'S LOOKING (2026-11-17, the Haunted Doll; mondo approved the kit + asked for the pull-string spell): "sits on the
@@ -12533,6 +12663,24 @@ const DOOR_GUN_SPELLS = [
       desc: 'Just a door. Shoot it onto an empty tile within 4. It lands shut and goes nowhere: nobody walks through it and nobody sees past it. Cast it on your own Shut Door to open or shut it (no MP). 3 hits to break; two standing doors per player.' },
 ];
 for (const sp of DOOR_GUN_SPELLS) { sp._doorWheel = true; SPELL_BY_ID[sp.id] = sp; }
+
+/* ══ THE RAT KING'S SPELLS (2026-11-23, mondo OK'd the plan) ══ The crowned Rat's three. They live OUTSIDE RACE_ABILITIES on purpose (the
+   DOOR_GUN_SPELLS pattern): no pool, no kit, no borrow ever offers them. battle.js _ratSwapKit puts each into the slot of its Rat row the
+   moment the rats crown him (Gnaw → Plague Bite, Scurry → Carried by the Court, Mischief of Rats → Long Live the King) and back when the
+   crown falls. Family `ratking` (glyph + colour only; no race lists it). */
+const RAT_KING_SPELLS = [
+    { id: 'nrPlagueBite', name: 'Plague Bite', tier: 1, families: ['ratking'], cost: 30, apCost: 1, spellType: 'anomaly',
+      element: 'poison', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 120, range: 1,
+      statusEffects: [{ id: 'bleed', duration: 2 }, { id: 'poison', duration: 2 }],
+      desc: 'A king\'s bite carries the plague. Deals MEDIUM physical damage to an adjacent enemy, makes it Bleed and Poisons it for 2 rounds.' },
+    { id: 'nrCarriedByCourt', name: 'Carried by the Court', tier: 2, families: ['ratking'], cost: 40, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+      type: 'utility', kind: 'escape', range: 0, teleportDistance: 4,
+      desc: 'His court lifts him on a carpet of grey backs and runs him over everything in the way. Lands up to 4 squares away. Cooldown: 2 rounds.' },
+    { id: 'nrLongLiveKing', name: 'Long Live the King', tier: 3, families: ['ratking'], cost: 60, apCost: 1, cooldownRounds: 3, spellType: 'anomaly',
+      type: 'buff', kind: 'buff', range: 0, noDamage: true, longLiveKing: { radius: 4, dmg: 70 },
+      desc: 'One last order. Every Mischief he holds is a rat that bursts up out of the floor under an enemy within 4 (spread across them, one bite of WEAK physical damage each). Then the crown falls and he is the Rat again. No enemy within 4: refused. Cooldown: 3 rounds.' },
+];
+for (const sp of RAT_KING_SPELLS) { sp._race = 'rat'; sp._isRaceAbility = true; sp._ratKingRow = true; SPELL_BY_ID[sp.id] = sp; }
 
 /* ══ THE TARGETING RIDERS' example rows (SPELL_LIBRARY_PLAN.md §9 Phase 3, 2026-09-26; the splash one, Impact Round, was
    deleted by the 2026-09-30 spell audit: it IS the shipped Blast upgrade) ═════════════════════
@@ -15014,6 +15162,17 @@ const STATUS_DEFS = {
         onApply(unit, src) { unit._shortSrcId = src ? src.id : null; },
         onRemove(unit) { delete unit._shortSrcId; }
     },
+    /* 🐾 GRUDGE (2026-11-23, the Bear: DON'T POKE THE BEAR). The last enemy to hurt a Bear, or the one it grabbed with Bear Hug,
+       carries its Grudge; a Bear holds one at a time, and the mark ends when that Bear goes down (_TIED_STATUS_FIELDS). Bear Down
+       hits it harder (bonusVsStatus). Both sides see it. The Bear is an id on the unit (_grudgeSrcId: RULE #2). battle.js THE BEAR. */
+    grudge: {
+        icon: '🐾', glyph: '🐾', short: 'GRG', label: 'Grudge',
+        colorText: 'holding the Bear\'s Grudge',
+        kind: 'debuff', category: 'status', stack: 'replace',
+        iconSrc: createStatusIconDataUri('🐾', '#2a1a10', '#ffe2c8', '#c8783a'),
+        onApply(unit, src) { unit._grudgeSrcId = src ? src.id : null; },
+        onRemove(unit) { delete unit._grudgeSrcId; }
+    },
     /* 🐊 SUBMERGED (2026-11-16, the Sewer Gator's Submerge): it rides with Invisible. While it lasts the gator is under the
        surface; ending any move off a liquid square surfaces it (battle.js _gatorSurfaceCheck from resolveTileArrival). */
     submerged: {
@@ -15157,6 +15316,26 @@ const STATUS_DEFS = {
         colorText: 'carrying a payload — it spreads, then goes off',
         kind: 'debuff', category: 'status', stack: 'max',
         iconSrc: createStatusIconDataUri('🦠', '#10240f', '#d8ffd0', '#4ac04a')
+    },
+    /* 🦋 FLUTTER (2026-11-23, the Butterfly Girl): a growing threat on an enemy. The stack (1-3) is unit._flutter, the Butterfly
+       Girl's id _flutterSrcId (an id, RULE #2); a second Flutter on a carrier grows it. It grows at every round end and touches
+       down at 3 (battle.js THE BUTTERFLY EFFECT). The blue morphos on the carrier's shoulder are the stack (three-vfx-effects.js). */
+    flutter: {
+        icon: '🦋', glyph: '🦋', short: 'FLU', label: 'Flutter',
+        colorText: 'carrying a Flutter — it grows into a twister',
+        kind: 'debuff', category: 'status', stack: 'max',
+        iconSrc: createStatusIconDataUri('🦋', '#0a1430', '#d8e8ff', '#3a7bff'),
+        onApply(unit, src, info) {
+            const was = (info && info.refreshed && unit._flutter > 0) ? unit._flutter : 0;
+            unit._flutter = Math.min(3, was + 1);
+            if (src && src.id != null) unit._flutterSrcId = src.id;
+            if (typeof window !== 'undefined' && typeof window._bfFlutterChanged === 'function') window._bfFlutterChanged(unit, was);
+        },
+        onRemove(unit) {
+            const was = unit._flutter || 0;
+            delete unit._flutter; delete unit._flutterSrcId;
+            if (typeof window !== 'undefined' && typeof window._bfFlutterChanged === 'function') window._bfFlutterChanged(unit, was);
+        }
     },
     /* filtered (2026-11-17, the Influencer's Filter): wears another ally's look on the enemy's screen. The look is
        unit._filterLookId (an id, RULE #2) + _filterRace / _filterGender (a copy, so it holds if that ally falls). */
@@ -15393,6 +15572,25 @@ const STATUS_DEFS = {
         onRemove(unit) {
             if (typeof restoreUnitPassives === 'function') restoreUnitPassives(unit);
         }
+    },
+    /* 💉 THE MAKEOVER (2026-11-23 THE PLASTIC SURGEON, mondo OK'd the kit): ATK swaps with DEF and M.ATK with M.DEF while it lasts
+       (battle.js _psMakeoverSwap writes the swap into the unit's own numbers, like Broken's strip; they state-sync). One look, two
+       ids: on an enemy it is a debuff, on an ally a buff (so a cleanse and the CPU read it the right way round). */
+    makeover: {
+        icon: '💉', glyph: '💉', short: 'MKO', label: 'Makeover',
+        colorText: 'made over',
+        kind: 'debuff', category: 'status', stack: 'replace',
+        iconSrc: createStatusIconDataUri('💉', '#2a1a3a', '#f0e4ff', '#c7a6ff'),
+        onApply(unit, src, info) { if (typeof _psMakeoverSwap === 'function') _psMakeoverSwap(unit, true, info); },
+        onRemove(unit) { if (typeof _psMakeoverSwap === 'function') _psMakeoverSwap(unit, false, { key: 'makeover' }); }
+    },
+    makeoverAlly: {
+        icon: '💉', glyph: '💉', short: 'MKO', label: 'Makeover',
+        colorText: 'made over',
+        kind: 'buff', category: 'buff', stack: 'replace',
+        iconSrc: createStatusIconDataUri('💉', '#2a1a3a', '#f0e4ff', '#c7a6ff'),
+        onApply(unit, src, info) { if (typeof _psMakeoverSwap === 'function') _psMakeoverSwap(unit, true, info); },
+        onRemove(unit) { if (typeof _psMakeoverSwap === 'function') _psMakeoverSwap(unit, false, { key: 'makeoverAlly' }); }
     }
 };
 const STATUS_META = STATUS_DEFS;
@@ -15464,6 +15662,7 @@ const STATUS_LIBRARY_DESCS = {
     charm:     'Beguiled: cannot move at all while it lasts, and cannot attack or cast at the unit that charmed it. It can still attack and cast at anyone else. Evasion drops to zero.',
     indomitable: 'Refuses to die: the next killing blow leaves this unit at 1 HP.',
     debt:      'Owes the bank: when it ends (or is cleansed) the loan comes due. Pays back the loan with interest (never below 1 HP) and the lender heals that much. Going down first leaves the lender with the loss.',
+    grudge:    'The Bear holds a grudge: it hurt the Bear last (or was grabbed in a Bear Hug). Bear Down hits it harder. Ends when that Bear goes down or picks a new grudge.',
     shorted:   'Bet against: if this unit goes down while Shorted, the short-seller restores 75 MP and heals 20% of their max HP.',
     submerged: 'Under the surface of a liquid: hidden with Invisible until it attacks. Leaving the liquid surfaces it.',
     momentum:  'Rolling: every square walked in a straight line banks a stack (up to 6). Board Slam spends them for damage. Fades a turn after the Skater stops. Stunned, Rooted, Frozen or put to sleep, she bails and loses them all.',
@@ -21579,8 +21778,12 @@ const EW_RACE_BIOMES = {
     'deep sea diver': ['deep_sea', 'tropical'],   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) — The Deep, Atlantis, The Beach
     'gladiator': ['ancient', 'stadium'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — the Colosseum
     'monarch': ['underground_base', 'clandestine'],   // 2026-11-23 THE MONARCH (mondo OK'd the kit) — the D.U.M.B.
+    'bear': ['forest', 'polar'],   // 2026-11-23 THE BEAR (mondo OK'd the kit) — the grizzly in the woods, the polar bear on the ice
     'farmer': ['ranch', 'forest'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — the Estate's Corn Fields + Ranch
     'jellyfish ufo': ['deep_sea', 'tropical'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — The Deep (the Trench)
+    'plastic surgeon': ['urban'],   // 2026-11-23 THE PLASTIC SURGEON (mondo OK'd the kit) — the Disaster Hills
+    'butterfly girl': ['forest'],   // 2026-11-23 THE BUTTERFLY GIRL (mondo OK'd the kit) — The Fairy Forest + The Woods
+    'rat': ['urban', 'underground_base'],   // 2026-11-23 THE RAT KING (mondo OK'd the plan) — The Sewers
     'lifeguard': ['tropical', 'urban'],   // 2026-11-16 — The Beach, Bayside
     'politician': ['clandestine'], 'atlantean': ['deep_sea', 'ancient'],
     'dinosaur': ['inner_earth', 'ancient'], 'dragon': ['arthurian'], 'ghoul': ['infernal', 'gothic'],
@@ -22254,8 +22457,12 @@ const RACE_TREE = {
     'deep sea diver': ['nrHarpoonGun', 'nrDepthCharge', 'nrPressureWave', 'sharedTidalSurge'],   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) (the fourth rung borrowed from water)
     'gladiator':     ['nrNetToss', ['nrSwordLunge', 'nrShieldBash'], 'nrComeAtMe', 'nrCrowdPleaser'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
     'monarch':       ['monButterflyKiss', ['monPendulum', 'monKaleidoscopeWings'], ['monTriggerWord', 'monSleeperCell'], ['monMetamorphosis', 'monChaosTheory']],   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
+    'bear':          ['brPawSwipe', ['raceBite', 'raceMaul'], ['brBearHug', 'brHibernate'], 'brBearDown'],   // 2026-11-23 THE BEAR (mondo OK'd the kit)
     'farmer':        ['nrPitchforkJab', ['nrSowField', 'nrHayBale'], 'nrGetOffMyLand', 'nrHarvestMoon'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
     'jellyfish ufo': ['nrPincerClaw', ['nrBioLash', 'nrJetPulse'], 'nrVenomInjector', 'nrAbyssalOverload'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
+    'plastic surgeon': ['psBotox', ['psMakeover', 'psLiposuction'], 'psAnesthesia', 'psFullProcedure'],   // 2026-11-23 THE PLASTIC SURGEON (mondo OK'd the kit)
+    'butterfly girl': ['nrFlutter', 'nrEyespots', 'nrButterflyEffect', 'raceTornado'],   // 2026-11-23 THE BUTTERFLY GIRL (mondo OK'd the kit): her own three + the wind family's Tornado
+    'rat':           ['nrGnaw', 'nrScurry', 'nrMischiefOfRats', 'raceSwipe'],   // 2026-11-23 THE RAT KING (mondo OK'd the plan) (crowned, the first three turn into the Rat King's: battle.js RAT_KING_SWAP)
     'lifeguard':     ['nrRescueTube', 'nrOnDuty', 'nrCPR', 'nrThreeWhistles'],   // 2026-11-16 THE LIFEGUARD POLISH: her own four rungs (the old row's Underdog Spirit was outside her families, and the default kit carried no On Duty / CPR)
     'politician':    ['raceFilibuster', 'raceBlackBudget', 'raceExecutiveOrder', 'sharedNuke'],
     'atlantean':     ['raceRiptide', 'sharedTidalSurge', 'raceTemporalTide', ['raceTsunami', 'raceFlood']],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
@@ -22893,6 +23100,10 @@ const RACE_GENDER_SPELLS = {
     'streamer': {   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
         male:   ['nrRageQuit', 'nrSpeedrun'],   // the Streamer: aggressive
         female: ['nrUwu', 'nrGiftedSub'],       // the E-Girl: support and control
+    },
+    'bear': {   // 2026-11-23 THE BEAR (mondo OK'd: the polar bear gets "some spells in the ice family", the grizzly "a few nature spells too")
+        male:   ['raceThornlash', 'raceTreelineRetreat', 'passivePhotosynthesis'],   // the Grizzly: the forest bear
+        female: ['raceIceSlide', 'raceShatter', 'sharedFlashFreeze', 'raceGlacierBreak', 'passiveSnowborn'],   // the Polar Bear: belly slide, the ice floe
     },
 };
 function raceGenderOffSpellIds(race, gender) {
@@ -24477,6 +24688,26 @@ const SPELL_FAMILIES = {
         unique: 'farmer',
         identity: { who: ['Farmer', 'Rancher', 'Old Hand'], adj: ['Weathered', 'Stubborn', 'Patient'], look: ['a straw hat', 'a plaid shirt', 'muddy overalls'], vibe: ['his crops grow faster', 'wants you off his land'] }
     },
+    ratpack: {   // 2026-11-23 THE RAT KING (mondo OK'd the plan) — the Rat's own
+        id: 'ratpack',
+        name: 'Rat Pack',
+        glyph: '🐀',
+        color: '#9a8f7a',
+        kind: 'signature',
+        desc: 'A rat out of the sewers: teeth, a body that fits through anything, and a mischief of rats that answers when he whistles. Five Mischief and they crown him.',
+        unique: 'rat',
+        identity: { who: ['Rat', 'Sewer Rat', 'Gutter Prince'], adj: ['Scurrying', 'Filthy', 'Hungry'], look: ['a ragged burlap tunic tied with string', 'a long pink tail', 'yellow incisors'], vibe: ['always more of them than you counted', 'eats what the others leave'] }
+    },
+    ratking: {   // 2026-11-23 THE RAT KING (mondo OK'd the plan) — the crowned Rat's three, in no race's pool (battle.js _ratSwapKit puts them in his slots)
+        id: 'ratking',
+        name: 'Rat King',
+        glyph: '👑',
+        color: '#b0303a',
+        kind: 'signature',
+        desc: 'The Rat crowned by his own court: a plague in the bite, a carpet of rats under his feet, and one last order that spends the crown.',
+        unique: 'rat',
+        identity: { who: ['Rat King', 'King of the Sewers', 'Lord of the Drains'], adj: ['Crowned', 'Plague-Ridden', 'Tangled'], look: ['a tin-can crown', 'a cape cut from a red velvet curtain', 'a necklace of bottle caps and keys'], vibe: ['his court is knotted together by the tails', 'every rat in the city answers him'] }
+    },
     bioelectric: {   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — the Jellyfish UFO's own
         id: 'bioelectric',
         name: 'Bioelectric',
@@ -24486,6 +24717,36 @@ const SPELL_FAMILIES = {
         desc: 'An advanced jellyfish from the deep: claws that grip and sting, and a lightning bell that charges with every hit.',
         unique: 'jellyfish ufo',
         identity: { who: ['Jellyfish UFO', 'Bell-Warden', 'Deep Mind'], adj: ['Charged', 'Sentient', 'Abyssal'], look: ['a glass bell with lightning in it', 'a metal body', 'claw arms'], vibe: ['charges its bell with every hit', 'lives where the light does not reach'] }
+    },
+    morpho: {   // 2026-11-23 THE BUTTERFLY GIRL (mondo OK'd the kit) — the Butterfly Girl's own
+        id: 'morpho',
+        name: 'Morpho',
+        glyph: '🦋',
+        color: '#3a7bff',
+        kind: 'signature',
+        desc: 'Small flaps now, a twister later: every Flutter she leaves grows by itself, owl eyes that send divers running, and one flap that speeds everything up.',
+        unique: 'butterfly girl',
+        identity: { who: ['Butterfly Girl', 'Morpho', 'Collector'], adj: ['Iridescent', 'Fluttering', 'Chaotic'], look: ['huge blue morpho wings', 'curled antennae', 'blue to violet hair'], vibe: ['every flap she makes grows into a storm', 'gone in a blue flash'] }
+    },
+    bear: {   // 2026-11-23 THE BEAR (mondo OK'd the kit) — both coats' own
+        id: 'bear',
+        name: 'Bear',
+        glyph: '🐻',
+        color: '#a8744a',
+        kind: 'signature',
+        desc: 'Don\'t poke the bear: a swipe, a hug that will not let go, a winter\'s sleep, and a charge at whoever woke it.',
+        unique: 'bear',
+        identity: { who: ['Grizzly', 'Polar Bear', 'Bruin'], adj: ['Shaggy', 'Territorial', 'Half-Asleep'], look: ['a hump of muscle over the shoulders', 'claws like garden forks', 'a coat of brown or white'], vibe: ['wants to be left alone', 'holds a grudge'] }
+    },
+    cosmeticsurgery: {   // 2026-11-23 THE PLASTIC SURGEON (mondo OK'd the kit) — the Plastic Surgeon's own
+        id: 'cosmeticsurgery',
+        name: 'Cosmetic Surgery',
+        glyph: '💉',
+        color: '#c7a6ff',
+        kind: 'signature',
+        desc: 'A Disaster Hills surgeon who operates on anyone: an upgrade for a friend, a botch for an enemy. Every procedure leaves Work Done, and the third one is a botch.',
+        unique: 'plastic surgeon',
+        identity: { who: ['Plastic Surgeon', 'Doctor to the Stars', 'Cosmetic Surgeon'], adj: ['Botoxed', 'Tanned', 'Booked Solid'], look: ['a spotless white coat', 'a lilac silk shirt', 'surgical loupes'], vibe: ['operates on anyone', 'the third procedure is a botch'] }
     },
     streaming: {   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit) — the Streamer's and the E-Girl's own
         id: 'streaming',
@@ -26776,8 +27037,12 @@ const RACE_FAMILIES = {
     'deep sea diver': ['deepdive', 'water', 'deepsea', 'engineering'],   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
     'gladiator': ['gladiatorial', 'swordsmanship', 'weaponstraining', 'humangrit'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
     'monarch': ['monarchprogramming', 'seduction', 'spygear', 'deepstate'],   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
+    'bear': ['bear', 'beastabilities', 'apexpredator', 'nature', 'ice'],   // 2026-11-23 THE BEAR (mondo OK'd the kit): Nature is the grizzly's, Ice the polar bear's (RACE_GENDER_SPELLS)
     'farmer': ['farming', 'agriculture', 'humangrit', 'teamwork'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
     'jellyfish ufo': ['bioelectric', 'jellyfish', 'lightning', 'deepsea'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
+    'plastic surgeon': ['cosmeticsurgery', 'healingmagic', 'chemistry', 'maincharacter'],   // 2026-11-23 THE PLASTIC SURGEON (mondo OK'd the kit)
+    'butterfly girl': ['morpho', 'wind', 'nature', 'insectoid'],   // 2026-11-23 THE BUTTERFLY GIRL (mondo OK'd the kit)
+    'rat': ['ratpack', 'poison', 'thievery', 'beastabilities'],   // 2026-11-23 THE RAT KING (mondo OK'd the plan) (the Rat King's three rows are family `ratking`, outside every pool)
     'lifeguard': ['lifesaving', 'water', 'athleticism', 'teamwork'],   // 2026-11-16
     politician: ['politics', 'deepstate', 'militarysupport', 'cult'],
     popstar: ['popidol', 'stagepresence', 'sonic', 'seduction'],
@@ -26854,6 +27119,11 @@ const RACE_INHERENT_SPELLS = {
     'machine elves': ['racePrismMirror'],
 };
 const RACE_SPELL_EXCLUDES = {
+    /* THE BEAR (2026-11-23): the tail and jaw moves of Apex Predator, and every Nature / Ice row its coats do not learn (the grizzly's
+       three and the polar bear's five are RACE_GENDER_SPELLS; with no coat named, the Spell Library shows all eight) */
+    'bear': ['raceDinoTailWhip', 'raceDeathRoll', 'raceJurassicJaw',
+             'raceHerbalRemedy', 'trunkThrow', 'raceVineWhip', 'raceEntanglingRoots', 'raceOvergrowth', 'raceRejuvenation', 'raceWrathOfTheWild',
+             'raceIceSpear', 'sharedSummonBlizzard', 'raceDiamondDust', 'raceHailstorm', 'racePermafrost', 'raceAbsoluteZero'],
     /* THE SHARED FAMILY PASS (the user, 2026-10-23: "exclude certain spells from a race's spell families, to make them more
        accurate ... not every one of those needs to be available to everyone with the cosmic spell family"): a shared family's
        spell that names or fits only some of its races is excluded for the rest — no spell deleted, no family tag changed. The
@@ -27421,8 +27691,12 @@ const CAMPAIGN_RACE_PRICES = {
   'deep sea diver': 400,   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
   'gladiator': 400,   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
   'monarch': 450,   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
+  'bear': 450,   // 2026-11-23 THE BEAR (mondo OK'd the kit)
   'farmer': 350,   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
   'jellyfish ufo': 400,   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
+  'plastic surgeon': 400,   // 2026-11-23 THE PLASTIC SURGEON (mondo OK'd the kit)
+  'butterfly girl': 400,   // 2026-11-23 THE BUTTERFLY GIRL (mondo OK'd the kit)
+  'rat': 400,   // 2026-11-23 THE RAT KING (mondo OK'd the plan)
   'lifeguard': 500,   // 2026-11-16
   'politician': 600,
   // CHAMP REWORK Phase 6 (2026-09-08)
@@ -29410,7 +29684,9 @@ const DOOR_TEXT = {
         'delivery boy': 'Downtown', 'librarian': 'Downtown', 'televangelist': 'Vatican City', 'influencer': 'Downtown', 'referee': 'Football Stadium', 'florida man': 'Downtown', 'boltzmann brain': 'The Singularity', 'wendigo': 'Mount Shasta', 'karate frog': 'The Sewers', 'samurai slug': 'The Sewers', 'cicada brood': 'Göbekli Tepe', 'pope': 'Vatican City',   // 2026-11-17 THE NEW RACES 2
         'ninja': 'Downtown', 'delivery boy': 'Downtown', 'librarian': 'Downtown', 'televangelist': 'Vatican City', 'influencer': 'Downtown', 'referee': 'Football Stadium', 'florida man': 'Downtown', 'boltzmann brain': 'The Singularity', 'wendigo': 'Mount Shasta', 'karate frog': 'The Sewers', 'samurai slug': 'The Sewers', 'cicada brood': 'Göbekli Tepe', 'haunted doll': 'The Haunted House', 'cursed tv': 'The Haunted House', 'virus': 'The Internet', 'streamer': 'The Internet', 'vtuber': 'The Internet',   // 2026-11-17 THE NEW RACES 2
         'pharaoh': 'Pyramids of Giza', 'deep sea diver': 'Atlantis',   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
-        'gladiator': 'Vatican City', 'farmer': 'Skinwalker Ranch', 'jellyfish ufo': 'Atlantis',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) (the Colosseum on the Vatican's plots; the Estate's fields; the Trench of The Deep)
+        'gladiator': 'Vatican City', 'farmer': 'Skinwalker Ranch', 'jellyfish ufo': 'Atlantis', 'rat': 'The Sewers', 'butterfly girl': 'Fairy Forest',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) (the Colosseum on the Vatican's plots; the Estate's fields; the Trench of The Deep)
+        'bear': 'Mount Shasta',   // 2026-11-23 THE BEAR (mondo OK'd the kit) (the mountain's woods and its snow: both coats)
+        'plastic surgeon': 'Downtown',   // 2026-11-23 THE PLASTIC SURGEON (the Disaster Hills, Disaster City's district N)
         'monarch': 'D.U.M.B.',   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
         'gambler': 'The Strip', 'hacker': 'Downtown', 'monk': 'The Bermuda Triangle', 'shogun': 'The Bermuda Triangle',   // 2026-11-19 THE NEW RACES 4 (the gambler lives in the Western Town too: HQ_AREA_ENCOUNTERS; the monk + the shogun on the Volcano Island)
         'cameraman': 'Downtown', 'mechanic': 'Downtown', 'janitor': 'Downtown', 'trucker': 'Downtown',   // 2026-11-19 THE NEW RACES 3
@@ -97878,12 +98154,13 @@ const HQ_SPAWN_RULES = {
                 { race: 'gambler', d: 'N', n: 1, work: 'z:H04-02', beat: 'E', homes: ['P11-06-B2'] },                            // the Hill House
                 { race: 'cameraman', d: 'N', n: 1, work: 'z:H07-01', beat: 'H', homes: ['P10-07-B1'] },                          // the Sign
                 { race: 'influencer', d: 'N', n: 2, work: 'z:H08-01', beat: 'B', homes: ['P11-06-B2'] },                         // the Sign
+                { race: 'plastic surgeon', d: 'N', n: 1, work: 'z:H04-02', beat: 'E', homes: ['P11-06-B2'] },                  // the Hill House (2026-11-23 THE PLASTIC SURGEON (mondo OK'd the kit))
             ],
             /* a race's tier in this room (a race not named = defaultTier); `race|gender` names one gender */
             races: {
                 'cameraman': 'common', 'mechanic': 'common', 'janitor': 'common', 'trucker': 'uncommon',
                 'police officer': 'common', 'chef': 'common', 'lifeguard': 'common', 'skater': 'common', 'delivery boy': 'common', 'gangster': 'common', 'hippie': 'common', 'honda civic': 'common', 'firefighter': 'common',
-                'gambler': 'common', 'streamer': 'common', 'hacker': 'uncommon',
+                'gambler': 'common', 'streamer': 'common', 'hacker': 'uncommon', 'plastic surgeon': 'uncommon',
                 'priest': 'uncommon', 'conspiracy theorist': 'uncommon', 'goblin': 'uncommon', 'spy': 'uncommon', 'professor': 'uncommon', 'clown': 'uncommon', 'mime': 'uncommon', 'televangelist': 'uncommon',
                 'bunny girl': 'uncommon', 'quarterback': 'uncommon', 'luchador': 'uncommon', 'marksman': 'uncommon', 'politician': 'uncommon', 'florida man': 'uncommon', 'banker': 'uncommon', 'magician': 'uncommon', 'influencer': 'uncommon', 'librarian': 'uncommon', 'referee': 'uncommon',
                 'ki fighter': 'rare', 'swordfighter': 'rare', 'men in black': 'rare', 'halfdemon': 'rare', 'mad scientist': 'rare', 'reptilian': 'rare',
@@ -97972,7 +98249,9 @@ const HQ_NPC_TEMPERS = {
         'superhero': 'protector', 'sidekick': 'protector', 'firefighter': 'protector', 'eagleman': 'protector',
         'gangster': 'opportunist', 'goblin': 'opportunist', 'politician': 'opportunist', 'televangelist': 'opportunist', 'tech ceo': 'opportunist',
         'gambler': 'opportunist', 'hacker': 'opportunist', 'monk': 'protector', 'shogun': 'territorial',   // 2026-11-19 THE NEW RACES 4
-        'gladiator': 'territorial', 'farmer': 'guard', 'jellyfish ufo': 'territorial',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
+        'gladiator': 'territorial', 'farmer': 'guard', 'jellyfish ufo': 'territorial', 'rat': 'opportunist', 'butterfly girl': 'coward',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
+        'bear': 'territorial',   // 2026-11-23 THE BEAR (mondo OK'd the kit): don't poke the bear
+        'plastic surgeon': 'opportunist',   // 2026-11-23 THE PLASTIC SURGEON (mondo OK'd the kit)
         'monarch': 'guard',   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
         'zombie': 'brute', 'shadow entity': 'brute', 'werewolf': 'brute', 'wendigo': 'brute', 'ghoul': 'brute', 'flesheater': 'brute',
     },
@@ -109563,6 +109842,7 @@ if (typeof window !== 'undefined') {
     window.hqPartyLevel = hqPartyLevel; window.hqPartyXp = hqPartyXp; window.hqPartyLevelGains = hqPartyLevelGains; window.hqPartyGrantXp = hqPartyGrantXp; window.hqPartyXpShare = hqPartyXpShare; window.hqEncounterLevels = hqEncounterLevels; window.hqEncounterGroup = hqEncounterGroup; window.hqSwarmRace = hqSwarmRace; window.hqRoomNatives = hqRoomNatives;
     window.HQ_DISPENSARY = HQ_DISPENSARY; window.hqBagRecord = hqBagRecord; window.hqBagCount = hqBagCount; window.hqBagAdd = hqBagAdd; window.hqBagTake = hqBagTake; window.hqBagList = hqBagList; window.hqBagTotal = hqBagTotal; window.HQ_BAG_TABS = HQ_BAG_TABS; window.hqBagCategoryOf = hqBagCategoryOf; window.hqBagTab = hqBagTab; window.hqBagTabs = hqBagTabs; window.HQ_DROP_RULES = HQ_DROP_RULES; window.hqDropBaneFor = hqDropBaneFor; window.hqEncounterDrops = hqEncounterDrops; window.hqBagSet = hqBagSet; window.hqBagForBattle = hqBagForBattle; window.hqBagCap = hqBagCap; window.hqShopStock = hqShopStock; window.hqCaptureDoorIssue = hqCaptureDoorIssue; window.hqShopQuote = hqShopQuote; window.hqShopBuyApply = hqShopBuyApply; window.hqShopSell = hqShopSell; window.hqPartyStock = hqPartyStock; window.hqPartyBagItems = hqPartyBagItems; window.hqPartyAutoHeal = hqPartyAutoHeal; window.hqPartyFieldSpells = hqPartyFieldSpells; window.hqPartyFieldTargets = hqPartyFieldTargets; window.hqPartyHealAmount = hqPartyHealAmount; window.hqPartyCast = hqPartyCast; window.hqPartyUseItem = hqPartyUseItem; window.hqPartyFieldItems = hqPartyFieldItems; window.hqPartySpec = hqPartySpec; window.hqPartyGenders = hqPartyGenders; window.hqPartyDefaultJob = hqPartyDefaultJob; window.raceDefaultKit = raceDefaultKit; window.hqOfficerKit = hqOfficerKit;
     window.DOOR_GUN_RULES = DOOR_GUN_RULES; window.DOOR_GUN_DOORS = DOOR_GUN_DOORS; window.DOOR_GUN_KEYS = DOOR_GUN_KEYS; window.DOOR_GUN_FACINGS = DOOR_GUN_FACINGS; window.SPELL_ID_RENAMED = SPELL_ID_RENAMED; window.DOOR_GUN_SPELLS = DOOR_GUN_SPELLS;   // THE DOOR WHEEL (DOOR_GUN_PLAN.md Phase 0)
+    window.RAT_KING_SPELLS = RAT_KING_SPELLS;   // THE RAT KING (2026-11-23)
     window.doorGunUnlocked = doorGunUnlocked; window.doorGunWheel = doorGunWheel; window.doorGunLaneTiles = doorGunLaneTiles; window.doorGunLedger = doorGunLedger; window.doorGunLedgerUnion = doorGunLedgerUnion; window.doorGunKeyOfSpell = doorGunKeyOfSpell; window.doorGunSpellTier = doorGunSpellTier; window.doorGunWheelPool = doorGunWheelPool; window.doorGunSnapFacing = doorGunSnapFacing; window.swingDoorPushDir = swingDoorPushDir;
     window.CAPTURE_RULES = CAPTURE_RULES; window.captureDoorItemKeys = captureDoorItemKeys; window.captureDoorTier = captureDoorTier; window.captureSealSteps = captureSealSteps; window.captureSealFor = captureSealFor; window.captureDoorHits = captureDoorHits; window.captureXp = captureXp; window.itemStoryOnly = itemStoryOnly; window.hqCapturedRecord = hqCapturedRecord; window.hqUnitCaptured = hqUnitCaptured; window.hqCapturedMark = hqCapturedMark; window.hqCaptureOwned = hqCaptureOwned; window.hqCaptureEnlist = hqCaptureEnlist; window.hqBountyUnion = hqBountyUnion; window.hqCaptureBountyRecord = hqCaptureBountyRecord; window.hqCaptureBountyMark = hqCaptureBountyMark; window.hqCaptureBountySyncPay = hqCaptureBountySyncPay; window.hqCapturedUnlockUnion = hqCapturedUnlockUnion;   // THE ONE-WAY DOOR (CAPTURE_PLAN.md Phase 0)
     /* THE FIELD stage B — the rasteriser on the cave (Phase 9 Delivery 8, 2026-09-16) */
