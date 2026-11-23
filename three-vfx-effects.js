@@ -47557,6 +47557,121 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         'nrPayload:copy': _vrxCopy3D, 'nrPayload:burst': _vrxBurst3D,
     });
 
+    /* ══ THE HOLLOW (2026-11-23, Horror B; mondo approved the plan + the name) ══ A floating maw that leaves its sleeping masks on
+       enemies and drags the masked in. Its own colours: violet-black, the teeth's gold, an oily sheen on the crystals; the side
+       reads on the rings (THE RIOT PASS: own side cyan-blue, the other side pink-orange). Nothing sits over the caster, the
+       target, the hit or the number. Kill-switch window.EW_NO_HORROR_VFX. The worn mask itself is the renderer's
+       (three-renderer.js THE HOLLOW, from the synced status).
+         LULL (impact + geometry): a violet thread from the Hollow to the victim's face, a side ring at the head, pale motes.
+         PUPPET STRINGS ('hlStrings:drag', battle.js per Masked victim before its drag): three violet strings from the Hollow
+           to the body, held while it is dragged, a side ring under it.
+         SHARD BLOOM ('hlBloom:grow', the cast's 3x3): oily violet crystal spikes shoot up on every square that grows a pillar,
+           a side ring round the 3x3.
+         WAKE (aura on the Hollow + 'hlWake:drag' per victim): gold rings out to 7 from the maw; on each victim two glowing eye
+           slits open just above the head (never over it) and a gold thread hauls it in. */
+    var _HLX_V = 0x9a6aff, _HLX_VG = 0xc9a8ff, _HLX_GOLD = 0xffd060, _HLX_PALE = 0xf4eefc;
+    function _hlxOff() { return _catOff('spells') || (typeof window !== 'undefined' && !!window.EW_NO_HORROR_VFX); }
+    function _hlxEyesTex() {
+        return _sigTex('hlx-eyes', 64, function (g, S) {
+            g.clearRect(0, 0, S, S);
+            var gr = g.createRadialGradient(S / 2, S / 2, 2, S / 2, S / 2, S / 2);
+            gr.addColorStop(0, 'rgba(255,220,120,0.35)'); gr.addColorStop(1, 'rgba(255,220,120,0)'); g.fillStyle = gr; g.fillRect(0, 0, S, S);
+            g.fillStyle = '#fff6c0';
+            [[18, 32], [46, 32]].forEach(function (p) { g.beginPath(); g.ellipse(p[0], p[1], 9, 2.4, 0, 0, Math.PI * 2); g.fill(); });
+        });
+    }
+    EFFECTS['hlLull_impact'] = { layers: [
+        { sprite: 'flash', ml: 200, z: 60, size0: 10, size1: 40, tint: _HLX_VG, opacity0: 0.5, delayMs: 300 },
+        { count: 10, sprite: 'spark', ml: [420, 700], offsetXY: 10, z: [55, 80], tint: _HLX_PALE, vxRange: 50, vyRange: 50, vzRange: [10, 40], drag: 1.4, size0: [2, 4], size1: 1, opacity0: 0.8, delayMs: 300 },
+    ] };
+    function _hlxLull3D(tx, ty, r, o) {
+        if (_hlxOff() || _afFogHides(tx, ty)) return;
+        o = o || {};
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _afCaster(tx, ty, o), cu = _fx5UnitAt(from.x, from.y), C = _hdSide(cu || { player: o.owner });
+        var h = _lgBodyH(_lgUidAt(tx, ty), ts) * 0.86;
+        var th = from.fogged ? null : _hdThread(F, from.x, from.y, h, _HLX_V, 900, ts * 0.04, 320);
+        if (th) _sigRunOwned(F.g, 920, function (el) { th.run(el); th.hold.position.y += Math.sin(el / 90) * ts * 0.002; });
+        _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.12, r1: ts * 0.42, ms: 480, color: C.a, height: h, torus: true, opacity: 0.5 }); } catch (e) {} }, 320);
+        _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.2, r1: ts * 0.6, ms: 460, color: C.b, height: ts * 0.05 }); } catch (e) {} }, 340);
+    }
+    function _hlxStrings3D(tx, ty, r, o) {
+        if (_hlxOff() || _afFogHides(tx, ty)) return null;
+        o = o || {};
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _afCaster(tx, ty, o), cu = _fx5UnitAt(from.x, from.y), C = _hdSide(cu || { player: o.owner });
+        var hb = _lgBodyH(_lgUidAt(tx, ty), ts), ths = [];
+        if (!from.fogged) for (var i = 0; i < 3; i++) ths.push(_hdThread(F, from.x, from.y, hb * (0.45 + 0.22 * i), i === 1 ? _HLX_PALE : _HLX_VG, 1300, ts * 0.035, 260));
+        if (ths.length) _sigRunOwned(F.g, 1320, function (el) { ths.forEach(function (t, j) { t.run(el); t.hold.position.x += Math.sin(el / 70 + j) * ts * 0.002; }); });
+        _sigShockRing3D(tx, ty, { r0: ts * 0.5, r1: ts * 0.15, ms: 420, color: C.a, height: ts * 0.05 });
+        return true;
+    }
+    function _hlxBloom3D(tx, ty, r, o) {
+        if (_hlxOff()) return null;
+        o = o || {};
+        var ts = _worldPos(tx, ty).ts, C = _hdSide({ player: o.owner });
+        var tiles = String(o.tiles || '').split(';').filter(Boolean).map(function (k) { var a = k.split(','); return { x: +a[0], y: +a[1] }; });
+        tiles.forEach(function (t, n) {
+            if (_afFogHides(t.x, t.y)) return;
+            var F = _nrvFrame(t.x, t.y), spikes = [];
+            for (var i = 0; i < 4; i++) {
+                var m = new THREE.Mesh(new THREE.ConeGeometry(ts * (0.07 + 0.03 * (i % 2)), ts * (0.5 + 0.25 * ((i * 7 + n) % 3)), 5), _sigMat(i % 2 ? _HLX_VG : _HLX_V));
+                var a = i / 4 * Math.PI * 2 + n, d = ts * (0.08 + 0.12 * (i % 3) / 2);
+                m.position.set(Math.cos(a) * d, 0, Math.sin(a) * d); m.rotation.set(Math.sin(a) * 0.25, 0, Math.cos(a) * 0.25); m.renderOrder = 166;
+                F.g.add(m); spikes.push(m);
+            }
+            _fxDelay(function () {
+                _sigRunOwned(F.g, 900, function (el) {
+                    var k = _sigClamp01(el / 160), fade = 1 - _sigClamp01((el - 520) / 380);
+                    spikes.forEach(function (m, j) { m.scale.set(1, Math.max(0.02, k), 1); m.position.y = m.geometry.parameters.height * 0.5 * k; m.material.opacity = 0.75 * fade * (j % 2 ? 1 : 0.85); });
+                });
+            }, 60 * n);
+        });
+        if (!_afFogHides(tx, ty)) {
+            _sigShockRing3D(tx, ty, { r0: ts * 0.4, r1: ts * 1.6, ms: 520, color: C.a, height: ts * 0.05 });
+            _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.3, r1: ts * 1.4, ms: 480, color: _HLX_V, height: ts * 0.4, torus: true, opacity: 0.35 }); } catch (e) {} }, 120);
+        }
+        return true;
+    }
+    EFFECTS['hlStrings_aura'] = { layers: [
+        { sprite: 'flash', ml: 260, z: 40, size0: 14, size1: 56, tint: _HLX_V, opacity0: 0.4 },
+    ] };
+    EFFECTS['hlWake_aura'] = { layers: [
+        { sprite: 'flash', ml: 300, z: 70, size0: 16, size1: 80, tint: _HLX_GOLD, opacity0: 0.4 },
+    ] };
+    function _hlxWake3D(tx, ty, r, o) {
+        if (_hlxOff() || _afFogHides(tx, ty)) return null;
+        var ts = _worldPos(tx, ty).ts, cu = _fx5UnitAt(tx, ty), C = _hdSide(cu || { player: (o && o.owner) != null ? o.owner : _cbOwnerNear(tx, ty) });
+        var reach = (r > 0 ? r : 7) + 0.5;
+        for (var i = 0; i < 3; i++) (function (j) {
+            _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.4, r1: ts * reach, ms: 760, color: j === 1 ? _HLX_GOLD : (j ? C.b : C.a), height: ts * (0.05 + 0.1 * j), opacity: 0.3, torus: j > 0 }); } catch (e) {} }, 120 + j * 160);
+        })(i);
+        return true;
+    }
+    function _hlxWakeDrag3D(tx, ty, r, o) {
+        if (_hlxOff() || _afFogHides(tx, ty)) return null;
+        o = o || {};
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _afCaster(tx, ty, o), cu = _fx5UnitAt(from.x, from.y), C = _hdSide(cu || { player: o.owner });
+        var hb = _lgBodyH(_lgUidAt(tx, ty), ts);
+        /* the eyes open: two glowing slits just ABOVE the head, facing the camera */
+        var eyes = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.34, ts * 0.34), _sigMat(0xffffff, { map: _hlxEyesTex() }));
+        eyes.position.y = hb * 1.12; eyes.renderOrder = 167; _hdFaceCam(eyes); F.g.add(eyes);
+        var th = from.fogged ? null : _hdThread(F, from.x, from.y, hb * 0.6, _HLX_GOLD, 1200, ts * 0.03, 200);
+        _sigRunOwned(F.g, 1250, function (el) {
+            eyes.material.opacity = 0.95 * _afEnv(el, 0, 140, 900, 1250); eyes.scale.set(1, 0.2 + 0.8 * _sigClamp01(el / 160), 1);
+            if (th) th.run(el);
+        });
+        _sigShockRing3D(tx, ty, { r0: ts * 0.12, r1: ts * 0.5, ms: 420, color: C.a, height: hb * 1.1, torus: true, opacity: 0.45 });
+        return true;
+    }
+    Object.assign(SPELL_MAP, {
+        hlLull:    { impact: 'hlLull_impact' },
+        hlStrings: { aura: 'hlStrings_aura' },
+        hlWake:    { aura: 'hlWake_aura' },
+    });
+    Object.assign(_spell3DGeometry, {
+        hlLull: _hlxLull3D, 'hlStrings:drag': _hlxStrings3D, 'hlBloom:grow': _hlxBloom3D,
+        hlWake: _hlxWake3D, 'hlWake:drag': _hlxWakeDrag3D,
+    });
+
     /* ══ THE STREAMER + E-GIRL (2026-11-18, mondo approved the kit) ══ One race, live all day: every hit builds the chat (THE
        VIEWERS, battle.js), the spends cash it in. The race's own colour is stream purple; the side reads on the rings (THE RIOT
        PASS: own side cyan-blue, the other side pink-orange). The pop-ups stand BESIDE the body (_tvxPanel), never on the caster,

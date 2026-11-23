@@ -6443,7 +6443,8 @@
                 }
 
                 // 'wall' / 'thinwall' / 'edge' — try to smash THROUGH first.
-                if (!_slideNoBreach() && (info.kind === 'wall' || info.kind === 'thinwall')) {
+                /* opts.noBreach (THE HOLLOW): a drag stops against the wall, it never smashes its own Shard Bloom crystals */
+                if (!opts.noBreach && !_slideNoBreach() && (info.kind === 'wall' || info.kind === 'thinwall')) {
                     let broke = false;
                     if (info.kind === 'thinwall') {
                         broke = _tryBreachThinWall(target, cx, cy, info.nx, info.ny,
@@ -11033,6 +11034,7 @@
             if (payload.id === 'taunt' && sourceUnit) { target._tauntCasterId = sourceUnit.id; delete target._tauntObjKey; }   // Batch D: a unit's taunt replaces a decoy's
             if (payload.id === 'hexed' && sourceUnit) target._hexCasterId = sourceUnit.id;
             if (payload.id === 'payload' && sourceUnit) target._payloadSrcId = sourceUnit.id;
+            if (payload.id === 'masked' && sourceUnit) _hollowMaskOn(target, sourceUnit);   // 🎭 THE MASKS: whose mask, at most 4 out
             if (payload.id === 'bends') { target._bendsAt = { x: target.x, y: target.y }; if (sourceUnit) target._bendsSrcId = sourceUnit.id; }   // 🫧 THE BENDS: counting starts here   // 🦠 THE PAYLOAD: the Virus is credited when it goes off
             // DOT appliers get credit for their ticks: poison/burn end-of-round
             // damage resolves source-less (STATUS_DEFS onRoundEnd), so the
@@ -14974,6 +14976,37 @@
             }
             _sigVfxGeom('nrPayload:burst', turret.x, turret.y, 0, { owner: turret.owner });
             if (hit.length) addLog(`🦠 ${turret.spellName || 'The replica'} bursts over ${hit.map(_ctName).join(', ')}.`);
+        }
+        /* ═══ THE MASKS (2026-11-23, THE HOLLOW; mondo approved the plan 11-23) ═══ Lull leaves one of the Hollow's four sleeping
+           masks on an enemy: status `masked` (3 rounds, both sides see it). It does nothing on its own; it is what the Hollow's
+           other spells reach (Puppet Strings, Wake: `hitsStatusOnly: 'masked'`, through cover). unit._maskSrcId = the Hollow's id
+           (an id, RULE #2), unit._maskSeq = when it went on. At most HOLLOW_MASKS_MAX out per Hollow: a fifth takes the oldest
+           back. A mask flies home when the status ends, its carrier goes down, or Wake calls it (three-renderer.js THE HOLLOW
+           reads the same fields to show the orbit and the worn mask). `dragToCaster` (a barrage row) drags each victim up to N
+           squares toward the caster before its hit; `dragDmgPer` adds that much per square dragged, a wall or crystal that
+           stops the drag still counts its square. Plain fields: they ride the snapshot. Notes: champions-combat.md "THE HOLLOW". */
+        const HOLLOW_MASKS_MAX = 4;
+        function _hollowMaskOn(target, src) {
+            if (!target || !src) return;
+            state._maskSeq = (state._maskSeq | 0) + 1;
+            target._maskSrcId = src.id; target._maskSeq = state._maskSeq;
+            const out = (state.units || []).filter(u => u && u !== target && !u.dead && u._maskSrcId === src.id && unitHasStatus(u, 'masked'));
+            while (out.length >= HOLLOW_MASKS_MAX) {
+                out.sort((a, b) => (a._maskSeq | 0) - (b._maskSeq | 0));
+                const old = out.shift();
+                clearStatus(old, 'masked'); delete old._maskSrcId;
+                addLog(`🎭 ${_ctName(src)} calls a mask home from ${_ctName(old)}.`);
+            }
+        }
+        /* the drag: up to n squares toward the caster; the squares it counts (moved + the one a wall stopped) */
+        function _hollowDrag(unit, enemy, spell, n) {
+            if (!enemy || enemy.dead || !(n > 0)) return { count: 0, animMs: 0 };
+            const dist = getUnitPushDistance(enemy, n, 'pull', spell);
+            if (!(dist > 0)) return { count: 0, animMs: 0 };
+            const r = resolveForcedSlide(enemy, Math.sign(unit.x - enemy.x), Math.sign(unit.y - enemy.y), dist, {
+                byUnit: unit, label: `${spell.name}: `, perStepMs: 140, noBreach: true, stopBefore: { x: unit.x, y: unit.y } }) || {};
+            const moved = r.moved | 0, blocked = moved < dist && (r.hitWall || (r.hitUnits && r.hitUnits.length)) ? 1 : 0;
+            return { count: Math.min(n, moved + blocked), animMs: r.animMs || moved * 140 };
         }
         /* 🦠 `hitsStatusOnly` (Zero Day): a barrage that only touches enemies carrying that status */
         function _barrageStatusOk(spell, e) {
@@ -51583,6 +51616,7 @@
                 if (spell.floridaHeadline && _floridaHeadline(unit) !== spell.id) return 'Not today';
                 if (spell.tomb && unit._tombSpent) return 'The tomb is spent';   // ⚱ THE TOMB: once a match   // 📰 not today's headline
                 if (spell.hitsStatusOnly === 'payload' && !getHostileUnits(unit.player, unit).some(e => e && !e.dead && unitHasStatus(e, 'payload'))) return '🦠 No Payload out';
+                if (spell.hitsStatusOnly === 'masked' && !getHostileUnits(unit.player, unit).some(e => e && !e.dead && unitHasStatus(e, 'masked'))) return '🎭 No mask out';   // 🎭 THE HOLLOW
                 if (spell.viewersMin > 0 && getViewers(unit) < spell.viewersMin) return '🎮 Need ' + spell.viewersMin + ' viewers';   // 🎮 THE VIEWERS
                 if (spell.limbsMin > 0 && getLimbs(unit) < spell.limbsMin) return '🫀 Need ' + spell.limbsMin + ' limbs';   // 🫀 THE ABOMINATION: Unfold
                 if (spell.rewindTape > 0 && !getHostileUnits(unit.player, unit).some(e => e && !e.dead && _tvTapeAmount(e, spell) > 0)) return '📼 Nothing on tape';   // 📺 Rewind: no enemy took a hit last round
@@ -87422,7 +87456,7 @@
                 // click could still reach here and used to burn 55 MP on a nova
                 // that hit nothing.
                 if ((spell.hitsWetOnly || spell.hitsStatusOnly) && _barrageTargets(unit, spell).length === 0) {
-                    addLog(spell.hitsStatusOnly ? `${_ctSp(spell.name)}: no Payload carrier in range.` : `${_ctSp(spell.name)}: no enemies are standing in water.`, _clickSeat());
+                    addLog(spell.hitsStatusOnly ? `${_ctSp(spell.name)}: no ${spell.hitsStatusOnly === 'masked' ? 'Masked enemy' : 'Payload carrier'} in range.` : `${_ctSp(spell.name)}: no enemies are standing in water.`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -87500,7 +87534,18 @@
                                     return;
                                 }
                                 let dmg = Math.max(32, Math.floor(computeSpellBase(spell, spellPower, { floor: 0 }) * _barrageWaterMult));
-                                playProjectileToUnit(unit, enemy, 'damage', actionMs(380), spell.spellType, spell.projectileOverride || null, spell);
+                                /* 🎭 THE MASKS (Puppet Strings, Wake): the string / the scream drags the masked body in first */
+                                let _hlDragMs = 0;
+                                if (spell.dragToCaster > 0 && !enemy.dead) {
+                                    _sigVfxGeom(spell.id + ':drag', enemy.x, enemy.y, 0, { fromX: unit.x, fromY: unit.y, owner: unit.player });
+                                    const _dg = _hollowDrag(unit, enemy, spell, spell.dragToCaster);
+                                    _hlDragMs = _dg.animMs;
+                                    if (spell.dragDmgPer > 0 && _dg.count > 0) {
+                                        dmg += spell.dragDmgPer * _dg.count;
+                                        addLog(`🎭 ${_ctName(enemy)} is dragged ${_dg.count} square${_dg.count !== 1 ? 's' : ''}: +${spell.dragDmgPer * _dg.count}.`);
+                                    }
+                                }
+                                if (!spell.dragToCaster) playProjectileToUnit(unit, enemy, 'damage', actionMs(380), spell.spellType, spell.projectileOverride || null, spell);
                                 playSfx(spellLaunchSfx(spell));
                                 window.setTimeout(() => {
                                     try {
@@ -87517,8 +87562,9 @@
                                         // 💥 the struck tile reacts like any spell hit (Solar Flare on a target in oil blows the slick)
                                         triggerTerrainSpellReaction(unit, spell, [{ x: _brX, y: _brY }]);
                                         if (spell.hitsStatusOnly === 'payload' && !enemy.dead) _payloadBurst(enemy, unit, 'is set off by ' + spell.name);   // 🦠 Zero Day
+                                        if (spell.masksHome && unitHasStatus(enemy, 'masked')) { clearStatus(enemy, 'masked'); delete enemy._maskSrcId; }   // 🎭 Wake: the mask flies home
                                     } finally { _pendingSpellHits--; }
-                                }, actionMs(400));
+                                }, Math.max(actionMs(400), _hlDragMs + actionMs(120)));
                             }, idx * barrageGap);
                         });
                         /* THE SPELL AUDIT FIX (2026-10-26): Quake's "Reshapes the ground on impact" — the barrage never read
@@ -89998,6 +90044,7 @@
                             ? getTerrainAt3D(tx, ty, pz) : getTerrainAt(tx, ty);
                         if (current === 'wall') return;
                         _pushAffected(tx, ty);
+                        if (spell.deformEmptyOnly && unitAt(tx, ty)) return;   // 🎭 Shard Bloom: the crystals grow on the empty squares only
                         if (spell.meltRounds && !_tcPrev[tx + ',' + ty]) _tcPrev[tx + ',' + ty] = current;   // Batch D: Snow Fort
                         /* THE SPELL-MADE MONUMENTS (2026-09-18): a wall spell
                            stands a real piece on the tile (below) and leaves the
@@ -90345,7 +90392,10 @@
                         if (typeof invalidateTerrainChunkCache === 'function') invalidateTerrainChunkCache();
                         scheduleBoardRender();
                     } else if (spell.terrainDeform && !spell.monument && affectedTiles.length > 0) {
+                        if (spell.growVfx) _sigVfxGeom(spell.growVfx, x, y, spell.aoeRadius || 1, { fromX: unit.x, fromY: unit.y, owner: unit.player,
+                            tiles: affectedTiles.filter(at => !(spell.deformEmptyOnly && unitAt(at.x, at.y))).map(at => at.x + ',' + at.y).join(';') });   // 🎭 Shard Bloom
                         for (const at of affectedTiles) {
+                            if (spell.deformEmptyOnly && unitAt(at.x, at.y)) continue;   // 🎭 Shard Bloom: a body keeps its square
                             const _tdH0 = getBaseHeightAt(at.x, at.y);
                             applyTerrainDeform(at.x, at.y, 0, spell.terrainDeform);
                             /* ⏳ the raised/sunk ground goes back with its terrain when the timer runs out — by what it REALLY
@@ -90353,6 +90403,7 @@
                             const _tdMoved = getBaseHeightAt(at.x, at.y) - _tdH0;
                             const _tt = state.terrainTimers && state.terrainTimers[at.x + ',' + at.y];
                             if (_tt && _tdMoved) _tt.d = (_tt.d || 0) - _tdMoved;
+                            if (_tt && spell.terrainRounds > 0) _tt.n = spell.terrainRounds;   // 🎭 Shard Bloom: the crystals last 2 rounds
                         }
                         _invalidateBoardGrid();
                         scheduleBoardRender();

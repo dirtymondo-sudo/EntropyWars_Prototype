@@ -26,7 +26,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
 | Meshy AI | no | 1321 |
-| Meshy AI, reworked by Claude | no | 11 |
+| Meshy AI, reworked by Claude | no | 12 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 90 |
 | Built by Claude in code (a bake tool writes the file) | no (pack bark picture) | 14 |
@@ -128,6 +128,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | haunted doll (female) | `Assets/characters/races/haunted_doll/female/Meshy_AI_haunted_doll_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES 2, mondo 2026-11-17 picks from the zone characters; concepts + models in project files new-races-2/; the Boltzmann Brain is unrigged) |
 | hippie | `Assets/characters/races/hippie/Meshy_AI_hippie_male_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | hippie (female) | `Assets/characters/races/hippie/Meshy_AI_hippie_female_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| hollow | `Assets/characters/races/hollow/male/hollow.glb` | Meshy AI, reworked by Claude | Meshy AI parts made from mondo's horror concept (the maw ring, ONE sleeping mask made as a whole head with its back half cut off in code, ONE limb, the finger chandelier, ONE crystal; project files char-concepts-20261123/models) put together by Claude in code (project files horror-hollow/assemble.mjs): the mask used four times, the limb cut into three jointed segments and used four times, the fingers split into six bunches, each its own node, for the Hollow race's moving-parts rig (three-renderer.js THE HOLLOW) |
 | homosapien | `Assets/characters/races/homosapien/male/freelancer/Meshy_AI_normal_man_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | honda civic | `Assets/characters/races/hondacivic/Meshy_AI_1990s_sedan_0719015525_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | ice queen (female) | `Assets/characters/races/icequeen/Meshy_AI_an_ice_queen_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |

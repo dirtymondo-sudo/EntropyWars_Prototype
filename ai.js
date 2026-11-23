@@ -4927,6 +4927,13 @@
             val += 40 + 35 * _pn;
         }
         if (sp && sp.hitsStatusOnly === 'payload' && tg.status && tg.status.payload > 0) val += Math.min(70, effHp(tg)) * landP;
+        /* 🎭 THE MASKS (2026-11-23, the Hollow): a fresh mask is worth a setup for Puppet Strings / Wake; the drag rows (Wake) are
+           worth the squares each Masked enemy would be dragged (Chebyshev distance - 1, up to dragToCaster) at dragDmgPer each */
+        if (sp && (sp.statusEffects || []).some(e => e && e.id === 'masked') && !(tg.status && tg.status.masked > 0)) val += 55;
+        if (sp && sp.dragToCaster > 0 && tg.status && tg.status.masked > 0) {
+            const _dsq = Math.min(sp.dragToCaster, Math.max(0, Math.max(Math.abs(tg.x - unit.x), Math.abs(tg.y - unit.y)) - 1));
+            val += _dsq * ((sp.dragDmgPer || 0) + 8) * landP;
+        }
         /* 🦋 THE BUTTERFLY GIRL (2026-11-23): a Flutter grows into a twister on the target's 3x3 (its side, one hit each): worth more
            on a body in a crowd and on one that already carries 1-2 (the sooner it lands) */
         if (sp && (sp.statusEffects || []).some(e => e && e.id === 'flutter') && (tg._flutter | 0) < 3) {

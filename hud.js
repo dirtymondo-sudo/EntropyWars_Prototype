@@ -6240,7 +6240,7 @@ function _hrlgSpellBlades(unit, st) {
       // Wet-only novae (Poseidon's Wrath) grey with the actual condition —
       // "No target" reads as a range problem, this is a terrain one.
       else if (sp.hitsWetOnly && !hasTarget) reason = 'No enemies in water';
-      else if (sp.hitsStatusOnly && !hasTarget) reason = 'No Payload in range';   // 🦠 Zero Day
+      else if (sp.hitsStatusOnly && !hasTarget) reason = sp.hitsStatusOnly === 'masked' ? 'No mask in range' : 'No Payload in range';   // 🦠 Zero Day · 🎭 the Hollow
       // Pure-status spells also grey out when every target in range already
       // carries the status (statuses don't stack) — say so.
       /* timing/counters playtest 2026-11-07 (F6): Revive works once per unit per match — a grave in reach whose unit was

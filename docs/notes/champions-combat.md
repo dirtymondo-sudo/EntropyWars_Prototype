@@ -6394,3 +6394,23 @@ he did not name one). Stats first pass HP 1300, MP 150, ATK 150, DEF 110, M.DEF 
   Grasp and Unfold carry `bonusVsStatus` caged ×1.25.
 - CPU (ai.js scoreSpell, "THE LIMBS"): Grasp scored as its copy; Unfold worth limbs/3, halved under 4 limbs, and a body under 35 %
   HP keeps its last 3. FINISHER 'Too Much Body' (sig blurryFootage).
+
+## THE HOLLOW (2026-11-23, thread "Build The Hollow", plan https://claude.ai/artifact/QYFEt8LpeEnqzhViCt1zME, Horror B; mondo: "The Hollow is fine")
+- A floating controller. HP 880, MP 230, ATK 40, DEF 70, M.DEF 150, INT 190, SPD 100, vision 4 (3 left its own range-5 casts out of
+  sight), reach 3 magic basic attack. Resists psychic, weak to light. Families hollow (signature) + nightmares, astral, fractal.
+  Home: The Astral Realm (`EW_RACE_BIOMES` astral, POINT_OF_ENTRY The Looking-Glass, HQ_NPC_PLACES 'hollow @N:The Bed').
+- THE MASKS (battle.js block "THE MASKS"): status `masked` (🎭, debuff) stamps `_maskSrcId` (the Hollow's id) and `_maskSeq` on the
+  wearer (plain fields: the guest gets them in the sync). At most 4 out (`HOLLOW_MASKS_MAX`): a fifth calls the oldest home.
+- Lull (T1): range 5, 70 psychic, Masked 3.
+- Puppet Strings (T2): every Masked enemy within 6 (through cover) is dragged 2 squares toward the Hollow, 40 magic, Slow 1, CD 2.
+- Shard Bloom (T3): 3x3 within 5, 85 magic; the EMPTY squares rise 2 into crystal for 2 rounds (`deformEmptyOnly`, terrain timers),
+  so they block walking and sight; Masked units caught are Rooted 1. CD 3.
+- Wake (T4): every Masked enemy within 7, through cover, dragged up to 3 squares, 90 + 30 per square moved (a square it was
+  blocked on counts), Feared 1, all masks fly home. CD 3; needs a mask out ("No mask out").
+- THE DRAG (`_hollowDrag`): resolveForcedSlide with `stopBefore` the Hollow and `noBreach` (new opt: a drag stops against a wall,
+  it never smashes the Bloom's crystals; without it the slide crashed through the pillar and climbed it).
+- AI (ai.js): a fresh mask +55; a drag is worth squares x (per-square damage + 8) x land chance.
+- VFX = three-vfx-effects.js "THE HOLLOW" (kill switch `window.EW_NO_HORROR_VFX`): Lull's thread + rings, Strings' threads per
+  dragged unit ('hlStrings:drag', relayed through fireGeometry), the Bloom's crystal spikes per raised square ('hlBloom:grow'),
+  Wake's rings to 7 + eye slits over each dragged head ('hlWake:drag'). Own side cyan, enemy pink-orange.
+- Finisher "Lights Out" (sig devoured). Kept separate from the Abomination (same day, its own thread).
