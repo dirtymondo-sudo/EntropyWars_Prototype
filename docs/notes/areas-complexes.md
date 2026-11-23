@@ -14988,3 +14988,33 @@ whole catalogue buildings (find-doors.js PACK rows), so each KIND opens once, in
   one long room with both front doors, the yard house = the gate, the walled yard with firewood and a barrel, the house's own door; the
   stair house opens on its +X ground door, the painted door at the top of its outside stair stays: that stair is no walk).
 - NOT DOORS: `thatched_hut` left find-doors.js's list (no door, lattice windows all round, a floor on stilts 0.7 m up, 1.2 m headroom).
+
+## THE OPEN DOORS, DISASTER CITY (2026-11-23, building-interiors plan step 2; mondo: "If there is a door the player should be able to walk inside of it")
+A RULE in the city bake, not edits in 160 buildings: `docs/interiors/open-doors.js`, run by bake-disaster-city.js THE OPEN DOORS after the
+district files (and again at THE LAST STAGE for the rows a `last` hook drew), before THE KITS. No district file was edited.
+- Every painted door ON THE GROUND (an arch part in an `urban:Door*` / `urban:MetalShutter*` sheet, foot under 0.9 m) is found on the side of the
+  building row it stands on (the walker's texbuilding, or a walked-roof `plateau`, which becomes a two-storey skin-less texbuilding as the district
+  files' walk-ins do: its 7 m roof is walked as before). A shut row TURNS so that door's side is its front (`rot` + a quarter or half turn, w / d
+  swapped), goes `hollow` with its doorway AT the painted door (`doorLx` / `doorW` / `doorH`), gets a kit by its plan name (kits.js `kitFor`:
+  "Street kiosk / annex" = kiosk, "Local shop" = shop, "Workshop / store" = workshop, "Residence / annex" = flat ...) and, over two storeys,
+  `inH: 6.68` (one walked room under the floors above). Two halves side by side = one double doorway (`leafDouble`).
+- Every OTHER painted door of the row (a back door, a side door, the second of two shop doors) is one of its `gaps`, with its swinging leaf in
+  `inner`; a roller shutter is a wide gap (5.4 m at most) with no leaf. A row that already was a walk-in only gains the gaps.
+- The door picture and its dark frame panel are taken out of the arch row (the doorway and the leaf are the door now); a step, a canopy and the
+  lettering stay.
+- A door up the wall (foot 3 m and over: the roof huts' doors, an upper landing's) that nobody reaches at its height becomes a tall window
+  (`urban:GlassWindowTall1a-Glow`, mondo's rule). THE SHUT FRONTS: a textured building drawn with its own outside and no inside (find-doors SOLID)
+  opens on its front with a kit; `TURN` in the hook turns one whose front faces no walked ground (dc:in39, a half turn).
+- GAPS ARE DOORWAYS EVERYWHERE NOW: data.js hqTexBuildingRows already cut them in the walker's walls; three-renderer.js `_hqTexInside` cuts them in
+  the inside walls (jambs + head), THE CLEAR DOORWAYS (`_hqArchDoorGrid`) cuts the arch parts across each gap as across the front, and kits.js keeps
+  the square inside each gap a walkway. `inH` = a hollow row's inside height (renderer + kits' lamps).
+- find-doors.js reads HEIGHTS now: a drawn door is reached only by walked ground at its foot (±1.3 m), so a roof hut's door is no longer "reached"
+  by the street under it; a MetalShutter from 0.9 m up is a window's shutter, a door sheet 0.5-1.5 m up and under 2 m tall is a hatch: neither listed.
+- COUNT (main 5010cb6 + this): walk-ins 117 -> 285, closed 244 -> 40, unreachable 5 -> 0; find-softlocks: 0 traps, 0 crevices (as before). The
+  bake prints `[open doors] {...}`; `DOORS_DUMP=1 node bake-disaster-city.js --dry-run` lists every door it opened, gapped, left or skipped.
+- LEFT (not this pass): Civic Center's 15 painted doors (district C, the second account's: SKIPPED by the hook, `distOf(f) === 'C'`); the Hotel's
+  lobby door (its own thread); the pack and prism fillers (pack_bld_08 / 09 x4, building_2 / 3 / 5 / 9 / 10 x6: their faces are a model's or a
+  sprite's); the city's catalogue buildings (city_diner, city_burgerpiz, city_vhs_shop, city_laundry, city_house x2, city_quequis_house: they
+  need HQ_WALK_IN_PROPS cuts like the pizzeria's; outhouse / trailer / lighthouse come with the other zones' OPEN DOORS thread, catalogue-wide);
+  four arch doors with no row under them (the Stadium's shop door, the Hills' mast hut, the Southside annex P00-02-B2's porch door, the
+  University's P02-05-B2 storefront set 1 m back from its footprint).

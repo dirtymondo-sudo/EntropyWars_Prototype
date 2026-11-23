@@ -60,6 +60,9 @@ module.exports = function openDoors(ctx) {
             const q = ((+a.rot || 0) + (+P.ry || 0)) * D2R, thinX = P.s === 'box' && (sz[0] || 1) < (sz[2] || 1);
             const wid = P.s === 'quad' ? +sz[0] : Math.max(+sz[0] || 0, +sz[2] || 0);
             const at = toWorld(a, +P.p[0] || 0, +P.p[2] || 0);
+            /* a door whose ground outside is not at the floor's height (find-doors.js WALKIN-X: a step of 1.3 m or more, a yard on another level, a
+               district's furniture against it inside): a window, mondo's rule. ctx.windowsAt = [[x, z], ...] from the finder's run */
+            if ((ctx.windowsAt || []).some(q => Math.hypot(q[0] - at[0], q[1] - at[1]) < 1.6)) { P.key = WINDOW; count.windows++; return; }
             let n = thinX ? [Math.cos(q), Math.sin(q)] : [-Math.sin(q), Math.cos(q)];
             /* the row it stands on: the door's face looks out of that row's side (both ways for a box: the sheet is on both faces) */
             let host = null, hs = null;

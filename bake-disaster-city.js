@@ -1220,7 +1220,10 @@ const openDoors = stage => { const KITS = require(path.join(REPO, 'docs/interior
   const skip = f => HELD.test(String(f.id || '')) || distOf(f) === 'C';
   const STYLE_KIT = { office: 'office', tower: 'office', factory: 'workshop', stucco: 'flat', residential: 'flat' };
   const nameOf = f => { const m = /P\d\d-\d\d-B\d/.exec(String(f.id || '')), p = m && plotOf[m[0].slice(0, 6)], b = p && p.buildings.find(q => q.id === m[0]); return (b && b.name) || (f.style === 'factory' ? 'workshop' : f.style === 'stucco' || f.style === 'residential' ? 'flat' : f.style === 'office' || f.style === 'tower' ? 'office' : ''); };
-  const R = OPEN({ features, KITS, nameOf, skip });
+  /* the doors find-doors.js found with their ground outside on another level than the floor inside (WALKIN-X, 11-23): windows (mondo's rule) */
+  const WINDOWS_AT = [[56.58, -252], [62.42, -252], [-40.42, -126], [-35.17, -126], [21, -7], [193.5, -217], [150.6, -175], [252, -140], [136.75, -126], [183.75, -84],
+      [239.25, -126], [247.25, -126], [84, -54.89], [141.5, -42], [188, -52.5]];
+  const R = OPEN({ features, KITS, nameOf, skip, windowsAt: WINDOWS_AT });
   if (stage) { count.openDoorsLast = R.count; console.warn('[open doors, the last stage] ' + JSON.stringify(R.count)); if (process.env.DOORS_DUMP) R.say.forEach(l => console.log('DOORS ' + l)); return; }   // (the rows a district's `last` hook drew: its painted doors only)
   /* THE SHUT FRONTS: a textured building drawn with its own outside and no inside (its style paints a door on its front) opens on its front;
      TURN = the ones whose front faces no walked ground (find-doors.js: `sides walked`), turned to one that does */

@@ -64,7 +64,9 @@ function scan(D, id, reach) {
         list.forEach(([lx, lz, nx, nz, nm]) => {
             const at = lot(f, lx, lz), out = lot(f, lx + nx * 1.4, lz + nz * 1.4), inn = lot(f, lx - nx * 1.2, lz - nz * 1.2);
             doorways.push(at);
-            const ro = walked(out[0], out[1]), ri = walked(inn[0], inn[1]);
+            /* (2026-11-23) the ground out of the doorway must be at the floor's height (±1.3 m): a door onto a hillside 6 m up is no way in */
+            const hAt = (x, z) => { if (!G) return null; const i = Math.round((x - info.x0) / info.res), j = Math.round((z - info.z0) / info.res); if (i < 0 || j < 0 || i >= info.nx || j >= info.nz) return null; const y = G[j * info.nx + i]; return y === y ? y : null; };
+            const fl = hAt(inn[0], inn[1]), ri = walked(inn[0], inn[1]), ro = walked(out[0], out[1], fl);
             const row = { kind: ro === false ? 'WALKIN-X' : 'OPEN', id: f.id || '', door: nm, x: r2(at[0]), z: r2(at[1]), reach: yes(ro), inside: yes(ri) };
             if (ro === false) row.sides = sides(f, w, d);
             (ro === false ? closed : open).push(row);
