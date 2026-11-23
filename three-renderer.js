@@ -50692,6 +50692,17 @@ const ThreeRenderer = (function () {
                 var dz = T.cos(ph.mul(0.8).add(0.6)).mul(k).mul(A).mul(0.6);
                 return P.add(T.vec3(dx, 0, dz));
             })();
+        } else if (D.k === 'flag') {   // THE ZONE FLAGS: the wave + gust on the trees' clock (the GLSL is _hqFlagMat)
+            var ft = _ewNodeRef(_EW_WIND), fa = T.attribute('aEwFlag', 'vec2');
+            nm.positionNode = T.Fn(function () {
+                var wo = T.modelWorldMatrix.mul(T.vec4(0, 0, 0, 1)), ph0 = wo.x.mul(0.37).add(wo.z.mul(0.23)).toVar();
+                var w = T.pow(fa.x, 1.25).toVar();
+                var g = T.sin(ft.mul(0.55).add(ph0.mul(0.7))).mul(T.sin(ft.mul(0.21).add(1.3))).mul(0.45).add(0.55).toVar();
+                var h = fa.x.mul(D.kk).sub(ft.mul(4.6)).add(ph0).toVar();
+                var a = g.mul(w).mul(D.a).toVar();
+                var z = a.mul(T.sin(h).add(T.sin(h.mul(2.1).add(1.3).add(fa.y.mul(2.4))).mul(0.3)));
+                return P.add(T.vec3(w.mul(D.a).mul(g.mul(0.5).oneMinus()).mul(-0.12), w.mul(D.a).mul(g.oneMinus()).mul(-0.18), z));
+            })();
         } else if (D.k === 'kelp') {
             var kt = _ewNodeRef(D.t);
             nm.positionNode = T.Fn(function () {
@@ -50890,7 +50901,7 @@ const ThreeRenderer = (function () {
         else if (D && D.k === 'terrain') _ewNodeTerrain(nm, m, D);
         else if (D && D.k === 'fluid') _ewNodeFluid(nm, m, D);
         else if (D && D.k === 'calmfluid') _ewNodeCalmFluid(nm, m, D);   // THE CALM GROUND
-        else if (D && (D.k === 'grass' || D.k === 'wind' || D.k === 'kelp')) _ewNodeSway(nm, D);
+        else if (D && (D.k === 'grass' || D.k === 'wind' || D.k === 'kelp' || D.k === 'flag')) _ewNodeSway(nm, D);
         else if (D && D.k === 'ggrass') _ewNodeGGrass(nm, D);   // THE GRASS FIELD
         else if (D && D.k === 'stack') _ewNodeStack(nm, m, D);   // THE SHEET STACK
         else if (D && D.k === 'fxop') nm.opacityNode = _ewNodeU.T.materialOpacity.mul(_ewNodeU.T.attribute('aEwOp', 'float'));   // three-vfx.js's batched particles
@@ -78723,6 +78734,150 @@ const ThreeRenderer = (function () {
         if (sat < 0.14 && lum < 0.62) return HQ_ARCH_SURFACE.concrete;
         return HQ_ARCH_SURFACE.paint;
     }
+    /* THE ZONE FLAGS (2026-11-23, mondo: "Can we add flags to different zones? ... I want the flags to look a little better than just
+       perfectly straight rectangles, i dont think we need full on cloth simulation and wind physics, but maybe something in between"; his picks on
+       the mock-up, Zone Flags artifact: motion D = wave + gust, North Pole B, Came A Lot A, DOOR HQ, Nowhere, Area 51, Heaven).
+       A flag is ONE sheet (16 x 8 cells) with its picture; the wave runs in the vertex shader on the trees' wind clock (_EW_WIND: one value the HQ
+       loop advances, so the flags gust with the trees). No JavaScript per frame, no scan of the room. The hoist edge (at the pole, the sheet's
+       u = 0) never moves; the swing grows to the fly end. A sheet's material is shared by every flag of its picture.
+       The pictures: HQ_FLAG_ART (drawn in code like the city flag) or a file on R2 (`img`), data.js ZONE_FLAGS.flags says which. 'dc' = the
+       city flag's own sheet (_hqArchSignTex 'mark:flag'). The WebGPU twin: _ewNodeTag k 'flag' -> _ewNodeSway.
+       Off: window.EW_HQ_NO_FLAG_WAVE (still sheets). */
+    var HQ_FLAG_ART = {
+        katana: function (g, W, H) { g.fillStyle = '#f6f4ef'; g.fillRect(0, 0, W, H); var s = H * 0.52; g.fillStyle = '#c0182c'; g.fillRect((W - s) / 2, (H - s) / 2, s, s); },
+        northpole: function (g, W, H) {   // the wrapped gift: red, a green ribbon cross, the bow tied in the middle (mondo's B)
+            var k = W / 300; g.save(); g.scale(k, k); W = 300; H = 200;
+            g.fillStyle = '#b3192b'; g.fillRect(0, 0, W, H);
+            var cx = W / 2, cy = H / 2, b = 18; g.fillStyle = '#1f7a3a'; g.fillRect(cx - b, 0, b * 2, H); g.fillRect(0, cy - b, W, b * 2);
+            g.fillStyle = '#3fa35b'; g.fillRect(cx - b + 4, 0, 3, H); g.fillRect(cx + b - 7, 0, 3, H); g.fillRect(0, cy - b + 4, W, 3); g.fillRect(0, cy + b - 7, W, 3);
+            g.fillStyle = 'rgba(0,0,0,0.12)'; for (var i = 0; i < W; i += 22) g.fillRect(i, 0, 1, H);
+            g.fillStyle = '#1f7a3a'; g.strokeStyle = '#0f4d22'; g.lineWidth = 3;
+            [-1, 1].forEach(function (s) { g.beginPath(); g.ellipse(cx + s * 30, cy - 14, 30, 17, s * -0.5, 0, Math.PI * 2); g.fill(); g.stroke(); });
+            [-1, 1].forEach(function (s) { g.beginPath(); g.moveTo(cx + s * 6, cy + 4); g.lineTo(cx + s * 34, cy + 46); g.lineTo(cx + s * 22, cy + 40); g.lineTo(cx + s * 16, cy + 52); g.lineTo(cx - s * 4, cy + 8); g.closePath(); g.fill(); g.stroke(); });
+            g.fillStyle = '#2b8f47'; g.beginPath(); g.arc(cx, cy - 6, 12, 0, Math.PI * 2); g.fill(); g.stroke();
+            g.restore();
+        },
+        nowhere: function (g, W, H) {   // the Western Town: a lone star with nothing in it, sun-faded
+            var k = W / 300; g.save(); g.scale(k, k); W = 300; H = 200;
+            g.fillStyle = '#d9b77e'; g.fillRect(0, 0, W, H); g.fillStyle = '#9c4a2a'; g.fillRect(0, 0, 64, H);
+            g.strokeStyle = '#f6efe0'; g.lineWidth = 6; g.lineJoin = 'round'; g.beginPath();
+            for (var i = 0; i < 10; i++) { var a = -Math.PI / 2 + i * Math.PI / 5, r = (i % 2) ? 21 : 52; g[i ? 'lineTo' : 'moveTo'](186 + Math.cos(a) * r, 102 + Math.sin(a) * r); }
+            g.closePath(); g.stroke();
+            g.fillStyle = 'rgba(120,80,40,0.18)'; for (var j = 0; j < 40; j++) g.fillRect((j * 73) % W, (j * 37) % H, 10, 2);
+            g.restore();
+        },
+        redacted: function (g, W, H) {   // Area 51: REDACTED Corp.'s flag, a page of black bars
+            var k = W / 300; g.save(); g.scale(k, k);
+            g.fillStyle = '#efeee8'; g.fillRect(0, 0, 300, 200); g.fillStyle = '#111';
+            [[30, 34, 230], [30, 64, 150], [196, 64, 74], [30, 94, 250], [30, 124, 120], [168, 124, 60], [30, 154, 200]].forEach(function (b) { g.fillRect(b[0], b[1], b[2], 18); });
+            g.restore();
+        },
+        heaven: function (g, W, H) {   // the Pearly Gates' HOA flag: a gold gate on white
+            var k = W / 300; g.save(); g.scale(k, k);
+            g.fillStyle = '#fbfaf5'; g.fillRect(0, 0, 300, 200); g.strokeStyle = '#9cc7e8'; g.lineWidth = 12; g.strokeRect(6, 6, 288, 188);
+            var cx = 150, G = '#d6aa3a'; g.strokeStyle = G; g.lineWidth = 5;
+            g.beginPath(); g.moveTo(cx - 58, 160); g.lineTo(cx - 58, 84); g.arc(cx, 84, 58, Math.PI, 0); g.lineTo(cx + 58, 160); g.stroke();
+            g.lineWidth = 3; for (var x = -46; x <= 46; x += 11.5) { var top = 84 - Math.sqrt(Math.max(0, 58 * 58 - x * x)) + 6; g.beginPath(); g.moveTo(cx + x, 160); g.lineTo(cx + x, top); g.stroke(); }
+            g.lineWidth = 5; g.beginPath(); g.moveTo(cx, 160); g.lineTo(cx, 28); g.stroke(); g.beginPath(); g.moveTo(cx - 58, 160); g.lineTo(cx + 58, 160); g.stroke();
+            g.fillStyle = G; g.beginPath(); g.arc(cx, 20, 6, 0, Math.PI * 2); g.fill();
+            g.restore();
+        },
+        door: function (g, W, H, img) {   // DOOR HQ: mondo's own Door mark on deep navy (his file, drawn as it is)
+            g.fillStyle = '#00103f'; g.fillRect(0, 0, W, H);
+            if (img && img.naturalWidth) { var h = H * 0.75, w = h * img.naturalWidth / img.naturalHeight; g.drawImage(img, (W - w) / 2, (H - h) / 2 + H * 0.02, w, h); }
+        }
+    };
+    var _hqFlagTexs = {}, _hqFlagMats = {};
+    function _hqFlagDef(id) { var Z = (typeof ZONE_FLAGS !== 'undefined') ? ZONE_FLAGS : null; return (Z && Z.flags && Z.flags[id]) || null; }
+    function _hqFlagTex(id) {
+        if (_hqFlagTexs[id]) return _hqFlagTexs[id];
+        if (id === 'dc') return (_hqFlagTexs[id] = _hqArchSignTex('mark:flag'));
+        var F = _hqFlagDef(id) || {}, W = 384, H = 256, c = document.createElement('canvas'); c.width = W; c.height = H;
+        var g = c.getContext('2d'), t = new THREE.CanvasTexture(c); t.anisotropy = 4; if (THREE.SRGBColorSpace) t.colorSpace = THREE.SRGBColorSpace;
+        var art = HQ_FLAG_ART[F.art || id];
+        var paint = function (img) { g.clearRect(0, 0, W, H); if (art) art(g, W, H, img); else if (img && img.naturalWidth) g.drawImage(img, 0, 0, W, H); else { g.fillStyle = '#d8d4cc'; g.fillRect(0, 0, W, H); } t.needsUpdate = true; };
+        paint(null);
+        if (F.img) {   // a picture on R2 (the Came A Lot crest; DOOR HQ's mark under its art): drawn when it lands
+            try { var L = new THREE.ImageLoader(); L.setCrossOrigin('anonymous'); L.load('https://cdn.entropywars.net/Assets/' + F.img, function (img) { paint(img); }, undefined, function () { console.warn('[FLAGS] the picture did not load', F.img); }); } catch (e) {}
+        }
+        return (_hqFlagTexs[id] = t);
+    }
+    /* the shared material of a flag's picture: Lambert (lit like the room), both faces, the wave hook. aEwFlag = (u along from the pole, v up). */
+    function _hqFlagMat(id, wM, ampM, U) {
+        var key = id + '|' + wM + '|' + ampM;
+        if (_hqFlagMats[key]) return _hqFlagMats[key];
+        var m = new THREE.MeshLambertMaterial({ map: _hqFlagTex(id), side: THREE.DoubleSide });
+        m._ew_hzNear = true;
+        var wave = !(typeof window !== 'undefined' && window.EW_HQ_NO_FLAG_WAVE);
+        if (wave) {
+            var A = ampM * U, K = 2.7 * wM;   // the swing at the fly end (world units), the wave's turns across the sheet
+            m.onBeforeCompile = function (sh) {
+                sh.uniforms.uEwWind = _EW_WIND; sh.uniforms.uEwFlagA = { value: A }; sh.uniforms.uEwFlagK = { value: K }; sh.uniforms.uEwFlagW = { value: wM * U };
+                sh.vertexShader = 'uniform float uEwWind; uniform float uEwFlagA; uniform float uEwFlagK; uniform float uEwFlagW; attribute vec2 aEwFlag;\n' + sh.vertexShader
+                    .replace('#include <beginnormal_vertex>', [
+                        '#include <beginnormal_vertex>',
+                        ' vec4 ewfo = modelMatrix * vec4(0.0, 0.0, 0.0, 1.0); float ewfp = ewfo.x * 0.37 + ewfo.z * 0.23;',
+                        ' float ewfw = pow(aEwFlag.x, 1.25), ewft = uEwWind;',
+                        ' float ewfg = 0.55 + 0.45 * sin(ewft * 0.55 + ewfp * 0.7) * sin(ewft * 0.21 + 1.3);',
+                        ' float ewfh = aEwFlag.x * uEwFlagK - ewft * 4.6 + ewfp, ewfq = ewfh * 2.1 + 1.3 + aEwFlag.y * 2.4;',
+                        ' float ewfa = uEwFlagA * ewfg * ewfw;',
+                        ' float ewfz = ewfa * (sin(ewfh) + 0.3 * sin(ewfq));',
+                        ' float ewfd = ewfa * (cos(ewfh) + 0.63 * cos(ewfq)) * uEwFlagK / uEwFlagW;',
+                        ' objectNormal = normalize(vec3(-ewfd, 0.0, 1.0));'
+                    ].join('\n'))
+                    .replace('#include <begin_vertex>', '#include <begin_vertex>\n transformed.z += ewfz; transformed.x -= 0.12 * uEwFlagA * ewfw * (1.0 - 0.5 * ewfg); transformed.y -= 0.18 * uEwFlagA * ewfw * (1.0 - ewfg);');
+            };
+            m.customProgramCacheKey = function () { return 'ewFlag1'; };
+            _ewNodeTag(m, { k: 'flag', a: A, kk: K, w: wM * U });   // WEBGPU: the same wave (_ewNodeSway)
+        }
+        m._ew_shared = true;
+        return (_hqFlagMats[key] = m);
+    }
+    /* one flag's cloth: wM x hM metres, its hoist edge on the group's origin, running to +x, its foot at y = 0 (world units) */
+    function _hqFlagCloth(id, wM, hM, ampM, U) {
+        var g = new THREE.PlaneGeometry(wM * U, hM * U, 16, 8); g.translate(wM * U / 2, hM * U / 2, 0);
+        var uv = g.attributes.uv, a = new Float32Array(uv.count * 2);
+        for (var i = 0; i < uv.count; i++) { a[i * 2] = uv.getX(i); a[i * 2 + 1] = uv.getY(i); }
+        g.setAttribute('aEwFlag', new THREE.BufferAttribute(a, 2));
+        var m = new THREE.Mesh(g, _hqFlagMat(id, wM, ampM, U));
+        m.name = 'hq_flag'; m._ew_noBatch = true; m._ew_noInstance = true; m.castShadow = false; m.frustumCulled = true;
+        g.boundingSphere = null; g.computeBoundingSphere(); g.boundingSphere.radius += ampM * U * 1.5;   // the swing stays inside the cull sphere
+        return m;
+    }
+    /* the pole (catalogue `zone_flag` / `zone_flag_hall`): a metal pole, a gold ball, the cloth near the top. Front = +x (the cloth flies there). */
+    function _hqFlagPoleProp(U, p, hall) {
+        var id = (p && p.flag) || 'dc', grp = new THREE.Group();
+        var H = hall ? 3.4 : 8.0, r = hall ? 0.035 : 0.075, cw = hall ? 1.5 : 2.4, ch = hall ? 1.0 : 1.6, amp = hall ? 0.035 : 0.17;
+        var metal = _hqFlagMats['pole|' + (hall ? 'brass' : 'alu')] || (_hqFlagMats['pole|' + (hall ? 'brass' : 'alu')] = new THREE.MeshLambertMaterial({ color: hall ? 0xb89a52 : 0xc9ccd1 }));
+        var gold = _hqFlagMats['pole|gold'] || (_hqFlagMats['pole|gold'] = new THREE.MeshLambertMaterial({ color: 0xd8b24a, emissive: 0x2a1e00 }));
+        var pole = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.8 * U, r * U, H * U, 10), metal); pole.position.y = H / 2 * U; grp.add(pole);
+        var ball = new THREE.Mesh(new THREE.SphereGeometry(r * 1.6 * U, 10, 8), gold); ball.position.y = (H + r * 1.2) * U; grp.add(ball);
+        if (hall) { var foot = new THREE.Mesh(new THREE.CylinderGeometry(0.22 * U, 0.26 * U, 0.08 * U, 16), metal); foot.position.y = 0.04 * U; grp.add(foot); }
+        else { var base = new THREE.Mesh(new THREE.CylinderGeometry(0.16 * U, 0.2 * U, 0.25 * U, 10), metal); base.position.y = 0.125 * U; grp.add(base); }
+        var cl = _hqFlagCloth(id, cw, ch, amp, U); cl.position.set(r * U, (H - 0.15 - ch) * U, 0); grp.add(cl);
+        return grp;
+    }
+    /* THE CITY FLAG WAVES: an architecture row's flag (C.js flag(): a box + two 'mark:flag' quads, one each way) becomes one waving sheet of
+       the city flag, the box and quads left out of the row's geometry. Read once, when the room is built. */
+    function _hqArchFlagsOut(row, G, U) {
+        if (!row || !row.parts || typeof window !== 'undefined' && window.EW_HQ_NO_ZONE_FLAGS) return row;
+        var hasFlag = false; for (var i = 0; i < row.parts.length; i++) { var q = row.parts[i]; if (q && q.s === 'quad' && q.key === 'mark:flag') { hasFlag = true; break; } }
+        if (!hasFlag) return row;
+        var D2R = Math.PI / 180, rc = Math.cos(-(row.rot || 0) * D2R), rs = Math.sin(-(row.rot || 0) * D2R), base = row.base || 0, drop = new Set();
+        row.parts.forEach(function (q) {
+            if (!q || q.s !== 'quad' || q.key !== 'mark:flag') return;
+            drop.add(q);
+            var pp = q.p || [0, 0, 0], sz = q.size || [2.2, 1.4];
+            row.parts.forEach(function (b) { if (b && b.s === 'box' && b.p && Math.abs(b.p[0] - pp[0]) < 0.01 && Math.abs(b.p[1] - pp[1]) < 0.01 && Math.abs(b.p[2] - pp[2]) < 0.1 && b.size && Math.abs(b.size[2]) < 0.1) drop.add(b); });
+            if (q.ry) return;   // the front face only: one sheet for the pair
+            var lx = pp[0] - sz[0] / 2, lz = pp[2] - 0.045, wx = row.x + lx * rc + lz * rs, wz = row.z - lx * rs + lz * rc, gy = base;
+            if (typeof row.ground === 'function') { var gh = row.ground(wx, wz); if (isFinite(gh)) gy = gh; }
+            var cl = _hqFlagCloth('dc', sz[0], sz[1], 0.17, U);
+            cl.position.set(wx * U, (gy + pp[1]) * U + 0.3, wz * U); cl.rotation.y = -(row.rot || 0) * D2R;
+            G.add(cl);
+        });
+        return Object.assign({}, row, { parts: row.parts.filter(function (q) { return !drop.has(q); }) });
+    }
     function _hqBuildArchRows(info, G, U) {
         var neon = !!(info.gen && info.gen.neon), mats = {}, made = 0;
         var matOf = function (b) {
@@ -78757,6 +78912,7 @@ const ThreeRenderer = (function () {
         var doorGrid = null; try { doorGrid = _hqArchDoorGrid(info.texb); } catch (e) { console.warn('[HQ] the clear doorways failed', e); }
         info.arch.forEach(function (row) {
             try {
+                row = _hqArchFlagsOut(row, G, U);   // THE ZONE FLAGS: the city flag's sheet waves
                 var GG = _hqArchGeometry(_hqArchDoorClear(row, doorGrid), HQ_TEXB.cell);   // THE CLEAR DOORWAYS
                 Object.keys(GG).forEach(function (id) {
                     var b = GG[id]; if (!b.n) return;
@@ -84513,6 +84669,10 @@ const ThreeRenderer = (function () {
     Object.assign(_hqProcBuilders, {
         ew_rubiks_cube: function (U, p) { return _ewCubeProp(U, true, p); },
         ew_cube_piece: function (U, p) { return _ewCubeProp(U, false, p); },
+    });
+    Object.assign(_hqProcBuilders, {   // THE ZONE FLAGS (2026-11-23): the poles (_hqFlagPoleProp)
+        zone_flag: function (U, p) { return _hqFlagPoleProp(U, p, false); },
+        zone_flag_hall: function (U, p) { return _hqFlagPoleProp(U, p, true); }
     });
     /* THE COLOURED FLAMES (2026-11-20): a torch / hearth row's flame hue: the row's `flame`, else its catalogue row's (null = the warm flame) */
     function _hqFlameOf(p) {

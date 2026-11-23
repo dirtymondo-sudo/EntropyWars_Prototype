@@ -91317,6 +91317,8 @@ const HQ_CATALOGUE_ALL = {
     oil_lamp: { file: 'world/props/meshy/wishlist/oil_lamp.glb', base: 'asset', span: 0.3, foot: 0, group: 'Meshy props · wish list · Lights' },   // An ancient clay oil lamp with a small flame at the spout; 0.3 x 0.12 x 0.19 m (w x h x d)
     strobe_lamp: { file: 'world/props/meshy/wishlist/strobe_lamp.glb', base: 'asset', h: 0.3, foot: 0, group: 'Meshy props · wish list · Lights' },   // A red rotating emergency beacon lamp on a metal wall bracket; 0.13 x 0.3 x 0.27 m (w x h x d)
     boom_gate: { file: 'world/props/meshy/wishlist/boom_gate.glb', base: 'asset', span: 5.0, foot: 0.63, rect: { hw: 2.5, hd: 0.63 }, block: true, group: 'Meshy props · wish list · Military' },   // A military checkpoint boom barrier gate; 5.0 x 6.35 x 1.27 m (w x h x d)
+    zone_flag: { proc: 'zone_flag', h: 8.0, foot: 0.2, block: true, group: 'Flags' },             // THE ZONE FLAGS (2026-11-23): a pole flying a zone's flag (row `flag`: an id of ZONE_FLAGS.flags), the cloth waves on the wind
+    zone_flag_hall: { proc: 'zone_flag_hall', h: 3.4, foot: 0.26, block: true, group: 'Flags' },  // THE ZONE FLAGS: the indoor stand (a brass pole on a round foot), the cloth hangs and barely stirs
     flag_pole: { file: 'world/props/meshy/wishlist/flag_pole.glb', base: 'asset', h: 8.0, foot: 0.37, rect: { hw: 2.15, hd: 0.37 }, block: true, group: 'Meshy props · wish list · Military' },   // A tall metal flag pole with a plain grey and white flag; 4.3 x 8.0 x 0.75 m (w x h x d)
     helicopter: { file: 'world/props/meshy/wishlist/helicopter.glb', base: 'asset', span: 16.0, foot: 2.0, rect: { hw: 8.0, hd: 2.0 }, block: true, group: 'Meshy props · wish list · Military' },   // A black military transport helicopter; 16.0 x 4.97 x 4.0 m (w x h x d)
     popemobile: { file: 'world/props/meshy/popemobile.glb', base: 'asset', span: 4.6, foot: 1.1, rect: { hw: 2.3, hd: 1.15 }, block: true, group: 'Meshy props · wish list · Vehicles' },   // ⛪ THE POPE (2026-11-17): the Pope's ride (his Popemobile spell mounts it, three-renderer.js _MOUNT_VEHICLES); a white kei truck with a glass box on the bed, gold crossed keys on the door; 4.6 x 3.4 x 2.28 m, the nose on -X. Concept + prompt: project files pope-race/
@@ -111145,5 +111147,61 @@ window.EWDataMods = (function () {
         counts, total, summary, export: exportDoc, import: importDoc,
     };
 })();
+/* THE ZONE FLAGS (2026-11-23, mondo: "Can we add flags to different zones?"; his picks on the Zone Flags mock-up: the motion D = wave + gust,
+   North Pole B = the gift with the bow, Came A Lot A = the sword and shield, DOOR HQ, Nowhere, Area 51, Heaven; Beach Patrol no: "the beach is in
+   the city"; Hell + Antarctica: round 2, not made yet). A flag = a pole (catalogue `zone_flag`, indoors `zone_flag_hall`) flying the cloth of
+   `flags[id]`: `art` = drawn in code (three-renderer.js HQ_FLAG_ART), `img` = a picture on R2 (Assets/...). Disaster City's own flag ('dc') is the
+   Civic poles' (districts/C.js flag()); the renderer makes that sheet wave too.
+   `swap`: a room whose Meshy `flag_pole` rows fly this flag instead (the pole model's cloth is part of its mesh, so the row becomes a zone_flag).
+   `rows`: the poles this table puts up, per room, in the room's metres (`face` 0 = the cloth flies east). Applied once, after every room is in
+   (zoneFlagsApply). Off: window.EW_HQ_NO_ZONE_FLAGS. Notes: docs/notes/branding.md "THE ZONE FLAGS". */
+const ZONE_FLAGS = {
+    flags: {
+        dc:        { label: 'Disaster City' },
+        katana:    { label: 'Katana Bay', art: 'katana' },
+        northpole: { label: 'The North Pole', art: 'northpole' },
+        camelot:   { label: 'Came A Lot', img: 'world/flags/camelot_crest.jpg' },
+        door:      { label: 'DOOR HQ', art: 'door', img: 'ui/brand/door_logo/door_mark_color.png' },
+        nowhere:   { label: 'Nowhere', art: 'nowhere' },
+        redacted:  { label: 'Area 51 (REDACTED Corp.)', art: 'redacted' },
+        heaven:    { label: 'Heaven (the Pearly Gates)', art: 'heaven' }
+    },
+    swap: {
+        site_prebuilt_area51_desert: 'redacted'    // the gate's flag and the cantonment's (districts/A.js)
+    },
+    rows: {
+        foyer: [   // DOOR HQ: either side of the double doors, under the logo wall
+            { key: 'zone_flag_hall', x: -4.9, z: -4.5, flag: 'door' }, { key: 'zone_flag_hall', x: 3.2, z: -4.5, flag: 'door' }
+        ],
+        site_prebuilt_bermuda_katana: [   // the Landing Square at the pier's head (island squares 15,57 + 20,57), the castle yard (7,41)
+            { key: 'zone_flag', x: -134.75, z: 12.25, flag: 'katana' }, { key: 'zone_flag', x: -117.25, z: 12.25, flag: 'katana' },
+            { key: 'zone_flag', x: -162.75, z: -40.25, flag: 'katana' }
+        ],
+        site_prebuilt_northpole_plots: [   // the village square
+            { key: 'zone_flag', x: 26.25, z: -5.25, flag: 'northpole' }
+        ],
+        site_prebuilt_camelot_kingdom: [   // the town square, beside the two lions
+            { key: 'zone_flag', x: -19.25, z: 50.75, flag: 'camelot' }, { key: 'zone_flag', x: 19.25, z: 50.75, flag: 'camelot' }
+        ],
+        site_prebuilt_area51_ow_town: [   // Nowhere: by the well on the main street
+            { key: 'zone_flag', x: -22.75, z: 5.25, flag: 'nowhere' }
+        ],
+        site_prebuilt_heaven_plots: [   // either side of the Pearly Gates
+            { key: 'zone_flag', x: -71.75, z: 7, y: 24.5, flag: 'heaven' }, { key: 'zone_flag', x: -54.25, z: 7, y: 24.5, flag: 'heaven' }
+        ]
+    }
+};
+function zoneFlagsApply() {
+    if (typeof window !== 'undefined' && window.EW_HQ_NO_ZONE_FLAGS) return 0;
+    if (typeof DOOR_HQ === 'undefined' || !DOOR_HQ || !DOOR_HQ.rooms) return 0;
+    let n = 0;
+    Object.keys(ZONE_FLAGS.swap).forEach(rid => { const R = DOOR_HQ.rooms[rid]; if (!R || !Array.isArray(R.props)) return;
+        R.props = R.props.map(p => (p && p.key === 'flag_pole') ? (n++, Object.assign({}, p, { key: 'zone_flag', flag: ZONE_FLAGS.swap[rid] })) : p); });
+    Object.keys(ZONE_FLAGS.rows).forEach(rid => { const R = DOOR_HQ.rooms[rid]; if (!R) return; if (!Array.isArray(R.props)) R.props = [];
+        if (R._zfDone) return; R._zfDone = true; ZONE_FLAGS.rows[rid].forEach(r => { R.props.push(Object.assign({}, r)); n++; }); });
+    return n;
+}
+if (typeof window !== 'undefined') { window.ZONE_FLAGS = ZONE_FLAGS; window.zoneFlagsApply = zoneFlagsApply; }
 /* THE ZONE LOOKS: every zone room wears its zone's sheets (after every room is in DOOR_HQ.rooms; see ZONE_LOOKS) */
 try { zoneLooksApply(); } catch (e) { if (typeof console !== 'undefined') console.warn('[ZONE LOOKS] failed', e); }
+try { zoneFlagsApply(); } catch (e) { if (typeof console !== 'undefined') console.warn('[ZONE FLAGS] failed', e); }
