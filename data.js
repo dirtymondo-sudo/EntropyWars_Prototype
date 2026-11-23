@@ -110949,7 +110949,7 @@ const ZONE_FLAGS = {
             { key: 'zone_flag', x: -22.75, z: 5.25, flag: 'nowhere' }
         ],
         site_prebuilt_heaven_plots: [   // either side of the Pearly Gates
-            { key: 'zone_flag', x: -71.75, z: 7, flag: 'heaven' }, { key: 'zone_flag', x: -54.25, z: 7, flag: 'heaven' }
+            { key: 'zone_flag', x: -71.75, z: 7, y: 24.5, flag: 'heaven' }, { key: 'zone_flag', x: -54.25, z: 7, y: 24.5, flag: 'heaven' }
         ]
     }
 };
