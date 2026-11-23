@@ -99746,6 +99746,18 @@ const ThreeRenderer = (function () {
             var fwRoom = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.rooms && H.opts) ? DOOR_HQ.rooms[H.opts.room] : null;
             if (!H._fieldWarmed && fwRoom && fwRoom.terrain && typeof hqFieldSquareFor === 'function' && typeof hqFieldLattice === 'function' && !(typeof window !== 'undefined' && window.EW_HQ_NO_FIELD_WARM)) { H._fieldWarmed = true; hqFieldLattice(H.opts.room, true, hqFieldSquareFor(H.opts.room)); }
         } catch (eFW) {}
+        /* THE MATTE ROOM (2026-11-23, mondo on the hotel floors: "the walls and floors look shiny, please fix, it looks ugly"): a room whose
+           shell says `matte: true` (plaster, carpet, wallpaper) wears no highlight on its own surfaces: every classic Phong material of the
+           room's scene gets a black specular and shininess 0 (the ROUND 5 dirt fix, for a whole room; glass and other see-through parts
+           keep theirs). Once, at the arrival (a room build, never a frame). Off: window.EW_HQ_NO_MATTE. */
+        try {
+            var mtRoom = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.rooms && H.opts) ? DOOR_HQ.rooms[H.opts.room] : null;
+            if (mtRoom && mtRoom.shell && mtRoom.shell.matte && H.scene && !(typeof window !== 'undefined' && window.EW_HQ_NO_MATTE)) {
+                var mtSeen = new Set();
+                H.scene.traverse(function (o) { if (!o.isMesh) return; (Array.isArray(o.material) ? o.material : [o.material]).forEach(function (q) {
+                    if (!q || mtSeen.has(q) || !q.isMeshPhongMaterial || q.transparent) return; mtSeen.add(q); q.specular.setHex(0); q.shininess = 0; }); });
+            }
+        } catch (eMT) {}
         H.landed = true;
         H.ready = true;
         _hqRebuildAt = performance.now();   // the room's arrival (2026-09-25): a lock the browser drops as the room settles is never the walker's ESC
