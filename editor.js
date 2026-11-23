@@ -4964,8 +4964,8 @@
         try { var bo = JSON.parse(localStorage.getItem('ew_editor_band') || 'null'); if (bo && isFinite(bo.y0) && isFinite(bo.y1)) { ED.band.y0 = +bo.y0; ED.band.y1 = +bo.y1; ED.band.on = !!bo.on; } } catch (e) {}
         try { var rfo = JSON.parse(localStorage.getItem('ew_editor_roof') || 'null'); if (rfo) { ED.roof.off = !!rfo.off; if (isFinite(rfo.h)) ED.roof.h = +rfo.h; } } catch (e) {}
         try { var ao = JSON.parse(localStorage.getItem('ew_editor_audit') || 'null'); if (ao) ['walls', 'pockets', 'fight', 'sight', 'patch'].forEach(function (k) { ED.audit[k] = !!ao[k]; }); } catch (e) {}
-        if (!ED.flags) ED.flags = { batch: W.EW_HQ_NO_BATCH, inst: W.EW_HQ_NO_INSTANCE };
-        W.EW_HQ_NO_BATCH = true; W.EW_HQ_NO_INSTANCE = true;   // the pieces stay pieces while editing (a live drag moves the real prop); a look-only difference, never the player's
+        if (!ED.flags) ED.flags = { batch: W.EW_HQ_NO_BATCH, inst: W.EW_HQ_NO_INSTANCE, fz: W.EW_NO_FREEZE };
+        W.EW_HQ_NO_BATCH = true; W.EW_HQ_NO_INSTANCE = true; W.EW_NO_FREEZE = true;   // (THE FREEZE: the room walks live while it is edited)   // the pieces stay pieces while editing (a live drag moves the real prop); a look-only difference, never the player's
         ED.open = true; ED.playing = false;
         document.body.classList.add('ed-on'); document.body.classList.remove('ed-playing');
         $('edRoot').style.display = '';
@@ -4996,7 +4996,7 @@
         ED.view = null; ED.group = null; ED.proxies = []; ED.boxes = [];
         document.body.classList.remove('ed-on', 'ed-playing');
         if ($('edRoot')) $('edRoot').style.display = 'none';
-        if (ED.flags) { W.EW_HQ_NO_BATCH = ED.flags.batch; W.EW_HQ_NO_INSTANCE = ED.flags.inst; ED.flags = null; }
+        if (ED.flags) { W.EW_HQ_NO_BATCH = ED.flags.batch; W.EW_HQ_NO_INSTANCE = ED.flags.inst; W.EW_NO_FREEZE = ED.flags.fz; ED.flags = null; }
         W._hqEditLeave();
     }
     W.EWEditor = {
