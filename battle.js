@@ -15579,6 +15579,109 @@
         window._psMakeoverSwap = _psMakeoverSwap; window._psRoundEnd = _psRoundEnd;
         /* ═══ THE BUTTERFLY GIRL (2026-11-23, blue morpho; mondo OK'd the plan) ═══ THE BUTTERFLY EFFECT: small flaps now, a twister
            later. A Flutter (STATUS_DEFS.flutter: the stack in unit._flutter, the caster's id in _flutterSrcId) grows by 1 at every
+           round end (_bfRoundEnd from _nrRoundEnd); at 3 it touches down (_bfTwister): MEDIUM wind magic damage to the carrier's
+           side in the 3x3 round it, the neighbours pushed 1 square out, one twister a unit a wave; then it is gone. Her death does
+           not stop it (the effect is already in motion). Butterfly Effect (`butterflyEffect`, the buff branch) grows every Flutter of
+           her side's at once. FLASH AND VANISH (her passive): the first enemy hit on her turns her Invisible until her next turn
+           starts, once every 2 rounds. Host-side; the status, _flutter and _flutterSrcId ride the snapshot, the looks go through
+           _sigVfxGeom (fireGeometry is relayed) and showFloatingTextForUnit. Notes: docs/notes/champions-combat.md "THE BUTTERFLY GIRL". */
+        const FLUTTER_MAX = 3, FLUTTER_TWISTER_DMG = 110, BF_VANISH_EVERY = 2;
+        const BF_TWISTER_ROW = { id: 'nrFlutterTwister', name: 'Twister', families: ['morpho'], spellType: 'anomaly', element: 'wind',
+            type: 'damage', kind: 'aoe', damageType: 'magic', dmg: FLUTTER_TWISTER_DMG, pushDistance: 1 };
+        function _bfSrc(u) { return (u && u._flutterSrcId != null && (state.units || []).find(x => x && x.id === u._flutterSrcId)) || null; }   // alive or not
+        /* STATUS_DEFS.flutter's onApply / onRemove: the stack's float and the morphos on the shoulder (three-vfx-effects.js) */
+        function _bfFlutterChanged(u, was) {
+            if (!u || state.phase !== 'battle') return;
+            const n = (u._flutter | 0);
+            if (n > (was | 0) && n > 0 && !u.dead && !_skipVisuals()) showFloatingTextForUnit(u, `🦋 FLUTTER ${n}`, 'debuff', { durationMs: 1000, jitterY: -20 });
+            const src = _bfSrc(u);
+            _sigVfxGeom('nrFlutter:sync', u.x, u.y, n, { uid: u.id, owner: src ? src.player : null });
+        }
+        function _bfCarriers(side) {
+            return (state.units || []).filter(u => u && !u.dead && !u._dying && (u._flutter | 0) > 0 && unitHasStatus(u, 'flutter')
+                && (side == null || (() => { const s0 = _bfSrc(u); return !!s0 && sidesAllied(s0.player, side); })()));
+        }
+        function _bfGrow(list, why) {
+            const ready = [];
+            for (const c of list) {
+                const was = c._flutter | 0;
+                c._flutter = Math.min(FLUTTER_MAX, was + 1);
+                _bfFlutterChanged(c, was);
+                if (c._flutter >= FLUTTER_MAX) ready.push(c);
+            }
+            if (list.length) addLog(`🦋 ${list.length === 1 ? `The Flutter on ${_ctName(list[0])} grows` : `${list.length} Flutters grow`} ${why}${list.length === 1 ? ` (${list[0]._flutter} of ${FLUTTER_MAX})` : ''}.`);
+            if (ready.length) {
+                const hit = new Set();
+                for (const c of ready) _bfTwister(c, hit);
+                if (typeof checkWin === 'function') checkWin();
+            }
+            return ready.length;
+        }
+        /* at 3: the twister touches down on the carrier's 3x3 */
+        function _bfTwister(c, hit) {
+            if (!c || c.dead || c._dying) return;
+            const src = _bfSrc(c), cx = c.x, cy = c.y, side = c.player;
+            clearStatus(c, 'flutter');
+            if (c._flutter) { delete c._flutter; delete c._flutterSrcId; }
+            addLog(`🌪 The Flutter on ${_ctName(c)} touches down as a twister!`);
+            _sigVfxGeom('nrFlutter:twister', cx, cy, 1, { owner: src ? src.player : null });
+            if (!src) return;
+            const tiles = [];
+            for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (isInside(cx + dx, cy + dy)) tiles.push({ x: cx + dx, y: cy + dy });
+            const sp = spellPowerOf(src, BF_TWISTER_ROW);
+            _applyAoeDamage(src, BF_TWISTER_ROW, tiles, FLUTTER_TWISTER_DMG + sp, sp, {
+                rngRange: 30, minDmg: 32, pushFromCenter: { x: cx, y: cy },
+                findTarget: (t) => {
+                    const v = (state.units || []).find(u => u && !u.dead && !u._dying && u.x === t.x && u.y === t.y && sidesAllied(u.player, side) && !hit.has(u.id));
+                    if (v) hit.add(v.id);
+                    return v || null;
+                }
+            });
+        }
+        /* the round end (_nrRoundEnd): every Flutter grows */
+        function _bfRoundEnd() {
+            const list = _bfCarriers(null);
+            if (list.length) _bfGrow(list, 'with the round');
+        }
+        /* 🦋 Butterfly Effect (the buff branch): every Flutter of her side's grows now */
+        function _bfEffect(unit, spell) {
+            if (!_nrAlive(unit)) return;
+            const list = _bfCarriers(unit.player);
+            _sigVfxGeom('nrButterflyEffect:flap', unit.x, unit.y, 0, { owner: unit.player });
+            addLog(`🦋 ${_ctName(unit)} beats her wings once: the butterfly effect.`);
+            _bfGrow(list, 'at once');
+        }
+        function _bfEffectValue(unit) {   // ai.js: what the cast would do (carriers, twisters, bodies under them)
+            const list = _bfCarriers(unit ? unit.player : null);
+            let tw = 0, bodies = 0;
+            for (const c of list) {
+                if ((c._flutter | 0) + 1 < FLUTTER_MAX) continue;
+                tw++;
+                bodies += (state.units || []).filter(u => u && !u.dead && sidesAllied(u.player, c.player) && Math.max(Math.abs(u.x - c.x), Math.abs(u.y - c.y)) <= 1).length;
+            }
+            return { carriers: list.length, twisters: tw, bodies };
+        }
+        /* FLASH AND VANISH (applyDamageToUnit, a blow that landed on her) */
+        function _bfFlashVanish(target, src, opts) {
+            if (!target || target.race !== 'butterfly girl' || target.dead || !(target.hp > 0) || !src || !sidesHostile(src.player, target.player)) return;
+            if (opts && (opts._linkEcho || opts.damageType === 'dot')) return;
+            if (unitHasStatus(target, 'broken') || unitHasStatus(target, 'invisible')) return;
+            const r = state.round || 0;
+            if (target._bfVanishRound != null && r - target._bfVanishRound < BF_VANISH_EVERY) return;
+            target._bfVanishRound = r;
+            applyStatusPayload(target, { id: 'invisible', duration: 2 }, '🦋 Flash and Vanish: ', target);
+            if (!unitHasStatus(target, 'invisible')) return;
+            target._bfVanished = true;
+            addLog(`🦋 A blue flash, and ${_ctName(target)} is gone (Invisible until her next turn).`);
+            _sigVfxGeom('nrFlashVanish', target.x, target.y, 0, { owner: target.player });
+        }
+        /* her next turn starts: the vanish ends */
+        function _bfVanishEnds(unit) {
+            if (!unit || !unit._bfVanished) return;
+            delete unit._bfVanished;
+            if (unitHasStatus(unit, 'invisible')) clearStatus(unit, 'invisible');
+        }
+        window._bfFlutterChanged = _bfFlutterChanged; window._bfEffectValue = _bfEffectValue; window._bfRoundEnd = _bfRoundEnd;
         /* ═══ THE RAT KING (2026-11-23, thread "Plan the Rat and Rat King's spells"; mondo: "The rat can have some sort of system where
            if he gets enough stacks he becomes the rat king", plan OK'd 11-23) ═══ One new rule, MISCHIEF (a group of rats is a
            mischief), host-side like THE COMING RACES: plain numbers and the unit's own appearance / spell rows, all riding the state
