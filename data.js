@@ -3082,6 +3082,30 @@ const RACE_PROFILES = {
         label: 'Jellyfish UFO',
         types: ['anomaly', 'tech']   // mondo 11-19: NOT a UFO (the Grey is that); an advanced, sentient jellyfish species that lives underwater
     },
+    'bear': {   // 2026-11-23 THE COMING RACES 2 — one race: the grizzly, with the polar bear as its look (mondo 11-23)
+        label: 'Bear',
+        types: ['anomaly']   // a first guess; the unit's spell thread settles it
+    },
+    'rat': {   // 2026-11-23 THE COMING RACES 2 — grows into the Rat King with stacks (mondo 11-23)
+        label: 'Rat',
+        types: ['anomaly']   // a first guess; the unit's spell thread settles it
+    },
+    'monarch': {   // 2026-11-23 THE COMING RACES 2 — the MK-Ultra sleeper agent of the D.U.M.B.
+        label: 'Monarch',
+        types: ['human']   // a first guess; the unit's spell thread settles it
+    },
+    'butterfly girl': {   // 2026-11-23 THE COMING RACES 2
+        label: 'Butterfly Girl',
+        types: ['anomaly']   // a first guess; the unit's spell thread settles it
+    },
+    'mannequin': {   // 2026-11-23 THE COMING RACES 2 — the Bayside Mall: a living shop-window mannequin
+        label: 'Mannequin',
+        types: ['anomaly']   // a first guess; the unit's spell thread settles it
+    },
+    'plastic surgeon': {   // 2026-11-23 THE COMING RACES 2 — the Hollywood Hills
+        label: 'Plastic Surgeon',
+        types: ['human']   // a first guess; the unit's spell thread settles it
+    },
     'haunted doll': {   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit)
         label: 'Haunted Doll',
         types: ['anomaly', 'unholy']
@@ -3982,7 +4006,7 @@ const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scie
    RACE_PROFILES) but whose kit is not. They are NOT playable: the Relationship Web lists them (docs/plans/story-web/build/fresh.js).
    To unlock one: give it its kit (RACE_ABILITIES, RACE_TREE, RACE_FAMILIES, stats, physique, prices, ...), MOVE it from here into
    AVAILABLE_RACES and server.js AVAILABLE_RACES. Notes: docs/notes/champions-combat.md "THE COMING RACES". */
-const EW_COMING_RACES = [];   // 2026-11-19: the gladiator, the farmer and the jellyfish UFO got their kits and moved to AVAILABLE_RACES (THE COMING RACES)
+const EW_COMING_RACES = ['bear', 'rat', 'monarch', 'butterfly girl', 'mannequin', 'plastic surgeon'];   // 2026-11-23 THE COMING RACES 2 (models in, kits not yet; one spell thread a unit). 2026-11-19: the gladiator, the farmer and the jellyfish UFO got their kits and moved to AVAILABLE_RACES
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
    default job's kit (JOB_KITS) gave it, so ranged races stay ranged: the old Sniper races reach 4 (kit 3 + the Sniper's
