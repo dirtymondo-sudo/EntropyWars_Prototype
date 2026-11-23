@@ -49776,9 +49776,59 @@ const ThreeRenderer = (function () {
         set(G.PointLight, EwPointLightNode); set(THREE.PointLight, EwPointLightNode);
         set(G.SpotLight, EwSpotLightNode); set(THREE.SpotLight, EwSpotLightNode);
     }
+    /* THE SHARED REFERENCES (2026-11-23, mondo's 11:35 F3 in Disaster City: 39 FPS, "firsts 123" still asked a frame after THE FIRSTS
+       BY BUFFER, "replay: the refreshes 7.00" ms): the shared (camera / lights) buffer of every LIT shader was a buffer of its own,
+       because three's shadow code makes fresh `reference(...)` uniforms for the sun's shadow in every shader it builds (bias,
+       intensity, normalBias, mapSize, radius): the same five numbers under new ids each time, so no two lit shaders agreed on
+       "the same set of shared values" and each got (and rewrote, every render) its own ~150-value buffer. A reference to a FIXED
+       object's property in a shared group now hands every shader the same inner uniform (kept on that object, per property +
+       type + group), so shaders that read the same values share one buffer and THE FIRSTS BY BUFFER leaves the rest out.
+       Per-object references (no fixed object), arrays, buffers and textures are left as three makes them.
+       Off: window.EW_NO_SHARED_REFS (before the renderer is made). Count: _ewRefShared. */
+    var _ewRefShared = 0;
+    function _ewRefShare(T) {
+        if (typeof window !== 'undefined' && window.EW_NO_SHARED_REFS) return;
+        if (typeof window !== 'undefined' && window.EW_REF_TRACE) {   // (dev) who makes shared uniforms after boot: window._ewRefTrace = { stack: count }
+            var up = Object.getPrototypeOf(T.uniform(0)); while (up && !Object.prototype.hasOwnProperty.call(up, 'setGroup')) up = Object.getPrototypeOf(up);
+            if (up && !up._ewTrace) { up._ewTrace = true; var sg0 = up.setGroup; up.setGroup = function (g) { try { if (g && g.shared === true) { var st = String(new Error().stack || '').split('\n').slice(2, 7).map(function (l) { return l.trim().replace(/https?:\/\/[^ )]*\//g, '').slice(0, 90); }).join(' < '); var M = window._ewRefTrace || (window._ewRefTrace = {}); M[st] = (M[st] | 0) + 1; } } catch (e) {} return sg0.call(this, g); }; }
+        }
+        /* the same for the screen's size / viewport: three makes a fresh uniform (on its ONE shared vector) each time a shader
+           that reads the screen is built. One uniform per kind now. */
+        try {
+            var sn = T.screenSize, SP = sn && Object.getPrototypeOf(sn), SC = SP && SP.constructor;
+            if (SP && SC && SC.SIZE && SC.VIEWPORT && typeof SP.setup === 'function' && !SP._ewRefShare) {
+                SP._ewRefShare = true;
+                var rawS = SP.setup, scU = {};
+                SP.setup = function (b) {
+                    var k = this.scope;
+                    if (k !== SC.SIZE && k !== SC.VIEWPORT) return rawS.call(this, b);
+                    if (scU[k]) { this.updateType = scU[k + '|t']; _ewRefShared++; return scU[k]; }   // (three's own setup sets the node's update type: kept)
+                    var out = rawS.call(this, b); scU[k] = out; scU[k + '|t'] = this.updateType;
+                    return out;
+                };
+            }
+        } catch (eS) {}
+        var probe = T.reference('x', 'float', { x: 0 }), P = probe && Object.getPrototypeOf(probe);
+        while (P && !Object.prototype.hasOwnProperty.call(P, 'setNodeType')) P = Object.getPrototypeOf(P);
+        if (!P || P._ewRefShare) return;
+        P._ewRefShare = true;
+        var raw = P.setNodeType;
+        P.setNodeType = function (uniformType) {
+            raw.call(this, uniformType);
+            try {
+                var o = this.object, g = this.group, n = this.node;
+                if (!o || typeof o !== 'object' || !g || g.shared !== true || this.count !== null || !n || n.isUniformNode !== true || n.isArrayNode || n.isUniformArrayNode || n.isTextureNode || n.isBufferNode) return;
+                var C = o._ewRefU;
+                if (!C) { C = {}; Object.defineProperty(o, '_ewRefU', { value: C, writable: true, configurable: true, enumerable: false }); }
+                var k = this.property + '|' + uniformType + '|' + g.name + '|' + (this.name || '');
+                if (C[k]) { this.node = C[k]; _ewRefShared++; } else C[k] = n;
+            } catch (e) {}
+        };
+    }
     function _ewNodeLayer(r, G) {
         var T = G.TSL;
         if (!T || !r._nodes || !r.library) return;
+        try { _ewRefShare(T); } catch (e) { console.warn('[ThreeRenderer] node renderer: the references stay one a shader', e); }
         var V4 = function () { return T.uniform(new THREE.Vector4()).setGroup(T.renderGroup); };
         var F = function (v) { return T.uniform(v).setGroup(T.renderGroup); };
         /* kept across a rebuilt renderer (W4, device lost): the dressed materials, twins and cached Fn graphs read these nodes */
@@ -50733,6 +50783,11 @@ const ThreeRenderer = (function () {
                         }
                     }
                 }
+                if (sbF && typeof window !== 'undefined' && window.EW_BUN_FIRSTS_DUMP) {   // (dev) what each asked first's shared buffers hold: ThreeRenderer.bundleFirstsDump()
+                    var fdM = _ewBun.fDump || (_ewBun.fDump = {}), fdK = '', fdN = [];
+                    for (kF = 0; kF < sbF.length; kF++) { fdK += sbF[kF].id + ','; var fdB = sbF[kF].bindings || []; for (var fdI = 0; fdI < fdB.length; fdI++) { var fb = fdB[fdI]; if (fb.uniforms) fdN.push(fb.name + '{' + fb.uniforms.map(function (u) { var nd = u.nodeUniform && u.nodeUniform.node; return u.name + '#' + (nd ? nd.id : '?'); }).join(' ') + '}'); else fdN.push('[' + (fb.name || fb.constructor.name) + ']'); } }
+                    var fdE = fdM[fdK] || (fdM[fdK] = { n: 0, mats: {}, u: fdN.join(' | ') }); fdE.n++; var fdMt = ro.material; var fdL = (fdMt ? fdMt.type + (fdMt._ewNode ? ':' + fdMt._ewNode.k : '') + (fdMt.transparent ? ':tr' : '') : '?') + (ro.object && ro.object.isInstancedMesh ? ':inst' : ''); fdE.mats[fdL] = (fdE.mats[fdL] | 0) + 1;
+                }
                 rpStep(R, ro); ro._ew_rpI = true; nR++;
                 if (sbF && freshF) for (kF = 0; kF < sbF.length; kF++) sbF[kF]._ew_rid = rid;   // (asked while the shader was new to this render: three wrote its shared buffers)
             }
@@ -51173,12 +51228,30 @@ const ThreeRenderer = (function () {
        of a group keeps each direct child's own value hash; a child whose values changed 3 times within 20 s is drawn outside the
        recording from then on (`_ew_bunOut`, as a mover is). Only once the room is ready (a room still landing moves everything). */
     var _hqBatchHoldN = 0;   // THE HELD PIECES ONCE: bumped each time THE STATIC BATCH takes or hands back a piece
+    /* a top piece's counts, for "what moved in it": hidden / held by the merge / out pieces, meshes, and the sums of the geometry
+       ids, material ids, copy counts, layers and shadow flags its drawn meshes carry */
+    function _ewBunTxSig(c) {
+        var R = { hidden: 0, held: 0, out: 0, meshes: 0, geometries: 0, materials: 0, copies: 0, layers: 0, shadows: 0, order: 0 };
+        var go = function (o, top) {
+            if (!top) { if (o._ew_bunOut === true) { R.out++; return; } if (o.visible === false) { R.hidden++; return; } if (o._ew_bRec) { R.held++; return; } }
+            if (o.isMesh || o.isLine || o.isPoints || o.isSprite) {
+                R.meshes++; if (o.geometry && o._ew_lodL == null) R.geometries += o.geometry.id; if (o.isInstancedMesh) R.copies += o.count;
+                var m = o.material; if (Array.isArray(m)) { for (var i = 0; i < m.length; i++) if (m[i]) R.materials += (m[i]._ew_bunHs | 0) % 100003; } else if (m) R.materials += (m._ew_bunHs | 0) % 100003;
+                R.layers += o.layers.mask; R.shadows += (o.castShadow ? 2 : 0) + (o.receiveShadow ? 1 : 0); R.order += o.renderOrder | 0;
+            }
+            for (var j = 0; j < o.children.length; j++) go(o.children[j], false);
+        };
+        go(c, true);
+        return R;
+    }
     /* the lens's name for the top piece whose own tree last moved in a group (THE TREE'S OTHER, NAMED) */
     function _ewBunTxName(g) {
         var c = g && g._ew_bunTx; if (!c) return '';
         var nm = c.name || '', q = c, nMesh = 0, first = '';
         try { c.traverse(function (o) { if (o.isMesh) { nMesh++; if (!first) first = o.name || (o.geometry && o.geometry.name) || ''; } if (!nm && o.name) nm = o.name; }); } catch (e) {}
         var ud = c.userData || {}, src = ud.model || ud.src || ud.id || ud.key || '';
+        try { if (!src && _hq && _hq.props) for (var pi = 0; pi < _hq.props.length; pi++) { var pr = _hq.props[pi]; if (pr && pr.grp === c) { src = 'prop ' + pr.key + (pr.row ? ' ' + (pr.row.model || pr.row.kind || pr.row.k || pr.row.id || '') : ''); break; } } } catch (e2) {}   // (a lens read: the placed prop's own key and model)
+        try { var whyX = c._ew_bunTxW; if (whyX) src += ' [' + whyX + ']'; } catch (e3) {}
         return '"' + String(nm || c.type).slice(0, 40) + '"' + (src ? ' ' + String(src).slice(0, 40) : '') + (first && first !== nm ? ' / ' + String(first).slice(0, 30) : '') + ' (' + nMesh + ' meshes, ' + (g._ew_bunTxN | 0) + ' times in this group)';
     }
     function _ewBunWalkTop(g, S) {
@@ -51215,7 +51288,11 @@ const ThreeRenderer = (function () {
             if (c.children.length) _ewBunWalk(c, S);
             var sub = S.hv; S.hv = _ewBunMix(v0, sub);
             var subH = S.hs; S.hs = _ewBunMix(h0, subH);
-            if (c._ew_bunCs !== undefined && c._ew_bunCs !== subH) { g._ew_bunTx = c; g._ew_bunTxN = (g._ew_bunTxN | 0) + 1; }
+            if (c._ew_bunCs !== undefined && c._ew_bunCs !== subH) {
+                g._ew_bunTx = c; g._ew_bunTxN = (g._ew_bunTxN | 0) + 1;
+                /* (11-23) WHAT moved in it: its counts now against its counts at its last change (only on a change: a small subtree) */
+                try { var sgN = _ewBunTxSig(c), sgO = c._ew_bunTxS, sgD = ''; if (sgO) { for (var sgK in sgN) if (sgN[sgK] !== sgO[sgK]) sgD += (sgD ? ', ' : '') + sgK + ' ' + sgO[sgK] + ' > ' + sgN[sgK]; c._ew_bunTxW = sgD || 'same counts'; } c._ew_bunTxS = sgN; } catch (eSg) {}
+            }
             c._ew_bunCs = subH;
             if (watch) {
                 if (c._ew_bunCv !== undefined && c._ew_bunCv !== sub) {
@@ -107952,7 +108029,8 @@ const ThreeRenderer = (function () {
             try { renderer.render(sc, cam); } catch (e) { out.error = String(e && e.message || e); }
             return out;
         },
-        bundleFirsts: function () { return { left: _ewBun.rpShow ? _ewBun.rpShow.repsSk : 0, asked: _ewBun.rpShow ? _ewBun.rpShow.reps : 0, audit: _ewBun.fAudN | 0, auditWrote: _ewBun.fAudBad | 0 }; },   // THE FIRSTS BY BUFFER's counts (dev)
+        bundleFirstsDump: function () { var d = _ewBun.fDump; _ewBun.fDump = null; return d; },
+        bundleFirsts: function () { return { refsShared: _ewRefShared, left: _ewBun.rpShow ? _ewBun.rpShow.repsSk : 0, asked: _ewBun.rpShow ? _ewBun.rpShow.reps : 0, audit: _ewBun.fAudN | 0, auditWrote: _ewBun.fAudBad | 0 }; },   // THE FIRSTS BY BUFFER's counts (dev)
         bundles: function () { return (_ewBun.last || []).map(function (g) { var st = g._ew_bun || {}; return { name: g._ew_bunName || g.name || g.type, bundled: !!g.isBundleGroup, static: !!g.static, demoted: !!st.dyn, recorded: st.recN, why: st.why }; }); },
         /* THE SHADER CACHE: the counts; 'clear' forgets every recipe (this session's warm builds stay). .gl = the classic renderer's
            cache (THE TITLE WARM), .late = THE LATE LOOK of the renderer drawing now */

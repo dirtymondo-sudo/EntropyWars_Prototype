@@ -3957,3 +3957,27 @@ renderer's counts in the cloud (the picture is black); `--fprofile` = a CPU prof
 the round turns and a picture after; `--again` = a second fight and the way back again; `--flags=EW_FIGHT_COPIES` = the old
 copy flow as a control. `ThreeRenderer.hq.dev.fw()` = the walked room's state (`keep.kept`, `keep.why`, re-records).
 `window.EW_BUILD_COUNT = true` tallies every shader build by name (`EW_BUILD_STACKS = []` adds where from).
+
+## THE SHARED REFERENCES (2026-11-23, mondo's 11:35 F3 walking Disaster City downtown: 38.9 FPS, CPU 21.0 of 25.6 ms, "firsts 123 (256 more left out)", "replay: the refreshes 7.00")
+- After THE FIRSTS BY BUFFER 123 firsts a frame were still asked, ~35 µs each, nearly all of it "bindings": each wrote a ~150-value
+  shared buffer (camera, sun, the rig's lamps) of its OWN. Why they were not one buffer (dev dump, `window.EW_BUN_FIRSTS_DUMP` +
+  `ThreeRenderer.bundleFirstsDump()`): three keys a shared bind group by the ids of the uniform nodes in it, and in every lit shader
+  7 of ~157 ids were unique to that shader build:
+  · 5 = the sun shadow's `reference('bias' | 'intensity' | 'normalBias' | 'mapSize' | 'radius', shadow).setGroup(renderGroup)`, made
+    fresh in ShadowNode.setupShadow / setupShadowCoord / the filter on every build;
+  · ScreenNode.setup's `uniform(_screenSizeVec).setGroup(renderGroup)` (fresh per build that reads the screen);
+  · 2 = pointShadowFilter's `shadowCameraNear / Far` uniforms (a point light that casts: the hero lamp indoors). NOT fixed (made
+    inside a module-private Fn); rooms with a casting point lamp keep one buffer per lit shader.
+- `_ewRefShare(T)` (three-renderer.js, called first in `_ewNodeLayer`): ReferenceNode.prototype.setNodeType hands every reference to
+  a FIXED object's property in a shared group the same inner uniform (kept on the object as `_ewRefU[property|type|group|name]`);
+  ScreenNode.prototype.setup returns one uniform per scope. Same values, same update code, one id: shaders that read the same set
+  now share the BindGroup, and THE FIRSTS BY BUFFER leaves the later ones out. Off: `window.EW_NO_SHARED_REFS` (before the renderer).
+  Dev: `window.EW_REF_TRACE` counts who makes shared uniforms (`window._ewRefTrace`).
+- Cloud (lobby, WebGPU SwiftShader; the city loses the device there): unique ids per lit shader 7 -> 2 (the point pair, lobby only),
+  749 references shared, audit 101,866 left-out refreshes / 0 wrote. Picture: node renderer on WebGL2 (`?ew_gpu=webgl2`, llvmpipe)
+  in the Woods clearing, on vs `EW_NO_SHARED_REFS`.
+- THE TREE'S OTHER, what moved: "Re-recorded most" now adds the placed prop's key + model and the counts that changed since the
+  piece's last change (`_ewBunTxSig`: hidden / held / out / meshes / geometries / materials / copies / layers / shadows / order).
+  His 11:35 line only said `"Group" (10 meshes, 89 times)` for the rooms that keep resting.
+- Also in that F3: "GPU errors 1 ... Queue::submit ... Texture with '' label has been (destroyed)": one frame used a texture already
+  destroyed. Once in a session; not traced here (candidates: the memory budget's drops, `_mmDrain`).
