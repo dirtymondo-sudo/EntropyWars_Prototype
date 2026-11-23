@@ -4047,3 +4047,30 @@ the leave sweep `_mmLeaveSweep`, the walk's `_mmTick`) has dropped idle model fi
 - Other bitmap paths already closed theirs: `_capModelTextures` (the big-sheet cap), `_lowSheetCap`, the undrawn PBR sheets.
 - Not touched: `_disposeR` (room clean-up of objects whose textures the cache may still hand out again: closing there would break a
   reuse). The node renderer on WebGL2 never deletes VAOs (`deleteVertexArray` 0 in the run): WebGL2-only, not his WebGPU path.
+
+## THE FREEZE (2026-11-23, step 1 of the freeze plan)
+
+mondo 11-23: "stop scanning pieces that dont move" ... "this should be for every zone". The plan of record (replaces the
+Disaster City pre-bake plan): https://claude.ai/artifact/JA81YtXbyhfQchxF5GuYkR. Thread cmsg_01XWpxyTn3nnw98znVzKdFjsDrdGmvBHpwtxD1pG6scT7n.
+
+- Why no bake files: a row-only fingerprint misses builder code changes (stale rooms), and merging the repeated props would
+  write every copy (the Clearing: 16.8 M placed points vs 1.15 M unique, ~0.5 GB). The freeze sorts the room the player is about
+  to play, as it loads, so it is never out of date.
+- three-renderer.js THE FREEZE (`_hqFreezeTick` before the frame's one matrix walk, `_hqFzUMW` on each still group):
+  movers are NAMED (rig, morph, points, LOD, car, signal, animal, door, moving plot, `_ew_bunOut`, `_ew_mover`: a proc that
+  registers a ticker, a kickable + its disc), then the room is WATCHED for `freeze.watchMs` (8 s) after it is ready. Frozen
+  groups (shell, prop group, prop + fence chunks) walk only their movers, the chunks inside them and a piece something landed
+  under; the whole group once when it moves (the fight laying the room on the board), comes back on the camera or its
+  child count changes. `force` from three's walk is NOT a tell (every parent passes it every frame).
+- THE LATE MOVER: a slice a frame so every frozen piece is looked at once per `freeze.sweepMs` (12 s); a hit is named in the
+  console "[FREEZE] a mover found late ... (flag it where it is built: _ew_mover)". Flag that builder.
+- The static batch's watchdog does not run over a frozen room; the bundle check does not hash a frozen group's matrices.
+- Rooms: data.js `HQ_ENGINE_RULES.freeze.rooms` (step 1: Western Town + the Clearing); `window.EW_FREEZE_ALL` tries every
+  room; `EW_NO_FREEZE` off (live: groups handed back); the editor sets EW_NO_FREEZE while open. Not for the stage (joined DOOR
+  HQ rooms), the battle's room, round worlds, a vessel under way. Lens line "Freeze"; `ThreeRenderer.hq.dev.freeze()`.
+- Cloud, 11-23 (webgl2 node renderer, llvmpipe): Western Town 1,217 still pieces never walked, matrix walk 3.6 -> 2.0 ms (the
+  rest is the walking people and animals' bones); the Clearing 11,782 still pieces, 6.0 -> 2.4 ms. Pictures live vs frozen
+  differ only where people walk (0.2 %). A fight in each room drew the frozen walked room, wall fade, back to the room: fine.
+- NOT YET (next steps of the plan): the originals leaving the drawn scene (the renderer's own projection walk, 12 ms in the
+  Clearing on WebGL; on WebGPU a quiet bundle skips it), the other zones (add each to `freeze.rooms` after its check),
+  deleting THE STILL WALK / batch watchdog layers once every room is frozen.

@@ -51914,7 +51914,7 @@ const ThreeRenderer = (function () {
                walk, and a piece the walk sees move is drawn outside the recording from that frame on (`_ew_bunOut`, THE MOVERS OUT)
                and comes back (a tree change, so a re-record) once it rests. Its pieces' matrices are not hashed then; the group's own
                matrix is. Off: window.EW_BUN_HASH_MATRICES. */
-            var noM = gW && !st.dyn && !!g._ew_st && !_hqStillOff() && !(typeof window !== 'undefined' && window.EW_BUN_HASH_MATRICES);
+            var noM = gW && !st.dyn && (!!g._ew_st || !!g._ew_fz) && !_hqStillOff() && !(typeof window !== 'undefined' && window.EW_BUN_HASH_MATRICES);
             var S = { hs: 17, hv: 0, hf: 0, n: 0, dyn: false, lit: false, noV: !!st.dyn, noM: noM };
             _ewBun.now = now;
             var twk = (_lens && _lens.cur) ? performance.now() : 0;
@@ -57299,6 +57299,7 @@ const ThreeRenderer = (function () {
         S.census = L.census || null;
         S.chunks = _hq ? _hqChunkStats(_hq) : null;
         S.still = _hq ? _hqStillStats() : null;
+        S.freeze = _hq ? _hqFreezeStats() : null;   // THE FREEZE
         S.instPass = (_hq && typeof _hqInstStats === 'function') ? _hqInstStats(_hq) : (_fieldInstH ? _hqInstStats(_fieldInstH) : null);
         S.top = L.detail || []; S.roots = L.roots || null;
         S.why = L.why || [];
@@ -57422,6 +57423,7 @@ const ThreeRenderer = (function () {
             if (bw.length || _ewBun.outV) L.push('Re-recorded most: ' + (bw.map(function (x) { return x.n + (x.k ? ' ' + x.k : '') + ' (values ' + (x.w.values | 0) + ', tree ' + (x.w.tree | 0) + ((x.w.tree | 0) ? ' [merge ' + (x.w.tB | 0) + ', movers ' + (x.w.tO | 0) + ', shown/hidden ' + (x.w.tH | 0) + ', added/removed ' + (x.w.tN | 0) + ', other ' + (x.w.tX | 0) + ']' : '') + ', rests ' + (x.w.rests | 0) + (x.w.cold ? ', cold ' + x.w.cold : '') + (x.d ? ', demoted' : '') + (x.b ? '' : ', classic now') + (x.tx ? ', last piece whose own tree moved: ' + x.tx : '') + ')'; }).join(' · ') || 'none') + ' · changers moved out ' + (_ewBun.outV | 0) + (_ewBun.outVNames ? ' [' + Object.keys(_ewBun.outVNames).sort(function (x, y) { return _ewBun.outVNames[y] - _ewBun.outVNames[x]; }).slice(0, 10).map(function (k2) { return _ewBun.outVNames[k2] + 'x ' + k2; }).join(', ') + ']' : '') + ' · movers kept out ' + (_ewBun.outS | 0));
         } catch (e) {}
         if (S.still) L.push('Matrix walk ' + S.still.ms + ' ms/frame' + (S.still.off ? ' (still walk off)' : '') + ' · still groups ' + S.still.groups + ' (' + S.still.out + ' off the camera, ' + S.still.full + ' whole) · of ' + S.still.tops + ' pieces: ' + S.still.movers + ' moving, ' + S.still.fresh + ' new, ' + S.still.swept + ' swept' + (S.still.hid ? ' · ' + S.still.hid + ' hidden people left as they stand' : ''));
+        if (S.freeze) { var FZ = S.freeze, FL = FZ.last; L.push('Freeze ' + (FZ.on ? 'on' : 'watching') + ' · ' + FZ.groups + ' groups · ' + FZ.still + ' still pieces never walked · ' + FZ.movers + ' movers (' + Object.keys(FZ.why).map(function (k) { return k + ' ' + FZ.why[k]; }).join(', ') + ')' + (FZ.late ? ' · ' + FZ.late + ' found late' : '') + (FL ? ' · this walk: ' + FL.walked + ' walked, ' + FL.swept + ' looked at, ' + FL.full + ' whole, ' + FL.out + ' off the camera' : '')); }
         if (S.instPass) L.push('Instance pass ' + S.instPass.batches + ' batches · ' + S.instPass.copies + ' copies · ' + S.instPass.left + ' left alone');
         if (S.batch) { var bl = []; for (var bid in S.batch) { var b = S.batch[bid]; bl.push(bid + ' ' + b.phase + ' ' + b.pieces + '→' + b.batches + (b.broken ? ' (' + b.broken + ' broken)' : '') + (b.loose ? ' (' + b.loose + ' loose pieces stood in)' : '')); } if (bl.length) L.push('Static batch (pieces→draws): ' + bl.join(' · ') + ((typeof _hqStk !== 'undefined' && _hqStk.arrays.length) ? ' · sheet stacks ' + _hqStk.arrays.length + ' (' + _hqStk.sheets + ' sheets)' : '')); }
         if (S.why && S.why.length) {
@@ -84910,8 +84912,10 @@ const ThreeRenderer = (function () {
            which the HQ loop never ticks — adopt those entries into the room's
            own fxPulse list, the way the setting builders do */
         var pulse0 = (typeof _hzGlowPulse !== 'undefined') ? _hzGlowPulse.length : -1;
+        var tick0 = (_hq && _hq.tickers) ? _hq.tickers.length : -1;   // THE FREEZE: a proc that registers a ticker is a mover
         try {
-            var g = b(_hqUnits(), p || null); g.traverse(function (n) { if (n.isMesh) n._ew_pixelate = true; });   // THE MAP REMEMBERS (D8): a proc may read its own row (`lesson_plaque` reads p.lesson)
+            var g = b(_hqUnits(), p || null);
+            if (g && tick0 >= 0 && _hq && _hq.tickers && _hq.tickers.length > tick0) g._ew_mover = true; g.traverse(function (n) { if (n.isMesh) n._ew_pixelate = true; });   // THE MAP REMEMBERS (D8): a proc may read its own row (`lesson_plaque` reads p.lesson)
             if (pulse0 >= 0 && _hzGlowPulse.length > pulse0) { var adopted = _hzGlowPulse.splice(pulse0); if (_hq && _hq.fxPulse) adopted.forEach(function (p) { if (p && p.mat) _hq.fxPulse.push(p); }); }
             return g;
         }
@@ -97232,10 +97236,11 @@ const ThreeRenderer = (function () {
             var LR = _hqLightRules(), AO = LR.ao || {}, cr = (AO.contactR != null) ? AO.contactR : 1.35;
             var rx = cat.rect ? cat.rect.hw * 1.2 : Math.max(0.22, cat.foot) * cr, rz = cat.rect ? cat.rect.hd * 1.2 : rx;
             var disc = _hqContactDisc(rx, rz, U);
-            if (o.kick) { disc.position.set(grp.position.x, grp.position.y + 0.012 * U, grp.position.z); H.propGroup.add(disc); o.disc = disc; }   // a kickable's disc stays flat on the floor and follows the body (the group tumbles)
+            if (o.kick) { disc.position.set(grp.position.x, grp.position.y + 0.012 * U, grp.position.z); H.propGroup.add(disc); o.disc = disc; disc._ew_mover = true; }   // a kickable's disc stays flat on the floor and follows the body (the group tumbles)
             else grp.add(disc);
         }
         if (cat.sway && !_polishOff('sway', 'EW_HQ_NO_SWAY')) _hqSwayArm(grp, cat, o);
+        if (o.kick) grp._ew_mover = true;   // THE FREEZE: the walker knocks it along
         if (o.kick) H.kicks.push({ key: p.key, grp: grp, disc: o.disc || null, rad: Math.max(0.12, cat.foot || 0.15), y0: o.y, x: grp.position.x / U, z: grp.position.z / U, y: o.y, vx: 0, vz: 0, vy: 0, spin: 0, tilt: 0, cool: 0, h: cat.h || 0.5 });
         /* (2026-11-18, the Colosseum's thrones: a seat that stands on a raised floor, `p.y`, is a seat too; `floor` = what it stands on, where the sitter gets up) */
         var raisedSeat = cat.seat != null && !floorProp && p.y > 0.5 && !o.onWall && !o.onCeil && !o.flip && !o.tabletop && !cat.float && !cat.hover && !cat.wall && !cat.ceil;
@@ -98786,6 +98791,8 @@ const ThreeRenderer = (function () {
         _lightMatchWalk(H);   // THE SAME LIGHT COUNT: the walk carries the board's dark lights
         _lt = _lensMark('tick: lights + shadow + far', _lt);
         try { _ewPlTick(H); } catch (e) { if (!H._plWarned) { H._plWarned = true; console.warn('[HQ] the round worlds tick', e); } }   // THE ROUND WORLDS: the balls + the anchor at the feet
+        try { _hqFreezeTick(H, now); } catch (eFz) { if (!H._fzWarned) { H._fzWarned = true; console.warn('[FREEZE] the freeze failed — the room walks as before', eFz); } try { _hqFzRelease('failed'); } catch (eFz2) {} }   // THE FREEZE
+        _lt = _lensMark('tick: freeze', _lt);
         var fogHold = _hqFogHold(H);   // THE FOG SETTING: Scene Fog off = a fog-free draw (the mirrors' too)
         /* THE ONE MATRIX WALK (2026-11-13, the 144-plot city: 20,700 objects): every render of the frame (the mirrors, the model
            mask's two, the shadow map, the picture) walked the whole scene's matrices again though nothing moves between them.
@@ -99176,7 +99183,7 @@ const ThreeRenderer = (function () {
             var P = THREE.Object3D.prototype, add = P.add;
             P.add = function (x) {
                 _ewAddN++;
-                if (_hqStArmedN > 0) _hqStillAdded(this);
+                if (_hqStArmedN > 0 || _hqFzN > 0) _hqStillAdded(this);
                 /* THE ADD'S OWN GROUP (2026-11-15): the bundle group this lands under (and the one it leaves) is checked this
                    frame; the others keep their quiet turn (was: any add anywhere had every group of the city checked) */
                 for (var q = this, d = 0; q && d < 32; q = q.parent, d++) if (q._ew_bun) q._ew_bunDirty = true;
@@ -99237,7 +99244,7 @@ const ThreeRenderer = (function () {
     function _hqStillOff() { return typeof window !== 'undefined' && !!window.EW_HQ_STILL_OFF; }
     var _hqStOffC = false, _hqStMqEvery = false, _hqStNoBook = false;
     function _hqStillArm(g) {
-        if (!g || g._ew_st) return;
+        if (!g || g._ew_st || g._ew_fz) return;   // (THE FREEZE: a frozen group walks itself)
         _ewAddCount();   // the add hook
         if (!_hqStProto) _hqStProto = THREE.Object3D.prototype.updateMatrixWorld;
         g._ew_st = { i: 0, mv: new Set(), fresh: new Set(), wake: new Set(), full: 2, at: 0, out: false, own: NaN, C: null, T: null, SM: null, AT: null, cap: 0 };
@@ -99252,6 +99259,8 @@ const ThreeRenderer = (function () {
         for (var q = par, top = null, d = 0; q && d < 32; top = q, q = q.parent, d++) {
             var st = q._ew_st;
             if (st) { if (top) st.fresh.add(top); return; }
+            var fz = q._ew_fz;   // THE FREEZE: the frozen group's piece something landed under is walked once
+            if (fz) { if (top) fz.fresh.add(top); return; }
         }
     }
     /* a piece that is about to move: walked every frame from now (until HOLD ms after it rests) */
@@ -99378,6 +99387,195 @@ const ThreeRenderer = (function () {
         if (mv.size > 32 && (st.gc = (st.gc | 0) + 1) % 120 === 0) { var self = this; mv.forEach(function (m) { if (m.parent !== self) mv.delete(m); }); }
         S.tops += n;
     }
+    /* ══ THE FREEZE (2026-11-23, mondo: "stop scanning pieces that dont move" ... "this should be for every zone"; the plan of
+       record: https://claude.ai/artifact/JA81YtXbyhfQchxF5GuYkR, step 1) ══
+       A room is built, then sorted ONCE into what moves and what does not, and what does not is never walked or checked again.
+       Measured in the cloud on 11-23: Western Town 7,011 objects, about 45 moving; the Clearing 39,216, about 120 moving; the
+       matrix walk alone was 3.6 / 6.0 ms a frame there (a small room never armed THE STILL WALK, so three composed every one).
+         · THE MOVERS are named, not guessed: a piece is a mover when it is (or holds) a rig, a morphing mesh, points, an LOD, a
+           car, a signal, an animal, a door, a moving plot, a piece already drawn out of its recording (`_ew_bunOut`), or a piece
+           its builder flagged `_ew_mover` (a proc that registered a ticker, a kickable, see _hqProcProp / the kicks). Then the
+           room is WATCHED once for HQ_ENGINE_RULES.freeze.watchMs after it is ready (each top piece's own pose summed a few
+           times a second, a slice a frame): whatever moved in that time is a mover too.
+         · THE FREEZE: each still group (the shell, the prop group, every prop chunk and fence chunk) walks, inside the frame's
+           one matrix walk, only its movers, the frozen groups inside it and a piece something was just added under. The group
+           itself moving (the fight laying the room on its board), a chunk coming back on the camera, a child added or removed:
+           the whole group once. No per-piece compare, no sweep of the whole group, no hold timers.
+         · THE LATE MOVER: a slice of the frozen pieces is summed each frame so the whole group is looked at once every
+           freeze.sweepMs (12 s; RULE #1e's rare clean-up). A piece found moving there becomes a mover and is named once in the
+           console ("[FREEZE] a mover found late") so its builder can be flagged.
+         · the static batch's watchdog is not run over a frozen room (nothing it holds moves); a late mover that it holds asks
+           for one check round. On WebGPU a frozen group's pieces' matrices are not hashed by the bundle check (THE STILL CHECK).
+       Not for (they stay as they were): a joined DOOR HQ room (the stage), the battle's own room, a round world, a vessel under
+       way, the editor (it sets EW_NO_FREEZE while open). Rooms: HQ_ENGINE_RULES.freeze.rooms (window.EW_FREEZE_ALL = every
+       room). Off: window.EW_NO_FREEZE (live: every group is handed back to three's own walk). Counts: ThreeRenderer.hq.dev.freeze()
+       and the perf lens line "Freeze". */
+    var _hqFzN = 0, _hqFz = null, _hqFzStat = null;
+    function _hqFreezeRules() {
+        var R = (typeof HQ_ENGINE_RULES !== 'undefined' && HQ_ENGINE_RULES && HQ_ENGINE_RULES.freeze) ? HQ_ENGINE_RULES.freeze : {};
+        return { rooms: Array.isArray(R.rooms) ? R.rooms : [], all: !!R.all, watchMs: (R.watchMs > 0) ? +R.watchMs : 8000, sweepMs: (R.sweepMs > 0) ? +R.sweepMs : 12000, watchSliceMs: (R.watchSliceMs > 0) ? +R.watchSliceMs : 1.5 };
+    }
+    function _hqFreezeOff() { return typeof window !== 'undefined' && !!window.EW_NO_FREEZE; }
+    function _hqFreezeWanted(H) {
+        if (!H || H !== _hq || H.field || H.ghost || H.stage || !H.ready || !H.partRoot || _hqFreezeOff()) return false;
+        var id = H.opts && H.opts.room, RU = _hqFreezeRules();
+        if (!(RU.all || (typeof window !== 'undefined' && window.EW_FREEZE_ALL) || RU.rooms.indexOf(id) >= 0)) return false;
+        var room = H.room;
+        if (room && room.space && room.space.round && room.space.round.length) return false;
+        if (room && room.shell && room.shell.open && room.shell.sky && room.shell.sky.voyage) return false;
+        return true;
+    }
+    /* the room's still groups (the doors, the people and the instance pass's batches have their own walks) */
+    function _hqFzGroups(H) {
+        var out = [];
+        if (H.shellGroup) out.push(H.shellGroup);
+        if (H.propGroup) out.push(H.propGroup);
+        var L = H.ckList || [];
+        for (var i = 0; i < L.length; i++) { var g = L[i]; if (g && g.parent && (g._ew_pChunk || g._ew_chunk != null) && out.indexOf(g) < 0) out.push(g); }
+        return out;
+    }
+    /* why a top piece moves ('' = still): named kinds only */
+    function _hqFzMoverWhy(c) {
+        if (c._ew_fz || c._ew_pChunk || c._ew_chunk != null || c._ew_instCell != null) return 'group';   // a chunk inside: always visited, it walks itself
+        if (c._ew_mover || c._ew_bunOut === true || c._ew_animal || c._ew_hqCar || c._ew_hqSignal || c._ew_pd || c._ew_lods || c._ew_hqDoor) return 'flag';
+        var why = '';
+        c.traverse(function (o) {
+            if (why) return;
+            if (o.isBone || o.isSkinnedMesh) why = 'rig';
+            else if (o.morphTargetInfluences && o.morphTargetInfluences.length) why = 'morph';
+            else if (o.isPoints) why = 'points';
+            else if (o.isLOD) why = 'lod';
+            else if (o._ew_mover || o._ew_animal || o._ew_hqDoor || o._ew_hqCar) why = 'flag';
+        });
+        return why;
+    }
+    function _hqFzAddMover(g, F, c, why) {
+        if (F.mv.has(c)) return;
+        F.mv.add(c); F.mvA = null;
+        F.why[why] = (F.why[why] | 0) + 1;
+        if (why !== 'group' && !c._ew_fz && c._ew_bunOut === undefined) { c._ew_bunOut = true; c._ew_bunOutA = true; g._ew_bunDirty = true; }   // THE MOVERS OUT: drawn beside the group's recording
+    }
+    /* a group's count changed: the new children are sorted, the gone ones forgotten */
+    function _hqFzRecount(g, F) {
+        var ch = g.children, i, c;
+        for (i = 0; i < ch.length; i++) {
+            c = ch[i];
+            if (F.known.has(c)) continue;
+            F.known.add(c); F.sum.set(c, _hqStillSum(c));
+            var why = _hqFzMoverWhy(c); if (why) _hqFzAddMover(g, F, c, why);
+        }
+        if (F.known.size > ch.length) F.known.forEach(function (k) { if (k.parent !== g) { F.known.delete(k); F.sum.delete(k); if (F.mv.delete(k)) F.mvA = null; } });
+        F.n = ch.length;
+    }
+    function _hqFzUMW(force) {
+        var F = this._ew_fz, P = THREE.Object3D.prototype.updateMatrixWorld;
+        if (!_hqStWalk || !F) return P.call(this, force);
+        if (this.matrixAutoUpdate) this.updateMatrix();
+        if (this.matrixWorldAutoUpdate === true) { if (this.parent === null) this.matrixWorld.copy(this.matrix); else this.matrixWorld.multiplyMatrices(this.parent.matrixWorld, this.matrix); }
+        this.matrixWorldNeedsUpdate = false;
+        var S = _hqFzStat;
+        if (this._ew_ckOut) { F.stale = true; if (S) S.out++; return; }   // a chunk off the camera: placed as it comes back
+        /* (`force` is not a tell: three's walk passes it down from every parent that composes its own matrix, every frame) */
+        var e = this.matrixWorld.elements, own = e[12] + e[13] * 1.618 + e[14] * 2.414 + e[0] * 3.3 + e[5] * 5.7 + e[10] * 7.1 + e[1] * 11.3 + e[2] * 13.7 + e[6] * 17.9;
+        var ch = this.children, n = ch.length, i, c;
+        if (own !== F.own || F.stale || n !== F.n) {   // the whole group, once
+            var FW = F.fw || (F.fw = {}), fk = own !== F.own ? 'moved' : F.stale ? 'stale' : 'count'; FW[fk] = (FW[fk] | 0) + 1;
+            F.own = own; F.stale = false;
+            if (n !== F.n) _hqFzRecount(this, F);
+            for (i = 0; i < n; i++) ch[i].updateMatrixWorld(true);
+            F.fresh.clear();
+            if (S) { S.full++; S.walked += n; }
+            return;
+        }
+        var A = F.mvA; if (!A) { A = F.mvA = []; F.mv.forEach(function (m) { A.push(m); }); }
+        for (i = 0; i < A.length; i++) { c = A[i]; if (c.parent !== this) { F.stale = true; continue; } c.updateMatrixWorld(!c._ew_fz); }   // (a frozen group inside walks itself)
+        if (S) { S.walked += A.length; S.groups++; }
+        if (F.fresh.size) {
+            var self = this;
+            F.fresh.forEach(function (f) { if (f.parent !== self) return; f.updateMatrixWorld(true); F.sum.set(f, _hqStillSum(f)); var why = _hqFzMoverWhy(f); if (why) _hqFzAddMover(self, F, f, why); if (S) S.walked++; });
+            F.fresh.clear();
+        }
+        /* THE LATE MOVER: this frame's slice of the frozen pieces */
+        var now = _hqStNow, dt = Math.min(1000, Math.max(0, now - F.at)); F.at = now;
+        var k = n ? Math.min(n, Math.ceil(n * dt / F.sweepMs)) : 0;
+        for (var j = 0; j < k; j++) {
+            F.i = (F.i + 1) % n; c = ch[F.i];
+            if (F.mv.has(c)) continue;
+            var s = _hqStillSum(c), s0 = F.sum.get(c);
+            if (s0 === undefined) { F.sum.set(c, s); continue; }
+            if (s !== s0) {
+                F.sum.set(c, s); c.updateMatrixWorld(true); _hqFzAddMover(this, F, c, 'late');
+                if (c._ew_bRec && _hqFz) _hqFz.ckOnce = true;
+                if (_hqFz && (_hqFz.lateN = (_hqFz.lateN | 0) + 1) <= 12) { try { console.log('[FREEZE] a mover found late in ' + (this.name || this.type) + ': "' + String(c.name || c.type).slice(0, 40) + '"' + (c.userData && c.userData.key ? ' ' + c.userData.key : '') + ' (flag it where it is built: _ew_mover)'); } catch (eL) {} }
+            }
+        }
+        if (S) S.swept += k;
+    }
+    /* hand every group back to three's own walk (the leave, the switch, the editor) */
+    function _hqFzRelease(why) {
+        var Z = _hqFz; if (!Z) return;
+        _hqFz = null;
+        for (var i = 0; i < Z.list.length; i++) { var g = Z.list[i]; if (g._ew_fz) { g._ew_fz = null; if (Object.prototype.hasOwnProperty.call(g, 'updateMatrixWorld') && g.updateMatrixWorld === _hqFzUMW) delete g.updateMatrixWorld; _hqFzN = Math.max(0, _hqFzN - 1); } }
+        if (Z.H && Z.H.scene) { try { Z.H.scene.updateMatrixWorld(true); } catch (e) {} }
+        if (why && Z.on) console.log('[FREEZE] ' + Z.room + ' handed back (' + why + ')');
+    }
+    /* per frame of the walk, before the frame's one matrix walk */
+    function _hqFreezeTick(H, now) {
+        var Z = _hqFz;
+        if (Z && (Z.H !== H || !_hqFreezeWanted(H))) { _hqFzRelease(Z.H !== H ? 'left' : 'switched off'); Z = null; }
+        if (!Z) {
+            if (!_hqFreezeWanted(H)) return;
+            Z = _hqFz = { H: H, room: (H.opts && H.opts.room) || '?', on: false, at: now, t0: now, list: [], pieces: [], pi: 0, sum: new Map(), moved: new Set(), lateN: 0, ckOnce: false, why: {}, n: 0, ms: 0 };
+            var G = _hqFzGroups(H);
+            for (var gi = 0; gi < G.length; gi++) { var ch = G[gi].children; for (var ci = 0; ci < ch.length; ci++) Z.pieces.push(ch[ci]); }
+            return;
+        }
+        if (Z.on) {
+            /* a chunk made since (the prop chunks sort late props in) is frozen as it appears */
+            var L = H.ckList; if (L && L.length !== Z.ckN) { Z.ckN = L.length; for (var li = 0; li < L.length; li++) { var lg = L[li]; if (lg && lg.parent && !lg._ew_fz && (lg._ew_pChunk || lg._ew_chunk != null)) _hqFzArm(Z, lg, now); } }
+            return;
+        }
+        /* THE WATCH: each top piece's own pose summed, a slice a frame, for watchMs */
+        var RU = _hqFreezeRules(), t0 = performance.now(), P = Z.pieces;
+        if (P.length) {
+            while (performance.now() - t0 < RU.watchSliceMs) {
+                var c = P[Z.pi]; Z.pi = (Z.pi + 1) % P.length;
+                if (c && c.parent) { var s = _hqStillSum(c), s0 = Z.sum.get(c); if (s0 !== undefined && s0 !== s) Z.moved.add(c); Z.sum.set(c, s); }
+                if (Z.pi === 0) Z.rounds = (Z.rounds | 0) + 1;
+            }
+        }
+        Z.ms += performance.now() - t0;
+        if (now - Z.t0 < RU.watchMs || (Z.rounds | 0) < 3) return;
+        /* THE FREEZE itself */
+        var t1 = performance.now(), G2 = _hqFzGroups(H);
+        for (var g2 = 0; g2 < G2.length; g2++) _hqFzArm(Z, G2[g2], now);
+        Z.ckN = (H.ckList || []).length;
+        Z.on = true; Z.pieces = null; Z.sum = null; Z.moved = null; Z.armMs = performance.now() - t1;
+        var fr = 0, mv = 0; for (var zi = 0; zi < Z.list.length; zi++) { var F = Z.list[zi]._ew_fz; if (F) { fr += F.n - F.mv.size; mv += F.mv.size; } }
+        console.log('[FREEZE] ' + Z.room + ' frozen: ' + Z.list.length + ' groups, ' + fr + ' still pieces, ' + mv + ' movers (' + Object.keys(Z.why).map(function (k) { return k + ' ' + Z.why[k]; }).join(', ') + '), watched ' + Math.round(now - Z.t0) + ' ms (' + Z.ms.toFixed(0) + ' ms of it summing), frozen in ' + Z.armMs.toFixed(1) + ' ms');
+    }
+    function _hqFzArm(Z, g, now) {
+        if (!g || g._ew_fz) return;
+        if (g._ew_st) _hqStillDisarm(g);   // THE STILL WALK's book is not needed: the freeze knows its movers
+        var F = { own: NaN, stale: true, n: -1, mv: new Set(), mvA: null, fresh: new Set(), known: new Set(), sum: new Map(), i: 0, at: now, sweepMs: _hqFreezeRules().sweepMs, why: Z.why };
+        var ch = g.children;
+        for (var i = 0; i < ch.length; i++) {
+            var c = ch[i]; F.known.add(c);
+            var s = Z.sum ? Z.sum.get(c) : undefined; F.sum.set(c, s !== undefined ? s : _hqStillSum(c));
+            var why = _hqFzMoverWhy(c) || ((Z.moved && Z.moved.has(c)) ? 'watched' : '');
+            if (why) _hqFzAddMover(g, F, c, why);
+        }
+        F.n = ch.length;
+        g._ew_fz = F; g.updateMatrixWorld = _hqFzUMW; _hqFzN++; _ewAddCount();   // (the add hook tells a frozen group what landed under it)
+        Z.list.push(g);
+    }
+    function _hqFreezeStats() {
+        var Z = _hqFz; if (!Z) return null;
+        var o = { room: Z.room, on: Z.on, groups: Z.list.length, still: 0, movers: 0, why: Object.assign({}, Z.why), late: Z.lateN | 0, watchMs: Math.round(Z.ms), armMs: Z.armMs ? +Z.armMs.toFixed(1) : 0, last: _hqFzStat ? Object.assign({}, _hqFzStat) : null };
+        o.list = [];
+        for (var i = 0; i < Z.list.length; i++) { var g = Z.list[i], F = g._ew_fz; if (F) { o.still += F.n - F.mv.size; o.movers += F.mv.size; o.list.push({ name: g.name || g.type, n: F.n, movers: F.mv.size, whole: Object.assign({}, F.fw || {}) }); } }
+        return o;
+    }
     /* the frame's one walk of the walk's scene */
     /* THE HIDDEN PEOPLE (2026-11-18, mondo's F3 in Disaster City: "Matrix walk by group: hq_part 2.31", 122 rigs in the room and
        22 animating): three's walk composed every bone of every body each frame, the townspeople put away out of sight (the
@@ -99440,6 +99638,7 @@ const ThreeRenderer = (function () {
     function _hqStillSceneWalk(sc) {
         try { var CG = _hq && _hq.charGroup; if (CG && !CG._ew_st && CG.updateMatrixWorld !== _hqCharGroupMW && !Object.prototype.hasOwnProperty.call(CG, 'updateMatrixWorld')) CG.updateMatrixWorld = _hqCharGroupMW; } catch (eCG) {}
         var S = _hqStS; S.hid = 0; S.groups = S.out = S.full = S.tops = S.fresh = S.movers = S.swept = 0;
+        _hqFzStat = _hqFzN > 0 ? { groups: 0, out: 0, full: 0, walked: 0, swept: 0 } : null;   // THE FREEZE's counts for this walk
         var t0 = performance.now();
         _hqStOffC = _hqStillOff(); _hqStMqEvery = typeof window !== 'undefined' && !!window.EW_HQ_STILL_MERGED_EVERY; _hqStNoBook = typeof window !== 'undefined' && !!window.EW_HQ_STILL_NO_HELD_BOOK; _hqInstMwEach = typeof window !== 'undefined' && !!window.EW_HQ_INST_MW_EACH;   // the walk's flags, read once (not per group: a window lookup is slow on Firefox)
         _hqStNow = t0; _hqStWalk = true;
@@ -105135,7 +105334,8 @@ const ThreeRenderer = (function () {
             var B = BB[bi]; if (!B) continue;
             if (B.phase === 'off') continue;
             var _bt = _lensOn() ? performance.now() : 0;   // THE INNER SPLIT (lens): which step of the merge
-            if (B.batches.length && (B.ck || now - B.checkAt >= ckGap)) { try { if (_hqBatchCheck(R, B, (typeof window !== 'undefined' && window.EW_HQ_BATCH_CHECK_WHOLE) ? 0 : HQ_BATCH.rollMs)) B.checkAt = now; } catch (e) { B.ck = null; console.warn('[HQ batch] the check failed — every piece handed back', e); _hqBatchDrop(R); continue; } }
+            var fzSkip = R === H && _hqFz && _hqFz.on && _hqFz.H === H && !_hqFz.ckOnce && !B.ck;   // THE FREEZE: nothing a frozen room's batch holds moves (a late mover asks for one round)
+            if (!fzSkip && B.batches.length && (B.ck || now - B.checkAt >= ckGap)) { try { if (_hqBatchCheck(R, B, (typeof window !== 'undefined' && window.EW_HQ_BATCH_CHECK_WHOLE) ? 0 : HQ_BATCH.rollMs)) { B.checkAt = now; if (_hqFz && _hqFz.H === H && bi === BB.length - 1) _hqFz.ckOnce = false; } } catch (e) { B.ck = null; console.warn('[HQ batch] the check failed — every piece handed back', e); _hqBatchDrop(R); continue; } }
             _bt = _lensSub('batch: check', _bt);
             if (B.phase === 'live') {
                 if (now - B.at < HQ_BATCH.rescanMs) continue;
@@ -107745,6 +107945,7 @@ const ThreeRenderer = (function () {
             lands: function () { return { n: _asLand.n, ms: Math.round(_asLand.tot), worst: Math.round(_asLand.worst), spread: _asLand.held, waiting: _asLand.q.length }; },   // THE LANDINGS SPREAD
             fwHolder: function () { return _fw ? _fw.holder : null; },   // the walked room's holder while a fight draws it (a probe's way in)
             fw: function () { var F = _fw, K = { builds: _ewKeep.builds | 0, pipes: _ewKeep.pipes | 0, reused: _ewKeep.reused | 0, recs: (_ewBun && _ewBun.recs) | 0, kept: (_ewBun && _ewBun.fwKept) | 0, why: Object.assign({}, _ewBun.why), lampWhy: _ewBun.lampWhy || null, stale: _ewBun.staleLights | 0, frees: _ewBun.frees | 0, drawErr: _ewGpuInfo.drawErr || null,  spikes: (_ewBun.spikes || []).slice(-3), epoch: _ewBun.epoch, last: (_ewKeep.last || []).slice(-6), rig: _ewRigG ? { grows: _ewRigG.grows, n: _ewRigG.n, p: _ewRigG.k.p.length, d: _ewRigG.k.d.length, ds: _ewRigG.k.ds.length, srcP: _ewRigG.src.p.length } : null }; if (!F) return { on: false, parked: !!_hqParked, stats: _fieldRoomStats, keep: K }; var L = F.H.ckList || [], out = 0; for (var i = 0; i < L.length; i++) if (L[i]._ew_ckOut) out++; return { on: F.on, kids: F.HS.children.map(function (c) { return (c.name || c.type) + (c.visible ? '' : ' (off)') + (c.children.length ? ' [' + c.children.length + ']' : ''); }).slice(0, 40), camAs: !!F.camSave, seeded: F.seeded, sh: !!F.shSave, roots: F.roots.length, big: F.bigN | 0, floors: F.floors.length, props: F.props.length, cuts: F.cuts.length, cutN: F.cutN, hid: F.hid.length, ceil: F.ceil.length, walls: Object.keys(F.walls).join(''), job: F.job ? 'running' : ('done in ' + Math.round(F.jobMs || 0) + ' ms'), chunks: L.length, chunksOut: out, lights: F.lights ? F.lights.length : null, s: F.s, faded: _occFaded.size, keep: K }; },   // THE FIGHT IN THE WALKED ROOM
+            freeze: function () { return _hqFreezeStats(); }, freezeRelease: function () { _hqFzRelease('asked'); },   // THE FREEZE
             still: function () { return _hqStillStats(); }, stillWalk: function (dtMs) { if (!_hq) return null; var t0 = performance.now(); _hqStillSceneWalk(_hq.scene); return { ms: +(performance.now() - t0).toFixed(2), last: _hqStLast }; }, stillWake: function (o) { _hqStillWake(o); },
             heroShadow: function () { var L = _hq && _hq.heroLit; return Object.assign({ light: !!(L && L.isLight), hold: !!(L && L._ew_heroHold) }, _heroStat); },
             /* the building's own scene (the walkthrough probes, 2026-09-11) */
