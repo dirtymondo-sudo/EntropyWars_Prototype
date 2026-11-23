@@ -10143,6 +10143,7 @@
             }
             stages += _passiveSituationalStages(unit, stat);
             if (stat === 'def' && unit.race === 'monk' && (unit.stillness | 0) > 0) stages += Math.min(3, unit.stillness | 0);   // 📿 THE STILLNESS
+            if (unit.race === 'rat' && unit.appearance && unit.appearance.form === 'king') { if (stat === 'atk') stages += 2; else if (stat === 'def') stages += 1; }   // 👑 THE RAT KING: the crown's stages
             return stages;
         }
 
@@ -11065,6 +11066,8 @@
             if (target._climb && meta.blockAction && payload.id !== 'climbing') knockOffClimber(target, `— ${meta.colorText || meta.label.toLowerCase()}`);
             /* 🛹 THE BAIL: a hold that stops the Skater rolling throws away her Momentum (_skaterBail) */
             if (target._momentum > 0 && _skaterBailOn(payload.id)) _skaterBail(target, meta);
+            /* 👑 THE RAT KING: Stun, Frozen or Feared scatter 2 of the Rat's Mischief */
+            if (target.race === 'rat' && (target.mischief | 0) > 0 && (payload.id === 'stun' || payload.id === 'frozen' || payload.id === 'feared') && Number(status[payload.id] || 0) > 0) _ratScatter(target, meta.colorText || meta.label.toLowerCase());
             /* 👁 THE RUDE AWAKENING (astral build 2): a status that stops a unit acting (Stun, Sleeping, Frozen...) or one on
                STATUS_DEFS.projecting.snapOn (Silence) breaks the projection. The spirit snaps home to its body, Spirit Walk's too. */
             if (payload.id !== 'projecting' && unitIsSpirit(target) && target._astralBodyId
@@ -14888,6 +14891,7 @@
                 else if (u.race === 'haunted doll') _dollCreep(u);
                 else if (u.race === 'monk') _monkStillness(u);   // 📿 THE STILLNESS
                 else if (u.race === 'gladiator' || u.race === 'farmer' || u.race === 'jellyfish ufo') _crRoundEnd(u);   // 🛡🌾⚡ THE COMING RACES
+                else if (u.race === 'rat') _ratRoundEnd(u);   // 👑 THE RAT KING: a king pays his court
                 if (u.status && u.status.dormant > 0) _cicadaBrood(u);
                 /* 📺 THE TAPE (the Cursed TV): this round's recording becomes last round's, the one Rewind plays back */
                 if (u._tapeNow || u._tapeLast) { u._tapeLast = u._tapeNow || 0; u._tapeNow = 0; }
@@ -15338,6 +15342,132 @@
             }
         }
         window._crCastRow = _crCastRow; window._crRoundEnd = _crRoundEnd;
+
+        /* ═══ THE RAT KING (2026-11-23, thread "Plan the Rat and Rat King's spells"; mondo: "The rat can have some sort of system where
+           if he gets enough stacks he becomes the rat king", plan OK'd 11-23) ═══ One new rule, MISCHIEF (a group of rats is a
+           mischief), host-side like THE COMING RACES: plain numbers and the unit's own appearance / spell rows, all riding the state
+           sync, so the guest's model, menu and chip follow by themselves; the texts go through showFloatingTextForUnit (relayed), the
+           looks through fireGeometry (relayed).
+             · +1 Mischief for every hit he or one of his summoned rats lands on an enemy (the rats' bites carry him as their source),
+               +1 more for Gnaw on a target already Bleeding (`gnawMischief`), +1 when any enemy within 2 of him goes down.
+             · At 5 the rats crown him on the spot (_ratCrown): unit.appearance.form = 'king' (sprites.js getRace3DModel → RAT_KING_3D;
+               three-renderer.js hashes it into the structural serial), +2 ATK / +1 DEF stage while crowned (getStatStageCount), a 20 %
+               heal, and his three Rat rows turn into the King's in the same slots (RAT_KING_SWAP, data.js RAT_KING_SPELLS).
+             · Crowned, every round end costs 1 Mischief; his hits refill it. At 0 the crown falls (_ratDethrone).
+             · Stun, Frozen or Feared scatter 2 Mischief (the Skater's bail rule, the other side's answer).
+             · Long Live the King (`longLiveKing`) spends it all: one bite a Mischief, spread over the enemies within 4, then the crown falls.
+             · Down = the crown falls and the count is 0 (he comes back as the Rat).
+           Notes: docs/notes/champions-combat.md "THE RAT KING". */
+        const MISCHIEF_MAX = 5, RAT_KING_HEAL = 0.2, RAT_SCAVENGE_R = 2, RAT_SCATTER = 2;
+        const RAT_KING_SWAP = { nrGnaw: 'nrPlagueBite', nrScurry: 'nrCarriedByCourt', nrMischiefOfRats: 'nrLongLiveKing' };
+        const RAT_KING_BACK = { nrPlagueBite: 'nrGnaw', nrCarriedByCourt: 'nrScurry', nrLongLiveKing: 'nrMischiefOfRats' };
+        function _ratIsKing(u) { return !!(u && u.race === 'rat' && u.appearance && u.appearance.form === 'king'); }
+        /* the slots: each row of the map becomes its twin (spells, the slot ids, the race rows), a fresh copy of the table's row */
+        function _ratSwapKit(u, map) {
+            const twin = (sp) => { if (!sp || !map[sp.id]) return sp; const t = getSpellById(map[sp.id]); return t ? Object.assign({}, t) : sp; };
+            if (Array.isArray(u.spells)) u.spells = u.spells.map(twin);
+            if (Array.isArray(u._raceAbilities)) u._raceAbilities = u._raceAbilities.map(twin);
+            if (Array.isArray(u._spellSlots)) u._spellSlots = u._spellSlots.map(id => map[id] || id);
+            if (state.selectedUnitId === u.id && state.selectedTool && typeof state.selectedTool === 'string') {
+                const was = Object.keys(map).map(k => getSpellById(k)).find(sp => sp && sp.name === state.selectedTool);
+                if (was) state.selectedTool = null;   // an armed Gnaw is not a Plague Bite: disarm, the menu re-reads the slot
+            }
+        }
+        function _ratCrown(u) {
+            if (!_nrAlive(u) || _ratIsKing(u)) return;
+            u.appearance = Object.assign({}, u.appearance || {}, { form: 'king' });   // a new object: never the roster's own look
+            _ratSwapKit(u, RAT_KING_SWAP);
+            u._ratCrownRound = state.round || 0;
+            const heal = Math.max(1, Math.round((u.maxHp || 0) * RAT_KING_HEAL));
+            if (u.hp < u.maxHp) applyHealingToUnit(u, heal, u, { preScaled: true });
+            addLog(`👑 The rats crown ${_ctName(u)}: THE RAT KING! +2 ATK and +1 DEF stage while the crown holds; his spells answer to a king now.`);
+            _crFloat(u, '👑 RAT KING', 'buff');
+            _sigVfxGeom('nrRatCrown', u.x, u.y, 0, { owner: u.player });
+            if (typeof markDirty === 'function') markDirty('hud', 'selectedUnit');
+            scheduleBoardRender();
+        }
+        function _ratDethrone(u, why) {
+            if (!u || !_ratIsKing(u)) return;
+            const a = Object.assign({}, u.appearance); delete a.form; u.appearance = a;
+            _ratSwapKit(u, RAT_KING_BACK);
+            if (why) addLog(`🐀 ${why}`);
+            if (!u.dead && u.hp > 0) _crFloat(u, '🐀 DETHRONED', 'damage');
+            _sigVfxGeom('nrRatCrown:fall', u.x, u.y, 0, { owner: u.player });
+            if (typeof markDirty === 'function') markDirty('hud', 'selectedUnit');
+            scheduleBoardRender();
+        }
+        function _ratGain(u, n) {
+            if (!_nrAlive(u) || u.race !== 'rat' || !(n > 0) || u._ratCashing) return;
+            const before = u.mischief | 0;
+            u.mischief = Math.min(MISCHIEF_MAX, before + n);
+            if (u.mischief === before) return;
+            _crFloat(u, `🐀 MISCHIEF ${u.mischief}`, 'buff');
+            if (u.mischief >= MISCHIEF_MAX && !_ratIsKing(u)) _ratCrown(u);
+        }
+        /* applyDamageToUnit, a blow that landed: his own hits and his rats' bites (sourceUnit = him) */
+        function _ratOnHit(src, target, opts, hadBleed) {
+            if (!src || src.race !== 'rat' || !target || src.id === target.id || !sidesHostile(src.player, target.player)) return;
+            if (target._isCube || target._summonStatic || (opts && (opts._linkEcho || opts.damageType === 'dot'))) return;
+            _ratGain(src, 1 + (hadBleed && src._ratCastId === 'nrGnaw' ? 1 : 0));
+        }
+        /* any enemy that goes down within 2 of a rat feeds him (the scavenger); a rat that goes down loses the crown and the count */
+        function _ratOnDown(target) {
+            if (!target) return;
+            if (target.race === 'rat') {
+                if (_ratIsKing(target)) _ratDethrone(target, `The crown rolls off ${_ctName(target)}. The court scatters.`);
+                target.mischief = 0;
+            }
+            for (const r of (state.units || [])) {
+                if (!r || r.race !== 'rat' || r.id === target.id || !_nrAlive(r) || !sidesHostile(r.player, target.player)) continue;
+                if (Math.max(Math.abs(r.x - target.x), Math.abs(r.y - target.y)) > RAT_SCAVENGE_R) continue;
+                _ratGain(r, 1);
+            }
+        }
+        /* the Skater's bail rule: a hold that stops him scatters 2 */
+        function _ratScatter(u, label) {
+            if (!u || u.race !== 'rat' || !((u.mischief | 0) > 0)) return;
+            u.mischief = Math.max(0, (u.mischief | 0) - RAT_SCATTER);
+            addLog(`🐀 ${_ctName(u)} is ${label || 'stopped'}: his rats scatter (Mischief ${u.mischief}).`);
+            _crFloat(u, `🐀 SCATTER −${RAT_SCATTER}`, 'damage');
+            if (u.mischief <= 0 && _ratIsKing(u)) _ratDethrone(u, `Nobody is left to hold up ${_ctName(u)}'s crown.`);
+        }
+        /* the round end (_nrRoundEnd): a king pays his court */
+        function _ratRoundEnd(u) {
+            if (!_nrAlive(u) || !_ratIsKing(u)) return;
+            u.mischief = Math.max(0, (u.mischief | 0) - 1);
+            if (u.mischief <= 0) _ratDethrone(u, `The court goes hungry and leaves ${_ctName(u)}: the crown falls.`);
+            else addLog(`👑 ${_ctName(u)} feeds his court: Mischief ${u.mischief}.`);
+        }
+        /* Long Live the King: who the bites go to (the forecast, the refusal, the CPU and the cast read the same plan) */
+        function _ratKingPlan(unit, spell) {
+            const L = spell && spell.longLiveKing; if (!L || !unit) return null;
+            const r = L.radius || 4, n = Math.max(0, unit.mischief | 0);
+            const foes = (state.units || []).filter(e => _nrAlive(e) && sidesHostile(unit.player, e.player) && !e._isCube
+                && Math.max(Math.abs(e.x - unit.x), Math.abs(e.y - unit.y)) <= r)
+                .sort((a, b) => (Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y)) - (Math.abs(b.x - unit.x) + Math.abs(b.y - unit.y)) || (a.hp - b.hp));
+            const bites = [];
+            if (foes.length) for (let i = 0; i < n; i++) bites.push(foes[i % foes.length]);
+            const dmg = calcFlatSpellDamage(L.dmg || 70, spellPowerOf(unit, spell), 16);
+            return { foes, bites, dmg, n };
+        }
+        function _ratLongLive(unit, spell) {
+            const P = _ratKingPlan(unit, spell); if (!P || !_nrAlive(unit)) return;
+            unit._ratCashing = true;   // the bites spend the court: they never feed it back
+            try {
+                _sigVfxGeom('nrLongLiveKing', unit.x, unit.y, (spell.longLiveKing.radius || 4), { owner: unit.player, bites: P.bites.map(e => [e.x, e.y]) });
+                let hits = 0;
+                for (const e of P.bites) {
+                    if (!_nrAlive(e)) continue;
+                    applyDamageToUnit(e, P.dmg, `${spell.name}: a rat bursts up under `, { sourceUnit: unit, damageType: 'physical', spellType: spell.spellType || null });
+                    hits++;
+                }
+                addLog(`👑 "Long live the king!" ${_ctName(unit)} spends his court: ${hits} rat${hits === 1 ? '' : 's'} burst up out of the floor.`);
+            } finally { unit._ratCashing = false; }
+            unit.mischief = 0;
+            _ratDethrone(unit, `${_ctName(unit)} gave the court everything. The crown falls.`);
+        }
+        function _ratOnBoard() { return (state.units || []).some(u => u && u.race === 'rat' && !u.dead); }
+        window._ratKingPlan = _ratKingPlan; window._ratIsKing = _ratIsKing; window.MISCHIEF_MAX = MISCHIEF_MAX;
         /* ═══ THE HAUNTED DOLL (2026-11-17, mondo approved the kit and asked for the pull-string spell) ═══ "Sits on the shelf, and
            moves when you look away." Host-side like the rest of THE NEW RACES 2: the squares, the facings, the statuses and the HP
            state-sync to the guest; the voice-box line comes from _nrHash (the unit id + the round), so the guest's log agrees.
@@ -43587,6 +43717,7 @@
             if (_pressDamageCollector) _collectPressHit(opts.sourceUnit || null, target, opts);
 
             const sourceUnit_pre = opts.sourceUnit || null;
+            const _ratHadBleed = !!(sourceUnit_pre && sourceUnit_pre.race === 'rat' && unitHasStatus(target, 'bleed'));   // 👑 Gnaw's +1 on a target already Bleeding (read before this hit's own Bleed)
             if (damage > 0 && sourceUnit_pre && sourceUnit_pre.race === 'gladiator') damage = Math.max(1, Math.round(damage * _crFavorMult(sourceUnit_pre, target, opts)));   // 🛡 THE CROWD: +4% a Favor
             if (state.fogOfWar && !state.devAutoSim && sourceUnit_pre && sidesHostile(sourceUnit_pre.player, target.player)) {
                 const humanPlayer = getViewerPlayer();
@@ -43848,6 +43979,7 @@
 
             let _balHitRec = null;   // Balance Lab: this hit's element / effects / statuses, for the kill credit below
             if (finalDamage > 0) {
+                const _ratHpWas = target.hp;   // 👑 the scavenger counts the blow that took it down, once
                 target.hp -= finalDamage;
                 astralSyncHp();   // 👁 one HP bar for a body and its spirit
                 target._tookDamageThisRound = true;
@@ -43856,6 +43988,8 @@
                 if (sourceUnit && sourceUnit.race === 'wendigo' && sidesHostile(sourceUnit.player, target.player)) sourceUnit._fedRound = state.round || 0;   // 🦌 it fed
                 if (sourceUnit && sourceUnit.race === 'cameraman' && target.hp > 0) _camFilm(sourceUnit, target);   // 🎥 THE FOOTAGE
                 if (sourceUnit && (sourceUnit.race === 'gladiator' || sourceUnit.race === 'jellyfish ufo')) _crOnHit(sourceUnit, target, opts);   // 🛡⚡ THE COMING RACES: Favor, claw Charge
+                if (sourceUnit && sourceUnit.race === 'rat') _ratOnHit(sourceUnit, target, opts, _ratHadBleed);   // 👑 THE RAT KING: Mischief
+                if (target.hp <= 0 && _ratHpWas > 0 && (target.race === 'rat' || _ratOnBoard())) _ratOnDown(target);   // 👑 the scavenger, the fallen crown
 
                 /* ONE CAST, ONE LINE (playtest 2, mondo 2026-10-22: "ninefold scratch just needs one line"): a
                    multi-hit cast passes opts.logSink and its hits roll into one line with the total, written on
@@ -46752,6 +46886,7 @@
             hawk: { icon: '🦅', verb: 'dives at' }, wolf: { icon: '🐺', verb: 'bites' }, elephant: { icon: '🐘', verb: 'strikes' },
             creation: { icon: '🧟', verb: 'clubs' }, hound: { icon: '🐕', verb: 'bites' }, cultist: { icon: '🕯️', verb: 'strikes' },
             drone: { icon: '🐝', verb: 'stings' }, blob: { icon: '🟢', verb: 'strikes' }, replica: { icon: '🦠', verb: 'lashes' },   // 🦠 the Virus's Replica (2026-11-18)
+            rat: { icon: '🐀', verb: 'bites' },   // 👑 the Rat's Mischief of Rats (2026-11-23)
         };
         function _summonLook(key) { return SUMMON_LOOK[key] || { icon: '🧟', verb: 'strikes' }; }
         function _turretLogName(turret) {
@@ -84274,6 +84409,7 @@
             if (spell && (spell.diceRoll || spell.stillnessSpend)) spell = _nr4CastRow(unit, spell);
             /* 🛡⚡ THE COMING RACES: Crowd Pleaser / Abyssal Overload bake their spend, Venom Injector its Stun (_crCastRow) */
             if (spell && (spell.favorSpend || spell.chargeSpend || spell.chargeStunAt)) spell = _crCastRow(unit, spell);
+            if (unit && unit.race === 'rat') unit._ratCastId = spell ? spell.id : null;   // 👑 THE RAT KING: Gnaw's bonus reads the cast
             /* Clash final authority: movement/positioning spells can never
                fire, whatever path armed them (kits are already stripped —
                this catches stale online/AI edge cases). */
@@ -85047,6 +85183,7 @@
                 if (spell.viewersGain > 0) _viewersAdd(unit, spell.viewersGain, 'gets hearts in the chat');
                 _nr4AfterCast(unit, spell);   // 🎲📿🔒 THE NEW RACES 4: the streak, the stillness, the ransom
                 _crAfterCast(unit, spell);   // 🛡⚡ THE COMING RACES: Favor + Charge spent
+                if (unit.race === 'rat') unit._ratCastId = null;   // 👑 THE RAT KING
                 if (spell.kind !== 'dash' && Array.isArray(spell.selfStatusAfter) && spell.selfStatusAfter.length && !unit.dead && state.phase === 'battle') {
                     applyStatusEffects(unit, spell.selfStatusAfter, `${spell.name}: `, unit);
                 }
@@ -85388,6 +85525,13 @@
                     if (!_silentReject) { addLog(`${_ctSp(spell.name)}: nothing to clean within ${spell.mopUp.radius || 2}.`, _clickSeat()); playErrorSfx(); }
                     return 0;
                 }
+                if (spell.longLiveKing) {   // 👑 Long Live the King: a court to spend and an enemy in reach
+                    const _llk = _ratKingPlan(unit, spell);
+                    if (!_llk || !_llk.foes.length || !_llk.n) {
+                        if (!_silentReject) { addLog(`${_ctSp(spell.name)}: ${_llk && _llk.n ? `no enemy within ${spell.longLiveKing.radius || 4}` : 'no Mischief left to spend'}.`, _clickSeat()); playErrorSfx(); }
+                        return 0;
+                    }
+                }
                 if (spell.harvestMoon && !_crHarvestPlants(unit, spell).length) {
                     if (!_silentReject) { addLog(`${_ctSp(spell.name)}: no grown plant of ${_ctName(unit)}'s within ${spell.harvestMoon.radius || 4}.`, _clickSeat()); playErrorSfx(); }
                     return 0;
@@ -85509,6 +85653,7 @@
                     if (spell.unload && !unit.dead) _truckerUnload(unit, spell);   // 🚚 Unload
                     if (spell.comeAtMe && !unit.dead) _crComeAtMe(unit, spell);   // 🛡 Come At Me
                     if (spell.harvestMoon && !unit.dead) _crHarvestMoon(unit, spell);   // 🌾 Harvest Moon
+                    if (spell.longLiveKing && !unit.dead) _ratLongLive(unit, spell);   // 👑 Long Live the King
                     if (spell.filterSwap && !_bt.dead) _influencerFilter(unit, _bt, spell);   // 🤳 Filter
                     if (spell.slimeRing && !unit.dead) { _sigVfxGeom('nrSaltProof:ring', unit.x, unit.y, 1, { owner: unit.player }); _slugRing(unit, spell); }   // 🐌 Salt-Proof Stance
                     markDirty('hud');
@@ -85794,7 +85939,8 @@
                 if (!state.turrets) state.turrets = [];
                 const _sCap = spell.maxActivePerCaster || 1;
                 const _sMine = state.turrets.filter(t => t.summon && t.casterUnitId === unit.id && t.spellId === spell.id);
-                while (_sMine.length >= _sCap) {
+                const _sCount = Math.max(1, Math.min(_sCap, spell.summonCount || 1));   // 👑 Mischief of Rats calls two at once (`summonCount`)
+                while (_sMine.length > _sCap - _sCount) {
                     const old = _sMine.shift();
                     addLog(`${_ctSp(old.spellName)} at ${coordLabel(old.x, old.y)} is dismissed.`);
                     state.turrets.splice(state.turrets.indexOf(old), 1);
@@ -85828,7 +85974,23 @@
                     const _stT = state.turrets[state.turrets.length - 1];
                     if (_stT) _stT.trailTerrain = { terrain: _sd.trailTerrain.terrain, radius: 0, rounds: _sd.trailTerrain.rounds || 3 };
                 }
-                showFloatingTextAtTile(x, y, `${_sd.key === 'hound' ? '🐕' : _sd.key === 'replica' ? '🦠' : '🧟'} ${_sName.toUpperCase()}`, 'damage', { durationMs: 1200 });
+                /* 👑 `summonCount` (Mischief of Rats): the rest come up on free squares beside the first, nearest the caster first */
+                if (_sCount > 1) {
+                    const _sFirst = state.turrets[state.turrets.length - 1];
+                    const _sNb = [];
+                    for (let _dy = -1; _dy <= 1; _dy++) for (let _dx = -1; _dx <= 1; _dx++) if (_dx || _dy) _sNb.push({ x: x + _dx, y: y + _dy });
+                    _sNb.sort((a, b) => (Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y)) - (Math.abs(b.x - unit.x) + Math.abs(b.y - unit.y)) || (a.y - b.y) || (a.x - b.x));
+                    let _sMore = _sCount - 1;
+                    for (const t of _sNb) {
+                        if (_sMore <= 0) break;
+                        if (!isInside(t.x, t.y) || !summonTileFree(t.x, t.y)) continue;
+                        state.turrets.push(Object.assign({}, _sFirst, { id: `summon_${_sd.key || 'pet'}_${state.round || 0}_${unit.id}_${randInt(99999)}`, x: t.x, y: t.y,
+                            hitStatus: _sFirst.hitStatus ? _sFirst.hitStatus.slice() : null, burstStatus: _sFirst.burstStatus ? _sFirst.burstStatus.slice() : null }));
+                        if (typeof window !== 'undefined' && window.ThreeVFXEffects && window.ThreeVFXEffects.hasMapping(spell.id, 'aura') && state.phase === 'battle' && !_skipVisuals()) window.ThreeVFXEffects.fire('aura', spell.id, { tx: t.x, ty: t.y });
+                        _sMore--;
+                    }
+                }
+                showFloatingTextAtTile(x, y, `${_sd.key === 'hound' ? '🐕' : _sd.key === 'replica' ? '🦠' : _sd.key === 'rat' ? '🐀' : '🧟'} ${_sName.toUpperCase()}`, 'damage', { durationMs: 1200 });
                 addLog(`${_ctName(unit)} calls ${_sName} to ${coordLabel(x, y)}! It hunts the nearest enemy at the end of every round — ${_sd.move || 3} tiles a round, ${_sHits} hits to destroy${_sd.armored ? ', physical blows count half' : ''}${_sd.reveals ? `, sniffs out invisible enemies within ${_sd.reveals}` : ''}.`, unit.player);
                 scheduleBoardRender();
                 completionDelay = actionMs(900);
