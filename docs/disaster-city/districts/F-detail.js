@@ -110,16 +110,14 @@ module.exports = function (K) {
             grille(P, 'b', 0, 0, T.W + 0.1, T.D + 0.1, 6, 0.4, 2.4, 1.2); grille(P, 'b', 0, 0, T.W + 0.1, T.D + 0.1, -6, 0.4, 2.4, 1.2);
             P.push(box(0, 0, 0, T.W + 0.3, 0.6, T.D + 0.3, GUN, 0x606068, { top: false, faces: 'blr' }));
         },
-        /* 2. the archive: formwork lines, its name cast over the slits, a hood and a lamp at the door, grilles high on the sides, the lid a real roof */
+        /* 2. the archive, now Act of God Insurance's lobby (the skyline plan, 11-23: the tower stands on it, F-towers.js): a formwork line on the
+              concrete sides, a hood over the glass doors, grilles high on the sides, a pipe and the AC boxes on the back */
         'P09-00-B1': (T, P) => {
             const W = T.W, D = T.D, F = D / 2;
-            for (const y of [3.8, 7.6]) P.push(box(0, y, 0, W + 0.16, 0.07, D + 0.16, null, 0x70747a, { top: false }));
-            letters(P, 'ARCHIVE', 1.6, 10.45, F + 0.06, 0.6, null, 0x30343a);
-            P.push(box(3.5, 2.75, F + 0.5, 2.8, 0.14, 1.0, CONC, 0x94989e, { under: true })); lamp(P, 5.0, 1.9, F + 0.06); plate(P, 'f', 0, 0, W + 0.1, D + 0.1, 2.0, 1.4, 0.5, S_NO);
-            for (const f of 'lr') for (const a of [-4, 0, 4]) grille(P, f, 0, 0, W + 0.1, D + 0.1, a, 9.0, 1.6, 0.9);
-            pipe(P, W / 2 - 0.5, -F - 0.12, 11.3); wallAC(P, 'b', 0, 0, W + 0.1, D + 0.1, -3, 2.4); wallAC(P, 'b', 0, 0, W + 0.1, D + 0.1, 3, 2.4);
-            deck(P, 0, 12.8, 0, W + 1.6, D + 1.6); parapet(P, 0, 12.8, 0, W + 2.2, D + 2.2, 0.45, CONC, 0xa4a8ac);
-            chiller(P, 2.5, 12.8, -3.5); roofVent(P, 5.5, 12.8, 3); roofVent(P, 5.5, 12.8, 1.2); stairHead(P, -3, 12.8, -3.6); duct(P, 0.5, 12.8, 2.6, 6.5);
+            P.push(box(0, 3.8, 0, W + 0.16, 0.07, D + 0.16, null, 0x70747a, { top: false, faces: 'blr' }));
+            P.push(box(T.lx, 2.75, F + 0.5, 3.2, 0.14, 1.0, CONC, 0x94989e, { under: true })); plate(P, 'f', 0, 0, W + 0.1, D + 0.1, -4.6, 1.4, 0.5, S_NO);
+            for (const f of 'lr') for (const a of [-4, 0, 4]) grille(P, f, 0, 0, W + 0.1, D + 0.1, a, 4.8, 1.6, 0.9);
+            pipe(P, W / 2 - 0.5, -F - 0.12, 6.6); wallAC(P, 'b', 0, 0, W + 0.1, D + 0.1, -3, 2.4); wallAC(P, 'b', 0, 0, W + 0.1, D + 0.1, 3, 2.4);
         },
         /* 3. the Goblin Bank: BANK in gold on the entablature, dentils under both cornices, a base course, pilasters between the drum's
               windows, sills and heads on the side windows, gold acroteria, a checker floor under the portico, plant hidden behind the attic */
@@ -180,11 +178,7 @@ module.exports = function (K) {
             const W = T.W, D = T.D, F = D / 2;
             letters(P, 'BANK', -W / 2 + 2.4, 8.4, F + 0.92, 0.85, 'gold', WHITE, { gain: 1.5 });
             P.push(box(T.lx, 3.2, F + 1.5, 5.4, 0.18, 1.9, ALU, 0xeef2f4, { under: true }), cyl(T.lx - 2.4, 3.38, F + 0.95, 0.03, 3.5, null, IRON, { seg: 4, n: 2, step: [4.8, 0, 0] }));
-            P.push(box(9, 28.6, F + 1.3, 2.6, 1.1, 0.8, ALU, 0xc0c4c8, { top: false }), box(8, 31.5, F + 0.5, 0.12, 0.5, 2.0, null, IRON, { n: 2, step: [2, 0, 0] }), cyl(8, 29.7, F + 1.35, 0.02, 1.9, null, IRON, { seg: 4, n: 2, step: [2, 0, 0] }));
-            deck(P, 2.4, 31.5, 0, W - 5, D + 1.0);
-            for (const f of 'fb') wQuad(P, f, 5, 0, 10, 6, 0, 31.9, 9, 2.2, 0.02, GRILL, 0x9aa0a6, { uv: [1.1, 1.1], kind: 'wall' });
-            chiller(P, -5, 31.5, 3.6); chiller(P, -5, 31.5, -3.6); acUnit(P, 13, 31.5, 4); acUnit(P, 13, 31.5, 1.6); roofVent(P, 11, 31.5, -5.5); duct(P, -1, 31.5, 0, 4.5); stairHead(P, 13, 31.5, -4.2);
-            railing(P, 2.4, 31.5, F + 0.4, W - 5.4, false, 0xd0d6da, RF); railing(P, 2.4, 31.5, -F - 0.4, W - 5.4, false, 0xd0d6da, RF); railing(P, W / 2 - 0.1, 31.5, 0, D + 0.8, true, 0xd0d6da, RF);
+            /* (the slab's roof at 31.5 m, its cradle, deck and plant, went with the slab: the Walkie-Talkie stands there now, F-towers.js) */
             for (const y of [1.0, 13, 25]) grille(P, 'b', -W / 2 + 2.4, 0, 4.8, D + 1.8, 0, y, 2.4, 1.0);
         },
         /* 8. the vault annex: VAULT in gold on the portal, hazard plates on its piers, a rubber plinth, a rail on each step, grilles in the
@@ -194,10 +188,10 @@ module.exports = function (K) {
             letters(P, 'VAULT', lx, 7.18, F + 1.0, 0.64, 'gold', WHITE, { gain: 1.5 });
             for (const s of [-1, 1]) P.push(quad(lx + s * 4.6, 1.0, F + 1.03, 1.0, 1.0, 0, S_HAZ, WHITE, { uv: 'fit' }), quad(lx + s * 4.6, 2.3, F + 1.03, 0.6, 0.6, 0, S_NO, WHITE, { uv: 'fit' }));
             P.push(box(0, 0, 0, W + 0.3, 0.9, D + 0.3, RUB, 0x9a9ca4, { top: false, faces: 'blr', uv: 0.9 }));
-            for (const s of [-1, 1]) { const x = s * (W / 2 - 1.0), z = F - 1.0; P.push(box(x, 9.6, z + 2.45, 0.3, 0.26, 0.6, null, 0xe0e4e8), box(x, 9.9, z + 2.2, 0.08, 0.08, 0.5, null, IRON), box(x - s * 1.4, 12.0, z + 1.6, 0.5, 0.36, 0.3, null, LAMP, { glow: 1 })); }
-            railing(P, 0, 3.7, F - 0.3, W - 7, false); railing(P, 0, 6.6, F - 0.95, W - 9, false); railing(P, 0, 9.4, F - 1.6, W - 9, false);
+            /* (the skyline plan, 11-23: the drums stop at the podium's 6.6 m now, the Shard-ow stands on it; the cameras came down with them) */
+            for (const s of [-1, 1]) { const x = s * (W / 2 - 1.0), z = F - 1.0; P.push(box(x, 4.7, z + 2.45, 0.3, 0.26, 0.6, null, 0xe0e4e8), box(x, 5.0, z + 2.2, 0.08, 0.08, 0.5, null, IRON), box(x - s * 1.4, 7.15, z + 1.6, 0.5, 0.36, 0.3, null, LAMP, { glow: 1 })); }
+            railing(P, 0, 3.7, F - 0.3, W - 7, false);
             for (const f of 'lr') for (const a of [-6, -2, 2, 6]) grille(P, f, 0, 0, W - 1.2, D - 1.2, a, 4.3, 1.8, 1.0);
-            for (const s of [-1, 1]) { roofVent(P, s * 9.6, 13.5, 0); acUnit(P, s * 9.6, 13.5, -5); acUnit(P, s * 9.6, 13.5, 5); }
             P.push(box(lx, 8.05, F + 0.9, 0.22, 0.22, 0.22, null, 0xff3030, { glow: 1 }));
         },
         /* 9. the taxi court: TAXI lit on a truss on the canopy, a ceiling-tile soffit and its lamps, a tiled back wall, a checker band on the
@@ -301,7 +295,7 @@ module.exports = function (K) {
         terrace: (T, P) => {
             const n = T.n, hw = T.W / n, D = T.D;
             for (let i = 0; i < n; i++) {
-                const x = -T.W / 2 + hw * (i + 0.5), H = 10.5 + (i % 2) * 0.6, dx = x - hw * 0.22;
+                const x = -T.W / 2 + hw * (i + 0.5), H = 10.5 + (T.up || 0) * 3.5 + (i % 2) * 0.6, dx = x - hw * 0.22;
                 P.push(roof('shed', dx, 3.05, D / 2 + 0.55, 2.4, 0.45, 1.0, GUN, 0x7a8496, { under: true, roof: false }), box(dx - 1.0, 2.5, D / 2 + 0.5, 0.1, 0.55, 0.9, STONE, CR, { n: 2, step: [2.0, 0, 0] }));
                 P.push(box(x + hw * 0.2, 1.1, D / 2 + 0.3, Math.min(1.9, hw * 0.36), 0.3, 0.4, null, 0x3a2a20), box(x + hw * 0.2, 1.4, D / 2 + 0.3, Math.min(1.7, hw * 0.32), 0.22, 0.3, 'leaves_3', 0xc8e8b8));
                 P.push(box(x + hw / 2 - 0.6, H + 4.6, -D / 4, 1.1, 0.16, 1.1, STONE, CR), cyl(x + hw / 2 - 0.6, H + 4.76, -D / 4, 0.18, 0.6, null, 0xb06a50, { seg: 8 }));
@@ -320,10 +314,10 @@ module.exports = function (K) {
             if (o.sign) letters(P, o.sign, 0, 2.85, D / 2 + 2.01, 0.36, 'gold', 0xffffff, { depth: 0.05, gain: 1.5 });   // LONDON: gilt lettering
             P.push(box(0.9 - gw / 2, 0.5, D / 2 + 0.14, 0.09, 2.7, 0.09, null, IRON, { n: m, step: [gw / (m - 1), 0, 0] }), box(0.9, 0, D / 2 + 0.24, gw, 0.5, 0.06, TILER, WHITE, { uv: 0.5 }));
             P.push(box(0, 6.56, D / 2 + 0.1, W - 1.2, 0.12, 0.16, STONE, 0xd0c8b8), box(0, 4.2, D / 2 + 0.1, W - 1.2, 0.12, 0.2, STONE, 0xd0c8b8));
-            lamp(P, -W / 2 + 0.5, 2.6, D / 2 + 0.1); pipe(P, W / 2 + 0.12, D / 2 - 0.5, H - 0.5);
+            lamp(P, -W / 2 + 0.5, 2.6, D / 2 + 0.1); pipe(P, W / 2 + 0.12, D / 2 - 0.5, (T.Ht || H) - 0.5);
             wallAC(P, 'r', 0, 0, W + 0.1, D + 0.1, -D / 4, 4.6); grille(P, 'l', 0, 0, W + 0.1, D + 0.1, 0, 0.6, 1.2, 0.8); wallAC(P, 'b', 0, 0, W + 0.1, D + 0.1, W / 4, 4.6);
             P.push(quad(-W / 4, 0, -D / 2 - 0.07, 1.1, 2.3, 180, U('DoorPaintedHalf1a'), 0xa8a8a0, { uv: [1.1, 2.3], kind: 'wall' }));
-            if (!T.H) { deck(P, 0, H, 0, W - 0.6, D - 0.6); acUnit(P, W / 4, H, -D / 4); roofVent(P, -W / 4, H, D / 4); if (D > 7 && W > 7) stairHead(P, -W / 4, H, -D / 4); }
+            if (!T.H) { const R = T.Ht || H; deck(P, 0, R, 0, W - 0.6, D - 0.6); acUnit(P, W / 4, R, -D / 4); roofVent(P, -W / 4, R, D / 4); if (D > 7 && W > 7) stairHead(P, -W / 4, R, -D / 4); }
         },
         /* the workshop: a lintel and a lamp over the roller door, posts beside it, a hazard plate, a band on the dado, pipes, an AC box, a flue */
         workshop: (T, P) => {
@@ -331,7 +325,7 @@ module.exports = function (K) {
             lamp(P, 1.2, 3.75, D / 2 + 0.12); pipe(P, -W / 2 - 0.1, D / 2 - 0.5, H - 0.3); pipe(P, W / 2 + 0.1, -D / 2 + 0.5, H - 0.3);
             bollards(P, -1.25, D / 2 + 0.4, 2, 4.9); P.push(box(1.2, 3.62, D / 2 + 0.16, 4.6, 0.14, 0.2, null, IRON));
             plate(P, 'f', 0, 0, W + 0.1, D + 0.1, -1.7, 1.6, 0.55, S_HAZ);
-            if (!flat) P.push(cyl(W / 2 - 1.2, H, -D / 2 + 1.2, 0.3, 3.4, ALU, 0xc0c4c8, { seg: 8 }), cyl(W / 2 - 1.2, H + 3.4, -D / 2 + 1.2, 0.45, 0.2, ALU, 0xc0c4c8, { seg: 8, r2: 0.15 }));
+            if (!flat) { const R = T.Ht || H; P.push(cyl(W / 2 - 1.2, R, -D / 2 + 1.2, 0.3, 3.4, ALU, 0xc0c4c8, { seg: 8 }), cyl(W / 2 - 1.2, R + 3.4, -D / 2 + 1.2, 0.45, 0.2, ALU, 0xc0c4c8, { seg: 8, r2: 0.15 })); if (T.Ht) { deck(P, 0, R, 0, W - 0.6, D - 0.6); acUnit(P, -W / 4, R, D / 4); } }
             P.push(box(0, 1.5, 0, W + 0.24, 0.1, D + 0.24, STONE, 0xa8a298, { top: false }));
             wallAC(P, 'l', 0, 0, W + 0.1, D + 0.1, D / 4, 3.0); grille(P, 'r', 0, 0, W + 0.1, D + 0.1, 0, 2.2, 1.6, 0.9); grille(P, 'b', 0, 0, W + 0.1, D + 0.1, 0, 2.2, 2.4, 0.9);
         },
