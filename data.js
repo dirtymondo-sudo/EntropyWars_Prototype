@@ -87255,7 +87255,7 @@ function hqReplateDoors() {
     const rooms = DOOR_HQ.rooms || {};
     let n = 0;
     Object.keys(rooms).forEach(id => ((rooms[id] || {}).doors || []).forEach(d => {
-        if (!d || d.plate === 'own' || d.secret) return;   // a secret door is on no plate (its DRAUGHT label is the walker's only hint)
+        if (!d || d.plate === 'own' || d.secret || d.lift) return;   // THE TOWER LIFT (11-23) keeps its own plate; a secret door is on no plate (its DRAUGHT label is the walker's only hint)
         const to = hqDoorThrough(d);
         if (to && (DOOR_HQ.rooms[to] || {}).kind === 'bay') return;   // a ring is many bays: the authored plate names the SEGMENT through the door (BAY 1 · TERRESTRIAL), the ring's own label none of them
         const lbl = hqDoorPlateLabel(d);
@@ -87280,6 +87280,7 @@ function hqDoorPlateFor(door, profile) {
     const own = (door && (door.label || door.id)) ? String(door.label || door.id).toUpperCase() : '';
     const no = (typeof hqDoorNo === 'function') ? (hqDoorNo(door) || '') : '';
     if (!door || !door.action || typeof door.action !== 'object') return { known: true, label: own, no, room: null };
+    if (door.lift) return { known: true, label: own, no: '', room: null };   // THE TOWER LIFT (11-23): always THE LIFT
     const to = hqDoorThrough(door);
     if (!to) return { known: true, label: own, no, room: null };
     const known = !!(profile && hqRoomSeen(profile, to));
