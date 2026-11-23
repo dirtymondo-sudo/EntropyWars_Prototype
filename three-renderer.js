@@ -4,7 +4,7 @@ const ThreeRenderer = (function () {
     /* THE TIMERS BETWEEN FRAMES (2026-11-19, mondo's F3: a 90-125 ms frame every 6 s exactly with ~20 ms of the frame's own JS, at pixel
        ratio 2 and 1.5 alike): every setTimeout / setInterval callback made after this file loads is timed, and the time they took
        between two frames (and the slowest one's name) rides on the lens's "Slow frames" entries. Off: window.EW_TIMER_WATCH_OFF before load. */
-    var _ewTmr = { ms: 0, topMs: 0, topF: null };
+    var _ewTmr = { ms: 0, topMs: 0, topF: null, tot: 0, dTop: 0, dF: null };   // tot / dTop / dF: THE DIP LOG's share (never reset by the lens)
     (function () {
         if (typeof window === 'undefined' || window.EW_TIMER_WATCH_OFF || window.__ewTmrHooked || typeof performance === 'undefined') return;
         window.__ewTmrHooked = true;
@@ -15,7 +15,7 @@ const ThreeRenderer = (function () {
                 a[0] = function () {
                     var t = performance.now();
                     try { return fn.apply(this, arguments); }
-                    finally { var d = performance.now() - t; _ewTmr.ms += d; if (d > _ewTmr.topMs) { _ewTmr.topMs = d; _ewTmr.topF = fn; } }
+                    finally { var d = performance.now() - t; _ewTmr.ms += d; _ewTmr.tot += d; if (d > _ewTmr.topMs) { _ewTmr.topMs = d; _ewTmr.topF = fn; } if (d > _ewTmr.dTop) { _ewTmr.dTop = d; _ewTmr.dF = fn; } }
                 };
                 return orig.apply(window, a);
             };
@@ -56463,12 +56463,101 @@ const ThreeRenderer = (function () {
     function _lensOn() { return !!((_lens && _lens.cur) || _dip.cur); }
     function _dipCounters() {
         var B = (typeof _ewBun !== 'undefined' && _ewBun) || {}, K = (typeof _ewKeep !== 'undefined' && _ewKeep) || {};
-        return { rec: B.recs | 0, ep: B.epoch | 0, pb: K.builds | 0, pp: K.pipes | 0, fr: _dip.freed, add: _ewAddN | 0, ld: _asOptLoads | 0 };
+        var HS = (typeof _heroStat !== 'undefined' && _heroStat) || {};
+        return { rec: B.recs | 0, ep: B.epoch | 0, pb: K.builds | 0, pp: K.pipes | 0, fr: _dip.freed, add: _ewAddN | 0, ld: _asOptLoads | 0, ls: HS.sidesDrawn | 0 };
     }
     function _dipWhere() {
         var H = _hq, pl = H && H.player; if (!pl) return H ? '?' : 'in a fight';
         var U = 3.5;
-        return Math.round(pl.x / U) + ',' + Math.round(pl.z / U) + (pl.y > 1 ? ' up ' + Math.round(pl.y) + ' m' : '') + (H.vehicle && H.vehicle.on ? ' (aboard)' : '');
+        var dn = ''; try { var G = _ewWhereRow(H.opts && H.opts.room); if (G) { var hit = G.at[Math.floor((pl.x - G.row.ox) / G.P) + ',' + Math.floor((pl.z - G.row.oz) / G.P)]; if (hit && (hit[1] || hit[0])) dn = ' (' + (hit[1] || hit[0]) + ')'; } } catch (eD) {}   // THE WHERE LINE: the district on the map
+        return Math.round(pl.x / U) + ',' + Math.round(pl.z / U) + (pl.y > 1 ? ' up ' + Math.round(pl.y) + ' m' : '') + (H.vehicle && H.vehicle.on ? ' (aboard)' : '') + dn;
+    }
+    /* THE WHERE LINE (2026-11-23, mondo: "now that we have a map, a coordinate system for where I am, so whenever i send you a
+       screenshot i can send you an f3 too so you know exactly where i was"): one copyable line at the top of F3 (and its own
+       "Copy where" button): the zone, the room (its name + id), the district and plot under the walker's feet (the map's own
+       names, HQ_ZONE_MAP), THE WORLD MAP'S PLOT GRID (wx, wy in plots, north up: the same frame map.js draws YOU ARE HERE in),
+       the square in the room (the dip log's frame), the height, which way the walker and the camera face. In a fight: the walked
+       room the fight stands in (the parked walk) and the active unit's board square. Read only when the text is made (a few
+       look-ups, no scene walk). A plot-grid row is found once a room and kept. */
+    var _ewWhereRows = {};
+    function _ewWhereRow(roomId) {
+        if (!roomId) return null;
+        if (roomId in _ewWhereRows) return _ewWhereRows[roomId];
+        var out = null;
+        try {
+            if (typeof HQ_ZONE_MAP !== 'undefined' && HQ_ZONE_MAP && HQ_ZONE_MAP.zones) for (var hub in HQ_ZONE_MAP.zones) {
+                var z = HQ_ZONE_MAP.zones[hub], rows = z.rooms || [], row = null;
+                for (var i = 0; i < rows.length; i++) if (rows[i].room === roomId) { row = rows[i]; break; }
+                if (!row) continue;
+                var D = z.districts || {}, at = {}, P = HQ_ZONE_MAP.plot || 42;
+                var put = function (name, d, c, r) { at[c + ',' + r] = [name || '', D[d] ? D[d][0] : (typeof d === 'string' && d.length > 1 ? d : '')]; };
+                if (row.plots) row.plots.forEach(function (p) { put(p[1], p[2], p[3], p[4]); });
+                else {
+                    var RP = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.rooms[roomId] || {}).plots;
+                    if (RP && RP.names && RP.names.length) {
+                        var rc = RP.names.map(function (n) { var m = /^P(\d+)-(\d+)$/.exec(n[0]); return m ? [+m[1], +m[2]] : [0, 0]; });
+                        var oc = Math.max(0, Math.max.apply(null, rc.map(function (a) { return a[0]; })) - row.cols + 1), orr = Math.max(0, Math.max.apply(null, rc.map(function (a) { return a[1]; })) - row.rows + 1);
+                        RP.names.forEach(function (n, k) { put(n[1], n[2], rc[k][0] - oc, rc[k][1] - orr); });
+                    }
+                }
+                out = { hub: hub, row: row, at: at, P: P };
+                break;
+            }
+        } catch (e) { out = null; }
+        _ewWhereRows[roomId] = out;
+        return out;
+    }
+    var _EW_COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+    function _ewCompass(deg) { deg = _hqNormDeg(deg); return _EW_COMPASS[Math.round(deg / 45) % 8] + ' ' + Math.round(deg) + '°'; }
+    /* { room, zone, roomName, district, plot, wx, wy, sx, sz, up, face, cam, fight, unit } — null when nothing is walked or fought */
+    function _ewWhere() {
+        var H = _hq, fight = false;
+        if (!H && typeof _hqParked !== 'undefined' && _hqParked && _hqParked.H) { H = _hqParked.H; fight = true; }
+        var W = { fight: fight || (!_hq && !!active) };
+        try {   // the fight's own board: the active unit's square
+            var gs = (typeof window !== 'undefined' && window.GAME && window.GAME.state) || null;
+            if (W.fight && gs && gs.units) for (var ui = 0; ui < gs.units.length; ui++) { var u = gs.units[ui]; if (u.id === gs._blitzActiveUnitId) { W.unit = String(u.name || u.race || 'unit') + ' (P' + u.player + ') on board square ' + u.x + ',' + u.y; break; } }
+            if (W.fight && gs && gs.round) W.round = gs.round;
+        } catch (eU) {}
+        if (!H) return W.fight ? W : null;
+        var roomId = (H.opts && H.opts.room) || '';
+        W.room = roomId;
+        try {
+            var DR = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.rooms && DOOR_HQ.rooms[roomId]) || null;
+            W.roomName = DR ? String(DR.label || DR.name || '') : '';
+            var G = _ewWhereRow(roomId);
+            if (G) W.zone = String(((DOOR_HQ.hubs || {})[G.hub] || {}).label || G.hub);
+            else W.zone = (DR && !DR.site) ? 'DOOR HQ' : '';
+            var pl = H.player;
+            if (pl) {
+                W.sx = Math.round(pl.x / 3.5); W.sz = Math.round(pl.z / 3.5); W.up = pl.y; W.air = !!pl.air; W.aboard = !!(H.vehicle && H.vehicle.on);
+                W.face = _hqNormDeg((Math.PI - (pl.yaw || 0)) * 180 / Math.PI);
+                if (G) {
+                    var c = Math.floor((pl.x - G.row.ox) / G.P), r = Math.floor((pl.z - G.row.oz) / G.P), hit = G.at[c + ',' + r];
+                    if (hit) { W.plot = hit[0]; W.district = hit[1]; }
+                    W.pc = c; W.pr = r;
+                    if (G.row.wx != null) { W.wx = G.row.wx + (pl.x - G.row.ox) / G.P; W.wy = G.row.wy + (pl.z - G.row.oz) / G.P; W.layer = G.row.layer; }
+                }
+            }
+            var cam = H.camera;
+            if (cam && cam.getWorldDirection) { var fw = cam.getWorldDirection(new THREE.Vector3()); if (Math.abs(fw.x) + Math.abs(fw.z) > 1e-3) W.cam = Math.atan2(fw.x, -fw.z) * 180 / Math.PI; W.camDown = Math.round(Math.asin(Math.max(-1, Math.min(1, -fw.y))) * 180 / Math.PI); }
+        } catch (e) {}
+        return W;
+    }
+    function _ewWhereText(W) {
+        W = W || _ewWhere();
+        if (!W) return 'WHERE: ' + (_menu && _menuLive ? 'the menu' : 'nothing walked or fought');
+        var p = [];
+        if (W.fight) p.push('IN A FIGHT' + (W.round ? ' (round ' + W.round + ')' : '') + (W.unit ? ', ' + W.unit : '') + (W.room ? ', in the walked room:' : ''));
+        if (W.room) {
+            p.push((W.zone || '?') + ' · ' + (W.roomName ? W.roomName + ' (' + W.room + ')' : W.room));
+            if (W.district || W.plot) p.push((W.district ? 'district ' + W.district : '') + (W.district && W.plot ? ', ' : '') + (W.plot ? 'plot ' + W.plot + (W.pc != null ? ' [' + W.pc + ',' + W.pr + ']' : '') : ''));
+            if (W.wx != null) p.push('world map ' + W.wx.toFixed(1) + ', ' + W.wy.toFixed(1) + ' (plots, east/south +' + (W.layer && W.layer !== 'surface' ? ', ' + W.layer : '') + ')');
+            if (W.sx != null) p.push('square ' + W.sx + ',' + W.sz + (W.up > 1 || W.up < -1 ? ' up ' + Math.round(W.up) + ' m' : '') + (W.air ? ' (in the air)' : '') + (W.aboard ? ' (aboard)' : ''));
+            if (W.face != null && !W.fight) p.push('facing ' + _ewCompass(W.face));
+            if (W.cam != null) p.push('camera ' + _ewCompass(W.cam) + ', ' + W.camDown + '° down');
+        }
+        return 'WHERE: ' + p.join(' · ');
     }
     function _dipBegin(t0) {
         var D = _dip;
@@ -56483,7 +56572,7 @@ const ThreeRenderer = (function () {
         for (var k in st.parts) top.push([k, st.parts[k]]);
         top.sort(function (a, b) { return b[1] - a[1]; });
         st.top = top.slice(0, 4); st.parts = null;
-        st.d = { rec: c1.rec - c0.rec, ep: c1.ep - c0.ep, pb: c1.pb - c0.pb, pp: c1.pp - c0.pp, fr: c1.fr - c0.fr, add: c1.add - c0.add, ld: c1.ld - c0.ld };
+        st.d = { rec: c1.rec - c0.rec, ep: c1.ep - c0.ep, pb: c1.pb - c0.pb, pp: c1.pp - c0.pp, fr: c1.fr - c0.fr, add: c1.add - c0.add, ld: c1.ld - c0.ld, ls: (c1.ls | 0) - (c0.ls | 0) };
         st.whereEnd = _dipWhere(); st.len = st.lastAt - st.t;
         D.log.push(st); D.n++; if (D.log.length > 40) D.log.shift();
     }
@@ -56504,29 +56593,81 @@ const ThreeRenderer = (function () {
         var iv = D.lastT0 ? t0 - D.lastT0 : 0, P = D.prev;
         if (!D.since) D.since = t0;
         var fps = R.length, full = t0 - D.since > 3000;   // the frames that began in the last second (after the room's first 3 s)
+        /* THE GAP'S SPLIT (2026-11-23): the timers that ran since the last frame (setTimeout / setInterval, timed at the top of this
+           file), and the rest of the gap that no JS of ours explains (a GC, the browser, a GPU wait) */
+        var tmGap = _ewTmr.tot - (D.tmTot || 0), tmTop = _ewTmr.dTop, tmF = _ewTmr.dF; D.tmTot = _ewTmr.tot; _ewTmr.dTop = 0; _ewTmr.dF = null;
+        if (iv > 0 && iv < 3000 && full) { var FR = D.fr || (D.fr = { iv: new Float32Array(8192), t: new Float64Array(8192), i: 0, n: 0 }); FR.iv[FR.i] = iv; FR.t[FR.i] = t0; FR.i = (FR.i + 1) & 8191; if (FR.n < 8192) FR.n++; }   // THE STEADINESS ring: every frame's gap, the last ~60 s
         if (iv > 0 && iv < 3000 && P && full && (iv >= 50 || fps < 30)) {
             var st = D.st;
             if (st && st.calm && t0 - st.lastAt > 1500) { _dipClose(D, now); st = null; }   // (a run of slow frames with long gaps stays one dip)
             if (st) st.calm = false;
-            if (!st) st = D.st = { at: new Date().toISOString().slice(11, 19), t: D.lastT0, lastAt: t0, frames: 0, worst: 0, minFps: 999, js: 0, parts: {}, where: _dipWhere(), c0: P.c, room: (_hq && _hq.opts && _hq.opts.room) || '' };
-            st.lastAt = t0; st.frames++; st.js += P.cpu; if (D.fightAt && t0 - D.fightAt < 6000) { st.fight = true; if (D.actAt && Math.abs(D.actAt - D.fightAt) < 6000) st.lay = D.actMs; } else if (_hq && !_hq.ready) st.loadF = (st.loadF | 0) + 1; if (iv > st.worst) { st.worst = iv; st.wJs = P.cpu; st.wTop = ''; if (P.parts) { var wk = '', wv = 0; for (var wp in P.parts) if (P.parts[wp] > wv) { wv = P.parts[wp]; wk = wp; } if (wk) st.wTop = wk + ' ' + Math.round(wv); } } if (P.bn) { var sbn = st.bn || (st.bn = {}); for (var bi = 0; bi < P.bn.length; bi++) sbn[P.bn[bi]] = (sbn[P.bn[bi]] | 0) + 1; } if (fps < st.minFps) st.minFps = fps;   // (loadF: a frame under the load card)
+            if (!st) st = D.st = { at: new Date().toISOString().slice(11, 19), t: D.lastT0, lastAt: t0, frames: 0, worst: 0, minFps: 999, js: 0, gap: 0, tm: 0, out: 0, parts: {}, where: _dipWhere(), c0: P.c, room: (_hq && _hq.opts && _hq.opts.room) || '' };
+            var outF = Math.max(0, iv - P.cpu - tmGap);
+            st.lastAt = t0; st.frames++; st.js += P.cpu; st.gap += iv; st.tm += tmGap; st.out += outF; if (tmTop > (st.tmTop || 0)) { st.tmTop = tmTop; st.tmN = _ewTmrName(tmF); } if (D.fightAt && t0 - D.fightAt < 6000) { st.fight = true; if (D.actAt && Math.abs(D.actAt - D.fightAt) < 6000) st.lay = D.actMs; } else if (_hq && !_hq.ready) st.loadF = (st.loadF | 0) + 1; if (iv > st.worst) { st.worst = iv; st.wJs = P.cpu; st.wTm = tmGap; st.wOut = outF; st.wTop = ''; if (P.parts) { var wk = '', wv = 0; for (var wp in P.parts) if (P.parts[wp] > wv) { wv = P.parts[wp]; wk = wp; } if (wk) st.wTop = wk + ' ' + Math.round(wv); } } if (P.bn) { var sbn = st.bn || (st.bn = {}); for (var bi = 0; bi < P.bn.length; bi++) sbn[P.bn[bi]] = (sbn[P.bn[bi]] | 0) + 1; } if (fps < st.minFps) st.minFps = fps;   // (loadF: a frame under the load card)
             var M = P.parts; if (M) for (var pk in M) st.parts[pk] = (st.parts[pk] || 0) + M[pk];
             var S2 = P.sub; if (S2) for (var sk in S2) st.parts['> ' + sk] = (st.parts['> ' + sk] || 0) + S2[sk];
         } else if (D.st) { D.st.calm = true; if (t0 - D.st.lastAt > 1500) _dipClose(D, now); }
         D.prev = { cpu: now - t0, parts: F ? F.parts : null, sub: F ? F.sub : null, c: _dipCounters(), bn: D.fb };
         D.lastT0 = t0;
     }
+    /* THE STEADINESS, THE RHYTHM, THE CAUSES (2026-11-23, mondo: "60 fps is useless if there are still moments where it drops
+       consistently. Anything you can add to the f3 loadout that would help nail those issues down?"). Read when the text is made:
+       - STEADINESS: the last 60 s of frame gaps (after a room's first 3 s): the middle frame, the 1 % / 0.1 % lows, how many frames
+         went over 25 / 33 / 50 / 100 ms, and the worst gap of each 5 s, oldest first (a dip every 6 s shows as a beat in that row).
+       - RHYTHM: the spacing of the dips' starts; when most fall near one spacing, it says so (a timer or a cycle, not the place).
+       - CAUSES: over every dip logged, which part was among a dip's top four how often, and how the dips' gaps split between our
+         frame's JS, our timers and time no JS of ours explains (a GC, the browser, the GPU) — the three need different fixes. */
+    function _dipSteadyLines(all) {
+        var L = [], D = _dip, FR = D.fr;
+        if (FR && FR.n > 30) {
+            var now = performance.now(), iv = [], tt = [];
+            for (var k = 0; k < FR.n; k++) { var j = (FR.i - 1 - k) & 8191; if (now - FR.t[j] > 60000) break; iv.push(FR.iv[j]); tt.push(FR.t[j]); }
+            if (iv.length > 30) {
+                var so = iv.slice().sort(function (a, b) { return a - b; }), n = so.length;
+                var q = function (f) { return so[Math.min(n - 1, Math.floor(n * f))]; };
+                var over = function (ms) { var c = 0; for (var i = 0; i < n; i++) if (iv[i] > ms) c++; return c; };
+                var span = (tt[0] - tt[tt.length - 1]) / 1000;
+                L.push('Steadiness (last ' + Math.round(span) + ' s, ' + n + ' frames): middle frame ' + q(0.5).toFixed(1) + ' ms (' + Math.round(1000 / q(0.5)) + ' FPS) · 1% low ' + Math.round(1000 / q(0.99)) + ' FPS · 0.1% low ' + Math.round(1000 / q(0.999)) + ' FPS · frames over 25 ms ' + over(25) + ', 33 ms ' + over(33) + ', 50 ms ' + over(50) + ', 100 ms ' + over(100));
+                var B = [], t0 = tt[tt.length - 1];
+                for (var b = 0; b < iv.length; b++) { var bi = Math.floor((tt[b] - t0) / 5000); if (bi < 0) bi = 0; if (iv[b] > (B[bi] || 0)) B[bi] = iv[b]; }
+                var row = []; for (var bb = 0; bb < B.length; bb++) row.push(B[bb] ? Math.round(B[bb]) : '-');
+                L.push('  worst gap of each 5 s, oldest first (ms): ' + row.join(' '));
+            }
+        }
+        if (all.length >= 4) {
+            var gs = []; for (var a = 1; a < all.length; a++) if (all[a].t && all[a - 1].t && all[a].room === all[a - 1].room) gs.push((all[a].t - all[a - 1].t) / 1000);
+            if (gs.length >= 3) {
+                var gso = gs.slice().sort(function (x, y) { return x - y; }), med = gso[Math.floor(gso.length / 2)], near = 0;
+                for (var g = 0; g < gs.length; g++) if (Math.abs(gs[g] - med) <= Math.max(0.4, med * 0.15)) near++;
+                L.push('Dip rhythm: dips ' + med.toFixed(1) + ' s apart (middle of ' + gs.length + ' spacings in one room)' + (near >= Math.max(3, gs.length * 0.6) ? ' · REGULAR: ' + near + ' of ' + gs.length + ' within ' + Math.max(0.4, med * 0.15).toFixed(1) + ' s of that, so a timer or a cycle, not a place' : ' · no steady beat (' + near + ' of ' + gs.length + ' near it)'));
+            }
+        }
+        if (all.length) {
+            var cnt = {}, ms = {}, js = 0, tm = 0, out = 0, gap = 0, tn = {};
+            all.forEach(function (st) {
+                var top = st.top; if (!top) { top = []; for (var pk in st.parts) top.push([pk, st.parts[pk]]); top.sort(function (x, y) { return y[1] - x[1]; }); top = top.slice(0, 4); }
+                top.forEach(function (x) { cnt[x[0]] = (cnt[x[0]] | 0) + 1; ms[x[0]] = (ms[x[0]] || 0) + x[1]; });
+                js += st.js || 0; tm += st.tm || 0; out += st.out || 0; gap += st.gap || 0; if (st.tmN && st.tmTop >= 3) tn[st.tmN] = (tn[st.tmN] | 0) + 1;
+            });
+            var ks = Object.keys(cnt).sort(function (x, y) { return (cnt[y] - cnt[x]) || (ms[y] - ms[x]); });
+            L.push('Dip causes (' + all.length + ' dips kept): ' + ks.slice(0, 8).map(function (k2) { return k2 + ' in ' + cnt[k2] + ' (' + Math.round(ms[k2]) + ' ms)'; }).join(' · '));
+            if (gap > 0) { var tk = Object.keys(tn).sort(function (x, y) { return tn[y] - tn[x]; }); L.push('  the dips\' slow gaps: our frame JS ' + Math.round(js * 100 / gap) + '% · our timers ' + Math.round(tm * 100 / gap) + '%' + (tk.length ? ' (slowest timers: ' + tk.slice(0, 3).map(function (x) { return tn[x] + 'x ' + x; }).join(', ') + ')' : '') + ' · outside our JS (GC, the browser, the GPU) ' + Math.round(out * 100 / gap) + '%'); }
+        }
+        return L;
+    }
     function _dipLines() {
         var D = _dip, L = [];
         var all = D.log.slice(); if (D.st) all.push(D.st);
-        if (!all.length) return ['Dips this session: none (no frame gap of 50 ms+ and no second under 30 FPS' + (_dipOff() ? '; the log is OFF' : '') + ')'];
+        try { _dipSteadyLines(all).forEach(function (x) { L.push(x); }); } catch (eSt) {}   // THE STEADINESS + THE RHYTHM + THE CAUSES (2026-11-23)
+        if (!all.length) return L.concat(['Dips this session: none (no frame gap of 50 ms+ and no second under 30 FPS' + (_dipOff() ? '; the log is OFF' : '') + ')']);
         L.push('Dips this session (' + (D.n + (D.st ? 1 : 0)) + ', last ' + Math.min(all.length, 12) + '; time · length · lowest FPS · worst gap · slow frames, their JS · where (squares) · top parts summed · what happened):');
-        all.slice(-12).forEach(function (st) {
-            var d = st.d, open = !d;
+        all.slice(-12).forEach(function (st, si, arr) {
+            var d = st.d, open = !d, prevSt = si ? arr[si - 1] : (all.length > 12 ? all[all.length - 13] : null);
+            var gapS = (st.gap > 0) ? ' · the gaps: JS ' + Math.round(st.js * 100 / st.gap) + '%, timers ' + Math.round((st.tm || 0) * 100 / st.gap) + '%' + (st.tmN && st.tmTop >= 3 ? ' (slowest ' + Math.round(st.tmTop) + ' ms ' + st.tmN + ')' : '') + ', outside our JS ' + Math.round((st.out || 0) * 100 / st.gap) + '%' : '';
             var tp = (st.top || (function () { var t = []; for (var k in st.parts) t.push([k, st.parts[k]]); t.sort(function (a, b) { return b[1] - a[1]; }); return t.slice(0, 4); })()).map(function (x) { return x[0] + ' ' + Math.round(x[1]); }).join(', ');
-            if (open) { var c1 = _dipCounters(); d = { rec: c1.rec - st.c0.rec, ep: c1.ep - st.c0.ep, pb: c1.pb - st.c0.pb, pp: c1.pp - st.c0.pp, fr: c1.fr - st.c0.fr, add: c1.add - st.c0.add, ld: c1.ld - st.c0.ld }; }
-            var hap = []; if (d.rec) hap.push(d.rec + ' re-recorded'); if (d.ep) hap.push('epoch moved ' + d.ep); if (d.pb) hap.push(d.pb + ' shader builds'); if (d.pp) hap.push(d.pp + ' new pipelines'); if (d.fr) hap.push(d.fr + ' GPU buffers freed'); if (d.add) hap.push(d.add + ' objects added'); if (d.ld) hap.push(d.ld + ' models loaded');
-            L.push('  ' + st.at + 'Z · ' + ((st.len != null ? st.len : st.lastAt - st.t) / 1000).toFixed(1) + ' s · ' + st.minFps + ' FPS · ' + Math.round(st.worst) + ' ms · ' + st.frames + ' frames, JS ' + Math.round(st.js) + ' ms · at ' + st.where + (st.whereEnd && st.whereEnd !== st.where ? ' → ' + st.whereEnd : '') + (open ? ' (still going)' : '') + (st.fight ? ' · FIGHT START' + (st.lay != null ? ' (its scene was laid in ' + st.lay + ' ms, outside the frames)' : '') : '') + (st.wJs != null ? ' · worst frame: JS ' + Math.round(st.wJs) + ' ms' + (st.wTop ? ' (' + st.wTop + ')' : '') : '') + (st.bn ? ' · built: ' + (function () { var t = []; for (var k in st.bn) t.push([k, st.bn[k]]); t.sort(function (a, b) { return b[1] - a[1]; }); return t.slice(0, st.fight ? 24 : 6).map(function (x) { return (x[1] > 1 ? x[1] + 'x ' : '') + x[0]; }).join(' | ') + (t.length > (st.fight ? 24 : 6) ? ' | +' + (t.length - (st.fight ? 24 : 6)) + ' kinds' : ''); })() : '') + (st.loadF ? ' · LOADING (' + (st.loadF >= st.frames ? 'all' : st.loadF + ' of ' + st.frames) + ' frames under the load card)' : '') + ' · ' + (tp || 'no parts timed') + ' · ' + (hap.length ? hap.join(', ') : 'nothing loaded or rebuilt'));
+            if (open) { var c1 = _dipCounters(); d = { rec: c1.rec - st.c0.rec, ep: c1.ep - st.c0.ep, pb: c1.pb - st.c0.pb, pp: c1.pp - st.c0.pp, fr: c1.fr - st.c0.fr, add: c1.add - st.c0.add, ld: c1.ld - st.c0.ld, ls: (c1.ls | 0) - (st.c0.ls | 0) }; }
+            var hap = []; if (d.rec) hap.push(d.rec + ' re-recorded'); if (d.ep) hap.push('epoch moved ' + d.ep); if (d.pb) hap.push(d.pb + ' shader builds'); if (d.pp) hap.push(d.pp + ' new pipelines'); if (d.fr) hap.push(d.fr + ' GPU buffers freed'); if (d.add) hap.push(d.add + ' objects added'); if (d.ld) hap.push(d.ld + ' models loaded'); if (d.ls) hap.push(d.ls + ' lamp shadow sides drawn');
+            L.push('  ' + st.at + 'Z' + (prevSt && prevSt.t ? ' (+' + ((st.t - prevSt.t) / 1000).toFixed(1) + ' s)' : '') + ' · ' + ((st.len != null ? st.len : st.lastAt - st.t) / 1000).toFixed(1) + ' s · ' + st.minFps + ' FPS · ' + Math.round(st.worst) + ' ms · ' + st.frames + ' frames, JS ' + Math.round(st.js) + ' ms · at ' + st.where + (st.whereEnd && st.whereEnd !== st.where ? ' → ' + st.whereEnd : '') + (open ? ' (still going)' : '') + (st.fight ? ' · FIGHT START' + (st.lay != null ? ' (its scene was laid in ' + st.lay + ' ms, outside the frames)' : '') : '') + (st.wJs != null ? ' · worst frame: JS ' + Math.round(st.wJs) + ' ms' + (st.wTop ? ' (' + st.wTop + ')' : '') + (st.wTm >= 1 ? ', timers ' + Math.round(st.wTm) + ' ms' : '') + (st.wOut >= 5 ? ', outside our JS ' + Math.round(st.wOut) + ' ms' : '') : '') + gapS + (st.bn ? ' · built: ' + (function () { var t = []; for (var k in st.bn) t.push([k, st.bn[k]]); t.sort(function (a, b) { return b[1] - a[1]; }); return t.slice(0, st.fight ? 24 : 6).map(function (x) { return (x[1] > 1 ? x[1] + 'x ' : '') + x[0]; }).join(' | ') + (t.length > (st.fight ? 24 : 6) ? ' | +' + (t.length - (st.fight ? 24 : 6)) + ' kinds' : ''); })() : '') + (st.loadF ? ' · LOADING (' + (st.loadF >= st.frames ? 'all' : st.loadF + ' of ' + st.frames) + ' frames under the load card)' : '') + ' · ' + (tp || 'no parts timed') + ' · ' + (hap.length ? hap.join(', ') : 'nothing loaded or rebuilt'));
         });
         return L;
     }
@@ -57037,6 +57178,7 @@ const ThreeRenderer = (function () {
            the code that ran; Render redeploys the page some minutes after a merge and the old token keeps the old cached file):
            the page's token (which index.html the browser holds) and this file's own stamp (which three-renderer.js ran). */
         try { L.push('Build ' + _ewBuildTok() + ' · renderer code ' + _EW_TR_STAMP); } catch (e) {}
+        try { L.push(_ewWhereText()); } catch (eW) {}   // THE WHERE LINE (2026-11-23)
         if (S.backend) L.push('Renderer ' + S.backend);   // WEBGPU_PLAN W0
         L.push('FPS ' + S.fps.toFixed(1) + '  frame ' + _lensMs(S.frameMs) + '  worst ' + _lensMs(S.worst2s));
         L.push('CPU ' + _lensMs(S.cpuMs) + ' (submit ' + S.submitMs.toFixed(1) + ' · anim ' + S.animMs.toFixed(1) + ')  GPU ' + (S.gpuOk ? _lensMs(S.gpuMs) : (_ewGpu ? 'n/a (no timestamp query' + (/Firefox\//.test(navigator.userAgent || '') ? ' on Firefox' : '') + ')' : 'n/a (no timer query)')));
@@ -57171,6 +57313,7 @@ const ThreeRenderer = (function () {
     function _lensSet(id, val) {
         var L = _lens; if (!L) return;
         if (id === 'copy') { _lensCopy(); return; }
+        if (id === 'where') { _lensCopyWhere(); return; }
         if (id === 'close') { _lensClose(); return; }
         if (id.indexOf('res:') === 0) { var r = id.slice(4); _lensRes(r === 'native' ? 'native' : (+r || 0)); }
         else if (id === 'shadows') L.shadows = (val != null) ? !!val : !L.shadows;
@@ -57211,6 +57354,13 @@ const ThreeRenderer = (function () {
         try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(txt).then(done, function () { _lensCopyOld(txt); done(); }); return; } } catch (e) {}
         _lensCopyOld(txt); done();
     }
+    /* THE WHERE LINE on its own (2026-11-23): the build + where, for a bug screenshot that is not about the frame rate */
+    function _lensCopyWhere() {
+        var txt = ''; try { txt = 'Build ' + _ewBuildTok() + ' · renderer code ' + _EW_TR_STAMP + '\n' + _ewWhereText() + '\n' + new Date().toISOString().slice(0, 19) + 'Z'; } catch (e) { txt = _ewWhereText(); }
+        var done = function () { var b = _lens && _lens.el && _lens.el.querySelector('[data-lens="where"]'); if (b) { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy where'; }, 1200); } };
+        try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(txt).then(done, function () { _lensCopyOld(txt); done(); }); return; } } catch (e) {}
+        _lensCopyOld(txt); done();
+    }
     function _lensCopyOld(txt) {
         try { var ta = document.createElement('textarea'); ta.value = txt; ta.style.cssText = 'position:fixed;left:-9999px;top:0'; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); } catch (e) {}
     }
@@ -57225,7 +57375,7 @@ const ThreeRenderer = (function () {
         var el = document.createElement('div');
         el.id = 'ewPerfLens'; el.style.cssText = _LENS_CSS;
         el.innerHTML = '<div style="display:flex;gap:4px;justify-content:flex-end;margin-bottom:4px"><span style="flex:1;color:#7dff9a;letter-spacing:0.08em">PERF · F3</span>'
-            + _lensBtn('copy', 'Copy', true) + _lensBtn('close', 'Close', true) + '</div><pre style="margin:0;white-space:pre-wrap;font:inherit"></pre><div style="margin-top:6px"></div>';
+            + _lensBtn('copy', 'Copy', true) + _lensBtn('where', 'Copy where', true) + _lensBtn('close', 'Close', true) + '</div><pre style="margin:0;white-space:pre-wrap;font:inherit"></pre><div style="margin-top:6px"></div>';
         L.el = el; L.body = el.querySelector('pre'); L.tog = el.lastChild;
         el.addEventListener('click', _lensClick, true);
         ['mousedown', 'pointerdown', 'wheel', 'touchstart'].forEach(function (t) { el.addEventListener(t, function (e) { e.stopPropagation(); }, false); });
@@ -106979,6 +107129,7 @@ const ThreeRenderer = (function () {
             /* THE STILL MATRICES: the last scene walk (objects seen, kept, remade, run by their own method) */
             /* THE STILL TORCH: how many walk frames held the hero light's map, and why the last one did or did not */
             dips: function () { try { return _dipLines(); } catch (e) { return ['ERR ' + e.message]; } },
+            where: function () { try { return _ewWhereText(); } catch (e) { return 'ERR ' + e.message; } },   // THE WHERE LINE
             fwHolder: function () { return _fw ? _fw.holder : null; },   // the walked room's holder while a fight draws it (a probe's way in)
             fw: function () { var F = _fw, K = { builds: _ewKeep.builds | 0, pipes: _ewKeep.pipes | 0, reused: _ewKeep.reused | 0, recs: (_ewBun && _ewBun.recs) | 0, kept: (_ewBun && _ewBun.fwKept) | 0, why: Object.assign({}, _ewBun.why), lampWhy: _ewBun.lampWhy || null, stale: _ewBun.staleLights | 0, frees: _ewBun.frees | 0, drawErr: _ewGpuInfo.drawErr || null,  spikes: (_ewBun.spikes || []).slice(-3), epoch: _ewBun.epoch, last: (_ewKeep.last || []).slice(-6), rig: _ewRigG ? { grows: _ewRigG.grows, n: _ewRigG.n, p: _ewRigG.k.p.length, d: _ewRigG.k.d.length, ds: _ewRigG.k.ds.length, srcP: _ewRigG.src.p.length } : null }; if (!F) return { on: false, parked: !!_hqParked, stats: _fieldRoomStats, keep: K }; var L = F.H.ckList || [], out = 0; for (var i = 0; i < L.length; i++) if (L[i]._ew_ckOut) out++; return { on: F.on, kids: F.HS.children.map(function (c) { return (c.name || c.type) + (c.visible ? '' : ' (off)') + (c.children.length ? ' [' + c.children.length + ']' : ''); }).slice(0, 40), camAs: !!F.camSave, seeded: F.seeded, sh: !!F.shSave, roots: F.roots.length, big: F.bigN | 0, floors: F.floors.length, props: F.props.length, cuts: F.cuts.length, cutN: F.cutN, hid: F.hid.length, ceil: F.ceil.length, walls: Object.keys(F.walls).join(''), job: F.job ? 'running' : ('done in ' + Math.round(F.jobMs || 0) + ' ms'), chunks: L.length, chunksOut: out, lights: F.lights ? F.lights.length : null, s: F.s, faded: _occFaded.size, keep: K }; },   // THE FIGHT IN THE WALKED ROOM
             still: function () { return _hqStillStats(); }, stillWalk: function (dtMs) { if (!_hq) return null; var t0 = performance.now(); _hqStillSceneWalk(_hq.scene); return { ms: +(performance.now() - t0).toFixed(2), last: _hqStLast }; }, stillWake: function (o) { _hqStillWake(o); },
