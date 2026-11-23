@@ -15008,9 +15008,14 @@ district files (and again at THE LAST STAGE for the rows a `last` hook drew), be
 - GAPS ARE DOORWAYS EVERYWHERE NOW: data.js hqTexBuildingRows already cut them in the walker's walls; three-renderer.js `_hqTexInside` cuts them in
   the inside walls (jambs + head), THE CLEAR DOORWAYS (`_hqArchDoorGrid`) cuts the arch parts across each gap as across the front, and kits.js keeps
   the square inside each gap a walkway. `inH` = a hollow row's inside height (renderer + kits' lamps).
-- find-doors.js reads HEIGHTS now: a drawn door is reached only by walked ground at its foot (±1.3 m), so a roof hut's door is no longer "reached"
+- find-doors.js reads HEIGHTS now: a walk-in's doorway is reached only by walked ground at its floor's height and a drawn door only by ground at its
+  foot (±1.3 m), so a roof hut's door, or a back door onto a yard a storey up, is no longer "reached"
   by the street under it; a MetalShutter from 0.9 m up is a window's shutter, a door sheet 0.5-1.5 m up and under 2 m tall is a hatch: neither listed.
-- COUNT (main 5010cb6 + this): walk-ins 117 -> 285, closed 244 -> 40, unreachable 5 -> 0; find-softlocks: 0 traps, 0 crevices (as before). The
+- `WINDOWS_AT` (the hook): the doors whose ground outside is on another level than the floor inside (a step of 1.3 m or more, a yard a storey up,
+  a district's shelving against the wall inside) are tall windows too; the 15 points are find-doors.js's WALKIN-X list of the first pass. A rebake
+  that opens a door onto a step: run find-doors.js, add its point here.
+- COUNT (main 5010cb6 + this): walk-ins 117 -> 271, closed 244 -> 39 (20 painted: Civic Center 15 + 5 below), unreachable 5 -> 0; find-softlocks: 0 traps,
+  0 crevices (as before). The
   bake prints `[open doors] {...}`; `DOORS_DUMP=1 node bake-disaster-city.js --dry-run` lists every door it opened, gapped, left or skipped.
 - LEFT (not this pass): Civic Center's 15 painted doors (district C, the second account's: SKIPPED by the hook, `distOf(f) === 'C'`); the Hotel's
   lobby door (its own thread); the pack and prism fillers (pack_bld_08 / 09 x4, building_2 / 3 / 5 / 9 / 10 x6: their faces are a model's or a
