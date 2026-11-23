@@ -9,6 +9,9 @@
 > PASS 3 (mondo "yes one more pass"; 1,278 matches on pass 2, true spread 4.4 -> 3.4 pts): pass 2's big ones landed (Jellyfish UFO
 > 53%, Gladiator 49%, Virus 49%, Delivery Boy 50%); 29 races: 14 up, 10 down, 5 halved for overshoot (Banker, Ghost, Cowboy, Cult Leader,
 > Necromancer). Boltzmann Brain swings (21 -> 46 -> 27% with no change between the last two): its random jump, raised again; untested.
+> PASS 4 (mondo "do another pass, sounds like its working"; 1,438 matches on pass 3, ~70 games a race, true spread 3.4 -> 3.6 pts, so the
+> loop is near its floor at this lab size): 28 races, 13 up, 12 down, 3 halved (Necromancer again: 36 -> 61 -> 40%, Astronaut, Hippie).
+> Pass 3's big ones landed (Mole Man 62 -> 48%, Samurai Slug 41 -> 47%); Boltzmann Brain 39%, raised again. Untested.
 
 > **11-22 REVIEW (mondo's answers):** the RACE STAT changes were judged noise (the baseline was already inside luck: 5.63
 > vs 5.85; ~57 games a race = ±6.6 pts) and every RACE_BASE_STATS row is BACK to its pre-11-21 line. The SPELL FAMILY fixes
