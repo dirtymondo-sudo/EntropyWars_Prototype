@@ -14946,6 +14946,11 @@ each floor"):
   `crowdAll` stands every placed spot. The city's population walkers (hq-roam, at city levels, a hippie labelled Trucker) walked every floor:
   hqRoomPopulation returns none for a hotel room. hqSpotRaces leaves `boss` / `fixed` spots alone. Beaten guests stay beaten for the RUN only
   (the cleared record carries `run` = the seed). Pictures: /mnt/project-files/hotel-dungeon/round3/.
+- ROUND 4, THE ROOF (11-23, mondo: "no thats not how bosses work. he needs to be by himself on the roof, normal sized (why would he be huge????)"):
+  floor 10 is a floor like the rest; its stairs (`up`) go to THE ROOF, `site_prebuilt_hotel_roof` (data.js hotelRoofRoom, built with the floors by
+  hotelBuild): the 28 m footprint open to the city's sky (no ground past the parapet: `terrain.outer: false`), a stair hut south-west (door
+  `stairs` back to floor 10), the lift hut north-east whose door `exit` is THE EXIT (`hotelTop`, locked until he is down), a few vents and a dish.
+  The Banker stands alone mid-roof at his own size (no `scale`). Pictures: /mnt/project-files/hotel-dungeon/round4/.
 
 ## DISASTER CITY, THE FINANCIAL TOWERS + THE MID-RISE FILL (2026-11-23, the skyline plan, mondo 17:00 "Build it, plus the mid-rise fill")
 The plan: https://claude.ai/artifact/YEe54svVhVbLufjHdfQ5QY (sites: project files `skyline-plan/tools/towers.json`). Financial's part: towers

@@ -111647,10 +111647,11 @@ const HOTEL_MD = {
     loot: [['healPotion', 30], ['manaPotion', 20], ['entropyGrenade', 12], ['panacea', 10], ['adrenalStim', 8], ['unholyBane', 5], ['alienBane', 5], ['anomalyBane', 5], ['humanBane', 5]],
     /* the guests: the city's own encounter races (hqRoomNatives of the city at the run's start); these when it has none */
     guests: ['zombie', 'vampire', 'ghost', 'werewolf', 'demon'],
-    /* THE BOSS (mondo 11-23: "how the fuck am i supposed to know a random zombie is the boss? ... It should be the banker or the tech CEO"): the
-       hotel's owner waits at the top floor's far end, in front of THE EXIT (the penthouse lift to the lobby, shut until he is down). Bigger, named,
-       higher; beating him opens the exit and his safe (bossLoot, once a run). He is never one of the guests. */
-    boss: 'banker', bossGender: 'male', bossLabel: 'THE BANKER · BOSS', bossScale: 1.35,
+    /* THE BOSS (mondo 11-23: "how the fuck am i supposed to know a random zombie is the boss? ... It should be the banker or the tech CEO";
+       then: "he needs to be by himself on the roof, normal sized"): floor 10's far end is the stairs up to THE ROOF (hotelRoofRoom), where the
+       hotel's owner stands alone, his own size, named, higher. THE EXIT (the roof's lift down to the lobby) is shut until he is down; beating
+       him opens it and his safe (bossLoot, once a run). He is never one of the guests. */
+    boss: 'banker', bossGender: 'male', bossLabel: 'THE BANKER · BOSS', roof: 'site_prebuilt_hotel_roof',
     bossLoot: [['panacea', 2], ['entropyGrenade', 2], ['adrenalStim', 2], ['healPotion', 3], ['manaPotion', 3]],
     /* THE LEVELS (mondo 11-23: "the levels of the enemies need to increase as you go up each floor so it is an actual challenge"): the party's
        level when the run starts is floor 1; every floor up adds perFloor; the boss stands `boss` levels over floor 10's guests */
@@ -111751,7 +111752,7 @@ function hotelFloorRoom(f, seed, guests, base) {
     const M = hotelMaze(N, ((seed | 0) * 31 + f * 7919) | 0, order.length), rng = _mfRng(((seed | 0) * 131 + f * 104729) | 0), ri = n => Math.floor(rng() * n);
     const F = [], P = [], props = [], counters = [], inner = [], npc = [], lights = [];
     const LVC = (typeof LEVEL_CAP !== 'undefined') ? LEVEL_CAP : 100, b0 = Math.max(1, (base | 0) || ((typeof HQ_LEVEL_RULES !== 'undefined' && HQ_LEVEL_RULES.start) | 0) || 1);
-    const gLv = Math.max(1, Math.min(LVC, b0 + Math.round((f - 1) * H.lv.perFloor))), bossLv = Math.max(1, Math.min(LVC, b0 + Math.round((H.floors - 1) * H.lv.perFloor) + (H.lv.boss | 0)));   // THE LEVELS: this floor's guests, the boss
+    const gLv = Math.max(1, Math.min(LVC, b0 + Math.round((f - 1) * H.lv.perFloor)));   // THE LEVELS: this floor's guests
     const FACE = { n: 0, e: 90, s: 180, w: 270 }, OPP = { n: 's', s: 'n', e: 'w', w: 'e' }, OFF = { n: [0, -1], s: [0, 1], e: [1, 0], w: [-1, 0] };
     const wallPart = (x, z, sx, sz, y0, h) => { P.push({ s: 'box', p: [x, y0, z], size: [sx, h, sz], key: H.wallKey, tint: H.wallTint, uv: [3.5, 1.75] }); };
     const skirt = (x, z, sx, sz) => P.push({ s: 'box', p: [x, 0, z], size: [sx + 0.04, 0.14, sz + 0.04], tint: H.skirt });
@@ -111825,7 +111826,7 @@ function hotelFloorRoom(f, seed, guests, base) {
     /* THE GUEST ROOMS: what is inside (the gamble), the furniture against the walls of the squares no way in touches */
     const kinds = order.slice(); for (let i = kinds.length - 1; i > 0; i--) { const j = ri(i + 1); const t = kinds[i]; kinds[i] = kinds[j]; kinds[j] = t; }
     const roomInfo = [];
-    let fights = 0, bossIdx = -1;
+    let fights = 0;
     M.rooms.forEach((r, ix) => {
         const kind = kinds[ix] || 'empty', no = f * 100 + ix + 1;
         const doorCells = new Set(r.ways.map(w => w.c[0] + ',' + w.c[1]));
@@ -111876,15 +111877,8 @@ function hotelFloorRoom(f, seed, guests, base) {
     const boxDoor = (side, x, y) => (side === 'n' || side === 's') ? { wall: side, x: C(x) } : { wall: side, z: C(y) };
     const doors = [Object.assign({ id: 'lift', leaf: null, label: 'THE LOBBY', sub: '', action: { room: H.city, at: 'hotel_lift' } }, boxDoor('s', M.IN[0], M.IN[1]))];
     { const lx = C(M.IN[0]), lz = r2(W / 2 - 0.35); props.push({ key: 'psx_elevator_buttons_1', x: r2(lx + 1.55), z: lz, y: 1.1, face: 0 }); }   // the lift's call buttons beside its doors
-    if (!top) doors.push(Object.assign({ id: 'up', leaf: H.stairLeaf, label: 'FLOOR ' + (f + 1), sub: '', action: { room: H.room(f + 1), at: 'lift' } }, boxDoor(outerSide(M.UP[0], M.UP[1]), M.UP[0], M.UP[1])));
-    else {   /* THE TOP FLOOR: the boss waits where the stairs would be, in front of THE EXIT (shut until he is down: map.js _hqDoAction asks hotelTopGate) */
-        const cx = C(M.UP[0]), cz = C(M.UP[1]), side = outerSide(M.UP[0], M.UP[1]);
-        doors.push(Object.assign({ id: 'top', leaf: H.stairLeaf, label: 'THE EXIT · THE LOBBY', sub: '', action: { room: H.city, at: 'hotel_lift', hotelTop: true } }, boxDoor(side, M.UP[0], M.UP[1])));
-        bossIdx = npc.length;
-        const inS = ['n', 'e', 's', 'w'].find((q, j) => M.O[M.UP[1]][M.UP[0]] & [1, 2, 4, 8][j]) || OPP[side];   // he faces the way you come in
-        npc.push({ x: cx, z: cz, face: FACE[inS], race: H.boss, gender: H.bossGender, label: H.bossLabel, stay: true, boss: true, lvl: bossLv, scale: H.bossScale });
-        props.push({ key: 'potted_plant', x: r2(cx + 1.2), z: r2(cz + 1.2) });
-    }
+    /* the stairs at UP: the next floor, and from the top floor THE ROOF, where the boss waits alone (hotelRoofRoom) */
+    doors.push(Object.assign({ id: 'up', leaf: H.stairLeaf, label: top ? 'THE ROOF' : 'FLOOR ' + (f + 1), sub: '', action: { room: top ? H.roof : H.room(f + 1), at: top ? 'stairs' : 'lift' } }, boxDoor(outerSide(M.UP[0], M.UP[1]), M.UP[0], M.UP[1])));
     /* THE HALL GUESTS: a few stand in the corridors, never near the lift */
     const corr = []; for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (M.RM[y][x] < 0) corr.push([x, y]);
     const hallC = corr.filter(c => M.L[c[1]][c[0]] >= 4 && !(c[0] === M.UP[0] && c[1] === M.UP[1]));
@@ -111904,7 +111898,7 @@ function hotelFloorRoom(f, seed, guests, base) {
     return {
         label: 'THE HOTEL · FLOOR ' + f,
         sub: '',
-        kind: 'box', site: H.site, hotel: f, fieldSolid: true, losWalls: true, crowdAll: true, hotelLv: gLv, hotelBossId: bossIdx >= 0 ? 'hq-native-' + bossIdx : null,
+        kind: 'box', site: H.site, hotel: f, fieldSolid: true, losWalls: true, crowdAll: true, hotelLv: gLv,
         shell: {
             w: W, d: W, h: hh, wallH: hh, dadoH: 1.0,
             floor: H.floorKey, wall: H.wallKey, dado: 'urban:WoodPanelling1a', trim: 'wood', ceiling: H.ceiling,
@@ -111918,6 +111912,57 @@ function hotelFloorRoom(f, seed, guests, base) {
         encounters: { list: guests.map(r => ({ race: r, w: 1 })) },
         spawn: { x: C(M.IN[0]), z: r2(W / 2 - 2.4), face: 0 },
         hotelMaze: { N, O: M.O, RM: M.RM, IN: M.IN, UP: M.UP, ways: M.ways.map(w => ({ c: w.c, n: w.n, side: w.side, kind: w.kind, key: w.key, room: w.room })), rooms: roomInfo },
+    };
+}
+/* THE ROOF (mondo 11-23: "he needs to be by himself on the roof, normal sized"): the hotel's true 28 m footprint under the city's sky, a
+   parapet round it, the stair hut you come up by (south-west) and the lift's machine hut (north-east) whose doors are THE EXIT (shut until the
+   boss is down: map.js _hqDoAction asks hotelTopGate). Nobody else is up here. Whole squares: the huts each fill one square. */
+function hotelRoofRoom(seed, base) {
+    const H = HOTEL_MD, N = 8, SQ = H.sq, W = N * SQ, r2 = v => Math.round(v * 100) / 100, C = i => r2(-W / 2 + (i + 0.5) * SQ);
+    const LVC = (typeof LEVEL_CAP !== 'undefined') ? LEVEL_CAP : 100, b0 = Math.max(1, base | 0 || 1);
+    const bossLv = Math.max(1, Math.min(LVC, b0 + Math.round((H.floors - 1) * H.lv.perFloor) + (H.lv.boss | 0)));
+    const city = (DOOR_HQ.rooms || {})[H.city] || {}, sky = Object.assign({}, ((city.shell || {}).sky) || {}, { landmarks: [] });
+    const P = [], wallKey = 'urban:ConcreteGeneric3a', tint = 0xc8c2b8, roofKey = 'urban:ConcretePanels1a';
+    const box = (x, y0, z, sx, h, sz) => P.push({ s: 'box', p: [r2(x), r2(y0), r2(z)], size: [r2(sx), r2(h), r2(sz)], key: wallKey, tint, uv: [3.5, 1.75] });
+    /* a hut on square (i, j), its open front toward `side` (the door stands in it) */
+    const hut = (i, j, side) => {
+        const x = C(i), z = C(j), h = 3, t = 0.3, hs = SQ / 2 - t / 2, o = { n: [0, -1], s: [0, 1], e: [1, 0], w: [-1, 0] }[side];
+        ['n', 's', 'e', 'w'].forEach(sd => { const q = { n: [0, -1], s: [0, 1], e: [1, 0], w: [-1, 0] }[sd], ns = sd === 'n' || sd === 's';
+            const wx = x + q[0] * hs, wz = z + q[1] * hs;
+            if (sd !== side) { box(wx, 0, wz, ns ? SQ : t, h, ns ? t : SQ); return; }
+            const jw = (SQ - H.doorW) / 2;   // the front: two jambs and a lintel round the doorway
+            [-1, 1].forEach(k => box(ns ? x + k * (H.doorW / 2 + jw / 2) : wx, 0, ns ? wz : z + k * (H.doorW / 2 + jw / 2), ns ? jw : t, h, ns ? t : jw));
+            box(wx, H.doorH, wz, ns ? H.doorW : t, h - H.doorH, ns ? t : H.doorW); });
+        box(x, h, z, SQ + 0.2, 0.25, SQ + 0.2);
+        return { x: r2(x + o[0] * (SQ / 2)), z: r2(z + o[1] * (SQ / 2)), face: { n: 0, e: 90, s: 180, w: 270 }[side] };
+    };
+    const st = hut(1, 6, 'n'), lf = hut(6, 1, 's');
+    const doors = [
+        { id: 'stairs', wall: 'free', x: st.x, z: st.z, face: st.face, noEntrance: true, leaf: H.stairLeaf, label: 'FLOOR 10', sub: '', action: { room: H.room(H.floors), at: 'up' } },
+        { id: 'exit', wall: 'free', x: lf.x, z: lf.z, face: lf.face, noEntrance: true, leaf: null, label: 'THE EXIT · THE LOBBY', sub: '', action: { room: H.city, at: 'hotel_lift', hotelTop: true } },
+    ];
+    const props = [
+        { key: 'psx_elevator_buttons_1', x: r2(lf.x + 1.45), z: r2(lf.z + 0.2), y: 1.1, face: 180 },
+        { key: 'ind_vent', x: C(1), z: C(1) }, { key: 'ind_vent', x: C(2), z: C(1) },
+        { key: 'psx_vent_mp_1', x: C(6), z: C(5) }, { key: 'psx_vent_mp_1', x: C(6), z: C(6) },
+        { key: 'dish', x: C(5), z: C(7), face: 200 },
+    ];
+    const npc = [{ x: C(4), z: C(3), face: 225, race: H.boss, gender: H.bossGender, label: H.bossLabel, stay: true, boss: true, lvl: bossLv }];
+    const F = [{ k: 'arch', id: 'hotel:roof:huts', x: 0, z: 0, y: 0, rot: 0, parts: P }];
+    return {
+        label: 'THE HOTEL · THE ROOF', sub: '',
+        kind: 'box', site: H.site, hotel: H.floors + 1, hotelRoof: true, fieldSolid: true, losWalls: true, crowdAll: true, hotelLv: bossLv, hotelBossId: 'hq-native-0',
+        shell: {
+            w: W, d: W, h: 1.2, wallH: 1.2, dadoH: 0.3, open: true,
+            floor: roofKey, wall: wallKey, dado: wallKey, trim: 'concrete', ceiling: wallKey, apron: roofKey, skirt: wallKey,
+            floorColor: 0x9a968e, wallColor: tint, dadoColor: 0x8a847a, pipes: false, strips: false, lights: [], matte: true,
+            mood: { light: 0xfff0dc, ambient: 1.0 }, sky,
+        },
+        parti: 'The hotel roof under the city sky: a parapet, the stair hut you come up by, the lift hut behind the boss.',
+        terrain: { res: 0.4375, floor: roofKey, cliff: wallKey, path: roofKey, noise: { amp: 0, scale: 5 }, crag: false, outer: false, features: F },   // outer: no ground past the parapet (a roof is high up)
+        doors, counters: [], props, agents: [], npcSpots: npc, onlineSpots: [],
+        encounters: { list: [{ race: H.boss, w: 1 }] },
+        spawn: { x: st.x, z: r2(st.z - 1.6), face: 0 },
     };
 }
 /* the guests of a run: the city's own encounter races, else the fallback list */
@@ -111944,6 +111989,12 @@ function hotelBuild(seed, base) {
         try { if (typeof _hqStageNearbyCache !== 'undefined') delete _hqStageNearbyCache[id]; } catch (e) {}
         try { if (typeof HQ_NPC_TEMPERS !== 'undefined') HQ_NPC_TEMPERS.rooms[id] = { all: 'brute', noGap: true, districts: {}, residents: {} }; } catch (e) {}   // EVERY GUEST COMES FOR YOU (mondo: "The enemies need to be aggro")
     }
+    /* THE ROOF: the boss alone */
+    { const id = HOTEL_MD.roof;
+        try { DOOR_HQ.rooms[id] = hotelRoofRoom(_hotelSeed, _hotelBase); } catch (e) { console.error('[HOTEL] the roof', e); }
+        try { if (typeof HQ_ROOM_EDITS !== 'undefined' && HQ_ROOM_EDITS.rev) HQ_ROOM_EDITS.rev[id] = (HQ_ROOM_EDITS.rev[id] | 0) + 1; } catch (e) {}
+        try { if (typeof _hqStageNearbyCache !== 'undefined') delete _hqStageNearbyCache[id]; } catch (e) {}
+        try { if (typeof HQ_NPC_TEMPERS !== 'undefined') HQ_NPC_TEMPERS.rooms[id] = { all: 'brute', noGap: true, districts: {}, residents: {} }; } catch (e) {} }
     try { if (typeof _hqWorldIdx !== 'undefined') _hqWorldIdx = null; } catch (e) {}
     return true;
 }
