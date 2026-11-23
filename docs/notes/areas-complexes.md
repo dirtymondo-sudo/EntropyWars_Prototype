@@ -2128,6 +2128,26 @@ Superhero Tower is the weenie seen from everywhere, every walk ends at a clear s
   sheets are dark window grids, lit with the part's `glow`. `gold` = the terrain key (gilt.png); never the gold*.png files, not even in a
   mock-up. The arch row has no lettering: sign boards are plain panels until a lettering part exists. No tilted parts: a stair flight is
   stepped boxes, an arch is a barrel roof on a beam.
+## HERO PLAZA, THE SKYLINE — six towers + the Superhero Tower at 175 m (2026-11-23, mondo's OK 17:00 "Build it, plus the mid-rise fill")
+Plan: https://claude.ai/artifact/YEe54svVhVbLufjHdfQ5QY (sites in /mnt/project-files/skyline-plan/tools/towers.json). Hero Plaza went first so
+the frame-rate cost is measured (an F3 walk in Downtown) before the other districts' towers merge. All code in `districts/H.js`:
+- **Superhero Tower** (P06-04-B1): `HT = { shaft, up, top }`: the shaft and corner drum stretched to 104.2 m, everything over them raised 55.2 m,
+  a new crown (upper glass shaft 30 m with fins, marble drum, gilt dome, gilt halo on four struts, spire); the beacon at 175 m. Same materials.
+- **TW[bid]** = a tower that is its own arch row `arch:<bid>:tower` over its building: 3 Daily Globe (P04-04-B1, the 11-15 wedge as its foot,
+  three wedge setbacks, copper globe, mast to 140 m; `nycWedge` is gone, its outline is `WEDGE`), 6 Umpire State (P07-04-B2: Apartments A is
+  its foot, four limestone setbacks, mooring mast to 125 m), 12 Pan-Ham (P06-06-B1: an octagon on the station's BACK half, squares x -10.5..10.5,
+  z 1.75..12.25, 7 to 100 m; RF90, RF91 and the roof stair land on the north half; `dc:H:panham-w0` = a skinless 3-storey texbuilding, the
+  walker's wall on those roof squares).
+- **In B** (whole buildings): 10 Office Court Tower (P07-06-B1: `OCH` = the slab's height, 96.5 m, mast tip 110 m), 14 the Pencil (P04-05-B2,
+  was the pack shop block pack_bld_09: walk-in white lobby + 9.5 m shaft to 96 m), 20 the Prewar (P04-06-B2, was the Townhouse row: walk-in
+  limestone ground floor, tan brick to 52.5 m, two setbacks, water tower, 81 m). Their lobbies: IN / IN2 (5 x 5: lifts, desk, seats).
+- **Frame rate**: every new tower is at most 4 materials (script: count key|tint|glow|kind|ds|gain|shine per row), so at most 4 meshes each,
+  15 new meshes in all; no lamps; nothing repeats. No far LOD version (the arch row has none; the merged meshes are cheap).
+- **Mid-rise fill**: Hero Plaza has only three filler blocks (the tool's `dc:in66`, `dc:in79`, `dc:in80`): 5, 7 and 6 storeys now. Every other
+  building is a named one with its own roof; the rest of the plan's fill is in Financial.
+- NOT DONE: the Pan-Ham has no lobby of its own (the Transit court is still a solid roof-route building: its roof stair cannot stand on a
+  walk-in roof slab, 11-13). No lettering on the towers (names are working names; docs/notes/branding.md has none for them).
+
 ## DISASTER CITY, BAYSIDE — the district's architecture (2026-11-13, thread "Design Bayside district buildings")
 mondo's district ask (16:41) + "bayside needs to have the actual bayside in it too (the beach), with sand and a pier and stuff" (17:05) +
 his OK on the plan and mock-up ("looks good", "yes add sea wall and water", 17:11). Plan doc: https://claude.ai/artifact/S8nPJ2AF6soGsNFSgf9VkL.
@@ -14736,6 +14756,37 @@ headless scan of every terrain room (each railing piece against the ground every
 - Placed fence PROPS (`hw_fence`, `chain_fence`, `fence_with_gate`, ...) are single models standing on the ground at their place; not part of this.
 - No tool to rerun: every room's railings are compiled at load.
 
+## THE SUPERHERO TOWER, THE FLOORS (2026-11-23, step 1 of mondo's plan "Every door opens + a bigger Disaster City", picture 4; his go-ahead 11-23 16:42)
+
+- **WHAT IT IS:** the tower's floors are ONE stacked room, `site_prebuilt_hero_tower` (site prebuilt_downtown, part `hero_tower`), written by
+  `node bake-hero-tower.js` (`--dry-run` = counts + the walk check) between HERO-TOWER-BEGIN / END in data.js. The lobby (G) stays in the city
+  room as it was (districts/H.js IN['P06-04-B1']); the story door THE TOWER on its lift bank is unchanged.
+- **THE FLOORS** (8 x 8 squares, the tower's own footprint, the city's compass: a place here = the city place minus (21, -63); 5.25 m apart):
+  1 SECURITY (turnstiles across the floor, two metal-detector arches as the way through, the guard's desk, the camera desks, lockers) ·
+  2 PRESS + FAN MAIL (a stage with backdrop and podium, chairs, a camera; the mail room behind a glass wall: mailbox banks, sorting tables, sacks) ·
+  3 COSTUME DEPARTMENT (racks, the fitting stage and mirrors; the locker room behind a door) · 4 TRAINING FLOOR (the boxing ring, bags, weights,
+  racks, the sparring mat) · 5 THE LAB (benches with glassware and microscopes, servers; the clean room behind glass: robot arm, cryo tubes, the
+  tank) · 6 MONITOR ROOM (a wall of screens, four desks, the map table) · 7 PENTHOUSE (the boardroom table, the desk, the trophy case, the bar) ·
+  R THE ROOF (helipad with the `helicopter`, radar mast, dishes, flag, vents, the lift's machine room with a red beacon, a parapet all round).
+  Floor 1 stands 7 m over the plaza (one lobby high); the roof is at 36.75 in the room (about 60 m over the street). The floor list is the plan's
+  draft; mondo may change it. Natives come from Hero Plaza's Relationship Web list (police officer, cameraman, delivery boy, sidekick, antihero,
+  superhero ×3, eagleman), one or two a floor, no lines written for them.
+- **THE TOWER LIFT (the way between floors; a stair may not stand over a walked room):** a door with `lift: <room id>` opens THAT room's
+  `liftStops` panel (map.js `_hqLiftHtml` / `_hqLiftRide`). A stop in the room you are in = a short black fade and `ThreeRenderer.hq.liftHop(doorId)`
+  (three-renderer.js `_hqLiftHop`: you stand 1.4 m in front of that floor's lift door): NO loading. A stop in another room = `_hqGoRoom` (its
+  load card). The lobby's three lift doors (H.js `HERO_LIFTS`, ids `hero_lift_a/b/c`, pushed into `ctx.doors`, so the city's tool writes them)
+  load the tower at the floor picked; G in the tower goes back to `hero_lift_a`. A lift door's `action` is only the map's way (the panel opens
+  instead: `_hqDoorDirectAction` returns null for `d.lift`).
+- **ENGINE ROW ADDED: `onDeck: true` on a door** = it stands on an upper floor's slab at its `y`: the terrain compile lays NO door pad for it
+  (data.js, the door pads) and `hqTerrainDoorY` returns its `y`. Without it every floor's door flattened the field at the column under it to its
+  own height (all eight floors read 31.5 m).
+- **THE VIEW OUT:** the city's own drawn rows (arch + texbuilding, never an inside `:in`, never the tower's own) within 72 m of the tower are copied
+  into the room, set down 22.75 m (the plaza + the lobby), plus one asphalt sheet and the plaza's stone. A row with no height reads the city's
+  compiled field (a minute of the tool's run). `TOWER_VIEW=<m>` changes the reach. Rerun the tool when Hero Plaza's buildings change.
+- **WALK CHECK:** from each floor's lift door, every listed spot is reached on the walker's rule (31/31), nothing under floor 1, no NaN.
+- **NOT DONE / OPEN:** the tower's outside is raised to 175 m by the skyline thread: the floors may then move up to sit near its top (one number,
+  `DOWN` + `LEVELS`). No fire stair (the engine's one-height field). The Training floor is a look, not a fight arena yet.
+
 ## THE HOTEL, A MYSTERY DUNGEON (2026-11-23, building-interiors plan step 1)
 mondo 11-23: "Maybe one of could even be like a mystery dungeon, where each floor is a maze and you have to find the stairs to the next
 floor" · he picked THE HOTEL (the Financial district's luxury hotel, `dc:P08-00-B1`, 28 x 28 m) · plan https://claude.ai/artifact/RVPh8wvd9u6uAPj6QubPnd
@@ -14762,3 +14813,8 @@ floor" · he picked THE HOTEL (the Financial district's luxury hotel, `dc:P08-00
   walker's rule). Console: `hotelNewRun(seed)`, `hotelRunState()`, `DOOR_HQ.rooms.site_prebuilt_hotel_f3.hotelMaze`.
 - **Not yet (plan step 3):** the boss SUITE (today the boss stands in a dead end), floor kinds (flooded, on fire), story notes in the
   rest rooms, a guest book of the deepest floor. Leaving the hotel reloads the city until the Kits thread's parked room reaches building doors.
+
+THE MATTE ROOM (11-23, mondo: "the walls and floors look shiny, please fix, it looks ugly"): a room whose `shell.matte` is
+true gets every opaque Phong material zeroed (specular 0, shininess 0) once at room landing (three-renderer.js, before
+`H.landed = true`; a one-time read at build, not per frame). The hotel floors set it, plus fewer, softer lamps
+(`HOTEL_MD.lamps` 6, `shell.lampK` 0.7). Off switch: `window.EW_HQ_NO_MATTE = true`. Any other room that looks shiny: add `matte: true` to its shell.

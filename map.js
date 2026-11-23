@@ -6831,6 +6831,47 @@
             html += '<div class="hq-panel-actions"><button class="hq-btn" data-close="1">STEP BACK</button></div>';
             return html;
         }
+        /* ── THE TOWER LIFT (2026-11-23, bake-hero-tower.js; mondo's plan "every door opens", picture 4): a door with `lift: <room id>` opens the
+           panel of that room's `liftStops` (G first, then the floors). The floor you stand at reads YOU ARE HERE, every other floor is a GO
+           button (`[data-liftstop]` -> window._hqLiftRide). A floor in the room you are in is reached with a short fade and NO loading
+           (three-renderer.js liftHop: you stand at that floor's lift door); a floor in another room is a room change (the lobby's lifts load
+           the tower once, its G goes back to the lobby). The subway's panel classes; ESC / right click / E close it like every panel. */
+        function _hqLiftStops(d) { const R = d && d.lift && DOOR_HQ.rooms[d.lift]; return (R && Array.isArray(R.liftStops)) ? R.liftStops : []; }
+        function _hqLiftHere(d, s) { return s.room === _hqCurRoom && (s.at === d.id || s.room !== d.lift); }
+        function _hqLiftHtml(t) {
+            const d = t.door, stops = _hqLiftStops(d), R = DOOR_HQ.rooms[d.lift] || {};
+            let html = `<div class="hq-panel-hd"><b>${_hqEsc(d.label || 'THE LIFT')}</b><span>${_hqEsc(String(R.label || '').replace(/^.*·\s*/, ''))}</span></div>`;
+            html += '<div class="hq-rows">' + stops.map((s, i) => {
+                const chip = _hqLiftHere(d, s) ? '<i class="hq-lamp-chip st-stabilized">YOU ARE HERE</i>' : (_hqRoomExists(s.room) ? `<button class="hq-btn hq-btn-sm hq-btn-primary" data-liftstop="${i}">GO</button>` : '<i class="hq-lamp-chip st-clearance">OUT OF ORDER</i>');
+                return `<div class="hq-row hq-row-tray"><b>${_hqEsc(s.id)} · ${_hqEsc(s.label)}</b><span>${_hqEsc(s.sub || '')}</span>${chip}</div>`;
+            }).join('') + '</div>';
+            html += '<div class="hq-panel-actions"><button class="hq-btn" data-close="1">STEP BACK</button></div>';
+            return html;
+        }
+        /* the fade between two floors of one room: black over the walk, the hop at its darkest, then back */
+        function _hqLiftFade(mid) {
+            let el = document.getElementById('hqLiftFade');
+            if (!el) { el = document.createElement('div'); el.id = 'hqLiftFade'; el.style.cssText = 'position:fixed;left:0;top:0;right:0;bottom:0;background:#000;opacity:0;pointer-events:none;z-index:9000;transition:opacity 0.28s ease'; document.body.appendChild(el); }
+            el.style.opacity = '1';
+            setTimeout(() => {
+                try { mid(); } catch (e) { console.warn('[HQ] the lift', e); }
+                try { if (typeof playDoorSfx === 'function') playDoorSfx('doorBuzz', { volume: 0.5 }); } catch (e) {}
+                try { if (ThreeRenderer.hq && ThreeRenderer.hq.active()) ThreeRenderer.hq.setPaused(false); } catch (e) {}
+                setTimeout(() => { el.style.opacity = '0'; }, 260);
+            }, 320);
+        }
+        window._hqLiftRide = function (i) {
+            const t = _hqPanelTarget, d = t && t.door, s = _hqLiftStops(d)[+i];
+            if (!d || !s || _hqLiftHere(d, s) || !_hqRoomExists(s.room)) { try { playSfx('uiError'); } catch (e) {} return false; }
+            if (s.room === _hqCurRoom) {
+                window._hqClosePanel({ keepPaused: true });
+                _hqSetPrompt(null);
+                try { playSfx('uiButtonConfirm'); } catch (e) {}
+                _hqLiftFade(() => { if (!(ThreeRenderer.hq && ThreeRenderer.hq.liftHop && ThreeRenderer.hq.liftHop(s.at))) console.warn('[HQ] the lift: no door', s.at); _hqLastDoor = s.at; });
+                return true;
+            }
+            return window._hqGoRoom(s.room, s.at);
+        };
         /* the ride: the station goes on file (the officer's card, else the session), then the train's door at the far platform. Two city stations
            are the same room: it is entered again, so its boards and its stair are the new station's. */
         window._hqSubwayRide = function (id) {
@@ -6909,6 +6950,7 @@
             const act = d.action || {};
             if (act.mission) return _hqThresholdPanelHtml(t, st);
             if (d.subway) return _hqSubwayHtml();   // THE SUBWAY (2026-11-18)
+            if (d.lift) return _hqLiftHtml(t);   // THE TOWER LIFT (2026-11-23)
             /* THE UNDISCOVERED DOOR (2026-09-21): the head is the plate — a room not yet stood in is '?' with no number, no sub, no why */
             const PL = _hqPlateFor(d);
             let html = `<div class="hq-panel-hd">${PL.known ? _hqNoTag(_hqNo(d), d.why || (act.room && DOOR_HQ.rooms[act.room] && DOOR_HQ.rooms[act.room].why) || '') : ''}<b>${_hqEsc(PL.label)}</b>${_hqStateChip(st)}</div>`;
@@ -9447,6 +9489,7 @@
             }
             if (d.alt || d.alt2) return null;
             if (d.subway) return null;   // THE SUBWAY (2026-11-18): the train opens THE LINE (its panel), where you pick the station
+            if (d.lift) return null;   // THE TOWER LIFT (2026-11-23): the lift's doors open its floor panel (`action` is only the map's way)
             /* THE SHIP'S ONE DOOR (2026-09-16): the collar opens on the course the bridge laid in;
                no course = the panel (which says where to set one). `link` charts the route walked. */
             if (act.ship) {
@@ -9764,6 +9807,8 @@
             if (mapZoom) { const svg = body.querySelector('svg.hq-map-svg'); if (svg) { _hqMap.anim++; const v = (svg.getAttribute('viewBox') || '').split(/\s+/).map(Number); const f = mapZoom.getAttribute('data-mapzoom') === 'in' ? 1 / 1.3 : 1.3; const w = Math.max(160, Math.min(v[2] * f, 6000)), h = v[3] * (w / v[2]); const nv = [v[0] + (v[2] - w) / 2, v[1] + (v[3] - h) / 2, w, h]; if (!_hqMapZoomSwitch(nv, null)) _hqMapSetView(svg, nv); } return; }
             if (e.target.closest('[data-mapfit]')) { const svg = body.querySelector('svg.hq-map-svg'); if (svg) { _hqMap.anim++; _hqMap.view = null; svg.setAttribute('viewBox', svg.getAttribute('data-fit') || ''); _hqMapDetail(svg); } return; }
             /* THE NAV CONSOLE (THE SHIP'S ONE DOOR): SET COURSE — the console re-renders in place */
+            const lft = e.target.closest('[data-liftstop]');   // THE TOWER LIFT (2026-11-23): a floor's GO button
+            if (lft && !lft.disabled) { window._hqLiftRide(lft.getAttribute('data-liftstop')); return; }
             const stn = e.target.closest('[data-station]');   // THE SUBWAY (2026-11-18): THE LINE's RIDE button
             if (stn && !stn.disabled) { window._hqSubwayRide(stn.getAttribute('data-station')); return; }
             const course = e.target.closest('[data-course]');

@@ -89079,6 +89079,20 @@ const ThreeRenderer = (function () {
     /* OUT OF THE TWIN: along its own normal, carrying the entry's speed —
        out of a CEILING door you keep falling, out of a FLOOR door you are
        thrown up when you came in fast, out of a WALL door you step clear. */
+    /* THE TOWER LIFT (2026-11-23, map.js _hqLiftRide; bake-hero-tower.js): stand at the lift door `id` of THIS room, another floor of a
+       stacked building: no room change, no load card. 1.4 m in front of the door, on its sill (an upper floor's door carries its `y`),
+       facing out of the lift. False = no such door here. */
+    function _hqLiftHop(id) {
+        var H = _hq; if (!H || !H.player || !H.doors) return false;
+        var rec = null; for (var i = 0; i < H.doors.length; i++) if (H.doors[i].door && H.doors[i].door.id === id) { rec = H.doors[i]; break; }
+        if (!rec || !rec.box) return false;
+        var pl = H.player, b = rec.box, deg = _hqHeadingOf(b.nx, b.nz);
+        pl.x = b.wx + b.nx * 1.4; pl.z = b.wz + b.nz * 1.4; pl.y = pl.visY = rec.y0 || 0;
+        pl.air = false; pl.vy = 0; pl.jumpT = -1; pl.moving = false; pl.mvx = 0; pl.mvz = 0;
+        pl._landSafe = { x: pl.x, z: pl.z, y: pl.y, yaw: pl.yaw, rid: H.terrain ? H.terrain.roomId : null };
+        pl.yaw = pl.targetYaw = _hqHeadingYaw(deg); H.cam.yaw = _hqRad(deg); H.cam.init = false; H.dirty = true;
+        return true;
+    }
     function _hqPortalHop(slot, opts) {
         var H = _hq; if (!H || !H.portal || !H.portal.placed[slot]) return false;
         var rec = H.portal.placed[slot], pl = H.player; if (!pl) return false;
@@ -99892,6 +99906,18 @@ const ThreeRenderer = (function () {
             var fwRoom = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.rooms && H.opts) ? DOOR_HQ.rooms[H.opts.room] : null;
             if (!H._fieldWarmed && fwRoom && fwRoom.terrain && typeof hqFieldSquareFor === 'function' && typeof hqFieldLattice === 'function' && !(typeof window !== 'undefined' && window.EW_HQ_NO_FIELD_WARM)) { H._fieldWarmed = true; hqFieldLattice(H.opts.room, true, hqFieldSquareFor(H.opts.room)); }
         } catch (eFW) {}
+        /* THE MATTE ROOM (2026-11-23, mondo on the hotel floors: "the walls and floors look shiny, please fix, it looks ugly"): a room whose
+           shell says `matte: true` (plaster, carpet, wallpaper) wears no highlight on its own surfaces: every classic Phong material of the
+           room's scene gets a black specular and shininess 0 (the ROUND 5 dirt fix, for a whole room; glass and other see-through parts
+           keep theirs). Once, at the arrival (a room build, never a frame). Off: window.EW_HQ_NO_MATTE. */
+        try {
+            var mtRoom = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.rooms && H.opts) ? DOOR_HQ.rooms[H.opts.room] : null;
+            if (mtRoom && mtRoom.shell && mtRoom.shell.matte && H.scene && !(typeof window !== 'undefined' && window.EW_HQ_NO_MATTE)) {
+                var mtSeen = new Set();
+                H.scene.traverse(function (o) { if (!o.isMesh) return; (Array.isArray(o.material) ? o.material : [o.material]).forEach(function (q) {
+                    if (!q || mtSeen.has(q) || !q.isMeshPhongMaterial || q.transparent) return; mtSeen.add(q); q.specular.setHex(0); q.shininess = 0; }); });
+            }
+        } catch (eMT) {}
         H.landed = true;
         H.ready = true;
         _hqRebuildAt = performance.now();   // the room's arrival (2026-09-25): a lock the browser drops as the room settles is never the walker's ESC
@@ -106945,6 +106971,7 @@ const ThreeRenderer = (function () {
         portalAim: function () { return (_hq && _hq.portal) ? (_hq.portal.drawn ? _hq.portal.aim : _hqPortalAim()) : null; },
         portalPlace: _hqPortalPlaceAim,
         portalHop: _hqPortalHop,
+        liftHop: _hqLiftHop,   // THE TOWER LIFT (2026-11-23)
         portalCross: function (slot) { return _hqPortalHop(slot); },
         portalRemove: _hqPortalRemove,
         portalRecall: _hqPortalRecall,   /* rev 3: both doors back into the gun (the F hold; the pill) */
