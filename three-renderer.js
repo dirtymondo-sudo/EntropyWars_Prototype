@@ -48550,8 +48550,20 @@ const ThreeRenderer = (function () {
     var _ewGpu = '';                 // '' = classic WebGLRenderer; 'webgpu' | 'webgl2' = the node renderer (the mode asked for)
     var _ewGpuInfo = { asked: 'webgl', why: '', ready: false, lost: '', drawErrs: 0, drawErr: '' };
     var _ewGpuDrawErrSeen = new WeakSet();
+    /* THE SPRITES' ONE SHAPE IS KEPT (2026-11-23, mondo's Downtown F3 on WebGPU: "skipped draws 495 (first: Sprite / SpriteMaterial:
+       GPURenderPassEncoder.setIndexBuffer: Argument 1 is not an object.)"): every THREE.Sprite in the page shares ONE geometry (three
+       makes it once). A clean-up that disposes `o.geometry` on whatever it removes (63 places dispose geometries; one already
+       skipped sprites) freed that shared shape's GPU buffers, and on the node renderer the next sprite draws found no index
+       buffer: every name plate, label and sprite after it was skipped. The shared shape's dispose is a no-op now (counted: F3's
+       renderer line says how many were refused). Called at init and on the first skipped draw. */
+    var _ewSprGeo = { on: false, n: 0 };
+    function _ewSpriteGeoKeep() {
+        if (_ewSprGeo.on || typeof THREE === 'undefined' || typeof THREE.Sprite !== 'function') return;
+        try { var g = new THREE.Sprite().geometry; if (g && !g._ew_keep) { g._ew_keep = true; g.dispose = function () { _ewSprGeo.n++; }; } _ewSprGeo.on = true; } catch (e) {}
+    }
     function _ewGpuDrawErr(e, o, m) {
         _ewGpuInfo.drawErrs++;
+        if (!_ewSprGeo.on) _ewSpriteGeoKeep();
         var what = ((o && (o.name || o.type)) || '?') + ' / ' + ((m && (m.name || m.type)) || '?') + ': ' + String((e && e.message) || e).slice(0, 120);
         if (!_ewGpuInfo.drawErr) _ewGpuInfo.drawErr = what;
         if (o && !_ewGpuDrawErrSeen.has(o)) { _ewGpuDrawErrSeen.add(o); try { console.warn('[ThreeRenderer] node renderer: a draw failed and was skipped (' + what + ')', e); } catch (x) {} }
@@ -48583,6 +48595,7 @@ const ThreeRenderer = (function () {
         if (_ewGpuInfo.noPic) s += ' · sheets with no picture ' + _ewGpuInfo.noPic + ' (first: ' + _ewGpuInfo.noPicFirst + ')';
         if (_ewGpuInfo.thrown) s += ' · thrown renders ' + _ewGpuInfo.thrown + ' (' + (_ewGpuInfo.thrownShadow | 0) + ' shadow passes; first: ' + _ewGpuInfo.thrownFirst + ')';
         if (_ewGpuInfo.drawErrs) s += ' · skipped draws ' + _ewGpuInfo.drawErrs + ' (first: ' + _ewGpuInfo.drawErr + ')';
+        if (_ewSprGeo.n) s += ' · sprite shape disposes refused ' + _ewSprGeo.n;   // THE SPRITES' ONE SHAPE IS KEPT
         if (_ewGpuInfo.errors) s += ' · GPU errors ' + _ewGpuInfo.errors + ' (first: ' + _ewGpuInfo.firstError + ')';
         return s;
     }
@@ -53641,6 +53654,7 @@ const ThreeRenderer = (function () {
     }
     function init() {
         if (initialized) return;
+        _ewSpriteGeoKeep();   // THE SPRITES' ONE SHAPE IS KEPT
         _parentEl = document.querySelector('.map-center');
         if (!_parentEl) { console.warn('[ThreeRenderer] .map-center not found'); return; }
 
@@ -98639,9 +98653,18 @@ const ThreeRenderer = (function () {
             var backHold = _hqBackHold(H, now);   // THE WAY BACK MERGES FIRST: nothing is drawn until the room is merged (the debrief's picture still covers it)
             if (!backHold && H.reflectors && H.reflectors.length) { var _rsp = _lensIn('mirrors'); try { _hqTickReflectors(H); } finally { _lensOut(_rsp); } }   // THE THIRD PASS 5.4: the mirrored render before the frame
             var noPost = (typeof window !== 'undefined' && window.EW_HQ_NO_POST) || (_lens && !_lens.post);   // THE PERF LENS: post off
-            if (backHold) { /* held */ }
-            else if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(H.scene, H.camera, _hqPostOpts(H));
+            /* THE CARD HOLD (2026-11-23, mondo's Downtown F3: a 50.8 s load into Bayside, 165 frames under the load card, 20 s of it
+               drawing the whole city under the card: "scene: classic draws 9695, bundle replays 3965, sun shadow 3601 + 2836"): while
+               the card is up and the room's files are still landing (not landed), the room is drawn at most once a second (and a slow draw waits 3x its own time after it), not every frame;
+               the files, the builders and the model landings get the time back. Once the files are in (landed: the settle warms the
+               looks) and on the way back from a fight (onFirstFrame: the room is the picture), every frame draws as before.
+               Off: window.EW_LOAD_DRAW_ALL. */
+            var cardHold = !backHold && !H.ready && !H.landed && !(H.opts && H.opts.onFirstFrame) && !(typeof window !== 'undefined' && window.EW_LOAD_DRAW_ALL) && H._cardDrawAt && performance.now() - H._cardDrawAt < Math.max(1000, 3 * (H._cardDrawMs || 0));   // (from the draw's END, and 3x a slow draw: a draw is never more than a quarter of the time)
+            if (backHold || cardHold) { /* held */ }
+            else { var _cd0 = performance.now();
+            if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(H.scene, H.camera, _hqPostOpts(H));
             else renderer.render(H.scene, H.camera);
+            if (!H.ready) { H._cardDrawAt = performance.now(); H._cardDrawMs = H._cardDrawAt - _cd0; } }
         } finally { if (mwHold) mwScene.matrixWorldAutoUpdate = true; _hqFogBack(fogHold); _EW_PLU.on.x = 0; }   // (THE ROUND WORLDS: the classic bend is the walk's draw only)
         /* NO HELD FRAME ON THE WAY BACK (2026-10-25, mondo: "no freeze"): the debrief's last picture fades on the room's first
            drawn frame with the walker in it — the room's files still landing land in the live picture — and THE WAY BACK's ease
@@ -107514,6 +107537,43 @@ const ThreeRenderer = (function () {
             var front = (e[2] * v.x + e[6] * v.y + e[10] * v.z + e[14]) < 0;   // view-space z: negative = in front
             v.project(cam);
             return { x: v.x * 0.5 + 0.5, y: 0.5 - v.y * 0.5, front: front, dist: dist, label: label };
+        },
+        /* THE MAP'S PLOT GO (2026-11-23, mondo: "clicking on a square to travel to and its not taking me there, no go option
+           shows up"): a plot of the room you stand in is travelled to inside the room. The landing = the nearest square to the plot's
+           middle (x, z metres, room frame) where a body can stand: inside the shell, on ground (not under the sea), clear of the
+           terrain's walls and of every blocker (a one-off read on a click, never per frame: RULE #1e). `rad` = how far out to look.
+           A driven car is moved with you. Returns { ok, x, z, y, far } or { ok: false, why }. */
+        goSpot: function (cx, cz, rad) {
+            if (!_hq || !_hq.player || !_hq.room) return { ok: false, why: 'THE WALK IS NOT RUNNING' };
+            var V = _hq.vehicle;
+            if (V && V.on && V.kind !== 'car') return { ok: false, why: 'LAND THE ' + String(V.kind || 'craft').toUpperCase() + ' FIRST' };
+            var S = _hq.room.shell || { w: 1e9, d: 1e9 }, ti = _hq.terrain, sea = _hqSea(), R = rad || 20, step = 1.75;
+            var free = function (x, z) {
+                if (Math.abs(x) > S.w / 2 - 1.2 || Math.abs(z) > S.d / 2 - 1.2) return null;
+                var g = _hqTerrainGround(x, z); if (g == null || !isFinite(g)) g = _hqLevelY(S, 0);
+                if (ti) {
+                    if (sea && !sea.under && g < sea.y - 0.3) return null;   // under the water: not a place to stand
+                    var w = hqTerrainWallAt(ti, x, z, HQ_BODY_R, g, g + 1.8); if (w && g < w.top - 0.05) return null;
+                    if (typeof hqTerrainSolidAt === 'function' && hqTerrainSolidAt(ti, x, z, 0) && g < hqTerrainSolidTop(ti, x, z) - 0.05) return null;
+                }
+                if (!_hqAirClearOfBlockers(x, z, g + 0.02) || !_hqAirClearOfBlockers(x, z, g + 1.0)) return null;
+                return g;
+            };
+            var pts = [];
+            for (var dx = -R; dx <= R + 0.01; dx += step) for (var dz = -R; dz <= R + 0.01; dz += step) { var d = Math.hypot(dx, dz); if (d <= R + 0.01) pts.push([d, dx, dz]); }
+            pts.sort(function (a, b) { return a[0] - b[0]; });
+            for (var i = 0; i < pts.length; i++) {
+                var x = cx + pts[i][1], z = cz + pts[i][2], y = free(x, z);
+                if (y === null) continue;
+                /* two more squares round it free too, so the landing is not a gap between two props */
+                if (free(x + step, z) === null && free(x - step, z) === null) continue;
+                if (V && V.on && V.kind === 'car') { V.x = x; V.z = z; V.y = y; V.v = 0; V.vy = 0; V.wg = null; _hq.cam.init = false; _hq.dirty = true; }
+                var pl = _hq.player;
+                pl.x = x; pl.z = z; pl.y = pl.visY = y; pl.air = false; pl.vy = 0; pl.jumpT = -1; pl.moving = false;
+                _hq.cam.init = false; _hq.dirty = true;
+                return { ok: true, x: x, z: z, y: y, far: pts[i][0] };
+            }
+            return { ok: false, why: 'NOWHERE TO STAND ON THIS PLOT' };
         },
         pos: function () { if (!_hq || !_hq.player) return null; var p = _hq.player; return { x: p.x, z: p.z, y: p.y, deg: _hqNormDeg(Math.atan2(p.x, -p.z) * 180 / Math.PI), r: Math.hypot(p.x, p.z),
                                   /* THE SAVE (2026-11-12): the part the walker stands in (a stage crossing rebases the metres), the heading as goTo's `face`, off the ground, the editor */
