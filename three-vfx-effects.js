@@ -68055,6 +68055,257 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     SPELL_MAP['nrCollectionPlate'] = { aura: 'nrCollectionPlate_aura', skim: 'nrCollectionPlate_skim' };
     SPELL_MAP['nrMiracle']         = { aura: 'nrMiracle_aura', payout: 'nrMiracle_payout' };
 
+    /* ════ THE PLASTIC SURGEON (2026-11-23, mondo OK'd the kit + the plan page's mock-ups): a Disaster Hills surgeon who operates on
+       anyone. Every look is in Riot's side colours from the viewer's own seat (his side cyan-blue, the other side pink-orange;
+       _ceoSides from the caster's square), drawn as SURGICAL MARKER: dashed lines, ticks, never a white flash. Fog: only what the
+       viewer sees (_pzSeen). Every piece rides fire() (online.js relays it). Visuals only.
+       · Botox (impact on an enemy, aura on an ally): a syringe dart arcs over, one bead of the side colour; a gloss gleam on the
+         face and three small "smoothed" ticks.
+       · Makeover: a dashed marker box is traced round the body, a centre line down it, then ATK and DEF tags trade places over it.
+       · Liposuction (impact): a see-through tube from the body to him, blobs along it; then (`lipo`, battle.js after the cast) the
+         blobs go on to the ally and a bubble closes round it.
+       · Anesthesia (aoe): a low gas rolls over the 3×3, a count floats up, 10 · 9 · 8, and turns into Z's.
+       · The Full Procedure (aoe): a round operating-theatre lamp swings in over the square and lights it (a real spot light),
+         marker lines sweep the 5×5, scalpel glints across it.
+       · BOTCHED (`botched`, battle.js _psAddWork): a cross of stitches over the head and a ring that snaps tight. ════ */
+    function _psSide(p) {
+        var f = p.sx != null ? { x: p.sx, y: p.sy } : p.cx != null ? { x: p.cx, y: p.cy } : p.fromX != null ? { x: p.fromX, y: p.fromY } : null;
+        if (!f) { try { var c = _sigCasterPos(p.tx, p.ty); if (c) f = c; } catch (e) {} }
+        return _ceoSides({ sx: f ? f.x : null, sy: f ? f.y : null }).now;
+    }
+    function _psTagTex(word) {
+        return _pzTex('ps-tag-' + word, 128, 56, function (g, w, h) {
+            g.fillStyle = 'rgba(0,0,0,0.85)'; g.fillRect(2, 2, w - 4, h - 4);
+            g.strokeStyle = '#ffffff'; g.lineWidth = 4; g.strokeRect(3, 3, w - 6, h - 6);
+            g.fillStyle = '#ffffff'; g.font = 'bold 30px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(word, w / 2, h / 2 + 1);
+        });
+    }
+    function _psTextTex(word, px) {
+        return _pzTex('ps-txt-' + word, 128, 128, function (g, w, h) {
+            g.fillStyle = '#ffffff'; g.font = 'bold ' + (px || 64) + 'px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+            g.shadowColor = 'rgba(0,0,0,0.9)'; g.shadowBlur = 8; g.fillText(word, w / 2, h / 2);
+        });
+    }
+    function _psSyringeTex() {
+        return _pzTex('ps-syringe', 256, 64, function (g, w, h) {
+            g.fillStyle = '#dfe6ee'; g.fillRect(40, 20, 130, 24);                 /* the barrel */
+            g.fillStyle = '#ffffff'; g.fillRect(56, 24, 96, 16);                  /* the dose (tinted) */
+            g.fillStyle = '#9aa6b6'; g.fillRect(10, 14, 12, 36); g.fillRect(22, 28, 20, 8);   /* the plunger */
+            g.fillStyle = '#c8d0da'; g.fillRect(170, 26, 16, 12);                 /* the hub */
+            g.strokeStyle = '#e8eef6'; g.lineWidth = 3; g.beginPath(); g.moveTo(186, 32); g.lineTo(250, 32); g.stroke();   /* the needle */
+        });
+    }
+    function _psDashBox(F, W, H, color) {
+        var eg = new THREE.EdgesGeometry(new THREE.BoxGeometry(W, H, W));
+        var lm = new THREE.LineDashedMaterial({ color: color, dashSize: F.ts * 0.08, gapSize: F.ts * 0.06, transparent: true, opacity: 0, depthWrite: false });
+        var ln = new THREE.LineSegments(eg, lm); ln.computeLineDistances(); ln.renderOrder = 160; ln.position.y = H / 2; F.g.add(ln);
+        return ln;
+    }
+
+    /* ── BOTOX ── */
+    EFFECTS['psBotox_fx'] = _pzDef('psBotox', { pzOwn: true });
+    _PZ_SIGS.psBotox = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty) || !_pzOnce('psBotox', 250)) return;
+        var C = _psSide(p), F = _nrvFrame(tx, ty), ts = F.ts, from = _pzFrom(tx, ty, p), ln = _nrvLine(F, from, tx, ty);
+        var syr = _pzSprN(0xffffff, ts * 0.5, _psSyringeTex(), F.g); syr.scale.set(ts * 0.5, ts * 0.125, 1);
+        var dose = _pzSprN(C[0], ts * 0.12, _sigGlowTex(), F.g);
+        var gleam = _pzSprN(C[0], ts * 0.34, _sigGlowTex(), F.g);
+        var ticks = [];
+        for (var i = 0; i < 3; i++) { var tk = _pzMesh(new THREE.PlaneGeometry(ts * 0.025, ts * 0.12), _pzGlow(C[0]), F.g); tk.rotation.z = 0.5; ticks.push(tk); }
+        var FLY = 360, headY = ts * 1.0, hit = false;
+        return _sigRunOwned(F.g, 1300, function (el) {
+            var k = _sigClamp01(el / FLY), d = ln.L * (1 - k), arc = Math.sin(Math.PI * k) * ts * 0.6;
+            syr.position.set(ln.ux * d, headY + arc, ln.uz * d);
+            syr.material.opacity = el < FLY ? 1 : Math.max(0, 1 - (el - FLY) / 160);
+            syr.material.rotation = Math.atan2(-(Math.cos(Math.PI * k)) * 0.6, 1) * (ln.ux >= 0 ? 1 : -1);
+            dose.position.copy(syr.position); dose.material.opacity = syr.material.opacity * 0.9;
+            if (!hit && el >= FLY) { hit = true; _sigShockRing3D(tx, ty, { color: C[0], r0: ts * 0.1, r1: ts * 0.6, ms: 320 }); }
+            var g0 = _sigClamp01((el - FLY) / 220);
+            gleam.position.set(0, headY + ts * 0.05, 0); _pzFace(gleam);
+            gleam.material.opacity = el < FLY ? 0 : 0.75 * (1 - _sigClamp01((el - FLY - 300) / 500)) * (0.5 + 0.5 * g0);
+            for (var j = 0; j < ticks.length; j++) {
+                var tt = _sigClamp01((el - FLY - 80 - j * 90) / 160);
+                ticks[j].position.set((j - 1) * ts * 0.09, headY + ts * 0.28 + tt * ts * 0.06, 0); _pzFace(ticks[j]); ticks[j].rotateZ(0.5);
+                ticks[j].material.opacity = tt > 0 ? 0.95 * (1 - _sigClamp01((el - 950) / 300)) : 0;
+            }
+        });
+    };
+
+    /* ── MAKEOVER ── */
+    EFFECTS['psMakeover_fx'] = _pzDef('psMakeover', { pzOwn: true });
+    _PZ_SIGS.psMakeover = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty) || !_pzOnce('psMakeover', 300)) return;
+        var C = _psSide(p), F = _nrvFrame(tx, ty), ts = F.ts, W = ts * 0.7, H = ts * 1.35;
+        var box = _psDashBox(F, W, H, C[0]);
+        var mid = _pzMesh(new THREE.PlaneGeometry(ts * 0.012, H * 1.1), _pzGlow(C[0]), F.g, 0, H / 2, 0);
+        var waist = _pzMesh(new THREE.PlaneGeometry(W * 1.2, ts * 0.012), _pzGlow(C[0]), F.g, 0, H * 0.55, 0);
+        var a = _pzSprN(0xffffff, ts * 0.4, _psTagTex('ATK'), F.g), d = _pzSprN(0xffffff, ts * 0.4, _psTagTex('DEF'), F.g);
+        a.scale.set(ts * 0.42, ts * 0.18, 1); d.scale.set(ts * 0.42, ts * 0.18, 1);
+        a.material.color.setHex(C[0]); d.material.color.setHex(C[0]);
+        var cd = _nbCamDir(F), sx = -cd.z, sz = cd.x, Y = H + ts * 0.35;
+        return _sigRunOwned(F.g, 1900, function (el) {
+            var drawn = _sigClamp01(el / 520), vis = _pzEnv(el, 0, 80, 1450, 1900);
+            box.material.opacity = 0.95 * vis; box.scale.set(1, Math.max(0.02, drawn), 1); box.position.y = H * drawn / 2;
+            _pzFace(mid); mid.material.opacity = 0.7 * vis * drawn; _pzFace(waist); waist.material.opacity = 0.6 * vis * drawn;
+            /* the tags: ATK left, DEF right, then they cross over each other (ATK over the top, DEF under) */
+            var s = _sigEaseOutCubic(_sigClamp01((el - 600) / 600)), off = ts * 0.32 * (1 - 2 * s), lift = Math.sin(Math.PI * s) * ts * 0.18;
+            a.position.set(sx * -off, Y + lift, sz * -off); d.position.set(sx * off, Y - lift * 0.5, sz * off);
+            var tv = _pzEnv(el, 420, 540, 1500, 1900);
+            a.material.opacity = tv; d.material.opacity = tv;
+        });
+    };
+
+    /* ── LIPOSUCTION ── the tube (impact), the blobs on to the ally + its bubble (lipo) */
+    EFFECTS['psLipo_fx'] = _pzDef('psLipo', { pzOwn: true });
+    _PZ_SIGS.psLipo = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty) || !_pzOnce('psLipo', 250)) return;
+        var C = _psSide(p), F = _nrvFrame(tx, ty), ts = F.ts, from = _pzFrom(tx, ty, p), ln = _nrvLine(F, from, tx, ty);
+        var A = new THREE.Vector3(0, ts * 0.6, 0), B = new THREE.Vector3(ln.dx, ln.dy + ts * 0.7, ln.dz);
+        var tube = _pzMesh(new THREE.CylinderGeometry(ts * 0.045, ts * 0.045, 1, 10, 1, true), _pzGlow(C[1]), F.g);
+        var core = _pzMesh(new THREE.CylinderGeometry(ts * 0.012, ts * 0.012, 1, 6), _pzGlow(C[0]), F.g);
+        var blobs = [];
+        for (var i = 0; i < 5; i++) blobs.push(_pzSprN(C[0], ts * 0.16, _sigGlowTex(), F.g));
+        var P = new THREE.Vector3();
+        return _sigRunOwned(F.g, 1250, function (el) {
+            var grow = _sigClamp01(el / 220), vis = _pzEnv(el, 0, 80, 950, 1250);
+            P.copy(A).lerp(B, grow); _pzSpan(tube, A, P); _pzSpan(core, A, P);
+            tube.material.opacity = 0.32 * vis; core.material.opacity = 0.8 * vis;
+            for (var j = 0; j < blobs.length; j++) {
+                var t = ((el - 200) / 700 - j * 0.16); if (t < 0 || t > 1) { blobs[j].material.opacity = 0; continue; }
+                blobs[j].position.copy(A).lerp(B, t); blobs[j].material.opacity = 0.95 * vis;
+            }
+        });
+    };
+    EFFECTS['psLipoGive_fx'] = _pzDef('psLipoGive', { pzOwn: true });
+    _PZ_SIGS.psLipoGive = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty)) return;
+        var C = _psSide(p), F = _nrvFrame(tx, ty), ts = F.ts, from = { x: p.cx, y: p.cy }, ln = _nrvLine(F, from, tx, ty);
+        var blobs = [];
+        for (var i = 0; i < 4; i++) blobs.push(_pzSprN(C[0], ts * 0.14, _sigGlowTex(), F.g));
+        var bub = _pzMesh(new THREE.SphereGeometry(ts * 0.55, 20, 14), _pzGlow(C[1]), F.g, 0, ts * 0.6, 0);
+        var rim = _pzMesh(new THREE.TorusGeometry(ts * 0.55, ts * 0.012, 6, 36), _pzGlow(C[0]), F.g, 0, ts * 0.6, 0);
+        return _sigRunOwned(F.g, 1400, function (el) {
+            for (var j = 0; j < blobs.length; j++) {
+                var t = _sigClamp01((el - j * 90) / 420);
+                var d = ln.L * (1 - t);
+                blobs[j].position.set(ln.ux * d, ts * (0.7 + Math.sin(Math.PI * t) * 0.4), ln.uz * d);
+                blobs[j].material.opacity = t > 0 && t < 1 ? 0.95 : 0;
+            }
+            var b = _sigEaseOutBack(_sigClamp01((el - 480) / 320)), vis = _pzEnv(el, 480, 560, 1050, 1400);
+            bub.scale.setScalar(Math.max(0.05, b)); bub.material.opacity = 0.16 * vis;
+            rim.scale.setScalar(Math.max(0.05, b)); _pzFace(rim); rim.material.opacity = 0.8 * vis;
+        });
+    };
+
+    /* ── ANESTHESIA ── */
+    EFFECTS['psAnesthesia_fx'] = _pzDef('psAnesthesia', { pzOwn: true, aoeRadius: 1 });
+    _PZ_SIGS.psAnesthesia = function (p, id) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzOnce('psAnesthesia', 300)) return;
+        var at = _nvAoeTiles(id, p, null, 1), r = at.r || 1, seen = _pzSeen(tx, ty);
+        for (var q = 0; q < at.offs.length && !seen; q++) if (_pzSeen(tx + at.offs[q].dx, ty + at.offs[q].dy)) seen = true;
+        if (!seen) return;
+        var C = _psSide(p), F = _nrvFrame(tx, ty), ts = F.ts, R = ts * (r + 0.5);
+        var puffs = [];
+        for (var i = 0; i < 14; i++) {
+            var a0 = rn(0, 6.28), rr = rn(0.1, 0.95) * R;
+            var pf = _pzSprN(C[1], ts * rn(0.7, 1.1), _sigGlowTex(), F.g);
+            puffs.push({ s: pf, x: Math.cos(a0) * rr, z: Math.sin(a0) * rr, y: ts * rn(0.08, 0.3), ph: rn(0, 6.28), sz: rn(0.8, 1.2) });
+        }
+        var nums = ['10', '9', '8', 'Z', 'Z'].map(function (w, k) { var s = _pzSprN(C[0], ts * 0.4, _psTextTex(w), F.g); return { s: s, k: k }; });
+        return _sigRunOwned(F.g, 2300, function (el) {
+            var roll = _sigEaseOutCubic(_sigClamp01(el / 600)), vis = _pzEnv(el, 0, 200, 1700, 2300);
+            for (var j = 0; j < puffs.length; j++) {
+                var P = puffs[j], wob = Math.sin(el * 0.002 + P.ph) * ts * 0.05;
+                P.s.position.set(P.x * roll + wob, P.y, P.z * roll - wob);
+                var sc = ts * P.sz * (0.5 + 0.5 * roll); P.s.scale.set(sc * 1.4, sc * 0.6, 1);
+                P.s.material.opacity = 0.28 * vis;
+            }
+            for (var n = 0; n < nums.length; n++) {
+                var N = nums[n], t = _sigClamp01((el - 250 - N.k * 260) / 900);
+                N.s.position.set((N.k - 2) * ts * 0.18, ts * (0.9 + t * 0.9), 0);
+                var sz2 = ts * (N.k > 2 ? 0.3 : 0.38); N.s.scale.set(sz2, sz2, 1);
+                N.s.material.opacity = t > 0 && t < 1 ? Math.sin(Math.PI * t) : 0;
+            }
+        });
+    };
+
+    /* ── THE FULL PROCEDURE ── */
+    EFFECTS['psFullProcedure_fx'] = _pzDef('psFullProcedure', { pzOwn: true, aoeRadius: 2 });
+    _PZ_SIGS.psFullProcedure = function (p, id) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzOnce('psFullProcedure', 400)) return;
+        var at = _nvAoeTiles(id, p, null, 2), r = at.r || 2, seen = _pzSeen(tx, ty);
+        for (var q = 0; q < at.offs.length && !seen; q++) if (_pzSeen(tx + at.offs[q].dx, ty + at.offs[q].dy)) seen = true;
+        if (!seen) return;
+        var C = _psSide(p), F = _nrvFrame(tx, ty), ts = F.ts, R = ts * (r + 0.5), LH = ts * 3.2;
+        /* the lamp: a round housing with five bulbs, on an arm from above */
+        var lamp = new THREE.Group(); F.g.add(lamp);
+        var houseM = _pzSolid(0x9aa3b0, null, { side: THREE.DoubleSide }), bulbM = _pzGlow(0xfff3d6);
+        _pzMesh(new THREE.CylinderGeometry(ts * 0.55, ts * 0.65, ts * 0.16, 28, 1, true), houseM, lamp);
+        var cap = _pzMesh(new THREE.CircleGeometry(ts * 0.55, 28), houseM, lamp, 0, ts * 0.08, 0); cap.rotation.x = -Math.PI / 2;
+        for (var b = 0; b < 5; b++) { var ba = b / 5 * Math.PI * 2; var bl = _pzMesh(new THREE.CircleGeometry(ts * 0.11, 14), bulbM, lamp, Math.cos(ba) * ts * 0.3, -ts * 0.085, Math.sin(ba) * ts * 0.3); bl.rotation.x = Math.PI / 2; }
+        var arm = _pzMesh(new THREE.CylinderGeometry(ts * 0.03, ts * 0.03, 1, 6), houseM, F.g);
+        var spot = null, tgt = null;
+        try { spot = new THREE.SpotLight(0xfff2dc, 0, R * 3.2, 0.62, 0.55, 1.2); tgt = new THREE.Object3D(); F.g.add(tgt); spot.target = tgt; lamp.add(spot); } catch (e) { spot = null; }
+        var pool = _bkFloor(F, _sigGlowTex(), R * 2.1, R * 2.1, 0xfff2dc, true);
+        /* the marker sweep over the 5×5, the scalpel glints */
+        var sweeps = [];
+        for (var s = 0; s < 4; s++) { var sw = _pzMesh(new THREE.PlaneGeometry(R * 2, ts * 0.025), _pzGlow(C[0]), F.g, 0, ts * 0.06, 0); sw.rotation.x = -Math.PI / 2; sw.rotation.z = s % 2 ? Math.PI / 2 : 0; sweeps.push(sw); }
+        var glints = [];
+        for (var gq = 0; gq < 6; gq++) glints.push({ s: _pzSprN(C[0], ts * 0.25, _sigGlowTex(), F.g), x: rn(-R, R) * 0.8, z: rn(-R, R) * 0.8, at: 900 + gq * 110 });
+        var A = new THREE.Vector3(), B = new THREE.Vector3();
+        return _sigRunOwned(F.g, 2600, function (el) {
+            var drop = _sigEaseOutBack(_sigClamp01(el / 600)), vis = _pzEnv(el, 0, 160, 2100, 2600);
+            lamp.position.set(-ts * 0.6 * (1 - drop), LH + ts * 1.2 * (1 - drop), 0); lamp.rotation.z = 0.25 * (1 - drop);
+            houseM.opacity = 0.95 * vis; bulbM.opacity = 0.95 * vis * _sigClamp01((el - 350) / 200);
+            A.set(lamp.position.x, lamp.position.y + ts * 0.08, 0); B.set(lamp.position.x - ts * 0.2, LH + ts * 3, 0); _pzSpan(arm, A, B);
+            if (spot) { spot.intensity = 2.2 * vis * _sigClamp01((el - 350) / 250); tgt.position.set(0, 0, 0); }
+            pool.material.opacity = 0.32 * vis * _sigClamp01((el - 350) / 250);
+            for (var k = 0; k < sweeps.length; k++) {
+                var t = _sigClamp01((el - 600 - k * 160) / 520), along = (t * 2 - 1) * R;
+                if (k % 2) sweeps[k].position.set(along, ts * 0.06, 0); else sweeps[k].position.set(0, ts * 0.06, along);
+                sweeps[k].material.opacity = t > 0 && t < 1 ? 0.9 * vis : 0;
+            }
+            for (var g2 = 0; g2 < glints.length; g2++) {
+                var G2 = glints[g2], gt = _sigClamp01((el - G2.at) / 220);
+                G2.s.position.set(G2.x, ts * 0.55, G2.z);
+                G2.s.scale.set(ts * 0.5 * Math.sin(Math.PI * gt) + 1, ts * 0.06 + 1, 1); G2.s.material.rotation = 0.6;
+                G2.s.material.opacity = gt > 0 && gt < 1 ? 0.95 : 0;
+            }
+        });
+    };
+
+    /* ── BOTCHED ── stitches cross over the head, a ring snaps tight */
+    EFFECTS['psBotched_fx'] = _pzDef('psBotched', { pzOwn: true });
+    _PZ_SIGS.psBotched = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty)) return;
+        var C = _psSide(p), F = _nrvFrame(tx, ty), ts = F.ts, headY = ts * 1.05;
+        var st = [];
+        for (var i = 0; i < 2; i++) { var m = _pzMesh(new THREE.PlaneGeometry(ts * 0.5, ts * 0.03), _pzGlow(C[0]), F.g); st.push(m); }
+        var ticks = [];
+        for (var k = 0; k < 6; k++) ticks.push(_pzMesh(new THREE.PlaneGeometry(ts * 0.02, ts * 0.09), _pzGlow(C[0]), F.g));
+        var ring = _pzMesh(new THREE.TorusGeometry(ts * 0.42, ts * 0.016, 6, 36), _pzGlow(C[1]), F.g, 0, headY, 0);
+        return _sigRunOwned(F.g, 1400, function (el) {
+            var vis = _pzEnv(el, 0, 80, 1000, 1400), d = _sigClamp01(el / 260);
+            for (var j = 0; j < st.length; j++) {
+                st[j].position.set(0, headY, 0); _pzFace(st[j]); st[j].rotateZ(j ? -0.75 : 0.75);
+                st[j].scale.set(Math.max(0.02, d), 1, 1); st[j].material.opacity = 0.95 * vis;
+            }
+            for (var t = 0; t < ticks.length; t++) {
+                var arm = t < 3 ? 0.75 : -0.75, u = ((t % 3) - 1) * ts * 0.13;
+                ticks[t].position.set(Math.cos(arm) * u, headY + Math.sin(arm) * u, 0); _pzFace(ticks[t]); ticks[t].rotateZ(arm + Math.PI / 2);
+                ticks[t].material.opacity = el > 200 ? 0.9 * vis : 0;
+            }
+            var rs = 1.6 - 1.0 * _sigEaseOutCubic(_sigClamp01((el - 120) / 300));
+            ring.scale.setScalar(rs); _pzFace(ring); ring.material.opacity = 0.85 * vis;
+        });
+    };
+    SPELL_MAP['psBotox']         = { impact: 'psBotox_fx', aura: 'psBotox_fx' };
+    SPELL_MAP['psMakeover']      = { impact: 'psMakeover_fx', aura: 'psMakeover_fx' };
+    SPELL_MAP['psLiposuction']   = { impact: 'psLipo_fx', lipo: 'psLipoGive_fx' };
+    SPELL_MAP['psAnesthesia']    = { aoe: 'psAnesthesia_fx' };
+    SPELL_MAP['psFullProcedure'] = { aoe: 'psFullProcedure_fx' };
+    SPELL_MAP['psBotched']       = { botched: 'psBotched_fx' };
+
     /* ════ TAX EXEMPT (2026-11-17, mondo's ask): a green TAX EXEMPT stamp slams onto the floor under the unit, a white receipt
        floats up beside it and is torn in two, and blue mana motes (the MP it will not pay) rise into the body ════ */
     function _tvExemptTex() {
