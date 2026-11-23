@@ -14897,6 +14897,7 @@
                 /* 📺 THE TAPE (the Cursed TV): this round's recording becomes last round's, the one Rewind plays back */
                 if (u._tapeNow || u._tapeLast) { u._tapeLast = u._tapeNow || 0; u._tapeNow = 0; }
             }
+            _bfRoundEnd();   // 🦋 THE BUTTERFLY EFFECT: every Flutter grows, the ones at 3 touch down
             if (typeof markDirty === 'function') markDirty('hud', 'selectedUnit');
         }
         /* ═══ THE CURSED TV (2026-11-17, mondo approved the kit) ═══ THE TAPE: applyDamageToUnit adds every point a unit takes to
@@ -15435,7 +15436,8 @@
             if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: u });
         }
         window._crCastRow = _crCastRow; window._crRoundEnd = _crRoundEnd;
-
+        /* ═══ THE BUTTERFLY GIRL (2026-11-23, blue morpho; mondo OK'd the plan) ═══ THE BUTTERFLY EFFECT: small flaps now, a twister
+           later. A Flutter (STATUS_DEFS.flutter: the stack in unit._flutter, the caster's id in _flutterSrcId) grows by 1 at every
         /* ═══ THE RAT KING (2026-11-23, thread "Plan the Rat and Rat King's spells"; mondo: "The rat can have some sort of system where
            if he gets enough stacks he becomes the rat king", plan OK'd 11-23) ═══ One new rule, MISCHIEF (a group of rats is a
            mischief), host-side like THE COMING RACES: plain numbers and the unit's own appearance / spell rows, all riding the state
@@ -23264,6 +23266,44 @@
                     if (V.sigWhiteout3D) V.sigWhiteout3D(p.x, p.y, { color: 0x0a0806, ms: 800, peak: 0.45, sizeTiles: 5, shake: false });
                     c.insert('IN PIECES.', 'stamp', actionMs(1000));
                     for (let i = 0; i < 6; i++) c.at(actionMs(400 + i * 220), () => c.snd('itemThrow'));   // each piece into the hole
+                }
+            },
+            /* 🦋 SPECIMEN (2026-11-23, the Butterfly Girl; mondo OK'd "pinned in a glass display case"): her morphos lift the victim,
+               a glass display case drops over it, a pin drives down, and a paper label names what was collected */
+            specimen: {
+                chargeMs: 2000, strikeMs: 3800, resolveMs: 2600,
+                castSpell: { type: 'damage', dmg: 1, name: 'Specimen', kind: 'damage' },
+                siren(c) { c.snd('debuff'); c.dsnd('identSting'); c.grade('cool', actionMs(900)); },
+                charge(c) {
+                    const V = c.VFX, u = c.unit;
+                    if (V.sigMagicCircle3D) V.sigMagicCircle3D(u.x, u.y, { radiusPx: c.ts * 0.9, growMs: 240, holdMs: c.CHARGE_MS, fadeMs: 400, spin: true, color: 0x3a8bff, color2: 0x0a1430 });
+                    c.snd('buff');
+                },
+                cam(c) {
+                    const u = c.unit, p = c.pos(c.target);
+                    if (typeof cineWitnessCam === 'function') cineWitnessCam(c.target, { dist: 5.0, tilt: 66, duration: 700 }); else c.dive(c.target, 1.4, 300);   // the swarm coming in
+                    c.at(c.STRIKE_MS - actionMs(1600), () => { if (typeof cineFaceCam === 'function') cineFaceCam(c.target, { dist: 2.6, tilt: 78, cut: false, duration: 700 }); });   // the lift
+                    c.at(c.STRIKE_MS - actionMs(200), () => { c.slow(0.4, actionMs(360)); });
+                    c.at(c.STRIKE_MS + actionMs(400), () => { c.slowClear(); if (typeof cineCrane === 'function') cineCrane(c.target, { duration: actionMs(1400), tilt: 58, rise: 2.2 }); });   // the case, the pin, the label
+                    c.at(c.STRIKE_MS + actionMs(2000), () => { if (typeof cineEndCapReverse === 'function') cineEndCapReverse(u, c.target, {}); else if (typeof cineGodShot === 'function') cineGodShot(p, 6, { cut: false, duration: 520, tilt: 30 }); });
+                    return true;
+                },
+                stage(c) {
+                    const V = c.VFX, u = c.unit, p = c.pos(c.target);
+                    if (V.sigSpecimen3D) V.sigSpecimen3D(u.x, u.y, p.x, p.y, { ms: c.STRIKE_MS + actionMs(3600), swarmAt: actionMs(100), liftAt: c.STRIKE_MS - actionMs(1600), hitAt: c.STRIKE_MS });
+                    c.at(actionMs(100), () => { c.snd('buff'); c.insert('A RARE ONE', 'scripture', actionMs(1000)); });
+                    c.at(c.STRIKE_MS - actionMs(1600), () => c.snd('debuff'));
+                    c.at(c.STRIKE_MS - actionMs(400), () => c.insert('HOLD STILL.', 'stamp', actionMs(500)));
+                },
+                strike(c) {
+                    const p = c.pos(c.target);
+                    c.freeze(actionMs(180), { grade: 'cool' });
+                    c.ring(p.x, p.y, 0x3a8bff, { r1: c.ts * 2.0, ms: 520, torus: true });
+                    c.flash('#cfe8ff', 160, 0.45); c.kick(10, 240);
+                    c.snd('physicalAbilityDamage'); c.dsnd('slam');
+                },
+                resolve(c) {
+                    c.insert('PINNED AND LABELLED.', 'stamp', actionMs(1100));
                 }
             },
             theBridge: {
@@ -44080,7 +44120,8 @@
                 target._tapeNow = (target._tapeNow || 0) + finalDamage;   // 📺 THE TAPE: what it took this round (the Cursed TV's Rewind plays last round's back)
                 if (sourceUnit && sourceUnit.race === 'wendigo' && sidesHostile(sourceUnit.player, target.player)) sourceUnit._fedRound = state.round || 0;   // 🦌 it fed
                 if (sourceUnit && sourceUnit.race === 'cameraman' && target.hp > 0) _camFilm(sourceUnit, target);   // 🎥 THE FOOTAGE
-                if (sourceUnit && (sourceUnit.race === 'gladiator' || sourceUnit.race === 'jellyfish ufo')) _crOnHit(sourceUnit, target, opts);   // 🛡⚡ THE COMING RACES: Favor, claw Charge
+                if (sourceUnit && (sourceUnit.race === 'gladiator' || sourceUnit.race === 'jellyfish ufo')) _crOnHit(sourceUnit, target, opts);
+                if (target.race === 'butterfly girl' && sourceUnit) _bfFlashVanish(target, sourceUnit, opts);   // 🦋 FLASH AND VANISH   // 🛡⚡ THE COMING RACES: Favor, claw Charge
                 if (sourceUnit && sourceUnit.race === 'rat') _ratOnHit(sourceUnit, target, opts, _ratHadBleed);   // 👑 THE RAT KING: Mischief
                 if (target.hp <= 0 && _ratHpWas > 0 && (target.race === 'rat' || _ratOnBoard())) _ratOnDown(target);   // 👑 the scavenger, the fallen crown
 
@@ -66849,6 +66890,7 @@
                 state._blitzActiveUnitId = nextUnit.id;
                 try { cubeFocus(nextUnit); } catch (e) { console.warn('[CUBE] relay', e); }   // THE CUBE: the frame round this fighter's face
                 _popeGlassEnds(nextUnit);   // ⛪ the Popemobile's glass comes down when his next turn starts
+                _bfVanishEnds(nextUnit);   // 🦋 Flash and Vanish lasts until her next turn starts
                 if (_balanceSimMode) _balTurnStart(nextUnit);   // Balance Lab: turns + dry turns per race
                 _eorPhaseLabelHide();   // a unit is up: the end of round is over, its phase chip goes
                 if (typeof window !== 'undefined' && window._tutActive && typeof window._tutEvent === 'function') window._tutEvent('activation', { uid: nextUnit.id, player: nextUnit.player });
@@ -85621,6 +85663,10 @@
                     if (!_silentReject) { addLog(`${_ctSp(spell.name)}: nothing to clean within ${spell.mopUp.radius || 2}.`, _clickSeat()); playErrorSfx(); }
                     return 0;
                 }
+                if (spell.butterflyEffect && !_bfCarriers(unit.player).length) {   // 🦋 nothing to speed up
+                    if (!_silentReject) { addLog(`${_ctSp(spell.name)}: no Flutter of her side's on the board.`, _clickSeat()); playErrorSfx(); }
+                    return 0;
+                }
                 if (spell.longLiveKing) {   // 👑 Long Live the King: a court to spend and an enemy in reach
                     const _llk = _ratKingPlan(unit, spell);
                     if (!_llk || !_llk.foes.length || !_llk.n) {
@@ -85749,6 +85795,7 @@
                     if (spell.unload && !unit.dead) _truckerUnload(unit, spell);   // 🚚 Unload
                     if (spell.comeAtMe && !unit.dead) _crComeAtMe(unit, spell);   // 🛡 Come At Me
                     if (spell.harvestMoon && !unit.dead) _crHarvestMoon(unit, spell);   // 🌾 Harvest Moon
+                    if (spell.butterflyEffect && !unit.dead) _bfEffect(unit, spell);   // 🦋 Butterfly Effect
                     if (spell.longLiveKing && !unit.dead) _ratLongLive(unit, spell);   // 👑 Long Live the King
                     if (spell.filterSwap && !_bt.dead) _influencerFilter(unit, _bt, spell);   // 🤳 Filter
                     if (spell.slimeRing && !unit.dead) { _sigVfxGeom('nrSaltProof:ring', unit.x, unit.y, 1, { owner: unit.player }); _slugRing(unit, spell); }   // 🐌 Salt-Proof Stance

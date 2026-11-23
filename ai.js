@@ -4920,6 +4920,13 @@
             val += 40 + 35 * _pn;
         }
         if (sp && sp.hitsStatusOnly === 'payload' && tg.status && tg.status.payload > 0) val += Math.min(70, effHp(tg)) * landP;
+        /* 🦋 THE BUTTERFLY GIRL (2026-11-23): a Flutter grows into a twister on the target's 3x3 (its side, one hit each): worth more
+           on a body in a crowd and on one that already carries 1-2 (the sooner it lands) */
+        if (sp && (sp.statusEffects || []).some(e => e && e.id === 'flutter') && (tg._flutter | 0) < 3) {
+            const _fn = (g.state.units || []).filter(a => a && !a.dead && a.id !== tg.id && _sidesAllied(a.player, tg.player)
+                && Math.max(Math.abs(a.x - tg.x), Math.abs(a.y - tg.y)) <= 1).length;
+            val += 30 + 40 * _fn + 20 * (tg._flutter | 0);
+        }
         /* 🐻 THE BEAR (2026-11-23, DON'T POKE THE BEAR): a hit on a hibernating Bear stops the heal it would wake with (worth
            it), but wakes it angry (+1 ATK) and the hitter takes its Grudge (Bear Down ×1.5 on it); any hit on a Bear moves the
            Grudge to the hitter. A kill pays none of it. Bear Hug's Grudge is worth a little as a setup for Bear Down. */
@@ -6552,6 +6559,14 @@
             const _obT = v.threatFn(unit.x, unit.y, unit.z);
             if (_obT.totalDmg >= unit.hp * 0.4) return 0;
             return 400 + 20 * Math.min(3, _obIn);
+        }
+        /* 🦋 THE BUTTERFLY GIRL (2026-11-23): Butterfly Effect is worth the twisters it sets off now (the bodies under each) and a
+           little for every Flutter it pushes along; nothing with no Flutter of her side's on the board (the engine refuses it) */
+        if (kind === 'buff' && spell.butterflyEffect) {
+            const _be = (typeof window._bfEffectValue === 'function') ? window._bfEffectValue(unit) : null;
+            if (!_be || !_be.carriers) return 0;
+            if (!_be.twisters) return _be.carriers >= 3 ? 60 : 0;
+            return 90 * _be.twisters + 70 * _be.bodies;
         }
         if (kind === 'buff' && target) {
             if (g.unitHasStatus(target, 'protect')) return 0;
