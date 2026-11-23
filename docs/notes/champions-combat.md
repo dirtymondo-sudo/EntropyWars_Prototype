@@ -6358,3 +6358,22 @@ The Sewers (NOT yet placed as Sewers natives: the Sewers district files are held
   `Assets/world/animals/rat.glb`, `_ANIMALS.rat`, shared geometry); a crowned court gets a pink cord. Kill-switch `EW_NO_RAT_COURT`.
   The structural serial hashes the king form so the model swaps at once.
 - FINISHER 'The Mischief' (sig pileOn). Affinity: poison resist, fire weak.
+
+## THE 11-22 TRAINING PASSES (2026-11-22/23, mondo: "can you run the ai training for a few passes and make sure its getting better") — battle.js + ai.js weights, train_headless.js
+- Three SPSA passes of ~115 min each, 3 headless browsers, Arena 4v4 paired matches on the rotating PvP arenas, starting from the
+  11-01 baked defaults (no reset); each pass carried on the last one's walk (`--resume`: θ, pair count, syncs). 2,110 training matches,
+  k = 985 pairs.
+- Head-to-head vs the shipped AI (Strength Test, paired, baseline = defaults):
+  pass 1 (709 matches, k 294) 157-139 = 53.0%; pass 2 (1,405, k 638) 140-122 = 53.4%; pass 3 (2,110, k 985) 339-324 = 51.1%.
+  Pass 3 drifted back to even, so pass 2 was proven over two more runs: 305-274 (53%), then 364-296 (55%, on main e81abba+9).
+  Pass 2 pooled: 809-692 over 1,501 matches = 53.9% (95% low 51.4%); graded pairs 53.8% ±1.2 over 747 pairs, z = 3.3. BAKED
+  (65 keys, `prev` = the value replaced, ai.js AI_TUNE v4 knobs match). Biggest moves: towerLowHpPush 33.6 → 70.2, anchorCaution
+  .25 → .80, killOutputTurns .49 → .79, killBonusScore 117 → 84, engageAdvantage −.76 → −.51, teleportAnyValue .40 → .20.
+- Lesson: more passes are not always better: the gains are a few points and the third pass gave some back, so the pass that wins
+  the long head-to-head is the one baked, not the last one.
+- train_headless.js (tooling): THE RECYCLE now covers Training + Strength Test (a lab tab grew ~0.2 GB a match and four tabs got
+  killed for memory in 6 min): a fresh tab in the same context every `--recycle` matches (default 5, 11-22 run used 10 with 3
+  workers), on an even count, θ restored; a crashed tab gets a fresh one the same way; no 3D unit models in the AI labs
+  (`EW_DISABLE_3D_UNITS`); `--resume <dir>` carries a run on (writes `syncs.json`). Run with `EW_ALLOW_STALE=1` (a recycled tab
+  reloads the page; main moving mid-run must not block it). 4 workers OOM on a cloud container; 3 workers ≈ 6 matches/min.
+  Kill a run with `kill -9` (SIGTERM is caught). Harness logs + every pass's weights: /mnt/project-files/ai-training/run-20261122/.

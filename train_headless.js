@@ -38,11 +38,12 @@
 // Flags: --workers N  --minutes M  --lab train|strength|balance
 //        --mode arena|tdm|clash|gauntlet|simul|rotate  --map rotate|<mapId>
 //        --weights file.json  --baseline default|prev (strength)
+//        --resume <out dir of an earlier training run> (carry on its walk: θ, pair count, syncs; 11-22)
 //        --out dir  --render (keep drawing)  --real-clock (no virtual clock)
 //        --sync-min M (training: merge the workers every M minutes, default 20)
 //        --ckpt-min M --gate-pairs N (training: checkpoint gates vs the shipped AI; --ckpt-min 0 = off)
 //        --headed (watch one window)  --poll seconds
-//        --recycle N (balance lab: a fresh tab every N matches, default 12, 0 = off; the lab's stats live on in the
+//        --recycle N (a fresh tab every N matches: balance lab default 12, training + strength 5 (11-22), 0 = off; the lab's stats live on in the
 //          worker's IndexedDB, so the count carries over; old tabs die of memory after 10-30 matches otherwise)
 // Env:   PW_CHROMIUM=/path/to/chromium  PORT=3000  LOCAL_ASSETS=a.js,b.js|none
 //
@@ -71,12 +72,13 @@ const MINUTES = Math.max(0.5, parseFloat(flag('minutes', 30)) || 30);
 const MODE = String(flag('mode', 'arena'));
 const MAP = String(flag('map', 'rotate'));
 const WEIGHTS_FILE = flag('weights', null);
+const RESUME_DIR = flag('resume', null) ? path.resolve(String(flag('resume', null))) : null;
 const BASELINE = String(flag('baseline', 'default'));
 const RENDER = !!flag('render', false);
 const REAL_CLOCK = !!flag('real-clock', false);
 const HEADED = !!flag('headed', false);
 const POLL_S = Math.max(5, parseFloat(flag('poll', 15)) || 15);
-const RECYCLE = Math.max(0, parseInt(flag('recycle', 12), 10) || 0);
+const RECYCLE = Math.max(0, parseInt(flag('recycle', LAB === 'balance' ? 12 : 5), 10) || 0);
 const SYNC_MIN = Math.max(0, parseFloat(flag('sync-min', 20)) || 0);
 const CKPT_MIN = Math.max(0, parseFloat(flag('ckpt-min', 30)) || 0);
 const GATE_PAIRS = Math.max(1, parseInt(flag('gate-pairs', 8), 10) || 8);
@@ -147,6 +149,8 @@ function fmtMin(ms) { return (ms / 60000).toFixed(1) + 'm'; }
             window.EW_SIM_VIRTUAL_CLOCK = virt;
             window.EW_SIM_NO_RENDER = noRender;
             window.EW_DISABLE_INTRO_CINE = true;
+            // 11-22: no 3D unit models in the AI labs (the brain never reads them; each match's GLBs grew a tab ~0.5 GB)
+            if (lab !== 'balance' && noRender) window.EW_DISABLE_3D_UNITS = true;
             window.EW_HEADLESS_LAB = lab;
             window.EW_SPSA_NO_AUTO_GATE = true;   // THE CHECKPOINTS: the runner gates the whole run's average, not each worker its own
             if (keys && keys.length) window.EW_TRAIN_KEYS = keys;
@@ -171,22 +175,44 @@ function fmtMin(ms) { return (ms / 60000).toFixed(1) + 'm'; }
     // THE RECYCLE (2026-11-22, the lab4 harness's way): between matches, a balance-lab tab that has played RECYCLE
     // matches is closed and a fresh one opens in the same context, before its memory growth crashes it mid-match
     async function maybeRecycle(w, snap) {
-        if (LAB !== 'balance' || !RECYCLE || !snap || snap.kind !== 'balance') return;
-        const played = (snap.totalMatches || 0) - (w.bootMatches || 0);
-        if (played < RECYCLE || (snap.phase === 'battle' && played < RECYCLE + 3)) return;
+        if (!RECYCLE || !snap) return;
+        if (LAB === 'balance') {
+            if (snap.kind !== 'balance') return;
+            const played = (snap.totalMatches || 0) - (w.bootMatches || 0);
+            if (played < RECYCLE || (snap.phase === 'battle' && played < RECYCLE + 3)) return;
+        } else {
+            // THE RECYCLE FOR TRAINING + STRENGTH (2026-11-22): a lab tab grows ~200 MB a match (2.5 GB after 13; four of them
+            // got a tab killed in 6 minutes). Recycle on an even count, so the paired match's twin has just finished; the SPSA
+            // walk, the gate and the strength tally live in the context's IndexedDB and carry over.
+            const m = matchesOf(snap), played = m - (w.bootMatches || 0);
+            if (played < RECYCLE || (m % 2) !== 0) return;
+        }
         if (Date.now() > deadline - 3 * 60000) return;
         await sleep(1500);   // let the last match's IndexedDB save land
+        let st = null;
+        if (LAB === 'train') { try { st = await w.page.evaluate(() => window._ewSpsaState()); } catch (e) {} }
         try { await w.page.close(); } catch (e) {}
         try {
             const np = await bootPage(w.idx, w.ctx);
             w.page = np.page; w.errors = np.errors;
-            const start = await w.page.evaluate(async () => {
-                for (let i = 0; i < 200 && !(typeof _balanceStats !== 'undefined' && _balanceStats); i++) await new Promise(r => setTimeout(r, 100));
-                return (typeof _balanceStats !== 'undefined' && _balanceStats) ? _balanceStats.totalMatches : 0;
-            });
+            let start = 0;
+            if (LAB === 'balance') {
+                start = await w.page.evaluate(async () => {
+                    for (let i = 0; i < 200 && !(typeof _balanceStats !== 'undefined' && _balanceStats); i++) await new Promise(r => setTimeout(r, 100));
+                    return (typeof _balanceStats !== 'undefined' && _balanceStats) ? _balanceStats.totalMatches : 0;
+                });
+            } else {
+                await w.page.waitForFunction((lab) => lab === 'train' ? (typeof _spsa !== 'undefined' && _spsa) : (typeof _strengthStats !== 'undefined' && _strengthStats), LAB, { timeout: 60000 }).catch(() => {});
+                if (LAB === 'train' && st && st.theta) {
+                    // the walk exactly where it stood (the tab's last save can lag a pair); the sync's pair count stays right
+                    const p0 = await w.page.evaluate(({ t, k }) => { window._ewSpsaSetTheta(t, { k }); return (window._ewSpsaState() || {}).pairs || 0; }, { t: st.theta, k: st.k });
+                    w.pairsAtSync = p0 - ((st.pairs || 0) - (w.pairsAtSync || 0));
+                }
+                try { const sn = await snapshot(w); start = matchesOf(sn); } catch (e) {}
+            }
             w.bootMatches = start;
             w.recycles = (w.recycles || 0) + 1;
-            console.log(`[w${w.idx}] recycled at ${snap.totalMatches} matches (fresh tab ${w.recycles}, stats carry on at ${start})`);
+            console.log(`[w${w.idx}] recycled at ${matchesOf(snap)} matches (fresh tab ${w.recycles}, carries on at ${start})`);
         } catch (e) { console.log(`[w${w.idx}] recycle failed: ${e.message.split('\n')[0]}`); }
     }
 
@@ -250,6 +276,21 @@ function fmtMin(ms) { return (ms / 60000).toFixed(1) + 'm'; }
                 } catch (e2) { console.log(`[w${w.idx}] reboot failed: ${e2.message.split('\n')[0]}`); }
                 return null;
             }
+            // a crashed training / strength tab (11-22): a fresh tab in the SAME context, so the walk, the gate and the tally in
+            // its IndexedDB carry on (the pairs since the tab's last save are lost; the sync counts only what it can see)
+            if (LAB !== 'balance' && /crash|closed/i.test(e.message) && Date.now() < deadline - 3 * 60000) {
+                w.crashes = (w.crashes || 0) + 1;
+                try { await w.page.close(); } catch (e2) {}
+                try {
+                    const np = await bootPage(w.idx, w.ctx);
+                    w.page = np.page; w.errors = np.errors;
+                    await w.page.waitForFunction((lab) => lab === 'train' ? (typeof _spsa !== 'undefined' && _spsa) : (typeof _strengthStats !== 'undefined' && _strengthStats), LAB, { timeout: 60000 }).catch(() => {});
+                    if (LAB === 'train') { const p0 = await w.page.evaluate(() => (window._ewSpsaState() || {}).pairs || 0); w.pairsAtSync = Math.min(w.pairsAtSync || 0, p0); }
+                    w.bootMatches = w.last ? matchesOf(w.last) : 0;
+                    console.log(`[w${w.idx}] fresh tab after crash ${w.crashes}`);
+                } catch (e2) { console.log(`[w${w.idx}] reboot failed: ${e2.message.split('\n')[0]}`); }
+                return null;
+            }
             return w.last;
         }
     }
@@ -282,6 +323,22 @@ function fmtMin(ms) { return (ms / 60000).toFixed(1) + 'm'; }
     // THE SETTLING STEPS: the run's pair count (k) and every sync's θ (the second half is averaged)
     let runK = 0, gate = null;
     const syncs = [], checkpoints = [];
+    // THE RESUME (2026-11-22): --resume <an earlier training run's out dir> carries on that run's walk: its last θ, its pair
+    // count (the settling steps stay small) and its syncs (the second-half average spans both runs). The CPU's own table
+    // is untouched (--weights sets that).
+    if (LAB === 'train' && RESUME_DIR) {
+        const rs = JSON.parse(fs.readFileSync(path.join(RESUME_DIR, 'syncs.json'), 'utf8'));
+        const last = rs[rs.length - 1];
+        for (const x of rs) syncs.push(x);
+        runK = last.k; global._syncTheta = last.theta;
+        for (const w of workers) {
+            try {
+                await w.page.waitForFunction(() => typeof _spsa !== 'undefined' && _spsa, null, { timeout: 60000 }).catch(() => {});
+                w.pairsAtSync = await w.page.evaluate(({ t, k }) => { window._ewSpsaSetTheta(t, { k }); return (window._ewSpsaState() || {}).pairs || 0; }, { t: last.theta, k: runK });
+            } catch (e) { console.log(`[w${w.idx}] resume failed: ${e.message.split('\n')[0]}`); }
+        }
+        console.log(`[runner] resumed ${RESUME_DIR}: pair ${runK}, ${rs.length} syncs carried`);
+    }
     async function syncWorkers() {
         const sts = [];
         for (const w of workers) { try { const st = await w.page.evaluate(() => window._ewSpsaState()); if (st && st.theta) sts.push({ w, st }); } catch (e) {} }
@@ -364,6 +421,7 @@ function fmtMin(ms) { return (ms / 60000).toFixed(1) + 'm'; }
         const avgT = tailAverage();
         if (avgT) for (const k of Object.keys(base)) if (avgT[k] != null) merged[k] = Math.round(Math.max(base[k].min, Math.min(base[k].max, avgT[k])) * 10000) / 10000;
         if (global._syncTheta) fs.writeFileSync(path.join(OUT, 'raw-theta.json'), JSON.stringify(global._syncTheta, null, 1));
+        fs.writeFileSync(path.join(OUT, 'syncs.json'), JSON.stringify(syncs));   // what --resume reads
         if (checkpoints.length) {
             const best = checkpoints.slice().sort((a, b) => b.lo90 - a.lo90)[0];
             fs.writeFileSync(path.join(OUT, 'best-checkpoint.json'), JSON.stringify(best, null, 1));
