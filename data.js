@@ -111272,7 +111272,7 @@ const ZONE_FLAGS = {
         redacted:  { label: 'Area 51 (REDACTED Corp.)', art: 'redacted' },
         heaven:    { label: 'Heaven (the Pearly Gates)', art: 'heaven' },
         hell:      { label: 'Hell (horns over the flame)', img: 'world/flags/hell.jpg' },               // mondo 11-23, round 2: Hell A
-        antarctica:{ label: 'Antarctica (the flat earth in its Ice Wall)', img: 'world/flags/antarctica.jpg' }   // mondo 11-23, round 2: Antarctica A
+        antarctica:{ label: 'Antarctica (the flat earth in its Ice Wall)', img: 'world/flags/antarctica_flag.jpg' }   // mondo 11-23, round 2: Antarctica A
     },
     /* THE HANGING BANNERS (11-23, mondo: "camelot still has those red banners that dont match the flag"): a room's Meshy `banner` rows become
        `zone_banner` (the same rod, the zone's arms on a swallowtail cloth that sways). The castle's and the kingdom's drawn royal banners are

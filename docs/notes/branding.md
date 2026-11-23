@@ -150,7 +150,7 @@ just perfectly straight rectangles, i dont think we need full on cloth simulatio
 Zone Flags artifact (https://claude.ai/artifact/ASbdLqXahFRUu3vksdzuJQ; files /mnt/project-files/zone-flags/). HIS PICKS (17:09Z): motion D (a wave +
 the trees' gusts), North Pole B (the bow), Came A Lot A (sword + shield, a Meshy picture, R2 `Assets/world/flags/camelot_crest.jpg`), DOOR HQ (his
 Door mark on navy), Nowhere (the Western Town's hollow star), Area 51 (REDACTED black bars), Heaven (the Pearly Gates' gold gate). NO Beach Patrol
-flag ("the beach is in the city": it flies the city flag). Hell + Antarctica: round 2 on the same page, waiting his pick (Antarctica = a flat-earth map).
+flag ("the beach is in the city": it flies the city flag). Hell + Antarctica: round 2 on the same page; he picked A + A (round 3 below).
 - **How it is built:** data.js `ZONE_FLAGS` (`flags`: id -> `art` drawn in code (three-renderer.js `HQ_FLAG_ART`) or `img` on R2; `swap`: a room whose
   Meshy `flag_pole` rows fly a zone flag (that model's cloth is part of its mesh); `rows`: the poles it puts up, per room, in metres) + `zoneFlagsApply()`
   at the end of data.js. Catalogue `zone_flag` (8 m pole, 2.4 x 1.6 m cloth) and `zone_flag_hall` (3.4 m brass indoor stand, barely stirs).
@@ -160,6 +160,21 @@ flag ("the beach is in the city": it flies the city flag). Hell + Antarctica: ro
 - **Where:** DOOR HQ foyer (two hall stands by the double doors), Katana Island (the Landing Square x 2, the castle yard), the North Pole village square,
   Came A Lot (the town square by the lions x 2), Nowhere (by the well), Heaven (either side of the Pearly Gates), Area 51 (its two existing poles).
   A zone thread may move a row in `ZONE_FLAGS.rows` (its room's metres) like any prop.
+- **ROUND 3 (11-23, mondo: "Hell A and anarctica a. also the heaven flag poles are just floating on nothing, and camelot still has those red banners
+  that dont match the flag. make sure the beach doesnt have those yellow and blue flags either"):**
+  - Hell A (horns over a flame, red over black, R2 `Assets/world/flags/hell.jpg`): two poles at THE MOUTH (hell room squares 15,42 + 20,42).
+    Antarctica A (the flat-earth map in its Ice Wall, UN blue, R2 `Assets/world/flags/antarctica_flag.jpg`; `antarctica.jpg` = the first, too dark):
+    two poles either side of THE STATION's board in the Station Yard. The Flag Line's red route flags (S.js) are route markers and stay.
+  - Heaven: the poles stood at the cloud wall's line with a fixed y; they stand on the landing's marble now (squares 22,26 + 25,26, no y).
+  - Came A Lot: ONE banner design, the kingdom's arms. bake-camelot.js + bake-camelot-castle.js `royalBanner()` keep the rod and brackets; the cloth is
+    one box keyed `mark:banner:camelot` that the renderer hangs as a swaying swallowtail sheet (`_hqBannerCloth`, picture `_hqBannerPaint`: the crest's
+    middle band on its own blue, the gold border; id `banner:<flag>:<height/width in quarters>`). The kit's tower flags + the town wall's corner towers
+    are `mark:flag:camelot` boxes (waving crest flags). The palace's Meshy `banner` rows become catalogue `zone_banner` (the same rod, the crest cloth)
+    through `ZONE_FLAGS.banners` (room -> flag). Any zone can use the three: `mark:flag:<id>` / `mark:banner:<id>` on an architecture box,
+    `ZONE_FLAGS.banners` for its Meshy banners.
+  - The beach flies the city flag: districts/B.js the lifeguard towers (were aqua / pink / yellow / red), the lifeguard station and the harbour master's
+    pole, and the Shore's (beach S.js) lifeguard station + both swim flags (were red over yellow) are `mark:flag:dc` boxes (waving city flags).
+    Rebaked with bake-disaster-city.js (the three barrels the bake moves on a fresh main were put back by hand: that drift is not this change's).
 
 ## Still open with mondo
 - "Skinwalker Ranch" is a real place name: keep, or parody it (Shapeshifter Ranch)?
