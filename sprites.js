@@ -8632,6 +8632,16 @@ const TRAP_TILE_SPRITES = {
             '<circle cx="32" cy="32" r="2.5" fill="rgba(220,220,210,0.5)"/>'
         )
     ],
+    /* 🦋 THE MONARCH's Sleeper Cell (2026-11-23): a chrysalis hung on the tile, its gold dots and the butterfly to come */
+    chrysalis: [
+        _terrainSvg(
+            '<circle cx="32" cy="32" r="19" fill="none" stroke="rgba(255,170,70,0.4)" stroke-width="1.5" stroke-dasharray="4 4"/>' +
+            '<ellipse cx="32" cy="33" rx="8" ry="14" fill="rgba(120,170,90,0.5)" stroke="rgba(230,255,200,0.6)" stroke-width="1.4"/>' +
+            '<path d="M25 27 Q32 31 39 27 M24 34 Q32 38 40 34 M26 41 Q32 44 38 41" fill="none" stroke="rgba(230,255,200,0.45)" stroke-width="1"/>' +
+            '<circle cx="29" cy="24" r="1.4" fill="rgba(255,210,90,0.85)"/><circle cx="35" cy="24" r="1.4" fill="rgba(255,210,90,0.85)"/>' +
+            '<path d="M32 19 L32 14" stroke="rgba(230,255,200,0.6)" stroke-width="1.4"/>'
+        )
+    ],
     frost: [
         _terrainSvg(
             '<g stroke="rgba(160,220,255,0.55)" stroke-width="1.6" fill="none">' +

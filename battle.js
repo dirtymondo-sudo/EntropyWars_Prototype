@@ -13766,7 +13766,7 @@
            Holds are plain unit data (_stHold: { key: { r: round it ends in, by: applier id, af: landed after the target's
            turn } }), so state-sync carries them to the guest (RULE #2); only the host engine expires them. Buffs, terrain /
            weather / end-of-round statuses, Strike, Simul and the Mystery Dungeon clock keep the plain end-of-round count. */
-        const _STATUS_HOLD_SKIP = new Set(['stagger', 'possessed', 'infected', 'statUp', 'statDown', 'climbing', 'exited', 'captured', 'sealed', 'radioactive']);   // ☢ radioactive counts stacks, not rounds
+        const _STATUS_HOLD_SKIP = new Set(['stagger', 'possessed', 'infected', 'statUp', 'statDown', 'climbing', 'exited', 'captured', 'sealed', 'radioactive', 'programmed']);   // 🦋 programmed: its own hold (_monProgramHold)   // ☢ radioactive counts stacks, not rounds
         function _statusHoldsOn() {
             if (state.phase !== 'battle' || state._blitzActiveUnitId == null) return false;
             if (typeof window._isStrikeRT === 'function' && window._isStrikeRT()) return false;
@@ -13776,6 +13776,7 @@
         }
         function _setStatusHold(u, key, sourceUnit) {
             if (!u || u.dead || u._dying) return;
+            if (key === 'programmed') return;   // 🦋 THE MONARCH: the landing set its own hold (_monProgramHold)
             const left = getStatusValue(u, key);
             if (!(left > 0)) return;
             const meta = STATUS_DEFS[key];
@@ -13847,7 +13848,7 @@
                         const v = getStatusValue(u, key);
                         if (!h || !(v > 0)) { delete _hold[key]; continue; }
                         if (state.round >= h.r) { _endHeldStatus(u, key); continue; }
-                        u.status[key] = Math.max(1, v - 1);
+                        if (!(STATUS_DEFS[key] && STATUS_DEFS[key].ownTick)) u.status[key] = Math.max(1, v - 1);   // 🦋 stacks are not a countdown
                     }
                 }
                 // The decrement/expiry split is pure (calcStatusDurationTick,
@@ -14879,6 +14880,7 @@
         function _nrRoundEnd() {
             if (!Array.isArray(state.units)) return;
             _payloadSpread();   // 🦠 THE PAYLOAD (the Virus): every carrier copies it to the teammates next to it
+            _monStrayStacks();   // 🦋 THE MONARCH: a stack nobody holds comes off
             _bannerRoundEnd();   // 🏯 the Clan Banners that stood their rounds come down
             for (const u of state.units.slice()) {
                 if (!u || !u.race) continue;
@@ -15450,6 +15452,138 @@
                 _applyAoeDamage(unit, killSpell, [{ x: foe.x, y: foe.y }], (cfg.killDmg || 150) + sp, sp, { rngRange: 30, minDmg: 32 });
             }
             markDirty('board', 'hud', 'selectedUnit');
+        }
+        /* ═══ THE MONARCH (2026-11-23, mondo OK'd the kit) ═══ A sleeper agent of the D.U.M.B.: she programs enemies, keeps them
+           programmed, then says the word and they turn on their own side. Host-side like the rest of the new races: the stacks, the
+           holds, the hits and the statuses state-sync to the guest; every look rides _sigVfxGeom (fireGeometry is relayed).
+           Notes: docs/notes/champions-combat.md "THE MONARCH". */
+        /* 🦋 a Programmed landing (STATUS_DEFS.programmed.onApply): the stacks come off after the programmer's NEXT turn ends (and the
+           target's turn in that round) — THE FULL ROUND's hold, set here by hand so every landing starts the clock again and the
+           round countdown never takes a stack (ownTick). */
+        function _monProgramHold(t, src) {
+            if (!t || !src || t.dead) return;
+            if (!t._stHold || typeof t._stHold !== 'object') t._stHold = {};
+            t._stHold.programmed = { r: (state.round || 0) + 1, by: src.id, af: 1 };
+            if (!_skipVisuals()) _sigVfxGeom('monProgram', t.x, t.y, getStatusValue(t, 'programmed') || 1, { owner: src.player });
+        }
+        window._monProgramHold = _monProgramHold;
+        /* the enemies of `unit` that wear Programmed (seenOnly: the ones her team can see) */
+        function _monProgrammedFoes(unit, seenOnly) {
+            return getHostileUnits(unit.player, unit).filter(e => _nrAlive(e) && getStatusValue(e, 'programmed') > 0
+                && !unitHasStatus(e, 'exited') && !unitHasStatus(e, 'captured')
+                && (!seenOnly || !state.fogOfWar || isUnitSeenByTeam(e, unit.player)))
+                .sort((a, b) => String(a.id).localeCompare(String(b.id)));
+        }
+        window._monProgrammedFoes = _monProgrammedFoes;
+        /* every Programmed stack her enemies wear (Chaos Theory, state.js _detonateDelayedSpellNow) */
+        function _monStacksOnBoard(player) {
+            let n = 0;
+            for (const e of state.units || []) if (_nrAlive(e) && sidesHostile(player, e.player)) n += Math.max(0, Math.min(3, getStatusValue(e, 'programmed') | 0));
+            return n;
+        }
+        window._monStacksOnBoard = _monStacksOnBoard;
+        /* a sleeper goes off: its own basic attack (ATK × the basic coefficient, the hit pipeline takes the defence) on its nearest
+           ally in reach; with nobody in reach it hurts itself. A unit that cannot swing (stunned, frozen, asleep, climbing) only
+           gets the Discord. */
+        function _monSleeperStrike(e, mon, atMs) {
+            if (!_nrAlive(e)) return false;
+            if (unitHasStatus(e, 'stun') || unitHasStatus(e, 'frozen') || unitHasStatus(e, 'sleep') || e._climb) return false;
+            const mates = (state.units || []).filter(a => _nrAlive(a) && a.id !== e.id && sidesAllied(a.player, e.player)
+                && !a._isCube && !a._isBoss && !unitHasStatus(a, 'exited') && !unitHasStatus(a, 'captured') && !isUnitRealmShieldedFrom(a, e)
+                && _oppStrikeCanReach(e, a.x, a.y, a.z ?? 0))
+                .sort((a, b) => combatDist(e.x, e.y, e.z ?? 0, a.x, a.y, a.z ?? 0) - combatDist(e.x, e.y, e.z ?? 0, b.x, b.y, b.z ?? 0) || String(a.id).localeCompare(String(b.id)));
+            const victim = mates[0] || e;
+            const V = SPELL_DMG_VARIANCE || 0;
+            const raw = Math.max(BASIC_ATTACK_MIN_RAW, Math.floor(pwrAtk(e) * BASIC_ATTACK_COEF) + Math.floor(engineRng() * (2 * V + 1)) - V);
+            if (victim !== e) setUnitFacing(e, victim.x - e.x, victim.y - e.y);
+            const vx = victim.x, vy = victim.y, vid = victim.id;
+            addLog(victim === e
+                ? `🦋 ${_ctName(e)} has nobody in reach and turns its programming on itself!`
+                : `🦋 ${_ctName(e)} turns on ${_ctName(victim)}!`);
+            applyDamageToUnit(victim, raw, `🦋 ${unitDisplayName(e)} strikes ${victim === e ? 'itself' : unitDisplayName(victim)}: `, {
+                sourceUnit: victim === e ? mon : e, damageType: 'physical', noPress: true, basicAttack: victim !== e
+            });
+            if (mon && !mon.dead) mon._trackDmgDealt = (mon._trackDmgDealt || 0);
+            if (!_skipVisuals()) {
+                const beat = () => {
+                    if (!_nrAlive(e)) return;
+                    showFloatingTextForUnit(e, victim === e ? '🦋 SELF-DESTRUCT' : '🦋 TURNED!', 'counter', { durationMs: 1100 });
+                    if (victim !== e && !state.animationsDisabled) {
+                        if (basicAttackDelivery(e).mode === 'leap') _meleeStrikeAnim(e, vx, vy, { targetId: vid });
+                        else { triggerAttackAnim(e, vx, vy); playBasicAttackShot(e, victim, null, actionMs(200)); }
+                    }
+                    playSfx('basicAttack');
+                };
+                if (atMs > 0) window.setTimeout(beat, atMs); else beat();
+            }
+            return true;
+        }
+        /* 🦋 TRIGGER WORD (`triggerWord`): every programmed enemy she can see goes off at once, by its stacks, and the stacks clear.
+           After Metamorphosis (`_monHatched`) every stack counts one higher, once. */
+        function _monTriggerWord(unit, spell) {
+            const cfg = spell.triggerWord || {};
+            const bonus = unit._monHatched ? 1 : 0;
+            if (bonus) unit._monHatched = 0;
+            const foes = _monProgrammedFoes(unit, true);
+            addLog(`🦋 ${_ctName(unit)} says the word${bonus ? ' (the hatched wings make every stack count one higher)' : ''}: ${foes.length} sleeper${foes.length !== 1 ? 's' : ''} wake${foes.length === 1 ? 's' : ''} up.`, undefined, undefined, { actor: unit });
+            if (!_skipVisuals()) {
+                showFloatingTextForUnit(unit, '“NOW.”', 'streak', { durationMs: 1300 });
+                _sigVfxGeom('monTriggerWord:say', unit.x, unit.y, foes.length, { owner: unit.player });
+            }
+            const sleepers = [];   // 3 stacks: they fall asleep after EVERY strike has landed (a mate's strike would wake them at once)
+            foes.forEach((e, i) => {
+                const stacks = Math.max(1, Math.min(3, getStatusValue(e, 'programmed') | 0));
+                const n = Math.min(3, stacks + bonus);
+                if (e._stHold) delete e._stHold.programmed;
+                clearStatus(e, 'programmed');
+                const atMs = _skipVisuals() ? 0 : actionMs(260 + i * 240);
+                if (!_skipVisuals()) _sigVfxGeom('monTriggerWord:wake', e.x, e.y, n, { owner: unit.player, fromX: unit.x, fromY: unit.y, delay: 260 + i * 240 });
+                if (n <= 1) {
+                    applyStatusEffects(e, [{ id: 'discord', duration: cfg.discordRounds || 1 }], `${spell.name}: `, unit);
+                    return;
+                }
+                const struck = _monSleeperStrike(e, unit, atMs);
+                if (!struck) { applyStatusEffects(e, [{ id: 'discord', duration: cfg.discordRounds || 1 }], `${spell.name}: `, unit); return; }
+                if (n >= 3) sleepers.push(e);
+            });
+            for (const e of sleepers) if (_nrAlive(e)) applyStatusEffects(e, [{ id: 'sleep', duration: cfg.sleepRounds || 1 }], `${spell.name}: `, unit);
+            checkWin();
+            markDirty('board', 'hud', 'selectedUnit');
+        }
+        /* 🦋 METAMORPHOSIS: the chrysalis comes off (STATUS_DEFS.chrysalis.onRemove) and she hatches */
+        function _monHatch(u) {
+            if (!_nrAlive(u) || state.phase !== 'battle') return;
+            u._monHatched = 1;
+            applyStatusEffects(u, [{ id: 'levitating', duration: 2 }, { id: 'quickened', duration: 2 }], 'Metamorphosis: ', u);
+            addLog(`🦋 ${_ctName(u)} hatches with full wings: her next Trigger Word counts every stack one higher.`);
+            if (!_skipVisuals()) {
+                showFloatingTextForUnit(u, '🦋 HATCHED', 'buff', { durationMs: 1200 });
+                _sigVfxGeom('monMetamorphosis:hatch', u.x, u.y, 0, { owner: u.player });
+            }
+        }
+        window._monHatch = _monHatch;
+        /* 🔺 DELTA ALTER (passive deltaAlter): the first time each battle she drops under half HP (applyDamageToUnit) */
+        function _monDeltaCheck(u) {
+            if (!u || u.dead || u._dying || !(u.hp > 0) || !(u.maxHp > 0) || u.hp >= u.maxHp * 0.5) return;
+            if (typeof unitHasPassive !== 'function' || !unitHasPassive(u, 'deltaAlter')) return;
+            if (!state._monDeltaUsed || typeof state._monDeltaUsed !== 'object') state._monDeltaUsed = {};
+            if (state._monDeltaUsed[u.id]) return;
+            state._monDeltaUsed[u.id] = 1;
+            u._deltaCrit = true;
+            applyStatStageBoost(u, { atk: 2 }, 'Delta Alter: ', u, { rounds: 2 });
+            addLog(`🔺 ${_ctName(u)}'s killer programming switches on: +2 ATK, and her next basic attack is a sure critical hit.`);
+            if (!_skipVisuals()) {
+                showFloatingTextForUnit(u, '🔺 DELTA', 'streak', { durationMs: 1200 });
+                _sigVfxGeom('monDelta', u.x, u.y, 0, { owner: u.player });
+            }
+        }
+        /* a stack nobody holds any more (a hold lost to a respawn wipe or a snapshot) comes off at the round end */
+        function _monStrayStacks() {
+            for (const u of state.units || []) {
+                if (!u || u.dead || !(getStatusValue(u, 'programmed') > 0)) continue;
+                if (u._stHold && u._stHold.programmed) continue;
+                clearStatus(u, 'programmed');
+            }
         }
         /* 🐸 LEAPFROG (the Karate Frog, `leapOver`): after the hit he lands on the square straight behind the target, if free.
            THE KARATE FROG PASS (2026-11-17): the square comes from frogLeapLanding (the forecast shows the same landing), a
@@ -18583,6 +18717,7 @@
         }
 
         function rollCrit(unit) {
+            if (unit && unit._deltaCrit) { unit._deltaCrit = false; return true; }   // 🔺 THE MONARCH: Delta Alter's sure crit (basic attacks)
             return engineRng() < getCritChance(unit);
         }
 
@@ -43856,6 +43991,7 @@
                 if (sourceUnit && sourceUnit.race === 'wendigo' && sidesHostile(sourceUnit.player, target.player)) sourceUnit._fedRound = state.round || 0;   // 🦌 it fed
                 if (sourceUnit && sourceUnit.race === 'cameraman' && target.hp > 0) _camFilm(sourceUnit, target);   // 🎥 THE FOOTAGE
                 if (sourceUnit && (sourceUnit.race === 'gladiator' || sourceUnit.race === 'jellyfish ufo')) _crOnHit(sourceUnit, target, opts);   // 🛡⚡ THE COMING RACES: Favor, claw Charge
+                if (target.race === 'monarch') _monDeltaCheck(target);   // 🔺 THE MONARCH: Delta Alter
 
                 /* ONE CAST, ONE LINE (playtest 2, mondo 2026-10-22: "ninefold scratch just needs one line"): a
                    multi-hit cast passes opts.logSink and its hits roll into one line with the total, written on
@@ -75161,6 +75297,13 @@
                     applyStatusEffects(victim, [{ id: 'root', duration: 2 }], `${trap.spellName || 'Snare Trap'}: `, owner);
                     showFloatingTextForUnit(victim, '🕸 ROOTED!', 'debuff', { durationMs: 1100 });
                 }
+            } else if (trap.trapType === 'chrysalis') {
+                /* 🦋 THE MONARCH's Sleeper Cell: no hit; the chrysalis cracks round the victim — the row's statuses (Root + 2 Programmed) */
+                if (!_skipVisuals()) _look(() => _sigVfxGeom('monSleeperCell:spring', trap.x, trap.y, 0, { owner: trap.owner }));
+                if (!victim.dead) {
+                    applyStatusEffects(victim, (Array.isArray(trap.statusEffects) && trap.statusEffects.length) ? trap.statusEffects : [{ id: 'root', duration: 1 }], `${trap.spellName || 'Sleeper Cell'}: `, owner);
+                    showFloatingTextForUnit(victim, '🦋 PROGRAMMED', 'debuff', { durationMs: 1100 });
+                }
             } else if (trap.trapType === 'frost') {
                 applyDamageToUnit(victim, dmg, `${trap.spellName || 'Frost Mine'}: `, {
                     sourceUnit: owner, damageType: 'magic', noRangeMult: true, spellType: trap.spellType || null
@@ -85376,6 +85519,11 @@
                         return 0;
                     }
                 }
+                /* 🦋 Trigger Word with no programmed enemy in sight is refused before anything is spent */
+                if (spell.triggerWord && !_monProgrammedFoes(unit, true).length) {
+                    if (!_silentReject) { addLog(`${_ctSp(spell.name)}: no Programmed enemy in sight.`, _clickSeat()); playErrorSfx(); }
+                    return 0;
+                }
                 if (spell.massRescue && !_lifeguardRescueList(unit, spell).length) {
                     if (!_silentReject) {
                         addLog(`${_ctSp(spell.name)}: no ally within ${spell.massRescue.radius || 4} is under ${Math.round((spell.massRescue.hpPct || 0.5) * 100)}% HP.`, _clickSeat());
@@ -85504,6 +85652,8 @@
                     if (spell.timedStatBonus) _applyTimedStatBonus(_bt, spell.timedStatBonus, `${spell.name}: `, unit);   // Batch D: Updraft (the Quickened status)
                     if (spell.massRescue && !unit.dead) _lifeguardMassRescue(unit, spell);   // 🛟 Three Whistles
                     if (spell.pullString && !unit.dead) _dollPullString(unit, spell);   // 🪆 Pull My String
+                    if (spell.triggerWord && !unit.dead) _monTriggerWord(unit, spell);   // 🦋 Trigger Word
+                    if (!_bt.dead && (spell.statusEffects || []).some(e => e && e.id === 'chrysalis') && unitHasStatus(_bt, 'chrysalis') && !_skipVisuals()) _sigVfxGeom('monMetamorphosis:wrap', _bt.x, _bt.y, 0, { owner: unit.player });   // 🦋 Metamorphosis
                     if (spell.rideAlong && !unit.dead) _deliveryLoadUp(unit, spell);   // 🛵 Thirty Minutes or Less
                     if (spell.mopUp && !unit.dead) _janitorMopUp(unit, spell);   // 🧹 Mop Up
                     if (spell.unload && !unit.dead) _truckerUnload(unit, spell);   // 🚚 Unload
@@ -88280,6 +88430,7 @@
                     roundsLeft: delay,
                     statusEffects: spell.statusEffects || [],
                     friendlyFire: !!spell.friendlyFire,
+                    perProgrammedStack: spell.perProgrammedStack || 0,   // 🦋 Chaos Theory: +N a Programmed stack at the blast
                     leaveTerrain: spell.leaveTerrain || null,
                     terrainDeform: spell.terrainDeform || null,
                     demolishesBuildings: !!spell.demolishesBuildings

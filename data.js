@@ -403,6 +403,7 @@ const FINISHERS = {
     'pharaoh':        { id: 'fin_pharaoh', name: 'By Decree of Pharaoh', glyph: '𓂀', type: 'divine', sig: 'byOrderOf', built: true, tagline: 'SO IT IS WRITTEN', desc: 'The scribes read the decree, the sun agrees with it, and the victim is written out of history.' },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) (borrows the byOrderOf staging)
     'deep sea diver': { id: 'fin_deep_sea_diver', name: 'Crush Depth', glyph: '🤿', type: 'human', sig: 'poseidonsWrath', built: true, tagline: 'TOO DEEP, TOO FAST', desc: 'The board floods, the pressure comes down all at once, and the victim finds out what the helmet was for.' },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) (borrows the poseidonsWrath staging)
     'gladiator':      { id: 'fin_gladiator', name: 'Pollice Verso', glyph: '🛡', type: 'human', sig: 'thousandCuts', built: true, tagline: 'THE CROWD HAS SPOKEN', desc: 'The sand goes quiet, every face in the stands turns to the box, and the thumb goes down.' },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) (borrows the thousandCuts staging)
+    'monarch':        { id: 'fin_monarch', name: 'Sweet Dreams', glyph: '🦋', type: 'anomaly', sig: 'lullaby', built: true, tagline: 'SLEEP NOW, AGENT', desc: 'The wings close round the victim like a chrysalis, the spiral turns on its shell, and when it cracks open only monarch butterflies come out.' },   // 2026-11-23 THE MONARCH (mondo OK'd the kit) (borrows the lullaby staging)
     'farmer':         { id: 'fin_farmer', name: 'Reap What You Sow', glyph: '🌾', type: 'human', sig: 'gardenVariety', built: true, tagline: 'HARVEST TIME', desc: 'The field comes up all at once round the victim, and the pitchfork comes down with the season.' },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) (borrows the gardenVariety staging)
     'jellyfish ufo':  { id: 'fin_jellyfish_ufo', name: 'Abyssal Glow', glyph: '🪼', type: 'anomaly', sig: 'theBloom', built: true, tagline: 'LIGHTS IN THE DEEP', desc: 'The bell lights the victim from the inside like the things that live in the dark, brighter and brighter, then everything goes dark.' },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) (borrows the theBloom staging)
     'lifeguard':      { id: 'fin_lifeguard', name: 'Red Flag', glyph: '🛟', type: 'human', sig: 'theWave', built: true, tagline: 'EVERYBODY OUT OF THE WATER', desc: 'The whistle blows three times, the red flag goes up, and a wave the size of the boardwalk takes the one swimmer who did not listen.' },   // 2026-11-16 THE NEW RACES — borrows the wave staging
@@ -660,6 +661,7 @@ const RACE_ELEMENT_AFFINITY = {
     'pharaoh': { fire: 'resist', water: 'weak' },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round): the son of the sun; the desert king hates the flood
     'deep sea diver': { water: 'resist', lightning: 'weak' },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round): the suit is made for the sea; the metal tanks carry a shock
     'gladiator': { earth: 'resist', lightning: 'weak' },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): bronze plates on sand; lightning finds the bronze
+    'monarch': { psychic: 'resist', fire: 'weak' },   // 2026-11-23 THE MONARCH (mondo OK'd the kit): a programmed mind keeps out other voices; the paper-thin wings burn
     'farmer': { nature: 'resist', fire: 'weak' },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): a life in the fields; dry hay goes up
     'jellyfish ufo': { psychic: 'immune', lightning: 'resist', water: 'resist', earth: 'weak' },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): a jellyfish mind, a lightning bell, a sea creature on dry ground
     'lifeguard': { water: 'resist', lightning: 'weak' },   // 2026-11-16
@@ -3092,7 +3094,7 @@ const RACE_PROFILES = {
     },
     'monarch': {   // 2026-11-23 THE COMING RACES 2 — the MK-Ultra sleeper agent of the D.U.M.B.
         label: 'Monarch',
-        types: ['human']   // a first guess; the unit's spell thread settles it
+        types: ['human', 'anomaly']   // 2026-11-23 THE MONARCH (mondo OK'd the kit): a woman the D.U.M.B. reprogrammed
     },
     'butterfly girl': {   // 2026-11-23 THE COMING RACES 2
         label: 'Butterfly Girl',
@@ -3831,6 +3833,10 @@ const PASSIVE_DEFS = {
         basicAttackMagic: true,
         desc: 'Her basic attack is a pixel heart bolt: it uses M.ATK against M.DEF. Like her spells, it can fly from one of her Holo Projectors.',
     },
+    deltaAlter: {   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
+        id: 'deltaAlter', icon: '🔺', name: 'Delta Alter',
+        desc: 'Her killer programming, buried deep. The first time each battle she drops under half HP it switches on: +2 ATK stages for 2 rounds, and her next basic attack is a sure critical hit.',
+    },
     rayGun: {
         id: 'rayGun', icon: '🔫', name: 'Ray Gun',
         basicAttackMagic: true, basicAttackRangeBonus: 1,
@@ -3920,6 +3926,7 @@ const RACE_PASSIVES = {
     'fairy':         ['fairyDustTrail'],      // fairy also flies → slots full
     'cowboy':        ['quickdraw'],
     'vtuber':        ['heartBolt'],   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
+    'monarch':       ['deltaAlter'],   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
 };
 
 /* 💔 Broken (STATUS_DEFS.broken, 2026-10-09): while it lasts the unit has no passives at all. Raw status read — this is a
@@ -3996,13 +4003,13 @@ const RACE_MERGED = { 'nun': { race: 'priest', gender: 'female' } };
 /* 👁🌑 THE REALM WINDOW: races that SEE a Shadow Realm pair on their own turns (they cannot touch it). A projecting
    spirit both sees and touches (battle.js unitSeesRealm / unitCrossesRealm). */
 const REALM_SIGHT_RACES = ['ghost', 'shadow entity'];
-const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber', 'pharaoh', 'deep sea diver', 'gambler', 'hacker', 'monk', 'shogun', 'cameraman', 'mechanic', 'janitor', 'trucker', 'gladiator', 'farmer', 'jellyfish ufo'];
+const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber', 'pharaoh', 'deep sea diver', 'gambler', 'hacker', 'monk', 'shogun', 'cameraman', 'mechanic', 'janitor', 'trucker', 'gladiator', 'farmer', 'jellyfish ufo', 'monarch'];
 /* THE COMING RACES (2026-11-19, mondo: "wire them in the game at least in the relation web, give them sprite ai portraits ... my associate
    [does] their spell and combat plan on another account"): races whose model, sprite and name are in (sprites.js RACE_MODELS_3D,
    RACE_PROFILES) but whose kit is not. They are NOT playable: the Relationship Web lists them (docs/plans/story-web/build/fresh.js).
    To unlock one: give it its kit (RACE_ABILITIES, RACE_TREE, RACE_FAMILIES, stats, physique, prices, ...), MOVE it from here into
    AVAILABLE_RACES and server.js AVAILABLE_RACES. Notes: docs/notes/champions-combat.md "THE COMING RACES". */
-const EW_COMING_RACES = ['bear', 'rat', 'monarch', 'butterfly girl', 'plastic surgeon'];   // 2026-11-23 THE COMING RACES 2 (the Mannequin was cut 11-23, mondo) (models in, kits not yet; one spell thread a unit). 2026-11-19: the gladiator, the farmer and the jellyfish UFO got their kits and moved to AVAILABLE_RACES
+const EW_COMING_RACES = ['bear', 'rat', 'butterfly girl', 'plastic surgeon'];   // 2026-11-23 THE COMING RACES 2 (the Mannequin was cut 11-23, mondo; the Monarch got her kit 11-23) (models in, kits not yet; one spell thread a unit). 2026-11-19: the gladiator, the farmer and the jellyfish UFO got their kits and moved to AVAILABLE_RACES
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
    default job's kit (JOB_KITS) gave it, so ranged races stay ranged: the old Sniper races reach 4 (kit 3 + the Sniper's
@@ -4176,6 +4183,7 @@ const RACE_CLASS = {
     'pharaoh': 'caster',   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
     'deep sea diver': 'specialist',   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round): the controller who makes moving hurt
     'gladiator': 'bruiser',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
+    'monarch': 'specialist',   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
     'farmer': 'support',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): the field heals the team
     'lifeguard': 'support',   // 2026-11-16
     'politician': 'support',
@@ -4249,6 +4257,7 @@ const RACE_TERRAIN_PREFERENCE = {
     'pharaoh': 'desert',   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
     'deep sea diver': 'deep_water',   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round): the sealed helmet: never drowns (map.js unitIsDeepWaterAdapted)
     'gladiator': 'desert',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): the arena's sand
+    'monarch': 'urban',   // 2026-11-23 THE MONARCH (mondo OK'd the kit): the D.U.M.B.'s halls
     'farmer': 'grass',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): the fields
     'jellyfish ufo': 'deep_water',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): a sea creature: never drowns (map.js unitIsDeepWaterAdapted)
     'lifeguard': 'water',   // 2026-11-16 THE NEW RACES — at home in the surf
@@ -4659,6 +4668,7 @@ const RACE_BASE_STATS = {
     'pharaoh':            { hp: 1050, mp: 220, atk:  40, def:  95, mdef: 150, int: 180, vision: 3, crt: 20, spd:  80 },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) — first pass on the caster median (Librarian / Televangelist)
     'deep sea diver':     { hp: 1020, mp: 180, atk: 110, def: 110, mdef: 100, int: 100, vision: 3, crt: 18, spd:  95 },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) — first pass: a sturdy controller, the harpoon on ATK, the water on INT; LAB LOOP 11-22 PASS 1: HP 1100→1060, ATK 120→115, M.ATK 130→115 (64.4% over 49 games); LAB LOOP 11-22 PASS 4: HP 1060→1020, ATK 115→110, M.ATK 115→100 (56.4% over 191 games)
     'gladiator':          { hp: 1180, mp: 120, atk: 104, def: 120, mdef:  85, int:  60, vision: 3, crt: 20, spd: 115 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — first pass on the bruiser median; LAB LOOP 11-22 PASS 2: HP 1250→1180, ATK 135→104 (64.9% over 113 games)
+    'monarch':            { hp: 1000, mp: 210, atk:  95, def:  85, mdef: 140, int: 165, vision: 4, crt: 24, spd: 120 },   // 2026-11-23 THE MONARCH (mondo OK'd the kit) — first pass on the specialist median
     'farmer':             { hp: 1100, mp: 170, atk: 110, def: 105, mdef: 100, int: 115, vision: 3, crt: 15, spd: 100 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — first pass on the support median
     'jellyfish ufo':      { hp: 1030, mp: 150, atk: 105, def: 120, mdef: 130, int: 62, vision: 3, crt: 18, spd: 105 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — first pass: a bruiser with claws on ATK and the bell on M.ATK; LAB LOOP 11-22 PASS 1: HP 1200→1150, ATK 125→119, M.ATK 125→106 (68.6% over 49 games); LAB LOOP 11-22 PASS 2: HP 1150→1080, ATK 119→111, M.ATK 106→82 (70.1% over 62 games); LAB LOOP 11-22 PASS 4: HP 1080→1030, ATK 111→105, M.ATK 82→62 (60.3% over 131 games)
     'lifeguard':          { hp: 1250, mp: 190, atk:  60, def: 100, mdef: 115, int: 150, vision: 4, crt: 15, spd: 120 },   // 2026-11-16 THE NEW RACES — first pass on the support median (vision 4: she is on watch)
@@ -4845,6 +4855,7 @@ const RACE_PHYSIQUE = {
     'pharaoh':             { h: 1.85, w: 82 },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
     'deep sea diver':      { h: 1.72, w: 62 },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
     'gladiator':           { h: 1.82, w: 88 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
+    'monarch':             { h: 1.72, w: 58 },   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
     'farmer':              { h: 1.78, w: 85 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
     'jellyfish ufo':       { h: 1.90, w: 60 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — a bell over a metal body; floats
     'lifeguard':           { h: 1.72, w: 60 },   // 2026-11-16
@@ -11299,6 +11310,41 @@ const RACE_ABILITIES = {
           element: 'metal', type: 'damage', kind: 'aoe', damageType: 'physical', dmg: 150, range: 0, aoeRadius: 1, aoeOriginSelf: true, favorSpend: 50,
           desc: 'For the crowd. Deals HEAVY physical damage to every enemy next to him and spends all his Favor: +50 damage for each. Cooldown: 4 rounds.' },
     ],
+    'monarch': [
+        /* 🦋 THE PROGRAMMING (2026-11-23 THE MONARCH (mondo OK'd the kit)): every spell of hers puts Programmed stacks on enemies (STATUS_DEFS programmed, up
+           to 3). A stack lasts until her next turn ends (mondo's status rule), and every new stack starts that clock again, so she
+           has to keep feeding it. Trigger Word is the payoff: every programmed enemy she can see goes off at once, by its stacks
+           (1 = Discord, 2 = it hits its nearest ally with its own basic attack, 3 = the same and then it falls Asleep). Rules:
+           battle.js "THE MONARCH". Notes: docs/notes/champions-combat.md "THE MONARCH". */
+        { id: 'monButterflyKiss', name: 'Butterfly Kiss', tier: 1, families: ['monarchprogramming'], cost: 25, apCost: 1, spellType: 'anomaly',
+          element: 'psychic', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 85, range: 2,
+          statusEffects: [{ id: 'programmed', duration: 1 }],
+          desc: 'She blows a kiss and a butterfly carries it. Deals WEAK magic damage to a Single Enemy within 2 and Programs it (+1 stack).' },
+        { id: 'monPendulum', name: 'Pendulum', tier: 2, families: ['monarchprogramming'], cost: 45, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+          element: 'psychic', type: 'debuff', kind: 'aoe', noDamage: true, aoeRadius: 1, range: 3,
+          statusEffects: [{ id: 'programmed', duration: 1 }, { id: 'slow', duration: 1 }],
+          desc: 'The spiral on her choker swings. Every enemy in a 3×3 within 3 is Programmed (+1 stack) and Slowed for 1 round. Cooldown: 2 rounds.' },
+        { id: 'monKaleidoscopeWings', name: 'Kaleidoscope Wings', tier: 2, families: ['monarchprogramming'], cost: 50, apCost: 1, cooldownRounds: 3, spellType: 'anomaly',
+          element: 'psychic', type: 'debuff', kind: 'aoe', noDamage: true, aoeRadius: 1, range: 0, aoeOriginSelf: true,
+          statusEffects: [{ id: 'charm', duration: 1 }, { id: 'programmed', duration: 1 }],
+          selfStatusAfter: [{ id: 'levitating', duration: 1 }],
+          desc: 'She opens the stained-glass wings. Every enemy next to her is Charmed for 1 round and Programmed (+1 stack), and she glides on them (Levitating) for 1 round. Cooldown: 3 rounds.' },
+        { id: 'monTriggerWord', name: 'Trigger Word', tier: 3, families: ['monarchprogramming'], cost: 60, apCost: 1, cooldownRounds: 3, spellType: 'anomaly',
+          element: 'psychic', type: 'buff', kind: 'buff', range: 0, triggerWord: { discordRounds: 1, sleepRounds: 1 },
+          desc: 'She says the word. Every Programmed enemy she can see goes off at once and its stacks clear. 1 stack: Discorded for 1 round. 2 stacks: it hits its nearest ally with its own basic attack (itself, with nobody in reach). 3 stacks: the same, then it falls Asleep for 1 round. Cooldown: 3 rounds.' },
+        { id: 'monSleeperCell', name: 'Sleeper Cell', tier: 3, families: ['monarchprogramming'], cost: 50, apCost: 1, spellType: 'anomaly',
+          element: 'psychic', type: 'utility', kind: 'placeTrap', range: 3, dmg: 0, damageType: 'magic',
+          trapType: 'chrysalis', trapSize: 1, maxActivePerCaster: 1,
+          statusEffects: [{ id: 'root', duration: 1 }, { id: 'programmed', duration: 2 }],
+          desc: 'Hides a chrysalis on a tile within 3; the enemy cannot see it. The first enemy to step on it is Rooted for 1 round and Programmed (+2 stacks). One at a time.' },
+        { id: 'monMetamorphosis', name: 'Metamorphosis', tier: 4, families: ['monarchprogramming'], cost: 80, apCost: 1, cooldownRounds: 5, spellType: 'anomaly',
+          element: 'psychic', type: 'buff', kind: 'buff', range: 0, statusEffects: [{ id: 'chrysalis', duration: 1 }],
+          desc: 'She wraps herself in a chrysalis. Next round she cannot move or act and takes half damage. Then she hatches with full wings: Levitating and Quickened (+1 move) for 2 rounds, and her next Trigger Word counts every stack one higher. Cooldown: 5 rounds.' },
+        { id: 'monChaosTheory', name: 'Chaos Theory', tier: 4, families: ['monarchprogramming'], cost: 90, apCost: 1, cooldownRounds: 4, spellType: 'anomaly',
+          element: 'psychic', type: 'damage', kind: 'delayed', damageType: 'magic', dmg: 110, range: 5, aoeRadius: 2, delayTurns: 1,
+          perProgrammedStack: 30,
+          desc: 'One butterfly flutters to a tile within 5. At the end of the round the air there tears open: MEDIUM magic damage to every enemy in the 5×5, +30 for every Programmed stack on her enemies when it goes off. Cooldown: 4 rounds.' },
+    ],
     'farmer': [
         /* THE HARVEST (2026-11-19 THE COMING RACES, mondo OK'd the kit): every seed he plants grows a round sooner (a seed that
            finds water at a round end grows at once), he can keep 4 plants of a kind (the cap is 2), and at every round end a grown
@@ -13914,6 +13960,42 @@ const STATUS_DEFS = {
                 if (typeof addLog === 'function') addLog(`☢️ ${unitDisplayName(unit)} is no longer Radioactive.`);
             }
         }
+    },
+    /* 🦋 PROGRAMMED (2026-11-23 THE MONARCH (mondo OK'd the kit), the Monarch): the value is STACKS (up to 3), not a countdown. Every landing adds its own
+       (applyStatusPayload `stack: 'add'`), and its onApply hands the battle a hold (battle.js _monProgramHold): it comes off after
+       the programmer's NEXT turn ends (and the target's turn in that round), so a stack she does not feed goes away (mondo's status
+       rule). Trigger Word spends the stacks. ownTick: the round countdown never takes a stack. */
+    programmed: {
+        icon: '🦋',
+        glyph: '🦋',
+        short: 'PRG',
+        label: 'Programmed',
+        colorText: 'programmed',
+        kind: 'debuff',
+        category: 'status',
+        stack: 'add',
+        maxStacks: 3,
+        ownTick: true,
+        iconSrc: createStatusIconDataUri('🦋', '#2a1606', '#fff0dc', '#ff9a2a'),
+        onApply(unit, src) { if (typeof window !== 'undefined' && typeof window._monProgramHold === 'function') window._monProgramHold(unit, src); }
+    },
+    /* 🦋 CHRYSALIS (2026-11-23 THE MONARCH (mondo OK'd the kit), Metamorphosis): wrapped up for a round — no move, no action (the whole activation skips), half
+       damage taken. When it comes off she hatches (onRemove → battle.js _monHatch: Levitating + Quickened 2 rounds, the next
+       Trigger Word counts every stack one higher). */
+    chrysalis: {
+        icon: '🐛',
+        glyph: '🐛',
+        short: 'CHR',
+        label: 'Chrysalis',
+        colorText: 'wrapped in a chrysalis',
+        kind: 'buff',
+        category: 'buff',
+        stack: 'max',
+        blockMove: true,
+        blockAction: true,
+        damageTakenMult: 0.5,
+        iconSrc: createStatusIconDataUri('🐛', '#1a2410', '#f0ffd8', '#a0d060'),
+        onRemove(unit) { if (typeof window !== 'undefined' && typeof window._monHatch === 'function') window._monHatch(unit); }
     },
     /* 🩹 Grievous Wound: healing received halved, 2 rounds — the requested
        "reduces healing received" (Ghoul Frenzy, Gangster Stomp Out). */
@@ -21496,6 +21578,7 @@ const EW_RACE_BIOMES = {
     'pharaoh': ['desert', 'ancient'],   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) — The Desert, Giza
     'deep sea diver': ['deep_sea', 'tropical'],   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) — The Deep, Atlantis, The Beach
     'gladiator': ['ancient', 'stadium'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — the Colosseum
+    'monarch': ['underground_base', 'clandestine'],   // 2026-11-23 THE MONARCH (mondo OK'd the kit) — the D.U.M.B.
     'farmer': ['ranch', 'forest'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — the Estate's Corn Fields + Ranch
     'jellyfish ufo': ['deep_sea', 'tropical'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — The Deep (the Trench)
     'lifeguard': ['tropical', 'urban'],   // 2026-11-16 — The Beach, Bayside
@@ -22170,6 +22253,7 @@ const RACE_TREE = {
     'pharaoh':       ['nrAspsKiss', 'nrPrepareTomb', 'nrEyeOfRa', 'sharedSummonSandstorm'],   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) (the fourth rung borrowed from the desert)
     'deep sea diver': ['nrHarpoonGun', 'nrDepthCharge', 'nrPressureWave', 'sharedTidalSurge'],   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) (the fourth rung borrowed from water)
     'gladiator':     ['nrNetToss', ['nrSwordLunge', 'nrShieldBash'], 'nrComeAtMe', 'nrCrowdPleaser'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
+    'monarch':       ['monButterflyKiss', ['monPendulum', 'monKaleidoscopeWings'], ['monTriggerWord', 'monSleeperCell'], ['monMetamorphosis', 'monChaosTheory']],   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
     'farmer':        ['nrPitchforkJab', ['nrSowField', 'nrHayBale'], 'nrGetOffMyLand', 'nrHarvestMoon'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
     'jellyfish ufo': ['nrPincerClaw', ['nrBioLash', 'nrJetPulse'], 'nrVenomInjector', 'nrAbyssalOverload'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
     'lifeguard':     ['nrRescueTube', 'nrOnDuty', 'nrCPR', 'nrThreeWhistles'],   // 2026-11-16 THE LIFEGUARD POLISH: her own four rungs (the old row's Underdog Spirit was outside her families, and the default kit carried no On Duty / CPR)
@@ -24372,6 +24456,16 @@ const SPELL_FAMILIES = {
         desc: 'Fight for the crowd: a net, a sword, a shield and a challenge, and the louder they cheer the harder he hits.',
         unique: 'gladiator',
         identity: { who: ['Gladiator', 'Champion of the Arena', 'Murmillo'], adj: ['Bronzed', 'Cheered', 'Fearless'], look: ['a crested bronze helmet', 'a blue cape', 'greaves and a leather belt'], vibe: ['fights for the crowd', 'the louder they cheer, the harder he hits'] }
+    },
+    monarchprogramming: {   // 2026-11-23 THE MONARCH (mondo OK'd the kit) — the Monarch's own
+        id: 'monarchprogramming',
+        name: 'Monarch Programming',
+        glyph: '🦋',
+        color: '#e8862a',
+        kind: 'signature',
+        desc: 'Program them, keep them programmed, then say the word: every programmed enemy turns on its own side at once.',
+        unique: 'monarch',
+        identity: { who: ['Monarch', 'Sleeper Agent', 'Programmed Asset'], adj: ['Programmed', 'Hypnotic', 'Dormant'], look: ['a butterfly mask', 'stained-glass monarch wings', 'a spiral pendant on a choker'], vibe: ['waits for the word', 'turns your own side against you'] }
     },
     farming: {   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — the Farmer's own
         id: 'farming',
@@ -26681,6 +26775,7 @@ const RACE_FAMILIES = {
     'pharaoh': ['pharaoh', 'royalty', 'ancientknowledge', 'desertacclimation'],   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
     'deep sea diver': ['deepdive', 'water', 'deepsea', 'engineering'],   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
     'gladiator': ['gladiatorial', 'swordsmanship', 'weaponstraining', 'humangrit'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
+    'monarch': ['monarchprogramming', 'seduction', 'spygear', 'deepstate'],   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
     'farmer': ['farming', 'agriculture', 'humangrit', 'teamwork'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
     'jellyfish ufo': ['bioelectric', 'jellyfish', 'lightning', 'deepsea'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
     'lifeguard': ['lifesaving', 'water', 'athleticism', 'teamwork'],   // 2026-11-16
@@ -27325,6 +27420,7 @@ const CAMPAIGN_RACE_PRICES = {
   'pharaoh': 500,   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
   'deep sea diver': 400,   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
   'gladiator': 400,   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
+  'monarch': 450,   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
   'farmer': 350,   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
   'jellyfish ufo': 400,   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
   'lifeguard': 500,   // 2026-11-16
@@ -29315,6 +29411,7 @@ const DOOR_TEXT = {
         'ninja': 'Downtown', 'delivery boy': 'Downtown', 'librarian': 'Downtown', 'televangelist': 'Vatican City', 'influencer': 'Downtown', 'referee': 'Football Stadium', 'florida man': 'Downtown', 'boltzmann brain': 'The Singularity', 'wendigo': 'Mount Shasta', 'karate frog': 'The Sewers', 'samurai slug': 'The Sewers', 'cicada brood': 'Göbekli Tepe', 'haunted doll': 'The Haunted House', 'cursed tv': 'The Haunted House', 'virus': 'The Internet', 'streamer': 'The Internet', 'vtuber': 'The Internet',   // 2026-11-17 THE NEW RACES 2
         'pharaoh': 'Pyramids of Giza', 'deep sea diver': 'Atlantis',   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
         'gladiator': 'Vatican City', 'farmer': 'Skinwalker Ranch', 'jellyfish ufo': 'Atlantis',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) (the Colosseum on the Vatican's plots; the Estate's fields; the Trench of The Deep)
+        'monarch': 'D.U.M.B.',   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
         'gambler': 'The Strip', 'hacker': 'Downtown', 'monk': 'The Bermuda Triangle', 'shogun': 'The Bermuda Triangle',   // 2026-11-19 THE NEW RACES 4 (the gambler lives in the Western Town too: HQ_AREA_ENCOUNTERS; the monk + the shogun on the Volcano Island)
         'cameraman': 'Downtown', 'mechanic': 'Downtown', 'janitor': 'Downtown', 'trucker': 'Downtown',   // 2026-11-19 THE NEW RACES 3
        
@@ -97876,6 +97973,7 @@ const HQ_NPC_TEMPERS = {
         'gangster': 'opportunist', 'goblin': 'opportunist', 'politician': 'opportunist', 'televangelist': 'opportunist', 'tech ceo': 'opportunist',
         'gambler': 'opportunist', 'hacker': 'opportunist', 'monk': 'protector', 'shogun': 'territorial',   // 2026-11-19 THE NEW RACES 4
         'gladiator': 'territorial', 'farmer': 'guard', 'jellyfish ufo': 'territorial',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
+        'monarch': 'guard',   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
         'zombie': 'brute', 'shadow entity': 'brute', 'werewolf': 'brute', 'wendigo': 'brute', 'ghoul': 'brute', 'flesheater': 'brute',
     },
     /* THE GROUPS: races who stand up for each other (no factions). Units of ONE race are a group by themselves (`sameRace`). A unit is in one

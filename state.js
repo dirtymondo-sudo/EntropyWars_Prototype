@@ -1029,7 +1029,7 @@
                     && _spellIdForVfx && typeof window !== 'undefined' && window.ThreeVFXEffects
                     && typeof window.ThreeVFXEffects.fireGeometry === 'function') {
                     try {
-                        _hasArmingVfx = window.ThreeVFXEffects.fireGeometry(_spellIdForVfx, ds.x, ds.y, ds.aoeRadius || 1);
+                        _hasArmingVfx = window.ThreeVFXEffects.fireGeometry(_spellIdForVfx, ds.x, ds.y, ds.aoeRadius || 1, ds.sourcePlayer != null ? { owner: ds.sourcePlayer } : undefined);
                     } catch (e) {  }
                 }
 
@@ -1249,6 +1249,14 @@
                 : getSquareArea(ds.x, ds.y, ds.aoeRadius || 1);
             /* timing/counters playtest 2026-11-07 (F1): the blast's own line leads, then each unit it hit (it used to print after them) */
             addLog(`💥 ${ds.spellName} detonates at ${coordLabel(ds.x, ds.y)}!`);
+            /* 🦋 THE MONARCH's Chaos Theory: +N for every Programmed stack on the caster's enemies when it goes off */
+            if (ds.perProgrammedStack > 0 && typeof window !== 'undefined' && typeof window._monStacksOnBoard === 'function') {
+                const _ctStacks = window._monStacksOnBoard(ds.sourcePlayer);
+                if (_ctStacks > 0) {
+                    ds = Object.assign({}, ds, { dmg: (ds.dmg || 0) + ds.perProgrammedStack * _ctStacks });
+                    addLog(`🦋 ${_ctStacks} Programmed stack${_ctStacks !== 1 ? 's' : ''} on the board feed the storm: +${ds.perProgrammedStack * _ctStacks} damage.`);
+                }
+            }
             const allUnits = state.units.filter(u => !u.dead);
             for (const tile of area) {
                 const hit = allUnits.find(u => u.x === tile.x && u.y === tile.y && (ds.friendlyFire || sidesHostile(u.player, ds.sourcePlayer)));
