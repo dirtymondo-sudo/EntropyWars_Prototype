@@ -24350,7 +24350,7 @@ function faceLabel(key) {
   try { if (typeof getRaceLabel === 'function') l = getRaceLabel(race, gender) || race; } catch (e) {}
   let two = false;
   try { two = typeof getAvailableGendersForRace === 'function' && getAvailableGendersForRace(race).length > 1; } catch (e) {}
-  return String(l).replace(/\b\w/g, c => c.toUpperCase()) + (two ? (gender === 'female' ? ' ♀' : ' ♂') : '');
+  return String(l).replace(/\b\w/g, c => c.toUpperCase()) + (two ? ' ' + (typeof raceGenderSym === 'function' ? raceGenderSym(race, gender) : (gender === 'female' ? '♀' : '♂')) : '');   // THE COATS: the Bear's 🌲 / ❄
 }
 function faceUseDef(key) { return faceArt(faceSplit(key)) ? 'art' : db.faces.off ? 'sprite' : 'face'; }
 /* what a key shows now: [url, whole] (whole = the full sprite, drawn standing) */

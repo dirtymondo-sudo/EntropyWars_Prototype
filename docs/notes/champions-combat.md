@@ -6181,6 +6181,7 @@ above (kit, then move the key into both AVAILABLE_RACES).
 - THE BEAR is ONE race (mondo: "polar bear would just have access to some spells in the ice family but they would both share the same
   bear skill family"): the grizzly is RACE_MODELS_3D.bear.male, the polar bear is sprites.js `BEAR_POLAR_3D`, worn when the unit's
   `appearance.form === 'polar'` (sprite `Races/bear/polar/bear_polar_px.png`). How a bear gets the polar look + its ice spells = the Bear thread.
+  UNLOCKED 11-23, see "THE BEAR" below: the polar coat is the race's FEMALE side (one of each per team, like Streamer/E-Girl).
 - THE RAT KING (mondo: "if he gets enough stacks he becomes the rat king"): sprites.js `RAT_KING_3D` (transformFx), worn when
   `appearance.form === 'king'` (sprite `Races/rat/king/rat_king_px.png`). The stacks + the swap trigger = the Rat thread (also hash the form
   into three-renderer.js `_computeUnitStructuralSerial`, like the Ice Queen's super form, so it swaps at once).
@@ -6241,3 +6242,23 @@ comments "LAB LOOP 11-21 PASS n"), Sacrifice, Spygear, Psychic, Dirty Fighting, 
 final lab's race spread is no wider than luck (5.05 pts from 50 on average, luck alone 5.21; races at ≤40 / ≥60 %: 23 → 19). 11-22 REVIEW: the race stat rows were put back (noise, the baseline was already inside luck), the spell family fixes kept, Boltzmann Brain's pool trim undone; see the notes file's top.
 How to run it, the method, every pass and every race: docs/notes/balance-loop-20261121.md (tools bal-analyze.js,
 bal-plan.js, bal-families.js; train_headless.js now saves the full tables and survives tab crashes).
+
+## THE BEAR (2026-11-23, thread "Plan the Bear's spells", plan https://claude.ai/artifact/Ts9s6MzEHgCeX8SCqrtqu2)
+mondo: one Bear, grizzly + polar share the bear family, the polar gets some Ice spells, the grizzly "a few nature spells too".
+- TWO COATS = the race's two sides: male = Grizzly (🌲), female = Polar (❄). data.js RACE_PROFILES.bear `coats` + `raceGenderSym(race, g)`
+  (party builder title/half badge, HUD face label show 🌲/❄ instead of ♂/♀). A team may field one of each. sprites.js
+  RACE_MODELS_3D.bear.female = the polar model (`BEAR_POLAR_3D` is the same def; `appearance.form === 'polar'` still works).
+- THE RULE, DON'T POKE THE BEAR: status `grudge` (STATUS_DEFS, ID-stored `_grudgeSrcId`, ends when the bear dies via `_TIED_STATUS_FIELDS`)
+  sits on ONE enemy: the last one to hurt the bear (not dots / link echoes) or the Bear Hug target. battle.js "THE BEAR" block
+  (`_bearSetGrudge`, `_bearOnHurt`, `_bearAfterCast`, `_bearBeforeTurn`).
+- FAMILY `bear` (unique): Paw Swipe T1 (knock 1 + Stagger), Bear Hug T2 (target Rooted + Grudge, the bear Rooted too, cd 2), Hibernate T2
+  (heal 12 %, Sleep, AP 0; undisturbed to its next turn = +20 % HP + 1 cleanse, woken by a hit = +1 ATK 2 rounds and the hitter takes the
+  Grudge; the wake runs first thing in `_statusHoldsBeforeTurn`, before the sleep turn-skip), Bear Down T3 (charge 3, ×1.5 vs the Grudge holder).
+- POOLS: both = bear + beastabilities + apexpredator (minus Tail Whip, Death Roll, Jurassic Jaw). Grizzly (RACE_GENDER_SPELLS male): Thornlash,
+  Into the Green, Photosynthesis. Polar (female): Ice Slide, Shatter, Flash Freeze, Glacier Break, Snowborn. The rest of Nature / Ice is in
+  RACE_SPELL_EXCLUDES.bear. Stats bruiser (hp 1250, atk 125, def 120), resist ice, weak fire, finisher "Mauled".
+- AI (ai.js scoreOffensiveHit): hitting a bear that would grudge me costs 45; poking a hibernating bear is worth less than its wake heal; Bear Hug
+  on a fresh target +30.
+- VFX three-vfx-effects.js (after nrDeathRoll): brPawSwipe, brBearHug, brHibernate aura (Z's + leaves or snow by coat), brBearDown (dust line,
+  crack, heavy shake), brGrudgeMark, brWake, brRudeWake; own cyan / enemy pink-orange rims. No lie-down clip yet (the bear sleeps standing).
+

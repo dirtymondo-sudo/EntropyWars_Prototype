@@ -881,6 +881,7 @@ const CODEX_LORE = {
   'trucker': 'Human. A long-haul trucker off the highway: plaid vest, grey beard, cowboy boots. Nobody gets left behind: the ones lined up behind him come along for the ride.',   // 2026-11-19 THE NEW RACES 3
   'pharaoh': 'Human + Divine. The god-king of the Nile and his queen, Cleopatra, from the Pyramids of Giza. The asp, the eye of the sun, and a tomb he raises on the field: the first time he falls he rises from it, and whoever breaks it is cursed.',
   'deep sea diver': 'Human + Tech. A deep sea diver from the wrecks off Atlantis, in a sealed glass bubble helmet. Her Depth Charge gives the Bends: every square a unit moves costs it HP, and her harpoon and shove make sure they move.',
+  'bear': 'Anomaly. One bear, two coats: the Grizzly (forest, a few Nature spells) and the Polar Bear (the ice, a few Ice spells). Don\'t poke the bear: whoever hurt it last carries its Grudge, and Bear Down hits that one harder. Hibernate heals it in its sleep; leave it be and it wakes healed more, wake it and it comes up angry.',   // 2026-11-23 THE BEAR (mondo OK'd the kit)
   'gladiator': 'Human. A gladiator of the Colosseum, male or female: crested bronze helmet, blue cape, net and short sword. He fights for the crowd: every hit wins Favor (up to 5), each Favor makes all his blows hit harder, and Crowd Pleaser spends it all at once.',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
   'farmer': 'Human. A farmer from the Estate\'s corn fields and ranch: straw hat, plaid shirt, muddy overalls and a pitchfork. His seeds grow a round sooner, he can keep twice the plants, a grown plant beside him heals his weakest ally, and Harvest Moon brings the whole crop in.',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
   'jellyfish ufo': 'Anomaly + Tech. Not a UFO: an advanced, sentient jellyfish species from the deep, the jellyfishes\' fighter. A glass bell full of lightning on a metal body with claw arms. Every claw hit and every round in water adds Charge (up to 3), each Charge makes its lightning hit harder, and Abyssal Overload lets it all out.',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
@@ -4710,14 +4711,14 @@ function PartyBuilder(props) {
           const onClick = locked
             ? ()=>{ try{ sfx('uiError'); }catch(e){} if (typeof window._goToShop==='function') window._goToShop(entry.race); }
             : ()=>{ rosterHoverOut(); pickRace(entry.race,hf.gender); };
-          const title = locked?'NOT DECLASSIFIED — unlock this vessel in the Shop':taken?`${hf.label} is already on this team — one of each unit`:`${hf.label}${pair ? (hf.gender==='female'?' \u2640':' \u2642') : ''} · ${pbRoleLabel(entry.race)}`;
+          const title = locked?'NOT DECLASSIFIED — unlock this vessel in the Shop':taken?`${hf.label} is already on this team — one of each unit`:`${hf.label}${pair ? ' ' + (typeof window.raceGenderSym === 'function' ? window.raceGenderSym(entry.race, hf.gender) : (hf.gender==='female'?'\u2640':'\u2642')) : ''} · ${pbRoleLabel(entry.race)}`;
           const art = h('div', { className: 'pb-rtile-art' + (pUrl ? ' portrait' : '') },
             pUrl ? h('div', { className: 'pb-rtile-portrait', style: { backgroundImage: `url('${pUrl}')` } })
                  : h(Sprite, { race:entry.race, gender:hf.gender, cls:entry.cls, size:'88%', style:{ width:'88%', height:'88%' } }),
             locked ? h('div', { className: 'pb-rtile-lock' }, '🔒') : null,
             taken ? h('div', { className: 'pb-rtile-taken' }, 'ON TEAM') : null,
             !locked ? h('button', { className: 'pb-rtile-star' + (starred ? ' on' : ''), onClick:e=>{e.stopPropagation();toggleFav(entry.race,hf.gender);}, title: starred ? 'Unfavourite' : 'Favourite' }, starred ? '★' : '☆') : null,
-            pair ? h('span', { className: 'pb-rhalf-g ' + (hf.gender === 'female' ? 'f' : 'm'), 'aria-hidden': true }, hf.gender === 'female' ? '\u2640' : '\u2642') : null,
+            pair ? h('span', { className: 'pb-rhalf-g ' + ((typeof window.raceHasCoats === 'function' && window.raceHasCoats(entry.race)) ? 'coat' : (hf.gender === 'female' ? 'f' : 'm')), 'aria-hidden': true }, typeof window.raceGenderSym === 'function' ? window.raceGenderSym(entry.race, hf.gender) : (hf.gender === 'female' ? '\u2640' : '\u2642')) : null,   // THE COATS: the Bear's 🌲 / ❄
             (!pair || hi === entry.halves.length - 1) ? h('div', { className: 'pb-rtile-types' }, ...(entry.types || []).slice(0, 3).map((t, ti) => h('i', { key: ti, style: { background: getTypeColor(t) }, title: String(t).toUpperCase() }))) : null,
             (!pair || hi === 0) ? pbMasteryChip(entry.race) : null);
           return { he, isActive, taken, hovered, onClick, title, art };
