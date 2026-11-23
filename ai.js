@@ -5963,6 +5963,16 @@
             const _vs = _scoreSpellCore(unit, window._streamCastRow(unit, spell), target, v);
             return (spell.viewersSpend && _vw < 6 && (unit.hp || 0) > (unit.maxHp || 1) * 0.5) ? _vs * 0.6 : _vs;
         }
+        /* 🫀 THE LIMBS (the Abomination): Grasp is scored as the copy it casts (the Stagger at 5+, battle.js _abCastRow); Unfold
+           hits once a limb, so it is worth its limbs, waits for 4 while it can, and a hurt body keeps its last ones to shed */
+        if (spell && (spell.limbsStaggerAt || spell.limbsSpendAll) && typeof window._abCastRow === 'function') {
+            const _lb = (typeof window.getLimbs === 'function') ? window.getLimbs(unit) : 4;
+            if (spell.limbsMin > 0 && _lb < spell.limbsMin) return 0;
+            const _ls = _scoreSpellCore(unit, window._abCastRow(unit, spell), target, v);
+            if (!spell.limbsSpendAll) return _ls;
+            const _hurt = (unit.hp || 0) < (unit.maxHp || 1) * 0.35;
+            return _ls * (_lb / 3) * (_lb < 4 ? 0.5 : 1) * (_hurt && _lb <= 3 ? 0.4 : 1);
+        }
         let base = _scoreSpellCore(unit, spell, target, v);
         /* 📰 TODAY'S HEADLINE (the Florida Man, 11-17 polish): a headline spell is castable only today, so the CPU takes it over a
            plain hit when it is worth anything at all (it sat on Bath Salts in a test match and the round was lost) */

@@ -54166,6 +54166,203 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     };
     SPELL_MAP['brRudeWake'] = { impact: 'brRudeWake_impact' };
 
+    /* ═══ THE ABOMINATION (2026-11-23, mondo OK'd the kit + the VFX notes in the plan): wet red-pink flesh, dark blood where
+       the tentacles burst out, Bleed drips, no white flashes. The seat colour of the ABOMINATION (own cyan-blue, the other side
+       pink-orange, _brSeatOf) rings every grab, bite, cage and burst. Kill-switch window.EW_NO_HORROR_VFX. ═══ */
+    var _AB = { flesh: 0xd0707e, fleshDark: 0x7a2a36, blood: 0x6a0a14, bone: 0xe8e0c8, crack: 0x1e0e10 };
+    function _abOff() { return typeof window !== 'undefined' && !!window.EW_NO_HORROR_VFX; }
+    /* a fleshy tentacle made of a few tapering segments, rooted at the group's origin, +Y up */
+    function _abTentacle(len, r) {
+        var g = new THREE.Group(), segs = 5, y = 0, mats = [];
+        for (var i = 0; i < segs; i++) {
+            var h = len / segs, r0 = r * (1 - i / segs), r1 = r * (1 - (i + 1) / segs) + 0.001;
+            var mat = _pzSolid(i % 2 ? _AB.flesh : 0xc06070, null, { depthWrite: true }); mat.transparent = true; mats.push(mat);
+            var m = new THREE.Mesh(new THREE.CylinderGeometry(r1, r0, h, 8), mat);
+            m.position.y = y + h / 2; m.rotation.z = (i % 2 ? 0.12 : -0.12) * (i + 1) * 0.5; g.add(m); y += h * 0.96;
+        }
+        g.userData.mats = mats;
+        return g;
+    }
+    function _abBloodDrops(F, n, z) {
+        for (var i = 0; i < n; i++) {
+            if (!_canSpawn()) return;
+            _spawn({ x: F.c.x + rn(-0.25, 0.25) * F.ts, y: F.c.y + rn(-0.25, 0.25) * F.ts, z: F.bz + (z || F.ts * 0.4), mode: 'billboard', sprite: 'blood-drop', tint: _AB.blood,
+                vx: rn(-70, 70), vy: rn(-70, 70), vz: rn(40, 160), gravity: 420, drag: 0.8, ml: rn(380, 640), size0: rn(4, 7), size1: 2, opacity0: 0.95, opacity1: 0 });
+        }
+    }
+    /* a dark wet stain on the floor (the plan: dark blood where the tentacles burst out) */
+    function _abStain(F, size, ms) {
+        var st = _pzMesh(new THREE.CircleGeometry(size, 20), _pzSolid(_AB.blood, _brCrackTex(), { depthWrite: false }), F.g, 0, F.ts * 0.03, 0);
+        st.rotation.x = -Math.PI / 2; st.material.transparent = true;
+        return st;
+    }
+
+    /* ── GRASP: a fleshy hand of five fingers closes round the victim from above, in two squeezes; blood off the grip ── */
+    EFFECTS['abGrasp_impact'] = _pzDef('abGrasp', { layers: [
+        { count: 6, sprite: 'blood-fleck', ml: [320, 560], offsetXY: 10, z: [30, 60], vxRange: 120, vyRange: 120, vzRange: [30, 120], gravity: 360, drag: 0.9, size0: [4, 7], size1: 2, delayMs: 220 },
+    ] });
+    _PZ_SIGS.abGrasp = function (p) {
+        var tx = p.tx, ty = p.ty; if (_abOff() || tx == null || !_pzSeen(tx, ty)) return;
+        var from = _pzFrom(tx, ty, p), ab = _brUnitAt(from.x, from.y, p.casterId), seat = ab ? _brSeatOf(ab) : _gtSeatColor(from.x, from.y);
+        var F = _nrvFrame(tx, ty), ts = F.ts, fingers = [];
+        for (var i = 0; i < 5; i++) {
+            var piv = new THREE.Group(); piv.rotation.y = i / 5 * Math.PI * 2; piv.position.y = ts * 1.1; F.g.add(piv);
+            var t = _abTentacle(ts * 0.7, ts * 0.06); t.rotation.x = Math.PI; t.position.z = ts * 0.3; piv.add(t);
+            fingers.push({ piv: piv, t: t });
+        }
+        var ring = _pzMesh(new THREE.RingGeometry(ts * 0.3, ts * 0.42, 32), _pzGlow(seat), F.g, 0, ts * 0.04, 0); ring.rotation.x = -Math.PI / 2;
+        var squeezed = 0;
+        return _sigRunOwned(F.g, 1200, function (el) {
+            var close = _sigEaseOutCubic(_sigClamp01((el - 60) / 260)), op = _pzEnv(el, 0, 60, 900, 1200);
+            var pulse = el > 320 ? 0.12 * Math.max(0, Math.sin((el - 320) / 260 * Math.PI * 2)) : 0;
+            for (var j = 0; j < fingers.length; j++) {
+                var f = fingers[j]; f.t.rotation.x = Math.PI - (0.9 - 0.75 * close - pulse);
+                f.t.position.z = ts * (0.5 - 0.22 * close + 0.06 * pulse);
+                for (var k = 0; k < f.t.userData.mats.length; k++) f.t.userData.mats[k].opacity = op;
+            }
+            ring.material.opacity = 0.7 * op; ring.scale.setScalar(1 - 0.3 * close);
+            var n = el > 320 ? Math.floor((el - 320) / 260) + 1 : 0;
+            if (n > squeezed && n <= 2) { squeezed = n; try { _sigShake('light'); } catch (e) {} _abBloodDrops(F, 4, ts * 0.6); }
+        });
+    };
+    SPELL_MAP['abGrasp'] = { impact: 'abGrasp_impact' };
+
+    /* ── MANY MOUTHS: a ring of jaws in the seat colour snaps shut round the Abomination's square, blood mist on each bite, and
+       red drops are drawn back into its chest (the drain) ── */
+    EFFECTS['abManyMouths_aoe'] = _pzDef('abManyMouths', { layers: [
+        { count: 10, sprite: 'blood-mist', ml: [500, 800], offsetXY: 50, z: [20, 50], tint: _AB.blood, vxRange: 40, vyRange: 40, vzRange: [10, 40], size0: [10, 16], size1: [20, 28], opacity0: 0.5, delayMs: 380 },
+    ] });
+    _PZ_SIGS.abManyMouths = function (p) {
+        var tx = p.cx != null ? p.cx : p.tx, ty = p.cy != null ? p.cy : p.ty; if (_abOff() || tx == null || !_pzSeen(tx, ty)) return;
+        var ab = _brUnitAt(tx, ty, p.casterId), seat = _brSeatOf(ab);
+        var F = _nrvFrame(tx, ty), ts = F.ts, teeth = [], N = 24;
+        for (var s = 0; s < 2; s++) for (var i = 0; i < N; i++) {
+            var a = (i + s * 0.5) / N * Math.PI * 2, tooth = _pzMesh(new THREE.ConeGeometry(ts * 0.07, ts * 0.32, 5), _pzSolid(_AB.bone, null, { depthWrite: true }), F.g, 0, 0, 0);
+            tooth.material.transparent = true; teeth.push({ m: tooth, a: a, up: s === 0 });
+        }
+        var gum = _pzMesh(new THREE.RingGeometry(ts * 1.25, ts * 1.55, 48), _pzGlow(seat), F.g, 0, ts * 0.05, 0); gum.rotation.x = -Math.PI / 2;
+        _fxDelay(function () { if (!_suppressed()) { try { _sigShake('normal'); } catch (e) {} _sigShockRing3D(tx, ty, { color: seat, r0: ts * 1.6, r1: ts * 0.4, ms: 380, opacity: 0.6 }); } }, 380);
+        return _sigRunOwned(F.g, 1500, function (el) {
+            var bite = _sigClamp01((el - 200) / 180), op = _pzEnv(el, 0, 120, 1100, 1500), R = ts * 1.4;
+            for (var j = 0; j < teeth.length; j++) {
+                var T = teeth[j], h = T.up ? ts * (0.05 + 0.55 * (1 - bite)) : ts * (1.2 - 0.55 * (1 - bite));
+                T.m.position.set(Math.sin(T.a) * R, h, Math.cos(T.a) * R); T.m.rotation.set(T.up ? 0 : Math.PI, 0, 0);
+                T.m.material.opacity = op;
+            }
+            gum.material.opacity = 0.65 * op;
+            /* the drain: drops pulled back into the chest */
+            if (el > 450 && el < 1100 && _canSpawn() && (el | 0) % 3 === 0) {
+                var a2 = Math.random() * Math.PI * 2;
+                _spawn({ x: F.c.x + Math.sin(a2) * R, y: F.c.y + Math.cos(a2) * R, z: F.bz + ts * 0.4, mode: 'billboard', sprite: 'blood-drop', tint: 0xd02030,
+                    vx: -Math.sin(a2) * R * 2.4, vy: -Math.cos(a2) * R * 2.4, vz: ts * 1.6, drag: 0.4, ml: 420, size0: 6, size1: 2, opacity0: 0.95, opacity1: 0 });
+            }
+        });
+    };
+    SPELL_MAP['abManyMouths'] = { aoe: 'abManyMouths_aoe' };
+
+    /* ── BONE CAGE: a ring of bone bars slams down out of the air round the victim and locks (the cage itself stands there from
+       the Abomination's own model while the victim is Caged, three-renderer.js THE ABOMINATION) ── */
+    EFFECTS['abBoneCage_impact'] = _pzDef('abBoneCage', { layers: [
+        { count: 4, anchor: 'floor', sprite: 'dust-puff', ml: [420, 640], offsetXY: 16, z: [2, 8], size0: [12, 18], size1: [26, 34], opacity0: 0.35, delayMs: 300 },
+        { count: 8, sprite: 'rock-debris', ml: [380, 600], offsetXY: 14, z: [4, 12], tint: _AB.bone, vxRange: 140, vyRange: 140, vzRange: [80, 180], gravity: 560, size0: [3, 6], size1: 2, delayMs: 300 },
+    ] });
+    _PZ_SIGS.abBoneCage = function (p) {
+        var tx = p.tx, ty = p.ty; if (_abOff() || tx == null || !_pzSeen(tx, ty)) return;
+        var from = _pzFrom(tx, ty, p), ab = _brUnitAt(from.x, from.y, p.casterId), seat = ab ? _brSeatOf(ab) : _gtSeatColor(from.x, from.y);
+        var F = _nrvFrame(tx, ty), ts = F.ts, bars = [], NB = 9;
+        for (var i = 0; i < NB; i++) {
+            var a = i / NB * Math.PI * 2, b = _pzMesh(new THREE.CylinderGeometry(ts * 0.03, ts * 0.045, ts * 1.3, 6), _pzSolid(_AB.bone, null, { depthWrite: true }), F.g, Math.sin(a) * ts * 0.42, 0, Math.cos(a) * ts * 0.42);
+            b.material.transparent = true; b.rotation.z = 0.08 * Math.sin(i * 2.1); bars.push(b);
+        }
+        var ring = _pzMesh(new THREE.RingGeometry(ts * 0.4, ts * 0.55, 36), _pzGlow(seat), F.g, 0, ts * 0.04, 0); ring.rotation.x = -Math.PI / 2;
+        _fxDelay(function () { if (!_suppressed()) { try { _sigShake('normal'); } catch (e) {} _sigShockRing3D(tx, ty, { color: seat, r1: ts * 1.0, ms: 360, opacity: 0.6 }); } }, 300);
+        return _sigRunOwned(F.g, 1100, function (el) {
+            var fall = _sigEaseOutCubic(_sigClamp01(el / 300)), op = _pzEnv(el, 0, 40, 700, 1100);
+            for (var j = 0; j < bars.length; j++) { bars[j].position.y = ts * (0.65 + 2.2 * (1 - fall)); bars[j].material.opacity = op; }
+            ring.material.opacity = 0.7 * op * fall;
+        });
+    };
+    SPELL_MAP['abBoneCage'] = { impact: 'abBoneCage_impact' };
+
+    /* ── UNFOLD: the floor round the Abomination splits (a dark wet crack in its seat colour), then a tentacle bursts up out of
+       the floor under each enemy it hits, one after another in the barrage's own order, with a blood stain left behind ── */
+    EFFECTS['abUnfold_aura'] = _pzDef('abUnfold', { aoeRadius: 0 });
+    function _abBurst(tx, ty, seat, delay) {
+        _fxDelay(function () {
+            if (_suppressed() || !_pzSeen(tx, ty)) return;
+            var F = _nrvFrame(tx, ty), ts = F.ts, t = _abTentacle(ts * 1.5, ts * 0.13); F.g.add(t);
+            var st = _abStain(F, ts * 0.42), ring = _pzMesh(new THREE.RingGeometry(ts * 0.2, ts * 0.34, 28), _pzGlow(seat), F.g, 0, ts * 0.05, 0); ring.rotation.x = -Math.PI / 2;
+            try { _sigShake('light'); } catch (e) {}
+            _abBloodDrops(F, 8, ts * 0.3);
+            _sigRunOwned(F.g, 1300, function (el) {
+                var up = _sigEaseOutCubic(_sigClamp01(el / 160)) - _sigClamp01((el - 600) / 400);
+                t.scale.set(1, Math.max(0.01, up), 1); t.rotation.z = 0.25 * Math.sin(el / 90) * up;
+                var op = _pzEnv(el, 0, 30, 900, 1300);
+                for (var k = 0; k < t.userData.mats.length; k++) t.userData.mats[k].opacity = op;
+                st.material.opacity = 0.85 * _pzEnv(el, 0, 60, 1000, 1300); ring.material.opacity = 0.7 * _pzEnv(el, 0, 30, 300, 700);
+            });
+        }, delay);
+    }
+    _PZ_SIGS.abUnfold = function (p) {
+        var tx = p.tx != null ? p.tx : p.cx, ty = p.ty != null ? p.ty : p.cy; if (_abOff() || tx == null) return;
+        var ab = _brUnitAt(tx, ty, p.casterId), seat = _brSeatOf(ab);
+        if (_pzSeen(tx, ty)) {
+            var F = _nrvFrame(tx, ty), ts = F.ts;
+            var dark = _pzMesh(new THREE.PlaneGeometry(ts * 1.8, ts * 1.8), _pzSolid(_AB.crack, _brCrackTex(), { depthWrite: false }), F.g, 0, ts * 0.03, 0); dark.rotation.x = -Math.PI / 2; dark.material.transparent = true;
+            var glow = _pzMesh(new THREE.PlaneGeometry(ts * 1.8, ts * 1.8), _pzGlow(seat, _brCrackTex()), F.g, 0, ts * 0.035, 0); glow.rotation.x = -Math.PI / 2;
+            _fxDelay(function () { if (!_suppressed()) { try { _sigShake('heavy'); } catch (e) {} _sigShockRing3D(tx, ty, { color: seat, r1: ts * 2.2, ms: 520, opacity: 0.6 }); } }, 420);
+            _sigRunOwned(F.g, 1800, function (el) {
+                var t = _sigEaseOutCubic(_sigClamp01((el - 400) / 200));
+                dark.scale.setScalar(0.3 + 0.7 * t); glow.scale.setScalar(0.3 + 0.7 * t);
+                dark.material.opacity = 0.85 * _pzEnv(el, 400, 460, 1300, 1800); glow.material.opacity = 0.8 * _pzEnv(el, 400, 460, 700, 1200);
+            });
+        }
+        /* the bursts: the enemies in its reach, round robin up to its limb count (battle.js _abUnfoldList) — display only */
+        try {
+            if (typeof state === 'undefined' || !state.units || !ab) return;
+            var foes = [], R = 5, hits = p.hits != null ? p.hits : 4;
+            for (var i = 0; i < state.units.length; i++) {
+                var u = state.units[i];
+                if (!u || u.dead || u.player === ab.player || u._isCube) continue;
+                if (Math.max(Math.abs(u.x - tx), Math.abs(u.y - ty)) <= R) foes.push(u);
+            }
+            for (var h = 0; h < Math.min(hits, foes.length * 3) && foes.length; h++) { var f = foes[h % foes.length]; _abBurst(f.x, f.y, seat, 700 + h * 200); }
+        } catch (e) {}
+    };
+    SPELL_MAP['abUnfold'] = { aura: 'abUnfold_aura' };
+
+    /* ── THE LIMBS (battle.js _abFx, relayed): SHED, a limb drops off the body, flops on the floor and sinks in a blood stain;
+       GROW, a stump swells (a small ring in the seat colour and a wet puff) ── */
+    EFFECTS['abShed_impact'] = _pzDef('abShed', { pzOwn: true });
+    _PZ_SIGS.abShed = function (p) {
+        var tx = p.tx, ty = p.ty; if (_abOff() || tx == null || !_pzSeen(tx, ty)) return;
+        var ab = _brUnitAt(null, null, p.casterId), seat = _brSeatOf(ab);
+        var F = _nrvFrame(tx, ty), ts = F.ts, limb = _abTentacle(ts * 0.6, ts * 0.08), side = Math.random() < 0.5 ? -1 : 1;
+        var hold = new THREE.Group(); hold.add(limb); F.g.add(hold);
+        var st = _abStain(F, ts * 0.3); st.position.x = side * ts * 0.45;
+        _abBloodDrops(F, 6, ts * 1.2);
+        return _sigRunOwned(F.g, 1700, function (el) {
+            var fall = _sigClamp01(el / 380), flop = el > 380 ? Math.sin((el - 380) / 70) * Math.max(0, 1 - (el - 380) / 700) : 0;
+            hold.position.set(side * ts * (0.2 + 0.25 * fall), ts * (1.3 * (1 - fall * fall)) + ts * 0.02, 0);
+            hold.rotation.z = side * (Math.PI / 2) * fall + 0.25 * flop;
+            var sink = _sigClamp01((el - 1100) / 600); hold.position.y -= ts * 0.15 * sink;
+            var op = _pzEnv(el, 0, 30, 1300, 1700);
+            for (var k = 0; k < limb.userData.mats.length; k++) limb.userData.mats[k].opacity = op;
+            st.material.opacity = 0.8 * _pzEnv(el, 300, 420, 1300, 1700);
+            if (el > 360 && el < 400) _sigShockRing3D(tx, ty, { color: seat, r1: ts * 0.5, ms: 260, opacity: 0.4 });
+        });
+    };
+    SPELL_MAP['abShed'] = { impact: 'abShed_impact' };
+    EFFECTS['abGrow_impact'] = _pzDef('abGrow', { pzOwn: true, layers: [
+        { count: 6, sprite: 'blood-mist', ml: [400, 640], offsetXY: 10, z: [40, 70], tint: _AB.fleshDark, vxRange: 30, vyRange: 30, vzRange: [10, 40], size0: [6, 9], size1: [12, 16], opacity0: 0.45 },
+    ] });
+    _PZ_SIGS.abGrow = function (p) {
+        var tx = p.tx, ty = p.ty; if (_abOff() || tx == null || !_pzSeen(tx, ty)) return;
+        var ab = _brUnitAt(null, null, p.casterId), seat = _brSeatOf(ab), ts = _worldPos(tx, ty).ts;
+        _sigShockRing3D(tx, ty, { color: seat, r0: ts * 0.15, r1: ts * 0.6, ms: 380, opacity: 0.5 });
+    };
+    SPELL_MAP['abGrow'] = { impact: 'abGrow_impact' };
+
     /* ── TAIL SWEEP: the spiked tail comes round the gator once, low over the floor, a sheet of spray off its tip;
        each square beside it takes the lash as the tail passes; then the churned square under the gator ripples
        (the puddle the sweep leaves, data.js nrTailSweep paintTerrain). ── */
