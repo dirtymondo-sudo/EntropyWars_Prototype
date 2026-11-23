@@ -2128,6 +2128,26 @@ Superhero Tower is the weenie seen from everywhere, every walk ends at a clear s
   sheets are dark window grids, lit with the part's `glow`. `gold` = the terrain key (gilt.png); never the gold*.png files, not even in a
   mock-up. The arch row has no lettering: sign boards are plain panels until a lettering part exists. No tilted parts: a stair flight is
   stepped boxes, an arch is a barrel roof on a beam.
+## HERO PLAZA, THE SKYLINE — six towers + the Superhero Tower at 175 m (2026-11-23, mondo's OK 17:00 "Build it, plus the mid-rise fill")
+Plan: https://claude.ai/artifact/YEe54svVhVbLufjHdfQ5QY (sites in /mnt/project-files/skyline-plan/tools/towers.json). Hero Plaza went first so
+the frame-rate cost is measured (an F3 walk in Downtown) before the other districts' towers merge. All code in `districts/H.js`:
+- **Superhero Tower** (P06-04-B1): `HT = { shaft, up, top }`: the shaft and corner drum stretched to 104.2 m, everything over them raised 55.2 m,
+  a new crown (upper glass shaft 30 m with fins, marble drum, gilt dome, gilt halo on four struts, spire); the beacon at 175 m. Same materials.
+- **TW[bid]** = a tower that is its own arch row `arch:<bid>:tower` over its building: 3 Daily Globe (P04-04-B1, the 11-15 wedge as its foot,
+  three wedge setbacks, copper globe, mast to 140 m; `nycWedge` is gone, its outline is `WEDGE`), 6 Umpire State (P07-04-B2: Apartments A is
+  its foot, four limestone setbacks, mooring mast to 125 m), 12 Pan-Ham (P06-06-B1: an octagon on the station's BACK half, squares x -10.5..10.5,
+  z 1.75..12.25, 7 to 100 m; RF90, RF91 and the roof stair land on the north half; `dc:H:panham-w0` = a skinless 3-storey texbuilding, the
+  walker's wall on those roof squares).
+- **In B** (whole buildings): 10 Office Court Tower (P07-06-B1: `OCH` = the slab's height, 96.5 m, mast tip 110 m), 14 the Pencil (P04-05-B2,
+  was the pack shop block pack_bld_09: walk-in white lobby + 9.5 m shaft to 96 m), 20 the Prewar (P04-06-B2, was the Townhouse row: walk-in
+  limestone ground floor, tan brick to 52.5 m, two setbacks, water tower, 81 m). Their lobbies: IN / IN2 (5 x 5: lifts, desk, seats).
+- **Frame rate**: every new tower is at most 4 materials (script: count key|tint|glow|kind|ds|gain|shine per row), so at most 4 meshes each,
+  15 new meshes in all; no lamps; nothing repeats. No far LOD version (the arch row has none; the merged meshes are cheap).
+- **Mid-rise fill**: Hero Plaza has only three filler blocks (the tool's `dc:in66`, `dc:in79`, `dc:in80`): 5, 7 and 6 storeys now. Every other
+  building is a named one with its own roof; the rest of the plan's fill is in Financial.
+- NOT DONE: the Pan-Ham has no lobby of its own (the Transit court is still a solid roof-route building: its roof stair cannot stand on a
+  walk-in roof slab, 11-13). No lettering on the towers (names are working names; docs/notes/branding.md has none for them).
+
 ## DISASTER CITY, BAYSIDE — the district's architecture (2026-11-13, thread "Design Bayside district buildings")
 mondo's district ask (16:41) + "bayside needs to have the actual bayside in it too (the beach), with sand and a pier and stuff" (17:05) +
 his OK on the plan and mock-up ("looks good", "yes add sea wall and water", 17:11). Plan doc: https://claude.ai/artifact/S8nPJ2AF6soGsNFSgf9VkL.
