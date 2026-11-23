@@ -5460,3 +5460,10 @@ mondo: "robin's hood bow and arrow looks messed up. wasnt there already several 
   ghost draw). The arrow is two arms long and half as thick as the model (a thick fantasy shaft).
 - NOT DONE: the bow's string is part of the bow's mesh and stays straight at full draw; the Meshy (default) Robin Hood still
   gets the spectral longbow, which draws 360 ms after his own release; in his idle the bow hangs level at the hip.
+
+
+## THE RAT KING'S LOOKS (2026-11-23, three-vfx-effects.js "THE RAT KING'S LOOKS"; rules in champions-combat.md "THE RAT KING")
+Gnaw / Plague Bite = `_sigJawsBite3D` (+ green plague puffs and flies on Plague Bite); Scurry + Carried by the Court = `_ESC_LOOKS`
+styles `scurry` (low zig-zag dash) and `court` (carried on a wave of rats); Mischief of Rats = `_PZ_SIGS.ratGrate` (a drain grate
+bursts open, rats pour out); `nrRatCrown` (rats spiral up into the crown), `nrRatCrown:fall` (they scatter), `nrLongLiveKing`
+(rings out + a grate burst under every bitten enemy). All rats are the R2 prop rat; own cyan, enemy pink-orange. Kill-switch `EW_NO_RAT_VFX`.

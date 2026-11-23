@@ -20,7 +20,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | made by | human-made? | count |
 | --- | --- | --- |
 | Asset pack | yes | 1151 |
-| Asset pack (author not recorded yet) | yes | 178 |
+| Asset pack (author not recorded yet) | yes | 179 |
 | MakeHuman community asset | yes | 546 |
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
@@ -64,7 +64,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | bligblog | `Assets/characters/races/bligblog/Meshy_AI_bligblog_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | boltzmann brain | `Assets/characters/races/boltzmann_brain/male/Meshy_AI_boltzmann_brain.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES 2, mondo 2026-11-17 picks from the zone characters; concepts + models in project files new-races-2/; the Boltzmann Brain is unrigged) |
 | bunny girl (female) | `Assets/characters/races/bunnygirl/Meshy_AI_bunny_girl_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
-| butterfly girl (female) | `Assets/characters/races/butterfly_girl/female/Meshy_AI_butterfly_girl_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API from mondo's picked concepts (THE COMING RACES 2, 2026-11-23; the Bear's polar look + the Rat King are form looks; project files char-concepts-20261123/) |
+| butterfly girl (female) | `Assets/characters/races/butterfly_girl/female/Meshy_AI_butterfly_girl_wings2_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API from mondo's picked concepts (THE COMING RACES 2, 2026-11-23; the Bear's polar look + the Rat King are form looks; project files char-concepts-20261123/) |
 | cameraman | `Assets/characters/races/paparazzi/male/Meshy_AI_paparazzi_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES 2, mondo 2026-11-17 picks from the zone characters; concepts + models in project files new-races-2/; the Boltzmann Brain is unrigged) |
 | catgirl (female) — creator look also baked | `Assets/characters/races/catgirl/female/Meshy_AI_catgirl_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | chef — creator look also baked | `Assets/characters/races/chef/male/Meshy_AI_chef_male_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
@@ -3674,6 +3674,7 @@ These rows draw mondo's car pack (GGBot low-poly cars, Assets/vehicles/, `_CAR_P
 | monarch | `Assets/world/animals/insects/Butterfly_Monarch.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
 | moth_frames | `Assets/world/animals/insects/Moth_Wing_Flap_Frames.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
 | rabbit | `Assets/world/animals/crow_and_rabbit/rabbit.glb` | Asset pack (author not recorded yet) | Crow + rabbit (mondo's upload) |
+| rat | `Assets/world/animals/rat.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
 | swallowtail | `Assets/world/animals/insects/Butterfly_Swallowtail.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
 | wolf | `Assets/world/animals/Wolf1.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
 
