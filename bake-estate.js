@@ -242,7 +242,7 @@ const OWP = require('./ow-places.js');
 const R7 = PJ.routes.find(r => r.id === 'R7'), R7_HERE = [[-13, 5, 'County Lane, the north field'], [-13, 8, 'County Lane, the middle field'], [-13, 10, 'County Lane, the south field']];   // (each field is renamed for the place that stands on it, below)
 R7_HERE.forEach(q => { if (!R7.plots.some(p => p[0] === q[0] && p[1] === q[1])) throw new Error('plots.json: R7 has no plot ' + q[0] + ',' + q[1]); });
 const R_CORN = 'site_prebuilt_skinwalker_ow_corn', R_LAKE = 'site_prebuilt_skinwalker_ow_lake', R_CLEAR = 'site_prebuilt_fairy_forest_ow_clearing';
-const R_TRAIL = 'site_prebuilt_skinwalker_ow_trail', R_HOUSE = 'site_prebuilt_skinwalker_ow_house', R_RANCH = 'site_prebuilt_skinwalker_ow_ranch', R_RITUAL = 'site_prebuilt_fairy_forest_ow_ritual';   // (R_RITUAL: the Woods' room that holds the Ritual Ground + L2 + L5, written by bake-woods.js)
+const R_TRAIL = 'site_prebuilt_skinwalker_ow_trail', R_HOUSE = 'site_prebuilt_skinwalker_ow_house', R_RANCH = 'site_prebuilt_skinwalker_ow_ranch', R_RITUAL = 'site_prebuilt_fairy_forest_ow_ritual';   // (R_RITUAL: the Woods' room that holds Bohemian Grove + L2 + L5, written by bake-woods.js)
 const R8 = PJ.routes.find(r => r.id === 'R8'), R8_HERE = [[-10, 18, 'Ranch Road, the lake field']];   // R8's one plot in the Ranch's box, alone between the Lake, the gate and the Barn (rule 4: the district's room's)
 R8_HERE.forEach(q => { if (!R8.plots.some(p => p[0] === q[0] && p[1] === q[1])) throw new Error('plots.json: R8 has no plot ' + q[0] + ',' + q[1]); });
 /* the seams: the plot, its side, how many squares along that side from the plot's corner the path crosses (left out: where the plot is open), the room past it */
@@ -269,15 +269,15 @@ const STAND = [
       ] },
     /* PHASE 3 (2026-11-17, BUILD_PLAN wave A, the Estate thread): THE HAUNTED HOUSE and THE RANCH stand at their v13 places too, one room each (the
        room-splitting rule: the Ranch touches the Lake, but the Lake's room holds 25 plots and 25 + 10 is over 30; the house stands alone in the forest,
-       up its own drive from the wild link L5, which is the Woods' and joins the Ritual Ground's room by rule 4). The old room id is retired. */
+       up its own drive from the wild link L5, which is the Woods' and joins Bohemian Grove's room by rule 4). The old room id is retired. */
     { id: R_HOUSE, part: 'ow_house', label: 'THE HAUNTED HOUSE', sub: 'THE ESTATE · THE DRIVE, THE HOUSE AND THE GRAVEYARD · 9 PLOTS', letters: ['H'], world: true, ewJoin: true, list: v13('H'),
       parti: 'A house on its rise at the top of a long drive through the corn: the iron gate, the drive, the lawn, the house between its gazebo and its treehouse, the graveyard below it and the crypt at the end.',
       seams: [
-          /* THE DRIVE IN: the Iron Gate's north side, where the Woods' wild link L5 comes down from the Ritual Ground (the Woods thread writes the other side) */
+          /* THE DRIVE IN: the Iron Gate's north side, where the Woods' wild link L5 comes down from Bohemian Grove (the Woods thread writes the other side) */
           /* THE HOUSE TRAIL (thread 17): the Treehouse's back gate and the Graveyard's, east into the trail's room (a track cut through the corn to each) */
           { plot: 'P00-03', side: 'E', along: 6, cut: [5, 6, 7], id: 'ow_v_m19_14', room: R_TRAIL, label: 'THE HOUSE TRAIL', sub: 'THE BACK GATE · THE TRAIL EAST', desc: 'The old back way out of the grounds, east past a gatehouse and over the hill to the lake.' },
           { plot: 'P02-05', side: 'E', along: 6, cut: [5, 6, 7], id: 'ow_v_m20_15', room: R_TRAIL, label: 'THE HOUSE TRAIL', sub: 'THE GRAVEYARD\'S BACK GATE · INTO THE WOODS', desc: 'A rusted gate at the back of the graveyard. A thin path goes off into the dead trees.' },
-          { plot: 'P01-03', side: 'N', id: 'ow_h_m21_11', room: R_RITUAL, spawn: true, label: 'THE WOODS · THE RITUAL GROUND', sub: 'THE TRAIL NORTH · OUT OF THE IRON GATE', desc: 'Past the gate a trail goes off north into the trees.' },
+          { plot: 'P01-03', side: 'N', id: 'ow_h_m21_11', room: R_RITUAL, spawn: true, label: 'THE WOODS · BOHEMIAN GROVE', sub: 'THE TRAIL NORTH · OUT OF THE IRON GATE', desc: 'Past the gate a trail goes off north into the trees.' },
       ] },
     /* THE HOUSE TRAIL (world polish thread 17, mondo 11-20: "Yes this is a big priority"): a horror walk over a wooded hill, 13 new plots, its own room;
        every square is the plan's (docs/plans/world-polish/plans/estate-house-trail.js), the wall is dead woods (`woods`) */

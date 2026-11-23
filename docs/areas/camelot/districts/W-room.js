@@ -10,12 +10,12 @@
        24  The Hollow      O the Glade, west    O the Glade, east   O the Forest Road, e.  O Deep forest, south-east
        36  The Fern Bank   O the Forest Road,w  The Ford            The Charcoal Burners   L7 the Forest Trail (the camp)
        48  The Badger Wood O the Dead Tree      The Old Oak         .                      .
-   In: the drawbridge's seam on the north side of the Crown's Road (squares 18..19). Out: the trail east from L7 to the Woods' Ritual Ground; the
+   In: the drawbridge's seam on the north side of the Crown's Road (squares 18..19). Out: the trail east from L7 to the Woods' Bohemian Grove; the
    Dead Tree's door on the south side of its plot.
 
    THE WAYS (mondo 11-20: "no long straight boring ways ... always branches and different routes"):
      THE CROWN'S ROAD (5 squares: three of dirt, a grass shoulder each side): the cobbled avenue from the drawbridge, south to THE GLADE, east
-       under the Bluff, south through THE CHARCOAL BURNERS, east into the camp and out to the Ritual Ground. Three bends.
+       under the Bluff, south through THE CHARCOAL BURNERS, east into the camp and out to Bohemian Grove. Three bends.
      WEST, THE HOLLOW (height: a bowl 3 m deep): the poachers' path off the avenue, south along the rim, down into the Hollow (a clearing a board
        fits on), out south over the brook to the Badger Wood and round to the Dead Tree. Two cross links back to the road.
      EAST, THE BLUFF (height: a ridge 5 m): up its west end from the Forest Road or by the Bluff Path, along its crest over the Crown's Road

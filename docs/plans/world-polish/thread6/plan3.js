@@ -133,7 +133,7 @@ area(134, 12, 141, 19, 'c', 0); label(137.5, 13.4, 'THE STORM DRAIN', 'place'); 
 main([[140, 16, 0], [142, 16, 0]]);
 
 /* the ways out of the room (their squares keep today's height) */
-const DOORS = [[41, 0, 'N', 'the Old Road'], [18, 0, 'N', 'the Redwood Trail'], [3, 12, 'N', 'Came A Lot'], [7, 23, 'S', 'the Ritual Ground'], [42, 59, 'S', 'The Estate'], [143, 16, 'E', 'Disaster City'], [125, 35, 'S', 'the Valley Road']];
+const DOORS = [[41, 0, 'N', 'the Old Road'], [18, 0, 'N', 'the Redwood Trail'], [3, 12, 'N', 'Came A Lot'], [7, 23, 'S', 'Bohemian Grove'], [42, 59, 'S', 'The Estate'], [143, 16, 'E', 'Disaster City'], [125, 35, 'S', 'the Valley Road']];
 [[3, 12, 1], [7, 23, 1], [42, 59, 0], [143, 16, 0], [125, 35, 0], [18, 0, 2]].forEach(q => set(q[0], q[1], 'p', q[2], 'pg'));
 
 /* ───────────── THE CHECKS ───────────── */

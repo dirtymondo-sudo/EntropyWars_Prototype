@@ -7,7 +7,7 @@
 "areaMeters": 252.0,
 "districts": {
 "T": "The Redwood Trail",
-"G": "The Ritual Ground",
+"G": "Bohemian Grove",
 "C": "The Clearing",
 "M": "Dead Man's Cave"
 },
@@ -232,7 +232,7 @@
 "district": "G",
 "level": 3,
 "what": "the fire, torches",
-"from": "Ritual Ground: THE FIRE",
+"from": "Bohemian Grove: THE FIRE",
 "ports": [
 "E",
 "N",
@@ -247,7 +247,7 @@
 "district": "G",
 "level": 3,
 "what": "six standing stones, ritual circle; the way to Room 333 (hidden)",
-"from": "Ritual Ground: THE STONES",
+"from": "Bohemian Grove: THE STONES",
 "ports": [
 "E",
 "W"
@@ -263,7 +263,7 @@
 "district": "G",
 "level": 3,
 "what": "the dead tree whose hole looks onto the Looking-Glass",
-"from": "Ritual Ground: the dead tree",
+"from": "Bohemian Grove: the dead tree",
 "ports": [
 "N",
 "W"

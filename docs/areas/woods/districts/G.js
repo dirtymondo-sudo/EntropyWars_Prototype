@@ -1,9 +1,9 @@
-/* THE WOODS · THE RITUAL GROUND (district G, plots x 3..5 · y 0..2, the north-east, levels 3 to 5; with the old Bohemian Grove) — this district's own content, split out of bake-woods.js on
+/* THE WOODS · BOHEMIAN GROVE (district G, plots x 3..5 · y 0..2, the north-east, levels 3 to 5; with the old Bohemian Grove) — this district's own content, split out of bake-woods.js on
    2026-11-16 (mondo: "every single zone needs to be like that. now. so we can work in parallel"). One thread = this one file.
    Repo tooling only: nothing here ships; the room is baked into data.js (site_prebuilt_fairy_forest_plots, WOODS36-BEGIN / END).
 
    THE LOOK: the fairy forest gone wrong, "the cult". Dark spruce with bare trees, glowing toadstools, giant caps, crystals, moths; violet motes.
-   THE PLOTS AND WHAT STANDS THERE TODAY (the district thread's passes are in build(); notes: areas-complexes.md "THE RITUAL GROUND")
+   THE PLOTS AND WHAT STANDS THERE TODAY (the district thread's passes are in build(); notes: areas-complexes.md "BOHEMIAN GROVE")
      P03-00 The Mound (L5)             a grass hill (r 9, h 2.6) with a wooden cross, three crosses, an open coffin and its lid, a giant cap. PASS 1: THE BARROW, a stone doorway in the south face + kerb stones.
      P04-00 The Lake, west shore (L4)  two lanterns, two giant caps, frogs. The lake is the tool's water. PASS 1: THE JETTY (cut: 4 bridge squares), posts, a lamp post, a rowboat. PASS 3 / 4: the effigy's boat and candles afloat.
      P05-00 The Lake, east shore (L4)  a candle line, two giant caps, frogs. The lodge door (the Lodge's halls) is east.
@@ -16,7 +16,7 @@
    STATE (2026-11-16): FIVE PASSES + THE MODEL PASS LIVE (exteriors, interiors, dressing, atmosphere, polish; then the wish-list models: every model this district
    asked for is placed and the stand-ins are out). STOPPED: nothing more here until mondo has seen it (his order).
    KNOWN MISSING / WAITING FOR MONDO
-     - NO WAY TO ROOM 333: the plan gives the Stones a hidden way to Room 333. The link woods_ritual still ends on the retired Ritual Ground
+     - NO WAY TO ROOM 333: the plan gives the Stones a hidden way to Room 333. The link woods_ritual still ends on the retired Bohemian Grove
        room, so coming through it lands at the Woods' spawn. The same for the link deadtree_lookingglass. A door or a link end is the tool's.
      - THE OLD BOHEMIAN GROVE ROOM (site_prebuilt_bohemian_grove_grove) still stands and is still where its bay door, battle marker, tape and find lead. Its look is
        carried in here; NOT carried (his call / the tool's row): its four talkers and their lines (two politicians, the fortune teller, the conspiracy theorist), the
@@ -44,7 +44,7 @@
    Rules for district threads: docs/notes/areas-complexes.md "THE WOODS, THE DISTRICT FILES". Bake: node bake-woods.js (--dry-run = counts only). */
 'use strict';
 module.exports = {
-    id: 'G', name: 'The Ritual Ground',
+    id: 'G', name: 'Bohemian Grove',
     /* the forest mass: the feature trees planted deep in this district's tree squares [kind, height m, chance a deep square] (plots of level 6 up get pines, the tool's rule) */
     wood: ['tree_2', 8, 0.03],
     /* THE TREE ZONES (terrain.gen.zones, the thicket by district) and THE AIR BY DISTRICT (shell.atmos.zones): boxes in plots, zoneOf(x0, y0, x1, y1) */
@@ -224,7 +224,7 @@ module.exports = {
           inP('psx_wooden_crate_2', 6.3, 2.2, { y: F }); inP('wooden_barrel', -2.6, 2.8, { y: F }); inP('wooden_barrel', -3.5, 2.75, { y: F });
           inP('psx_ceiling_lamp_1_on', -3.5, 0, { y: 2.42, noLight: true }); inP('psx_ceiling_lamp_1_on', 2.6, -0.5, { y: 2.42, noLight: true });
           inP('psx_cobweb_1', 6.5, -3.0, { y: 2.4 }); inP('railway_lantern', lx - 2.2, d / 2 + 0.5, { noLight: true }); }
-        /* ═══ PASS 3 · THE DRESSING ═══ (catalogue pieces only; the model list read end to end first: areas-complexes.md "THE RITUAL GROUND", FITS THIS DISTRICT)
+        /* ═══ PASS 3 · THE DRESSING ═══ (catalogue pieces only; the model list read end to end first: areas-complexes.md "BOHEMIAN GROVE", FITS THIS DISTRICT)
            sq = a blocker on a free square's middle (skipped when the square is not free); sm = a small thing at a spot in metres, only on open ground that is no
            path (so nothing lands on a trail); up = a height for a piece that sits ON something (1 m or more is a height from the room's floor, so the ground is added) */
         { const cellAt = (x, z) => { const cx = Math.floor((x + 126) / 3.5), cy = Math.floor((z + 126) / 3.5); return cy >= 0 && cy < 36 && cx >= 36 && cx < 72 ? cell[cy][cx] : 't'; };

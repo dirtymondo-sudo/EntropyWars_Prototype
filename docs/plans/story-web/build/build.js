@@ -19,7 +19,7 @@ function places() {
   { const L = JSON.parse(fs.readFileSync(repo + '/docs/areas/space/layout.json', 'utf8'));
     sub.space = L.rooms.map(r => ({ k: r.id, n: r.name, d: Object.keys(r.districts || {}) })); }
   /* which zone a room belongs to */
-  const zoneOfRoom = (r, R) => { if (R.world && R.world.hub) return R.world.hub; for (const [k, v] of Object.entries(H.hubs)) if ((v.rooms || []).includes(r)) return k;
+  const zoneOfRoom = (r, R) => { if (R.world && R.world.hub) return R.world.hub; if (/^site_prebuilt_revenge_/.test(r)) return 'beach';   /* THE FLYING DUTCHMAN (11-23): moored at the Beach's Long Pier, no world place of her own */ for (const [k, v] of Object.entries(H.hubs)) if ((v.rooms || []).includes(r)) return k;
     for (const [k, v] of Object.entries(H.hubs)) for (const s of v.sites || []) if (r.startsWith('site_' + s + '_')) return k; return null; };
   const zones = Object.entries(M.zones).map(([k, z]) => {
     const pts = z.rooms.filter(r => Number.isFinite(r.wx)).map(r => [r.wx + (r.cols || 0) / 2, r.wy + (r.rows || 0) / 2]);
@@ -73,6 +73,9 @@ function storyData() {
   return { rooms, quests, sq: M.sq, plot: M.plot };
 }
 let rosterObj = JSON.parse(fs.readFileSync(d + '/roster.json', 'utf8')); rosterObj.places = places(); const freshAdded = require('./fresh.js')(rosterObj); if (freshAdded.length) console.log('new from the game:', freshAdded.join(', ')); rosterObj.spawns = require('./spawns.js')(rosterObj); rosterObj.story = storyData();
+/* THE HOMES AS THEY STAND NOW (2026-11-23): a unit's printed home is the place that replaced its old site (data.js DOOR_TEXT.POINT_OF_ENTRY_NOW) */
+{ const repo = d + '/../../../..', vm = require('vm'), sb = require(repo + '/load-data.js').makeSandbox(); vm.runInContext(fs.readFileSync(repo + '/data.js', 'utf8') + '\n;globalThis.__N = DOOR_TEXT.POINT_OF_ENTRY_NOW || {};', sb, { filename: 'data.js' });
+  (rosterObj.races || []).forEach(r => { if (r.home && sb.__N[r.home]) r.home = sb.__N[r.home]; if (Array.isArray(r.also)) r.also = r.also.map(a => sb.__N[a] || a); }); }
 const roster = JSON.stringify(rosterObj).replace(/</g, '\\u003c');
 const app = fs.readFileSync(d + '/app.js', 'utf8');
 if (/<\/script/i.test(app)) throw new Error('script close in app');

@@ -86,7 +86,7 @@ function dressing(ctx) {
       for (let i = 0; i < 7; i++) { const a = i * 0.9 + 0.3, d = 2.0 + (i % 3) * 0.35; P('psxg_rock_' + (1 + i % 4), tx + Math.cos(a) * d, tz + Math.sin(a) * d, { face: i * 67 }); }
       P('bee_frames', tx + 0.9, tz - 0.5, { y: 3.2 }); P('bee_frames', tx + 1.1, tz + 0.2, { y: 2.7 }); P('bee_frames', tx + 0.6, tz - 0.9, { y: 3.6 }); P('chrysalis', tx - 0.75, tz + 0.5, { y: 2.2 }); P('caterpillar_bug', tx - 1.5, tz - 1.2);
       const q = hput('P01-03', 'iron_garden_bench', 0, 3, { face: 180 }); if (q) { P('psx_book_mp_3', gc(q[0]) - 0.3, gc(q[1]), { y: 0.5, face: 30 }); P('hw_candles', gc(q[0]) + 1.2, gc(q[1]) + 0.3); }
-      hdec('P01-03', 'item_ward_totem', -3, 0); hdec('P01-03', 'fae_toadstool', 2, -2, { noLight: true, h: 0.55 }); hdec('P01-03', 'fae_toadstool', -2, -2, { noLight: true, h: 0.4 });   // small (pass 5: at 1.75 m they read as the Ritual Ground's) hdec('P01-03', 'instrument_violin_lying', 1, 3, { y: 0.02 });
+      hdec('P01-03', 'item_ward_totem', -3, 0); hdec('P01-03', 'fae_toadstool', 2, -2, { noLight: true, h: 0.55 }); hdec('P01-03', 'fae_toadstool', -2, -2, { noLight: true, h: 0.4 });   // small (pass 5: at 1.75 m they read as Bohemian Grove's) hdec('P01-03', 'instrument_violin_lying', 1, 3, { y: 0.02 });
       hdec('P01-03', 'hw_web', -1, -1, { y: 1.5 }); hdec('P01-03', 'psxg_dead_bush_1', 3, 2); hdec('P01-03', 'wooden_bucket', -2, 2); }
     /* ── THE CROSSROADS (P02-03): a bench and a bin by the signpost, a cairn, what walkers leave ── */
     hput('P02-03', 'iron_garden_bench', -2, -1, { face: 90 }); hput('P02-03', 'metal_trash_can', 1, -2); hput('P02-03', 'cairn', 2, 2); hdec('P02-03', 'psxg_rock_4', -3, 3);
