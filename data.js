@@ -94367,6 +94367,59 @@ function _hqRailPoint(sg, t) {
     if (sg.arc) { const a = (sg.arc.a0 + (sg.arc.a1 - sg.arc.a0) * t) * Math.PI / 180; return [sg.arc.x + Math.sin(a) * sg.arc.r, sg.arc.z - Math.cos(a) * sg.arc.r]; }
     return [sg.x0 + (sg.x1 - sg.x0) * t, sg.z0 + (sg.z1 - sg.z0) * t];
 }
+/* THE GROUNDED FENCES (2026-11-23, mondo: "fences that are incorrectly placed floating in the air, all over the game ... raising the plot or
+   cell the fence ended at made the whole thing rise, when it should still be touching the ground"): a ground-following rail row read the
+   ground at its two ENDS only and drew a straight line between them, so a run laid before the levels (Disaster City's raised plots, a
+   bank, a step) hung in the air over every low square between its ends, or ran through every raised one. Now one run (a straight row, a
+   polyline leg, an arc piece) is split where the ground under it bends: the ground is read every 0.25 m along it (the higher of the line
+   and 0.15 m either side, so a fence on the lip of a drop stands on the lip), a STEP (a jump of over 0.45 m between two readings) ends one
+   piece and starts the next at the new height (the fence steps, like a real one on a terrace), and a slope is laid as few straight pieces
+   as keep every post within 0.1 m of the ground (a flat run stays one piece). `brk` on a piece = a step before it (its grind is a new chain).
+   A row keeps its old straight line with `noFollow: true`; the whole game with `window.EW_RAIL_NO_FOLLOW = true` before the room loads. */
+function _hqRailFollow(sg, hAt) {
+    const len = sg.arc ? Math.abs(sg.arc.a1 - sg.arc.a0) * Math.PI / 180 * sg.arc.r : Math.hypot(sg.x1 - sg.x0, sg.z1 - sg.z0);
+    if (!(len > 0.5)) return [sg];
+    const n = Math.min(600, Math.max(2, Math.ceil(len / 0.25))), T = [], Y = [];
+    for (let i = 0; i <= n; i++) {
+        const t = i / n, p = _hqRailPoint(sg, t), q = _hqRailPoint(sg, Math.min(1, t + 0.01)), r = _hqRailPoint(sg, Math.max(0, t - 0.01));
+        let dx = q[0] - r[0], dz = q[1] - r[1]; const dl = Math.hypot(dx, dz) || 1; dx /= dl; dz /= dl;
+        let g = -Infinity;
+        [0, 0.15, -0.15].forEach(o => { const v = hAt(p[0] + dz * o, p[1] - dx * o); if (isFinite(v) && v > g) g = v; });
+        T.push(t); Y.push(isFinite(g) ? g : (sg.g0 + (sg.g1 - sg.g0) * t));
+    }
+    let bad = false; for (let i = 0; i <= n; i++) if (Math.abs(sg.g0 + (sg.g1 - sg.g0) * T[i] - Y[i]) > 0.1) { bad = true; break; }
+    if (!bad) return [sg];
+    /* the runs between steps, a run shorter than 0.6 m joined to the one after it (a kerb's lip is no step of its own) */
+    const runs = []; let cur = [0];
+    for (let i = 0; i < n; i++) { if (Math.abs(Y[i + 1] - Y[i]) > 0.45) { runs.push(cur); cur = []; } cur.push(i + 1); }
+    runs.push(cur);
+    for (let k = 0; k < runs.length - 1; k++) { const a = runs[k]; if ((T[a[a.length - 1]] - T[a[0]]) * len < 0.6) { runs[k + 1] = a.concat(runs[k + 1]); runs.splice(k, 1); k--; } }
+    if (runs.length > 1) { const a = runs[runs.length - 1]; if ((T[a[a.length - 1]] - T[a[0]]) * len < 0.6) { runs[runs.length - 2] = runs[runs.length - 2].concat(a); runs.pop(); } }
+    /* each run: the fewest straight pieces that keep the ground within 0.1 m (Douglas-Peucker on t, y) */
+    const keep = (a) => { const out = new Set([a[0], a[a.length - 1]]);
+        const dp = (i0, i1) => { let w = -1, wi = -1; for (let i = i0 + 1; i < i1; i++) { const ia = a[i0], ib = a[i1], ic = a[i];
+                const y = Y[ia] + (Y[ib] - Y[ia]) * (T[ic] - T[ia]) / ((T[ib] - T[ia]) || 1), d = Math.abs(Y[ic] - y); if (d > w) { w = d; wi = i; } }
+            if (w > 0.1) { out.add(a[wi]); dp(i0, wi); dp(wi, i1); } };
+        dp(0, a.length - 1); return Array.from(out).sort((p, q) => p - q); };
+    const segs = [];
+    runs.forEach((a, k) => {
+        const ks = keep(a);
+        /* a step between two runs stands halfway between their readings */
+        const tA = (k > 0) ? (T[a[0] - 1] + T[a[0]]) / 2 : 0, tB = (k < runs.length - 1) ? (T[a[a.length - 1]] + T[a[a.length - 1] + 1]) / 2 : 1;
+        const tt = ks.map(i => T[i]); tt[0] = tA; tt[tt.length - 1] = tB;
+        for (let j = 0; j + 1 < ks.length; j++) {
+            const t0 = tt[j], t1 = tt[j + 1]; if (t1 - t0 < 1e-6) continue;
+            const g0 = Y[ks[j]], g1 = Y[ks[j + 1]];
+            let s;
+            if (sg.arc) { const A = sg.arc, b0 = A.a0 + (A.a1 - A.a0) * t0, b1 = A.a0 + (A.a1 - A.a0) * t1, p0 = _hqRailPoint(sg, t0), p1 = _hqRailPoint(sg, t1);
+                s = { x0: p0[0], z0: p0[1], x1: p1[0], z1: p1[1], g0, g1, arc: { x: A.x, z: A.z, r: A.r, a0: b0, a1: b1 } }; }
+            else { const p0 = _hqRailPoint(sg, t0), p1 = _hqRailPoint(sg, t1); s = { x0: p0[0], z0: p0[1], x1: p1[0], z1: p1[1], g0, g1 }; }
+            if (j === 0 && k > 0) s.brk = true;
+            segs.push(s);
+        }
+    });
+    return segs.length ? segs : [sg];
+}
 /* THE STREET FURNITURE (2026-11-02, mondo: "street lamps and signs and poles etc that are just placed really wrong or in the middle of a
    street or in a place where it doesnt make sense ... BENCHES (another one that is really misplaced) ... every map was rebuilt to make sense
    on the square grid"): in a CITY plan (gen.kind 'city') the scatter rows and the street lamps no longer fall on random sidewalk spots with a
@@ -95047,7 +95100,7 @@ function hqTerrainCompile(room, roomId) {
         segs.forEach(sg => {
             const grind = Object.assign({ x0: sg.x0, z0: sg.z0, x1: sg.x1, z1: sg.z1, y0: sg.g0 + topM, y1: sg.g1 + topM, y: Math.max(sg.g0, sg.g1) + topM, rail: true }, tag || {});
             if (sg.arc) Object.assign(grind, { arc: true, cx: sg.arc.x, cz: sg.arc.z, r: sg.arc.r, a0: sg.arc.a0, a1: sg.arc.a1 });
-            if (prev) { prev.next = grind; grind.prev = prev; }
+            if (prev && !sg.brk) { prev.next = grind; grind.prev = prev; }
             prev = grind; info.rails.push(grind);
             if (kd) info.railings.push(Object.assign({ model, top: topM }, sg, tag || {}));
             if (!block || !SR) return;
@@ -95092,6 +95145,11 @@ function hqTerrainCompile(room, roomId) {
             }
         } else {
             segs.push({ x0: r.x0, z0: r.z0, x1: r.x1, z1: r.z1, g0: gy(r.x0, r.z0, r.y0), g1: gy(r.x1, r.z1, r.y1) });
+        }
+        /* THE GROUNDED FENCES (2026-11-23): a piece that reads the ground (no `y`, no `y0` / `y1`, no height on its points) follows it */
+        if (typeof r.y !== 'number' && typeof r.y0 !== 'number' && typeof r.y1 !== 'number' && !r.noFollow && !(typeof window !== 'undefined' && window.EW_RAIL_NO_FOLLOW)) {
+            const fixed = Array.isArray(r.pts) ? r.pts : null;
+            segs = [].concat.apply([], segs.map((sg, i) => (fixed && (typeof fixed[i][2] === 'number' || typeof fixed[i + 1][2] === 'number')) ? [sg] : _hqRailFollow(sg, hAt)));
         }
         pushRun(model ? null : r, segs, model, block, null, own ? null : rh);
     });
