@@ -14987,4 +14987,19 @@ whole catalogue buildings (find-doors.js PACK rows), so each KIND opens once, in
   (cot, cold stove, chair, fur rug, lantern, a cobweb); Babel's houses (cots, woven baskets, a water jar, rugs, oil lamps; the row house is
   one long room with both front doors, the yard house = the gate, the walled yard with firewood and a barrel, the house's own door; the
   stair house opens on its +X ground door, the painted door at the top of its outside stair stays: that stair is no walk).
-- NOT DOORS: `thatched_hut` left find-doors.js's list (no door, lattice windows all round, a floor on stilts 0.7 m up, 1.2 m headroom).
+- NOT DOORS: `thatched_hut` left find-doors.js's list (no door, lattice windows all round, a floor on stilts 0.7 m up, 1.2 m headroom). `lighthouse` and
+  `lighthouse_tall` left it too (the Meshy decor they wear is a striped tower on its rock: no door on any side).
+- THE TRAILERS (`trailer_home_1..6`, the Trailer Park scene's homes; Circus, Estate, Desert Highway, Bermuda): bake-pack-pieces.py
+  `trailer_N_open` (the shell without its front door) + `trailer_N_inside` (the scene's own living room, kitchen, bedroom, bathroom; never
+  the porch's bin bags, the washing line, the roof pipe), both framed as the shut one (`frame`), `marks` printing the inside and the door.
+  The floor stood 0.81 m up on its skirting; the porch steps rise more than a mesh step each, so the walker never got up them: the open
+  shell and its inside are SUNK 0.81 m (catalogue `hover: -0.81`, so no mesh collider): the floor is the ground. Their walls are the row
+  plus `walls` = the bedroom and bathroom partitions (their doorways measured by ray from the GLB). The furniture is decor: a collider on
+  it shut the door (the dining set stands just inside). `<key>_shut` = the old closed model.
+- A WALKER'S DOORWAY under ~1 m shuts: the 0.68 m body against walls laid on 0.5 m cells stopped dead in a 0.87 m gap (seen in the
+  browser). A row's `doorW` is 1.05 m or more even when the pack's frame is narrower (the leaf covers the frame): the trailers 1.1, the
+  outhouse 1.05, the stair house 1.1.
+- LEFT (11-23): the three stilt houses in the Harbour stand 0.7 m over the sea on piles; the walker swims to them but nothing climbs
+  the deck yet (a ladder `climb` row needs an absolute height, the deck's comes off the sea floor under each). The Haunted House's two
+  rim houses have no ground round them; Heaven's Room 777 door reads unreached (the floating stair is under-read by the walker, as in
+  the soft-lock notes); the Estate's field shed reads unreached in the Lake room's copy of its neighbour (its own room, `…_ow_corn`, makes find-doors.js throw: not checked).
