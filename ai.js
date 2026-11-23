@@ -135,33 +135,33 @@
     // baseline all apply. The values here stay the canonical defaults.
     const AI_TUNE = {
         // ── value model ──
-        killBase: 155.2,          // SPSA 2026-11-01 (was 138.3) // SPSA 2026-10-29 (was 114) // imitation 2026-10-08 (was 116.563) // flat premium for removing a unit (on top of its denied output) — gen-305 champion (was 70)
-        killOutputTurns: 0.4864,       // SPSA 2026-11-01 (was 0.3464) // SPSA 2026-10-29 (was 0.645) // turns of the victim's output a kill denies (they'd respawn/act ~1.6 more times near-term) — gen-40 champion 2026-10-07 (was 1.6)
-        supportKillPremium: 109.5,// SPSA 2026-11-01 (was 115.1) // SPSA 2026-10-29 (was 124) // imitation 2026-10-08 (was 128.125) // extra for killing a healer/reviver kit — gen-305 (was 130)
-        mpValuePerPoint: 0.4968,     // SPSA 2026-11-01 (was 0.5838) // SPSA 2026-10-29 (was 0.49) // imitation 2026-10-08 (was 0.529) // HP-equivalent value of 1 MP (opportunity cost of casting; 0.9 caused MP hoarding — 59% of sim units ended matches >90% MP) — gen-305 (was 0.5)
-        pressActionValue: 185.0,  // SPSA 2026-11-01 (was 182.1) // SPSA 2026-10-29 (was 202) // imitation 2026-10-08 (was 181.563) // floor value of the free action a press refund grants — gen-305 (was 150)
+        killBase: 158.0,          // SPSA 2026-11-22 (was 155.2) // SPSA 2026-11-01 (was 138.3) // SPSA 2026-10-29 (was 114) // imitation 2026-10-08 (was 116.563) // flat premium for removing a unit (on top of its denied output) — gen-305 champion (was 70)
+        killOutputTurns: 0.7907,       // SPSA 2026-11-22 (was 0.4864) // SPSA 2026-11-01 (was 0.3464) // SPSA 2026-10-29 (was 0.645) // turns of the victim's output a kill denies (they'd respawn/act ~1.6 more times near-term) — gen-40 champion 2026-10-07 (was 1.6)
+        supportKillPremium: 127.3,// SPSA 2026-11-22 (was 109.5) // SPSA 2026-11-01 (was 115.1) // SPSA 2026-10-29 (was 124) // imitation 2026-10-08 (was 128.125) // extra for killing a healer/reviver kit — gen-305 (was 130)
+        mpValuePerPoint: 0.5228,     // SPSA 2026-11-22 (was 0.4968) // SPSA 2026-11-01 (was 0.5838) // SPSA 2026-10-29 (was 0.49) // imitation 2026-10-08 (was 0.529) // HP-equivalent value of 1 MP (opportunity cost of casting; 0.9 caused MP hoarding — 59% of sim units ended matches >90% MP) — gen-305 (was 0.5)
+        pressActionValue: 208.7,  // SPSA 2026-11-22 (was 185.0) // SPSA 2026-11-01 (was 182.1) // SPSA 2026-10-29 (was 202) // imitation 2026-10-08 (was 181.563) // floor value of the free action a press refund grants — gen-305 (was 150)
         overkillWaste: 1.0,         // damage past the target's effective HP is worth 0 (cap factor)
-        focusCommitBonus: 120.7,    // SPSA 2026-11-01 (was 127.5) // SPSA 2026-10-29 (was 127) // imitation 2026-10-08 (was 117.5) // bonus for hitting the team's shared focus target — gen-305 (was 90)
-        woundedPileOn: 0.2669,        // SPSA 2026-11-01 (was 0.335) // SPSA 2026-10-29 (was 0.37) // imitation 2026-10-08 (was 0.35) // × missing HP added to target priority (finish jobs)
-        healSafetyDiscount: 0.4749,   // SPSA 2026-11-01 (was 0.4285) // SPSA 2026-10-29 (was 0.45) // heal value multiplier when the target is out of enemy reach
+        focusCommitBonus: 124.9,    // SPSA 2026-11-22 (was 120.7) // SPSA 2026-11-01 (was 127.5) // SPSA 2026-10-29 (was 127) // imitation 2026-10-08 (was 117.5) // bonus for hitting the team's shared focus target — gen-305 (was 90)
+        woundedPileOn: 0.3544,        // SPSA 2026-11-22 (was 0.2669) // SPSA 2026-11-01 (was 0.335) // SPSA 2026-10-29 (was 0.37) // imitation 2026-10-08 (was 0.35) // × missing HP added to target priority (finish jobs)
+        healSafetyDiscount: 0.4861,   // SPSA 2026-11-22 (was 0.4749) // SPSA 2026-11-01 (was 0.4285) // SPSA 2026-10-29 (was 0.45) // heal value multiplier when the target is out of enemy reach
         healNoEnemyDiscount: 0.35,  // heal value multiplier when no enemy is even visible
-        reviveBase: 382.8,            // SPSA 2026-11-01 (was 335.1) // SPSA 2026-10-29 (was 320) // reviving a unit ≈ a kill in reverse
-        ccOutputFactor: 0.5738,        // SPSA 2026-11-01 (was 0.3986) // SPSA 2026-10-29 (was 0.37) // imitation 2026-10-08 (was 0.31) // fraction of a denied unit's per-turn output a hard CC is worth per denied turn — gen-40 champion 2026-10-07 (was 0.8)
-        statusSetupFactor: 0.2169,     // SPSA 2026-11-01 (was 0.273) // SPSA 2026-10-29 (was 0.115) // fraction of a teammate's bonusVsStatus payoff credited to the setup cast — gen-40 champion 2026-10-07 (was 0.5)
+        reviveBase: 353.5,            // SPSA 2026-11-22 (was 382.8) // SPSA 2026-11-01 (was 335.1) // SPSA 2026-10-29 (was 320) // reviving a unit ≈ a kill in reverse
+        ccOutputFactor: 0.7266,        // SPSA 2026-11-22 (was 0.5738) // SPSA 2026-11-01 (was 0.3986) // SPSA 2026-10-29 (was 0.37) // imitation 2026-10-08 (was 0.31) // fraction of a denied unit's per-turn output a hard CC is worth per denied turn — gen-40 champion 2026-10-07 (was 0.8)
+        statusSetupFactor: 0.3084,     // SPSA 2026-11-22 (was 0.2169) // SPSA 2026-11-01 (was 0.273) // SPSA 2026-10-29 (was 0.115) // fraction of a teammate's bonusVsStatus payoff credited to the setup cast — gen-40 champion 2026-10-07 (was 0.5)
         statusSetupSure: 0.6,       // WEAK RACES II 2026-10-23: same, when the payoff is all but certain (mate still to act this round / own zone that lasts) — not trained
-        buffStageFactor: 0.08888,      // SPSA 2026-11-01 (was 0.1133) // SPSA 2026-10-29 (was 0.14) // one offensive stat stage (±20 on the 0-100 ruler since 2026-08-29) ≈ +14% of recipient output per remaining turn
+        buffStageFactor: 0.0878,      // SPSA 2026-11-22 (was 0.08888) // SPSA 2026-11-01 (was 0.1133) // SPSA 2026-10-29 (was 0.14) // one offensive stat stage (±20 on the 0-100 ruler since 2026-08-29) ≈ +14% of recipient output per remaining turn
         buffTurnsHorizon: 2.2,      // expected turns a buff stays relevant
         delayedEscapeStatic: 0.35,  // P(target still in blast) for ground-tile delayed casts
         delayedEscapeTracking: 0.75,// P for unit-tracking delayed marks
-        threatCostFactor: 0.02091,    // SPSA 2026-11-01 (was 0.0351) // SPSA 2026-10-29 (was 0) // imitation 2026-10-08 (was 0.02) // fraction of expected incoming damage charged to a tile (0.35 made both AIs too timid to ever close — mutual standoff) — gen-305 pinned this at the range floor (0.08): self-play rewards the side that closes — gen-40 champion 2026-10-07 (was 0.082)
-        deathRiskFactor: 0.1276,       // SPSA 2026-11-01 (was 0.2179) // SPSA 2026-10-29 (was 0.34) // imitation 2026-10-08 (was 0.375) // × own kill-value charged when a tile's threat covers our whole HP bar — gen-40 champion 2026-10-07 (was 0.9)
-        jointSearchDiscount: 0.9101, // SPSA 2026-11-01 (was 0.951) // SPSA 2026-10-29 (was 0.985) // long cloud run 2026-10-29 (was 0.97) // imitation 2026-10-08 (was 1) // move-then-act value discount vs acting right now — gen-40 champion 2026-10-07 (was 0.92)
+        threatCostFactor: 0.0156,    // SPSA 2026-11-22 (was 0.02091) // SPSA 2026-11-01 (was 0.0351) // SPSA 2026-10-29 (was 0) // imitation 2026-10-08 (was 0.02) // fraction of expected incoming damage charged to a tile (0.35 made both AIs too timid to ever close — mutual standoff) — gen-305 pinned this at the range floor (0.08): self-play rewards the side that closes — gen-40 champion 2026-10-07 (was 0.082)
+        deathRiskFactor: 0.1159,       // SPSA 2026-11-22 (was 0.1276) // SPSA 2026-11-01 (was 0.2179) // SPSA 2026-10-29 (was 0.34) // imitation 2026-10-08 (was 0.375) // × own kill-value charged when a tile's threat covers our whole HP bar — gen-40 champion 2026-10-07 (was 0.9)
+        jointSearchDiscount: 0.9346, // SPSA 2026-11-22 (was 0.9101) // SPSA 2026-11-01 (was 0.951) // SPSA 2026-10-29 (was 0.985) // long cloud run 2026-10-29 (was 0.97) // imitation 2026-10-08 (was 1) // move-then-act value discount vs acting right now — gen-40 champion 2026-10-07 (was 0.92)
         // ── kept legacy knobs (movement / modes / items) ──
         markedTargetBonus: 12,
         hourglassTargetBonus: 45,
         hgCarrierFleeAdv: -0.23,
         safeAllyProximity: 4,
-        towerLowHpPush: 33.6,          // SPSA 2026-11-01 (was 23.99) // SPSA 2026-10-29 (was 35) // long cloud run 2026-10-29 (was 50) // gen-40 champion 2026-10-07 (was 120)
+        towerLowHpPush: 70.15,          // SPSA 2026-11-22 (was 33.6) // SPSA 2026-11-01 (was 23.99) // SPSA 2026-10-29 (was 35) // long cloud run 2026-10-29 (was 50) // gen-40 champion 2026-10-07 (was 120)
         towerMidHpPush: 90,
         towerClearBonus: 110,
         levelAggressionMod: 0.006,   // progression modes only (PvP is level-normalized)
@@ -173,7 +173,7 @@
         reshapePerEnemy: 20,
         reshapeDefensive: 14,
         moveHighGroundRanged: 3,
-        moveHighGroundMelee: 7.918,  // SPSA 2026-11-01 (was 7.944) // SPSA 2026-10-29 (was 7)
+        moveHighGroundMelee: 8.587,  // SPSA 2026-11-22 (was 7.918) // SPSA 2026-11-01 (was 7.944) // SPSA 2026-10-29 (was 7)
         moveRetreatHeight: 8,
         landToChannelBonus: 70,
         flyEscapeMeleeBonus: 30,
@@ -1155,6 +1155,13 @@
         if (id === 'doxxed') {
             try { if (g.unitHasStatus(tg, 'doxxed')) return 0; } catch (e) {}
             return 25;
+        }
+        /* 🦋 THE MONARCH (2026-11-23): Programmed is stacks toward the Trigger Word (2 = it hits its own side, 3 = and sleeps):
+           worth more the closer the target gets to 2 and 3, nearly nothing past the cap */
+        if (id === 'programmed') {
+            const cur = Math.max(0, Math.min(3, Number(tg.status && tg.status.programmed) | 0));
+            if (cur >= 3) return 10;
+            return 45 + 35 * cur + Math.min(60, 0.15 * unitThreatOutput(g, tg, unit));
         }
         try { if (g.unitHasStatus(tg, id)) return 0; } catch (e) {}
         if (_aiStatusBlocked(g, tg, id)) return 0;   // WEAK RACES II: Ghoul shrugs off Stun, Rabbit Slow — no denial
@@ -6028,6 +6035,16 @@
             const _vs = _scoreSpellCore(unit, window._streamCastRow(unit, spell), target, v);
             return (spell.viewersSpend && _vw < 6 && (unit.hp || 0) > (unit.maxHp || 1) * 0.5) ? _vs * 0.6 : _vs;
         }
+        /* 🫀 THE LIMBS (the Abomination): Grasp is scored as the copy it casts (the Stagger at 5+, battle.js _abCastRow); Unfold
+           hits once a limb, so it is worth its limbs, waits for 4 while it can, and a hurt body keeps its last ones to shed */
+        if (spell && (spell.limbsStaggerAt || spell.limbsSpendAll) && typeof window._abCastRow === 'function') {
+            const _lb = (typeof window.getLimbs === 'function') ? window.getLimbs(unit) : 4;
+            if (spell.limbsMin > 0 && _lb < spell.limbsMin) return 0;
+            const _ls = _scoreSpellCore(unit, window._abCastRow(unit, spell), target, v);
+            if (!spell.limbsSpendAll) return _ls;
+            const _hurt = (unit.hp || 0) < (unit.maxHp || 1) * 0.35;
+            return _ls * (_lb / 3) * (_lb < 4 ? 0.5 : 1) * (_hurt && _lb <= 3 ? 0.4 : 1);
+        }
         let base = _scoreSpellCore(unit, spell, target, v);
         /* 📰 TODAY'S HEADLINE (the Florida Man, 11-17 polish): a headline spell is castable only today, so the CPU takes it over a
            plain hit when it is worth anything at all (it sat on Bath Salts in a test match and the round was lost) */
@@ -6684,6 +6701,24 @@
             }
             /* 🪆 THE HAUNTED DOLL (2026-11-17): Pull My String is a gamble on four lines (a heal, a Charm, a pull, a big hit). The CPU
                plays it blind, as a player does (it never peeks at _dollStringLine): worth more with an enemy in reach and when hurt. */
+            /* 🦋 THE MONARCH (2026-11-23): Trigger Word is worth what the programmed enemies in sight will do (the engine refuses
+               it with none): a 2-stack turns and hits its own side, a 3-stack also falls asleep. Metamorphosis (the chrysalis
+               skips her next turn) is worth it hurt, with nobody beside her, and more with stacks out for the hatched word. */
+            if (spell.triggerWord) {
+                const _twF = (typeof window !== 'undefined' && typeof window._monProgrammedFoes === 'function') ? window._monProgrammedFoes(unit, true) : [];
+                if (!_twF.length) return 0;
+                const _twB = unit._monHatched ? 1 : 0;
+                let _tw = 0;
+                for (const e of _twF) { const n = Math.min(3, (Number(e.status && e.status.programmed) | 0) + _twB); _tw += n >= 3 ? 150 : n === 2 ? 100 : 25; }
+                return _tw;
+            }
+            if ((spell.statusEffects || []).some(e => e && e.id === 'chrysalis')) {
+                if (g.unitHasStatus(unit, 'chrysalis')) return 0;
+                if (v.visibleEnemies.some(e => Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y) <= 1)) return 0;
+                const _mHurt = unit.maxHp > 0 ? 1 - unit.hp / unit.maxHp : 0;
+                const _mProg = (typeof window !== 'undefined' && typeof window._monProgrammedFoes === 'function') ? window._monProgrammedFoes(unit, true).length : 0;
+                return 20 + Math.round(90 * _mHurt) + 25 * Math.min(3, _mProg);
+            }
             if (spell.pullString) {
                 const _psR = (spell.pullString.killRange || 4);
                 const _psNear = v.visibleEnemies.some(e => Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y) <= _psR);

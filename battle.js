@@ -13775,7 +13775,7 @@
            Holds are plain unit data (_stHold: { key: { r: round it ends in, by: applier id, af: landed after the target's
            turn } }), so state-sync carries them to the guest (RULE #2); only the host engine expires them. Buffs, terrain /
            weather / end-of-round statuses, Strike, Simul and the Mystery Dungeon clock keep the plain end-of-round count. */
-        const _STATUS_HOLD_SKIP = new Set(['stagger', 'possessed', 'infected', 'statUp', 'statDown', 'climbing', 'exited', 'captured', 'sealed', 'radioactive']);   // ☢ radioactive counts stacks, not rounds
+        const _STATUS_HOLD_SKIP = new Set(['stagger', 'possessed', 'infected', 'statUp', 'statDown', 'climbing', 'exited', 'captured', 'sealed', 'radioactive', 'programmed']);   // 🦋 programmed: its own hold (_monProgramHold)   // ☢ radioactive counts stacks, not rounds
         function _statusHoldsOn() {
             if (state.phase !== 'battle' || state._blitzActiveUnitId == null) return false;
             if (typeof window._isStrikeRT === 'function' && window._isStrikeRT()) return false;
@@ -13785,6 +13785,7 @@
         }
         function _setStatusHold(u, key, sourceUnit) {
             if (!u || u.dead || u._dying) return;
+            if (key === 'programmed') return;   // 🦋 THE MONARCH: the landing set its own hold (_monProgramHold)
             const left = getStatusValue(u, key);
             if (!(left > 0)) return;
             const meta = STATUS_DEFS[key];
@@ -13857,7 +13858,7 @@
                         const v = getStatusValue(u, key);
                         if (!h || !(v > 0)) { delete _hold[key]; continue; }
                         if (state.round >= h.r) { _endHeldStatus(u, key); continue; }
-                        u.status[key] = Math.max(1, v - 1);
+                        if (!(STATUS_DEFS[key] && STATUS_DEFS[key].ownTick)) u.status[key] = Math.max(1, v - 1);   // 🦋 stacks are not a countdown
                     }
                 }
                 // The decrement/expiry split is pure (calcStatusDurationTick,
@@ -14889,6 +14890,7 @@
         function _nrRoundEnd() {
             if (!Array.isArray(state.units)) return;
             _payloadSpread();   // 🦠 THE PAYLOAD (the Virus): every carrier copies it to the teammates next to it
+            _monStrayStacks();   // 🦋 THE MONARCH: a stack nobody holds comes off
             _bannerRoundEnd();   // 🏯 the Clan Banners that stood their rounds come down
             for (const u of state.units.slice()) {
                 if (!u || !u.race) continue;
@@ -15442,6 +15444,92 @@
             _bearFx('wake', u);
             if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: u });
         }
+        /* ═══ THE ABOMINATION (2026-11-23, mondo OK'd the kit + named it; plan https://claude.ai/artifact/QYFEt8LpeEnqzhViCt1zME) ═══
+           TOO MUCH BODY. Host-side; the guest reads everything off the state sync: `unit.limbs` (a plain number, 0 to LIMBS_MAX,
+           no value = LIMBS_START), the `caged` status + unit._cageSrcId (an id). The texts go through the relayed
+           showFloatingTextForUnit, the looks through VFX.fire (relayed); the body itself shows the count (three-renderer.js THE
+           ABOMINATION hides the limbs it has lost). Notes: docs/notes/champions-combat.md "THE ABOMINATION".
+           - THE LIMBS: two arms, then up to four tentacles on its back. +1 when each of its turns ends (_abRegrow, from the
+             blitz advance where _turnRound is stamped).
+           - THE SHED (applyDamageToUnit, before the HP comes off): a hit of LIMBS_SHED_PCT of its max HP or more takes a limb
+             instead and is LIMBS_SHED_CUT smaller. Not damage over time, not its own hits. With 0 limbs nothing is shed.
+           - Grasp (`limbsStaggerAt`): at 5+ limbs the cast copy also Staggers (_abCastRow).
+           - Many Mouths (`limbsPerHit`): +1 limb for each enemy it bites (_abOnHit, while unit._abMouths is up).
+           - Unfold (`limbsSpendAll`, `limbsMin`): the cast copy carries the count (`_abHits`), the count goes to 0 once every
+             refusal has passed (_abSpendNow), and the barrage hits that many times, every enemy once before any twice
+             (_abUnfoldList). */
+        const LIMBS_MAX = 6, LIMBS_START = 4, LIMBS_SHED_PCT = 0.2, LIMBS_SHED_CUT = 0.3;
+        function getLimbs(u) {
+            if (!u || u.race !== 'abomination') return 0;
+            return u.limbs == null ? LIMBS_START : Math.max(0, Math.min(LIMBS_MAX, u.limbs | 0));
+        }
+        function _abFx(kind, u) {
+            try {
+                if (!u || state.phase !== 'battle' || _skipVisuals()) return;
+                const V = window.ThreeVFXEffects, id = kind === 'shed' ? 'abShed' : 'abGrow';
+                if (V && V.hasMapping && V.hasMapping(id, 'impact')) V.fire('impact', id, { tx: u.x, ty: u.y, casterId: u.id });
+            } catch (e) {}
+        }
+        function _abSetLimbs(u, n, why, fx) {
+            if (!u || u.race !== 'abomination') return 0;
+            const was = getLimbs(u), now = Math.max(0, Math.min(LIMBS_MAX, n | 0));
+            u.limbs = now;
+            if (now === was) return 0;
+            if (why) addLog(`🫀 ${_ctName(u)} ${why}: ${now} limb${now === 1 ? '' : 's'}.`);
+            if (fx) { _crFloat(u, `${now > was ? '🫀 +' + (now - was) : '🫀 −' + (was - now)} LIMB${Math.abs(now - was) === 1 ? '' : 'S'} (${now}/${LIMBS_MAX})`, now > was ? 'buff' : 'debuff'); _abFx(now > was ? 'grow' : 'shed', u); }
+            if (typeof markDirty === 'function') markDirty('hud', 'selectedUnit');
+            return now - was;
+        }
+        /* the blitz advance, the moment its turn is over: a stump grows back */
+        function _abRegrow(u) {
+            if (!_nrAlive(u) || u.race !== 'abomination' || u._abGrewRound === state.round) return;
+            u._abGrewRound = state.round;
+            if (getLimbs(u) < LIMBS_MAX) _abSetLimbs(u, getLimbs(u) + 1, 'grows a limb back', true);
+        }
+        /* applyDamageToUnit, before the HP comes off: the big hit takes a limb instead (returns the damage that lands) */
+        function _abShed(target, dmg, src, damageType, opts) {
+            if (!target || target.race !== 'abomination' || !(dmg > 0) || damageType === 'dot' || (opts && opts._linkEcho)) return dmg;
+            if (src && src.id === target.id) return dmg;
+            if (dmg < (target.maxHp || 0) * LIMBS_SHED_PCT || getLimbs(target) <= 0) return dmg;
+            const cut = Math.max(1, Math.round(dmg * (1 - LIMBS_SHED_CUT)));
+            _abSetLimbs(target, getLimbs(target) - 1, `sheds a limb and takes ${dmg - cut} less`, true);
+            return cut;
+        }
+        /* applyDamageToUnit, after the hit lands: Many Mouths grows one limb for each enemy it bites */
+        function _abOnHit(target, dmg, src) {
+            if (!src || !src._abMouths || src.race !== 'abomination' || !(dmg > 0) || !target || target.id === src.id || !isEnemyUnit(src, target)) return;
+            _abSetLimbs(src, getLimbs(src) + (src._abMouths | 0 || 1), '', true);
+        }
+        /* the cast's own copy (doSpell, where _streamCastRow is): the count baked in, nothing spent yet */
+        function _abCastRow(unit, spell) {
+            if (!spell || unit.race !== 'abomination') return spell;
+            const n = getLimbs(unit), s = Object.assign({}, spell);
+            if (spell.limbsStaggerAt && n >= spell.limbsStaggerAt) s.statusEffects = (spell.statusEffects || []).concat([{ id: 'stagger', duration: 1 }]);
+            if (spell.limbsSpendAll) s._abHits = n;
+            return s;
+        }
+        /* doSpell, once every refusal has passed: Unfold takes every limb; Many Mouths opens its mouths */
+        function _abSpendNow(unit, spell) {
+            if (!unit || unit.race !== 'abomination' || !spell) return;
+            if (spell.limbsSpendAll) {
+                const n = spell._abHits != null ? spell._abHits : getLimbs(unit);
+                _abSetLimbs(unit, 0, `pulls off all ${n} of its limbs`, false);
+            }
+            if (spell.limbsPerHit > 0) unit._abMouths = spell.limbsPerHit;
+        }
+        /* finishAction: the mouths close; a fresh Bone Cage leaves its shoulder (the renderer reads the victim's _cageSrcId) */
+        function _abAfterCast(unit, spell) {
+            if (!unit || unit.race !== 'abomination') return;
+            if (unit._abMouths) delete unit._abMouths;
+        }
+        /* Unfold's hits: `hits` long, round robin over the victims (each once before any twice) */
+        function _abUnfoldList(enemies, hits) {
+            const out = [], list = (enemies || []).filter(Boolean);
+            if (!list.length) return out;
+            for (let i = 0; i < Math.max(0, hits | 0); i++) out.push(list[i % list.length]);
+            return out;
+        }
+        window.getLimbs = getLimbs; window.LIMBS_MAX = LIMBS_MAX; window._abCastRow = _abCastRow;
         window._crCastRow = _crCastRow; window._crRoundEnd = _crRoundEnd;
         /* ═══ THE PLASTIC SURGEON (2026-11-23, mondo OK'd the kit: "okay yeah that's good") ═══ He operates on anyone. A `procedure`
            row (Botox, Makeover) works on an ally or an enemy (`anyTeam`, _kindMeta): the base row is the enemy cast and `onAlly` the
@@ -15933,6 +16021,138 @@
                 _applyAoeDamage(unit, killSpell, [{ x: foe.x, y: foe.y }], (cfg.killDmg || 150) + sp, sp, { rngRange: 30, minDmg: 32 });
             }
             markDirty('board', 'hud', 'selectedUnit');
+        }
+        /* ═══ THE MONARCH (2026-11-23, mondo OK'd the kit) ═══ A sleeper agent of the D.U.M.B.: she programs enemies, keeps them
+           programmed, then says the word and they turn on their own side. Host-side like the rest of the new races: the stacks, the
+           holds, the hits and the statuses state-sync to the guest; every look rides _sigVfxGeom (fireGeometry is relayed).
+           Notes: docs/notes/champions-combat.md "THE MONARCH". */
+        /* 🦋 a Programmed landing (STATUS_DEFS.programmed.onApply): the stacks come off after the programmer's NEXT turn ends (and the
+           target's turn in that round) — THE FULL ROUND's hold, set here by hand so every landing starts the clock again and the
+           round countdown never takes a stack (ownTick). */
+        function _monProgramHold(t, src) {
+            if (!t || !src || t.dead) return;
+            if (!t._stHold || typeof t._stHold !== 'object') t._stHold = {};
+            t._stHold.programmed = { r: (state.round || 0) + 1, by: src.id, af: 1 };
+            if (!_skipVisuals()) _sigVfxGeom('monProgram', t.x, t.y, getStatusValue(t, 'programmed') || 1, { owner: src.player });
+        }
+        window._monProgramHold = _monProgramHold;
+        /* the enemies of `unit` that wear Programmed (seenOnly: the ones her team can see) */
+        function _monProgrammedFoes(unit, seenOnly) {
+            return getHostileUnits(unit.player, unit).filter(e => _nrAlive(e) && getStatusValue(e, 'programmed') > 0
+                && !unitHasStatus(e, 'exited') && !unitHasStatus(e, 'captured')
+                && (!seenOnly || !state.fogOfWar || isUnitSeenByTeam(e, unit.player)))
+                .sort((a, b) => String(a.id).localeCompare(String(b.id)));
+        }
+        window._monProgrammedFoes = _monProgrammedFoes;
+        /* every Programmed stack her enemies wear (Chaos Theory, state.js _detonateDelayedSpellNow) */
+        function _monStacksOnBoard(player) {
+            let n = 0;
+            for (const e of state.units || []) if (_nrAlive(e) && sidesHostile(player, e.player)) n += Math.max(0, Math.min(3, getStatusValue(e, 'programmed') | 0));
+            return n;
+        }
+        window._monStacksOnBoard = _monStacksOnBoard;
+        /* a sleeper goes off: its own basic attack (ATK × the basic coefficient, the hit pipeline takes the defence) on its nearest
+           ally in reach; with nobody in reach it hurts itself. A unit that cannot swing (stunned, frozen, asleep, climbing) only
+           gets the Discord. */
+        function _monSleeperStrike(e, mon, atMs) {
+            if (!_nrAlive(e)) return false;
+            if (unitHasStatus(e, 'stun') || unitHasStatus(e, 'frozen') || unitHasStatus(e, 'sleep') || e._climb) return false;
+            const mates = (state.units || []).filter(a => _nrAlive(a) && a.id !== e.id && sidesAllied(a.player, e.player)
+                && !a._isCube && !a._isBoss && !unitHasStatus(a, 'exited') && !unitHasStatus(a, 'captured') && !isUnitRealmShieldedFrom(a, e)
+                && _oppStrikeCanReach(e, a.x, a.y, a.z ?? 0))
+                .sort((a, b) => combatDist(e.x, e.y, e.z ?? 0, a.x, a.y, a.z ?? 0) - combatDist(e.x, e.y, e.z ?? 0, b.x, b.y, b.z ?? 0) || String(a.id).localeCompare(String(b.id)));
+            const victim = mates[0] || e;
+            const V = SPELL_DMG_VARIANCE || 0;
+            const raw = Math.max(BASIC_ATTACK_MIN_RAW, Math.floor(pwrAtk(e) * BASIC_ATTACK_COEF) + Math.floor(engineRng() * (2 * V + 1)) - V);
+            if (victim !== e) setUnitFacing(e, victim.x - e.x, victim.y - e.y);
+            const vx = victim.x, vy = victim.y, vid = victim.id;
+            addLog(victim === e
+                ? `🦋 ${_ctName(e)} has nobody in reach and turns its programming on itself!`
+                : `🦋 ${_ctName(e)} turns on ${_ctName(victim)}!`);
+            applyDamageToUnit(victim, raw, `🦋 ${unitDisplayName(e)} strikes ${victim === e ? 'itself' : unitDisplayName(victim)}: `, {
+                sourceUnit: victim === e ? mon : e, damageType: 'physical', noPress: true, basicAttack: victim !== e
+            });
+            if (mon && !mon.dead) mon._trackDmgDealt = (mon._trackDmgDealt || 0);
+            if (!_skipVisuals()) {
+                const beat = () => {
+                    if (!_nrAlive(e)) return;
+                    showFloatingTextForUnit(e, victim === e ? '🦋 SELF-DESTRUCT' : '🦋 TURNED!', 'counter', { durationMs: 1100 });
+                    if (victim !== e && !state.animationsDisabled) {
+                        if (basicAttackDelivery(e).mode === 'leap') _meleeStrikeAnim(e, vx, vy, { targetId: vid });
+                        else { triggerAttackAnim(e, vx, vy); playBasicAttackShot(e, victim, null, actionMs(200)); }
+                    }
+                    playSfx('basicAttack');
+                };
+                if (atMs > 0) window.setTimeout(beat, atMs); else beat();
+            }
+            return true;
+        }
+        /* 🦋 TRIGGER WORD (`triggerWord`): every programmed enemy she can see goes off at once, by its stacks, and the stacks clear.
+           After Metamorphosis (`_monHatched`) every stack counts one higher, once. */
+        function _monTriggerWord(unit, spell) {
+            const cfg = spell.triggerWord || {};
+            const bonus = unit._monHatched ? 1 : 0;
+            if (bonus) unit._monHatched = 0;
+            const foes = _monProgrammedFoes(unit, true);
+            addLog(`🦋 ${_ctName(unit)} says the word${bonus ? ' (the hatched wings make every stack count one higher)' : ''}: ${foes.length} sleeper${foes.length !== 1 ? 's' : ''} wake${foes.length === 1 ? 's' : ''} up.`, undefined, undefined, { actor: unit });
+            if (!_skipVisuals()) {
+                showFloatingTextForUnit(unit, '“NOW.”', 'streak', { durationMs: 1300 });
+                _sigVfxGeom('monTriggerWord:say', unit.x, unit.y, foes.length, { owner: unit.player });
+            }
+            const sleepers = [];   // 3 stacks: they fall asleep after EVERY strike has landed (a mate's strike would wake them at once)
+            foes.forEach((e, i) => {
+                const stacks = Math.max(1, Math.min(3, getStatusValue(e, 'programmed') | 0));
+                const n = Math.min(3, stacks + bonus);
+                if (e._stHold) delete e._stHold.programmed;
+                clearStatus(e, 'programmed');
+                const atMs = _skipVisuals() ? 0 : actionMs(260 + i * 240);
+                if (!_skipVisuals()) _sigVfxGeom('monTriggerWord:wake', e.x, e.y, n, { owner: unit.player, fromX: unit.x, fromY: unit.y, delay: 260 + i * 240 });
+                if (n <= 1) {
+                    applyStatusEffects(e, [{ id: 'discord', duration: cfg.discordRounds || 1 }], `${spell.name}: `, unit);
+                    return;
+                }
+                const struck = _monSleeperStrike(e, unit, atMs);
+                if (!struck) { applyStatusEffects(e, [{ id: 'discord', duration: cfg.discordRounds || 1 }], `${spell.name}: `, unit); return; }
+                if (n >= 3) sleepers.push(e);
+            });
+            for (const e of sleepers) if (_nrAlive(e)) applyStatusEffects(e, [{ id: 'sleep', duration: cfg.sleepRounds || 1 }], `${spell.name}: `, unit);
+            checkWin();
+            markDirty('board', 'hud', 'selectedUnit');
+        }
+        /* 🦋 METAMORPHOSIS: the chrysalis comes off (STATUS_DEFS.chrysalis.onRemove) and she hatches */
+        function _monHatch(u) {
+            if (!_nrAlive(u) || state.phase !== 'battle') return;
+            u._monHatched = 1;
+            applyStatusEffects(u, [{ id: 'levitating', duration: 2 }, { id: 'quickened', duration: 2 }], 'Metamorphosis: ', u);
+            addLog(`🦋 ${_ctName(u)} hatches with full wings: her next Trigger Word counts every stack one higher.`);
+            if (!_skipVisuals()) {
+                showFloatingTextForUnit(u, '🦋 HATCHED', 'buff', { durationMs: 1200 });
+                _sigVfxGeom('monMetamorphosis:hatch', u.x, u.y, 0, { owner: u.player });
+            }
+        }
+        window._monHatch = _monHatch;
+        /* 🔺 DELTA ALTER (passive deltaAlter): the first time each battle she drops under half HP (applyDamageToUnit) */
+        function _monDeltaCheck(u) {
+            if (!u || u.dead || u._dying || !(u.hp > 0) || !(u.maxHp > 0) || u.hp >= u.maxHp * 0.5) return;
+            if (typeof unitHasPassive !== 'function' || !unitHasPassive(u, 'deltaAlter')) return;
+            if (!state._monDeltaUsed || typeof state._monDeltaUsed !== 'object') state._monDeltaUsed = {};
+            if (state._monDeltaUsed[u.id]) return;
+            state._monDeltaUsed[u.id] = 1;
+            u._deltaCrit = true;
+            applyStatStageBoost(u, { atk: 2 }, 'Delta Alter: ', u, { rounds: 2 });
+            addLog(`🔺 ${_ctName(u)}'s killer programming switches on: +2 ATK, and her next basic attack is a sure critical hit.`);
+            if (!_skipVisuals()) {
+                showFloatingTextForUnit(u, '🔺 DELTA', 'streak', { durationMs: 1200 });
+                _sigVfxGeom('monDelta', u.x, u.y, 0, { owner: u.player });
+            }
+        }
+        /* a stack nobody holds any more (a hold lost to a respawn wipe or a snapshot) comes off at the round end */
+        function _monStrayStacks() {
+            for (const u of state.units || []) {
+                if (!u || u.dead || !(getStatusValue(u, 'programmed') > 0)) continue;
+                if (u._stHold && u._stHold.programmed) continue;
+                clearStatus(u, 'programmed');
+            }
         }
         /* 🐸 LEAPFROG (the Karate Frog, `leapOver`): after the hit he lands on the square straight behind the target, if free.
            THE KARATE FROG PASS (2026-11-17): the square comes from frogLeapLanding (the forecast shows the same landing), a
@@ -17650,7 +17870,7 @@
             'ice queen': 'magic', 'seraphim': 'magic', 'watcher': 'magic', 'occulus': 'magic',
             'shadow entity': 'magic', 'siren': 'magic', 'chosen one': 'magic', 'symbiote': 'magic',
             'voidweaver': 'throw',
-            'demon prince': 'claw', 'skinwalker': 'claw', 'bear': 'claw',   // 2026-11-23 THE BEAR: the paw rakes, never the fist sprite
+            'demon prince': 'claw', 'skinwalker': 'claw', 'bear': 'claw', 'abomination': 'claw',   // 2026-11-23 THE BEAR: the paw rakes, never the fist sprite; THE ABOMINATION's arm the same
             'cyclops': 'punch', 'juggernaut': 'punch', 'super sentai': 'punch', 'antihero': 'punch',
             'bigfoot': 'punch', 'giant': 'punch', 'werewolf': 'claw', 'catgirl': 'claw', 'ki fighter': 'punch',
             'pirate': 'ranged', 'nordic': 'ranged'   // 2026-10-18 — their models' attack is the quick-draw shot (kept when the reach fallback was fixed)
@@ -19066,6 +19286,7 @@
         }
 
         function rollCrit(unit) {
+            if (unit && unit._deltaCrit) { unit._deltaCrit = false; return true; }   // 🔺 THE MONARCH: Delta Alter's sure crit (basic attacks)
             return engineRng() < getCritChance(unit);
         }
 
@@ -44362,6 +44583,7 @@
                 showFloatingTextForUnit(target, `${_res.absorbed}`, 'mp');
             }
 
+            if (target.race === 'abomination' && finalDamage > 0) finalDamage = _abShed(target, finalDamage, sourceUnit, damageType, opts);   // 🫀 THE ABOMINATION: a big hit takes a limb instead
             /* Indomitable Will (homosapien capstone): the first blow that
                would kill leaves the unit at 1 HP and consumes the status.
                HP + statuses ride state-sync, so guests see the survival. */
@@ -44404,6 +44626,7 @@
                 if (sourceUnit && (sourceUnit.race === 'gladiator' || sourceUnit.race === 'jellyfish ufo')) _crOnHit(sourceUnit, target, opts);
                 if (sourceUnit && sourceUnit.race === 'rat') _ratOnHit(sourceUnit, target, opts, _ratHadBleed);   // 👑 THE RAT KING: Mischief
                 if (target.hp <= 0 && _ratHpWas > 0 && (target.race === 'rat' || _ratOnBoard())) _ratOnDown(target);   // 👑 the scavenger, the fallen crown
+                if (target.race === 'monarch') _monDeltaCheck(target);   // 🔺 THE MONARCH: Delta Alter
 
                 /* ONE CAST, ONE LINE (playtest 2, mondo 2026-10-22: "ninefold scratch just needs one line"): a
                    multi-hit cast passes opts.logSink and its hits roll into one line with the total, written on
@@ -44788,6 +45011,7 @@
             if (target.hp <= 0) _lifeguardSave(target);   // 🛟 a Lifeguard On Duty pulls an ally out of a killing blow
             if (finalDamage > 0) _viralShare(target, finalDamage, opts);   // 📱 a Viral unit's hit is shared
             if (finalDamage > 0) _viewersOnHit(target, finalDamage, sourceUnit);   // 🎮 THE VIEWERS: the hitter's crowd, the clip
+            if (finalDamage > 0 && sourceUnit && sourceUnit._abMouths) _abOnHit(target, finalDamage, sourceUnit);   // 🫀 Many Mouths: a limb a bite
 
             if (opts.statusEffects || opts.status) {
                 let _stFx = opts.statusEffects || opts.status;
@@ -51360,6 +51584,7 @@
                 if (spell.tomb && unit._tombSpent) return 'The tomb is spent';   // ⚱ THE TOMB: once a match   // 📰 not today's headline
                 if (spell.hitsStatusOnly === 'payload' && !getHostileUnits(unit.player, unit).some(e => e && !e.dead && unitHasStatus(e, 'payload'))) return '🦠 No Payload out';
                 if (spell.viewersMin > 0 && getViewers(unit) < spell.viewersMin) return '🎮 Need ' + spell.viewersMin + ' viewers';   // 🎮 THE VIEWERS
+                if (spell.limbsMin > 0 && getLimbs(unit) < spell.limbsMin) return '🫀 Need ' + spell.limbsMin + ' limbs';   // 🫀 THE ABOMINATION: Unfold
                 if (spell.rewindTape > 0 && !getHostileUnits(unit.player, unit).some(e => e && !e.dead && _tvTapeAmount(e, spell) > 0)) return '📼 Nothing on tape';   // 📺 Rewind: no enemy took a hit last round
                 if (spell.partsCost > 0 && (unit._parts || 0) < spell.partsCost) return '🔩 Need ' + spell.partsCost + ' Parts';   // 🔧 Jury Rig (SPARE PARTS)
                 if (spell.id === 'nrOverdue' && !spell.overdueOf) return '📚 Nothing to renew';   // THE LOADED BOOK: no teammate has cast yet
@@ -66415,6 +66640,7 @@
                     _possessSettleSeats(null);   // THE HOME SIDE: its activation is over, the body goes home until the next one
                     if (_ctlUnit && !_ctlUnit.dead) _staggerSpendActivation(_ctlUnit);
                     if (_ctlUnit) _ctlUnit._turnRound = state.round;   // ONE ROUND = ONE TURN: its turn this round is spent (END TURN can leave AP)
+                    if (_ctlUnit && _ctlUnit.race === 'abomination') _abRegrow(_ctlUnit);   // 🫀 THE ABOMINATION: a limb grows back when its turn is over
                     if (_ctlUnit) astralSpendActivation(_ctlUnit);   // 👁 a projection lasts until the caster's next turn ends
                 }
                 clearSpellPick();
@@ -67666,94 +67892,94 @@
             // shipped values now, `prev` = the gen-40 values they replaced.
             // Analysis: ai-training/AI_IMITATION_ANALYSIS_20261008.md.
             // ── kept schema-12 keys (live code paths in ai.js v4) ──
-            killBonusScore_v1:        { value: 117.1, prev: 149.4, min: 10,  max: 220,  label: 'Kill Bonus', desc: 'Flat score bonus added to attacks that would kill (on top of the kill value model)' },
-            comboSynergyBonus_v1:     { value: 27.33, prev: 28.74, min: 4,   max: 40,   label: 'Combo Synergy Bonus', desc: 'Score bonus when combo has type synergy' },
-            comboKillBonus_v1:        { value: 29.34,     prev: 25.82, min: 10,  max: 50,   label: 'Combo Kill Bonus', desc: 'Score bonus for combos that would kill' },
-            pressRefundValue_v1:      { value: 129.5, prev: 127.9, min: 10, max: 180,  label: 'Press: Refund Value', desc: 'Feeds the expected press-refund value (×1.5, floored at pressActionValue_v4) for actions likely to hit a weakness/crit' },
-            engageAdvantage_v1:       { value: -0.7634, prev: -0.4196, min: -1.0, max: 0.3,  noMult: true, label: 'Engage Threshold', desc: 'Min advantage score to engage enemies' },
-            towerBaseBonus_v1:       { value: 23.84, prev: 24.52, min: 10,   max: 60,   probe: 'tower', label: 'Tower Base Bonus', desc: 'Base score bonus for attacking enemy tower (primary win condition)' },
-            towerDefendBonus_v1:     { value: 41.48, prev: 46.91, min: 10,   max: 55,   probe: 'tower', label: 'Tower Defend Bonus', desc: 'Base score for rushing to defend own tower under threat' },
-            hgSeekPriority_v1:       { value: 15.02,  prev: 15.95,     min: 0,    max: 25,   probe: 'hourglass', label: 'HG Seek Priority', desc: 'Movement pull toward visible loose hourglasses' },
-            scannerPriority_v1:      { value: 28.01, prev: 36.87, min: 5,   max: 50,   probe: 'hourglass', label: 'Scanner Priority', desc: 'Base score for using scanner item to reveal hourglasses' },
-            antiOscillationPen_v1:   { value: -2.605, prev: -2.413, min: -15, max: -1,   label: 'Anti-Oscillation Penalty', desc: 'Penalty for revisiting recent tiles' },
-            nexusCapBonus_v1:        { value: 49.48, prev: 42.25, min: 10,  max: 50,   probe: 'nexus', label: 'Nexus Capture Bonus', desc: 'Base score for channeling/approaching uncaptured nexus' },
+            killBonusScore_v1:        { value: 84.27, prev: 117.1, min: 10,  max: 220,  label: 'Kill Bonus', desc: 'Flat score bonus added to attacks that would kill (on top of the kill value model)' },
+            comboSynergyBonus_v1:     { value: 27.0, prev: 27.33, min: 4,   max: 40,   label: 'Combo Synergy Bonus', desc: 'Score bonus when combo has type synergy' },
+            comboKillBonus_v1:        { value: 35.49,     prev: 29.34, min: 10,  max: 50,   label: 'Combo Kill Bonus', desc: 'Score bonus for combos that would kill' },
+            pressRefundValue_v1:      { value: 154.1, prev: 129.5, min: 10, max: 180,  label: 'Press: Refund Value', desc: 'Feeds the expected press-refund value (×1.5, floored at pressActionValue_v4) for actions likely to hit a weakness/crit' },
+            engageAdvantage_v1:       { value: -0.5078, prev: -0.7634, min: -1.0, max: 0.3,  noMult: true, label: 'Engage Threshold', desc: 'Min advantage score to engage enemies' },
+            towerBaseBonus_v1:       { value: 16.83, prev: 23.84, min: 10,   max: 60,   probe: 'tower', label: 'Tower Base Bonus', desc: 'Base score bonus for attacking enemy tower (primary win condition)' },
+            towerDefendBonus_v1:     { value: 42.15, prev: 41.48, min: 10,   max: 55,   probe: 'tower', label: 'Tower Defend Bonus', desc: 'Base score for rushing to defend own tower under threat' },
+            hgSeekPriority_v1:       { value: 16.3,  prev: 15.02,     min: 0,    max: 25,   probe: 'hourglass', label: 'HG Seek Priority', desc: 'Movement pull toward visible loose hourglasses' },
+            scannerPriority_v1:      { value: 34.34, prev: 28.01, min: 5,   max: 50,   probe: 'hourglass', label: 'Scanner Priority', desc: 'Base score for using scanner item to reveal hourglasses' },
+            antiOscillationPen_v1:   { value: -4.995, prev: -2.605, min: -15, max: -1,   label: 'Anti-Oscillation Penalty', desc: 'Penalty for revisiting recent tiles' },
+            nexusCapBonus_v1:        { value: 49.31, prev: 49.48, min: 10,  max: 50,   probe: 'nexus', label: 'Nexus Capture Bonus', desc: 'Base score for channeling/approaching uncaptured nexus' },
 
             // ── v4 value-model knobs (AI_TUNE routed through the trainer —
             //    defaults MUST equal ai.js AI_TUNE or an untrained install
             //    changes behavior; ai-weights.test.js enforces it) ──
-            mpValuePerPoint_v4:      { value: 0.4968, prev: 0.5838,   min: 0.15, max: 1.1,  noMult: true, label: 'MP Value / Point', desc: 'HP-equivalent opportunity cost of 1 MP per cast (0.9 caused MP hoarding; 0 = spam every cast)' },
-            threatCostFactor_v4:     { value: 0.02091, prev: 0.0351,  min: 0, max: 0.45, noMult: true, label: 'Threat Cost Factor', desc: 'Fraction of expected incoming damage charged against a destination tile (0.35 made both sides too timid to close; self-play drove this to the floor — sanity-check vs humans)' },
-            killBase_v4:             { value: 155.2, prev: 138.3, min: 30,   max: 160,  label: 'Kill Base Premium', desc: 'Flat currency premium for removing a unit, on top of its denied per-turn output' },
-            supportKillPremium_v4:   { value: 109.5, prev: 115.1, min: 40,  max: 260,  label: 'Support Kill Premium', desc: 'Extra kill value on healer/reviver kits' },
-            pressActionValue_v4:     { value: 185.0, prev: 182.1, min: 60,  max: 260,  label: 'Press Action Floor', desc: 'Floor value of the free action a press refund grants' },
-            focusCommitBonus_v4:     { value: 120.7, prev: 127.5,    min: 20,   max: 180,  label: 'Focus-Fire Bonus', desc: 'Bonus for hitting the team’s shared focus target (target spreading vs focus-firing)' },
+            mpValuePerPoint_v4:      { value: 0.5228, prev: 0.4968,   min: 0.15, max: 1.1,  noMult: true, label: 'MP Value / Point', desc: 'HP-equivalent opportunity cost of 1 MP per cast (0.9 caused MP hoarding; 0 = spam every cast)' },
+            threatCostFactor_v4:     { value: 0.0156, prev: 0.02091,  min: 0, max: 0.45, noMult: true, label: 'Threat Cost Factor', desc: 'Fraction of expected incoming damage charged against a destination tile (0.35 made both sides too timid to close; self-play drove this to the floor — sanity-check vs humans)' },
+            killBase_v4:             { value: 158.0, prev: 155.2, min: 30,   max: 160,  label: 'Kill Base Premium', desc: 'Flat currency premium for removing a unit, on top of its denied per-turn output' },
+            supportKillPremium_v4:   { value: 127.3, prev: 109.5, min: 40,  max: 260,  label: 'Support Kill Premium', desc: 'Extra kill value on healer/reviver kits' },
+            pressActionValue_v4:     { value: 208.7, prev: 185.0, min: 60,  max: 260,  label: 'Press Action Floor', desc: 'Floor value of the free action a press refund grants' },
+            focusCommitBonus_v4:     { value: 124.9, prev: 120.7,    min: 20,   max: 180,  label: 'Focus-Fire Bonus', desc: 'Bonus for hitting the team’s shared focus target (target spreading vs focus-firing)' },
 
             // ── NEW 2026-09-06: second tier of v4 knobs (every one has a live,
             //    every-match call site in ai.js — see ai-weights.test.js). New
             //    keys need NO schema bump: loadAIWeights starts them at their
             //    default and the next pass tests untested keys first. ──
-            killOutputTurns_v4:      { value: 0.4864,   prev: 0.3464,   min: 0.3,  max: 3.2,  noMult: true, label: 'Kill: Denied Turns', desc: 'Turns of the victim’s per-turn output a kill is credited with denying (the kill premium’s other axis)' },
-            woundedPileOn_v4:        { value: 0.2669,  prev: 0.335,  min: 0.1,  max: 0.9,  noMult: true, label: 'Finish Wounded', desc: 'Target priority per missing HP — finish jobs vs spread damage' },
-            reviveBase_v4:           { value: 382.8,   prev: 335.1,   min: 120,  max: 600,  label: 'Revive Value', desc: 'Base value of reviving a fallen ally (≈ a kill in reverse)' },
-            ccOutputFactor_v4:       { value: 0.5738,   prev: 0.3986,   min: 0.1,  max: 1.6,  noMult: true, label: 'Hard CC Value', desc: 'Fraction of a denied unit’s per-turn output a stun/sleep/freeze is worth per denied turn' },
-            statusSetupFactor_v4:    { value: 0.2169,   prev: 0.273,   min: 0.03,  max: 1.2,  noMult: true, label: 'Status Setup Credit', desc: 'Share of a teammate’s bonus-vs-status payoff credited to the setup cast (combo plays)' },
-            buffStageFactor_v4:      { value: 0.08888,  prev: 0.1133,  min: 0.04, max: 0.32, noMult: true, label: 'Buff Stage Value', desc: 'Value of one offensive stat stage as a fraction of the recipient’s output per remaining turn' },
-            deathRiskFactor_v4:      { value: 0.1276,   prev: 0.2179,   min: 0.1,  max: 1.8,  noMult: true, label: 'Death Risk Aversion', desc: '× own kill-value charged when a tile’s threat covers the whole HP bar (the safety valve threatCostFactor no longer provides)' },
-            jointSearchDiscount_v4:  { value: 0.9101, prev: 0.951,  min: 0.7,  max: 1.0,  noMult: true, label: 'Move-Then-Act Discount', desc: 'Value discount on a move-then-act plan vs acting from the current tile' },
-            healSafetyDiscount_v4:   { value: 0.4749,  prev: 0.4285,  min: 0.15, max: 0.9,  noMult: true, label: 'Safe-Heal Discount', desc: 'Heal value multiplier when the patient is out of enemy reach (1 = heal like it’s urgent)' },
-            towerLowHpPush_v4:       { value: 33.6,   prev: 23.99,   min: 20,   max: 240,  probe: 'tower', label: 'Tower Finish Push', desc: 'Extra pull onto the enemy Cube once it is within three hits of falling' },
-            moveHighGroundMelee_v4:  { value: 7.918,     prev: 7.944,     min: 0,    max: 16,   probe: 'height', label: 'High Ground (Melee)', desc: 'Per-height-level pull toward elevated tiles for melee units' },
+            killOutputTurns_v4:      { value: 0.7907,   prev: 0.4864,   min: 0.3,  max: 3.2,  noMult: true, label: 'Kill: Denied Turns', desc: 'Turns of the victim’s per-turn output a kill is credited with denying (the kill premium’s other axis)' },
+            woundedPileOn_v4:        { value: 0.3544,  prev: 0.2669,  min: 0.1,  max: 0.9,  noMult: true, label: 'Finish Wounded', desc: 'Target priority per missing HP — finish jobs vs spread damage' },
+            reviveBase_v4:           { value: 353.5,   prev: 382.8,   min: 120,  max: 600,  label: 'Revive Value', desc: 'Base value of reviving a fallen ally (≈ a kill in reverse)' },
+            ccOutputFactor_v4:       { value: 0.7266,   prev: 0.5738,   min: 0.1,  max: 1.6,  noMult: true, label: 'Hard CC Value', desc: 'Fraction of a denied unit’s per-turn output a stun/sleep/freeze is worth per denied turn' },
+            statusSetupFactor_v4:    { value: 0.3084,   prev: 0.2169,   min: 0.03,  max: 1.2,  noMult: true, label: 'Status Setup Credit', desc: 'Share of a teammate’s bonus-vs-status payoff credited to the setup cast (combo plays)' },
+            buffStageFactor_v4:      { value: 0.0878,  prev: 0.08888,  min: 0.04, max: 0.32, noMult: true, label: 'Buff Stage Value', desc: 'Value of one offensive stat stage as a fraction of the recipient’s output per remaining turn' },
+            deathRiskFactor_v4:      { value: 0.1159,   prev: 0.1276,   min: 0.1,  max: 1.8,  noMult: true, label: 'Death Risk Aversion', desc: '× own kill-value charged when a tile’s threat covers the whole HP bar (the safety valve threatCostFactor no longer provides)' },
+            jointSearchDiscount_v4:  { value: 0.9346, prev: 0.9101,  min: 0.7,  max: 1.0,  noMult: true, label: 'Move-Then-Act Discount', desc: 'Value discount on a move-then-act plan vs acting from the current tile' },
+            healSafetyDiscount_v4:   { value: 0.4861,  prev: 0.4749,  min: 0.15, max: 0.9,  noMult: true, label: 'Safe-Heal Discount', desc: 'Heal value multiplier when the patient is out of enemy reach (1 = heal like it’s urgent)' },
+            towerLowHpPush_v4:       { value: 70.15,   prev: 33.6,   min: 20,   max: 240,  probe: 'tower', label: 'Tower Finish Push', desc: 'Extra pull onto the enemy Cube once it is within three hits of falling' },
+            moveHighGroundMelee_v4:  { value: 8.587,     prev: 7.918,     min: 0,    max: 16,   probe: 'height', label: 'High Ground (Melee)', desc: 'Per-height-level pull toward elevated tiles for melee units' },
 
             // ── NEW 2026-10-07 (schema 14): the Arena rules of PRs #150/#151 ──
-            arenaScorePlay_v1:       { value: 2.432, prev: 2.365,     min: 0,    max: 2.5,  noMult: true, probe: 'arenaClock', label: 'Arena Score Play', desc: 'How hard the AI plays the 20-round Arena score: kill/zone/Key urgency when behind or tied, caution when ahead (0 = ignore the clock)' },
-            bountyKillBonus_v1:      { value: 4.436,     prev: 4.126,     min: 0,    max: 10,   probe: 'arena', label: 'Bounty Value', desc: 'Currency per Arena bounty point (15..35): hunting ON FIRE enemies, and keeping our own ON FIRE units alive' },
-            keyHuntPriority_v1:      { value: 9.128,    prev: 9.133,    min: 0,    max: 40,   probe: 'hourglass', label: 'Key Hunt Priority', desc: 'Value per still-hidden Key of a blind search (Inspect) — Arena needs all 5' },
+            arenaScorePlay_v1:       { value: 2.443, prev: 2.432,     min: 0,    max: 2.5,  noMult: true, probe: 'arenaClock', label: 'Arena Score Play', desc: 'How hard the AI plays the 20-round Arena score: kill/zone/Key urgency when behind or tied, caution when ahead (0 = ignore the clock)' },
+            bountyKillBonus_v1:      { value: 5.304,     prev: 4.436,     min: 0,    max: 10,   probe: 'arena', label: 'Bounty Value', desc: 'Currency per Arena bounty point (15..35): hunting ON FIRE enemies, and keeping our own ON FIRE units alive' },
+            keyHuntPriority_v1:      { value: 12.7,    prev: 9.128,    min: 0,    max: 40,   probe: 'hourglass', label: 'Key Hunt Priority', desc: 'Value per still-hidden Key of a blind search (Inspect) — Arena needs all 5' },
             // ── NEW 2026-10-07 (no schema bump, the gen-40 values carry over): the wipeout win ──
             // ── NEW 2026-10-08 (no schema bump): the two flat bonus blocks the
             //    imitation report showed winning big but no trainable key reached ──
-            cubeWindowBonus_v1:      { value: 0.8294,     prev: 0.8273,     min: 0.2,  max: 1.5,  noMult: true, probe: 'tower', label: 'Cube Window', desc: '× the flat Cube bonuses for enemies down / away / respawning (Arena scales them down further when the wipeout is the nearer finish)' },
-            potionValue_v1:          { value: 0.9781,     prev: 1.019,     min: 0.3,  max: 1.5,  noMult: true, label: 'Potion Value', desc: '× the value of drinking or throwing a Healing / Mana Potion vs acting' },
-            wipeoutKillBonus_v1:     { value: 3403.0,  prev: 2537,  min: 500,  max: 5000, probe: 'arena', label: 'Wipeout Kill', desc: 'Value of dropping the last body the enemy has standing (it ends the match); the second-to-last gets 10%' },
+            cubeWindowBonus_v1:      { value: 0.5976,     prev: 0.8294,     min: 0.2,  max: 1.5,  noMult: true, probe: 'tower', label: 'Cube Window', desc: '× the flat Cube bonuses for enemies down / away / respawning (Arena scales them down further when the wipeout is the nearer finish)' },
+            potionValue_v1:          { value: 1.079,     prev: 0.9781,     min: 0.3,  max: 1.5,  noMult: true, label: 'Potion Value', desc: '× the value of drinking or throwing a Healing / Mana Potion vs acting' },
+            wipeoutKillBonus_v1:     { value: 3287.0,  prev: 3403.0,  min: 500,  max: 5000, probe: 'arena', label: 'Wipeout Kill', desc: 'Value of dropping the last body the enemy has standing (it ends the match); the second-to-last gets 10%' },
             // ── NEW 2026-10-09 (no schema bump, every trained value carries over): VISION + BROKEN ──
-            lastSeenHunt_v1:         { value: 1.299,     prev: 1.145,     min: 0,    max: 2,    noMult: true, label: 'Last-Seen Hunt', desc: '× the pull toward the tile an enemy was last seen on when no enemy is in sight (vision is 2-6 tiles now)' },
-            breakValue_v1:           { value: 0.6647,     prev: 0.8738,     min: 0.2,  max: 2,    noMult: true, label: 'Break Value', desc: '× the value of Breaking an enemy (its passives go off; a passive flyer falls and takes fall damage)' },
+            lastSeenHunt_v1:         { value: 1.158,     prev: 1.299,     min: 0,    max: 2,    noMult: true, label: 'Last-Seen Hunt', desc: '× the pull toward the tile an enemy was last seen on when no enemy is in sight (vision is 2-6 tiles now)' },
+            breakValue_v1:           { value: 0.877,     prev: 0.6647,     min: 0.2,  max: 2,    noMult: true, label: 'Break Value', desc: '× the value of Breaking an enemy (its passives go off; a passive flyer falls and takes fall damage)' },
             // ── NEW 2026-10-23 (no schema bump, every trained value carries over): THE TACTICS + THE RACE CLOCKS (ai.js v4.16) ──
-            raceRoundValue_v1:       { value: 155.2,   prev: 148.2,   min: 50,   max: 400,  probe: 'tower', label: 'Race Round Value', desc: 'Currency per round a Cube hit takes off our Cube clock (replaces the flat Cube window bonuses while the clocks are on)' },
-            searchKeyValue_v1:       { value: 302.5,   prev: 298.6,   min: 60,   max: 360,  probe: 'hourglass', label: 'Search Value', desc: 'Currency per Key an Inspect is EXPECTED to find (the search map’s odds; a known Key pickup is 180)' },
+            raceRoundValue_v1:       { value: 152.4,   prev: 155.2,   min: 50,   max: 400,  probe: 'tower', label: 'Race Round Value', desc: 'Currency per round a Cube hit takes off our Cube clock (replaces the flat Cube window bonuses while the clocks are on)' },
+            searchKeyValue_v1:       { value: 312.2,   prev: 302.5,   min: 60,   max: 360,  probe: 'hourglass', label: 'Search Value', desc: 'Currency per Key an Inspect is EXPECTED to find (the search map’s odds; a known Key pickup is 180)' },
             searchCenterPrior_v1:    { value: 4,     prev: 4,     min: 1,    max: 10,   noMult: true, probe: 'hourglass', label: 'Search: Centre Odds', desc: 'No effect since 2026-10-23 (Keys land anywhere on the board, every tile equal); kept so saved weights load' },
-            keyCarrierDenial_v1:     { value: 1175.0,   prev: 861.5,   min: 0,    max: 1600, probe: 'hourglass', label: 'Key Carrier Denial', desc: 'Extra kill value on a Key carrier × (Keys its team holds ÷ Keys to win)²: ~500 one Key from the win' },
-            anchorCaution_v1:        { value: 0.2526,   prev: 0.4059,     min: 0,    max: 3,    noMult: true, label: 'Anchor Caution', desc: 'How hard our last bodies play to live (× the wipeout share in the own-death price; Anchor units also price exposure ×(1+0.6×this))' },
-            tacticCommitment_v1:     { value: 0.7409,     prev: 1.144,     min: 0,    max: 2,    noMult: true, label: 'Tactic Commitment', desc: 'How strongly a unit’s Tactic (Fight/Siege/Search/Intercept/Anchor/Heal) steers its moves and actions (a player-set Tactic ×1.5)' },
+            keyCarrierDenial_v1:     { value: 1038.0,   prev: 1175.0,   min: 0,    max: 1600, probe: 'hourglass', label: 'Key Carrier Denial', desc: 'Extra kill value on a Key carrier × (Keys its team holds ÷ Keys to win)²: ~500 one Key from the win' },
+            anchorCaution_v1:        { value: 0.8026,   prev: 0.2526,     min: 0,    max: 3,    noMult: true, label: 'Anchor Caution', desc: 'How hard our last bodies play to live (× the wipeout share in the own-death price; Anchor units also price exposure ×(1+0.6×this))' },
+            tacticCommitment_v1:     { value: 0.571,     prev: 0.7409,     min: 0,    max: 2,    noMult: true, label: 'Tactic Commitment', desc: 'How strongly a unit’s Tactic (Fight/Siege/Search/Intercept/Anchor/Heal) steers its moves and actions (a player-set Tactic ×1.5)' },
             hardReplyFactor_v1:      { value: 0.5,   prev: 0.5,   min: 0,    max: 1.5,  noMult: true, probe: 'hard', label: 'Hard: Reply Check', desc: 'Hard CPU only: × the worst enemy reply (an ally kill, or half the damage) charged to its top five options' },
             // ── NEW 2026-10-29 (no schema bump, every trained value carries over): THE TRAINER REWORK — what the AI did not account for (ai.js v4.20) ──
-            zoneTileValue_v1:        { value: 1.079,     prev: 0.8862,     min: 0,    max: 2,    noMult: true, label: 'Zone Tiles', desc: '× the round-end Nexus burn (25% max HP in a zone the other team owns) charged, and the heal (15% HP + MP in an own zone) credited, to the tile a unit ends on' },
-            oppAttackCaution_v1:     { value: 1.366,     prev: 1.327,     min: 0,    max: 2,    noMult: true, label: 'Opportunity Attack Caution', desc: '× the expected opportunity attack charged to a move that steps away from an adjacent enemy' },
-            nexusHoldValue_v1:       { value: 0.7575,   prev: 0.6171,     min: 0,    max: 1.5,  noMult: true, probe: 'arenaClock', label: 'Zone Clock', desc: '× the Arena points a zone still pays to the buzzer once taken (more in round 3 than round 18), added to channelling it and walking to it' },
-            healLifeLine_v1:         { value: 0.8583,     prev: 0.8795,     min: 0,    max: 2,    noMult: true, label: 'Heal Life Line', desc: 'A heal that lifts the patient out of the enemy team’s kill range is worth × its kill value / 2; a heal that leaves it inside is mostly wasted'},
-            forecastTrust_v1:        { value: 0.9848,     prev: 0.9159,     min: 0,    max: 1,    noMult: true, label: 'Forecast Trust', desc: 'How much the CPU prices a hit by the on-screen forecast instead of its own copy of the damage math (1 = the forecast)' },
-            arenaPointValue_v1:      { value: 9.001,     prev: 6.219,     min: 2,    max: 20,   noMult: true, probe: 'arena', label: 'Arena Point Price', desc: 'Currency per Arena point (kills, zones, Cube hits): how much the round-20 score is worth against HP damage (was a fixed 4)' },
-            cubePointsValue_v1:      { value: 0.4279,     prev: 0.7932,     min: 0,    max: 3,    noMult: true, probe: 'arena', label: 'Cube Hit Points', desc: '× the Arena points a Cube hit pays at the buzzer (1 point per 0.4% of the Cube), added to the hit' },
+            zoneTileValue_v1:        { value: 1.46,     prev: 1.079,     min: 0,    max: 2,    noMult: true, label: 'Zone Tiles', desc: '× the round-end Nexus burn (25% max HP in a zone the other team owns) charged, and the heal (15% HP + MP in an own zone) credited, to the tile a unit ends on' },
+            oppAttackCaution_v1:     { value: 1.41,     prev: 1.366,     min: 0,    max: 2,    noMult: true, label: 'Opportunity Attack Caution', desc: '× the expected opportunity attack charged to a move that steps away from an adjacent enemy' },
+            nexusHoldValue_v1:       { value: 0.8476,   prev: 0.7575,     min: 0,    max: 1.5,  noMult: true, probe: 'arenaClock', label: 'Zone Clock', desc: '× the Arena points a zone still pays to the buzzer once taken (more in round 3 than round 18), added to channelling it and walking to it' },
+            healLifeLine_v1:         { value: 1.122,     prev: 0.8583,     min: 0,    max: 2,    noMult: true, label: 'Heal Life Line', desc: 'A heal that lifts the patient out of the enemy team’s kill range is worth × its kill value / 2; a heal that leaves it inside is mostly wasted'},
+            forecastTrust_v1:        { value: 0.9615,     prev: 0.9848,     min: 0,    max: 1,    noMult: true, label: 'Forecast Trust', desc: 'How much the CPU prices a hit by the on-screen forecast instead of its own copy of the damage math (1 = the forecast)' },
+            arenaPointValue_v1:      { value: 7.507,     prev: 9.001,     min: 2,    max: 20,   noMult: true, probe: 'arena', label: 'Arena Point Price', desc: 'Currency per Arena point (kills, zones, Cube hits): how much the round-20 score is worth against HP damage (was a fixed 4)' },
+            cubePointsValue_v1:      { value: 0.2678,     prev: 0.4279,     min: 0,    max: 3,    noMult: true, probe: 'arena', label: 'Cube Hit Points', desc: '× the Arena points a Cube hit pays at the buzzer (1 point per 0.4% of the Cube), added to the hit' },
             // ── NEW 2026-11-01 (no schema bump, every trained value carries over): THE TRAINABLE FIXES — the fixed numbers the
             //    11-01 AI fixes added (the Keys, the status combos, the trap plan, the full list, the jump) are weights now. Each
             //    default IS the number the code used, so an untrained install plays exactly as before. (ai.js v4.29) ──
-            keyChargeRounds_v1:      { value: 4.642,     prev: 4,     min: 0,    max: 8,    noMult: true, probe: 'hourglass', label: 'Key Charge Rounds', desc: 'Rounds of the Key Charge (+8 dealt / −8 taken per hit per Key) counted in what one more Key is worth' },
-            keyPickupFloor_v1:       { value: 204.8,   prev: 180,   min: 40,   max: 400,  noMult: true, probe: 'hourglass', label: 'Key Pickup Floor', desc: 'Least a seen Key pickup is worth per Key (the Key worth counts when it is higher)' },
-            keyCarrierCaution_v1:    { value: 0.467,   prev: 0.5,   min: 0,    max: 1.5,  noMult: true, probe: 'hourglass', label: 'Key Carrier Caution', desc: '× the Keys a carrier would drop, charged to a square where it could die' },
-            comboCashChance_v1:      { value: 0.8669,     prev: 1,     min: 0.3,  max: 1.5,  noMult: true, label: 'Combo Cash-In Odds', desc: '× the odds a teammate (or this unit next turn) cashes in a status the setup puts on (0.92 / 0.85 / 0.65 / 0.5 / 0.35)' },
-            comboBackupShare_v1:     { value: 0.3194,  prev: 0.25,  min: 0,    max: 0.8,  noMult: true, label: 'Combo Backup Share', desc: 'Share of the second and later finishers counted in a setup (the first may already kill it)' },
-            comboSetupCap_v1:        { value: 671.1,   prev: 600,   min: 200,  max: 1200, noMult: true, label: 'Combo Setup Cap', desc: 'Most a status setup can be worth (combo credit cap)' },
-            trapWalkShare_v1:        { value: 0.8849,   prev: 0.8,   min: 0.2,  max: 1.2,  noMult: true, label: 'Trap Walk Odds', desc: 'How sure the trap plan is that an enemy walks its predicted route (it may hold, retreat or chase someone else)' },
-            trapPlanDiscount_v1:     { value: 0.65,  prev: 0.85,  min: 0.2,  max: 1.5,  noMult: true, label: 'Trap Value', desc: '× a laid trap’s expected worth (it springs next turn at the soonest)' },
-            pushThreatFactor_v1:     { value: 0.3671,  prev: 0.35,  min: 0,    max: 1,    noMult: true, label: 'Push Threat', desc: 'Share of the worst shove (lava, deep water, a drop) charged to a square an enemy pusher can reach' },
-            overwatchCaution_v1:     { value: 0.9534,     prev: 1,     min: 0,    max: 2,    noMult: true, label: 'Overwatch Caution', desc: '× the Guarding enemy’s reaction shot charged to a walk that stops in its range' },
-            counterCaution_v1:       { value: 1.131,     prev: 1,     min: 0,    max: 2,    noMult: true, label: 'Counter Caution', desc: '× the expected counter charged to a melee basic attack' },
-            forcedMoveValue_v1:      { value: 1.262,     prev: 1,     min: 0,    max: 2,    noMult: true, label: 'Push Landing Value', desc: '× what a push / pull / throw’s landing and knock-on hits are worth' },
-            teleportAnyValue_v1:     { value: 0.396,     prev: 1,     min: 0,    max: 2,    noMult: true, label: 'Teleport Any Unit', desc: '× the worth of warping an enemy somewhere bad or a hurt ally out of reach' },
-            mobilityShotShare_v1:    { value: 0.7357,  prev: 0.95,  min: 0.4,  max: 1.3,  noMult: true, label: 'Sprint For A Shot', desc: '× the best shot a Sprint / dash / blink landing opens up' },
-            mobilityGoalShare_v1:    { value: 0.6407,   prev: 0.5,   min: 0,    max: 1.2,  noMult: true, label: 'Sprint Toward Goal', desc: '× the move goal a Sprint / dash / blink gets closer to' },
-            jumpPathCost_v1:         { value: 2.183,     prev: 2,     min: 0,    max: 6,    noMult: true, label: 'Jump Path Cost', desc: 'Extra squares a leap costs in the path field (higher = walk unless the jump saves real walking)' },
+            keyChargeRounds_v1:      { value: 4.497,     prev: 4.642,     min: 0,    max: 8,    noMult: true, probe: 'hourglass', label: 'Key Charge Rounds', desc: 'Rounds of the Key Charge (+8 dealt / −8 taken per hit per Key) counted in what one more Key is worth' },
+            keyPickupFloor_v1:       { value: 158.0,   prev: 204.8,   min: 40,   max: 400,  noMult: true, probe: 'hourglass', label: 'Key Pickup Floor', desc: 'Least a seen Key pickup is worth per Key (the Key worth counts when it is higher)' },
+            keyCarrierCaution_v1:    { value: 0.4112,   prev: 0.467,   min: 0,    max: 1.5,  noMult: true, probe: 'hourglass', label: 'Key Carrier Caution', desc: '× the Keys a carrier would drop, charged to a square where it could die' },
+            comboCashChance_v1:      { value: 0.7391,     prev: 0.8669,     min: 0.3,  max: 1.5,  noMult: true, label: 'Combo Cash-In Odds', desc: '× the odds a teammate (or this unit next turn) cashes in a status the setup puts on (0.92 / 0.85 / 0.65 / 0.5 / 0.35)' },
+            comboBackupShare_v1:     { value: 0.1982,  prev: 0.3194,  min: 0,    max: 0.8,  noMult: true, label: 'Combo Backup Share', desc: 'Share of the second and later finishers counted in a setup (the first may already kill it)' },
+            comboSetupCap_v1:        { value: 543.4,   prev: 671.1,   min: 200,  max: 1200, noMult: true, label: 'Combo Setup Cap', desc: 'Most a status setup can be worth (combo credit cap)' },
+            trapWalkShare_v1:        { value: 0.7293,   prev: 0.8849,   min: 0.2,  max: 1.2,  noMult: true, label: 'Trap Walk Odds', desc: 'How sure the trap plan is that an enemy walks its predicted route (it may hold, retreat or chase someone else)' },
+            trapPlanDiscount_v1:     { value: 0.6244,  prev: 0.65,  min: 0.2,  max: 1.5,  noMult: true, label: 'Trap Value', desc: '× a laid trap’s expected worth (it springs next turn at the soonest)' },
+            pushThreatFactor_v1:     { value: 0.3673,  prev: 0.3671,  min: 0,    max: 1,    noMult: true, label: 'Push Threat', desc: 'Share of the worst shove (lava, deep water, a drop) charged to a square an enemy pusher can reach' },
+            overwatchCaution_v1:     { value: 1.091,     prev: 0.9534,     min: 0,    max: 2,    noMult: true, label: 'Overwatch Caution', desc: '× the Guarding enemy’s reaction shot charged to a walk that stops in its range' },
+            counterCaution_v1:       { value: 1.369,     prev: 1.131,     min: 0,    max: 2,    noMult: true, label: 'Counter Caution', desc: '× the expected counter charged to a melee basic attack' },
+            forcedMoveValue_v1:      { value: 1.069,     prev: 1.262,     min: 0,    max: 2,    noMult: true, label: 'Push Landing Value', desc: '× what a push / pull / throw’s landing and knock-on hits are worth' },
+            teleportAnyValue_v1:     { value: 0.2037,     prev: 0.396,     min: 0,    max: 2,    noMult: true, label: 'Teleport Any Unit', desc: '× the worth of warping an enemy somewhere bad or a hurt ally out of reach' },
+            mobilityShotShare_v1:    { value: 0.7586,  prev: 0.7357,  min: 0.4,  max: 1.3,  noMult: true, label: 'Sprint For A Shot', desc: '× the best shot a Sprint / dash / blink landing opens up' },
+            mobilityGoalShare_v1:    { value: 0.6446,   prev: 0.6407,   min: 0,    max: 1.2,  noMult: true, label: 'Sprint Toward Goal', desc: '× the move goal a Sprint / dash / blink gets closer to' },
+            jumpPathCost_v1:         { value: 2.721,     prev: 2.183,     min: 0,    max: 6,    noMult: true, label: 'Jump Path Cost', desc: 'Extra squares a leap costs in the path field (higher = walk unless the jump saves real walking)' },
             // ── NEW 2026-11-07 (no schema bump, every trained value carries over): THE SPELL ZONES (ai.js spellZoneCost) ──
-            spellZoneCaution_v1:     { value: 1,     prev: 0,     min: 0,    max: 2,    noMult: true, label: 'Spell Zone Caution', desc: '× what an enemy spell zone does to a unit that ends on its square (Black Smoke, War of the Worlds, Hall of Mirrors ticks; the statuses a zone lands; a Gravity Crush slam on a flyer). 0 = the old blind spot' },
+            spellZoneCaution_v1:     { value: 1.063,     prev: 1,     min: 0,    max: 2,    noMult: true, label: 'Spell Zone Caution', desc: '× what an enemy spell zone does to a unit that ends on its square (Black Smoke, War of the Worlds, Hall of Mirrors ticks; the statuses a zone lands; a Gravity Crush slam on a flyer). 0 = the old blind spot' },
         };
         /* THE TACTICS PASS (2026-10-23, AI plan Phase 5): the A/B trainer stops testing the weights that came out FLAT
            in gen-40 (no measurable effect; seven of them flat twice) and the Cube window the clocks replaced. Their
@@ -75713,6 +75939,13 @@
                 if (!victim.dead) {
                     applyStatusEffects(victim, [{ id: 'root', duration: 2 }], `${trap.spellName || 'Snare Trap'}: `, owner);
                     showFloatingTextForUnit(victim, '🕸 ROOTED!', 'debuff', { durationMs: 1100 });
+                }
+            } else if (trap.trapType === 'chrysalis') {
+                /* 🦋 THE MONARCH's Sleeper Cell: no hit; the chrysalis cracks round the victim — the row's statuses (Root + 2 Programmed) */
+                if (!_skipVisuals()) _look(() => _sigVfxGeom('monSleeperCell:spring', trap.x, trap.y, 0, { owner: trap.owner }));
+                if (!victim.dead) {
+                    applyStatusEffects(victim, (Array.isArray(trap.statusEffects) && trap.statusEffects.length) ? trap.statusEffects : [{ id: 'root', duration: 1 }], `${trap.spellName || 'Sleeper Cell'}: `, owner);
+                    showFloatingTextForUnit(victim, '🦋 PROGRAMMED', 'debuff', { durationMs: 1100 });
                 }
             } else if (trap.trapType === 'frost') {
                 applyDamageToUnit(victim, dmg, `${trap.spellName || 'Frost Mine'}: `, {
@@ -84823,6 +85056,8 @@
             if (spell && spell.id === 'nrOverdue') spell = _overdueCastRow(unit, spell);
             /* 🎮 THE VIEWERS: a streaming row casts a copy with the viewer count baked in (_streamCastRow) */
             if (spell && (spell.viewersSpend || spell.viewersMarkAt || spell.viewersHealPer || spell.viewersDmgPer)) spell = _streamCastRow(unit, spell);
+            /* 🫀 THE ABOMINATION: a limb row casts a copy with the count baked in (_abCastRow) */
+            if (spell && (spell.limbsStaggerAt || spell.limbsSpendAll)) spell = _abCastRow(unit, spell);
             /* 🎲📿 THE NEW RACES 4: a dice row / a stillness-spending row casts its own copy (_nr4CastRow) */
             if (spell && (spell.diceRoll || spell.stillnessSpend)) spell = _nr4CastRow(unit, spell);
             /* 🛡⚡ THE COMING RACES: Crowd Pleaser / Abyssal Overload bake their spend, Venom Injector its Stun (_crCastRow) */
@@ -85561,6 +85796,7 @@
                 _armPressCollector(unit);
             }
             _viewersSpendNow(unit, spell);   // 🎮 THE VIEWERS: a spending cast empties the count now (every refusal has passed)
+            _abSpendNow(unit, spell);   // 🫀 THE ABOMINATION: Unfold takes every limb now; Many Mouths opens
             if (spell.diceRoll) _diceRollNow(unit, spell);   // 🎲 THE HOT STREAK: the dice roll now (every refusal has passed)
 
             // Balance Lab: arm the per-cast spell telemetry collector (same
@@ -85606,6 +85842,7 @@
                 _crAfterCast(unit, spell);   // 🛡⚡ THE COMING RACES: Favor + Charge spent
                 if (unit.race === 'rat') unit._ratCastId = null;   // 👑 THE RAT KING
                 _bearAfterCast(unit, spell, x, y);   // 🐻 THE BEAR: Hibernate's sleep, Bear Hug's Root + Grudge
+                _abAfterCast(unit, spell);   // 🫀 THE ABOMINATION: the mouths close
                 _psAfterCast(unit, spell, x, y, z);   // 💉 THE PLASTIC SURGEON: Work Done, Liposuction's shield
                 if (spell.kind !== 'dash' && Array.isArray(spell.selfStatusAfter) && spell.selfStatusAfter.length && !unit.dead && state.phase === 'battle') {
                     applyStatusEffects(unit, spell.selfStatusAfter, `${spell.name}: `, unit);
@@ -85937,6 +86174,11 @@
                         return 0;
                     }
                 }
+                /* 🦋 Trigger Word with no programmed enemy in sight is refused before anything is spent */
+                if (spell.triggerWord && !_monProgrammedFoes(unit, true).length) {
+                    if (!_silentReject) { addLog(`${_ctSp(spell.name)}: no Programmed enemy in sight.`, _clickSeat()); playErrorSfx(); }
+                    return 0;
+                }
                 if (spell.massRescue && !_lifeguardRescueList(unit, spell).length) {
                     if (!_silentReject) {
                         addLog(`${_ctSp(spell.name)}: no ally within ${spell.massRescue.radius || 4} is under ${Math.round((spell.massRescue.hpPct || 0.5) * 100)}% HP.`, _clickSeat());
@@ -86076,6 +86318,8 @@
                     if (spell.timedStatBonus) _applyTimedStatBonus(_bt, spell.timedStatBonus, `${spell.name}: `, unit);   // Batch D: Updraft (the Quickened status)
                     if (spell.massRescue && !unit.dead) _lifeguardMassRescue(unit, spell);   // 🛟 Three Whistles
                     if (spell.pullString && !unit.dead) _dollPullString(unit, spell);   // 🪆 Pull My String
+                    if (spell.triggerWord && !unit.dead) _monTriggerWord(unit, spell);   // 🦋 Trigger Word
+                    if (!_bt.dead && (spell.statusEffects || []).some(e => e && e.id === 'chrysalis') && unitHasStatus(_bt, 'chrysalis') && !_skipVisuals()) _sigVfxGeom('monMetamorphosis:wrap', _bt.x, _bt.y, 0, { owner: unit.player });   // 🦋 Metamorphosis
                     if (spell.rideAlong && !unit.dead) _deliveryLoadUp(unit, spell);   // 🛵 Thirty Minutes or Less
                     if (spell.mopUp && !unit.dead) _janitorMopUp(unit, spell);   // 🧹 Mop Up
                     if (spell.unload && !unit.dead) _truckerUnload(unit, spell);   // 🚚 Unload
@@ -87213,6 +87457,7 @@
                             tx: unit.x, ty: unit.y,
                             aoeRadius: _spellMaskOf(spell) ? _spellAoeReach(spell, 2) : (spell.aoeRadius != null ? spell.aoeRadius : 2),
                             aoeMask: _spellMaskOf(spell) || undefined,
+                            hits: spell.limbsSpendAll ? (spell._abHits | 0) : undefined,   // 🫀 Unfold: one burst a limb
                         });
                     }
                 }
@@ -87222,7 +87467,8 @@
                 // Victim list comes from the ONE shared filter (_barrageTargets):
                 // hitsWetOnly, 3D reach and LOS rules live there, so this handler
                 // and the menu greying can never disagree about who gets hit.
-                const enemies = _barrageTargets(unit, spell);
+                /* 🫀 Unfold: one hit a limb spent, every enemy once before any twice (_abUnfoldList) */
+                const enemies = spell.limbsSpendAll ? _abUnfoldList(_barrageTargets(unit, spell), spell._abHits) : _barrageTargets(unit, spell);
                 if (enemies.length === 0) {
                     _spellFocusCamera(unit, x, y);
                     addLog(`${_ctName(unit)} casts ${_ctSp(spell.name)} but no enemies are in range.`);
@@ -88871,6 +89117,7 @@
                     roundsLeft: delay,
                     statusEffects: spell.statusEffects || [],
                     friendlyFire: !!spell.friendlyFire,
+                    perProgrammedStack: spell.perProgrammedStack || 0,   // 🦋 Chaos Theory: +N a Programmed stack at the blast
                     leaveTerrain: spell.leaveTerrain || null,
                     terrainDeform: spell.terrainDeform || null,
                     demolishesBuildings: !!spell.demolishesBuildings

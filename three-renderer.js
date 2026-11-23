@@ -19104,6 +19104,198 @@ const ThreeRenderer = (function () {
         clips.vrWorm = clips.cast; clips.vrReplicate = clips.castSupport; clips.vrRansom = clips.castAOE; clips.vrZeroDay = clips.castUltimate;
         return clips;
     }
+    /* 🫀 THE ABOMINATION (2026-11-23, mondo OK'd the kit and named it; "the old parts are good, just connect them"). ONE file
+       (Assets/characters/races/abomination/male/abomination.glb, made by project files horror-plan-20261123/asm.js; models-assets.md
+       "THE ABOMINATION"): the Meshy core (ewAbCore), the head on the neck (ewAbNeck), the two arms (ewAbLimb0 > ewAbArmR, ewAbLimb1 >
+       ewAbArmL; local -Y runs down the arm), the two extra hands at the right wrist (ewAbHandX0/1, Grasp at 5+ limbs), the four back
+       tentacles (ewAbLimb2..5 > ewAbTen2..5; local +Y runs out along it), the two leg tentacles (ewAbHipR/L) and the bone cage
+       orbiting by the shoulder (ewAbCageOrbit > ewAbCage). Metres, front +Z, floor y 0, ewAbBody (the chest) 1.5 m up.
+       A clip is keyframes on those pivots. THE LIMBS (battle.js, `unit.limbs`, a plain number the guest has from the sync) are
+       shown by _abLimbTick after the mixer: ewAbLimb<i> grows / shrinks into its socket (the arms are limbs 0 and 1, so the back
+       tentacles go first), the extra hands only show in Grasp at 5+, and while a Bone Cage holds a victim (its `caged` status,
+       _cageSrcId = this unit) the cage leaves the shoulder and stands over the victim. */
+    function _abClip(name, dur, pose, R) {
+        var N = Math.max(8, Math.round(dur * 30)), tt = [], k, key;
+        var e = new THREE.Euler(0, 0, 0, 'XYZ'), dq = new THREE.Quaternion(), q = new THREE.Quaternion(), v = new THREE.Vector3();
+        var acc = {};
+        Object.keys(R.n).forEach(function (n) { acc[n] = { p: [], q: [], s: [] }; });
+        for (k = 0; k <= N; k++) {
+            var u = k / N, P = pose(u, R) || {};
+            tt.push(u * dur);
+            for (key in R.n) {
+                var B = R.n[key], d = P[key] || {}, A = acc[key];
+                v.copy(B.p); if (d.p) v.set(B.p.x + (d.p[0] || 0), B.p.y + (d.p[1] || 0), B.p.z + (d.p[2] || 0));
+                A.p.push(v.x, v.y, v.z);
+                q.copy(B.q);
+                if (d.rw) { e.set(d.rw[0] || 0, d.rw[1] || 0, d.rw[2] || 0); dq.setFromEuler(e); q.premultiply(dq); }   // in the parent's frame
+                if (d.r) { e.set(d.r[0] || 0, d.r[1] || 0, d.r[2] || 0); dq.setFromEuler(e); q.multiply(dq); }           // in its own frame
+                A.q.push(q.x, q.y, q.z, q.w);
+                var s = d.s == null ? [1, 1, 1] : (typeof d.s === 'number' ? [d.s, d.s, d.s] : d.s);
+                A.s.push(Math.max(0.0001, B.s.x * s[0]), Math.max(0.0001, B.s.y * s[1]), Math.max(0.0001, B.s.z * s[2]));
+            }
+        }
+        var V = THREE.VectorKeyframeTrack, Q = THREE.QuaternionKeyframeTrack, out = [];
+        for (key in acc) out.push(new V(key + '.position', tt, acc[key].p), new Q(key + '.quaternion', tt, acc[key].q), new V(key + '.scale', tt, acc[key].s));
+        return new THREE.AnimationClip(name, dur, out);
+    }
+    var _abS = _vrS, _abBump = _vrBump;
+    function _abSin(u, hz, ph) { return Math.sin((u * hz + (ph || 0)) * Math.PI * 2); }
+    /* the back tentacles' sway, each on its own phase (j 0..3 = ewAbTen2..5) */
+    function _abTens(P, u, amp, hz, extra) {
+        for (var j = 0; j < 4; j++) {
+            var sd = j % 2 ? -1 : 1, x = extra ? extra(j, sd) : null;
+            P['ewAbTen' + (j + 2)] = { rw: [amp * _abSin(u, hz, j * 0.27) + (x ? x[0] : 0), 0, sd * amp * 0.7 * _abSin(u, hz, j * 0.27 + 0.25) + (x ? x[1] : 0)], s: x && x[2] != null ? x[2] : 1, p: x && x[3] };
+        }
+        return P;
+    }
+    var _AB_POSES = {
+        /* idle (4 s): the chest heaves, the head twitches, the back tentacles sway, the arms hang and drift, the cage orbits */
+        idle: [4.0, function (u) {
+            var br = _abSin(u, 2), tw = _abBump(u, 0.42, 0.45, 0.5) - _abBump(u, 0.78, 0.8, 0.84);
+            var P = { ewAbBody: { p: [0, 0.03 * br, 0], rw: [0.02 * br, 0, 0.015 * _abSin(u, 1)] }, ewAbCore: { s: [1 + 0.025 * br, 1 + 0.02 * br, 1 + 0.035 * br] },
+                ewAbNeck: { rw: [0.05 * _abSin(u, 1, 0.3), 0.35 * tw, 0.12 * tw] },
+                ewAbArmR: { rw: [0.06 * _abSin(u, 1, 0.1), 0, 0.04 * _abSin(u, 2)] }, ewAbArmL: { rw: [0.06 * _abSin(u, 1, 0.6), 0, -0.04 * _abSin(u, 2, 0.4)] },
+                ewAbHipR: { rw: [0, 0.04 * _abSin(u, 1), 0] }, ewAbHipL: { rw: [0, -0.04 * _abSin(u, 1, 0.3), 0] },
+                ewAbCageOrbit: { rw: [0, u * Math.PI * 2, 0] }, ewAbCage: { r: [u * Math.PI * 2, u * Math.PI * 4, 0], p: [0, 0.08 * _abSin(u, 2), 0] } };
+            return _abTens(P, u, 0.12, 2);
+        }],
+        /* the slither (1.2 s): the leg tentacles sweep in turn, the body rolls and bobs, the arms drag back, the tentacles stream */
+        walk: [1.2, function (u) {
+            var w = _abSin(u, 1), b = Math.abs(_abSin(u, 1));
+            var P = { ewAbBody: { p: [0.04 * w, 0.06 * b - 0.03, 0], rw: [0.12, 0, 0.07 * w] }, ewAbCore: { s: [1, 1 + 0.03 * b, 1] },
+                ewAbNeck: { rw: [-0.08, 0.06 * w, 0] },
+                ewAbArmR: { rw: [0.35 + 0.15 * w, 0, 0.05] }, ewAbArmL: { rw: [0.35 - 0.15 * w, 0, -0.05] },
+                ewAbHipR: { rw: [0.12 * w, 0.3 * w, 0] }, ewAbHipL: { rw: [-0.12 * w, 0.3 * w, 0] },
+                ewAbCageOrbit: { rw: [0, u * Math.PI, 0] }, ewAbCage: { r: [u * Math.PI, u * Math.PI * 2, 0] } };
+            return _abTens(P, u, 0.18, 2, function (j, sd) { return [0.35, 0]; });
+        }],
+        /* the lash (1.1 s, the basic attack + any plain cast): the right arm whips out at the front and back */
+        cast: [1.1, function (u) {
+            var out = _abS(u, 0.15, 0.38) - _abS(u, 0.6, 1), wind = _abBump(u, 0, 0.14, 0.3);
+            var P = { ewAbBody: { p: [0, 0, 0.12 * out], rw: [0.15 * out - 0.06 * wind, -0.2 * out, 0] },
+                ewAbArmR: { rw: [-1.45 * out + 0.4 * wind, 0, -0.2 * out], s: [1, 1 + 0.45 * out, 1] }, ewAbArmL: { rw: [0.2 * out, 0, 0] },
+                ewAbNeck: { rw: [0.15 * out, 0.15 * out, 0] }, ewAbCageOrbit: { rw: [0, u * Math.PI, 0] } };
+            return _abTens(P, u, 0.2, 2);
+        }],
+        /* Grasp (1.3 s): the right arm stretches out to the target; at 5+ limbs the two extra hands burst out of the wrist and fan */
+        abGrasp: [1.3, function (u) {
+            var out = _abS(u, 0.12, 0.35) - _abS(u, 0.7, 1), fan = _abS(u, 0.3, 0.42) - _abS(u, 0.68, 0.8), cl = _abBump(u, 0.45, 0.5, 0.65);
+            var P = { ewAbBody: { p: [0, 0, 0.15 * out], rw: [0.2 * out, -0.25 * out, 0] },
+                ewAbArmR: { rw: [-1.5 * out, 0, -0.25 * out], s: [1 + 0.1 * cl, 1 + 0.9 * out, 1 + 0.1 * cl] }, ewAbArmL: { rw: [0.3 * out, 0, 0.1 * out] },
+                ewAbHandX0: { s: Math.max(0.0001, fan), r: [0, 0, 0.6 * fan - 0.4 * cl] }, ewAbHandX1: { s: Math.max(0.0001, fan), r: [0, 0, -0.6 * fan + 0.4 * cl] },
+                ewAbNeck: { rw: [0.2 * out, 0.2 * out, 0] } };
+            return _abTens(P, u, 0.2, 2);
+        }],
+        /* Many Mouths (1.4 s): the chest lurches forward, the head throws back, the back tentacles whip down in a ring */
+        abMouths: [1.4, function (u) {
+            var go = _abS(u, 0.1, 0.32) - _abS(u, 0.72, 1), ch = Math.max(0, Math.sin(u * Math.PI * 10)) * _abBump(u, 0.3, 0.4, 0.75);
+            var P = { ewAbBody: { p: [0, -0.1 * go, 0.2 * go], rw: [0.35 * go, 0, 0.04 * ch] }, ewAbCore: { s: [1 + 0.12 * go + 0.05 * ch, 1 - 0.04 * go, 1 + 0.2 * go + 0.06 * ch] },
+                ewAbNeck: { rw: [-0.75 * go, 0, 0] },
+                ewAbArmR: { rw: [-0.3 * go, 0, 0.5 * go] }, ewAbArmL: { rw: [-0.3 * go, 0, -0.5 * go] } };
+            return _abTens(P, u, 0.15, 3, function (j, sd) { return [1.2 * go, -sd * 0.6 * go]; });
+        }],
+        /* Bone Cage (1.4 s): the cage spins fast, flies out to the front, grows three times and drops out of sight */
+        abCage: [1.4, function (u) {
+            var spin = _abS(u, 0, 0.35), fly = _abS(u, 0.3, 0.7), gone = _abS(u, 0.82, 0.9), pt = _abBump(u, 0.15, 0.3, 0.6);
+            var P = { ewAbBody: { rw: [0.1 * pt, 0, 0] }, ewAbArmR: { rw: [-0.9 * pt, 0, -0.3 * pt] }, ewAbArmL: { rw: [-0.9 * pt, 0, 0.3 * pt] },
+                ewAbNeck: { rw: [-0.2 * pt, 0, 0] },
+                ewAbCageOrbit: { rw: [0, spin * Math.PI * 6 * (1 - fly), 0] },
+                ewAbCage: { p: [-0.95 * fly, 1.2 * fly - 2.2 * gone, 3.2 * fly], r: [u * Math.PI * 8, u * Math.PI * 6, 0], s: (1 + 2 * fly) * (1 - 0.9999 * gone) } };
+            return _abTens(P, u, 0.15, 2);
+        }],
+        /* Unfold (1.4 s): it rears, every limb tears off and dives into the floor (the bursts under the enemies are the VFX) */
+        abUnfold: [1.4, function (u) {
+            var rear = _abS(u, 0, 0.25) - _abS(u, 0.8, 1), dive = _abS(u, 0.3, 0.62), gone = _abS(u, 0.6, 0.66);
+            var P = { ewAbBody: { p: [0, 0.15 * rear - 0.1 * dive, 0], rw: [-0.25 * rear + 0.3 * dive * (1 - _abS(u, 0.8, 1)), 0, 0] },
+                ewAbCore: { s: [1 + 0.1 * rear, 1, 1 + 0.1 * rear] }, ewAbNeck: { rw: [-0.5 * rear, 0, 0] },
+                ewAbArmR: { p: [0.3 * dive, -1.8 * dive, 0.4 * dive], rw: [-0.6 * rear + 1.2 * dive, 0, -0.8 * rear], s: 1 - 0.9999 * gone },
+                ewAbArmL: { p: [-0.3 * dive, -1.8 * dive, 0.4 * dive], rw: [-0.6 * rear + 1.2 * dive, 0, 0.8 * rear], s: 1 - 0.9999 * gone } };
+            return _abTens(P, u, 0.1, 3, function (j, sd) { return [-0.8 * rear + 2.2 * dive, sd * 0.4 * rear, 1 - 0.9999 * gone, [0.25 * sd * dive, -1.9 * dive, 0.3 * dive]]; });
+        }],
+        /* hit (0.7 s): the head snaps back, the body rocks back, the tentacles flinch */
+        hit: [0.7, function (u) {
+            var k = _abBump(u, 0, 0.1, 0.7);
+            var P = { ewAbBody: { p: [0, 0, -0.12 * k], rw: [-0.2 * k, 0, 0.06 * k] }, ewAbNeck: { rw: [-0.7 * k, 0.2 * k, 0] },
+                ewAbArmR: { rw: [0.4 * k, 0, 0.3 * k] }, ewAbArmL: { rw: [0.4 * k, 0, -0.3 * k] } };
+            return _abTens(P, u, 0.1, 2, function () { return [-0.5 * k, 0]; });
+        }],
+        /* death (2.6 s): it falls apart: the arms and back tentacles drop off one by one, the cage collapses to the floor, the
+           head lolls and the body sinks forward between its splayed legs */
+        death: [2.6, function (u) {
+            var sink = _abS(u, 0.45, 0.95), drop = function (t) { return _abS(u, t, t + 0.2); };
+            var P = { ewAbBody: { p: [0, -0.85 * sink, 0.25 * sink], rw: [0.7 * sink, 0, 0.15 * sink] }, ewAbCore: { s: [1 + 0.05 * sink, 1 - 0.1 * sink, 1] },
+                ewAbNeck: { rw: [0.6 * _abS(u, 0.3, 0.6), 0.4 * _abS(u, 0.3, 0.6), 0.3 * _abS(u, 0.5, 0.8)] },
+                ewAbArmR: { p: [0.15 * drop(0.05), -1.1 * drop(0.05), 0], rw: [0.4 * drop(0.05), 0, 0.9 * drop(0.05)] },
+                ewAbArmL: { p: [-0.15 * drop(0.15), -1.1 * drop(0.15), 0], rw: [0.4 * drop(0.15), 0, -0.9 * drop(0.15)] },
+                ewAbHipR: { rw: [0, 0, -0.35 * sink] }, ewAbHipL: { rw: [0, 0, 0.35 * sink] },
+                ewAbCage: { p: [0, -2.4 * _abS(u, 0.1, 0.4), 0], r: [1.2 * _abS(u, 0.1, 0.4), 0, 0.8 * _abS(u, 0.1, 0.4)], s: [1, 1 - 0.6 * _abS(u, 0.38, 0.45), 1] } };
+            return _abTens(P, u, 0.04, 1, function (j, sd) { var t = 0.1 + j * 0.08, d = drop(t); return [1.4 * d, -sd * 0.5 * d, 1, [0.1 * sd * d, -1.4 * d, -0.2 * d]]; });
+        }]
+    };
+    function _abBuild(root) {
+        if (!root.getObjectByName('ewAbBody') || !root.getObjectByName('ewAbLimb0')) return null;
+        var R = { n: {} };
+        ['ewAbBody', 'ewAbCore', 'ewAbNeck', 'ewAbArmR', 'ewAbArmL', 'ewAbHandX0', 'ewAbHandX1', 'ewAbTen2', 'ewAbTen3', 'ewAbTen4', 'ewAbTen5',
+            'ewAbHipR', 'ewAbHipL', 'ewAbCageOrbit', 'ewAbCage'].forEach(function (n) {
+            var o = root.getObjectByName(n);
+            if (o) R.n[n] = { p: o.position.clone(), q: o.quaternion.clone(), s: o.scale.clone() };
+        });
+        var clips = {};
+        Object.keys(_AB_POSES).forEach(function (slot) { var p = _AB_POSES[slot]; clips[slot] = _abClip(slot, p[0], p[1], R); });
+        clips.run = clips.walk;
+        clips.castMelee = clips.cast; clips.castMagic = clips.cast; clips.castRanged = clips.cast;
+        clips.castAOE = clips.abMouths; clips.castSupport = clips.abMouths; clips.castHeal = clips.abMouths; clips.castUltimate = clips.abUnfold;
+        return clips;
+    }
+    /* after the mixer, every frame: the limbs it has, the extra hands, the cage away on a victim. A few lookups on the units
+       list (a board holds tens, never the room: RULE #1e). */
+    function _abLimbTick(entry, uid, dt) {
+        var m = entry.model; if (!m) return;
+        var R = entry._ew_ab;
+        if (!R) {
+            R = entry._ew_ab = { L: [], vis: [], hx: [m.getObjectByName('ewAbHandX0'), m.getObjectByName('ewAbHandX1')], cage: m.getObjectByName('ewAbCage'), cageMesh: m.getObjectByName('ewAbCageMesh'), away: null };
+            for (var i = 0; i < 6; i++) { R.L.push(m.getObjectByName('ewAbLimb' + i)); R.vis.push(1); }
+        }
+        var u = _findUnit(uid), n = (u && u.race === 'abomination') ? (u.limbs == null ? 4 : Math.max(0, Math.min(6, u.limbs | 0))) : 4;
+        var anim = entry._ew_curAnim, unfold = anim === 'abUnfold' || anim === 'castUltimate', dying = _deathTweens.has(uid);
+        var k = Math.min(1, (dt || 0.016) * 5);
+        for (var j = 0; j < 6; j++) {
+            var L = R.L[j]; if (!L) continue;
+            if (unfold || dying) { L.scale.setScalar(R.vis[j] > 0.5 ? 1 : 0.0001); continue; }   // the clip carries the parts it tears off
+            if (R.wasUnfold) R.vis[j] = j < n ? R.vis[j] : 0;   // the torn-off ones stay gone after the clip
+            R.vis[j] += ((j < n ? 1 : 0) - R.vis[j]) * k;
+            L.scale.setScalar(Math.max(0.0001, R.vis[j]));
+        }
+        R.wasUnfold = unfold;
+        if (!(anim === 'abGrasp' && n >= 5)) for (var h = 0; h < 2; h++) if (R.hx[h]) R.hx[h].scale.setScalar(0.0001);
+        /* THE CAGE AWAY: the victim's `caged` names this unit — the shoulder's cage is hidden and a copy stands over the victim */
+        var vic = null;
+        if (state.units && !dying) for (var w = 0; w < state.units.length; w++) {
+            var c = state.units[w];
+            if (c && !c.dead && c._cageSrcId === uid && c.status && c.status.caged > 0) { vic = c; break; }
+        }
+        if (vic && R.cage && R.cageMesh && anim !== 'abCage') {
+            R.cage.scale.setScalar(0.0001);
+            var ve = unitEntries.get(vic.id);
+            if (!R.away && ve && ve.group) {
+                var cm = R.cageMesh.clone(), bb = new THREE.Box3().setFromObject(R.cageMesh), sz = new THREE.Vector3(); bb.getSize(sz);
+                var ts = CONFIG.tileSize || BASE_TILE, g = new THREE.Group(); cm.position.set(0, 0, 0); cm.rotation.set(0, 0, 0); cm.scale.set(1, 1, 1);
+                var bb2 = new THREE.Box3().setFromObject(cm), c2 = new THREE.Vector3(); bb2.getCenter(c2); cm.position.sub(c2);
+                var big = Math.max(0.01, Math.max(bb2.max.x - bb2.min.x, bb2.max.y - bb2.min.y, bb2.max.z - bb2.min.z));
+                g.add(cm); g.scale.setScalar(ts * 0.75 / big); g.name = 'ewAbCageAway';
+                R.away = { g: g, id: vic.id, t0: performance.now() };
+            }
+            if (R.away && ve && ve.group) {
+                if (R.away.g.parent !== ve.group) { if (R.away.g.parent) R.away.g.parent.remove(R.away.g); ve.group.add(R.away.g); }
+                var ts2 = CONFIG.tileSize || BASE_TILE, el = (performance.now() - R.away.t0) / 1000;
+                R.away.g.position.set(0, ts2 * (0.4 + 0.6 * Math.max(0, 1 - el / 0.35)), 0);   // it drops onto the victim
+                R.away.g.rotation.y = el * 0.4;
+            }
+        } else {
+            if (R.away) { if (R.away.g.parent) R.away.g.parent.remove(R.away.g); R.away = null; }
+            if (R.cage && R.cage.scale.x < 0.001 && anim !== 'abCage') R.cage.scale.setScalar(1);
+        }
+    }
     var _PROC_RIGS = {
         seraphRings: function (root) {
             var src = null;
@@ -19285,7 +19477,9 @@ const ThreeRenderer = (function () {
         /* 📺 THE CURSED TV (above, _tvBuild): the cart's casters, the wheels, the ears, the remote, THE CHANNELS */
         cursedTv: function (root) { return _tvBuild(root); },
         /* 🦠 THE VIRUS (above, _vrBuild): the spikes, the eye ring, the code tendrils */
-        virusBody: function (root) { return _vrBuild(root); }
+        virusBody: function (root) { return _vrBuild(root); },
+        /* 🫀 THE ABOMINATION (above, _abBuild): the arms, the back tentacles, the leg tentacles, the head, the cage */
+        abomination: function (root) { return _abBuild(root); }
     };
     _PROC_RIGS.unicornWings.deps = [UNI_WING_URL, UNI_HORN_URL];
     /* ♟ THE CHESS PIECE: one hinge, the same moves, for each of the six looks (sprites.js CHESS_PIECE_3D) */
@@ -21840,6 +22034,7 @@ const ThreeRenderer = (function () {
             if (entry._ew_procEye) _procRigEyeTrack(entry._ew_procEye);
             if (_tvStatic) _tvStaticTick();   // 📺 THE CURSED TV: the shared snow moves (throttled, once a frame whoever asks)
             if (_vrCodeTex) _vrCodeTick();   // 🦠 THE VIRUS: the code runs down the tendrils
+            if (entry.modelDef && entry.modelDef.procRig === 'abomination') _abLimbTick(entry, uid, dt);   // 🫀 THE ABOMINATION: the limbs it has, the cage away
             if (entry.appearanceRig) { entry.model.updateMatrixWorld(true); entry.appearanceRig.tick(); }   // rev 9: the skirt against the legs
             var _hsR = _unitModelRigs.get(uid); if (_hsR && _hsR.hairSweep) _hsR.hairSweep();   // THE HAIR EVERYWHERE: the late hair
             if (entry._ew_sway) _swayTick(entry._ew_sway, dt, entry.modelDef && entry.modelDef.sway);   // THE SWAY: the cape swings after the clip

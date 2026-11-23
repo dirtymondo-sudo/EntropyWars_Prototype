@@ -2166,6 +2166,23 @@ Mech F sprite redone as `mech_f2_px2.png` from a straight-on front render of her
 - The Replica summon (`_summonReplica3D`) clones the same file at half size (bob, ring turn, lurch per bite, flinch).
 - Sprite `virus_px.png` (same folder) = Sprite AI restyle of a straight-on render (files in the same project folder).
 
+## THE ABOMINATION — five Meshy parts seated into one body (2026-11-23, thread "Build the Abomination unit")
+- ONE file `Assets/characters/races/abomination/male/abomination.glb` (8.3 MB; `abomination.opt.glb` 4.4 MB, meshopt + WebP, listed
+  in ASSET_MANIFEST.json so the game loads it), built by `/mnt/project-files/horror-plan-20261123/build/asm.js` (`node asm.js <out.glb>
+  [preview.png]`, three 0.160 in a Playwright page, GLTFExporter, textures 1024) from FIVE Meshy parts of mondo's horror concept
+  (`char-concepts-20261123/models/horrorA_*.glb`, simplified to ~11k tris in `build/lo/`; the tentacle stays 12.9k, its UVs are cut up).
+- mondo 11-23: "the old parts are good, just connect them; the cut ends face the wrong way". THE SEATING: every part's cut cap and
+  each socket on the core is a plane fit (`caps.json`, `caps.py`: centre, outward normal, radius); a part is turned so its cap normal
+  points against the socket's, rolled toward a wanted direction, scaled by the radius ratio and pushed in by an inset. The tentacle's
+  cut base is its +Z end (not -Z). The head needs a front ref vector (its roll is free). The arms tilt ±0.55 so they hang. The two
+  LEG tentacles start 0.16 m inside the hip stumps, run straight out along the hip normal, then curve onto the floor (thickness ×1.15).
+- Nodes (metres, front +Z, floor y 0): ewAbRoot > ewAbBody > ewAbCore, ewAbNeck (head), ewAbLimb0/1 > ewAbArmR/L (local -Y down the
+  arm; the left arm is the mirrored geometry) > ewAbHandX0/1 (two small hands at the right wrist), ewAbLimb2..5 > ewAbTen2..5 (the
+  one tentacle bent along four paths), ewAbHipR/L (the leg tentacles), ewAbCageOrbit > ewAbCage.
+- Rig = three-renderer.js "THE ABOMINATION" (`_PROC_RIGS.abomination` -> `_abBuild`, `_AB_POSES`; `_abLimbTick` after the mixer
+  shows the limb count, the extra hands only in Grasp at 5+, and the cage over a Caged victim). Sprite `abomination_px.png` = Sprite
+  AI restyle of a straight-on render (`build/front.js`).
+
 ## THE STREAMER PIECES (2026-11-18) — two Meshy picks for the creator
 
 `ewm_egwig` (Split-dye pigtail wig, hats: pink left half, black right half, two pigtails; the look's hair is `bald` under it) and

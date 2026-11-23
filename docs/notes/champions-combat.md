@@ -6244,6 +6244,39 @@ final lab's race spread is no wider than luck (5.05 pts from 50 on average, luck
 How to run it, the method, every pass and every race: docs/notes/balance-loop-20261121.md (tools bal-analyze.js,
 bal-plan.js, bal-families.js; train_headless.js now saves the full tables and survives tab crashes).
 
+## THE MONARCH (2026-11-23, thread "Plan Monarch's spells and playstyle"; mondo OK'd the plan + mock-up: project files `monarch-kit/`)
+The first of THE COMING RACES 2 to get her kit: out of `EW_COMING_RACES`, into both AVAILABLE_RACES (data.js + server.js). A
+brainwashed 1960s pin-up sleeper agent of the D.U.M.B. (concept A). Human / Anomaly, class specialist, home D.U.M.B., price 450,
+psychic resist / fire weak, HP 1000 · MP 210 · ATK 95 · DEF 85 · M.DEF 140 · M.ATK 165 · VIS 4 · CRT 24 · SPD 120 (first pass on the
+specialist median; the balance loop owns it from here). Families: her own `monarchprogramming` (signature) + seduction, spygear,
+deepstate. Finisher Sweet Dreams borrows the `lullaby` staging. Rules: battle.js block "THE MONARCH" (before LEAPFROG).
+- 🦋 PROGRAMMED (STATUS_DEFS `programmed`): STACKS up to 3 (`stack: 'add'`, `ownTick`). Its onApply calls `_monProgramHold`, which sets
+  `_stHold.programmed = { r: round + 1, by: programmer, af: 1 }` by hand: THE FULL ROUND's own expiry takes it off after the programmer's
+  NEXT turn ends (and the target's turn in that round). Every landing starts the clock again (mondo's status rule: she has to keep feeding
+  it). `_setStatusHold` returns early for it, `_STATUS_HOLD_SKIP` lists it, the held countdown never takes a stack (`ownTick`), and
+  `_monStrayStacks` (from `_nrRoundEnd`) clears a stack nobody holds. Every landing draws `monProgram` (one ring a stack).
+- TREE: Butterfly Kiss (T1, 85 magic r2, +1) · Pendulum (aoe 3×3 r3, no damage, +1 + Slow 1, cd 2) / Kaleidoscope Wings (aoe round her,
+  Charm 1 + 1 stack, she Levitates 1 via selfStatusAfter, cd 3) · Trigger Word (buff, cd 3) / Sleeper Cell (placeTrap trapType
+  `chrysalis`, no hit, Root 1 + 2 stacks, 1 at a time) · Metamorphosis (buff, `chrysalis` status, cd 5) / Chaos Theory (delayed 5×5 r5,
+  110 + 30 a Programmed stack on her enemies when it goes off, cd 4; the plan called it The Butterfly Effect, renamed because the Butterfly
+  Girl's plan has a spell of that name). Pendulum shipped as a 3×3 area, not the mock-up's cone (no cone shape in the engine).
+- TRIGGER WORD (`triggerWord`, `_monTriggerWord`): refused before any cost with no Programmed enemy in sight (`_monProgrammedFoes(unit,
+  true)`: fog = team vision). Each one in sight, by stacks: 1 = Discord 1; 2 = `_monSleeperStrike`: its own basic attack (ATK × the basic
+  coefficient, the hit pipeline takes the defence) on its NEAREST ally in its own reach (`_oppStrikeCanReach`), itself with nobody in
+  reach; 3 = the same, then Asleep 1. A unit that cannot swing (stunned, frozen, asleep, climbing) gets the Discord. Stacks clear.
+- METAMORPHOSIS: STATUS_DEFS `chrysalis` (blockMove + blockAction = the activation skips, damageTakenMult 0.5). Its onRemove calls
+  `_monHatch`: Levitating + Quickened 2 rounds and `_monHatched` = her next Trigger Word counts every stack one higher (spent there).
+- DELTA ALTER (passive `deltaAlter`): applyDamageToUnit → `_monDeltaCheck`: the first time each battle (`state._monDeltaUsed`) she drops
+  under half HP: +2 ATK stages for 2 rounds and `_deltaCrit` (rollCrit returns true once: her next BASIC attack crits).
+- CPU (ai.js): `programmed` is priced in the status table (45 + 35 a stack it already has + a share of its output, ~0 at 3); Trigger Word =
+  25 / 100 / 150 per sleeper at 1 / 2 / 3 stacks (0 with none); Metamorphosis = hurt + stacks out, 0 with an enemy beside her.
+- VFX (three-vfx-effects.js "THE MONARCH", kill-switch `window.EW_NO_MONARCH_VFX`): the side colours (own cyan, enemy pink-orange) on the
+  spiral, the stained-glass wings, the rings and the chrysalis rim; the butterflies are the game's Butterfly_Monarch (`_bugRun`). Kiss:
+  a monarch flies the line; Pendulum: a spiral on a thread swings, then lies on the 3×3 and turns; Wings: two glass wings open behind
+  her; Trigger Word: a spiral snaps shut over her head, monarchs burst out of each sleeper; Sleeper Cell (sprites.js TRAP_TILE_SPRITES
+  `chrysalis` for the owner's sigil): a chrysalis closes and cracks; Metamorphosis wrap + hatch; Chaos Theory: one monarch circles the
+  mark (her side only), a swarm spirals out at the blast; Delta: a red triangle.
+- Online: all host-side; the stacks, holds, statuses and HP state-sync; every look rides `_sigVfxGeom` (fireGeometry is relayed).
 ## THE BUTTERFLY GIRL (2026-11-23, her kit; mondo OK'd the plan "yeah thas fine")
 Plan page https://claude.ai/artifact/7V3xVKvFCkYrZ3wEDJJTqZ. She left EW_COMING_RACES for AVAILABLE_RACES (data.js + server.js).
 - Race `'butterfly girl'`, female, caster, flies (SKY_RACES), type anomaly, resists wind, weak to ice; families `morpho` (her own) + wind, nature,
@@ -6325,3 +6358,39 @@ The Sewers (NOT yet placed as Sewers natives: the Sewers district files are held
   `Assets/world/animals/rat.glb`, `_ANIMALS.rat`, shared geometry); a crowned court gets a pink cord. Kill-switch `EW_NO_RAT_COURT`.
   The structural serial hashes the king form so the model swaps at once.
 - FINISHER 'The Mischief' (sig pileOn). Affinity: poison resist, fire weak.
+
+## THE 11-22 TRAINING PASSES (2026-11-22/23, mondo: "can you run the ai training for a few passes and make sure its getting better") — battle.js + ai.js weights, train_headless.js
+- Three SPSA passes of ~115 min each, 3 headless browsers, Arena 4v4 paired matches on the rotating PvP arenas, starting from the
+  11-01 baked defaults (no reset); each pass carried on the last one's walk (`--resume`: θ, pair count, syncs). 2,110 training matches,
+  k = 985 pairs.
+- Head-to-head vs the shipped AI (Strength Test, paired, baseline = defaults):
+  pass 1 (709 matches, k 294) 157-139 = 53.0%; pass 2 (1,405, k 638) 140-122 = 53.4%; pass 3 (2,110, k 985) 339-324 = 51.1%.
+  Pass 3 drifted back to even, so pass 2 was proven over two more runs: 305-274 (53%), then 364-296 (55%, on main e81abba+9).
+  Pass 2 pooled: 809-692 over 1,501 matches = 53.9% (95% low 51.4%); graded pairs 53.8% ±1.2 over 747 pairs, z = 3.3. BAKED
+  (65 keys, `prev` = the value replaced, ai.js AI_TUNE v4 knobs match). Biggest moves: towerLowHpPush 33.6 → 70.2, anchorCaution
+  .25 → .80, killOutputTurns .49 → .79, killBonusScore 117 → 84, engageAdvantage −.76 → −.51, teleportAnyValue .40 → .20.
+- Lesson: more passes are not always better: the gains are a few points and the third pass gave some back, so the pass that wins
+  the long head-to-head is the one baked, not the last one.
+- train_headless.js (tooling): THE RECYCLE now covers Training + Strength Test (a lab tab grew ~0.2 GB a match and four tabs got
+  killed for memory in 6 min): a fresh tab in the same context every `--recycle` matches (default 5, 11-22 run used 10 with 3
+  workers), on an even count, θ restored; a crashed tab gets a fresh one the same way; no 3D unit models in the AI labs
+  (`EW_DISABLE_3D_UNITS`); `--resume <dir>` carries a run on (writes `syncs.json`). Run with `EW_ALLOW_STALE=1` (a recycled tab
+  reloads the page; main moving mid-run must not block it). 4 workers OOM on a cloud container; 3 workers ≈ 6 matches/min.
+  Kill a run with `kill -9` (SIGTERM is caught). Harness logs + every pass's weights: /mnt/project-files/ai-training/run-20261122/.
+
+## THE ABOMINATION (2026-11-23, thread "Build the Abomination unit", plan https://claude.ai/artifact/QYFEt8LpeEnqzhViCt1zME)
+mondo OK'd the kit and named it ("Horror A" in the concepts round; Horror B is The Hollow, its own thread). Bruiser, reach 2 claw
+basic attack, poison resist / fire weak, families abomination (its own) + nightmares, cosmic, shadow. Home: The Sewers (a first pick,
+he did not name one). Stats first pass HP 1300, MP 150, ATK 150, DEF 110, M.DEF 90, INT 90, SPD 80.
+- THE LIMBS (battle.js block "THE ABOMINATION"): `unit.limbs` 0-6, no value = 4 (a plain number: the guest has it from the sync).
+  +1 when each of its turns ends (`_abRegrow`, called where the blitz advance stamps `_turnRound`). A hit of 20 % of its max HP or more
+  (not damage over time, not its own) takes one limb and lands 30 % smaller (`_abShed`, in applyDamageToUnit before the HP comes off).
+  HUD chip `LIMBS n/6`; the body shows the count (the arms are limbs 0-1, the back tentacles 2-5, so the tentacles go first).
+- Grasp T1 (range 3, 80 physical, Root 1; `limbsStaggerAt: 5` adds Stagger in the cast copy, `_abCastRow`). Many Mouths T2 (kind aoe,
+  self radius 1, 90 magic, `aoeLifeDrain` 0.5, `limbsPerHit: 1` = +1 limb for each enemy bitten, `_abOnHit` while `unit._abMouths`).
+  Bone Cage T3 (debuff range 4: Root 2, Silence 1, the new status `caged` 2; `_cageSrcId` names the Abomination, the renderer stands
+  its cage over the victim). Unfold T4 (barrage, self radius 5, through cover, 70 physical + Bleed 2 a hit; `limbsMin: 2` refuses
+  below 2, `limbsSpendAll`: the copy carries `_abHits`, `_abSpendNow` sets the limbs to 0, `_abUnfoldList` hits round robin).
+  Grasp and Unfold carry `bonusVsStatus` caged ×1.25.
+- CPU (ai.js scoreSpell, "THE LIMBS"): Grasp scored as its copy; Unfold worth limbs/3, halved under 4 limbs, and a body under 35 %
+  HP keeps its last 3. FINISHER 'Too Much Body' (sig blurryFootage).
