@@ -14756,6 +14756,29 @@ headless scan of every terrain room (each railing piece against the ground every
 - Placed fence PROPS (`hw_fence`, `chain_fence`, `fence_with_gate`, ...) are single models standing on the ground at their place; not part of this.
 - No tool to rerun: every room's railings are compiled at load.
 
+## DISASTER CITY, THE COAST SKYLINE — Bayside 9 / 16 / 21 + Entertainment 11 / 18 / 24 (2026-11-23, skyline plan; mondo 17:00: "Build it, plus the mid-rise fill")
+The plan: https://claude.ai/artifact/YEe54svVhVbLufjHdfQ5QY, sites `/mnt/project-files/skyline-plan/tools/towers.json`. Six towers, each ONE arch row
+(code parts + city textures, no pack has skyscrapers), 4 materials or fewer, no lamps, a walk-in lobby. Rules found while building:
+- A tower over a ROOF WALK keeps the walk: the bridges land on a plateau row, so the tower stands on the squares no bridge lands on
+  and those squares become a real lobby (texbuilding `skin:false, hollow:true`). The seam between the plateau and the lobby roof gets an
+  absY ghost wall (`y: level + 7, h 3`) so nobody walks off the roof route into the shaft.
+- Bayside (B.js): `skyline(ctx, byId, push)` runs in apply() before the plan-less things.
+  - #9 Food Hall Condos 115 m (`dc:bay-condos:arch`, `B.condos`): glass shaft on the back 4 rows, a balcony every floor, blade walls,
+    roof pool. The plateau `dc:P09-09-B1` is the front 3 rows (both bridges land there); `dc:bay-condos-lobby` = the lobby (lifts, concierge).
+  - #16 Waterfront Hotel 60 m (B.hotel, `HOTEL_H`, `hotelBow`): the old hotel raised and its sea front bowed (cyl arcs). KEPT LOW on
+    purpose: from the sea the Superhero Tower stays the first thing seen. MIAMI.hotel + POLISH.hotel follow `HOTEL_H` and the bow.
+  - #21 Hole Condo 75 m (`B.holecondo`, `HOLE`): a square hole 40-50.5 m up, lined white, a palm prop standing in it. Lift doors in the flat's hall.
+- Entertainment (E.js, the skyline block before `features.push`): helper `tower(id, fn)`, KIT.e = a lift square.
+  - #11 Late Fees Tower 100 m: round glass drum on three legs over the backstage yard; the plateau split into the north row
+    (`dc:P10-05-B1`) + the east column (`…:e`) where the bridges land; `EXTRA['E-latefees']` = the lobby. Lit crown, helipad, the scorch gag.
+  - #18 Casino Tower 85 m: cream slab, pink neon base bands, gold bands, a gold pyramid top, over the casino's own walk-in.
+  - #24 Mid Records Tower 55 m: 13 black records stacked on a glass core, red label, spindle, a needle spire and a tone arm.
+- Count a row's materials: one per key|tint|glow|kind|ds|roof|gain|shine (keyTop / keyEnd add one each).
+- A prop over a walk-in's roof (the Hole Condo's palm, `y` 40) is no longer counted as in the room by interior-polish.js (it pulled it down
+  under the ceiling to y 1.58). Two plateaus that only touch leave a slit the soft-lock finder reads as a SLOT: overlap them.
+- Soft-lock finder on the city after the build: 0 traps, 0 crevices (one slot the split plateau made, fixed).
+
+
 ## THE SKYLINE, THE SOUTH AND WEST TOWERS (2026-11-23, mondo 17:00 "Build it, plus the mid-rise fill")
 Plan: https://claude.ai/artifact/YEe54svVhVbLufjHdfQ5QY (sites `/mnt/project-files/skyline-plan/tools/towers.json`). This thread built the
 south and west six; Hero Plaza, Financial and the coast are other threads; Civic Center gets none (second account).
