@@ -1,5 +1,5 @@
 THE SIGN CHECK, written by node bake-disaster-city.js (docs/disaster-city/sign-check.js). MOVED = a sign that sat in or behind a surface, drawn out to its face. LEFT = a sign with something in the way that the check could not clear: its district thread moves it. TWIN = a smaller lettering that lay under a larger one on the same face, taken out.
-{"signs":545,"moved":97,"left":9,"twins":5}
+{"signs":569,"moved":97,"left":9,"twins":5}
 LEFT "FIRE STATION" on arch:P04-00-B1 at -216.9, 26.1, -230.1: arch:P04-00-B1 box marble_light in the way at 0.02 m, no clear air within 1.6 m
 LEFT "COURTHOUSE" on arch:P07-01-B1 at -114.6, 24.3, -199.4: arch:P07-01-B1 cyl marble_light stands 0.34 m in front of it (not moved: the sign is not in a wall)
 MOVED "POLICE" on arch:P04-02-B1 at -237.9, 24.3, -153.1: arch:P04-02-B1 box marble_light was in the way at 0.02 m: drawn out 1.11 m

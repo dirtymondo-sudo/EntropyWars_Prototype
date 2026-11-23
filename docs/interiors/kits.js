@@ -37,6 +37,10 @@ function room(row, seed) {
     const dlx = doorLx(row), di = Math.min(nx - 1, Math.max(0, Math.floor((dlx - ox) / sx)));
     const R = rng(seed || row.id || 'kit'), P = [], props = [], ghosts = [], used = new Set(), walk = new Set();
     for (let j = 0; j < nz; j++) walk.add(di + ',' + j); for (let i = 0; i < nx; i++) walk.add(i + ',' + (nz - 1));
+    /* THE OPEN DOORS (2026-11-23): the square just inside each of the row's other doorways (`gaps`, data.js hqTexBuildingRows) is walkway too */
+    const cl = (v, n) => Math.min(n - 1, Math.max(0, Math.floor(v))); (Array.isArray(row.gaps) ? row.gaps : []).forEach(g => { const u = +g.u; if (!isFinite(u)) return;
+        if (g.side === 'b') walk.add(cl((u - ox) / sx, nx) + ',0'); else if (g.side === 'f') walk.add(cl((u - ox) / sx, nx) + ',' + (nz - 1));
+        else if (g.side === 'r') walk.add((nx - 1) + ',' + cl((u - oz) / sz, nz)); else if (g.side === 'l') walk.add('0,' + cl((u - oz) / sz, nz)); });
     const world = (lx, lz) => [row.x + lx * cs - lz * sn, row.z + lx * sn + lz * cs];
     const at = (i, j) => [ox + (i + 0.5) * sx, oz + (j + 0.5) * sz];
     const free = (i, j) => i >= 0 && j >= 0 && i < nx && j < nz && !used.has(i + ',' + j) && !walk.has(i + ',' + j);
@@ -52,7 +56,7 @@ function room(row, seed) {
     const midSquares = () => { const o = []; for (let j = 1; j < nz - 1; j++) for (let i = 1; i < nx - 1; i++) o.push([i, j, 0]); return o; };
     const K = {
         W, D, nx, nz, sx, sz, di, R, pick, at, free, take, used, walk, P, props, ghosts, wallSquares, midSquares,
-        H: (row.storeys || 1) * 3.5 - 0.32,
+        H: (+row.inH > 0 ? Math.min(+row.inH, (row.storeys || 1) * 3.5 - 0.32) : (row.storeys || 1) * 3.5 - 0.32),   // `inH` (THE OPEN DOORS): a tall building's one walked room
         /* a prop; face = the room frame's (0 = it looks at the door, +z; 90 = the right wall's own, looking -x; 270 = the left wall's) */
         prop(key, lx, lz, face, o) { const p = world(lx, lz); props.push(Object.assign({ key, x: r3(p[0]), z: r3(p[1]), face: ((((face || 0) + rot + 180) % 360) + 360) % 360, floor: true }, o || {})); },
         ghost(lx, lz, w, d, h) { const A = w >= d ? world(lx - (w - d) / 2, lz) : world(lx, lz - (d - w) / 2), B = w >= d ? world(lx + (w - d) / 2, lz) : world(lx, lz + (d - w) / 2);

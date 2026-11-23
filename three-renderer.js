@@ -78056,22 +78056,34 @@ const ThreeRenderer = (function () {
        its outside face where the drawn face is), the doorway's sides and head, the ceiling under the roof slab and the floor (`floorIn`) */
     function _hqTexInside(lot, batch, W, faces, hol, H, hw, hd) {
         if (lot.bareIn) return;   // THE CHAIN INSIDES (2026-11-23): a row laid inside a pack building that has its own inside walls, floor and ceiling draws none of its own
-        var C = HQ_TEXB.cell, ti = 0.24, ki = lot.keyIn || 'urban:PlasterWallPainted1a', kf = lot.floorIn || 'urban:ConcreteStriped1b', Hc = Math.max(hol.doorH + 0.3, H - 0.32), dH = hol.doorH;
+        /* THE OPEN DOORS (2026-11-23, mondo: "If there is a door the player should be able to walk inside of it"): `inH` = the inside's height when the
+           building is taller than its one walked room (a tower's ground floor), else the whole height under the roof slab */
+        var C = HQ_TEXB.cell, ti = 0.24, ki = lot.keyIn || 'urban:PlasterWallPainted1a', kf = lot.floorIn || 'urban:ConcreteStriped1b', Hc = Math.max(hol.doorH + 0.3, lot.inH > 0 ? Math.min(H - 0.32, lot.inH) : H - 0.32), dH = hol.doorH;
         var q = function (key, kind, a, b, c, d, uv) { batch.add(key, null, kind, [W(a[0], a[1], a[2]), W(b[0], b[1], b[2]), W(c[0], c[1], c[2]), W(d[0], d[1], d[2])], uv); };
         var wallRun = function (F, u0, u1, y0, y1) {   // a stretch of a face's inside: u along the face from its origin corner, y up
             if (u1 - u0 < 0.02 || y1 - y0 < 0.02) return;
             var ox = F.o[0] - F.n[0] * ti, oz = F.o[1] - F.n[1] * ti, ax = ox + F.a[0] * u0, az = oz + F.a[1] * u0, bx = ox + F.a[0] * u1, bz = oz + F.a[1] * u1;
             q(ki, 'inner', [bx, y0, bz], [ax, y0, az], [ax, y1, az], [bx, y1, bz], [[u0 / C, y0 / C], [u1 / C, y0 / C], [u1 / C, y1 / C], [u0 / C, y1 / C]]);
         };
-        faces.forEach(function (F) {
-            var L = F.L;
-            if (!F.front) { wallRun(F, ti, L - ti, 0, Hc); return; }
-            var u0 = hw + hol.lx - hol.cw / 2, u1 = u0 + hol.cw;   // the doorway along the front (its origin corner is −hw)
-            wallRun(F, ti, u0, 0, Hc); wallRun(F, u1, L - ti, 0, Hc); wallRun(F, u0, u1, dH, Hc);
-            /* the doorway's two sides and its head, from the drawn face to the inside wall */
-            [u0, u1].forEach(function (u) { var x = F.o[0] + F.a[0] * u, z = F.o[1] + F.a[1] * u, ix = x - F.n[0] * ti, iz = z - F.n[1] * ti; q(ki, 'inner', [x, 0, z], [ix, 0, iz], [ix, dH, iz], [x, dH, z], [[0, 0], [ti / C, 0], [ti / C, dH / C], [0, dH / C]]); });
-            var hx0 = F.o[0] + F.a[0] * u0, hz0 = F.o[1] + F.a[1] * u0, hx1 = F.o[0] + F.a[0] * u1, hz1 = F.o[1] + F.a[1] * u1;
-            q(ki, 'inner', [hx0, dH, hz0], [hx1, dH, hz1], [hx1 - F.n[0] * ti, dH, hz1 - F.n[1] * ti], [hx0 - F.n[0] * ti, dH, hz0 - F.n[1] * ti], [[0, 0], [hol.cw / C, 0], [hol.cw / C, ti / C], [0, ti / C]]);
+        /* each face's openings [u0, u1, head] along it from its origin corner: the front's doorway, and THE OPEN DOORS' `gaps` (data.js
+           hqTexBuildingRows cuts the same ones in the walker's walls: side 'b' | 'r' | 'l' | 'f', u = the lot frame's x on the back / front, z on the flanks) */
+        var opsOf = function (F, fi) { var o = [];
+            if (F.front) o.push([hw + hol.lx - hol.cw / 2, hw + hol.lx + hol.cw / 2, dH]);
+            (lot.gaps || []).forEach(function (g) { var side = ['f', 'b', 'r', 'l'][fi], u = +g.u, w2 = (+g.w || 1) / 2, gh = Math.min(Hc - 0.05, Math.max(1.8, +g.h || dH)); if (g.side !== side || !isFinite(u)) return;
+                var m = side === 'f' ? hw + u : side === 'b' ? hw - u : side === 'r' ? hd - u : hd + u; o.push([m - w2, m + w2, gh]); });
+            return o.sort(function (a, b) { return a[0] - b[0]; }); };
+        faces.forEach(function (F, fi) {
+            var L = F.L, ops = opsOf(F, fi), s0 = ti;
+            if (!ops.length) { wallRun(F, ti, L - ti, 0, Hc); return; }
+            ops.forEach(function (op) {
+                var u0 = Math.max(s0, op[0]), u1 = Math.min(L - ti, op[1]), oh = op[2]; if (u1 - u0 < 0.3) return;
+                wallRun(F, s0, u0, 0, Hc); wallRun(F, u0, u1, oh, Hc); s0 = u1;
+                /* the doorway's two sides and its head, from the drawn face to the inside wall */
+                [u0, u1].forEach(function (u) { var x = F.o[0] + F.a[0] * u, z = F.o[1] + F.a[1] * u, ix = x - F.n[0] * ti, iz = z - F.n[1] * ti; q(ki, 'inner', [x, 0, z], [ix, 0, iz], [ix, oh, iz], [x, oh, z], [[0, 0], [ti / C, 0], [ti / C, oh / C], [0, oh / C]]); });
+                var hx0 = F.o[0] + F.a[0] * u0, hz0 = F.o[1] + F.a[1] * u0, hx1 = F.o[0] + F.a[0] * u1, hz1 = F.o[1] + F.a[1] * u1;
+                q(ki, 'inner', [hx0, oh, hz0], [hx1, oh, hz1], [hx1 - F.n[0] * ti, oh, hz1 - F.n[1] * ti], [hx0 - F.n[0] * ti, oh, hz0 - F.n[1] * ti], [[0, 0], [(u1 - u0) / C, 0], [(u1 - u0) / C, ti / C], [0, ti / C]]);
+            });
+            wallRun(F, s0, L - ti, 0, Hc);
         });
         var iw = hw - ti, id = hd - ti;
         q(ki, 'ceil', [-iw, Hc, -id], [iw, Hc, -id], [iw, Hc, id], [-iw, Hc, id], [[0, 0], [2 * iw / C, 0], [2 * iw / C, 2 * id / C], [0, 2 * id / C]]);
@@ -78089,7 +78101,7 @@ const ThreeRenderer = (function () {
             var prism = typeof hqTexbPrism === 'function' && hqTexbPrism(f);   // THE PRISM BUILDINGS: their walls by _hqBuildTexPrisms (they need the kit), their roof + parapet here (THE PRISM ROOFS, 2026-10-30)
             var seed = (f.seed != null) ? (f.seed | 0) : (typeof hqHash === 'function' ? hqHash(String(f.id || (f.x + ',' + f.z))) : 7), a = (seed >>> 0) || 1;
             var rng = function () { a = (a + 0x6D2B79F5) | 0; var t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
-            var lot = { x: f.x, z: f.z, w: Math.max(2, f.w || 8), d: Math.max(2, f.d || 8), rot: -((f.rot || 0) * Math.PI / 180), storeys: Math.max(1, Math.min(12, Math.round(f.storeys || 2))), base: f.base || 0, style: f.style || null, ruinP: (f.ruin != null) ? f.ruin : 0, h: f.h || 0, flat: !!f.flat, sheet: (!prism && typeof f.key === 'string' && f.key) ? f.key : null, roofOnly: prism, hollow: !!f.hollow && !prism, noSkin: f.skin === false && !prism, keyIn: f.keyIn || null, floorIn: f.floorIn || null, door: f.door, doorLx: f.doorLx, doorW: f.doorW, doorH: f.doorH, bareIn: !!f.bareIn, keyGround: f.keyGround, keyDoor: f.keyDoor, keyOver: f.keyOver };
+            var lot = { x: f.x, z: f.z, w: Math.max(2, f.w || 8), d: Math.max(2, f.d || 8), rot: -((f.rot || 0) * Math.PI / 180), storeys: Math.max(1, Math.min(12, Math.round(f.storeys || 2))), base: f.base || 0, style: f.style || null, ruinP: (f.ruin != null) ? f.ruin : 0, h: f.h || 0, flat: !!f.flat, sheet: (!prism && typeof f.key === 'string' && f.key) ? f.key : null, roofOnly: prism, hollow: !!f.hollow && !prism, noSkin: f.skin === false && !prism, keyIn: f.keyIn || null, floorIn: f.floorIn || null, door: f.door, doorLx: f.doorLx, doorW: f.doorW, doorH: f.doorH, bareIn: !!f.bareIn, keyGround: f.keyGround, keyDoor: f.keyDoor, keyOver: f.keyOver, gaps: (f.hollow && Array.isArray(f.gaps) && f.gaps.length) ? f.gaps : null, inH: +f.inH || 0 };
             _hqTexBuilding(lot, info, batch, rng, { neon: neonRoom }, U); n++;
         });
         batch.flush();
@@ -78110,10 +78122,17 @@ const ThreeRenderer = (function () {
         var g = { map: {}, n: 0 }, D2R = Math.PI / 180, K = HQ_DOOR_CLEAR;
         texb.forEach(function (f) {
             if (!f || !f.hollow || f.doorsOnly || (typeof hqTexbPack === 'function' && hqTexbPack(f)) || (typeof hqTexbPrism === 'function' && hqTexbPrism(f))) return;
-            var D = hqTexbDoor(f), d = Math.max(2, +f.d || 8), q = (+f.rot || 0) * D2R, c = Math.cos(q), s = Math.sin(q), zf = d / 2;
-            var door = { x: +f.x || 0, z: +f.z || 0, rot: +f.rot || 0, c: c, s: s, x0: D.lx - D.cw / 2, x1: D.lx + D.cw / 2, z0: zf - K.inZ, z1: zf + K.outZ, cw: D.cw, base: +f.base || 0, H: D.doorH };
-            door.wx = door.x + D.lx * c - zf * s; door.wz = door.z + D.lx * s + zf * c;
-            var k = Math.floor(door.wx / K.cell) + ',' + Math.floor(door.wz / K.cell); (g.map[k] || (g.map[k] = [])).push(door); g.n++;
+            var D = hqTexbDoor(f), d = Math.max(2, +f.d || 8), w = Math.max(2, +f.w || 8);
+            var add = function (rot, lx, cw, zf, H) { var q = rot * D2R, c = Math.cos(q), s = Math.sin(q);
+                var door = { x: +f.x || 0, z: +f.z || 0, rot: rot, c: c, s: s, x0: lx - cw / 2, x1: lx + cw / 2, z0: zf - K.inZ, z1: zf + K.outZ, cw: cw, base: +f.base || 0, H: H };
+                door.wx = door.x + lx * c - zf * s; door.wz = door.z + lx * s + zf * c;
+                var k = Math.floor(door.wx / K.cell) + ',' + Math.floor(door.wz / K.cell); (g.map[k] || (g.map[k] = [])).push(door); g.n++; };
+            add(+f.rot || 0, D.lx, D.cw, d / 2, D.doorH);
+            /* THE OPEN DOORS (2026-11-23): each of the row's `gaps` is a doorway too, seen from a frame turned so that its side is the front
+               (back: a half turn, x flipped; right flank: −90°, x = −u; left flank: +90°, x = u) */
+            (Array.isArray(f.gaps) ? f.gaps : []).forEach(function (gp) { var u = +gp.u, gw = +gp.w || 1, gh = Math.max(1.8, +gp.h || D.doorH); if (!isFinite(u) || !(gw > 0.3)) return;
+                if (gp.side === 'b') add((+f.rot || 0) + 180, -u, gw, d / 2, gh); else if (gp.side === 'r') add((+f.rot || 0) - 90, -u, gw, w / 2, gh);
+                else if (gp.side === 'l') add((+f.rot || 0) + 90, u, gw, w / 2, gh); else if (gp.side === 'f') add(+f.rot || 0, u, gw, d / 2, gh); });
         });
         return g.n ? g : null;
     }
