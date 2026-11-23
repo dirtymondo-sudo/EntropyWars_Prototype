@@ -15070,3 +15070,23 @@ district files (and again at THE LAST STAGE for the rows a `last` hook drew), be
   need HQ_WALK_IN_PROPS cuts like the pizzeria's; outhouse / trailer / lighthouse come with the other zones' OPEN DOORS thread, catalogue-wide);
   four arch doors with no row under them (the Stadium's shop door, the Hills' mast hut, the Southside annex P00-02-B2's porch door, the
   University's P02-05-B2 storefront set 1 m back from its footprint).
+
+### PASS 2: THE CITY INSIDES + THE CUT DOORS + CIVIC CENTER (2026-11-23, same thread)
+- CIVIC CENTER IS OPEN TOO (mondo: "this is the main account, do the civic center too"): bake-disaster-city.js `skip` no longer skips district C, so
+  its 15 painted doors open by the same rule. Only the Hotel's lobby door stays shut (its own thread): find-doors.js now lists 335 walk-ins, 1 closed.
+- THE ORPHANS: a painted ground door with no row under it becomes the tall window (`WINDOW`) in open-doors.js (`ctx.orphans: 'keep'` = leave them).
+- THE CITY INSIDES (the catalogue buildings): city_diner, city_burgerpiz, city_laundry, city_vhs_shop, city_quequis_house each = an `_open` model
+  (the pack scene's shell, doors cut, `pins` keep the shut piece's box) + an `_inside` model (the pack's own fittings, cut by `inbox`, `lift`
+  raises the floor out of the ground) + an HQ_WALK_IN_PROPS entry (rooms / walls / boxes / leaves measured from Blender sections at 1.2 m).
+  city_house = the empty pack house sunk 0.55 m (porch at ground level), lined, furnished from the catalogue. `<key>_shut` = the old solid cut.
+  bake-pack-pieces.py jobs under "THE CITY INSIDES".
+- THE CUT DOORS (mondo: "use blender the cut the door out ... its just cutting out a rectangle of the building where the door is"): pack_bld_08 /
+  09 keep their photo look; bake-pack-pieces.py `holes` cuts each painted door out of the front (bld_08: 2, bld_09: 3, each 1.2 m+ at the city's
+  scale) into `ebd_buildings_bld_0N_open.glb` = data.js HQ_PACK_BUILDINGS `open`. A HOLLOW pack row wears the open model (three-renderer.js
+  `_hqPackBuildingModel(..., open)`); data.js `hqTexbPackShut(f)` = a pack row that stays solid (no `open` or not hollow) and replaces the old
+  "a pack row is never hollow" checks (hqTexBuildingRows, the door compile, `_hqArchDoorGrid`, `_hqBuildTexDoors`, find-doors.js).
+  The bake's PACK_CUT table (model metres: the real walls, the main door, the other doors) makes the pack row hollow with bare doorways
+  (`leaf: 'none'`) and stands a lined skin-less room `<id>:in` on the model's REAL walls (the awning and the ledge stand 1.3 m past the front wall)
+  with the same doorways, the leaves and a kit (none on the roof row at y 10.5).
+- THE FILLERS are now only the six sprite prisms (building_N: mondo "just get rid of those or replace them with a different texture like the other
+  buildings"): their key goes, they stand as textured walk-ins of their own size, opened and furnished like the shut fronts.

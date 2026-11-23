@@ -78152,7 +78152,7 @@ const ThreeRenderer = (function () {
         if ((typeof window !== 'undefined' && window.EW_NO_DOOR_CLEAR) || typeof hqTexbDoor !== 'function' || !texb || !texb.length) return null;
         var g = { map: {}, n: 0 }, D2R = Math.PI / 180, K = HQ_DOOR_CLEAR;
         texb.forEach(function (f) {
-            if (!f || !f.hollow || f.doorsOnly || (typeof hqTexbPack === 'function' && hqTexbPack(f)) || (typeof hqTexbPrism === 'function' && hqTexbPrism(f))) return;
+            if (!f || !f.hollow || f.doorsOnly || (typeof hqTexbPackShut === 'function' && hqTexbPackShut(f)) || (typeof hqTexbPrism === 'function' && hqTexbPrism(f))) return;
             var D = hqTexbDoor(f), d = Math.max(2, +f.d || 8), w = Math.max(2, +f.w || 8);
             var add = function (rot, lx, cw, zf, H) { var q = rot * D2R, c = Math.cos(q), s = Math.sin(q);
                 var door = { x: +f.x || 0, z: +f.z || 0, rot: rot, c: c, s: s, x0: lx - cw / 2, x1: lx + cw / 2, z0: zf - K.inZ, z1: zf + K.outZ, cw: cw, base: +f.base || 0, H: H };
@@ -79152,9 +79152,9 @@ const ThreeRenderer = (function () {
        metres — fitted to the width (the height follows, one scale, so a storey stays a storey), its depth stretched or squashed to the
        footprint's (the city keeps that within 70 %); the base on y = 0, the front at the group's +Z. Never skipped in low-performance mode:
        it is the building, the walk stands on its roof. */
-    function _hqPackBuildingModel(PB, w, d, neon) {
+    function _hqPackBuildingModel(PB, w, d, neon, open) {
         var sc = w / PB.w;
-        var m = _hzMiscKit('pack_building', { url: _R2_MISC + PB.file, metres: w, fit: 'span', lift: neon ? 0.3 : 0.16, cast: false });
+        var m = _hzMiscKit('pack_building', { url: _R2_MISC + (open && PB.open ? PB.open : PB.file), metres: w, fit: 'span', lift: neon ? 0.3 : 0.16, cast: false });
         m.scale.z = Math.max(0.3, d / (PB.d * sc));
         m.name = 'hq_pack_building';
         return m;
@@ -79168,7 +79168,7 @@ const ThreeRenderer = (function () {
                 var PB = hqTexbPack(f); if (!PB) return;
                 try {
                     var g = new THREE.Group(); g.position.set(f.x * U, (f.base || 0) * U + 0.3, f.z * U); g.rotation.y = -((f.rot || 0) * Math.PI / 180); G.add(g);
-                    g.add(_hqPackBuildingModel(PB, Math.max(2, f.w || 8), Math.max(2, f.d || 8), neon)); n++;
+                    g.add(_hqPackBuildingModel(PB, Math.max(2, f.w || 8), Math.max(2, f.d || 8), neon, !!f.hollow)); n++;   // THE CUT DOORS (11-23): a hollow row wears the `open` model
                 } catch (e) { console.warn('[HQ] a pack building failed', f.key, e); }
             });
         } finally { _hzKitTs = prevTs; }
@@ -79186,7 +79186,7 @@ const ThreeRenderer = (function () {
         if (!_hq || (typeof window !== 'undefined' && window.EW_NO_CITY_DOORS) || typeof hqTexbDoor !== 'function') return 0;
         var cat0 = _hqData().catalogue || {}, list = _hq.cityDoors || (_hq.cityDoors = []), n = 0;
         info.texb.forEach(function (f) {
-            if ((!f.hollow && !f.doorsOnly) || f.leaf === 'none' || (typeof hqTexbPack === 'function' && hqTexbPack(f)) || (typeof hqTexbPrism === 'function' && hqTexbPrism(f))) return;
+            if ((!f.hollow && !f.doorsOnly) || f.leaf === 'none' || (typeof hqTexbPackShut === 'function' && hqTexbPackShut(f)) || (typeof hqTexbPrism === 'function' && hqTexbPrism(f))) return;
             var cat = cat0[f.leaf] || cat0[HQ_CITY_DOOR.leaf]; if (!cat || !cat.file) return;
             if (cat.open && cat.open !== 'swing') cat = cat0[HQ_CITY_DOOR.leaf];
             /* one doorway's leaves: (wx, wz) = its middle in the room's metres, q = the wall's turn, ow / oh = the opening */

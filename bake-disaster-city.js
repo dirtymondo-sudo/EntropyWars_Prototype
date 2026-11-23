@@ -1217,7 +1217,7 @@ const openDoors = stage => { const KITS = require(path.join(REPO, 'docs/interior
   const cl = v => Math.max(0, Math.min(N * 12 - 1, Math.floor((v + HALF) / C)));
   const plotFor = f => { const m = /P\d\d-\d\d/.exec(String(f.id || '')); return (m && plotOf[m[0]]) || (typeof f.x === 'number' && Math.abs(f.x) < HALF && Math.abs(f.z) < HALF ? plotAtCell(cl(f.x), cl(f.z)) : null); };
   const HELD = /^(dc:P08-00-B1|mall:|shore:)/, distOf = f => { const p = plotFor(f); return p ? p.d : ''; };
-  const skip = f => HELD.test(String(f.id || '')) || distOf(f) === 'C';
+  const skip = f => HELD.test(String(f.id || ''));   // Civic Center too (mondo 11-23: "this is the main account, do the civic center too")
   const STYLE_KIT = { office: 'office', tower: 'office', factory: 'workshop', stucco: 'flat', residential: 'flat' };
   const nameOf = f => { const m = /P\d\d-\d\d-B\d/.exec(String(f.id || '')), p = m && plotOf[m[0].slice(0, 6)], b = p && p.buildings.find(q => q.id === m[0]); return (b && b.name) || (f.style === 'factory' ? 'workshop' : f.style === 'stucco' || f.style === 'residential' ? 'flat' : f.style === 'office' || f.style === 'tower' ? 'office' : ''); };
   /* the doors find-doors.js found with their ground outside on another level than the floor inside (WALKIN-X, 11-23): windows (mondo's rule) */
@@ -1228,6 +1228,35 @@ const openDoors = stage => { const KITS = require(path.join(REPO, 'docs/interior
   /* THE SHUT FRONTS: a textured building drawn with its own outside and no inside (its style paints a door on its front) opens on its front;
      TURN = the ones whose front faces no walked ground (find-doors.js: `sides walked`), turned to one that does */
   const TURN = { 'dc:in39': 180 }; let nS = 0;
+  /* THE FILLERS (11-23, mondo: "what are the sprite buildings? ... just get rid of those or replace them with a different texture like the other
+     buildings"): a sprite prism (building_N) has its door painted into its picture, so it can never open: these six stand as textured buildings
+     of their own size instead (their key goes; the shut fronts below open them and a kit furnishes them). DC_KEEP_FILLERS=1 keeps the old look. */
+  const FILLERS = ['dc:in48', 'dc:in68', 'dc:in82', 'dc:in100', 'dc:inM8', 'dc:inM10'];
+  /* THE CUT DOORS (11-23, mondo: "use blender the cut the door out ... its just cutting out a rectangle of the building where the door is"): the
+     pack buildings keep their photo look and wear the model with its painted doors cut out (data.js HQ_PACK_BUILDINGS `open`, bake-pack-pieces.py
+     `holes`). Measured on the model (its frame: x across the front, z toward it): `wall` = its real walls [x0, x1, z0, z1] (the awning and the
+     ledge stand 1.3 m out past the front one), `main` = the doorway [middle x, width, head, leaf, double], `gaps` = the other cut doors. The pack
+     row goes hollow with bare doorways where its walls cross the doors; a lined room of no skin stands on the real walls inside it with the same
+     doorways, the swinging leaves and the kit (none on a roof). */
+  const PACK_CUT = {
+      pack_bld_08: { wall: [-7.57, 7.57, -6.75, 5.65], main: [0.31, 1.3, 3.4, 'leaf_security', false], gaps: [[-6.65, 1.4, 2.75, 'leaf_office']] },
+      pack_bld_09: { wall: [-8.31, 8.31, -6.79, 5.65], main: [3.625, 2.05, 2.95, 'leaf_lobby_glass_double', true], gaps: [[1.145, 1.25, 2.85, 'leaf_office'], [-7.3, 1.2, 3.05, 'leaf_entrance']] } };
+  if (!process.env.DC_KEEP_FILLERS) features.slice().forEach(f => { if (!f || f.k !== 'texbuilding' || f.hollow || f.skin === false || skip(f)) return;
+      const C = PACK_CUT[f.key], P0 = C && PACK_W[f.key]; if (!P0) return; const PB = { w: P0[0], d: P0[1] };
+      const w = Math.max(2, +f.w || 8), d = Math.max(2, +f.d || 8), sc = w / PB.w, sz = d / PB.d, r3 = v => Math.round(v * 1000) / 1000;
+      const gaps = C.gaps.map(g => ({ side: 'f', u: r3(g[0] * sc), w: r3(g[1] * sc), h: r3(g[2] * sc) }));
+      Object.assign(f, { hollow: true, leaf: 'none', doorLx: r3(C.main[0] * sc), doorW: r3(C.main[1] * sc), doorH: r3(C.main[2] * sc), gaps });
+      const lw = (C.wall[1] - C.wall[0]) * sc, ld = (C.wall[3] - C.wall[2]) * sz, lx = (C.wall[0] + C.wall[1]) / 2 * sc, lz = (C.wall[2] + C.wall[3]) / 2 * sz;
+      const q = (+f.rot || 0) * Math.PI / 180, cq = Math.cos(q), sq = Math.sin(q), fz = (ld - 0.12) / 2 - 0.12;
+      const row = { k: 'texbuilding', id: f.id + ':in', x: r3(f.x + lx * cq - lz * sq), z: r3(f.z + lx * sq + lz * cq), w: r3(lw), d: r3(ld), rot: +f.rot || 0, storeys: 1, seed: 1,
+          skin: false, hollow: true, bareIn: false, keyIn: 'urban:PlasterWallGeneric3a', floorIn: 'urban:TileGeneric1a', ceilH: r3(3.9 * sc),
+          doorLx: r3(C.main[0] * sc - lx), doorW: r3(C.main[1] * sc), doorH: r3(C.main[2] * sc), leaf: C.main[3], leafDouble: !!C.main[4],
+          gaps: C.gaps.map(g => ({ side: 'f', u: r3(g[0] * sc - lx), w: r3(g[1] * sc), h: r3(g[2] * sc) })),
+          inner: C.gaps.map(g => ({ x: r3(g[0] * sc - lx), z: r3(fz), rot: 0, w: r3(g[1] * sc), h: r3(g[2] * sc), leaf: g[3], double: false })) };
+      if (typeof f.y === 'number') row.y = f.y; else { row.kit = KITS.kitFor(nameOf(f) || 'shop'); row.kitSeed = f.id; }
+      features.push(row); count.packCut = (count.packCut || 0) + 1; });
+  if (!process.env.DC_KEEP_FILLERS) features.forEach(f => { if (!f || f.k !== 'texbuilding' || FILLERS.indexOf(f.id) < 0 || typeof f.key !== 'string') return; delete f.key; count.fillers = (count.fillers || 0) + 1;
+      if (typeof f.y === 'number') { Object.assign(f, { hollow: true, keyIn: 'urban:PlasterWallGeneric3a', floorIn: 'urban:TileGeneric1a' }); if ((+f.storeys || 1) > 2) f.inH = 6.68; } });
   features.forEach(f => { if (!f || f.k !== 'texbuilding' || f.hollow || f.skin === false || f.doorsOnly || typeof f.y === 'number' || skip(f)) return;
       if ((typeof f.key === 'string' && /^(pack_bld_\d\d|building_\d+|ancient_building|abandoned_building_\d|church_\d|shop)$/.test(f.key)) || /^walkin:/.test(String(f.id || ''))) return;
       if (TURN[f.id]) f.rot = (((+f.rot || 0) + TURN[f.id]) % 360 + 360) % 360;

@@ -428,6 +428,7 @@ for (const m of ani.matchAll(/^\s+(\w+):\s*\{\s*file:\s*'([^']+)'/gm)) add('anim
 // THE PACK BUILDINGS (2026-11-03): the Buildings pack's shop blocks (data.js HQ_PACK_BUILDINGS: Disaster City's lots + the editor's Look list)
 const packB = block(read('data.js'), 'const HQ_PACK_BUILDINGS = {');
 for (const m of packB.matchAll(/(\w+):\s*\{\s*file:\s*'([^']+\.glb)'/g)) add('misc', m[1] + ' (a whole building)', BASES.misc + m[2]);
+for (const m of packB.matchAll(/(\w+):\s*\{[^}]*open:\s*'([^']+\.glb)'/g)) add('misc', m[1] + ' (its doors cut out: THE CUT DOORS, 11-23)', BASES.misc + m[2]);
 // the halloween pieces the spells cut out of the one kit file
 const hwNodes = new Set();
 for (const m of (VFX + R3).matchAll(/var _(?:HW_SWEETS|HW_PAILS|HW_GRAVE_NODES|HWC_NODES|BP_WARM|PK_LANTERNS|PK_WHOLE|GRAVE_HW_STONES)\s*=\s*\[([^\]]*(?:\][^;]*)?)\]/g))

@@ -131,6 +131,32 @@ JOBS += [
     ('city_vhs_shop', 'vhsshop', [{'near': 'Shop_VHS', 'pad': 0.5, 'keep': r'^(Shop_VHS$|Shop_VHS\._Windows|Door$|Frame_Door)'}], 180, {'cut': 3.6}),
     ('city_house', 'house', ['House'], 0),
     ('city_quequis_house', 'quequis', [{'near': 'Quequis_House', 'pad': 1.0, 'keep': r'^(Quequis_House|Frame$|Cube$|RooftilesMetal|Door_Q|Door_0[12]$|Frame_Door)'}], 180),
+    # THE CITY INSIDES (2026-11-23, building-interiors plan step 2, mondo: "If there is a door the player should be able to walk inside of it"):
+    # the rest of the city's pack buildings open as the pizzeria did: `_open` = the shut piece without its door leaves, `_inside` = the scene's
+    # own furniture inside the walls (`inbox`), both in the shut piece's frame (`frame`; a `cut` piece pins the shut piece's box: `pins`, its
+    # inside is `lift`ed, never bisected). The house is an empty shell: its two door leaves are `drop`ped and data.js lines it.
+    # The rooms, walls, furniture and leaves: data.js HQ_WALK_IN_PROPS (measured from floor plans cut through each scene at 1.2 m). Notes:
+    # docs/notes/areas-complexes.md "THE CITY INSIDES".
+    ('city_diner_open', 'dinerscene', [{'near': 'DINER', 'pad': 1.5, 'keep': r'^(DINER$|Entry|Sing_DINER|Sign|Door_frame|Glass|Window_frame)', 'frame': r'^(DINER$|Entry|Sing_DINER|Sign|Door(_\d+)?$|Door_frame|Glass|Window_frame)'}], 0,
+        {'cut': 2.3, 'pins': [-13.770, 9.665, -10.051, 14.245, 2.300, 8.573]}),
+    ('city_diner_inside', 'dinerscene', [{'near': 'DINER', 'pad': 1.5, 'keep': r'^(?!(DINER|Entry|Sing_DINER|Sign|Door(_\d+)?$|Door_frame|Glass|Window_frame|Asphalt|Background|Bush|Fence|Grass|Lines|Moss|Plants|Sewer|Trees|.*Collision))', 'frame': r'^(DINER$|Entry|Sing_DINER|Sign|Door(_\d+)?$|Door_frame|Glass|Window_frame)'}], 0,
+        {'cut': 2.3, 'lift': True, 'pins': [-13.770, 9.665, -10.051, 14.245, 2.300, 8.573], 'inbox': [-10.4, 11.6, -12.1, 10.0], 'ctr': (-2.052, 2.097)}),
+    ('city_burgerpiz_open', 'burgerpiz', [{'near': 'BurgerPiz', 'pad': 2.5, 'keep': r'^(BurgerPiz|RooftilesMetal|L$|Windows|Wall_W)', 'frame': r'^(BurgerPiz|RooftilesMetal|L$|Windows|Door_F|Door$|Door_01$|Wall_W)'}], -90),
+    ('city_burgerpiz_inside', 'burgerpiz', [{'near': 'BurgerPiz', 'pad': 2.5, 'keep': r'^(?!(BurgerPiz|RooftilesMetal|L$|Windows|Door|Wall_W|garden|sidewalk|Lamppost|Plants|Asphalt|.*Collision))', 'frame': r'^(BurgerPiz|RooftilesMetal|L$|Windows|Door_F|Door$|Door_01$|Wall_W)'}], -90,
+        {'lift': True, 'inbox': [-14.4, 14.8, -8.9, 8.9]}),
+    ('city_laundry_open', 'laundryscene', [{'near': 'Laundry_building', 'pad': 1.0, 'keep': r'^(Laundry_building|Sign_Laundry|Glass|Window_frame|frame_door)', 'frame': r'^(Laundry_building|Sign_Laundry|Door$|DoorsWood|Glass|Window_frame|frame_door)'}], -90),
+    ('city_laundry_inside', 'laundryscene', [{'near': 'Laundry_building', 'pad': 1.0, 'keep': r'^(?!(Laundry_building|Sign_Laundry|Door$|DoorsWood|Glass|Window_frame|frame_door|sidewalk|Sidewalk|Terrain|.*Collision))', 'frame': r'^(Laundry_building|Sign_Laundry|Door$|DoorsWood|Glass|Window_frame|frame_door)'}], -90,
+        {'lift': True, 'inbox': [-7.1, 7.1, -4.9, 4.9]}),
+    ('city_vhs_shop_open', 'vhsshop', [{'near': 'Shop_VHS', 'pad': 0.5, 'keep': r'^(Shop_VHS$|Shop_VHS\._Windows|Frame_Door)', 'frame': r'^(Shop_VHS$|Shop_VHS\._Windows|Door$|Frame_Door)'}], 180,
+        {'cut': 3.6, 'pins': [-7.429, 7.429, -6.937, 6.642, 3.600, 7.737]}),
+    ('city_vhs_shop_inside', 'vhsshop', [{'near': 'Shop_VHS', 'pad': 0.5, 'keep': r'^(?!(Shop_VHS$|Shop_VHS\._Windows|Door|Frame_Door|Puerta|kitchen_door|Sidewalk|sidewalk|parking|.*Collision))', 'frame': r'^(Shop_VHS$|Shop_VHS\._Windows|Door$|Frame_Door)'}], 180,
+        {'cut': 3.6, 'lift': True, 'pins': [-7.429, 7.429, -6.937, 6.642, 3.600, 7.737], 'inbox': [-7.2, 7.2, -6.6, 6.6], 'ctr': (0.0, -0.148)}),
+    ('city_quequis_house_open', 'quequis', [{'near': 'Quequis_House', 'pad': 1.0, 'keep': r'^(Quequis_House|Frame$|Cube$|RooftilesMetal|Frame_Door)', 'frame': r'^(Quequis_House|Frame$|Cube$|RooftilesMetal|Door_Q|Door_0[12]$|Frame_Door)'}], 180),
+    ('city_quequis_house_inside', 'quequis', [{'near': 'Quequis_House', 'pad': 1.0, 'keep': r'^(?!(Quequis_House|Frame$|Cube$|RooftilesMetal|Door|Frame_Door|Sidewalk|sidewalk|.*Collision))', 'frame': r'^(Quequis_House|Frame$|Cube$|RooftilesMetal|Door_Q|Door_0[12]$|Frame_Door)'}], 180,
+        {'lift': True, 'inbox': [-14.75, 15.7, -5.1, 4.9]}),
+    ('bld_08_open', 'buildings', ['Building_08'], 0, {'holes': [[-0.34, 0.96, 0.0, 3.4], [-7.35, -5.95, 0.0, 2.75]]}),   # (each at least 1.3 m: the walker's 1.15 m at the city's 0.9 scale) the dark door between the shutters, the white door at the left
+    ('bld_09_open', 'buildings', ['Building_09'], 0, {'holes': [[2.6, 4.65, 0.0, 2.95], [0.52, 1.77, 0.0, 2.85], [-7.9, -6.7, 0.0, 3.05]]}),   # the shop's glass double door, the grey door, the white door
+    ('city_house_open', 'house', ['House'], 0, {'drop': [[-1.245, -0.235, 0.45, 3.22, 6.2, 6.5], [-2.92, -1.96, 0.0, 2.6, -5.81, -5.73]]}),
     # THE INDUSTRIAL PACK (2026-11-13, Disaster City's Industrial district; shared by every district): domi236's PS1 industrial pack, its
     # pieces at 0.4694 of the file's size (the container = a real 20 ft box, 6.06 m long), doors / fronts at +Z. Out: `ind_<key>.glb`
     # for R2 Assets/world/packs/domi236_industrial/.
@@ -261,7 +287,50 @@ for f,js in byfile.items():
             print('MARK',j['out'].split('/')[-1],mk,'x',round(min(p.x for p in ps),3),round(max(p.x for p in ps),3),'z',round(min(-p.y for p in ps),3),round(max(-p.y for p in ps),3))
         SC=Matrix.Scale(j.get('scale',1.0),4)   # `scale` (THE INDUSTRIAL PACK): the piece at this share of the file's size
         for o in meshes: o.data.transform(R@SC@Matrix.Translation(-off))
-        if j.get('cut'):
+        if j.get('inbox'):   # THE CITY INSIDES (2026-11-23): only the pieces whose middle stands in this box ([x0, x1, z0, z1], the glTF frame centred on the shut piece's box: `ctr`), never the street's
+            bx0,bx1,bz0,bz1=j['inbox']; cx,cz=j.get('ctr',(0,0))
+            for o in list(meshes):
+                vs=[v.co for v in o.data.vertices]; c=sum(vs,Vector())/max(1,len(vs))
+                if not (bx0<=c.x-cx<=bx1 and bz0<=-c.y-cz<=bz1): meshes.remove(o); bpy.data.objects.remove(o,do_unlink=True)
+        if j.get('drop'):   # THE CITY INSIDES: a fused shell's door leaf: every face whose corners all stand in a box ([x0, x1, y0, y1, z0, z1], glTF frame) goes; the reveal round it stays
+            import bmesh
+            for o in meshes:
+                bm=bmesh.new(); bm.from_mesh(o.data)
+                inb=lambda v: any(b[0]<=v.co.x<=b[1] and b[2]<=v.co.z<=b[3] and b[4]<=-v.co.y<=b[5] for b in j['drop'])
+                gone=[f for f in bm.faces if all(inb(v) for v in f.verts)]
+                print('DROP',o.name,len(gone),'faces'); bmesh.ops.delete(bm,geom=gone,context='FACES'); bm.to_mesh(o.data); bm.free()
+        if j.get('holes'):   # THE CITY INSIDES (2026-11-23, mondo: "just cutting out a rectangle of the building where the door is"): a door
+            # PHOTOGRAPHED on a flat front (the Buildings pack) is cut out: the front is sliced at each hole's edges (bisect: the UVs follow) and
+            # every front face inside the rectangle goes ([x0, x1, y0, y1] in the glTF frame, metres, the front = the piece's +Z face)
+            import bmesh
+            for o in meshes:
+                bm=bmesh.new(); bm.from_mesh(o.data); yf=min(v.co.y for v in bm.verts if v.co.z<3.0)   # the shop front (a cornice overhangs it)
+                for (hx0,hx1,hy0,hy1) in j['holes']:
+                    for co,no in (((hx0,0,0),(1,0,0)),((hx1,0,0),(1,0,0)),((0,0,hy1),(0,0,1)),((0,0,hy0),(0,0,1))):
+                        if hy0<=0.001 and no==(0,0,1) and co[2]==hy0: continue
+                        bmesh.ops.bisect_plane(bm,geom=bm.verts[:]+bm.edges[:]+bm.faces[:],plane_co=co,plane_no=no)
+                yh=[min([v.co.y for v in bm.verts if h[0]-0.01<=v.co.x<=h[1]+0.01 and v.co.z<3.0] or [yf]) for h in j['holes']]   # each hole's own front (a shop front sits back from the next)
+                ins=lambda f:any(all(h[0]-0.002<=v.co.x<=h[1]+0.002 and h[2]-0.002<=v.co.z<=h[3]+0.002 and v.co.y<=yh[i]+0.12 for v in f.verts) for i,h in enumerate(j['holes']))
+                gone=[f for f in bm.faces if ins(f) and abs(f.normal.y)>0.9]
+                print('HOLES',o.name,len(gone),'faces'); bmesh.ops.delete(bm,geom=gone,context='FACES'); bm.to_mesh(o.data); bm.free()
+        if j.get('lift'):
+            # THE CITY INSIDES (2026-11-23): `lift` = the furnished inside of a `cut` building: moved down by the cut like its shell, never
+            # bisected there (its floor tiles stand a few cm under the cut); anything more than 0.15 m under the floor goes (the basement, the
+            # car park), the floor and the feet just under it are raised onto it (so the box's foot is the shell's); also for an uncut piece (`cut` 0)
+            import bmesh
+            for o in list(meshes):
+                o.data.transform(Matrix.Translation((0,0,-j.get('cut',0))))
+                zs=[v.co.z for v in o.data.vertices]
+                if zs and max(zs)<0.03 and max(zs)-min(zs)>0.03: meshes.remove(o); bpy.data.objects.remove(o,do_unlink=True); continue   # a lamp hung under the floor (the basement's), never laid flat on it
+                bm=bmesh.new(); bm.from_mesh(o.data)
+                bmesh.ops.bisect_plane(bm,geom=bm.verts[:]+bm.edges[:]+bm.faces[:],plane_co=(0,0,-0.15),plane_no=(0,0,1),clear_inner=True)
+                for v in bm.verts:
+                    if v.co.z<0.004: v.co.z=0.004
+                bm.to_mesh(o.data); bm.free()
+            meshes=[o for o in meshes if len(o.data.vertices)]
+            for o in list(bpy.data.objects):
+                if o.type=='MESH' and o not in meshes: bpy.data.objects.remove(o,do_unlink=True)
+        elif j.get('cut'):
             # `cut` (m over the base): everything under it goes (bisect, inner side cleared, the cut left open: it is under the ground)
             import bmesh
             for o in meshes:
@@ -276,6 +345,8 @@ for f,js in byfile.items():
             mn=Vector((min(p.x for p in pts),min(p.y for p in pts),min(p.z for p in pts)));mx=Vector((max(p.x for p in pts),max(p.y for p in pts),max(p.z for p in pts)))
         if fpts:   # THE CHAIN INSIDES: two zero-area pins at the frame's corners, so the game (which fits a model by its box) scales and centres the piece as the shut building
             pm=bpy.data.meshes.new('frame_pin'); a=R@SC@(mn-off); b=R@SC@(mx-off)
+            if j.get('pins'):   # THE CITY INSIDES: the shut `cut` piece's own box (x0, x1, z0, z1, y0, y1 in the glTF frame before the cut, as plan tools print it)
+                P=j['pins']; c0=j.get('cut',0); a=Vector((P[0],-P[3],P[4]-c0)); b=Vector((P[1],-P[2],P[5]-c0))
             pm.from_pydata([tuple(a),tuple(a),tuple(a),tuple(b),tuple(b),tuple(b)],[],[(0,1,2),(3,4,5)]); po=bpy.data.objects.new('frame_pin',pm); bpy.context.scene.collection.objects.link(po); meshes.append(po)
             bpy.ops.object.select_all(action='DESELECT')
             for o in meshes: o.select_set(True)
