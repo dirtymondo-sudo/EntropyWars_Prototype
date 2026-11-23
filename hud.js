@@ -4085,6 +4085,11 @@ function _hrlgStatusChips(unit) {
     const vw = Math.max(0, Math.min(window.VIEWERS_MAX || 10, unit.viewers | 0));
     chips.push({ key: 'viewers', label: 'VIEWERS ' + vw + '/' + (window.VIEWERS_MAX || 10), kind: vw > 0 ? 'up' : 'dn', title: 'Viewers: +1 per hit landed, +2 per KO, +1 when a big hit gets clipped; going down halves them. Clip It marks at 5+; Donation Goal and Raid spend them all.' });
   }
+  /* 🫀 THE LIMBS (the Abomination, 2026-11-23): the arms and tentacles it has (battle.js unit.limbs, rides the state sync; no value = 4) */
+  if (unit.race === 'abomination' && !unit.dead) {
+    const lb = typeof window.getLimbs === 'function' ? window.getLimbs(unit) : (unit.limbs == null ? 4 : unit.limbs | 0), lm = window.LIMBS_MAX || 6;
+    chips.push({ key: 'limbs', label: 'LIMBS ' + lb + '/' + lm, kind: lb > 0 ? 'up' : 'dn', title: 'Limbs: +1 when each of its turns ends, +1 for every enemy Many Mouths bites. A hit of 20% of its max HP or more sheds one and is 30% smaller. Grasp Staggers at 5+; Unfold spends them all, one hit each.' });
+  }
   if (totalMov) chips.push({
     key: 'mov', label: 'MOV' + (totalMov > 0 ? '+' : '') + totalMov, kind: totalMov > 0 ? 'up' : 'dn',
     title: 'Movement ' + (totalMov > 0 ? 'bonus' : 'penalty') + ' from active effects', stat: 'mov',
@@ -6235,7 +6240,7 @@ function _hrlgSpellBlades(unit, st) {
       // Wet-only novae (Poseidon's Wrath) grey with the actual condition —
       // "No target" reads as a range problem, this is a terrain one.
       else if (sp.hitsWetOnly && !hasTarget) reason = 'No enemies in water';
-      else if (sp.hitsStatusOnly && !hasTarget) reason = 'No Payload in range';   // 🦠 Zero Day
+      else if (sp.hitsStatusOnly && !hasTarget) reason = sp.hitsStatusOnly === 'masked' ? 'No mask in range' : 'No Payload in range';   // 🦠 Zero Day · 🎭 the Hollow
       // Pure-status spells also grey out when every target in range already
       // carries the status (statuses don't stack) — say so.
       /* timing/counters playtest 2026-11-07 (F6): Revive works once per unit per match — a grave in reach whose unit was

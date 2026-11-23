@@ -394,6 +394,7 @@ const FINISHERS = {
     'haunted doll':   { id: 'fin_haunted_doll', name: 'Lights Out', glyph: '🪆', type: 'anomaly', sig: 'possessedPhoto', built: true, tagline: 'PLAY WITH ME', desc: 'The lights go out. When they come back on, the doll is sitting on the victim\'s chest, and the victim is not moving.' },   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit) (borrows the possessedPhoto staging)
     'cursed tv':      { id: 'fin_cursed_tv', name: 'Off the Air', glyph: '📺', type: 'anomaly', sig: 'corruptedSave', built: true, tagline: 'WE NOW RETURN YOU TO YOUR REGULARLY SCHEDULED PROGRAMMING', desc: 'The screen shrinks to a white line, then a dot, and the victim goes with it. The test card comes up and the anthem plays.' },   // 2026-11-17 THE CURSED TV (mondo approved the kit) (borrows the corruptedSave staging)
     'virus':          { id: 'fin_virus', name: 'Format C:', glyph: '🦠', type: 'anomaly', sig: 'corruptedSave', built: true, tagline: 'ALL DATA ON THIS DRIVE WILL BE LOST', desc: 'A progress bar opens over the victim and fills, file by file, and then there is nothing left to delete.' },   // 2026-11-18 THE VIRUS (mondo approved the kit) (borrows the corruptedSave staging)
+    'hollow':         { id: 'fin_hollow', name: 'Lights Out', glyph: '🎭', type: 'anomaly', sig: 'devoured', built: true, tagline: 'SLEEP NOW', desc: 'A sleeping mask settles over the face, the eyes behind it close, and the maw takes what is left of the dream.' },   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name) (borrows the devoured staging)
     'streamer':       { id: 'fin_streamer', name: 'Banned', glyph: '🎮', type: 'anomaly', sig: 'corruptedSave', built: true, tagline: 'ACCOUNT SUSPENDED', desc: 'The chat floods, the mods wake up, and ACCOUNT SUSPENDED stamps down over the victim until nothing is left on the stream.' },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit) (borrows the corruptedSave staging)
     'vtuber':         { id: 'fin_vtuber', name: 'Graduation', glyph: '🎀', type: 'anomaly', sig: 'farewellTour', built: true, tagline: 'END OF STREAM', desc: 'She waves goodbye to the chat, the stream cuts to a pixel heart, and the victim\'s name card reads END OF STREAM.' },   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look) (borrows the farewellTour staging)
     'cameraman':      { id: 'fin_cameraman', name: "That's a Wrap", glyph: '🎥', type: 'human', sig: 'blurryFootage', built: true, tagline: 'CUT. PRINT.', desc: 'The light goes red, the lens racks in and the last frame is the victim, held forever.' },   // 2026-11-19 THE NEW RACES 3 (borrows the blurryFootage staging)
@@ -403,7 +404,9 @@ const FINISHERS = {
     'pharaoh':        { id: 'fin_pharaoh', name: 'By Decree of Pharaoh', glyph: '𓂀', type: 'divine', sig: 'byOrderOf', built: true, tagline: 'SO IT IS WRITTEN', desc: 'The scribes read the decree, the sun agrees with it, and the victim is written out of history.' },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) (borrows the byOrderOf staging)
     'deep sea diver': { id: 'fin_deep_sea_diver', name: 'Crush Depth', glyph: '🤿', type: 'human', sig: 'poseidonsWrath', built: true, tagline: 'TOO DEEP, TOO FAST', desc: 'The board floods, the pressure comes down all at once, and the victim finds out what the helmet was for.' },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) (borrows the poseidonsWrath staging)
     'gladiator':      { id: 'fin_gladiator', name: 'Pollice Verso', glyph: '🛡', type: 'human', sig: 'thousandCuts', built: true, tagline: 'THE CROWD HAS SPOKEN', desc: 'The sand goes quiet, every face in the stands turns to the box, and the thumb goes down.' },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) (borrows the thousandCuts staging)
+    'monarch':        { id: 'fin_monarch', name: 'Sweet Dreams', glyph: '🦋', type: 'anomaly', sig: 'lullaby', built: true, tagline: 'SLEEP NOW, AGENT', desc: 'The wings close round the victim like a chrysalis, the spiral turns on its shell, and when it cracks open only monarch butterflies come out.' },   // 2026-11-23 THE MONARCH (mondo OK'd the kit) (borrows the lullaby staging)
     'bear':           { id: 'fin_bear', name: 'Mauled', glyph: '🐻', type: 'anomaly', sig: 'blurryFootage', built: true, tagline: 'YOU POKED THE BEAR', desc: 'The trees part, the bear stands up to its full height, and it comes down on the victim with everything it has.' },   // 2026-11-23 THE BEAR (mondo OK'd the kit) (borrows the blurryFootage staging)
+    'abomination':    { id: 'fin_abomination', name: 'Too Much Body', glyph: '🫀', type: 'anomaly', sig: 'blurryFootage', built: true, tagline: 'IT HAS MORE ARMS THAN YOU', desc: 'Every arm, every tentacle and every mouth it has comes down on the victim at once, and then it is a little bigger.' },   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name) (borrows the blurryFootage staging)
     'farmer':         { id: 'fin_farmer', name: 'Reap What You Sow', glyph: '🌾', type: 'human', sig: 'gardenVariety', built: true, tagline: 'HARVEST TIME', desc: 'The field comes up all at once round the victim, and the pitchfork comes down with the season.' },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) (borrows the gardenVariety staging)
     'jellyfish ufo':  { id: 'fin_jellyfish_ufo', name: 'Abyssal Glow', glyph: '🪼', type: 'anomaly', sig: 'theBloom', built: true, tagline: 'LIGHTS IN THE DEEP', desc: 'The bell lights the victim from the inside like the things that live in the dark, brighter and brighter, then everything goes dark.' },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) (borrows the theBloom staging)
     'plastic surgeon': { id: 'fin_plastic_surgeon', name: 'Before & After', glyph: '💉', type: 'human', sig: 'thousandCuts', built: true, overlay: 'beforeAfter', tagline: 'CONSULTATIONS AVAILABLE', desc: 'The scalpel moves faster than the eye. Marker lines, a thousand tiny cuts, and the after picture has nobody in it.' },   // 2026-11-23 THE PLASTIC SURGEON (mondo OK'd the kit) (borrows the thousandCuts staging; `overlay` = the BEFORE | AFTER frame, battle.js _finOverlay)
@@ -655,6 +658,7 @@ const RACE_ELEMENT_AFFINITY = {
     'haunted doll': { psychic: 'resist', fire: 'weak' },   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit): porcelain and old lace
     'cursed tv': { lightning: 'resist', water: 'weak' },   // 2026-11-17 THE CURSED TV (mondo approved the kit): it runs on the mains, and water in a set is the end of it
     'virus': { poison: 'resist', lightning: 'resist', water: 'weak' },   // 2026-11-18 THE VIRUS (mondo approved the kit): made of poison and current; water shorts it
+    'hollow': { psychic: 'resist', light: 'weak' },   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name): a dream that moves you; light wakes it
     'streamer': { sonic: 'resist', light: 'weak' },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit): the headset is on; never sees the sun
     'vtuber': { lightning: 'resist', water: 'weak' },   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look): lives on current; water shorts the projectors
     'cameraman': { light: 'resist', water: 'weak' },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models): the flash is his; water kills the camera
@@ -664,7 +668,9 @@ const RACE_ELEMENT_AFFINITY = {
     'pharaoh': { fire: 'resist', water: 'weak' },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round): the son of the sun; the desert king hates the flood
     'deep sea diver': { water: 'resist', lightning: 'weak' },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round): the suit is made for the sea; the metal tanks carry a shock
     'gladiator': { earth: 'resist', lightning: 'weak' },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): bronze plates on sand; lightning finds the bronze
+    'monarch': { psychic: 'resist', fire: 'weak' },   // 2026-11-23 THE MONARCH (mondo OK'd the kit): a programmed mind keeps out other voices; the paper-thin wings burn
     'bear': { ice: 'resist', fire: 'weak' },   // 2026-11-23 THE BEAR (mondo OK'd the kit): a thick winter coat; fur burns
+    'abomination': { poison: 'resist', fire: 'weak' },   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name): grown out of the rot, so poison is food; flesh burns
     'farmer': { nature: 'resist', fire: 'weak' },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): a life in the fields; dry hay goes up
     'jellyfish ufo': { psychic: 'immune', lightning: 'resist', water: 'resist', earth: 'weak' },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): a jellyfish mind, a lightning bell, a sea creature on dry ground
     'plastic surgeon': { poison: 'resist', fire: 'weak' },   // 2026-11-23 THE PLASTIC SURGEON (mondo OK'd the kit): a lifetime of Botox; the filler melts
@@ -3044,6 +3050,10 @@ const RACE_PROFILES = {
         label: 'Virus',
         types: ['anomaly', 'tech']
     },
+    'hollow': {   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name)
+        label: 'The Hollow',
+        types: ['anomaly', 'alien']
+    },
     'streamer': {   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit): one race, the E-Girl is its female (like the Priest + the Nun)
         label: 'Streamer',
         labelMale: 'Streamer',
@@ -3100,13 +3110,17 @@ const RACE_PROFILES = {
         coats: { male: '🌲', female: '❄' },
         types: ['anomaly']
     },
+    'abomination': {   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name)
+        label: 'Abomination',
+        types: ['anomaly']
+    },
     'rat': {   // 2026-11-23 THE COMING RACES 2 — grows into the Rat King with stacks (mondo 11-23)
         label: 'Rat',
         types: ['anomaly']   // 2026-11-23 THE RAT KING: a rat man out of the sewers (the Sewer Gator's type)
     },
     'monarch': {   // 2026-11-23 THE COMING RACES 2 — the MK-Ultra sleeper agent of the D.U.M.B.
         label: 'Monarch',
-        types: ['human']   // a first guess; the unit's spell thread settles it
+        types: ['human', 'anomaly']   // 2026-11-23 THE MONARCH (mondo OK'd the kit): a woman the D.U.M.B. reprogrammed
     },
     'butterfly girl': {   // 2026-11-23 THE COMING RACES 2
         label: 'Butterfly Girl',
@@ -3849,6 +3863,10 @@ const PASSIVE_DEFS = {
         basicAttackMagic: true,
         desc: 'Her basic attack is a pixel heart bolt: it uses M.ATK against M.DEF. Like her spells, it can fly from one of her Holo Projectors.',
     },
+    deltaAlter: {   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
+        id: 'deltaAlter', icon: '🔺', name: 'Delta Alter',
+        desc: 'Her killer programming, buried deep. The first time each battle she drops under half HP it switches on: +2 ATK stages for 2 rounds, and her next basic attack is a sure critical hit.',
+    },
     rayGun: {
         id: 'rayGun', icon: '🔫', name: 'Ray Gun',
         basicAttackMagic: true, basicAttackRangeBonus: 1,
@@ -3938,6 +3956,7 @@ const RACE_PASSIVES = {
     'fairy':         ['fairyDustTrail'],      // fairy also flies → slots full
     'cowboy':        ['quickdraw'],
     'vtuber':        ['heartBolt'],   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
+    'monarch':       ['deltaAlter'],   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
     'butterfly girl': ['flashAndVanish'],   // 2026-11-23 THE BUTTERFLY GIRL (mondo OK'd the kit) — she flies too, so the slots are full
 };
 
@@ -4015,13 +4034,13 @@ const RACE_MERGED = { 'nun': { race: 'priest', gender: 'female' } };
 /* 👁🌑 THE REALM WINDOW: races that SEE a Shadow Realm pair on their own turns (they cannot touch it). A projecting
    spirit both sees and touches (battle.js unitSeesRealm / unitCrossesRealm). */
 const REALM_SIGHT_RACES = ['ghost', 'shadow entity'];
-const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber', 'pharaoh', 'deep sea diver', 'gambler', 'hacker', 'monk', 'shogun', 'cameraman', 'mechanic', 'janitor', 'trucker', 'gladiator', 'farmer', 'jellyfish ufo', 'bear', 'rat', 'butterfly girl', 'plastic surgeon'];
+const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber', 'pharaoh', 'deep sea diver', 'gambler', 'hacker', 'monk', 'shogun', 'cameraman', 'mechanic', 'janitor', 'trucker', 'gladiator', 'farmer', 'jellyfish ufo', 'bear', 'rat', 'butterfly girl', 'plastic surgeon', 'monarch', 'abomination', 'hollow'];
 /* THE COMING RACES (2026-11-19, mondo: "wire them in the game at least in the relation web, give them sprite ai portraits ... my associate
    [does] their spell and combat plan on another account"): races whose model, sprite and name are in (sprites.js RACE_MODELS_3D,
    RACE_PROFILES) but whose kit is not. They are NOT playable: the Relationship Web lists them (docs/plans/story-web/build/fresh.js).
    To unlock one: give it its kit (RACE_ABILITIES, RACE_TREE, RACE_FAMILIES, stats, physique, prices, ...), MOVE it from here into
    AVAILABLE_RACES and server.js AVAILABLE_RACES. Notes: docs/notes/champions-combat.md "THE COMING RACES". */
-const EW_COMING_RACES = ['monarch'];   // 2026-11-23 THE COMING RACES 2 (the Mannequin was cut 11-23, mondo; the Bear, the Rat and the Butterfly Girl got their kits 11-23 and moved to AVAILABLE_RACES) (models in, kits not yet; one spell thread a unit). 2026-11-19: the gladiator, the farmer and the jellyfish UFO got their kits and moved to AVAILABLE_RACES
+const EW_COMING_RACES = [];   // 2026-11-23 THE COMING RACES 2 (the Mannequin was cut 11-23, mondo; the Bear, the Rat, the Butterfly Girl and the Monarch got their kits 11-23 and moved to AVAILABLE_RACES) (models in, kits not yet; one spell thread a unit). 2026-11-19: the gladiator, the farmer and the jellyfish UFO got their kits and moved to AVAILABLE_RACES
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
    default job's kit (JOB_KITS) gave it, so ranged races stay ranged: the old Sniper races reach 4 (kit 3 + the Sniper's
@@ -4041,10 +4060,12 @@ const RACE_KITS = {
     'ice queen': { range: 2 },   // race editor 2026-10-17: range 1 → 2
     'cursed tv': { range: 2 },   // 2026-11-17 THE CURSED TV (mondo approved the kit): the basic attack is a jolt down the power cable, and the cable reaches
     'virus': { range: 2 },   // 2026-11-18 THE VIRUS (mondo approved the kit): the basic attack is a lash of code from its tendrils, and they reach
+    'hollow': { range: 3 },   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name): the basic attack is a crystal sliver a finger flicks
     'streamer': { range: 1 },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit): the basic attack is a keyboard slam
     'vtuber': { range: 2 },   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look): the basic attack is a pixel heart bolt (magic: her Heart Bolt passive)
     'gambler': { range: 2 },   // 2026-11-19 THE NEW RACES 4: the basic attack is a flicked casino chip
     'hacker': { range: 2 },   // 2026-11-19 THE NEW RACES 4: the basic attack is a zap off the keyboard (magic)
+    'abomination': { range: 2 },   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name): the basic attack is an arm lashing out, and it reaches
 };
 function raceKit(race) {
     const k = RACE_KITS[race] || {};
@@ -4185,6 +4206,7 @@ const RACE_CLASS = {
     'haunted doll': 'assassin',   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit)
     'cursed tv': 'caster',   // 2026-11-17 THE CURSED TV (mondo approved the kit)
     'virus': 'specialist',   // 2026-11-18 THE VIRUS (mondo approved the kit)
+    'hollow': 'specialist',   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name) (a controller)
     'streamer': 'specialist',   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
     'vtuber': 'caster',   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
     'cameraman': 'ranged',   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
@@ -4198,7 +4220,9 @@ const RACE_CLASS = {
     'pharaoh': 'caster',   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
     'deep sea diver': 'specialist',   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round): the controller who makes moving hurt
     'gladiator': 'bruiser',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
+    'monarch': 'specialist',   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
     'bear': 'bruiser',   // 2026-11-23 THE BEAR (mondo OK'd the kit)
+    'abomination': 'bruiser',   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name)
     'farmer': 'support',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): the field heals the team
     'lifeguard': 'support',   // 2026-11-16
     'politician': 'support',
@@ -4263,6 +4287,7 @@ const RACE_TERRAIN_PREFERENCE = {
     'haunted doll': 'tree',   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit)
     'cursed tv': 'wasteland',   // 2026-11-17 THE CURSED TV (mondo approved the kit)
     'virus': 'wasteland',   // 2026-11-18 THE VIRUS (mondo approved the kit)
+    'hollow': 'tree',   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name) (as the Dreameater)
     'streamer': 'urban',   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
     'vtuber': 'urban',   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
     'cameraman': 'urban',   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
@@ -4272,7 +4297,9 @@ const RACE_TERRAIN_PREFERENCE = {
     'pharaoh': 'desert',   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
     'deep sea diver': 'deep_water',   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round): the sealed helmet: never drowns (map.js unitIsDeepWaterAdapted)
     'gladiator': 'desert',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): the arena's sand
+    'monarch': 'urban',   // 2026-11-23 THE MONARCH (mondo OK'd the kit): the D.U.M.B.'s halls
     'bear': 'mountain',   // 2026-11-23 THE BEAR (mondo OK'd the kit): the grizzly's slopes, the polar's ice field
+    'abomination': 'wasteland',   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name): the rot, the drains, the dark
     'farmer': 'grass',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): the fields
     'jellyfish ufo': 'deep_water',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): a sea creature: never drowns (map.js unitIsDeepWaterAdapted)
     'plastic surgeon': 'urban',   // 2026-11-23 THE PLASTIC SURGEON (mondo OK'd the kit): the Disaster Hills
@@ -4677,6 +4704,7 @@ const RACE_BASE_STATS = {
     'haunted doll':       { hp:  880, mp: 180, atk:  70, def:  80, mdef: 110, int: 150, vision: 4, crt: 22, spd: 160 },   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit) — fragile and quick, a magic assassin
     'cursed tv':          { hp:  860, mp: 210, atk:  20, def:  85, mdef: 120, int: 156, vision: 4, crt: 15, spd: 140 },   // 2026-11-17 THE CURSED TV (mondo approved the kit) — frail and quick, a magic caster; LAB LOOP 11-22 PASS 4: HP 900→860, M.ATK 175→156 (55.4% over 240 games)
     'virus':              { hp:  860, mp: 220, atk:  40, def:  60, mdef: 160, int: 212, vision: 3, crt: 18, spd:  90 },   // 2026-11-18 THE VIRUS (mondo approved the kit) — first pass: a frail magic specialist; LAB LOOP 11-22 PASS 2: HP 780→860, M.ATK 180→212 (34.0% over 109 games)
+    'hollow':             { hp:  880, mp: 230, atk:  40, def:  70, mdef: 150, int: 190, vision: 4, crt: 15, spd: 100 },   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name) — first pass (the plan's numbers): a floating controller
     'streamer':           { hp:  990, mp: 200, atk: 125, def:  80, mdef: 100, int: 142, vision: 3, crt: 25, spd: 110 },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit) — first pass: a skirmisher who banks a crowd; LAB LOOP 11-22 PASS 4: HP 950→990, ATK 120→125, M.ATK 130→142 (44.9% over 244 games)
     'vtuber':             { hp:  820, mp: 240, atk:  30, def:  70, mdef: 150, int: 185, vision: 3, crt: 20, spd: 100 },   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look) — first pass: a frail caster who is never where she seems
     'cameraman':          { hp:  900, mp: 140, atk: 105, def:  78, mdef:  70, int:  60, vision: 5, crt: 26, spd: 125 },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models) — first pass on the ranged median (vision 5: he sees everything)
@@ -4686,7 +4714,9 @@ const RACE_BASE_STATS = {
     'pharaoh':            { hp: 1050, mp: 220, atk:  40, def:  95, mdef: 150, int: 180, vision: 3, crt: 20, spd:  80 },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) — first pass on the caster median (Librarian / Televangelist)
     'deep sea diver':     { hp: 1020, mp: 180, atk: 110, def: 110, mdef: 100, int: 100, vision: 3, crt: 18, spd:  95 },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) — first pass: a sturdy controller, the harpoon on ATK, the water on INT; LAB LOOP 11-22 PASS 1: HP 1100→1060, ATK 120→115, M.ATK 130→115 (64.4% over 49 games); LAB LOOP 11-22 PASS 4: HP 1060→1020, ATK 115→110, M.ATK 115→100 (56.4% over 191 games)
     'gladiator':          { hp: 1180, mp: 120, atk: 104, def: 120, mdef:  85, int:  60, vision: 3, crt: 20, spd: 115 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — first pass on the bruiser median; LAB LOOP 11-22 PASS 2: HP 1250→1180, ATK 135→104 (64.9% over 113 games)
+    'monarch':            { hp: 1000, mp: 210, atk:  95, def:  85, mdef: 140, int: 165, vision: 4, crt: 24, spd: 120 },   // 2026-11-23 THE MONARCH (mondo OK'd the kit) — first pass on the specialist median
     'bear':               { hp: 1250, mp: 100, atk: 125, def: 120, mdef:  60, int:  70, vision: 3, crt: 15, spd: 105 },   // 2026-11-23 THE BEAR (mondo OK'd the kit) — first pass on the bruiser median: big and slow, soft to magic
+    'abomination':        { hp: 1300, mp: 150, atk: 150, def: 110, mdef:  90, int:  90, vision: 3, crt: 12, spd:  80 },   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name) — first pass from the plan: slow, heavy, its limbs are its shield
     'farmer':             { hp: 1100, mp: 170, atk: 110, def: 105, mdef: 100, int: 115, vision: 3, crt: 15, spd: 100 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — first pass on the support median
     'jellyfish ufo':      { hp: 1030, mp: 150, atk: 105, def: 120, mdef: 130, int: 62, vision: 3, crt: 18, spd: 105 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — first pass: a bruiser with claws on ATK and the bell on M.ATK; LAB LOOP 11-22 PASS 1: HP 1200→1150, ATK 125→119, M.ATK 125→106 (68.6% over 49 games); LAB LOOP 11-22 PASS 2: HP 1150→1080, ATK 119→111, M.ATK 106→82 (70.1% over 62 games); LAB LOOP 11-22 PASS 4: HP 1080→1030, ATK 111→105, M.ATK 82→62 (60.3% over 131 games)
     'plastic surgeon':    { hp:  950, mp: 220, atk:  45, def:  85, mdef: 120, int: 165, vision: 3, crt: 20, spd: 100 },   // 2026-11-23 THE PLASTIC SURGEON (mondo OK'd the kit) — first pass on the specialist median
@@ -4867,6 +4897,7 @@ const RACE_PHYSIQUE = {
     'haunted doll':        { h: 1.10, w: 18 },   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit)
     'cursed tv':           { h: 1.45, w: 40 },   // 2026-11-17 THE CURSED TV (mondo approved the kit): the set on its cart, antennae up
     'virus':               { h: 1.50, w: 30 },   // 2026-11-18 THE VIRUS (mondo approved the kit): the spiked ball hovering, tendrils down
+    'hollow':              { h: 2.40, w: 60 },   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name): the maw ring hovering, the finger chandelier hanging under it
     'streamer':            { h: 1.76, w: 70 },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
     'vtuber':              { h: 1.64, w: 50 },   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
     'cameraman':           { h: 1.78, w: 78 },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
@@ -4876,7 +4907,9 @@ const RACE_PHYSIQUE = {
     'pharaoh':             { h: 1.85, w: 82 },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
     'deep sea diver':      { h: 1.72, w: 62 },   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
     'gladiator':           { h: 1.82, w: 88 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
+    'monarch':             { h: 1.72, w: 58 },   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
     'bear':                { h: 2.40, w: 360 },   // 2026-11-23 THE BEAR (mondo OK'd the kit): stood up on its hind legs
+    'abomination':         { h: 3.10, w: 420 },   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name): the assembled body is 3.1 m from the floor to the top of its head
     'farmer':              { h: 1.78, w: 85 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
     'jellyfish ufo':       { h: 1.90, w: 60 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — a bell over a metal body; floats
     'plastic surgeon':     { h: 1.80, w: 78 },   // 2026-11-23 THE PLASTIC SURGEON (mondo OK'd the kit)
@@ -11137,6 +11170,34 @@ const RACE_ABILITIES = {
           ignoresLineOfSight: true, hitsStatusOnly: 'payload', animSlot: 'vrZeroDay',
           desc: 'The exploit nobody patched. Every enemy within 5 that carries a Payload takes MEDIUM magic damage, through cover, and its Payload goes off at once (70 more). Needs a Payload out. Cooldown: 3 rounds.' },
     ],
+    'hollow': [
+        /* THE MASKS (2026-11-23, THE HOLLOW, Horror B; mondo approved the plan 11-23 and named it): a floating controller. Lull
+           leaves one of its four sleeping masks on an enemy (Masked, 3 rounds, at most 4 out); Puppet Strings and Wake reach every
+           Masked enemy through cover and DRAG it toward the Hollow (`dragToCaster`; Wake +30 per square dragged, `dragDmgPer`, and
+           calls the masks home, `masksHome`); Shard Bloom grows crystal pillars on the empty squares of a 3x3 (raised 2, 2 rounds)
+           and Roots the Masked caught in it. battle.js THE MASKS. The body is Meshy parts that move on their own (three-renderer.js
+           THE HOLLOW). Notes: docs/notes/champions-combat.md "THE HOLLOW". */
+        { id: 'hlLull', name: 'Lull', tier: 1, families: ['hollow'], cost: 25, apCost: 1, spellType: 'anomaly',
+          element: 'psychic', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 70, range: 5, animSlot: 'hlLull',
+          statusEffects: [{ id: 'masked', duration: 3 }],
+          desc: 'A sleeping mask leaves the orbit and settles over the face. Deals WEAK psychic magic damage to a Single Enemy within 5 and leaves it Masked for 3 rounds. At most 4 masks out: a fifth calls the oldest home.' },
+        { id: 'hlStrings', name: 'Puppet Strings', tier: 2, families: ['hollow'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+          element: 'psychic', type: 'damage', kind: 'barrage', damageType: 'magic', dmg: 40, range: 0, aoeOriginSelf: true, aoeRadius: 6,
+          ignoresLineOfSight: true, hitsStatusOnly: 'masked', dragToCaster: 2, animSlot: 'hlStrings',
+          statusEffects: [{ id: 'slow', duration: 1 }],
+          desc: 'The finger chandelier drops strings on every Masked enemy within 6, through cover: each is pulled 2 tiles toward the Hollow, takes TINY magic damage and is Slowed for 1 round. Needs a mask out. Cooldown: 2 rounds.' },
+        { id: 'hlBloom', name: 'Shard Bloom', tier: 3, families: ['hollow'], cost: 75, apCost: 1, cooldownRounds: 3, spellType: 'anomaly',
+          element: 'psychic', type: 'damage', kind: 'terrainCreate', terrainType: 'crystal', squareFlood: true, aoeRadius: 1, range: 5,
+          dmg: 85, damageType: 'magic', terrainDeform: { centerDelta: 2, edgeDelta: 2 }, deformEmptyOnly: true, terrainRounds: 2,
+          growVfx: 'hlBloom:grow', animSlot: 'hlBloom',
+          statusEffects: [{ id: 'root', duration: 1, ifTargetHas: 'masked' }],
+          desc: 'Crystals burst out of a 3x3 within 5: WEAK magic damage to every enemy in it, and the empty tiles grow crystal pillars two levels high that block the way and the sight for 2 rounds. A Masked enemy caught in it is also Rooted for 1 round. Cooldown: 3 rounds.' },
+        { id: 'hlWake', name: 'Wake', tier: 4, families: ['hollow'], cost: 90, apCost: 1, cooldownRounds: 3, spellType: 'anomaly',
+          element: 'psychic', type: 'damage', kind: 'barrage', damageType: 'magic', dmg: 90, range: 0, aoeOriginSelf: true, aoeRadius: 7,
+          ignoresLineOfSight: true, hitsStatusOnly: 'masked', dragToCaster: 3, dragDmgPer: 30, masksHome: true, animSlot: 'hlWake',
+          statusEffects: [{ id: 'feared', duration: 1 }],
+          desc: 'Every mask opens its eyes and screams. Each Masked enemy within 7, through cover, is dragged up to 3 tiles toward the maw and takes MEDIUM magic damage, +30 for every tile it was dragged (a wall that stops it still counts that tile), then is Feared for 1 round. All the masks fly home. Needs a mask out. Cooldown: 3 rounds.' },
+    ],
     'streamer': [
         /* THE VIEWERS (2026-11-18, the Streamer + the E-Girl; mondo OK'd the kit 11-18): a count from 0 to 10 on the unit
            (unit.viewers, a plain number, so it rides the state sync). +1 for every hit it lands on an enemy, +2 for a KO, +1 when
@@ -11342,6 +11403,30 @@ const RACE_ABILITIES = {
           dmg: 160, range: 3, bonusVsStatus: { status: 'grudge', mult: 1.5 },
           desc: 'Thirty-five miles an hour of bear. Charges up to 3 tiles at a Single Enemy and slams it for HEAVY physical damage. Deals bonus damage to the Bear\'s Grudge. Cooldown: 2 rounds.' }),
     ],
+    'abomination': [
+        /* THE LIMBS (2026-11-23, the Abomination; mondo OK'd the kit and named it; plan https://claude.ai/artifact/QYFEt8LpeEnqzhViCt1zME):
+           `unit.limbs`, 0 to 6 (no value = 4, the start), a plain number on the unit so it rides the state sync. The body shows
+           exactly that many: two arms, then up to four tentacles on its back (three-renderer.js THE ABOMINATION). +1 at the end of
+           each of its turns. A hit of 20 % of its max HP or more sheds a limb instead and is 30 % smaller. Many Mouths grows one
+           for each enemy it bites, Unfold spends them all. battle.js block "THE ABOMINATION". */
+        { id: 'abGrasp', name: 'Grasp', tier: 1, families: ['abomination'], cost: 25, apCost: 1, spellType: 'anomaly',
+          type: 'damage', kind: 'damage', damageType: 'physical', dmg: 80, range: 3, animSlot: 'abGrasp', limbsStaggerAt: 5,
+          statusEffects: [{ id: 'root', duration: 1 }], bonusVsStatus: { status: 'caged', mult: 1.25 },
+          desc: 'An arm stretches out and closes. Deals WEAK physical damage to a Single Enemy within 3 and Roots it. At 5 or more Limbs the hand splits in three and also Staggers. Deals bonus damage to a Caged target.' },
+        { id: 'abManyMouths', name: 'Many Mouths', tier: 2, families: ['abomination'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+          element: 'blood', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 90, range: 0, aoeRadius: 1, aoeOriginSelf: true, aoeLifeDrain: 0.5,
+          limbsPerHit: 1, animSlot: 'abMouths',
+          desc: 'The three mouths on its chest open. Deals MEDIUM magic damage to All Enemies next to it, heals half of all the damage dealt, and grows 1 Limb for each enemy bitten. Cooldown: 2 rounds.' },
+        { id: 'abBoneCage', name: 'Bone Cage', tier: 3, families: ['abomination'], cost: 75, apCost: 1, cooldownRounds: 3, spellType: 'anomaly',
+          type: 'debuff', kind: 'debuff', range: 4, animSlot: 'abCage',
+          statusEffects: [{ id: 'root', duration: 2 }, { id: 'silence', duration: 1 }, { id: 'caged', duration: 2 }],
+          desc: 'The cage that floats by its shoulder flies out, grows and drops over a Single Enemy within 4: Rooted for 2 rounds, Silenced for 1 and Caged for 2. Grasp and Unfold hit a Caged target harder. Cooldown: 3 rounds.' },
+        { id: 'abUnfold', name: 'Unfold', tier: 4, families: ['abomination'], cost: 90, apCost: 1, cooldownRounds: 3, spellType: 'anomaly',
+          type: 'damage', kind: 'barrage', damageType: 'physical', dmg: 70, range: 0, aoeOriginSelf: true, aoeRadius: 5,
+          ignoresLineOfSight: true, limbsMin: 2, limbsSpendAll: true, animSlot: 'abUnfold',
+          statusEffects: [{ id: 'bleed', duration: 2 }], bonusVsStatus: { status: 'caged', mult: 1.25 },
+          desc: 'Every Limb pulls off and dives into the floor, then bursts up under the enemies within 5, through cover: one WEAK physical hit and Bleed for 2 rounds a Limb, every enemy hit once before any is hit twice. Spends ALL its Limbs; needs 2. Deals bonus damage to a Caged target. Cooldown: 3 rounds.' },
+    ],
     'gladiator': [
         /* THE CROWD (2026-11-19 THE COMING RACES, mondo OK'd the kit; he renamed Trident Thrust -> Sword Lunge, Ave Imperator ->
            Come At Me): Favor 0-5 (`unit.favor`). +1 for every hit he lands on an enemy, +2 more for a knockout; each Favor = +4%
@@ -11364,6 +11449,41 @@ const RACE_ABILITIES = {
         { id: 'nrCrowdPleaser', name: 'Crowd Pleaser', tier: 4, families: ['gladiatorial'], cost: 90, apCost: 1, cooldownRounds: 4, spellType: 'human',
           element: 'metal', type: 'damage', kind: 'aoe', damageType: 'physical', dmg: 150, range: 0, aoeRadius: 1, aoeOriginSelf: true, favorSpend: 50,
           desc: 'For the crowd. Deals HEAVY physical damage to every enemy next to him and spends all his Favor: +50 damage for each. Cooldown: 4 rounds.' },
+    ],
+    'monarch': [
+        /* 🦋 THE PROGRAMMING (2026-11-23 THE MONARCH (mondo OK'd the kit)): every spell of hers puts Programmed stacks on enemies (STATUS_DEFS programmed, up
+           to 3). A stack lasts until her next turn ends (mondo's status rule), and every new stack starts that clock again, so she
+           has to keep feeding it. Trigger Word is the payoff: every programmed enemy she can see goes off at once, by its stacks
+           (1 = Discord, 2 = it hits its nearest ally with its own basic attack, 3 = the same and then it falls Asleep). Rules:
+           battle.js "THE MONARCH". Notes: docs/notes/champions-combat.md "THE MONARCH". */
+        { id: 'monButterflyKiss', name: 'Butterfly Kiss', tier: 1, families: ['monarchprogramming'], cost: 25, apCost: 1, spellType: 'anomaly',
+          element: 'psychic', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 85, range: 2,
+          statusEffects: [{ id: 'programmed', duration: 1 }],
+          desc: 'She blows a kiss and a butterfly carries it. Deals WEAK magic damage to a Single Enemy within 2 and Programs it (+1 stack).' },
+        { id: 'monPendulum', name: 'Pendulum', tier: 2, families: ['monarchprogramming'], cost: 45, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+          element: 'psychic', type: 'debuff', kind: 'aoe', noDamage: true, aoeRadius: 1, range: 3,
+          statusEffects: [{ id: 'programmed', duration: 1 }, { id: 'slow', duration: 1 }],
+          desc: 'The spiral on her choker swings. Every enemy in a 3×3 within 3 is Programmed (+1 stack) and Slowed for 1 round. Cooldown: 2 rounds.' },
+        { id: 'monKaleidoscopeWings', name: 'Kaleidoscope Wings', tier: 2, families: ['monarchprogramming'], cost: 50, apCost: 1, cooldownRounds: 3, spellType: 'anomaly',
+          element: 'psychic', type: 'debuff', kind: 'aoe', noDamage: true, aoeRadius: 1, range: 0, aoeOriginSelf: true,
+          statusEffects: [{ id: 'charm', duration: 1 }, { id: 'programmed', duration: 1 }],
+          selfStatusAfter: [{ id: 'levitating', duration: 1 }],
+          desc: 'She opens the stained-glass wings. Every enemy next to her is Charmed for 1 round and Programmed (+1 stack), and she glides on them (Levitating) for 1 round. Cooldown: 3 rounds.' },
+        { id: 'monTriggerWord', name: 'Trigger Word', tier: 3, families: ['monarchprogramming'], cost: 60, apCost: 1, cooldownRounds: 3, spellType: 'anomaly',
+          element: 'psychic', type: 'buff', kind: 'buff', range: 0, triggerWord: { discordRounds: 1, sleepRounds: 1 },
+          desc: 'She says the word. Every Programmed enemy she can see goes off at once and its stacks clear. 1 stack: Discorded for 1 round. 2 stacks: it hits its nearest ally with its own basic attack (itself, with nobody in reach). 3 stacks: the same, then it falls Asleep for 1 round. Cooldown: 3 rounds.' },
+        { id: 'monSleeperCell', name: 'Sleeper Cell', tier: 3, families: ['monarchprogramming'], cost: 50, apCost: 1, spellType: 'anomaly',
+          element: 'psychic', type: 'utility', kind: 'placeTrap', range: 3, dmg: 0, damageType: 'magic',
+          trapType: 'chrysalis', trapSize: 1, maxActivePerCaster: 1,
+          statusEffects: [{ id: 'root', duration: 1 }, { id: 'programmed', duration: 2 }],
+          desc: 'Hides a chrysalis on a tile within 3; the enemy cannot see it. The first enemy to step on it is Rooted for 1 round and Programmed (+2 stacks). One at a time.' },
+        { id: 'monMetamorphosis', name: 'Metamorphosis', tier: 4, families: ['monarchprogramming'], cost: 80, apCost: 1, cooldownRounds: 5, spellType: 'anomaly',
+          element: 'psychic', type: 'buff', kind: 'buff', range: 0, statusEffects: [{ id: 'chrysalis', duration: 1 }],
+          desc: 'She wraps herself in a chrysalis. Next round she cannot move or act and takes half damage. Then she hatches with full wings: Levitating and Quickened (+1 move) for 2 rounds, and her next Trigger Word counts every stack one higher. Cooldown: 5 rounds.' },
+        { id: 'monChaosTheory', name: 'Chaos Theory', tier: 4, families: ['monarchprogramming'], cost: 90, apCost: 1, cooldownRounds: 4, spellType: 'anomaly',
+          element: 'psychic', type: 'damage', kind: 'delayed', damageType: 'magic', dmg: 110, range: 5, aoeRadius: 2, delayTurns: 1,
+          perProgrammedStack: 30,
+          desc: 'One butterfly flutters to a tile within 5. At the end of the round the air there tears open: MEDIUM magic damage to every enemy in the 5×5, +30 for every Programmed stack on her enemies when it goes off. Cooldown: 4 rounds.' },
     ],
     'farmer': [
         /* THE HARVEST (2026-11-19 THE COMING RACES, mondo OK'd the kit): every seed he plants grows a round sooner (a seed that
@@ -14063,6 +14183,42 @@ const STATUS_DEFS = {
             }
         }
     },
+    /* 🦋 PROGRAMMED (2026-11-23 THE MONARCH (mondo OK'd the kit), the Monarch): the value is STACKS (up to 3), not a countdown. Every landing adds its own
+       (applyStatusPayload `stack: 'add'`), and its onApply hands the battle a hold (battle.js _monProgramHold): it comes off after
+       the programmer's NEXT turn ends (and the target's turn in that round), so a stack she does not feed goes away (mondo's status
+       rule). Trigger Word spends the stacks. ownTick: the round countdown never takes a stack. */
+    programmed: {
+        icon: '🦋',
+        glyph: '🦋',
+        short: 'PRG',
+        label: 'Programmed',
+        colorText: 'programmed',
+        kind: 'debuff',
+        category: 'status',
+        stack: 'add',
+        maxStacks: 3,
+        ownTick: true,
+        iconSrc: createStatusIconDataUri('🦋', '#2a1606', '#fff0dc', '#ff9a2a'),
+        onApply(unit, src) { if (typeof window !== 'undefined' && typeof window._monProgramHold === 'function') window._monProgramHold(unit, src); }
+    },
+    /* 🦋 CHRYSALIS (2026-11-23 THE MONARCH (mondo OK'd the kit), Metamorphosis): wrapped up for a round — no move, no action (the whole activation skips), half
+       damage taken. When it comes off she hatches (onRemove → battle.js _monHatch: Levitating + Quickened 2 rounds, the next
+       Trigger Word counts every stack one higher). */
+    chrysalis: {
+        icon: '🐛',
+        glyph: '🐛',
+        short: 'CHR',
+        label: 'Chrysalis',
+        colorText: 'wrapped in a chrysalis',
+        kind: 'buff',
+        category: 'buff',
+        stack: 'max',
+        blockMove: true,
+        blockAction: true,
+        damageTakenMult: 0.5,
+        iconSrc: createStatusIconDataUri('🐛', '#1a2410', '#f0ffd8', '#a0d060'),
+        onRemove(unit) { if (typeof window !== 'undefined' && typeof window._monHatch === 'function') window._monHatch(unit); }
+    },
     /* 🩹 Grievous Wound: healing received halved, 2 rounds — the requested
        "reduces healing received" (Ghoul Frenzy, Gangster Stomp Out). */
     grievous: {
@@ -15091,6 +15247,17 @@ const STATUS_DEFS = {
         onApply(unit, src) { unit._grudgeSrcId = src ? src.id : null; },
         onRemove(unit) { delete unit._grudgeSrcId; }
     },
+    /* 🦴 CAGED (2026-11-23, the Abomination's Bone Cage): rides with the Root the same row lands. While it lasts the Abomination's
+       own bone cage stands over the victim (three-renderer.js THE ABOMINATION draws it from _cageSrcId, an id: RULE #2) and its
+       Grasp and Unfold hit harder (bonusVsStatus). battle.js THE ABOMINATION. */
+    caged: {
+        icon: '🦴', glyph: '🦴', short: 'CGE', label: 'Caged',
+        colorText: 'shut in the Abomination\'s bone cage',
+        kind: 'debuff', category: 'status', stack: 'replace',
+        iconSrc: createStatusIconDataUri('🦴', '#2a1a1c', '#ffe2e6', '#c4606e'),
+        onApply(unit, src) { unit._cageSrcId = src ? src.id : null; },
+        onRemove(unit) { delete unit._cageSrcId; }
+    },
     /* 🐊 SUBMERGED (2026-11-16, the Sewer Gator's Submerge): it rides with Invisible. While it lasts the gator is under the
        surface; ending any move off a liquid square surfaces it (battle.js _gatorSurfaceCheck from resolveTileArrival). */
     submerged: {
@@ -15234,6 +15401,16 @@ const STATUS_DEFS = {
         colorText: 'carrying a payload — it spreads, then goes off',
         kind: 'debuff', category: 'status', stack: 'max',
         iconSrc: createStatusIconDataUri('🦠', '#10240f', '#d8ffd0', '#4ac04a')
+    },
+    /* 🎭 MASKED (2026-11-23, THE HOLLOW): one of the Hollow's sleeping masks floats over the face. It does nothing on its own:
+       Puppet Strings and Wake reach a Masked enemy through cover and drag it in. unit._maskSrcId = the Hollow's id (battle.js
+       THE MASKS). Both sides see it. */
+    masked: {
+        icon: '🎭', glyph: '🎭', short: 'MSK', label: 'Masked',
+        colorText: 'wearing a sleeping mask — the Hollow can drag it in',
+        kind: 'debuff', category: 'status', stack: 'max',
+        iconSrc: createStatusIconDataUri('🎭', '#1a1030', '#f4eefc', '#9a6aff'),
+        onRemove(unit) { delete unit._maskSrcId; }
     },
     /* 🦋 FLUTTER (2026-11-23, the Butterfly Girl): a growing threat on an enemy. The stack (1-3) is unit._flutter, the Butterfly
        Girl's id _flutterSrcId (an id, RULE #2); a second Flutter on a carrier grows it. It grows at every round end and touches
@@ -15580,6 +15757,7 @@ const STATUS_LIBRARY_DESCS = {
     charm:     'Beguiled: cannot move at all while it lasts, and cannot attack or cast at the unit that charmed it. It can still attack and cast at anyone else. Evasion drops to zero.',
     indomitable: 'Refuses to die: the next killing blow leaves this unit at 1 HP.',
     debt:      'Owes the bank: when it ends (or is cleansed) the loan comes due. Pays back the loan with interest (never below 1 HP) and the lender heals that much. Going down first leaves the lender with the loss.',
+    caged:     'Shut in the Abomination\'s bone cage: its Grasp and Unfold hit this unit harder. Comes with the Root of Bone Cage.',
     grudge:    'The Bear holds a grudge: it hurt the Bear last (or was grabbed in a Bear Hug). Bear Down hits it harder. Ends when that Bear goes down or picks a new grudge.',
     shorted:   'Bet against: if this unit goes down while Shorted, the short-seller restores 75 MP and heals 20% of their max HP.',
     submerged: 'Under the surface of a liquid: hidden with Invisible until it attacks. Leaving the liquid surfaces it.',
@@ -21686,6 +21864,7 @@ const EW_RACE_BIOMES = {
     'haunted doll': ['gothic'],   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit) — The Estate, the Haunted House
     'cursed tv': ['urban', 'gothic'],   // 2026-11-17 THE CURSED TV (mondo approved the kit) — Disaster City's pawn shops, the Haunted House's attic
     'virus': ['neon_city', 'astral'],   // 2026-11-18 THE VIRUS (mondo approved the kit) — The Internet's quarantine
+    'hollow': ['astral'],   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name) — The Astral Realm (its nightmares)
     'streamer': ['neon_city', 'urban'],   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit) — The Internet's stage
     'vtuber': ['neon_city', 'urban'],   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look) — The Internet, district V
     'cameraman': ['urban', 'forest', 'ranch'],   // 2026-11-19 THE NEW RACES 3 (mondo picked the models) — Disaster City, The Woods, the Lake
@@ -21695,7 +21874,9 @@ const EW_RACE_BIOMES = {
     'pharaoh': ['desert', 'ancient'],   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) — The Desert, Giza
     'deep sea diver': ['deep_sea', 'tropical'],   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) — The Deep, Atlantis, The Beach
     'gladiator': ['ancient', 'stadium'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — the Colosseum
+    'monarch': ['underground_base', 'clandestine'],   // 2026-11-23 THE MONARCH (mondo OK'd the kit) — the D.U.M.B.
     'bear': ['forest', 'polar'],   // 2026-11-23 THE BEAR (mondo OK'd the kit) — the grizzly in the woods, the polar bear on the ice
+    'abomination': ['underground_base', 'deep_sea'],   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name) — The Sewers, The Deep's Trench
     'farmer': ['ranch', 'forest'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — the Estate's Corn Fields + Ranch
     'jellyfish ufo': ['deep_sea', 'tropical'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — The Deep (the Trench)
     'plastic surgeon': ['urban'],   // 2026-11-23 THE PLASTIC SURGEON (mondo OK'd the kit) — the Disaster Hills
@@ -22364,6 +22545,7 @@ const RACE_TREE = {
     'haunted doll':  ['nrPinPrick', 'nrPlayWithMe', 'nrPullString', 'nrLookBehindYou'],   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit): its own four
     'cursed tv':     ['nrStaticBurst', 'nrEmergencyBroadcast', 'nrFastForward', 'nrRewind'],   // 2026-11-17 THE CURSED TV (mondo approved the kit): its own four
     'virus':         ['nrWorm', 'nrSelfReplicate', 'nrRansomware', 'nrZeroDay'],   // 2026-11-18 THE VIRUS (mondo approved the kit): its own four
+    'hollow':        ['hlLull', 'hlStrings', 'hlBloom', 'hlWake'],   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name): its own four
     'streamer':      ['nrClipIt', ['nrUwu', 'nrRageQuit'], 'nrDonationGoal', 'nrRaid'],   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit): the rung 2 pair is one of each version (RACE_GENDER_SPELLS)
     'vtuber':        ['nrKawaiiBeam', ['nrHoloProjector', 'nrSceneChange'], 'nrLoFiLoop', 'nrCollabStream'],   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
     'cameraman':     ['nrZoomIn', ['nrTiltShift', 'nrPhotographicEvidence'], 'nrMoneyShot', 'nrSayCheese'],   // 2026-11-19 THE NEW RACES 3
@@ -22373,7 +22555,9 @@ const RACE_TREE = {
     'pharaoh':       ['nrAspsKiss', 'nrPrepareTomb', 'nrEyeOfRa', 'sharedSummonSandstorm'],   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) (the fourth rung borrowed from the desert)
     'deep sea diver': ['nrHarpoonGun', 'nrDepthCharge', 'nrPressureWave', 'sharedTidalSurge'],   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round) (the fourth rung borrowed from water)
     'gladiator':     ['nrNetToss', ['nrSwordLunge', 'nrShieldBash'], 'nrComeAtMe', 'nrCrowdPleaser'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
+    'monarch':       ['monButterflyKiss', ['monPendulum', 'monKaleidoscopeWings'], ['monTriggerWord', 'monSleeperCell'], ['monMetamorphosis', 'monChaosTheory']],   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
     'bear':          ['brPawSwipe', ['raceBite', 'raceMaul'], ['brBearHug', 'brHibernate'], 'brBearDown'],   // 2026-11-23 THE BEAR (mondo OK'd the kit)
+    'abomination':   ['abGrasp', 'abManyMouths', 'abBoneCage', 'abUnfold'],   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name): its own four
     'farmer':        ['nrPitchforkJab', ['nrSowField', 'nrHayBale'], 'nrGetOffMyLand', 'nrHarvestMoon'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
     'jellyfish ufo': ['nrPincerClaw', ['nrBioLash', 'nrJetPulse'], 'nrVenomInjector', 'nrAbyssalOverload'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
     'plastic surgeon': ['psBotox', ['psMakeover', 'psLiposuction'], 'psAnesthesia', 'psFullProcedure'],   // 2026-11-23 THE PLASTIC SURGEON (mondo OK'd the kit)
@@ -24504,6 +24688,16 @@ const SPELL_FAMILIES = {
         unique: 'virus',
         identity: { who: ['Virus', 'Worm', 'Trojan'], adj: ['Spiked', 'Glitching', 'Infectious'], look: ['a spiked ball of dark green crystal', 'a ring of red eyes', 'tendrils of broken code'], vibe: ['copies itself from body to body', 'sets everything off at once'] }
     },
+    hollow: {   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name) — the Hollow's own
+        id: 'hollow',
+        name: 'The Hollow',
+        glyph: '🎭',
+        color: '#9a6aff',
+        kind: 'signature',
+        desc: 'A floating maw ringed with sleeping masks: it leaves a mask on an enemy, then drags the masked into its crystals and into its mouth.',
+        unique: 'hollow',
+        identity: { who: ['Hollow', 'Sleeper', 'Mask'], adj: ['Sleeping', 'Porcelain', 'Dreaming'], look: ['a black maw ringed with golden teeth', 'sleeping porcelain masks', 'a chandelier of pale fingers'], vibe: ['leaves its masks on you', 'drags the masked in'] }
+    },
     vtubing: {   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look) — the V-Tuber's own
         id: 'vtubing',
         name: 'V-Tubing',
@@ -24584,6 +24778,16 @@ const SPELL_FAMILIES = {
         unique: 'gladiator',
         identity: { who: ['Gladiator', 'Champion of the Arena', 'Murmillo'], adj: ['Bronzed', 'Cheered', 'Fearless'], look: ['a crested bronze helmet', 'a blue cape', 'greaves and a leather belt'], vibe: ['fights for the crowd', 'the louder they cheer, the harder he hits'] }
     },
+    monarchprogramming: {   // 2026-11-23 THE MONARCH (mondo OK'd the kit) — the Monarch's own
+        id: 'monarchprogramming',
+        name: 'Monarch Programming',
+        glyph: '🦋',
+        color: '#e8862a',
+        kind: 'signature',
+        desc: 'Program them, keep them programmed, then say the word: every programmed enemy turns on its own side at once.',
+        unique: 'monarch',
+        identity: { who: ['Monarch', 'Sleeper Agent', 'Programmed Asset'], adj: ['Programmed', 'Hypnotic', 'Dormant'], look: ['a butterfly mask', 'stained-glass monarch wings', 'a spiral pendant on a choker'], vibe: ['waits for the word', 'turns your own side against you'] }
+    },
     farming: {   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — the Farmer's own
         id: 'farming',
         name: 'Farming',
@@ -24643,6 +24847,16 @@ const SPELL_FAMILIES = {
         desc: 'Don\'t poke the bear: a swipe, a hug that will not let go, a winter\'s sleep, and a charge at whoever woke it.',
         unique: 'bear',
         identity: { who: ['Grizzly', 'Polar Bear', 'Bruin'], adj: ['Shaggy', 'Territorial', 'Half-Asleep'], look: ['a hump of muscle over the shoulders', 'claws like garden forks', 'a coat of brown or white'], vibe: ['wants to be left alone', 'holds a grudge'] }
+    },
+    abomination: {   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name) — its own
+        id: 'abomination',
+        name: 'Abomination',
+        glyph: '🫀',
+        color: '#c4606e',
+        kind: 'signature',
+        desc: 'Too much body: arms and tentacles it spends to cast, sheds to live through a big hit, and grows back every turn.',
+        unique: 'abomination',
+        identity: { who: ['Abomination', 'The Thing in the Drain', 'Too Many Arms'], adj: ['Grown', 'Stitched', 'Hungry'], look: ['three mouths down its chest', 'a ring of eyes round a split head', 'a cage of bones that floats by its shoulder'], vibe: ['grows back whatever you cut off', 'has more arms than you'] }
     },
     cosmeticsurgery: {   // 2026-11-23 THE PLASTIC SURGEON (mondo OK'd the kit) — the Plastic Surgeon's own
         id: 'cosmeticsurgery',
@@ -26933,6 +27147,7 @@ const RACE_FAMILIES = {
     'haunted doll': ['hauntedtoy', 'haunted', 'blackmagic', 'trickery'],   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit)
     'cursed tv': ['cursedtv', 'haunted', 'lightning', 'glitch'],   // 2026-11-17 THE CURSED TV (mondo approved the kit)
     'virus': ['malware', 'computerhacking', 'glitch', 'internetaddiction'],   // 2026-11-18 THE VIRUS (mondo approved the kit)
+    'hollow': ['hollow', 'nightmares', 'astral', 'fractal'],   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name)
     'streamer': ['streaming', 'stagepresence', 'computerhacking', 'internetaddiction'],   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
     'vtuber': ['vtubing', 'stagepresence', 'computerhacking', 'internetaddiction'],   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
     'cameraman': ['cameraman', 'stagepresence', 'eyesight', 'internetaddiction'],   // 2026-11-19 THE NEW RACES 3
@@ -26942,7 +27157,9 @@ const RACE_FAMILIES = {
     'pharaoh': ['pharaoh', 'royalty', 'ancientknowledge', 'desertacclimation'],   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
     'deep sea diver': ['deepdive', 'water', 'deepsea', 'engineering'],   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
     'gladiator': ['gladiatorial', 'swordsmanship', 'weaponstraining', 'humangrit'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
+    'monarch': ['monarchprogramming', 'seduction', 'spygear', 'deepstate'],   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
     'bear': ['bear', 'beastabilities', 'apexpredator', 'nature', 'ice'],   // 2026-11-23 THE BEAR (mondo OK'd the kit): Nature is the grizzly's, Ice the polar bear's (RACE_GENDER_SPELLS)
+    'abomination': ['abomination', 'nightmares', 'cosmic', 'shadow'],   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name)
     'farmer': ['farming', 'agriculture', 'humangrit', 'teamwork'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
     'jellyfish ufo': ['bioelectric', 'jellyfish', 'lightning', 'deepsea'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
     'plastic surgeon': ['cosmeticsurgery', 'healingmagic', 'chemistry', 'maincharacter'],   // 2026-11-23 THE PLASTIC SURGEON (mondo OK'd the kit)
@@ -27586,6 +27803,7 @@ const CAMPAIGN_RACE_PRICES = {
   'haunted doll': 450,   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit)
   'cursed tv': 450,   // 2026-11-17 THE CURSED TV (mondo approved the kit)
   'virus': 450,   // 2026-11-18 THE VIRUS (mondo approved the kit)
+  'hollow': 500,   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name)
   'streamer': 400,   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
   'vtuber': 400,   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
   'cameraman': 350,   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
@@ -27595,7 +27813,9 @@ const CAMPAIGN_RACE_PRICES = {
   'pharaoh': 500,   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
   'deep sea diver': 400,   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
   'gladiator': 400,   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
+  'monarch': 450,   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
   'bear': 450,   // 2026-11-23 THE BEAR (mondo OK'd the kit)
+  'abomination': 450,   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name)
   'farmer': 350,   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
   'jellyfish ufo': 400,   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
   'plastic surgeon': 400,   // 2026-11-23 THE PLASTIC SURGEON (mondo OK'd the kit)
@@ -29586,11 +29806,13 @@ const DOOR_TEXT = {
         'superhero': 'Downtown', 'general': 'The Lodge', 'droid': 'Mars', 'antihero': 'Downtown',
         'conspiracy theorist': 'The Strip', 'overlord': 'Tower of Babel', 'chosen one': 'Mount Olympus', 'politician': 'The Lodge', 'banker': 'Downtown', 'sewer gator': 'The Sewers', 'skater': 'Downtown', 'tech ceo': 'Downtown', 'magician': 'The Strip', 'mole man': 'Hollow Earth', 'quetzalcoatl': 'Technoticlan', 'lifeguard': 'The Bermuda Triangle',   // banker + sewer gator + skater + tech ceo + magician + mole man + quetzalcoatl + lifeguard 2026-11-16
         'delivery boy': 'Downtown', 'librarian': 'Downtown', 'televangelist': 'Vatican City', 'influencer': 'Downtown', 'referee': 'Football Stadium', 'florida man': 'Downtown', 'boltzmann brain': 'The Singularity', 'wendigo': 'Mount Shasta', 'karate frog': 'The Sewers', 'samurai slug': 'The Sewers', 'cicada brood': 'Göbekli Tepe', 'pope': 'Vatican City',   // 2026-11-17 THE NEW RACES 2
-        'ninja': 'Downtown', 'delivery boy': 'Downtown', 'librarian': 'Downtown', 'televangelist': 'Vatican City', 'influencer': 'Downtown', 'referee': 'Football Stadium', 'florida man': 'Downtown', 'boltzmann brain': 'The Singularity', 'wendigo': 'Mount Shasta', 'karate frog': 'The Sewers', 'samurai slug': 'The Sewers', 'cicada brood': 'Göbekli Tepe', 'haunted doll': 'The Haunted House', 'cursed tv': 'The Haunted House', 'virus': 'The Internet', 'streamer': 'The Internet', 'vtuber': 'The Internet',   // 2026-11-17 THE NEW RACES 2
+        'ninja': 'Downtown', 'delivery boy': 'Downtown', 'librarian': 'Downtown', 'televangelist': 'Vatican City', 'influencer': 'Downtown', 'referee': 'Football Stadium', 'florida man': 'Downtown', 'boltzmann brain': 'The Singularity', 'wendigo': 'Mount Shasta', 'karate frog': 'The Sewers', 'samurai slug': 'The Sewers', 'cicada brood': 'Göbekli Tepe', 'haunted doll': 'The Haunted House', 'cursed tv': 'The Haunted House', 'virus': 'The Internet', 'hollow': 'The Looking-Glass', 'streamer': 'The Internet', 'vtuber': 'The Internet',   // 2026-11-17 THE NEW RACES 2
         'pharaoh': 'Pyramids of Giza', 'deep sea diver': 'Atlantis',   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
         'gladiator': 'Vatican City', 'farmer': 'Skinwalker Ranch', 'jellyfish ufo': 'Atlantis', 'rat': 'The Sewers', 'butterfly girl': 'Fairy Forest',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) (the Colosseum on the Vatican's plots; the Estate's fields; the Trench of The Deep)
         'bear': 'Mount Shasta',   // 2026-11-23 THE BEAR (mondo OK'd the kit) (the mountain's woods and its snow: both coats)
+        'abomination': 'The Sewers',   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name) (a first pick, he did not name a home: the drains under Disaster City)
         'plastic surgeon': 'Downtown',   // 2026-11-23 THE PLASTIC SURGEON (the Disaster Hills, Disaster City's district N)
+        'monarch': 'D.U.M.B.',   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
         'gambler': 'The Strip', 'hacker': 'Downtown', 'monk': 'The Bermuda Triangle', 'shogun': 'The Bermuda Triangle',   // 2026-11-19 THE NEW RACES 4 (the gambler lives in the Western Town too: HQ_AREA_ENCOUNTERS; the monk + the shogun on the Volcano Island)
         'cameraman': 'Downtown', 'mechanic': 'Downtown', 'janitor': 'Downtown', 'trucker': 'Downtown',   // 2026-11-19 THE NEW RACES 3
        
@@ -98212,7 +98434,9 @@ const HQ_NPC_TEMPERS = {
         'gambler': 'opportunist', 'hacker': 'opportunist', 'monk': 'protector', 'shogun': 'territorial',   // 2026-11-19 THE NEW RACES 4
         'gladiator': 'territorial', 'farmer': 'guard', 'jellyfish ufo': 'territorial', 'rat': 'opportunist', 'butterfly girl': 'coward',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
         'bear': 'territorial',   // 2026-11-23 THE BEAR (mondo OK'd the kit): don't poke the bear
+        'abomination': 'brute',   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name)
         'plastic surgeon': 'opportunist',   // 2026-11-23 THE PLASTIC SURGEON (mondo OK'd the kit)
+        'monarch': 'guard',   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
         'zombie': 'brute', 'shadow entity': 'brute', 'werewolf': 'brute', 'wendigo': 'brute', 'ghoul': 'brute', 'flesheater': 'brute',
     },
     /* THE GROUPS: races who stand up for each other (no factions). Units of ONE race are a group by themselves (`sameRace`). A unit is in one
@@ -100071,7 +100295,7 @@ const HQ_NPC_PLACES = {
         'men in black @D:Onion Gate >D,B', 'men in black @D:Crawlers >D', 'demon m @D:The Bottom >D,C', 'demon m @D:Black Market stay', 'hacker @S:Login Screen >S,K', 'ghost m @S:Backup Tapes >S,H', 'ghost m @H:Dial-Up >H'],
     /* ── THE ASTRAL REALM ── */
     site_prebuilt_lookingglass_realm: ['occulus @S:High Thought >S,L,N', 'occulus @L:Reading >L', 'occulus @N:Stage >N', 'boltzmann brain @S:Open Sea >S,L', 'boltzmann brain @L:Not Yet Written stay', 'orb of light @S:Still Water >S,L', 'orb of light @L:Stacks >L',
-        'machine elves @L:Card Catalogue stay', 'dreameater @N:The Bed >N,S', 'telepath m @S:Thought-Forms >S', 'telepath f @S:Islands >S', 'shadow entity @N:Thing Under >N', 'flesheater @N:Maw >N', 'succubus m @N:Bad Nights >N', 'succubus f @N:Blood >N'],
+        'machine elves @L:Card Catalogue stay', 'dreameater @N:The Bed >N,S', 'telepath m @S:Thought-Forms >S', 'telepath f @S:Islands >S', 'shadow entity @N:Thing Under >N', 'flesheater @N:Maw >N', 'hollow @N:The Bed >N,S night', 'succubus m @N:Bad Nights >N', 'succubus f @N:Blood >N'],
     site_prebuilt_lookingglass_waiting: ['ghost m'],
     /* ── OUTER SPACE (one room, four worlds: no route crosses from one world to the next) ── */
     site_prebuilt_moon_plots: ['astronaut @M:Lander >M,C', 'astronaut @M:Habitat stay', 'grey @F:Saucer >F,C x2', 'bligblog @F:Dig >F', 'reptilian @F:Bore >F', 'mantid @C:The Crater >C,F',

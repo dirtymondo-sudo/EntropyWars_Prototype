@@ -2166,6 +2166,23 @@ Mech F sprite redone as `mech_f2_px2.png` from a straight-on front render of her
 - The Replica summon (`_summonReplica3D`) clones the same file at half size (bob, ring turn, lurch per bite, flinch).
 - Sprite `virus_px.png` (same folder) = Sprite AI restyle of a straight-on render (files in the same project folder).
 
+## THE ABOMINATION — five Meshy parts seated into one body (2026-11-23, thread "Build the Abomination unit")
+- ONE file `Assets/characters/races/abomination/male/abomination.glb` (8.3 MB; `abomination.opt.glb` 4.4 MB, meshopt + WebP, listed
+  in ASSET_MANIFEST.json so the game loads it), built by `/mnt/project-files/horror-plan-20261123/build/asm.js` (`node asm.js <out.glb>
+  [preview.png]`, three 0.160 in a Playwright page, GLTFExporter, textures 1024) from FIVE Meshy parts of mondo's horror concept
+  (`char-concepts-20261123/models/horrorA_*.glb`, simplified to ~11k tris in `build/lo/`; the tentacle stays 12.9k, its UVs are cut up).
+- mondo 11-23: "the old parts are good, just connect them; the cut ends face the wrong way". THE SEATING: every part's cut cap and
+  each socket on the core is a plane fit (`caps.json`, `caps.py`: centre, outward normal, radius); a part is turned so its cap normal
+  points against the socket's, rolled toward a wanted direction, scaled by the radius ratio and pushed in by an inset. The tentacle's
+  cut base is its +Z end (not -Z). The head needs a front ref vector (its roll is free). The arms tilt ±0.55 so they hang. The two
+  LEG tentacles start 0.16 m inside the hip stumps, run straight out along the hip normal, then curve onto the floor (thickness ×1.15).
+- Nodes (metres, front +Z, floor y 0): ewAbRoot > ewAbBody > ewAbCore, ewAbNeck (head), ewAbLimb0/1 > ewAbArmR/L (local -Y down the
+  arm; the left arm is the mirrored geometry) > ewAbHandX0/1 (two small hands at the right wrist), ewAbLimb2..5 > ewAbTen2..5 (the
+  one tentacle bent along four paths), ewAbHipR/L (the leg tentacles), ewAbCageOrbit > ewAbCage.
+- Rig = three-renderer.js "THE ABOMINATION" (`_PROC_RIGS.abomination` -> `_abBuild`, `_AB_POSES`; `_abLimbTick` after the mixer
+  shows the limb count, the extra hands only in Grasp at 5+, and the cage over a Caged victim). Sprite `abomination_px.png` = Sprite
+  AI restyle of a straight-on render (`build/front.js`).
+
 ## THE STREAMER PIECES (2026-11-18) — two Meshy picks for the creator
 
 `ewm_egwig` (Split-dye pigtail wig, hats: pink left half, black right half, two pigtails; the look's hair is `bald` under it) and
@@ -2286,3 +2303,17 @@ two biggest loose mesh pieces standing out to each side behind the back (the win
 root and weights each wing 100 % to its bone. three-renderer.js `_swayScan` flags a root with ewwing_ bones; THE UNIT GEAR (`_gearTick`) swings them
 about the chest's up axis (folded back, open). LESSON: a new bone's inverse bind must be the inverse of its REAL world matrix (a Meshy armature is
 scaled 0.01): the first file (`..._wings_Running.glb`) used a plain -root inverse, shrank each wing 100x and the wings vanished; `..._wings2_` is right.
+
+## THE HOLLOW — five Meshy parts as one floating body (2026-11-23, thread "Build The Hollow")
+- File: `Assets/characters/races/hollow/male/hollow.glb` (2.6 MB; old folder `Assets/Sprites/Races/hollow/` moved by EW_ASSET_MOVES) +
+  `hollow_px.png` (128x128 Sprite AI restyle of a model render, straight on). Made by project files `horror-hollow/assemble.mjs`
+  (`node assemble.mjs <parts dir> <out.glb>`, parts = `char-concepts-20261123/models/horrorB_{maw,mask,limb,fingers,shard}.glb`).
+- The parts: welded, simplified with meshoptimizer (maw 9000, mask 7000, limb 4200, fingers 9000, shard 2200 triangles), sheets
+  1024 JPEG. Meshy made the mask as a whole head: only the triangles in front of z 0.02 are kept (the face), double sided.
+  The limb is cut at y -0.16 / 0.16 into three segments pivoting at the cut centres; the finger chandelier = a cap + six bunches.
+- Nodes: ewHlRoot > ewHlBody (hover centre, 2.1 m) > ewHlMaw (the ring, spins on its Z), ewHlMask0..3 (orbit), ewHlLimb0..3 > b > c,
+  ewHlFingers > ewHlFingCap + ewHlFing0..5, ewHlShard0..2.
+- Rig = three-renderer.js "THE HOLLOW" (`_PROC_RIGS.hollowBody` -> `_hlBuild`, `_HL_POSES`): idle, walk, Lull (mask 0 flies off),
+  Strings (the limbs pull in), Bloom (the shards flare), Wake (the maw opens wide, all limbs reach), hit, death.
+  `_hlUnitTick` (per unit, after the mixer) hides one orbit mask per mask out (units with `_maskSrcId` = the Hollow and `status.masked`)
+  and seats a worn mask (`ewHlWornMask`, userData.ewGear) on each Masked unit's head bone (fallback 0.86 of its height).

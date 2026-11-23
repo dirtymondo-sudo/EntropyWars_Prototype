@@ -149,6 +149,7 @@ const EW_ASSET_MOVES = [
   ['Assets/Sprites/Races/farmer/', 'Assets/characters/races/farmer/'],   // 2026-11-19 THE COMING RACES
   ['Assets/Sprites/Races/jellyfish_ufo/', 'Assets/characters/races/jellyfish_ufo/'],   // 2026-11-19 THE COMING RACES
   ['Assets/Sprites/Races/bear/', 'Assets/characters/races/bear/'],   // 2026-11-23 THE COMING RACES 2
+  ['Assets/Sprites/Races/abomination/', 'Assets/characters/races/abomination/'],   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name)
   ['Assets/Sprites/Races/rat/', 'Assets/characters/races/rat/'],   // 2026-11-23 THE COMING RACES 2
   ['Assets/Sprites/Races/monarch/', 'Assets/characters/races/monarch/'],   // 2026-11-23 THE COMING RACES 2
   ['Assets/Sprites/Races/butterfly_girl/', 'Assets/characters/races/butterfly_girl/'],   // 2026-11-23 THE COMING RACES 2
@@ -170,6 +171,7 @@ const EW_ASSET_MOVES = [
   ['Assets/Sprites/Races/samurai_slug/', 'Assets/characters/races/samurai_slug/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/cursed_tv/', 'Assets/characters/races/cursed_tv/'],   // 2026-11-17 📺 THE CURSED TV
   ['Assets/Sprites/Races/virus/', 'Assets/characters/races/virus/'],   // 2026-11-18 🦠 THE VIRUS
+  ['Assets/Sprites/Races/hollow/', 'Assets/characters/races/hollow/'],   // 2026-11-23 🎭 THE HOLLOW
   ['Assets/Sprites/Races/cicada_brood/', 'Assets/characters/races/cicada_brood/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/pope/', 'Assets/characters/races/pope/'],   // 2026-11-17 THE POPE
   ['Assets/Sprites/Races/ninja/', 'Assets/characters/races/ninja/'],   // 2026-11-17 THE NINJA
@@ -603,6 +605,8 @@ const RACE_SPRITE_GENDERS = {
   'haunted doll': 'female',   // 2026-11-17 THE HAUNTED DOLL
   'cursed tv': 'male',   // 2026-11-17 THE CURSED TV (one set; the model def sits under male)
   'virus': 'male',   // 2026-11-18 THE VIRUS (one body; the model def sits under male)
+  'hollow': 'male',   // 2026-11-23 THE HOLLOW (one body; the model def sits under male)
+  'abomination': 'male',   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name) (one body; the model def sits under male)
   'streamer': 'both',   // 2026-11-18 THE STREAMER + E-GIRL (one race: the Streamer is the male, the E-Girl the female)
   'vtuber': 'female',   // 2026-11-18 THE V-TUBER (female only for now, mondo 11-18)
   'lifeguard': 'both',   // 2026-11-16; the man 2026-11-17
@@ -805,6 +809,8 @@ const _CHARACTER_SPRITES = {
   'haunted doll': `${_S}/Races/haunted_doll/female/haunted_doll_px.png`,   // 2026-11-17 THE HAUNTED DOLL — 128x128 pixel sprite (Sprite AI restyle of its model render, PR #1910)
   'cursed tv': `${_S}/Races/cursed_tv/male/cursed_tv_px.png`,   // 2026-11-17 THE CURSED TV — 128x128 pixel sprite (Sprite AI restyle of its model render, straight on)
   'virus': `${_S}/Races/virus/male/virus_px.png`,   // 2026-11-18 THE VIRUS — 128x128 pixel sprite (Sprite AI restyle of its model render, straight on)
+  'hollow': `${_S}/Races/hollow/male/hollow_px.png`,   // 2026-11-23 THE HOLLOW — 128x128 pixel sprite (Sprite AI restyle of its model render, straight on)
+  'abomination': `${_S}/Races/abomination/male/abomination_px.png`,   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name) — 128x128 pixel sprite (Sprite AI restyle of its model render, straight on)
   'seraphim': `${_S}/Races/seraphim/seraphim_px.png`,   // 2026-11-19 — the wheel within a wheel of eyes (Sprite AI restyle of its 3D design; the old winged pixel art seraphim.png stays on R2)
   'golem': `${_S}/Races/golem/golem_px.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of its stone 3D model's front render) (the red-armour golem.png stays on R2)
   'streamer': `${_S}/Races/streamer/male/streamer_m_px.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of his 3D model's front render)
@@ -2884,6 +2890,23 @@ const RACE_MODELS_3D = {
      metres, the body hovering 1 m up. */
   'virus': {
     male: { model: `${_S}/Races/virus/male/virus.glb`, clips: {}, procRig: 'virusBody', heightRatio: 1.15, yawOffset: 0, basicAttackKind: 'magic',
+      moveTimeScale: 1, castTimeScale: 1, deathTimeScale: 1, hitTimeScale: 1, jumpTimeScale: 1 },
+  },
+  /* 🎭 THE HOLLOW (2026-11-23, Horror B; mondo approved the plan + the name): no bones; procRig 'hollowBody' (three-renderer.js
+     THE HOLLOW) turns the maw ring, orbits the four sleeping masks (one goes missing for each mask out on an enemy), coils the
+     four limbs (three joints each) and sways the six bunches of the finger chandelier. Five Meshy parts put together in code
+     (models-assets.md "THE HOLLOW"). Front +Z, metres, the body hovering 2.1 m up. */
+  'hollow': {
+    male: { model: `${_S}/Races/hollow/male/hollow.glb`, clips: {}, procRig: 'hollowBody', heightRatio: 1.6, yawOffset: 0, basicAttackKind: 'magic',
+      moveTimeScale: 1, castTimeScale: 1, deathTimeScale: 1, hitTimeScale: 1, jumpTimeScale: 1 },
+  },
+  /* 🫀 THE ABOMINATION (2026-11-23, mondo OK'd the kit and named it; "the old parts are good, just connect them"): no bones;
+     procRig 'abomination' (three-renderer.js THE ABOMINATION) heaves the core, turns the head, swings both arms and the four
+     back tentacles, slithers the two leg tentacles, orbits the bone cage, and hides the limbs it has lost (unit.limbs). Five
+     Meshy parts (core, head, arm, tentacle, cage) seated cap first into the core's sockets by the project files'
+     horror-plan-20261123/asm.js (models-assets.md "THE ABOMINATION"). Front +Z, metres, floor y 0, 3.1 m tall. */
+  'abomination': {
+    male: { model: `${_S}/Races/abomination/male/abomination.glb`, clips: {}, procRig: 'abomination', heightRatio: 1.55, yawOffset: 0, basicAttackKind: 'claw',
       moveTimeScale: 1, castTimeScale: 1, deathTimeScale: 1, hitTimeScale: 1, jumpTimeScale: 1 },
   },
   'wendigo': {
@@ -7566,6 +7589,8 @@ const RACE_SPRITES = {
   'haunted doll': `${_S}/Races/haunted_doll/female/haunted_doll_px.png`,   // 2026-11-17 THE HAUNTED DOLL — 128x128 pixel sprite (PR #1910)
   'cursed tv': `${_S}/Races/cursed_tv/male/cursed_tv_px.png`,   // 2026-11-17 THE CURSED TV — 128x128 pixel sprite (Sprite AI restyle of its model render, straight on)
   'virus': `${_S}/Races/virus/male/virus_px.png`,   // 2026-11-18 THE VIRUS — 128x128 pixel sprite (Sprite AI restyle of its model render, straight on)
+  'hollow': `${_S}/Races/hollow/male/hollow_px.png`,   // 2026-11-23 THE HOLLOW — 128x128 pixel sprite (Sprite AI restyle of its model render, straight on)
+  'abomination': `${_S}/Races/abomination/male/abomination_px.png`,   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name) — 128x128 pixel sprite (Sprite AI restyle of its model render, straight on)
   'seraphim': `${_S}/Races/seraphim/seraphim_px.png`,   // 2026-11-19 — the wheel within a wheel of eyes (Sprite AI restyle of its 3D design; the old winged pixel art seraphim.png stays on R2)
   'golem': `${_S}/Races/golem/golem_px.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of its stone 3D model's front render) (the red-armour golem.png stays on R2)
   'streamer': `${_S}/Races/streamer/male/streamer_m_px.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of his 3D model's front render)
@@ -8636,6 +8661,16 @@ const TRAP_TILE_SPRITES = {
             '<path d="M44 36 L38 44 L34 37 Z" fill="rgba(185,185,175,0.5)"/>' +
             '<path d="M26 26 L38 26 L32 33 Z" fill="none" stroke="rgba(160,160,150,0.45)" stroke-width="1.2"/>' +
             '<circle cx="32" cy="32" r="2.5" fill="rgba(220,220,210,0.5)"/>'
+        )
+    ],
+    /* 🦋 THE MONARCH's Sleeper Cell (2026-11-23): a chrysalis hung on the tile, its gold dots and the butterfly to come */
+    chrysalis: [
+        _terrainSvg(
+            '<circle cx="32" cy="32" r="19" fill="none" stroke="rgba(255,170,70,0.4)" stroke-width="1.5" stroke-dasharray="4 4"/>' +
+            '<ellipse cx="32" cy="33" rx="8" ry="14" fill="rgba(120,170,90,0.5)" stroke="rgba(230,255,200,0.6)" stroke-width="1.4"/>' +
+            '<path d="M25 27 Q32 31 39 27 M24 34 Q32 38 40 34 M26 41 Q32 44 38 41" fill="none" stroke="rgba(230,255,200,0.45)" stroke-width="1"/>' +
+            '<circle cx="29" cy="24" r="1.4" fill="rgba(255,210,90,0.85)"/><circle cx="35" cy="24" r="1.4" fill="rgba(255,210,90,0.85)"/>' +
+            '<path d="M32 19 L32 14" stroke="rgba(230,255,200,0.6)" stroke-width="1.4"/>'
         )
     ],
     frost: [

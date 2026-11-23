@@ -19104,6 +19104,397 @@ const ThreeRenderer = (function () {
         clips.vrWorm = clips.cast; clips.vrReplicate = clips.castSupport; clips.vrRansom = clips.castAOE; clips.vrZeroDay = clips.castUltimate;
         return clips;
     }
+    /* 🎭 THE HOLLOW (2026-11-23, Horror B; mondo approved the plan + the name 11-23: "The Hollow is fine"). A boneless body of
+       Meshy parts like the Virus: ONE file (Assets/characters/races/hollow/male/hollow.glb, made by project files
+       horror-hollow/assemble.mjs; models-assets.md "THE HOLLOW"): the maw ring (ewHlMaw, faces +Z, spins round its own Z), four
+       sleeping masks (ewHlMask0..3, the Meshy head with its back half cut off, faces +Z), four black limbs in three joints
+       (ewHlLimb<i> > b > c, each segment along its own +Y), the finger chandelier under the maw (ewHlFingers > ewHlFingCap +
+       ewHlFing0..5, six bunches hanging -Y) and three crystals on the rim (ewHlShard0..2). In metres, front +Z, floor y 0, the
+       body's centre (ewHlBody) hovers 2.1 m up. A clip is keyframes on those nodes, so the ring turns, every mask orbits on its
+       own, each limb coils and the fingers sway apart; the guest plays the same clips (display only).
+       THE MASKS AT HOME: a mask the Hollow has left on an enemy (status `masked`, unit._maskSrcId = its id) is missing from
+       its orbit, and a porcelain mask floats over that enemy's face (_hlUnitTick, per unit from the unit loop: the board's
+       own units list, no scene walk). */
+    var _hlMaskProto = null;
+    var _HL_ORBIT = [0.4, 0.4 + Math.PI / 2, 0.4 + Math.PI, 0.4 + Math.PI * 1.5], _HL_MR = 1.35;
+    function _hlClip(name, dur, pose, R) {
+        var N = Math.max(8, Math.round(dur * 30)), tt = [], i, k;
+        var T = { bp: [], bq: [], bs: [], mq: [], ms: [], fp: [], fs: [] }, mp = [], mq = [], msc = [], la = [], lb = [], lc = [], fq = [], fsc = [], sp = [], ssc = [];
+        for (i = 0; i < R.masks.length; i++) { mp.push([]); mq.push([]); msc.push([]); }
+        for (i = 0; i < R.limbs.length; i++) { la.push([]); lb.push([]); lc.push([]); }
+        for (i = 0; i < R.fings.length; i++) { fq.push([]); fsc.push([]); }
+        for (i = 0; i < R.shards.length; i++) { sp.push([]); ssc.push([]); }
+        var e = new THREE.Euler(0, 0, 0, 'YXZ'), q = new THREE.Quaternion(), q2 = new THREE.Quaternion(), ax = new THREE.Vector3();
+        var pq = function (arr) { arr.push(q.x, q.y, q.z, q.w); };
+        for (k = 0; k <= N; k++) {
+            var u = k / N, p = pose(u, R) || {};
+            var f = function (n) { return p[n] || 0; };
+            tt.push(u * dur);
+            T.bp.push(R.body0.x + f('x'), R.body0.y + f('y'), R.body0.z + f('z'));
+            e.set(f('rx'), f('ry'), -f('rz'), 'YXZ'); q.setFromEuler(e); pq(T.bq);
+            T.bs.push(1 + f('sx'), 1 + f('sy'), 1 + f('sx'));
+            /* the maw: its spin round its own axis (Z), a tilt, its size */
+            e.set(f('mawRx'), 0, f('spin'), 'XYZ'); q.setFromEuler(e); pq(T.mq);
+            var mws = R.maw0 * Math.max(0.001, 1 + f('maw')); T.ms.push(mws, mws, mws * (1 + f('mawZ')));
+            /* the masks: round the ring at their own angle + the orbit, `mR` the radius, `mz` out in front, mask(i) = { a, r, x, y, z, s, rx, ry, rz } extra per mask */
+            var orb = f('orbit'), mR = _HL_MR * (1 + f('mR'));
+            for (i = 0; i < R.masks.length; i++) {
+                var M = R.masks[i], mo = p.mask ? (p.mask(i, M) || {}) : {}, a = M.a + orb + (mo.a || 0), r = mR * (1 + (mo.r || 0));
+                var bob = 0.05 * Math.sin((u * (p.mhz || 1) + i * 0.27) * Math.PI * 2);
+                mp[i].push(Math.cos(a) * r + (mo.x || 0), Math.sin(a) * r + bob + (mo.y || 0), M.z + f('mz') + (mo.z || 0));
+                e.set(mo.rx || 0, Math.cos(a) * 0.5 * (1 - f('mFace')) + (mo.ry || 0), (mo.rz || 0) + 0.12 * Math.sin((u + i * 0.31) * Math.PI * 2), 'YXZ'); q.setFromEuler(e); pq(mq[i]);
+                var mss = M.s * Math.max(0.0001, 1 + (mo.s || 0) + f('mS')); msc[i].push(mss, mss, mss);
+            }
+            /* the limbs: a coil that runs down each one (segment a on its rest turn), `reach` lays them forward, `limp` lets them hang */
+            var coil = f('coil'), hz = p.hz || 1, reach = f('reach'), limp = f('limp');
+            for (i = 0; i < R.limbs.length; i++) {
+                var L = R.limbs[i], ph = L.ph, w = function (o) { return Math.sin((u * hz + ph + o) * Math.PI * 2); };
+                var lo = p.limb ? (p.limb(i, L) || {}) : {};
+                e.set(-reach * 0.9 - limp * 0.5 + (lo.rx || 0), 0, coil * w(0) + limp * L.side * 0.6 + (lo.rz || 0), 'YXZ'); q2.setFromEuler(e);
+                q.copy(L.q0).multiply(q2); pq(la[i]);
+                e.set(coil * 0.7 * w(0.2) - reach * 0.4 + limp * 0.7, 0, coil * 1.1 * w(0.15) + (lo.bz || 0), 'YXZ'); q.setFromEuler(e); pq(lb[i]);
+                e.set(coil * 0.9 * w(0.4) - reach * 0.3 + limp * 0.6, 0, coil * 1.4 * w(0.32) + (lo.cz || 0), 'YXZ'); q.setFromEuler(e); pq(lc[i]);
+            }
+            /* the chandelier: `fDrop` lowers it (m), `fStretch` makes the fingers long, `spread` fans the bunches out, `fSway` the swing */
+            T.fp.push(R.fing0.x, R.fing0.y - f('fDrop'), R.fing0.z);
+            var fss = R.fingS; T.fs.push(fss, fss * (1 + 0.3 * f('fStretch')), fss);
+            var spread = f('spread'), fsw = f('fSway');
+            for (i = 0; i < R.fings.length; i++) {
+                var Fb = R.fings[i], sw = Math.sin((u * (p.fhz || 1) + i * 0.21) * Math.PI * 2);
+                ax.set(Fb.d.z, 0, -Fb.d.x).normalize(); q.setFromAxisAngle(ax, -(spread + fsw * sw)); pq(fq[i]);
+                fsc[i].push(1, 1 + f('fStretch'), 1);
+            }
+            /* the crystals: `shard` swells them, `shardOut` pushes them off the rim */
+            for (i = 0; i < R.shards.length; i++) {
+                var Sh = R.shards[i], so = f('shardOut'), sg = Math.max(0.0001, 1 + f('shard') * (1 + 0.3 * Math.sin((u * 3 + i * 0.33) * Math.PI * 2)));
+                sp[i].push(Sh.p.x * (1 + so), Sh.p.y * (1 + so), Sh.p.z + so * 0.4);
+                ssc[i].push(Sh.s * sg, Sh.s * sg, Sh.s * sg);
+            }
+        }
+        var V = THREE.VectorKeyframeTrack, Q = THREE.QuaternionKeyframeTrack, out = [
+            new V('ewHlBody.position', tt, T.bp), new Q('ewHlBody.quaternion', tt, T.bq), new V('ewHlBody.scale', tt, T.bs),
+            new Q('ewHlMaw.quaternion', tt, T.mq), new V('ewHlMaw.scale', tt, T.ms),
+            new V('ewHlFingers.position', tt, T.fp), new V('ewHlFingers.scale', tt, T.fs)
+        ];
+        R.masks.forEach(function (M, j) { out.push(new V(M.n + '.position', tt, mp[j]), new Q(M.n + '.quaternion', tt, mq[j]), new V(M.n + '.scale', tt, msc[j])); });
+        R.limbs.forEach(function (L, j) { out.push(new Q(L.n + '.quaternion', tt, la[j]), new Q(L.n + 'b.quaternion', tt, lb[j]), new Q(L.n + 'c.quaternion', tt, lc[j])); });
+        R.fings.forEach(function (Fb, j) { out.push(new Q(Fb.n + '.quaternion', tt, fq[j]), new V(Fb.n + '.scale', tt, fsc[j])); });
+        R.shards.forEach(function (Sh, j) { out.push(new V(Sh.n + '.position', tt, sp[j]), new V(Sh.n + '.scale', tt, ssc[j])); });
+        return new THREE.AnimationClip(name, dur, out);
+    }
+    var _HL_POSES = {
+        /* idle (5 s): it hovers and bobs, the ring turns so the teeth spiral, the masks orbit, the limbs coil, the fingers sway */
+        idle: [5.0, function (u) {
+            return { y: 0.06 * Math.sin(u * Math.PI * 4), rz: 0.03 * Math.sin(u * Math.PI * 2), rx: 0.02 * Math.sin(u * Math.PI * 2 + 1),
+                spin: -u * Math.PI * 2, orbit: u * Math.PI / 2, mhz: 2, coil: 0.22, hz: 1, fSway: 0.08, fhz: 2, shard: 0.04 };
+        }],
+        /* the drift (1.2 s): tilted forward, the limbs trailing back, the fingers streaming */
+        walk: [1.2, function (u) {
+            return { rx: 0.22, y: 0.03 * Math.sin(u * Math.PI * 4), spin: -u * Math.PI, orbit: u * Math.PI / 6, coil: 0.14, hz: 2, reach: -0.5,
+                fSway: 0.05, spread: -0.12, fhz: 2, mz: -0.15 };
+        }],
+        /* Lull (1.5 s): the masks turn to the front, mask 0 leaves the orbit, floats out in front and fades away (the VFX flies it on) */
+        cast: [1.5, function (u) {
+            var go = _vrS(u, 0.25, 0.6), back = _vrS(u, 0.85, 1);
+            return { y: 0.04 * Math.sin(u * Math.PI * 2), spin: -u * Math.PI * 1.5, mFace: _vrS(u, 0, 0.2) - back, coil: 0.25, hz: 1.5, shard: 0.05, fSway: 0.08,
+                orbit: u * Math.PI / 3, rx: -0.08 * _vrBump(u, 0.15, 0.4, 0.8),
+                mask: function (i) { return i === 0 ? { r: -0.7 * go, z: 1.3 * go, y: 0.25 * go, s: -go + back, ry: 0 } : null; } };
+        }],
+        /* Puppet Strings (1.8 s): the chandelier drops, the fingers stretch long and fan out, the limbs lift */
+        castSupport: [1.8, function (u) {
+            var d = _vrBump(u, 0.1, 0.35, 0.9), pull = _vrBump(u, 0.45, 0.6, 0.95);
+            return { y: 0.15 * d, fDrop: 0.6 * d, fStretch: 0.9 * d, spread: 0.45 * d - 0.3 * pull, fSway: 0.2 * d, fhz: 3, spin: -u * Math.PI,
+                coil: 0.3, hz: 2, reach: 0.4 * pull, z: -0.15 * pull, rx: -0.12 * pull, orbit: u * Math.PI / 4 };
+        }],
+        /* Shard Bloom (1.7 s): the crystals swell and glow, the ring pulses, it drops low and pushes the crystals out */
+        castAOE: [1.7, function (u) {
+            var g = _vrBump(u, 0.05, 0.45, 0.9), pulse = Math.max(0, Math.sin(u * Math.PI * 6)) * g;
+            return { shard: 0.9 * g, shardOut: 0.35 * g, maw: 0.08 * pulse, y: -0.2 * _vrBump(u, 0.3, 0.55, 0.95), spin: -u * Math.PI * 3,
+                coil: 0.4 * g + 0.15, hz: 3, limp: 0, mR: 0.12 * g, fSway: 0.12, fhz: 3, orbit: u * Math.PI / 2 };
+        }],
+        /* Wake (2.2 s): it turns the ring to the enemies and spins it fast, the masks rush out wide then fly home, the limbs reach */
+        castUltimate: [2.2, function (u) {
+            var on = _vrS(u, 0.05, 0.3) - _vrS(u, 0.8, 1), home = _vrBump(u, 0.55, 0.75, 1);
+            return { y: 0.25 * on, rx: -0.15 * on, spin: -_vrS(u, 0, 1) * Math.PI * 8, maw: 0.15 * on, mawZ: 0.3 * on, mR: 0.6 * on - 0.35 * home, mFace: on,
+                mS: 0.25 * on, orbit: _vrS(u, 0, 1) * Math.PI * 2, mhz: 4, reach: 0.7 * on, coil: 0.35, hz: 3, spread: 0.3 * on, fStretch: 0.4 * on, fSway: 0.15, fhz: 4 };
+        }],
+        /* the basic attack (1.1 s): a limb whips forward and a finger flicks a sliver */
+        castMelee: [1.1, function (u) {
+            var j = _vrS(u, 0.15, 0.35) - _vrS(u, 0.55, 0.95);
+            return { z: 0.12 * j, rx: 0.1 * j, spin: -u * Math.PI, coil: 0.2, hz: 1, orbit: u * Math.PI / 8,
+                limb: function (i) { return i === 0 || i === 3 ? { rx: -1.1 * j, cz: -0.6 * j } : null; }, fSway: 0.1, spread: 0.2 * j };
+        }],
+        /* hit (0.8 s): the masks scatter and drift back, the ring jerks, the limbs flinch in */
+        hit: [0.8, function (u) {
+            var k = _vrBump(u, 0, 0.1, 0.75), jit = Math.sin(u * Math.PI * 28) * k;
+            return { x: 0.05 * jit, z: -0.12 * k, rx: -0.18 * k, rz: 0.06 * jit, spin: 0.3 * k, mR: 0.45 * k, coil: 0.4 * k + 0.1, hz: 3, limp: -0.3 * k,
+                mask: function (i) { return { a: 0.5 * k * (i % 2 ? 1 : -1), z: 0.3 * k * (i % 2 ? -1 : 1) }; }, fSway: 0.25 * k, fhz: 3 };
+        }],
+        /* death (2.6 s): the masks fall one by one and crack apart, the ring stops and sags, the limbs go limp, the chandelier drops */
+        death: [2.6, function (u) {
+            var sag = _vrS(u, 0.35, 0.95);
+            return { y: -1.45 * sag, rz: 0.35 * sag, rx: 0.25 * sag, spin: -0.4 * _vrS(u, 0, 0.3), sy: -0.12 * sag, limp: _vrS(u, 0.1, 0.6), coil: 0.05,
+                fDrop: 0.45 * _vrS(u, 0.2, 0.5), spread: 0.5 * _vrS(u, 0.2, 0.6), shard: -0.3 * sag,
+                mask: function (i) { var t = 0.05 + i * 0.09, d = _vrS(u, t, t + 0.25); return { y: -2.1 * d * d, rz: 1.2 * d * (i % 2 ? 1 : -1), rx: 0.8 * d, s: -0.999 * _vrS(u, t + 0.3, t + 0.4) }; } };
+        }]
+    };
+    function _hlBuild(root) {
+        var body = root.getObjectByName('ewHlBody');
+        if (!body || !root.getObjectByName('ewHlMaw')) return null;
+        var R = { body0: body.position.clone(), maw0: root.getObjectByName('ewHlMaw').scale.x, masks: [], limbs: [], fings: [], shards: [] }, i, n;
+        for (i = 0; (n = root.getObjectByName('ewHlMask' + i)); i++) R.masks.push({ n: n.name, a: _HL_ORBIT[i % 4], z: n.position.z, s: n.scale.x });
+        for (i = 0; (n = root.getObjectByName('ewHlLimb' + i)); i++) R.limbs.push({ n: n.name, q0: n.quaternion.clone(), ph: (i * 0.29) % 1, side: n.position.x >= 0 ? -1 : 1 });
+        for (i = 0; (n = root.getObjectByName('ewHlFing' + i)); i++) R.fings.push({ n: n.name, d: new THREE.Vector3(n.position.x, 0, n.position.z).normalize() });
+        for (i = 0; (n = root.getObjectByName('ewHlShard' + i)); i++) R.shards.push({ n: n.name, p: n.position.clone(), s: n.scale.x });
+        var F = root.getObjectByName('ewHlFingers'); R.fing0 = F.position.clone(); R.fingS = F.scale.x;
+        /* the mask a victim wears (_hlUnitTick): the same geometry + porcelain, made once */
+        var m0 = root.getObjectByName('ewHlMask0'), mm = null;
+        if (m0) m0.traverse(function (o) { if (!mm && o.isMesh) mm = o; });
+        if (mm && !_hlMaskProto) {
+            var g = mm.geometry; if (!g.boundingBox) g.computeBoundingBox();
+            _hlMaskProto = { geometry: g, material: mm.material, w: (g.boundingBox.max.x - g.boundingBox.min.x) || 0.74 };
+        }
+        var clips = {};
+        Object.keys(_HL_POSES).forEach(function (slot) { var p = _HL_POSES[slot]; clips[slot] = _hlClip(slot, p[0], p[1], R); });
+        clips.run = clips.walk;
+        clips.castMagic = clips.cast; clips.castRanged = clips.cast; clips.castHeal = clips.castSupport;
+        clips.hlLull = clips.cast; clips.hlStrings = clips.castSupport; clips.hlBloom = clips.castAOE; clips.hlWake = clips.castUltimate;
+        return clips;
+    }
+    /* per frame, per unit entry (the unit loop): the Hollow's masks at home, and the mask a Masked unit wears */
+    var _hlOn = false, _hlV = new THREE.Vector3();
+    function _hlUnitTick(entry, uid, now) {
+        var u = _findUnit(uid); if (!u || !entry.model) return;
+        /* the Hollow itself: one mask missing from the orbit for each one out on an enemy */
+        if (entry.modelDef && entry.modelDef.procRig === 'hollowBody') {
+            var out = 0, us = state.units || [];
+            for (var i = 0; i < us.length; i++) { var v = us[i]; if (v && !v.dead && v._maskSrcId === uid && v.status && v.status.masked > 0) out++; }
+            if (entry._ew_hlOut !== out) {
+                entry._ew_hlOut = out;
+                for (var k = 0; k < 4; k++) { var mn = entry.model.getObjectByName('ewHlMask' + k); if (mn) mn.visible = k >= out || !!u.dead; }
+            }
+        }
+        /* a Masked unit: the porcelain face over its own (a 3D unit only) */
+        var want = !u.dead && u.status && u.status.masked > 0 && _hlMaskProto && !(entry.modelDef && entry.modelDef.procRig === 'hollowBody');
+        if (want && !entry._ew_hlMask) {
+            var ts = CONFIG.tileSize || BASE_TILE, H = ts * UNIT_SPRITE_SIZE_RATIO * ((entry.modelDef && entry.modelDef.heightRatio) || 1);
+            var mk = new THREE.Mesh(_hlMaskProto.geometry, _hlMaskProto.material);
+            mk.name = 'ewHlWornMask'; mk.userData.ewGear = true;
+            mk.scale.setScalar(H * 0.17 / _hlMaskProto.w);
+            mk.userData.h = H;
+            /* in the body's own frame (the inner group: its yawOffset turns the face to +Z), on the head bone when it has one */
+            var inn = null, ch = entry.model.children;
+            for (var ci = 0; ci < ch.length; ci++) if (ch[ci]._ew_fitHalf) { inn = ch[ci]; break; }
+            var hb = null;
+            (inn || entry.model).traverse(function (o) { if (!hb && o.isBone && o.name === 'Head') hb = o; });
+            if (!hb) (inn || entry.model).traverse(function (o) { if (!hb && o.isBone && /head/i.test(o.name) && !/end|top/i.test(o.name)) hb = o; });
+            mk.userData.bone = hb;
+            (inn || entry.model).add(mk); entry._ew_hlMask = mk;
+        } else if (!want && entry._ew_hlMask) {
+            if (entry._ew_hlMask.parent) entry._ew_hlMask.parent.remove(entry._ew_hlMask);
+            entry._ew_hlMask = null;
+        }
+        if (entry._ew_hlMask) {
+            var wm = entry._ew_hlMask, h = wm.userData.h, bob = h * 0.012 * Math.sin(now / 520);
+            if (wm.userData.bone && wm.parent) {
+                wm.userData.bone.getWorldPosition(_hlV);
+                wm.parent.worldToLocal(_hlV);
+                wm.position.set(_hlV.x, _hlV.y + h * 0.05 + bob, _hlV.z + h * 0.09);
+            } else wm.position.set(0, h * 0.86 + bob, h * 0.11);
+        }
+    }
+    /* 🫀 THE ABOMINATION (2026-11-23, mondo OK'd the kit and named it; "the old parts are good, just connect them"). ONE file
+       (Assets/characters/races/abomination/male/abomination.glb, made by project files horror-plan-20261123/asm.js; models-assets.md
+       "THE ABOMINATION"): the Meshy core (ewAbCore), the head on the neck (ewAbNeck), the two arms (ewAbLimb0 > ewAbArmR, ewAbLimb1 >
+       ewAbArmL; local -Y runs down the arm), the two extra hands at the right wrist (ewAbHandX0/1, Grasp at 5+ limbs), the four back
+       tentacles (ewAbLimb2..5 > ewAbTen2..5; local +Y runs out along it), the two leg tentacles (ewAbHipR/L) and the bone cage
+       orbiting by the shoulder (ewAbCageOrbit > ewAbCage). Metres, front +Z, floor y 0, ewAbBody (the chest) 1.5 m up.
+       A clip is keyframes on those pivots. THE LIMBS (battle.js, `unit.limbs`, a plain number the guest has from the sync) are
+       shown by _abLimbTick after the mixer: ewAbLimb<i> grows / shrinks into its socket (the arms are limbs 0 and 1, so the back
+       tentacles go first), the extra hands only show in Grasp at 5+, and while a Bone Cage holds a victim (its `caged` status,
+       _cageSrcId = this unit) the cage leaves the shoulder and stands over the victim. */
+    function _abClip(name, dur, pose, R) {
+        var N = Math.max(8, Math.round(dur * 30)), tt = [], k, key;
+        var e = new THREE.Euler(0, 0, 0, 'XYZ'), dq = new THREE.Quaternion(), q = new THREE.Quaternion(), v = new THREE.Vector3();
+        var acc = {};
+        Object.keys(R.n).forEach(function (n) { acc[n] = { p: [], q: [], s: [] }; });
+        for (k = 0; k <= N; k++) {
+            var u = k / N, P = pose(u, R) || {};
+            tt.push(u * dur);
+            for (key in R.n) {
+                var B = R.n[key], d = P[key] || {}, A = acc[key];
+                v.copy(B.p); if (d.p) v.set(B.p.x + (d.p[0] || 0), B.p.y + (d.p[1] || 0), B.p.z + (d.p[2] || 0));
+                A.p.push(v.x, v.y, v.z);
+                q.copy(B.q);
+                if (d.rw) { e.set(d.rw[0] || 0, d.rw[1] || 0, d.rw[2] || 0); dq.setFromEuler(e); q.premultiply(dq); }   // in the parent's frame
+                if (d.r) { e.set(d.r[0] || 0, d.r[1] || 0, d.r[2] || 0); dq.setFromEuler(e); q.multiply(dq); }           // in its own frame
+                A.q.push(q.x, q.y, q.z, q.w);
+                var s = d.s == null ? [1, 1, 1] : (typeof d.s === 'number' ? [d.s, d.s, d.s] : d.s);
+                A.s.push(Math.max(0.0001, B.s.x * s[0]), Math.max(0.0001, B.s.y * s[1]), Math.max(0.0001, B.s.z * s[2]));
+            }
+        }
+        var V = THREE.VectorKeyframeTrack, Q = THREE.QuaternionKeyframeTrack, out = [];
+        for (key in acc) out.push(new V(key + '.position', tt, acc[key].p), new Q(key + '.quaternion', tt, acc[key].q), new V(key + '.scale', tt, acc[key].s));
+        return new THREE.AnimationClip(name, dur, out);
+    }
+    var _abS = _vrS, _abBump = _vrBump;
+    function _abSin(u, hz, ph) { return Math.sin((u * hz + (ph || 0)) * Math.PI * 2); }
+    /* the back tentacles' sway, each on its own phase (j 0..3 = ewAbTen2..5) */
+    function _abTens(P, u, amp, hz, extra) {
+        for (var j = 0; j < 4; j++) {
+            var sd = j % 2 ? -1 : 1, x = extra ? extra(j, sd) : null;
+            P['ewAbTen' + (j + 2)] = { rw: [amp * _abSin(u, hz, j * 0.27) + (x ? x[0] : 0), 0, sd * amp * 0.7 * _abSin(u, hz, j * 0.27 + 0.25) + (x ? x[1] : 0)], s: x && x[2] != null ? x[2] : 1, p: x && x[3] };
+        }
+        return P;
+    }
+    var _AB_POSES = {
+        /* idle (4 s): the chest heaves, the head twitches, the back tentacles sway, the arms hang and drift, the cage orbits */
+        idle: [4.0, function (u) {
+            var br = _abSin(u, 2), tw = _abBump(u, 0.42, 0.45, 0.5) - _abBump(u, 0.78, 0.8, 0.84);
+            var P = { ewAbBody: { p: [0, 0.03 * br, 0], rw: [0.02 * br, 0, 0.015 * _abSin(u, 1)] }, ewAbCore: { s: [1 + 0.025 * br, 1 + 0.02 * br, 1 + 0.035 * br] },
+                ewAbNeck: { rw: [0.05 * _abSin(u, 1, 0.3), 0.35 * tw, 0.12 * tw] },
+                ewAbArmR: { rw: [0.06 * _abSin(u, 1, 0.1), 0, 0.04 * _abSin(u, 2)] }, ewAbArmL: { rw: [0.06 * _abSin(u, 1, 0.6), 0, -0.04 * _abSin(u, 2, 0.4)] },
+                ewAbHipR: { rw: [0, 0.04 * _abSin(u, 1), 0] }, ewAbHipL: { rw: [0, -0.04 * _abSin(u, 1, 0.3), 0] },
+                ewAbCageOrbit: { rw: [0, u * Math.PI * 2, 0] }, ewAbCage: { r: [u * Math.PI * 2, u * Math.PI * 4, 0], p: [0, 0.08 * _abSin(u, 2), 0] } };
+            return _abTens(P, u, 0.12, 2);
+        }],
+        /* the slither (1.2 s): the leg tentacles sweep in turn, the body rolls and bobs, the arms drag back, the tentacles stream */
+        walk: [1.2, function (u) {
+            var w = _abSin(u, 1), b = Math.abs(_abSin(u, 1));
+            var P = { ewAbBody: { p: [0.04 * w, 0.06 * b - 0.03, 0], rw: [0.12, 0, 0.07 * w] }, ewAbCore: { s: [1, 1 + 0.03 * b, 1] },
+                ewAbNeck: { rw: [-0.08, 0.06 * w, 0] },
+                ewAbArmR: { rw: [0.35 + 0.15 * w, 0, 0.05] }, ewAbArmL: { rw: [0.35 - 0.15 * w, 0, -0.05] },
+                ewAbHipR: { rw: [0.12 * w, 0.3 * w, 0] }, ewAbHipL: { rw: [-0.12 * w, 0.3 * w, 0] },
+                ewAbCageOrbit: { rw: [0, u * Math.PI, 0] }, ewAbCage: { r: [u * Math.PI, u * Math.PI * 2, 0] } };
+            return _abTens(P, u, 0.18, 2, function (j, sd) { return [0.35, 0]; });
+        }],
+        /* the lash (1.1 s, the basic attack + any plain cast): the right arm whips out at the front and back */
+        cast: [1.1, function (u) {
+            var out = _abS(u, 0.15, 0.38) - _abS(u, 0.6, 1), wind = _abBump(u, 0, 0.14, 0.3);
+            var P = { ewAbBody: { p: [0, 0, 0.12 * out], rw: [0.15 * out - 0.06 * wind, -0.2 * out, 0] },
+                ewAbArmR: { rw: [-1.45 * out + 0.4 * wind, 0, -0.2 * out], s: [1, 1 + 0.45 * out, 1] }, ewAbArmL: { rw: [0.2 * out, 0, 0] },
+                ewAbNeck: { rw: [0.15 * out, 0.15 * out, 0] }, ewAbCageOrbit: { rw: [0, u * Math.PI, 0] } };
+            return _abTens(P, u, 0.2, 2);
+        }],
+        /* Grasp (1.3 s): the right arm stretches out to the target; at 5+ limbs the two extra hands burst out of the wrist and fan */
+        abGrasp: [1.3, function (u) {
+            var out = _abS(u, 0.12, 0.35) - _abS(u, 0.7, 1), fan = _abS(u, 0.3, 0.42) - _abS(u, 0.68, 0.8), cl = _abBump(u, 0.45, 0.5, 0.65);
+            var P = { ewAbBody: { p: [0, 0, 0.15 * out], rw: [0.2 * out, -0.25 * out, 0] },
+                ewAbArmR: { rw: [-1.5 * out, 0, -0.25 * out], s: [1 + 0.1 * cl, 1 + 0.9 * out, 1 + 0.1 * cl] }, ewAbArmL: { rw: [0.3 * out, 0, 0.1 * out] },
+                ewAbHandX0: { s: Math.max(0.0001, fan), r: [0, 0, 0.6 * fan - 0.4 * cl] }, ewAbHandX1: { s: Math.max(0.0001, fan), r: [0, 0, -0.6 * fan + 0.4 * cl] },
+                ewAbNeck: { rw: [0.2 * out, 0.2 * out, 0] } };
+            return _abTens(P, u, 0.2, 2);
+        }],
+        /* Many Mouths (1.4 s): the chest lurches forward, the head throws back, the back tentacles whip down in a ring */
+        abMouths: [1.4, function (u) {
+            var go = _abS(u, 0.1, 0.32) - _abS(u, 0.72, 1), ch = Math.max(0, Math.sin(u * Math.PI * 10)) * _abBump(u, 0.3, 0.4, 0.75);
+            var P = { ewAbBody: { p: [0, -0.1 * go, 0.2 * go], rw: [0.35 * go, 0, 0.04 * ch] }, ewAbCore: { s: [1 + 0.12 * go + 0.05 * ch, 1 - 0.04 * go, 1 + 0.2 * go + 0.06 * ch] },
+                ewAbNeck: { rw: [-0.75 * go, 0, 0] },
+                ewAbArmR: { rw: [-0.3 * go, 0, 0.5 * go] }, ewAbArmL: { rw: [-0.3 * go, 0, -0.5 * go] } };
+            return _abTens(P, u, 0.15, 3, function (j, sd) { return [1.2 * go, -sd * 0.6 * go]; });
+        }],
+        /* Bone Cage (1.4 s): the cage spins fast, flies out to the front, grows three times and drops out of sight */
+        abCage: [1.4, function (u) {
+            var spin = _abS(u, 0, 0.35), fly = _abS(u, 0.3, 0.7), gone = _abS(u, 0.82, 0.9), pt = _abBump(u, 0.15, 0.3, 0.6);
+            var P = { ewAbBody: { rw: [0.1 * pt, 0, 0] }, ewAbArmR: { rw: [-0.9 * pt, 0, -0.3 * pt] }, ewAbArmL: { rw: [-0.9 * pt, 0, 0.3 * pt] },
+                ewAbNeck: { rw: [-0.2 * pt, 0, 0] },
+                ewAbCageOrbit: { rw: [0, spin * Math.PI * 6 * (1 - fly), 0] },
+                ewAbCage: { p: [-0.95 * fly, 1.2 * fly - 2.2 * gone, 3.2 * fly], r: [u * Math.PI * 8, u * Math.PI * 6, 0], s: (1 + 2 * fly) * (1 - 0.9999 * gone) } };
+            return _abTens(P, u, 0.15, 2);
+        }],
+        /* Unfold (1.4 s): it rears, every limb tears off and dives into the floor (the bursts under the enemies are the VFX) */
+        abUnfold: [1.4, function (u) {
+            var rear = _abS(u, 0, 0.25) - _abS(u, 0.8, 1), dive = _abS(u, 0.3, 0.62), gone = _abS(u, 0.6, 0.66);
+            var P = { ewAbBody: { p: [0, 0.15 * rear - 0.1 * dive, 0], rw: [-0.25 * rear + 0.3 * dive * (1 - _abS(u, 0.8, 1)), 0, 0] },
+                ewAbCore: { s: [1 + 0.1 * rear, 1, 1 + 0.1 * rear] }, ewAbNeck: { rw: [-0.5 * rear, 0, 0] },
+                ewAbArmR: { p: [0.3 * dive, -1.8 * dive, 0.4 * dive], rw: [-0.6 * rear + 1.2 * dive, 0, -0.8 * rear], s: 1 - 0.9999 * gone },
+                ewAbArmL: { p: [-0.3 * dive, -1.8 * dive, 0.4 * dive], rw: [-0.6 * rear + 1.2 * dive, 0, 0.8 * rear], s: 1 - 0.9999 * gone } };
+            return _abTens(P, u, 0.1, 3, function (j, sd) { return [-0.8 * rear + 2.2 * dive, sd * 0.4 * rear, 1 - 0.9999 * gone, [0.25 * sd * dive, -1.9 * dive, 0.3 * dive]]; });
+        }],
+        /* hit (0.7 s): the head snaps back, the body rocks back, the tentacles flinch */
+        hit: [0.7, function (u) {
+            var k = _abBump(u, 0, 0.1, 0.7);
+            var P = { ewAbBody: { p: [0, 0, -0.12 * k], rw: [-0.2 * k, 0, 0.06 * k] }, ewAbNeck: { rw: [-0.7 * k, 0.2 * k, 0] },
+                ewAbArmR: { rw: [0.4 * k, 0, 0.3 * k] }, ewAbArmL: { rw: [0.4 * k, 0, -0.3 * k] } };
+            return _abTens(P, u, 0.1, 2, function () { return [-0.5 * k, 0]; });
+        }],
+        /* death (2.6 s): it falls apart: the arms and back tentacles drop off one by one, the cage collapses to the floor, the
+           head lolls and the body sinks forward between its splayed legs */
+        death: [2.6, function (u) {
+            var sink = _abS(u, 0.45, 0.95), drop = function (t) { return _abS(u, t, t + 0.2); };
+            var P = { ewAbBody: { p: [0, -0.85 * sink, 0.25 * sink], rw: [0.7 * sink, 0, 0.15 * sink] }, ewAbCore: { s: [1 + 0.05 * sink, 1 - 0.1 * sink, 1] },
+                ewAbNeck: { rw: [0.6 * _abS(u, 0.3, 0.6), 0.4 * _abS(u, 0.3, 0.6), 0.3 * _abS(u, 0.5, 0.8)] },
+                ewAbArmR: { p: [0.15 * drop(0.05), -1.1 * drop(0.05), 0], rw: [0.4 * drop(0.05), 0, 0.9 * drop(0.05)] },
+                ewAbArmL: { p: [-0.15 * drop(0.15), -1.1 * drop(0.15), 0], rw: [0.4 * drop(0.15), 0, -0.9 * drop(0.15)] },
+                ewAbHipR: { rw: [0, 0, -0.35 * sink] }, ewAbHipL: { rw: [0, 0, 0.35 * sink] },
+                ewAbCage: { p: [0, -2.4 * _abS(u, 0.1, 0.4), 0], r: [1.2 * _abS(u, 0.1, 0.4), 0, 0.8 * _abS(u, 0.1, 0.4)], s: [1, 1 - 0.6 * _abS(u, 0.38, 0.45), 1] } };
+            return _abTens(P, u, 0.04, 1, function (j, sd) { var t = 0.1 + j * 0.08, d = drop(t); return [1.4 * d, -sd * 0.5 * d, 1, [0.1 * sd * d, -1.4 * d, -0.2 * d]]; });
+        }]
+    };
+    function _abBuild(root) {
+        if (!root.getObjectByName('ewAbBody') || !root.getObjectByName('ewAbLimb0')) return null;
+        var R = { n: {} };
+        ['ewAbBody', 'ewAbCore', 'ewAbNeck', 'ewAbArmR', 'ewAbArmL', 'ewAbHandX0', 'ewAbHandX1', 'ewAbTen2', 'ewAbTen3', 'ewAbTen4', 'ewAbTen5',
+            'ewAbHipR', 'ewAbHipL', 'ewAbCageOrbit', 'ewAbCage'].forEach(function (n) {
+            var o = root.getObjectByName(n);
+            if (o) R.n[n] = { p: o.position.clone(), q: o.quaternion.clone(), s: o.scale.clone() };
+        });
+        var clips = {};
+        Object.keys(_AB_POSES).forEach(function (slot) { var p = _AB_POSES[slot]; clips[slot] = _abClip(slot, p[0], p[1], R); });
+        clips.run = clips.walk;
+        clips.castMelee = clips.cast; clips.castMagic = clips.cast; clips.castRanged = clips.cast;
+        clips.castAOE = clips.abMouths; clips.castSupport = clips.abMouths; clips.castHeal = clips.abMouths; clips.castUltimate = clips.abUnfold;
+        return clips;
+    }
+    /* after the mixer, every frame: the limbs it has, the extra hands, the cage away on a victim. A few lookups on the units
+       list (a board holds tens, never the room: RULE #1e). */
+    function _abLimbTick(entry, uid, dt) {
+        var m = entry.model; if (!m) return;
+        var R = entry._ew_ab;
+        if (!R) {
+            R = entry._ew_ab = { L: [], vis: [], hx: [m.getObjectByName('ewAbHandX0'), m.getObjectByName('ewAbHandX1')], cage: m.getObjectByName('ewAbCage'), cageMesh: m.getObjectByName('ewAbCageMesh'), away: null };
+            for (var i = 0; i < 6; i++) { R.L.push(m.getObjectByName('ewAbLimb' + i)); R.vis.push(1); }
+        }
+        var u = _findUnit(uid), n = (u && u.race === 'abomination') ? (u.limbs == null ? 4 : Math.max(0, Math.min(6, u.limbs | 0))) : 4;
+        var anim = entry._ew_curAnim, unfold = anim === 'abUnfold' || anim === 'castUltimate', dying = _deathTweens.has(uid);
+        var k = Math.min(1, (dt || 0.016) * 5);
+        for (var j = 0; j < 6; j++) {
+            var L = R.L[j]; if (!L) continue;
+            if (unfold || dying) { L.scale.setScalar(R.vis[j] > 0.5 ? 1 : 0.0001); continue; }   // the clip carries the parts it tears off
+            if (R.wasUnfold) R.vis[j] = j < n ? R.vis[j] : 0;   // the torn-off ones stay gone after the clip
+            R.vis[j] += ((j < n ? 1 : 0) - R.vis[j]) * k;
+            L.scale.setScalar(Math.max(0.0001, R.vis[j]));
+        }
+        R.wasUnfold = unfold;
+        if (!(anim === 'abGrasp' && n >= 5)) for (var h = 0; h < 2; h++) if (R.hx[h]) R.hx[h].scale.setScalar(0.0001);
+        /* THE CAGE AWAY: the victim's `caged` names this unit — the shoulder's cage is hidden and a copy stands over the victim */
+        var vic = null;
+        if (state.units && !dying) for (var w = 0; w < state.units.length; w++) {
+            var c = state.units[w];
+            if (c && !c.dead && c._cageSrcId === uid && c.status && c.status.caged > 0) { vic = c; break; }
+        }
+        if (vic && R.cage && R.cageMesh && anim !== 'abCage') {
+            R.cage.scale.setScalar(0.0001);
+            var ve = unitEntries.get(vic.id);
+            if (!R.away && ve && ve.group) {
+                var cm = R.cageMesh.clone(), bb = new THREE.Box3().setFromObject(R.cageMesh), sz = new THREE.Vector3(); bb.getSize(sz);
+                var ts = CONFIG.tileSize || BASE_TILE, g = new THREE.Group(); cm.position.set(0, 0, 0); cm.rotation.set(0, 0, 0); cm.scale.set(1, 1, 1);
+                var bb2 = new THREE.Box3().setFromObject(cm), c2 = new THREE.Vector3(); bb2.getCenter(c2); cm.position.sub(c2);
+                var big = Math.max(0.01, Math.max(bb2.max.x - bb2.min.x, bb2.max.y - bb2.min.y, bb2.max.z - bb2.min.z));
+                g.add(cm); g.scale.setScalar(ts * 0.75 / big); g.name = 'ewAbCageAway';
+                R.away = { g: g, id: vic.id, t0: performance.now() };
+            }
+            if (R.away && ve && ve.group) {
+                if (R.away.g.parent !== ve.group) { if (R.away.g.parent) R.away.g.parent.remove(R.away.g); ve.group.add(R.away.g); }
+                var ts2 = CONFIG.tileSize || BASE_TILE, el = (performance.now() - R.away.t0) / 1000;
+                R.away.g.position.set(0, ts2 * (0.4 + 0.6 * Math.max(0, 1 - el / 0.35)), 0);   // it drops onto the victim
+                R.away.g.rotation.y = el * 0.4;
+            }
+        } else {
+            if (R.away) { if (R.away.g.parent) R.away.g.parent.remove(R.away.g); R.away = null; }
+            if (R.cage && R.cage.scale.x < 0.001 && anim !== 'abCage') R.cage.scale.setScalar(1);
+        }
+    }
     var _PROC_RIGS = {
         seraphRings: function (root) {
             var src = null;
@@ -19285,7 +19676,11 @@ const ThreeRenderer = (function () {
         /* 📺 THE CURSED TV (above, _tvBuild): the cart's casters, the wheels, the ears, the remote, THE CHANNELS */
         cursedTv: function (root) { return _tvBuild(root); },
         /* 🦠 THE VIRUS (above, _vrBuild): the spikes, the eye ring, the code tendrils */
-        virusBody: function (root) { return _vrBuild(root); }
+        virusBody: function (root) { return _vrBuild(root); },
+        /* 🎭 THE HOLLOW (above, _hlBuild): the maw ring, the masks, the limbs, the finger chandelier, the crystals */
+        hollowBody: function (root) { _hlOn = true; return _hlBuild(root); },
+        /* 🫀 THE ABOMINATION (above, _abBuild): the arms, the back tentacles, the leg tentacles, the head, the cage */
+        abomination: function (root) { return _abBuild(root); }
     };
     _PROC_RIGS.unicornWings.deps = [UNI_WING_URL, UNI_HORN_URL];
     /* ♟ THE CHESS PIECE: one hinge, the same moves, for each of the six looks (sprites.js CHESS_PIECE_3D) */
@@ -21840,6 +22235,8 @@ const ThreeRenderer = (function () {
             if (entry._ew_procEye) _procRigEyeTrack(entry._ew_procEye);
             if (_tvStatic) _tvStaticTick();   // 📺 THE CURSED TV: the shared snow moves (throttled, once a frame whoever asks)
             if (_vrCodeTex) _vrCodeTick();   // 🦠 THE VIRUS: the code runs down the tendrils
+            if (_hlOn) _hlUnitTick(entry, uid, now);   // 🎭 THE HOLLOW: the masks at home, the mask a Masked unit wears
+            if (entry.modelDef && entry.modelDef.procRig === 'abomination') _abLimbTick(entry, uid, dt);   // 🫀 THE ABOMINATION: the limbs it has, the cage away
             if (entry.appearanceRig) { entry.model.updateMatrixWorld(true); entry.appearanceRig.tick(); }   // rev 9: the skirt against the legs
             var _hsR = _unitModelRigs.get(uid); if (_hsR && _hsR.hairSweep) _hsR.hairSweep();   // THE HAIR EVERYWHERE: the late hair
             if (entry._ew_sway) _swayTick(entry._ew_sway, dt, entry.modelDef && entry.modelDef.sway);   // THE SWAY: the cape swings after the clip
@@ -51228,6 +51625,21 @@ const ThreeRenderer = (function () {
        of a group keeps each direct child's own value hash; a child whose values changed 3 times within 20 s is drawn outside the
        recording from then on (`_ew_bunOut`, as a mover is). Only once the room is ready (a room still landing moves everything). */
     var _hqBatchHoldN = 0;   // THE HELD PIECES ONCE: bumped each time THE STATIC BATCH takes or hands back a piece
+    /* a changer's name: the placed prop's key / model (or its own name), and what on its materials differs from the plain look
+       (a glow, a see-through fade, a sign's canvas, a video) */
+    function _ewBunChgName(c) {
+        var nm = c.name || '', src = '', tags = {}, nM = 0;
+        try { if (_hq && _hq.props) for (var pi = 0; pi < _hq.props.length; pi++) { var pr = _hq.props[pi]; if (pr && pr.grp === c) { src = String((pr.row && (pr.row.model || pr.row.kind || pr.row.k || pr.row.id)) || pr.key || ''); break; } } } catch (e) {}
+        c.traverse(function (o) {
+            if (!nm && o.name) nm = o.name;
+            if (!o.isMesh && !o.isSprite) return; nM++;
+            var ms = Array.isArray(o.material) ? o.material : [o.material];
+            for (var i = 0; i < ms.length; i++) { var m = ms[i]; if (!m) continue;
+                if (m.map && m.map.isCanvasTexture) tags.canvas = 1; if (m.map && m.map.isVideoTexture) tags.video = 1;
+                if (m.transparent) tags.fade = 1; if (m.emissive && (m.emissive.r + m.emissive.g + m.emissive.b) > 0) tags.glow = 1; if (m._ewNode) tags['node ' + m._ewNode.k] = 1; if (o.isSprite) tags.sprite = 1; }
+        });
+        return (src || nm || c.type).slice(0, 36) + ' (' + nM + ' meshes' + (Object.keys(tags).length ? ', ' + Object.keys(tags).join(' + ') : '') + ')';
+    }
     /* a top piece's counts, for "what moved in it": hidden / held by the merge / out pieces, meshes, and the sums of the geometry
        ids, material ids, copy counts, layers and shadow flags its drawn meshes carry */
     function _ewBunTxSig(c) {
@@ -51305,7 +51717,12 @@ const ThreeRenderer = (function () {
         /* the pieces that keep changing go out (a row of lamp glows on one flickering material is many at once); a quarter of the
            group or more at once is the whole room changing (the hour): left to the group's own demotion */
         if (cand) {
-            if (cand.length <= Math.max(16, Math.min(400, ch.length >> 2))) for (var k = 0; k < cand.length; k++) { cand[k]._ew_bunOut = true; cand[k]._ew_bunOutV = true; _ewBun.outV = (_ewBun.outV | 0) + 1; }
+            if (cand.length <= Math.max(16, Math.min(400, ch.length >> 2))) for (var k = 0; k < cand.length; k++) {
+                cand[k]._ew_bunOut = true; cand[k]._ew_bunOutV = true; _ewBun.outV = (_ewBun.outV | 0) + 1;
+                /* THE CHANGERS, NAMED (2026-11-23, mondo's 11:35 F3: "changers moved out 59" and 164 props drawn beside their recordings): which
+                   pieces they are and which of their values moved, for the lens line "Re-recorded most" (only when one goes out) */
+                try { var cnm = _ewBunChgName(cand[k]), CN = _ewBun.outVNames || (_ewBun.outVNames = {}); CN[cnm] = (CN[cnm] | 0) + 1; } catch (eCn) {}
+            }
             else for (var k2 = 0; k2 < cand.length; k2++) cand[k2]._ew_bunCn = 0;
         }
     }
@@ -56706,7 +57123,7 @@ const ThreeRenderer = (function () {
         } catch (eSp) {}
         try {   // THE CHANGERS OUT: which recorded groups keep re-recording, and why (session counts)
             var bw = (_ewBun.last || []).map(function (g) { var w = (g._ew_bun && g._ew_bun.why) || {}; return { n: String(g._ew_bunName || g.name || g.type).replace(/^site_prebuilt_/, ''), k: g._ew_pChunk || g._ew_chunk || '', t: (w.values | 0) + (w.tree | 0) + (w.rests | 0) * 5 + (w.cold | 0), w: w, d: !!(g._ew_bun && g._ew_bun.dyn), b: !!g.isBundleGroup, tx: _ewBunTxName(g) }; }).filter(function (x) { return x.t > 2; }).sort(function (x, y) { return y.t - x.t; }).slice(0, 4);
-            if (bw.length || _ewBun.outV) L.push('Re-recorded most: ' + (bw.map(function (x) { return x.n + (x.k ? ' ' + x.k : '') + ' (values ' + (x.w.values | 0) + ', tree ' + (x.w.tree | 0) + ((x.w.tree | 0) ? ' [merge ' + (x.w.tB | 0) + ', movers ' + (x.w.tO | 0) + ', shown/hidden ' + (x.w.tH | 0) + ', added/removed ' + (x.w.tN | 0) + ', other ' + (x.w.tX | 0) + ']' : '') + ', rests ' + (x.w.rests | 0) + (x.w.cold ? ', cold ' + x.w.cold : '') + (x.d ? ', demoted' : '') + (x.b ? '' : ', classic now') + (x.tx ? ', last piece whose own tree moved: ' + x.tx : '') + ')'; }).join(' · ') || 'none') + ' · changers moved out ' + (_ewBun.outV | 0) + ' · movers kept out ' + (_ewBun.outS | 0));
+            if (bw.length || _ewBun.outV) L.push('Re-recorded most: ' + (bw.map(function (x) { return x.n + (x.k ? ' ' + x.k : '') + ' (values ' + (x.w.values | 0) + ', tree ' + (x.w.tree | 0) + ((x.w.tree | 0) ? ' [merge ' + (x.w.tB | 0) + ', movers ' + (x.w.tO | 0) + ', shown/hidden ' + (x.w.tH | 0) + ', added/removed ' + (x.w.tN | 0) + ', other ' + (x.w.tX | 0) + ']' : '') + ', rests ' + (x.w.rests | 0) + (x.w.cold ? ', cold ' + x.w.cold : '') + (x.d ? ', demoted' : '') + (x.b ? '' : ', classic now') + (x.tx ? ', last piece whose own tree moved: ' + x.tx : '') + ')'; }).join(' · ') || 'none') + ' · changers moved out ' + (_ewBun.outV | 0) + (_ewBun.outVNames ? ' [' + Object.keys(_ewBun.outVNames).sort(function (x, y) { return _ewBun.outVNames[y] - _ewBun.outVNames[x]; }).slice(0, 10).map(function (k2) { return _ewBun.outVNames[k2] + 'x ' + k2; }).join(', ') + ']' : '') + ' · movers kept out ' + (_ewBun.outS | 0));
         } catch (e) {}
         if (S.still) L.push('Matrix walk ' + S.still.ms + ' ms/frame' + (S.still.off ? ' (still walk off)' : '') + ' · still groups ' + S.still.groups + ' (' + S.still.out + ' off the camera, ' + S.still.full + ' whole) · of ' + S.still.tops + ' pieces: ' + S.still.movers + ' moving, ' + S.still.fresh + ' new, ' + S.still.swept + ' swept' + (S.still.hid ? ' · ' + S.still.hid + ' hidden people left as they stand' : ''));
         if (S.instPass) L.push('Instance pass ' + S.instPass.batches + ' batches · ' + S.instPass.copies + ' copies · ' + S.instPass.left + ' left alone');
@@ -108029,6 +108446,7 @@ const ThreeRenderer = (function () {
             try { renderer.render(sc, cam); } catch (e) { out.error = String(e && e.message || e); }
             return out;
         },
+        bundleChangers: function () { return { n: _ewBun.outV | 0, names: _ewBun.outVNames || {} }; },   // THE CHANGERS, NAMED (dev)
         bundleFirstsDump: function () { var d = _ewBun.fDump; _ewBun.fDump = null; return d; },
         bundleFirsts: function () { return { refsShared: _ewRefShared, left: _ewBun.rpShow ? _ewBun.rpShow.repsSk : 0, asked: _ewBun.rpShow ? _ewBun.rpShow.reps : 0, audit: _ewBun.fAudN | 0, auditWrote: _ewBun.fAudBad | 0 }; },   // THE FIRSTS BY BUFFER's counts (dev)
         bundles: function () { return (_ewBun.last || []).map(function (g) { var st = g._ew_bun || {}; return { name: g._ew_bunName || g.name || g.type, bundled: !!g.isBundleGroup, static: !!g.static, demoted: !!st.dyn, recorded: st.recN, why: st.why }; }); },
