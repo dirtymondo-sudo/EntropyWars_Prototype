@@ -5439,3 +5439,24 @@ gladiator, pirate (blades); sheriff, marksman, gangster, spy, barbarella, men in
   the Taser's arc, the spray's cloud) still start where they did; no second holds (the Gladiator's net and shield, the Knight's
   shield), so Net Toss still makes its net from nothing; the popstar has no singing-into-the-mic clip; the Shogun's War Fan
   Strike swings the sword arm, not the fan's; no two-hand long-gun clip; the staff casts.
+
+### THE BOW SHOT (2026-11-22, same day, pass 3)
+mondo: "robin's hood bow and arrow looks messed up. wasnt there already several meshy animations for shooting a bow?"
+- WHAT WAS WRONG (measured bone by bone, `/mnt/project-files/weapon-spells/scripts/bow.js` SCAN): `castArrow` played only
+  `Archery_Shot_1`. The Meshy bow set is THREE clips: `_1` (lib 2, 1.07 s) takes an arrow from the quiver and raises the bow,
+  `_2` (lib 4, 3.8 s) only holds the aim, `_3` (lib 4, 0.73 s) draws and looses (hands 0.42 -> 0.70 apart at 0.4 s). So the
+  archer never drew. And the whole set aims along the body's LEFT (a side-on stance, bow arm yaw 90): the shot left 90
+  degrees off the target. The MAL5 clips (`Archery_Shot` 5 s, `Draw_and_Shoot_from_Back` 7.8 s, `Draw_and_Shoot_Left` 5.3 s)
+  draw weakly (0.45) and are far too long for a cast.
+- TWO NEW SLOT OPTIONS (sprites.js UAL_SLOTS -> `_ualClipRef` -> three-renderer.js `_libBakeClips`), usable by any slot:
+  `then: { clip, lib, trim }` (or a list) bakes more clips on the end as ONE clip; `strikeAt` counts on the joined clip from
+  the first clip's source start. `turn: degrees` turns the whole body about the up axis in the bake, eased in over the first
+  0.3 s and out over the last 0.25 s. (`turn` is also how a sideways rifle clip could be made to face the target.)
+- `castArrow` = `_1` trimmed [0.25, 0.95] then `_3`, turn -92, ts 1.8, strikeAt 1.37. KEEP THE STRIKE UNDER ~700 ms: battle.js
+  can only start a clip early by the cast's hold (740 ms here); a longer wind-up looses the arrow before the string is back.
+- THE ARROW (worn bow only, `ownBow`): three-vfx-effects.js `bowNock(uid, fromMs, toMs)` (exported) lays the real arrow GLB
+  from the string hand across the bow hand from the slot's `nockAt` until the strike; three-renderer.js `_bowNockStart`
+  starts it at a cast and at a basic attack. `_sigBowShot3D` on a worn bow takes that arrow over and looses at once (no 360 ms
+  ghost draw). The arrow is two arms long and half as thick as the model (a thick fantasy shaft).
+- NOT DONE: the bow's string is part of the bow's mesh and stays straight at full draw; the Meshy (default) Robin Hood still
+  gets the spectral longbow, which draws 360 ms after his own release; in his idle the bow hangs level at the hip.

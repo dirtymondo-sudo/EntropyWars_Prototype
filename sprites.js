@@ -1635,7 +1635,9 @@ const UAL_SLOTS = {
   castMelee:   { clip: 'Sword_Attack',           lib: 0, ts: 1.2, strikeAt: 0.70 },   // spinning slash lands 0.56–0.84s
   castThrow:   { clip: 'OverhandThrow',          lib: 1, ts: 1.2, strikeAt: 0.46 },   // release ~0.45s, follow-through after
   castPlant:   { clip: 'Farm_PlantSeed',         lib: 1, ts: 2.3, strikeAt: 1.30 },   // hand to the soil 1.0–1.75s
-  castArrow:   { clip: 'Archery_Shot_1',         lib: 2, ts: 1.2, strikeAt: 0.60 },   // draw 0.3–0.5s, loose ~0.6s
+  /* THE BOW SHOT (2026-11-22): the Meshy bow set is three clips; _1 only takes the arrow and raises the bow, _3 draws and looses.
+     Joined (`then`), turned to aim where the body faces (`turn`: the set aims along its LEFT). nockAt = the arrow is in the hand. */
+  castArrow:   { clip: 'Archery_Shot_1',         lib: 2, trim: [0.25, 0.95], then: { clip: 'Archery_Shot_3', lib: 4 }, turn: -92, ts: 1.8, strikeAt: 1.37, nockAt: 0.50 },   // loose = _3's 0.42 s
   castKick:    { clip: 'Spartan_Kick',           lib: 2, ts: 2.0, strikeAt: 0.68 },   // leg fully extended 0.55–0.8s
   // castAOE: Charged_Spell_Cast is TWO beats — a forward push at 0.65s, then
   // both arms flung to the sky at 1.7–2.2s. The sky-raise is the strike
@@ -1895,6 +1897,9 @@ function _ualClipRef(o) {
   if (typeof o.strikeAt === 'number') r.strikeAt = o.strikeAt;
   if (o.defer) r.defer = true;   // THE BODY: baked after load (three-renderer.js _libBakeDeferred)
   if (o.travel) r.travel = true; // THE NEW CLIPS: the clip carries the body (three-renderer.js _libTravelCurve)
+  if (o.then) r.then = o.then;   // THE BOW SHOT: more clips baked on the end (three-renderer.js _libBakeClips)
+  if (typeof o.turn === 'number') r.turn = o.turn;
+  if (typeof o.nockAt === 'number') r.nockAt = o.nockAt;
   return r;
 }
 for (const _slot in UAL_SLOTS) {

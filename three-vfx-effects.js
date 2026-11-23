@@ -15523,10 +15523,49 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             return function () { try { return ThreeRenderer.unitShotOrigin(uid, 'arrow'); } catch (e) { return null; } };
         } catch (e) { return null; }
     }
+    /* THE BOW SHOT (2026-11-22, mondo: "robin's hood bow and arrow looks messed up"): the arrow of an archer who wears his bow
+       is a real arrow in his STRING hand, laid across the bow hand, from the moment the clip takes it from the quiver
+       (three-renderer.js starts this at the cast / the attack: bowNock) until the shot effect looses it. One arrow a body. */
+    var _bowNocks = {};
+    var _BOW_RH = ['RightHand', 'hand_r'], _BOW_LH = ['LeftHand', 'hand_l'], _BOW_ARM = ['LeftArm', 'upperarm_l'];
+    function _bowArrowLen(uid, ts) {   /* a man's arrow: about two arms long, and slim (the arrow model is a thick fantasy shaft: its width is halved) */
+        try { var a = ThreeRenderer.unitBoneWorld(uid, _BOW_ARM, true), h = ThreeRenderer.unitBoneWorld(uid, _BOW_LH, true);
+              if (a && h) { var d = Math.sqrt((a.x - h.x) * (a.x - h.x) + (a.y - h.y) * (a.y - h.y) + (a.z - h.z) * (a.z - h.z)); if (d > 1) return d * 2.0; } } catch (e) {}
+        return ts * 0.62;
+    }
+    /* lay `g` (an arrow whose middle is its origin, point along +Z) from the string hand across the bow hand; false = no hands */
+    function _bowArrowSeat(uid, g, len) {
+        var R = null, L = null;
+        try { R = ThreeRenderer.unitBoneWorld(uid, _BOW_RH, true); L = ThreeRenderer.unitBoneWorld(uid, _BOW_LH, true); } catch (e) {}
+        if (!R || !L) return false;
+        var dx = L.x - R.x, dy = L.y - R.y, dz = L.z - R.z, d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (d < 1e-3) return false;
+        dx /= d; dy /= d; dz /= d;
+        var k = len * 0.5 - len * 0.06;   /* the nock sits just behind the fingers */
+        g.position.set(R.x + dx * k, R.y + dy * k, R.z + dz * k);
+        g.lookAt(g.position.x + dx, g.position.y + dy, g.position.z + dz);
+        return true;
+    }
+    function bowNock(uid, fromMs, toMs) {
+        if (uid == null || (typeof window !== 'undefined' && window.EW_NO_HELD_WEAPON_FX)) return;
+        if (typeof ThreeRenderer === 'undefined' || typeof ThreeRenderer.unitBoneWorld !== 'function' || !_getVFXScene()) return;
+        if (!_wpnReady('arrow')) return;
+        var ts = (_cfg().tileSize || 128), len = _bowArrowLen(uid, ts);
+        var inst = _wpnInstance('arrow', len); if (!inst) return;
+        inst.group.scale.x *= 0.5; inst.group.scale.y *= 0.5;
+        if (_bowNocks[uid]) _bowNocks[uid].dead = true;
+        var st = { dead: false }; _bowNocks[uid] = st;
+        var g = new THREE.Group(); g.add(inst.group); g.visible = false;
+        _sigRunOwned(g, Math.max(200, toMs), function (el) {
+            g.visible = !st.dead && el >= fromMs && _bowArrowSeat(uid, g, len);
+        });
+    }
     function _sigBowShot3D(fromTx, fromTy, toTx, toTy, opts) {
         opts = opts || {};
         var scene = _getVFXScene(); if (!scene) return;
         var _ownBow = _wpnOwnBowAt(fromTx, fromTy);
+        var _ownUid = _ownBow ? _sigUnitIdAt(fromTx, fromTy) : null;
+        if (_ownUid != null && _bowNocks[_ownUid]) { _bowNocks[_ownUid].dead = true; delete _bowNocks[_ownUid]; }   /* this shot's arrow takes over */
         var fw = _worldPos(fromTx, fromTy);
         var twp = _worldPos(toTx, toTy);
         var ts = fw.ts;
@@ -15594,17 +15633,19 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
         /* the arrow: the GLB or nothing (NO STAND-INS, 2026-10-05) */
         var arrowG = new THREE.Group();
-        var arrowInst = _wpnReady('arrow') ? _wpnInstance('arrow', ts * 0.95) : null;
+        var _ownLen = _ownBow ? _bowArrowLen(_ownUid, ts) : 0;
+        var arrowInst = _wpnReady('arrow') ? _wpnInstance('arrow', _ownBow ? _ownLen : ts * 0.95) : null;
         if (arrowInst) arrowG.add(arrowInst.group);
+        if (arrowInst && _ownBow) { arrowInst.group.scale.x *= 0.5; arrowInst.group.scale.y *= 0.5; }
         function arrowFade(f) { if (arrowInst) arrowInst.setFade(f); }
         aim.add(arrowG);
 
-        var matMs = 100, drawMs = 260;
+        var matMs = _ownBow ? 1 : 100, drawMs = _ownBow ? 50 : 260;   /* his own bow is already drawn by the clip: loose at once */
         var looseAt = matMs + drawMs;
         var flyMs = Math.max(150, Math.min(opts.flyMs || 260, 420));
         var stickMs = 460, fadeMs = 220;
         var total = looseAt + flyMs + stickMs + fadeMs;
-        var nockZ = _ownBow ? ts * 0.12 : tipZ + ts * 0.05;
+        var nockZ = _ownBow ? _ownLen * 0.3 : tipZ + ts * 0.05;
         var loosed = false, landed = false;
         var trailAcc = 0, lastEl = 0;
         var arrowWorld = new THREE.Vector3();
@@ -15623,8 +15664,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             glowMat.opacity = (0.22 + 0.10 * Math.sin(el * 0.012)) * f;
 
             if (el < looseAt) {
-                _ownBowSeat();   /* the nocked arrow rides the bow hand through the draw */
-                if (_ownBow) arrowG.scale.setScalar(0.7);   /* on a man's bow, not the giant ghost one */
+                if (_ownBow) {   /* still on the string: from the string hand across the bow hand, as the clip holds it */
+                    _ownBowSeat();
+                    arrowG.position.set(0, 0, nockZ);
+                    arrowFade(1);
+                    return;
+                }
                 /* nock + draw */
                 var dT = _sigClamp01((el - matMs) / drawMs);
                 var pull = _sigEaseOutCubic(dT) * ts * 0.30;
@@ -15634,7 +15679,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 limbGlow.scale.z = 1.10 * (1 - 0.10 * dT);
             } else if (!landed) {
                 if (!loosed) {
-                    loosed = true; arrowG.scale.setScalar(1);
+                    loosed = true;
                     limb.scale.z = 1; limbGlow.scale.z = 1.10;
                     _sigSparks(fromTx, fromTy, 'steel-spark', 4, { vxy: 60, vz0: 20, vz1: 80, gravity: 200 });
                     if (typeof playSfx === 'function') { try { playSfx('arrowShot'); } catch (e) {} }
@@ -76122,6 +76167,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         fireBlood: fireBlood,
         juiceHit: juiceHit,   // THE JUICE HIT (battle.js applyDamageToUnit; relayed vfx3d-x)
         fireBloodLand: fireBloodLand,
+        bowNock: bowNock,
         fireDash: fireDash,
         fireTeleportLegacy: fireTeleportLegacy,
         fireZone: fireZone,
