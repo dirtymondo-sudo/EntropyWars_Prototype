@@ -604,7 +604,7 @@ function insideKit(row) {
         /* a lift core n squares long on the back wall, a door a square */
         lifts(i, j, n, tint, skip) { const [x, z] = K.at(i, j, n), L = n * SQ - 0.2;   // skip = a square of the core left without a lift door (a story door stands there)
             a.box(x, 0, z, L, 3.3, 3.2, MARBLE, tint); a.box(x, 3.3, z, L + 0.2, 0.2, 3.4, ALU, 0xd6dade);
-            for (let k = 0; k < n; k++) { if (k === skip) continue; const dx = x - L / 2 + (k + 0.5) * (L / n); a.box(dx, 0, z + 1.62, 1.7, 2.4, 0.06, ALU, 0xc8ccd0); a.box(dx, 0, z + 1.66, 0.04, 2.4, 0.02, null, DARK); a.box(dx, 2.4, z + 1.62, 2.0, 0.16, 0.1, METAL, DARK); a.box(dx, 2.7, z + 1.62, 0.5, 0.22, 0.05, null, 0xffb040, { glow: 0.9 }); }
+            for (let k = 0; k < n; k++) { if (k === skip || (Array.isArray(skip) && skip.indexOf(k) >= 0)) continue; const dx = x - L / 2 + (k + 0.5) * (L / n); a.box(dx, 0, z + 1.62, 1.7, 2.4, 0.06, ALU, 0xc8ccd0); a.box(dx, 0, z + 1.66, 0.04, 2.4, 0.02, null, DARK); a.box(dx, 2.4, z + 1.62, 2.0, 0.16, 0.1, METAL, DARK); a.box(dx, 2.7, z + 1.62, 0.5, 0.22, 0.05, null, 0xffb040, { glow: 0.9 }); }
             K.ghost(x, z, L, 3.2, 3.3); },
         column(i, j, h, tint) { const [x, z] = K.at(i, j); a.cyl(x, 0, z, 0.55, h, MARBLE, tint, { seg: 12 }); a.box(x, 0, z, 1.5, 0.35, 1.5, MARBLE, tint); a.box(x, h - 0.4, z, 1.5, 0.4, 1.5, MARBLE, tint, { under: true }); K.ghost(x, z, 1.5, 1.5, h); },
         /* a trophy case: a dark base, gilt cups under a glass top on four posts */
@@ -679,7 +679,7 @@ IN['P05-04-B1'] = K => { const a = K.a;
     K.decor('psx_metal_barrel_mp_1', 1, 3, 1, 1); K.decor('traffic_cone', 3, 3, -1, 1); K.decor('traffic_cone', 2, 1, 1, 1); K.decor('trash_bin', 1, 1, -1, -1); };
 /* 3 · SUPERHERO TOWER: the lobby (8 x 8) */
 IN['P06-04-B1'] = K => { const a = K.a; K.floor(CHECK, 0xffffff, 3.5);
-    K.lifts(2, 0, 4, 0xf4efe4, 2);   // its third square = the story door THE TOWER (joins.tower)
+    K.lifts(2, 0, 4, 0xf4efe4, [0, 1, 2, 3]);   // its third square = the story door THE TOWER (joins.tower); the other three = THE TOWER LIFT's doors (HERO_LIFTS), drawn by the doors themselves
     { const [x, z] = K.at(2, 0, 4); a.box(x, 3.5, z - 0.2, 13.8, 3.3, 2.8, MARBLE, 0xf4efe4); }   // the core runs up to the ceiling (the story door's housing stood out over it)
     for (const j of [2, 5]) { K.column(2, j, 6.9, 0xf4efe4); K.column(5, j, 6.9, 0xf4efe4); K.trophies(0, j, 'z'); K.trophies(7, j, 'z'); }
     K.trophies(0, 0, 'x'); K.trophies(7, 0, 'x');
@@ -1121,6 +1121,7 @@ TW['P06-06-B1'] = () => { const a = sheet(), GW = 0x8c98a8, CC = 0xd4d4cc, y0 = 
 const PACK_W = { pack_bld_08: 15.52, pack_bld_09: 16.89 };
 function build(ctx) {
     const { PLAN, features, props, bInfo, r3, C } = ctx, M = { district: 'H', B, OPEN, SWAP }; let nArch = 0;
+    HERO_LIFTS.forEach(d => ctx.doors.push(d));   // THE TOWER LIFT (2026-11-23): the lobby's three lift doors
     const R3 = v => typeof v === 'number' ? Math.round(v * 1000) / 1000 : Array.isArray(v) ? v.map(R3) : (v && typeof v === 'object') ? Object.fromEntries(Object.entries(v).map(e => [e[0], R3(e[1])])) : v;
     /* the shade lift: a sheet in the city's shade reads near black, so every textured part keeps a little of its own light */
     /* a battle-sheet key (bricks_3, aluminium, marble_light, gold ...) is drawn with its darker calm sheet in the game: `gain` 1.5 lifts it back */
@@ -1208,6 +1209,11 @@ function build(ctx) {
 /* THE TOWER (the story door into site_prebuilt_downtown_lobby and the rooms past it) moves off the plaza doorway onto the lift bank of the walk-in
    lobby: square (4, 0) of a room at rot 180 → room metres x 21 − 1.75, z −63 + 10.6 (the lift core's face), facing the lobby (mondo 22:30). */
 const joins = { tower: { x: 19.25, z: -52.45, face: 0, sub: 'THE LIFTS · INTO THE TOWER' } };
+/* THE TOWER LIFT (2026-11-23, mondo's plan "every door opens", picture 4; bake-hero-tower.js): the lobby's other three lift squares (2, 3, 5 of the
+   core; 4 is THE TOWER above) are real lift doors. Each opens the lift's floor panel (map.js THE TOWER LIFT); a floor picked there loads the
+   tower's own room, `site_prebuilt_hero_tower`, at that floor's lift door. `action` is the map's way in (and where a floor's G comes back to: `a`). */
+const HERO_LIFTS = [['a', 22.75], ['b', 26.25], ['c', 15.75]].map(q => ({ id: 'hero_lift_' + q[0], wall: 'free', x: q[1], z: -52.45, face: 0, noEntrance: true, leaf: null, proc: 'elevator',
+    lift: 'site_prebuilt_hero_tower', label: 'THE LIFT', sub: 'G · THE LOBBY', action: { room: 'site_prebuilt_hero_tower', at: 'lift_1' } }));
 /* THE PLANTED BEDS (2026-11-16): the tool's `planter` is a bare box of soil, 65 of them in the district: the plaza was ringed by dark empty boxes.
    Every one in Hero Plaza gets a clipped, rounded box hedge: one arch row per plot (a plot is one level; the row's foot is the ground under its
    first bed). It runs in the tool's LAST stage, after the exterior polish, which moves some planters: the hedge is written where its planter

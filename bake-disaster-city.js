@@ -1209,6 +1209,14 @@ count.levels = lvCount;
       BEACH_ZONE = { x0: HALF, z0: -HALF, x1: r3(HALF + ROOM.east * C), z1: HALF, floor: UD.GROUND.floor, cliff: UD.GROUND.cliff, path: UD.GROUND.path, floorTint: '#dcdce0', pal: palOut.slice(0, 8), calmShade: true, out };
       const zi = lines.findIndex(l => /^ +zones: /.test(l)); if (zi < 0) throw new Error('ONE SAND: the zones line was not found'); lines[zi] = zonesLine();
       console.warn('[one sand] the beach strip is a calm-lit zone; ' + out.length + ' runs of boards and concrete stay the city\'s'); } }
+/* ── THE KITS (docs/interiors/kits.js, 2026-11-23, mondo: "If there is a door the player should be able to walk inside of it"): a walk-in row a
+   district file marked `kit: 'shop' | 'flat' | 'office' | 'workshop' | 'kiosk' | 'clinic' | 'back'` (+ `kitSeed`, `kitTint`) is furnished here, after
+   every district, before the polish: its arch row, its props and its ghost walls. A row with no `hollow` is opened (hollow + skin kept) first. ── */
+{ const KITS = require(path.join(REPO, 'docs/interiors/kits.js')); let nK = 0;
+  features.slice().forEach(f => { if (!f || f.k !== 'texbuilding' || !f.kit) return; f.hollow = true;
+      const o = KITS.furnish(f, f.kit, { seed: f.kitSeed || f.id }); delete f.kit; delete f.kitSeed; delete f.kitTint;
+      if (o.arch) features.push(o.arch); o.ghosts.forEach(g => features.push(g)); o.props.forEach(q => props.push(q)); nK++; });
+  if (nK) { count.kits = nK; console.warn('[kits] ' + nK + ' walk-ins furnished'); } }
 /* ── THE INTERIOR POLISH (docs/disaster-city/interior-polish.js; mondo 11-15: "rugs/carpets flickering ... do another polish pass on disaster
    city"): last of all, over every walk-in building whichever district wrote it: props beside a wall off the roof (`floor: true`), no two drawn
    faces on one plane, rugs onto the floor sheet, props onto the raised floor they stand in. It moves rows, it never drops one. ── */

@@ -7904,6 +7904,11 @@ html.ew-mobile .pause-card { max-height: calc(100dvh - 16px); }
 .hq-zm .hq-zm-here-mark { fill: #ffd040; stroke: #000; stroke-width: .45; }
 .hq-zm-card .hq-zm-why { color: #ff7a7a; }
 @keyframes hqZmHere { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+/* ONE MAP (11-23): the world sheet draws every zone's detail; the zoom turns each layer on (map.js _zmDetail) */
+.hq-zm-world:not(.zm-plots) .hq-zm-grid, .hq-zm-world:not(.zm-plots) .hq-zm-bord, .hq-zm-world:not(.zm-plots) .hq-zm-bord-under { display: none; }
+.hq-zm-world:not(.zm-plots) .hq-zm-plot { pointer-events: none; }
+.hq-zm-world:not(.zm-doors) .hq-zm-door { display: none; }
+.hq-zm-world.zm-plots .hq-zm-frame { stroke: rgba(255,255,255,0.25); }
 .hq-zm .hq-zm-frame { fill: none; stroke: rgba(255,255,255,0.55); stroke-width: 1px; vector-effect: non-scaling-stroke; pointer-events: none; }
 .hq-zm .hq-zm-place.sel .hq-zm-frame, .hq-zm .hq-zm-place:hover .hq-zm-frame { stroke: #fff; stroke-width: 2.5px; }
 .hq-zm .hq-zm-place.st-here .hq-zm-frame { stroke: #ffd040; stroke-width: 2px; }

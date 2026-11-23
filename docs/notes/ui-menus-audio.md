@@ -3096,3 +3096,21 @@ because im already in the zone i want to fast travel to". Two causes, both fixed
   nothing. `_zmNodeAt` now picks the plot (zone sheet) or the place (world sheet) under the pointer whatever is drawn on top.
   The click wobble is 6 px (`HQ_MAP_CLICK_PX`, was 4: a trackpad tap on a 2x screen read as a drag).
 - A plot that cannot be travelled to says why on its card in red (`_zmWhyNot`: not built, rebuilt room, uncharted, no ground).
+
+### ONE MAP (2026-11-23, owner project, thread "Make the map one zoomable map")
+mondo 11-23: "i hate how zooming in makes the rest of the map disappear, its supposed to be one map with increasing detail as
+you zoom in ... If im zooming in on a district then the level of detail that shows building names should all appear at the same time".
+- map.js: the ground WORLD sheet (`_zmWorldSvg`) now draws every charted zone's plot grid, district borders, district names, plot
+  names and doors itself (`_zmRoomDetail`, at each room's `wx, wy`). The wheel never swaps it for a zone sheet any more
+  (`_hqMapZoomSwitch` returns false on the ground world). A zone picked (click, LOCATIONS row, THIS AREA, OPEN THE AREA MAP) =
+  `_zmFocusWorld`: the world glides to the zone, its layer (surface / underground) chosen, the card on the right = the zone card
+  (`_zmWorldCard` -> `_zmCardHtml`). Zones with no world place (Heaven, Outer Space, the Astral Realm, the Internet, `layer: 'off'`)
+  and DOOR HQ keep their own sheets.
+- The zoom levels (`_zmDetail`, both sheets): far = zone names; nearer = district names (a room's named districts share ONE size);
+  close = plot names, ALL the districts of a room on screen at once, when the longest name among them fits its square at 66 % of
+  full size or more, every name at that one size; district names go off then, zone names go off once their districts are named.
+  Plot grid + plot clicks from 14 px a plot, doors from 34 px. Names the sheet edge would cut stay off until panned in.
+- `_zmSplit`: names wrap to up to 3 lines of ~9 letters (a long word breaks after its dash), so a district's names fit together.
+  Districts with no real name (a route's bare key 'R', 'L', 'T') get no label.
+- Wheel-out limit = max(6000, 1.6 x the fit) (the world is wider than 6000 units; the old cap zoomed IN on a wheel-out).
+- Proof: /mnt/project-files/map-one-zoom/before.jpg + after.jpg.
