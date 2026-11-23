@@ -51423,6 +51423,21 @@ const ThreeRenderer = (function () {
        of a group keeps each direct child's own value hash; a child whose values changed 3 times within 20 s is drawn outside the
        recording from then on (`_ew_bunOut`, as a mover is). Only once the room is ready (a room still landing moves everything). */
     var _hqBatchHoldN = 0;   // THE HELD PIECES ONCE: bumped each time THE STATIC BATCH takes or hands back a piece
+    /* a changer's name: the placed prop's key / model (or its own name), and what on its materials differs from the plain look
+       (a glow, a see-through fade, a sign's canvas, a video) */
+    function _ewBunChgName(c) {
+        var nm = c.name || '', src = '', tags = {}, nM = 0;
+        try { if (_hq && _hq.props) for (var pi = 0; pi < _hq.props.length; pi++) { var pr = _hq.props[pi]; if (pr && pr.grp === c) { src = String((pr.row && (pr.row.model || pr.row.kind || pr.row.k || pr.row.id)) || pr.key || ''); break; } } } catch (e) {}
+        c.traverse(function (o) {
+            if (!nm && o.name) nm = o.name;
+            if (!o.isMesh && !o.isSprite) return; nM++;
+            var ms = Array.isArray(o.material) ? o.material : [o.material];
+            for (var i = 0; i < ms.length; i++) { var m = ms[i]; if (!m) continue;
+                if (m.map && m.map.isCanvasTexture) tags.canvas = 1; if (m.map && m.map.isVideoTexture) tags.video = 1;
+                if (m.transparent) tags.fade = 1; if (m.emissive && (m.emissive.r + m.emissive.g + m.emissive.b) > 0) tags.glow = 1; if (m._ewNode) tags['node ' + m._ewNode.k] = 1; if (o.isSprite) tags.sprite = 1; }
+        });
+        return (src || nm || c.type).slice(0, 36) + ' (' + nM + ' meshes' + (Object.keys(tags).length ? ', ' + Object.keys(tags).join(' + ') : '') + ')';
+    }
     /* a top piece's counts, for "what moved in it": hidden / held by the merge / out pieces, meshes, and the sums of the geometry
        ids, material ids, copy counts, layers and shadow flags its drawn meshes carry */
     function _ewBunTxSig(c) {
@@ -51500,7 +51515,12 @@ const ThreeRenderer = (function () {
         /* the pieces that keep changing go out (a row of lamp glows on one flickering material is many at once); a quarter of the
            group or more at once is the whole room changing (the hour): left to the group's own demotion */
         if (cand) {
-            if (cand.length <= Math.max(16, Math.min(400, ch.length >> 2))) for (var k = 0; k < cand.length; k++) { cand[k]._ew_bunOut = true; cand[k]._ew_bunOutV = true; _ewBun.outV = (_ewBun.outV | 0) + 1; }
+            if (cand.length <= Math.max(16, Math.min(400, ch.length >> 2))) for (var k = 0; k < cand.length; k++) {
+                cand[k]._ew_bunOut = true; cand[k]._ew_bunOutV = true; _ewBun.outV = (_ewBun.outV | 0) + 1;
+                /* THE CHANGERS, NAMED (2026-11-23, mondo's 11:35 F3: "changers moved out 59" and 164 props drawn beside their recordings): which
+                   pieces they are and which of their values moved, for the lens line "Re-recorded most" (only when one goes out) */
+                try { var cnm = _ewBunChgName(cand[k]), CN = _ewBun.outVNames || (_ewBun.outVNames = {}); CN[cnm] = (CN[cnm] | 0) + 1; } catch (eCn) {}
+            }
             else for (var k2 = 0; k2 < cand.length; k2++) cand[k2]._ew_bunCn = 0;
         }
     }
@@ -56901,7 +56921,7 @@ const ThreeRenderer = (function () {
         } catch (eSp) {}
         try {   // THE CHANGERS OUT: which recorded groups keep re-recording, and why (session counts)
             var bw = (_ewBun.last || []).map(function (g) { var w = (g._ew_bun && g._ew_bun.why) || {}; return { n: String(g._ew_bunName || g.name || g.type).replace(/^site_prebuilt_/, ''), k: g._ew_pChunk || g._ew_chunk || '', t: (w.values | 0) + (w.tree | 0) + (w.rests | 0) * 5 + (w.cold | 0), w: w, d: !!(g._ew_bun && g._ew_bun.dyn), b: !!g.isBundleGroup, tx: _ewBunTxName(g) }; }).filter(function (x) { return x.t > 2; }).sort(function (x, y) { return y.t - x.t; }).slice(0, 4);
-            if (bw.length || _ewBun.outV) L.push('Re-recorded most: ' + (bw.map(function (x) { return x.n + (x.k ? ' ' + x.k : '') + ' (values ' + (x.w.values | 0) + ', tree ' + (x.w.tree | 0) + ((x.w.tree | 0) ? ' [merge ' + (x.w.tB | 0) + ', movers ' + (x.w.tO | 0) + ', shown/hidden ' + (x.w.tH | 0) + ', added/removed ' + (x.w.tN | 0) + ', other ' + (x.w.tX | 0) + ']' : '') + ', rests ' + (x.w.rests | 0) + (x.w.cold ? ', cold ' + x.w.cold : '') + (x.d ? ', demoted' : '') + (x.b ? '' : ', classic now') + (x.tx ? ', last piece whose own tree moved: ' + x.tx : '') + ')'; }).join(' · ') || 'none') + ' · changers moved out ' + (_ewBun.outV | 0) + ' · movers kept out ' + (_ewBun.outS | 0));
+            if (bw.length || _ewBun.outV) L.push('Re-recorded most: ' + (bw.map(function (x) { return x.n + (x.k ? ' ' + x.k : '') + ' (values ' + (x.w.values | 0) + ', tree ' + (x.w.tree | 0) + ((x.w.tree | 0) ? ' [merge ' + (x.w.tB | 0) + ', movers ' + (x.w.tO | 0) + ', shown/hidden ' + (x.w.tH | 0) + ', added/removed ' + (x.w.tN | 0) + ', other ' + (x.w.tX | 0) + ']' : '') + ', rests ' + (x.w.rests | 0) + (x.w.cold ? ', cold ' + x.w.cold : '') + (x.d ? ', demoted' : '') + (x.b ? '' : ', classic now') + (x.tx ? ', last piece whose own tree moved: ' + x.tx : '') + ')'; }).join(' · ') || 'none') + ' · changers moved out ' + (_ewBun.outV | 0) + (_ewBun.outVNames ? ' [' + Object.keys(_ewBun.outVNames).sort(function (x, y) { return _ewBun.outVNames[y] - _ewBun.outVNames[x]; }).slice(0, 10).map(function (k2) { return _ewBun.outVNames[k2] + 'x ' + k2; }).join(', ') + ']' : '') + ' · movers kept out ' + (_ewBun.outS | 0));
         } catch (e) {}
         if (S.still) L.push('Matrix walk ' + S.still.ms + ' ms/frame' + (S.still.off ? ' (still walk off)' : '') + ' · still groups ' + S.still.groups + ' (' + S.still.out + ' off the camera, ' + S.still.full + ' whole) · of ' + S.still.tops + ' pieces: ' + S.still.movers + ' moving, ' + S.still.fresh + ' new, ' + S.still.swept + ' swept' + (S.still.hid ? ' · ' + S.still.hid + ' hidden people left as they stand' : ''));
         if (S.instPass) L.push('Instance pass ' + S.instPass.batches + ' batches · ' + S.instPass.copies + ' copies · ' + S.instPass.left + ' left alone');
@@ -108224,6 +108244,7 @@ const ThreeRenderer = (function () {
             try { renderer.render(sc, cam); } catch (e) { out.error = String(e && e.message || e); }
             return out;
         },
+        bundleChangers: function () { return { n: _ewBun.outV | 0, names: _ewBun.outVNames || {} }; },   // THE CHANGERS, NAMED (dev)
         bundleFirstsDump: function () { var d = _ewBun.fDump; _ewBun.fDump = null; return d; },
         bundleFirsts: function () { return { refsShared: _ewRefShared, left: _ewBun.rpShow ? _ewBun.rpShow.repsSk : 0, asked: _ewBun.rpShow ? _ewBun.rpShow.reps : 0, audit: _ewBun.fAudN | 0, auditWrote: _ewBun.fAudBad | 0 }; },   // THE FIRSTS BY BUFFER's counts (dev)
         bundles: function () { return (_ewBun.last || []).map(function (g) { var st = g._ew_bun || {}; return { name: g._ew_bunName || g.name || g.type, bundled: !!g.isBundleGroup, static: !!g.static, demoted: !!st.dyn, recorded: st.recN, why: st.why }; }); },
