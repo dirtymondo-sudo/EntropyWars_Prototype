@@ -4663,6 +4663,7 @@
                 if (dh > 0.01 || dh < -1.01) break;
                 cx = nx; cy = ny;
                 steps.push({ x: cx, y: cy });
+                if (forcedMoveTrapStop(unit, cx, cy)) break;   // THE TRAP ON THE WAY: the glide stops on it, the landing springs it
             }
             return steps;
         }
@@ -6336,6 +6337,9 @@
                        the landing chain (resolveTileArrival step T) sends it out of the twin. */
                     const _trD = (typeof doorAt === 'function') ? doorAt(cx, cy) : null;
                     if (_trD && _trD.transit && _trD.open) break;
+                    /* THE TRAP ON THE WAY: a bomb, a placed trap or a one-way door on a tile the body crosses stops the
+                       slide there; the landing's chain (resolveTileArrival / simulateArrivalChain) springs it */
+                    if (forcedMoveTrapStop(target, cx, cy, simulate ? opts.viewer : null)) break;
                     continue;
                 }
                 if (info.kind === 'hole') break;   // fall short of the pit lip — nothing to slam
@@ -15996,6 +16000,7 @@
                 if (!best) break;
                 path.push({ x: best.x, y: best.y });
                 cx = best.x; cy = best.y; cz = best.z ?? cz;
+                if (forcedMoveTrapStop(u, cx, cy)) break;   // THE TRAP ON THE WAY
                 if (best.d <= 1) break;
             }
             if (!path.length) return;
@@ -49131,6 +49136,23 @@
             return findMovePath(unit, destX, destY, destZ, { maxMove: 9999 });
         }
 
+        /* THE TRAP ON THE WAY (mondo 2026-11-23: "i used swing door on the lifeguard and they got pushed pass the door i placed.
+           That is supposed to be a capture. If at any point they pass through the tile the door is on. Its supposed to be
+           triggered like place bomb" + "its probably every single spell in the game that pushes or pulls or displaces"):
+           a body moved through the board by force (a push, a pull, a fling, a knock-back, an ice glide) meets the traps
+           a WALK meets (getPathPickupEvent's bomb / placed trap / step-trap / one-way door): it stops on that tile and the
+           landing's chain springs it. viewer (a forecast): a hidden trap of the other side does not stop the forecast. */
+        function forcedMoveTrapStop(unit, x, y, viewer) {
+            if (!unit || unit.dead || typeof getPathPickupEvent !== 'function') return false;
+            const ev = getPathPickupEvent(unit, x, y);
+            if (!ev || (ev.kind !== 'bomb' && ev.kind !== 'trap' && ev.kind !== 'capture')) return false;
+            if (viewer == null || ev.kind === 'capture') return true;
+            if (ev.kind === 'bomb') return (state.bombs || []).some(b => b && b.x === x && b.y === y && b.owner === viewer);
+            if (ev.trap) return ev.trap.ownerPlayer === viewer;
+            return (state.traps || []).some(t => t && t.x === x && t.y === y && t.owner === viewer);
+        }
+        window.forcedMoveTrapStop = forcedMoveTrapStop;
+
         function getPathPickupEvent(unit, x, y) {
             if (shadowRealmKey(unit)) return null;   // 🌑 a walk in the Shadow Realm crosses nothing of the board's
             if (unitIsSpirit(unit)) return null;   // 👁 a spirit's walk crosses nothing either (no hands)
@@ -78609,6 +78631,7 @@
                 x += dir.dx; y += dir.dy;
                 if (!isInside(x, y) || !isTerrainPassable(x, y) || unitAt(x, y)) break;
                 out.push({ x, y });
+                if (typeof forcedMoveTrapStop === 'function' && forcedMoveTrapStop(victim, x, y)) break;   // THE TRAP ON THE WAY
             }
             return out;
         }

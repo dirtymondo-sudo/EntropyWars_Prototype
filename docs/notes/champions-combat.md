@@ -6414,3 +6414,13 @@ he did not name one). Stats first pass HP 1300, MP 150, ATK 150, DEF 110, M.DEF 
   dragged unit ('hlStrings:drag', relayed through fireGeometry), the Bloom's crystal spikes per raised square ('hlBloom:grow'),
   Wake's rings to 7 + eye slits over each dragged head ('hlWake:drag'). Own side cyan, enemy pink-orange.
 - Finisher "Lights Out" (sig devoured). Kept separate from the Abomination (same day, its own thread).
+
+## THE TRAP ON THE WAY (2026-11-23, mondo: "i used swing door on the lifeguard and they got pushed pass the door i placed. That is supposed to be a capture. If at any point they pass through the tile the door is on. Its supposed to be triggered like place bomb" + "its probably every single spell in the game that pushes or pulls or displaces")
+A body moved by FORCE now meets the traps a WALK meets. battle.js `forcedMoveTrapStop(unit, x, y, viewer)` asks
+`getPathPickupEvent` (the walk's rule: a hostile bomb, a placed trap, a deployed step-trap incl. a tripwire's radius, a
+one-way capture door that can take this body; an airborne body glides over all of them) and stops the move ON that tile;
+the landing's chain (resolveTileArrival: D fuses, D′ one-way door) then springs it. Wired in: `resolveForcedSlide` (every
+push, pull, reel-in, knock-back, bomb throw-back, storm fling, gun-door shove, bowling-pin chain — all 26 callers), the ice
+glide `_iceSlideSteps`, the creep walk (u.x = cx path), and Swing Door's board preview `_swingLanding`. A forecast
+(`simulate` + `opts.viewer`) stops only on a trap the viewer's side can see (a capture door is always seen). Teleports and
+swaps have no path: their landing chain already covered them. Proof: shots in /mnt/project-files/forced-move-traps/.

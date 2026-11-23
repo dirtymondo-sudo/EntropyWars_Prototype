@@ -20,7 +20,7 @@ module.exports = function spawns(D) {
   const grp = (id, name, src, parent, col) => { if (!nodes[id]) nodes[id] = { id, kind: 'custom', name, sub: '', shape: 'group', col, gk: 'place', faction: '', note: '', ...(src ? { src } : {}), ...(parent ? { parent } : {}) }; return id; };
   const unit = (race, g) => { if (!RACE[race]) return null; const id = raceId(race, g); if (!nodes[id]) { const r = RACE[race]; nodes[id] = { id, kind: 'race', race, ...(r.v.length > 1 ? { g: id.split(':')[2] } : {}), note: '' }; } return id; };
   const member = (u, g) => { if (!u || has.has(u + '>' + g)) return; has.add(u + '>' + g); const id = 'gm' + (li++); links[id] = { id, a: u, b: g, type: 'member', dir: 'ab', label: '', s: 1 }; };
-  const zoneG = k => { if (k === 'hq') return grp('z_hq', 'DOOR HQ', 'map:hq', null, 11); if (k === 'revenge') return grp('z_revenge', 'The Revenge (pirate ship)', '', null, 1);
+  const zoneG = k => { if (k === 'hq') return grp('z_hq', 'DOOR HQ', 'map:hq', null, 11); if (k === 'revenge') return grp('z_revenge', 'The Flying Dutchman', 'map:beach:x_flying_dutchman', zoneG('beach'), 1);   /* 11-23: her name, not the room id; she lies at the Beach */
     const i = PZ.findIndex(q => q.k === k); return grp('z_' + k, i >= 0 ? PZ[i].n : k, 'map:' + k, null, Math.max(0, i) % 11); };
   const C0 = ZM.zones.city.rooms[0], distName = Object.fromEntries(PZ.find(z => z.k === 'city').d.map(d => [d.k, d.n])), plotDist = {};
   C0.plots.forEach(p => { plotDist[p[0]] = p[2]; });

@@ -583,7 +583,7 @@
         {"n":"The Trail","x":-16,"y":-3,"was":"P01-02"},
         {"n":"The Creek, lower","x":-16,"y":-2,"was":"P02-02"}
       ]},
-    {"id":"woodsG","hub":"woods","zone":"The Woods","name":"The Ritual Ground","state":"moves","layer":"surface","x":-22,"y":6,"w":4,"h":3,"shape":"path","count":9,"today":{"room":"site_prebuilt_fairy_forest_plots","districts":["G"]},
+    {"id":"woodsG","hub":"woods","zone":"The Woods","name":"Bohemian Grove","state":"moves","layer":"surface","x":-22,"y":6,"w":4,"h":3,"shape":"path","count":9,"today":{"room":"site_prebuilt_fairy_forest_plots","districts":["G"]},
       "plots": [
         {"n":"The Mound","x":-22,"y":6,"was":"P03-00"},
         {"n":"The Lake, west shore","x":-21,"y":6,"was":"P04-00"},

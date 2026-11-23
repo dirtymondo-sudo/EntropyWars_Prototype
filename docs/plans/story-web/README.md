@@ -174,3 +174,13 @@ chapter-by-chapter guide (https://claude.ai/artifact/ScTxXgtDrPMEyjTMnTrhPv). To
 - Chapter 1 starts as the game's ORIENTATION quest (data.js STORY_QUESTS: steps, cutscene titles, Kit as reward); nothing else is filled
   for him. Units are roster ids, places map refs ('hq', 'z:<zone>', 'd:<zone>:<district>'). **Export the plan** = JSON; nothing in the game
   reads it yet.
+
+## The places as they stand now (2026-11-23)
+mondo: "If the game has a place but the board doesnt, that means something is wrong with the board."
+- **The Flying Dutchman** is on the Map, at the Beach (her rooms have no world place, so `build.js` zoneOfRoom puts `site_prebuilt_revenge_*`
+  in the beach zone). The Game spawns board names her The Flying Dutchman (was "The Revenge", the room id), under The Beach.
+- **One name, Bohemian Grove** (mondo's pick on 11-23): the Woods' district G was "The Ritual Ground", the old Grove room was folded
+  into it on 11-16. app.js `PLACE_RENAMES` renames a board group made from the map while it still carries the old name.
+- **Printed homes**: `build.js` maps each unit's home through data.js `DOOR_TEXT.POINT_OF_ENTRY_NOW` (Mount Shasta -> The Mountains,
+  The Lodge / The Strip / Football Stadium / Downtown -> Disaster City's districts). POINT_OF_ENTRY itself is unchanged: its labels are
+  the keys `doorSiteCrossings` matches against the old site boards.

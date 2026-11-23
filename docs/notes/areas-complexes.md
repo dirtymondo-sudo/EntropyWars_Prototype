@@ -15090,3 +15090,10 @@ district files (and again at THE LAST STAGE for the rows a `last` hook drew), be
   with the same doorways, the leaves and a kit (none on the roof row at y 10.5).
 - THE FILLERS are now only the six sprite prisms (building_N: mondo "just get rid of those or replace them with a different texture like the other
   buildings"): their key goes, they stand as textured walk-ins of their own size, opened and furnished like the shut fronts.
+
+## THE WOODS' DISTRICT G IS BOHEMIAN GROVE (2026-11-23)
+mondo picked one name: the district that was "The Ritual Ground" (room `site_prebuilt_fairy_forest_ow_ritual`, its id unchanged) is
+**Bohemian Grove** on screen, in layout.json, districts/G.js, bake-woods/-camelot/-estate.js door labels, gen.js/plots.json and
+data.js HQ_ZONE_MAP. The old Bohemian Grove room was folded into it on 11-16, so they were always one place. A bake rerun keeps the name.
+The unit dossier's printed home now reads through `DOOR_TEXT.POINT_OF_ENTRY_NOW` (Mount Shasta is gone: The Mountains; the Lodge,
+Strip, Stadium and Downtown: Disaster City's districts); POINT_OF_ENTRY's own labels stay (they match the old site boards).
