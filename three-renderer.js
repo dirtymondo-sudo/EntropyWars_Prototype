@@ -77759,7 +77759,7 @@ const ThreeRenderer = (function () {
         if (info.race) { try { _hqBuildRace(room, info, G, TM); } catch (e) { console.warn('[HQ] the circuit failed', e); } }
         if (_hqSliceDue()) yield;
         /* ── THE SCATTER: catalogue props at the compiler's spots, placed by _hqPlaceProps on the ground ── */
-        _hq.terrainScatter = info.scatter.map(function (q) { return { key: q.key, x: q.x, z: q.z, face: q.face, foot: q.foot, rect: false, scatter: true, h: q.h, sea: q.sea, y: q.lift, noSeat: q.noSeat }; });   // THE FLORA's accents (11-20): a lotus rides its pond's surface (`lift`), never seated on the bed   // THE OCEAN PACK (2026-10-27): a scatter row's `h` sizes its props
+        _hq.terrainScatter = info.scatter.map(function (q) { return { key: q.key, x: q.x, z: q.z, face: q.face, foot: q.foot, rect: false, scatter: true, h: q.h, sea: q.sea, y: q.lift, noSeat: q.noSeat, liftY: q.liftY }; });   // (`liftY`: a stilt house's furniture on its floor, THE LIFTED FLOOR 11-23)   // THE FLORA's accents (11-20): a lotus rides its pond's surface (`lift`), never seated on the bed   // THE OCEAN PACK (2026-10-27): a scatter row's `h` sizes its props
         /* ── THE STALACTITES under a closed ceiling, over the open floor ── */
         /* LEVEL_DESIGN_PLAN (2026-09-30): stalactites hang only in a CAVE (a `cave` floor plan, a LAYOUT in the rock look) or where a room asks
            (`terrain.stalactites: true`) — a basilica, an archive, a sewer, a base, a stair hall has a built ceiling, not rock cones */
@@ -86970,6 +86970,9 @@ const ThreeRenderer = (function () {
                    the 3.0 m priest house stood at 6 m; 344 props across the areas did). It lands at max(the ground, y): on its tier
                    when it stands on one (a tier's edge blend reads low), where it was hung when it hangs. A small `y` (< 1) is still
                    the lift over whatever ground is there (a terminal on a cabinet on a terrace). */
+                /* THE LIFTED FLOOR (THE OPEN DOORS, 11-23): a stilt house's furniture (`liftY`) stands on the house's floor, `liftY` over the ground the house
+                   stands on (data.js hqLiftGround: the swimmer's height in the open sea), never on a wall's top beside it nor on the sea floor */
+                if (typeof p.liftY === 'number' && _hq && _hq.terrain && typeof hqLiftGround === 'function') { pcy = null; y0 += hqLiftGround(_hq.terrain.sea, _hq.terrain.rules || HQ_TERRAIN_RULES, hqTerrainHeight(_hq.terrain, p.x || 0, p.z || 0)) + p.liftY; pY = 0; }
                 if (pcy != null) { if (typeof p.y === 'number' && (p.y >= 1 || p.y <= -0.5)) { y0 += Math.max(pcy, p.y); pY = 0; } else y0 += pcy; }
                 /* THE OCEAN PACK (2026-10-27, the on-screen check): a swimmer authored under the water (`y` ≤ −0.5) swims at that height —
                    its circle's centre can stand on an islet, a deck or a statue (the shark round the Bermuda wreck flew at the islet's top) */
@@ -93355,6 +93358,12 @@ const ThreeRenderer = (function () {
         }
         pl.moving = moving; pl.running = !!(k.shift && moving);
         pl.pushX = 0; pl.pushZ = 0;
+        /* THE WET LADDER (THE OPEN DOORS, 2026-11-23): a surface swimmer at a `wet` ladder's foot, stroking toward its mass, takes hold (the
+           Harbour's stilt houses: the ladder out of the sea onto the deck). Every other ladder stays the walker's (the swimmer never climbs) */
+        if (pl.swim && !sea.under && !pl.dive && _hq.climbs && _hq.climbs.length && !_hqClimbOff()) {
+            var wl = _hqClimbNear(pl);
+            if (wl && wl.end === 'foot' && wl.c.wet && (pl.svx * wl.c.ux + pl.svz * wl.c.uz) > 0.3) { _hqSwimStop(pl, pl.y); _hqClimbStart(pl, wl.c, 'foot'); return; }
+        }
         var hsp = Math.hypot(pl.svx, pl.svz);
         if (hsp > 0.25) pl.targetYaw = Math.atan2(pl.svx, pl.svz);
         pl.visY += (pl.y - pl.visY) * Math.min(1, dt * 10);
