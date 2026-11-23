@@ -152,7 +152,6 @@ const EW_ASSET_MOVES = [
   ['Assets/Sprites/Races/rat/', 'Assets/characters/races/rat/'],   // 2026-11-23 THE COMING RACES 2
   ['Assets/Sprites/Races/monarch/', 'Assets/characters/races/monarch/'],   // 2026-11-23 THE COMING RACES 2
   ['Assets/Sprites/Races/butterfly_girl/', 'Assets/characters/races/butterfly_girl/'],   // 2026-11-23 THE COMING RACES 2
-  ['Assets/Sprites/Races/mannequin/', 'Assets/characters/races/mannequin/'],   // 2026-11-23 THE COMING RACES 2
   ['Assets/Sprites/Races/plastic_surgeon/', 'Assets/characters/races/plastic_surgeon/'],   // 2026-11-23 THE COMING RACES 2
   ['Assets/Sprites/Races/librarian/', 'Assets/characters/races/librarian/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/televangelist/', 'Assets/characters/races/televangelist/'],   // 2026-11-17 THE NEW RACES 2
@@ -582,7 +581,6 @@ const RACE_SPRITE_GENDERS = {
   'rat': 'male',   // 2026-11-23 THE COMING RACES 2
   'monarch': 'female',   // 2026-11-23 THE COMING RACES 2
   'butterfly girl': 'female',   // 2026-11-23 THE COMING RACES 2
-  'mannequin': 'female',   // 2026-11-23 THE COMING RACES 2
   'plastic surgeon': 'male',   // 2026-11-23 THE COMING RACES 2
   'librarian': 'female',   // 2026-11-17 THE NEW RACES 2
   'televangelist': 'male',   // 2026-11-17 THE NEW RACES 2
@@ -785,7 +783,6 @@ const _CHARACTER_SPRITES = {
   'rat': `${_S}/Races/rat/male/rat_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'monarch': `${_S}/Races/monarch/female/monarch_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'butterfly girl': `${_S}/Races/butterfly_girl/female/butterfly_girl_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
-  'mannequin': `${_S}/Races/mannequin/female/mannequin_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'plastic surgeon': `${_S}/Races/plastic_surgeon/male/plastic_surgeon_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'librarian': `${_S}/Races/librarian/female/librarian_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'televangelist': `${_S}/Races/televangelist/male/televangelist_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
@@ -2786,12 +2783,7 @@ const RACE_MODELS_3D = {
       heightRatio: 0.95, basicAttackKind: 'magic',
     }),
   },
-  'mannequin': {
-    female: _mkUAL('mannequin', 'mannequin', {
-      model: 'https://cdn.entropywars.net/Assets/characters/races/mannequin/female/Meshy_AI_mannequin_Running.glb',
-      heightRatio: 1.0, basicAttackKind: 'physical',
-    }),
-  },
+
   'plastic surgeon': {
     male: _mkUAL('plastic_surgeon', 'plastic_surgeon', {
       model: 'https://cdn.entropywars.net/Assets/characters/races/plastic_surgeon/male/Meshy_AI_plastic_surgeon_Running.glb',
@@ -7546,7 +7538,6 @@ const RACE_SPRITES = {
   'rat': `${_S}/Races/rat/male/rat_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'monarch': `${_S}/Races/monarch/female/monarch_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'butterfly girl': `${_S}/Races/butterfly_girl/female/butterfly_girl_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
-  'mannequin': `${_S}/Races/mannequin/female/mannequin_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'plastic surgeon': `${_S}/Races/plastic_surgeon/male/plastic_surgeon_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'librarian': `${_S}/Races/librarian/female/librarian_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'televangelist': `${_S}/Races/televangelist/male/televangelist_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
