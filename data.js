@@ -110362,6 +110362,7 @@ const HOTEL_MD = {
     /* the guests: the city's own encounter races (hqRoomNatives of the city at the run's start); these when it has none */
     guests: ['zombie', 'vampire', 'ghost', 'werewolf', 'demon'],
     boss: null,                                          // the top floor's guest: null = the first of the guests
+    bed: 'couples_bed', bedTurn: 0,                     // the guest rooms' bed (the pack's double bed) and its turn so the headboard is on the wall
     hunt: 14,                                            // a guest that came for you keeps coming while you are this many squares away through the maze
 };
 let _hotelSeed = 0, _hotelRun = null;   // { seed, at, loot: {roomId|cell → true}, slept: {}, seen: {roomId → Uint8Array}, deepest }
@@ -110493,14 +110494,16 @@ function hotelFloorRoom(f, seed, guests) {
         const q = at2(axis, at, s), px = q[0], pz = q[1], top0 = 2.05;
         wallPart(px, pz, axis === 'u' ? 1.9 : T, axis === 'u' ? T : 1.9, top0, r2(hh - top0));
         for (let i = 0; i < 6; i++) {   // the ragged lip: plaster chunks hanging off the top and the sides
-            const along = (i < 3) ? (-0.7 + i * 0.7 + (rng() - 0.5) * 0.3) : (i === 3 ? -0.86 : i === 4 ? 0.86 : (rng() < 0.5 ? -0.84 : 0.84));
-            const y0 = (i < 3) ? r2(top0 - 0.12 - rng() * 0.3) : r2(0.3 + rng() * 1.3), sz = (i < 3) ? [r2(0.3 + rng() * 0.35), r2(0.2 + rng() * 0.3)] : [r2(0.14 + rng() * 0.12), r2(0.35 + rng() * 0.5)];
+            const sdw = (i >= 3) ? (i === 3 ? -1 : i === 4 ? 1 : (rng() < 0.5 ? -1 : 1)) : 0;
+            const along = (i < 3) ? (-0.6 + i * 0.6 + (rng() - 0.5) * 0.2) : sdw * 0.85;
+            const sz = (i < 3) ? [r2(0.3 + rng() * 0.35), r2(0.15 + rng() * 0.3)] : [r2(0.14 + rng() * 0.12), r2(0.35 + rng() * 0.5)];
+            const y0 = (i < 3) ? r2(top0 - sz[1] + 0.01) : r2(0.3 + rng() * 1.3);   // a chunk hangs from the lip / sticks out of a side, never floats
             P.push({ s: 'box', p: axis === 'u' ? [r2(px + along), y0, pz] : [px, y0, r2(pz + along)], size: axis === 'u' ? [sz[0], sz[1], T - 0.04] : [T - 0.04, sz[1], sz[0]], key: H.wallKey, tint: H.wallTint, uv: [3.5, 1.75] });
         }
         const nrm = axis === 'u' ? [0, 1] : [1, 0];
         for (let i = 0; i < 5; i++) {
             const sd = (i & 1) ? 1 : -1, o = 0.35 + rng() * 0.6, a2 = (rng() - 0.5) * 1.6;
-            props.push({ key: rng() < 0.6 ? 'psx_brick_1' : 'hw_bricks', x: r2(px + nrm[0] * sd * o + (axis === 'u' ? a2 : 0)), z: r2(pz + nrm[1] * sd * o + (axis === 'v' ? a2 : 0)), face: ri(360) });
+            props.push({ key: 'psx_brick_1', x: r2(px + nrm[0] * sd * o + (axis === 'u' ? a2 : 0)), z: r2(pz + nrm[1] * sd * o + (axis === 'v' ? a2 : 0)), face: ri(360) });
         }
     };
     /* every line: closed stretches joined into runs; a way in breaks the run and draws itself */
@@ -110546,7 +110549,7 @@ function hotelFloorRoom(f, seed, guests) {
         if (bedS) {
             usedCell[bedS.c[0] + ',' + bedS.c[1]] = 1;
             slots.forEach(sl => { if (sl.c === bedS.c) sl.used = true; });   // the bed's square holds the bed and its nightstands only
-            const b = at(bedS, 1.15, 0); props.push({ key: 'psx_bed_1', x: b.x, z: b.z, face: b.face }); info.bed = b;
+            const b = at(bedS, 1.15, 0); props.push({ key: HOTEL_MD.bed, x: b.x, z: b.z, face: (b.face + HOTEL_MD.bedTurn) % 360 }); info.bed = b;
             const n1 = at(bedS, 0.3, -1.12), n2 = at(bedS, 0.3, 1.12);
             props.push({ key: 'psx_bedside_table_1', x: n1.x, z: n1.z, face: n1.face }, { key: 'rotary_phone', x: n1.x, z: n1.z, y: 0.64, face: n1.face },
                        { key: 'psx_bedside_table_1', x: n2.x, z: n2.z, face: n2.face }, { key: 'table_lamp', x: n2.x, z: n2.z, y: 0.64, face: n2.face });

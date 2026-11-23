@@ -14866,3 +14866,28 @@ The fight's parked room (`_hqParked`) now also parks a BIG room (chunked, or a s
 SMALL room (shell 40,000 m² or less) that has a door back to it: walking out again resumes the city with no load. It stays parked while the
 walker goes on from small room to small room for 20 minutes (`keepMs`); entering any other room drops it. Off switch: `window.EW_HQ_NO_PARK_DOOR`.
 The console says `[HQ] ... PARKED for the building` on the way in and `[HQ] resumed` on the way out.
+
+THE HOTEL, ROUND 2 (11-23, mondo after his first run: the bed does not give MP back and shows nothing; the corner text is slop; the
+enemies must be aggro; the walls do not block moves or sight in battle; rooms must be opened first, a gamble, and a guest inside attacks;
+bigger furnished rooms, some with a second door or a hole in the wall onto another hallway; a minimap that reveals as you explore):
+- THE GUEST ROOMS: data.js hotelMaze lays 2 x 2 rooms (2 x 3, 3 x 3 from floor 5) a square apart before the corridors are dug, the
+  corridors kept one piece. Each room: one door onto a corridor; half get a second way out (`HOTEL_MD.second`) onto a corridor at least
+  5 squares away by the maze, half of those a HOLE (ragged lip, bricks on the carpet). Furniture against the walls of the squares no way
+  in touches: `couples_bed` (headboard on the wall), two nightstands with `rotary_phone` + `table_lamp`, TV table + TV, wardrobe,
+  armchair, a mini fridge in the big ones, a painting, the rug + ceiling lamp in the middle. Kinds per floor `HOTEL_MD.rooms`.
+- THE SHUT DOORS (any room): a terrain wall row with `shut: key` stands until `HQ_SHUT_OPEN[key]` (data.js, read live by hqTerrainWallAt:
+  the walk, the battle's edge walls, the sight line). A `texbuilding` inner leaf with `shut` never swings until then. A counter with
+  `shutGate: [keys]` stays hidden (plate too) until one key opens; `shutHide: key` hides once it opens (three-renderer.js _hqCounterShow /
+  hq.shutOpened). The door's OPEN counter = map.js _hotelAct 'open' -> hotelOpen -> the room's guest is sent at once (hq.npcAt + npcCome).
+- AGGRO: hotelBuild sets `HQ_NPC_TEMPERS.rooms[floor] = { all: 'brute', noGap: true }` (hqNpcTemper reads `all`, hqNpcGapHolds `noGap`).
+  A Brute's chase in a room with `hotelMaze` follows the maze (hotelStepDir: one flood from the walker's square, kept until he moves
+  square or a door opens), keeps coming while within `HOTEL_MD.hunt` squares, and starts the fight only from the next square (never
+  through a wall). `HOTEL_MD.hall` guests also stand in the corridors.
+- SIGHT + BATTLE: a room with `losWalls` stops _hqLosClear at its terrain walls; a room with `fieldSolid` builds its battle with the custom
+  maps' solid walls (hqFieldBuild: hqFieldSolidEdges -> state.edgeWalls; floor 5 test: 105 edge walls).
+- THE BED: map.js fades to black ("Z z z"), hotelRest (HP and MP, the fallen stay down, once a bed a run), draws the dock again (it
+  kept the old bars: the "no MP" report), then hq.restFx: cyan motes and a ring round the walker.
+- THE MAP: three-renderer.js _hqMmHotel draws the whole floor in the minimap box, square by square as seen (hotelSeen, per run): the
+  square you stand on, all of a room you are in, 5 squares down a corridor while the way is open. Shut doors orange, lift + stairs
+  green (the top floor's boss mark red), guests red where seen (never behind a shut door).
+- The floor's sub text and joke lines are gone; doors carry no sub.

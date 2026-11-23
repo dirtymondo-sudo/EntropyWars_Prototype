@@ -105747,18 +105747,18 @@ const ThreeRenderer = (function () {
         ms = ms || 1700;
         if (!_hqRestTex && typeof document !== 'undefined') {
             var cv = document.createElement('canvas'); cv.width = cv.height = 64; var x = cv.getContext('2d'), gr = x.createRadialGradient(32, 32, 0, 32, 32, 32);
-            gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.35, 'rgba(160,250,255,0.75)'); gr.addColorStop(1, 'rgba(0,200,255,0)');
+            gr.addColorStop(0, 'rgba(190,250,255,1)'); gr.addColorStop(0.2, 'rgba(80,230,255,0.8)'); gr.addColorStop(0.55, 'rgba(0,190,255,0.25)'); gr.addColorStop(1, 'rgba(0,160,255,0)');
             x.fillStyle = gr; x.fillRect(0, 0, 64, 64); _hqRestTex = new THREE.CanvasTexture(cv);
         }
-        var U = _hqUnits(), g = new THREE.Group(), motes = [], i;
+        var U = _hqUnits(), g = new THREE.Group(), motes = [], i; g.name = 'hq_rest_fx';
         g.position.set(pl.x * U, (pl.visY != null ? pl.visY : pl.y) * U, pl.z * U);
-        for (i = 0; i < 28; i++) {
-            var m = new THREE.Sprite(new THREE.SpriteMaterial({ map: _hqRestTex, color: 0x6ff6ff, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 }));
-            var a = Math.random() * Math.PI * 2, rr = 0.25 + Math.random() * 0.55;
-            m.userData = { a: a, r: rr, y0: Math.random() * 0.4, sp: 0.7 + Math.random() * 0.8, t0: Math.random() * 0.45, s: 0.12 + Math.random() * 0.12 };
+        for (i = 0; i < 44; i++) {
+            var m = new THREE.Sprite(new THREE.SpriteMaterial({ map: _hqRestTex, color: 0x3fe6ff, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 }));
+            var a = Math.random() * Math.PI * 2, rr = 0.45 + Math.random() * 0.6;
+            m.userData = { a: a, r: rr, y0: Math.random() * 0.4, sp: 0.7 + Math.random() * 0.8, t0: Math.random() * 0.45, s: 0.18 + Math.random() * 0.16 };
             g.add(m); motes.push(m);
         }
-        var ring = new THREE.Mesh(new THREE.RingGeometry(0.3 * U, 0.42 * U, 40), new THREE.MeshBasicMaterial({ color: 0x5ff0ff, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
+        var ring = new THREE.Mesh(new THREE.RingGeometry(0.5 * U, 0.66 * U, 48), new THREE.MeshBasicMaterial({ color: 0x5ff0ff, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
         ring.rotation.x = -Math.PI / 2; ring.position.y = 0.04 * U; g.add(ring);
         H.scene.add(g);
         var t0 = performance.now();
@@ -105767,7 +105767,7 @@ const ThreeRenderer = (function () {
             var t = (performance.now() - t0) / ms;
             if (t >= 1) { H.scene.remove(g); motes.forEach(function (m) { m.material.dispose(); }); ring.geometry.dispose(); ring.material.dispose(); H.dirty = true; return; }
             motes.forEach(function (m) { var u = m.userData, k = Math.max(0, (t - u.t0) / (1 - u.t0)); var a = u.a + k * 2.2;
-                m.position.set(Math.cos(a) * u.r * U, (u.y0 + k * 2.1 * u.sp) * U, Math.sin(a) * u.r * U); m.scale.setScalar(u.s * U * (1 - k * 0.5)); m.material.opacity = k <= 0 ? 0 : Math.min(1, k * 4) * (1 - k); });
+                m.position.set(Math.cos(a) * u.r * U, (u.y0 + k * 2.1 * u.sp) * U, Math.sin(a) * u.r * U); m.scale.setScalar(u.s * U * (1 - k * 0.5)); m.material.opacity = k <= 0 ? 0 : 0.75 * Math.min(1, k * 4) * (1 - k); });
             var rs = 1 + t * 2.4; ring.scale.set(rs, rs, rs); ring.material.opacity = 0.8 * (1 - t);
             H.dirty = true; requestAnimationFrame(tick);
         };
