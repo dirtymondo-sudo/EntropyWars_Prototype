@@ -87338,7 +87338,7 @@ const ThreeRenderer = (function () {
             sub: spec.sub || null, reach: spec.reach || 1.75, pose: spec.pose || null, cast: spec.cast || null, doing: spec.doing || null,
             spot: spec.spot || null, spotIndex: (spec.spotIndex != null) ? spec.spotIndex : -1, patrol: !!spec.patrol, rounds: null, away: false,   // THE ROUNDS (2026-09-19): the authored spot it stands at (its loop's first stop), a patrol agent, its loop record
         };
-        /* a spot's own fight level (`lvl`: the hotel's floors) and size (`scale`: the hotel's boss) */
+        /* a spot's own fight level (`lvl`: the hotel's floors) and size (`scale`: any spot that asks) */
         if (spec.spot && (spec.spot.lvl | 0) > 0) ch.lvl = spec.spot.lvl | 0;
         if (spec.spot && +spec.spot.scale > 0 && +spec.spot.scale !== 1) { entry.group.scale.multiplyScalar(+spec.spot.scale); ch.heightM *= +spec.spot.scale; ch.boss = !!spec.spot.boss; }
         _hq.chars.push(ch);
