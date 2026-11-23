@@ -26,7 +26,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
 | Meshy AI | no | 1321 |
-| Meshy AI, reworked by Claude | no | 10 |
+| Meshy AI, reworked by Claude | no | 11 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 90 |
 | Built by Claude in code (a bake tool writes the file) | no (pack bark picture) | 14 |
@@ -45,6 +45,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 
 | race | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
+| abomination | `Assets/characters/races/abomination/male/abomination.glb` | Meshy AI, reworked by Claude | Meshy AI parts made from mondo's horror concept (the core, the head, ONE arm, ONE tentacle, the bone cage; project files char-concepts-20261123/models) seated cap first into the core's sockets by Claude in code (project files horror-plan-20261123/asm.js): the arm used twice (one mirrored) plus two small extra hands, the tentacle bent along paths into four back tentacles and the two leg tentacles, each its own node, for the Abomination race's moving-parts rig (three-renderer.js THE ABOMINATION) |
 | ai (female) | `Assets/characters/races/ai/female/Meshy_AI_AI_girl_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | angel | `Assets/characters/races/angel/male/Meshy_AI_angel_m_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW LOOKS, mondo 2026-11-18 concepts round; wings / halo / cape / trident apart: THE UNIT GEAR; project files unit-concepts-20261118/) |
 | angel (female) | `Assets/characters/races/angel/female/Meshy_AI_angel_f_v2_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW LOOKS, mondo 2026-11-18 concepts round; wings / halo / cape / trident apart: THE UNIT GEAR; project files unit-concepts-20261118/) |
@@ -58,6 +59,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | banker | `Assets/characters/races/banker/male/Meshy_AI_banker_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES, mondo 2026-11-16 "make meshy models for the new races"; concepts in project files new-races/) |
 | barbarella (female) | `Assets/characters/races/barbarella/Meshy_AI_hot_space_agent_girl__biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | bear | `Assets/characters/races/bear/male/Meshy_AI_bear_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API from mondo's picked concepts (THE COMING RACES 2, 2026-11-23; the Bear's polar look + the Rat King are form looks; project files char-concepts-20261123/) |
+| bear (female) | `Assets/characters/races/bear/polar/Meshy_AI_bear_polar_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API from mondo's picked concepts (THE COMING RACES 2, 2026-11-23; the Bear's polar look + the Rat King are form looks; project files char-concepts-20261123/) |
 | bee queen (female) | `Assets/characters/races/beequeen/Meshy_AI_the_hive_queen_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | bigfoot | `Assets/characters/races/bigfoot/male/Meshy_AI_bigfoot_v2_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW LOOKS, mondo 2026-11-18 concepts round; wings / halo / cape / trident apart: THE UNIT GEAR; project files unit-concepts-20261118/) |
 | black goo | `Assets/characters/races/blackgoo/Meshy_AI_black_goo_with_one_ey_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
@@ -3841,7 +3843,6 @@ Found by scanning the scripts for literal model URLs that no table above lists (
 | deep_sea_diver_helmet | `Assets/characters/gear/helmets/deep_sea_diver_helmet.glb` | Meshy AI | Meshy AI prop (the diver helmet concept), dome cut out by Claude in Blender-free python (pharaoh-diver/models/cut.py); the glass dome is a three.js sphere drawn in three-renderer.js THE BUBBLE HELMET | sprites.js |
 | fairy_wing_single | `Assets/characters/gear/wings/fairy_wing_single.glb` | Meshy AI | Meshy AI part made by Claude (THE UNIT GEAR, 2026-11-18: halos cut out of the angel models, the fairy wing cut out of the old fairy, the trident + the hoodless cape made apart) | sprites.js |
 | feathered_serpent | `Assets/characters/races/aztec/feathered_serpent.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API for Quetzalcoatl's serpent body (THE NEW RACES, mondo 2026-11-16) | three-renderer.js |
-| Meshy_AI_bear_polar_Running | `Assets/characters/races/bear/polar/Meshy_AI_bear_polar_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API from mondo's picked concepts (THE COMING RACES 2, 2026-11-23; the Bear's polar look + the Rat King are form looks; project files char-concepts-20261123/) | sprites.js |
 | Meshy_AI_ice_queen_super_Running | `Assets/characters/races/icequeen/Meshy_AI_ice_queen_super_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) | sprites.js |
 | Meshy_AI_rat_king_Running | `Assets/characters/races/rat/king/Meshy_AI_rat_king_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API from mondo's picked concepts (THE COMING RACES 2, 2026-11-23; the Bear's polar look + the Rat King are form looks; project files char-concepts-20261123/) | sprites.js |
 | ew_plant_apple | `Assets/world/props/meshy/ew_plant_apple.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) | three-renderer.js |
