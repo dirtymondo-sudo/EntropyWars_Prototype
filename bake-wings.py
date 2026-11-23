@@ -78,7 +78,10 @@ def main():
         j['nodes'].append({'name': 'ewwing_' + side, 'translation': L[:3, 3].tolist(), 'rotation': [float(v) for v in bs.m_quat(R)]})
         j['nodes'][par].setdefault('children', []).append(ni)
         newJ.append(ni)
-        M = np.eye(4); M[:3, 3] = -pos; newIBM.append((M @ S).T.reshape(16))
+        # the inverse bind = the inverse of the bone's REAL world matrix (it inherits the parent's scale: a Meshy armature is
+        # 0.01, so a plain -pos inverse shrank each wing 100x to its root and the wings vanished; fixed 11-23 the same day)
+        Lb = np.eye(4); Lb[:3, :3] = R; Lb[:3, 3] = L[:3, 3]
+        newIBM.append((np.linalg.inv(Gp @ Lb) @ S).T.reshape(16))
         print('bake-wings: wing %s · %d vertices · root %s' % (side, int(wings[side].sum()), np.round(pos, 3).tolist()))
     sk['joints'] = J + newJ
     sk['inverseBindMatrices'] = bs.append_acc(j, b, np.vstack([IBM.transpose(0, 2, 1).reshape(-1, 16), np.array(newIBM)]), 5126, 'MAT4')

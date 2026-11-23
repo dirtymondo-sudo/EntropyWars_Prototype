@@ -2779,7 +2779,7 @@ const RACE_MODELS_3D = {
   },
   'butterfly girl': {
     female: _mkUAL('butterfly_girl', 'butterfly_girl', {
-      model: 'https://cdn.entropywars.net/Assets/characters/races/butterfly_girl/female/Meshy_AI_butterfly_girl_wings_Running.glb',   // 2026-11-23 THE WING BONES (bake-wings.py): the same rig + two wing bones that beat
+      model: 'https://cdn.entropywars.net/Assets/characters/races/butterfly_girl/female/Meshy_AI_butterfly_girl_wings2_Running.glb',   // 2026-11-23 THE WING BONES (bake-wings.py): the same rig + two wing bones that beat
       heightRatio: 0.95, basicAttackKind: 'magic',
     }),
   },

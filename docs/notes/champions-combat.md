@@ -6241,3 +6241,21 @@ comments "LAB LOOP 11-21 PASS n"), Sacrifice, Spygear, Psychic, Dirty Fighting, 
 final lab's race spread is no wider than luck (5.05 pts from 50 on average, luck alone 5.21; races at ≤40 / ≥60 %: 23 → 19). 11-22 REVIEW: the race stat rows were put back (noise, the baseline was already inside luck), the spell family fixes kept, Boltzmann Brain's pool trim undone; see the notes file's top.
 How to run it, the method, every pass and every race: docs/notes/balance-loop-20261121.md (tools bal-analyze.js,
 bal-plan.js, bal-families.js; train_headless.js now saves the full tables and survives tab crashes).
+
+## THE BUTTERFLY GIRL (2026-11-23, her kit; mondo OK'd the plan "yeah thas fine")
+Plan page https://claude.ai/artifact/7V3xVKvFCkYrZ3wEDJJTqZ. She left EW_COMING_RACES for AVAILABLE_RACES (data.js + server.js).
+- Race `'butterfly girl'`, female, caster, flies (SKY_RACES), type anomaly, resists wind, weak to ice; families `morpho` (her own) + wind, nature,
+  insectoid; home biome forest (The Fairy Forest, The Woods); POINT_OF_ENTRY Fairy Forest; tree Flutter / Eyespots / Butterfly Effect / raceTornado.
+- **FLUTTER** (STATUS_DEFS `flutter`, badge FLU, `_flutter` 1-3 on the unit, `_flutterSrcId` = her id): grows by 1 at every round end
+  (battle.js `_bfRoundEnd`, after `_nrRoundEnd`); at 3 it touches down as a TWISTER (`_bfTwister`): MEDIUM wind magic on the carrier's 3x3, hits only
+  the carrier's side, push 1, one twister per carrier per wave; it keeps growing after she dies. Spells: Flutter (T1, 80 wind, range 4, +1),
+  Eyespots (T2, Fear radius 2 around her + Flutter), Butterfly Effect (T3, buff: every Flutter +1 now; refused with no carrier).
+- **FLASH AND VANISH** (PASSIVE_DEFS `flashAndVanish`): the first enemy hit makes her Invisible until her next turn, once every 2 rounds; not on dots,
+  link echoes, Broken or already Invisible (`_bfFlashVanish` in applyDamageToUnit, `_bfVanishEnds` at her turn start).
+- AI: ai.js values Butterfly Effect by the twisters it sets off and the bodies near them; Flutter targets in a crowd score higher.
+- VFX (three-vfx-effects.js, kill switch `EW_NO_BUTTERFLY_VFX`): a morpho flies to the target; 1-3 morphos orbit a carrier's head (THE SHOULDER keeper,
+  its own small list, no scene scan, fired from the relayed `nrFlutter:sync`); two owl eyespots open and blink; a tornado of morphos for the twister; a
+  blue flash for the vanish. Everything goes through `_sigVfxGeom` = relayed online.
+- Finisher **Specimen** (`sig: 'specimen'`, `_sigSpecimen3D`): a swarm lifts the target, a glass case drops over it, a pin, a brass label.
+- Her wings flap: model `Meshy_AI_butterfly_girl_wings2_Running.glb` (bake-wings.py, see models-assets.md "THE WING BONES"); three-renderer.js
+  `_gearTick` beats `ewwing_L/R` (folded back, then open). Probe + proof: /mnt/project-files/butterfly-girl/.
