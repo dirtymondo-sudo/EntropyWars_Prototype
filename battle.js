@@ -15596,19 +15596,34 @@
             if (n > (was | 0) && n > 0 && !u.dead && !_skipVisuals()) showFloatingTextForUnit(u, `🦋 FLUTTER ${n}`, 'debuff', { durationMs: 1000, jitterY: -20 });
             const src = _bfSrc(u);
             _sigVfxGeom('nrFlutter:sync', u.x, u.y, n, { uid: u.id, owner: src ? src.player : null });
+            /* a spell (Flutter, Eyespots) that adds the third stack sets it off too (11-23 review fix): a beat later, once the hit
+               that put it there has finished (the round end and Butterfly Effect run theirs in _bfGrow) */
+            if (!_bfGrowing && n >= FLUTTER_MAX && (was | 0) < FLUTTER_MAX) {
+                const uid = u.id;
+                setTimeout(() => {
+                    const c = (state.units || []).find(x => x && x.id === uid);
+                    if (!c || c.dead || c._dying || state.phase !== 'battle' || state.winner || (c._flutter | 0) < FLUTTER_MAX || !unitHasStatus(c, 'flutter')) return;
+                    _bfTwister(c, new Set());
+                    if (typeof checkWin === 'function') checkWin();
+                }, 650);
+            }
         }
+        let _bfGrowing = false;
         function _bfCarriers(side) {
             return (state.units || []).filter(u => u && !u.dead && !u._dying && (u._flutter | 0) > 0 && unitHasStatus(u, 'flutter')
                 && (side == null || (() => { const s0 = _bfSrc(u); return !!s0 && sidesAllied(s0.player, side); })()));
         }
         function _bfGrow(list, why) {
             const ready = [];
-            for (const c of list) {
-                const was = c._flutter | 0;
-                c._flutter = Math.min(FLUTTER_MAX, was + 1);
-                _bfFlutterChanged(c, was);
-                if (c._flutter >= FLUTTER_MAX) ready.push(c);
-            }
+            _bfGrowing = true;
+            try {
+                for (const c of list) {
+                    const was = c._flutter | 0;
+                    c._flutter = Math.min(FLUTTER_MAX, was + 1);
+                    _bfFlutterChanged(c, was);
+                    if (c._flutter >= FLUTTER_MAX) ready.push(c);
+                }
+            } finally { _bfGrowing = false; }
             if (list.length) addLog(`🦋 ${list.length === 1 ? `The Flutter on ${_ctName(list[0])} grows` : `${list.length} Flutters grow`} ${why}${list.length === 1 ? ` (${list[0]._flutter} of ${FLUTTER_MAX})` : ''}.`);
             if (ready.length) {
                 const hit = new Set();
@@ -15682,6 +15697,7 @@
             if (unitHasStatus(unit, 'invisible')) clearStatus(unit, 'invisible');
         }
         window._bfFlutterChanged = _bfFlutterChanged; window._bfEffectValue = _bfEffectValue; window._bfRoundEnd = _bfRoundEnd;
+
         /* ═══ THE RAT KING (2026-11-23, thread "Plan the Rat and Rat King's spells"; mondo: "The rat can have some sort of system where
            if he gets enough stacks he becomes the rat king", plan OK'd 11-23) ═══ One new rule, MISCHIEF (a group of rats is a
            mischief), host-side like THE COMING RACES: plain numbers and the unit's own appearance / spell rows, all riding the state
@@ -44521,7 +44537,6 @@
                 if (sourceUnit && sourceUnit.race === 'wendigo' && sidesHostile(sourceUnit.player, target.player)) sourceUnit._fedRound = state.round || 0;   // 🦌 it fed
                 if (sourceUnit && sourceUnit.race === 'cameraman' && target.hp > 0) _camFilm(sourceUnit, target);   // 🎥 THE FOOTAGE
                 if (sourceUnit && (sourceUnit.race === 'gladiator' || sourceUnit.race === 'jellyfish ufo')) _crOnHit(sourceUnit, target, opts);
-                if (target.race === 'butterfly girl' && sourceUnit) _bfFlashVanish(target, sourceUnit, opts);   // 🦋 FLASH AND VANISH   // 🛡⚡ THE COMING RACES: Favor, claw Charge
                 if (sourceUnit && sourceUnit.race === 'rat') _ratOnHit(sourceUnit, target, opts, _ratHadBleed);   // 👑 THE RAT KING: Mischief
                 if (target.hp <= 0 && _ratHpWas > 0 && (target.race === 'rat' || _ratOnBoard())) _ratOnDown(target);   // 👑 the scavenger, the fallen crown
                 if (target.race === 'monarch') _monDeltaCheck(target);   // 🔺 THE MONARCH: Delta Alter
@@ -44555,6 +44570,7 @@
                     addLog(`👁️ ${_ctName(target)} is revealed — the hit gives them away!`, target.player);
                     if (typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(target, '👁️ Revealed!', 'debuff');
                 }
+                if (target.race === 'butterfly girl' && sourceUnit) _bfFlashVanish(target, sourceUnit, opts);   // 🦋 FLASH AND VANISH (after the reveal, so the hit that sets it off does not strip it)   // 🛡⚡ THE COMING RACES: Favor, claw Charge
 
                 if (sourceUnit) {
                     sourceUnit._trackDmgDealt = (sourceUnit._trackDmgDealt || 0) + finalDamage;
