@@ -6185,6 +6185,7 @@ above (kit, then move the key into both AVAILABLE_RACES).
 - THE RAT KING (mondo: "if he gets enough stacks he becomes the rat king"): sprites.js `RAT_KING_3D` (transformFx), worn when
   `appearance.form === 'king'` (sprite `Races/rat/king/rat_king_px.png`). The stacks + the swap trigger = the Rat thread (also hash the form
   into three-renderer.js `_computeUnitStructuralSerial`, like the Ice Queen's super form, so it swaps at once).
+  **DONE 11-23: the Rat is unlocked with his kit, see "THE RAT KING" below.**
 - THE WEREWOLF's male model was replaced by mondo's new concept A (no chain): `werewolf/male/Meshy_AI_werewolf_m_v2_Running.glb`, same lib
   clips + scale + day form; the old rig stays on R2. The female VAMPIRE's new model is the Vampire thread's PR (mondo: "just replace the
   current model"), file already on R2: `vampire/female/Meshy_AI_vampire_f_v2_Running.glb`.
@@ -6279,3 +6280,25 @@ mondo: one Bear, grizzly + polar share the bear family, the polar gets some Ice 
 - VFX three-vfx-effects.js (after nrDeathRoll): brPawSwipe, brBearHug, brHibernate aura (Z's + leaves or snow by coat), brBearDown (dust line,
   crack, heavy shake), brGrudgeMark, brWake, brRudeWake; own cyan / enemy pink-orange rims. No lie-down clip yet (the bear sleeps standing).
 
+
+## THE RAT KING (2026-11-23, thread "Plan the Rat and Rat King's spells"; mondo OK'd the plan + mock-up)
+Plan doc https://claude.ai/artifact/DCz9CabK8oczmeEWNQr5oe (project files `rat-king-plan/`). mondo's answers: the crown lasts until
+Mischief runs out; 5 stacks. `rat` is in data.js + server.js AVAILABLE_RACES (out of EW_COMING_RACES); male only; assassin; POINT_OF_ENTRY
+The Sewers (NOT yet placed as Sewers natives: the Sewers district files are held by another thread, see claims.md; a row for them).
+- THE RULE, MISCHIEF (battle.js block "THE RAT KING", after `_crCastRow`): +1 per damaging hit by the rat or by his summoned rats
+  (`sourceUnit` = the caster), +1 more when Gnaw hits a target that was already bleeding, +1 when an enemy goes down within 2 of him.
+  At 5 (`MISCHIEF_MAX`) he is CROWNED: `appearance = {...old, form: 'king'}` (a new object, the roster's look is not touched), heal 20 %,
+  +2 ATK / +1 DEF stage (getStatStageCount), the kit swaps slot for slot. A King loses 1 at each round end (`_ratRoundEnd` in the
+  `_nrRoundEnd` chain); at 0 the crown falls and the kit swaps back. Stun, Frozen or Feared on him scatters 2 (applyStatusPayload,
+  after the Skater's bail). resetUnitPowerState (map.js) clears it. HUD chip `MIS n/5` / `👑 KING · MIS n/5` (hud.js, after the brood chip).
+- THE KIT (data.js RACE_ABILITIES.rat, families `ratpack`, `poison`, `thievery`, `beastabilities`): Gnaw (T1, melee, bleed 2),
+  Scurry (T2 escape 3), Mischief of Rats (T3, summon 2 Sewer Rats, `summonCount`, cap 2, bites poison). THE KING's rows are
+  `RAT_KING_SPELLS` (family `ratking`), registered in SPELL_BY_ID only (the DOOR_GUN pattern: never pickable, never in a pool):
+  Plague Bite (bleed + poison), Carried by the Court (escape 4), Long Live the King (`longLiveKing {radius 4, dmg 70}`: every
+  enemy within 4 takes a bite, then Mischief goes to 0 and he is dethroned; refused with no enemy in reach). RAT_KING_SWAP / _BACK
+  swap `spells`, `_raceAbilities` and `_spellSlots`. ai.js scores Long Live the King by `window._ratKingPlan` (kills first).
+- `summonUnit` + `summonCount` (any summon row): calls that many, on free tiles nearest the caster; the cap dismisses the oldest.
+- THE COURT (three-renderer.js "THE RAT'S COURT", after the unit auras): one orbiting rat a Mischief stack (clones of the R2 prop
+  `Assets/world/animals/rat.glb`, `_ANIMALS.rat`, shared geometry); a crowned court gets a pink cord. Kill-switch `EW_NO_RAT_COURT`.
+  The structural serial hashes the king form so the model swaps at once.
+- FINISHER 'The Mischief' (sig pileOn). Affinity: poison resist, fire weak.

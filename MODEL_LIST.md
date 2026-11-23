@@ -20,7 +20,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | made by | human-made? | count |
 | --- | --- | --- |
 | Asset pack | yes | 1151 |
-| Asset pack (author not recorded yet) | yes | 178 |
+| Asset pack (author not recorded yet) | yes | 179 |
 | MakeHuman community asset | yes | 546 |
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
@@ -3674,6 +3674,7 @@ These rows draw mondo's car pack (GGBot low-poly cars, Assets/vehicles/, `_CAR_P
 | monarch | `Assets/world/animals/insects/Butterfly_Monarch.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
 | moth_frames | `Assets/world/animals/insects/Moth_Wing_Flap_Frames.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
 | rabbit | `Assets/world/animals/crow_and_rabbit/rabbit.glb` | Asset pack (author not recorded yet) | Crow + rabbit (mondo's upload) |
+| rat | `Assets/world/animals/rat.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
 | swallowtail | `Assets/world/animals/insects/Butterfly_Swallowtail.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
 | wolf | `Assets/world/animals/Wolf1.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
 
