@@ -14946,6 +14946,11 @@ each floor"):
   `crowdAll` stands every placed spot. The city's population walkers (hq-roam, at city levels, a hippie labelled Trucker) walked every floor:
   hqRoomPopulation returns none for a hotel room. hqSpotRaces leaves `boss` / `fixed` spots alone. Beaten guests stay beaten for the RUN only
   (the cleared record carries `run` = the seed). Pictures: /mnt/project-files/hotel-dungeon/round3/.
+- ROUND 4, THE ROOF (11-23, mondo: "no thats not how bosses work. he needs to be by himself on the roof, normal sized (why would he be huge????)"):
+  floor 10 is a floor like the rest; its stairs (`up`) go to THE ROOF, `site_prebuilt_hotel_roof` (data.js hotelRoofRoom, built with the floors by
+  hotelBuild): the 28 m footprint open to the city's sky (no ground past the parapet: `terrain.outer: false`), a stair hut south-west (door
+  `stairs` back to floor 10), the lift hut north-east whose door `exit` is THE EXIT (`hotelTop`, locked until he is down), a few vents and a dish.
+  The Banker stands alone mid-roof at his own size (no `scale`). Pictures: /mnt/project-files/hotel-dungeon/round4/.
 
 ## DISASTER CITY, THE FINANCIAL TOWERS + THE MID-RISE FILL (2026-11-23, the skyline plan, mondo 17:00 "Build it, plus the mid-rise fill")
 The plan: https://claude.ai/artifact/YEe54svVhVbLufjHdfQ5QY (sites: project files `skyline-plan/tools/towers.json`). Financial's part: towers
@@ -15013,10 +15018,21 @@ whole catalogue buildings (find-doors.js PACK rows), so each KIND opens once, in
 - A WALKER'S DOORWAY under ~1 m shuts: the 0.68 m body against walls laid on 0.5 m cells stopped dead in a 0.87 m gap (seen in the
   browser). A row's `doorW` is 1.05 m or more even when the pack's frame is narrower (the leaf covers the frame): the trailers 1.1, the
   outhouse 1.05, the stair house 1.1.
-- LEFT (11-23): the three stilt houses in the Harbour stand 0.7 m over the sea on piles; the walker swims to them but nothing climbs
-  the deck yet (a ladder `climb` row needs an absolute height, the deck's comes off the sea floor under each). The Haunted House's two
-  rim houses have no ground round them; Heaven's Room 777 door reads unreached (the floating stair is under-read by the walker, as in
-  the soft-lock notes); the Estate's field shed reads unreached in the Lake room's copy of its neighbour (its own room, `…_ow_corn`, makes find-doors.js throw: not checked).
+- THE STILT HOUSES (11-23, pass 3, mondo "go ahead start that pass"): HQ_WALK_IN_PROPS stilt_hut / stilt_house / stilt_house_wide. The
+  prop stands on the SWIMMER'S height in the open sea (`_hqCaveTop` = hqTerrainFeet = sea.y - swimDraft = -1.1), never the sea floor
+  (-3.5): every lifted row measures from that ground (data.js `hqLiftGround(sea, R, g)`). Its deck is at -1.1 + 0.6 (the prop's `y`) +
+  3.62 = 3.12. New walk-in fields: a room's `lift` (its walls, roof and a hidden FLOOR SLAB `:fl<j>` at the deck: a lifted room stands on
+  nothing), `bridges` [[x0, z0, x1, z1, w, lift]] (the porch; reaches 0.3 m into the doorway, else a gap at the threshold drops you),
+  `climbs` [[x, z, turn, lift]] (a `wet` ladder: three-renderer.js _hqTickSwim THE WET LADDER mounts it from the water, its foot at the
+  swimmer's height). A lifted room's lintel (`lift` row) is measured from the room's floor (it hung across the doorway from under the
+  water). Furniture: `liftY` (the renderer's THE LIFTED FLOOR: over the house's own ground; a hover read the wall tops beside it, and the
+  terrain scatter map now carries `liftY`). Seen in the browser: swim, climb (4.2 m, ~20 s), porch, doorway, the furnished room.
+- THE FIELD SHED (the Estate, `…_ow_lake`): its door is on its WEST side; the height plan had the corn shut against it (the plan drew the door
+  'S'). One `area` row in `docs/plans/world-polish/plans/estate.js` opens the two squares off the Farm Track; then `node bake-estate.js`,
+  `node bake-route.js R7`, `node bake-map.js site_prebuilt_skinwalker_ow_lake`. (`…_ow_corn` is gone: the Corn Fields are in the Lake's room.)
+- NOT REACHED, ON PURPOSE: the Haunted House's two `abandoned_house` stand past its room's edge on the outer ground (scenery, no ground to
+  walk to). Heaven's Room 777 reads unreached in find-doors.js, but a walk by the walker's rule from the spawn reaches its front at 28 m
+  (the finder under-reads the floating flights).
 
 - NOT DOORS: `thatched_hut` left find-doors.js's list (no door, lattice windows all round, a floor on stilts 0.7 m up, 1.2 m headroom).
 

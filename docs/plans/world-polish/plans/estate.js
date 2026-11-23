@@ -72,6 +72,7 @@ module.exports = {
         /* (the build, 11-20: today's places in the corn kept as clearings on the west track, so nothing of the Corn Fields is lost) */
         ['area', 2, 19, 5, 21, 'g', 1], ['area', 3, 25, 6, 31, 'g', 1], ['label', 4.5, 28, 'the camp', 'note'], ['area', 1, 38, 5, 44, 'g', 1], ['label', 3, 41, 'the wagon yard', 'note'], ['area', 16, 18, 19, 19, 'g', 1],
         ['area', 20, 48, 21, 50, 'k', 1], ['set', 22, 49, 'k', 1], ['thin', [[17, 55, 1], [21, 55, 1], [21, 51, 1]], { to: 'the field shed and the silo (a building you walk into)' }], ['label', 20, 47.2, 'FIELD SHED + SILO', 'mark'],
+        ['area', 19, 48, 19, 49, 'q', 1],   /* (THE OPEN DOORS, 11-23: the field shed's door is on its WEST side, off the Farm Track; the corn stood shut against it) */
         /* ── THE LAKE (L): the water lies low; the west bank and the bluff stand over it ── */
         ['area', 24, 120, 59, 125, 'g', 0], ['area', 24, 125, 28, 143, 'g', 0]   /* (the build, 11-20: row 125 is today's shingle above the water, kept open) */, ['label', 42, 122, 'THE NORTH SHORE · open, level', 'place'],
         ['area', 34, 126, 49, 127, 'w', 0], ['area', 29, 128, 54, 144, 'w', 0], ['area', 34, 145, 49, 146, 'w', 0], ['label', 42, 134, 'THE LAKE', 'place'],
