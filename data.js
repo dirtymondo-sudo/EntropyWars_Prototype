@@ -110045,7 +110045,7 @@ const HOTEL_MD = {
     /* the guest rooms a floor holds (dead ends; what the maze has, up to these) */
     rooms: { 8: { loot: 2, fight: 1, rest: 1 }, 12: { loot: 4, fight: 3, rest: 2 }, 16: { loot: 5, fight: 5, rest: 3 } },
     braid: 0.04,                                         // a share of the floor's squares: walls taken out so the corridors loop (never a guest room's)
-    lamps: 10,                                           // point lights a floor (the stage lights 12 at most)
+    lamps: 6,                                            // point lights a floor (the stage lights 12 at most; fewer, softer: ten hot spots on the walls of one-square corridors read as a shine, 11-23)
     /* the look: the lobby's cream plaster, a carpet runner, dark wood skirting */
     floorKey: 'urban:CarpetPattern1a', wallKey: 'urban:PlasterWallPainted1d', wallTint: 0xf2e6d2, skirt: 0x4a2a20, frame: 0x3a2418,
     ceiling: 'urban:FibreCeilingTile1a', leaf: 'leaf_hotel', stairLeaf: 'leaf_exit',
@@ -110196,7 +110196,7 @@ function hotelFloorRoom(f, seed, guests) {
             w: W, d: W, h: hh, wallH: hh, dadoH: 1.0,
             floor: H.floorKey, wall: H.wallKey, dado: 'urban:WoodPanelling1a', trim: 'wood', ceiling: H.ceiling,
             floorColor: 0xb87a6a, wallColor: H.wallTint, dadoColor: 0x7a4a30, ceilColor: 0xf0eadc, ceilTile: 1.75,
-            pipes: false, strips: false, lights,
+            pipes: false, strips: false, lights, lampK: 0.7, matte: true,   // matte: plaster and carpet never shine (mondo 11-23: "the walls and floors look shiny"; three-renderer.js THE MATTE ROOM); lampK: the lamps are close to the walls in a one-square corridor
             mood: { light: 0xffe8c8, lamp: 0xffd890, ambient: 0.9 },
         },
         parti: 'A hotel floor laid as a maze on whole squares: one-square corridors, walls on the lines, guest rooms behind swinging doors at the dead ends, the lift in one corner and the stairs at the farthest dead end.',

@@ -14782,3 +14782,8 @@ floor" · he picked THE HOTEL (the Financial district's luxury hotel, `dc:P08-00
   walker's rule). Console: `hotelNewRun(seed)`, `hotelRunState()`, `DOOR_HQ.rooms.site_prebuilt_hotel_f3.hotelMaze`.
 - **Not yet (plan step 3):** the boss SUITE (today the boss stands in a dead end), floor kinds (flooded, on fire), story notes in the
   rest rooms, a guest book of the deepest floor. Leaving the hotel reloads the city until the Kits thread's parked room reaches building doors.
+
+THE MATTE ROOM (11-23, mondo: "the walls and floors look shiny, please fix, it looks ugly"): a room whose `shell.matte` is
+true gets every opaque Phong material zeroed (specular 0, shininess 0) once at room landing (three-renderer.js, before
+`H.landed = true`; a one-time read at build, not per frame). The hotel floors set it, plus fewer, softer lamps
+(`HOTEL_MD.lamps` 6, `shell.lampK` 0.7). Off switch: `window.EW_HQ_NO_MATTE = true`. Any other room that looks shiny: add `matte: true` to its shell.
