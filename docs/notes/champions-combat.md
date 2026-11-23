@@ -6175,7 +6175,7 @@ that clip as idle and walk (`clips.idle` = the file). Its claw arms do not move.
 ## THE COMING RACES 2 (2026-11-23, thread "Make concept art for new characters")
 mondo picked Meshy concepts and said "wire them up and start a thread for each new one to come up with a plan for their unique
 spells/playstyle and vfx". Models + 128x128 Sprite AI sprites are IN for six new races, kits are NOT: data.js `EW_COMING_RACES` =
-`bear`, `rat`, `monarch`, `butterfly girl`, `mannequin`, `plastic surgeon` (labels + a first-guess type in RACE_PROFILES; the
+`bear`, `rat`, `monarch`, `butterfly girl`, `plastic surgeon` (labels + a first-guess type in RACE_PROFILES; the
 Relationship Web lists them through fresh.js). One spell thread a unit (the coordinator started them 11-23); THE UNLOCK is the same as
 above (kit, then move the key into both AVAILABLE_RACES).
 - THE BEAR is ONE race (mondo: "polar bear would just have access to some spells in the ice family but they would both share the same
@@ -6190,7 +6190,8 @@ above (kit, then move the key into both AVAILABLE_RACES).
 - THE HORRORS (two, unnamed) are NOT wired: mondo wants each built from separate moving parts like the Virus / Cursed TV. The ten Meshy parts
   are on R2 at `Assets/characters/races/horror_a/parts/horror_a_{core,head,arm,tentacle,cage}.glb` and
   `horror_b/parts/horror_b_{maw,mask,limb,fingers,shard}.glb` (unrigged; B's mask came out a whole head). Assembly + rig = the Horrors thread.
-- The Mannequin is one Meshy mesh (joint gaps only painted); floating parts = its thread's call. The Plastic Surgeon is v2 (v1 read "burnt").
+- THE MANNEQUIN WAS CUT (mondo 11-23, "lets go ahead and cut this character concept"): unwired the same day; its model + sprite stay on R2
+  (`Assets/characters/races/mannequin/female/`), nothing reads them. The Plastic Surgeon is v2 (v1 read "burnt").
 - Sources, scripts (gen.py, models.py, sprites/run.py) and sheets: project files `char-concepts-20261123/`.
 
 ## THE COMING RACES, THE KITS (2026-11-19, the second account's thread "spell and combat plans for the coming races"; mondo OK'd the plans in the thread)
