@@ -1156,6 +1156,13 @@
             try { if (g.unitHasStatus(tg, 'doxxed')) return 0; } catch (e) {}
             return 25;
         }
+        /* 🦋 THE MONARCH (2026-11-23): Programmed is stacks toward the Trigger Word (2 = it hits its own side, 3 = and sleeps):
+           worth more the closer the target gets to 2 and 3, nearly nothing past the cap */
+        if (id === 'programmed') {
+            const cur = Math.max(0, Math.min(3, Number(tg.status && tg.status.programmed) | 0));
+            if (cur >= 3) return 10;
+            return 45 + 35 * cur + Math.min(60, 0.15 * unitThreatOutput(g, tg, unit));
+        }
         try { if (g.unitHasStatus(tg, id)) return 0; } catch (e) {}
         if (_aiStatusBlocked(g, tg, id)) return 0;   // WEAK RACES II: Ghoul shrugs off Stun, Rabbit Slow — no denial
         const output = unitThreatOutput(g, tg, unit);
@@ -6684,6 +6691,24 @@
             }
             /* 🪆 THE HAUNTED DOLL (2026-11-17): Pull My String is a gamble on four lines (a heal, a Charm, a pull, a big hit). The CPU
                plays it blind, as a player does (it never peeks at _dollStringLine): worth more with an enemy in reach and when hurt. */
+            /* 🦋 THE MONARCH (2026-11-23): Trigger Word is worth what the programmed enemies in sight will do (the engine refuses
+               it with none): a 2-stack turns and hits its own side, a 3-stack also falls asleep. Metamorphosis (the chrysalis
+               skips her next turn) is worth it hurt, with nobody beside her, and more with stacks out for the hatched word. */
+            if (spell.triggerWord) {
+                const _twF = (typeof window !== 'undefined' && typeof window._monProgrammedFoes === 'function') ? window._monProgrammedFoes(unit, true) : [];
+                if (!_twF.length) return 0;
+                const _twB = unit._monHatched ? 1 : 0;
+                let _tw = 0;
+                for (const e of _twF) { const n = Math.min(3, (Number(e.status && e.status.programmed) | 0) + _twB); _tw += n >= 3 ? 150 : n === 2 ? 100 : 25; }
+                return _tw;
+            }
+            if ((spell.statusEffects || []).some(e => e && e.id === 'chrysalis')) {
+                if (g.unitHasStatus(unit, 'chrysalis')) return 0;
+                if (v.visibleEnemies.some(e => Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y) <= 1)) return 0;
+                const _mHurt = unit.maxHp > 0 ? 1 - unit.hp / unit.maxHp : 0;
+                const _mProg = (typeof window !== 'undefined' && typeof window._monProgrammedFoes === 'function') ? window._monProgrammedFoes(unit, true).length : 0;
+                return 20 + Math.round(90 * _mHurt) + 25 * Math.min(3, _mProg);
+            }
             if (spell.pullString) {
                 const _psR = (spell.pullString.killRange || 4);
                 const _psNear = v.visibleEnemies.some(e => Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y) <= _psR);

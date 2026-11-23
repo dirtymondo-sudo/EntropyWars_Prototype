@@ -66178,6 +66178,342 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     };
     /* the ones that come on the WINDUP (the caster's close-up, before the camera pulls back for the war cry) */
     var _BUG_ON_WINDUP = { raceSwarmSignal: _bugSignal };
+    /* ══ THE MONARCH (2026-11-23, mondo OK'd the kit) ══ A programmed sleeper agent with stained-glass monarch wings. Her spells
+       read from the viewer's seat (THE RIOT PASS: own side cyan-blue, the other side pink-orange) on the spiral, the glass, the
+       rings and the chrysalis; the butterflies are the game's own Butterfly_Monarch (THE INSECTS: real wings beating). The caster,
+       the target, the hit and the number stay clear (nothing solid on a body past 0.6 opacity). Kill-switch window.EW_NO_MONARCH_VFX.
+         BUTTERFLY KISS (cast): a kiss flash at her lips, one monarch flies the line to the target, a side ring where it lands.
+         PROGRAMMED ('monProgram', every stack that lands): one thin side ring per stack round the target's chest, a spark.
+         PENDULUM (cast, 3×3): a hypnotic spiral swings over the area on a thread, then lies on it and turns; 3 monarchs rise.
+         KALEIDOSCOPE WINGS (cast, her square): two stained-glass wings in the side's colours open behind her, a ring goes out.
+         TRIGGER WORD ('monTriggerWord:say' / ':wake'): a spiral snaps shut over her head; on each sleeper a ring + monarchs burst
+           out, more for more stacks (2+ = a sharp flash: it turns; 3 = a soft dark dome: it sleeps).
+         SLEEPER CELL ('monSleeperCell:spring'): a chrysalis closes round the victim and cracks, monarchs pour out.
+         METAMORPHOSIS (':wrap' / ':hatch'): a chrysalis grows over her; when it comes off it cracks, the wings open, a swarm lifts.
+         CHAOS THEORY (':mark' for her side only; the blast): one monarch circles the mark; at the blast a swarm spirals out over
+           the 5×5 with a side-coloured spiral and three rings.
+         DELTA ALTER ('monDelta'): a red triangle flashes over her and a red ring. */
+    var _MON_GOLD = 0xffc04a, _MON_RED = 0xff2a3a, _MON_LEAF = 0x7fb05a;
+    function _monOff() { return _catOff('spells') || (typeof window !== 'undefined' && !!window.EW_NO_MONARCH_VFX); }
+    function _monSide(u) { return _fx5Mine(u) ? { a: 0x5fe0ff, b: 0x3a7bff } : { a: 0xff4f8a, b: 0xff9a3a }; }
+    /* the side is always HER side (the caster's): the owner when the call names one, else the caster's square, else the unit acting now */
+    function _monSideOf(o, tx, ty) {
+        o = o || {};
+        if (o.owner != null) return _monSide({ player: o.owner });
+        var u = (o.cx != null) ? _fx5UnitAt(o.cx, o.cy) : (o.fromX != null ? _fx5UnitAt(o.fromX, o.fromY) : null);
+        if (!u) { try { if (typeof state !== 'undefined' && state && state._blitzActiveUnitId != null && state.units) u = state.units.find(function (v) { return v && v.id === state._blitzActiveUnitId; }) || null; } catch (e) {} }
+        return _monSide(u || _fx5UnitAt(tx, ty) || { player: -1 });
+    }
+    var _monLast = {};
+    function _monOnce(key, tx, ty) {
+        var now = performance.now(), k = key + '@' + tx + ',' + ty;
+        if (_monLast[k] && now - _monLast[k] < 1500) return false;
+        _monLast[k] = now; return true;
+    }
+    function _monFaceCam(obj) {
+        try { var cam = (!_VS.on && typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null; if (cam && cam.quaternion) obj.quaternion.copy(cam.quaternion); } catch (e) {}
+    }
+    /* the hypnotic spiral: white arms on clear, tinted by the material */
+    function _monSpiralTex() {
+        return _sigTex('mon-spiral', 128, function (ctx, S) {
+            ctx.clearRect(0, 0, S, S);
+            ctx.strokeStyle = '#ffffff'; ctx.lineCap = 'round';
+            for (var arm = 0; arm < 2; arm++) {
+                ctx.beginPath();
+                for (var i = 0; i <= 260; i++) {
+                    var t = i / 260, a = t * Math.PI * 6 + arm * Math.PI, r = t * S * 0.47;
+                    var x = S / 2 + Math.cos(a) * r, y = S / 2 + Math.sin(a) * r;
+                    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                }
+                ctx.lineWidth = S * 0.045; ctx.stroke();
+            }
+            var g = ctx.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S * 0.5);
+            g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.85, 'rgba(255,255,255,1)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+            ctx.globalCompositeOperation = 'destination-in'; ctx.fillStyle = g; ctx.fillRect(0, 0, S, S);
+            ctx.globalCompositeOperation = 'source-over';
+        });
+    }
+    /* one stained-glass monarch wing (the right one; mirrored for the left): white glass cells, dark lead veins, white spots
+       round the edge. The material tints the glass in the side's colour. */
+    function _monWingTex() {
+        return _sigTex('mon-wing', 128, function (ctx, S) {
+            ctx.clearRect(0, 0, S, S);
+            function wing(path) { ctx.beginPath(); path(); ctx.closePath(); }
+            var fore = function () { ctx.moveTo(4, S * 0.48); ctx.bezierCurveTo(S * 0.3, S * 0.02, S * 0.8, S * 0.0, S * 0.97, S * 0.12); ctx.bezierCurveTo(S * 0.86, S * 0.32, S * 0.62, S * 0.48, 4, S * 0.52); };
+            var hind = function () { ctx.moveTo(4, S * 0.52); ctx.bezierCurveTo(S * 0.5, S * 0.5, S * 0.8, S * 0.62, S * 0.7, S * 0.86); ctx.bezierCurveTo(S * 0.5, S * 1.0, S * 0.2, S * 0.9, 4, S * 0.56); };
+            [fore, hind].forEach(function (p) {
+                wing(p); ctx.fillStyle = 'rgba(255,255,255,0.78)'; ctx.fill();
+                ctx.lineWidth = S * 0.05; ctx.strokeStyle = 'rgba(16,8,4,0.95)'; ctx.stroke();
+            });
+            ctx.strokeStyle = 'rgba(16,8,4,0.9)'; ctx.lineWidth = S * 0.022;
+            [[0.6, 0.06], [0.8, 0.14], [0.86, 0.3], [0.62, 0.42]].forEach(function (q) { ctx.beginPath(); ctx.moveTo(4, S * 0.5); ctx.quadraticCurveTo(S * q[0] * 0.5, S * (q[1] + 0.2), S * q[0], S * q[1]); ctx.stroke(); });
+            [[0.55, 0.62], [0.68, 0.74], [0.5, 0.86], [0.3, 0.8]].forEach(function (q) { ctx.beginPath(); ctx.moveTo(4, S * 0.54); ctx.quadraticCurveTo(S * q[0] * 0.5, S * (q[1] - 0.05), S * q[0], S * q[1]); ctx.stroke(); });
+            ctx.fillStyle = 'rgba(255,255,255,0.95)';
+            [[0.9, 0.12], [0.84, 0.2], [0.76, 0.26], [0.66, 0.82], [0.56, 0.9], [0.44, 0.92], [0.7, 0.72]].forEach(function (q) { ctx.beginPath(); ctx.arc(S * q[0], S * q[1], S * 0.018, 0, Math.PI * 2); ctx.fill(); });
+        });
+    }
+    /* the chrysalis shell: leaf green with gold dots and the segment lines */
+    function _monShellTex() {
+        return _sigTex('mon-shell', 64, function (ctx, S) {
+            ctx.fillStyle = '#9ccf72'; ctx.fillRect(0, 0, S, S);
+            ctx.strokeStyle = 'rgba(40,70,20,0.5)'; ctx.lineWidth = 2;
+            for (var i = 1; i < 6; i++) { ctx.beginPath(); ctx.moveTo(0, i * S / 6); ctx.lineTo(S, i * S / 6 + 3); ctx.stroke(); }
+            ctx.fillStyle = '#ffd24a';
+            for (var k = 0; k < 8; k++) { ctx.beginPath(); ctx.arc((k * 8 + 4) % S, S * 0.2, 1.8, 0, Math.PI * 2); ctx.fill(); }
+        });
+    }
+    /* a chrysalis round a square: grows up from the feet (grow ms), holds, then cracks open (scale out + fade) at crackAt */
+    function _monChrysalis(tx, ty, o) {
+        if (_afFogHides(tx, ty)) return null;
+        o = o || {};
+        var F = _nrvFrame(tx, ty), ts = F.ts, h = _lgBodyH(_lgUidAt(tx, ty), ts);
+        var m = new THREE.MeshBasicMaterial({ map: _monShellTex(), color: 0xffffff, transparent: true, opacity: 0, depthWrite: false, fog: false, side: THREE.DoubleSide });
+        var geo = new THREE.SphereGeometry(1, 16, 12);
+        var shell = new THREE.Mesh(geo, m); shell.renderOrder = 158;
+        var rim = new THREE.Mesh(geo, _sigMat((o.C || _monSideOf(o, tx, ty)).a)); rim.renderOrder = 159; rim.scale.setScalar(1.04);
+        var hold = new THREE.Group(); hold.add(shell); shell.add(rim); F.g.add(hold);
+        var grow = o.grow || 420, crack = o.crackAt || 900, ms = crack + 380;
+        return _sigRunOwned(F.g, ms, function (el) {
+            var g = _sigEaseOutCubic(_sigClamp01(el / grow)), c = _sigClamp01((el - crack) / 380);
+            var R = ts * 0.32 * (1 + c * 0.6), H = h * 0.62 * Math.max(0.05, g) * (1 + c * 0.3);
+            shell.scale.set(R, H, R); hold.position.y = H;
+            m.opacity = 0.55 * Math.min(1, el / 120) * (1 - c);
+            rim.material.opacity = 0.35 * Math.min(1, el / 120) * (1 - c);
+        });
+    }
+    /* n monarchs bursting off a square (the insects' own flutter-out), at delay ms */
+    function _monBurst(tx, ty, n, delay, o) {
+        if (_afFogHides(tx, ty)) return;
+        _fxDelay(function () { try { _bugButterflies(tx, ty, { n: n, keys: ['monarch'], ms: (o && o.ms) || 1800, r: (o && o.r) || 0.55, size: 0.42 }); } catch (e) {} }, delay || 0);
+    }
+    /* the wings opening behind the unit on a square, in the side's glass */
+    function _monWings(tx, ty, C, ms) {
+        if (_afFogHides(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, u = _fx5UnitAt(tx, ty), h = _lgBodyH(u ? u.id : null, ts);
+        var tex = _monWingTex(), hold = new THREE.Group(), wings = [];
+        for (var s = 0; s < 2; s++) {
+            var mm = new THREE.MeshBasicMaterial({ map: tex, color: C.a, transparent: true, opacity: 0, depthWrite: false, fog: false, side: THREE.DoubleSide });
+            var pl = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.95, ts * 0.95), mm);
+            pl.geometry.translate(ts * 0.475, 0, 0);
+            pl.renderOrder = 157;
+            var piv = new THREE.Group(); piv.add(pl); if (s) piv.scale.x = -1;
+            hold.add(piv); wings.push({ piv: piv, m: mm });
+        }
+        var f = (u && u.facing) || { dx: 0, dy: 1 }, back = _worldPos(tx - (f.dx || 0), ty - (f.dy || 0));
+        hold.position.set((back.x - F.wp.x) * 0.12, h * 0.62, (back.z - F.wp.z) * 0.12);
+        hold.rotation.y = Math.atan2(back.x - F.wp.x, back.z - F.wp.z);
+        F.g.add(hold);
+        ms = ms || 1400;
+        return _sigRunOwned(F.g, ms, function (el) {
+            var open = _sigEaseOutBack(_sigClamp01(el / 420)), beat = Math.sin(el * 0.012) * 0.12 * _sigClamp01((el - 420) / 200);
+            for (var i = 0; i < 2; i++) {
+                wings[i].piv.rotation.y = (i ? -1 : 1) * (1.45 - 1.25 * open + beat);
+                wings[i].m.opacity = 0.6 * _afEnv(el, 0, 120, ms - 360, ms);
+            }
+        });
+    }
+    /* a spiral disc: flat on the ground (r squares) or standing up facing the camera; turns while it lives */
+    function _monSpiral(tx, ty, o) {
+        if (_afFogHides(tx, ty)) return null;
+        o = o || {};
+        var F = _nrvFrame(tx, ty), ts = F.ts, C = o.C || _monSideOf(o, tx, ty);
+        var m = _sigMat(C.a, { map: _monSpiralTex() });
+        var size = ts * (o.size || 2.8);
+        var disc = new THREE.Mesh(new THREE.PlaneGeometry(size, size), m); disc.renderOrder = 156;
+        var hold = new THREE.Group(); hold.add(disc); F.g.add(hold);
+        if (o.flat) { disc.rotation.x = -Math.PI / 2; hold.position.y = ts * 0.06; } else hold.position.y = o.h || ts;
+        var ms = o.ms || 1200, op = o.op || 0.55;
+        return _sigRunOwned(F.g, ms, function (el) {
+            if (o.flat) disc.rotation.z = -el * 0.006; else { _monFaceCam(hold); disc.rotation.z = -el * (o.spin || 0.012); }
+            var k = o.shrink ? 1 - 0.85 * _sigEaseOutCubic(_sigClamp01((el - (ms - 380)) / 380)) : 1;
+            disc.scale.setScalar(Math.max(0.05, k * (o.grow ? _sigEaseOutCubic(_sigClamp01(el / 260)) : 1)));
+            m.opacity = op * _afEnv(el, 0, 100, ms - 320, ms);
+        });
+    }
+    /* BUTTERFLY KISS */
+    EFFECTS['monButterflyKiss_impact'] = { layers: [
+        { sprite: 'flash', ml: 180, z: 60, size0: 12, size1: 46, tint: 0xffd8e8, opacity0: 0.7, delayMs: 520 },
+        { count: 6, sprite: 'sparkle', ml: [420, 640], offsetXY: 10, z: [50, 75], tint: _MON_GOLD, vxRange: 40, vyRange: 40, vzRange: [10, 50], drag: 0.8, size0: [4, 6], size1: 2, opacity0: 0.9, delayMs: 520 },
+    ] };
+    function _monKiss3D(tx, ty, r, o) {
+        if (_monOff()) return true;
+        o = o || {};
+        var from = _afCaster(tx, ty, o), cu = _fx5UnitAt(from.x, from.y), C = _monSide(cu || { player: o.owner });
+        var F = _nrvFrame(tx, ty), ts = F.ts, h = _lgBodyH(_lgUidAt(tx, ty), ts) * 0.7, a = _afTo(F, from.x, from.y);
+        if (!from.fogged) _fxDelay(function () { try { _sigShockRing3D(from.x, from.y, { r0: ts * 0.05, r1: ts * 0.3, ms: 300, color: 0xff7aa8, height: h, torus: true }); } catch (e) {} }, 0);
+        if (!_afFogHides(tx, ty)) try { _bugRun(tx, ty, [{ key: 'monarch', size: 0.5, fit: 'span', at: 40, path: function (e) {
+            if (e > 560) return null;
+            var k = _sigEaseOutCubic(_sigClamp01(e / 520)), side = Math.sin(k * Math.PI) * ts * 0.35;
+            var nx = -a.z, nz = a.x, nl = Math.max(1e-3, Math.hypot(nx, nz));
+            return [a.x * (1 - k) + nx / nl * side, h + a.y * (1 - k) * 0.5 + Math.sin(e * 0.03) * ts * 0.04, a.z * (1 - k) + nz / nl * side];
+        } }], 600); } catch (e) {}
+        _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.15, r1: ts * 0.55, ms: 420, color: C.a, height: h, torus: true }); } catch (e) {} }, 520);
+        return true;
+    }
+    /* PROGRAMMED: a thin ring per stack round the chest */
+    function _monProgram3D(tx, ty, n, o) {
+        if (_monOff() || _afFogHides(tx, ty)) return true;
+        o = o || {};
+        var C = _monSideOf(o, tx, ty), ts = _capTs(), h = _lgBodyH(_lgUidAt(tx, ty), ts);
+        n = Math.max(1, Math.min(3, n | 0));
+        for (var i = 0; i < n; i++) (function (k) {
+            _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.42, r1: ts * 0.26, ms: 520, color: k === n - 1 ? _MON_GOLD : C.a, height: h * (0.55 + k * 0.14), torus: true }); } catch (e) {} }, 560 + k * 110);
+        })(i);
+        return true;
+    }
+    /* PENDULUM */
+    function _monPendulum3D(tx, ty, r, o) {
+        if (_monOff() || !_monOnce('pend', tx, ty)) return true;
+        if (!r) r = 1;
+        o = o || {};
+        var C = _monSideOf(o, tx, ty), ts = _capTs();
+        if (_afFogHides(tx, ty)) return true;
+        /* the swing: a standing spiral on a thread, side to side over the middle square */
+        var F = _nrvFrame(tx, ty), m = _sigMat(C.a, { map: _monSpiralTex() });
+        var disc = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.9, ts * 0.9), m); disc.renderOrder = 158;
+        var thr = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.02, ts * 1.6), _sigMat(0xffffff, { map: _sigGlowTex() })); thr.renderOrder = 158;
+        var piv = new THREE.Group(); piv.position.y = ts * 3.1; disc.position.y = -ts * 1.9; thr.position.y = -ts * 0.8; piv.add(thr); piv.add(disc);
+        var face = new THREE.Group(); face.add(piv); F.g.add(face);
+        _sigRunOwned(F.g, 1000, function (el) {
+            _monFaceCam(face);
+            piv.rotation.z = Math.sin(el * 0.011) * 0.55 * (1 - _sigClamp01((el - 700) / 300));
+            disc.rotation.z = -el * 0.02;
+            var op = _afEnv(el, 0, 120, 760, 1000);
+            m.opacity = 0.75 * op; thr.material.opacity = 0.5 * op;
+        });
+        /* then it lies on the 3×3 and turns */
+        _fxDelay(function () { _monSpiral(tx, ty, { C: C, flat: true, size: (r || 1) * 2 + 1.1, ms: 1300, op: 0.5, grow: true }); }, 650);
+        _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.3, r1: ts * ((r || 1) + 0.7), ms: 520, color: C.a, height: ts * 0.05 }); } catch (e) {} }, 700);
+        _monBurst(tx, ty, 3, 800, { r: 1.1 });
+        return true;
+    }
+    /* KALEIDOSCOPE WINGS */
+    function _monKaleido3D(tx, ty, r, o) {
+        if (_monOff() || !_monOnce('wings', tx, ty)) return true;
+        o = o || {};
+        var C = _monSideOf(o, tx, ty), ts = _capTs();
+        _monWings(tx, ty, C, 1500);
+        _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.3, r1: ts * 1.6, ms: 520, color: C.a, height: ts * 0.05 }); } catch (e) {} }, 380);
+        _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.2, r1: ts * 1.3, ms: 520, color: 0xff7aa8, height: ts * 0.6, torus: true }); } catch (e) {} }, 520);
+        return true;
+    }
+    /* TRIGGER WORD */
+    function _monSay3D(tx, ty, n, o) {
+        if (_monOff() || _afFogHides(tx, ty)) return true;
+        o = o || {};
+        var C = _monSideOf(o, tx, ty), ts = _capTs(), h = _lgBodyH(_lgUidAt(tx, ty), ts);
+        _monSpiral(tx, ty, { C: C, size: 1.4, h: h + ts * 0.55, ms: 620, op: 0.85, spin: 0.03, shrink: true, grow: true });
+        _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.2, r1: ts * 2.4, ms: 560, color: C.a, height: ts * 0.05 }); } catch (e) {} }, 380);
+        return true;
+    }
+    EFFECTS['monWake_turn'] = { shake: 'light', layers: [
+        { sprite: 'flash', ml: 170, z: 60, size0: 16, size1: 70, tint: 0xffffff, opacity0: 0.55 },
+    ] };
+    function _monWake3D(tx, ty, n, o) {
+        if (_monOff() || _afFogHides(tx, ty)) return true;
+        o = o || {};
+        var C = _monSideOf(o, tx, ty), ts = _capTs(), h = _lgBodyH(_lgUidAt(tx, ty), ts), d = Math.max(0, o.delay || 0);
+        n = Math.max(1, Math.min(3, n | 0));
+        _fxDelay(function () {
+            try { _sigShockRing3D(tx, ty, { r0: ts * 0.5, r1: ts * 0.15, ms: 300, color: C.a, height: h * 0.8, torus: true }); } catch (e) {}
+            if (n >= 2) _afRecipe('monWake_turn', tx, ty);
+        }, d);
+        _monBurst(tx, ty, 1 + n, d + 120, { r: 0.5, ms: 1500 });
+        if (n >= 3) _fxDelay(function () {
+            /* it falls asleep: a soft dark dome, never past 0.35 */
+            if (_afFogHides(tx, ty)) return;
+            var F = _nrvFrame(tx, ty), dm = new THREE.MeshBasicMaterial({ color: 0x140a20, transparent: true, opacity: 0, depthWrite: false, fog: false, side: THREE.BackSide });
+            var dome = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.75, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), dm); dome.renderOrder = 155; F.g.add(dome);
+            _sigRunOwned(F.g, 900, function (el) { dm.opacity = 0.35 * _afEnv(el, 0, 200, 600, 900); });
+        }, d + 420);
+        return true;
+    }
+    /* SLEEPER CELL */
+    function _monCell3D(tx, ty, r, o) {
+        if (_monOff()) return true;
+        o = o || {};
+        _monChrysalis(tx, ty, { owner: o.owner, grow: 260, crackAt: 620 });
+        _monBurst(tx, ty, 3, 640, { r: 0.45 });
+        return true;
+    }
+    /* METAMORPHOSIS */
+    function _monWrap3D(tx, ty, r, o) {
+        if (_monOff()) return true;
+        o = o || {};
+        _monChrysalis(tx, ty, { owner: o.owner, grow: 700, crackAt: 2600 });
+        _monBurst(tx, ty, 2, 0, { r: 0.4, ms: 900 });
+        return true;
+    }
+    function _monHatch3D(tx, ty, r, o) {
+        if (_monOff()) return true;
+        o = o || {};
+        var C = _monSideOf(o, tx, ty), ts = _capTs();
+        _monChrysalis(tx, ty, { owner: o.owner, C: C, grow: 120, crackAt: 260 });
+        _fxDelay(function () { _monWings(tx, ty, C, 1600); }, 300);
+        _monBurst(tx, ty, 6, 320, { r: 0.7, ms: 2200 });
+        _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.3, r1: ts * 1.4, ms: 520, color: C.a, height: ts * 0.05 }); } catch (e) {} }, 320);
+        return true;
+    }
+    /* CHAOS THEORY */
+    function _monChaosMark3D(tx, ty, r, o) {
+        if (_monOff() || _afFogHides(tx, ty)) return true;
+        o = o || {};
+        var ts = _capTs();
+        try { _bugRun(tx, ty, [{ key: 'monarch', size: 0.45, fit: 'span', at: 0, path: function (e) {
+            if (e > 2400) return null;
+            var a = e * 0.004;
+            return [Math.cos(a) * ts * 0.6, ts * (0.7 + 0.15 * Math.sin(e * 0.005)), Math.sin(a) * ts * 0.6];
+        } }], 2400); } catch (e) {}
+        return true;
+    }
+    function _monChaos3D(tx, ty, r, o) {
+        if (_monOff() || _afFogHides(tx, ty)) return false;
+        o = o || {};
+        var u = null; try { u = _fx5UnitAt(tx, ty); } catch (e) {}
+        var C = _monSideOf(o, tx, ty), ts = _capTs(), R = (r || 2);
+        _monSpiral(tx, ty, { C: C, flat: true, size: R * 2 + 1.2, ms: 1600, op: 0.45, grow: true });
+        for (var i = 0; i < 3; i++) (function (k) {
+            _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.3, r1: ts * (R + 0.6), ms: 600, color: k === 1 ? _MON_GOLD : C.a, height: ts * (0.08 + k * 0.35) }); } catch (e) {} }, 300 + k * 220);
+        })(i);
+        var list = [], n = 12, ms = 1900;
+        for (var j = 0; j < n; j++) (function (k) {
+            var a0 = k / n * Math.PI * 2, sp = (k % 2 ? 1 : -1) * rn(0.9, 1.4), dl = k * 40;
+            list.push({ key: 'monarch', size: 0.42, fit: 'span', at: dl, path: function (e) {
+                if (e > ms - dl) return null;
+                var t = _sigClamp01(e / (ms - dl)), a = a0 + e * 0.004 * sp, rr = ts * (0.2 + t * (R + 0.4));
+                return [Math.cos(a) * rr, ts * (0.4 + 0.9 * t) + Math.sin(e * 0.01 + k) * ts * 0.08, Math.sin(a) * rr];
+            } });
+        })(j);
+        try { _bugRun(tx, ty, list, ms); } catch (e) {}
+        return true;
+    }
+    /* DELTA ALTER */
+    function _monDelta3D(tx, ty, r, o) {
+        if (_monOff() || _afFogHides(tx, ty)) return true;
+        var F = _nrvFrame(tx, ty), ts = F.ts, h = _lgBodyH(_lgUidAt(tx, ty), ts);
+        var shp = new THREE.Shape(); shp.moveTo(0, ts * 0.32); shp.lineTo(ts * 0.28, -ts * 0.18); shp.lineTo(-ts * 0.28, -ts * 0.18); shp.lineTo(0, ts * 0.32);
+        var hole = new THREE.Path(); hole.moveTo(0, ts * 0.2); hole.lineTo(-ts * 0.18, -ts * 0.11); hole.lineTo(ts * 0.18, -ts * 0.11); hole.lineTo(0, ts * 0.2); shp.holes.push(hole);
+        var m = _sigMat(_MON_RED), tri = new THREE.Mesh(new THREE.ShapeGeometry(shp), m); tri.renderOrder = 168;
+        var hold = new THREE.Group(); hold.position.y = h + ts * 0.45; hold.add(tri); F.g.add(hold);
+        _sigRunOwned(F.g, 1000, function (el) { _monFaceCam(hold); var k = _sigEaseOutBack(_sigClamp01(el / 260)); tri.scale.setScalar(Math.max(0.05, k)); m.opacity = 0.9 * _afEnv(el, 0, 80, 700, 1000); });
+        _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.2, r1: ts * 0.9, ms: 460, color: _MON_RED, height: ts * 0.05 }); } catch (e) {} }, 120);
+        return true;
+    }
+    Object.assign(SPELL_MAP, {
+        monButterflyKiss: { impact: 'monButterflyKiss_impact' },
+        monPendulum: { aoe: 'monPendulum_aoe' },
+        monKaleidoscopeWings: { aoe: 'monKaleidoscopeWings_aoe' },
+    });
+    /* the two area casts draw on the aoe beat (the impact beat can call the same look too: _monOnce keeps it to one) */
+    EFFECTS['monPendulum_aoe'] = { geom3D: true, layers: [] };
+    EFFECTS['monKaleidoscopeWings_aoe'] = { geom3D: true, layers: [] };
+    Object.assign(_spell3DGeometry, {
+        monButterflyKiss: _monKiss3D, monPendulum: _monPendulum3D, monKaleidoscopeWings: _monKaleido3D, monChaosTheory: _monChaos3D,
+        monProgram: _monProgram3D, 'monTriggerWord:say': _monSay3D, 'monTriggerWord:wake': _monWake3D,
+        'monSleeperCell:spring': _monCell3D, 'monMetamorphosis:wrap': _monWrap3D, 'monMetamorphosis:hatch': _monHatch3D,
+        'monChaosTheory:mark': _monChaosMark3D, monDelta: _monDelta3D,
+    });
+
     /* ══ THE EAGLE (2026-10-27, mondo: "Use eagle for the hawk and whatever else makes sense and add some eagle animations to the
        president's spells like patriotic and stuff") ═════════════════════════════════════════════════════════════════════════════
        mondo's bald eagle (three-renderer.js THE EAGLE: eagle_rigged.glb, its own glide / flap / strike / dive clips) flies on the
