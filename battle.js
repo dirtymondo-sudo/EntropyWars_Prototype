@@ -1113,10 +1113,16 @@
            enemy-aimed kind into an ally aim — the target drum, the painter and the column resolver read this meta, the kind
            branch reads the row. One cached meta per kind. */
         const _ALLY_ROW_KIND_META = {};
+        const _ANY_TEAM_KIND_META = {};
         function _kindMeta(spell) {
             if (spell && spell.hinge) return _HINGE_KIND_META;
             if (spell && spell.randomTargets && typeof spellRandomTargetsOf === 'function' && spellRandomTargetsOf(spell)) return _RANDOM_KIND_META;
             const _km0 = SPELL_KIND_META[spell?.kind] || { minRange: 1, offensive: true };
+            /* 💉 THE PLASTIC SURGEON: an `anyTeam` row (a procedure) takes an ally or an enemy; the cast becomes the right one (_psCastRow) */
+            if (spell && spell.anyTeam) {
+                return _ANY_TEAM_KIND_META[spell.kind] || (_ANY_TEAM_KIND_META[spell.kind] = Object.assign({}, _km0,
+                    { offensive: false, allyOnly: false, tileTargeted: false, selfCast: false }));
+            }
             if (spell && spell.allyOnly && !_km0.allyOnly) {
                 return _ALLY_ROW_KIND_META[spell.kind] || (_ALLY_ROW_KIND_META[spell.kind] = Object.assign({}, _km0,
                     { offensive: false, allyOnly: true, breaksStealth: false, fogExempt: true }));
@@ -14889,6 +14895,7 @@
                 else if (u.race === 'haunted doll') _dollCreep(u);
                 else if (u.race === 'monk') _monkStillness(u);   // 📿 THE STILLNESS
                 else if (u.race === 'gladiator' || u.race === 'farmer' || u.race === 'jellyfish ufo') _crRoundEnd(u);   // 🛡🌾⚡ THE COMING RACES
+                if ((u.workDone | 0) > 0) _psRoundEnd(u);   // 💉 THE PLASTIC SURGEON: Work Done fades
                 if (u.status && u.status.dormant > 0) _cicadaBrood(u);
                 /* 📺 THE TAPE (the Cursed TV): this round's recording becomes last round's, the one Rewind plays back */
                 if (u._tapeNow || u._tapeLast) { u._tapeLast = u._tapeNow || 0; u._tapeNow = 0; }
@@ -15431,6 +15438,138 @@
             if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: u });
         }
         window._crCastRow = _crCastRow; window._crRoundEnd = _crRoundEnd;
+        /* ═══ THE PLASTIC SURGEON (2026-11-23, mondo OK'd the kit: "okay yeah that's good") ═══ He operates on anyone. A `procedure`
+           row (Botox, Makeover) works on an ally or an enemy (`anyTeam`, _kindMeta): the base row is the enemy cast and `onAlly` the
+           ally cast, picked by the body on the aimed square (_psCastRow, like _crCastRow). WORK DONE: every procedure that lands gives
+           the body 1 (`unit.workDone`, max 3); the third is BOTCHED (Stunned 1 round, back to 0); a body he leaves alone for a whole
+           round loses 1 (_psRoundEnd). Makeover swaps ATK <-> DEF and M.ATK <-> M.DEF in the unit's own numbers (_psMakeoverSwap,
+           Broken's way). Host-side: plain numbers + statuses ride the state sync, the texts showFloatingTextForUnit's relay (RULE #2).
+           Notes: docs/notes/champions-combat.md "THE PLASTIC SURGEON". */
+        const WORK_DONE_MAX = 3;
+        let _psCast = null;   // the cast in flight: { unitId, spellId, at, lipo: { id, hp } }
+        function _psFloat(u, txt, kind) { if (u && !u.dead && state.phase === 'battle' && !_skipVisuals()) showFloatingTextForUnit(u, txt, kind || 'debuff', { durationMs: 1200, jitterY: -30 }); }
+        function _psIsSurgeon(u) { return !!u && u.race === 'plastic surgeon'; }
+        /* the cast's own copy: a procedure row turns into its ally or its enemy cast by who stands on the aimed square */
+        function _psCastRow(unit, spell, x, y, z) {
+            if (!spell || !spell.procedure) return spell;
+            let t = null;
+            try { t = (typeof resolveUnitInColumn === 'function') ? resolveUnitInColumn(unit, x, y, z, { side: 'any' }) : null; } catch (e) { t = null; }
+            if (!t) t = unitAt(x, y, z) || unitAt(x, y);
+            return _psRowFor(unit, spell, t);
+        }
+        function _psRowFor(unit, spell, t) {
+            if (!spell || !spell.procedure) return spell;
+            const s = Object.assign({}, spell);
+            delete s.anyTeam; delete s.onAlly; delete s.procedure;
+            s._procedureOf = spell.id;
+            if (t && isAllyUnit(t, unit) && spell.onAlly) {
+                ['dmg', 'damageType', 'statusEffects', 'statStageBoost', 'element'].forEach(k => { delete s[k]; });
+                Object.assign(s, spell.onAlly);
+            }
+            return s;
+        }
+        window._psRowFor = _psRowFor;
+        /* doSpell, before the gates: remember what the cast needs after (the Liposuction body's HP) */
+        function _psBeginCast(unit, spell, x, y, z) {
+            _psCast = null;
+            if (!_psIsSurgeon(unit) || !spell) return;
+            _psCast = { unitId: unit.id, spellId: spell._procedureOf || spell.id, at: performance.now(), lipo: null };
+            if (spell.lipoShield) {
+                const t = unitAt(x, y, z) || unitAt(x, y);
+                if (t && !isAllyUnit(t, unit)) _psCast.lipo = { id: t.id, hp: Math.max(0, t.hp || 0) };
+            }
+        }
+        /* applyDamageToUnit: The Full Procedure hits +25% for each Work Done the body already had */
+        function _psDmgMult(src, target, opts) {
+            if (!_psIsSurgeon(src) || !target || !_psCast || _psCast.unitId !== src.id) return 1;
+            if (performance.now() - _psCast.at > 15000 || (opts && (opts._linkEcho || opts.damageType === 'dot'))) return 1;
+            const row = (src._raceAbilities || []).concat(src.spells || []).find(s => s && s.id === _psCast.spellId);
+            if (!row || !(row.workDoneScale > 0)) return 1;
+            return 1 + row.workDoneScale * Math.max(0, Math.min(WORK_DONE_MAX, target.workDone | 0));
+        }
+        /* WORK DONE: one more on a body; the third botches it */
+        function _psAddWork(surgeon, u) {
+            if (!_nrAlive(u) || u._isCube || u._summonStatic) return;
+            u.workDone = Math.min(WORK_DONE_MAX, (u.workDone | 0) + 1);
+            u._workRound = state.round || 0;
+            if (u.workDone >= WORK_DONE_MAX) {
+                u.workDone = 0;
+                addLog(`💉 ${_ctName(u)} has had too much work done: BOTCHED!`);
+                applyStatusPayload(u, { id: 'stun', duration: 1 }, 'Botched: ', surgeon);
+                _psFloat(u, '💉 BOTCHED', 'debuff');
+                try { if (window.ThreeVFXEffects && ThreeVFXEffects.fire) ThreeVFXEffects.fire('botched', 'psBotched', { tx: u.x, ty: u.y, sx: surgeon.x, sy: surgeon.y }); } catch (e) {}
+            } else {
+                _psFloat(u, `💉 WORK DONE ${u.workDone}`, isAllyUnit(u, surgeon) ? 'buff' : 'debuff');
+            }
+        }
+        /* finishAction: who the procedure landed on (+1 each), Liposuction's shield */
+        function _psAfterCast(unit, spell, x, y, z) {
+            const ctx = _psCast; _psCast = null;
+            if (!_psIsSurgeon(unit) || !spell || state.phase !== 'battle') return;
+            const id = spell._procedureOf || spell.id;
+            if (!/^ps[A-Z]/.test(id)) return;
+            const bodies = [];
+            if (spell.kind === 'aoe') {
+                const tiles = _spellMaskTiles(spell, x, y) || getSquareArea(x, y, spell.aoeRadius || 1);
+                const keys = new Set(tiles.map(t => t.x + ',' + t.y));
+                for (const u of (state.units || [])) {
+                    if (!_nrAlive(u) || u.id === unit.id || !keys.has(u.x + ',' + u.y)) continue;
+                    if (!spell.workDoneAll && isAllyUnit(u, unit)) continue;   // Anesthesia: the enemies it put under
+                    bodies.push(u);
+                }
+            } else {
+                const t = (ctx && ctx.lipo && unitFromId(ctx.lipo.id)) || unitAt(x, y, z) || unitAt(x, y);
+                if (t && t.id !== unit.id) bodies.push(t);
+            }
+            /* 🛡 Liposuction: every HP the cut took becomes a Shield on the ally lowest on HP within 3 (on him if nobody is near) */
+            if (spell.lipoShield && ctx && ctx.lipo) {
+                const v = unitFromId(ctx.lipo.id);
+                const taken = Math.max(0, ctx.lipo.hp - Math.max(0, v ? (v.hp || 0) : 0));
+                const amt = Math.round(taken * spell.lipoShield);
+                if (amt > 0 && _nrAlive(unit)) {
+                    let best = null;
+                    for (const a of (state.units || [])) {
+                        if (!_nrAlive(a) || a.id === unit.id || !isAllyUnit(a, unit) || !(a.maxHp > 0)) continue;
+                        if (Math.max(Math.abs(a.x - unit.x), Math.abs(a.y - unit.y)) > 3) continue;
+                        if (!best || a.hp / a.maxHp < best.hp / best.maxHp) best = a;
+                    }
+                    const to = best || unit;
+                    to.shield = Math.min((to.shield || 0) + amt, Math.max(amt, Math.floor((to.maxHp || 0) * 0.5)));
+                    addLog(`💉 ${_ctName(unit)} moves what he took to ${_ctName(to)}: a ${amt} HP Shield.`);
+                    _psFloat(to, `🛡 +${amt}`, 'buff');
+                    try { if (window.ThreeVFXEffects && ThreeVFXEffects.fire && v) ThreeVFXEffects.fire('lipo', 'psLiposuction', { sx: unit.x, sy: unit.y, cx: unit.x, cy: unit.y, tx: to.x, ty: to.y }); } catch (e) {}
+                    if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: to });
+                }
+            }
+            for (const u of bodies) _psAddWork(unit, u);
+        }
+        /* the round end: a body he did not touch this round heals a little (loses 1 Work Done) */
+        function _psRoundEnd(u) {
+            if (!u || !((u.workDone | 0) > 0)) return;
+            if (u._workRound === (state.round || 0)) return;
+            u.workDone = Math.max(0, (u.workDone | 0) - 1);
+        }
+        /* 💉 Makeover: ATK <-> DEF, M.ATK <-> M.DEF, in the unit's own numbers (once on, once off) */
+        function _psMakeoverSwap(unit, on, info) {
+            if (!unit) return;
+            if (on) {
+                if (unit._madeOver) return;
+                unit._madeOver = true;
+            } else {
+                if (!unit._madeOver) return;
+                const _other = (info && info.key === 'makeoverAlly') ? 'makeover' : (info && info.key === 'makeover') ? 'makeoverAlly' : null;
+                if (_other ? unitHasStatus(unit, _other) : (unitHasStatus(unit, 'makeover') || unitHasStatus(unit, 'makeoverAlly'))) return;   // the other id still holds it (onRemove runs before its own key goes)
+                delete unit._madeOver;
+            }
+            const a = unit.atk || 0, d = unit.def || 0, i = unit.intStat || 0, m = unit.mdef || 0;
+            unit.atk = d; unit.def = a; unit.intStat = m; unit.mdef = i;
+            if (on && !(info && info.refreshed)) {
+                addLog(`💉 ${_ctName(unit)} gets a Makeover: ATK ${a} ↔ DEF ${d}, M.ATK ${i} ↔ M.DEF ${m}.`);
+                _psFloat(unit, `💉 ATK ${unit.atk} · DEF ${unit.def}`, 'buff');
+            }
+            if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit });
+        }
+        window._psMakeoverSwap = _psMakeoverSwap; window._psRoundEnd = _psRoundEnd;
         /* ═══ THE HAUNTED DOLL (2026-11-17, mondo approved the kit and asked for the pull-string spell) ═══ "Sits on the shelf, and
            moves when you look away." Host-side like the rest of THE NEW RACES 2: the squares, the facings, the statuses and the HP
            state-sync to the guest; the voice-box line comes from _nrHash (the unit id + the round), so the guest's log agrees.
@@ -20502,6 +20641,27 @@
             }
             return row;
         }
+        /* 💉 BEFORE & AFTER (2026-11-23, THE PLASTIC SURGEON's finisher): the screen splits like a clinic's ad, BEFORE on the left
+           over the victim as it was, AFTER on the right drawn in his side's marker lines, the clinic's lower third under it. Screen
+           chrome only (the 3D frame, the number, the caster and the victim stay as they are); both screens run doFinisher, so
+           both get it (styles-cinematic.css "BEFORE & AFTER"). */
+        try { window._finBeforeAfter = _finBeforeAfter; } catch (e) {}   // reachable from the console (a probe, a look)
+        function _finBeforeAfter(unit, target, totalMs) {
+            if (_skipVisuals() || typeof document === 'undefined') return;
+            try {
+                const old = document.getElementById('fin-ba'); if (old) old.remove();
+                const mine = !unit || unit.player === getViewerPlayer();
+                const el = document.createElement('div');
+                el.id = 'fin-ba'; el.className = 'fin-ba ' + (mine ? 'own' : 'foe');
+                el.style.setProperty('--fin-ba-ms', Math.round(totalMs) + 'ms');
+                el.innerHTML = '<div class="fin-ba-l"><b>BEFORE</b></div><div class="fin-ba-cut"></div>'
+                    + '<div class="fin-ba-r"><b>AFTER</b><svg viewBox="0 0 100 160" preserveAspectRatio="xMidYMid meet"><g fill="none" stroke-width="2.2" stroke-dasharray="6 5">'
+                    + '<circle cx="50" cy="32" r="18"/><rect x="30" y="54" width="40" height="92" rx="16"/><path d="M22 92 H78 M50 12 V150" stroke-dasharray="2 5"/></g></svg></div>'
+                    + '<div class="fin-ba-low"><span>DISASTER HILLS AESTHETICS</span><i>·</i><span>CONSULTATIONS AVAILABLE</span></div>';
+                document.body.appendChild(el);
+                window.setTimeout(() => { try { el.remove(); } catch (e) {} }, Math.max(1200, totalMs + 200));
+            } catch (e) {}
+        }
         function getFinisherTargets(unit) { return getEntropyStrikeTargets(unit); }
         function canUseFinisher(unit) {
             if (!unit || unit.dead || unit._dying) return false;
@@ -20710,6 +20870,7 @@
 
             /* the banner: the ⚛ chrome in the finisher's TYPE theme, the
                FINISHER kicker, the execution's name + tagline */
+            if (def.overlay === 'beforeAfter') _finBeforeAfter(unit, target, totalMs);   // 💉 the Plastic Surgeon's BEFORE | AFTER frame
             _ewsShowBanner(unit.player, totalMs, getEntropyStrikeType(def.type), {
                 kicker: '☠ FINISHER — ' + unitDisplayName(unit).toUpperCase(),
                 glyph: def.glyph, name: def.name, tagline: def.tagline, cls: 'ews-fin'
@@ -43680,6 +43841,7 @@
             if (_pressDamageCollector) _collectPressHit(opts.sourceUnit || null, target, opts);
 
             const sourceUnit_pre = opts.sourceUnit || null;
+            if (damage > 0 && sourceUnit_pre && sourceUnit_pre.race === 'plastic surgeon') damage = Math.max(1, Math.round(damage * _psDmgMult(sourceUnit_pre, target, opts)));   // 💉 The Full Procedure: +25% a Work Done
             if (damage > 0 && sourceUnit_pre && sourceUnit_pre.race === 'gladiator') damage = Math.max(1, Math.round(damage * _crFavorMult(sourceUnit_pre, target, opts)));   // 🛡 THE CROWD: +4% a Favor
             if (state.fogOfWar && !state.devAutoSim && sourceUnit_pre && sidesHostile(sourceUnit_pre.player, target.player)) {
                 const humanPlayer = getViewerPlayer();
@@ -84369,6 +84531,9 @@
             if (spell && (spell.diceRoll || spell.stillnessSpend)) spell = _nr4CastRow(unit, spell);
             /* 🛡⚡ THE COMING RACES: Crowd Pleaser / Abyssal Overload bake their spend, Venom Injector its Stun (_crCastRow) */
             if (spell && (spell.favorSpend || spell.chargeSpend || spell.chargeStunAt)) spell = _crCastRow(unit, spell);
+            /* 💉 THE PLASTIC SURGEON: a procedure becomes its ally or enemy cast (_psCastRow); his casts remember what finishAction needs */
+            if (spell && spell.procedure) spell = _psCastRow(unit, spell, x, y, z);
+            _psBeginCast(unit, spell, x, y, z);
             /* Clash final authority: movement/positioning spells can never
                fire, whatever path armed them (kits are already stripped —
                this catches stale online/AI edge cases). */
@@ -85143,6 +85308,7 @@
                 _nr4AfterCast(unit, spell);   // 🎲📿🔒 THE NEW RACES 4: the streak, the stillness, the ransom
                 _crAfterCast(unit, spell);   // 🛡⚡ THE COMING RACES: Favor + Charge spent
                 _bearAfterCast(unit, spell, x, y);   // 🐻 THE BEAR: Hibernate's sleep, Bear Hug's Root + Grudge
+                _psAfterCast(unit, spell, x, y, z);   // 💉 THE PLASTIC SURGEON: Work Done, Liposuction's shield
                 if (spell.kind !== 'dash' && Array.isArray(spell.selfStatusAfter) && spell.selfStatusAfter.length && !unit.dead && state.phase === 'battle') {
                     applyStatusEffects(unit, spell.selfStatusAfter, `${spell.name}: `, unit);
                 }
@@ -85421,6 +85587,7 @@
                     }
                     // THE SPELL AUDIT Batch B: a heal row's own statusEffects land on the ally (Soothe's Regen)
                     if (spell.statusEffects && spell.statusEffects.length) applyStatusEffects(_ht, spell.statusEffects, `${spell.name}: `, unit);
+                    if (spell.statStageBoost && !_ht.dead) applyStatStageBoost(_ht, spell.statStageBoost, `${spell.name}: `, unit);   // 💉 Botox on an ally: +1 DEF
                     addLog(`${_ctName(unit)} casts ${_ctSp(spell.name)}, restoring ${healed} HP to ${_ctName(_ht)}.`);
                     _logCleansed(spell.name, _ht, _hcGone);   // THE CLEANSE LINE (playtest 11-07: Absolution logged only the heal)
                     /* THE SPELL AUDIT Batch D: healAdjacentDamage (Divine Light) — the light that mends the ally burns

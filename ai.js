@@ -5838,7 +5838,7 @@
             const apCost = g.TargetQuery.apCost(spell);
             if (ap < apCost || !g.TargetQuery.canAfford(unit, spell) || unit.mp < _mpCost(unit, spell)) continue;
 
-            const target = _reaimSpellTarget(unit, spell, v, findSpellTarget(unit, spell, v));
+            const target = spell.procedure ? _psPickTarget(unit, spell, v) : _reaimSpellTarget(unit, spell, v, findSpellTarget(unit, spell, v));   // 💉 a procedure: ally or enemy
             const noTargetKinds = ['healAll', 'manaRestoreAll', 'barrage', 'warCry', 'encore', 'deployTurret', 'utility',
                 'escape', 'selfHeal', 'transform'];
             if (!target && !noTargetKinds.includes(spell.kind)) continue;
@@ -5954,7 +5954,65 @@
         }
         return 0;
     }
+    /* ═══ 💉 THE PLASTIC SURGEON (2026-11-23): a procedure (Botox, Makeover) takes an ally or an enemy, so the CPU scores every body the
+       drum lists (both sides) as the cast it would become (battle.js _psRowFor) and keeps the best. WORK DONE: the third botches,
+       so a body at 2 is a prize on the other side and off-limits on ours. ═══ */
+    try { window._psPickTarget = (u, s, v) => _psPickTarget(u, s, v || buildVision(u)); } catch (e) {}   // reachable from the console (a probe, a look)
+    function _psPickTarget(unit, spell, v) {
+        const g = G();
+        if (!g.TargetQuery || typeof g.TargetQuery.spellTargets !== 'function') return null;
+        let entries = [];
+        try { entries = g.TargetQuery.spellTargets(unit, spell) || []; } catch (e) { return null; }
+        const vis = new Set((v.visibleEnemies || []).map(e => e.id));
+        let best = null, bestS = 0, n = 0;
+        for (const en of entries) {
+            const t = en && en.unit;
+            if (!t || t.dead || t._dying || t.id === unit.id) continue;
+            const ally = _sidesAllied(t.player, unit.player);
+            if (!ally && (!vis.has(t.id) || isProtected(g, t))) continue;
+            if (++n > 16) break;
+            const sc = _scoreSpellAt(unit, spell, t, v);
+            if (sc > bestS) { bestS = sc; best = t; }
+        }
+        return best;
+    }
+    function _psMakeoverScore(unit, t, ally) {
+        if (!t || t.dead) return 0;
+        const g = G();
+        if (g.unitHasStatus && (g.unitHasStatus(t, 'makeover') || g.unitHasStatus(t, 'makeoverAlly'))) return 0;
+        const atk = t.atk || 0, def = t.def || 0, it = t.intStat || 0, md = t.mdef || 0;
+        if (ally) return Math.max(0, Math.max(def - atk, md - it) - 15) * 1.6;   // a tank that will hit like a hitter
+        const physical = atk >= it;
+        const d = physical ? atk - def : it - md;   // a hitter that will hit like a tank
+        return Math.max(0, d - 15) * 2.4;
+    }
+    function _psWorkAdjust(unit, spell, target, v, base) {
+        const id = spell._procedureOf || spell.id;
+        if (!/^ps[A-Z]/.test(id || '')) return base;
+        const wd = u => (u && u.workDone) | 0;
+        if (spell.kind === 'aoe' && target) {
+            let adj = 0;
+            const tiles = _aoeTilesAI(spell, target.x, target.y, spell.aoeRadius || 1);
+            const inA = u => tiles.some(t => t.x === u.x && t.y === u.y);
+            for (const e of (v.visibleEnemies || [])) if (e && !e.dead && inA(e) && wd(e) >= 2) adj += 110;
+            if (spell.workDoneAll) for (const a of (v.allies || [])) if (a && !a.dead && a.id !== unit.id && inA(a)) adj -= wd(a) >= 2 ? 260 : 20;
+            return base > 0 ? base + adj : base;
+        }
+        if (!target) return base;
+        const ally = _sidesAllied(target.player, unit.player);
+        if (ally) return wd(target) >= 2 ? 0 : base;   // never botch our own
+        return base > 0 ? base + (wd(target) >= 2 ? 150 : wd(target) * 20) : base;
+    }
     function scoreSpell(unit, spell, target, v) {
+        /* 💉 a procedure is scored as the cast it becomes on this body; Makeover by the stats it swaps */
+        if (spell && spell.procedure && typeof window._psRowFor === 'function') {
+            if (!target || target.id == null) return 0;
+            const ally = _sidesAllied(target.player, unit.player);
+            const row = window._psRowFor(unit, spell, target);
+            const base = spell.id === 'psMakeover' ? _psMakeoverScore(unit, target, ally) : _scoreSpellCore(unit, row, target, v);
+            return _psWorkAdjust(unit, row, target, v, base);
+        }
+        if (spell && unit && unit.race === 'plastic surgeon' && /^ps[A-Z]/.test(spell.id || '')) return _psWorkAdjust(unit, spell, target, v, _scoreSpellCore(unit, spell, target, v));
         /* 🎮 THE VIEWERS (the Streamer + the E-Girl): too small a crowd is no cast; a streaming row is scored as the copy it casts
            (battle.js _streamCastRow: the count baked into the mark / heal / damage); a spend waits for a bigger crowd while it can */
         if (spell && (spell.viewersSpend || spell.viewersMarkAt || spell.viewersHealPer || spell.viewersDmgPer) && typeof window._streamCastRow === 'function') {

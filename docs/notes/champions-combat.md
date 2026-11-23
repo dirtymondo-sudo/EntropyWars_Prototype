@@ -6262,3 +6262,26 @@ mondo: one Bear, grizzly + polar share the bear family, the polar gets some Ice 
 - VFX three-vfx-effects.js (after nrDeathRoll): brPawSwipe, brBearHug, brHibernate aura (Z's + leaves or snow by coat), brBearDown (dust line,
   crack, heavy shake), brGrudgeMark, brWake, brRudeWake; own cyan / enemy pink-orange rims. No lie-down clip yet (the bear sleeps standing).
 
+## THE PLASTIC SURGEON (2026-11-23, thread "Plan the Plastic Surgeon's spells"; mondo OK'd the plan: "okay yeah that's good")
+Plan page: https://claude.ai/artifact/RyqA78f4Kb66y23z2Rcqzo. Specialist, Human, home Disaster Hills (Disaster City district N,
+one resident on H04-02), poison resist / fire weak, basic = the scalpel (held gear `Assets/world/props/misc/scalpel.glb`).
+- THE RULE, WORK DONE: every one of his spells on a unit, ally or enemy, gives it +1 Work Done (max 3; -1 at a round end when
+  none of his spells touched it, battle.js `_psRoundEnd`). At 3 = BOTCHED: Stun 1, stacks back to 0 (`_psAddWork`, VFX `psBotched`).
+  The surgeon spreads his work around or botches on purpose.
+- EITHER-SIDE SPELLS: a row with `procedure: true` + `anyTeam: true` (battle.js `_kindMeta` anyTeam branch: not offensive, not ally
+  only) can aim at anyone; doSpell swaps in a cast copy for the target's side (`_psCastRow` / `_psRowFor`, the `_crCastRow`
+  pattern): an ally gets the row's `onAlly` (heal / buff), damage and enemy statuses stripped.
+- Kit (RACE_TREE `psBotox, [psMakeover | psLiposuction], psAnesthesia, psFullProcedure`; families cosmeticsurgery (signature),
+  healingmagic, chemistry, maincharacter):
+  T1 Botox: enemy poison 70 + Slow 1 / ally heal 50 + DEF stage. T2 Makeover: swaps ATK <-> DEF and M.ATK <-> M.DEF 2 rounds
+  (status `makeover` on a foe, `makeoverAlly` on an ally; one swap, `_psMakeoverSwap`, undone by onRemove; onRemove runs BEFORE its
+  key goes, so it passes its own key). T2 Liposuction: physical 110 drain, the HP taken = Shield on the lowest-HP ally within 3
+  (else himself), capped at 50 % max HP. T3 Anesthesia: 3x3 Sleep 1, no damage. T4 The Full Procedure: radius 2, magic 150,
+  +25 % per Work Done on each body (`_psDmgMult`), gives Work Done to allies in it too (`workDoneAll`).
+- Finisher Before & After (`fin_plastic_surgeon`, sig thousandCuts + DOM overlay `#fin-ba`, battle.js `_finBeforeAfter`,
+  styles-cinematic.css "BEFORE & AFTER").
+- AI (ai.js): procedure rows pick ally or enemy (`_psPickTarget`), Makeover by stat gap (`_psMakeoverScore`), never botch an ally,
+  prefers an enemy at 2 (`_psWorkAdjust`).
+- VFX (three-vfx-effects.js after `nrMiracle`): psBotox, psMakeover, psLipo + psLipoGive, psAnesthesia, psFullProcedure (a surgery
+  lamp spotlight + marker sweeps), psBotched; side colours through `_ceoSides` (own cyan / enemy pink-orange).
+- Proof probe: /mnt/project-files/plastic-surgeon/probe_ps.js (pictures in proof/).
