@@ -143,6 +143,24 @@ Sake (Katana Island; brush face Yuji Syuku, red seal marks) · Katana Line Ferri
 SPONSORED tiles carry the city's chains · Faust & Associates (Hell) · Pearly Gates, a gated community (Heaven) · Cold Shoulder Research
 Station (Antarctica). Atlantis, the Deep, the Cavern and Leylines get no brands (carved names only).
 
+## THE ZONE FLAGS (11-23)
+mondo 11-23: "Can we add flags to different zones? ... Katana bay can be a white flag with a red square. The North Pole can be a red flag with a green
+cross (like a wrapped christmas gift), Came A Lot can have a sword and shield or maybe dragon or lion ... I want the flags to look a little better than
+just perfectly straight rectangles, i dont think we need full on cloth simulation and wind physics, but maybe something in between". Mock-ups: the
+Zone Flags artifact (https://claude.ai/artifact/ASbdLqXahFRUu3vksdzuJQ; files /mnt/project-files/zone-flags/). HIS PICKS (17:09Z): motion D (a wave +
+the trees' gusts), North Pole B (the bow), Came A Lot A (sword + shield, a Meshy picture, R2 `Assets/world/flags/camelot_crest.jpg`), DOOR HQ (his
+Door mark on navy), Nowhere (the Western Town's hollow star), Area 51 (REDACTED black bars), Heaven (the Pearly Gates' gold gate). NO Beach Patrol
+flag ("the beach is in the city": it flies the city flag). Hell + Antarctica: round 2 on the same page, waiting his pick (Antarctica = a flat-earth map).
+- **How it is built:** data.js `ZONE_FLAGS` (`flags`: id -> `art` drawn in code (three-renderer.js `HQ_FLAG_ART`) or `img` on R2; `swap`: a room whose
+  Meshy `flag_pole` rows fly a zone flag (that model's cloth is part of its mesh); `rows`: the poles it puts up, per room, in metres) + `zoneFlagsApply()`
+  at the end of data.js. Catalogue `zone_flag` (8 m pole, 2.4 x 1.6 m cloth) and `zone_flag_hall` (3.4 m brass indoor stand, barely stirs).
+  three-renderer.js THE ZONE FLAGS: `_hqFlagCloth` = one 16 x 8 sheet, the wave in the vertex shader on `_EW_WIND` (the trees' clock; WebGPU twin
+  `_ewNodeTag` k 'flag' in `_ewNodeSway`). Disaster City's Civic poles: `_hqArchFlagsOut` turns C.js flag()'s box + two `mark:flag` quads into one
+  waving sheet of the city flag at build time (no rebake). Off: `EW_HQ_NO_ZONE_FLAGS`, `EW_HQ_NO_FLAG_WAVE`.
+- **Where:** DOOR HQ foyer (two hall stands by the double doors), Katana Island (the Landing Square x 2, the castle yard), the North Pole village square,
+  Came A Lot (the town square by the lions x 2), Nowhere (by the well), Heaven (either side of the Pearly Gates), Area 51 (its two existing poles).
+  A zone thread may move a row in `ZONE_FLAGS.rows` (its room's metres) like any prop.
+
 ## Still open with mondo
 - "Skinwalker Ranch" is a real place name: keep, or parody it (Shapeshifter Ranch)?
 - Code-drawn marks for the chains, or his own art as with DOOR?
