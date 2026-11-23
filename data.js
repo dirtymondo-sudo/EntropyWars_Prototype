@@ -109991,6 +109991,280 @@ function pdBesideRooms(roomId) {
 }
 pdInstall();
 /* PD-END */
+/* HOTEL-MD-BEGIN — THE HOTEL, A MYSTERY DUNGEON (2026-11-23, mondo: "Maybe one of could even be like a mystery dungeon, where each
+   floor is a maze and you have to find the stairs to the next floor"; he picked the Hotel; plan https://claude.ai/artifact/RVPh8wvd9u6uAPj6QubPnd,
+   picture 3). The Financial district's luxury hotel (`dc:P08-00-B1`, 28 x 28 m): the left lift in its lobby goes up to TEN maze floors.
+   Every floor is a room built here at load (the way pdInstall builds the plot dungeons: no bake, no rows in the room block) and BUILT
+   AGAIN, from a new seed, each time you step into the lift from the lobby: a new layout every visit.
+   THE RULES are the Mystery Dungeon mode's (MD_DUNGEONS / generateMdFloor; the old mode is untouched): ten floors, find the stairs on
+   every floor, the last floor holds the boss, the fallen do not return until the run ends (a guest room's bed rests the standing, never
+   the down; the lift down to the lobby ends the run), and floor loot rolls the mode's own floor-item table (HOTEL_MD.loot).
+   THE SQUARES: one maze cell = one 3.5 m battle square. Corridors are one whole square wide, walls stand on the square lines, every
+   guest room is a dead end behind a swinging `leaf_hotel` (three-renderer.js _hqBuildTexDoors, the `doorsOnly` carrier row), and a
+   blocker never stands on a walkway (a guest room's safe and bed stand against its back wall). Floors 1-4 are 8 x 8 (the true 28 m
+   footprint), 5-9 are 12 x 12 and 10 is 16 x 16 (bigger on the inside, the plan's draft).
+   THE WAYS: IN = the lift (south-west corner, door `lift`: back down to the lobby, the run ends), UP = the stair door (`up`) on the
+   outer wall of the farthest dead end (the walk's own door + load card, so a floor's objects never sit in the city). Fights are
+   seamless on the floor itself: a fight room's guest is a native (`npcSpots`, `stay`) of the city's own encounter races.
+   Single player: nothing is on `state` or relayed (RULE #2: the walk is offline). Console: HOTEL.run(), HOTEL.go(floor), HOTEL.seed().
+   Notes: docs/notes/areas-complexes.md "THE HOTEL, A MYSTERY DUNGEON". */
+const HOTEL_MD = {
+    building: 'dc:P08-00-B1', city: 'site_prebuilt_downtown_streets', site: 'prebuilt_downtown',
+    floors: 10, room: n => 'site_prebuilt_hotel_f' + n,
+    size: f => f >= 10 ? 16 : f >= 5 ? 12 : 8,          // squares a side (picture 3: 8, 12 from floor 5, 16 at the top)
+    sq: 3.5, h: 3.5, wallT: 0.3, doorW: 1.75, doorH: 2.2,
+    /* the guest rooms a floor holds (dead ends; what the maze has, up to these) */
+    rooms: { 8: { loot: 2, fight: 1, rest: 1 }, 12: { loot: 4, fight: 3, rest: 2 }, 16: { loot: 5, fight: 5, rest: 3 } },
+    braid: 0.04,                                         // a share of the floor's squares: walls taken out so the corridors loop (never a guest room's)
+    lamps: 10,                                           // point lights a floor (the stage lights 12 at most)
+    /* the look: the lobby's cream plaster, a carpet runner, dark wood skirting */
+    floorKey: 'urban:CarpetPattern1a', wallKey: 'urban:PlasterWallPainted1d', wallTint: 0xf2e6d2, skirt: 0x4a2a20, frame: 0x3a2418,
+    ceiling: 'urban:FibreCeilingTile1a', leaf: 'leaf_hotel', stairLeaf: 'leaf_exit',
+    /* the Mystery Dungeon's floor-item table (generateMdFloor rollFloorItem), as weights */
+    loot: [['healPotion', 30], ['manaPotion', 20], ['entropyGrenade', 12], ['panacea', 10], ['adrenalStim', 8], ['unholyBane', 5], ['alienBane', 5], ['anomalyBane', 5], ['humanBane', 5]],
+    /* the guests: the city's own encounter races (hqRoomNatives of the city at the run's start); these when it has none */
+    guests: ['zombie', 'vampire', 'ghost', 'werewolf', 'demon'],
+    boss: null,                                          // the top floor's guest: null = the strongest-sounding of the guests (the first)
+};
+let _hotelSeed = 0, _hotelRun = null;   // { seed, at, loot: {roomId:cellKey → true}, deepest }
+/* the maze: N x N cells, open sides as a bitmask (1 n, 2 e, 4 s, 8 w), recursive backtracker from IN, then a few walls out (braid) */
+function hotelMaze(N, seed) {
+    const rng = _mfRng(seed), ri = n => Math.floor(rng() * n);
+    const O = [], seen = [];
+    for (let j = 0; j < N; j++) { O.push(new Array(N).fill(0)); seen.push(new Array(N).fill(false)); }
+    const D = [[0, -1, 1, 4], [1, 0, 2, 8], [0, 1, 4, 1], [-1, 0, 8, 2]];
+    const IN = [0, N - 1], st = [IN]; seen[IN[1]][IN[0]] = true;
+    while (st.length) {
+        const c = st[st.length - 1], nb = D.filter(d => { const x = c[0] + d[0], y = c[1] + d[1]; return x >= 0 && y >= 0 && x < N && y < N && !seen[y][x]; });
+        if (!nb.length) { st.pop(); continue; }
+        const d = nb[ri(nb.length)], x = c[0] + d[0], y = c[1] + d[1];
+        O[c[1]][c[0]] |= d[2]; O[y][x] |= d[3]; seen[y][x] = true; st.push([x, y]);
+    }
+    const bits = v => ((v & 1) ? 1 : 0) + ((v & 2) ? 1 : 0) + ((v & 4) ? 1 : 0) + ((v & 8) ? 1 : 0);
+    const dist = () => { const L = []; for (let j = 0; j < N; j++) L.push(new Array(N).fill(-1)); const q = [IN]; L[IN[1]][IN[0]] = 0;
+        while (q.length) { const c = q.shift(); D.forEach(d => { if (!(O[c[1]][c[0]] & d[2])) return; const x = c[0] + d[0], y = c[1] + d[1]; if (L[y][x] < 0) { L[y][x] = L[c[1]][c[0]] + 1; q.push([x, y]); } }); }
+        return L; };
+    let L = dist();
+    const key = (x, y) => x + ',' + y, edge = (x, y) => x === 0 || y === 0 || x === N - 1 || y === N - 1;
+    const ends = []; for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (bits(O[y][x]) === 1 && !(x === IN[0] && y === IN[1])) ends.push([x, y]);
+    /* UP: the farthest dead end on the outer wall (its stair door is a door of the box); the farthest outer square if none */
+    const outer = ends.filter(c => edge(c[0], c[1]));
+    let UP = (outer.length ? outer : (() => { const a = []; for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (edge(x, y) && !(x === IN[0] && y === IN[1])) a.push([x, y]); return a; })())
+        .reduce((b, c) => (!b || L[c[1]][c[0]] > L[b[1]][b[0]]) ? c : b, null);
+    /* the guest rooms: the other dead ends, never beside IN */
+    const rooms = ends.filter(c => key(c[0], c[1]) !== key(UP[0], UP[1]) && Math.abs(c[0] - IN[0]) + Math.abs(c[1] - IN[1]) > 1);
+    for (let i = rooms.length - 1; i > 0; i--) { const j = ri(i + 1); const t = rooms[i]; rooms[i] = rooms[j]; rooms[j] = t; }
+    /* THE BRAID: walls out between two corridor squares (never a guest room's, UP's or IN's), so the floor loops */
+    const keep = {}; rooms.concat([UP, IN]).forEach(c => { keep[key(c[0], c[1])] = 1; });
+    let want = Math.round(N * N * HOTEL_MD.braid), tries = 0;
+    while (want > 0 && tries++ < 400) {
+        const x = ri(N), y = ri(N), d = D[ri(2) + 1], x2 = x + d[0], y2 = y + d[1];
+        if (x2 >= N || y2 >= N || keep[key(x, y)] || keep[key(x2, y2)] || (O[y][x] & d[2])) continue;
+        O[y][x] |= d[2]; O[y2][x2] |= d[3]; want--;
+    }
+    L = dist();
+    return { N, O, IN, UP, rooms, L, D };
+}
+/* one floor's room: the maze drawn on whole squares (walls on the lines, doorways + leaves into the guest rooms), its doors, lamps, props, guests */
+function hotelFloorRoom(f, seed, guests) {
+    const H = HOTEL_MD, N = H.size(f), SQ = H.sq, W = N * SQ, T = H.wallT, DW = H.doorW, DH = H.doorH, hh = H.h, top = f >= H.floors;
+    const r2 = v => Math.round(v * 100) / 100, X = i => r2(-W / 2 + i * SQ), C = i => r2(-W / 2 + (i + 0.5) * SQ);
+    const M = hotelMaze(N, ((seed | 0) * 31 + f * 7919) | 0), rng = _mfRng(((seed | 0) * 131 + f * 104729) | 0), ri = n => Math.floor(rng() * n);
+    const F = [], P = [], props = [], counters = [], inner = [], npc = [], lights = [];
+    const wallPart = (x, z, sx, sz, y0, h) => { P.push({ s: 'box', p: [x, y0, z], size: [sx, h, sz], key: H.wallKey, tint: H.wallTint, uv: [3.5, 1.75] }); };
+    const skirt = (x, z, sx, sz) => P.push({ s: 'box', p: [x, 0, z], size: [sx + 0.04, 0.14, sz + 0.04], tint: H.skirt });
+    /* a wall on a square line: axis 'u' runs west-east on line v = at (from square a to b); 'v' runs north-south on line u = at. door = a square's index for a doorway */
+    const wall = (axis, at, a, b, door) => {
+        const seg = (s0, s1) => { if (s1 - s0 < 0.02) return; const m = (s0 + s1) / 2, L = (s1 - s0) * SQ, px = axis === 'u' ? r2(-W / 2 + m * SQ) : X(at), pz = axis === 'u' ? X(at) : r2(-W / 2 + m * SQ);
+            const sx = axis === 'u' ? r2(L) : T, sz = axis === 'u' ? T : r2(L); wallPart(px, pz, sx, sz, 0, hh); skirt(px, pz, sx, sz);
+            const e = Math.min(0.15, L / 2 - 0.01);
+            F.push(Object.assign({ k: 'wall' }, axis === 'u' ? { x0: r2(px - L / 2 + e), z0: pz, x1: r2(px + L / 2 - e), z1: pz } : { x0: px, z0: r2(pz - L / 2 + e), x1: px, z1: r2(pz + L / 2 - e) }, { t: T, ghost: true, rail: false, h: hh, y: hh })); };
+        if (door == null) { seg(a, b); return; }
+        const m = door + 0.5, hw = DW / 2 / SQ;
+        seg(a, m - hw); seg(m + hw, b);
+        const px = axis === 'u' ? C(door) : X(at), pz = axis === 'u' ? X(at) : C(door);
+        wallPart(px, pz, axis === 'u' ? DW : T, axis === 'u' ? T : DW, DH, r2(hh - DH));   // the lintel
+        [-1, 1].forEach(sd => P.push({ s: 'box', p: axis === 'u' ? [r2(px + sd * (DW / 2 + 0.06)), 0, pz] : [px, 0, r2(pz + sd * (DW / 2 + 0.06))], size: axis === 'u' ? [0.12, DH + 0.1, T + 0.08] : [T + 0.08, DH + 0.1, 0.12], tint: H.frame }));
+        P.push({ s: 'box', p: [px, DH, pz], size: axis === 'u' ? [DW + 0.24, 0.12, T + 0.08] : [T + 0.08, 0.12, DW + 0.24], tint: H.frame });
+        inner.push({ x: px, z: pz, rot: axis === 'u' ? 0 : 90, w: DW - 0.2, leaf: H.leaf });
+    };
+    /* which guest room a square is, and its doorway (the one open side) */
+    const kinds = {}, R0 = H.rooms[N] || H.rooms[8], order = [];
+    ['fight', 'loot', 'rest'].forEach(k => { for (let i = 0; i < (R0[k] | 0); i++) order.push(k); });
+    const seq = []; const by = { fight: [], loot: [], rest: [] }; order.forEach(k => by[k].push(k));
+    while (by.fight.length || by.loot.length || by.rest.length) ['loot', 'fight', 'rest'].forEach(k => { if (by[k].length) seq.push(by[k].pop()); });
+    M.rooms.slice(0, seq.length).forEach((c, i) => { kinds[c[0] + ',' + c[1]] = seq[i]; });
+    const doorSide = (x, y) => { const o = M.O[y][x]; return o & 1 ? 'n' : o & 2 ? 'e' : o & 4 ? 's' : 'w'; };
+    /* the walls: every closed inside edge, joined into runs; a guest room's one open edge is a doorway in a wall */
+    for (let y = 1; y < N; y++) {   // the west-east lines between row y-1 and row y
+        let a = null;
+        for (let x = 0; x <= N; x++) {
+            const closed = x < N && !(M.O[y][x] & 1), gu = x < N && ((kinds[x + ',' + y] && doorSide(x, y) === 'n') || (kinds[x + ',' + (y - 1)] && doorSide(x, y - 1) === 's'));
+            if (gu) { if (a != null) { wall('u', y, a, x); a = null; } wall('u', y, x, x + 1, x); continue; }
+            if (closed && a == null) a = x;
+            if (!closed && a != null) { wall('u', y, a, x); a = null; }
+        }
+    }
+    for (let x = 1; x < N; x++) {   // the north-south lines between column x-1 and column x
+        let a = null;
+        for (let y = 0; y <= N; y++) {
+            const closed = y < N && !(M.O[y][x] & 8), gu = y < N && ((kinds[x + ',' + y] && doorSide(x, y) === 'w') || (kinds[(x - 1) + ',' + y] && doorSide(x - 1, y) === 'e'));
+            if (gu) { if (a != null) { wall('v', x, a, y); a = null; } wall('v', x, y, y + 1, y); continue; }
+            if (closed && a == null) a = y;
+            if (!closed && a != null) { wall('v', x, a, y); a = null; }
+        }
+    }
+    /* the box's own skirting (the shell draws its walls) */
+    [['u', 0], ['u', N], ['v', 0], ['v', N]].forEach(q => { const al = q[0] === 'u', at = X(q[1]) + (q[1] ? -0.07 : 0.07); P.push({ s: 'box', p: al ? [0, 0, at] : [at, 0, 0], size: al ? [W, 0.14, 0.12] : [0.12, 0.14, W], tint: H.skirt }); });
+    /* the guest rooms' insides: the back wall = the side across from the doorway */
+    const FACE = { n: 0, e: 90, s: 180, w: 270 }, OPP = { n: 's', s: 'n', e: 'w', w: 'e' }, OFF = { n: [0, -1], s: [0, 1], e: [1, 0], w: [-1, 0] };
+    let fights = 0;
+    Object.keys(kinds).forEach(k => {
+        const xy = k.split(',').map(Number), cx = C(xy[0]), cz = C(xy[1]), ds = doorSide(xy[0], xy[1]), back = OPP[ds], o = OFF[back], kind = kinds[k];
+        const bx = r2(cx + o[0] * 1.15), bz = r2(cz + o[1] * 1.15), face = FACE[ds];   // against the back wall, looking at the door
+        if (kind === 'loot') {
+            props.push({ key: 'floor_safe', x: bx, z: bz, face });
+            counters.push({ id: 'hotel_loot_' + k.replace(',', '_'), x: bx, z: bz, face, radius: 2.6, plateY: 1.5, label: 'THE ROOM SAFE', verb: 'OPEN', proc: 'hotel_act', hotel: { act: 'loot', cell: k } });
+        } else if (kind === 'rest') {
+            props.push({ key: 'psx_bed_2', x: bx, z: bz, face });
+            const sd = (ds === 'n' || ds === 's') ? [1.15, 0] : [0, 1.15];
+            props.push({ key: 'psx_bedside_table_1', x: r2(bx + sd[0]), z: r2(bz + sd[1]), face }, { key: 'table_lamp', x: r2(bx + sd[0]), z: r2(bz + sd[1]), y: 0.66, face });
+            counters.push({ id: 'hotel_rest_' + k.replace(',', '_'), x: cx, z: cz, face, radius: 2.4, plateY: 1.9, label: 'A MADE BED', verb: 'REST', proc: 'hotel_act', hotel: { act: 'rest', cell: k } });
+        } else if (kind === 'fight') {
+            const race = guests[(fights++ + ri(guests.length)) % guests.length];
+            npc.push({ x: cx, z: cz, face, race, stay: true });
+            props.push({ key: 'luggage_cart', x: r2(bx + (o[1] ? 1.0 : 0)), z: r2(bz + (o[0] ? 1.0 : 0)), face });
+        }
+    });
+    /* the doors: the lift at IN (its outer wall), the stairs at UP (an outer wall of that square) */
+    const outerSide = (x, y) => (y === N - 1 ? 's' : x === 0 ? 'w' : y === 0 ? 'n' : 'e');
+    const boxDoor = (side, x, y) => (side === 'n' || side === 's') ? { wall: side, x: C(x) } : { wall: side, z: C(y) };
+    const doors = [Object.assign({ id: 'lift', leaf: null, label: 'THE LOBBY', sub: 'THE LIFT · DOWN TO THE LOBBY · THE RUN ENDS',
+        action: { room: H.city, at: 'hotel_lift' }, desc: 'The lift you came up in. It goes down, only down, and it does not say which floor it is on.' }, boxDoor('s', M.IN[0], M.IN[1]))];
+    { const lx = C(M.IN[0]), lz = r2(W / 2 - 0.35); props.push({ key: 'psx_elevator_buttons_1', x: r2(lx + 1.55), z: lz, y: 1.1, face: 0 }); }   // the lift's call buttons beside its doors (the pack's lift doorway prop was tried 11-23: it did not sit in the box wall's opening)
+    if (!top) doors.push(Object.assign({ id: 'up', leaf: H.stairLeaf, label: 'FLOOR ' + (f + 1), sub: 'THE STAIRS · UP TO FLOOR ' + (f + 1),
+        action: { room: H.room(f + 1), at: 'lift' }, desc: 'A fire door with a green sign over it. The stairs behind it go up one floor and stop.' }, boxDoor(outerSide(M.UP[0], M.UP[1]), M.UP[0], M.UP[1])));
+    else {   /* THE TOP FLOOR: the boss waits where the stairs would be */
+        const cx = C(M.UP[0]), cz = C(M.UP[1]);
+        npc.push({ x: cx, z: cz, face: FACE[doorSide(M.UP[0], M.UP[1])], race: H.boss || guests[0], stay: true, boss: true });
+        props.push({ key: 'potted_plant', x: r2(cx + 1.2), z: r2(cz + 1.2) });
+    }
+    /* the corridors: lamps over evenly spread corridor squares, a painting on a long wall now and then, plants in corners */
+    const corr = []; for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (!kinds[x + ',' + y]) corr.push([x, y]);
+    const step = Math.max(1, Math.floor(corr.length / H.lamps));
+    for (let i = Math.floor(step / 2); i < corr.length && lights.length < H.lamps; i += step) { const c = corr[i]; lights.push({ x: C(c[0]), z: C(c[1]) }); props.push({ key: 'psx_ceiling_lamp_1_on', x: C(c[0]), z: C(c[1]), ceil: true }); }
+    Object.keys(kinds).forEach(k => { if (kinds[k] !== 'rest') return; const xy = k.split(',').map(Number); props.push({ key: 'psx_ceiling_lamp_1_on', x: C(xy[0]), z: C(xy[1]), ceil: true }); });
+    corr.forEach((c, i) => { if (rng() > 0.12) return; const o = M.O[c[1]][c[0]], sides = ['n', 'e', 's', 'w'].filter((s, j) => !(o & [1, 2, 4, 8][j])); if (!sides.length) return;
+        const s = sides[ri(sides.length)], q = OFF[s], inn = (c[0] === M.IN[0] && c[1] === M.IN[1]) || (c[0] === M.UP[0] && c[1] === M.UP[1]); if (inn) return;
+        props.push({ key: ['painting_landscape', 'painting_portrait', 'painting_seascape'][ri(3)], x: r2(C(c[0]) + q[0] * (SQ / 2 - 0.2)), z: r2(C(c[1]) + q[1] * (SQ / 2 - 0.2)), y: 1.3, face: FACE[OPP[s]] }); });
+    const F2 = F.concat([{ k: 'arch', id: 'hotel:f' + f + ':maze', x: 0, z: 0, y: 0, rot: 0, parts: P }]);
+    if (inner.length) F2.push({ k: 'texbuilding', id: 'hotel:f' + f + ':doors', x: 0, z: 0, y: 0, w: 2, d: 2, rot: 0, storeys: 1, skin: false, doorsOnly: true, leaf: H.leaf, inner });
+    return {
+        label: 'DISASTER CITY · THE HOTEL · FLOOR ' + f + (top ? ' · THE TOP FLOOR' : ''),
+        sub: top ? 'THE TOP FLOOR · SOMEBODY BOOKED THE WHOLE FLOOR' : 'A NEW FLOOR EVERY STAY · FIND THE STAIRS',
+        kind: 'box', site: H.site, hotel: f,
+        shell: {
+            w: W, d: W, h: hh, wallH: hh, dadoH: 1.0,
+            floor: H.floorKey, wall: H.wallKey, dado: 'urban:WoodPanelling1a', trim: 'wood', ceiling: H.ceiling,
+            floorColor: 0xb87a6a, wallColor: H.wallTint, dadoColor: 0x7a4a30, ceilColor: 0xf0eadc, ceilTile: 1.75,
+            pipes: false, strips: false, lights,
+            mood: { light: 0xffe8c8, lamp: 0xffd890, ambient: 0.9 },
+        },
+        parti: 'A hotel floor laid as a maze on whole squares: one-square corridors, walls on the lines, guest rooms behind swinging doors at the dead ends, the lift in one corner and the stairs at the farthest dead end.',
+        terrain: { res: 0.4375, floor: H.floorKey, cliff: H.wallKey, path: H.floorKey, noise: { amp: 0, scale: 5 }, crag: false, features: F2 },
+        doors, counters, props, agents: [], npcSpots: npc, onlineSpots: [],
+        encounters: { list: guests.map(r => ({ race: r, w: 1 })) },
+        lines: ['“Which floor is this?” “The one with the stairs somewhere.”', '“Room service?” “Room service is a fight.”'],
+        spawn: { x: C(M.IN[0]), z: r2(W / 2 - 2.4), face: 0 },
+        hotelMaze: { N, IN: M.IN, UP: M.UP, kinds },
+    };
+}
+/* the guests of a run: the city's own encounter races, else the fallback list */
+function hotelGuests() {
+    let g = [];
+    try { g = (typeof hqRoomNatives === 'function') ? (hqRoomNatives(HOTEL_MD.city) || []).slice() : []; } catch (e) { g = []; }
+    if (typeof AVAILABLE_RACES !== 'undefined') g = g.filter(r => AVAILABLE_RACES.indexOf(r) >= 0);
+    if (!g.length) g = HOTEL_MD.guests.filter(r => typeof AVAILABLE_RACES === 'undefined' || AVAILABLE_RACES.indexOf(r) >= 0);
+    return g.length ? g : ['zombie'];
+}
+/* build (or build again) every floor from a seed. The room objects are replaced, so the compiled floor plan goes with them;
+   the room's version is bumped so a survey already under way is thrown away */
+function hotelBuild(seed) {
+    if (typeof DOOR_HQ === 'undefined' || !DOOR_HQ.rooms) return false;
+    _hotelSeed = (seed | 0) || 1;
+    const guests = hotelGuests();
+    for (let f = 1; f <= HOTEL_MD.floors; f++) {
+        const id = HOTEL_MD.room(f);
+        try { DOOR_HQ.rooms[id] = hotelFloorRoom(f, _hotelSeed, guests); } catch (e) { console.error('[HOTEL] floor ' + f, e); }
+        try { if (typeof HQ_ROOM_EDITS !== 'undefined' && HQ_ROOM_EDITS.rev) HQ_ROOM_EDITS.rev[id] = (HQ_ROOM_EDITS.rev[id] | 0) + 1; } catch (e) {}
+        try { if (typeof _hqStageNearbyCache !== 'undefined') delete _hqStageNearbyCache[id]; } catch (e) {}
+    }
+    try { if (typeof _hqWorldIdx !== 'undefined') _hqWorldIdx = null; } catch (e) {}
+    return true;
+}
+function hotelIsFloor(roomId) { const r = roomId && (DOOR_HQ.rooms || {})[roomId]; return !!(r && r.hotel); }
+/* a run starts when the lift is taken from the lobby: a new seed, a new hotel */
+function hotelNewRun(seed) {
+    const s = (seed | 0) || ((Date.now() ^ Math.floor(Math.random() * 0x7fffffff)) | 0) || 7;
+    hotelBuild(s);
+    _hotelRun = { seed: _hotelSeed, at: Date.now(), loot: {}, deepest: 1 };
+    return _hotelRun;
+}
+function hotelRunState() { return _hotelRun; }
+/* the walk's hook (map.js _hqGoRoom): into floor 1 from outside the hotel = a new run; any floor = the deepest so far */
+function hotelBeforeGo(roomId, fromId) {
+    if (!hotelIsFloor(roomId)) return null;
+    if (roomId === HOTEL_MD.room(1) && !hotelIsFloor(fromId)) hotelNewRun();
+    if (!_hotelRun) _hotelRun = { seed: _hotelSeed, at: Date.now(), loot: {}, deepest: 1 };
+    _hotelRun.deepest = Math.max(_hotelRun.deepest, DOOR_HQ.rooms[roomId].hotel | 0);
+    return _hotelRun;
+}
+/* a guest room's safe: one roll of the Mystery Dungeon's floor table, once a run */
+function hotelLootRoll(roomId, cell) {
+    const T = HOTEL_MD.loot, tot = T.reduce((s, r) => s + r[1], 0);
+    let h = 2166136261; String(_hotelSeed + '|' + roomId + '|' + cell).split('').forEach(ch => { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); });
+    let v = ((h >>> 0) % 10000) / 10000 * tot;
+    for (const r of T) { if ((v -= r[1]) < 0) return r[0]; }
+    return T[0][0];
+}
+function hotelLootTake(profile, roomId, cell) {
+    if (!_hotelRun) _hotelRun = { seed: _hotelSeed, at: Date.now(), loot: {}, deepest: 1 };
+    const k = roomId + '|' + cell; if (_hotelRun.loot[k]) return { ok: false, reason: 'empty' };
+    const item = hotelLootRoll(roomId, cell), a = (typeof hqBagAdd === 'function') ? hqBagAdd(profile, item, 1) : { ok: false, reason: 'bag' };
+    if (a.ok) _hotelRun.loot[k] = true;
+    return Object.assign({ item, name: (typeof ITEM_RULES !== 'undefined' && ITEM_RULES[item] && ITEM_RULES[item].name) || item }, a);
+}
+/* a guest room's bed: the standing get their HP / MP back; the fallen stay down until the run ends (the Mystery Dungeon's rule) */
+function hotelRest(profile) {
+    const r = (typeof hqPartyRecord === 'function') ? hqPartyRecord(profile) : null; if (!r) return { ok: false, n: 0, down: 0 };
+    let n = 0, down = 0;
+    r.members.forEach(m => { if (typeof hqPartyDown === 'function' && hqPartyDown(m)) { down++; return; } if (m.hp !== null || m.mp !== null) n++; m.hp = null; m.mp = null; });
+    r.at = Date.now();
+    return { ok: true, n, down };
+}
+/* the lobby's lift: a door of the city room on the left lift of the hotel's back wall (F-inside.js draws it), found from the
+   building's own row so it follows the building */
+function hotelInstall() {
+    if (typeof DOOR_HQ === 'undefined' || !DOOR_HQ.rooms) return false;
+    hotelBuild(((Date.now() ^ 0x5bd1e995) | 0) || 3);
+    const city = DOOR_HQ.rooms[HOTEL_MD.city]; if (!city || !city.terrain) return false;
+    const row = (city.terrain.features || []).find(f => f && f.k === 'texbuilding' && f.id === HOTEL_MD.building); if (!row) return false;
+    if ((city.doors || []).some(d => d && d.id === 'hotel_lift')) return true;
+    const q = (row.rot || 0) * Math.PI / 180, c = Math.cos(q), s = Math.sin(q), W = row.w || 28, Dd = row.d || 28;
+    const lx = -W / 2 + 1.75, lz = -Dd / 2 + 0.33, r2 = v => Math.round(v * 100) / 100;   // the left lift: the first square from the left, on the back wall
+    const x = r2(row.x + lx * c - lz * s), z = r2(row.z + lx * s + lz * c), face = Math.round(((Math.atan2(-s, -c) * 180 / Math.PI) % 360 + 360) % 360);
+    (city.doors = city.doors || []).push({ id: 'hotel_lift', wall: 'free', x, z, face, noEntrance: true, bare: true, leaf: null,
+        label: 'THE HOTEL', sub: 'THE LIFT · UP TO THE FLOORS · A NEW FLOOR EVERY STAY',
+        action: { room: HOTEL_MD.room(1), at: 'lift' },
+        desc: 'The left lift. Its panel has one button, UP, and ten floors that are never in the same place twice.' });
+    return true;
+}
+hotelInstall();
+if (typeof window !== 'undefined') {
+    window.HOTEL_MD = HOTEL_MD; window.hotelMaze = hotelMaze; window.hotelFloorRoom = hotelFloorRoom; window.hotelBuild = hotelBuild; window.hotelNewRun = hotelNewRun;
+    window.hotelIsFloor = hotelIsFloor; window.hotelBeforeGo = hotelBeforeGo; window.hotelRunState = hotelRunState; window.hotelLootTake = hotelLootTake; window.hotelRest = hotelRest;
+}
+/* HOTEL-MD-END */
 if (typeof window !== 'undefined') {
     window.DOOR_HQ = DOOR_HQ;
     /* THE PLOT DUNGEONS */
