@@ -25,7 +25,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 1321 |
+| Meshy AI | no | 1327 |
 | Meshy AI, reworked by Claude | no | 12 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 93 |
@@ -1653,7 +1653,7 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | woods_glowcap | `Assets/world/props/meshy/Meshy_AI_mushroom_realistic_0727202046_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | yellow_pole | `Assets/world/props/meshy/Meshy_AI_a_yellow_pole_0922010159_texture.glb` | Meshy AI | Meshy AI (mondo) |
 
-### Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) — Meshy AI (246)
+### Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) — Meshy AI (247)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
@@ -1803,7 +1803,8 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | oil_lamp | `Assets/world/props/meshy/wishlist/oil_lamp.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
 | olive_tree | `Assets/world/props/meshy/wishlist/olive_tree.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
 | ore_heap | `Assets/world/props/meshy/wishlist/ore_heap.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
-| outhouse | `Assets/world/props/meshy/wishlist/outhouse.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
+| outhouse | `Assets/world/props/meshy/wishlist/outhouse_open.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
+| outhouse_shut | `Assets/world/props/meshy/wishlist/outhouse.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
 | owl_perched | `Assets/world/props/meshy/wishlist/owl_perched.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
 | papyrus_column | `Assets/world/props/meshy/wishlist/papyrus_column.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
 | parrot | `Assets/world/props/meshy/wishlist/parrot.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5; THE WISH LIST, mondo 2026-11-16; originals in project files meshy-wishlist/) |
@@ -2880,6 +2881,19 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | ind_skip_full | `Assets/world/packs/domi236_industrial/ind_skip_full.glb` | Asset pack | PS1/PSX Industrial Pack #1 · domi236 (itch.io) · CC0 (each piece cut out in Blender by bake-pack-pieces.py ind_*; DOOR_HQ.catalogue ind_*, Disaster City) |
 | ind_vent | `Assets/world/packs/domi236_industrial/ind_vent.glb` | Asset pack | PS1/PSX Industrial Pack #1 · domi236 (itch.io) · CC0 (each piece cut out in Blender by bake-pack-pieces.py ind_*; DOOR_HQ.catalogue ind_*, Disaster City) |
 
+### Meshy image-to-3D from Claude's concept, mondo OK'd 11-05 (DOOR_HQ.catalogue babel_house_*, the Babel room) — Meshy AI (8)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| babel_house_row | `Assets/world/props/meshy/meshy_babel_house_row_open.glb` | Meshy AI | Meshy image-to-3D from Claude's concept, mondo OK'd 11-05 (DOOR_HQ.catalogue babel_house_*, the Babel room) |
+| babel_house_row_shut | `Assets/world/props/meshy/meshy_babel_house_row.glb` | Meshy AI | Meshy image-to-3D from Claude's concept, mondo OK'd 11-05 (DOOR_HQ.catalogue babel_house_*, the Babel room) |
+| babel_house_small | `Assets/world/props/meshy/meshy_babel_house_small_open.glb` | Meshy AI | Meshy image-to-3D from Claude's concept, mondo OK'd 11-05 (DOOR_HQ.catalogue babel_house_*, the Babel room) |
+| babel_house_small_shut | `Assets/world/props/meshy/meshy_babel_house_small.glb` | Meshy AI | Meshy image-to-3D from Claude's concept, mondo OK'd 11-05 (DOOR_HQ.catalogue babel_house_*, the Babel room) |
+| babel_house_stair | `Assets/world/props/meshy/meshy_babel_house_stair_open.glb` | Meshy AI | Meshy image-to-3D from Claude's concept, mondo OK'd 11-05 (DOOR_HQ.catalogue babel_house_*, the Babel room) |
+| babel_house_stair_shut | `Assets/world/props/meshy/meshy_babel_house_stair.glb` | Meshy AI | Meshy image-to-3D from Claude's concept, mondo OK'd 11-05 (DOOR_HQ.catalogue babel_house_*, the Babel room) |
+| babel_house_yard | `Assets/world/props/meshy/meshy_babel_house_yard_open.glb` | Meshy AI | Meshy image-to-3D from Claude's concept, mondo OK'd 11-05 (DOOR_HQ.catalogue babel_house_*, the Babel room) |
+| babel_house_yard_shut | `Assets/world/props/meshy/meshy_babel_house_yard.glb` | Meshy AI | Meshy image-to-3D from Claude's concept, mondo OK'd 11-05 (DOOR_HQ.catalogue babel_house_*, the Babel room) |
+
 ### Houses on the water · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (8)
 
 | catalogue key | file (R2 bucket path) | made by | source |
@@ -2994,15 +3008,6 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | computer_chair_blue | `Assets/world/hq/models/computer_chair_blue.glb` | Asset pack (author not recorded yet) | D.O.O.R. kit upload (mondo, author not recorded) |
 | computer_chair_grey | `Assets/world/hq/models/computer_chair_grey.glb` | Asset pack (author not recorded yet) | D.O.O.R. kit upload (mondo, author not recorded) |
 
-### Meshy image-to-3D from Claude's concept, mondo OK'd 11-05 (DOOR_HQ.catalogue babel_house_*, the Babel room) — Meshy AI (4)
-
-| catalogue key | file (R2 bucket path) | made by | source |
-| --- | --- | --- | --- |
-| babel_house_row | `Assets/world/props/meshy/meshy_babel_house_row.glb` | Meshy AI | Meshy image-to-3D from Claude's concept, mondo OK'd 11-05 (DOOR_HQ.catalogue babel_house_*, the Babel room) |
-| babel_house_small | `Assets/world/props/meshy/meshy_babel_house_small.glb` | Meshy AI | Meshy image-to-3D from Claude's concept, mondo OK'd 11-05 (DOOR_HQ.catalogue babel_house_*, the Babel room) |
-| babel_house_stair | `Assets/world/props/meshy/meshy_babel_house_stair.glb` | Meshy AI | Meshy image-to-3D from Claude's concept, mondo OK'd 11-05 (DOOR_HQ.catalogue babel_house_*, the Babel room) |
-| babel_house_yard | `Assets/world/props/meshy/meshy_babel_house_yard.glb` | Meshy AI | Meshy image-to-3D from Claude's concept, mondo OK'd 11-05 (DOOR_HQ.catalogue babel_house_*, the Babel room) |
-
 ### Meshy AI, made by Claude through the Meshy API (concept -> image-to-3D) for the Desert, mondo's OK 2026-11-15 — Meshy AI (4)
 
 | catalogue key | file (R2 bucket path) | made by | source |
@@ -3029,6 +3034,15 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | item_heart_scales | `Assets/world/props/misc/heart_scales.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (ultimate spell props, concepts picked by mondo 2026-11-03: barricade U01a, flat earth U03b, scales U04a, feather U06a) |
 | item_maat_feather | `Assets/world/props/misc/maat_feather.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (ultimate spell props, concepts picked by mondo 2026-11-03: barricade U01a, flat earth U03b, scales U04a, feather U06a) |
 | item_police_barricade | `Assets/world/props/misc/police_barricade.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (ultimate spell props, concepts picked by mondo 2026-11-03: barricade U01a, flat earth U03b, scales U04a, feather U06a) |
+
+### Meshy AI, made by Claude through the Meshy API (concept -> image-to-3D) for the Woods' horror pass, mondo's OK 2026-11-15 — Meshy AI (4)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| missing_board | `Assets/world/props/meshy/missing_board.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3D) for the Woods' horror pass, mondo's OK 2026-11-15 |
+| owl_statue | `Assets/world/props/meshy/owl_statue.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3D) for the Woods' horror pass, mondo's OK 2026-11-15 |
+| woods_cabin | `Assets/world/props/meshy/woods_cabin_open.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3D) for the Woods' horror pass, mondo's OK 2026-11-15 |
+| woods_cabin_shut | `Assets/world/props/meshy/woods_cabin.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3D) for the Woods' horror pass, mondo's OK 2026-11-15 |
 
 ### Bus stop · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (3)
 
@@ -3069,14 +3083,6 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | horse | `Assets/world/animals/horses/Horse_glb.glb` | Asset pack (author not recorded yet) | Horse pack (mondo's upload) |
 | horse_black | `Assets/world/animals/horses/Horse_glb.glb` | Asset pack (author not recorded yet) | Horse pack (mondo's upload) |
 | horse_brown | `Assets/world/animals/horses/Horse_glb.glb` | Asset pack (author not recorded yet) | Horse pack (mondo's upload) |
-
-### Meshy AI, made by Claude through the Meshy API (concept -> image-to-3D) for the Woods' horror pass, mondo's OK 2026-11-15 — Meshy AI (3)
-
-| catalogue key | file (R2 bucket path) | made by | source |
-| --- | --- | --- | --- |
-| missing_board | `Assets/world/props/meshy/missing_board.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3D) for the Woods' horror pass, mondo's OK 2026-11-15 |
-| owl_statue | `Assets/world/props/meshy/owl_statue.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3D) for the Woods' horror pass, mondo's OK 2026-11-15 |
-| woods_cabin | `Assets/world/props/meshy/woods_cabin.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3D) for the Woods' horror pass, mondo's OK 2026-11-15 |
 
 ### PS1 Playground · Cursedlake · from mondo's asset-packs folder (each piece cut out in Blender by bake-pack-pieces.py play_*; DOOR_HQ.catalogue play_*, Disaster City) — Asset pack (3)
 

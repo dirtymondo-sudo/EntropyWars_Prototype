@@ -14977,3 +14977,28 @@ The plan: https://claude.ai/artifact/YEe54svVhVbLufjHdfQ5QY (sites: project file
   P10-03-B3 five storeys of warehouse flats (`workshop` `up`), back lots in35 / in40 / in41 to 6 / 8 / 6 storeys (`MID_BACK`). The roof-route
   blocks (P09-00-B2, P09-00-B3) stay low: their roofs are walked. F-detail reads `T.up` / `T.Ht` for the roof plant and pipes.
 - NOT DONE: a far, simpler version past 150 m (the plan's limits list): the arch rows have no LOD; each tower is 2 to 4 meshes, so it was left.
+
+## THE OPEN DOORS (2026-11-23, building-interiors plan step 2 outside Disaster City; thread "Open every door outside Disaster City")
+mondo 11-23: "I want every building to have an interior. If there is a door the player should be able to walk inside of it (very important
+for a game called DOOR HQ)"; unreachable doors become windows or move to a walkable side. Outside the city the closed doors were nearly all
+whole catalogue buildings (find-doors.js PACK rows), so each KIND opens once, in the catalogue, and every placement in every room opens with it
+(no zone or district file edited).
+- THE CUT (`bake-open-props.js`, repo-only): a Meshy prop is one fused mesh with its door painted on. The tool drops every triangle whose middle
+  stands in a box over the door and faces sideways (|normal.y| < 0.7) from the index list; vertices, UVs and the texture bytes stay the file's
+  own, so the model's box (the game's fit) is unchanged and `<file>_open.glb` stands exactly where the old one stood. R2: next to the source
+  (`Assets/world/props/meshy/…_open.glb`, `Assets/world/props/meshy/wishlist/outhouse_open.glb`). Boxes are in the GLB's own units, read off
+  ortho pictures with a grid (front +Z = the catalogue's door side).
+- THE CATALOGUE: `outhouse`, `woods_cabin`, `babel_house_small|row|stair|yard` now point at the open file with `foot: 0` and no block (the
+  walk-in rows are the walls); `<key>_shut` = the old solid one.
+- THE ROWS (data.js `HQ_WALK_IN_PROPS`, read by `hqWalkInRows`, as the chain insides): new per room `liner: { keyIn, floorIn }` (the room
+  draws its own inside walls, floor and ceiling, because a Meshy shell has no inside: no `bareIn`), `h` (wall height) and `ceilH` (a ceiling
+  under a low roof: three-renderer.js `_hqTexInside` reads `lot.ceilH`); new per kind `furnish: [[key, x, z, turn, {y, wall}]]` (catalogue
+  props in the building's frame, decor, noBlock; a piece the walker must walk round is also a `boxes` ghost). All four Babel houses are hollow Meshy
+  meshes (real thick inside walls, measured with an inward-face finder) and stay `bareIn`: their rows are sized to the INNER faces so the
+  walker never walks into a wall's thickness; only the outhouse and the cabin (solid shells) get a liner. A lined walk-in's row is left out of the prop chunks' rooms
+  (three-renderer.js `_hqPropChunkRooms`, `walkin:` ids): its shell prop stands over it and must never be culled as "inside".
+- THE KINDS: outhouse (one seat: a crate, a roll, last week's paper, a lantern; 0.86 m door, ceiling 1.72 m under the eaves); the woods cabin
+  (cot, cold stove, chair, fur rug, lantern, a cobweb); Babel's houses (cots, woven baskets, a water jar, rugs, oil lamps; the row house is
+  one long room with both front doors, the yard house = the gate, the walled yard with firewood and a barrel, the house's own door; the
+  stair house opens on its +X ground door, the painted door at the top of its outside stair stays: that stair is no walk).
+- NOT DOORS: `thatched_hut` left find-doors.js's list (no door, lattice windows all round, a floor on stilts 0.7 m up, 1.2 m headroom).

@@ -32951,10 +32951,14 @@ const DOOR_HQ = {
         paper_lantern:      { file: 'world/props/meshy/paper_lantern.glb', base: 'asset', h: 0.7,  foot: 0,    glow: { y: 0.33, size: 1.0, color: 0xff7050 } },   // round red paper lantern (no writing); hung with the row's `y`
         /* THE BABEL HOUSES (2026-11-05, mondo OK'd the Meshy mud-brick concepts B1-B4; the town rim they replace is deleted): one
            Meshy model per house, real size (`span` = the long side), the door side +Z (the row's `face`), along the Babel room's roads */
-        babel_house_small: { file: 'meshy_babel_house_small.glb', base: 'misc', span: 7.0, foot: 2.4, rect: { hw: 3.5, hd: 2.5 }, block: true },
-        babel_house_stair: { file: 'meshy_babel_house_stair.glb', base: 'misc', span: 7.0, foot: 2.8, rect: { hw: 3.0, hd: 3.5 }, block: true },
-        babel_house_yard:  { file: 'meshy_babel_house_yard.glb', base: 'misc', span: 8.5, foot: 3.0, rect: { hw: 3.35, hd: 4.25 }, block: true },
-        babel_house_row:   { file: 'meshy_babel_house_row.glb', base: 'misc', span: 12.4, foot: 2.5, rect: { hw: 6.2, hd: 2.55 }, block: true },
+        babel_house_small: { file: 'meshy_babel_house_small_open.glb', base: 'misc', span: 7.0, foot: 0 },   // walk-in: HQ_WALK_IN_PROPS (THE OPEN DOORS, 11-23: bake-open-props.js cut the door out)
+        babel_house_small_shut: { file: 'meshy_babel_house_small.glb', base: 'misc', span: 7.0, foot: 2.4, rect: { hw: 3.5, hd: 2.5 }, block: true },   // the old solid one (no inside)
+        babel_house_stair: { file: 'meshy_babel_house_stair_open.glb', base: 'misc', span: 7.0, foot: 0 },   // walk-in (the ground door on its +X side; the stair's door up stays painted, the stair is no walk)
+        babel_house_stair_shut: { file: 'meshy_babel_house_stair.glb', base: 'misc', span: 7.0, foot: 2.8, rect: { hw: 3.0, hd: 3.5 }, block: true },
+        babel_house_yard:  { file: 'meshy_babel_house_yard_open.glb', base: 'misc', span: 8.5, foot: 0 },   // walk-in: through the yard gate, across the yard, into the house
+        babel_house_yard_shut: { file: 'meshy_babel_house_yard.glb', base: 'misc', span: 8.5, foot: 3.0, rect: { hw: 3.35, hd: 4.25 }, block: true },
+        babel_house_row:   { file: 'meshy_babel_house_row_open.glb', base: 'misc', span: 12.4, foot: 0 },   // walk-in: both front doors open into the one long room
+        babel_house_row_shut: { file: 'meshy_babel_house_row.glb', base: 'misc', span: 12.4, foot: 2.5, rect: { hw: 6.2, hd: 2.55 }, block: true },
         cinder_block:      { file: 'small_props/concrete_block_1.glb',                base: 'psxmp', span: 0.4, foot: 0.2 },   // THE PSX MEGA PACK (2026-11-08): was Meshy_AI_cinder_block_0917064959_texture.glb
         fire_hydrant:      { file: 'Meshy_AI_fire_hydrant_0917064858_texture.glb',                base: 'misc', h: 0.8, foot: 0.22, block: true },
         traffic_barrel:    { file: 'Meshy_AI_traffic_barrel_0917064936_texture.glb',              base: 'misc', h: 1.0, foot: 0.3 },
@@ -90198,6 +90202,42 @@ const HQ_WALK_IN_PROPS = {
         boxes: [[-13.38, -11.42, 7.47, 8.28, 2.1], [-10.89, -6.09, 3.28, 4.55, 1.75], [-10.89, -6.09, 0.07, 1.34, 1.75], [-11.0, -6.09, 6.45, 7.08, 1.75], [-10.97, -6.09, -2.92, -2.29, 1.75],
                 [-3.76, -2.84, 2.75, 7.16, 1.25], [-2.11, -1.02, -2.88, 0.04, 1.25], [-5.89, -4.21, -2.88, -1.90, 1.2], [-4.92, -3.53, -3.97, -3.21, 1.1], [-7.42, -4.68, -6.85, -6.0, 2.6], [11.96, 13.69, 0.04, 7.42, 2.5]],
     },
+    /* THE OPEN DOORS (2026-11-23, step 2 outside Disaster City): the small Meshy buildings of the other zones. bake-open-props.js cut each
+       painted door out of the one fused mesh (`<file>_open.glb`, same box, same texture); a shell with no inside of its own gets a `liner`
+       (the room draws its inside walls, floor and ceiling), a shell that is hollow already (the four Babel houses) is `bareIn`.
+       Measured in the model's own metres from its vertices (x = its right, z = toward its door). Notes: areas-complexes.md "THE OPEN DOORS". */
+    outhouse: {   // one person, one seat, one roll, last week's paper (the Camp wish list's privy; 13 stand in the world)
+        rooms: [{ x: 0, z: 0.03, w: 1.45, d: 1.6, h: 1.85, ceilH: 1.72, doorLx: 0, doorW: 0.86, doorH: 1.8, leaf: 'leaf_shabby_wood', liner: { keyIn: 'urban:WoodGeneric1b', floorIn: 'urban:WoodFlooring1d' } }],
+        furnish: [['psx_wooden_crate_1', 0, -0.42, 0], ['ebd_house_toilet_paper', 0.2, -0.42, 0, { y: 0.36 }], ['papers_b', -0.2, -0.4, 20, { y: 0.36 }], ['railway_lantern', 0.3, 0.2, 0]],
+    },
+    woods_cabin: {   // the cabin in the woods: one room, a cot, a cold stove, a lantern somebody left lit
+        rooms: [{ x: 0, z: -0.51, w: 5.2, d: 4.25, h: 3.0, ceilH: 2.75, doorLx: 0.77, doorW: 1.3, doorH: 2.2, leaf: 'leaf_shabby_wood', liner: { keyIn: 'urban:WoodGeneric1a', floorIn: 'urban:WoodFlooring1b' } }],
+        boxes: [[-2.05, -1.15, -2.3, -0.4, 0.6], [1.45, 2.2, -2.45, -1.75, 1.6]],
+        furnish: [['cot', -1.6, -1.35, 0], ['wood_stove', 1.8, -2.1, 0], ['psx_chair_mp_3', -0.6, -2.0, 0], ['railway_lantern', -1.9, 0.9, 0], ['psx_cobweb_1', 2.25, 1.2, 270, { wall: true, y: 2.0 }], ['fur_rug', -0.8, -0.6, 0]],
+    },
+    babel_house_small: {   // Babel's one-room house: a cot, baskets, a water jar, a rug (everybody in Babel speaks a different language; nobody here talks)
+        rooms: [{ x: 0, z: 0, w: 5.2, d: 4.3, doorLx: 0, doorW: 1.35, doorH: 2.1, leaf: 'leaf_stable' }],   // hollow: the mesh's own inside walls
+        boxes: [[-3.0, -1.1, -1.5, -0.6, 0.6]],
+        furnish: [['cot', -2.05, -1.05, 90], ['woven_baskets', 1.95, -1.4, 0], ['greek_amphora', 2.1, 0.9, 0], ['rug_round', -1.3, 0.6, 0], ['oil_lamp', 2.0, -0.5, 0]],
+    },
+    babel_house_row: {   // two homes under one roof, one long room: a cot at each end, the shared jar and baskets in the middle
+        rooms: [{ x: 0, z: 0, w: 11.3, d: 4.26, doorLx: -2.52, doorW: 1.16, doorH: 1.88, leaf: 'leaf_stable', gaps: [{ side: 'f', u: 2.52, w: 1.16, h: 1.88 }] }],
+        leaves: [{ x: 2.52, z: 2.13, rot: 0, w: 1.16, h: 1.88, leaf: 'leaf_stable' }],
+        boxes: [[-5.3, -3.4, -1.45, -0.55, 0.6], [3.4, 5.3, -1.45, -0.55, 0.6]],
+        furnish: [['cot', -4.35, -1.0, 90], ['cot', 4.35, -1.0, 270], ['woven_baskets', -0.7, -1.4, 0], ['greek_amphora', 0.7, -1.5, 0], ['rug_round', -2.5, -0.5, 0], ['rug_round', 2.5, -0.5, 0], ['oil_lamp', 0, -1.6, 0]],
+    },
+    babel_house_stair: {   // the two-storey house: its ground room, the door on its +X side (the stair outside climbs to the roof's painted door)
+        rooms: [{ x: 0, z: -0.59, rot: 270, w: 4.7, d: 5.3, doorLx: -1.18, doorW: 0.96, doorH: 2.3, leaf: 'leaf_stable' }],
+        boxes: [[-2.4, -1.5, -2.85, -0.95, 0.6]],
+        furnish: [['cot', -1.95, -1.9, 0], ['woven_baskets', 1.9, -2.4, 0], ['greek_amphora', -2.0, 1.0, 0], ['rug_round', 0.2, -1.2, 0]],
+    },
+    babel_house_yard: {   // the yard gate, the walled yard (firewood, a barrel), then the house's own door off the yard
+        rooms: [{ x: 0, z: -1.92, w: 6.1, d: 4.25, doorLx: 0, doorW: 1.4, doorH: 2.05, leaf: 'leaf_stable' }],   // hollow: the mesh's own inside walls
+        walls: [[-2.86, 3.75, -0.69, 3.75, 1.4], [0.69, 3.75, 2.86, 3.75, 1.4], [-2.86, 0.2, -2.86, 3.75, 1.4], [2.86, 0.2, 2.86, 3.75, 1.4]],
+        leaves: [{ x: 0, z: 3.75, rot: 0, w: 1.37, h: 1.95, leaf: 'leaf_barn' }],
+        boxes: [[-2.4, -0.6, -3.7, -2.8, 0.6], [1.4, 2.75, 1.4, 2.6, 1.0], [-2.75, -1.75, 0.6, 1.5, 1.0]],
+        furnish: [['cot', -1.5, -3.25, 90], ['woven_baskets', 2.3, -3.3, 0], ['greek_amphora', 2.5, -1.0, 0], ['firewood_stack', 2.05, 2.0, 0], ['wooden_barrel', -2.2, 1.05, 0], ['kettle', -1.8, 2.6, 0]],
+    },
 };
 /* a room's walk-in rows (THE CHAIN INSIDES): { rows, props } from its catalogue buildings that open (HQ_WALK_IN_PROPS) */
 function hqWalkInRows(room) {
@@ -90207,8 +90247,11 @@ function hqWalkInRows(room) {
         const R0 = ((((+p.face || 0) + 180) % 360) + 360) % 360, q = R0 * Math.PI / 180, c = Math.cos(q), s = Math.sin(q), px = +p.x || 0, pz = +p.z || 0;
         const at = (lx, lz) => [_hqR4(px + lx * c - lz * s), _hqR4(pz + lx * s + lz * c)], y = (typeof p.y === 'number') ? { y: p.y } : {}, tag = 'walkin:' + p.key + ':' + i;
         (S.rooms || []).forEach((r, j) => { const w = at(r.x, r.z);
-            out.rows.push(Object.assign({ k: 'texbuilding', id: tag + ':r' + j, x: w[0], z: w[1], w: r.w, d: r.d, rot: (R0 + (r.rot || 0)) % 360, storeys: r.storeys || 1, seed: 1, skin: false, hollow: true, bareIn: true,
-                doorLx: r.doorLx, doorW: r.doorW, doorH: r.doorH, leaf: r.leaf || 'leaf_glass', leafDouble: !!r.leafDouble }, r.gaps ? { gaps: r.gaps } : {}, y)); });
+            /* THE OPEN DOORS (2026-11-23): a room with a `liner` ({ keyIn, floorIn }) draws its own inside walls, floor and ceiling (a Meshy
+               shell has no inside: it is one closed skin), `h` = its walls' height, `ceilH` = the ceiling under a low roof (an outhouse's eaves) */
+            const L = r.liner ? { bareIn: false, keyIn: r.liner.keyIn, floorIn: r.liner.floorIn } : { bareIn: true };
+            out.rows.push(Object.assign({ k: 'texbuilding', id: tag + ':r' + j, x: w[0], z: w[1], w: r.w, d: r.d, rot: (R0 + (r.rot || 0)) % 360, storeys: r.storeys || 1, seed: 1, skin: false, hollow: true,
+                doorLx: r.doorLx, doorW: r.doorW, doorH: r.doorH, leaf: r.leaf || 'leaf_glass', leafDouble: !!r.leafDouble }, L, r.h ? { h: r.h } : {}, r.ceilH ? { ceilH: r.ceilH } : {}, r.gaps ? { gaps: r.gaps } : {}, y)); });
         (S.solids || []).forEach((b, j) => { const w = at((b[0] + b[1]) / 2, (b[2] + b[3]) / 2);
             out.rows.push(Object.assign({ k: 'texbuilding', id: tag + ':s' + j, x: w[0], z: w[1], w: _hqR4(b[1] - b[0]), d: _hqR4(b[3] - b[2]), rot: R0, storeys: Math.max(1, Math.round((b[4] || 3.5) / HQ_SHAPE_RULES.texStorey)), seed: 1, skin: false }, y)); });
         const ghost = (a, b, t, h) => out.rows.push(Object.assign({ k: 'wall', id: tag + ':g' + out.rows.length, x0: a[0], z0: a[1], x1: b[0], z1: b[1], t: _hqR4(t), h, key: 'urban:ConcreteStriped2a', ghost: true, rail: false }, y));
@@ -90221,6 +90264,10 @@ function hqWalkInRows(room) {
            Hero Plaza: the pizzeria stood 11 m up, on its own back store's solid row) */
         if (typeof p.y !== 'number') p.floor = true;
         if (S.inside) out.props.push(Object.assign({ key: S.inside, x: px, z: pz, face: +p.face || 0, noBlock: true, walkIn: tag }, (typeof p.y === 'number') ? { y: p.y, lift: p.y } : { floor: true }));
+        /* THE OPEN DOORS (2026-11-23): `furnish` = catalogue props in the building's frame, [key, x, z, turn (degrees, 0 = facing the entrance), { y, wall, … }]:
+           decor only (noBlock); anything the walker must walk round is a `boxes` ghost too */
+        (S.furnish || []).forEach((f, j) => { const w = at(f[1], f[2]);
+            out.props.push(Object.assign({ key: f[0], x: w[0], z: w[1], face: (((+p.face || 0) + (f[3] || 0)) % 360 + 360) % 360, noBlock: true, walkIn: tag, id: tag + ':f' + j }, f[4] || {}, (typeof p.y === 'number') ? { y: p.y + ((f[4] && f[4].y) || 0) } : {})); });
     });
     return out;
 }
@@ -91230,7 +91277,8 @@ const HQ_CATALOGUE_ALL = {
     pastry_case: { file: 'world/props/meshy/pastry_case.glb', base: 'asset', span: 1.2, foot: 0, group: 'Meshy props · city interiors' },   // University's row, carried here (Southside's bakery places it); University drops its copy on merge
     /* THE WOODS' HORROR PIECES (3, 2026-11-15, mondo "yes you can do the yellow and pink too"): Claude's concept (Meshy nano-banana-pro) -> Meshy image-to-3D
        (meshy-t2.5 smart topology), base at y 0, metallic 0, front on +Z; originals + concepts in project files world-areas-plan/woods/meshy/ */
-    woods_cabin: { file: 'world/props/meshy/woods_cabin.glb', base: 'asset', span: 7.0, foot: 3.3, rect: { hw: 3.35, hd: 3.45 }, block: true, group: 'Meshy props · the Woods' },       // 2 x 2 squares: a derelict log cabin, solid (no inside), its door on +Z
+    woods_cabin: { file: 'world/props/meshy/woods_cabin_open.glb', base: 'asset', span: 7.0, foot: 0, group: 'Meshy props · the Woods' },   // walk-in: HQ_WALK_IN_PROPS (THE OPEN DOORS, 11-23)
+    woods_cabin_shut: { file: 'world/props/meshy/woods_cabin.glb', base: 'asset', span: 7.0, foot: 3.3, rect: { hw: 3.35, hd: 3.45 }, block: true, group: 'Meshy props · the Woods' },       // 2 x 2 squares: a derelict log cabin, solid (no inside), its door on +Z
     owl_statue: { file: 'world/props/meshy/owl_statue.glb', base: 'asset', h: 10, foot: 2.4, rect: { hw: 2.4, hd: 3.15 }, block: true, group: 'Meshy props · the Woods' },             // the Grove's stone owl on its plinth, 10 m
     missing_board: { file: 'world/props/meshy/missing_board.glb', base: 'asset', h: 3.2, foot: 0.6, rect: { hw: 1.2, hd: 0.7 }, block: true, group: 'Meshy props · the Woods' },       // a trailhead notice board under a shingle roof, covered in missing-person flyers
     /* THE WOODS' LIFE PASS (2026-11-15, mondo: "look at the nature spells for inspiration"): the garden's own plant models (three-renderer.js _PLANT_MODEL_URLS) as
@@ -91371,7 +91419,8 @@ const HQ_CATALOGUE_ALL = {
     lean_to: { file: 'world/props/meshy/wishlist/lean_to.glb', base: 'asset', span: 3.0, foot: 1.23, block: true, group: 'Meshy props · wish list · Camp' },   // A survival lean-to shelter; 3.0 x 1.46 x 2.45 m (w x h x d)
     medieval_pavilion: { file: 'world/props/meshy/wishlist/medieval_pavilion.glb', base: 'asset', h: 4.0, foot: 1.78, block: true, group: 'Meshy props · wish list · Camp' },   // A medieval round pavilion tent; 3.56 x 4.0 x 3.65 m (w x h x d)
     oars: { file: 'world/props/meshy/wishlist/oars.glb', base: 'asset', span: 2.4, foot: 0, group: 'Meshy props · wish list · Camp' },   // Two long wooden rowing boat oars with flat blades lying side by side on the ground; 0.68 x 0.06 x 2.4 m (w x h x d)
-    outhouse: { file: 'world/props/meshy/wishlist/outhouse.glb', base: 'asset', h: 2.4, foot: 0.85, block: true, group: 'Meshy props · wish list · Camp' },   // A wooden outhouse privy shed with a crescent moon cut in the door and a slanted roof; 1.69 x 2.4 x 1.86 m (w x h x d)
+    outhouse: { file: 'world/props/meshy/wishlist/outhouse_open.glb', base: 'asset', h: 2.4, foot: 0, group: 'Meshy props · wish list · Camp' },   // walk-in: HQ_WALK_IN_PROPS (THE OPEN DOORS, 11-23)
+    outhouse_shut: { file: 'world/props/meshy/wishlist/outhouse.glb', base: 'asset', h: 2.4, foot: 0.85, block: true, group: 'Meshy props · wish list · Camp' },   // A wooden outhouse privy shed with a crescent moon cut in the door and a slanted roof; 1.69 x 2.4 x 1.86 m (w x h x d)
     stone_lantern: { file: 'world/props/meshy/wishlist/stone_lantern.glb', base: 'asset', h: 1.6, foot: 0.59, block: true, group: 'Meshy props · wish list · Camp' },   // A Japanese stone lantern toro; 1.18 x 1.6 x 1.2 m (w x h x d)
     stretcher: { file: 'world/props/meshy/wishlist/stretcher.glb', base: 'asset', span: 2.1, foot: 0, group: 'Meshy props · wish list · Camp' },   // A mountain rescue stretcher; 2.1 x 0.19 x 0.96 m (w x h x d)
     tyre_swing: { file: 'world/props/meshy/wishlist/tyre_swing.glb', base: 'asset', h: 3.0, foot: 0.22, rect: { hw: 1.37, hd: 0.22 }, block: true, group: 'Meshy props · wish list · Camp' },   // A black rubber tyre swing hanging by a rope from a short wooden beam on two posts; 2.74 x 3.0 x 0.43 m (w x h x d)
