@@ -14933,6 +14933,20 @@ bigger furnished rooms, some with a second door or a hole in the wall onto anoth
   green (the top floor's boss mark red), guests red where seen (never behind a shut door).
 - The floor's sub text and joke lines are gone; doors carry no sub.
 
+THE HOTEL, ROUND 3: THE BOSS + THE LEVELS (11-23, mondo: "how the fuck am i supposed to know a random zombie is the boss? And what happens when
+you beat it? ... It should be the banker or the tech CEO ... And it should be higher level, the levels of the enemies need to increase as you go up
+each floor"):
+- THE BOSS = THE BANKER (HOTEL_MD.boss, never one of the guests), at floor 10's far dead end, facing the way in, 1.35x size, labelled
+  `THE BANKER · BOSS` (a spot's `label`, `scale`; three-renderer.js _hqSpawnCharacter). Behind him THE EXIT (door `top`, action `hotelTop`):
+  map.js _hqDoAction asks data.js hotelTopGate: locked ("BEAT THE BANKER") until hqEncounterRecord's won fight names his id (hotelBossBeaten);
+  the first time through, his safe (HOTEL_MD.bossLoot) goes in the bag and the walk lands in the lobby. Back from the win: "THE BANKER IS DOWN".
+- THE LEVELS: the party's level when the lift is taken from the lobby = floor 1 (hotelBeforeGo gets it from map.js); +HOTEL_MD.lv.perFloor a
+  floor; the boss = floor 10 + lv.boss. A spot's `lvl` becomes the NPC's `ch.lvl` (the set level the fight and the prompt read).
+- FOUND ON THE WAY: the room's crowd cap + one-per-race rule left guests out (floor 10 stood 6 of 10, the boss among the missing): a room's
+  `crowdAll` stands every placed spot. The city's population walkers (hq-roam, at city levels, a hippie labelled Trucker) walked every floor:
+  hqRoomPopulation returns none for a hotel room. hqSpotRaces leaves `boss` / `fixed` spots alone. Beaten guests stay beaten for the RUN only
+  (the cleared record carries `run` = the seed). Pictures: /mnt/project-files/hotel-dungeon/round3/.
+
 ## DISASTER CITY, THE FINANCIAL TOWERS + THE MID-RISE FILL (2026-11-23, the skyline plan, mondo 17:00 "Build it, plus the mid-rise fill")
 The plan: https://claude.ai/artifact/YEe54svVhVbLufjHdfQ5QY (sites: project files `skyline-plan/tools/towers.json`). Financial's part: towers
 1, 4, 5, 15, 19 and Financial's mid-rise fill. The Hotel's 120 m (tower 7) is the Hotel dungeon thread's. Code: `docs/disaster-city/districts/F-towers.js`
