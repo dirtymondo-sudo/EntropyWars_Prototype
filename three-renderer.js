@@ -78056,7 +78056,7 @@ const ThreeRenderer = (function () {
        its outside face where the drawn face is), the doorway's sides and head, the ceiling under the roof slab and the floor (`floorIn`) */
     function _hqTexInside(lot, batch, W, faces, hol, H, hw, hd) {
         if (lot.bareIn) return;   // THE CHAIN INSIDES (2026-11-23): a row laid inside a pack building that has its own inside walls, floor and ceiling draws none of its own
-        var C = HQ_TEXB.cell, ti = 0.24, ki = lot.keyIn || 'urban:PlasterWallPainted1a', kf = lot.floorIn || 'urban:ConcreteStriped1b', Hc = Math.max(hol.doorH + 0.3, H - 0.32), dH = hol.doorH;
+        var C = HQ_TEXB.cell, ti = 0.24, ki = lot.keyIn || 'urban:PlasterWallPainted1a', kf = lot.floorIn || 'urban:ConcreteStriped1b', Hc = (lot.ceilH > 0) ? lot.ceilH : Math.max(hol.doorH + 0.3, H - 0.32), dH = hol.doorH;   // `ceilH` (THE OPEN DOORS, 11-23): a low roof's ceiling
         var q = function (key, kind, a, b, c, d, uv) { batch.add(key, null, kind, [W(a[0], a[1], a[2]), W(b[0], b[1], b[2]), W(c[0], c[1], c[2]), W(d[0], d[1], d[2])], uv); };
         var wallRun = function (F, u0, u1, y0, y1) {   // a stretch of a face's inside: u along the face from its origin corner, y up
             if (u1 - u0 < 0.02 || y1 - y0 < 0.02) return;
@@ -78089,7 +78089,7 @@ const ThreeRenderer = (function () {
             var prism = typeof hqTexbPrism === 'function' && hqTexbPrism(f);   // THE PRISM BUILDINGS: their walls by _hqBuildTexPrisms (they need the kit), their roof + parapet here (THE PRISM ROOFS, 2026-10-30)
             var seed = (f.seed != null) ? (f.seed | 0) : (typeof hqHash === 'function' ? hqHash(String(f.id || (f.x + ',' + f.z))) : 7), a = (seed >>> 0) || 1;
             var rng = function () { a = (a + 0x6D2B79F5) | 0; var t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
-            var lot = { x: f.x, z: f.z, w: Math.max(2, f.w || 8), d: Math.max(2, f.d || 8), rot: -((f.rot || 0) * Math.PI / 180), storeys: Math.max(1, Math.min(12, Math.round(f.storeys || 2))), base: f.base || 0, style: f.style || null, ruinP: (f.ruin != null) ? f.ruin : 0, h: f.h || 0, flat: !!f.flat, sheet: (!prism && typeof f.key === 'string' && f.key) ? f.key : null, roofOnly: prism, hollow: !!f.hollow && !prism, noSkin: f.skin === false && !prism, keyIn: f.keyIn || null, floorIn: f.floorIn || null, door: f.door, doorLx: f.doorLx, doorW: f.doorW, doorH: f.doorH, bareIn: !!f.bareIn, keyGround: f.keyGround, keyDoor: f.keyDoor, keyOver: f.keyOver };
+            var lot = { x: f.x, z: f.z, w: Math.max(2, f.w || 8), d: Math.max(2, f.d || 8), rot: -((f.rot || 0) * Math.PI / 180), storeys: Math.max(1, Math.min(12, Math.round(f.storeys || 2))), base: f.base || 0, style: f.style || null, ruinP: (f.ruin != null) ? f.ruin : 0, h: f.h || 0, flat: !!f.flat, sheet: (!prism && typeof f.key === 'string' && f.key) ? f.key : null, roofOnly: prism, hollow: !!f.hollow && !prism, noSkin: f.skin === false && !prism, keyIn: f.keyIn || null, floorIn: f.floorIn || null, door: f.door, doorLx: f.doorLx, doorW: f.doorW, doorH: f.doorH, bareIn: !!f.bareIn, ceilH: f.ceilH, keyGround: f.keyGround, keyDoor: f.keyDoor, keyOver: f.keyOver };
             _hqTexBuilding(lot, info, batch, rng, { neon: neonRoom }, U); n++;
         });
         batch.flush();
@@ -99604,6 +99604,7 @@ const ThreeRenderer = (function () {
         var out = [], T = H.terrain, PR = _hqPropChunkRules();
         ((T && T.texb) || []).forEach(function (f) {
             if (!f || !f.hollow || f.bareIn || !(f.w > 0) || !(f.d > 0)) return;   // (THE CHAIN INSIDES, 11-23: a pack building's rooms are not closed rooms: its shell is the building's outside, seen from the street)
+            if (typeof f.id === 'string' && f.id.indexOf('walkin:') === 0) return;   // (THE OPEN DOORS, 11-23: nor a lined walk-in's: the catalogue building standing over it is its outside)
             var a = (f.rot || 0) * Math.PI / 180;
             out.push({ id: String(f.id || (f.x + ',' + f.z)), x: f.x, z: f.z, c: Math.cos(a), s: Math.sin(a), hw: f.w / 2 - PR.inset, hd: f.d / 2 - PR.inset, r: Math.hypot(f.w, f.d) / 2 });
         });
