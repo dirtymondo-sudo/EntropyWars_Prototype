@@ -1218,3 +1218,19 @@ His F3 (Disaster City, Firefox M1 WebGPU): FIGHT START dip 7.4 s, worst gap 1,77
   and the late look's state. Cloud proof (classic, the Clearing): `{"dissolve":false,"late":{"on":true}}`, no errors.
 - NOT CUT YET: the lay itself (`activate` ~220 ms, unit load / animation bake the first time a race fights, the React HUD).
   On Firefox a new pipeline holds the frame even when asked async, so a look nothing drew before still costs once.
+
+### THE WARM-UP WAS NEVER USED (mondo's F3s of 11-23, the Clearing, Firefox WebGPU)
+His fight start still froze (4.9 s and 6.3 s at 1 FPS) on ~95 first-time looks. A probe in the cloud that named WHY each build
+happened (the same piece's older draw record compared key by key) showed the room's pieces in the list (trees, edges, props,
+the terrain) had been built once already, by the room warm-up under the load card, but in a stand-in scene with the room's raw
+lights. On the node renderer every frame draws through THE ONE RIG's lamps, and a look is keyed on the scene and that lamp list,
+so none of the warm-up's ~830 builds ever matched a frame. Whatever the walk camera had not looked at yet was built the first
+time it was seen, and the fight's high wide camera saw most of it at once. Fix (three-renderer.js `_hqWarmRun`, rendering-loading-perf
+"THE WARM-UP USES THE FRAME'S LAMPS" + "THE WARM-UP IN THE ROOM'S OWN SCENE"): each warm step stands the rig for the room (made by
+the first drawn frame otherwise, often after the card) and compiles the piece in the room's own scene, its child list lent to
+[the piece, the rig] for that one synchronous call. Cloud, the Clearing, WebGPU: the room's builds at the fight start went from
+~60-90 to 0 in 3 of 4 runs. Off: `EW_WARM_FAKE`, `EW_WARM_RAW_LAMPS`.
+Left: a rig that grows later (more point lamps than the 20 it is grown to at the door) changes every look's key again, so a fight
+right after one still builds what was not seen since. The proof timer (`_ewScCheck`) builds one stand-in every ~250 ms after real
+builds; it is JS only, no pipeline.
+
