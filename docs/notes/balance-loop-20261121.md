@@ -1,3 +1,8 @@
+> **THE 11-23 LOOP (mondo: "now that we've done an ai training pass and added some new units ... minimum 1200 matches"), state =
+> `docs/notes/balance-loop-20261123-state.json` (fresh: new AI PR #2470 + the 7 new units).** Baseline 1,400 matches (two 115-min labs),
+> true spread 2.6 pts (the 11-22 loop + new AI tightened it). New units: Butterfly Girl 63% (cut), Abomination 59%, Rat 52%, Monarch 48%,
+> The Hollow 45%, Plastic Surgeon 44%, Bear 41% (inside luck, unchanged). PASS 1: 24 races, 13 up, 11 down (Mothman 68% the most).
+
 > **THE 11-22 LOOP (mondo: "run a balance pass a couple times"), state = `docs/notes/balance-loop-20261122-state.json`.** Two 115-min labs
 > a pass (a tracked background task; a detached nohup run dies when the idle container suspends), pooled: baseline 1,081 matches,
 > after pass 1 1,192. Stricter bar: `MIN_GAP=3 TAU=0.04 LABEL="LAB LOOP 11-22" node bal-plan.js <state> <pass> --apply` (bal-plan.js reads
