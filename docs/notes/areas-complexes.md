@@ -14756,6 +14756,47 @@ headless scan of every terrain room (each railing piece against the ground every
 - Placed fence PROPS (`hw_fence`, `chain_fence`, `fence_with_gate`, ...) are single models standing on the ground at their place; not part of this.
 - No tool to rerun: every room's railings are compiled at load.
 
+## DISASTER CITY, THE COAST SKYLINE — Bayside 9 / 16 / 21 + Entertainment 11 / 18 / 24 (2026-11-23, skyline plan; mondo 17:00: "Build it, plus the mid-rise fill")
+The plan: https://claude.ai/artifact/YEe54svVhVbLufjHdfQ5QY, sites `/mnt/project-files/skyline-plan/tools/towers.json`. Six towers, each ONE arch row
+(code parts + city textures, no pack has skyscrapers), 4 materials or fewer, no lamps, a walk-in lobby. Rules found while building:
+- A tower over a ROOF WALK keeps the walk: the bridges land on a plateau row, so the tower stands on the squares no bridge lands on
+  and those squares become a real lobby (texbuilding `skin:false, hollow:true`). The seam between the plateau and the lobby roof gets an
+  absY ghost wall (`y: level + 7, h 3`) so nobody walks off the roof route into the shaft.
+- Bayside (B.js): `skyline(ctx, byId, push)` runs in apply() before the plan-less things.
+  - #9 Food Hall Condos 115 m (`dc:bay-condos:arch`, `B.condos`): glass shaft on the back 4 rows, a balcony every floor, blade walls,
+    roof pool. The plateau `dc:P09-09-B1` is the front 3 rows (both bridges land there); `dc:bay-condos-lobby` = the lobby (lifts, concierge).
+  - #16 Waterfront Hotel 60 m (B.hotel, `HOTEL_H`, `hotelBow`): the old hotel raised and its sea front bowed (cyl arcs). KEPT LOW on
+    purpose: from the sea the Superhero Tower stays the first thing seen. MIAMI.hotel + POLISH.hotel follow `HOTEL_H` and the bow.
+  - #21 Hole Condo 75 m (`B.holecondo`, `HOLE`): a square hole 40-50.5 m up, lined white, a palm prop standing in it. Lift doors in the flat's hall.
+- Entertainment (E.js, the skyline block before `features.push`): helper `tower(id, fn)`, KIT.e = a lift square.
+  - #11 Late Fees Tower 100 m: round glass drum on three legs over the backstage yard; the plateau split into the north row
+    (`dc:P10-05-B1`) + the east column (`…:e`) where the bridges land; `EXTRA['E-latefees']` = the lobby. Lit crown, helipad, the scorch gag.
+  - #18 Casino Tower 85 m: cream slab, pink neon base bands, gold bands, a gold pyramid top, over the casino's own walk-in.
+  - #24 Mid Records Tower 55 m: 13 black records stacked on a glass core, red label, spindle, a needle spire and a tone arm.
+- Count a row's materials: one per key|tint|glow|kind|ds|roof|gain|shine (keyTop / keyEnd add one each).
+- A prop over a walk-in's roof (the Hole Condo's palm, `y` 40) is no longer counted as in the room by interior-polish.js (it pulled it down
+  under the ceiling to y 1.58). Two plateaus that only touch leave a slit the soft-lock finder reads as a SLOT: overlap them.
+- Soft-lock finder on the city after the build: 0 traps, 0 crevices (one slot the split plateau made, fixed).
+
+
+## THE SKYLINE, THE SOUTH AND WEST TOWERS (2026-11-23, mondo 17:00 "Build it, plus the mid-rise fill")
+Plan: https://claude.ai/artifact/YEe54svVhVbLufjHdfQ5QY (sites `/mnt/project-files/skyline-plan/tools/towers.json`). This thread built the
+south and west six; Hero Plaza, Financial and the coast are other threads; Civic Center gets none (second account).
+- **How a tower stands**: on the roof of the building that was there. The building keeps its walls, door, inside and residents (the gym
+  hall, the Quarterback's and the Juggernaut's homes, the garage, the depot, the library nave); only the roof that was in the way went
+  (the gym's bow roof, the Box Office's roof plant, the Stage Door House's gable + chimney, the garage's saw teeth + the deck under the
+  roof car (the car now sits on the podium), the depot's glass monitor). The floors above are windows only. The collision row is unchanged.
+- **The six**, each in its district file, parts added to the building's own arch row:
+  2 Fears Tower (Willis), `S.js fearsTower()` on P06-10-B1, nine tubes in four heights, 145 m to the masts ·
+  8 Big John (Hancock), `S.js bigJohn()` on P06-09-B2, a square frustum (`cyl seg 4 ry 45` with `r2`) + `xBraces()`: each diagonal is ONE part,
+  a short steel box repeated up the face with the lean in its `step`, 120 m ·
+  22 The Corn Cob (Marina City), `S.js cornCob()` on P07-10-B2, parking spiral + petal balconies (`ring` + `n` on one part), 60 m ·
+  13 Revival Center (RenCen), `R.js revivalCenter()` on P02-02-B1, a core + four shorter rounds, lit floors as glowing arcs here and there,
+  a COMING SOON banner, 100 m · 17 Gusher Twin Towers (Pennzoil), `I.js gusherTwins()` on P02-10-B1, two bronze towers, opposite shed tops,
+  a 3 m slot, 90 m · 23 Bones Carillon (Harkness), `U.js B.library`, the clock tower grown to 60 m (belfry, octagonal lantern, spire).
+- **Frame rate**: one row draws one mesh per material, so a tower's cost is its NEW materials: Fears + Big John share the black glass and
+  steel (2 new), RenCen 4, Gusher 1, Corn Cob and the Carillon 0 (they wear their building's own sheets). No lamps. No far LOD for arch rows yet.
+- Seen in the game (probe pictures in the PR). The black glass reads black on purpose (Willis, Hancock); RenCen's shaded side reads dark too.
 ## THE SUPERHERO TOWER, THE FLOORS (2026-11-23, step 1 of mondo's plan "Every door opens + a bigger Disaster City", picture 4; his go-ahead 11-23 16:42)
 
 - **WHAT IT IS:** the tower's floors are ONE stacked room, `site_prebuilt_hero_tower` (site prebuilt_downtown, part `hero_tower`), written by
@@ -14866,3 +14907,34 @@ The fight's parked room (`_hqParked`) now also parks a BIG room (chunked, or a s
 SMALL room (shell 40,000 m² or less) that has a door back to it: walking out again resumes the city with no load. It stays parked while the
 walker goes on from small room to small room for 20 minutes (`keepMs`); entering any other room drops it. Off switch: `window.EW_HQ_NO_PARK_DOOR`.
 The console says `[HQ] ... PARKED for the building` on the way in and `[HQ] resumed` on the way out.
+
+## DISASTER CITY, THE FINANCIAL TOWERS + THE MID-RISE FILL (2026-11-23, the skyline plan, mondo 17:00 "Build it, plus the mid-rise fill")
+The plan: https://claude.ai/artifact/YEe54svVhVbLufjHdfQ5QY (sites: project files `skyline-plan/tools/towers.json`). Financial's part: towers
+1, 4, 5, 15, 19 and Financial's mid-rise fill. The Hotel's 120 m (tower 7) is the Hotel dungeon thread's. Code: `docs/disaster-city/districts/F-towers.js`
+(required by F.js), then `node bake-disaster-city.js`.
+- ONE ROW A TOWER: each tower is its own arch row `dc:<id>:tower` over its building (the building's row keeps the lobby and its F-detail layer).
+  F-towers.js counts each row's materials the renderer's way (sheet + tint + glow + kind + ds + roof + gain + shine) and THROWS over four; the
+  bake prints `[financial] tower <name> <parts> parts, <n> materials`. No lamps, no glow on a tower. Shard 2, Pickle 3, Grater 3, Lloyd's 3, Walkie 4.
+- THE SHAPES (code parts only, no pack has a skyscraper): a `roof` part with `roof: false` is a tilted face that is never hidden by HIDE ROOFS
+  (the Shard's spike = a `pyramid` 128 m tall, five slim pyramids for the open top, `gain: 1.5` lifts the dark pack glass to silver); a slope or a
+  swell = a stack of storey boxes, each 3.5 m, its depth stepping (the Cheese Grater's front slopes back, the Walkie-Talkie's front and back bulge
+  out on a curve). One material's storeys merge into one mesh, so 36 storeys cost what one box costs.
+  1 THE SHARD-OW 150 m on the Vault annex P11-01-B1: the bunker's upper steps, cap and dome are gone; its ground storey + first step (6.6 m) are
+    the podium, the corner drums stop there (their cameras came down with them in F-detail). Lift: on the guard post hall's west wall.
+  4 THE CHEESE GRATER 135 m on the Tailor shops' workshop P09-02-B3 (now a hollow two-storey glass lobby, three lifts): yellow edges down the slope,
+    a yellow core up the back.
+  5 THE WALKIE-TALKIE 130 m on the Bank offices P10-01-B1: the teal slab (7-31.5 m) and its roof plant are gone (F-detail's roof part with them);
+    the tower stands from x = -W/2 + 7.4 so the gothic clock tower keeps the row's end. Sky garden: a `kind: 'clear'` shed roof over leaves.
+  15 THE PICKLE 95 m: NOT on the plan's P11-00-B2 (that is the bankers' terrace, a walk-in home with a bedroom): the Executive court's own curved
+    glass tower P11-00-B1 (the London gherkin since 11-15, 46.5 m) is raised, its axis moved 1.25 m into the court (the Casino's block is 1 m
+    off its east side since the district move); its glass box is a walk-in lobby now, two columns under the porch. One bullet, not two side by side.
+  19 ACT OF GOD INSURANCE 85 m on the Bank archive P09-00-B1 (now a hollow lobby, three lifts; the ARCHIVE lettering and roof plant are gone): a
+    glass core in steel bands, four stair tubes, two glass lift shafts, ducts and pods outside, a glass barrel vault, two blue cranes. Everything
+    outside starts at the lobby's 7 m slab (the lobby under it is walked).
+- THE LOBBIES (F-inside.js `lobby`): lifts on the back wall (on the side walls of a one-row hall), reception on a square beside the door's
+  column, a bench, plants, ceiling lamps. The floors above are windows only.
+- THE MID-RISE FILL (Financial's half; Hero Plaza's is that thread's): terraces P10-01-B2, P11-02-B2, P11-00-B2 to five storeys, P09-03-B2 to four
+  (`terrace(id, n, tints, up)`), the TAILOR and FLORIST shops get four storeys of flats over them (`shop` `up`, `upWall`, `upTint`), the workshop
+  P10-03-B3 five storeys of warehouse flats (`workshop` `up`), back lots in35 / in40 / in41 to 6 / 8 / 6 storeys (`MID_BACK`). The roof-route
+  blocks (P09-00-B2, P09-00-B3) stay low: their roofs are walked. F-detail reads `T.up` / `T.Ht` for the roof plant and pipes.
+- NOT DONE: a far, simpler version past 150 m (the plan's limits list): the arch rows have no LOD; each tower is 2 to 4 meshes, so it was left.

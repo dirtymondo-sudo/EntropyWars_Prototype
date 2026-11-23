@@ -67,27 +67,82 @@ const posts = (x0, z0, n, step, h, r, o) => A(cyl(x0, 0, z0, r || 0.14, h, A({ s
 /* ── THE BUILDINGS (each: the parts of one building W along its front, D deep; H where the row's own height matters) ── */
 const B = {};
 
-/* 1 · THE WATERFRONT HOTEL: a nine-storey coral slab, a white eyebrow over every floor, a round glass corner tower under a mint dome */
+/* 1 · THE WATERFRONT HOTEL: a nine-storey coral slab, a white eyebrow over every floor, a round glass corner tower under a mint dome.
+   THE SKYLINE (2026-11-23, mondo's OK on the skyline plan, tower 16: "a curved white slab facing the sea", kept at 60 m so the Superhero Tower
+   stays the first thing seen from a boat): 17 storeys, the slab white over a coral ground storey, its sea front a shallow bow (HOTEL_BOW m out
+   at the middle, the ends square with the sides), every eyebrow following the bow. The corner drum, the fin, the doors and the Miami front keep
+   their places and grow with it. No new material: the white is the Miami pylons' own. */
+const HOTEL_H = 59.5, HOTEL_BOW = 2.4;
+const hotelBow = (W, D) => { const s = HOTEL_BOW, R = (W * W / 4 + s * s) / (2 * s), zc = D / 2 - R, half = Math.asin(W / 2 / R) * 180 / Math.PI;
+    return { s, R, zc, half, z: x => zc + Math.sqrt(R * R - x * x), arc: (inset) => { const h = Math.asin(Math.max(0, W / 2 - (inset || 0)) / R) * 180 / Math.PI; return { a0: 90 - h, arc: 2 * h }; } }; };
 B.hotel = (W, D, lx) => {
-    const H = 31.5, p = [];
-    p.push(box(0, 0, 0, W, H, D, A(wallM(T.CORAL), { faces: 'blr', keyTop: K.conc, tintTop: T.GREY })), pane('f', W, D, 0, 3.5, W + 2 * E, H - 3.5, wallM(T.CORAL), -E));   // (the front is open behind the doorway: the lobby)
-    p.push(doorFront(W, D, 3.5, lx, wallM(T.CREAM)));
-    ['f', 'b'].forEach(s => p.push(pane(s, W, D, 0, 3.5, W - 3.5, H - 4.2, { key: K.win, uv: [3.5, 3.5] }, 0.02)));                    // a window a bay, two rows a floor
-    ['l', 'r'].forEach(s => p.push(pane(s, W, D, 0, 3.5, 3.5, H - 4.2, glass(T.AQUA, K.gTall), 0.02)));                                 // a glass stair slot up each end
-    p.push(...band(W, D, 3.4, 0.22, 0.7, trim()), A(box(0, 6.9, 0, W + 1.4, 0.22, D + 1.4, A(trim(), { under: true })), { n: 8, step: [0, 3.5, 0] }));   // (the first is a band: a slab would cut through the lobby)                         // the eyebrows
-    p.push(...band(W, D, H, 0.9, 0.12, wallM(T.CREAM)));
+    const H = HOTEL_H, p = [], bw = hotelBow(W, D), s = bw.s, WHT = trim(0xf8f6f0), nf = Math.round(H / 3.5);
+    p.push(box(0, 0, 0, W, 3.5, D, A(wallM(T.CORAL), { faces: 'blr', top: false })), doorFront(W, D, 3.5, lx, wallM(T.CREAM)));                 // the ground storey (the front is open behind the doorway: the lobby)
+    p.push(box(0, 3.5, -s / 2, W, H - 3.5, D - s, A({}, WHT, { faces: 'blr', keyTop: K.conc, tintTop: T.GREY })));                          // the slab: the back and the two ends
+    p.push(cyl(0, 3.5, bw.zc, bw.R, H - 3.5, A({}, WHT, bw.arc(0), { seg: 28, cap: false })));                                              // the bowed sea front
+    { const pts = []; for (let i = 0; i <= 12; i++) { const x = -W / 2 + W * i / 12; pts.push([x, bw.z(x)]); }
+      p.push({ s: 'poly', p: [0, H - 0.3, 0], pts, h: 0.3, key: K.conc, tint: T.GREY, sides: false }); }                                    // the bow's roof (its ends meet the slab's front line)
+    p.push(pane('b', W, D, 0, 3.5, W - 3.5, H - 4.2, { key: K.win, uv: [3.5, 3.5] }, 0.02));                                              // a window a bay, two rows a floor
+    p.push(cyl(0, 3.5, bw.zc, bw.R + 0.03, H - 4.2, A({ key: K.win, uv: [3.5, 3.5], kind: 'over' }, bw.arc(1.75), { seg: 28, cap: false })));
+    p.push(pane('l', W, D, s / 2, 3.5, 3.5, H - 4.2, glass(T.AQUA, K.gTall), 0.02), pane('r', W, D, -s / 2, 3.5, 3.5, H - 4.2, glass(T.AQUA, K.gTall), 0.02));   // a glass stair slot up each end
+    p.push(...band(W, D, 3.4, 0.22, 0.7, trim()));                                                                                           // (the first is a band: a slab would cut through the lobby)
+    p.push(A(box(0, 6.9, -s / 2, W + 1.4, 0.22, D - s + 1.4, A(trim(), { under: true })), { n: nf - 2, step: [0, 3.5, 0] }));                // the eyebrows: the back and the ends…
+    p.push(A(cyl(0, 6.9, bw.zc, bw.R + 0.7, 0.22, A(trim(), bw.arc(0), { ri: bw.R - 0.6, seg: 28 })), { n: nf - 2, step: [0, 3.5, 0] }));  // …and round the bow
+    p.push(box(0, H, -D / 2 - 0.06, W + 0.24, 0.9, 0.12, wallM(T.CREAM)), box(-W / 2 - 0.06, H, -s / 2, 0.12, 0.9, D - s, wallM(T.CREAM)), box(W / 2 + 0.06, H, -s / 2, 0.12, 0.9, D - s, wallM(T.CREAM)));
+    p.push(cyl(0, H, bw.zc, bw.R + 0.12, 0.9, A(wallM(T.CREAM), bw.arc(0), { ri: bw.R - 0.1, seg: 28 })));                               // the cornice
     /* the corner tower (the street corner: the front's right) */
     const tx = W / 2 - 2.6, tz = D / 2 - 2.6, tr = 4.0;
     p.push(cyl(tx, 0, tz, tr, 3.5, A(wallM(T.CREAM), { seg: 20, cap: false })));
     p.push(cyl(tx, 3.5, tz, tr, H, A(glass(T.AQUA, K.gTall, 0.4), { seg: 20, cap: false })));
-    p.push(A(cyl(tx, 3.4, tz, tr + 0.35, 0.22, A(trim(), { seg: 20 })), { n: 10, step: [0, 3.5, 0] }));
+    p.push(A(cyl(tx, 3.4, tz, tr + 0.35, 0.22, A(trim(), { seg: 20 })), { n: nf + 1, step: [0, 3.5, 0] }));
     p.push(dome(tx, H + 3.6, tz, tr + 0.1, 3.4, A(wallM(T.MINT, K.plaster), { seg: 20 })));
     p.push(cyl(tx, H + 7.0, tz, 0.22, 6.5, A(trim(), { r2: 0.02, seg: 6 })));
-    /* the fin (the sign), the canopy over the door */
-    p.push(box(-W / 2 + 5.25, 7.2, D / 2 + 1.0, 0.5, 17, 1.9, A(trim(T.MINT), { glow: 0.45 })));
-    p.push(box(-W / 2 + 5.25, 7.0, D / 2 + 1.0, 0.8, 0.25, 2.1, trim()), box(-W / 2 + 5.25, 24.2, D / 2 + 1.0, 0.8, 0.25, 2.1, trim()));
+    /* the fin (the sign), from the bow out; the canopy over the door */
+    { const fx = -W / 2 + 5.25, z0 = bw.z(fx) - 0.1, z1 = D / 2 + 1.95, top = H - 7.3;
+      p.push(box(fx, 7.2, (z0 + z1) / 2, 0.5, top - 7.2, z1 - z0, A(trim(T.MINT), { glow: 0.45 })));
+      p.push(box(fx, 7.0, (z0 + z1) / 2 + 0.05, 0.8, 0.25, z1 - z0 + 0.2, trim()), box(fx, top, (z0 + z1) / 2 + 0.05, 0.8, 0.25, z1 - z0 + 0.2, trim())); }
     p.push(box(lx, 2.75, D / 2 + 1.6, 6.5, 0.28, 3.2, A(trim(), { under: true })), posts(lx - 2.9, D / 2 + 2.9, 2, [5.8, 0, 0], 2.75, 0.16, trim(T.MINT)));
     p.push(box(lx, 3.03, D / 2 + 3.1, 6.5, 0.5, 0.12, A(trim(T.HOT), { glow: 0.5 })));
+    return p;
+};
+
+/* ── THE SKYLINE (2026-11-23, mondo's OK on the skyline plan, "Build it, plus the mid-rise fill"; plan https://claude.ai/artifact/YEe54svVhVbLufjHdfQ5QY,
+   sites /mnt/project-files/skyline-plan/tools/towers.json). Bayside's three towers: 9 the Food Hall Condos (115 m), 16 the Waterfront Hotel
+   (60 m, B.hotel above) and 21 the Hole Condo (75 m). A tower is ONE arch row of its own (`dc:<id>:arch`), at most four materials (the arch row
+   draws one mesh a material, so a tower is four draw calls however many parts it has), no lamps (lit windows are the glass sheet's own glow),
+   standing on its building's own walk-in ground floor or a lobby walked in from the street. Nothing here touches the mall or the beach. ── */
+const TW = { white: trim(0xf6f4ee), glass: glass(0x9fd2ea, K.gRes, 0.32), aqua: { tint: 0x3fd0e0, glow: 0.6 } };
+/* 9 · THE FOOD HALL CONDOS (Brickell): a white condo slab on the back half of the food hall's roof, a white balcony band round every floor,
+   two white blade walls up its ends that frame the top, a rooftop pool. The food hall's front half keeps its roof route; the back half is the
+   condos' lobby (apply: the plateau is cut in two). Frame: the food hall's (W x D, the front +z). */
+const CONDO = { rows: 4, top: 108, crown: 115 };
+B.condos = (W, D) => {
+    const p = [], dz = CONDO.rows * 3.5, zc = -D / 2 + dz / 2, w = W - 1.4, d = dz - 0.7, top = CONDO.top, n = Math.floor((top - 10.5) / 3.5) + 1;
+    p.push(box(0, 7, zc, w - 1.0, top - 7, d - 1.2, A({}, TW.glass, { top: false })));                                                          // the glass shaft
+    p.push(A(box(0, 10.5, zc, w + 0.6, 0.28, d + 1.4, A({}, TW.white, { under: true })), { n, step: [0, 3.5, 0] }));                        // a balcony round every floor
+    p.push(A(box(0, 10.78, zc + d / 2 + 0.62, w + 0.6, 0.42, 0.1, TW.white), { n, step: [0, 3.5, 0] }), A(box(0, 10.78, zc - d / 2 - 0.62, w + 0.6, 0.42, 0.1, TW.white), { n, step: [0, 3.5, 0] }));   // their lips
+    [-1, 1].forEach(k => p.push(box(k * (w / 2 + 0.2), 7, zc, 1.1, CONDO.crown - 7, d + 1.6, TW.white)));                                     // the blade walls
+    p.push(box(0, top, zc, w + 0.6, 0.7, d + 1.4, TW.white), A(box(0, CONDO.crown - 1.4, zc + d / 2 + 0.3, w + 1.4, 1.4, 1.0, TW.white), { n: 2, step: [0, 0, -d - 0.6] }));   // the roof deck, the frame's top beams
+    p.push(...band(w, d, top + 0.7, 1.1, 0.25, TW.white));                                                                                      // the deck's parapet
+    p.push(box(2.5, top + 0.7, zc + 0.6, 15, 0.22, 5.6, TW.aqua), box(-9.0, top + 0.7, zc - 2.2, 5.6, 3.2, 3.6, TW.white));                // the pool, the lift's housing
+    p.push(box(-9.0, top + 3.9, zc - 2.2, 5.0, 0.3, 3.0, TW.aqua));                                                                            // its lit band (glow only)
+    return p;
+};
+/* 21 · THE HOLE CONDO (the Atlantis): a white-framed glass slab set back on the staff apartments' roof, a square hole three floors high right
+   through its middle with a palm tree growing in it (apply puts the palm), a stepped white top over an aqua stripe. Frame: the apartments' (W x D, the front +z). */
+const HOLE = { x: 7.4, z0: -3.7, z1: 5.4, y0: 10.5, y1: 72, h0: 40, h1: 50.5, hw: 3.1 };
+B.holecondo = (W, D) => {
+    const p = [], q = HOLE, zc = (q.z0 + q.z1) / 2, d = q.z1 - q.z0, sw = q.x - q.hw, sx = (q.x + q.hw) / 2;
+    [-1, 1].forEach(k => p.push(box(k * sx, q.y0, zc, sw, q.y1 - q.y0, d, A({}, TW.glass, { top: false }))));                                 // the two sides of the hole
+    p.push(box(0, q.y0, zc, 2 * q.hw, q.h0 - q.y0, d, TW.glass), box(0, q.h1, zc, 2 * q.hw, q.y1 - q.h1, d, A({}, TW.glass, { under: true, top: false })));   // under it, over it
+    p.push(box(0, q.h0 - 0.3, zc, 2 * q.hw + 0.2, 0.3, d + 0.2, TW.white), box(0, q.h1, zc, 2 * q.hw + 0.2, 0.3, d + 0.2, A({}, TW.white, { under: true })));   // the hole's floor, its ceiling
+    [-1, 1].forEach(k => p.push(box(k * (q.hw - 0.04), q.h0, zc, 0.1, q.h1 - q.h0, d + 0.2, TW.white)));                                      // its two white sides
+    const fl = (y0, y1) => Math.max(0, Math.floor((y1 - y0) / 3.5));
+    [-1, 1].forEach(k => p.push(A(box(k * sx, 14, zc, sw + 0.3, 0.3, d + 0.4, A({}, TW.white, { under: true })), { n: fl(14, q.y1) + 1, step: [0, 3.5, 0] })));   // the floor lines…
+    p.push(A(box(0, 14, zc, 2 * q.hw, 0.3, d + 0.4, A({}, TW.white, { under: true })), { n: fl(14, q.h0 - 1), step: [0, 3.5, 0] }));
+    p.push(A(box(0, 52.5, zc, 2 * q.hw, 0.3, d + 0.4, A({}, TW.white, { under: true })), { n: fl(52.5, q.y1) + 1, step: [0, 3.5, 0] }));         // …but none across the hole
+    [-1, 1].forEach(k => p.push(box(k * (q.x + 0.2), q.y0, zc, 0.5, q.y1 + 1.5 - q.y0, d + 0.5, TW.white)));                                  // the white end walls
+    p.push(box(0, q.y1, zc, 2 * q.x + 0.9, 0.35, d + 0.5, TW.aqua), box(0, q.y1 + 0.35, zc, 2 * q.x + 0.9, 1.15, d + 0.5, TW.white), box(0, q.y1 + 1.5, zc, 2 * q.x - 5, 1.5, d - 2, TW.white));   // the stripe, the stepped top
     return p;
 };
 
@@ -479,23 +534,24 @@ const lettered = (parts) => { const out = [];
     return out; };
 const POLISH = {};
 POLISH.hotel = (p, W, D, lx) => {
-    const H = 31.5, body = wallM(T.CORAL);
+    const H = HOTEL_H, body = wallM(T.CORAL), bw = hotelBow(W, D), s = bw.s, nb = Math.round(H / 3.5) - 2;   // (THE SKYLINE, 11-23: 17 storeys, the sea front bowed: see B.hotel)
     p.push(...plinth(W, D, 0.8, KP.marbleB, T.CREAM, 1.7), ...band(W, D, 3.05, 0.3, 0.1, trim()));
     ['l', 'r', 'b'].forEach(s => p.push(pane(s, W, D, 0, 0.8, flen(s, W, D) + 2 * E, 2.25, mat(KP.subway, T.CREAM, 1.9), 0.01)));                       // the ground storey: cream tile, not the body's stucco
-    /* the balconies: a glass balustrade on every eyebrow, fins between the bays (front and back) */
-    const k = Math.max(2, Math.round((W - 3.5) / 3.5));
-    ['f', 'b'].forEach(s => {
-        p.push(A(bar(s, W, D, 0, 3.62, W - 3.5, 0.9, 0.05, A(glass(T.AQUA, K.gSq, 0.25), { uv: [1.75, 0.9], win: 'keep' }), 0.62), { n: 8, step: [0, 3.5, 0] }));
-        p.push(A(bar(s, W, D, 0, 4.52, W - 3.5, 0.05, 0.08, trim(), 0.6), { n: 8, step: [0, 3.5, 0] }));
-        p.push(bars(s, W, D, -(W - 3.5) / 2, (W - 3.5) / k, k + 1, 3.62, 0.09, H - 3.9, 0.66, trim(T.CREAM)));
-    });
-    /* the roof: membrane, the lift overrun, plant, stacks, the letters on a truss along the front */
-    p.push(roofSkin(W, D, H, KP.rubber, T.GREY), ...coping(W, D, H + 0.9, T.WHITE));
+    /* the balconies: a glass balustrade on every eyebrow, fins between the bays (the back flat, the sea front round the bow) */
+    const k = Math.max(2, Math.round((W - 3.5) / 3.5)), rail = A(glass(T.AQUA, K.gSq, 0.25), { uv: [1.75, 0.9], win: 'keep' });
+    p.push(A(bar('b', W, D, 0, 3.62, W - 3.5, 0.9, 0.05, rail, 0.62), { n: nb, step: [0, 3.5, 0] }), A(bar('b', W, D, 0, 4.52, W - 3.5, 0.05, 0.08, trim(), 0.6), { n: nb, step: [0, 3.5, 0] }));
+    p.push(bars('b', W, D, -(W - 3.5) / 2, (W - 3.5) / k, k + 1, 3.62, 0.09, H - 3.9, 0.66, trim(T.CREAM)));
+    p.push(A(cyl(0, 3.62, bw.zc, bw.R + 0.66, 0.9, A({}, rail, bw.arc(1.75), { seg: 28, cap: false })), { n: nb, step: [0, 3.5, 0] }));
+    p.push(A(cyl(0, 4.52, bw.zc, bw.R + 0.7, 0.05, A(trim(), bw.arc(1.75), { ri: bw.R + 0.62, seg: 28 })), { n: nb, step: [0, 3.5, 0] }));
+    for (let i = 0; i <= k; i++) { const x = -(W - 3.5) / 2 + i * (W - 3.5) / k; p.push(box(x, 3.62, bw.z(x) + 0.33, 0.09, H - 3.9, 0.66, trim(T.CREAM))); }
+    /* the roof: membrane, the lift overrun, plant, stacks, the letters on a truss along the front (back from the bow, over the slab's own roof) */
+    p.push(roofSkin(W, D - s, H, KP.rubber, T.GREY, 0, -s / 2), ...coping(W, D - s, H + 0.9, T.WHITE, 0, -s / 2).slice(1));
+    p.push(cyl(0, H + 0.9, bw.zc, bw.R + 0.16, 0.1, A(trim(T.WHITE), bw.arc(0), { ri: bw.R - 0.05, seg: 28 })));
     p.push(box(-W / 4, H, -D / 4, 4.2, 2.8, 3.6, wallM(T.CREAM, K.plaster)), box(-W / 4, H + 2.8, -D / 4, 4.6, 0.2, 4.0, trim()), ...moved(svcDoor('f', 4.2, 3.6, 0, KP.doorP2), -W / 4, -D / 4).map(q => A(q, { p: [q.p[0], q.p[1] + H, q.p[2]] })));
     p.push(...plant(-W / 2 + 4, H, D / 4 - 1, true), ...plant(-W / 2 + 8, H, D / 4 - 1, true), ...plant(2, H, -D / 4, false), ...stack(4.5, H, -D / 4), ...stack(5.6, H, -D / 4), ...hatch(0, H, D / 4), duct(-W / 2 + 4, H + 0.5, D / 4 - 3, -W / 4, D / 4 - 3), ...aerial(-W / 4 + 1, H + 3.0, -D / 4, 4.5));
-    const sw = Math.min(W * 0.5, 15);
-    p.push({ s: 'quad', p: [-W / 2 + sw / 2 + 2, H + 0.9, D / 2 - 0.5], size: [sw, 3.4], key: KP.truss, kind: 'over', ds: true, uv: [1.75, 1.75], tint: T.STEEL });
-    p.push({ s: 'quad', p: [-W / 2 + sw / 2 + 2, H + 1.2, D / 2 - 0.44], size: [sw - 0.6, 2.8], text: 'HOTEL', ink: '#ff5a7a', glow: 0.9 });
+    const sw = Math.min(W * 0.5, 15), zt = D / 2 - s - 0.1;
+    p.push({ s: 'quad', p: [-W / 2 + sw / 2 + 2, H + 0.9, zt], size: [sw, 3.4], key: KP.truss, kind: 'over', ds: true, uv: [1.75, 1.75], tint: T.STEEL });
+    p.push({ s: 'quad', p: [-W / 2 + sw / 2 + 2, H + 1.2, zt + 0.06], size: [sw - 0.6, 2.8], text: 'HOTEL', ink: '#ff5a7a', glow: 0.9 });
     /* the fin's letters, the canopy's, the door's lamps and planters */
     const fx = -W / 2 + 5.25, fz = D / 2 + 1.0;
     p.push({ s: 'quad', p: [fx - 0.26, 7.7, fz], ry: 90, size: [1.6, 16], text: 'HOTEL', vert: true, ink: '#ffffff', glow: 0.8 }, { s: 'quad', p: [fx + 0.26, 7.7, fz], ry: 270, size: [1.6, 16], text: 'HOTEL', vert: true, ink: '#ffffff', glow: 0.8 });
@@ -768,13 +824,15 @@ const DECO = {
 };
 const MIAMI = {
     /* the Waterfront hotel: a three-step white front over the doors, the neon fin up its middle, portholes down both shoulders, a rounded left corner */
-    hotel: (p, W, D, lx) => { const H = 31.5, z = D / 2;
-        p.push(box(lx, 3.6, z + 0.3, 10.5, H - 1.6, 0.6, trim(0xf8f6f0)), box(lx, 3.6, z + 0.75, 7.0, H + 1.2, 0.9, trim(0xf8f6f0)), box(lx, 3.6, z + 1.3, 3.6, H + 4.0, 1.1, trim(0xf8f6f0)));
+    hotel: (p, W, D, lx) => { const H = HOTEL_H, z = D / 2, nf = Math.round(H / 3.5), bw = hotelBow(W, D);
+        /* (THE SKYLINE, 11-23: the front bows out behind the steps, so each step reaches 1 m further back into the slab) */
+        p.push(box(lx, 3.6, z - 0.2, 10.5, H - 1.6, 1.6, trim(0xf8f6f0)), box(lx, 3.6, z + 0.25, 7.0, H + 1.2, 1.9, trim(0xf8f6f0)), box(lx, 3.6, z + 0.8, 3.6, H + 4.0, 2.1, trim(0xf8f6f0)));
         p.push(box(lx, H + 2.0, z + 0.3, 11.0, 0.2, 0.9, trim(T.MINT)), box(lx, H + 4.8, z + 0.75, 7.5, 0.2, 1.2, trim(T.MINT)), box(lx, H + 7.6, z + 1.3, 4.1, 0.2, 1.4, trim(T.MINT)));
         p.push(box(lx, 5.0, z + 1.95, 0.9, H + 5.0, 0.22, { tint: T.HOT, glow: 0.75 }), box(lx, H + 10.0, z + 1.9, 1.3, 0.2, 0.5, trim()));          // the neon fin
-        for (let f = 1; f < 9; f++) [-1, 1].forEach(s => DECO.port(p, lx + s * 2.65, 3.5 * f + 1.9, z + 1.22, 0.42));
-        for (let f = 1; f < 9; f += 2) [-1, 1].forEach(s => p.push(A(box(lx + s * 4.5, 3.5 * f + 1.3, z + 0.62, 1.4, 0.09, 0.05, trim(T.MINT)), { n: 3, step: [0, 0.2, 0] })));
-        DECO.corner(p, W, D, H, [-1]);
+        for (let f = 1; f < nf; f++) [-1, 1].forEach(s => DECO.port(p, lx + s * 2.65, 3.5 * f + 1.9, z + 1.22, 0.42));
+        for (let f = 1; f < nf; f += 2) [-1, 1].forEach(s => p.push(A(box(lx + s * 4.5, 3.5 * f + 1.3, z + 0.62, 1.4, 0.09, 0.05, trim(T.MINT)), { n: 3, step: [0, 0.2, 0] })));
+        /* the rounded left corner: the ground storey's at the front line, the slab's where the bow meets the end */
+        p.push(cyl(-(W / 2 - 0.45), 0, D / 2 - 0.45, 0.8, 3.5, A(trim(0xf8f6f0), { seg: 12 })), cyl(-(W / 2 - 0.45), 3.5, D / 2 - bw.s + 0.05, 0.8, H - 3.5, A(trim(0xf8f6f0), { seg: 12 })));
     },
     /* the cinema: bulbs round the marquee (top and bottom rims), racing stripes down both flanks */
     cinema: (p, W, D, lx) => { const fz = D / 2, bulb = { tint: 0xfff2b0, glow: 1 };
@@ -867,6 +925,7 @@ function apply(ctx) {
         else { row.skin = false; delete row.key; if (d.storeys) row.storeys = d.storeys; if (d.solid) { delete row.hollow; delete row.door; delete row.style; } if (d.door) { row.hollow = true; row.door = d.door; } if (d.keyIn) row.keyIn = d.keyIn; if (d.floorIn) row.floorIn = d.floorIn; W = row.w; D = row.d; rot = row.rot || 0; lx = doorLx(W, row.door); }
         push(id, row.x, row.z, rot, B[d.fn](W, D, lx));
     });
+    skyline(ctx, byId, push);
     /* the things the plan has no building for: each on yard squares it takes (so no tree, bench or bin is dressed onto them) */
     const cell = (px, py, cx, cy) => [px * N + cx, py * N + cy];
     const takeRect = (px, py, x0, y0, x1, y1) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) take(px * N + x, py * N + y); };
@@ -891,6 +950,31 @@ function apply(ctx) {
     interiors(ctx, byId, push);
     miamiStreet(ctx, push, ghost);
     console.warn('[bayside]', JSON.stringify(out));
+}
+/* ── THE SKYLINE, the footings (2026-11-23): the condos' lobby cut out of the food hall, the two towers' rows, the palm in the hole ── */
+function skyline(ctx, byId, push) {
+    const { lateRows, props, bInfo, r3, plotOf, lvOf, LEVELS } = ctx;
+    /* 9 · the Food Hall Condos. The food hall is a roof-route block (a plateau): both its bridges land on its front (north) rows, so the plateau
+       keeps the front rows (the route) and the back CONDO.rows become a walk-in lobby, its door the food hall's own east door (the plan's).
+       A ghost wall on the roof along the seam: the route never walks into the tower. */
+    { const row = byId['dc:P09-09-B1'], info = bInfo.find(b => b.id === 'P09-09-B1');
+      const pb = info && plotOf[info.plot].buildings.find(q => q.id === 'P09-09-B1'), dr = pb && pb.doors.find(q => q.side === 'E');
+      if (!row || row.k !== 'plateau' || info.side !== 'N' || !dr || dr.y - pb.y !== info.ch - CONDO.rows) console.warn('[bayside] the condos\' footing is not as drawn: no tower');
+      else {
+          const z0 = row.z - row.d / 2, front = row.d - CONDO.rows * 3.5, W = row.w, D = row.d, cx = row.x, cz = row.z;
+          push('bay-condos', cx, cz, 180, B.condos(W, D));
+          row.z = r3(z0 + front / 2); row.d = r3(front);
+          const k = pb.y + pb.h - 1 - dr.y, lobby = { k: 'texbuilding', id: 'dc:bay-condos-lobby', x: r3(cx), z: r3(z0 + front + CONDO.rows * 1.75), w: CONDO.rows * 3.5, d: r3(W), rot: 270,
+              storeys: 2, style: 'office', seed: 9091, skin: false, hollow: true, door: Math.round(k * 3.5 / 1.75) + 1, floorIn: 'urban:TileMarble1a' };
+          lateRows.push(lobby); byId[lobby.id] = lobby;
+          const y = lvOf(plotOf[info.plot]) * LEVELS.M + 7;
+          lateRows.push({ k: 'wall', absY: true, x0: r3(cx - W / 2), z0: r3(z0 + front), x1: r3(cx + W / 2), z1: r3(z0 + front), y: r3(y), h: 3, t: 0.3, key: K.stucco, ghost: true, rail: false });
+      } }
+    /* 21 · the Hole Condo, on the staff apartments' roof (their flat below is its lobby: the lift doors in their hall) */
+    { const row = byId['dc:P10-09-B2']; if (!row) console.warn('[bayside] no apartments row: no Hole Condo');
+      else { push('bay-holecondo', row.x, row.z, row.rot || 0, B.holecondo(row.w, row.d));
+        const q = (row.rot || 0) * Math.PI / 180, lz = (HOLE.z0 + HOLE.z1) / 2;
+        props.push({ key: 'palm_tree', x: r3(row.x - lz * Math.sin(q)), z: r3(row.z + lz * Math.cos(q)), y: HOLE.h0, h: 7.5, face: 30 }); } }
 }
 /* ── THE INTERIORS (2026-11-13, mondo 21:04 "let's go ahead and do the interiors"; his OK on plan 2, 21:24) ──
    Six walk-ins, each one room behind the city's swinging door, laid out ON THE 3.5 m BATTLE SQUARES (his rule, 21:14 + 21:17: "if its gonna
@@ -1174,6 +1258,8 @@ function interiors(ctx, byId, push) {
         /* the hall: letter boxes by the door, a plant; the stair cupboard fills the front right square (the tower's foot) */
         P.push(A(box(-W / 2 + 0.42, 1.25, cz(4) - 1.2, 0.12, 0.34, 0.42, trim(T.STEEL)), { n: 3, step: [0, 0, -0.48] }));
         R.prop('potted_plant', cx(0) - 1.2, cz(3) + 1.3);
+        /* THE SKYLINE (11-23): the Hole Condo's lift, up from the hall (the tower stands on this roof): steel doors on the left wall, the floor light over them */
+        P.push(box(-W / 2 + 0.38, 0, cz(3) - 0.3, 0.06, 2.7, 2.5, trim(0x50545c)), box(-W / 2 + 0.43, 0, cz(3) - 0.82, 0.04, 2.4, 1.0, trim(T.STEEL)), box(-W / 2 + 0.43, 0, cz(3) + 0.22, 0.04, 2.4, 1.0, trim(T.STEEL)), box(-W / 2 + 0.42, 2.8, cz(3) - 0.3, 0.05, 0.2, 0.5, { tint: T.ORANGE, glow: 1 }));
         P.push(box(cx(4) + 0.15, 0, cz(4) + 0.15, 3.2, CH, 3.2, wallM(T.CORAL, K.plaster)), box(cx(4) - 1.63, 0, cz(4), 0.05, 2.3, 1.1, trim(T.MINT))); R.shut(4, 4, 4, 4, CH);
         R.lamps([[cx(3), cz(0) + 0.6], [cx(0.5), cz(0.5)], [cx(1.5), cz(2.5)], [cx(4), cz(2.5)], [cx(0), cz(4)], [cx(2), cz(4)]], CH);
     });
@@ -1188,6 +1274,19 @@ function interiors(ctx, byId, push) {
         R.prop('filing_cabinet', cx(0) - 0.9, back + 0.35, 180); R.prop('filing_cabinet', cx(0) - 0.05, back + 0.35, 180);
         R.prop('brass_telescope', -W / 2 + 0.85, cz(0) + 1.3, 270);
         R.lamps([[cx(0), cz(0.5)]]);
+    });
+    /* THE SKYLINE (11-23): the Food Hall Condos' lobby (4 x 8; the door on square 3, the food hall's east door): the walk is the door's column, door
+       to back wall, and the back row; the lifts on the back wall, the concierge's desk on squares 0..1 of row 4, a sofa corner at the back */
+    room('bay-condos-lobby', R => { const { P, cx, cz, D } = R, back = -D / 2 + 0.3;
+        R.liner(wallM(T.CREAM, K.plaster), mat(K.marble, T.AQUA, 1.8), mat(KP.ceil, T.WHITE, 1.8));
+        R.rug(cx(3), 0, 2.3, D - 1.2, mat(KP.rubber, 0x2a8a90, 1.7));                                                                              // the runner, door to lifts
+        [1, 2].forEach(k => P.push(box(cx(k), 0, back + 0.02, 2.5, 2.7, 0.06, trim(0x50545c)), box(cx(k) - 0.52, 0, back + 0.07, 1.0, 2.4, 0.04, trim(T.STEEL)), box(cx(k) + 0.52, 0, back + 0.07, 1.0, 2.4, 0.04, trim(T.STEEL)), box(cx(k), 2.8, back + 0.05, 0.5, 0.2, 0.05, { tint: T.ORANGE, glow: 1 })));   // the lifts
+        P.push(box(cx(0.5), 0, cz(4), 6.4, 1.05, 1.4, mat(K.marble, T.WHITE, 1.8)), box(cx(0.5), 1.05, cz(4), 6.7, 0.08, 1.7, trim(T.AQUA)));   // the concierge's desk
+        R.shut(0, 4, 1, 4, 1.2); R.prop('exec_chair', cx(0.5), cz(4) - 1.2, 0);
+        P.push(A(box(-R.W / 2 + 0.42, 1.2, cz(6) - 1.0, 0.12, 0.34, 0.42, trim(T.STEEL)), { n: 4, step: [0, 0, 0.48] }), A(box(-R.W / 2 + 0.42, 1.6, cz(6) - 1.0, 0.12, 0.34, 0.42, trim(T.STEEL)), { n: 4, step: [0, 0, 0.48] }));   // the letter boxes
+        R.prop('psx_sofa_1', cx(0), cz(1), 90); R.prop('psx_sofa_3', cx(0), cz(2), 90); R.shut(0, 1, 0, 2, 1.0);
+        R.prop('office_plant', cx(0) - 1.1, back + 0.6); R.prop('office_plant', cx(3) + 1.2, back + 0.6); R.prop('office_plant', cx(2) + 1.2, cz(7) + 1.1);
+        R.lamps([1, 3, 5, 7].map(r => [cx(3), cz(r)]).concat([[cx(1.5), cz(0)]]));
     });
     /* 7 the market hall (5 x 3, open): the stalls stand on squares 0, 2, 4 of the back row; a till on each, a crate stack on the middle of the front row's square 2 */
     room('P08-09-B1', R => { const { P, cx, cz } = R;
