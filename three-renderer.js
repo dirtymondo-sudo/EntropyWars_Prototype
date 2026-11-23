@@ -48550,8 +48550,20 @@ const ThreeRenderer = (function () {
     var _ewGpu = '';                 // '' = classic WebGLRenderer; 'webgpu' | 'webgl2' = the node renderer (the mode asked for)
     var _ewGpuInfo = { asked: 'webgl', why: '', ready: false, lost: '', drawErrs: 0, drawErr: '' };
     var _ewGpuDrawErrSeen = new WeakSet();
+    /* THE SPRITES' ONE SHAPE IS KEPT (2026-11-23, mondo's Downtown F3 on WebGPU: "skipped draws 495 (first: Sprite / SpriteMaterial:
+       GPURenderPassEncoder.setIndexBuffer: Argument 1 is not an object.)"): every THREE.Sprite in the page shares ONE geometry (three
+       makes it once). A clean-up that disposes `o.geometry` on whatever it removes (63 places dispose geometries; one already
+       skipped sprites) freed that shared shape's GPU buffers, and on the node renderer the next sprite draws found no index
+       buffer: every name plate, label and sprite after it was skipped. The shared shape's dispose is a no-op now (counted: F3's
+       renderer line says how many were refused). Called at init and on the first skipped draw. */
+    var _ewSprGeo = { on: false, n: 0 };
+    function _ewSpriteGeoKeep() {
+        if (_ewSprGeo.on || typeof THREE === 'undefined' || typeof THREE.Sprite !== 'function') return;
+        try { var g = new THREE.Sprite().geometry; if (g && !g._ew_keep) { g._ew_keep = true; g.dispose = function () { _ewSprGeo.n++; }; } _ewSprGeo.on = true; } catch (e) {}
+    }
     function _ewGpuDrawErr(e, o, m) {
         _ewGpuInfo.drawErrs++;
+        if (!_ewSprGeo.on) _ewSpriteGeoKeep();
         var what = ((o && (o.name || o.type)) || '?') + ' / ' + ((m && (m.name || m.type)) || '?') + ': ' + String((e && e.message) || e).slice(0, 120);
         if (!_ewGpuInfo.drawErr) _ewGpuInfo.drawErr = what;
         if (o && !_ewGpuDrawErrSeen.has(o)) { _ewGpuDrawErrSeen.add(o); try { console.warn('[ThreeRenderer] node renderer: a draw failed and was skipped (' + what + ')', e); } catch (x) {} }
@@ -48583,6 +48595,7 @@ const ThreeRenderer = (function () {
         if (_ewGpuInfo.noPic) s += ' · sheets with no picture ' + _ewGpuInfo.noPic + ' (first: ' + _ewGpuInfo.noPicFirst + ')';
         if (_ewGpuInfo.thrown) s += ' · thrown renders ' + _ewGpuInfo.thrown + ' (' + (_ewGpuInfo.thrownShadow | 0) + ' shadow passes; first: ' + _ewGpuInfo.thrownFirst + ')';
         if (_ewGpuInfo.drawErrs) s += ' · skipped draws ' + _ewGpuInfo.drawErrs + ' (first: ' + _ewGpuInfo.drawErr + ')';
+        if (_ewSprGeo.n) s += ' · sprite shape disposes refused ' + _ewSprGeo.n;   // THE SPRITES' ONE SHAPE IS KEPT
         if (_ewGpuInfo.errors) s += ' · GPU errors ' + _ewGpuInfo.errors + ' (first: ' + _ewGpuInfo.firstError + ')';
         return s;
     }
@@ -53641,6 +53654,7 @@ const ThreeRenderer = (function () {
     }
     function init() {
         if (initialized) return;
+        _ewSpriteGeoKeep();   // THE SPRITES' ONE SHAPE IS KEPT
         _parentEl = document.querySelector('.map-center');
         if (!_parentEl) { console.warn('[ThreeRenderer] .map-center not found'); return; }
 
@@ -55403,6 +55417,77 @@ const ThreeRenderer = (function () {
         _hmm.doorsKey = key; _hmm.doors = out; _hmm.sig = '';
         return out;
     }
+    /* THE HOTEL'S MAP (2026-11-23, mondo: "The mini map needs to be more like a mystery dungeon map where it reveals as you explore it, so i
+       can avoid backtracking"): the whole floor in the box, north up; a square shows once seen (the one you stand in, the rest of a room you
+       are in, and down a corridor while the way is open, 5 squares), kept for the run (data.js hotelSeen). Walls white, a shut door orange,
+       the lift and the stairs green, a guest red when its square is seen. From the maze record: no scene read. */
+    function _hqMmHotel(H, now, el, L, round, cw, ch, dpr, boxKey) {
+        var hm = H.room.hotelMaze, N = hm.N, SQ = HQMM_SQ, Wd = N * SQ, pl = H.player, room = H.opts.room;
+        var seen = (typeof hotelSeen === 'function') ? hotelSeen(room) : null; if (!seen) return;
+        var wayOk = function (x, y, s) { try { return hotelWayOpen(hm, x, y, s); } catch (e) { return false; } };
+        var ci = Math.floor((pl.x + Wd / 2) / SQ), cj = Math.floor((pl.z + Wd / 2) / SQ), i, j;
+        var inB = function (x, y) { return x >= 0 && y >= 0 && x < N && y < N; };
+        var mark = function (x, y) { if (inB(x, y) && !seen[y * N + x]) { seen[y * N + x] = 1; _hmm.ver++; } };
+        if (inB(ci, cj)) {
+            mark(ci, cj);
+            var rid = hm.RM[cj][ci];
+            if (rid >= 0) for (j = 0; j < N; j++) for (i = 0; i < N; i++) if (hm.RM[j][i] === rid) mark(i, j);
+            [['n', 0, -1], ['e', 1, 0], ['s', 0, 1], ['w', -1, 0]].forEach(function (d) {
+                var x = ci, y = cj;
+                for (var k = 0; k < 5; k++) { if (!wayOk(x, y, d[0])) break; x += d[1]; y += d[2]; if (!inB(x, y)) break; mark(x, y); if (hm.RM[y][x] >= 0 && hm.RM[y][x] !== rid) break; }
+            });
+        }
+        var ok = (typeof hqEncounterCharOk === 'function') ? hqEncounterCharOk : null, foes = [];
+        for (var c = 0; c < H.chars.length; c++) { var chr = H.chars[c]; if (!chr || chr === pl || chr.kind === 'player' || chr.away || chr.cleared || !(ok && ok(chr))) continue;
+            var fi = Math.floor((chr.x + Wd / 2) / SQ), fj = Math.floor((chr.z + Wd / 2) / SQ); if (!inB(fi, fj) || !seen[fj * N + fi]) continue;
+            var frm = hm.RM[fj][fi]; if (frm >= 0 && frm !== (inB(ci, cj) ? hm.RM[cj][ci] : -2) && !hm.ways.some(function (w) { return w.room === frm && (w.kind === 'hole' || (typeof HQ_SHUT_OPEN !== 'undefined' && HQ_SHUT_OPEN[w.key])); })) continue;   // behind a shut door: unknown
+            foes.push(chr.x, chr.z); }
+        var nOpen = (typeof HQ_SHUT_OPEN !== 'undefined') ? Object.keys(HQ_SHUT_OPEN).length : 0;
+        var sig = 'H' + boxKey + '|' + (window._ewMapLookV || 0) + '|' + _hmm.ver + '|' + nOpen + '|' + pl.x.toFixed(1) + ',' + pl.z.toFixed(1) + ',' + (+pl.yaw || 0).toFixed(1) + '|' + foes.map(function (v) { return v.toFixed(1); }).join(',');
+        if (sig === _hmm.sig) { if (el.classList.contains('off')) el.classList.remove('off'); return; }
+        _hmm.sig = sig; _hmm.drawnAt = now;
+        var ctx = _hmm.ctx, pad = Math.max(6, cw * 0.06), cs = (Math.min(cw, ch) - pad * 2) / N, ox = (cw - cs * N) / 2, oy = (ch - cs * N) / 2;
+        var MX = function (x) { return ox + (x + Wd / 2) / SQ * cs; }, MY = function (z) { return oy + (z + Wd / 2) / SQ * cs; };
+        ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, _hmm.cv.width, _hmm.cv.height); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.save(); ctx.beginPath(); if (round) ctx.arc(cw / 2, ch / 2, Math.min(cw, ch) / 2, 0, Math.PI * 2); else ctx.rect(0, 0, cw, ch); ctx.clip();
+        if (+L.bgOp > 0) { ctx.fillStyle = _mmRgba(L.bg, L.bgOp); ctx.fillRect(0, 0, cw, ch); }
+        /* the seen floor: corridors grey, rooms warm */
+        for (j = 0; j < N; j++) for (i = 0; i < N; i++) { if (!seen[j * N + i]) continue; ctx.fillStyle = hm.RM[j][i] >= 0 ? 'rgba(255,214,160,0.30)' : 'rgba(255,255,255,0.22)'; ctx.fillRect(ox + i * cs, oy + j * cs, Math.ceil(cs), Math.ceil(cs)); }
+        /* the walls of the seen squares; a way in: shut = orange, open = nothing */
+        var wayBy = {}; hm.ways.forEach(function (w) { wayBy[w.key.slice(w.key.indexOf('|') + 1)] = w; });
+        var line = function (x0, y0, x1, y1, col, wdt) { ctx.strokeStyle = col; ctx.lineWidth = wdt; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke(); };
+        var lw = Math.max(1.25, cs * 0.12);
+        for (j = 0; j < N; j++) for (i = 0; i < N; i++) {
+            if (!seen[j * N + i]) continue;
+            var o = hm.O[j][i], X0 = ox + i * cs, Y0 = oy + j * cs;
+            [['n', 1, 'u' + j + ':' + i, X0, Y0, X0 + cs, Y0], ['s', 4, 'u' + (j + 1) + ':' + i, X0, Y0 + cs, X0 + cs, Y0 + cs], ['w', 8, 'v' + i + ':' + j, X0, Y0, X0, Y0 + cs], ['e', 2, 'v' + (i + 1) + ':' + j, X0 + cs, Y0, X0 + cs, Y0 + cs]].forEach(function (e) {
+                var w = wayBy[e[2]];
+                if (w) { if (w.kind === 'door' && !(typeof HQ_SHUT_OPEN !== 'undefined' && HQ_SHUT_OPEN[w.key])) line(e[3], e[4], e[5], e[6], '#ff9a3c', lw * 1.3); return; }
+                if (!(o & e[1])) line(e[3], e[4], e[5], e[6], 'rgba(255,255,255,0.85)', lw);
+            });
+        }
+        /* the lift and the stairs (once seen) */
+        var dot = function (i0, j0, col) { var r0 = cs * 0.32; ctx.fillStyle = col; ctx.strokeStyle = '#000'; ctx.lineWidth = 1; ctx.fillRect(ox + (i0 + 0.5) * cs - r0, oy + (j0 + 0.5) * cs - r0, r0 * 2, r0 * 2); ctx.strokeRect(ox + (i0 + 0.5) * cs - r0, oy + (j0 + 0.5) * cs - r0, r0 * 2, r0 * 2); };
+        dot(hm.IN[0], hm.IN[1], '#39ff6a');
+        if (seen[hm.UP[1] * N + hm.UP[0]]) {
+            var ux = ox + (hm.UP[0] + 0.5) * cs, uy = oy + (hm.UP[1] + 0.5) * cs, ur = cs * 0.38;
+            ctx.beginPath(); ctx.moveTo(ux, uy - ur); ctx.lineTo(ux + ur, uy + ur * 0.8); ctx.lineTo(ux - ur, uy + ur * 0.8); ctx.closePath();
+            ctx.fillStyle = H.room.hotel >= ((typeof HOTEL_MD !== 'undefined' && HOTEL_MD.floors) || 10) ? L.foe : '#39ff6a'; ctx.fill(); ctx.strokeStyle = '#000'; ctx.lineWidth = 1; ctx.stroke();
+        }
+        /* the guests you can see */
+        var ir = Math.max(2.5, cs * 0.26);
+        for (var f2 = 0; f2 < foes.length; f2 += 2) { ctx.beginPath(); ctx.arc(MX(foes[f2]), MY(foes[f2 + 1]), ir, 0, Math.PI * 2); ctx.fillStyle = L.foe; ctx.fill(); ctx.lineWidth = 1; ctx.strokeStyle = '#000'; ctx.stroke(); }
+        /* you */
+        var yw = +pl.yaw || 0, ar = Math.max(5, cs * 0.55);
+        ctx.save(); ctx.translate(MX(pl.x), MY(pl.z)); ctx.rotate(Math.atan2(Math.cos(yw), Math.sin(yw)) + Math.PI / 2);
+        ctx.beginPath(); ctx.moveTo(0, -ar); ctx.lineTo(ar * 0.62, ar * 0.72); ctx.lineTo(0, ar * 0.3); ctx.lineTo(-ar * 0.62, ar * 0.72); ctx.closePath();
+        ctx.fillStyle = L.ally; ctx.fill(); ctx.lineWidth = 1.25; ctx.strokeStyle = '#fff'; ctx.stroke();
+        ctx.restore();
+        ctx.restore();
+        var fw = +L.frameW;
+        if (fw > 0 && +L.frameOp > 0) { ctx.lineWidth = fw; ctx.strokeStyle = _mmRgba(L.frame, L.frameOp); ctx.beginPath(); if (round) ctx.arc(cw / 2, ch / 2, Math.min(cw, ch) / 2 - fw / 2, 0, Math.PI * 2); else ctx.rect(fw / 2, fw / 2, cw - fw, ch - fw); ctx.stroke(); }
+        if (el.classList.contains('off')) el.classList.remove('off');
+    }
     function _hqMmUpdate(H, now) {
         if (now < _hmm.next) return;
         _hmm.next = now + 50;
@@ -55426,6 +55511,7 @@ const ThreeRenderer = (function () {
             _hmm.cw = size; _hmm.ch = size; _hmm.boxKey = boxKey; _hmm.sig = '';
         }
         var cw = _hmm.cw, ch = _hmm.ch, cell = cw / HQMM_SPAN, half = HQMM_SPAN / 2;
+        if (H.room && H.room.hotelMaze) { _hqMmHotel(H, now, el, L, round, cw, ch, dpr, boxKey); return; }   // THE HOTEL: the whole floor, as seen
         var px = pl.x / HQMM_SQ, pz = pl.z / HQMM_SQ;
         var i0 = Math.floor(px - half), i1 = Math.floor(px + half), j0 = Math.floor(pz - half), j1 = Math.floor(pz + half), i, j, key;
 
@@ -79088,6 +79174,7 @@ const ThreeRenderer = (function () {
                 (f.inner || []).forEach(function (r, i) {
                     var ci = cat0[r.leaf] || cat0['leaf_office']; if (!ci || !ci.file || (ci.open && ci.open !== 'swing')) ci = cat;
                     hang(ci, f.x + (r.x || 0) * c + (r.z || 0) * s, f.z - (r.x || 0) * s + (r.z || 0) * c, q - (r.rot || 0) * Math.PI / 180, (r.w || 1.75) - 0.04, r.h || hol.doorH, r.double != null ? !!r.double : !!ci.double, base + (r.y || 0), (f.id || '') + ':in' + i);
+                    if (r.shut) list[list.length - 1].shut = r.shut;   // THE SHUT DOORS (2026-11-23, the hotel): it stays shut until HQ_SHUT_OPEN[shut]
                 });
             } catch (e) { console.warn('[HQ] a city door failed', f.id, e); }
         });
@@ -79099,7 +79186,8 @@ const ThreeRenderer = (function () {
         var P = (H.res && H.res.pts && H.res.pts.length) ? H.res.pts : [H.player];   // THE RESIDENTS (2026-11-14): the officer and the drawn residents
         for (var i = 0; i < L.length; i++) {
             var D = L[i], dx = 0, dz = 0, near = false;
-            for (var pi = 0; pi < P.length; pi++) { var ex = P[pi].x - D.x, ez = P[pi].z - D.z; if (Math.abs(ex) <= D.reach && Math.abs(ez) <= D.reach && ex * ex + ez * ez <= D.reach * D.reach) { dx = ex; dz = ez; near = true; break; } if (pi === 0) { dx = ex; dz = ez; } }
+            if (D.shut && !(typeof HQ_SHUT_OPEN !== 'undefined' && HQ_SHUT_OPEN[D.shut])) { if (D.t === 0 && D.applied === 0) continue; }   // shut: it never swings for a passer-by
+            else for (var pi = 0; pi < P.length; pi++) { var ex = P[pi].x - D.x, ez = P[pi].z - D.z; if (Math.abs(ex) <= D.reach && Math.abs(ez) <= D.reach && ex * ex + ez * ez <= D.reach * D.reach) { dx = ex; dz = ez; near = true; break; } if (pi === 0) { dx = ex; dz = ez; } }
             if (D.t === 0 && D.applied === 0 && !near) continue;
             var want = near ? 1 : 0;
             if (want && D.t === 0) D.dir = (dx * D.nx + dz * D.nz) >= 0 ? 1 : -1;   // outside → the leaves swing in; inside → out
@@ -86578,6 +86666,8 @@ const ThreeRenderer = (function () {
             grp.add(plate);
             G.add(grp);
             _hq.counters.push({ counter: c, group: grp, level: level, plateEl: pm.el, plateGpu: pm.gpu, x: null, z: null, marker: marker });
+            if (c.shutGate && typeof hotelGateOpen === 'function' && !hotelGateOpen(c.shutGate)) _hqCounterShow(_hq.counters[_hq.counters.length - 1], false);   // THE HOTEL: what is inside shows once a way in is open
+            if (c.shutHide && typeof HQ_SHUT_OPEN !== 'undefined' && HQ_SHUT_OPEN[c.shutHide]) _hqCounterShow(_hq.counters[_hq.counters.length - 1], false);
         });
         if (room.pd) { try { _hqPdBuild(room); } catch (e) { console.warn('[PD] the plot\'s objects', e); } }   // THE PLOT DUNGEONS: the caps, the gates, the lit lines
         if (room.drop) { try { _hqDropBuild(room); } catch (e) { console.warn('[DROP] the shaft', e); } }   // THE DROP: scene A's ride down
@@ -90400,6 +90490,8 @@ const ThreeRenderer = (function () {
                 if (sc && !sc.fluid && sc.top != null && sc.top > y) return false;
             }
             if (_hq.room.kind === 'box' && _hqCamInDoorway(x, z, y)) return false;
+            /* THE HOTEL (2026-11-23): a room whose walls are terrain rows (`losWalls`): sight stops at them (a shut door too) */
+            if (_hq.room.losWalls && _hq.terrain && typeof hqTerrainWallAt === 'function') { var tw = hqTerrainWallAt(_hq.terrain, x, z, 0); if (tw && !tw.hung && y < tw.top && y > (tw.base != null ? tw.base : -1e9)) return false; }
         }
         return true;
     }
@@ -91575,7 +91667,9 @@ const ThreeRenderer = (function () {
                 /* step 4: `why` = who comes ('sight' a Brute, 'mug' a mugger, 'ground' a Territorial after its warning; none = the Guard that saw a strike) */
                 var TT = HQ_NPC_TEMPERS, W = (r.why === 'mug' ? TT.mug : r.why === 'ground' ? TT.ground : r.why === 'sight' ? TT.brute : null) || Gd;
                 var dx = pl.x - ch.x, dz = pl.z - ch.z, d = Math.hypot(dx, dz);
-                var sees = d <= A.sightM * 1.5 && _hqLosClear(ch.x, ch.z, ch.y + 1.5, pl.x, pl.z, pl.y + 1.5);
+                /* THE HOTEL'S HUNT (2026-11-23, mondo: "The enemies need to be aggro"): through the maze, square by square, while he is near by the maze's own way */
+                var hs = null; if (H.room && H.room.hotelMaze && typeof hotelStepDir === 'function') { try { hs = hotelStepDir(H.opts.room, ch.x, ch.z, pl.x, pl.z); } catch (e) { hs = null; } }
+                var sees = hs ? hs.steps <= ((typeof HOTEL_MD !== 'undefined' && HOTEL_MD.hunt) || 14) : (d <= A.sightM * 1.5 && _hqLosClear(ch.x, ch.z, ch.y + 1.5, pl.x, pl.z, pl.y + 1.5));
                 r.lost = sees ? 0 : r.lost + dt * 1000;
                 var offGround = false; if (r.ground) { try { offGround = !hqNpcOnGround(H.opts.room, r.ground, pl.x, pl.z); } catch (e) { offGround = false; } }   // he left its ground: it lets him go
                 if (d > W.giveUpM || r.lost > W.loseMs || r.stuck > 3 || offGround) { r.mode = 'back'; r.stuck = 0; r.t0 = now; ch._awHold = 0; ch._startCool = now + (W.againMs || 0); if (H.aware) H.aware.next = 0; continue; }
@@ -91590,7 +91684,7 @@ const ThreeRenderer = (function () {
                     }
                     continue;
                 }
-                if (d <= W.reachM && Math.abs(pl.y - ch.y) < 1.8) {
+                if (d <= W.reachM && Math.abs(pl.y - ch.y) < 1.8 && (!hs || hs.steps <= 1)) {   // (the hotel: never through a wall)
                     ch.moving = false; var done = false;
                     if (now > (r.ask || 0)) {
                         r.ask = now + 1500;
@@ -91605,6 +91699,7 @@ const ThreeRenderer = (function () {
                 var cst = Math.min(Math.max(0, d - W.reachM * 0.7), W.chaseSpeed * dt), stay = false;   // it stops short of him, never on him
                 if (r.ground) { try { stay = !hqNpcOnGround(H.opts.room, r.ground, ch.x + dx / d * cst, ch.z + dz / d * cst); } catch (e) { stay = false; } }   // a Territorial never steps off its ground
                 if (stay) { ch.moving = false; r.stuck += dt; }
+                else if (hs && hs.steps > 0) { if (_hqLadderMove(ch, hs.dx, hs.dz, Math.min(W.chaseSpeed * dt, Math.max(cst, W.chaseSpeed * dt * 0.5)), dt)) r.stuck = 0; else r.stuck += dt; }
                 else if (_hqLadderMove(ch, dx / d, dz / d, cst, dt)) r.stuck = 0; else r.stuck += dt;
                 continue;
             }
@@ -98638,9 +98733,18 @@ const ThreeRenderer = (function () {
             var backHold = _hqBackHold(H, now);   // THE WAY BACK MERGES FIRST: nothing is drawn until the room is merged (the debrief's picture still covers it)
             if (!backHold && H.reflectors && H.reflectors.length) { var _rsp = _lensIn('mirrors'); try { _hqTickReflectors(H); } finally { _lensOut(_rsp); } }   // THE THIRD PASS 5.4: the mirrored render before the frame
             var noPost = (typeof window !== 'undefined' && window.EW_HQ_NO_POST) || (_lens && !_lens.post);   // THE PERF LENS: post off
-            if (backHold) { /* held */ }
-            else if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(H.scene, H.camera, _hqPostOpts(H));
+            /* THE CARD HOLD (2026-11-23, mondo's Downtown F3: a 50.8 s load into Bayside, 165 frames under the load card, 20 s of it
+               drawing the whole city under the card: "scene: classic draws 9695, bundle replays 3965, sun shadow 3601 + 2836"): while
+               the card is up and the room's files are still landing (not landed), the room is drawn at most once a second (and a slow draw waits 3x its own time after it), not every frame;
+               the files, the builders and the model landings get the time back. Once the files are in (landed: the settle warms the
+               looks) and on the way back from a fight (onFirstFrame: the room is the picture), every frame draws as before.
+               Off: window.EW_LOAD_DRAW_ALL. */
+            var cardHold = !backHold && !H.ready && !H.landed && !(H.opts && H.opts.onFirstFrame) && !(typeof window !== 'undefined' && window.EW_LOAD_DRAW_ALL) && H._cardDrawAt && performance.now() - H._cardDrawAt < Math.max(1000, 3 * (H._cardDrawMs || 0));   // (from the draw's END, and 3x a slow draw: a draw is never more than a quarter of the time)
+            if (backHold || cardHold) { /* held */ }
+            else { var _cd0 = performance.now();
+            if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(H.scene, H.camera, _hqPostOpts(H));
             else renderer.render(H.scene, H.camera);
+            if (!H.ready) { H._cardDrawAt = performance.now(); H._cardDrawMs = H._cardDrawAt - _cd0; } }
         } finally { if (mwHold) mwScene.matrixWorldAutoUpdate = true; _hqFogBack(fogHold); _EW_PLU.on.x = 0; }   // (THE ROUND WORLDS: the classic bend is the walk's draw only)
         /* NO HELD FRAME ON THE WAY BACK (2026-10-25, mondo: "no freeze"): the debrief's last picture fades on the room's first
            drawn frame with the walker in it — the room's files still landing land in the live picture — and THE WAY BACK's ease
@@ -105738,6 +105842,59 @@ const ThreeRenderer = (function () {
         try { _hqPdApply(H); } catch (e) { if (!H._pdBeatErr) { H._pdBeatErr = 1; console.warn('[PD] apply', e); } }
         try { if (typeof window._pdBeat === 'function' && H.player) window._pdBeat({ room: (H.stage && H.stage.id) || H.id, x: H.player.x, z: H.player.z, y: H.player.y }); } catch (e2) {}
     }
+    /* THE BED'S REST (2026-11-23, mondo: "bed doesn't restore my MP, there's no animation or vfx or anything"): own-side cyan motes rise
+       round the walker from a ring on the floor, ~1.6 s, then go. Its own little loop; nothing is read from the room. */
+    var _hqRestTex = null;
+    function _hqRestFx(ms) {
+        var H = _hq, pl = H && H.player; if (!H || !pl || !H.scene || typeof THREE === 'undefined') return false;
+        ms = ms || 1700;
+        if (!_hqRestTex && typeof document !== 'undefined') {
+            var cv = document.createElement('canvas'); cv.width = cv.height = 64; var x = cv.getContext('2d'), gr = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+            gr.addColorStop(0, 'rgba(190,250,255,1)'); gr.addColorStop(0.2, 'rgba(80,230,255,0.8)'); gr.addColorStop(0.55, 'rgba(0,190,255,0.25)'); gr.addColorStop(1, 'rgba(0,160,255,0)');
+            x.fillStyle = gr; x.fillRect(0, 0, 64, 64); _hqRestTex = new THREE.CanvasTexture(cv);
+        }
+        var U = _hqUnits(), g = new THREE.Group(), motes = [], i; g.name = 'hq_rest_fx';
+        g.position.set(pl.x * U, (pl.visY != null ? pl.visY : pl.y) * U, pl.z * U);
+        for (i = 0; i < 44; i++) {
+            var m = new THREE.Sprite(new THREE.SpriteMaterial({ map: _hqRestTex, color: 0x3fe6ff, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 }));
+            var a = Math.random() * Math.PI * 2, rr = 0.45 + Math.random() * 0.6;
+            m.userData = { a: a, r: rr, y0: Math.random() * 0.4, sp: 0.7 + Math.random() * 0.8, t0: Math.random() * 0.45, s: 0.18 + Math.random() * 0.16 };
+            g.add(m); motes.push(m);
+        }
+        var ring = new THREE.Mesh(new THREE.RingGeometry(0.5 * U, 0.66 * U, 48), new THREE.MeshBasicMaterial({ color: 0x5ff0ff, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
+        ring.rotation.x = -Math.PI / 2; ring.position.y = 0.04 * U; g.add(ring);
+        H.scene.add(g);
+        var t0 = performance.now();
+        var tick = function () {
+            if (_hq !== H) { try { H.scene.remove(g); } catch (e) {} return; }
+            var t = (performance.now() - t0) / ms;
+            if (t >= 1) { H.scene.remove(g); motes.forEach(function (m) { m.material.dispose(); }); ring.geometry.dispose(); ring.material.dispose(); H.dirty = true; return; }
+            motes.forEach(function (m) { var u = m.userData, k = Math.max(0, (t - u.t0) / (1 - u.t0)); var a = u.a + k * 2.2;
+                m.position.set(Math.cos(a) * u.r * U, (u.y0 + k * 2.1 * u.sp) * U, Math.sin(a) * u.r * U); m.scale.setScalar(u.s * U * (1 - k * 0.5)); m.material.opacity = k <= 0 ? 0 : 0.75 * Math.min(1, k * 4) * (1 - k); });
+            var rs = 1 + t * 2.4; ring.scale.set(rs, rs, rs); ring.material.opacity = 0.8 * (1 - t);
+            H.dirty = true; requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+        return true;
+    }
+    /* a counter on or off (its plate too): the plot dungeons' pdOff, used by the hotel's shut doors */
+    function _hqCounterShow(c, on) {
+        if (!c || c.pdOff === !on) return;
+        c.pdOff = !on; c.group.visible = on;
+        c.group.traverse(function (q) { if (q !== c.group && (q.isCSS2DObject || q.isSprite || q.isMesh)) q.visible = on; });
+        if (c.plateEl) c.plateEl.style.display = on ? '' : 'none';
+        if (_hq) _hq.dirty = true;
+    }
+    /* THE SHUT DOORS (2026-11-23): a door was opened — its OPEN counter goes, the room's own counters come */
+    function _hqShutOpened(key) {
+        var H = _hq; if (!H || !H.counters) return 0; var n = 0;
+        H.counters.forEach(function (c) {
+            var k = c.counter || {};
+            if (k.shutHide === key) { _hqCounterShow(c, false); n++; }
+            else if (k.shutGate && k.shutGate.indexOf(key) >= 0) { _hqCounterShow(c, true); n++; }
+        });
+        return n;
+    }
     function _hqPdPose(H, frames) {
         var st = H.stage; if (!st) return;
         var A = frames[st.id]; if (!A) return;
@@ -107202,6 +107359,14 @@ const ThreeRenderer = (function () {
             return out;
         },
         /* THE CROWD's Opportunist after a fight (step 7b): that NPC comes for the walker to mug him (the built mugging: its line, PAY / FIGHT) */
+        /* THE HOTEL (2026-11-23): a shut door opened (its counters swap), the guest nearest a point, the bed's rest */
+        shutOpened: function (key) { return _hqShutOpened(key); },
+        npcAt: function (x, z, r) {
+            var H = _hq; if (!H) return null; var best = null, bd = (r || 3) * (r || 3);
+            for (var i = 0; i < H.chars.length; i++) { var ch = H.chars[i]; if (!ch || ch.kind !== 'npc' || ch.away || ch.cleared || ch.cast) continue; var q = (ch.x - x) * (ch.x - x) + (ch.z - z) * (ch.z - z); if (q < bd) { bd = q; best = ch.id; } }
+            return best;
+        },
+        restFx: function (ms) { return _hqRestFx(ms); },
         npcCome: function (id, why) {
             var ch = _hq ? _hqLadderChar(id) : null; if (!ch || ch._run) return false;
             ch._run = { mode: 'chase', why: why || null, stuck: 0, lost: 0, home: _hqLadderHome(ch), ground: null }; _hq.dirty = true; if (_hq.aware) _hq.aware.next = 0; return true;

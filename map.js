@@ -3821,15 +3821,49 @@
            table into the bag (once a run); E on a made bed rests the standing members (the fallen stay down until the run ends). Offline. */
         function _hotelAct(c) {
             const H = c && c.hotel; if (!H) return;
+            if (c.shutGate && typeof window.hotelGateOpen === 'function' && !window.hotelGateOpen(c.shutGate)) return;   // behind a shut door
+            if (H.act === 'open') {
+                /* THE SHUT DOORS (2026-11-23, mondo: "Rooms should require you to open them first ... so its like a little gamble. If someone is
+                   inside then they automatically attack you"): the leaf swings, the room's plates show, its guest comes at once */
+                const r = (typeof window.hotelOpen === 'function') ? window.hotelOpen(_hqCurRoom, H.key) : null; if (!r || !r.ok) return;
+                try { playSfx('uiButtonConfirm'); } catch (e) {}
+                try { ThreeRenderer.hq.shutOpened(H.key); } catch (e) {}
+                const g = r.room && r.room.guest;
+                if (g) { try { const id = ThreeRenderer.hq.npcAt(g.x, g.z, 3); if (id) ThreeRenderer.hq.npcCome(id, 'sight'); } catch (e) { console.warn('[HOTEL] the guest', e); } }
+                try { _hqSetPrompt(ThreeRenderer.hq.target()); } catch (e) {}
+                return;
+            }
             if (H.act === 'loot') {
                 const r = _hqPartyTx(p => (typeof window.hotelLootTake === 'function') ? window.hotelLootTake(p, _hqCurRoom, H.cell) : null);
-                if (r && r.ok) { try { playSfx('uiButtonConfirm'); } catch (e) {} _hqToast(`<b>THE SAFE</b><span>${String(r.name).toUpperCase()} · INTO THE BAG</span>`, 3200); }
+                if (r && r.ok) { try { playSfx('uiButtonConfirm'); } catch (e) {} _hqToast(`<b>THE SAFE</b><span>${String(r.name).toUpperCase()}</span>`, 3200); }
                 else _hqToast(`<b>THE SAFE</b><span>${r && r.reason === 'full' ? 'THE BAG IS FULL' : 'EMPTY'}</span>`, 2400);
             } else if (H.act === 'rest') {
-                const r = _hqPartyTx(p => { if (typeof window.hqPartyEnsure === 'function') window.hqPartyEnsure(p, { last: _hqLastParty() }); return (typeof window.hotelRest === 'function') ? window.hotelRest(p) : null; });
-                if (r && r.ok) { try { playSfx('healRegen'); } catch (e) {} _hqToast(`<b>RESTED</b><span>${r.down ? 'THE STANDING AT FULL · THE FALLEN STAY DOWN' : 'PARTY AT FULL HP'}</span>`, 3200); }
+                /* THE BED (round 2, mondo: "bed doesn't restore my MP, there's no animation or vfx or anything"): the screen goes dark, the party
+                   sleeps, HP and MP come back (the dock is drawn again: it kept the old bars), and the walker wakes in the cyan rest effect */
+                if (_hotelSleeping) return;
+                const st = window.hotelRunState ? window.hotelRunState() : null;
+                if (st && st.slept && st.slept[_hqCurRoom + '|' + H.cell]) { _hqToast(`<b>THE BED</b><span>ALREADY SLEPT IN</span>`, 2200); return; }
+                _hotelSleeping = true;
+                const veil = document.createElement('div');
+                veil.className = 'hq-sleep-veil';
+                veil.style.cssText = 'position:fixed;inset:0;background:#000;opacity:0;transition:opacity 450ms ease;z-index:9000;pointer-events:none;display:flex;align-items:center;justify-content:center;color:#7ff6ff;font:700 28px/1 monospace;letter-spacing:6px;';
+                veil.textContent = 'Z z z';
+                document.body.appendChild(veil);
+                requestAnimationFrame(() => { veil.style.opacity = '1'; });
+                setTimeout(() => {
+                    const r = _hqPartyTx(p => { if (typeof window.hqPartyEnsure === 'function') window.hqPartyEnsure(p, { last: _hqLastParty() }); return (typeof window.hotelRest === 'function') ? window.hotelRest(p, _hqCurRoom, H.cell) : null; });
+                    try { _hqFillDock(); } catch (e) {}
+                    veil.style.opacity = '0';
+                    setTimeout(() => { try { veil.remove(); } catch (e) {} _hotelSleeping = false; }, 520);
+                    if (r && r.ok) {
+                        try { playSfx('healRegen'); } catch (e) {}
+                        try { ThreeRenderer.hq.restFx(1800); } catch (e) {}
+                        _hqToast(`<b>RESTED</b><span>${r.down ? 'HP AND MP FULL · THE FALLEN STAY DOWN' : 'HP AND MP FULL'}</span>`, 3200);
+                    }
+                }, 1300);
             }
         }
+        let _hotelSleeping = false;
         /* THE COT (Medical): rest the party — the panel's button and the strip */
         window._hqPartyRest = function () {
             const r = _hqPartyTx(p => { if (typeof window.hqPartyEnsure === 'function') window.hqPartyEnsure(p, { last: _hqLastParty() }); return window.hqPartyRestore(p); });

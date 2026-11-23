@@ -14756,6 +14756,29 @@ headless scan of every terrain room (each railing piece against the ground every
 - Placed fence PROPS (`hw_fence`, `chain_fence`, `fence_with_gate`, ...) are single models standing on the ground at their place; not part of this.
 - No tool to rerun: every room's railings are compiled at load.
 
+## DISASTER CITY, THE COAST SKYLINE — Bayside 9 / 16 / 21 + Entertainment 11 / 18 / 24 (2026-11-23, skyline plan; mondo 17:00: "Build it, plus the mid-rise fill")
+The plan: https://claude.ai/artifact/YEe54svVhVbLufjHdfQ5QY, sites `/mnt/project-files/skyline-plan/tools/towers.json`. Six towers, each ONE arch row
+(code parts + city textures, no pack has skyscrapers), 4 materials or fewer, no lamps, a walk-in lobby. Rules found while building:
+- A tower over a ROOF WALK keeps the walk: the bridges land on a plateau row, so the tower stands on the squares no bridge lands on
+  and those squares become a real lobby (texbuilding `skin:false, hollow:true`). The seam between the plateau and the lobby roof gets an
+  absY ghost wall (`y: level + 7, h 3`) so nobody walks off the roof route into the shaft.
+- Bayside (B.js): `skyline(ctx, byId, push)` runs in apply() before the plan-less things.
+  - #9 Food Hall Condos 115 m (`dc:bay-condos:arch`, `B.condos`): glass shaft on the back 4 rows, a balcony every floor, blade walls,
+    roof pool. The plateau `dc:P09-09-B1` is the front 3 rows (both bridges land there); `dc:bay-condos-lobby` = the lobby (lifts, concierge).
+  - #16 Waterfront Hotel 60 m (B.hotel, `HOTEL_H`, `hotelBow`): the old hotel raised and its sea front bowed (cyl arcs). KEPT LOW on
+    purpose: from the sea the Superhero Tower stays the first thing seen. MIAMI.hotel + POLISH.hotel follow `HOTEL_H` and the bow.
+  - #21 Hole Condo 75 m (`B.holecondo`, `HOLE`): a square hole 40-50.5 m up, lined white, a palm prop standing in it. Lift doors in the flat's hall.
+- Entertainment (E.js, the skyline block before `features.push`): helper `tower(id, fn)`, KIT.e = a lift square.
+  - #11 Late Fees Tower 100 m: round glass drum on three legs over the backstage yard; the plateau split into the north row
+    (`dc:P10-05-B1`) + the east column (`…:e`) where the bridges land; `EXTRA['E-latefees']` = the lobby. Lit crown, helipad, the scorch gag.
+  - #18 Casino Tower 85 m: cream slab, pink neon base bands, gold bands, a gold pyramid top, over the casino's own walk-in.
+  - #24 Mid Records Tower 55 m: 13 black records stacked on a glass core, red label, spindle, a needle spire and a tone arm.
+- Count a row's materials: one per key|tint|glow|kind|ds|roof|gain|shine (keyTop / keyEnd add one each).
+- A prop over a walk-in's roof (the Hole Condo's palm, `y` 40) is no longer counted as in the room by interior-polish.js (it pulled it down
+  under the ceiling to y 1.58). Two plateaus that only touch leave a slit the soft-lock finder reads as a SLOT: overlap them.
+- Soft-lock finder on the city after the build: 0 traps, 0 crevices (one slot the split plateau made, fixed).
+
+
 ## THE SKYLINE, THE SOUTH AND WEST TOWERS (2026-11-23, mondo 17:00 "Build it, plus the mid-rise fill")
 Plan: https://claude.ai/artifact/YEe54svVhVbLufjHdfQ5QY (sites `/mnt/project-files/skyline-plan/tools/towers.json`). This thread built the
 south and west six; Hero Plaza, Financial and the coast are other threads; Civic Center gets none (second account).
@@ -14884,6 +14907,31 @@ The fight's parked room (`_hqParked`) now also parks a BIG room (chunked, or a s
 SMALL room (shell 40,000 m² or less) that has a door back to it: walking out again resumes the city with no load. It stays parked while the
 walker goes on from small room to small room for 20 minutes (`keepMs`); entering any other room drops it. Off switch: `window.EW_HQ_NO_PARK_DOOR`.
 The console says `[HQ] ... PARKED for the building` on the way in and `[HQ] resumed` on the way out.
+
+THE HOTEL, ROUND 2 (11-23, mondo after his first run: the bed does not give MP back and shows nothing; the corner text is slop; the
+enemies must be aggro; the walls do not block moves or sight in battle; rooms must be opened first, a gamble, and a guest inside attacks;
+bigger furnished rooms, some with a second door or a hole in the wall onto another hallway; a minimap that reveals as you explore):
+- THE GUEST ROOMS: data.js hotelMaze lays 2 x 2 rooms (2 x 3, 3 x 3 from floor 5) a square apart before the corridors are dug, the
+  corridors kept one piece. Each room: one door onto a corridor; half get a second way out (`HOTEL_MD.second`) onto a corridor at least
+  5 squares away by the maze, half of those a HOLE (ragged lip, bricks on the carpet). Furniture against the walls of the squares no way
+  in touches: `couples_bed` (headboard on the wall), two nightstands with `rotary_phone` + `table_lamp`, TV table + TV, wardrobe,
+  armchair, a mini fridge in the big ones, a painting, the rug + ceiling lamp in the middle. Kinds per floor `HOTEL_MD.rooms`.
+- THE SHUT DOORS (any room): a terrain wall row with `shut: key` stands until `HQ_SHUT_OPEN[key]` (data.js, read live by hqTerrainWallAt:
+  the walk, the battle's edge walls, the sight line). A `texbuilding` inner leaf with `shut` never swings until then. A counter with
+  `shutGate: [keys]` stays hidden (plate too) until one key opens; `shutHide: key` hides once it opens (three-renderer.js _hqCounterShow /
+  hq.shutOpened). The door's OPEN counter = map.js _hotelAct 'open' -> hotelOpen -> the room's guest is sent at once (hq.npcAt + npcCome).
+- AGGRO: hotelBuild sets `HQ_NPC_TEMPERS.rooms[floor] = { all: 'brute', noGap: true }` (hqNpcTemper reads `all`, hqNpcGapHolds `noGap`).
+  A Brute's chase in a room with `hotelMaze` follows the maze (hotelStepDir: one flood from the walker's square, kept until he moves
+  square or a door opens), keeps coming while within `HOTEL_MD.hunt` squares, and starts the fight only from the next square (never
+  through a wall). `HOTEL_MD.hall` guests also stand in the corridors.
+- SIGHT + BATTLE: a room with `losWalls` stops _hqLosClear at its terrain walls; a room with `fieldSolid` builds its battle with the custom
+  maps' solid walls (hqFieldBuild: hqFieldSolidEdges -> state.edgeWalls; floor 5 test: 105 edge walls).
+- THE BED: map.js fades to black ("Z z z"), hotelRest (HP and MP, the fallen stay down, once a bed a run), draws the dock again (it
+  kept the old bars: the "no MP" report), then hq.restFx: cyan motes and a ring round the walker.
+- THE MAP: three-renderer.js _hqMmHotel draws the whole floor in the minimap box, square by square as seen (hotelSeen, per run): the
+  square you stand on, all of a room you are in, 5 squares down a corridor while the way is open. Shut doors orange, lift + stairs
+  green (the top floor's boss mark red), guests red where seen (never behind a shut door).
+- The floor's sub text and joke lines are gone; doors carry no sub.
 
 ## DISASTER CITY, THE FINANCIAL TOWERS + THE MID-RISE FILL (2026-11-23, the skyline plan, mondo 17:00 "Build it, plus the mid-rise fill")
 The plan: https://claude.ai/artifact/YEe54svVhVbLufjHdfQ5QY (sites: project files `skyline-plan/tools/towers.json`). Financial's part: towers

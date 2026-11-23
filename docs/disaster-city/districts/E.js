@@ -929,6 +929,95 @@ module.exports = { build: function (api) {
         for (const [dx, dy, w, h, col] of [[-0.3, 1.2, 0.5, 0.3, '#9ac07a'], [0.3, 1.45, 0.4, 0.2, '#e8b080'], [0.1, 1.1, 0.7, 0.05, '#8a8a8a'], [-0.1, 1.5, 0.05, 0.25, '#8a8a8a'], [0.35, 1.15, 0.3, 0.25, '#7ab0d8']]) P('box', dx, dy, s * 0.054, null, col, { size: [w, h, 0.01] });
         P('cyl', -0.42, 1.38, s * 0.06, null, '#d02020', { r: 0.05, h: 0.02, seg: 6 }); }));
     }
+    /* ═══ THE SKYLINE (2026-11-23, mondo's OK on the skyline plan, "Build it, plus the mid-rise fill"; plan https://claude.ai/artifact/YEe54svVhVbLufjHdfQ5QY,
+       sites /mnt/project-files/skyline-plan/tools/towers.json). Entertainment's three towers: 11 the Late Fees Tower (100 m, over the Backstage
+       yard), 18 the Casino Tower (85 m, over the casino) and 24 the Mid Records Tower (55 m, over the Recording studio). A tower is ONE arch row of
+       its own (`dc:<id>:tower`) of at most four materials (one mesh a material: four draw calls a tower), no lamps (the glass sheets' own glow),
+       standing on a walk-in ground floor: the casino's and the studio's own, and for the Late Fees Tower a lobby cut out of the backstage dock. ═══ */
+    {
+      const ROOF_Y = api.ROOF_H || 7;
+      if (!KIT.e) { KIT.e = k => { k.part('box', 0, 0, -0.15, CS, '#d8d4cc', { size: [3.4, k.H, 3.1] }); k.part('box', 0, 0, 1.4, null, '#50545c', { size: [2.6, 2.7, 0.04] });
+          for (const sx of [-1, 1]) k.part('box', sx * 0.55, 0, 1.43, null, '#c8ccd2', { size: [1.0, 2.4, 0.05] });
+          k.part('box', 0, 2.8, 1.42, null, '#ffa23c', { size: [0.6, 0.2, 0.05], glow: 1 }); }; BLOCK_H.e = 3; }   // a lift: its core fills the square, the doors face the walk
+      const tower = (id, fn) => { const info = bInfo.find(q => q.id === id); if (!info) { console.error('entertainment: no building for the tower on', id); return; }
+          const hw = info.cw * C / 2, hd = info.ch * C / 2, parts = [];
+          const P = (s, x, y, z, key, tint, o2) => { const q = Object.assign({ s, p: [r3(x), r3(y), r3(z)] }, o2 || {}); if (key) q.key = key; if (tint != null) { if (key === ST) { q.tint = hex(tint); q.gain = STG; } else q.tint = T(tint, key); } parts.push(q); return q; };
+          fn(P, hw, hd); rows.push({ k: 'arch', id: 'dc:' + id + ':tower', x: r3(gx(info.cx0) + hw), z: r3(gx(info.cy0) + hd), rot: 0, y: 0, parts }); };
+      const ring = (n, r) => { const pts = []; for (let i = 0; i < n; i++) { const a = 2 * Math.PI * i / n; pts.push([r3(Math.cos(a) * r), r3(Math.sin(a) * r)]); } return pts; };
+      /* 11 · THE LATE FEES TOWER (the US Bank Tower, Los Angeles; the alien-movie joke: its crown is scorched). The Backstage yard is a roof-route dock
+         whose two bridges land on its north row (RF94) and its east column (RF33): the route keeps that L of squares, and the other squares (the
+         south-west block, the plan's own south door in it) are the tower's lobby. A glass drum stands over the whole dock on a core and two legs,
+         7 m clear of the walked roof: the route runs under it. Stone fins, a setback, the lit crown (glow), a helipad on top. */
+      { const row = features.find(f => f.id === 'dc:P10-05-B1'), info = bInfo.find(q => q.id === 'P10-05-B1');
+        const x0 = row && row.x - row.w / 2, z0 = row && row.z - row.d / 2;
+        const onL = (x, z) => z < z0 + C + 0.1 || x > x0 + row.w - C - 0.1;
+        const lands = row ? features.filter(f => f.k === 'bridge').map(f => [[f.x0, f.z0], [f.x1, f.z1]].find(q => Math.abs(q[0] - row.x) <= row.w / 2 + 0.1 && Math.abs(q[1] - row.z) <= row.d / 2 + 0.1)).filter(Boolean) : [];
+        if (!row || row.k !== 'plateau' || !info || info.side !== 'S' || info.cw < 4 || info.ch < 3 || !lands.length || !lands.every(q => onL(q[0], q[1]))) console.error('entertainment: the Late Fees Tower footing is not as drawn: no tower');
+        else {
+          const pb = plotOf[info.plot].buildings.find(v => v.id === 'P10-05-B1'), dr = pb && pb.doors[0], kk = dr && dr.side === 'S' ? dr.x - pb.x : 0;
+          const bld = Object.assign({}, row.bld), lv = lvOf(plotOf[info.plot]) * LEVELS.M;
+          EXTRA['E-latefees'] = { id: 'E-latefees', name: 'Late Fees Tower', plot: info.plot, cx0: info.cx0, cy0: info.cy0 + 1, cw: info.cw - 1, ch: info.ch - 1, side: 'S' };
+          features.push({ k: 'texbuilding', id: 'dc:E-latefees', seed: 1105, x: 0, z: 0, w: 1, d: 1, rot: 0, storeys: 2, door: kk < info.cw - 1 ? Math.round(kk * C / 1.75) + 1 : 1 });
+          /* the route's L: the north row (the plan's row keeps its id) and the east column (the column runs the whole depth, over the row's corner square: two plateaus that only touch leave a slit between them) */
+          const W = row.w, D = row.d;
+          row.z = r3(z0 + C / 2); row.d = C;
+          features.push({ k: 'plateau', id: 'dc:P10-05-B1:e', x: r3(x0 + W - C / 2), z: r3(z0 + D / 2), w: C, d: r3(D), h: row.h, edge: row.edge, bld });
+          /* ghost walls on the roof where the route meets the lobby's roof */
+          for (const q of [[x0, z0 + C, x0 + W - C, z0 + C], [x0 + W - C, z0 + C, x0 + W - C, z0 + D]]) features.push({ k: 'wall', absY: true, x0: r3(q[0]), z0: r3(q[1]), x1: r3(q[2]), z1: r3(q[3]), y: r3(lv + ROOF_Y), h: 3, t: 0.3, key: 'urban:ConcreteStriped2a', ghost: true, rail: false });
+          INSIDE['E-latefees'] = { g: ['ee.L', '....', '.Z.L'], keyIn: U('ConcreteStriped1c'), floorIn: MB3, rug: '#2a2a30', lamp: '#fff0d0', dado: '#3a3d46', ceil: '#d8d4cc', sconce: '#ffd9a0' };
+          B('E-latefees', { walk: true, st: 2 }, b => { b.txt('s', b.du - 1.75, b.du + 1.75, 2.66, 0.42, 'LATE FEES TOWER', '#ffd24a', 0.16, 0.9); b.canopy(3.6, 1.3, 2.5, 0.18, CO3, '#2a2a30'); });
+          tower('P10-05-B1', (P, hw, hd) => {
+              const GLS = ['#d4e6ff', { glow: 0.4 }], STN = '#e0dcd4', CROWN = '#ffb040', DARK = '#26262a';
+              const cxL = -hw + (W - C) / 2, czL = -hd + C + (D - C) / 2;                       // the lobby's middle (the core stands on its roof)
+              P('cyl', cxL, ROOF_Y, czL, CS, STN, { r: 3.0, h: 7, seg: 20 });
+              for (const q of [[-5.0, 4.6], [3.35, 4.6], [-5.6, -2.4]]) P('cyl', q[0], ROOF_Y, q[1], CS, STN, { r: 0.55, h: 7, seg: 10 });
+              P('poly', 0, 13.1, 0, CS, STN, { pts: ring(24, 7.2), h: 0.9, under: true });                    // the soffit over the walked roof
+              P('cyl', 0, 14, 0, GT, GLS[0], Object.assign({ r: 7, h: 78, seg: 32, cap: false }, GLS[1]));       // the drum
+              P('box', 0, 14, 0, CS, STN, { size: [0.5, 78, 0.6], ring: { n: 8, r: 7.05 } });                    // the stone fins
+              P('cyl', 0, 91.6, 0, CS, STN, { r: 7.3, h: 0.6, seg: 32 });                                         // the setback
+              P('cyl', 0, 92.2, 0, GT, GLS[0], Object.assign({ r: 6.0, h: 7, seg: 28, cap: false }, GLS[1]));
+              P('cyl', 0, 95.4, 0, null, CROWN, { r: 6.12, h: 2.4, seg: 28, cap: false, glow: 1 });              // the lit crown
+              P('cyl', 0, 99.2, 0, CS, STN, { r: 6.3, h: 0.4, seg: 28 });
+              P('cyl', 0, 99.6, 0, null, DARK, { r: 5.4, h: 0.2, seg: 24 });                                     // the helipad
+              P('box', -1.0, 99.8, 0, CS, STN, { size: [0.45, 0.03, 3.4] }); P('box', 1.0, 99.8, 0, CS, STN, { size: [0.45, 0.03, 3.4] }); P('box', 0, 99.8, 0, CS, STN, { size: [2.0, 0.03, 0.45] });
+              P('cyl', 0, 99.8, 0, CS, STN, { r: 4.6, ri: 4.25, h: 0.03, seg: 28 });
+              P('box', 0, 95.0, 0, null, DARK, { size: [1.5, 3.0, 0.06], ring: { n: 4, r: 6.2, a0: 195, arc: 55 } });   // the scorch: the crown burnt black on its north-west…
+              P('box', 0, 82.0, 0, null, DARK, { size: [0.9, 9.6, 0.05], ring: { n: 3, r: 7.08, a0: 200, arc: 40 } });  // …and the soot run down the glass under it
+          });
+        } }
+      /* 18 · THE CASINO TOWER (the Strip's hotel): a cream slab over the casino, its long faces warm glass between cream piers, a pink neon band
+         round its foot, two setbacks under gold bands, a gold crown. It stands clear of the casino's domed corner tower. */
+      tower('P08-04-B1', (P, hw, hd) => {
+          const CRM = '#f1e2c0', WARM = '#ffd9a0', PINK = '#ff4fa8', z0 = -hd + 7.15, z1 = hd - 1.15, zc = (z0 + z1) / 2, L = z1 - z0, w = 2 * hw - 2.1;
+          P('box', 0, 13.4, zc, GT, WARM, { size: [w, 50.6, L], glow: 0.45, top: false });
+          for (const sx of [-1, 1]) P('box', sx * (w / 2 + 0.1), 13.4, z0 + 0.35, ST, CRM, { size: [0.45, 50.6, 0.7], n: Math.round(L / 3.3) + 1, step: [0, 0, r3((L - 0.7) / Math.round(L / 3.3))] });
+          for (const z of [z0 - 0.15, z1 + 0.15]) P('box', 0, 13.4, z, ST, CRM, { size: [w + 0.5, 50.6, 0.5] });
+          P('box', 0, 13.6, zc, null, PINK, { size: [w + 0.7, 0.35, L + 0.9], glow: 1, n: 2, step: [0, 1.2, 0] });      // the pink neon at its foot
+          P('box', 0, 64, zc, GOLD, null, { size: [w + 0.6, 0.6, L + 0.8] });
+          const z2 = z0 + 3.5, z3 = z1 - 2.6, zc2 = (z2 + z3) / 2;
+          P('box', 0, 64.6, zc2, GT, WARM, { size: [w - 1.8, 9.4, z3 - z2], glow: 0.45, top: false });
+          for (const z of [z2 - 0.15, z3 + 0.15]) P('box', 0, 64.6, z, ST, CRM, { size: [w - 1.3, 9.4, 0.5] });
+          P('box', 0, 74, zc2, GOLD, null, { size: [w - 1.2, 0.5, z3 - z2 + 0.6] });
+          P('box', 0, 74.5, zc2, ST, CRM, { size: [w - 3.6, 5.5, z3 - z2 - 6] });
+          P('roof', 0, 80, zc2, GOLD, null, { form: 'pyramid', size: [w - 3.6, 5, z3 - z2 - 6] });                   // the gold crown
+      });
+      /* 24 · THE MID RECORDS TOWER (the Capitol Records Building): a round glass tower in a stack of black records, the red label on the top one,
+         a tone arm across it and the needle spire with its red tip over the middle. It stands on the studio, clear of the lobby's little stack and the mast. */
+      tower('P11-04-B1', (P) => {
+          const X = -1.6, BLK = '#16161a', RED = ['#d03030', { glow: 0.6 }], CHR = '#d8d8d8';
+          P('cyl', X, 5.2, 0, GT, '#bfe0ff', { r: 5.6, h: 40.8, seg: 28, cap: false, glow: 0.45 });
+          P('cyl', X, 7.6, 0, null, BLK, { r: 6.8, h: 0.35, seg: 32, n: 13, step: [0, 3.0, 0] });                    // the records
+          P('cyl', X, 46, 0, null, BLK, { r: 6.8, h: 0.5, seg: 32 });
+          P('cyl', X, 46.5, 0, null, RED[0], Object.assign({ r: 2.4, h: 0.06, seg: 20 }, RED[1]));                  // the label
+          P('cyl', X, 46.5, 0, TR, CHR, { r: 0.16, h: 0.5, seg: 8 });
+          P('cyl', X, 46.56, 0, TR, CHR, { r: 0.28, r2: 0.03, h: 8.2, seg: 8 });                                     // the needle spire…
+          P('cyl', X, 54.5, 0, null, RED[0], Object.assign({ r: 0.3, h: 0.4, seg: 8 }, RED[1]));                    // …its red tip (glow only)
+          const px = X + 3.3, pz = -4.6, ex = X + 0.9, ez = -1.4, L = Math.hypot(ex - px, ez - pz), ry = Math.round(Math.atan2(-(ex - px), ez - pz) * 180 / Math.PI);
+          P('cyl', px, 46.5, pz, TR, CHR, { r: 0.35, h: 1.6, seg: 10 });                                             // the tone arm's post…
+          P('box', (px + ex) / 2, 47.9, (pz + ez) / 2, TR, CHR, { size: [0.22, 0.22, r3(L)], ry });                  // …its arm…
+          P('box', ex, 47.4, ez, TR, CHR, { size: [0.5, 0.5, 0.8], ry });                                            // …its head on the record
+      });
+    }
     features.push(...rows);
     return { arch: rows.length };
 },
