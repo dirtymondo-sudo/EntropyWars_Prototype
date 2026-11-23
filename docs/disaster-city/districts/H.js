@@ -255,8 +255,12 @@ B['P07-07-B2'] = { row: { replace: [{ dx: 0, dz: 0, w: 10, d: 7 }] }, parts() { 
 const OPEN = [
     /* 10 · HERO PLAZA — a curved colonnade behind the fountain (the tool's own fountain prop), a domed bandstand, flag poles */
     { id: 'plaza', x: -22.75, z: -33.25, parts() { const a = sheet(), R = 12;
-        a.P.push({ s: 'cyl', p: [0, 0, 0], r: 0.45, h: 5.6, seg: 10, key: MARBLE, tint: 0xffffff, ring: { n: 9, r: R, a0: 200, arc: 140 } });
-        a.cyl(0, 5.6, 0, R + 0.7, 0.8, MARBLE, 0xffffff, { seg: 40, arc: 150, a0: 195, ri: R - 0.7 });
+        /* (2026-11-23: the pizzeria next door is a walk-in now and two columns stood in its front room; the colonnade also reached over the
+           plot line into the Workshop store. It stands 4 m further south, all on the plaza, and wraps the fountain's west and north sides,
+           open to the east where the pizzeria's door is: the same nine columns, a0 155..290) */
+        const CZ = 4;
+        a.P.push({ s: 'cyl', p: [0, 0, CZ], r: 0.45, h: 5.6, seg: 10, key: MARBLE, tint: 0xffffff, ring: { n: 9, r: R, a0: 155, arc: 135 } });
+        a.cyl(0, 5.6, CZ, R + 0.7, 0.8, MARBLE, 0xffffff, { seg: 40, arc: 142, a0: 150, ri: R - 0.7 });
         const bx = 15.75, bz = 22.75;                                                                                // the bandstand, south-east of the fountain
         a.cyl(bx, 0, bz, 4.2, 0.45, MARBLE, 0xe6e0d2, { seg: 16 }); a.P.push({ s: 'cyl', p: [bx, 0.45, bz], r: 0.22, h: 3.2, seg: 8, key: MARBLE, tint: 0xffffff, ring: { n: 8, r: 3.6 } });
         a.cyl(bx, 3.65, bz, 4.3, 0.4, ALU, 0x5fae9c, { seg: 16 }); a.dome(bx, 4.05, bz, 4.1, 2.8, ALU, 0x6fc0aa, { roof: true });

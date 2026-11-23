@@ -6840,10 +6840,10 @@
         function _hqLiftHere(d, s) { return s.room === _hqCurRoom && (s.at === d.id || s.room !== d.lift); }
         function _hqLiftHtml(t) {
             const d = t.door, stops = _hqLiftStops(d), R = DOOR_HQ.rooms[d.lift] || {};
-            let html = `<div class="hq-panel-hd"><b>${_hqEsc(d.label || 'THE LIFT')}</b><span>${_hqEsc(String(R.label || '').replace(/^.*·\s*/, ''))}</span></div>`;
+            let html = `<div class="hq-panel-hd"><b>THE LIFT</b></div>`;   // mondo 11-23: the floor number and its name, nothing else
             html += '<div class="hq-rows">' + stops.map((s, i) => {
                 const chip = _hqLiftHere(d, s) ? '<i class="hq-lamp-chip st-stabilized">YOU ARE HERE</i>' : (_hqRoomExists(s.room) ? `<button class="hq-btn hq-btn-sm hq-btn-primary" data-liftstop="${i}">GO</button>` : '<i class="hq-lamp-chip st-clearance">OUT OF ORDER</i>');
-                return `<div class="hq-row hq-row-tray"><b>${_hqEsc(s.id)} · ${_hqEsc(s.label)}</b><span>${_hqEsc(s.sub || '')}</span>${chip}</div>`;
+                return `<div class="hq-row hq-row-tray"><b>${_hqEsc(s.id)} · ${_hqEsc(s.label)}</b>${chip}</div>`;
             }).join('') + '</div>';
             html += '<div class="hq-panel-actions"><button class="hq-btn" data-close="1">STEP BACK</button></div>';
             return html;
