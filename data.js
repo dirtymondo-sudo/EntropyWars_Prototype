@@ -32735,7 +32735,13 @@ const DOOR_HQ = {
            +Z (the row's `face`), solid (`rect` = half the front, half the depth). A prop row: { key, x, z, face }. The gas station is three
            pieces: the store (its washroom block beside it), the canopy with its four pumps (walked under: no collision) and the price
            sign. One district per building: docs/disaster-city/pack-claims.md. */
-        city_pizzeria:      { file: 'ebd_pizzeriascene_city_pizzeria.glb',    base: 'misc', span: 20.53, foot: 5,   rect: { hw: 5.05,  hd: 10.25 }, block: true },   // front 10.2 m, 20.5 deep, 11.5 high (three storeys, PIZZA + restaurant shop fronts)
+        /* THE CHAIN INSIDES (2026-11-23, mondo: "I want every building to have an interior. If there is a door the player should be able to walk
+           inside of it"): the pizzeria and the gas station store are OPEN: the shell without its closed doors (`_open`, bake-pack-pieces.py) and
+           the pack scene's own furnished inside (`_inside`), both in the shut building's frame. They block nothing themselves: their walls,
+           doorways, leaves and furniture are HQ_WALK_IN_PROPS' rows, laid by the room's expansion (hqWalkInRows). The shut cuts stay as `_shut`. */
+        city_pizzeria:      { file: 'world/packs/elbolilloduro/ebd_pizzeriascene_city_pizzeria_open.glb', base: 'asset', span: 20.53, foot: 0 },   // front 10.2 m, 20.5 deep, 11.5 high (three storeys, PIZZA + restaurant shop fronts); walk-in: HQ_WALK_IN_PROPS
+        city_pizzeria_inside: { file: 'world/packs/elbolilloduro/ebd_pizzeriascene_city_pizzeria_inside.glb', base: 'asset', span: 20.53, foot: 0 },   // the booths, the counter and till, the ovens, the prep tables, the fridges (the pack scene's own)
+        city_pizzeria_shut: { file: 'ebd_pizzeriascene_city_pizzeria.glb',    base: 'misc', span: 20.53, foot: 5,   rect: { hw: 5.05,  hd: 10.25 }, block: true },   // the old solid cut (no inside)
         city_diner:         { file: 'ebd_dinerscene_city_diner.glb',          base: 'misc', span: 24.3,  foot: 10,  rect: { hw: 11.7,  hd: 12.15 }, block: true },   // 23.4 x 24.3, 6.3 high with the DINER sign
         city_burgerpiz:     { file: 'ebd_burgerpiz_city_burgerpiz.glb',       base: 'misc', span: 32.54, foot: 10,  rect: { hw: 16.25, hd: 11.15 }, block: true },   // front 32.5 m, 22.3 deep, 6.7 high
         city_6twelve:       { file: 'ebd_6twelve_city_6twelve.glb',           base: 'misc', span: 22.77, foot: 10,  rect: { hw: 11.4,  hd: 10.55 }, block: true },   // 22.8 x 21.1, 6.2 high (the convenience store)
@@ -32743,7 +32749,9 @@ const DOOR_HQ = {
         city_vhs_shop:      { file: 'ebd_vhsshop_city_vhs_shop.glb',          base: 'misc', span: 14.86, foot: 6,   rect: { hw: 7.4,   hd: 6.8 },   block: true },   // 14.9 x 13.6, 4.1 high
         city_house:         { file: 'ebd_house_city_house.glb',               base: 'misc', span: 20.17, foot: 7,   rect: { hw: 7.2,   hd: 10.1 },  block: true },   // front 14.4 m (the garage), 20.2 deep, 9.1 high, a back porch
         city_quequis_house: { file: 'ebd_quequis_city_quequis_house.glb',     base: 'misc', span: 31.69, foot: 6,   rect: { hw: 15.85, hd: 6.05 },  block: true },   // front 31.7 m, 12.1 deep, 5.6 high (a shop with a house behind one wall)
-        city_gas_store:     { file: 'ebd_gasscene_city_gas_store.glb',        base: 'misc', span: 27.88, foot: 8,   rect: { hw: 13.95, hd: 8.3 },   block: true },   // 27.9 x 16.6, 5.3 high (store 14.3 wide + the washroom block)
+        city_gas_store:     { file: 'world/packs/elbolilloduro/ebd_gasscene_city_gas_store_open.glb', base: 'asset', span: 27.88, foot: 0 },   // 27.9 x 16.6, 5.3 high (store 14.3 wide + the washroom block); walk-in: HQ_WALK_IN_PROPS
+        city_gas_store_inside: { file: 'world/packs/elbolilloduro/ebd_gasscene_city_gas_store_inside.glb', base: 'asset', span: 27.88, foot: 0 },   // the shelf aisles and their stock, the counter and till, the slush and coffee machines, the stockroom, the washroom stalls (the pack scene's own)
+        city_gas_store_shut: { file: 'ebd_gasscene_city_gas_store.glb',        base: 'misc', span: 27.88, foot: 8,   rect: { hw: 13.95, hd: 8.3 },   block: true },   // the old solid cut (no inside)
         city_gas_canopy:    { file: 'ebd_gasscene_city_gas_canopy.glb',       base: 'misc', span: 21.67, foot: 0 },                                                   // 21.7 x 16.7, 7.6 high: two pillars, four pumps, the lit ceiling
         city_gas_sign:      { file: 'ebd_gasscene_city_gas_sign.glb',         base: 'misc', h: 10.51,    foot: 0.8, block: true },                                    // the price pylon, 3 m wide
         city_taco_stand:    { file: 'ebd_tacos_city_taco_stand.glb',          base: 'misc', span: 5.84,  foot: 1.5, rect: { hw: 2.9,   hd: 1.55 },  block: true },   // 5.8 x 3.1, 2.7 high, the serving side +Z
@@ -57630,6 +57638,9 @@ const DOOR_HQ = {
                 {key:'psx_wooden_crate_3',face:262,x:-214.25,z:204.75},
                 {key:'cardboard_boxes',face:90,x:-237.35,z:169.75},
                 {key:'ind_vent',face:270,x:-183.75,z:196.21},
+                {key:'psx_metal_barrel_mp_3',x:-204.3,z:196.55},
+                {key:'psx_metal_barrel_mp_1',x:-205.15,z:196.55},
+                {key:'psx_metal_barrel_mp_0',x:-204.8,z:197.25},
                 {key:'psx_wooden_crate_3',face:8,x:-197.75,z:181.25},
                 {key:'cardboard_boxes',face:105,x:-195.35,z:194.25},
                 {key:'ind_vent',face:180,x:-164.24,z:169.75,floor:true},
@@ -58147,9 +58158,6 @@ const DOOR_HQ = {
                 {key:'psx_planter_pot_mp_1_full',x:-69,z:120.74,face:0,h:0.55},
                 {key:'psx_planter_pot_mp_1_full',x:-62,z:120.74,face:0,h:0.55},
                 {key:'roads_g_sign_005',x:238.35,z:167.25,face:270,h:2.4},
-                {key:'psx_metal_barrel_mp_3',x:-204.3,z:196.55},
-                {key:'psx_metal_barrel_mp_1',x:-205.15,z:196.55},
-                {key:'psx_metal_barrel_mp_0',x:-204.8,z:197.25},
                 {key:'psx_wooden_crate_3',face:106,x:245.875,z:-166.875},
                 {key:'meshy_sandbags',x:124.25,z:53.65,face:90},
                 {key:'cardboard_boxes',x:-97.525,z:184.575,face:242},
@@ -90078,12 +90086,24 @@ function hqTexBuildingRows(f) {
     const C = [P(-hw, -hd), P(hw, -hd), P(hw, hd), P(-hw, hd)], out = [];
     const gw = (a, b, lift) => { const r = { k: 'wall', x0: a[0], z0: a[1], x1: b[0], z1: b[1], t, y: top, ghost: true, rail: false, texb: f.id || true, texbOf: of }; if (lift) r.lift = lift; out.push(r); };
     const D = f.hollow && !hqTexbPrism(f) && !PK ? hqTexbDoor(f) : null;   // a prism building stays solid (its sprite faces have no doorway to cut); a pack building too
+    /* THE OTHER DOORWAYS (2026-11-23, THE CHAIN INSIDES; mondo: "If there is a door the player should be able to walk inside of it"): `gaps` =
+       [{ side: 'b' | 'l' | 'r' | 'f', u, w, h }] more openings in a hollow row's walls (a back door, a side door): `u` = the gap's middle along that
+       face in the lot frame (x on the back / front, z on the left / right), `w` its width, `h` its head. The leaves are a `doorsOnly` row's. */
+    const GAPS = (f.hollow && Array.isArray(f.gaps)) ? f.gaps.filter(g => g && isFinite(+g.u) && +g.w > 0.3) : [];
+    const SIDE_I = { b: 0, r: 1, f: 2, l: 3 };
     for (let i = 0; i < 4; i++) {
         const a = C[i], b = C[(i + 1) % 4];
-        if (D && i === 2) {   // THE INSIDE: the front (+z) has its doorway — the wall either side of it and a lintel over it
-            const r0 = P(D.lx + D.cw / 2, hd), l0 = P(D.lx - D.cw / 2, hd);
-            gw(a, r0); gw(l0, b); gw(r0, l0, Math.min(D.doorH, H - 0.3));
-        } else gw(a, b);
+        /* the face's openings as [from, to, head] along it from corner a (a: back −x → +x, right −z → +z, front +x → −x, left +z → −z) */
+        const ops = [];
+        if (D && i === 2) ops.push([hw - (D.lx + D.cw / 2), hw - (D.lx - D.cw / 2), D.doorH]);   // THE INSIDE: the front (+z) has its doorway — the wall either side of it and a lintel over it
+        GAPS.forEach(g => { if (SIDE_I[g.side] !== i) return; const u = +g.u, w2 = +g.w / 2, hh = Math.max(1.8, +g.h || HQ_SHAPE_RULES.doorH);
+            ops.push(i === 0 ? [u - w2 + hw, u + w2 + hw, hh] : i === 1 ? [u - w2 + hd, u + w2 + hd, hh] : i === 2 ? [hw - u - w2, hw - u + w2, hh] : [hd - u - w2, hd - u + w2, hh]); });
+        if (!ops.length) { gw(a, b); continue; }
+        const len = Math.hypot(b[0] - a[0], b[1] - a[1]), at = t => [_hqR4(a[0] + (b[0] - a[0]) * t / len), _hqR4(a[1] + (b[1] - a[1]) * t / len)];
+        ops.sort((p, q) => p[0] - q[0]);
+        let s0 = 0;
+        ops.forEach(o => { const o0 = Math.max(s0, o[0]), o1 = Math.min(len, o[1]); if (o1 <= o0) return; if (o0 - s0 > 0.02) gw(at(s0), at(o0)); gw(at(o0), at(o1), Math.min(o[2], H - 0.3)); s0 = o1; });
+        if (len - s0 > 0.02) gw(at(s0), at(len));
     }
     const r0 = P(-hw, 0), r1 = P(hw, 0);
     out.push({ k: 'bridge', x0: r0[0], z0: r0[1], x1: r1[0], z1: r1[1], w: _hqR4(2 * hd), y: _hqR4(y0 + H + 0.02), thick: 0.3, plain: true, rails: false, hide: true, texb: f.id || true, texbOf: of, id: 'texroof:' + (f.id || (f.x + ',' + f.z)) });
@@ -90118,6 +90138,58 @@ const HQ_PACK_BUILDINGS = {
 /* the pack building a texbuilding row wears (its `key`), or null */
 function hqTexbPack(f) { return (f && typeof f.key === 'string' && Object.prototype.hasOwnProperty.call(HQ_PACK_BUILDINGS, f.key)) ? HQ_PACK_BUILDINGS[f.key] : null; }
 function hqTexbPrism(f) { return !!(f && typeof f.key === 'string' && (HQ_TEXB_PRISMS.indexOf(f.key) >= 0 || HQ_TEXB_PRISMS_RETIRED.indexOf(f.key) >= 0)); }
+/* THE CHAIN INSIDES (2026-11-23, mondo: "I want every building to have an interior. If there is a door the player should be able to walk inside
+   of it (very important for a game called DOOR HQ)"; the plan of record https://claude.ai/artifact/RVPh8wvd9u6uAPj6QubPnd): a catalogue building
+   that opens. Every placement of the key, in any room, any tool, gets these rows from the room's expansion (hqWalkInRows), in the prop's own frame
+   (x = the model's right, z = toward its entrance, metres, as bake-pack-pieces.py's MARK lines print them):
+     rooms  = hollow texbuilding rows laid inside the shell (`skin: false` + `bareIn`: the pack draws the walls, floor and ceiling; the row is the
+              walker's walls, the doorway (`doorLx` / `doorW` / `doorH` = the pack's own door), the swinging leaf, the hidden ceiling slab), `gaps` =
+              its other doorways (data.js hqTexBuildingRows)
+     solids = the parts of the shell nobody enters (skin-less solid rows), walls = partitions inside, boxes = the furniture ([x0, x1, z0, z1, h],
+              ghost walls), leaves = the leaves in `gaps` and partitions (a `doorsOnly` row), inside = the furnished inside, drawn as a prop.
+   A prop row with `shut: true` stays shut (no rows; then use the `_shut` key, the old solid cut). Notes: docs/notes/areas-complexes.md "THE CHAIN INSIDES". */
+const HQ_WALK_IN_PROPS = {
+    city_pizzeria: {   // one long room: the booths by the door, the counter and till, the kitchen behind the header beam (the back store behind its wall is shut: no door)
+        inside: 'city_pizzeria_inside',
+        rooms: [{ x: -2.355, z: 1.41, w: 5.05, d: 15.98, doorLx: 0.01, doorW: 1.63, doorH: 2.43, leaf: 'leaf_glass', leafDouble: true }],
+        solids: [[0.17, 5.07, -10.27, 10.26, 10.5], [-5.07, 0.17, -10.27, -6.58, 10.5]],
+        boxes: [[-4.70, -3.22, 4.65, 9.05, 1.2], [-1.48, 0.01, 4.65, 9.05, 1.2], [-4.74, -1.96, 1.78, 2.70, 1.2], [-0.93, 0.02, 0.0, 2.84, 2.4], [-4.70, -3.70, -5.60, -0.14, 1.2], [-1.00, 0.02, -5.40, -0.20, 1.2]],
+    },
+    city_gas_store: {   // the shop (the front door, the counter, the aisles), the stockroom behind its door with its own back door east, the washroom block beside it
+        inside: 'city_gas_store_inside',
+        rooms: [{ x: -7.22, z: 0.11, w: 12.74, d: 14.70, doorLx: 2.07, doorW: 0.94, doorH: 2.49, leaf: 'leaf_glass', gaps: [{ side: 'r', u: -6.0, w: 0.92, h: 2.49 }] },
+                { x: 11.615, z: 3.734, rot: 90, w: 7.79, d: 4.65, doorLx: -2.714, doorW: 0.94, doorH: 2.49, leaf: 'leaf_bathroom' }],
+        walls: [[-13.44, -2.99, -3.40, -2.99, 3.4], [-2.47, -2.99, -0.94, -2.99, 3.4]],
+        leaves: [{ x: -2.935, z: -2.99, rot: 0, w: 0.93, h: 2.45, leaf: 'leaf_office' }, { x: -1.0, z: -5.89, rot: 90, w: 0.92, h: 2.45, leaf: 'leaf_security' }],
+        boxes: [[-13.38, -11.42, 7.47, 8.28, 2.1], [-10.89, -6.09, 3.28, 4.55, 1.75], [-10.89, -6.09, 0.07, 1.34, 1.75], [-11.0, -6.09, 6.45, 7.08, 1.75], [-10.97, -6.09, -2.92, -2.29, 1.75],
+                [-3.76, -2.84, 2.75, 7.16, 1.25], [-2.11, -1.02, -2.88, 0.04, 1.25], [-5.89, -4.21, -2.88, -1.90, 1.2], [-4.92, -3.53, -3.97, -3.21, 1.1], [-7.42, -4.68, -6.85, -6.0, 2.6], [11.96, 13.69, 0.04, 7.42, 2.5]],
+    },
+};
+/* a room's walk-in rows (THE CHAIN INSIDES): { rows, props } from its catalogue buildings that open (HQ_WALK_IN_PROPS) */
+function hqWalkInRows(room) {
+    const out = { rows: [], props: [] }, P0 = (room && Array.isArray(room.props)) ? room.props : [];
+    P0.forEach((p, i) => {
+        const S = p && !p.shut && HQ_WALK_IN_PROPS[p.key]; if (!S) return;
+        const R0 = ((((+p.face || 0) + 180) % 360) + 360) % 360, q = R0 * Math.PI / 180, c = Math.cos(q), s = Math.sin(q), px = +p.x || 0, pz = +p.z || 0;
+        const at = (lx, lz) => [_hqR4(px + lx * c - lz * s), _hqR4(pz + lx * s + lz * c)], y = (typeof p.y === 'number') ? { y: p.y } : {}, tag = 'walkin:' + p.key + ':' + i;
+        (S.rooms || []).forEach((r, j) => { const w = at(r.x, r.z);
+            out.rows.push(Object.assign({ k: 'texbuilding', id: tag + ':r' + j, x: w[0], z: w[1], w: r.w, d: r.d, rot: (R0 + (r.rot || 0)) % 360, storeys: r.storeys || 1, seed: 1, skin: false, hollow: true, bareIn: true,
+                doorLx: r.doorLx, doorW: r.doorW, doorH: r.doorH, leaf: r.leaf || 'leaf_glass', leafDouble: !!r.leafDouble }, r.gaps ? { gaps: r.gaps } : {}, y)); });
+        (S.solids || []).forEach((b, j) => { const w = at((b[0] + b[1]) / 2, (b[2] + b[3]) / 2);
+            out.rows.push(Object.assign({ k: 'texbuilding', id: tag + ':s' + j, x: w[0], z: w[1], w: _hqR4(b[1] - b[0]), d: _hqR4(b[3] - b[2]), rot: R0, storeys: Math.max(1, Math.round((b[4] || 3.5) / HQ_SHAPE_RULES.texStorey)), seed: 1, skin: false }, y)); });
+        const ghost = (a, b, t, h) => out.rows.push(Object.assign({ k: 'wall', id: tag + ':g' + out.rows.length, x0: a[0], z0: a[1], x1: b[0], z1: b[1], t: _hqR4(t), h, key: 'urban:ConcreteStriped2a', ghost: true, rail: false }, y));
+        (S.walls || []).forEach(wl => ghost(at(wl[0], wl[1]), at(wl[2], wl[3]), 0.2, wl[4] || 3));
+        (S.boxes || []).forEach(b => { const bw = b[1] - b[0], bd = b[3] - b[2], cx = (b[0] + b[1]) / 2, cz = (b[2] + b[3]) / 2, t = Math.min(bw, bd), e = (Math.max(bw, bd) - t) / 2;
+            if (bw >= bd) ghost(at(cx - e, cz), at(cx + e, cz), t, b[4] || 1.2); else ghost(at(cx, cz - e), at(cx, cz + e), t, b[4] || 1.2); });
+        if ((S.leaves || []).length) out.rows.push(Object.assign({ k: 'texbuilding', id: tag + ':doors', x: px, z: pz, w: 2, d: 2, rot: R0, storeys: 1, skin: false, doorsOnly: true, leaf: 'leaf_office',
+            inner: S.leaves.map(l => ({ x: l.x, z: l.z, rot: l.rot || 0, w: l.w, h: l.h, leaf: l.leaf, double: !!l.double })) }, y));
+        /* both models stand on the field's own ground (`floor: true`), never on the tops of the rows above laid inside them (seen 11-23 in
+           Hero Plaza: the pizzeria stood 11 m up, on its own back store's solid row) */
+        if (typeof p.y !== 'number') p.floor = true;
+        if (S.inside) out.props.push(Object.assign({ key: S.inside, x: px, z: pz, face: +p.face || 0, noBlock: true, walkIn: tag }, (typeof p.y === 'number') ? { y: p.y, lift: p.y } : { floor: true }));
+    });
+    return out;
+}
 /* THE PRISM BANDS (2026-11-03, mondo: "always apply the bottom of the texture and the top of the texture to the bottom and top of the
    building, and repeat everything else as needed depending on how many stories"): each prism sprite cut in three, in rows of the sprite
    file (0 = its top) — [where the TOP band ends, where the BOTTOM band starts, how many storeys the art between them shows]. A building
@@ -90140,6 +90212,9 @@ function hqTexbDoor(f) {
     let col = Math.floor((cols - 1) / 2);
     if (isFinite(+f.door) && +f.door >= 1) col = Math.min(cols - 1, Math.round(+f.door) - 1);
     const lx = -L / 2 + (col + 0.5) * cw;   // the front's squares run from its left as you face it from outside (−x of the lot frame), as the drawn cells do
+    /* THE CHAIN INSIDES (2026-11-23): a row laid over a pack building's own doorway names it in metres: `doorLx` (its middle along the front,
+       the lot frame's x), `doorW`, `doorH` (the pack's door, never the square's), so the walker's gap, the leaf and the clear doorway are the model's */
+    if (isFinite(+f.doorLx)) return { cols, col: -1, cw: Math.max(0.6, +f.doorW || cw), lx: +f.doorLx, doorH: Math.max(1.8, +f.doorH || HQ_SHAPE_RULES.doorH) };
     return { cols, col, cw, lx, doorH: HQ_SHAPE_RULES.doorH };
 }
 /* the lowest ground under a texbuilding's footprint (its corners, edge middles and middle) — `hAt` the field before the building */
@@ -90154,7 +90229,8 @@ function hqTexBuildingGround(f, hAt) {
 function hqRoomExpand(room, prefabs) {
     const T = (room && room.terrain) || {}, F = Array.isArray(T.features) ? T.features : [];
     const PF = prefabs || HQ_PREFABS;
-    const busy = F.some(f => f && (f.k === 'opening' || f.k === 'prefab' || f.k === 'kit' || f.k === 'texbuilding' || f.k === 'arch'));
+    const WI = hqWalkInRows(room);   // THE CHAIN INSIDES (2026-11-23): the catalogue buildings that open
+    const busy = WI.rows.length > 0 || F.some(f => f && (f.k === 'opening' || f.k === 'prefab' || f.k === 'kit' || f.k === 'texbuilding' || f.k === 'arch'));
     if (!busy) return { features: F, props: [], marks: [], texb: [], arch: [] };
     const props = [], marks = [], texb = [], arch = [];
     const walk = (rows, depth, P, from, path) => {
@@ -90187,6 +90263,7 @@ function hqRoomExpand(room, prefabs) {
         return out;
     };
     let rows = walk(F, 0, null, null, []);
+    if (WI.rows.length) { rows = rows.concat(WI.rows); WI.props.forEach(p => props.push(p)); }   // THE CHAIN INSIDES: the walls, doorways, leaves and furniture of the buildings that open, and their furnished insides
     /* the texbuildings: drawn by the renderer from info.texb, walked as their rows */
     const tb = [];
     rows.forEach(f => { if (f.k === 'texbuilding') { texb.push(f); hqTexBuildingRows(f).forEach(r => tb.push(r)); } });
@@ -90213,7 +90290,7 @@ function hqPrefabFromRows(id, label, features, props, cx, cz) {
     const P = { x: -(+cx || 0), z: -(+cz || 0) };
     return { id, label: label || id, terrain: { features: (features || []).map(f => hqRowPlace(f, P)), marks: [] }, props: (props || []).map(p => hqRowPlace(p, P)) };
 }
-if (typeof window !== 'undefined') Object.assign(window, { hqPlanShapes, hqPlanIn, hqPlanReport, hqPlanFreeze, HQ_PREFABS, HQ_SHAPE_RULES, HQ_KIT_FORMS, hqRowPlace, hqKitRows, hqOpeningPieces, hqTexBuildingRows, HQ_TEXB_PRISMS, HQ_TEXB_PRISM_BANDS, hqTexbPrism, hqTexbDoor, HQ_PACK_BUILDINGS, hqTexbPack, hqRoomExpand, hqRowExpand, hqPrefabFromRows });
+if (typeof window !== 'undefined') Object.assign(window, { hqPlanShapes, hqPlanIn, hqPlanReport, hqPlanFreeze, HQ_PREFABS, HQ_SHAPE_RULES, HQ_KIT_FORMS, hqRowPlace, hqKitRows, hqOpeningPieces, hqTexBuildingRows, HQ_TEXB_PRISMS, HQ_TEXB_PRISM_BANDS, hqTexbPrism, hqTexbDoor, HQ_PACK_BUILDINGS, hqTexbPack, HQ_WALK_IN_PROPS, hqWalkInRows, hqRoomExpand, hqRowExpand, hqPrefabFromRows });
 /* ══ THE PALETTE (EDITOR_PLAN.md §5.2 + §5.5, E2 — 2026-09-29) ════════════════════════════════════════════════════════════
    What the editor's palette tabs place, built from the game's own registries at run time (R2): MODELS = DOOR_HQ.catalogue
    (the file props, the procs, the misc and spell-prop rows below), PEOPLE = sprites.js RACE_MODELS_3D + DOOR_CAST_MODELS,

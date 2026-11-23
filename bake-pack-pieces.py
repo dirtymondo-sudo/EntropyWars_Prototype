@@ -101,6 +101,17 @@ JOBS += [
     ('city_burgerpiz', 'burgerpiz', [{'near': 'BurgerPiz', 'pad': 2.5, 'keep': r'^(BurgerPiz|RooftilesMetal|L$|Windows|Door_F|Door$|Door_01$|Wall_W)'}], -90),
     ('city_6twelve', '6twelve', [{'near': '6twelve', 'pad': 1.0, 'keep': r'^(6twelve|Glasses|Door(_0[12])?$|Door_frame|Sign)'}], 0, {'cut': 0.6}),
     ('city_taco_stand', 'tacos', [{'near': 'Taco_stand', 'pad': 1.5, 'keep': r'^(Taco_stand|Taco|Tacos)'}], 180),
+    # THE CHAIN INSIDES (2026-11-23, mondo: "I want every building to have an interior. If there is a door the player should be able to walk
+    # inside of it"): the pizzeria and the gas station store open. `_open` = the shut building without its closed doors (the doorways stay
+    # open; the game hangs swinging leaves there), `_inside` = the scene's own furnished inside (never the shell), both centred on the shut
+    # building's frame (`frame`), so they stand on its row exactly. The MARK lines are the rooms and doorways in that frame (data.js
+    # HQ_WALK_IN_PROPS reads them). Notes: docs/notes/areas-complexes.md "THE CHAIN INSIDES".
+    ('city_pizzeria_open', 'pizzeriascene', [{'near': 'building_01.001', 'pad': 1.0, 'keep': r'^(building_01\.00[12]$|Glass$|Decorative_Sign)', 'frame': r'^(building_01\.00[12]$|Door(\.001)?$|Glass$|Decorative_Sign)'}], -90,
+        {'marks': {'room': [-31.75, -16.0, 16.2, 20.95], 'door': [-16.07, -15.88, 17.77, 19.4], 'shell': [-35.59, -15.06, 15.86, 26.0]}}),
+    ('city_pizzeria_inside', 'pizzeriascene', [{'near': 'building_01.001', 'pad': 1.0, 'keep': r'^(?!(building_01|Door|Glass$|Decorative_Sign|metal_tread|Road|Lines|streetlight|traffic_light|Fence|Gardener|Tree|Plane|Cylinder(\.00[0-2])?$))', 'frame': r'^(building_01\.00[12]$|Door(\.001)?$|Glass$|Decorative_Sign)'}], -90),
+    ('city_gas_store_open', 'gasscene', [{'box': [-4, 27, 12, 31], 'keep': r'^(6twelve|Bathrooms|Frame|Glass|Window_frame|ICE|Toilets_Sing|spotlight)', 'frame': r'^(6twelve|Bathrooms|Door(_\d+)?$|Frame|Glass|Window_frame|ICE|Toilets_Sing|spotlight)'}], 0,
+        {'marks': {'store': [-2.1, 10.4, 14.25, 28.65], 'front': [5.72, 6.66, 14.17, 14.33], 'stock': [7.94, 8.87, 24.5, 24.6], 'back': [10.31, 10.35, 26.99, 27.91], 'wc': [20.75, 25.2, 14.0, 21.65], 'wcdoor': [20.79, 20.84, 20.07, 21.01]}}),
+    ('city_gas_store_inside', 'gasscene', [{'box': [-4, 27, 12, 31], 'keep': r'^(?!(6twelve|Bathrooms|Door(_\d+)?$|Frame|Glass|Window_frame|ICE|Toilets_Sing|spotlight|Asphalt|Backgrounds|Dumpster|Trash|Sidewalk|Pillar|Fuel_pump|The_ceiling))', 'frame': r'^(6twelve|Bathrooms|Door(_\d+)?$|Frame|Glass|Window_frame|ICE|Toilets_Sing|spotlight)'}], 0),
     ('city_laundry', 'laundryscene', [{'near': 'Laundry_building', 'pad': 1.0, 'keep': r'^(Laundry_building|Sign_Laundry|Door$|DoorsWood|Glass|Window_frame|frame_door)'}], -90),
     ('city_vhs_shop', 'vhsshop', [{'near': 'Shop_VHS', 'pad': 0.5, 'keep': r'^(Shop_VHS$|Shop_VHS\._Windows|Door$|Frame_Door)'}], 180, {'cut': 3.6}),
     ('city_house', 'house', ['House'], 0),
@@ -186,7 +197,7 @@ for f,js in byfile.items():
     tmp=TMP; bpy.ops.wm.save_as_mainfile(filepath=tmp)
     for j in js:
         bpy.ops.wm.open_mainfile(filepath=tmp)
-        keep=set()
+        keep=set(); fpts=[]
         for n in j['nodes']:
             if isinstance(n,dict):   # a REGION (THE TOWN RIM's TRAILERS): every matching object whose middle is inside the near node's footprint
                 import re
@@ -197,10 +208,13 @@ for f,js in byfile.items():
                     if not ref: print('MISSING NODE',n['near'],'in',f); continue
                     rp=[ref.matrix_world@v.co for v in ref.data.vertices]; pad=n.get('pad',1.0)
                     x0=min(p.x for p in rp)-pad; x1=max(p.x for p in rp)+pad; y0=min(p.y for p in rp)-pad; y1=max(p.y for p in rp)+pad
+                frx=re.compile(n['frame']) if n.get('frame') else None   # THE CHAIN INSIDES (2026-11-23): `frame` = the objects whose box centres the piece (the shut building's own), so an open shell and its inside share one frame
                 for o in bpy.data.objects:
-                    if o.type!='MESH' or not rx.search(o.name): continue
+                    if o.type!='MESH': continue
                     c=sum((o.matrix_world@v.co for v in o.data.vertices),Vector())/max(1,len(o.data.vertices))
-                    if x0<=c.x<=x1 and y0<=c.y<=y1: keep.add(o); keep.update(o.children_recursive)
+                    if not (x0<=c.x<=x1 and y0<=c.y<=y1): continue
+                    if frx and frx.search(o.name): fpts.extend(o.matrix_world@v.co for v in o.data.vertices)
+                    if rx.search(o.name): keep.add(o); keep.update(o.children_recursive)
                 continue
             alone=n.endswith('!')   # `name!` = that node without its children
             o=bpy.data.objects.get(n.rstrip('!'))
@@ -222,9 +236,14 @@ for f,js in byfile.items():
         bpy.ops.object.transform_apply(location=True,rotation=True,scale=True)
         pts=[v.co for o in meshes for v in o.data.vertices]
         mn=Vector((min(p.x for p in pts),min(p.y for p in pts),min(p.z for p in pts)));mx=Vector((max(p.x for p in pts),max(p.y for p in pts),max(p.z for p in pts)))
+        if fpts:   # THE CHAIN INSIDES: centred as the shut building was (its `frame` objects)
+            mn=Vector((min(p.x for p in fpts),min(p.y for p in fpts),min(p.z for p in fpts)));mx=Vector((max(p.x for p in fpts),max(p.y for p in fpts),max(p.z for p in fpts)))
         off=Vector(((mn.x+mx.x)/2,(mn.y+mx.y)/2,mn.z))
         rz=j.get('rotz',0)
         R=Matrix.Rotation(rz*3.14159265/180,4,'Z')
+        for mk,(mx0,mx1,my0,my1) in (j.get('marks') or {}).items():   # THE CHAIN INSIDES: a box in the scene's metres, printed in the piece's own frame (x right, z to the front)
+            ps=[R@(Vector((a,b,off.z))-off) for a in (mx0,mx1) for b in (my0,my1)]
+            print('MARK',j['out'].split('/')[-1],mk,'x',round(min(p.x for p in ps),3),round(max(p.x for p in ps),3),'z',round(min(-p.y for p in ps),3),round(max(-p.y for p in ps),3))
         SC=Matrix.Scale(j.get('scale',1.0),4)   # `scale` (THE INDUSTRIAL PACK): the piece at this share of the file's size
         for o in meshes: o.data.transform(R@SC@Matrix.Translation(-off))
         if j.get('cut'):
@@ -240,6 +259,12 @@ for f,js in byfile.items():
             for o in meshes: o.data.transform(Matrix.Translation((0,0,-j['cut'])))
             pts=[v.co for o in meshes for v in o.data.vertices]
             mn=Vector((min(p.x for p in pts),min(p.y for p in pts),min(p.z for p in pts)));mx=Vector((max(p.x for p in pts),max(p.y for p in pts),max(p.z for p in pts)))
+        if fpts:   # THE CHAIN INSIDES: two zero-area pins at the frame's corners, so the game (which fits a model by its box) scales and centres the piece as the shut building
+            pm=bpy.data.meshes.new('frame_pin'); a=R@SC@(mn-off); b=R@SC@(mx-off)
+            pm.from_pydata([tuple(a),tuple(a),tuple(a),tuple(b),tuple(b),tuple(b)],[],[(0,1,2),(3,4,5)]); po=bpy.data.objects.new('frame_pin',pm); bpy.context.scene.collection.objects.link(po); meshes.append(po)
+            bpy.ops.object.select_all(action='DESELECT')
+            for o in meshes: o.select_set(True)
+            bpy.context.view_layer.objects.active=meshes[0]
         if len(meshes)>1 and j.get('join',True):
             bpy.ops.object.join()
         for mat in bpy.data.materials:

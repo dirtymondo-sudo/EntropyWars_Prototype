@@ -14819,6 +14819,54 @@ true gets every opaque Phong material zeroed (specular 0, shininess 0) once at r
 `H.landed = true`; a one-time read at build, not per frame). The hotel floors set it, plus fewer, softer lamps
 (`HOTEL_MD.lamps` 6, `shell.lampK` 0.7). Off switch: `window.EW_HQ_NO_MATTE = true`. Any other room that looks shiny: add `matte: true` to its shell.
 
+## THE INTERIOR KITS + THE CHAIN INSIDES + THE DOOR FINDER + THE PARKED CITY (2026-11-23, building-interiors plan step 1)
+mondo 11-23: "I want every building to have an interior. If there is a door the player should be able to walk inside of it (very important
+for a game called DOOR HQ)"; 16:42: "unreachable doors should just either be turned into windows or switched to a side of the building where
+you would be able to walk out on to walkable ground". Plan: https://claude.ai/artifact/RVPh8wvd9u6uAPj6QubPnd (step 1 = this; the Hotel, the
+Hero Tower and the skyline are their own threads; step 2 = the district threads open their doors with these tools).
+
+### THE DOOR FINDER (`find-doors.js`, repo-only)
+`node find-doors.js <room…> | --all [--jobs 3] | --zone "<ZONE>"` (`--no-reach` = counts only, 3 s for the city). Per room it lists:
+OPEN (a hollow row's doorway or one of its `gaps`), WALKIN-X (a walk-in whose doorway nobody reaches), DRAWN (an arch part in an
+`urban:Door*` / `urban:MetalShutter*` sheet that is no walk-in's doorway; a door's halves and a shutter's bands count once), PACK (a whole
+catalogue building with no inside; the list is `BUILDING_PROPS` at the top of the tool, add a new pack building there), SOLID (a texbuilding
+drawn with its own outside and no inside: the style paints a door). `reach` = the ground 1.4 m outside it is walked (the walker's reach from
+the doors / spawn, `_hqTReachJump`, as find-softlocks.js reads it); `sides walked` = which of the building's sides open onto walked ground
+(mondo's rule: an unreached door becomes a window, or moves to one of those sides). JSON per room + `_summary.md` in `shots/doors/`.
+FIRST RUN, main 7bb71d1 (11-23): Disaster City (3 rooms) 110 walk-ins, 296 closed = 247 painted doors (in 128 buildings, 118 of them with no
+walk-in near), 10 pack buildings (diner, burgerpiz, vhs, laundry, 2 houses, quequis, trailer, outhouse, lighthouse), 39 solid rows; 47 have
+no reached ground. The rest of the world: ~60, nearly all pack huts (Leylines' Babel houses 12, the Estate 5, the Circus 5, the Harbour 4,
+the Desert Highway 4 ...). Copy: /mnt/project-files/building-interiors-kits/doors_summary.md.
+
+### THE INTERIOR KITS (`docs/interiors/kits.js`, shared by every zone tool)
+`require('docs/interiors/kits.js').furnish(row, kind, { seed })` → `{ arch, props, ghosts }` for one hollow texbuilding row; kinds `shop`,
+`flat`, `office`, `workshop`, `kiosk`, `clinic`, `back` (back of house); `kitFor(name)` guesses one from a building's name. In Disaster City a
+row with `kit: '<kind>'` (+ `kitSeed`, `kitTint`) is furnished by bake-disaster-city.js THE KITS (after the districts, before the interior
+polish; it also sets `hollow`). The rules it keeps: whole 3.5 m squares (a 10.5 m building = 3 squares of 3.33), the door's column front to
+back + the front row are a walkway, a blocker takes a whole square, every free square stays reached from the door (a piece is only placed if
+the walk still reaches every square left free), decor off the squares' middles by a wall (noBlock), a 1-2 square room is always a kiosk, all
+props are R2 catalogue props; arch parts = counters, ceiling panels, floor coat. The seed (row id) picks variant props, tints and the
+counter's side: two shops in one street differ. Not done: a kit has no wall paint of its own (the row's inside sheet shows), no NPC spots.
+
+### THE CHAIN INSIDES (data.js `HQ_WALK_IN_PROPS` + `hqWalkInRows`, called by `hqRoomExpand`)
+The pizzeria (`city_pizzeria`) and the gas station store (`city_gas_store`) open wherever they stand, any room, no district edit: the pack
+scene is cut twice by bake-pack-pieces.py (jobs `city_pizzeria_open` / `_inside`, `city_gas_store_open` / `_inside`): the OPEN shell (walls,
+glass, sign; no doors) and the INSIDE (furniture, counters, the kitchen, the stockroom), both in the shut building's frame (the `frame` regex +
+two zero-area frame pins, so the game's box fit matches). The rule adds per placement: hollow skin-less rows with `bareIn` (no inside sheet of
+their own: the pack has one) and `doorLx` doorways (+ `gaps`, e.g. the store's stockroom-side door), skin-less solids for the parts with no
+inside (the pizzeria's back store), ghost walls for counters / shelves / booths, one `doorsOnly` row of swinging leaves (glass double at the
+pizzeria, glass + office + security at the store, a bathroom door on the washroom block), the inside prop (noBlock). `city_pizzeria_shut` /
+`city_gas_store_shut` = the old solid cuts. Placements 11-23: 4 pizzerias in the city, gas stores on R9 and DH1.
+`hqTexbDoor` reads `doorLx` / `doorW` / `doorH` (metres) before the column rule; `hqTexBuildingRows` cuts `gaps: [{ side: 'b'|'l'|'r'|'f', u, w, h }]`.
+R2: `Assets/world/packs/elbolilloduro/ebd_pizzeriascene_city_pizzeria_{open,inside}.glb`, `ebd_gasscene_city_gas_store_{open,inside}.glb` + their
+`Assets/opt/*.opt.glb` (in ASSET_MANIFEST.json `files` + `alt`).
+
+### THE PARKED CITY (three-renderer.js `HQ_PARK_DOOR`, `_hqDoorParkOk`)
+The fight's parked room (`_hqParked`) now also parks a BIG room (chunked, or a shell over 40,000 m²) when the walker goes through a door into a
+SMALL room (shell 40,000 m² or less) that has a door back to it: walking out again resumes the city with no load. It stays parked while the
+walker goes on from small room to small room for 20 minutes (`keepMs`); entering any other room drops it. Off switch: `window.EW_HQ_NO_PARK_DOOR`.
+The console says `[HQ] ... PARKED for the building` on the way in and `[HQ] resumed` on the way out.
+
 ## DISASTER CITY, THE FINANCIAL TOWERS + THE MID-RISE FILL (2026-11-23, the skyline plan, mondo 17:00 "Build it, plus the mid-rise fill")
 The plan: https://claude.ai/artifact/YEe54svVhVbLufjHdfQ5QY (sites: project files `skyline-plan/tools/towers.json`). Financial's part: towers
 1, 4, 5, 15, 19 and Financial's mid-rise fill. The Hotel's 120 m (tower 7) is the Hotel dungeon thread's. Code: `docs/disaster-city/districts/F-towers.js`
