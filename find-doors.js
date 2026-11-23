@@ -28,7 +28,9 @@ const ARGS = process.argv.slice(2), flag = n => ARGS.includes(n), opt = (n, d) =
 const OUT = path.resolve(opt('--out', path.join(__dirname, 'shots', 'doors')));
 const IDS = ARGS.filter((a, i) => !a.startsWith('--') && !['--out', '--jobs', '--zone'].includes(ARGS[i - 1]));
 /* the catalogue's whole buildings with a door of their own (a key that opens is in HQ_WALK_IN_PROPS and is left out). Add a new pack building here. */
-const BUILDING_PROPS = /^(city_(diner|burgerpiz|6twelve|laundry|vhs_shop|house|quequis_house|pizzeria_shut|gas_store_shut)|trailer_home_\d|abandoned_house|stilt_(hut|house|house_wide)|babel_house_\w+|lighthouse(_tall)?|xmas_house|ebd_buildings_bld_\d+|woods_cabin|outhouse|thatched_hut|psx_toilet_cabin_mp_1|church_building|italian_building(_2)?)$/;
+/* (11-23, THE OPEN DOORS: `thatched_hut` left the list: the Meshy hut has no door, only lattice windows on all four sides, and its floor stands on
+   stilts 0.7 m up with 1.2 m under the eaves: nobody walks in, and nothing on it says you should) */
+const BUILDING_PROPS = /^(city_(diner|burgerpiz|6twelve|laundry|vhs_shop|house|quequis_house|pizzeria_shut|gas_store_shut)|trailer_home_\d|abandoned_house|stilt_(hut|house|house_wide)|babel_house_\w+|lighthouse(_tall)?|xmas_house|ebd_buildings_bld_\d+|woods_cabin(_shut)?|outhouse(_shut)?|psx_toilet_cabin_mp_1|church_building|italian_building(_2)?)$/;
 const DOOR_SHEET = /^urban:(Door|MetalShutter)/;
 
 function scan(D, id, reach) {
@@ -76,8 +78,8 @@ function scan(D, id, reach) {
             const sz = P.size || [1, 1, 1], at = lot(a, +P.p[0] || 0, +P.p[2] || 0);
             if (nearDoorway(at[0], at[1])) return;
             if (P.s === 'box' && (sz[1] || 0) < 1.2) return;   // a band / a sill in the sheet, not a door
-            if (/^urban:MetalShutter/.test(P.key) && (+P.p[1] || 0) >= 0.9) return;
-            if ((+P.p[1] || 0) >= 0.5 && (+P.p[1] || 0) < 1.5 && (sz[1] || 0) < 2.0) return;   // a hatch, a shop window in a door's glass sheet (a kiosk's serving window): no doorway   // a window's shutter (the urban decay pass's roller shutters over the old shutter sheet), not a door
+            if (/^urban:MetalShutter/.test(P.key) && (+P.p[1] || 0) >= 0.9) return;   // a window's shutter (the urban decay pass's roller shutters over the old shutter sheet), not a door
+            if ((+P.p[1] || 0) >= 0.5 && (+P.p[1] || 0) < 1.5 && (sz[1] || 0) < 2.0) return;   // a hatch, a shop window in a door's glass sheet (a kiosk's serving window): no doorway
             const fy = (typeof a.y === 'number') ? a.y + (+P.p[1] || 0) : null;   // the door's foot in the room's heights (an arch row's \`y\` = its ground)
             /* the door's two sides: across its thin axis (a quad looks along its own +z) */
             const q = ((+a.rot || 0) + (+P.ry || 0)) * D2R, thinX = P.s === 'box' && (sz[0] || 1) < (sz[2] || 1), ax = thinX ? [Math.cos(q), Math.sin(q)] : [-Math.sin(q), Math.cos(q)];
