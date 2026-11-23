@@ -7696,6 +7696,7 @@
         function _hqMapOpenArea(id, opts) {
             opts = opts || {};
             if (!id || !_hqWorldEnabled()) return false;
+            if (_zmFocusWorld(id, opts)) return true;   // ONE MAP (11-23): a zone with a place on the world = the world, zoomed to it
             let G = null; try { G = window.hqWorldOverviewGraph(); } catch (e) { G = null; }
             if (!G || !G.nodes[id]) return false;
             _hqMap.mode = 'area'; _hqMap.area = id; _hqMap.wsel = id; _zm.sel = null;
@@ -7740,6 +7741,7 @@
         function _hqMapZoomSwitch(v, p) {
             const fit = _hqMap.fit; if (!fit || !_hqWorldEnabled()) return false;
             if (_hqMap.mode === 'world') {
+                if (_hqMap.drawn && _hqMap.drawn.zm === 'world') return false;   // ONE MAP (11-23): the ground world never swaps for a zone's sheet; it draws the districts and plots itself as you zoom
                 if (v[2] > fit[2] * HQ_MAP_AREA_IN) return false;
                 const id = _hqMapWorldPlaceAt(p || { x: v[0] + v[2] / 2, y: v[1] + v[3] / 2 });
                 return id ? _hqMapOpenArea(id, { quiet: true }) : false;
@@ -7835,7 +7837,7 @@
             html += '</div>';
             const M = _hqMap.model || { seen: 0, total: 0, q: 0 };
             const line = world
-                ? `AREAS CHARTED: ${Wm ? Wm.seen : 0}/${Wm ? Wm.total : 0} &nbsp;|&nbsp; SECRETS: ${(Wm && Wm.secrets.found) ? Wm.secrets.found + '/' + Wm.secrets.total : '???'} &nbsp;|&nbsp; CLICK OR ZOOM IN ON A PLACE FOR ITS MAP`
+                ? `AREAS CHARTED: ${Wm ? Wm.seen : 0}/${Wm ? Wm.total : 0} &nbsp;|&nbsp; SECRETS: ${(Wm && Wm.secrets.found) ? Wm.secrets.found + '/' + Wm.secrets.total : '???'} &nbsp;|&nbsp; ${(_hqMap.drawn && _hqMap.drawn.zm === 'world') ? 'WHEEL IN FOR DISTRICTS, THEN EVERY PLOT' : 'CLICK OR ZOOM IN ON A PLACE FOR ITS MAP'}`
                 : `ROOMS CHARTED: ${M.seen}/${M.total} &nbsp;|&nbsp; ${M.q} IN QUESTION &nbsp;|&nbsp; CLICK A ROOM TO TRAVEL &nbsp;|&nbsp; ZOOM OUT FOR THE WORLD`;
             return html + `<div class="hq-map-status">${line}</div>`;
         }
@@ -7972,11 +7974,12 @@
             });
             return out;
         }
-        function _zmSplit(name) {
-            const s = String(name).toUpperCase(); if (s.length <= 12) return [s];
-            const mid = s.length / 2; let best = -1;
-            for (let i = 0; i < s.length; i++) if (s[i] === ' ' && (best < 0 || Math.abs(i - mid) < Math.abs(best - mid))) best = i;
-            return best < 0 ? [s] : [s.slice(0, best), s.slice(best + 1)];
+        function _zmSplit(name) {   // ONE MAP (11-23): up to three short lines (9 letters a line where the words allow), so a district's names all fit at one zoom
+            const s = String(name).toUpperCase(); if (s.length <= 9) return [s];
+            const words = [].concat(...s.split(' ').map(w => w.length > 9 ? w.split(/(?<=[–-])/) : [w])), out = [];   // a long word breaks after its dash
+            words.forEach(w => { const l = out.length ? out[out.length - 1] : null; if (l != null && (l + ' ' + w).length <= 9) out[out.length - 1] = l + ' ' + w; else out.push(w); });
+            while (out.length > 3) { let bi = 0, bl = Infinity; for (let i = 0; i < out.length - 1; i++) { const L = out[i].length + out[i + 1].length; if (L < bl) { bl = L; bi = i; } } out.splice(bi, 2, out[bi] + ' ' + out[bi + 1]); }
+            return out;
         }
         /* THE ZONE SHEET's model: the rooms at their zone places, the box in plots */
         function _zmZoneModel(areaId, zone) {
@@ -8021,7 +8024,7 @@
                     s += `<g class="hq-zm-plot${sel ? ' sel' : ''}" data-mapnode="${_hqEsc(key)}" tabindex="0" role="button" aria-label="${_hqEsc(p.name)}" style="--ink:${_hqEsc(ink)}"><title>${_hqEsc(String(p.name).toUpperCase() + ' · ' + ((D[p.d] && D[p.d][0]) || p.d).toUpperCase())}</title>`;
                     s += `<rect class="hq-zm-hit" x="${F(x)}" y="${F(y)}" width="${U}" height="${U}"/>`;
                     const lines = _zmSplit(p.name);
-                    s += `<text class="hq-zm-pl" data-len="${Math.max(...lines.map(l => l.length))}" x="${F(x + U / 2)}" y="${F(y + U / 2)}" text-anchor="middle">${lines.map((l, i) => `<tspan x="${F(x + U / 2)}" dy="${i ? '1.15em' : (lines.length > 1 ? '-0.2em' : '0.35em')}">${_hqEsc(l)}</tspan>`).join('')}</text></g>`;
+                    s += `<text class="hq-zm-pl" data-zg="${_hqEsc(row.room + '|' + p.d)}" data-len="${Math.max(...lines.map(l => l.length))}" x="${F(x + U / 2)}" y="${F(y + U / 2)}" text-anchor="middle">${lines.map((l, i) => `<tspan x="${F(x + U / 2)}" dy="${i ? '1.15em' : (0.35 - (lines.length - 1) * 0.575).toFixed(3) + 'em'}">${_hqEsc(l)}</tspan>`).join('')}</text></g>`;
                 });
                 /* the district names, one at the middle of each district's plots */
                 const byD = {}; plots.forEach(p => { (byD[p.d] = byD[p.d] || []).push(p); });
@@ -8029,7 +8032,7 @@
                     const ps = byD[k], cx = ps.reduce((a, p) => a + p.c + 0.5, 0) / ps.length, cy = ps.reduce((a, p) => a + p.r + 0.5, 0) / ps.length;
                     const wide = Math.max(...ps.map(p => p.c)) - Math.min(...ps.map(p => p.c)) + 1;
                     const nm = String((D[k] && D[k][0]) || k).toUpperCase();
-                    s += `<text class="hq-zm-dl" data-len="${nm.length}" data-wide="${wide}" x="${F((R.gx + cx) * U)}" y="${F((R.gy + cy) * U)}" text-anchor="middle" dy="0.35em" style="--ink:${_hqEsc((D[k] && D[k][1]) || '#fff')}">${_hqEsc(nm)}</text>`;
+                    s += `<text class="hq-zm-dl" data-zg="${_hqEsc(row.room + '|' + k)}" data-len="${nm.length}" data-wide="${wide}" x="${F((R.gx + cx) * U)}" y="${F((R.gy + cy) * U)}" text-anchor="middle" dy="0.35em" style="--ink:${_hqEsc((D[k] && D[k][1]) || '#fff')}">${_hqEsc(nm)}</text>`;
                 });
                 if (multi) s += `<text class="hq-zm-rl" x="${F(R.gx * U)}" y="${F(R.gy * U - 18)}">${_hqEsc(String((DOOR_HQ.rooms[row.room] || {}).label || row.room).replace(/^.*·\s*/, '').toUpperCase())}</text>`;
                 /* the doors */
@@ -8085,10 +8088,15 @@
                 s += `<rect class="hq-zm-hit" x="${F(R.x * U)}" y="${F(R.y * U)}" width="${F(R.w * U)}" height="${F(R.h * U)}"/>`;
                 if (!q && !labelled[p.hub]) {
                     labelled[p.hub] = 1;
-                    names += `<text class="hq-zm-zl" data-w="${F(R.w * U)}" x="${F((R.gx + p.row.cols / 2) * U)}" y="${F((R.gy + p.row.rows / 2) * U)}" text-anchor="middle" dy="0.35em">${_hqEsc(String(p.label).toUpperCase())}</text>`;
+                    names += `<text class="hq-zm-zl" data-hub="${_hqEsc(p.hub)}" data-w="${F(R.w * U)}" x="${F((R.gx + p.row.cols / 2) * U)}" y="${F((R.gy + p.row.rows / 2) * U)}" text-anchor="middle" dy="0.35em">${_hqEsc(String(p.label).toUpperCase())}</text>`;
                 }
                 s += '</g></g>';
             });
+            /* ONE MAP (11-23, mondo: "its supposed to be one map with increasing detail as you zoom in"): every charted zone's
+               plot grid, district borders, district names, plot names and doors stand on the world itself; _zmDetail shows them by zoom */
+            let det = '';
+            Wm.zmPlaces.forEach(p => { if (p.st !== 'q') det += _zmRoomDetail(p.hub, p.row, p.R); });
+            s += '<g class="hq-zm-det">' + det + '</g>';
             s += names;
             const here = _zmHere(), hz = _zmZoneOfRoom(_hqCurRoom);
             if (here && hz && hz.row.wx != null && hz.row.layer === _zm.layer) {
@@ -8096,6 +8104,75 @@
                 s += `<g class="hq-zm-here" transform="translate(${F((R.gx + (here.x - hz.row.ox) / 42) * U)} ${F((R.gy + (here.z - hz.row.oz) / 42) * U)})"><title>YOU ARE HERE</title><g class="zs"><circle class="hq-zm-here-ring" r="2.6"/><path class="hq-zm-here-mark" d="M0 -2.2L1.6 1.6L0 0.8L-1.6 1.6Z"/></g></g>`;
             }
             return s + '</svg>';
+        }
+        /* ONE MAP (11-23): one room's detail on the world sheet, at its world place R (the zone sheet's layers, same classes) */
+        function _zmRoomDetail(hub, row, R) {
+            const U = HQ_MAP_U, F = _hqMapF, zone = HQ_ZONE_MAP.zones[hub] || {}, D = zone.districts || {};
+            const plots = _zmPlots(row), doors = _zmDoors(hub, row, R.gx, R.gy);
+            const at = {}; plots.forEach(p => { at[p.c + ',' + p.r] = p; });
+            let s = '', grid = '', bord = '';
+            plots.forEach(p => {
+                const x = (R.gx + p.c) * U, y = (R.gy + p.r) * U;
+                [[1, 0, x + U, y, x + U, y + U], [-1, 0, x, y, x, y + U], [0, 1, x, y + U, x + U, y + U], [0, -1, x, y, x + U, y]].forEach(([dc, dr, ax, ay, bx, by]) => {
+                    const q = at[(p.c + dc) + ',' + (p.r + dr)];
+                    if (q && q.d === p.d) { if (dc > 0 || dr > 0) grid += `M${F(ax)} ${F(ay)}L${F(bx)} ${F(by)}`; }
+                    else if (!q || dc > 0 || dr > 0) bord += `M${F(ax)} ${F(ay)}L${F(bx)} ${F(by)}`;
+                });
+            });
+            if (grid) s += `<path class="hq-zm-grid" d="${grid}"/>`;
+            if (bord) s += `<path class="hq-zm-bord-under" d="${bord}"/><path class="hq-zm-bord" d="${bord}"/>`;
+            plots.forEach(p => {
+                const x = (R.gx + p.c) * U, y = (R.gy + p.r) * U, key = 'z:' + row.room + ':' + p.id, sel = _zm.sel === key;
+                const ink = (D[p.d] && D[p.d][1]) || '#e0e0e0', lines = _zmSplit(p.name);
+                s += `<g class="hq-zm-plot${sel ? ' sel' : ''}" data-mapnode="${_hqEsc(key)}" tabindex="0" role="button" aria-label="${_hqEsc(p.name)}" style="--ink:${_hqEsc(ink)}"><title>${_hqEsc(String(p.name).toUpperCase() + ' · ' + ((D[p.d] && D[p.d][0]) || p.d).toUpperCase())}</title>`;
+                s += `<rect class="hq-zm-hit" x="${F(x)}" y="${F(y)}" width="${U}" height="${U}"/>`;
+                s += `<text class="hq-zm-pl" data-zg="${_hqEsc(row.room + '|' + p.d)}" data-hub="${_hqEsc(hub)}" x="${F(x + U / 2)}" y="${F(y + U / 2)}" text-anchor="middle" style="display:none">${lines.map((l, i) => `<tspan x="${F(x + U / 2)}" dy="${i ? '1.15em' : (0.35 - (lines.length - 1) * 0.575).toFixed(3) + 'em'}">${_hqEsc(l)}</tspan>`).join('')}</text></g>`;
+            });
+            const byD = {}; plots.forEach(p => { (byD[p.d] = byD[p.d] || []).push(p); });
+            Object.keys(byD).forEach(k => {
+                const ps = byD[k], cx = ps.reduce((a, p) => a + p.c + 0.5, 0) / ps.length, cy = ps.reduce((a, p) => a + p.r + 0.5, 0) / ps.length;
+                if (!D[k] || String(D[k][0]).length <= 2) return;   // a district with no real name (a route's bare key, 'R'): no label
+                const wide = Math.max(...ps.map(p => p.c)) - Math.min(...ps.map(p => p.c)) + 1, nm = String(D[k][0]).toUpperCase();
+                s += `<text class="hq-zm-dl" data-zg="${_hqEsc(row.room + '|' + k)}" data-hub="${_hqEsc(hub)}" data-wide="${wide}" x="${F((R.gx + cx) * U)}" y="${F((R.gy + cy) * U)}" text-anchor="middle" dy="0.35em" style="display:none;--ink:${_hqEsc((D[k] && D[k][1]) || '#fff')}">${_hqEsc(nm)}</text>`;
+            });
+            doors.forEach(d => {
+                const t = `${d.kind === 'hq' ? 'A DOOR HQ DOOR' : d.kind === 'inside' ? 'A WAY INSIDE' : 'A WAY OUT'} · ${d.to}${d.sub ? ' · ' + d.sub : ''}`;
+                s += `<g class="hq-zm-door k-${d.kind}" transform="translate(${F(d.x * U)} ${F(d.y * U)})"><title>${_hqEsc(t)}</title><g class="zs">`;
+                s += d.kind === 'hq' ? '<rect class="hq-zm-dg" x="-1" y="-1.4" width="2" height="2.8"/>' : d.kind === 'inside' ? '<path class="hq-zm-dg" d="M0 -1.5L1.5 0L0 1.5L-1.5 0Z"/>' : '<circle class="hq-zm-dg" r="1.2"/>';
+                s += '</g></g>';
+            });
+            return s;
+        }
+        /* ONE MAP (11-23): a zone picked (a click, its LOCATIONS row, THIS AREA) = the world, zoomed over the zone; false when it has no world place */
+        function _zmWorldCard() {
+            if (!_hqMap.drawn || _hqMap.drawn.zm !== 'world') return '';
+            let hub = null;
+            if (_zm.sel) { const m = /^z:([^:]+):/.exec(_zm.sel), z = m && _zmZoneOfRoom(m[1]); if (z) hub = z.hub; }
+            if (!hub && /^hub:/.test(_hqMap.wsel || '') && _zmZone(_hqMap.wsel)) hub = _hqMap.wsel.slice(4);
+            if (!hub) return '';
+            const Z = _zmZoneModel('hub:' + hub, HQ_ZONE_MAP.zones[hub]);
+            return _zmCardHtml(Z);
+        }
+        function _zmFocusWorld(id, opts) {
+            const zone = _zmZone(id); if (!zone || !_hqMap.world) return false;
+            const rows = zone.rooms.filter(r => r.wx != null && r.layer && r.layer !== 'off'); if (!rows.length) return false;
+            const mine = rows.find(r => r.room === _hqCurRoom);
+            const layer = mine ? mine.layer : rows.some(r => r.layer === _zm.layer) ? _zm.layer : rows[0].layer;
+            let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+            rows.forEach(r => { if (r.layer !== layer) return; const R = _zmRect(r, r.wx, r.wy); x0 = Math.min(x0, R.gx); y0 = Math.min(y0, R.gy); x1 = Math.max(x1, R.gx + r.cols); y1 = Math.max(y1, R.gy + r.rows); });
+            const old = document.querySelector('svg.hq-map-svg.hq-zm-world'), from = (old && _hqMap.mode === 'world' && _zm.layer === layer) ? (old.getAttribute('viewBox') || '').split(/\s+/).map(Number) : null;
+            _zm.layer = layer; _hqMap.mode = 'world'; _hqMap.area = id; _hqMap.wsel = id; _zm.sel = null;
+            const to = _hqMapFitBox({ x: x0, y: y0, w: x1 - x0, h: y1 - y0 });
+            _hqMap.view = to.slice(); _hqMap.anim++;
+            try { playSfx(opts && opts.quiet ? 'uiButtonHover' : 'uiButtonConfirm'); } catch (e) {}
+            _hqMapRerender();
+            const svg = document.querySelector('svg.hq-map-svg.hq-zm-world');
+            if (svg && from && from.length === 4 && from.every(isFinite)) {   // the glide from where the sheet was to the zone; the view stays there after
+                const token = ++_hqMap.anim, t0 = performance.now(), ease = t => (t < 0.5) ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+                const step = () => { if (token !== _hqMap.anim || !svg.isConnected) return; const k = Math.min(1, (performance.now() - t0) / 420), e = ease(k); _hqMapSetView(svg, from.map((a, i) => a + (to[i] - a) * e)); if (k < 1) requestAnimationFrame(step); };
+                _hqMapSetView(svg, from); requestAnimationFrame(step);
+            }
+            return true;
         }
         /* the zoom decides what is written: a plot's name once it fits its square, a district's once it fits its plots; never cut */
         function _zmDetail(svg) {
@@ -8108,18 +8185,55 @@
             const s = Math.max(v[2] / rect.width, v[3] / rect.height);   // user units per screen px
             svg.style.setProperty('--zs', s.toFixed(4));
             svg.querySelectorAll('.zs').forEach(g => g.setAttribute('transform', 'scale(' + (s * 5).toFixed(4) + ')'));   // doors + YOU ARE HERE: a fixed size on screen
-            /* a name's width on screen does not change with the zoom (its size follows --zs): measured once, in the theme's own font */
-            const wOf = t => { if (t._zw == null) { t.style.display = ''; let w = 0; try { const ts = t.querySelectorAll('tspan'); if (ts.length) ts.forEach(x => { w = Math.max(w, x.getComputedTextLength()); }); else w = t.getComputedTextLength(); } catch (e) { w = 0; } t._zw = w > 0 ? w / s : 0; } return t._zw || 999; };
             const plotPx = HQ_MAP_U / s;
-            let names = 0;
-            /* a name the sheet's edge would cut is not drawn either (pan it in and it comes back) */
+            /* ONE MAP (11-23, mondo: "If im zooming in on a district then the level of detail that shows building names should all
+               appear at the same time"): the names go on BY DISTRICT, not one by one. Every plot name of the districts on screen (in one
+               room) shows at once, when the longest of them fits its square at 66 % of the full size or more, all at that one size;
+               the district names go off then. A name the sheet's edge would cut is still left out until it is panned in (never cut). */
             const inView = (t, w, h) => { const x = +t.getAttribute('x'), y = +t.getAttribute('y'), hw = w * s / 2, hh = h * s / 2; return x - hw >= v[0] && x + hw <= v[0] + v[2] && y - hh >= v[1] && y + hh <= v[1] + v[3]; };
-            svg.querySelectorAll('.hq-zm-pl').forEach(t => { const on = plotPx >= 46 && wOf(t) + 8 <= plotPx && inView(t, wOf(t), 30); t.style.display = on ? '' : 'none'; if (on) names++; });
+            const show = (t, on) => { if (t._zon !== on) { t._zon = on; t.style.display = on ? '' : 'none'; } };
+            /* the groups, made once a sheet: room|district -> its plot names, its district name, its box */
+            if (!svg._zmG) {
+                const G = new Map(), g = k => { let o = G.get(k); if (!o) { o = { pl: [], dl: null, x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity, hub: '' }; G.set(k, o); } return o; };
+                svg.querySelectorAll('.hq-zm-pl').forEach(t => { const o = g(t.getAttribute('data-zg') || ''), x = +t.getAttribute('x'), y = +t.getAttribute('y'); o.pl.push(t); o.hub = t.getAttribute('data-hub') || o.hub; o.x0 = Math.min(o.x0, x); o.x1 = Math.max(o.x1, x); o.y0 = Math.min(o.y0, y); o.y1 = Math.max(o.y1, y); });
+                svg.querySelectorAll('.hq-zm-dl').forEach(t => { const o = g(t.getAttribute('data-zg') || ''); o.dl = t; o.hub = t.getAttribute('data-hub') || o.hub; });
+                svg._zmG = [...G.values()];
+            }
+            /* a name's width at its full size (measured once, a whole group at a time: one layout, not one a name) */
+            const measure = list => { const need = list.filter(t => t._zw == null); if (!need.length) return; need.forEach(t => { t.style.display = ''; t.style.fontSize = ''; }); need.forEach(t => { let w = 0; try { const ts = t.querySelectorAll('tspan'); if (ts.length) ts.forEach(x => { w = Math.max(w, x.getComputedTextLength()); }); else w = t.getComputedTextLength(); } catch (e) { w = 0; } t._zw = w > 0 ? w / s : 0; t._zon = true; }); };
+            const wOf = t => t._zw || 999;
+            const U = HQ_MAP_U, near = (o) => o.x1 + U / 2 >= v[0] && o.x0 - U / 2 <= v[0] + v[2] && o.y1 + U / 2 >= v[1] && o.y0 - U / 2 <= v[1] + v[3];
+            let names = 0; const busy = {};
+            const roomOf = o => { const t = o.dl || o.pl[0]; return t ? (t.getAttribute('data-zg') || '').split('|')[0] : ''; };
+            /* each district's own fit (k = the share of the full size its longest name fits at); a room's districts on screen share the smallest, and their names go on together once it is 66 % or more */
+            const kp = {};   // room -> the size every named district of it shares on screen (the smallest of them), so no district's names show bigger than its neighbour's
+            svg._zmG.forEach(o => {
+                o.k = 0;
+                if (o.pl.length && plotPx >= 40 && near(o)) { measure(o.pl); const mw = Math.max(...o.pl.map(wOf)), ml = Math.max(...o.pl.map(t => t.childElementCount || 1)); o.k = Math.min(1, (plotPx - 8) / (mw || 1), (plotPx - 8) / (ml * 12.7)); }
+                if (o.k > 0) { const r = roomOf(o); kp[r] = Math.min(kp[r] == null ? 1 : kp[r], o.k); }
+            });
+            svg._zmG.forEach(o => {
+                const k = o.k > 0 ? kp[roomOf(o)] : 0, on = o.plOn = k >= 0.66;   // every district of a room on screen at once: on when the longest name among them fits
+                o.pl.forEach(t => { const vis = on && inView(t, wOf(t) * k, (t.childElementCount || 1) * 12.7 * k); show(t, vis); if (vis) { names++; const fs = (11 * k).toFixed(2); if (t._zfs !== fs) { t._zfs = fs; t.style.fontSize = 'calc(var(--zs) * ' + fs + 'px)'; t.style.strokeWidth = 'calc(var(--zs) * ' + (3 * k).toFixed(2) + 'px)'; } } });
+                if (on && o.hub) busy[o.hub] = 1;
+            });
             svg.classList.toggle('zm-near', names > 0);
-            /* a district's name: full size when it fits its plots' width, else smaller (down to 50 %), else not drawn; off once plot names show */
-            svg.querySelectorAll('.hq-zm-dl').forEach(t => { const k = Math.min(1, ((+t.getAttribute('data-wide') || 1) * plotPx - 10) / (wOf(t) || 1)); const on = !names && k >= 0.5 && inView(t, wOf(t) * Math.min(1, k), 20); t.style.display = on ? '' : 'none'; t.style.fontSize = on ? 'calc(var(--zs) * ' + (15 * k).toFixed(1) + 'px)' : ''; t.style.strokeWidth = on ? 'calc(var(--zs) * ' + (4 * k).toFixed(1) + 'px)' : ''; });
-            /* a zone's name: its full size when it fits the zone's ground, else smaller (down to 60 %), else not drawn */
-            svg.querySelectorAll('.hq-zm-zl').forEach(t => { const w = (+t.getAttribute('data-w') || 0) / s, nw = wOf(t); const k = Math.min(1, (w - 8) / (nw || 1)); const vis = k >= 0.6 && inView(t, nw * Math.min(1, k), 20); t.style.display = vis ? '' : 'none'; t.style.fontSize = k >= 0.6 ? 'calc(var(--zs) * ' + (14 * k).toFixed(1) + 'px)' : ''; t.style.strokeWidth = k >= 0.6 ? 'calc(var(--zs) * ' + (4 * k).toFixed(1) + 'px)' : ''; });
+            /* a district's name: off once its plot names show; else named when it fits its plots' width at 50 % or more, every
+               district name of a room at ONE size (the smallest of the named ones), so none shows big beside a small one */
+            const dk = {};
+            svg._zmG.forEach(o => { const t = o.dl; o.dOn = false; if (!t || o.plOn || (!near(o) && o.pl.length)) return; measure([t]); o.dk = Math.min(1, ((+t.getAttribute('data-wide') || 1) * plotPx - 10) / (wOf(t) || 1)); if (o.dk >= 0.5) { o.dOn = true; const r = roomOf(o); dk[r] = Math.min(dk[r] == null ? 1 : dk[r], o.dk); } });
+            svg._zmG.forEach(o => {
+                const t = o.dl; if (!t) return;
+                const k = o.dOn ? dk[roomOf(o)] : 0, on = o.dOn && inView(t, wOf(t) * k, 20);
+                show(t, on); if (on && o.hub) busy[o.hub] = 1;
+                t.style.fontSize = on ? 'calc(var(--zs) * ' + (15 * k).toFixed(1) + 'px)' : ''; t.style.strokeWidth = on ? 'calc(var(--zs) * ' + (4 * k).toFixed(1) + 'px)' : '';
+            });
+            /* a zone's name: its full size when it fits the zone's ground, else smaller (down to 60 %), else not drawn; off once its districts are named */
+            const zl = [...svg.querySelectorAll('.hq-zm-zl')]; measure(zl);
+            zl.forEach(t => { const w = (+t.getAttribute('data-w') || 0) / s, nw = wOf(t); const k = Math.min(1, (w - 8) / (nw || 1)); const vis = k >= 0.6 && !busy[t.getAttribute('data-hub') || ''] && inView(t, nw * Math.min(1, k), 20); show(t, vis); t.style.fontSize = k >= 0.6 ? 'calc(var(--zs) * ' + (14 * k).toFixed(1) + 'px)' : ''; t.style.strokeWidth = k >= 0.6 ? 'calc(var(--zs) * ' + (4 * k).toFixed(1) + 'px)' : ''; });
+            /* the world's layers by zoom: the plot grid + the plots' click squares, then the doors */
+            svg.classList.toggle('zm-plots', plotPx >= 14);
+            svg.classList.toggle('zm-doors', plotPx >= 34);
         }
         /* a plot picked: its card (a second click on the same plot = GO to that zone) */
         function _zmPick(key) {
@@ -8160,9 +8274,9 @@
         function _zmKeyHtml(world) {
             let html = '<div class="hq-map-key hq-zm-key"><b>KEY</b>';
             html += '<i><span class="zk zk-grass"></span>GRASS</i><i><span class="zk zk-paved"></span>STREETS, STONE</i><i><span class="zk zk-sand"></span>SAND</i><i><span class="zk zk-snow"></span>SNOW</i><i><span class="zk zk-forest"></span>FOREST</i><i><span class="zk zk-water"></span>WATER</i><i><span class="zk zk-lava"></span>LAVA</i><i><span class="zk zk-high"></span>LIGHTER = HIGHER</i>';
-            if (!world) html += '<i><span class="zk zk-hq"></span>DOOR HQ DOOR</i><i><span class="zk zk-way"></span>WAY OUT</i><i><span class="zk zk-in"></span>WAY INSIDE</i><i><span class="zk zk-bord"></span>DISTRICT BORDER</i>';
+            html += '<i><span class="zk zk-hq"></span>DOOR HQ DOOR</i><i><span class="zk zk-way"></span>WAY OUT</i><i><span class="zk zk-in"></span>WAY INSIDE</i><i><span class="zk zk-bord"></span>DISTRICT BORDER</i>';
             html += '<i><span class="zk zk-here"></span>YOU ARE HERE</i>';
-            html += '<em>DRAG TO PAN · WHEEL TO ZOOM' + (world ? ' · CLICK A ZONE FOR ITS MAP' : ' · CLICK A PLOT FOR ITS CARD · ZOOM OUT FOR THE WORLD') + '</em></div>';
+            html += '<em>DRAG TO PAN · WHEEL TO ZOOM' + (world ? ' · WHEEL IN FOR DISTRICTS, THEN PLOTS · CLICK A ZONE OR A PLOT FOR ITS CARD' : ' · CLICK A PLOT FOR ITS CARD · ZOOM OUT FOR THE WORLD') + '</em></div>';
             return html;
         }
         function _hqMapHtml() {
@@ -8279,7 +8393,7 @@
                 e.preventDefault(); _hqMap.anim++;
                 const v = cur(), p = toUser(e.clientX, e.clientY);
                 const f = Math.pow(1.15, e.deltaY > 0 ? 1 : -1);
-                const w = Math.max(160, Math.min(v[2] * f, 6000)), h = v[3] * (w / v[2]);
+                const w = Math.max(160, Math.min(v[2] * f, Math.max(6000, _hqMap.fit ? _hqMap.fit[2] * 1.6 : 0))), h = v[3] * (w / v[2]);
                 const nv = [p.x - (p.x - v[0]) * (w / v[2]), p.y - (p.y - v[1]) * (h / v[3]), w, h];
                 if (_hqMapZoomSwitch(nv, p)) return;   // THE FOCUSED MAP: in far enough over a place = its sheet; out far enough = the world
                 _hqMapSetView(svg, nv);
@@ -8331,7 +8445,7 @@
             html += mapHtml;
             /* THE SIDE COLUMN (full screen): the picked node's card, then the
                register and the lines under it — the stage keeps the whole frame */
-            if (mapHtml) html += '<aside class="hq-map-side">' + _hqMapSearchHtml(_hqMap.model) + ((_hqMap.mode === 'world' && _hqMap.world) ? _hqWorldCardHtml(_hqMap.world) : (_hqMap.drawn && _hqMap.drawn.zm === 'zone') ? _zmCardHtml(_hqMap.drawn) : _hqMapCardHtml(_hqMap.model));
+            if (mapHtml) html += '<aside class="hq-map-side">' + _hqMapSearchHtml(_hqMap.model) + ((_hqMap.mode === 'world' && _hqMap.world) ? (_zmWorldCard() || _hqWorldCardHtml(_hqMap.world)) : (_hqMap.drawn && _hqMap.drawn.zm === 'zone') ? _zmCardHtml(_hqMap.drawn) : _hqMapCardHtml(_hqMap.model));
             const seen = (typeof window.hqRoomsSeenRecord === 'function') ? window.hqRoomsSeenRecord(profile) : {};
             const known = id => !!(id && (seen[id] || id === _hqCurRoom || window.EW_HQ_MAP_ALL));
             if (!mapHtml) {
@@ -9804,7 +9918,7 @@
             const mapMode = e.target.closest('[data-mapmode]');
             if (mapMode) { const mode = mapMode.getAttribute('data-mapmode'); const area = mapMode.getAttribute('data-maparea'); if (mode === 'area') { if (!_hqMapOpenArea(area || _hqWorldHere())) { _hqMap.mode = 'area'; _hqMap.area = area || _hqWorldHere(); _hqMap.sel = null; _hqMap.view = null; _hqMap.anim++; _hqMapRerender(); } } else if (!_hqMapOpenWorld()) { _hqMap.mode = 'world'; _hqMap.view = null; _hqMap.anim++; _hqMapRerender(); } return; }
             const mapZoom = e.target.closest('[data-mapzoom]');
-            if (mapZoom) { const svg = body.querySelector('svg.hq-map-svg'); if (svg) { _hqMap.anim++; const v = (svg.getAttribute('viewBox') || '').split(/\s+/).map(Number); const f = mapZoom.getAttribute('data-mapzoom') === 'in' ? 1 / 1.3 : 1.3; const w = Math.max(160, Math.min(v[2] * f, 6000)), h = v[3] * (w / v[2]); const nv = [v[0] + (v[2] - w) / 2, v[1] + (v[3] - h) / 2, w, h]; if (!_hqMapZoomSwitch(nv, null)) _hqMapSetView(svg, nv); } return; }
+            if (mapZoom) { const svg = body.querySelector('svg.hq-map-svg'); if (svg) { _hqMap.anim++; const v = (svg.getAttribute('viewBox') || '').split(/\s+/).map(Number); const f = mapZoom.getAttribute('data-mapzoom') === 'in' ? 1 / 1.3 : 1.3; const w = Math.max(160, Math.min(v[2] * f, Math.max(6000, _hqMap.fit ? _hqMap.fit[2] * 1.6 : 0))), h = v[3] * (w / v[2]); const nv = [v[0] + (v[2] - w) / 2, v[1] + (v[3] - h) / 2, w, h]; if (!_hqMapZoomSwitch(nv, null)) _hqMapSetView(svg, nv); } return; }
             if (e.target.closest('[data-mapfit]')) { const svg = body.querySelector('svg.hq-map-svg'); if (svg) { _hqMap.anim++; _hqMap.view = null; svg.setAttribute('viewBox', svg.getAttribute('data-fit') || ''); _hqMapDetail(svg); } return; }
             /* THE NAV CONSOLE (THE SHIP'S ONE DOOR): SET COURSE — the console re-renders in place */
             const lft = e.target.closest('[data-liftstop]');   // THE TOWER LIFT (2026-11-23): a floor's GO button
