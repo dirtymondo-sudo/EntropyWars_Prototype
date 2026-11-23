@@ -14774,6 +14774,9 @@ The plan: https://claude.ai/artifact/YEe54svVhVbLufjHdfQ5QY, sites `/mnt/project
   - #18 Casino Tower 85 m: cream slab, pink neon base bands, gold bands, a gold pyramid top, over the casino's own walk-in.
   - #24 Mid Records Tower 55 m: 13 black records stacked on a glass core, red label, spindle, a needle spire and a tone arm.
 - Count a row's materials: one per key|tint|glow|kind|ds|roof|gain|shine (keyTop / keyEnd add one each).
+- A prop over a walk-in's roof (the Hole Condo's palm, `y` 40) is no longer counted as in the room by interior-polish.js (it pulled it down
+  under the ceiling to y 1.58). Two plateaus that only touch leave a slit the soft-lock finder reads as a SLOT: overlap them.
+- Soft-lock finder on the city after the build: 0 traps, 0 crevices (one slot the split plateau made, fixed).
 
 ## THE HOTEL, A MYSTERY DUNGEON (2026-11-23, building-interiors plan step 1)
 mondo 11-23: "Maybe one of could even be like a mystery dungeon, where each floor is a maze and you have to find the stairs to the next

@@ -51746,7 +51746,7 @@ const DOOR_HQ = {
             counters: [],
             props: [
                 {key:'city_diner',x:-19.25,z:-103.35,face:180},
-                {key:'palm_tree',x:176.75,z:-9.6,y:1.58,h:7.5,face:30},
+                {key:'palm_tree',x:176.75,z:-9.6,y:40,h:7.5,face:30},
                 {key:'city_taco_stand',x:91,z:-15.75,face:180},
                 {key:'city_bench',x:258,z:-236.25,face:90},
                 {key:'city_bench',x:258,z:-204.75,face:90},

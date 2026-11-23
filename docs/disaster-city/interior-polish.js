@@ -47,7 +47,7 @@ module.exports = function interiorPolish(ctx) {
     const toLocal = (B, x, z) => { const dx = x - B.x, dz = z - B.z; return [dx * B.c + dz * B.s, -dx * B.s + dz * B.c]; };
     const inside = (B, x, z, pad) => { const l = toLocal(B, x, z); return Math.abs(l[0]) <= B.w / 2 + (pad || 0) && Math.abs(l[1]) <= B.d / 2 + (pad || 0); };
     const homeOf = (x, z, pad) => bld.find(B => inside(B, x, z, pad));
-    props.forEach(p => { const B = homeOf(p.x, p.z, 0); if (B) B.props.push(p); });
+    props.forEach(p => { const B = homeOf(p.x, p.z, 0); if (B && !(typeof p.y === 'number' && p.y - B.base >= B.Hc + 0.3)) B.props.push(p); });   // (a prop standing over the roof is not in the room: the palm in the Hole Condo's hole, 2026-11-23)
     tally.rooms = bld.length;
 
     /* ── 1. THE ROOF STANDERS ── */
