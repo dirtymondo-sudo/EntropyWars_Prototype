@@ -14907,3 +14907,34 @@ The fight's parked room (`_hqParked`) now also parks a BIG room (chunked, or a s
 SMALL room (shell 40,000 m² or less) that has a door back to it: walking out again resumes the city with no load. It stays parked while the
 walker goes on from small room to small room for 20 minutes (`keepMs`); entering any other room drops it. Off switch: `window.EW_HQ_NO_PARK_DOOR`.
 The console says `[HQ] ... PARKED for the building` on the way in and `[HQ] resumed` on the way out.
+
+## DISASTER CITY, THE FINANCIAL TOWERS + THE MID-RISE FILL (2026-11-23, the skyline plan, mondo 17:00 "Build it, plus the mid-rise fill")
+The plan: https://claude.ai/artifact/YEe54svVhVbLufjHdfQ5QY (sites: project files `skyline-plan/tools/towers.json`). Financial's part: towers
+1, 4, 5, 15, 19 and Financial's mid-rise fill. The Hotel's 120 m (tower 7) is the Hotel dungeon thread's. Code: `docs/disaster-city/districts/F-towers.js`
+(required by F.js), then `node bake-disaster-city.js`.
+- ONE ROW A TOWER: each tower is its own arch row `dc:<id>:tower` over its building (the building's row keeps the lobby and its F-detail layer).
+  F-towers.js counts each row's materials the renderer's way (sheet + tint + glow + kind + ds + roof + gain + shine) and THROWS over four; the
+  bake prints `[financial] tower <name> <parts> parts, <n> materials`. No lamps, no glow on a tower. Shard 2, Pickle 3, Grater 3, Lloyd's 3, Walkie 4.
+- THE SHAPES (code parts only, no pack has a skyscraper): a `roof` part with `roof: false` is a tilted face that is never hidden by HIDE ROOFS
+  (the Shard's spike = a `pyramid` 128 m tall, five slim pyramids for the open top, `gain: 1.5` lifts the dark pack glass to silver); a slope or a
+  swell = a stack of storey boxes, each 3.5 m, its depth stepping (the Cheese Grater's front slopes back, the Walkie-Talkie's front and back bulge
+  out on a curve). One material's storeys merge into one mesh, so 36 storeys cost what one box costs.
+  1 THE SHARD-OW 150 m on the Vault annex P11-01-B1: the bunker's upper steps, cap and dome are gone; its ground storey + first step (6.6 m) are
+    the podium, the corner drums stop there (their cameras came down with them in F-detail). Lift: on the guard post hall's west wall.
+  4 THE CHEESE GRATER 135 m on the Tailor shops' workshop P09-02-B3 (now a hollow two-storey glass lobby, three lifts): yellow edges down the slope,
+    a yellow core up the back.
+  5 THE WALKIE-TALKIE 130 m on the Bank offices P10-01-B1: the teal slab (7-31.5 m) and its roof plant are gone (F-detail's roof part with them);
+    the tower stands from x = -W/2 + 7.4 so the gothic clock tower keeps the row's end. Sky garden: a `kind: 'clear'` shed roof over leaves.
+  15 THE PICKLE 95 m: NOT on the plan's P11-00-B2 (that is the bankers' terrace, a walk-in home with a bedroom): the Executive court's own curved
+    glass tower P11-00-B1 (the London gherkin since 11-15, 46.5 m) is raised, its axis moved 1.25 m into the court (the Casino's block is 1 m
+    off its east side since the district move); its glass box is a walk-in lobby now, two columns under the porch. One bullet, not two side by side.
+  19 ACT OF GOD INSURANCE 85 m on the Bank archive P09-00-B1 (now a hollow lobby, three lifts; the ARCHIVE lettering and roof plant are gone): a
+    glass core in steel bands, four stair tubes, two glass lift shafts, ducts and pods outside, a glass barrel vault, two blue cranes. Everything
+    outside starts at the lobby's 7 m slab (the lobby under it is walked).
+- THE LOBBIES (F-inside.js `lobby`): lifts on the back wall (on the side walls of a one-row hall), reception on a square beside the door's
+  column, a bench, plants, ceiling lamps. The floors above are windows only.
+- THE MID-RISE FILL (Financial's half; Hero Plaza's is that thread's): terraces P10-01-B2, P11-02-B2, P11-00-B2 to five storeys, P09-03-B2 to four
+  (`terrace(id, n, tints, up)`), the TAILOR and FLORIST shops get four storeys of flats over them (`shop` `up`, `upWall`, `upTint`), the workshop
+  P10-03-B3 five storeys of warehouse flats (`workshop` `up`), back lots in35 / in40 / in41 to 6 / 8 / 6 storeys (`MID_BACK`). The roof-route
+  blocks (P09-00-B2, P09-00-B3) stay low: their roofs are walked. F-detail reads `T.up` / `T.Ht` for the roof plant and pipes.
+- NOT DONE: a far, simpler version past 150 m (the plan's limits list): the arch rows have no LOD; each tower is 2 to 4 meshes, so it was left.

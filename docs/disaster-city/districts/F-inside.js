@@ -74,7 +74,23 @@ module.exports = function (K, A) {
         I.put('office_plant', g.lw + 0.5, zp + 0.5, 'f');
         I.ceilLamp(c(1, 0)[0], c(0, 0)[1] + 1.75, H); I.ceilLamp(c(Math.min(e, 1), 3)[0], c(0, 3)[1], H, n > 3 ? 2 : 1, [7, 0, 0]);
     };
+    /* THE TOWER LOBBIES (the skyline plan, 11-23: every tower has a walk-in lobby with its lift bank; the floors above are windows only):
+       the lifts on the back wall (on the side wall of a one-row hall), reception on a square beside the door's column, a waiting bench, plants */
+    const lobby = o => (T, g, I) => {
+        look(T, o.wall, o.floor); const H = o.h || 6.68, c = g.c, n = g.nx, m = g.nz;
+        let dc = 0; for (let i = 0; i < n; i++) if (Math.abs(c(i, 0)[0] - T.lx) < Math.abs(c(dc, 0)[0] - T.lx)) dc = i;   // the door's column stays clear
+        if (m >= 2) { const L = Math.min(o.lifts || 2, n); for (let k = 0; k < L; k++) { const i = Math.round((k + 0.5) * n / L - 0.5); I.lift(c(i, 0)[0], g.bw + 0.03, 0); } }
+        else { I.lift(g.lw + 0.03, c(0, 0)[1], 270); I.lift(g.rw - 0.03, c(0, 0)[1], 90); }
+        const rc = dc >= n / 2 ? Math.max(0, dc - 2) : Math.min(n - 1, dc + 2), rj = Math.max(0, m - 2), r = c(rc, rj);
+        if (rc !== dc && n > 2) { I.counter(r[0], r[1], 2.8, false, { key: o.desk || STONE, tint: o.deskTint || 0xd8d8d0, topTint: 0x30343a }); I.put('desk_lamp', r[0] - 1.0, r[1], 'f', { y: 1.13 }); I.put('office_chair', r[0], r[1] - 1.0, 'f'); }
+        const bc = rc < dc ? n - 1 : 0; if (m >= 2 && bc !== dc && bc !== rc) I.put('city_bench', c(bc, m - 1)[0], c(bc, m - 1)[1], bc ? 'l' : 'r');
+        I.put('potted_plant', g.lw + 0.5, g.fw - 0.5, 'f'); I.put('potted_plant', g.rw - 0.5, g.fw - 0.5, 'f'); if (m >= 2) { I.put('office_plant', g.lw + 0.5, g.bw + 0.5, 'f'); I.put('office_plant', g.rw - 0.5, g.bw + 0.5, 'f'); }
+        I.ceilLamp(c(0, 0)[0], c(0, Math.max(0, m - 1))[1], H, n, [3.5, 0, 0]);
+    };
     const INS = {
+        'P11-00-B1': lobby({ wall: U('PlasterWallPainted1a'), floor: U('TileMarble2a'), h: 4.9 }),                         // the Pickle
+        'P09-00-B1': lobby({ wall: U('ConcreteStriped2c'), floor: U('TileGeneric5a'), lifts: 3 }),                          // Act of God Insurance
+        'P09-02-B3': lobby({ wall: U('PlasterWallPainted1a'), floor: U('TileMarble2a'), lifts: 3, deskTint: 0xe8b420 }),     // the Cheese Grater
         'P11-00-B2': home(1), 'P10-01-B2': home(1), 'P11-02-B2': home(1), 'P09-03-B2': home(2),
         /* 1. THE HOTEL LOBBY (8 x 8, 6.7 m high): reception across the back between the lifts and the stair door, a lounge with the piano on
               one side, the bar down the other, two dining tables by the front */
@@ -140,6 +156,7 @@ module.exports = function (K, A) {
             I.put('locker_bench', g.lw + 1.3, g.fw - 0.45, 'b'); I.put('filing_cabinet', g.rw - 0.45, c(7, 6)[1] + 0.9, 'l');
             for (const s of [-1, 1]) I.Q.push(box(s * (g.rw - 0.25), 2.6, g.fw - 0.4, 0.26, 0.22, 0.5, null, 0xe0e4e8), box(s * (g.rw - 0.25), 2.6, zc - 0.5, 0.26, 0.22, 0.5, null, 0xe0e4e8));
             I.ceilLamp(c(1, 1)[0], c(0, 1)[1], H, 3, [10.5, 0, 0]); I.ceilLamp(c(1, 3)[0], c(0, 3)[1], H, 3, [10.5, 0, 0]); I.ceilLamp(c(1, 5)[0], c(0, 5)[1] + 1.75, H, 3, [10.5, 0, 0]);
+            I.lift(g.lw + 0.03, c(0, 5)[1], 270);   // THE SHARD-OW (11-23): the tower's lift, in the guard post's hall, before the cage
         },
         /* 9. THE TAXI DISPATCH (smaller than two squares): a desk on the back wall, lockers, a bench; the middle stays clear */
         'P08-02-B1': (T, g, I) => {
