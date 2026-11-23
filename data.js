@@ -4704,7 +4704,7 @@ const RACE_BASE_STATS = {
     'haunted doll':       { hp:  880, mp: 180, atk:  70, def:  80, mdef: 110, int: 150, vision: 4, crt: 22, spd: 160 },   // 2026-11-17 THE HAUNTED DOLL (mondo approved the kit) — fragile and quick, a magic assassin
     'cursed tv':          { hp:  860, mp: 210, atk:  20, def:  85, mdef: 120, int: 156, vision: 4, crt: 15, spd: 140 },   // 2026-11-17 THE CURSED TV (mondo approved the kit) — frail and quick, a magic caster; LAB LOOP 11-22 PASS 4: HP 900→860, M.ATK 175→156 (55.4% over 240 games)
     'virus':              { hp:  860, mp: 220, atk:  40, def:  60, mdef: 160, int: 212, vision: 3, crt: 18, spd:  90 },   // 2026-11-18 THE VIRUS (mondo approved the kit) — first pass: a frail magic specialist; LAB LOOP 11-22 PASS 2: HP 780→860, M.ATK 180→212 (34.0% over 109 games)
-    'hollow':             { hp:  880, mp: 230, atk:  40, def:  70, mdef: 150, int: 190, vision: 3, crt: 15, spd: 100 },   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name) — first pass (the plan's numbers): a floating controller
+    'hollow':             { hp:  880, mp: 230, atk:  40, def:  70, mdef: 150, int: 190, vision: 4, crt: 15, spd: 100 },   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name) — first pass (the plan's numbers): a floating controller
     'streamer':           { hp:  990, mp: 200, atk: 125, def:  80, mdef: 100, int: 142, vision: 3, crt: 25, spd: 110 },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit) — first pass: a skirmisher who banks a crowd; LAB LOOP 11-22 PASS 4: HP 950→990, ATK 120→125, M.ATK 130→142 (44.9% over 244 games)
     'vtuber':             { hp:  820, mp: 240, atk:  30, def:  70, mdef: 150, int: 185, vision: 3, crt: 20, spd: 100 },   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look) — first pass: a frail caster who is never where she seems
     'cameraman':          { hp:  900, mp: 140, atk: 105, def:  78, mdef:  70, int:  60, vision: 5, crt: 26, spd: 125 },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models) — first pass on the ranged median (vision 5: he sees everything)
@@ -15407,7 +15407,7 @@ const STATUS_DEFS = {
        THE MASKS). Both sides see it. */
     masked: {
         icon: '🎭', glyph: '🎭', short: 'MSK', label: 'Masked',
-        colorText: 'wears a sleeping mask — the Hollow can drag it in',
+        colorText: 'wearing a sleeping mask — the Hollow can drag it in',
         kind: 'debuff', category: 'status', stack: 'max',
         iconSrc: createStatusIconDataUri('🎭', '#1a1030', '#f4eefc', '#9a6aff'),
         onRemove(unit) { delete unit._maskSrcId; }

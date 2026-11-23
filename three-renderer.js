@@ -19262,7 +19262,7 @@ const ThreeRenderer = (function () {
         return clips;
     }
     /* per frame, per unit entry (the unit loop): the Hollow's masks at home, and the mask a Masked unit wears */
-    var _hlOn = false;
+    var _hlOn = false, _hlV = new THREE.Vector3();
     function _hlUnitTick(entry, uid, now) {
         var u = _findUnit(uid); if (!u || !entry.model) return;
         /* the Hollow itself: one mask missing from the orbit for each one out on an enemy */
@@ -19280,16 +19280,27 @@ const ThreeRenderer = (function () {
             var ts = CONFIG.tileSize || BASE_TILE, H = ts * UNIT_SPRITE_SIZE_RATIO * ((entry.modelDef && entry.modelDef.heightRatio) || 1);
             var mk = new THREE.Mesh(_hlMaskProto.geometry, _hlMaskProto.material);
             mk.name = 'ewHlWornMask'; mk.userData.ewGear = true;
-            mk.scale.setScalar(H * 0.2 / _hlMaskProto.w);
+            mk.scale.setScalar(H * 0.17 / _hlMaskProto.w);
             mk.userData.h = H;
-            entry.model.add(mk); entry._ew_hlMask = mk;
+            /* in the body's own frame (the inner group: its yawOffset turns the face to +Z), on the head bone when it has one */
+            var inn = null, ch = entry.model.children;
+            for (var ci = 0; ci < ch.length; ci++) if (ch[ci]._ew_fitHalf) { inn = ch[ci]; break; }
+            var hb = null;
+            (inn || entry.model).traverse(function (o) { if (!hb && o.isBone && o.name === 'Head') hb = o; });
+            if (!hb) (inn || entry.model).traverse(function (o) { if (!hb && o.isBone && /head/i.test(o.name) && !/end|top/i.test(o.name)) hb = o; });
+            mk.userData.bone = hb;
+            (inn || entry.model).add(mk); entry._ew_hlMask = mk;
         } else if (!want && entry._ew_hlMask) {
             if (entry._ew_hlMask.parent) entry._ew_hlMask.parent.remove(entry._ew_hlMask);
             entry._ew_hlMask = null;
         }
         if (entry._ew_hlMask) {
-            var h = entry._ew_hlMask.userData.h;
-            entry._ew_hlMask.position.set(0, h * (0.86 + 0.015 * Math.sin(now / 520)), h * 0.11);
+            var wm = entry._ew_hlMask, h = wm.userData.h, bob = h * 0.012 * Math.sin(now / 520);
+            if (wm.userData.bone && wm.parent) {
+                wm.userData.bone.getWorldPosition(_hlV);
+                wm.parent.worldToLocal(_hlV);
+                wm.position.set(_hlV.x, _hlV.y + h * 0.05 + bob, _hlV.z + h * 0.09);
+            } else wm.position.set(0, h * 0.86 + bob, h * 0.11);
         }
     }
     /* 🫀 THE ABOMINATION (2026-11-23, mondo OK'd the kit and named it; "the old parts are good, just connect them"). ONE file

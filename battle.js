@@ -6443,7 +6443,8 @@
                 }
 
                 // 'wall' / 'thinwall' / 'edge' — try to smash THROUGH first.
-                if (!_slideNoBreach() && (info.kind === 'wall' || info.kind === 'thinwall')) {
+                /* opts.noBreach (THE HOLLOW): a drag stops against the wall, it never smashes its own Shard Bloom crystals */
+                if (!opts.noBreach && !_slideNoBreach() && (info.kind === 'wall' || info.kind === 'thinwall')) {
                     let broke = false;
                     if (info.kind === 'thinwall') {
                         broke = _tryBreachThinWall(target, cx, cy, info.nx, info.ny,
@@ -15003,7 +15004,7 @@
             const dist = getUnitPushDistance(enemy, n, 'pull', spell);
             if (!(dist > 0)) return { count: 0, animMs: 0 };
             const r = resolveForcedSlide(enemy, Math.sign(unit.x - enemy.x), Math.sign(unit.y - enemy.y), dist, {
-                byUnit: unit, label: `${spell.name}: `, perStepMs: 140, stopBefore: { x: unit.x, y: unit.y } }) || {};
+                byUnit: unit, label: `${spell.name}: `, perStepMs: 140, noBreach: true, stopBefore: { x: unit.x, y: unit.y } }) || {};
             const moved = r.moved | 0, blocked = moved < dist && (r.hitWall || (r.hitUnits && r.hitUnits.length)) ? 1 : 0;
             return { count: Math.min(n, moved + blocked), animMs: r.animMs || moved * 140 };
         }

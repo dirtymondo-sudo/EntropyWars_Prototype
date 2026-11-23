@@ -47599,7 +47599,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         o = o || {};
         var F = _nrvFrame(tx, ty), ts = F.ts, from = _afCaster(tx, ty, o), cu = _fx5UnitAt(from.x, from.y), C = _hdSide(cu || { player: o.owner });
         var hb = _lgBodyH(_lgUidAt(tx, ty), ts), ths = [];
-        if (!from.fogged) for (var i = 0; i < 3; i++) ths.push(_hdThread(F, from.x, from.y, hb * (0.45 + 0.22 * i), i === 1 ? _HLX_VG : _HLX_V, 1300, ts * 0.016, 260));
+        if (!from.fogged) for (var i = 0; i < 3; i++) ths.push(_hdThread(F, from.x, from.y, hb * (0.45 + 0.22 * i), i === 1 ? _HLX_PALE : _HLX_VG, 1300, ts * 0.035, 260));
         if (ths.length) _sigRunOwned(F.g, 1320, function (el) { ths.forEach(function (t, j) { t.run(el); t.hold.position.x += Math.sin(el / 70 + j) * ts * 0.002; }); });
         _sigShockRing3D(tx, ty, { r0: ts * 0.5, r1: ts * 0.15, ms: 420, color: C.a, height: ts * 0.05 });
         return true;

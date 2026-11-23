@@ -2303,3 +2303,17 @@ two biggest loose mesh pieces standing out to each side behind the back (the win
 root and weights each wing 100 % to its bone. three-renderer.js `_swayScan` flags a root with ewwing_ bones; THE UNIT GEAR (`_gearTick`) swings them
 about the chest's up axis (folded back, open). LESSON: a new bone's inverse bind must be the inverse of its REAL world matrix (a Meshy armature is
 scaled 0.01): the first file (`..._wings_Running.glb`) used a plain -root inverse, shrank each wing 100x and the wings vanished; `..._wings2_` is right.
+
+## THE HOLLOW — five Meshy parts as one floating body (2026-11-23, thread "Build The Hollow")
+- File: `Assets/characters/races/hollow/male/hollow.glb` (2.6 MB; old folder `Assets/Sprites/Races/hollow/` moved by EW_ASSET_MOVES) +
+  `hollow_px.png` (128x128 Sprite AI restyle of a model render, straight on). Made by project files `horror-hollow/assemble.mjs`
+  (`node assemble.mjs <parts dir> <out.glb>`, parts = `char-concepts-20261123/models/horrorB_{maw,mask,limb,fingers,shard}.glb`).
+- The parts: welded, simplified with meshoptimizer (maw 9000, mask 7000, limb 4200, fingers 9000, shard 2200 triangles), sheets
+  1024 JPEG. Meshy made the mask as a whole head: only the triangles in front of z 0.02 are kept (the face), double sided.
+  The limb is cut at y -0.16 / 0.16 into three segments pivoting at the cut centres; the finger chandelier = a cap + six bunches.
+- Nodes: ewHlRoot > ewHlBody (hover centre, 2.1 m) > ewHlMaw (the ring, spins on its Z), ewHlMask0..3 (orbit), ewHlLimb0..3 > b > c,
+  ewHlFingers > ewHlFingCap + ewHlFing0..5, ewHlShard0..2.
+- Rig = three-renderer.js "THE HOLLOW" (`_PROC_RIGS.hollowBody` -> `_hlBuild`, `_HL_POSES`): idle, walk, Lull (mask 0 flies off),
+  Strings (the limbs pull in), Bloom (the shards flare), Wake (the maw opens wide, all limbs reach), hit, death.
+  `_hlUnitTick` (per unit, after the mixer) hides one orbit mask per mask out (units with `_maskSrcId` = the Hollow and `status.masked`)
+  and seats a worn mask (`ewHlWornMask`, userData.ewGear) on each Masked unit's head bone (fallback 0.86 of its height).
