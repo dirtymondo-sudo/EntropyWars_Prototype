@@ -17738,6 +17738,7 @@ const ThreeRenderer = (function () {
         if (made) root.userData.ewGear = true;
     }
     var _gearE = null;
+    var _gearQ = null, _gearAx = null;
     function _gearTick(S) {
         var G = S.gear; if (!G || !G.length) return;
         if (!_gearE) _gearE = new THREE.Euler(0, 0, 0, 'YZX');
@@ -17749,6 +17750,13 @@ const ThreeRenderer = (function () {
                 /* at rest swept back and a little up, a slow beat (the unicorn's) */
                 _gearE.set(0, sgn * (0.55 + 0.1 * Math.cos(ph)), sgn * (0.25 + 0.22 * Math.sin(ph)), 'YZX');
                 n.quaternion.setFromEuler(_gearE);
+            } else if (nm === 'ewwing_L' || nm === 'ewwing_R') {
+                /* THE WING BONES (2026-11-23, the Butterfly Girl): a slow butterfly beat, the two wings folding back behind her and
+                   opening again about the back's upright axis (the bone's baked frame is the chest's: +Y up), a little out of step */
+                var q0 = n.userData.ewq0, ws = nm === 'ewwing_L' ? 1 : -1, wb = 0.5 - 0.5 * Math.cos(t * 4.4 - (ws < 0 ? 0.12 : 0));
+                if (!_gearQ) { _gearQ = new THREE.Quaternion(); _gearAx = new THREE.Vector3(0, 1, 0); }
+                _gearQ.setFromAxisAngle(_gearAx, ws * (0.08 + 0.95 * wb * wb));
+                if (q0) n.quaternion.set(q0[0], q0[1], q0[2], q0[3]).multiply(_gearQ); else n.quaternion.copy(_gearQ);
             } else if (nm === 'ewGearHalo') {
                 n.position.y = 0.014 * (n.userData.ewH || 1.7) * Math.sin(t * 1.8);   // the mount's frame is the model's: metres of the file
                 n.rotation.y = t * 0.6;
@@ -19300,6 +19308,7 @@ const ThreeRenderer = (function () {
     function _swayScan(root) {
         var has = false;
         root.traverse(function (n) { if (!has && n.isBone && /^ewsway_c\d+_\d+$/.test(n.name)) has = true; });
+        root.traverse(function (n) { if (!has && n.isBone && /^ewwing_[LR]$/.test(n.name)) has = true; });   // THE WING BONES (bake-wings.py): the gear tick beats them
         if (root.userData.ewGear) has = true;   // THE UNIT GEAR: its parts move in the sway's tick
         root.userData.ewSway = has;
         return has;
@@ -19308,6 +19317,11 @@ const ThreeRenderer = (function () {
         var o = {}, k; for (k in _SW_DEF) o[k] = _SW_DEF[k]; if (opts) for (k in opts) o[k] = opts[k];
         var cols = {}, byName = {}, gear = [];
         model.traverse(function (n) { if (/^ewGear(WingL|WingR|Halo|Cape)$/.test(n.name || '')) gear.push(n); });   // THE UNIT GEAR
+        model.traverse(function (n) {   // THE WING BONES (2026-11-23, bake-wings.py: the Butterfly Girl): their baked turn kept to beat from
+            if (!n.isBone || !/^ewwing_[LR]$/.test(n.name || '')) return;
+            if (!n.userData.ewq0) n.userData.ewq0 = [n.quaternion.x, n.quaternion.y, n.quaternion.z, n.quaternion.w];
+            gear.push(n);
+        });
         model.traverse(function (n) {
             if (!n.isBone) return;
             byName[n.name] = n;

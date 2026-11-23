@@ -14892,6 +14892,7 @@
                 /* 📺 THE TAPE (the Cursed TV): this round's recording becomes last round's, the one Rewind plays back */
                 if (u._tapeNow || u._tapeLast) { u._tapeLast = u._tapeNow || 0; u._tapeNow = 0; }
             }
+            _bfRoundEnd();   // 🦋 THE BUTTERFLY EFFECT: every Flutter grows, the ones at 3 touch down
             if (typeof markDirty === 'function') markDirty('hud', 'selectedUnit');
         }
         /* ═══ THE CURSED TV (2026-11-17, mondo approved the kit) ═══ THE TAPE: applyDamageToUnit adds every point a unit takes to
@@ -15338,6 +15339,111 @@
             }
         }
         window._crCastRow = _crCastRow; window._crRoundEnd = _crRoundEnd;
+        /* ═══ THE BUTTERFLY GIRL (2026-11-23, blue morpho; mondo OK'd the plan) ═══ THE BUTTERFLY EFFECT: small flaps now, a twister
+           later. A Flutter (STATUS_DEFS.flutter: the stack in unit._flutter, the caster's id in _flutterSrcId) grows by 1 at every
+           round end (_bfRoundEnd from _nrRoundEnd); at 3 it touches down (_bfTwister): MEDIUM wind magic damage to the carrier's
+           side in the 3x3 round it, the neighbours pushed 1 square out, one twister a unit a wave; then it is gone. Her death does
+           not stop it (the effect is already in motion). Butterfly Effect (`butterflyEffect`, the buff branch) grows every Flutter of
+           her side's at once. FLASH AND VANISH (her passive): the first enemy hit on her turns her Invisible until her next turn
+           starts, once every 2 rounds. Host-side; the status, _flutter and _flutterSrcId ride the snapshot, the looks go through
+           _sigVfxGeom (fireGeometry is relayed) and showFloatingTextForUnit. Notes: docs/notes/champions-combat.md "THE BUTTERFLY GIRL". */
+        const FLUTTER_MAX = 3, FLUTTER_TWISTER_DMG = 110, BF_VANISH_EVERY = 2;
+        const BF_TWISTER_ROW = { id: 'nrFlutterTwister', name: 'Twister', families: ['morpho'], spellType: 'anomaly', element: 'wind',
+            type: 'damage', kind: 'aoe', damageType: 'magic', dmg: FLUTTER_TWISTER_DMG, pushDistance: 1 };
+        function _bfSrc(u) { return (u && u._flutterSrcId != null && (state.units || []).find(x => x && x.id === u._flutterSrcId)) || null; }   // alive or not
+        /* STATUS_DEFS.flutter's onApply / onRemove: the stack's float and the morphos on the shoulder (three-vfx-effects.js) */
+        function _bfFlutterChanged(u, was) {
+            if (!u || state.phase !== 'battle') return;
+            const n = (u._flutter | 0);
+            if (n > (was | 0) && n > 0 && !u.dead && !_skipVisuals()) showFloatingTextForUnit(u, `🦋 FLUTTER ${n}`, 'debuff', { durationMs: 1000, jitterY: -20 });
+            const src = _bfSrc(u);
+            _sigVfxGeom('nrFlutter:sync', u.x, u.y, n, { uid: u.id, owner: src ? src.player : null });
+        }
+        function _bfCarriers(side) {
+            return (state.units || []).filter(u => u && !u.dead && !u._dying && (u._flutter | 0) > 0 && unitHasStatus(u, 'flutter')
+                && (side == null || (() => { const s0 = _bfSrc(u); return !!s0 && sidesAllied(s0.player, side); })()));
+        }
+        function _bfGrow(list, why) {
+            const ready = [];
+            for (const c of list) {
+                const was = c._flutter | 0;
+                c._flutter = Math.min(FLUTTER_MAX, was + 1);
+                _bfFlutterChanged(c, was);
+                if (c._flutter >= FLUTTER_MAX) ready.push(c);
+            }
+            if (list.length) addLog(`🦋 ${list.length === 1 ? `The Flutter on ${_ctName(list[0])} grows` : `${list.length} Flutters grow`} ${why}${list.length === 1 ? ` (${list[0]._flutter} of ${FLUTTER_MAX})` : ''}.`);
+            if (ready.length) {
+                const hit = new Set();
+                for (const c of ready) _bfTwister(c, hit);
+                if (typeof checkWin === 'function') checkWin();
+            }
+            return ready.length;
+        }
+        /* at 3: the twister touches down on the carrier's 3x3 */
+        function _bfTwister(c, hit) {
+            if (!c || c.dead || c._dying) return;
+            const src = _bfSrc(c), cx = c.x, cy = c.y, side = c.player;
+            clearStatus(c, 'flutter');
+            if (c._flutter) { delete c._flutter; delete c._flutterSrcId; }
+            addLog(`🌪 The Flutter on ${_ctName(c)} touches down as a twister!`);
+            _sigVfxGeom('nrFlutter:twister', cx, cy, 1, { owner: src ? src.player : null });
+            if (!src) return;
+            const tiles = [];
+            for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (isInside(cx + dx, cy + dy)) tiles.push({ x: cx + dx, y: cy + dy });
+            const sp = spellPowerOf(src, BF_TWISTER_ROW);
+            _applyAoeDamage(src, BF_TWISTER_ROW, tiles, FLUTTER_TWISTER_DMG + sp, sp, {
+                rngRange: 30, minDmg: 32, pushFromCenter: { x: cx, y: cy },
+                findTarget: (t) => {
+                    const v = (state.units || []).find(u => u && !u.dead && !u._dying && u.x === t.x && u.y === t.y && sidesAllied(u.player, side) && !hit.has(u.id));
+                    if (v) hit.add(v.id);
+                    return v || null;
+                }
+            });
+        }
+        /* the round end (_nrRoundEnd): every Flutter grows */
+        function _bfRoundEnd() {
+            const list = _bfCarriers(null);
+            if (list.length) _bfGrow(list, 'with the round');
+        }
+        /* 🦋 Butterfly Effect (the buff branch): every Flutter of her side's grows now */
+        function _bfEffect(unit, spell) {
+            if (!_nrAlive(unit)) return;
+            const list = _bfCarriers(unit.player);
+            _sigVfxGeom('nrButterflyEffect:flap', unit.x, unit.y, 0, { owner: unit.player });
+            addLog(`🦋 ${_ctName(unit)} beats her wings once: the butterfly effect.`);
+            _bfGrow(list, 'at once');
+        }
+        function _bfEffectValue(unit) {   // ai.js: what the cast would do (carriers, twisters, bodies under them)
+            const list = _bfCarriers(unit ? unit.player : null);
+            let tw = 0, bodies = 0;
+            for (const c of list) {
+                if ((c._flutter | 0) + 1 < FLUTTER_MAX) continue;
+                tw++;
+                bodies += (state.units || []).filter(u => u && !u.dead && sidesAllied(u.player, c.player) && Math.max(Math.abs(u.x - c.x), Math.abs(u.y - c.y)) <= 1).length;
+            }
+            return { carriers: list.length, twisters: tw, bodies };
+        }
+        /* FLASH AND VANISH (applyDamageToUnit, a blow that landed on her) */
+        function _bfFlashVanish(target, src, opts) {
+            if (!target || target.race !== 'butterfly girl' || target.dead || !(target.hp > 0) || !src || !sidesHostile(src.player, target.player)) return;
+            if (opts && (opts._linkEcho || opts.damageType === 'dot')) return;
+            if (unitHasStatus(target, 'broken') || unitHasStatus(target, 'invisible')) return;
+            const r = state.round || 0;
+            if (target._bfVanishRound != null && r - target._bfVanishRound < BF_VANISH_EVERY) return;
+            target._bfVanishRound = r;
+            applyStatusPayload(target, { id: 'invisible', duration: 2 }, '🦋 Flash and Vanish: ', target);
+            if (!unitHasStatus(target, 'invisible')) return;
+            target._bfVanished = true;
+            addLog(`🦋 A blue flash, and ${_ctName(target)} is gone (Invisible until her next turn).`);
+            _sigVfxGeom('nrFlashVanish', target.x, target.y, 0, { owner: target.player });
+        }
+        /* her next turn starts: the vanish ends */
+        function _bfVanishEnds(unit) {
+            if (!unit || !unit._bfVanished) return;
+            delete unit._bfVanished;
+            if (unitHasStatus(unit, 'invisible')) clearStatus(unit, 'invisible');
+        }
+        window._bfFlutterChanged = _bfFlutterChanged; window._bfEffectValue = _bfEffectValue; window._bfRoundEnd = _bfRoundEnd;
         /* ═══ THE HAUNTED DOLL (2026-11-17, mondo approved the kit and asked for the pull-string spell) ═══ "Sits on the shelf, and
            moves when you look away." Host-side like the rest of THE NEW RACES 2: the squares, the facings, the statuses and the HP
            state-sync to the guest; the voice-box line comes from _nrHash (the unit id + the round), so the guest's log agrees.
@@ -23041,6 +23147,44 @@
                     if (V.sigWhiteout3D) V.sigWhiteout3D(p.x, p.y, { color: 0x0a0806, ms: 800, peak: 0.45, sizeTiles: 5, shake: false });
                     c.insert('IN PIECES.', 'stamp', actionMs(1000));
                     for (let i = 0; i < 6; i++) c.at(actionMs(400 + i * 220), () => c.snd('itemThrow'));   // each piece into the hole
+                }
+            },
+            /* 🦋 SPECIMEN (2026-11-23, the Butterfly Girl; mondo OK'd "pinned in a glass display case"): her morphos lift the victim,
+               a glass display case drops over it, a pin drives down, and a paper label names what was collected */
+            specimen: {
+                chargeMs: 2000, strikeMs: 3800, resolveMs: 2600,
+                castSpell: { type: 'damage', dmg: 1, name: 'Specimen', kind: 'damage' },
+                siren(c) { c.snd('debuff'); c.dsnd('identSting'); c.grade('cool', actionMs(900)); },
+                charge(c) {
+                    const V = c.VFX, u = c.unit;
+                    if (V.sigMagicCircle3D) V.sigMagicCircle3D(u.x, u.y, { radiusPx: c.ts * 0.9, growMs: 240, holdMs: c.CHARGE_MS, fadeMs: 400, spin: true, color: 0x3a8bff, color2: 0x0a1430 });
+                    c.snd('buff');
+                },
+                cam(c) {
+                    const u = c.unit, p = c.pos(c.target);
+                    if (typeof cineWitnessCam === 'function') cineWitnessCam(c.target, { dist: 5.0, tilt: 66, duration: 700 }); else c.dive(c.target, 1.4, 300);   // the swarm coming in
+                    c.at(c.STRIKE_MS - actionMs(1600), () => { if (typeof cineFaceCam === 'function') cineFaceCam(c.target, { dist: 2.6, tilt: 78, cut: false, duration: 700 }); });   // the lift
+                    c.at(c.STRIKE_MS - actionMs(200), () => { c.slow(0.4, actionMs(360)); });
+                    c.at(c.STRIKE_MS + actionMs(400), () => { c.slowClear(); if (typeof cineCrane === 'function') cineCrane(c.target, { duration: actionMs(1400), tilt: 58, rise: 2.2 }); });   // the case, the pin, the label
+                    c.at(c.STRIKE_MS + actionMs(2000), () => { if (typeof cineEndCapReverse === 'function') cineEndCapReverse(u, c.target, {}); else if (typeof cineGodShot === 'function') cineGodShot(p, 6, { cut: false, duration: 520, tilt: 30 }); });
+                    return true;
+                },
+                stage(c) {
+                    const V = c.VFX, u = c.unit, p = c.pos(c.target);
+                    if (V.sigSpecimen3D) V.sigSpecimen3D(u.x, u.y, p.x, p.y, { ms: c.STRIKE_MS + actionMs(3600), swarmAt: actionMs(100), liftAt: c.STRIKE_MS - actionMs(1600), hitAt: c.STRIKE_MS });
+                    c.at(actionMs(100), () => { c.snd('buff'); c.insert('A RARE ONE', 'scripture', actionMs(1000)); });
+                    c.at(c.STRIKE_MS - actionMs(1600), () => c.snd('debuff'));
+                    c.at(c.STRIKE_MS - actionMs(400), () => c.insert('HOLD STILL.', 'stamp', actionMs(500)));
+                },
+                strike(c) {
+                    const p = c.pos(c.target);
+                    c.freeze(actionMs(180), { grade: 'cool' });
+                    c.ring(p.x, p.y, 0x3a8bff, { r1: c.ts * 2.0, ms: 520, torus: true });
+                    c.flash('#cfe8ff', 160, 0.45); c.kick(10, 240);
+                    c.snd('physicalAbilityDamage'); c.dsnd('slam');
+                },
+                resolve(c) {
+                    c.insert('PINNED AND LABELLED.', 'stamp', actionMs(1100));
                 }
             },
             theBridge: {
@@ -43855,7 +43999,8 @@
                 target._tapeNow = (target._tapeNow || 0) + finalDamage;   // 📺 THE TAPE: what it took this round (the Cursed TV's Rewind plays last round's back)
                 if (sourceUnit && sourceUnit.race === 'wendigo' && sidesHostile(sourceUnit.player, target.player)) sourceUnit._fedRound = state.round || 0;   // 🦌 it fed
                 if (sourceUnit && sourceUnit.race === 'cameraman' && target.hp > 0) _camFilm(sourceUnit, target);   // 🎥 THE FOOTAGE
-                if (sourceUnit && (sourceUnit.race === 'gladiator' || sourceUnit.race === 'jellyfish ufo')) _crOnHit(sourceUnit, target, opts);   // 🛡⚡ THE COMING RACES: Favor, claw Charge
+                if (sourceUnit && (sourceUnit.race === 'gladiator' || sourceUnit.race === 'jellyfish ufo')) _crOnHit(sourceUnit, target, opts);
+                if (target.race === 'butterfly girl' && sourceUnit) _bfFlashVanish(target, sourceUnit, opts);   // 🦋 FLASH AND VANISH   // 🛡⚡ THE COMING RACES: Favor, claw Charge
 
                 /* ONE CAST, ONE LINE (playtest 2, mondo 2026-10-22: "ninefold scratch just needs one line"): a
                    multi-hit cast passes opts.logSink and its hits roll into one line with the total, written on
@@ -66619,6 +66764,7 @@
                 state._blitzActiveUnitId = nextUnit.id;
                 try { cubeFocus(nextUnit); } catch (e) { console.warn('[CUBE] relay', e); }   // THE CUBE: the frame round this fighter's face
                 _popeGlassEnds(nextUnit);   // ⛪ the Popemobile's glass comes down when his next turn starts
+                _bfVanishEnds(nextUnit);   // 🦋 Flash and Vanish lasts until her next turn starts
                 if (_balanceSimMode) _balTurnStart(nextUnit);   // Balance Lab: turns + dry turns per race
                 _eorPhaseLabelHide();   // a unit is up: the end of round is over, its phase chip goes
                 if (typeof window !== 'undefined' && window._tutActive && typeof window._tutEvent === 'function') window._tutEvent('activation', { uid: nextUnit.id, player: nextUnit.player });
@@ -85388,6 +85534,10 @@
                     if (!_silentReject) { addLog(`${_ctSp(spell.name)}: nothing to clean within ${spell.mopUp.radius || 2}.`, _clickSeat()); playErrorSfx(); }
                     return 0;
                 }
+                if (spell.butterflyEffect && !_bfCarriers(unit.player).length) {   // 🦋 nothing to speed up
+                    if (!_silentReject) { addLog(`${_ctSp(spell.name)}: no Flutter of her side's on the board.`, _clickSeat()); playErrorSfx(); }
+                    return 0;
+                }
                 if (spell.harvestMoon && !_crHarvestPlants(unit, spell).length) {
                     if (!_silentReject) { addLog(`${_ctSp(spell.name)}: no grown plant of ${_ctName(unit)}'s within ${spell.harvestMoon.radius || 4}.`, _clickSeat()); playErrorSfx(); }
                     return 0;
@@ -85509,6 +85659,7 @@
                     if (spell.unload && !unit.dead) _truckerUnload(unit, spell);   // 🚚 Unload
                     if (spell.comeAtMe && !unit.dead) _crComeAtMe(unit, spell);   // 🛡 Come At Me
                     if (spell.harvestMoon && !unit.dead) _crHarvestMoon(unit, spell);   // 🌾 Harvest Moon
+                    if (spell.butterflyEffect && !unit.dead) _bfEffect(unit, spell);   // 🦋 Butterfly Effect
                     if (spell.filterSwap && !_bt.dead) _influencerFilter(unit, _bt, spell);   // 🤳 Filter
                     if (spell.slimeRing && !unit.dead) { _sigVfxGeom('nrSaltProof:ring', unit.x, unit.y, 1, { owner: unit.player }); _slugRing(unit, spell); }   // 🐌 Salt-Proof Stance
                     markDirty('hud');

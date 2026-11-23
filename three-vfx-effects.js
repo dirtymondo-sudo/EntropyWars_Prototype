@@ -41713,6 +41713,104 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         P.at(P.hitAt, function () { P.ring(0x3bd36a, { r1: P.ts * 2.2, ms: 520 }); P.flash('#2a1a0a', 180, 0.5); P.shake('normal'); P.grade('#3bd36a', 700); });
         P.at(P.hitAt + 400, function () { P.whiteout(0x0a0806, 5, { ms: 800, peak: 0.45 }); });
     };
+    /* ── SPECIMEN (the Butterfly Girl, 2026-11-23; mondo OK'd "pinned in a glass display case") ──────────────────────
+       A cloud of blue morphos (mondo's own insects) pours off the caster and circles the victim (its own model,
+       _finDouble), climbing it until it is lifted off its square; on the hit a GLASS DISPLAY CASE drops over it (a dark
+       wood base, four glass sides, a glass lid), a long PIN drives down through it from above, the body stops dead
+       where it hangs, and a paper LABEL with its race's name stands in front of the case. The morphos settle on the lid
+       and fly off; the case stays a while, then fades. o: swarmAt · liftAt · hitAt · ms. */
+    function _sigSpecimenLabel(name) {
+        return _sigTex('spec-label-' + name, 256, function (ctx, S) {
+            ctx.fillStyle = '#efe6cc'; ctx.fillRect(0, S * 0.3, S, S * 0.4);
+            ctx.strokeStyle = '#3a2a1a'; ctx.lineWidth = 4; ctx.strokeRect(6, S * 0.3 + 6, S - 12, S * 0.4 - 12);
+            ctx.fillStyle = '#2a1a0a'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.font = 'italic bold 34px serif'; ctx.fillText(String(name || 'specimen').toUpperCase(), S / 2, S * 0.45);
+            ctx.font = '22px serif'; ctx.fillText('collected, Fairy Forest', S / 2, S * 0.58);
+        });
+    }
+    function _sigSpecimen3D(cx, cy, tx, ty, o) {
+        o = o || {};
+        if (!_canSpawn()) return false;
+        var wpC = _worldPos(cx, cy), wpT = _worldPos(tx, ty), ts = wpT.ts;
+        var ms = o.ms > 0 ? o.ms : 7000;
+        var swarmAt = o.swarmAt != null ? o.swarmAt : 100, liftAt = o.liftAt != null ? o.liftAt : swarmAt + 1600, hitAt = o.hitAt != null ? o.hitAt : liftAt + 1400;
+        var g = new THREE.Group(); g.position.set(wpT.x, wpT.y, wpT.z);
+        var vic = _finUnitAt(tx, ty);
+        var body = _finDouble(tx, ty, ts, { hide: true, slot: ['hitStagger', 'hit', 'idle'] }); g.add(body);
+        var BH = _fdHas(body) ? body.userData.fd.d.height : ts * 0.9, LIFT = ts * 0.35;
+        var from = new THREE.Vector3(wpC.x - wpT.x, BH * 0.7, wpC.z - wpT.z);
+        /* the morphos */
+        var flies = [];
+        for (var i = 0; i < 24; i++) {
+            var b = _bug('blue_morpho', ts * 0.24, { seed: i * 0.37 });
+            if (!b) continue;
+            g.add(b.g); flies.push({ b: b, t0: i * 45, a: rn(0, 6.28), r: rn(0.35, 0.6), y: rn(0.1, 1.05), sp: rn(0.8, 1.3), last: new THREE.Vector3() });
+        }
+        /* the case: base, four glass sides, a lid */
+        var W = ts * 0.95, H = BH + LIFT + ts * 0.25;
+        var cas = new THREE.Group(); g.add(cas); cas.visible = false;
+        var wood = _finBasic(0x3a2414), glassM = _finBasic(0xbfe6ff, { opacity: 0.22, depthWrite: false, side: THREE.DoubleSide }), edgeM = _finBasic(0x2a1a0e);
+        var base = new THREE.Mesh(new THREE.BoxGeometry(W * 1.1, ts * 0.12, W * 1.1), wood); base.position.y = ts * 0.06; cas.add(base);
+        var glass = new THREE.Mesh(new THREE.BoxGeometry(W, H, W), glassM); glass.position.y = ts * 0.12 + H / 2; glass.renderOrder = 170; cas.add(glass);
+        var rim = new THREE.Mesh(new THREE.BoxGeometry(W * 1.04, ts * 0.04, W * 1.04), edgeM); rim.position.y = ts * 0.12 + H; cas.add(rim);
+        for (var e = 0; e < 4; e++) { var post = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.035, H, ts * 0.035), edgeM); post.position.set((e & 1 ? 1 : -1) * W / 2, ts * 0.12 + H / 2, (e & 2 ? 1 : -1) * W / 2); cas.add(post); }
+        /* the pin: a long steel shaft and a round head */
+        var pin = new THREE.Group(); g.add(pin); pin.visible = false;
+        var shaft = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.012, ts * 0.006, ts * 1.0, 6), _finBasic(0xd8dce4)); shaft.position.y = ts * 0.5; pin.add(shaft);
+        var head = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.045, 10, 8), _finBasic(0xc02a2a)); head.position.y = ts * 1.0; pin.add(head);
+        /* the label */
+        var lm = new THREE.SpriteMaterial({ map: _sigSpecimenLabel(vic && vic.race ? vic.race : 'specimen'), transparent: true, opacity: 0, depthWrite: false, fog: false });
+        var label = new THREE.Sprite(lm); label.scale.set(ts * 0.8, ts * 0.8, 1); label.position.set(0, ts * 0.3, W * 0.75); label.renderOrder = 171; g.add(label);
+        var hit = false, hitEl = 0, Pq = new THREE.Vector3();
+        return !!_sigRunOwned(g, ms, function (el) {
+            if (!hit) _fdTick(body, el);   // pinned: the body stops dead
+            /* the lift: the swarm carries the body up off its square */
+            var lk = _sigClamp01((el - liftAt) / Math.max(1, hitAt - liftAt)), le = lk * lk * (3 - 2 * lk);
+            body.position.y = ts * 0.45 + LIFT * le + (hit ? 0 : Math.sin(el * 0.01) * ts * 0.015 * le);
+            /* the morphos: out of the caster, round the body, onto the lid after the hit, then away */
+            for (var k = 0; k < flies.length; k++) {
+                var F = flies[k], m = F.b.g, et = el - swarmAt - F.t0;
+                if (et < 0) { m.visible = false; continue; }
+                m.visible = true;
+                var ca = F.a + et * 0.0024 * F.sp, rr = ts * F.r, p0x = Math.cos(ca) * rr, p0z = Math.sin(ca) * rr, p0y = F.y * BH + LIFT * le;
+                var ink = _sigClamp01(et / 700);
+                var x = from.x + (p0x - from.x) * ink, y = from.y + (p0y - from.y) * ink, z = from.z + (p0z - from.z) * ink;
+                if (hit) {
+                    var sk = _sigClamp01((el - hitEl - 200) / 500), ok = _sigClamp01((el - hitEl - 1500) / 900);
+                    var lx = (k % 5 - 2) * W * 0.18, lz = ((k / 5 | 0) % 3 - 1) * W * 0.25, ly = ts * 0.14 + H + ts * 0.02;
+                    x = x + (lx - x) * sk; y = y + (ly - y) * sk; z = z + (lz - z) * sk;
+                    if (ok > 0) { var oa = k * 1.7; x += Math.cos(oa) * ts * 3 * ok; z += Math.sin(oa) * ts * 3 * ok; y += ts * 2.5 * ok; }
+                    m.visible = ok < 1;
+                }
+                m.position.set(x, y, z);
+                if (F.last.distanceToSquared(m.position) > 1e-8) { Pq.set(2 * x - F.last.x + g.position.x, 2 * y - F.last.y + g.position.y, 2 * z - F.last.z + g.position.z); m.lookAt(Pq); }
+                F.last.copy(m.position);
+            }
+            /* the case drops, the pin drives, the label stands */
+            var dk = _sigClamp01((el - (hitAt - 260)) / 260), drop = 1 - dk * dk;
+            if (el >= hitAt - 260) { cas.visible = true; cas.position.y = ts * 2.2 * drop; }
+            if (el >= hitAt && !hit) {
+                hit = true; hitEl = el;
+                _shake('normal'); _sigScreenFlash('#cfe8ff', 160, 0.45);
+                _sigShockRing3D(tx, ty, { color: 0x3a8bff, r0: ts * 0.2, r1: ts * 2.0, ms: 520, torus: true });
+            }
+            if (hit) {
+                var pk = _sigClamp01((el - hitEl) / 180);
+                pin.visible = true; pin.position.y = ts * 0.12 + H * (1 - 0.55 * pk) + ts * 0.4 * (1 - pk) - ts * 0.5;
+                lm.opacity = 0.95 * _sigClamp01((el - hitEl - 300) / 300);
+                var fade = _sigClamp01((el - (ms - 700)) / 700);
+                glassM.opacity = 0.22 * (1 - fade); wood.opacity = 1 - fade; wood.transparent = true; edgeM.opacity = 1 - fade; edgeM.transparent = true;
+                lm.opacity *= (1 - fade); _fdFade(body, 1 - fade);
+                if (fade >= 1) { _fdHide(body, false); body.visible = false; }
+            }
+        });
+    }
+    _FIN_STAGE.specimen = function (P) {
+        P.circle(0x3a8bff, 0x0a1430);
+        P.at(P.CHARGE - 1200, function () { _sigSpecimen3D(P.cx, P.cy, P.tx, P.ty, { ms: P.STRIKE + 5200, swarmAt: 100, liftAt: 1200 + P.STRIKE - 1600, hitAt: 1200 + P.STRIKE }); });
+        P.at(P.hitAt, function () { P.ring(0x3a8bff, { r1: P.ts * 2.2, ms: 520 }); P.flash('#cfe8ff', 180, 0.5); P.shake('normal'); P.grade('#3a8bff', 700); });
+        P.at(P.hitAt + 400, function () { P.whiteout(0x0a1430, 5, { ms: 800, peak: 0.4 }); });
+    };
     _FIN_STAGE.theBridge = function (P) {
         P.circle(0x8a6ad8, 0x100818);
         P.at(P.CHARGE - 900, function () { _sigTheBridge3D(P.cx, P.cy, P.tx, P.ty, { ms: P.STRIKE + 5000, eyesAt: 100, bridgeAt: 900 + P.STRIKE - 3300, snapAt: 900 + P.STRIKE - 1000, hitAt: 900 + P.STRIKE }); });
@@ -55789,6 +55887,187 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     SPELL_MAP['raceTailwind']      = Object.assign({}, SPELL_MAP['raceTailwind'], { aura: 'wdTailwind_aura' });
     delete _spell3DGeometry.raceCrosswind;       /* the A-F flat ribbons give way to the lane gust */
     delete _spell3DGeometry.raceEyeOfTheStorm;   /* the A-F turning rings give way to the storm wall */
+    /* ══ THE BUTTERFLY GIRL (2026-11-23, blue morpho; mondo OK'd the plan) ══ Her own colour is the morpho's iridescent blue; the side
+       reads from the viewer's seat on the threads and rings (THE RIOT PASS: cyan-blue yours, pink-orange theirs). Her insects are
+       mondo's own blue morphos (THE INSECTS: `blue_morpho`, beating their own wings). Nothing sits on the caster, the target, the
+       hit or the number. Kill-switch window.EW_NO_BUTTERFLY_VFX.
+         FLUTTER (impact + geometry): a ribbon of scales (a thin side-colour thread) from her to the target, one morpho riding it
+           out, a shimmer of scales on the hit.
+         THE SHOULDER ('nrFlutter:sync', battle.js _bfFlutterChanged: every stack change, relayed): 1-3 blue morphos circling the
+           carrier's head, one a stack, kept by ONE small keeper run over its own list (never a scene walk, RULE #1e).
+         EYESPOTS (aoe round her + geometry): two huge owl eyespots open behind her shoulders, stare, blink once and close; a side
+           ring out to the area's edge.
+         BUTTERFLY EFFECT ('nrButterflyEffect:flap'): three side rings out of her, a thin thread to every Flutter of her side's
+           in sight and a small ring under each.
+         THE TWISTER ('nrFlutter:twister', at 3): the wind pass's own tornado (_wdTornado, the Tornado spell's look) on the carrier,
+           a side ring over the 3x3, the morphos spiralling up out of it.
+         FLASH AND VANISH ('nrFlashVanish', her passive): a blue flash and a burst of morphos off her; the Invisible look takes over. */
+    var _BF_BLUE = 0x3a8bff, _BF_GLOW = 0x9fd8ff;
+    function _bfOff() { return _catOff('spells') || (typeof window !== 'undefined' && !!window.EW_NO_BUTTERFLY_VFX); }
+    function _bfUnit(uid) {
+        try { var us = state.units; for (var i = 0; i < us.length; i++) if (us[i] && us[i].id === uid) return us[i]; } catch (e) {}
+        return null;
+    }
+    function _bfEyeTex() {
+        return _sigTex('bf-eyespot', 128, function (ctx, S) {
+            var c = S / 2, rr = [[0.5, '#1a1008'], [0.42, '#e8b040'], [0.3, '#2a1408'], [0.2, '#0a0604']];
+            for (var i = 0; i < rr.length; i++) { ctx.fillStyle = rr[i][1]; ctx.beginPath(); ctx.arc(c, c, S * rr[i][0], 0, Math.PI * 2); ctx.fill(); }
+            ctx.fillStyle = '#f4f0e0'; ctx.beginPath(); ctx.ellipse(c - S * 0.07, c - S * 0.08, S * 0.06, S * 0.035, -0.5, 0, Math.PI * 2); ctx.fill();   // the glint that makes it look back
+        });
+    }
+    /* a morpho flight in a tile's frame (THE INSECTS' _bugRun): n insects on paths p(e, i) → [x, y, z] */
+    function _bfFlight(tx, ty, n, ms, size, path) {
+        var list = [];
+        for (var i = 0; i < n; i++) (function (k) { list.push({ key: 'blue_morpho', size: size, at: k * 40, path: function (e) { return path(e, k); } }); })(i);
+        return _bugRun(tx, ty, list, ms);
+    }
+    EFFECTS['nrFlutter_impact'] = { layers: [
+        { count: 12, sprite: 'sparkle', ml: [380, 620], offsetXY: 12, z: [40, 80], tint: _BF_GLOW, vxRange: 90, vyRange: 90, vzRange: [10, 50], drag: 1, size0: [3, 5], size1: 1, opacity0: 0.9, delayMs: 300 },
+    ] };
+    function _bfFlutter3D(tx, ty, r, o) {
+        if (_bfOff() || _afFogHides(tx, ty)) return null;
+        o = o || {};
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _afCaster(tx, ty, o), cu = _fx5UnitAt(from.x, from.y), C = _hdSide(cu || { player: o.owner });
+        var h = _lgBodyH(_lgUidAt(tx, ty), ts) * 0.62;
+        var th = from.fogged ? null : _hdThread(F, from.x, from.y, h, C.a, 900, ts * 0.05, 300);
+        if (th) _sigRunOwned(F.g, 920, function (el) { th.run(el); th.hold.position.y = h + Math.sin(el / 60) * ts * 0.03; });
+        if (!from.fogged) {
+            var a = _afTo(F, from.x, from.y);
+            _bfFlight(tx, ty, 1, 420, 0.3, function (e) { var k = Math.min(1, e / 320); if (e > 400) return null; return [a.x * (1 - k), h + a.y * (1 - k) * 0.5 + Math.sin(k * Math.PI) * ts * 0.5, a.z * (1 - k)]; });
+        }
+        _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.15, r1: ts * 0.6, ms: 420, color: C.a, height: ts * 0.05 }); } catch (e) {} }, 320);
+        return true;
+    }
+    /* THE SHOULDER: the keeper (one run for every carrier, its own list) */
+    var _BFK = { map: {}, run: null, root: null };
+    function _bfkTick(el) {
+        var R3 = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null, o3 = [0, 0, 0], any = false;
+        for (var k in _BFK.map) {
+            var E = _BFK.map[k], u = _bfUnit(E.uid), n = u && !u.dead && !u._dying ? Math.min(3, u._flutter | 0) : 0;
+            if (E.gone || !n) { if (E.g.parent) E.g.parent.remove(E.g); delete _BFK.map[k]; continue; }
+            any = true;
+            var hide = _afFogHides(u.x, u.y) || (u.status && u.status.invisible > 0 && !_fx5Mine(u));
+            E.g.visible = !hide;
+            if (hide) continue;
+            var wp = _worldPos(u.x, u.y), ts = wp.ts;
+            while (E.bugs.length < n) { var b = _bug('blue_morpho', ts * 0.24, { seed: E.bugs.length * 0.73 + (E.uid % 7) }); if (!b) break; b.g.visible = true; E.g.add(b.g); E.bugs.push(b); }
+            if (!E.p) E.p = new THREE.Vector3(wp.x, wp.y, wp.z);
+            if (R3 && R3.getUnitWorldPos && R3.getUnitWorldPos(u.id, o3)) E.p.set(o3[0], o3[1], o3[2]); else E.p.set(wp.x, wp.y, wp.z);
+            var hh = _lgBodyH(u.id, ts);
+            for (var i = 0; i < E.bugs.length; i++) {
+                var B = E.bugs[i]; B.g.visible = i < n;
+                if (i >= n) continue;
+                var ang = el * 0.0011 * (1 + i * 0.15) + i * 2.09, rr = ts * (0.3 + 0.05 * i), y = hh * (0.92 + 0.05 * i) + Math.sin(el * 0.004 + i) * ts * 0.05;
+                B.g.position.set(E.p.x + Math.cos(ang) * rr, E.p.y + y, E.p.z + Math.sin(ang) * rr);
+                if (!E.q) E.q = new THREE.Vector3();
+                E.q.set(E.p.x + Math.cos(ang + 0.3) * rr, E.p.y + y, E.p.z + Math.sin(ang + 0.3) * rr); B.g.lookAt(E.q);
+            }
+        }
+        if (!any && _BFK.run) { var r = _BFK.run; _BFK.run = null; try { r.finish(); } catch (e) {} }
+    }
+    function _bfSync3D(tx, ty, r, o) {
+        if (_bfOff()) return null;
+        o = o || {};
+        var uid = o.uid; if (uid == null) return null;
+        var n = Math.max(0, Math.min(3, r | 0)), E = _BFK.map[uid];
+        if (!n) { if (E) E.gone = true; return true; }
+        if (!E) E = _BFK.map[uid] = { uid: uid, bugs: [], g: new THREE.Group(), gone: false };
+        E.gone = false;
+        if (!_BFK.run || _BFK.run.done) {
+            _BFK.root = new THREE.Group();
+            for (var k in _BFK.map) { var e2 = _BFK.map[k]; e2.g = new THREE.Group(); e2.bugs = []; _BFK.root.add(e2.g); }
+            _BFK.run = _sigRunOwned(_BFK.root, 3600000, _bfkTick);
+            if (!_BFK.run) return null;
+        } else if (!E.g.parent) _BFK.root.add(E.g);
+        return true;
+    }
+    /* EYESPOTS: the owl eyes open behind her shoulders */
+    EFFECTS['nrEyespots_tile'] = { layers: [
+        { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 520, z: 3, tint: _BF_BLUE, size0: 24, size1: 90, opacity0: 0.4, delayMs: 260 },
+    ] };
+    EFFECTS['nrEyespots_center'] = { layers: [
+        { count: 10, sprite: 'sparkle', ml: [500, 800], offsetXY: 20, z: [70, 120], tint: _BF_GLOW, vxRange: 120, vyRange: 120, vzRange: [10, 40], drag: 1, size0: [3, 5], size1: 1, opacity0: 0.85, delayMs: 120 },
+    ] };
+    _afAoeDef('nrEyespots_aoe', 2, 'square', 'nrEyespots_tile', 'nrEyespots_center');
+    function _bfEyespots3D(tx, ty, r, o) {
+        if (_bfOff() || _afFogHides(tx, ty)) return null;
+        o = o || {};
+        var F = _nrvFrame(tx, ty), ts = F.ts, cu = _fx5UnitAt(tx, ty), C = _hdSide(cu || { player: o.owner }), h = _lgBodyH(_lgUidAt(tx, ty), ts);
+        var eyes = [];
+        for (var s = -1; s <= 1; s += 2) {
+            var m = new THREE.SpriteMaterial({ map: _bfEyeTex(), transparent: true, opacity: 0, depthWrite: false, fog: false });
+            var sp = new THREE.Sprite(m); sp.renderOrder = 168; F.g.add(sp); eyes.push({ sp: sp, m: m, s: s });
+        }
+        var cd = (typeof _nbCamDir === 'function') ? _nbCamDir(F) : { x: 0, z: 1 }, sx = -cd.z, sz = cd.x;   // across the screen
+        var total = 1500;
+        _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.4, r1: ts * ((r > 0 ? r : 2) + 0.5), ms: 640, color: C.a, height: ts * 0.05 }); } catch (e) {} }, 260);
+        return _sigRunOwned(F.g, total, function (el) {
+            var open = _sigEaseOutBack(_sigClamp01(el / 260)), shut = _sigClamp01((el - 1150) / 300);
+            var blink = (el > 650 && el < 790) ? Math.abs(Math.cos((el - 650) / 140 * Math.PI)) : 1;
+            for (var i = 0; i < eyes.length; i++) {
+                var E = eyes[i], w = ts * 0.75 * open * (1 - shut);
+                E.sp.scale.set(Math.max(0.001, w), Math.max(0.001, w * blink), 1);
+                E.sp.position.set(sx * E.s * ts * 0.55, h * 1.05, sz * E.s * ts * 0.55);
+                E.m.opacity = 0.95 * (1 - shut);
+            }
+        });
+    }
+    /* BUTTERFLY EFFECT: one beat, everything she started answers */
+    function _bfEffect3D(tx, ty, r, o) {
+        if (_bfOff() || _afFogHides(tx, ty)) return null;
+        o = o || {};
+        var F = _nrvFrame(tx, ty), ts = F.ts, cu = _fx5UnitAt(tx, ty), C = _hdSide(cu || { player: o.owner }), side = cu ? cu.player : o.owner;
+        for (var i = 0; i < 3; i++) (function (j) {
+            _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.3, r1: ts * (2 + j * 1.2), ms: 620, color: j === 1 ? _BF_BLUE : (j ? C.b : C.a), height: ts * (0.05 + 0.4 * j), opacity: 0.5, torus: j > 0 }); } catch (e) {} }, j * 140);
+        })(i);
+        var h = _lgBodyH(_lgUidAt(tx, ty), ts) * 0.8, th = [];
+        try {
+            var us = state.units;
+            for (var k = 0; k < us.length && th.length < 8; k++) {
+                var u = us[k];
+                if (!u || u.dead || !(u._flutter > 0) || _afFogHides(u.x, u.y)) continue;
+                var s0 = _bfUnit(u._flutterSrcId); if (!s0 || s0.player !== side) continue;
+                var G = _nrvFrame(u.x, u.y), t = _hdThread(G, tx, ty, h, C.a, 900, ts * 0.03, 360);
+                th.push({ G: G, t: t });
+                (function (x, y) { _fxDelay(function () { try { _sigShockRing3D(x, y, { r0: ts * 0.1, r1: ts * 0.7, ms: 460, color: _BF_BLUE, height: ts * 0.05 }); } catch (e) {} }, 380); })(u.x, u.y);
+            }
+        } catch (e) {}
+        for (var q = 0; q < th.length; q++) (function (T) { _sigRunOwned(T.G.g, 920, function (el) { T.t.run(el); }); })(th[q]);
+        return true;
+    }
+    /* THE TWISTER: the Tornado's own funnel on the carrier, the morphos spiralling up out of it */
+    function _bfTwister3D(tx, ty, r, o) {
+        if (_bfOff() || _afFogHides(tx, ty)) return null;
+        o = o || {};
+        var ts = _worldPos(tx, ty).ts, C = _hdSide({ player: o.owner });
+        try { _wdTornado(tx, ty); } catch (e) {}
+        try { _sigShockRing3D(tx, ty, { r0: ts * 0.4, r1: ts * 1.6, ms: 600, color: C.a, height: ts * 0.05 }); } catch (e) {}
+        _bfFlight(tx, ty, 6, 1500, 0.26, function (e, i) { var k = e / 1400; if (k > 1) return null; var a = i * 1.05 + k * 9, rr = ts * (0.3 + k * 1.1); return [Math.cos(a) * rr, ts * (0.2 + k * 2.6), Math.sin(a) * rr]; });
+        return true;
+    }
+    /* FLASH AND VANISH: a blue flash, a burst of morphos off her */
+    EFFECTS['nrFlashVanish_burst'] = { layers: [
+        { sprite: 'flash', ml: 220, z: 60, size0: 16, size1: 80, tint: _BF_GLOW, opacity0: 0.7 },
+        { count: 18, sprite: 'sparkle', ml: [420, 700], offsetXY: 14, z: [40, 100], tint: _BF_BLUE, vxRange: 170, vyRange: 170, vzRange: [20, 80], drag: 1, size0: [3, 6], size1: 1, opacity0: 0.95 },
+    ] };
+    function _bfVanish3D(tx, ty, r, o) {
+        if (_bfOff() || _afFogHides(tx, ty)) return null;
+        try { fire('impact', 'nrFlashVanish:burst', { tx: tx, ty: ty }); } catch (e) {}
+        var ts = _worldPos(tx, ty).ts, h = _lgBodyH(_lgUidAt(tx, ty), ts) * 0.7;
+        _bfFlight(tx, ty, 5, 900, 0.26, function (e, i) { var k = e / 850; if (k > 1) return null; var a = i * 1.26; return [Math.cos(a) * ts * k * 1.6, h + k * ts * 1.2, Math.sin(a) * ts * k * 1.6]; });
+        return true;
+    }
+    _WD_BURST.nrFlutter = false;   // her scales are the look; the wind pass's generic air mark stays off
+    _WD_BURST.nrButterflyEffect = false;
+    Object.assign(SPELL_MAP, {
+        nrFlutter:           { impact: 'nrFlutter_impact' },
+        nrEyespots:          { aoe: 'nrEyespots_aoe' },
+        'nrFlashVanish:burst': { impact: 'nrFlashVanish_burst' },
+    });
+    Object.assign(_spell3DGeometry, {
+        nrFlutter: _bfFlutter3D, nrEyespots: _bfEyespots3D,
+        'nrFlutter:sync': _bfSync3D, 'nrFlutter:twister': _bfTwister3D, 'nrButterflyEffect:flap': _bfEffect3D, 'nrFlashVanish': _bfVanish3D,
+    });
     /* ═════════ END THE WIND PASS ═════════ */
 
 
@@ -76305,6 +76584,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         sigNineLives3D: _sigNineLives3D,
         sigThePraying3D: _sigThePraying3D,
         sigTheColony3D: _sigTheColony3D,
+        sigSpecimen3D: _sigSpecimen3D,   // 🦋 the Butterfly Girl's finisher (2026-11-23)
         sigTheBridge3D: _sigTheBridge3D,
         sigTheLastVerse3D: _sigTheLastVerse3D,
         sigAMurder3D: _sigAMurder3D,

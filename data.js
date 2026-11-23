@@ -405,6 +405,7 @@ const FINISHERS = {
     'gladiator':      { id: 'fin_gladiator', name: 'Pollice Verso', glyph: '🛡', type: 'human', sig: 'thousandCuts', built: true, tagline: 'THE CROWD HAS SPOKEN', desc: 'The sand goes quiet, every face in the stands turns to the box, and the thumb goes down.' },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) (borrows the thousandCuts staging)
     'farmer':         { id: 'fin_farmer', name: 'Reap What You Sow', glyph: '🌾', type: 'human', sig: 'gardenVariety', built: true, tagline: 'HARVEST TIME', desc: 'The field comes up all at once round the victim, and the pitchfork comes down with the season.' },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) (borrows the gardenVariety staging)
     'jellyfish ufo':  { id: 'fin_jellyfish_ufo', name: 'Abyssal Glow', glyph: '🪼', type: 'anomaly', sig: 'theBloom', built: true, tagline: 'LIGHTS IN THE DEEP', desc: 'The bell lights the victim from the inside like the things that live in the dark, brighter and brighter, then everything goes dark.' },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) (borrows the theBloom staging)
+    'butterfly girl': { id: 'fin_butterfly_girl', name: 'Specimen', glyph: '🦋', type: 'anomaly', sig: 'specimen', built: true, tagline: 'PINNED AND LABELLED', desc: 'A cloud of blue morphos lifts the victim off the board and sets it down pinned in a glass display case, a paper label under it. The collector gets collected.' },   // 2026-11-23 THE BUTTERFLY GIRL (mondo OK'd the kit)
     'lifeguard':      { id: 'fin_lifeguard', name: 'Red Flag', glyph: '🛟', type: 'human', sig: 'theWave', built: true, tagline: 'EVERYBODY OUT OF THE WATER', desc: 'The whistle blows three times, the red flag goes up, and a wave the size of the boardwalk takes the one swimmer who did not listen.' },   // 2026-11-16 THE NEW RACES — borrows the wave staging
     'politician':     { id: 'fin_politician', name: 'The Motion Carries', glyph: '🗳', type: 'human', sig: 'motionCarries', built: true, tagline: 'ALL IN FAVOUR', desc: 'A gavel the size of a building. A vote nobody attended. The victim is expelled from reality on a technicality.' },
     'atlantean':      { id: 'fin_atlantean', name: 'Poseidon\'s Wrath', glyph: '🔱', type: 'anomaly', sig: 'poseidonsWrath', built: true, tagline: 'THE TRIDENT, FROM BELOW', desc: 'The board floods to the victim\'s knees, and the trident comes up through the floor.' },
@@ -662,6 +663,7 @@ const RACE_ELEMENT_AFFINITY = {
     'gladiator': { earth: 'resist', lightning: 'weak' },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): bronze plates on sand; lightning finds the bronze
     'farmer': { nature: 'resist', fire: 'weak' },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): a life in the fields; dry hay goes up
     'jellyfish ufo': { psychic: 'immune', lightning: 'resist', water: 'resist', earth: 'weak' },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): a jellyfish mind, a lightning bell, a sea creature on dry ground
+    'butterfly girl': { wind: 'resist', ice: 'weak' },   // 2026-11-23 THE BUTTERFLY GIRL (mondo OK'd the kit): she rides the wind; cold grounds a butterfly
     'lifeguard': { water: 'resist', lightning: 'weak' },   // 2026-11-16
     'crystal guardian': { earth: 'resist', sonic: 'weak' },   // 2026-09-30
     'jack o lantern': { fire: 'resist', water: 'weak' },   // 2026-09-30
@@ -3096,7 +3098,7 @@ const RACE_PROFILES = {
     },
     'butterfly girl': {   // 2026-11-23 THE COMING RACES 2
         label: 'Butterfly Girl',
-        types: ['anomaly']   // a first guess; the unit's spell thread settles it
+        types: ['anomaly']   // 2026-11-23 THE BUTTERFLY GIRL: settled (her kit is Anomaly)
     },
     'mannequin': {   // 2026-11-23 THE COMING RACES 2 — the Bayside Mall: a living shop-window mannequin
         label: 'Mannequin',
@@ -3830,6 +3832,10 @@ const PASSIVE_DEFS = {
         stagePerRounds: { int: 1, every: 3 }, resetOnDeath: true,
         desc: 'The longer the experiment runs, the madder it gets: +1 M.ATK stage at the start of every 3rd round, permanent until death.',
     },
+    flashAndVanish: {   // 2026-11-23 THE BUTTERFLY GIRL (mondo OK'd the kit): the morpho's escape, battle.js _bfFlashVanish
+        id: 'flashAndVanish', icon: '🦋', name: 'Flash and Vanish',
+        desc: 'A blue flash, then the brown underside of the wings, and she is gone: the first time an enemy hits her, she turns Invisible until her next turn starts. Once every 2 rounds.',
+    },
     heartBolt: {   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
         id: 'heartBolt', icon: '💗', name: 'Heart Bolt',
         basicAttackMagic: true,
@@ -3924,6 +3930,7 @@ const RACE_PASSIVES = {
     'fairy':         ['fairyDustTrail'],      // fairy also flies → slots full
     'cowboy':        ['quickdraw'],
     'vtuber':        ['heartBolt'],   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
+    'butterfly girl': ['flashAndVanish'],   // 2026-11-23 THE BUTTERFLY GIRL (mondo OK'd the kit) — she flies too, so the slots are full
 };
 
 /* 💔 Broken (STATUS_DEFS.broken, 2026-10-09): while it lasts the unit has no passives at all. Raw status read — this is a
@@ -4000,13 +4007,13 @@ const RACE_MERGED = { 'nun': { race: 'priest', gender: 'female' } };
 /* 👁🌑 THE REALM WINDOW: races that SEE a Shadow Realm pair on their own turns (they cannot touch it). A projecting
    spirit both sees and touches (battle.js unitSeesRealm / unitCrossesRealm). */
 const REALM_SIGHT_RACES = ['ghost', 'shadow entity'];
-const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber', 'pharaoh', 'deep sea diver', 'gambler', 'hacker', 'monk', 'shogun', 'cameraman', 'mechanic', 'janitor', 'trucker', 'gladiator', 'farmer', 'jellyfish ufo'];
+const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber', 'pharaoh', 'deep sea diver', 'gambler', 'hacker', 'monk', 'shogun', 'cameraman', 'mechanic', 'janitor', 'trucker', 'gladiator', 'farmer', 'jellyfish ufo', 'butterfly girl'];
 /* THE COMING RACES (2026-11-19, mondo: "wire them in the game at least in the relation web, give them sprite ai portraits ... my associate
    [does] their spell and combat plan on another account"): races whose model, sprite and name are in (sprites.js RACE_MODELS_3D,
    RACE_PROFILES) but whose kit is not. They are NOT playable: the Relationship Web lists them (docs/plans/story-web/build/fresh.js).
    To unlock one: give it its kit (RACE_ABILITIES, RACE_TREE, RACE_FAMILIES, stats, physique, prices, ...), MOVE it from here into
    AVAILABLE_RACES and server.js AVAILABLE_RACES. Notes: docs/notes/champions-combat.md "THE COMING RACES". */
-const EW_COMING_RACES = ['bear', 'rat', 'monarch', 'butterfly girl', 'mannequin', 'plastic surgeon'];   // 2026-11-23 THE COMING RACES 2 (models in, kits not yet; one spell thread a unit). 2026-11-19: the gladiator, the farmer and the jellyfish UFO got their kits and moved to AVAILABLE_RACES
+const EW_COMING_RACES = ['bear', 'rat', 'monarch', 'mannequin', 'plastic surgeon'];   // 2026-11-23 THE COMING RACES 2 (models in, kits not yet; one spell thread a unit; the Butterfly Girl got hers 11-23 and moved to AVAILABLE_RACES). 2026-11-19: the gladiator, the farmer and the jellyfish UFO got their kits and moved to AVAILABLE_RACES
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
    default job's kit (JOB_KITS) gave it, so ranged races stay ranged: the old Sniper races reach 4 (kit 3 + the Sniper's
@@ -4177,6 +4184,7 @@ const RACE_CLASS = {
     'janitor': 'specialist',   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
     'trucker': 'tank',   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
     'jellyfish ufo': 'bruiser',   // 2026-11-19 THE COMING RACES (mondo: the jellyfishes' fighter class)
+    'butterfly girl': 'caster',   // 2026-11-23 THE BUTTERFLY GIRL (mondo OK'd the kit)
     'pharaoh': 'caster',   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
     'deep sea diver': 'specialist',   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round): the controller who makes moving hurt
     'gladiator': 'bruiser',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
@@ -4255,6 +4263,7 @@ const RACE_TERRAIN_PREFERENCE = {
     'gladiator': 'desert',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): the arena's sand
     'farmer': 'grass',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): the fields
     'jellyfish ufo': 'deep_water',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): a sea creature: never drowns (map.js unitIsDeepWaterAdapted)
+    'butterfly girl': 'tree',   // 2026-11-23 THE BUTTERFLY GIRL (mondo OK'd the kit): the forest, like the fairy
     'lifeguard': 'water',   // 2026-11-16 THE NEW RACES — at home in the surf
     'siren': 'deep_water',
     'reptilian': 'water',
@@ -4665,6 +4674,7 @@ const RACE_BASE_STATS = {
     'gladiator':          { hp: 1180, mp: 120, atk: 104, def: 120, mdef:  85, int:  60, vision: 3, crt: 20, spd: 115 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — first pass on the bruiser median; LAB LOOP 11-22 PASS 2: HP 1250→1180, ATK 135→104 (64.9% over 113 games)
     'farmer':             { hp: 1100, mp: 170, atk: 110, def: 105, mdef: 100, int: 115, vision: 3, crt: 15, spd: 100 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — first pass on the support median
     'jellyfish ufo':      { hp: 1030, mp: 150, atk: 105, def: 120, mdef: 130, int: 62, vision: 3, crt: 18, spd: 105 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — first pass: a bruiser with claws on ATK and the bell on M.ATK; LAB LOOP 11-22 PASS 1: HP 1200→1150, ATK 125→119, M.ATK 125→106 (68.6% over 49 games); LAB LOOP 11-22 PASS 2: HP 1150→1080, ATK 119→111, M.ATK 106→82 (70.1% over 62 games); LAB LOOP 11-22 PASS 4: HP 1080→1030, ATK 111→105, M.ATK 82→62 (60.3% over 131 games)
+    'butterfly girl':     { hp:  880, mp: 230, atk:  30, def:  60, mdef: 140, int: 175, vision: 4, crt: 22, spd: 140 },   // 2026-11-23 THE BUTTERFLY GIRL (mondo OK'd the kit) — first pass on the caster median: fragile, quick, long sight
     'lifeguard':          { hp: 1250, mp: 190, atk:  60, def: 100, mdef: 115, int: 150, vision: 4, crt: 15, spd: 120 },   // 2026-11-16 THE NEW RACES — first pass on the support median (vision 4: she is on watch)
     'politician':         { hp: 1810, mp: 200, atk:  11, def:  141, mdef:  144, int:  200, vision: 3, crt: 26, spd: 48 },   // BALANCE PASS 2026-10-06: INT 66→72 (lab WR 39%); STATS26 PASS 2026-10-29: HP 1276→1700, M.ATK 132→200 (30% in STATS26; POWER -257 → about -75 of the median); STATS31 PASS 2026-10-30: HP 1700→1970 (34.5% in STATS31, 40.9% over 127 games since its last change; 2 physical / 2 magic damage spells; POWER +68); STATS32 PASS 2026-10-30: HP 1970→2070, MP 165→200, SPD 29→48 + fortify, raceRallyCommand, raceSurveillance excluded (37.9% in STATS32 (124 games), 37.9% over 124 games since its last change, 36% team-adjusted; POWER +79; a different lever: the STATS26 + STATS31 HP raises did not move it (37/34/38% over STATS30-32), 70% of its casts are utility: shared no-damage Fortify, Rally Command, Surveillance excluded (RACE_SPELL_EXCLUDES), MP for casts (4.97 a game, the fewest), SPD 29→48 (still move 1, acts earlier); + Nuclear Option 180→220); STATS33 PASS 2026-10-31: HP 2070→2110, MP 200→244, DEF 141→181 (48.9% in STATS33 (90 games), 51.8% team-adjusted; POWER held (+25): the STATS32 excludes undone (spells back in its pool) took -25 POWER, the stats give it back); STATS34 PASS 2026-11-01: HP 2110→1810, MP 244→200, DEF 181→141 (60.8% in STATS34 (107 games), 62.7% team-adjusted; POWER -82; the STATS33 HP/MP/DEF raise that held its POWER when its spells came back undone (it went 48.9% → 60.8%) + HP; survives 88% of games, 808 Cube damage a game, the most)
     'atlantean':          { hp: 1010, mp: 190, atk:  112, def:  66, mdef:  66, int:  88, vision: 2, crt: 20, spd: 157 },   // race editor 2026-10-17: DEF 66, HP 1346, MDEF 66; STATS29 PASS 2026-10-30: HP 1346→1150, M.ATK 117→100 (58% over STATS27-29 (183 games); 2.17 kills and 9.5 casts a game; + Crystal Resonator 110→95); LOOP PASS 1 2026-11-08: HP 1150→860, M.ATK 100→75 (61.2% in the 11-08 loop's baseline lab (103 games), 61.7% team-adjusted; POWER -85); LOOP PASS 2 2026-11-08: HP 860→1050, M.ATK 75→91 (40.7% in the loop's pass-1 lab (108 games), 39% team-adjusted; split the difference back toward the pre-pass stats (36% of the last change kept); POWER +56); LOOP PASS 4 2026-11-08: HP 1050→1010, M.ATK 91→88 (54.3% in the loop's labs since its last change (219 games), 55.4% team-adjusted; split the difference back toward the pre-pass stats (80% of the last change kept); POWER -12)
@@ -4851,6 +4861,7 @@ const RACE_PHYSIQUE = {
     'gladiator':           { h: 1.82, w: 88 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
     'farmer':              { h: 1.78, w: 85 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
     'jellyfish ufo':       { h: 1.90, w: 60 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — a bell over a metal body; floats
+    'butterfly girl':      { h: 1.70, w: 52 },   // 2026-11-23 THE BUTTERFLY GIRL (mondo OK'd the kit)
     'lifeguard':           { h: 1.72, w: 60 },   // 2026-11-16
     'politician':          { h: 1.80, w: 90 },
     'atlantean':           { h: 2.00, w: 95 },
@@ -11350,6 +11361,26 @@ const RACE_ABILITIES = {
           statusIfTargetHas: { has: 'wet', status: [{ id: 'root', duration: 1 }] },
           desc: 'Everything the bell holds, all at once. Deals HEAVY lightning damage to All Enemies within 2 and spends all its Charge: +50 damage for each. Wet targets are Rooted for 1 round. Cooldown: 4 rounds.' },
     ],
+    'butterfly girl': [
+        /* THE BUTTERFLY EFFECT (2026-11-23, the Butterfly Girl, blue morpho; mondo OK'd the plan: "yeah thas fine"): small flaps now, a
+           twister later. Flutter and Eyespots leave a FLUTTER on an enemy (`flutter` status, the stack 1-3 in unit._flutter, the
+           caster's id in _flutterSrcId). Every Flutter grows by 1 at each round end (battle.js _bfRoundEnd from _nrRoundEnd); at 3 it
+           touches down: a twister on the 3x3 round the carrier (MEDIUM wind magic damage to the carrier's side in it, the neighbours
+           pushed 1 square out, one twister a unit a round end), then it clears. Cleanse / purge takes it off; her death does not.
+           Butterfly Effect grows every Flutter on the board by 1 at once. Passive Flash and Vanish (PASSIVE_DEFS). Notes:
+           docs/notes/champions-combat.md "THE BUTTERFLY GIRL". */
+        { id: 'nrFlutter', name: 'Flutter', tier: 1, families: ['morpho'], cost: 25, apCost: 1, spellType: 'anomaly',
+          element: 'wind', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 80, range: 4,
+          statusEffects: [{ id: 'flutter', duration: 9 }],
+          desc: 'A flap of her wings sends a ribbon of scales. Deals WEAK wind magic damage to a Single Enemy within 4 and puts a Flutter on it (or grows the one it has). A Flutter grows by 1 every round end; at 3 it touches down as a twister on the 3x3 round it.' },
+        { id: 'nrEyespots', name: 'Eyespots', tier: 2, families: ['morpho'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+          element: 'psychic', type: 'debuff', kind: 'aoe', noDamage: true, range: 0, aoeRadius: 2, aoeOriginSelf: true,
+          statusEffects: [{ id: 'feared', duration: 1 }, { id: 'flutter', duration: 9 }],
+          desc: 'She shows the owl eyes under her wings. All Enemies within 2 are Feared for 1 round and each gets a Flutter (or grows the one it has). Cooldown: 2 rounds.' },
+        { id: 'nrButterflyEffect', name: 'Butterfly Effect', tier: 3, families: ['morpho'], cost: 75, apCost: 1, cooldownRounds: 3, spellType: 'anomaly',
+          element: 'wind', type: 'buff', kind: 'buff', range: 0, noDamage: true, butterflyEffect: true,
+          desc: 'One flap, and everything she started speeds up. Every Flutter on the board grows by 1 right now; any that reach 3 touch down as twisters at once. No Flutter on the board: refused. Cooldown: 3 rounds.' },
+    ],
     'haunted doll': [
         /* NOBODY'S LOOKING (2026-11-17, the Haunted Doll; mondo approved the kit + asked for the pull-string spell): "sits on the
            shelf, and moves when you look away". At every round end, when no enemy within 5 has it in its front cone (the facing
@@ -15079,6 +15110,26 @@ const STATUS_DEFS = {
         colorText: 'carrying a payload — it spreads, then goes off',
         kind: 'debuff', category: 'status', stack: 'max',
         iconSrc: createStatusIconDataUri('🦠', '#10240f', '#d8ffd0', '#4ac04a')
+    },
+    /* 🦋 FLUTTER (2026-11-23, the Butterfly Girl): a growing threat on an enemy. The stack (1-3) is unit._flutter, the Butterfly
+       Girl's id _flutterSrcId (an id, RULE #2); a second Flutter on a carrier grows it. It grows at every round end and touches
+       down at 3 (battle.js THE BUTTERFLY EFFECT). The blue morphos on the carrier's shoulder are the stack (three-vfx-effects.js). */
+    flutter: {
+        icon: '🦋', glyph: '🦋', short: 'FLU', label: 'Flutter',
+        colorText: 'carrying a Flutter — it grows into a twister',
+        kind: 'debuff', category: 'status', stack: 'max',
+        iconSrc: createStatusIconDataUri('🦋', '#0a1430', '#d8e8ff', '#3a7bff'),
+        onApply(unit, src, info) {
+            const was = (info && info.refreshed && unit._flutter > 0) ? unit._flutter : 0;
+            unit._flutter = Math.min(3, was + 1);
+            if (src && src.id != null) unit._flutterSrcId = src.id;
+            if (typeof window !== 'undefined' && typeof window._bfFlutterChanged === 'function') window._bfFlutterChanged(unit, was);
+        },
+        onRemove(unit) {
+            const was = unit._flutter || 0;
+            delete unit._flutter; delete unit._flutterSrcId;
+            if (typeof window !== 'undefined' && typeof window._bfFlutterChanged === 'function') window._bfFlutterChanged(unit, was);
+        }
     },
     /* filtered (2026-11-17, the Influencer's Filter): wears another ally's look on the enemy's screen. The look is
        unit._filterLookId (an id, RULE #2) + _filterRace / _filterGender (a copy, so it holds if that ally falls). */
@@ -21502,6 +21553,7 @@ const EW_RACE_BIOMES = {
     'gladiator': ['ancient', 'stadium'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — the Colosseum
     'farmer': ['ranch', 'forest'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — the Estate's Corn Fields + Ranch
     'jellyfish ufo': ['deep_sea', 'tropical'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — The Deep (the Trench)
+    'butterfly girl': ['forest'],   // 2026-11-23 THE BUTTERFLY GIRL (mondo OK'd the kit) — The Fairy Forest + The Woods
     'lifeguard': ['tropical', 'urban'],   // 2026-11-16 — The Beach, Bayside
     'politician': ['clandestine'], 'atlantean': ['deep_sea', 'ancient'],
     'dinosaur': ['inner_earth', 'ancient'], 'dragon': ['arthurian'], 'ghoul': ['infernal', 'gothic'],
@@ -22176,6 +22228,7 @@ const RACE_TREE = {
     'gladiator':     ['nrNetToss', ['nrSwordLunge', 'nrShieldBash'], 'nrComeAtMe', 'nrCrowdPleaser'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
     'farmer':        ['nrPitchforkJab', ['nrSowField', 'nrHayBale'], 'nrGetOffMyLand', 'nrHarvestMoon'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
     'jellyfish ufo': ['nrPincerClaw', ['nrBioLash', 'nrJetPulse'], 'nrVenomInjector', 'nrAbyssalOverload'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
+    'butterfly girl': ['nrFlutter', 'nrEyespots', 'nrButterflyEffect', 'raceTornado'],   // 2026-11-23 THE BUTTERFLY GIRL (mondo OK'd the kit): her own three + the wind family's Tornado
     'lifeguard':     ['nrRescueTube', 'nrOnDuty', 'nrCPR', 'nrThreeWhistles'],   // 2026-11-16 THE LIFEGUARD POLISH: her own four rungs (the old row's Underdog Spirit was outside her families, and the default kit carried no On Duty / CPR)
     'politician':    ['raceFilibuster', 'raceBlackBudget', 'raceExecutiveOrder', 'sharedNuke'],
     'atlantean':     ['raceRiptide', 'sharedTidalSurge', 'raceTemporalTide', ['raceTsunami', 'raceFlood']],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
@@ -24396,6 +24449,16 @@ const SPELL_FAMILIES = {
         desc: 'An advanced jellyfish from the deep: claws that grip and sting, and a lightning bell that charges with every hit.',
         unique: 'jellyfish ufo',
         identity: { who: ['Jellyfish UFO', 'Bell-Warden', 'Deep Mind'], adj: ['Charged', 'Sentient', 'Abyssal'], look: ['a glass bell with lightning in it', 'a metal body', 'claw arms'], vibe: ['charges its bell with every hit', 'lives where the light does not reach'] }
+    },
+    morpho: {   // 2026-11-23 THE BUTTERFLY GIRL (mondo OK'd the kit) — the Butterfly Girl's own
+        id: 'morpho',
+        name: 'Morpho',
+        glyph: '🦋',
+        color: '#3a7bff',
+        kind: 'signature',
+        desc: 'Small flaps now, a twister later: every Flutter she leaves grows by itself, owl eyes that send divers running, and one flap that speeds everything up.',
+        unique: 'butterfly girl',
+        identity: { who: ['Butterfly Girl', 'Morpho', 'Collector'], adj: ['Iridescent', 'Fluttering', 'Chaotic'], look: ['huge blue morpho wings', 'curled antennae', 'blue to violet hair'], vibe: ['every flap she makes grows into a storm', 'gone in a blue flash'] }
     },
     streaming: {   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit) — the Streamer's and the E-Girl's own
         id: 'streaming',
@@ -26687,6 +26750,7 @@ const RACE_FAMILIES = {
     'gladiator': ['gladiatorial', 'swordsmanship', 'weaponstraining', 'humangrit'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
     'farmer': ['farming', 'agriculture', 'humangrit', 'teamwork'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
     'jellyfish ufo': ['bioelectric', 'jellyfish', 'lightning', 'deepsea'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
+    'butterfly girl': ['morpho', 'wind', 'nature', 'insectoid'],   // 2026-11-23 THE BUTTERFLY GIRL (mondo OK'd the kit)
     'lifeguard': ['lifesaving', 'water', 'athleticism', 'teamwork'],   // 2026-11-16
     politician: ['politics', 'deepstate', 'militarysupport', 'cult'],
     popstar: ['popidol', 'stagepresence', 'sonic', 'seduction'],
@@ -27331,6 +27395,7 @@ const CAMPAIGN_RACE_PRICES = {
   'gladiator': 400,   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
   'farmer': 350,   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
   'jellyfish ufo': 400,   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
+  'butterfly girl': 400,   // 2026-11-23 THE BUTTERFLY GIRL (mondo OK'd the kit)
   'lifeguard': 500,   // 2026-11-16
   'politician': 600,
   // CHAMP REWORK Phase 6 (2026-09-08)
@@ -29318,7 +29383,7 @@ const DOOR_TEXT = {
         'delivery boy': 'Downtown', 'librarian': 'Downtown', 'televangelist': 'Vatican City', 'influencer': 'Downtown', 'referee': 'Football Stadium', 'florida man': 'Downtown', 'boltzmann brain': 'The Singularity', 'wendigo': 'Mount Shasta', 'karate frog': 'The Sewers', 'samurai slug': 'The Sewers', 'cicada brood': 'Göbekli Tepe', 'pope': 'Vatican City',   // 2026-11-17 THE NEW RACES 2
         'ninja': 'Downtown', 'delivery boy': 'Downtown', 'librarian': 'Downtown', 'televangelist': 'Vatican City', 'influencer': 'Downtown', 'referee': 'Football Stadium', 'florida man': 'Downtown', 'boltzmann brain': 'The Singularity', 'wendigo': 'Mount Shasta', 'karate frog': 'The Sewers', 'samurai slug': 'The Sewers', 'cicada brood': 'Göbekli Tepe', 'haunted doll': 'The Haunted House', 'cursed tv': 'The Haunted House', 'virus': 'The Internet', 'streamer': 'The Internet', 'vtuber': 'The Internet',   // 2026-11-17 THE NEW RACES 2
         'pharaoh': 'Pyramids of Giza', 'deep sea diver': 'Atlantis',   // 2026-11-19 THE PHARAOH + THE DEEP SEA DIVER (mondo's concepts round)
-        'gladiator': 'Vatican City', 'farmer': 'Skinwalker Ranch', 'jellyfish ufo': 'Atlantis',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) (the Colosseum on the Vatican's plots; the Estate's fields; the Trench of The Deep)
+        'gladiator': 'Vatican City', 'farmer': 'Skinwalker Ranch', 'jellyfish ufo': 'Atlantis', 'butterfly girl': 'Fairy Forest',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) (the Colosseum on the Vatican's plots; the Estate's fields; the Trench of The Deep)
         'gambler': 'The Strip', 'hacker': 'Downtown', 'monk': 'The Bermuda Triangle', 'shogun': 'The Bermuda Triangle',   // 2026-11-19 THE NEW RACES 4 (the gambler lives in the Western Town too: HQ_AREA_ENCOUNTERS; the monk + the shogun on the Volcano Island)
         'cameraman': 'Downtown', 'mechanic': 'Downtown', 'janitor': 'Downtown', 'trucker': 'Downtown',   // 2026-11-19 THE NEW RACES 3
        
@@ -97879,7 +97944,7 @@ const HQ_NPC_TEMPERS = {
         'superhero': 'protector', 'sidekick': 'protector', 'firefighter': 'protector', 'eagleman': 'protector',
         'gangster': 'opportunist', 'goblin': 'opportunist', 'politician': 'opportunist', 'televangelist': 'opportunist', 'tech ceo': 'opportunist',
         'gambler': 'opportunist', 'hacker': 'opportunist', 'monk': 'protector', 'shogun': 'territorial',   // 2026-11-19 THE NEW RACES 4
-        'gladiator': 'territorial', 'farmer': 'guard', 'jellyfish ufo': 'territorial',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
+        'gladiator': 'territorial', 'farmer': 'guard', 'jellyfish ufo': 'territorial', 'butterfly girl': 'coward',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
         'zombie': 'brute', 'shadow entity': 'brute', 'werewolf': 'brute', 'wendigo': 'brute', 'ghoul': 'brute', 'flesheater': 'brute',
     },
     /* THE GROUPS: races who stand up for each other (no factions). Units of ONE race are a group by themselves (`sameRace`). A unit is in one
