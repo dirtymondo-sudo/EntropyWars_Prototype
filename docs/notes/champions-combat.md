@@ -6172,6 +6172,27 @@ files `gladiator-farmer-concepts/gold.py`). The Jellyfish UFO has no Meshy rig: 
 waist, each copy skinned to its own 6-bone chain, and a 2 s looping clip `Sway` in the same file (`jelly.py`); its RACE_MODELS_3D row plays
 that clip as idle and walk (`clips.idle` = the file). Its claw arms do not move. Flight / hover height is the kit thread's call.
 
+## THE COMING RACES 2 (2026-11-23, thread "Make concept art for new characters")
+mondo picked Meshy concepts and said "wire them up and start a thread for each new one to come up with a plan for their unique
+spells/playstyle and vfx". Models + 128x128 Sprite AI sprites are IN for six new races, kits are NOT: data.js `EW_COMING_RACES` =
+`bear`, `rat`, `monarch`, `butterfly girl`, `mannequin`, `plastic surgeon` (labels + a first-guess type in RACE_PROFILES; the
+Relationship Web lists them through fresh.js). One spell thread a unit (the coordinator started them 11-23); THE UNLOCK is the same as
+above (kit, then move the key into both AVAILABLE_RACES).
+- THE BEAR is ONE race (mondo: "polar bear would just have access to some spells in the ice family but they would both share the same
+  bear skill family"): the grizzly is RACE_MODELS_3D.bear.male, the polar bear is sprites.js `BEAR_POLAR_3D`, worn when the unit's
+  `appearance.form === 'polar'` (sprite `Races/bear/polar/bear_polar_px.png`). How a bear gets the polar look + its ice spells = the Bear thread.
+- THE RAT KING (mondo: "if he gets enough stacks he becomes the rat king"): sprites.js `RAT_KING_3D` (transformFx), worn when
+  `appearance.form === 'king'` (sprite `Races/rat/king/rat_king_px.png`). The stacks + the swap trigger = the Rat thread (also hash the form
+  into three-renderer.js `_computeUnitStructuralSerial`, like the Ice Queen's super form, so it swaps at once).
+- THE WEREWOLF's male model was replaced by mondo's new concept A (no chain): `werewolf/male/Meshy_AI_werewolf_m_v2_Running.glb`, same lib
+  clips + scale + day form; the old rig stays on R2. The female VAMPIRE's new model is the Vampire thread's PR (mondo: "just replace the
+  current model"), file already on R2: `vampire/female/Meshy_AI_vampire_f_v2_Running.glb`.
+- THE HORRORS (two, unnamed) are NOT wired: mondo wants each built from separate moving parts like the Virus / Cursed TV. The ten Meshy parts
+  are on R2 at `Assets/characters/races/horror_a/parts/horror_a_{core,head,arm,tentacle,cage}.glb` and
+  `horror_b/parts/horror_b_{maw,mask,limb,fingers,shard}.glb` (unrigged; B's mask came out a whole head). Assembly + rig = the Horrors thread.
+- The Mannequin is one Meshy mesh (joint gaps only painted); floating parts = its thread's call. The Plastic Surgeon is v2 (v1 read "burnt").
+- Sources, scripts (gen.py, models.py, sprites/run.py) and sheets: project files `char-concepts-20261123/`.
+
 ## THE COMING RACES, THE KITS (2026-11-19, the second account's thread "spell and combat plans for the coming races"; mondo OK'd the plans in the thread)
 mondo's words: the Jellyfish UFO "is too close to a stereotypical UFO. We already have grey for that. The jellyfish UFO is just an advanced
 sentient Jellyfish species that lives underwater" (so no abduction kit, types Anomaly + Tech, home The Deep); "I don't like trident thrust or
