@@ -340,7 +340,7 @@ B.harbour = (W, D, lx) => {
     p.push(pane('f', W, D, -2.6, 1.0, 1.5, 1.75, { key: K.win, uv: [3.5, 1.75] }, 0.02), pane('f', W, D, -1.75, 4.4, W - 5.25, 1.75, { key: K.win, uv: [3.5, 1.75] }, 0.02), pane('b', W, D, 0, 4.4, W - 3.5, 1.75, { key: K.win, uv: [3.5, 1.75] }, 0.02));
     p.push(box(tx, 0, D / 2 - 1.2, 3.3, 12.5, 3.3, wallM(T.WHITE, K.plaster)), box(tx, 0, D / 2 + 0.47, 1.2, 2.3, 0.06, trim(T.NAVY)));
     p.push(box(tx, 12.5, D / 2 - 1.2, 4.3, 0.25, 4.3, A(trim(T.NAVY), { under: true })), cyl(tx, 12.75, D / 2 - 1.2, 1.5, 2.1, A(glass(T.GLASS, K.gSq, 0.6), { seg: 12, cap: false })));
-    p.push(cyl(tx, 14.85, D / 2 - 1.2, 2.0, 1.5, A(trim(T.NAVY), { r2: 0.05, seg: 12 })), cyl(tx, 16.35, D / 2 - 1.2, 0.07, 3.2, A(trim(), { seg: 6 })), box(tx + 0.75, 18.5, D / 2 - 1.2, 1.4, 0.85, 0.04, A(trim(T.RED), { ds: true })));
+    p.push(cyl(tx, 14.85, D / 2 - 1.2, 2.0, 1.5, A(trim(T.NAVY), { r2: 0.05, seg: 12 })), cyl(tx, 16.35, D / 2 - 1.2, 0.07, 3.2, A(trim(), { seg: 6 })), box(tx + 0.75, 18.5, D / 2 - 1.2, 1.4, 0.85, 0.04, { key: 'mark:flag:dc', tint: 0xffffff, ds: true }));   // the city's flag (THE ZONE FLAGS)
     return p;
 };
 
@@ -395,7 +395,7 @@ B.lifeguard = () => {
     p.push(roof('hip', 0, y0 + 2.46, -0.5, 3.6, 1.3, 3.0, A(wallM(T.RED, K.corr), { over: 0.7, roof: true })));
     p.push(pane('f', 3.6, 3.0, 0, y0 + 0.9, 2.6, 1.1, glass(T.GLASS, K.gSq, 0.5), 0.02)); p[p.length - 1].p[2] -= 0.5;
     p.push(A(box(0, y0 + 0.16, 2.4, 5.0, 0.06, 0.06, trim(T.RED)), { n: 2, step: [0, 0.5, 0] }), box(-2.45, y0 + 0.16, 2.4, 0.08, 1.0, 0.08, trim(T.RED)), box(2.45, y0 + 0.16, 2.4, 0.08, 1.0, 0.08, trim(T.RED)));
-    p.push(cyl(1.9, y0 + 2.4, -1.9, 0.05, 3.4, A(trim(), { seg: 6 })), box(2.45, y0 + 5.0, -1.9, 1.1, 0.7, 0.04, A(trim(T.RED), { ds: true })));
+    p.push(cyl(1.9, y0 + 2.4, -1.9, 0.05, 3.4, A(trim(), { seg: 6 })), box(2.45, y0 + 5.0, -1.9, 1.1, 0.7, 0.04, { key: 'mark:flag:dc', tint: 0xffffff, ds: true }));   // the city's flag (THE ZONE FLAGS)
     p.push(box(-3.4, 0.55, 1.4, 2.4, 0.1, 1.2, { key: K.planks, under: true }), box(-3.9, 0, 1.4, 0.1, 0.55, 1.2, { key: K.planks }));           // the step up
     return p;
 };
@@ -801,7 +801,7 @@ B.tower = (tint, flag) => {
     p.push(box(0, y0 + 0.8, 0.77, 1.5, 0.85, 0.05, { tint: 0x35506e, glow: 0.2 }), box(0, y0 + 1.65, 1.0, 1.7, 0.06, 0.5, A(trim(), { under: true })));                 // the shutter, propped open
     p.push(A(box(0, y0 + 0.55, 1.6, 3.3, 0.06, 0.06, trim()), { n: 2, step: [0, 0.45, 0] }), box(-1.62, y0 + 0.14, 1.6, 0.07, 0.95, 0.07, trim()), box(1.62, y0 + 0.14, 1.6, 0.07, 0.95, 0.07, trim()));
     p.push(A(box(-2.0, 1.0, 0.9, 0.7, 0.1, 1.1, mat(K.planks, T.WHITE, 2.0)), { n: 3, step: [-0.55, -0.42, 0] }));                                           // three steps down to the sand
-    p.push(cyl(1.0, y0 + 2.5, -1.1, 0.04, 2.6, A(trim(), { seg: 6 })), box(1.5, y0 + 4.5, -1.1, 0.95, 0.55, 0.04, A(trim(flag), { ds: true })));
+    p.push(cyl(1.0, y0 + 2.5, -1.1, 0.04, 2.6, A(trim(), { seg: 6 })), box(1.5, y0 + 4.5, -1.1, 0.95, 0.55, 0.04, { key: 'mark:flag:dc', tint: 0xffffff, ds: true }));   // the city's flag (mondo 11-23: the beach is in the city, no yellow / blue flags; it waves: THE ZONE FLAGS)
     return p;
 };
 /* a white motor yacht, its waterline at the row's y: a pointed hull, a navy boot stripe, a cabin with a band of dark glass, a flybridge, a mast */

@@ -23,27 +23,17 @@ const WALL = 'castle_wall';
 /* THE ROYAL BANNER (2026-11-16, mondo on the first screenshots: "wtf is this random red rectangle and yellow square. if its a flag or a
    banner it needs way more detail and thought behind it"). One banner, the same everywhere in Camelot: an iron rod with gilt finials on two
    brackets, a crimson cloth with a gold border, cut to a swallowtail at the foot; on it Arthur's arms: the gold crown over the sword in
-   the stone (the blade point down in a grey stone). → parts in a frame where the cloth hangs in the x plane and faces +z * nz.
+   the stone (the blade point down in a grey stone). 11-23: the cloth is the kingdom flag's arms now (THE CLOTH below). → parts in a frame where the cloth hangs in the x plane and faces +z * nz.
    (cx, y0, cz) = the middle of its foot, w x h its size. */
 function royalBanner(cx, y0, cz, w, h, nz) {
-    const P = [], r = v => Math.round(v * 1000) / 1000, CR = 0xa01e2c, CR2 = 0x7c1420, GO = 0xd8b050, IRON = 0x2a2c30, ST = 0x8a8c90, BL = 0xd4d8e0;
-    const L = (dx, dy, bw, bh, tint, layer, x) => P.push(Object.assign({ s: 'box', p: [r(cx + dx), r(y0 + dy), r(cz + nz * 0.02 * layer)], size: [r(bw), r(bh), 0.03], tint, ds: true }, x || {}));
-    const tail = h * 0.16, top = h, body = h - tail;
+    const P = [], r = v => Math.round(v * 1000) / 1000, GO = 0xd8b050, IRON = 0x2a2c30, top = h;
     /* the rod, its finials, the two brackets back to the wall */
     P.push({ s: 'box', p: [cx, r(y0 + top), cz], size: [r(w + 0.5), 0.09, 0.09], tint: IRON }); for (const s of [-1, 1]) { P.push({ s: 'box', p: [r(cx + s * (w / 2 + 0.3)), r(y0 + top - 0.04), cz], size: [0.17, 0.17, 0.17], tint: GO }); P.push({ s: 'box', p: [r(cx + s * w * 0.3), r(y0 + top + 0.02), r(cz - nz * 0.14)], size: [0.06, 0.06, 0.3], tint: IRON }); }
-    /* the cloth: the field, the darker inner panel, the gold border; the swallowtail = two tails stepping to a point each */
-    L(0, tail, w, body, CR, 0); L(0, tail + body * 0.06, w * 0.8, body * 0.88, CR2, 1);
-    for (const s of [-1, 1]) L(s * (w / 2 - w * 0.035), tail, w * 0.07, body, GO, 2);
-    L(0, top - h * 0.035, w, h * 0.035, GO, 2); L(0, tail, w, h * 0.022, GO, 2);
-    for (const s of [-1, 1]) for (let k = 0; k < 4; k++) { const tw = w * 0.5 * (1 - k * 0.24); L(s * (w / 2 - tw / 2), tail - (k + 1) * tail / 4, tw, tail / 4 + 0.002, CR, 0); L(s * (w / 2 - w * 0.035), tail - (k + 1) * tail / 4, w * 0.07, tail / 4 + 0.002, GO, 2); }
-    /* the crown: a band with three jewels, five points (the middle one tallest), a pearl on each */
-    const cy = tail + body * 0.66, cw = w * 0.46;
-    L(0, cy, cw, body * 0.045, GO, 3); for (const k of [-1, 0, 1]) L(k * cw * 0.3, cy + body * 0.012, cw * 0.09, body * 0.022, k ? 0x2c4a9a : CR, 4);
-    for (const k of [-2, -1, 0, 1, 2]) { const ph = body * (k === 0 ? 0.09 : Math.abs(k) === 1 ? 0.06 : 0.075), px = k * cw * 0.22; L(px, cy + body * 0.045, cw * 0.12, ph * 0.5, GO, 3); L(px, cy + body * 0.045 + ph * 0.5, cw * 0.07, ph * 0.5, GO, 3); L(px, cy + body * 0.045 + ph, cw * 0.09, cw * 0.09, 0xf4ecd8, 4); }
-    /* the sword in the stone: pommel, grip, guard, the blade into a stepped grey stone */
-    const sy = tail + body * 0.2, bl = body * 0.3;
-    L(0, sy, w * 0.42, body * 0.07, ST, 3); L(0, sy + body * 0.07, w * 0.28, body * 0.04, ST, 3); L(-w * 0.08, sy + body * 0.02, w * 0.1, body * 0.02, 0x6e7074, 4);
-    L(0, sy + body * 0.09, w * 0.055, bl, BL, 4); L(0, sy + body * 0.09 + bl, w * 0.24, body * 0.022, GO, 4); L(0, sy + body * 0.112 + bl, w * 0.04, body * 0.06, 0x4a3626, 4); L(0, sy + body * 0.172 + bl, w * 0.075, w * 0.075, GO, 4);
+    /* THE CLOTH (2026-11-23, mondo: "camelot still has those red banners that dont match the flag"): ONE sheet with the kingdom's own arms,
+       his pick on the Zone Flags mock-up (the sword behind the shield, crests/cam_sword_shield.png): blue, a gold border, the red shield with the
+       gold chevron, the swallowtail cut out of the picture. The renderer hangs it from the rod and lets it sway (three-renderer.js
+       _hqArchFlagsOut, 'mark:banner:<flag>' = a data.js ZONE_FLAGS flag; THE ZONE FLAGS). */
+    P.push({ s: 'box', p: [cx, r(y0), r(cz + nz * 0.02)], size: [r(w), r(h), 0.03], key: 'mark:banner:camelot', tint: 0xffffff, ds: true });
     return P;
 }
 /* ══ CAMELOT KINGDOM, PLAN 3 (2026-11-15, mondo: "the village is supposed to be inside the castle walls too. so castle in the middle. village.
@@ -132,7 +122,7 @@ function sheet() {
             add({ s: 'cyl', p: [x, top, z], r: r + 1.0, h: ch, seg: 16, r2: 0, roof: true }, SLATE, BLUE);
             add({ s: 'cyl', p: [x, top + ch - 0.5, z], r: 0.3, h: 1.3, seg: 8, r2: 0, roof: true }, null, GOLD);
             add({ s: 'cyl', p: [x, top + ch, z], r: 0.09, h: 4.2, seg: 6, roof: true }, null, 0x403830);
-            add({ s: 'box', p: [x + 1.25, top + ch + 2.6, z], size: [2.5, 1.4, 0.06], ds: true, roof: true }, null, BANNER); } };
+            add({ s: 'box', p: [x + 1.25, top + ch + 2.6, z], size: [2.5, 1.4, 0.06], ds: true, roof: true }, 'mark:flag:camelot', 0xffffff); } };   // the kingdom flag flies (THE ZONE FLAGS: the renderer waves it)
 }
 function texbDoor(w, door) { const L = Math.max(2, w) - 0.12, cols = Math.max(1, Math.round(L / 1.75)), cw = L / cols; let col = Math.floor((cols - 1) / 2); if (door >= 1) col = Math.min(cols - 1, Math.round(door) - 1); return { lx: -L / 2 + (col + 0.5) * cw, cw }; }
 /* a building on squares sx0..sx1 x sy0..sy1 (the OLD castle squares: kingdom squares less (24, 30)), its front on `side`; → its frame (to place furniture: at(lx, lz) = world [x, z]) */
@@ -269,7 +259,7 @@ townSide('e', false, WX1, WY1, WY0, [60, 50, 46, 32, 28], [1, 3], 1, 1);
 Object.keys(TCORN).forEach(k => { const x = gx(TCORN[k][0]), z = gx(TCORN[k][1]);   // the corner towers' cones on posts, a banner
     townArch.cyl(x, TOPT + 1.2, z, 0.24, 3.4, 'wood', 0x6a4a30, { seg: 8, cap: false, ring: { n: 8, r: 4.85, a0: 22.5 } });
     townArch.cyl(x, TOPT + 4.6, z, 6.1, 0.4, 'wood', 0x6a4a30, { seg: 16, roof: true }); townArch.cyl(x, TOPT + 5, z, 6.3, 6.4, SLATE_T, 0xa84a3c, { seg: 16, r2: 0, roof: true });
-    townArch.cyl(x, TOPT + 11.4, z, 0.1, 3.0, null, 0x403830, { seg: 6, roof: true }); townArch.box(x + 1.1, TOPT + 13, z, 2.2, 1.3, 0.06, null, 0xb02c36, { ds: true, roof: true }); });
+    townArch.cyl(x, TOPT + 11.4, z, 0.1, 3.0, null, 0x403830, { seg: 6, roof: true }); townArch.box(x + 1.1, TOPT + 13, z, 2.2, 1.3, 0.06, 'mark:flag:camelot', 0xffffff, { ds: true, roof: true }); });
 feat({ k: 'arch', id: 'cam:town_roofs', x: 0, z: 0, rot: 0, parts: townArch.P });
 
 /* ── THE WAYS on the room's wall and the room's own doors ── */

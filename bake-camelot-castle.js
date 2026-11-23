@@ -94,27 +94,17 @@ const check = (name, R) => { R.props.forEach(p => { if (!CAT[p.key]) throw new E
 /* THE ROYAL BANNER (2026-11-16, mondo on the first screenshots: "wtf is this random red rectangle and yellow square. if its a flag or a
    banner it needs way more detail and thought behind it"). One banner, the same everywhere in Camelot: an iron rod with gilt finials on two
    brackets, a crimson cloth with a gold border, cut to a swallowtail at the foot; on it Arthur's arms: the gold crown over the sword in
-   the stone (the blade point down in a grey stone). → parts in a frame where the cloth hangs in the x plane and faces +z * nz.
+   the stone (the blade point down in a grey stone). 11-23: the cloth is the kingdom flag's arms now (THE CLOTH below). → parts in a frame where the cloth hangs in the x plane and faces +z * nz.
    (cx, y0, cz) = the middle of its foot, w x h its size. */
 function royalBanner(cx, y0, cz, w, h, nz) {
-    const P = [], r = v => Math.round(v * 1000) / 1000, CR = 0xa01e2c, CR2 = 0x7c1420, GO = 0xd8b050, IRON = 0x2a2c30, ST = 0x8a8c90, BL = 0xd4d8e0;
-    const L = (dx, dy, bw, bh, tint, layer, x) => P.push(Object.assign({ s: 'box', p: [r(cx + dx), r(y0 + dy), r(cz + nz * 0.02 * layer)], size: [r(bw), r(bh), 0.03], tint, ds: true }, x || {}));
-    const tail = h * 0.16, top = h, body = h - tail;
+    const P = [], r = v => Math.round(v * 1000) / 1000, GO = 0xd8b050, IRON = 0x2a2c30, top = h;
     /* the rod, its finials, the two brackets back to the wall */
     P.push({ s: 'box', p: [cx, r(y0 + top), cz], size: [r(w + 0.5), 0.09, 0.09], tint: IRON }); for (const s of [-1, 1]) { P.push({ s: 'box', p: [r(cx + s * (w / 2 + 0.3)), r(y0 + top - 0.04), cz], size: [0.17, 0.17, 0.17], tint: GO }); P.push({ s: 'box', p: [r(cx + s * w * 0.3), r(y0 + top + 0.02), r(cz - nz * 0.14)], size: [0.06, 0.06, 0.3], tint: IRON }); }
-    /* the cloth: the field, the darker inner panel, the gold border; the swallowtail = two tails stepping to a point each */
-    L(0, tail, w, body, CR, 0); L(0, tail + body * 0.06, w * 0.8, body * 0.88, CR2, 1);
-    for (const s of [-1, 1]) L(s * (w / 2 - w * 0.035), tail, w * 0.07, body, GO, 2);
-    L(0, top - h * 0.035, w, h * 0.035, GO, 2); L(0, tail, w, h * 0.022, GO, 2);
-    for (const s of [-1, 1]) for (let k = 0; k < 4; k++) { const tw = w * 0.5 * (1 - k * 0.24); L(s * (w / 2 - tw / 2), tail - (k + 1) * tail / 4, tw, tail / 4 + 0.002, CR, 0); L(s * (w / 2 - w * 0.035), tail - (k + 1) * tail / 4, w * 0.07, tail / 4 + 0.002, GO, 2); }
-    /* the crown: a band with three jewels, five points (the middle one tallest), a pearl on each */
-    const cy = tail + body * 0.66, cw = w * 0.46;
-    L(0, cy, cw, body * 0.045, GO, 3); for (const k of [-1, 0, 1]) L(k * cw * 0.3, cy + body * 0.012, cw * 0.09, body * 0.022, k ? 0x2c4a9a : CR, 4);
-    for (const k of [-2, -1, 0, 1, 2]) { const ph = body * (k === 0 ? 0.09 : Math.abs(k) === 1 ? 0.06 : 0.075), px = k * cw * 0.22; L(px, cy + body * 0.045, cw * 0.12, ph * 0.5, GO, 3); L(px, cy + body * 0.045 + ph * 0.5, cw * 0.07, ph * 0.5, GO, 3); L(px, cy + body * 0.045 + ph, cw * 0.09, cw * 0.09, 0xf4ecd8, 4); }
-    /* the sword in the stone: pommel, grip, guard, the blade into a stepped grey stone */
-    const sy = tail + body * 0.2, bl = body * 0.3;
-    L(0, sy, w * 0.42, body * 0.07, ST, 3); L(0, sy + body * 0.07, w * 0.28, body * 0.04, ST, 3); L(-w * 0.08, sy + body * 0.02, w * 0.1, body * 0.02, 0x6e7074, 4);
-    L(0, sy + body * 0.09, w * 0.055, bl, BL, 4); L(0, sy + body * 0.09 + bl, w * 0.24, body * 0.022, GO, 4); L(0, sy + body * 0.112 + bl, w * 0.04, body * 0.06, 0x4a3626, 4); L(0, sy + body * 0.172 + bl, w * 0.075, w * 0.075, GO, 4);
+    /* THE CLOTH (2026-11-23, mondo: "camelot still has those red banners that dont match the flag"): ONE sheet with the kingdom's own arms,
+       his pick on the Zone Flags mock-up (the sword behind the shield, crests/cam_sword_shield.png): blue, a gold border, the red shield with the
+       gold chevron, the swallowtail cut out of the picture. The renderer hangs it from the rod and lets it sway (three-renderer.js
+       _hqArchFlagsOut, 'mark:banner:<flag>' = a data.js ZONE_FLAGS flag; THE ZONE FLAGS). */
+    P.push({ s: 'box', p: [cx, r(y0), r(cz + nz * 0.02)], size: [r(w), r(h), 0.03], key: 'mark:banner:camelot', tint: 0xffffff, ds: true });
     return P;
 }
 
