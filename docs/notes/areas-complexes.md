@@ -14717,3 +14717,21 @@ ground stretches less believable than the deck: the two directions had only pain
 (spec `raised`) lays a concrete barrier (the deck's jersey shape, `clean`) down the median wherever the road is whole (not where it narrows to a gate),
 off the deck and its ramps, joined round the bends, with sand barrels (`traffic_barrel`) where it ends (none beside the ramps: their own barrier runs on).
 R1 + R4 (no `raised`) do not get it.
+
+## THE GROUNDED FENCES — every railing run follows the ground under it (2026-11-23, mondo: "fences that are incorrectly placed floating in the air, all over the game ... raising the plot or cell the fence ended at made the whole thing rise")
+His diagnosis was right. A ground-following `rail` row (no `y`, no `y0` / `y1`, no height on its points) read the ground at its two ENDS
+only (data.js hqTerrainCompile, THE RAILINGS) and drew one straight line between them, so a run laid before THE LEVELS (Disaster City's
+raised plots, a bank, a step) hung in the air over every low square between its ends and ran through every raised one. Counted with a
+headless scan of every terrain room (each railing piece against the ground every 0.25 m): before, 41 floating runs in Disaster City (up to
+6.7 m), Katana Island 2 (4.9 m), the Beach 3, the Estate Lake 5, route R6 1, the Woodstair 2; after, none of those.
+- THE FIX: data.js `_hqRailFollow(seg, hAt)` (beside `_hqRailPoint`) splits each run (a straight row, a polyline leg, an arc piece) where the
+  ground bends: the ground is read every 0.25 m (the higher of the line and 0.15 m either side, so a fence on the lip of a drop stands on
+  the lip), a jump of over 0.45 m between two readings = a STEP (the run ends and the next piece starts at the new height, like a real
+  fence on a terrace; a run under 0.6 m joins the next, a kerb is no step), a slope = the fewest straight pieces that keep every post
+  within 0.1 m of the ground. A flat run stays ONE piece (same posts as before). The grind of a stepped run starts a new chain at each step
+  (`brk`). The walker's railing walls come from the same pieces, so they follow the ground too.
+- Left as written: a row that names its height (`y`, `y0` / `y1`, `[x, z, y]` points) — a parapet on a castle wall, a pen on a raised
+  deck, a rail across a gap; a FLIGHT's railing (it follows the flight). `noFollow: true` on a row keeps the old straight line;
+  `window.EW_RAIL_NO_FOLLOW = true` (set before the room loads) turns the fix off everywhere — the probe's "before" pictures.
+- Placed fence PROPS (`hw_fence`, `chain_fence`, `fence_with_gate`, ...) are single models standing on the ground at their place; not part of this.
+- No tool to rerun: every room's railings are compiled at load.
