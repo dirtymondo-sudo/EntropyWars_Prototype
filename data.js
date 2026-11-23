@@ -103267,7 +103267,20 @@ function hqFieldTerrainInfo(roomId, cellM) {
     const rockKey = known(rC) ? rC : 'rock_wall_1';
     const pathKey = known(rP) ? rP : floorKey;
     const trees = (info.trees || []).filter(hqLgChessOn).concat(info.thicket || []);   // THE CHESS POSITIONS: only the current position's pieces
-    const treeAt = (x, z) => { for (const t of trees) { const r = (t.r || R.treeR) + TR.treePad; if (Math.abs(t.x - x) < r && Math.abs(t.z - z) < r && Math.hypot(t.x - x, t.z - z) < r) return true; } return false; };
+    /* THE TREES BY SQUARE (2026-11-23, mondo's Clearing F3: the lattice warm under the load card froze its last frame 1.2 s): every
+       sample asked every trunk and thicket clump (3,382 in the Clearing); the trees are filed once in buckets as wide as the widest
+       reach, and a sample asks its own bucket and the eight round it. The same answer, the same trunks. */
+    const treeBk = new Map(); let treeBs = 1;
+    for (const t of trees) treeBs = Math.max(treeBs, (t.r || R.treeR) + TR.treePad);
+    for (const t of trees) { const k = Math.floor(t.x / treeBs) + ',' + Math.floor(t.z / treeBs); let a = treeBk.get(k); if (!a) treeBk.set(k, a = []); a.push(t); }
+    const treeAt = (x, z) => {
+        const bx = Math.floor(x / treeBs), bz = Math.floor(z / treeBs);
+        for (let ix = bx - 1; ix <= bx + 1; ix++) for (let iz = bz - 1; iz <= bz + 1; iz++) {
+            const a = treeBk.get(ix + ',' + iz); if (!a) continue;
+            for (const t of a) { const r = (t.r || R.treeR) + TR.treePad; if (Math.abs(t.x - x) < r && Math.abs(t.z - z) < r && Math.hypot(t.x - x, t.z - z) < r) return true; }
+        }
+        return false;
+    };
     const onPath = (x, z) => { for (const p of (info.paths || [])) if (_hqTPolyDist(x, z, p.pts).d <= p.w / 2) return true; return false; };
     const onBoard = (x, z) => { const sq = (info.boards && info.boards.length) ? hqTerrainBoardAt(info.boards, x, z) : null; const bk = sq ? hqRuleKeyOf(sq.key) : null; return (bk && known(bk)) ? bk : null; };
     const sub = Math.max(1, TR.sub | 0), cover = Math.min(sub * sub, TR.cover | 0);

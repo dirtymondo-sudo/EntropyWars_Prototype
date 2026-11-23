@@ -4003,3 +4003,16 @@ All in three-renderer.js, F3 only (read when the text is made; the per-frame par
   frame JS / our timers (setTimeout + setInterval, `_ewTmr.tot`, with the slowest timer's name) / outside our JS (GC, browser, GPU).
 - **Each dip** now says `(+N s)` since the dip before it, the worst frame's timers and outside-our-JS ms, the gaps' split, and
   `lamp shadow sides drawn` (the hero lamp's cube sides drawn in the dip, `_heroStat.sidesDrawn`).
+
+## THE TREES BY SQUARE + THE LANDINGS SPREAD (2026-11-23, mondo's first F3 on the WHERE panel, the Clearing then a fight)
+- **The 1.2 s frozen last frame under the load card** ("tick: ripples + wind + gate 1187") was `_hqGateTick`'s field warm
+  (`hqFieldLattice`, THE FIELD IS SURVEYED UNDER THE CARD): data.js `hqFieldTerrainInfo`'s `treeAt` asked all 3,382 trunks and
+  thicket clumps for every sample. The trees are now filed in buckets as wide as the widest reach; a sample asks 9 buckets.
+  Node, the Clearing: 22.5 s -> 0.36 s, the 8,640 cells IDENTICAL (in, top, key, tree, hazard compared). Cloud browser: the gate
+  frame 1,854 ms -> 214 ms.
+- **The walk dip with "64 models loaded"**: a GLB's owner onLoad ran from the loader's promise between frames, untimed. Once the
+  walked room is ready, landings wait in a line worked in a requestAnimationFrame at ~6 ms a frame (`_asLandPut`; off
+  `EW_LAND_NOW`; `ThreeRenderer.hq.dev.lands()`); F3 dips split out "model landings". Cloud Clearing: 430 landings, 1.2 s in all,
+  worst single 169 ms (one landing is not split).
+- F3: dips mostly under the load card are left out of the steadiness ring, the rhythm and the cause tally (still listed, LOADING).
+- The 6.5 s load dips themselves (22,711 objects added, 216 shader builds, under the card) are the room's load, not touched here.
