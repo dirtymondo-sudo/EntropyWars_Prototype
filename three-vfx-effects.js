@@ -53940,6 +53940,232 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     };
     SPELL_MAP['nrDeathRoll'] = { impact: 'gtDragUnder_impact' };
 
+    /* ═══ THE BEAR (2026-11-23, mondo OK'd the kit + the VFX notes): the seat colour of the BEAR (own cyan-blue, the other
+       side pink-orange, _gtSeatColor) on every swipe, hug, slam and grudge; fur, leaves or snow by its coat. ═══ */
+    var _BR = { fur: 0x6a4a32, furPolar: 0xece6d8, claw: 0xf4efe6, leaf: 0x8ab04a, leaf2: 0xd08a3a, snow: 0xf4f8ff, crack: 0x2a1e14, dust: 0xb09a7a };
+    function _brUnitAt(tx, ty, id) {
+        try {
+            if (_VS.on || typeof state === 'undefined' || !state.units) return null;
+            for (var i = 0; i < state.units.length; i++) {
+                var c = state.units[i]; if (!c || c.dead) continue;
+                if (id != null ? c.id === id : (c.x === Math.round(tx) && c.y === Math.round(ty))) return c;
+            }
+        } catch (e) {}
+        return null;
+    }
+    function _brSeatOf(u) {
+        try { var vp = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1; return (!u || u.player === vp) ? _GT.rimAlly : _GT.rimEnemy; } catch (e) { return _GT.rimAlly; }
+    }
+    function _brPolar(u) { return !!u && u.gender === 'female'; }
+    /* three claw marks: a canvas of three curved slashes (white, the glow tints it) */
+    function _brClawTex() {
+        return _pzTex('brClaw', 256, 256, function (g, w, h) {
+            g.lineCap = 'round';
+            for (var i = 0; i < 3; i++) {
+                var ox = 60 + i * 52;
+                g.strokeStyle = 'rgba(255,255,255,0.35)'; g.lineWidth = 26;
+                g.beginPath(); g.moveTo(ox - 30, 26); g.quadraticCurveTo(ox + 26, 120, ox - 4, 232); g.stroke();
+                g.strokeStyle = 'rgba(255,255,255,1)'; g.lineWidth = 10;
+                g.beginPath(); g.moveTo(ox - 30, 26); g.quadraticCurveTo(ox + 26, 120, ox - 4, 232); g.stroke();
+            }
+        });
+    }
+    function _brZTex() {
+        return _pzTex('brZ', 64, 64, function (g, w, h) {
+            g.font = 'bold 54px monospace'; g.textAlign = 'center'; g.textBaseline = 'middle';
+            g.lineWidth = 8; g.strokeStyle = 'rgba(0,0,0,0.6)'; g.strokeText('Z', w / 2, h / 2 + 2);
+            g.fillStyle = '#ffffff'; g.fillText('Z', w / 2, h / 2 + 2);
+        });
+    }
+    function _brCrackTex() {
+        return _pzTex('brCrack', 256, 256, function (g, w, h) {
+            g.strokeStyle = 'rgba(255,255,255,1)'; g.lineCap = 'round';
+            for (var i = 0; i < 9; i++) {
+                var a = (i / 9) * Math.PI * 2 + (i % 2) * 0.3, x = w / 2, y = h / 2, L = 60 + (i % 3) * 28;
+                g.lineWidth = 7; g.beginPath(); g.moveTo(x, y);
+                for (var k = 1; k <= 4; k++) { x = w / 2 + Math.cos(a + (k % 2 ? 0.18 : -0.14)) * L * k / 4; y = h / 2 + Math.sin(a + (k % 2 ? 0.18 : -0.14)) * L * k / 4; g.lineTo(x, y); g.lineWidth = Math.max(2, 7 - k * 1.4); }
+                g.stroke();
+            }
+        });
+    }
+    /* fur tufts thrown off a hit */
+    function _brFur(F, u, n, z) {
+        var col = _brPolar(u) ? _BR.furPolar : _BR.fur;
+        for (var i = 0; i < n; i++) {
+            if (!_canSpawn()) return;
+            _spawn({ x: F.c.x + rn(-0.2, 0.2) * F.ts, y: F.c.y + rn(-0.2, 0.2) * F.ts, z: F.bz + (z || F.ts * 0.5), mode: 'billboard', sprite: 'smoke-soft', tint: col,
+                vx: rn(-90, 90), vy: rn(-90, 90), vz: rn(40, 140), gravity: 160, drag: 1.4, ml: rn(380, 640), size0: rn(5, 8), size1: rn(9, 13), opacity0: 0.85, opacity1: 0 });
+        }
+    }
+
+    /* ── PAW SWIPE: three claw streaks rake down across the victim facing the lens, the seat colour round a white core,
+       then fur and blood off the follow-through ── */
+    EFFECTS['brPawSwipe_impact'] = _pzDef('brPawSwipe', { layers: [
+        { count: 6, sprite: 'blood-fleck', ml: [320, 560], offsetXY: 10, z: [30, 54], vxRange: 140, vyRange: 140, vzRange: [30, 140], gravity: 360, drag: 0.9, size0: [4, 7], size1: 2, delayMs: 140 },
+    ] });
+    _PZ_SIGS.brPawSwipe = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty)) return;
+        var from = _pzFrom(tx, ty, p), bear = _brUnitAt(from.x, from.y, p.casterId), seat = bear ? _brSeatOf(bear) : _gtSeatColor(from.x, from.y);
+        var F = _nrvFrame(tx, ty), ts = F.ts, cd = _nbCamDir(F);
+        var face = new THREE.Group(); face.rotation.y = Math.atan2(cd.x, cd.z); face.position.set(cd.x * ts * 0.3, ts * 0.62, cd.z * ts * 0.3); F.g.add(face);
+        var glow = _pzMesh(new THREE.PlaneGeometry(ts * 0.95, ts * 0.95), _pzGlow(seat, _brClawTex()), face, 0, 0, 0);
+        var core = _pzMesh(new THREE.PlaneGeometry(ts * 0.8, ts * 0.8), _pzGlow(_BR.claw, _brClawTex()), face, 0, 0, ts * 0.01);
+        glow.rotation.z = core.rotation.z = -0.35;
+        _brFur(F, bear, 8, ts * 0.6);
+        _fxDelay(function () { if (!_suppressed()) { try { _sigShake('light'); } catch (e) {} _sigShockRing3D(tx, ty, { color: seat, r1: ts * 0.8, ms: 300, opacity: 0.55 }); } }, 120);
+        return _sigRunOwned(F.g, 620, function (el) {
+            /* the rake: the marks draw from the top down (scale y from 0), hold, fade */
+            var t = _sigEaseOutCubic(_sigClamp01(el / 140));
+            glow.scale.set(1, Math.max(0.01, t), 1); core.scale.set(1, Math.max(0.01, t), 1);
+            glow.position.y = core.position.y = ts * 0.45 * (1 - t);
+            var op = _pzEnv(el, 0, 40, 260, 620);
+            glow.material.opacity = 0.9 * op; core.material.opacity = 0.85 * op;
+        });
+    };
+    SPELL_MAP['brPawSwipe'] = { impact: 'brPawSwipe_impact' };
+
+    /* ── BEAR HUG: two great arcs (the arms, in the seat colour) close round the victim from either side and squeeze in
+       three pulses; dust is pressed out at its feet ── */
+    EFFECTS['brBearHug_impact'] = _pzDef('brBearHug', { layers: [
+        { count: 3, anchor: 'floor', sprite: 'dust-puff', ml: [420, 640], offsetXY: 14, z: [2, 8], size0: [12, 18], size1: [26, 34], opacity0: 0.35, delayMs: 260 },
+    ] });
+    _PZ_SIGS.brBearHug = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty)) return;
+        var from = _pzFrom(tx, ty, p), bear = _brUnitAt(from.x, from.y, p.casterId), seat = bear ? _brSeatOf(bear) : _gtSeatColor(from.x, from.y);
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, from, tx, ty);
+        var hold = new THREE.Group(); hold.rotation.y = Math.atan2(ln.ux, ln.uz); hold.position.y = ts * 0.55; F.g.add(hold);
+        var arms = [];
+        for (var s = -1; s <= 1; s += 2) {
+            var arc = _pzMesh(new THREE.TorusGeometry(ts * 0.42, ts * 0.05, 8, 30, Math.PI * 0.85), _pzGlow(seat), null, 0, 0, 0);
+            var furArc = _pzMesh(new THREE.TorusGeometry(ts * 0.42, ts * 0.03, 6, 30, Math.PI * 0.85), _pzGlow(_brPolar(bear) ? _BR.furPolar : 0xffe2c8), null, 0, 0, 0);
+            var piv = new THREE.Group(); piv.add(arc); piv.add(furArc); piv.rotation.x = Math.PI / 2; hold.add(piv);
+            arms.push({ piv: piv, arc: arc, fur: furArc, s: s });
+        }
+        var squeezed = 0;
+        return _sigRunOwned(F.g, 1250, function (el) {
+            var close = _sigEaseOutCubic(_sigClamp01(el / 260));
+            var pulse = el > 260 ? 1 - 0.14 * Math.max(0, Math.sin((el - 260) / 300 * Math.PI * 3)) : 1;
+            for (var i = 0; i < arms.length; i++) {
+                var A = arms[i];
+                A.piv.rotation.z = A.s > 0 ? (-Math.PI * 0.85 / 2 + (1 - close) * 1.4) : (Math.PI - Math.PI * 0.85 / 2 - (1 - close) * 1.4);
+                A.piv.scale.setScalar(pulse * (1.25 - 0.25 * close));
+                var op = _pzEnv(el, 0, 80, 1000, 1250);
+                A.arc.material.opacity = 0.8 * op; A.fur.material.opacity = 0.5 * op;
+            }
+            var k = el > 260 ? Math.floor((el - 260) / 300) + 1 : 0;
+            if (k > squeezed && k <= 3) { squeezed = k; try { _sigShake('light'); } catch (e) {} _sigShockRing3D(tx, ty, { color: seat, r0: ts * 0.5, r1: ts * 0.2, ms: 240, opacity: 0.5 }); }
+        });
+    };
+    SPELL_MAP['brBearHug'] = { impact: 'brBearHug_impact' };
+
+    /* ── HIBERNATE: the bear's breath glows slow under it (a ring in its seat colour that swells and settles), the Z's drift
+       up off it, and the season settles on its back: falling leaves on the grizzly, snow on the polar bear ── */
+    EFFECTS['brHibernate_aura'] = _pzDef('brHibernate', { aoeRadius: 0 });
+    _PZ_SIGS.brHibernate = function (p) {
+        var tx = p.tx != null ? p.tx : p.cx, ty = p.ty != null ? p.ty : p.cy; if (tx == null || !_pzSeen(tx, ty)) return;
+        var bear = _brUnitAt(tx, ty, p.casterId), seat = _brSeatOf(bear), polar = _brPolar(bear);
+        var F = _nrvFrame(tx, ty), ts = F.ts;
+        var ring = _pzMesh(new THREE.RingGeometry(ts * 0.34, ts * 0.5, 40), _pzGlow(seat), F.g, 0, ts * 0.05, 0); ring.rotation.x = -Math.PI / 2;
+        var zs = [];
+        for (var i = 0; i < 3; i++) zs.push(_pzSpr(0xffffff, ts * (0.16 + i * 0.05), F.g, _brZTex()));
+        var t0 = 0;
+        return _sigRunOwned(F.g, 2400, function (el) {
+            var breath = 0.5 + 0.5 * Math.sin(el / 520 * Math.PI);
+            ring.scale.setScalar(0.85 + 0.25 * breath);
+            ring.material.opacity = 0.55 * breath * _pzEnv(el, 0, 200, 1900, 2400);
+            for (var j = 0; j < zs.length; j++) {
+                var lt = ((el - j * 380) % 1300) / 1300; if (el < j * 380) lt = -1;
+                var Z = zs[j];
+                if (lt < 0) { Z.material.opacity = 0; continue; }
+                Z.position.set(ts * (0.18 + 0.12 * lt), ts * (1.0 + 0.7 * lt), ts * 0.05 * Math.sin(lt * 6));
+                Z.material.opacity = 0.9 * Math.sin(lt * Math.PI) * _pzEnv(el, 0, 100, 2000, 2400);
+            }
+            /* the season: leaves or snow drift down onto its back */
+            if (el < 1900 && el - t0 > (polar ? 60 : 110) && _canSpawn()) {
+                t0 = el;
+                _spawn({ x: F.c.x + rn(-0.45, 0.45) * ts, y: F.c.y + rn(-0.45, 0.45) * ts, z: F.bz + ts * rn(1.3, 1.7), mode: 'billboard',
+                    sprite: polar ? 'snowflake' : 'leaf', tint: polar ? _BR.snow : (Math.random() < 0.5 ? _BR.leaf : _BR.leaf2),
+                    vx: rn(-18, 18), vy: rn(-18, 18), vz: rn(-60, -35), drag: 0.2, ml: rn(1100, 1500), size0: rn(6, 9), size1: rn(5, 8), opacity0: 0.95, opacity1: 0 });
+            }
+        });
+    };
+    SPELL_MAP['brHibernate'] = { aura: 'brHibernate_aura' };
+
+    /* ── BEAR DOWN: the charge's dust down the line, then the slam: the ground cracks open under the victim (a dark crack
+       star with the seat colour glowing in it), rock and dust go up, a heavy ring and a heavy shake ── */
+    EFFECTS['brBearDown_impact'] = _pzDef('brBearDown', { layers: [
+        { count: 8, sprite: 'rock-debris', ml: [420, 700], offsetXY: 14, z: [6, 18], vxRange: 160, vyRange: 160, vzRange: [140, 300], gravity: 620, size0: [6, 10], size1: 3 },
+        { count: 4, anchor: 'floor', sprite: 'dust-puff', ml: [520, 820], offsetXY: 18, z: [2, 10], size0: [16, 24], size1: [36, 48], opacity0: 0.4 },
+    ] });
+    _PZ_SIGS.brBearDown = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty)) return;
+        var from = _pzFrom(tx, ty, p), bear = _brUnitAt(from.x, from.y, p.casterId), seat = bear ? _brSeatOf(bear) : _gtSeatColor(from.x, from.y);
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, from, tx, ty);
+        /* the dust of the charge along the line it came down */
+        var steps = Math.max(1, Math.round(ln.L / ts));
+        for (var i = 0; i <= steps * 2 && _canSpawn(); i++) {
+            var f = i / (steps * 2);
+            _spawn({ x: F.c.x + (from.x - tx) * F.ts * f, y: F.c.y + (from.y - ty) * F.ts * f, z: F.bz + 4, mode: 'billboard', sprite: 'dust-puff', tint: _BR.dust,
+                vz: rn(10, 40), drag: 1, ml: rn(500, 800), size0: rn(10, 14), size1: rn(22, 30), opacity0: 0.35, opacity1: 0 });
+        }
+        var dark = _pzMesh(new THREE.PlaneGeometry(ts * 1.5, ts * 1.5), _pzSolid(_BR.crack, _brCrackTex(), { depthWrite: false }), F.g, 0, ts * 0.03, 0);
+        dark.rotation.x = -Math.PI / 2; dark.material.transparent = true;
+        var glow = _pzMesh(new THREE.PlaneGeometry(ts * 1.5, ts * 1.5), _pzGlow(seat, _brCrackTex()), F.g, 0, ts * 0.035, 0);
+        glow.rotation.x = -Math.PI / 2;
+        try { _sigShake('heavy'); } catch (e) {}
+        _sigShockRing3D(tx, ty, { color: seat, r1: ts * 1.5, ms: 460, opacity: 0.7 });
+        _fxDelay(function () { if (!_suppressed()) _sigShockRing3D(tx, ty, { color: 0xffffff, r1: ts * 1.1, ms: 360, opacity: 0.35 }); }, 90);
+        _brFur(F, bear, 6, ts * 0.8);
+        return _sigRunOwned(F.g, 1500, function (el) {
+            var t = _sigEaseOutCubic(_sigClamp01(el / 160));
+            dark.scale.setScalar(0.3 + 0.7 * t); glow.scale.setScalar(0.3 + 0.7 * t);
+            dark.material.opacity = 0.85 * _pzEnv(el, 0, 40, 1000, 1500);
+            glow.material.opacity = 0.8 * _pzEnv(el, 0, 40, 300, 900);
+        });
+    };
+    SPELL_MAP['brBearDown'] = { impact: 'brBearDown_impact' };
+
+    /* ── THE GRUDGE (battle.js _bearFx, relayed): a claw-mark sigil in the BEAR's seat colour stamps down over the holder's
+       head, holds and fades (the status badge keeps it after) ── */
+    EFFECTS['brGrudgeMark_impact'] = _pzDef('brGrudge', { pzOwn: true });
+    _PZ_SIGS.brGrudge = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty)) return;
+        var bear = _brUnitAt(null, null, p.casterId), seat = _brSeatOf(bear);
+        var F = _nrvFrame(tx, ty), ts = F.ts;
+        var s1 = _pzSpr(seat, ts * 0.7, F.g, _brClawTex()), s2 = _pzSpr(0xffffff, ts * 0.5, F.g, _brClawTex());
+        return _sigRunOwned(F.g, 1500, function (el) {
+            var drop = _sigEaseOutCubic(_sigClamp01(el / 220));
+            var h = ts * (1.75 - 0.35 * drop);
+            s1.position.set(0, h, 0); s2.position.set(0, h, 0);
+            var sc = 1.5 - 0.5 * drop; s1.scale.set(ts * 0.7 * sc, ts * 0.7 * sc, 1); s2.scale.set(ts * 0.5 * sc, ts * 0.5 * sc, 1);
+            var op = _pzEnv(el, 0, 80, 1050, 1500); s1.material.opacity = 0.9 * op; s2.material.opacity = 0.7 * op;
+        });
+    };
+    SPELL_MAP['brGrudgeMark'] = { impact: 'brGrudgeMark_impact' };
+
+    /* ── WAKING: left alone, a soft green-white lift off the bear (well rested); woken up, a roar: three rings in its seat
+       colour burst off it and the board shakes ── */
+    EFFECTS['brWake_impact'] = _pzDef('brWake', { pzOwn: true, layers: [
+        { count: 8, sprite: 'heal-glow', ml: [600, 900], offsetXY: 14, z: [10, 40], vzRange: [40, 90], size0: [8, 12], size1: 2, tint: 0xc8ffd8 },
+    ] });
+    _PZ_SIGS.brWake = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty)) return;
+        _sigShockRing3D(tx, ty, { color: 0xc8ffd8, r0: ts0(tx, ty) * 0.2, r1: ts0(tx, ty) * 0.9, ms: 600, opacity: 0.45 });
+    };
+    function ts0(tx, ty) { return _worldPos(tx, ty).ts; }
+    EFFECTS['brRudeWake_impact'] = _pzDef('brRudeWake', { pzOwn: true, layers: [
+        { count: 6, anchor: 'floor', sprite: 'dust-puff', ml: [420, 700], offsetXY: 18, z: [2, 8], size0: [12, 16], size1: [28, 36], opacity0: 0.35 },
+    ] });
+    _PZ_SIGS.brRudeWake = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty)) return;
+        var bear = _brUnitAt(tx, ty, p.casterId), seat = _brSeatOf(bear), ts = ts0(tx, ty);
+        try { _sigShake('normal'); } catch (e) {}
+        for (var i = 0; i < 3; i++) (function (k) {
+            _fxDelay(function () { if (!_suppressed()) _sigShockRing3D(tx, ty, { color: seat, r0: ts * 0.3, r1: ts * (1.3 + k * 0.4), ms: 420, opacity: 0.7 - k * 0.15, height: ts * 0.5 }); }, k * 130);
+        })(i);
+    };
+    SPELL_MAP['brRudeWake'] = { impact: 'brRudeWake_impact' };
+
     /* ── TAIL SWEEP: the spiked tail comes round the gator once, low over the floor, a sheet of spray off its tip;
        each square beside it takes the lash as the tail passes; then the churned square under the gator ripples
        (the puddle the sweep leaves, data.js nrTailSweep paintTerrain). ── */
