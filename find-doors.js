@@ -59,7 +59,7 @@ function scan(D, id, reach) {
     const open = [], closed = [], doorways = [];
     /* 1. THE WALK-INS: every hollow texbuilding's doorway and its gaps */
     X.texb.forEach(f => {
-        if (!f.hollow || f.doorsOnly || hqTexbPack(f) || hqTexbPrism(f)) return;
+        if (!f.hollow || f.doorsOnly || hqTexbPackShut(f) || hqTexbPrism(f)) return;
         const Dd = hqTexbDoor(f), d = Math.max(2, +f.d || 8), w = Math.max(2, +f.w || 8), list = [[Dd.lx, d / 2, 0, 1, 'front']];
         (f.gaps || []).forEach(g => { const u = +g.u; if (g.side === 'b') list.push([u, -d / 2, 0, -1, 'back gap']); if (g.side === 'f') list.push([u, d / 2, 0, 1, 'front gap']); if (g.side === 'r') list.push([w / 2, u, 1, 0, 'right gap']); if (g.side === 'l') list.push([-w / 2, u, -1, 0, 'left gap']); });
         list.forEach(([lx, lz, nx, nz, nm]) => {

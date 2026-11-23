@@ -35,7 +35,7 @@ function sideOf(f, x, z, nx, nz) {
     const w = Math.max(2, +f.w || 8), d = Math.max(2, +f.d || 8), [lx, lz] = toLocal(f, x, z), [ax, az] = dirLocal(f, nx, nz);
     const cand = [['f', lz - d / 2, lx, w, az], ['b', -lz - d / 2, lx, w, -az], ['r', lx - w / 2, lz, d, ax], ['l', -lx - w / 2, lz, d, -ax]];
     let best = null;
-    cand.forEach(([side, off, u, len, face]) => { if (Math.abs(off) > 0.75 || Math.abs(u) > len / 2 - 0.45) return; if (face < 0.7) return;
+    cand.forEach(([side, off, u, len, face]) => { if (off > 0.75 || off < -1.2 || Math.abs(u) > len / 2 - 0.45) return;   // (a storefront set back up to 1.2 m into its row still opens it) if (face < 0.7) return;
         if (!best || Math.abs(off) < Math.abs(best.off)) best = { side, u, off, len }; });
     return best;
 }
@@ -73,7 +73,10 @@ module.exports = function openDoors(ctx) {
     });
     /* 2. per row: a door's halves (two leaves side by side) are one doorway */
     const byHost = new Map();
-    doors.forEach(D => { if (!D.host) { count.left++; say.push('LEFT ' + D.id + ' ' + D.sheet + ' at ' + r3(D.at[0]) + ', ' + r3(D.at[1]) + ': no building row under it'); return; }
+    /* a door with no building row behind it (a stadium's arch, a hut drawn in parts, a porch's door off its house): a window (mondo's rule,
+       11-23: "any door that can't open becomes a window or moves to a walkable side"); ctx.orphans === 'keep' leaves it */
+    doors.forEach(D => { if (!D.host) { if (ctx.orphans !== 'keep') { D.P.key = WINDOW; count.windows++; say.push('WINDOW ' + D.id + ' ' + D.sheet + ' at ' + r3(D.at[0]) + ', ' + r3(D.at[1]) + ': no building row under it'); return; }
+            count.left++; say.push('LEFT ' + D.id + ' ' + D.sheet + ' at ' + r3(D.at[0]) + ', ' + r3(D.at[1]) + ': no building row under it'); return; }
         if (skip(D.host, D)) { count.left++; say.push('SKIP ' + D.id + ' (' + D.host.id + ')'); return; }
         (byHost.get(D.host) || byHost.set(D.host, []).get(D.host)).push(D); });
     const drop = new Map();   // arch row -> part indexes to take out
