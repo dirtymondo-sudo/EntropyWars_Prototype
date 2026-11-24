@@ -34926,17 +34926,11 @@ const DOOR_HQ = {
                 { key: 'computer_chair_grey', deg: 106, r: 16.4, level: 0, rot: 0 },
                 { key: 'computer_chair_blue', deg: 114, r: 16.4, level: 0, rot: 0 },
                 /* globe lamps on the inner band */
-                { key: 'globe_lamp',   deg: 200, r: 9.9, level: 0 },
                 /* THE RETRO-FUTURIST PASS (2026-09-21): four floor lava lamps between the spokes, on the inlaid ring */
                 { key: 'lava_lamp_floor', deg: 22.5,  r: 12.5, level: 0 },
                 { key: 'lava_lamp_floor', deg: 112.5, r: 12.5, level: 0 },
                 { key: 'lava_lamp_floor', deg: 202.5, r: 12.5, level: 0 },
                 { key: 'lava_lamp_floor', deg: 292.5, r: 12.5, level: 0 },
-                { key: 'globe_lamp',   deg: 160, r: 9.9, level: 0 },
-                { key: 'globe_lamp',   deg: 250, r: 9.9, level: 0 },
-                { key: 'globe_lamp',   deg: 110, r: 9.9, level: 0 },
-                { key: 'globe_lamp',   deg: 340, r: 9.9, level: 0 },
-                { key: 'globe_lamp',   deg: 20,  r: 9.9, level: 0 },
                 /* against the lower wall, between doors */
                 { key: 'filing_cabinet', deg: 238, level: 0, wall: true },   // moved 6° for the Clock Room's door at 225° (2026-09-11)
                 { key: 'filing_cabinet', deg: 241, level: 0, wall: true },
@@ -34994,9 +34988,6 @@ const DOOR_HQ = {
                 { key: 'cardboard_box',  deg: 136, r: 22.8, level: 1 },
                 { key: 'office_locker',  deg: 232, level: 1, wall: true },   // moved from 240° for Room 360's door (plan 7.4)
                 { key: 'potted_plant',   deg: 265, r: 23.0, level: 1 },   // moved from 300°: THE GALLERY's stair (278°–312°, 2026-09-16)
-                { key: 'globe_lamp',     deg: 335, r: 22.7, level: 1 },
-                { key: 'globe_lamp',     deg: 70,  r: 22.7, level: 1 },
-                { key: 'globe_lamp',     deg: 195, r: 22.7, level: 1 },
                 { key: 'water_cooler',   deg: 165, level: 1, wall: true },
                 { key: 'fire_extinguisher', deg: 105, level: 1, wall: true },
                 { key: 'wall_clock',     deg: 255, level: 1, wall: true },
@@ -35030,10 +35021,6 @@ const DOOR_HQ = {
                 { key: 'picture_round_a', deg: 32,   level: 1, wall: true },
                 { key: 'picture_round_c', deg: 247,  level: 1, wall: true },        // moved from 288° (2026-09-13), then from 281°: THE GALLERY's stair (2026-09-16)
                 /* THE GALLERY (level 2, 2026-09-16): lamps between the four exploration doors, a plant, the notice frames */
-                { key: 'globe_lamp',     deg: 105, r: 23.0, level: 2 },
-                { key: 'globe_lamp',     deg: 180, r: 23.0, level: 2 },
-                { key: 'globe_lamp',     deg: 278, r: 23.0, level: 2 },
-                { key: 'globe_lamp',     deg: 30,  r: 23.0, level: 2 },
                 { key: 'potted_plant',   deg: 228, r: 23.0, level: 2 },
                 { key: 'potted_plant',   deg: 330, r: 23.0, level: 2 },
                 { key: 'picture_round_a', deg: 60, level: 2, wall: true },
@@ -35271,7 +35258,6 @@ const DOOR_HQ = {
                 /* ── the west wall: the way out, the lamp, the locker of things that never happened ── */
                 { key: 'exit_sign',      wall: 'w', z: 0, mount: 2.65 },
                 { key: 'office_locker',  wall: 'w', z: -2.0 },
-                { key: 'globe_lamp',     x: -3.4, z: 2.0 },
                 { key: 'potted_plant',   x: -3.45, z: -1.0, face: 40 },
                 { key: 'rug_office',     x: 0, z: 0 },
                 /* ── the ceiling ── */
@@ -35593,8 +35579,6 @@ const DOOR_HQ = {
                         { key: 'coffee_mug',      x: 0,    z: 1.8,  y: 1.05, face: 40 },   // somebody is still working through lunch
                         { key: 'xmas_champagne',  x: 1.06, z: -0.76, y: 1.05 },            // THE CHRISTMAS PACK (2026-10-24): two bottles on the band
                         { key: 'xmas_champagne',  x: -1.06, z: 1.36, y: 1.05 },
-                        { key: 'globe_lamp',      x: -5.2, z: -3.6 },
-                        { key: 'globe_lamp',      x: 5.2,  z: -3.6 },
                         { key: 'retro_speakers',  x: -5.4, z: 3.7, face: 40 },
                         { key: 'folding_chair',   x: -5.2, z: -1.0, face: 90 },               // the coat check
                         { key: 'folding_chair',   x: -5.2, z: -0.4, face: 90 },
@@ -35891,7 +35875,6 @@ const DOOR_HQ = {
                 { key: 'fire_extinguisher', wall: 's', x: 3.5 },
                 /* ── the west wall: the way out, the lamp by it ── */
                 { key: 'exit_sign',      wall: 'w', z: 0, mount: 2.65 },
-                { key: 'globe_lamp',     x: -3.4, z: -2.1 },
                 { key: 'trash_bin',      x: -3.5, z: 2.1, face: 60 },
                 { key: 'rug_round',      x: 0.4, z: 0.4 },
                 /* ── the ceiling ── */
@@ -36545,7 +36528,6 @@ const DOOR_HQ = {
                 { key: 'curved_couch',    x: 2.375,  z: 1.675, face: 180 },
                 { key: 'coffee_table',    x: 2.375,  z: 0.475, face: 0 },
                 { key: 'lava_lamp',       x: 3.2,  z: 1.4, y: 0.46, face: 20 },
-                { key: 'globe_lamp',      x: -4.0, z: 2.4 },
                 { key: 'egg_chair',       x: -2.4, z: 2.7, face: 0, color: 0xa63a2e },
                 { key: 'potted_plant',    x: -4.0, z: -2.4 },
                 { key: 'trash_bin',       x: 4.0,  z: -2.4 },
@@ -36648,7 +36630,6 @@ const DOOR_HQ = {
                 { key: 'lava_lamp',      x: -3.85, z: -0.45, y: 0.46, face: 30 },     // THE RETRO-FUTURIST PASS: on the coffee table
                 { key: 'water_cooler',   wall: 'w', z: 1.7 },
                 { key: 'vent_grille',    wall: 'w', z: -1.5, mount: 2.6 },
-                { key: 'globe_lamp',     x: -4.4,  z: 2.6,  face: 0 },
                 { key: 'nameplate',      wall: 'w', z: -1.6, mount: 1.55 },
                 /* ── the east wall (x 5.5): the corner office door at −0.6, the files by it, the egg chair ── */
                 { key: 'filing_cabinet', wall: 'e', z: 1.0 },
@@ -36749,7 +36730,6 @@ const DOOR_HQ = {
                 /* ── the south wall: THE PLAQUES, either side of the centre ── */
                 { key: 'wall_plaques',   wall: 's', x: -0.9, mount: 1.3 },
                 { key: 'wall_plaques',   wall: 's', x: 1.3,  mount: 1.3 },
-                { key: 'globe_lamp',     x: -2.7,  z: 2.2,  face: 0 },
                 { key: 'wall_clock',     wall: 's', x: 2.6, mount: 2.55 },
                 /* ── the west wall: the way out at 0.6, the plate, the hooks, the fridge you requisitioned in the closet ── */
                 { key: 'exit_sign',      wall: 'w', z: 0.6, mount: 2.9 },
@@ -36842,7 +36822,6 @@ const DOOR_HQ = {
                 { key: 'palm_tree',      x: -5.3,  z: -3.6, face: 20 },
                 { key: 'palm_tree',      x: 5.3,   z: -3.6, face: 200 },
                 { key: 'palm_tree',      x: 5.3,   z: 3.6,  face: 110 },
-                { key: 'globe_lamp',     x: -5.3,  z: 3.6,  face: 0 },
                 { key: 'potted_plant',   x: -2.0,  z: 3.9,  face: 30 },
                 /* ── the south side: the way in at 0, the ranking board by the towels ── */
                 { key: 'notice_board',   wall: 's', x: -3.2, mount: 0.0 },            // the board stands on the parapet (the low wall is 0.95 m; the board's own frame from the ground)
@@ -37054,7 +37033,6 @@ const DOOR_HQ = {
                 /* ── the west wall: the way in, the plate, the lamp ── */
                 { key: 'exit_sign',      wall: 'w', z: 0, mount: 2.9 },
                 { key: 'nameplate',      wall: 'w', z: -2.0, mount: 1.55 },
-                { key: 'globe_lamp',     x: -4.3, z: -2.9, face: 0 },
                 { key: 'water_cooler',   wall: 'w', z: 2.4 },
                 /* ── the floor, the ceiling ── */
                 { key: 'rug_office',     x: -1.0, z: 0.2 },
@@ -37277,12 +37255,10 @@ const DOOR_HQ = {
                 { key: 'breaker_panel',  wall: 's', x: -4.6 },
                 { key: 'fire_extinguisher', wall: 's', x: 4.8 },
                 { key: 'potted_plant',   x: 5.6,  z: 5.7 },
-                { key: 'globe_lamp',     x: -5.5, z: 5.5 },
                 /* ── the west wall: the way out, the coats, a frame ── */
                 { key: 'exit_sign',      wall: 'w', z: 0, mount: 2.75 },
                 { key: 'hook_rail',      wall: 'w', z: -2.4 },              // rev 22: the coats moved south → north; the projection SCREEN (the seam to the Singularity) hangs on the west wall at z 3.4
                 { key: 'picture_round_c', wall: 'n', x: -5.6 },
-                { key: 'globe_lamp',     x: -5.5, z: -5.5 },
                 /* ── the ceiling: ONE fixture, over the way in, at the shell's strip (blue) — the sky has the rest ── */
                 { key: 'fluorescent',    x: -5.4, z: 0, ceil: true, face: 90 },
             ],
@@ -39002,7 +38978,6 @@ const DOOR_HQ = {
                 { key: 'pen',            x: 2.55, z: -2.5, y: 1.1, face: 80 },
                 { key: 'wall_clock',     wall: 'n', x: 4.2, mount: 2.8 },
                 { key: 'notice_board',   wall: 'e', z: -2.4 },
-                { key: 'globe_lamp',     x: 4.4, z: -3.4, face: 0 },
                 /* ── the tiers: three risers, three desks on each ── */
                 { key: 'riser_1',        x: 0.7, z: 0.275, face: 0 },
                 { key: 'riser_2',        x: 0.7, z: 1.675, face: 0 },
@@ -39511,7 +39486,6 @@ const DOOR_HQ = {
                 { key: 'park_bench',     x: -3.575, z: -0.075, face: 90, rect: false }, { key: 'park_bench', x: 3.425, z: -0.075, face: 270, rect: false },
                 { key: 'garden_tree',    x: -7.5, z: -6.5 }, { key: 'garden_tree', x: 7.5, z: -6.5 }, { key: 'garden_tree', x: -7.5, z: 6.5 }, { key: 'garden_tree', x: 7.5, z: 6.5 },
                 { key: 'garden_tree',    x: -8.5, z: 0.5 }, { key: 'garden_tree', x: 8.5, z: -0.5 },
-                { key: 'globe_lamp',     x: -6.2, z: -6.2 }, { key: 'globe_lamp', x: 6.2, z: -6.2 }, { key: 'globe_lamp', x: -6.2, z: 6.2 }, { key: 'globe_lamp', x: 6.2, z: 6.2 },
                 { key: 'butterfly', x: -5.0, z: 4.6, y: 1.0 }, { key: 'butterfly', x: 5.2, z: -4.4, y: 1.2 }, { key: 'butterfly', x: -4.8, z: -5.0, y: 0.9 },   // THE ANIMALS (2026-10-27)
                 /* THE INSECTS (2026-10-27): bees at the flowers, the garden's butterflies, a caterpillar by the cat, a chrysalis by the pots */
                 { key: 'bee', x: -5.4, z: 4.2, y: 0.2 }, { key: 'bumblebee', x: 4.8, z: -4.8 }, { key: 'carpenter_bee', x: -4.4, z: -4.6 },
@@ -40119,7 +40093,6 @@ const DOOR_HQ = {
                 { key: 'house_key',      x: -1.725, z: -0.875, y: 0.76, face: 30 },
                 { key: 'car_key',        x: -1.975,  z: -1.025, y: 0.76, face: 110 },
                 { key: 'umbrella_stand', x: -3.4, z: 2.4, face: 0 },
-                { key: 'globe_lamp',     x: -3.4, z: -2.4 },
                 { key: 'cardboard_boxes', x: 3.2, z: -2.3, face: 15 }, { key: 'cardboard_box', x: 2.6, z: -2.6, y: 0.9, face: 40 },
                 { key: 'metal_shelving', wall: 's', x: -1.2 },
                 { key: 'clipboard',      wall: 'w', z: -1.8, mount: 1.5, rot: 2 },
@@ -40284,8 +40257,6 @@ const DOOR_HQ = {
                 { key: 'stained_glass',  wall: 'w', z: 12, h: 5.0, mount: 10.5 }, { key: 'stained_glass', wall: 'w', z: 0, h: 5.0, mount: 10.5 }, { key: 'stained_glass', wall: 'w', z: -12, h: 5.0, mount: 10.5 },
                 { key: 'stained_glass',  wall: 'e', z: 12, h: 5.0, mount: 10.5 }, { key: 'stained_glass', wall: 'e', z: 0, h: 5.0, mount: 10.5 }, { key: 'stained_glass', wall: 'e', z: -12, h: 5.0, mount: 10.5 },
                 /* the lamps round the ring on the floor */
-                { key: 'globe_lamp',     x: -11.375, z: 18.375 }, { key: 'globe_lamp', x: 11.375, z: 18.375 },
-                { key: 'globe_lamp',     x: -9.625, z: 4.375 }, { key: 'globe_lamp', x: 9.625, z: 4.375 },
                 { key: 'gclock',         x: -13.125, z: -7.877, y: 3.4, face: 90 },                                                   // a grandfather clock by the west wall (the reference's standing clock)
                 { key: 'banner',         wall: 'w', z: -18, mount: 6.0 }, { key: 'banner', wall: 'e', z: -18, mount: 6.0 },
             ],
@@ -40738,7 +40709,6 @@ const DOOR_HQ = {
                     add: [
                         { key: 'wall_shelf', wall: 'w', z: -1.4, mount: 1.0 }, { key: 'wall_shelf', wall: 'w', z: -1.4, mount: 1.7 }, { key: 'wall_shelf', wall: 'w', z: 0.6, mount: 1.0 }, { key: 'wall_shelf', wall: 'w', z: 0.6, mount: 1.7 },
                         { key: 'wall_shelf', wall: 's', x: 2.0, mount: 1.0 }, { key: 'wall_shelf', wall: 's', x: 2.0, mount: 1.7 },
-                        { key: 'globe_lamp', x: -2.4, z: 2.2 },
                         { key: 'office_chair', x: -0.8, z: 0.8, face: 0 }, { key: 'coffee_table', x: -0.8, z: -0.4 },
                         { key: 'notebook_paper', x: -0.8, z: -0.4, y: 0.46, face: 10 }, { key: 'table_lamp', x: -0.3, z: -0.5, y: 0.46 },
                         { key: 'rug_round', x: 0.4, z: 0.4 },
@@ -40756,7 +40726,6 @@ const DOOR_HQ = {
                         { key: 'cot', x: -1.6, z: -1.2, face: 0 },
                         { key: 'rug_round', x: 0.4, z: 0.6 },
                         { key: 'teal_chair', x: 1.6, z: 1.6, face: 300 },
-                        { key: 'globe_lamp', x: -2.6, z: 2.2 },
                         { key: 'cardboard_box', x: 1.8, z: -2.2, face: 20 },
                         { key: 'picture_round_c', wall: 'w', z: 0.4, mount: 1.6 },
                         { key: 'wall_shelf', wall: 's', x: -2.0, mount: 1.5 },
