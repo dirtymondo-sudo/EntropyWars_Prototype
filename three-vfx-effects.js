@@ -11711,6 +11711,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         frog:          { url: 'https://cdn.entropywars.net/Assets/world/props/meshy/Meshy_AI_frog_1027232151_texture.glb',           axis: 'flat' },
         giantFoot:     { url: 'https://cdn.entropywars.net/Assets/world/props/meshy/Meshy_AI_giant_foot_1027232131_texture.glb',     axis: 'z' },
         mic:           { url: 'https://cdn.entropywars.net/Assets/world/props/meshy/Meshy_AI_microphone_1027232053_texture.glb',     axis: 'y' },
+        /* THE WEATHERMAN's umbrella (2026-11-24, mondo's umbrella pack): open, tip up, J-hook at the bottom; its one shape key
+           `Close` folds it (influence 1 = shut, 0 = open; _wnBrolly drives it) */
+        umbrella:      { url: 'https://cdn.entropywars.net/Assets/fx/spell_props/umbrella_open.glb',                              axis: 'y' },
         rope:          { url: 'https://cdn.entropywars.net/Assets/world/props/meshy/Meshy_AI_rope_1027232157_texture.glb',           axis: 'flat' },
         sandbags:      { url: 'https://cdn.entropywars.net/Assets/world/props/meshy/Meshy_AI_sandbags_1027232011_texture.glb',       axis: 'flat' },
         syringe:       { url: 'https://cdn.entropywars.net/Assets/world/props/meshy/Meshy_AI_syringe_1027232304_texture.glb',        axis: 'z', tweak: { ry: Math.PI } },
@@ -68953,6 +68956,364 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     SPELL_MAP['psAnesthesia']    = { aoe: 'psAnesthesia_fx' };
     SPELL_MAP['psFullProcedure'] = { aoe: 'psFullProcedure_fx' };
     SPELL_MAP['psBotched']       = { botched: 'psBotched_fx' };
+
+    /* ════ THE WEATHERMAN + THE NEWS ANCHOR (2026-11-24, mondo: "Weatherman should have spells that summon and interact with
+       the weather system ... use [the umbrella] for his abilities. The News Anchor can maybe use the microphone the popstar uses"):
+       one race, two halves. Side colours from the viewer's own seat (_psSide: his / her side cyan-blue, the other pink-orange).
+       Fog: only what the viewer sees (_pzSeen). Every piece rides fire() (online.js relays it). Visuals only.
+       HIS (a TV weather map come to life, his umbrella from the pack):
+       · Cold Front (impact): the weather map's cold-front line (a line of triangles) runs over the floor from him to them, a gust
+         bursts at the end.
+       · Severe Weather Warning (aoe): a warning ring with hazard ticks pulses on the patch, an ALERT banner hangs over it.
+       · Storm Tracker (aoe): a radar disc on the floor, its sweep line turns, blips light up.
+       · Storm of the Century (aoe): a hurricane of dark cloud spirals in over the eye, CAT 5 over it; then (`bolt`, per enemy hit)
+         a forked bolt from the sky.
+       · The umbrella (`brolly`, state.js: weather hits everyone but him): his umbrella snaps open over his head, the rain bounces off.
+       HERS (a newsroom, the Popstar's microphone):
+       · Top Story (impact): sound rings run from her to them, a TOP STORY headline card slams down over them.
+       · Exclusive (pull / impact): a mic cord whips out to them, the mic at its end, an EXCLUSIVE tag.
+       · Fake News (aoe): newspaper pages flutter round the 3×3, a FAKE stamp hits the floor.
+       · Prime Time (aoe): three studio lights swing on over the 5×5, a LIVE tag, the mic rises in the middle.
+       · The Rundown (`segment`, battle.js _wnSegment): a lower-third banner (HEADLINES / SPORTS / WEATHER) slides in over her. ════ */
+    function _wnCardTex(word, sub) {
+        return _pzTex('wn-card-' + word + (sub || ''), 256, 72, function (g, w, h) {
+            g.fillStyle = 'rgba(0,0,0,0.88)'; g.fillRect(2, 2, w - 4, h - 4);
+            g.strokeStyle = '#ffffff'; g.lineWidth = 4; g.strokeRect(3, 3, w - 6, h - 6);
+            g.fillStyle = '#ffffff'; g.font = 'bold ' + (sub ? 30 : 36) + 'px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+            g.fillText(word, w / 2, sub ? h / 2 - 9 : h / 2 + 1);
+            if (sub) { g.font = 'bold 16px sans-serif'; g.fillText(sub, w / 2, h / 2 + 20); }
+        });
+    }
+    function _wnTriTex() {
+        return _pzTex('wn-front', 128, 64, function (g, w, h) {
+            g.fillStyle = '#ffffff'; g.fillRect(0, h - 10, w, 8);
+            g.beginPath(); g.moveTo(20, h - 10); g.lineTo(44, 10); g.lineTo(68, h - 10); g.closePath(); g.fill();
+            g.beginPath(); g.moveTo(84, h - 10); g.lineTo(108, 10); g.lineTo(128, h - 10); g.closePath(); g.fill();
+        });
+    }
+    function _wnPaperTex() {
+        return _pzTex('wn-paper', 96, 128, function (g, w, h) {
+            g.fillStyle = '#f2efe6'; g.fillRect(0, 0, w, h);
+            g.fillStyle = '#1b1d24'; g.font = 'bold 16px serif'; g.textAlign = 'center'; g.fillText('THE DAILY', w / 2, 20);
+            g.fillRect(8, 26, w - 16, 3);
+            g.fillStyle = 'rgba(27,29,36,0.6)';
+            for (var i = 0; i < 8; i++) g.fillRect(8 + (i % 2) * 42, 36 + Math.floor(i / 2) * 22, 36, 14);
+        });
+    }
+    function _wnRadarTex() {
+        return _pzTex('wn-radar', 256, 256, function (g, w, h) {
+            var c = w / 2; g.strokeStyle = '#ffffff'; g.lineWidth = 3;
+            for (var r = 1; r <= 4; r++) { g.beginPath(); g.arc(c, c, r * c / 4.3, 0, Math.PI * 2); g.stroke(); }
+            g.lineWidth = 2; g.beginPath(); g.moveTo(4, c); g.lineTo(w - 4, c); g.moveTo(c, 4); g.lineTo(c, h - 4); g.stroke();
+        });
+    }
+    function _wnSweepTex() {
+        return _pzTex('wn-sweep', 256, 256, function (g, w, h) {
+            var c = w / 2;
+            for (var k = 0; k < 24; k++) {
+                g.fillStyle = 'rgba(255,255,255,' + (0.9 * (1 - k / 24)).toFixed(3) + ')';
+                g.beginPath(); g.moveTo(c, c); g.arc(c, c, c - 4, -k * 0.035 - 0.035, -k * 0.035); g.closePath(); g.fill();
+            }
+        });
+    }
+    /* his umbrella over a frame point: snaps open (the `Close` key 1 → 0) over `ms`; null while the file streams */
+    function _wnBrolly(len, op) {
+        var inst = _npInst('umbrella', len, op);
+        if (!inst) return null;
+        var morphs = [];
+        inst.group.traverse(function (n) { if (n.isMesh && n.morphTargetInfluences && n.morphTargetInfluences.length) morphs.push(n); });
+        inst.shut = function (k) { for (var i = 0; i < morphs.length; i++) morphs[i].morphTargetInfluences[0] = k; };
+        inst.shut(1);
+        return inst;
+    }
+
+    /* ── THE UMBRELLA ── the weather comes down, his umbrella opens, the drops bounce off */
+    EFFECTS['wnUmbrella_fx'] = _pzDef('wnUmbrella', { pzOwn: true });
+    _PZ_SIGS.wnUmbrella = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty) || !_pzOnce('wnUmbrella@' + tx + ',' + ty, 600)) return;
+        var C = _psSide(p), F = _nrvFrame(tx, ty), ts = F.ts, topY = ts * 1.55;
+        var br = _wnBrolly(ts * 0.95, 1);
+        if (br) { br.group.position.set(ts * 0.08, topY, 0); F.g.add(br.group); }
+        var rim = _pzMesh(new THREE.TorusGeometry(ts * 0.48, ts * 0.014, 6, 36), _pzGlow(C[0]), F.g, 0, topY + ts * 0.12, 0); rim.rotation.x = Math.PI / 2;
+        var drops = [];
+        for (var i = 0; i < 12; i++) { var a = rn(0, 6.28); drops.push({ s: _pzSpr(C[0], ts * 0.07, F.g), a: a, r: rn(0, ts * 0.35), t0: rn(0, 700) }); }
+        return _sigRunOwned(F.g, 1500, function (el) {
+            var open = _sigEaseOutBack(_sigClamp01(el / 260)), vis = _pzEnv(el, 0, 60, 1150, 1500);
+            if (br) { br.shut(1 - _sigClamp01(open)); br.setFade(vis); br.group.rotation.z = Math.sin(el * 0.006) * 0.05; }
+            rim.scale.setScalar(Math.max(0.05, open)); rim.material.opacity = 0.7 * vis * (1 - _sigClamp01((el - 300) / 500));
+            for (var j = 0; j < drops.length; j++) {
+                var D = drops[j], t = ((el - D.t0) % 700) / 700; if (el < D.t0) { D.s.material.opacity = 0; continue; }
+                /* fall onto the canopy, then run off its edge and drop past it */
+                var y, rr;
+                if (t < 0.4) { y = topY + ts * 1.2 * (1 - t / 0.4) + ts * 0.15; rr = D.r; }
+                else { var u = (t - 0.4) / 0.6; rr = D.r + (ts * 0.55 - D.r) * Math.min(1, u * 2); y = topY + ts * 0.15 - ts * 0.1 * Math.min(1, u * 2) - (u > 0.5 ? (u - 0.5) * 2 * ts * 1.2 : 0); }
+                D.s.position.set(Math.cos(D.a) * rr, y, Math.sin(D.a) * rr); D.s.material.opacity = 0.85 * vis;
+            }
+        });
+    };
+
+    /* ── COLD FRONT ── the map's front line runs over the floor to them, a gust bursts there */
+    EFFECTS['wnColdFront_fx'] = _pzDef('wnColdFront', { pzOwn: true });
+    _PZ_SIGS.wnColdFront = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty) || !_pzOnce('wnColdFront', 300)) return;
+        var C = _psSide(p), F = _nrvFrame(tx, ty), ts = F.ts, from = _pzFrom(tx, ty, p), ln = _nrvLine(F, from, tx, ty);
+        var segs = [], N = Math.max(2, Math.round(ln.L / (ts * 0.5))), ang = Math.atan2(ln.ux, ln.uz);
+        for (var i = 0; i < N; i++) {
+            var m = _bkFloor(F, _wnTriTex(), ts * 0.5, ts * 0.25, C[0], true); m.rotation.z = ang + Math.PI / 2; segs.push(m);
+        }
+        var puffs = [];
+        for (var k = 0; k < 8; k++) puffs.push({ s: _pzSpr(C[0], ts * 0.3, F.g), a: rn(0, 6.28), v: rn(0.6, 1.1) });
+        var RUN = 420, hit = false;
+        return _sigRunOwned(F.g, 1300, function (el) {
+            var head = _sigClamp01(el / RUN), vis = _pzEnv(el, 0, 60, 900, 1300);
+            for (var j = 0; j < segs.length; j++) {
+                var at = (j + 0.5) / N, d = ln.L * (1 - at);
+                segs[j].position.set(ln.ux * d, ts * 0.05, ln.uz * d);
+                segs[j].material.opacity = at <= head ? 0.9 * vis : 0;
+            }
+            if (!hit && el >= RUN) { hit = true; _sigShockRing3D(tx, ty, { color: C[0], r0: ts * 0.15, r1: ts * 0.9, ms: 360 }); }
+            var g0 = _sigClamp01((el - RUN) / 600);
+            for (var q = 0; q < puffs.length; q++) {
+                var P = puffs[q], rr = ts * 0.7 * P.v * _sigEaseOutCubic(g0);
+                P.s.position.set(Math.cos(P.a) * rr, ts * (0.5 + 0.3 * g0), Math.sin(P.a) * rr);
+                P.s.material.opacity = el < RUN ? 0 : 0.6 * (1 - g0);
+            }
+        });
+    };
+
+    /* ── SEVERE WEATHER WARNING ── the warning ring + its banner over the patch */
+    EFFECTS['wnSevere_fx'] = _pzDef('wnSevere', { pzOwn: true });
+    _PZ_SIGS.wnSevere = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty) || !_pzOnce('wnSevere', 400)) return;
+        var C = _psSide(p), F = _nrvFrame(tx, ty), ts = F.ts, R = ts * 1.4;
+        var ring = _pzMesh(new THREE.RingGeometry(R * 0.9, R, 48), _pzGlow(C[0]), F.g, 0, ts * 0.05, 0); ring.rotation.x = -Math.PI / 2;
+        var ticks = [];
+        for (var i = 0; i < 12; i++) { var a = i / 12 * Math.PI * 2, t = _pzMesh(new THREE.PlaneGeometry(ts * 0.08, ts * 0.22), _pzGlow(C[1]), F.g, Math.cos(a) * R * 1.12, ts * 0.05, Math.sin(a) * R * 1.12); t.rotation.x = -Math.PI / 2; t.rotation.z = -a + Math.PI / 2 + 0.5; ticks.push(t); }
+        var card = _pzSprN(0xffffff, ts, _wnCardTex('ALERT', 'SEVERE WEATHER'), F.g); card.scale.set(ts * 1.2, ts * 0.34, 1); card.material.color.setHex(C[0]);
+        return _sigRunOwned(F.g, 2000, function (el) {
+            var vis = _pzEnv(el, 0, 150, 1500, 2000), pulse = 0.65 + 0.35 * Math.sin(el * 0.018);
+            ring.material.opacity = 0.75 * vis * pulse; ring.scale.setScalar(0.8 + 0.2 * _sigEaseOutBack(_sigClamp01(el / 300)));
+            for (var j = 0; j < ticks.length; j++) ticks[j].material.opacity = 0.8 * vis * ((j + Math.floor(el / 120)) % 2 ? 1 : 0.35);
+            var drop = _sigEaseOutBack(_sigClamp01((el - 100) / 360));
+            card.position.set(0, ts * (2.0 + 0.6 * (1 - drop)), 0); card.material.opacity = vis;
+        });
+    };
+
+    /* ── STORM TRACKER ── the radar disc, its sweep, the blips */
+    EFFECTS['wnTracker_fx'] = _pzDef('wnTracker', { pzOwn: true });
+    _PZ_SIGS.wnTracker = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty) || !_pzOnce('wnTracker', 400)) return;
+        var C = _psSide(p), F = _nrvFrame(tx, ty), ts = F.ts, R = ts * 1.5;
+        var disc = _bkFloor(F, _wnRadarTex(), R * 2, R * 2, C[0], true);
+        var sweep = _bkFloor(F, _wnSweepTex(), R * 2, R * 2, C[0], true); sweep.position.y = ts * 0.06;
+        var blips = [];
+        for (var i = 0; i < 6; i++) { var a = rn(0, 6.28), rr = rn(0.25, 0.9) * R; blips.push({ s: _pzSpr(C[1], ts * 0.22, F.g), a: a, x: Math.cos(a) * rr, z: Math.sin(a) * rr }); }
+        return _sigRunOwned(F.g, 2000, function (el) {
+            var vis = _pzEnv(el, 0, 200, 1500, 2000), grow = _sigEaseOutCubic(_sigClamp01(el / 300)), sw = el * 0.006;
+            disc.scale.setScalar(Math.max(0.05, grow)); disc.material.opacity = 0.55 * vis;
+            sweep.scale.setScalar(Math.max(0.05, grow)); sweep.rotation.z = sw; sweep.material.opacity = 0.7 * vis;
+            for (var j = 0; j < blips.length; j++) {
+                var B = blips[j], since = ((sw - (-B.a + Math.PI * 2 * 10)) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+                B.s.position.set(B.x * grow, ts * 0.12, B.z * grow);
+                B.s.material.opacity = 0.9 * vis * Math.max(0, 1 - since / 2.2);
+            }
+        });
+    };
+
+    /* ── STORM OF THE CENTURY ── a hurricane of dark cloud spirals in over the eye; `bolt` = a forked bolt from the sky */
+    EFFECTS['wnCentury_fx'] = _pzDef('wnCentury', { pzOwn: true });
+    _PZ_SIGS.wnCentury = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty) || !_pzOnce('wnCentury', 500)) return;
+        var C = _psSide(p), F = _nrvFrame(tx, ty), ts = F.ts, R = ts * 2.6, H = ts * 2.4;
+        var clouds = [];
+        for (var i = 0; i < 26; i++) {
+            var s = new THREE.Sprite(new THREE.SpriteMaterial({ map: _sigGlowTex(), color: new THREE.Color(i % 3 ? 0x4a5260 : 0x2e343e), transparent: true, opacity: 0, depthWrite: false }));
+            s.renderOrder = 160; F.g.add(s);
+            clouds.push({ s: s, a0: i / 26 * Math.PI * 6, r: R * (0.25 + 0.75 * (i / 26)), sz: ts * rn(0.9, 1.5) });
+        }
+        var eye = _pzMesh(new THREE.RingGeometry(ts * 0.3, ts * 0.42, 36), _pzGlow(C[0]), F.g, 0, ts * 0.05, 0); eye.rotation.x = -Math.PI / 2;
+        var card = _pzSprN(0xffffff, ts, _wnCardTex('CAT 5', 'STORM OF THE CENTURY'), F.g); card.scale.set(ts * 1.3, ts * 0.36, 1); card.material.color.setHex(C[0]);
+        return _sigRunOwned(F.g, 2600, function (el) {
+            var vis = _pzEnv(el, 0, 300, 2000, 2600), spin = el * 0.0024, inw = 1 - 0.35 * _sigEaseOutCubic(_sigClamp01(el / 1500));
+            for (var j = 0; j < clouds.length; j++) {
+                var Q = clouds[j], a = Q.a0 + spin * (1.6 - Q.r / R), rr = Q.r * inw;
+                Q.s.position.set(Math.cos(a) * rr, H - Q.r / R * ts * 0.5, Math.sin(a) * rr);
+                Q.s.scale.set(Q.sz * 1.4, Q.sz * 0.8, 1); Q.s.material.opacity = 0.82 * vis;
+            }
+            eye.material.opacity = 0.8 * vis * (0.6 + 0.4 * Math.sin(el * 0.012));
+            card.position.set(0, H + ts * 0.9, 0); card.material.opacity = vis * _sigClamp01((el - 250) / 250);
+        });
+    };
+    EFFECTS['wnCenturyBolt_fx'] = _pzDef('wnCenturyBolt', { pzOwn: true });
+    _PZ_SIGS.wnCenturyBolt = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty)) return;
+        var C = _psSide(p), F = _nrvFrame(tx, ty), ts = F.ts, top = ts * 3.2;
+        var pts = [], n = 7;
+        for (var i = 0; i <= n; i++) pts.push(new THREE.Vector3(i === 0 || i === n ? 0 : rn(-1, 1) * ts * 0.25, top * (1 - i / n) + ts * 0.1, i === 0 || i === n ? 0 : rn(-1, 1) * ts * 0.25));
+        var outer = [], inner = [];
+        for (var k = 0; k < n; k++) {
+            outer.push(_pzMesh(new THREE.CylinderGeometry(ts * 0.06, ts * 0.06, 1, 6), _pzGlow(C[1]), F.g));
+            inner.push(_pzMesh(new THREE.CylinderGeometry(ts * 0.02, ts * 0.02, 1, 6), _pzGlow(C[0]), F.g));
+            _pzSpan(outer[k], pts[k], pts[k + 1]); _pzSpan(inner[k], pts[k], pts[k + 1]);
+        }
+        var flash = _pzSpr(C[0], ts * 1.1, F.g); flash.position.set(0, ts * 0.3, 0);
+        var hit = false;
+        return _sigRunOwned(F.g, 650, function (el) {
+            var vis = el < 90 ? 1 : (el < 160 ? 0.3 : (el < 240 ? 1 : 1 - _sigClamp01((el - 240) / 400)));
+            for (var j = 0; j < n; j++) { outer[j].material.opacity = 0.55 * vis; inner[j].material.opacity = 0.95 * vis; }
+            flash.material.opacity = 0.7 * vis;
+            if (!hit) { hit = true; _sigShockRing3D(tx, ty, { color: C[0], r0: ts * 0.1, r1: ts * 0.7, ms: 300 }); }
+        });
+    };
+
+    /* ── TOP STORY ── sound rings run to them, the headline card slams down */
+    EFFECTS['wnTopStory_fx'] = _pzDef('wnTopStory', { pzOwn: true });
+    _PZ_SIGS.wnTopStory = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty) || !_pzOnce('wnTopStory', 300)) return;
+        var C = _psSide(p), F = _nrvFrame(tx, ty), ts = F.ts, from = _pzFrom(tx, ty, p), ln = _nrvLine(F, from, tx, ty), Y = ts * 0.95;
+        var rings = [];
+        for (var i = 0; i < 4; i++) rings.push(_pzMesh(new THREE.TorusGeometry(ts * 0.22, ts * 0.018, 6, 30), _pzGlow(i % 2 ? C[1] : C[0]), F.g));
+        var card = _pzSprN(0xffffff, ts, _wnCardTex('TOP STORY'), F.g); card.scale.set(ts * 1.1, ts * 0.31, 1); card.material.color.setHex(C[0]);
+        var RUN = 380, hit = false, yaw = Math.atan2(ln.ux, ln.uz);
+        return _sigRunOwned(F.g, 1500, function (el) {
+            for (var j = 0; j < rings.length; j++) {
+                var t = _sigClamp01((el - j * 70) / RUN), d = ln.L * (1 - t);
+                rings[j].position.set(ln.ux * d, Y, ln.uz * d); rings[j].rotation.set(0, yaw, 0);
+                rings[j].scale.setScalar(0.6 + t * 1.2); rings[j].material.opacity = t > 0 && t < 1 ? 0.9 : 0;
+            }
+            if (!hit && el >= RUN + 140) { hit = true; _sigShockRing3D(tx, ty, { color: C[0], r0: ts * 0.15, r1: ts * 0.8, ms: 320 }); }
+            var s = _sigClamp01((el - RUN) / 200), vis = _pzEnv(el, RUN, RUN + 120, 1150, 1500);
+            card.position.set(0, ts * (1.7 + 0.9 * (1 - _sigEaseOutCubic(s))), 0); card.material.opacity = vis;
+        });
+    };
+
+    /* ── EXCLUSIVE ── the mic cord whips out to them, the mic on its end */
+    EFFECTS['wnExclusive_fx'] = _pzDef('wnExclusive', { pzOwn: true });
+    _PZ_SIGS.wnExclusive = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty) || !_pzOnce('wnExclusive', 400)) return;
+        var C = _psSide(p), F = _nrvFrame(tx, ty), ts = F.ts, from = _pzFrom(tx, ty, p), ln = _nrvLine(F, from, tx, ty);
+        var A = new THREE.Vector3(ln.dx, ln.dy + ts * 0.8, ln.dz), B = new THREE.Vector3(0, ts * 0.85, 0), P = new THREE.Vector3();
+        var cord = _pzMesh(new THREE.CylinderGeometry(ts * 0.016, ts * 0.016, 1, 6), _pzGlow(C[0]), F.g);
+        var micG = new THREE.Group(); F.g.add(micG);
+        var mic = _npInst('mic', ts * 0.32); if (mic) micG.add(mic.group);
+        var gl = _pzSpr(C[0], ts * 0.35, micG);
+        var card = _pzSprN(0xffffff, ts, _wnCardTex('EXCLUSIVE'), F.g); card.scale.set(ts * 1.1, ts * 0.31, 1); card.material.color.setHex(C[0]);
+        return _sigRunOwned(F.g, 1500, function (el) {
+            var out = _sigEaseOutCubic(_sigClamp01(el / 260)), back = _sigClamp01((el - 600) / 500), vis = _pzEnv(el, 0, 40, 1150, 1500);
+            var k = out * (1 - back * 0.85);
+            P.copy(A).lerp(B, k); P.y += Math.sin(Math.PI * k) * ts * 0.3; _pzSpan(cord, A, P); cord.material.opacity = 0.9 * vis;
+            micG.position.copy(P); micG.rotation.z = 1.2 * (1 - out) + Math.sin(el * 0.02) * 0.1;
+            if (mic) mic.setFade(vis); gl.material.opacity = 0.5 * vis;
+            card.position.set(0, ts * 1.8, 0); card.material.opacity = _pzEnv(el, 260, 380, 1100, 1450);
+        });
+    };
+
+    /* ── FAKE NEWS ── pages flutter round the 3×3, a FAKE stamp hits the floor */
+    function _wnFakeTex() {
+        return _pzTex('wn-fake', 256, 128, function (g, w, h) {
+            g.strokeStyle = '#ffffff'; g.lineWidth = 10; g.strokeRect(10, 10, w - 20, h - 20);
+            g.fillStyle = '#ffffff'; g.font = 'bold 72px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('FAKE', w / 2, h / 2 + 4);
+        });
+    }
+    EFFECTS['wnFakeNews_fx'] = _pzDef('wnFakeNews', { pzOwn: true, aoeRadius: 1 });
+    _PZ_SIGS.wnFakeNews = function (p, id) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzOnce('wnFakeNews', 400)) return;
+        var at = _nvAoeTiles(id, p, null, 1), r = at.r || 1, seen = _pzSeen(tx, ty);
+        for (var q = 0; q < at.offs.length && !seen; q++) if (_pzSeen(tx + at.offs[q].dx, ty + at.offs[q].dy)) seen = true;
+        if (!seen) return;
+        var C = _psSide(p), F = _nrvFrame(tx, ty), ts = F.ts, R = ts * (r + 0.5);
+        var stamp = _bkFloor(F, _wnFakeTex(), R * 1.4, R * 0.7, C[1], true); stamp.rotation.z = 0.3;
+        var pages = [];
+        for (var i = 0; i < 10; i++) {
+            var pg = _pzMesh(new THREE.PlaneGeometry(ts * 0.3, ts * 0.4), _pzSolid(0xffffff, _wnPaperTex(), { side: THREE.DoubleSide }), F.g);
+            pages.push({ m: pg, a: rn(0, 6.28), r: rn(0.3, 1) * R, y0: ts * rn(1.6, 2.4), sp: rn(-3, 3), t0: rn(0, 400) });
+        }
+        return _sigRunOwned(F.g, 2100, function (el) {
+            var vis = _pzEnv(el, 0, 120, 1600, 2100);
+            var sl = _sigClamp01((el - 500) / 160);
+            stamp.scale.setScalar(1.6 - 0.6 * sl); stamp.material.opacity = el < 500 ? 0 : 0.85 * vis;
+            if (el >= 500 && !stamp.userData.hit) { stamp.userData.hit = 1; _sigShockRing3D(tx, ty, { color: C[1], r0: ts * 0.2, r1: R, ms: 380 }); }
+            for (var j = 0; j < pages.length; j++) {
+                var P = pages[j], t = _sigClamp01((el - P.t0) / 1500), a = P.a + t * 2.5;
+                P.m.position.set(Math.cos(a) * P.r, P.y0 * (1 - t) + ts * 0.1, Math.sin(a) * P.r);
+                P.m.rotation.set(el * 0.004 * P.sp, el * 0.003 + j, Math.sin(el * 0.006 + j) * 0.8);
+                P.m.material.opacity = el < P.t0 ? 0 : 0.95 * vis;
+            }
+        });
+    };
+
+    /* ── PRIME TIME ── three studio lights over the 5×5, a LIVE tag, the mic rises in the middle */
+    function _wnLiveTex() {
+        return _pzTex('wn-live', 160, 64, function (g, w, h) {
+            g.fillStyle = 'rgba(0,0,0,0.88)'; g.fillRect(2, 2, w - 4, h - 4);
+            g.strokeStyle = '#ffffff'; g.lineWidth = 4; g.strokeRect(3, 3, w - 6, h - 6);
+            g.fillStyle = '#ffffff'; g.beginPath(); g.arc(34, h / 2, 12, 0, Math.PI * 2); g.fill();
+            g.font = 'bold 36px sans-serif'; g.textBaseline = 'middle'; g.fillText('LIVE', 56, h / 2 + 2);
+        });
+    }
+    EFFECTS['wnPrimeTime_fx'] = _pzDef('wnPrimeTime', { pzOwn: true, aoeRadius: 2 });
+    _PZ_SIGS.wnPrimeTime = function (p, id) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzOnce('wnPrimeTime', 400)) return;
+        var at = _nvAoeTiles(id, p, null, 2), r = at.r || 2, seen = _pzSeen(tx, ty);
+        for (var q = 0; q < at.offs.length && !seen; q++) if (_pzSeen(tx + at.offs[q].dx, ty + at.offs[q].dy)) seen = true;
+        if (!seen) return;
+        var C = _psSide(p), F = _nrvFrame(tx, ty), ts = F.ts, R = ts * (r + 0.5), LH = ts * 3.4;
+        var beams = [], pools = [];
+        for (var i = 0; i < 3; i++) {
+            var a = i / 3 * Math.PI * 2 + 0.5, px = Math.cos(a) * R * 0.45, pz = Math.sin(a) * R * 0.45;
+            var bm = _pzMesh(new THREE.CylinderGeometry(ts * 0.12, R * 0.38, LH, 18, 1, true), _pzGlow(i === 1 ? C[1] : C[0]), F.g, px, LH / 2, pz);
+            beams.push(bm);
+            pools.push(_bkFloor(F, _sigGlowTex(), R * 0.9, R * 0.9, i === 1 ? C[1] : C[0], true)); pools[i].position.x = px; pools[i].position.z = pz;
+        }
+        var spot = null;
+        try { spot = new THREE.PointLight(0xfff2dc, 0, R * 3, 1.5); spot.position.set(0, LH * 0.6, 0); F.g.add(spot); } catch (e) { spot = null; }
+        var micG = new THREE.Group(); F.g.add(micG);
+        var mic = _npInst('mic', ts * 0.5); if (mic) micG.add(mic.group);
+        var live = _pzSprN(0xffffff, ts, _wnLiveTex(), F.g); live.scale.set(ts * 0.8, ts * 0.32, 1); live.material.color.setHex(C[0]);
+        var rings = [];
+        for (var k = 0; k < 3; k++) rings.push(_pzMesh(new THREE.RingGeometry(R * 0.92, R, 48), _pzGlow(C[0]), F.g, 0, ts * 0.05, 0));
+        return _sigRunOwned(F.g, 2600, function (el) {
+            var vis = _pzEnv(el, 0, 200, 2100, 2600);
+            for (var j = 0; j < 3; j++) {
+                var on = _sigClamp01((el - j * 220) / 140), fl = on * (0.85 + 0.15 * Math.sin(el * 0.02 + j));
+                beams[j].material.opacity = 0.18 * vis * fl; pools[j].material.opacity = 0.4 * vis * fl;
+            }
+            if (spot) spot.intensity = 1.6 * vis * _sigClamp01((el - 200) / 400);
+            var up = _sigEaseOutBack(_sigClamp01((el - 600) / 420));
+            micG.position.set(0, ts * (0.2 + 0.9 * up), 0); micG.rotation.y = el * 0.002; if (mic) mic.setFade(el < 600 ? 0 : vis);
+            live.position.set(0, ts * 2.0, 0); live.material.opacity = vis * (Math.floor(el / 400) % 2 ? 1 : 0.75) * _sigClamp01((el - 700) / 200);
+            for (var g2 = 0; g2 < rings.length; g2++) {
+                var t = _sigClamp01((el - 900 - g2 * 260) / 700);
+                rings[g2].rotation.x = -Math.PI / 2; rings[g2].scale.setScalar(Math.max(0.05, t)); rings[g2].material.opacity = t > 0 && t < 1 ? 0.8 * (1 - t) : 0;
+            }
+        });
+    };
+
+    /* ── THE RUNDOWN ── a lower-third banner slides in over her (p.seg = headlines | sports | weather) */
+    EFFECTS['wnRundown_fx'] = _pzDef('wnRundown', { pzOwn: true });
+    _PZ_SIGS.wnRundown = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty) || !_pzOnce('wnRundown@' + (p.seg || ''), 250)) return;
+        var WORD = { headlines: 'HEADLINES', sports: 'SPORTS', weather: 'WEATHER' }[p.seg] || 'NEWS';
+        var C = _psSide(p), F = _nrvFrame(tx, ty), ts = F.ts;
+        var card = _pzSprN(0xffffff, ts, _wnCardTex(WORD, 'THE RUNDOWN'), F.g); card.scale.set(ts * 1.1, ts * 0.31, 1); card.material.color.setHex(C[0]);
+        var bar = _pzSprN(C[0], ts, _sigGlowTex(), F.g); bar.scale.set(ts * 1.2, ts * 0.05, 1);
+        var cd = _nbCamDir(F), sx = -cd.z, sz = cd.x;
+        return _sigRunOwned(F.g, 1500, function (el) {
+            var s = _sigEaseOutCubic(_sigClamp01(el / 300)), vis = _pzEnv(el, 0, 80, 1100, 1500), off = ts * 0.9 * (1 - s);
+            card.position.set(sx * off, ts * 1.85, sz * off); card.material.opacity = vis;
+            bar.position.set(sx * off, ts * 1.66, sz * off); bar.material.opacity = 0.9 * vis;
+        });
+    };
+    SPELL_MAP['wnUmbrella']       = { brolly: 'wnUmbrella_fx' };
+    SPELL_MAP['wnColdFront']      = { impact: 'wnColdFront_fx' };
+    SPELL_MAP['wnSevereWeather']  = { aoe: 'wnSevere_fx' };
+    SPELL_MAP['wnStormTracker']   = { aoe: 'wnTracker_fx' };
+    SPELL_MAP['wnStormOfCentury'] = { aoe: 'wnCentury_fx', bolt: 'wnCenturyBolt_fx' };
+    SPELL_MAP['wnTopStory']       = { impact: 'wnTopStory_fx' };
+    SPELL_MAP['wnExclusive']      = { pull: 'wnExclusive_fx', impact: 'wnExclusive_fx' };
+    SPELL_MAP['wnFakeNews']       = { aoe: 'wnFakeNews_fx' };
+    SPELL_MAP['wnPrimeTime']      = { aoe: 'wnPrimeTime_fx' };
+    SPELL_MAP['wnRundown']        = { segment: 'wnRundown_fx' };
 
     /* ════ TAX EXEMPT (2026-11-17, mondo's ask): a green TAX EXEMPT stamp slams onto the floor under the unit, a white receipt
        floats up beside it and is torn in two, and blue mana motes (the MP it will not pay) rise into the body ════ */

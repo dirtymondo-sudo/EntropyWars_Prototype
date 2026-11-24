@@ -5580,7 +5580,7 @@
                 stormStrikeUnit(unit, weather, def);
                 if (unit.dead || unit._dying) return fired;
                 /* 🧭 THE FORCED MOVE: the storm's heading this round (vortexFlingDir), the shared slide, the landing's chain */
-                if (def.displaces) {
+                if (def.displaces && !(typeof wnWeatherproof === 'function' && wnWeatherproof(unit))) {   // ☂ THE FORECAST
                     vortexFlingUnit(unit, weather, def, fopts);
                     if (unit.dead || unit._dying || unit.x !== x || unit.y !== y) return fired;
                 }
@@ -15700,6 +15700,160 @@
             if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit });
         }
         window._psMakeoverSwap = _psMakeoverSwap; window._psRoundEnd = _psRoundEnd;
+        /* ═══ THE WEATHERMAN + NEWS ANCHOR (2026-11-24, mondo: "Weatherman should have spells that summon and interact with the
+           weather system ... The News Anchor can maybe use the microphone the popstar uses for her abilities"). One race
+           ('weatherman'): the male is the Weatherman, the female the News Anchor, no spell shared (data.js RACE_GENDER_SPELLS).
+           - THE FORECAST (his): a weather he calls lasts 1 round longer (_wnAfterCast); the weather never hurts, soaks or flings
+             him (data.js wnWeatherproof, read by state.js applyWeatherTurnEffects / stormStrikeUnit and the chain's fling).
+           - Cold Front reads the sky (`wnSkyRead`), Severe Weather Warning reads the ground (`wnByGround`): the cast's own copy
+             (_wnCastRow, the spellWeatherResolved pattern; ai.js scores the same copy). Storm Tracker (`wnSteer`) moves every
+             weather up to the picked square, +1 round each (its own doSpell branch). Storm of the Century (`wnStrikeWet`) soaks
+             the grounded enemies near the new eye, then strikes them with lightning.
+           - THE RUNDOWN (hers): `unit._rundown` (0 Headlines, 1 Sports, 2 Weather; a plain number, it rides the state sync). Each
+             of her spells runs the next segment for her and her allies within 3; Prime Time runs all three and starts over.
+             Fake News (`wnFlipStages`) turns each live stat boost of an enemy in its 3x3 into a drop of the same size.
+           Host-side; the texts go through showFloatingTextForUnit and the looks through ThreeVFXEffects.fire (both relayed).
+           Notes: docs/notes/champions-combat.md "THE WEATHERMAN + NEWS ANCHOR". */
+        function _wnIsHim(u) { return !!u && u.race === 'weatherman' && (u.gender || 'male') === 'male'; }
+        function _wnIsHer(u) { return !!u && u.race === 'weatherman' && u.gender === 'female'; }
+        function _wnFloat(u, txt, kind) { if (u && !u.dead && state.phase === 'battle' && !_skipVisuals()) showFloatingTextForUnit(u, txt, kind || 'buff', { durationMs: 1200, jitterY: -30 }); }
+        function _wnFx(phase, id, p) { try { if (!_skipVisuals() && window.ThreeVFXEffects && ThreeVFXEffects.fire) ThreeVFXEffects.fire(phase, id, p); } catch (e) {} }
+        /* the sky Cold Front reads: the first weather of this list that is up (the sky is the whole board's) */
+        const WN_SKY = [
+            ['thunderstorm', { element: 'lightning' }, 'the storm'],
+            ['hurricane', { element: 'water', status: { id: 'wet', duration: 2 } }, 'the rain'],
+            ['bloodRain', { element: 'water', status: { id: 'wet', duration: 2 } }, 'the rain'],
+            ['blizzard', { element: 'ice', status: { id: 'slow', duration: 1 } }, 'the blizzard'],
+            ['drought', { element: 'fire' }, 'the drought'],
+            ['solarFlare', { element: 'fire' }, 'the flare'],
+            ['sandstorm', { element: 'wind', status: { id: 'blind', duration: 1 } }, 'the sandstorm'],
+            ['tornado', { element: 'wind', status: { id: 'stagger', duration: 1 } }, 'the tornado'],
+        ];
+        function _wnSky() {
+            const up = new Set((state.activeWeather || []).filter(Boolean).map(w => w.type));
+            for (const r of WN_SKY) if (up.has(r[0])) return { type: r[0], patch: r[1], words: r[2] };
+            return null;
+        }
+        /* the weather the ground he points at calls (Severe Weather Warning) */
+        function _wnGroundWeather(x, y) {
+            let t = '';
+            try { t = String((typeof getSurfaceTerrainAt === 'function' ? getSurfaceTerrainAt(x, y) : getTerrainAt(x, y)) || ''); } catch (e) { t = ''; }
+            if (/ice|snow|igloo|frost/.test(t)) return 'blizzard';
+            if (/desert|sand|dune|mars|wasteland/.test(t)) return 'sandstorm';
+            if (/lava|scorch|obsidian|magma|ash/.test(t)) return 'drought';
+            if (/mountain|rock|stone|cliff|crystal|rubble|boulder/.test(t)) return 'tornado';
+            return 'thunderstorm';
+        }
+        /* the cast's own copy (doSpell, where _psCastRow is; ai.js scores the same) */
+        function _wnCastRow(unit, spell, x, y) {
+            if (!spell || !(spell.wnSkyRead || spell.wnByGround)) return spell;
+            const s = Object.assign({}, spell);
+            if (spell.wnSkyRead) {
+                const sky = _wnSky();
+                if (sky) {
+                    s.element = sky.patch.element;
+                    if (sky.patch.status) s.statusEffects = (spell.statusEffects || []).concat([Object.assign({}, sky.patch.status)]);
+                    s._wnSky = sky.type;
+                }
+            }
+            if (spell.wnByGround && x != null && y != null) {
+                const wt = _wnGroundWeather(x, y);
+                s.weatherType = wt;
+                const def = (typeof WEATHER_REGISTRY !== 'undefined' && WEATHER_REGISTRY[wt]) || null;
+                if (def && def.tiles) s.weatherTiles = def.tiles;
+            }
+            return s;
+        }
+        window._wnCastRow = _wnCastRow; window._wnGroundWeather = _wnGroundWeather;
+        /* Storm Tracker: every weather up moves over (x, y) and stays 1 round longer */
+        function _wnSteer(unit, spell, x, y) {
+            const list = (state.activeWeather || []).filter(Boolean);
+            const W = bw(), H = bh(), moved = [];
+            for (const w of list) {
+                const def = WEATHER_REGISTRY[w.type];
+                if (!def) continue;
+                if (def.homing) w.tiles = [{ x, y }];
+                else if (!(w.global || def.global) && Array.isArray(w.tiles) && w.tiles.length) {
+                    const cx = Math.round(w.tiles.reduce((a, t) => a + t.x, 0) / w.tiles.length), cy = Math.round(w.tiles.reduce((a, t) => a + t.y, 0) / w.tiles.length);
+                    const seen = new Set(), out = [];
+                    for (const t of w.tiles) {
+                        const nx = Math.max(0, Math.min(W - 1, t.x + x - cx)), ny = Math.max(0, Math.min(H - 1, t.y + y - cy)), k = nx + ',' + ny;
+                        if (!seen.has(k)) { seen.add(k); out.push({ x: nx, y: ny }); }
+                    }
+                    w.tiles = out;
+                }
+                w.remaining = (w.remaining | 0) + 1;
+                moved.push(`${def.icon} ${def.label} (${w.remaining} round${w.remaining === 1 ? '' : 's'})`);
+            }
+            if (moved.length) addLog(`☂ ${_ctName(unit)} tracks the weather to ${coordLabel(x, y)}: ${moved.join(', ')}.`);
+            _wnFx('aoe', 'wnStormTracker', { tx: x, ty: y, sx: unit.x, sy: unit.y, aoeRadius: 1 });
+            if (typeof markDirty === 'function') markDirty('hud');
+            return moved.length;
+        }
+        /* THE RUNDOWN: one segment for her and her allies within 3 */
+        const WN_SEGMENTS = ['HEADLINES', 'SPORTS', 'WEATHER'];
+        function _wnSegment(unit, seg) {
+            const crew = (state.units || []).filter(a => _nrAlive(a) && (a.id === unit.id || isAllyUnit(a, unit)) && Math.max(Math.abs(a.x - unit.x), Math.abs(a.y - unit.y)) <= 3);
+            const label = `The Rundown, ${WN_SEGMENTS[seg].charAt(0) + WN_SEGMENTS[seg].slice(1).toLowerCase()}: `;
+            _wnFloat(unit, `📺 ${WN_SEGMENTS[seg]}`, 'buff');
+            _wnFx('segment', 'wnRundown', { tx: unit.x, ty: unit.y, sx: unit.x, sy: unit.y, seg });
+            if (seg === 0) { for (const a of crew) applyStatStageBoost(a, { atk: 1, int: 1 }, label, unit); }
+            else if (seg === 1) { for (const a of crew) applyStatStageBoost(a, { spd: 1 }, label, unit); }
+            else {
+                const ws = (state.activeWeather || []).filter(Boolean);
+                if (ws.length) {
+                    for (const w of ws) w.remaining = (w.remaining | 0) + 1;
+                    addLog(`📺 ${_ctName(unit)}: "And now, the weather." ${ws.map(w => (WEATHER_REGISTRY[w.type] || {}).label || w.type).join(', ')} stay${ws.length === 1 ? 's' : ''} 1 round longer.`);
+                } else {
+                    addLog(`📺 ${_ctName(unit)}: "Clear skies all week."`);
+                    for (const a of crew) applyHealingToUnit(a, 40, unit);
+                }
+            }
+        }
+        /* finishAction: The Forecast's round, the strike, the flip, the segment */
+        function _wnAfterCast(unit, spell, x, y) {
+            if (!unit || !spell || unit.race !== 'weatherman' || state.phase !== 'battle' || !/^wn[A-Z]/.test(spell.id || '')) return;
+            if (_wnIsHim(unit) && spell.kind === 'summonWeather' && !spell.wnSteer) {
+                const w = (state.activeWeather || []).find(o => o && o.type === spell.weatherType);
+                if (w) {
+                    w.remaining = (w.remaining | 0) + 1;
+                    addLog(`☂ The Forecast: the ${(WEATHER_REGISTRY[w.type] || {}).label || w.type} stays 1 round longer (${w.remaining} rounds).`);
+                }
+                /* ⛈ Storm of the Century: the first downpour soaks the grounded enemies near the eye, the lightning finds them */
+                if (spell.wnStrikeWet > 0 && w && _nrAlive(unit)) {
+                    const eye = (w.tiles && w.tiles[0]) || { x, y }, R = spell.wnStrikeWet;
+                    const prey = (state.units || []).filter(e => _nrAlive(e) && isEnemyUnit(unit, e) && Math.max(Math.abs(e.x - eye.x), Math.abs(e.y - eye.y)) <= R
+                        && !(typeof isUnitAirborne === 'function' && isUnitAirborne(e)) && !(typeof wnWeatherproof === 'function' && wnWeatherproof(e)));
+                    for (const e of prey) applyStatusPayload(e, { id: 'wet', duration: 2 }, 'Storm of the Century: ', unit);
+                    if (prey.length) {
+                        const row = { id: 'wnCenturyBolt', name: 'Storm of the Century', families: ['newsroom'], spellType: 'human', element: 'lightning', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: spell.dmg || 130 };
+                        const sp = spellPowerOf(unit, row);
+                        for (const e of prey) _wnFx('bolt', 'wnStormOfCentury', { tx: e.x, ty: e.y, sx: unit.x, sy: unit.y });
+                        _applyAoeDamage(unit, row, prey.map(e => ({ x: e.x, y: e.y })), (spell.dmg || 130) + sp, sp, { rngRange: 24, minDmg: 40 });
+                        if (typeof checkWin === 'function') checkWin();
+                    }
+                }
+            }
+            if (!_wnIsHer(unit)) return;
+            /* 📰 Fake News: each live boost of an enemy in the 3x3 becomes a drop of the same size */
+            if (spell.wnFlipStages) {
+                const tiles = _spellMaskTiles(spell, x, y) || getSquareArea(x, y, spell.aoeRadius || 1);
+                const keys = new Set(tiles.map(t => t.x + ',' + t.y));
+                for (const e of (state.units || [])) {
+                    if (!_nrAlive(e) || !isEnemyUnit(unit, e) || !keys.has(e.x + ',' + e.y) || !Array.isArray(e.statStageMods)) continue;
+                    const flip = {};
+                    e.statStageMods = e.statStageMods.filter(m => { if (m && m.n > 0 && !m.perm) { flip[m.stat] = (flip[m.stat] || 0) - m.n; return false; } return true; });
+                    if (!Object.keys(flip).length) continue;
+                    if (typeof _syncStatStageBadges === 'function') _syncStatStageBadges(e);
+                    addLog(`📰 Fake News: ${_ctName(e)}'s boosts are reported as losses.`);
+                    applyStatStageBoost(e, flip, 'Fake News: ', unit);
+                }
+            }
+            if (spell.wnAllSegments) { for (let k = 0; k < 3; k++) _wnSegment(unit, k); unit._rundown = 0; }
+            else { const seg = Math.max(0, (unit._rundown | 0)) % 3; _wnSegment(unit, seg); unit._rundown = (seg + 1) % 3; }
+            if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit });
+        }
+        window._wnAfterCast = _wnAfterCast;
         /* ═══ THE BUTTERFLY GIRL (2026-11-23, blue morpho; mondo OK'd the plan) ═══ THE BUTTERFLY EFFECT: small flaps now, a twister
            later. A Flutter (STATUS_DEFS.flutter: the stack in unit._flutter, the caster's id in _flutterSrcId) grows by 1 at every
            round end (_bfRoundEnd from _nrRoundEnd); at 3 it touches down (_bfTwister): MEDIUM wind magic damage to the carrier's
@@ -49971,8 +50125,8 @@
                        tree-legal walk of the race pool, and let treeLegalSubset keep what fits the slots / SP.
                        THE JOBS REMOVAL (the user 2026-09-27): the top-up used to be the JOB's four (getClassTreeSpells)
                        + race r1–r2, and the Freelancer fell through to a flat preferred list; neither exists now. */
-                    const _r = (typeof getRaceTreeSpells === 'function' && getRaceTreeSpells(race, UNIT_CLASS)) || [];
                     const _g = state.partyMeta?.[player]?.[idx]?.gender;   // RACE_GENDER_SPELLS (2026-10-27)
+                    const _r = (typeof getRaceTreeSpells === 'function' && getRaceTreeSpells(race, UNIT_CLASS, _g)) || [];   // the gender's own faces (2026-11-24)
                     const _wish = [...existingSpells.filter(Boolean), ..._r, ...buildTreeLegalLoadout(race, UNIT_CLASS, '', undefined, undefined, _g)];
                     loadout.spells = treeLegalSubset(race, UNIT_CLASS, '', _wish, _g);
 
@@ -51645,7 +51799,8 @@
                 if (spell.viewersMin > 0 && getViewers(unit) < spell.viewersMin) return '🎮 Need ' + spell.viewersMin + ' viewers';   // 🎮 THE VIEWERS
                 if (spell.limbsMin > 0 && getLimbs(unit) < spell.limbsMin) return '🫀 Need ' + spell.limbsMin + ' limbs';   // 🫀 THE ABOMINATION: Unfold
                 if (spell.rewindTape > 0 && !getHostileUnits(unit.player, unit).some(e => e && !e.dead && _tvTapeAmount(e, spell) > 0)) return '📼 Nothing on tape';   // 📺 Rewind: no enemy took a hit last round
-                if (spell.partsCost > 0 && (unit._parts || 0) < spell.partsCost) return '🔩 Need ' + spell.partsCost + ' Parts';   // 🔧 Jury Rig (SPARE PARTS)
+                if (spell.partsCost > 0 && (unit._parts || 0) < spell.partsCost) return '🔩 Need ' + spell.partsCost + ' Parts';
+                if (spell.wnSteer && !(state.activeWeather || []).some(Boolean)) return '🌦 No weather up';   // ☂ Storm Tracker   // 🔧 Jury Rig (SPARE PARTS)
                 if (spell.id === 'nrOverdue' && !spell.overdueOf) return '📚 Nothing to renew';   // THE LOADED BOOK: no teammate has cast yet
                 if (unitHasStatus(unit, 'celibate') && _isSummonSpell(spell)) return '⛪ Celibate';   // ⛪ Celibacy: no summoning
                 /* 👁 a spirit casts magic only (no body, no physical spells) and cannot project again while it is out */
@@ -76146,7 +76301,7 @@
                 addLog(`${def.icon} ${_ctName(unit)} runs through the ${def.label} at ${coordLabel(x, y)}!`);
                 stormStrikeUnit(unit, weather, def, { x, y });
                 if (unit.dead || unit._dying) return;
-                if (def.displaces) vortexFlingUnit(unit, weather, def);   // it holds firm (weight / Windborne)
+                if (def.displaces && !(typeof wnWeatherproof === 'function' && wnWeatherproof(unit))) vortexFlingUnit(unit, weather, def);   // it holds firm (weight / Windborne; ☂ the Weatherman's umbrella)
             }
         }
         function _resolveMovePath(unit, path, destinationX, destinationY, startIndex = 0, destZ) {
@@ -85124,6 +85279,8 @@
             if (spell && (spell.favorSpend || spell.chargeSpend || spell.chargeStunAt)) spell = _crCastRow(unit, spell);
             /* 💉 THE PLASTIC SURGEON: a procedure becomes its ally or enemy cast (_psCastRow); his casts remember what finishAction needs */
             if (spell && spell.procedure) spell = _psCastRow(unit, spell, x, y, z);
+            /* ☂ THE WEATHERMAN: Cold Front reads the sky, Severe Weather Warning the ground (_wnCastRow) */
+            if (spell && (spell.wnSkyRead || spell.wnByGround)) spell = _wnCastRow(unit, spell, x, y);
             _psBeginCast(unit, spell, x, y, z);
             if (unit && unit.race === 'rat') unit._ratCastId = spell ? spell.id : null;   // 👑 THE RAT KING: Gnaw's bonus reads the cast
             /* Clash final authority: movement/positioning spells can never
@@ -85904,6 +86061,7 @@
                 _bearAfterCast(unit, spell, x, y);   // 🐻 THE BEAR: Hibernate's sleep, Bear Hug's Root + Grudge
                 _abAfterCast(unit, spell);   // 🫀 THE ABOMINATION: the mouths close
                 _psAfterCast(unit, spell, x, y, z);   // 💉 THE PLASTIC SURGEON: Work Done, Liposuction's shield
+                _wnAfterCast(unit, spell, x, y);   // ☂📺 THE WEATHERMAN + NEWS ANCHOR: The Forecast, the strike, Fake News, The Rundown
                 if (spell.kind !== 'dash' && Array.isArray(spell.selfStatusAfter) && spell.selfStatusAfter.length && !unit.dead && state.phase === 'battle') {
                     applyStatusEffects(unit, spell.selfStatusAfter, `${spell.name}: `, unit);
                 }
@@ -87047,6 +87205,22 @@
                     }
                 }, actionMs(800));
                 completionDelay = actionMs(800);
+            } else if (spell.kind === 'summonWeather' && spell.wnSteer) {
+                /* ☂ STORM TRACKER (THE WEATHERMAN, 2026-11-24): moves every weather up, summons none */
+                if (!isInside(x, y)) {
+                    addLog('Choose a tile on the map.', _clickSeat());
+                    playErrorSfx();
+                    return 0;
+                }
+                if (!(state.activeWeather || []).some(Boolean)) {
+                    addLog(`☂ ${_ctSp(spell.name)}: there is no weather up to track.`, _clickSeat());
+                    playErrorSfx();
+                    return 0;
+                }
+                playSfx(spellLaunchSfx(spell));
+                _spellFocusCamera(unit, x, y);
+                unit.mp -= effectiveSpellCost;
+                _wnSteer(unit, spell, x, y);
             } else if (spell.kind === 'summonWeather') {
                 if (!isInside(x, y)) {
                     addLog('Choose a tile on the map.', _clickSeat());
