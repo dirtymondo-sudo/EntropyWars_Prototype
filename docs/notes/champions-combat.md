@@ -6171,6 +6171,13 @@ Model notes: the gladiators' Meshy gold came out pale tan; their files were reco
 files `gladiator-farmer-concepts/gold.py`). The Jellyfish UFO has no Meshy rig: one body mesh + one tentacle mesh drawn 8 times under the
 waist, each copy skinned to its own 6-bone chain, and a 2 s looping clip `Sway` in the same file (`jelly.py`); its RACE_MODELS_3D row plays
 that clip as idle and walk (`clips.idle` = the file). Its claw arms do not move. Flight / hover height is the kit thread's call.
+**2026-11-24 (thread "Remake the Jellyfish and fix the UFO's top"):** the UFO's file is `jellyfish_ufo_v2.glb`: the 12 little tentacle
+sockets hanging under the bell's rim are cut out (they were for tentacles that hang from the waist; whole pieces removed, nothing
+repainted; project files `jellyfish-remake/cut.py`). THE JELLYFISH REMAKE, same day: the Jellyfish (`jellyfish`, Psi-Ops) has a new
+Meshy body (bell head + crown, real fingers, no T-bar hands) rigged by Meshy, so all its library clips play as before, and 12 tentacles
+hanging from the waist, each skinned to its own chain of THE SWAY's spring bones (`ewsway_c200+_<j>` on Hips), so they swing behind
+every walk, cast and hit (repo tool `bake-tentacles.py`). File `Assets/characters/races/jellyfish/male/Meshy_AI_jellyfish_v2_Running.glb`;
+spells, stats and sprite unchanged; the old rig stays on R2.
 
 ## THE COMING RACES 2 (2026-11-23, thread "Make concept art for new characters")
 mondo picked Meshy concepts and said "wire them up and start a thread for each new one to come up with a plan for their unique
