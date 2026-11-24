@@ -107133,6 +107133,13 @@ const ThreeRenderer = (function () {
         var st = [root], all = [];
         while (st.length) { var o = st.pop(); all.push(o); var ch = o.children; for (var i = 0; i < ch.length; i++) st.push(ch[i]); }
         for (var j = 0; j < all.length; j++) { var q = all[j]; q.parent = null; q.children = []; }
+        /* THE DRAW RECORDS GO TOO (11-24, leak 3): the node renderer (r186) keeps a draw record (RenderObject) for every object it
+           ever drew, in a set of its own (`_objects._renderObjects`), until the object, its material or its geometry says
+           'dispose'. A room's materials and geometries are the shared prop files, which stay, so every drawn piece of every left
+           room stayed alive through its record (7,588 records = 12,222 pieces after one Clearing visit, measured). An Object3D's
+           own 'dispose' event is three's way to drop its records: send it to every left piece. */
+        var ev = { type: 'dispose' };
+        for (var d = 0; d < all.length; d++) { try { all[d].dispatchEvent(ev); } catch (eD) {} }
         _hqUnlinked += all.length;
     }
     function _hqLeave(opts) {
