@@ -26,7 +26,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
 | Meshy AI | no | 1337 |
-| Meshy AI, reworked by Claude | no | 14 |
+| Meshy AI, reworked by Claude | no | 15 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 93 |
 | Built by Claude in code (a bake tool writes the file) | no (pack bark picture) | 15 |
@@ -313,6 +313,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | MAL5_Sniper | `Assets/characters/animations/MAL5_Sniper.glb` | Meshy AI, reworked by Claude | Meshy's animation library pulled through the Meshy API on the male sniper's rig (2026-11-11), packed by Claude (build-mal.py) |
 | MAL6_Sniper | `Assets/characters/animations/MAL6_Sniper.glb` | Meshy AI, reworked by Claude | Meshy's animation library (dances, gestures, cheers) pulled through the Meshy API on the male sniper's rig (2026-11-24, THE MESHY CASTS), packed by Claude (build-mal.py) |
 | MAL7_Sniper | `Assets/characters/animations/MAL7_Sniper.glb` | Meshy AI, reworked by Claude | Meshy's animation library (dances, gestures, cheers) pulled through the Meshy API on the male sniper's rig (2026-11-24, THE MESHY CASTS), packed by Claude (build-mal.py) |
+| MAL8_Sniper | `Assets/characters/animations/MAL8_Sniper.glb` | Meshy AI, reworked by Claude | Meshy's animation library (dances, gestures, cheers) pulled through the Meshy API on the male sniper's rig (2026-11-24, THE MESHY CASTS), packed by Claude (build-mal.py) |
 | MOC1_CMU | `Assets/characters/animations/MOC1_CMU.glb` | Motion capture (real actors), cut into loops by Claude | CMU Graphics Lab Motion Capture Database (mocap.cs.cmu.edu, BVH by B. Hahne), in-place loops by bake-mocap.py |
 | MOC2_100STYLE | `Assets/characters/animations/MOC2_100STYLE.glb` | Motion capture (real actors), cut into loops by Claude | The 100STYLE Dataset (Ian Mason, CC BY 4.0), converted by mocap-100style.py, in-place loops by bake-mocap.py |
 | UAL1_Standard | `Assets/characters/animations/UAL1_Standard.glb` | Asset pack | Universal Animation Library · Quaternius · CC0 |
