@@ -8186,6 +8186,7 @@ const RACE_ABILITIES = {
     'skinwalker': [
         /* WEARING SKINS (the P-Z signature families, mondo 2026-10-23): the familiar voice drags and Hexes, the skin pays it off. */
         { id: 'pzFamiliarVoice', name: 'Familiar Voice', tier: 1, families: ['wearingskins'], cost: 25, apCost: 1,
+          animClip: { name: 'Wave_for_Help', lib: 10, ts: 1.4, trim: [0.3, 2.3], strikeAt: 0.92 },   // THE MESHY CASTS (11-24): waves for help, in a voice you know
           spellType: 'anomaly', element: 'psychic', type: 'damage', kind: 'pull', damageType: 'magic', dmg: 60, range: 4, pullDistance: 3,
           statusEffects: [{ id: 'hexed', duration: 2 }],
           desc: 'It sounds just like someone you love. Deals WEAK magic damage to a Single Enemy within 4, draws it up to 3 tiles toward you and Hexes it for 2 rounds.' },
@@ -8202,6 +8203,7 @@ const RACE_ABILITIES = {
           kind: 'swap', requiresLineOfSight: true,
           desc: 'Swaps positions with a Single Enemy within 4 tiles you can see.' },
         { id: 'raceMimicry', upgradesBlock: ['upLinger'], spellType: 'anomaly', name: 'Mimicry',
+          animClip: { name: 'Kneel_on_One_Knee_and_Stand', lib: 10, ts: 1.4, trim: [0, 2.0], strikeAt: 1.38 },   // THE MESHY CASTS (11-24): rises up as the copy
           type: 'buff', tier: 4, cooldownRounds: 3, families: ['trickery'], cost: 20, apCost: 1, range: 0,
           kind: 'buff',
           statStageBoost: { atk: 2, def: 2 },
@@ -9236,6 +9238,7 @@ const RACE_ABILITIES = {
           statStageBoost: { def: -1, mdef: -1 },
           desc: 'The team\'s focus-fire call. Lowers a Single Enemy\'s DEF and M DEF by 1 stage and Marks them for 2 rounds.' },
         { id: 'racePopStadiumShow', upgradesBlock: ['upWiden'], spellType: 'anomaly', element: 'sonic', name: 'Stadium Show',
+          animClip: { name: 'Pod_Baby_Groove', lib: 10, ts: 1.4, trim: [7.6, 9.6], strikeAt: 8.48 },   // THE MESHY CASTS (11-24): the stadium dance, arms up for the pyro
           type: 'damage', cost: 85, dmg: 150, range: 3, aoeRadius: 2, apCost: 1, tier: 4, bonusVsStatus: { status: 'stagger', mult: 1.5 }, families: ['stagepresence'], cooldownRounds: 4,   // 11-07: was 3 (back after 3 rounds) while its text promises once every 4 (like Immortal Cycle's 4)
           kind: 'aoe', damageType: 'magic',
           statusEffects: [{ id: 'charm', duration: 1 }],
@@ -9339,6 +9342,7 @@ const RACE_ABILITIES = {
           spellType: 'divine', vfxElement: 'nature', type: 'debuff', kind: 'debuff', range: 3, statStageBoost: { atk: -2 },
           desc: 'A daisy in the muzzle. A Single Enemy within 3 loses 2 ATK stages.' },
         { id: 'goMakeLoveNotWar', name: 'Make Love Not War', tier: 2, families: ['hippie'], cost: 50, apCost: 1,
+          animClip: { name: 'Arm_Circle_Shuffle', lib: 10, ts: 1.4, trim: [3.6, 5.6], strikeAt: 4.39 },   // THE MESHY CASTS (11-24): the peace-and-love shuffle
           cooldownRounds: 3, spellType: 'divine', vfxElement: 'nature', type: 'debuff', kind: 'aoe', range: 4, aoeRadius: 1,
           noDamage: true, statusEffects: [{ id: 'charm', duration: 1 }],
           desc: 'Nobody wants to fight anymore. Every enemy in a 3x3 within 4 tiles is Charmed for a round. Cooldown: 3 rounds.' },
@@ -9895,6 +9899,7 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'stun', duration: 1 }],
           desc: 'Held in the light. Held. Deals WEAK magic damage to a Single Enemy and Stuns them for a round. Knocks flying targets out of the sky.' },
         { id: 'raceFederationBeacon', tier: 2, families: ['galacticfederation'], spellType: 'alien', vfxElement: 'light', name: 'Federation Beacon',
+          animClip: { name: 'Collect_Object', lib: 10, ts: 1.4, trim: [1.0, 3.0], strikeAt: 2.2 },   // THE MESHY CASTS (11-24): crouches to plant the pylon
           // 2026-07-10 rework: regen now pulses at the START of each ally's
           // turn (healOnTurnStart, see _continueBlitzWithUnit_impl) instead of
           // end-of-round, and the radius grew 2 → 4.
@@ -9909,6 +9914,7 @@ const RACE_ABILITIES = {
           statStageBoost: { def: 1 },
           desc: 'Grants a damage-absorbing shield to All Allies in an AOE. Raises DEF by 1 stage.' },
         { id: 'raceNordicAccord', spellType: 'alien', element: 'psychic', name: 'Nordic Accord',
+          animClip: { name: 'Formal_Bow', lib: 8, ts: 1.4, trim: [1.4, 3.4], strikeAt: 2.6 },   // THE MESHY CASTS (11-24): the formal bow: the accord is signed
           type: 'buff', tier: 4, auraRadius: 99, families: ['galacticfederation'], cost: 40, apCost: 1, range: 0,
           kind: 'warCry',
           statStageBoost: { mdef: 1, int: 1 },
@@ -10841,16 +10847,19 @@ const RACE_ABILITIES = {
           element: 'light', type: 'heal', kind: 'heal', range: 1, healPct: 0.3,
           desc: 'A palm on the forehead. Heals a Single Ally beside him for 30% of their max HP.' },
         { id: 'nrCollectionPlate', name: 'Collection Plate', tier: 2, families: ['prosperity'], cost: 50, apCost: 1, cooldownRounds: 3, spellType: 'divine',
+          animClip: { name: 'Checkout_Gesture', lib: 9, ts: 1.45, trim: [1.8, 3.8], strikeAt: 2.94 },   // THE MESHY CASTS (11-24): holds the plate out
           type: 'buff', kind: 'buff', range: 0,
           statusEffects: [{ id: 'tithe', duration: 3 }],
           desc: 'Passes the plate for 3 rounds. 15% of every heal that lands within 3 of him, on either team (not his own), is taken off the heal and put in his plate. Miracle spends it. Cooldown: 3 rounds.' },
         { id: 'nrMiracle', name: 'Miracle', tier: 3, families: ['prosperity'], cost: 75, apCost: 1, cooldownRounds: 2, spellType: 'divine',
+          animClip: { name: 'Victory_Cheer', lib: 8, ts: 1.3, trim: [0, 1.8], strikeAt: 0.58 },   // THE MESHY CASTS (11-24): both arms up: rise and walk
           element: 'light', type: 'heal', kind: 'heal', range: 4, healPct: 0.15, spendPlate: true,
           desc: 'Rise and walk. Heals a Single Ally within 4 for 15% of their max HP plus everything in the collection plate, then empties it. Cooldown: 2 rounds.' },
         /* TAX EXEMPT (2026-11-17, mondo: "He should have a spell called tax exempt ... that halves his mana ... cast an ally"): the
            status `taxExempt` halves the MP every spell costs (battle.js getSpellMpCostFor, STATUS_DEFS mpCostMult), the opposite
            of the Magician's Picked a Card. Self or an ally. */
         { id: 'nrTaxExempt', name: 'Tax Exempt', tier: 2, families: ['prosperity'], cost: 30, apCost: 1, cooldownRounds: 3, spellType: 'divine',
+          animClip: { name: 'Shrug', lib: 8, ts: 1.2, trim: [0.2, 1.9], strikeAt: 0.9 },   // THE MESHY CASTS (11-24): the shrug: not taxable
           type: 'buff', kind: 'buff', range: 3,
           statusEffects: [{ id: 'taxExempt', duration: 2 }],
           desc: 'The Lord\'s work is not taxable. Himself or a Single Ally within 3 pays half the MP for every spell for 2 rounds. Cooldown: 3 rounds.' },
@@ -10906,12 +10915,14 @@ const RACE_ABILITIES = {
     'florida man': [
         /* THE HEADLINE: the one race that does not choose. Each round one of his three is the day's headline and the other two are greyed (Not today); which one is fixed by his id and the round, so host and guest agree (battle.js _floridaHeadline in getSpellBlockReason). (2026-11-17 THE NEW RACES 2, mondo's picks.) */
         { id: 'nrGatorToss', name: 'Gator Toss', tier: 1, families: ['floridaman'], cost: 25, apCost: 1, spellType: 'human', floridaHeadline: true,
+          animClip: { name: 'Female_Crouch_Pick_Throw_Forward', lib: 10, ts: 1.4, trim: [0.9, 2.8], strikeAt: 2.21 },   // THE MESHY CASTS (11-24): scoops the gator up and hurls it
           type: 'damage', kind: 'damage', damageType: 'physical', dmg: 140, range: 3,
           statusEffects: [{ id: 'bleed', duration: 2 }],
           /* 🐊 THE GATOR IN ITS ELEMENT (11-17 polish): x1.5 on a Wet target, so yesterday's Hurricane Party sets up today's toss */
           bonusVsStatus: { status: 'wet', mult: 1.5 },
           desc: 'FLORIDA MAN THROWS ALLIGATOR. Deals MEDIUM physical damage to a Single Enemy within 3 and leaves it Bleeding for 2 rounds. Deals bonus damage to Wet targets. Only on the rounds it is the headline.' },
         { id: 'nrBathSalts', name: 'Bath Salts', tier: 2, families: ['floridaman'], cost: 50, apCost: 1, spellType: 'human', floridaHeadline: true,
+          animClip: { name: 'Show_Both_Arm_Muscles', lib: 8, ts: 1.3, strikeAt: 0.82 },   // THE MESHY CASTS (11-24): flexes both arms
           type: 'buff', kind: 'buff', range: 0, statStageBoost: { atk: 2, spd: 2 },
           statusEffects: [{ id: 'regen', duration: 2 }],
           desc: 'FLORIDA MAN FOUND NAKED ON OVERPASS. Raises his ATK and SPD by 2 stages and he Regenerates for 2 rounds. Only on the rounds it is the headline.' },
@@ -10954,6 +10965,7 @@ const RACE_ABILITIES = {
           bonusVsStatus: { status: 'bleed', mult: 1.3 },   // 2026-11-17 THE WENDIGO PASS: Rend, then Feast (the bigger bite heals more too)
           desc: 'It eats. Deals MEDIUM physical damage to a Single Enemy beside it (30% more if it is Bleeding) and heals for 60% of the damage dealt. Cooldown: 2 rounds.' },
         { id: 'nrFrostHowl', name: 'Frost Howl', tier: 3, families: ['wendigo'], cost: 75, apCost: 1, cooldownRounds: 2, spellType: 'unholy',
+          animClip: { name: 'Zombie_Scream', lib: 8, ts: 1.4, trim: [0.3, 2.3], strikeAt: 1.1 },   // THE MESHY CASTS (11-24): the scream on the wind
           element: 'ice', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 100, range: 0, aoeRadius: 2,
           statusEffects: [{ id: 'slow', duration: 1 }, { id: 'feared', duration: 1 }],
           desc: 'A scream on the wind. Deals WEAK magic damage to All Enemies within 2 of it, Slows them and Fears them for 1 round. Cooldown: 2 rounds.' },
@@ -10981,6 +10993,7 @@ const RACE_ABILITIES = {
           vfxElement: 'arcane', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 90, range: 4, diceRoll: 'scale',
           desc: 'Throws the dice at a Single Enemy within 4. Deals WEAK-to-HEAVY magic damage that follows the roll (a 7 is the plain hit, a 12 nearly double). Hot Streak: 7+ adds a Streak, 2-4 busts it, double sixes always crit.' },
         { id: 'nrLetItRide', name: 'Let It Ride', tier: 2, families: ['highroller'], cost: 40, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          animClip: { name: 'Scheming_Hand_Rub', lib: 7, ts: 1.3, trim: [0.5, 2.3], strikeAt: 1.4 },   // THE MESHY CASTS (11-24): rubs his hands over the dice
           vfxElement: 'arcane', type: 'buff', kind: 'buff', range: 0,
           statusEffects: [{ id: 'letItRide', duration: 2 }],
           desc: 'He blows on the dice. His next dice roll (within 2 rounds) throws three dice and keeps the best two. Cooldown: 2 rounds.' },
@@ -11022,6 +11035,7 @@ const RACE_ABILITIES = {
           element: 'wind', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 105, range: 1, pushDistance: 1,
           desc: 'One open hand to the chest. Deals WEAK physical damage to a Single Enemy beside him and shoves it 1 square back.' },
         { id: 'nrMeditate', name: 'Meditate', tier: 2, families: ['zen'], cost: 40, apCost: 1, cooldownRounds: 2, spellType: 'divine',
+          animClip: { name: 'Sit_Cross_Legged_on_Floor', lib: 10, ts: 1.0, trim: [0, 1.4], strikeAt: 0.7 },   // THE MESHY CASTS (11-24): sits cross-legged
           type: 'heal', kind: 'selfHeal', range: 0, selfHealPct: 0.15, stillnessGain: 1,
           selfStatusAfter: [{ id: 'levitating', duration: 1 }],
           desc: 'He sits and breathes. Gains 1 Stillness at once, restores 15% of his max HP, and Levitates over floor hazards for 1 round. Cooldown: 2 rounds.' },
@@ -11381,6 +11395,7 @@ const RACE_ABILITIES = {
           type: 'heal', kind: 'heal', range: 3, healPct: 0.2, partsShield: 60, healVsMachineMult: 2,
           desc: 'Duct tape and a prayer. Heals a Single Ally within 3 for 20% of its max HP (double on a machine) and spends his Parts: +60 shield for each. Cooldown: 2 rounds.' },
         { id: 'nrJuryRig', name: 'Jury Rig', tier: 4, families: ['mechanic'], cost: 60, apCost: 1, cooldownRounds: 3, spellType: 'human',
+          animClip: { name: 'Collect_Object', lib: 10, ts: 1.4, trim: [1.0, 3.0], strikeAt: 2.2 },   // THE MESHY CASTS (11-24): crouches to bolt the scrap together
           type: 'utility', kind: 'deployObject', range: 2, objectHp: 160, blocksMovement: true, maxActivePerCaster: 2, partsCost: 2,
           desc: 'Spends 2 Parts to bolt together a crate of scrap on a square within 2: cover that blocks the way and takes 160 damage to break. Two at a time. Cooldown: 3 rounds.' },
     ],
@@ -11397,6 +11412,7 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'poison', duration: 2 }],
           desc: 'Do not mix with anything. Deals MEDIUM magic damage to a Single Enemy within 3, strips every buff it has and Poisons it for 2 rounds. Cooldown: 2 rounds.' },
         { id: 'nrWetFloorSign', name: 'Wet Floor Sign', tier: 2, families: ['janitorial'], cost: 40, apCost: 1, cooldownRounds: 3, spellType: 'human',
+          animClip: { name: 'Female_Crouch_Pick_Up_Place_Side', lib: 10, ts: 1.4, trim: [1.0, 3.0], strikeAt: 2.4 },   // THE MESHY CASTS (11-24): bends to set the sign down
           type: 'utility', kind: 'deployObject', range: 3, objectHp: 40, blocksMovement: true, maxActivePerCaster: 1,
           wetFloor: { radius: 1, rounds: 2 },
           desc: 'He did put a sign out. Sets a wet floor sign on a square within 3 (it blocks the way) and mops the 3×3 round it into a slippery puddle for 2 rounds. One at a time. Cooldown: 3 rounds.' },
@@ -11479,6 +11495,7 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'root', duration: 1 }],
           desc: 'It does not let go. Deals MEDIUM physical damage to a Single Enemy beside it. Both of them are Rooted until the Bear\'s next turn is over, and the target takes the Bear\'s Grudge. Cooldown: 2 rounds.' },
         { id: 'brHibernate', name: 'Hibernate', tier: 2, families: ['bear'], cost: 50, apCost: 1, cooldownRounds: 3, spellType: 'anomaly',
+          animClip: { name: 'Sit_and_Doze_Off', lib: 10, ts: 1.0, trim: [0, 1.4], strikeAt: 0.7 },   // THE MESHY CASTS (11-24): sits down and dozes off
           type: 'heal', kind: 'selfHeal', range: 0, selfHealPct: 0.12,
           hibernate: { wakeHealPct: 0.2, wakeCleanse: 1, rudeAtk: 1, rudeRounds: 2 },
           desc: 'Curls up for a winter\'s sleep. Restores 12% of its max HP and falls asleep until its next turn. Left alone, it wakes healed another 20% and shakes off 1 debuff. Hit while asleep, it wakes at once with +1 ATK stage for 2 rounds, and whoever hit it takes the Grudge. Cooldown: 3 rounds.' },
@@ -11696,6 +11713,7 @@ const RACE_ABILITIES = {
           element: 'psychic', vfxElement: 'shadow', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 70, range: 4, voodooSelf: 0.3,
           desc: 'A pin through a little cloth heart. Deals WEAK magic damage to a Single Enemy within 4 and binds it to the doll with Voodoo for 2 rounds: 30% of all damage the doll takes is dealt to it too.' },
         { id: 'nrPlayWithMe', name: 'Play With Me', tier: 2, families: ['hauntedtoy'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+          animClip: { name: 'Happy_jump_f', lib: 10, ts: 1.3, trim: [0.3, 2.1], strikeAt: 0.89 },   // THE MESHY CASTS (11-24): a happy jump: let's play
           element: 'psychic', type: 'debuff', kind: 'swap', range: 3, faceAway: true,
           desc: 'A game of musical chairs. Swaps places with a Single Enemy within 3; it lands facing away from the doll. Cooldown: 2 rounds.' },
         /* PULL MY STRING (mondo 11-17: "some sort of wind up spell like those dolls where you pull the string and it says or does
@@ -27698,8 +27716,8 @@ function spellLint(d, ctx) {
     const picks = ['animVerb', 'animSlot', 'animClip'].filter(has);
     if (picks.length > 1) hits.push({ rule: 'animPick', level: 'amber', text: `${picks.join(' + ')} — only one animation pick is read: animVerb, then animSlot, then animClip` });
     if (has('animClip') && !(d.animClip && typeof d.animClip === 'object' && typeof d.animClip.name === 'string' && d.animClip.name
-        && Number.isInteger(d.animClip.lib) && d.animClip.lib >= 0 && d.animClip.lib <= 9))
-        hits.push({ rule: 'animClipInvalid', level: 'red', text: 'animClip must be { name: string, lib: 0–9 }' });
+        && Number.isInteger(d.animClip.lib) && d.animClip.lib >= 0 && d.animClip.lib <= 10))
+        hits.push({ rule: 'animClipInvalid', level: 'red', text: 'animClip must be { name: string, lib: 0–10 }' });
     for (const h of passiveHookLint(d)) hits.push(h);   // THE PASSIVES (Phase 4): the hooks
     if (typeof d.tier === 'number' && (d.tier < 1 || d.tier > 4 || !Number.isInteger(d.tier)))
         hits.push({ rule: 'tierRange', level: 'red', text: `tier ${d.tier} is not 1–4` });

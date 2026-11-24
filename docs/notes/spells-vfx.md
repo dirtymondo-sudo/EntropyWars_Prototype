@@ -5503,3 +5503,19 @@ the last 20 or so units". ANSWER: no, the 11-11 pull took 130 of Meshy's ~680 bi
   Weather Warning = Cheer_with_Both_Hands_Up, Storm of the Century = Motivational_Cheer (his thread asked). Grep `THE MESHY CASTS (11-24)` in data.js for every row.
 - LEFT ALONE: the parts-built units (Virus, Abomination, Hollow, Cursed TV, Jellyfish UFO: no biped rig) and
   Skinwalker / Nordic (their own threads were active 11-24: batch 2), held-weapon spells (the held weapon stays the cast).
+- BATCH 2 (same day, mondo: "Feel free to download any more animations you think would fit"): 35 more clips (105 credits, same rig, the
+  pull6 calib reused) -> **lib 10, `MAL7_Sniper.glb`** (a new file: MAL6 is long-cached at its name, so a re-pack would not reach players).
+  Clips: Sit_Cross_Legged_on_Floor, Sit_and_Doze_Off, sleep, Kneel_on_One_Knee_and_Stand, Side_jumps_in_horse_stance (travels), Wave_for_Help,
+  Rightward_Spin (falls over), Female_Crouch_Pick_Up_Place_Side, Female_Crouch_Pick_Throw_Forward, Pull_Radish, Collect_Object,
+  Indoor_Play (travels 3 m), Jump_Rope, Happy_jump_f, Texting_Walk, Walking_with_Phone, Swim_Idle, Kneeling_Reload, Gun_Hold_Left_Turn,
+  Forward_Roll_and_Fire, Run_and_Shoot (travels), Bubble_Dance, Cherish_Pop_Dance, Pod_Baby_Groove, You_Groove, Arm_Circle_Shuffle,
+  Bass_Beats, Fast_Lightning, Hip_Hop_Dance_2, Step_Hip_Hop_Dance, Angry_To_Tantrum_Sit, Stand_Clap_and_Sit_Down, Lower_Weapon_Look_Raise,
+  Torch_Look_Around, Backflip_inplace. Sheets: project files `meshy-casts/sheets2/`.
+  18 more rows: Skinwalker Familiar Voice = Wave_for_Help; Mimicry (shared: Skinwalker, Bunny Girl, Mime, Magician) =
+  Kneel_on_One_Knee_and_Stand; Nordic Federation Beacon = Collect_Object, Nordic Accord = Formal_Bow (lib 8); Mechanic Jury Rig =
+  Collect_Object; Janitor Wet Floor Sign = Female_Crouch_Pick_Up_Place_Side; Monk Meditate = Sit_Cross_Legged_on_Floor; Bear Hibernate =
+  Sit_and_Doze_Off; Haunted Doll Play With Me = Happy_jump_f; Gambler Let It Ride = Scheming_Hand_Rub (lib 7); Televangelist Tax Exempt =
+  Shrug, Miracle = Victory_Cheer (lib 8), Collection Plate = Checkout_Gesture; Wendigo Frost Howl = Zombie_Scream (lib 8); Florida Man Bath
+  Salts = Show_Both_Arm_Muscles (lib 8), Gator Toss = Female_Crouch_Pick_Throw_Forward; Stadium Show (shared: Popstar, Ringmaster, Mime) =
+  Pod_Baby_Groove; Hippie Make Love Not War = Arm_Circle_Shuffle. Not on a row yet (free picks): the reloads + gun clips, the other dances,
+  Texting/Phone walks, Jump_Rope, Pull_Radish, Torch_Look_Around, Stand_Clap_and_Sit_Down, Angry_To_Tantrum_Sit, Backflip_inplace.

@@ -1592,6 +1592,10 @@ const EW_ANIM_LIB_URLS = [
   // 46 more of Meshy's library on the same sniper rig (the dances, the flirty + talking gestures, cheers, stomps, a push, a reload),
   // packed by build-mal.py with its --rest calib. Spell rows play them through `animClip: { name, lib: 9, ts, trim, strikeAt }`.
   'https://cdn.entropywars.net/Assets/characters/animations/MAL6_Sniper.glb',
+  // lib 10 — MAL7_Sniper.glb (2026-11-24, THE MESHY CASTS batch 2, mondo: "Feel free to download any more animations you think would
+  // fit"): 35 more on the same rig (sitting / dozing / kneeling, crouch-and-place, crouch-and-throw, play jumps, phone + texting, reloads,
+  // more dances). A NEW file, not MAL6 re-packed: MAL6 is long-cached at its name.
+  'https://cdn.entropywars.net/Assets/characters/animations/MAL7_Sniper.glb',
 ];
 
 // Game slot → library clip (+ which library file) + timeScale. Durations are
