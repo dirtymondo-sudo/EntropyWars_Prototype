@@ -4091,6 +4091,16 @@ pieces, the Clearing 49,000, back in the lobby 51,000: the whole Clearing stayed
   other per-light / per-object lists outliving the room; find them with an Array.prototype queryObjects scan for arrays holding
   detached pieces, `/tmp/q7.js`-style, in the thread's scratchpad memprobe.js `--serve`). Heap snapshots crash the cloud tab
   (1.7 GB heap): use the queryObjects scans.
+- THE THIRD HOLDER FOUND (11-24): the node renderer (three r186) keeps a draw record (`RenderObject`) for every object it ever
+  drew, in its own set `renderer._objects._renderObjects`, until the object, its material or its geometry fires 'dispose'. A
+  room's materials + geometries are the shared prop files (they stay), so every drawn piece of a left room stayed alive through
+  its record: 7,588 records = 12,222 detached pieces after one Clearing visit (`Object.prototype` queryObjects scan: objects
+  whose own values are detached pieces, by constructor + keys). FIX: `_hqUnlinkLeft` sends `{type:'dispose'}` to every left
+  piece (three's own way to drop an object's records). MEASURED lobby -> Clearing -> lobby: pieces after leaving 15.5K -> 8.9K
+  (lobby alone 6.0-6.2K); detached pieces 12,222 -> 5,664, most of them the memory budget's cached GLB files (`Scene` groups).
+  Rule: any code that throws away drawn objects whose materials / geometries stay shared must dispatch 'dispose' on them.
+  Probe note: a `/q` function that THROWS keeps its queryObjects array alive (an 8M-entry array that holds everything): never
+  measure after a thrown scan; restart the probe.
 
 - STEP 2 (11-23): `freeze.rooms` takes `'<prefix>*'` (every room whose id starts so). On: Disaster City
   (`site_prebuilt_downtown_streets`), the Bayside Mall, every Hotel floor (`site_prebuilt_hotel_*`), Hero Tower, the Sewers,
