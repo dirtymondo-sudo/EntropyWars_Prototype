@@ -69611,6 +69611,61 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     EFFECTS['pgBuzzer_fx'] = _pzDef('pgBuzzer', { pzOwn: true });
     _PZ_SIGS.pgBuzzer = _chCardBurst('pgBuzzer', '0.0', 0, 52);
 
+    /* ── SLAM DUNK (2026-11-24, mondo: "you gotta give him a slam dunk ability too") ── a hoop drops out of the sky over the victim
+       (a painted backboard, an orange rim, a white net, each textured), he hangs on the rim as it lands: the rim shakes, SLAM! card,
+       a shock ring + dust, then the hoop lifts away. The backboard stands on the far side from the camera so it never hides the hit. */
+    function _pgBoardTex() {
+        return _pzTex('pg-board', 256, 160, function (g, w, h) {
+            g.fillStyle = '#f4f4f2'; g.fillRect(0, 0, w, h);
+            g.strokeStyle = '#111111'; g.lineWidth = 10; g.strokeRect(5, 5, w - 10, h - 10);
+            g.strokeStyle = '#e2561c'; g.lineWidth = 8; g.strokeRect(w * 0.33, h * 0.42, w * 0.34, h * 0.38);
+            g.fillStyle = 'rgba(0,0,0,0.06)'; for (var i = 0; i < 40; i++) g.fillRect(Math.random() * w, Math.random() * h, 2, 2);
+        });
+    }
+    function _pgNetTex() {
+        return _pzTex('pg-net', 128, 64, function (g, w, h) {
+            g.clearRect(0, 0, w, h); g.strokeStyle = '#ffffff'; g.lineWidth = 3;
+            for (var i = -8; i < 16; i++) {
+                g.beginPath(); g.moveTo(i * 16, 0); g.lineTo(i * 16 + h, h); g.stroke();
+                g.beginPath(); g.moveTo(i * 16 + h, 0); g.lineTo(i * 16, h); g.stroke();
+            }
+        });
+    }
+    EFFECTS['pgSlam_fx'] = _pzDef('pgSlam', { pzOwn: true });
+    _PZ_SIGS.pgSlam = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty) || !_pzOnce('pgSlam@' + tx + ',' + ty, 500)) return;
+        var C = _psSide(p), F = _nrvFrame(tx, ty), ts = F.ts;
+        var cd = (typeof _nbCamDir === 'function') ? _nbCamDir(F) : { x: 0, z: 1 };
+        var hoop = new THREE.Group(); F.g.add(hoop);
+        hoop.rotation.y = Math.atan2(cd.x, cd.z);   // local +z faces the camera
+        var RIM = ts * 0.15, H = ts * 1.0;   // over a 1.9 m body on a 3.5 m square, a touch over real size so it reads
+        var boardMat = _pzSolid(0xffffff, _pgBoardTex(), { side: THREE.DoubleSide });
+        var board = _pzMesh(new THREE.BoxGeometry(ts * 0.62, ts * 0.4, ts * 0.03), boardMat, hoop, 0, H + ts * 0.16, -RIM - ts * 0.1);
+        var rimMat = _pzSolid(0xe2561c);
+        var rim = _pzMesh(new THREE.TorusGeometry(RIM, ts * 0.016, 8, 28), rimMat, hoop, 0, H, 0); rim.rotation.x = Math.PI / 2;
+        var netMat = _pzSolid(0xffffff, _pgNetTex(), { side: THREE.DoubleSide, depthWrite: false });
+        var net = _pzMesh(new THREE.CylinderGeometry(RIM, RIM * 0.62, ts * 0.24, 18, 1, true), netMat, hoop, 0, H - ts * 0.12, 0);
+        var mats = [boardMat, rimMat, netMat];
+        var card = _chCard(F, 'SLAM!', C, 48), conf = _chConfetti(F, C, 20, 1.1, 0.4), hit = false;
+        return _sigRunOwned(F.g, 2100, function (el) {
+            var vis = _pzEnv(el, 0, 120, 1500, 2100);
+            var drop = _sigEaseOutCubic(_sigClamp01(el / 300)), lift = _sigClamp01((el - 1400) / 600);
+            hoop.position.y = ts * 4 * (1 - drop) + ts * 4 * lift * lift;
+            var sh = el > 320 && el < 900 ? Math.sin((el - 320) * 0.05) * Math.exp(-(el - 320) / 220) : 0;
+            rim.rotation.y = 0; rim.position.y = H - ts * 0.06 * sh; net.position.y = H - ts * 0.12 - ts * 0.05 * sh;
+            net.scale.set(1, 1 + 0.35 * Math.max(0, sh), 1); board.rotation.x = -0.05 * sh;
+            for (var i = 0; i < mats.length; i++) mats[i].opacity = vis;
+            if (!hit && el >= 320) {
+                hit = true;
+                _sigShockRing3D(tx, ty, { color: C[0], r0: ts * 0.15, r1: ts * 1.3, ms: 420 });
+                _sigShockRing3D(tx, ty, { color: 0xffffff, r0: ts * 0.1, r1: ts * 0.8, ms: 300 });
+            }
+            var cv = _pzEnv(el, 320, 420, 1400, 1800), pop = _sigEaseOutBack(_sigClamp01((el - 320) / 300));
+            card.position.set(0, ts * (2.2 + 0.3 * pop), 0); card.material.opacity = cv;
+            conf(Math.max(0, el - 320), el < 320 ? 0 : vis);
+        });
+    };
+
     /* ── GIMME A D-C-U! ── the three letters pop up over her one by one, then the ring rolls out */
     EFFECTS['chChant_fx'] = _pzDef('chChant', { pzOwn: true });
     _PZ_SIGS.chChant = function (p) {
@@ -69639,6 +69694,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         chReadyOk: function (p) { return _PZ_SIGS.chReadyOk(p); },
         pgAlleyOop: function (p) { return _PZ_SIGS.pgOop(p); },
         pgBuzzerBeater: function (p) { return _PZ_SIGS.pgBuzzer(p); },
+        pgSlamDunk: function (p) { return _PZ_SIGS.pgSlam(p); },
     };
 
     /* ════ TAX EXEMPT (2026-11-17, mondo's ask): a green TAX EXEMPT stamp slams onto the floor under the unit, a white receipt
