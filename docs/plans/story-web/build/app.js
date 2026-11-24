@@ -2027,6 +2027,7 @@ function bindStory() {
       case 'delCh': if (c) confirmBox('Delete Ch ' + chNo(c.id) + (c.name ? ' · ' + c.name : '') + ' and its ' + c.quests.length + ' quests?', 'Delete chapter', () => { P.chapters = P.chapters.filter(x => x !== c); P.clues.forEach(k => { if (k.plant === c.id) k.plant = ''; if (k.pay === c.id) k.pay = ''; }); ST.sel = null; storySave(); }); break;
       case 'delQ': if (fq) confirmBox('Delete the quest ' + (fq.q.name || 'Untitled quest') + '?', 'Delete quest', () => { fq.c.quests = fq.c.quests.filter(x => x !== fq.q); ST.sel = { kind: 'chapter', id: fq.c.id }; storySave(); }); break;
       case 'export': storyExport(); break;
+      case 'import': storyImport(); break;
       case 'mfit': mapFit(); storyDrawMap(); break;
       case 'min': case 'mout': { const f = b.dataset.act === 'min' ? 1.35 : 1 / 1.35; MV.k = clamp(MV.k * f, 3, 90); storyDrawMap(); } break;
     }
@@ -2091,6 +2092,28 @@ function bindStory() {
   cv.addEventListener('wheel', e => { e.preventDefault(); const [sx, sy] = pos(e), [mx, my] = s2m(sx, sy), f = Math.exp(-e.deltaY * .0015); MV.k = clamp(MV.k * f, 3, 90); const [nx, ny] = s2m(sx, sy); MV.cx += mx - nx; MV.cy += my - ny; storyDrawMap(); }, { passive: false });
   window.addEventListener('resize', () => { if (ST.open) storyDrawMap(); });
   document.addEventListener('keydown', e => { if (!ST.open || !$('modal').hidden) return; if (e.key === 'Escape') { if (ST.pick) { ST.pick = null; storyDrawMap(); } else if (!/INPUT|TEXTAREA|SELECT/.test(e.target.tagName || '')) { ST.sel = null; storyRender(); } } }, true);
+}
+/* ADD FROM A FILE (2026-11-24, mondo: "let's go ahead and add these to the story planner"): a file of chapters (the plan's own shape,
+   `{ kind: 'entropy-wars-story-plan-add', chapters: [...], clues: [...] }`) is ADDED to his plan: nothing of his is changed, and a
+   chapter, quest or clue whose id is already in the plan is skipped, so loading the same file twice adds nothing. */
+function storyAddJSON(text) {
+  let x; try { x = JSON.parse(text); } catch (e) { return { err: 'That is not valid JSON.' }; }
+  const inc = x && Array.isArray(x.chapters) ? x.chapters : []; if (!inc.length) return { err: 'No chapters in that file.' };
+  const P = plan(), haveC = new Set(P.chapters.map(c => c.id)), haveQ = new Set(P.chapters.flatMap(c => c.quests.map(q => q.id)));
+  const s = sanitizePlan({ chapters: P.chapters.concat(inc), clues: x.clues || [] }); if (!s) return { err: 'No chapters in that file.' };
+  const room = Math.max(0, 60 - P.chapters.length);
+  const add = s.chapters.slice(P.chapters.length).filter(c => !haveC.has(c.id)).slice(0, room);
+  add.forEach(c => { c.quests = c.quests.filter(q => !haveQ.has(q.id)); });
+  const ids = new Set(P.chapters.map(c => c.id).concat(add.map(c => c.id)));
+  const clues = s.clues.filter(k => !P.clues.some(o => o.id === k.id) && (!k.plant || ids.has(k.plant)) && (!k.pay || ids.has(k.pay)));
+  if (!add.length && !clues.length) return { err: 'Everything in that file is already in the plan.' };
+  P.chapters.push(...add); P.clues.push(...clues); storySave();
+  const nq = add.reduce((n, c) => n + c.quests.length, 0);
+  return { msg: 'Added ' + add.length + (add.length === 1 ? ' chapter, ' : ' chapters, ') + nq + (nq === 1 ? ' quest' : ' quests') + (clues.length ? ', ' + clues.length + ' clues' : '') };
+}
+function storyImport() {
+  modal('<h2>Add from a file</h2><div class="prow"><button class="btn" data-x="pick">Choose a file…</button><span class="muted" id="mFile"></span></div><textarea class="inp code" id="mText" style="min-height:140px"></textarea><p class="muted" id="mErr"></p><div class="acts"><button class="btn" data-x="cancel">Cancel</button><button class="btn pri" data-x="add">Add to the plan</button></div>',
+    d => d.addEventListener('click', e => { const x = e.target.dataset.x; if (x === 'cancel') closeModal(); else if (x === 'pick') $('fileIn').click(); else if (x === 'add') { const r = storyAddJSON($('mText').value); if (r.err) $('mErr').textContent = r.err; else { closeModal(); toast(r.msg); } } }));
 }
 function storyExport() {
   const P = plan(), pl = r => { const p = placeOf(r); return p ? p.n : ''; };
