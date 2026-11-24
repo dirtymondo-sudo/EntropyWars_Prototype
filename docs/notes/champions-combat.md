@@ -6178,6 +6178,12 @@ Meshy body (bell head + crown, real fingers, no T-bar hands) rigged by Meshy, so
 hanging from the waist, each skinned to its own chain of THE SWAY's spring bones (`ewsway_c200+_<j>` on Hips), so they swing behind
 every walk, cast and hit (repo tool `bake-tentacles.py`). File `Assets/characters/races/jellyfish/male/Meshy_AI_jellyfish_v2_Running.glb`;
 spells, stats and sprite unchanged; the old rig stays on R2.
+**Same day, mondo on the v2:** "looks more like a female ... it needs boobs"; the old one's look "is basically how i want it to look like
+... make one like that as the male version and another one for a female version". So the race is now BOTH genders, the same spells
+(no RACE_GENDER_SPELLS split): the MALE (`male/Meshy_AI_jellyfish_m_v3_Running.glb`) is the old look remade from a fresh concept (bell
++ crown points, two curling tentacle arms, two tentacle legs, no T-bars) with 10 hanging tentacles under the bell; the FEMALE
+(`female/Meshy_AI_jellyfish_f_Running.glb`, sprite `female/jellyfish_f_px.png` in `_NEW_FEMALE_SPRITES`) is the v2 idea with a figure
+and a face, 12 tentacles at the hips. RACE_SPRITE_GENDERS `jellyfish: 'both'`. The v2 file stays on R2, unused.
 
 ## THE COMING RACES 2 (2026-11-23, thread "Make concept art for new characters")
 mondo picked Meshy concepts and said "wire them up and start a thread for each new one to come up with a plan for their unique
