@@ -8820,6 +8820,7 @@ const RACE_ABILITIES = {
           summonDef: { key: 'hound', name: 'Hound', move: 4, dmg: 60, hits: 3, reveals: 3 },
           desc: 'Two fingers, one whistle — the hound comes running to an adjacent tile. At the end of every round it runs 4 tiles toward the nearest enemy and bites for 60; anything invisible within 3 tiles of it is sniffed out. 3 hits to put it down. One hound per cowboy.' },
         { id: 'raceFanTheHammer', upgradesBlock: ['upReach'], tier: 1, aoeOriginSelf: true, families: ['cowboyskills'], spellType: 'human', element: 'metal', name: 'Fan the Hammer',
+          animClip: { name: 'Walk_Backward_While_Shooting_inplace', lib: 11, ts: 0.9, strikeAt: 0.3 },   // THE MESHY CASTS (11-24, gun units): backs up fanning the hammer
           type: 'damage', cost: 25, dmg: 80, range: 0,
           kind: 'barrage', damageType: 'physical', aoeRadius: 1,
           projectileOverride: 'proj-bullet',
@@ -8934,6 +8935,7 @@ const RACE_ABILITIES = {
     'marksman': [
         /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Sniper's Nest. */
         { id: 'goBipod', name: 'Bipod', tier: 2, families: ['marksman'], cost: 50, apCost: 1, cooldownRounds: 2,
+          animClip: { name: 'Kneeling_Reload', lib: 10, ts: 1.85, trim: [0.3, 2.9], strikeAt: 2.5 },   // THE MESHY CASTS (11-24, gun units): drops to a knee, reloads, aims
           spellType: 'human', type: 'buff', kind: 'buff', range: 0, statusEffects: [{ id: 'siegeMode', duration: 2 }],
           desc: 'Legs down, belly down. For 2 rounds: +2 range and +1 ATK stage, -2 MOV. Cooldown: 2 rounds.' },
         { id: 'goOneShotOneKill', name: 'One Shot, One Kill', tier: 4, families: ['marksman'], cost: 100, apCost: 1,
@@ -8942,6 +8944,7 @@ const RACE_ABILITIES = {
           onKillRefundAp: 1,
           desc: 'Breathe out. Squeeze. Deals HEAVY physical damage to a Single Enemy within 8. Deals bonus damage to Rooted targets. A kill refunds 1 AP. Cooldown: 2 rounds.' },
         { id: 'raceSuppressiveFire', upgradesBlock: ['upBlast', 'upRicochet', 'upExtraTarget'], tier: 1, families: ['militarysupport'], spellType: 'human', element: 'metal', name: 'Suppressive Fire',
+          animClip: { name: 'Walk_Forward_While_Shooting_inplace', lib: 11, ts: 1.0, trim: [0.2, 1.6], strikeAt: 0.5 },   // THE MESHY CASTS (11-24, gun units): walks forward firing
           type: 'damage', cost: 25, dmg: 80, range: 4,
           kind: 'line', damageType: 'physical', lineWidth: 1,
           statusEffects: [{ id: 'slow', duration: 2 }],
@@ -8950,6 +8953,7 @@ const RACE_ABILITIES = {
         /* §6.11 Incendiary Rounds (Phase 5 wave A, 2026-09-08): the Phase 4
            `incendiary` carrier (basicAttackStatus burn 2). Twins Smoke Screen. */
         { id: 'raceIncendiaryRounds', tier: 2, families: ['weaponstraining'], spellType: 'human', element: 'fire', name: 'Incendiary Rounds',
+          animClip: { name: 'Standing_Reload', lib: 9, ts: 1.55, trim: [0.4, 2.6], strikeAt: 1.8 },   // THE MESHY CASTS (11-24, gun units): swaps the magazine + racks it
           type: 'buff', cost: 20, apCost: 1, range: 0,
           kind: 'buff',
           statusEffects: [{ id: 'incendiary', duration: 2 }],
@@ -9057,6 +9061,7 @@ const RACE_ABILITIES = {
           stealKeys: 1, stealItems: 1,
           desc: 'Run up on an enemy within 2 tiles. Deals WEAK physical damage to a Single Enemy and takes a Key AND an item off them.' },
         { id: 'raceChoppa', spellType: 'human', element: 'metal', name: 'Choppa',
+          animClip: { name: 'Walk_Backward_While_Shooting_inplace', lib: 11, ts: 0.9, strikeAt: 0.3 },   // THE MESHY CASTS (11-24, gun units): backs up spraying
           type: 'damage', cost: 40, dmg: 125, range: 5, apCost: 1, tier: 3,
           families: ['streetsmarts'],
           kind: 'line', damageType: 'physical',
@@ -9068,12 +9073,14 @@ const RACE_ABILITIES = {
              whole lane — and VFX3D.fire is relayed, so the guest sees it. */
           desc: 'Let the choppa sing. Deals MEDIUM physical damage to every enemy on a 5-tile line.' },
         { id: 'raceExtendedClips', spellType: 'human', element: 'metal', name: 'Extended Clips',
+          animClip: { name: 'Standing_Reload', lib: 9, ts: 1.55, trim: [0.4, 2.6], strikeAt: 1.8 },   // THE MESHY CASTS (11-24, gun units): swaps the magazine + racks it
           type: 'buff', cost: 50, range: 0, apCost: 1, tier: 4,
           families: ['weaponstraining'],
           kind: 'warCry', auraRadius: 3,
           teamStatusEffects: [{ id: 'extendedClips', duration: 3 }],
           desc: 'Everybody reload. Allies within 3 tiles pack Extended Clips for 3 rounds: +1 basic-attack range and +1 ATK stage.' },
         { id: 'raceEmptyTheClip', name: 'Empty the Clip', tier: 4, families: ['streetsmarts'], cost: 100, apCost: 1,
+          animClip: { name: 'Walk_Forward_While_Shooting_inplace', lib: 11, ts: 1.0, trim: [0.2, 1.6], strikeAt: 0.5 },   // THE MESHY CASTS (11-24, gun units): walks forward firing until it clicks
           spellType: 'human', element: 'metal', type: 'damage', kind: 'line', damageType: 'physical', dmg: 160,
           range: 4, lineWidth: 3, projectileOverride: 'proj-bullet', bonusVsStatus: { status: 'discord', mult: 1.5 },
           desc: 'Hold the trigger down until it clicks. HEAVY physical damage to everything on a three-wide street in front of you — anyone already Discorded gets the rest of the belt.' },
@@ -27820,8 +27827,8 @@ function spellLint(d, ctx) {
     const picks = ['animVerb', 'animSlot', 'animClip'].filter(has);
     if (picks.length > 1) hits.push({ rule: 'animPick', level: 'amber', text: `${picks.join(' + ')} — only one animation pick is read: animVerb, then animSlot, then animClip` });
     if (has('animClip') && !(d.animClip && typeof d.animClip === 'object' && typeof d.animClip.name === 'string' && d.animClip.name
-        && Number.isInteger(d.animClip.lib) && d.animClip.lib >= 0 && d.animClip.lib <= 10))
-        hits.push({ rule: 'animClipInvalid', level: 'red', text: 'animClip must be { name: string, lib: 0–10 }' });
+        && Number.isInteger(d.animClip.lib) && d.animClip.lib >= 0 && d.animClip.lib <= 11))
+        hits.push({ rule: 'animClipInvalid', level: 'red', text: 'animClip must be { name: string, lib: 0–11 }' });
     for (const h of passiveHookLint(d)) hits.push(h);   // THE PASSIVES (Phase 4): the hooks
     if (typeof d.tier === 'number' && (d.tier < 1 || d.tier > 4 || !Number.isInteger(d.tier)))
         hits.push({ rule: 'tierRange', level: 'red', text: `tier ${d.tier} is not 1–4` });

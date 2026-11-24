@@ -1604,6 +1604,9 @@ const EW_ANIM_LIB_URLS = [
   // fit"): 35 more on the same rig (sitting / dozing / kneeling, crouch-and-place, crouch-and-throw, play jumps, phone + texting, reloads,
   // more dances). A NEW file, not MAL6 re-packed: MAL6 is long-cached at its name.
   'https://cdn.entropywars.net/Assets/characters/animations/MAL7_Sniper.glb',
+  // lib 11 — MAL8_Sniper.glb (2026-11-24, THE MESHY CASTS batch 3, the gun units): 6 more on the same rig (walk forward / backward
+  // while shooting, prone reload, a forward reload, a rifle charge, a seated gun gesture). A NEW file: MAL7 is long-cached at its name.
+  'https://cdn.entropywars.net/Assets/characters/animations/MAL8_Sniper.glb',
 ];
 
 // Game slot → library clip (+ which library file) + timeScale. Durations are

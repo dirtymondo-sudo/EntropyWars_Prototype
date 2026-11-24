@@ -5519,3 +5519,11 @@ the last 20 or so units". ANSWER: no, the 11-11 pull took 130 of Meshy's ~680 bi
   Salts = Show_Both_Arm_Muscles (lib 8), Gator Toss = Female_Crouch_Pick_Throw_Forward; Stadium Show (shared: Popstar, Ringmaster, Mime) =
   Pod_Baby_Groove; Hippie Make Love Not War = Arm_Circle_Shuffle. Not on a row yet (free picks): the reloads + gun clips, the other dances,
   Texting/Phone walks, Jump_Rope, Pull_Radish, Torch_Look_Around, Stand_Clap_and_Sit_Down, Angry_To_Tantrum_Sit, Backflip_inplace.
+- BATCH 3, THE GUN UNITS (same day, mondo: "sure continue with the gun units"): 6 more clips (18 credits) -> **lib 11, `MAL8_Sniper.glb`**:
+  Walk_Forward_While_Shooting_inplace, Walk_Backward_While_Shooting_inplace, Prone_Reload, Forward_Reload_Subtle (travels 3.6 m),
+  Rifle_Charge_inplace (0.5 s loop), Gesture_with_Hand_on_Gun (it is SEATED, hips at 0.53: not a standing cast). Sheets: `meshy-casts/sheets3/`.
+  7 rows (mechanics unchanged; the MPFB held gun still shows, the gun races' Meshy defaults keep their own): Suppressive Fire (Marksman,
+  also Politician) + Empty the Clip (Gangster) = Walk_Forward_While_Shooting; Choppa (Gangster) + Fan the Hammer (Cowboy, Sheriff) =
+  Walk_Backward_While_Shooting; Incendiary Rounds (Marksman) + Extended Clips (Gangster) = Standing_Reload (lib 9); Bipod (Marksman) =
+  Kneeling_Reload (lib 10). The single-shot gun spells keep castRanged (the trimmed quick draw): it already is a gun shot. Fire for Effect
+  stays the phone kind (Mech + General share it).
