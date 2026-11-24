@@ -11,6 +11,7 @@
      --view   camera: q = ¾ front-left (default), side, front
      --follow the camera tracks the hips (root-motion clips stay in frame;
               the grid shows the travel)
+     --multi  every file holds many clips + a mesh (pull-meshy-anims.py batches): 8 clips a sheet
      --dir    read the GLBs from another directory (default rigged_animations/)
    Setup:  npm install --no-save playwright three@0.128.0   (Chromium is
            preinstalled at /opt/pw-browsers; PW_CHROMIUM overrides the path)
@@ -131,7 +132,7 @@ function clipNames(file) {
   const files = fs.readdirSync(ANIM_DIR).filter((f) => f.endsWith('.glb') && (!only || f.includes(only))).sort();
   const jobs = [];
   for (const f of files) {
-    if (/UAL\d_Standard/.test(f)) {
+    if (/UAL\d_Standard/.test(f) || args.includes('--multi')) {   // --multi (2026-11-24): every file is a many-clip batch with its mesh (the Meshy API's pulls)
       chunk(clipNames(path.join(ANIM_DIR, f)), 8).forEach((c, i) => jobs.push({ out: stem(f) + '-' + i, files: [{ file: f, clips: c }] }));
     }
   }
