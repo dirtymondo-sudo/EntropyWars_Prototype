@@ -949,6 +949,10 @@
                 projectileClass: 'proj-spider',
                 applyTo: 'all',
             },
+            'point guard': {   // 2026-11-24 THE POINT GUARD: every throw of his is the basketball
+                projectileClass: 'proj-basketball',
+                applyTo: 'all',
+            },
             'honda civic': {
                 /* THE CAR STAYS A CAR (2026-10-24, mondo: "it should be driving by default but can transform with its
                    ability. So if i attack as a car i wanna see the car do it, not the robot, unless i transform
@@ -2682,6 +2686,7 @@
                 clearStatus(unit, 'momentum');
                 delete unit._momentum;
             }
+            if (spell.cenHopBack && target && !unit.dead) _cenHopBack(unit, spell, target);   // 🐎 THE CENTAUR: Parthian Shot
             /* ⛪ Celibacy (`summonPenalty`): N more for every summon the target's team has on the board, a second blow */
             if (spell.summonPenalty > 0 && target && !target.dead && !target._dying && !unit.dead) {
                 const _cn = _popeSummonCount(target.player);
@@ -14907,6 +14912,7 @@
                 else if (u.race === 'monk') _monkStillness(u);   // 📿 THE STILLNESS
                 else if (u.race === 'gladiator' || u.race === 'farmer' || u.race === 'jellyfish ufo') _crRoundEnd(u);   // 🛡🌾⚡ THE COMING RACES
                 else if (u.race === 'rat') _ratRoundEnd(u);   // 👑 THE RAT KING: a king pays his court
+                else if (u.race === 'music producer') _mpRoundEnd(u);   // 🎛 THE MUSIC PRODUCER: the song plays in his earshot
                 if ((u.workDone | 0) > 0) _psRoundEnd(u);   // 💉 THE PLASTIC SURGEON: Work Done fades
                 if (u.status && u.status.dormant > 0) _cicadaBrood(u);
                 /* 📺 THE TAPE (the Cursed TV): this round's recording becomes last round's, the one Rewind plays back */
@@ -15431,6 +15437,56 @@
             _bearFx('grudge', foe);
             return true;
         }
+        /* ═══ 🐎 THE CENTAUR (2026-11-24; the game's idea list: "Half horse, half archer, never misses on the run") ═══ HIT AND RUN
+           (data.js RACE_PASSIVES cenHitAndRun). Host-side; the guest gets it through the state sync (the `quickened` status, the
+           unit's plain _cen* fields) and the relayed floating text. Notes: docs/notes/champions-combat.md "THE CENTAUR".
+           - _cenOnHit (applyDamageToUnit): once a turn, its first hit on an enemy (not a damage-over-time tick, not an echo)
+             Quickens it (+1 move) until the end of its next turn.
+           - _cenOnTheRun (doAttack's dodge roll + the hit chance on the attack button): on a turn it has walked (moveUnit stamps
+             _cenMovedAt), its basic shot cannot be dodged.
+           - `cenHopBack: n` on a row (Parthian Shot, _runPostEffects): after the shot it springs up to n squares straight back,
+             away from the target, a square at a time while the next one is open ground it can stand on. */
+        function _cenTurnKey() { return (state.round || 0) + ':' + (state._blitzActiveUnitId || ''); }
+        function _cenOnHit(src, target, damageType, opts) {
+            if (!src || src.race !== 'centaur' || !_nrAlive(src) || !target || target.id === src.id) return;
+            if (damageType === 'dot' || (opts && opts._linkEcho)) return;
+            if (!sidesHostile(src.player, target.player) || !unitHasPassive(src, 'cenHitAndRun')) return;
+            const key = _cenTurnKey();
+            if (src._cenRanAt === key) return;
+            src._cenRanAt = key;
+            applyStatusPayload(src, { id: 'quickened', duration: 1 }, 'Hit and Run: ', src);
+            if (unitHasStatus(src, 'quickened')) _crFloat(src, '🏹 HIT AND RUN', 'buff');
+        }
+        function _cenOnTheRun(unit, from) {
+            if (!unit || unit.race !== 'centaur' || !unitHasPassive(unit, 'cenHitAndRun')) return false;
+            if (from && from.x != null && (from.x !== unit.x || from.y !== unit.y)) return true;   // a MOVE→ATK row: it will have moved
+            return unit._cenMovedAt === _cenTurnKey() && state._blitzActiveUnitId === unit.id;
+        }
+        function _cenHopBack(unit, spell, target) {
+            const n = spell && spell.cenHopBack;
+            if (!(n > 0) || !_nrAlive(unit) || !target) return;
+            if (typeof _isClashMode === 'function' && _isClashMode()) return;   // Clash: nobody budges
+            let dx = Math.sign(unit.x - target.x), dy = Math.sign(unit.y - target.y);
+            if (dx && dy) { if (Math.abs(unit.x - target.x) >= Math.abs(unit.y - target.y)) dy = 0; else dx = 0; }
+            if (!dx && !dy) return;
+            const fx = unit.x, fy = unit.y;
+            let x = fx, y = fy, z = unit.z;
+            for (let i = 0; i < n; i++) {
+                const nx = x + dx, ny = y + dy;
+                if (!isInside(nx, ny) || !canOccupy(nx, ny)) break;
+                const info = _slideStepInfo(unit, x, y, z, dx, dy);
+                if (!info || info.kind !== 'open') break;
+                const nz = (info.nz != null) ? info.nz : ((typeof nearestWalkableZ === 'function') ? nearestWalkableZ(nx, ny, z) : z);
+                if (z - nz > 1) break;   // no leap off a ledge
+                x = nx; y = ny; z = nz;
+            }
+            if (x === fx && y === fy) return;
+            unit.x = x; unit.y = y; unit.z = z;
+            unit._trackTilesMoved = (unit._trackTilesMoved || 0) + Math.abs(x - fx) + Math.abs(y - fy);
+            animateDisplacement(unit, fx, fy, x, y, 260 * (Math.abs(x - fx) + Math.abs(y - fy)), { leap: true });
+            resolveTileArrival(unit, { via: 'self' });
+            addLog(`🐎 ${_ctName(unit)} springs back to ${coordLabel(x, y)}.`);
+        }
         /* applyDamageToUnit, after the hit (and after the sleeper's wake): the Grudge + the rude awakening */
         function _bearOnHurt(bear, src, damageType, opts, wasHibernating) {
             if (!bear || bear.race !== 'bear' || !(bear.hp > 0) || bear._dying) return;
@@ -15859,6 +15915,347 @@
             if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit });
         }
         window._wnAfterCast = _wnAfterCast;
+        /* ═══ THE CHEERLEADER + THE POINT GUARD (2026-11-24; mondo: "Cheerleader (f) ... Point Guard m (basketball)", "needs a
+           basketball"; two separate units, his pick). Each has one rule and four spells of her / his own (data.js RACE_ABILITIES).
+           - SPIRIT (hers, passive chSpirit): `unit.spirit` (0-3, a plain number: rides the state sync). Each of her spells adds 1;
+             a spell cast at 3 is a STUNT (_chStunt: she and her allies within 3 heal a SMALL amount and lose 1 debuff) and the
+             count starts over. The HUD chip / nameplate badge read it.
+           - Basket Toss (`chToss`): a teleportAnyUnit row. The pick must be an ally NEXT TO HER (spellAimProblem, doSpell's first
+             click, the CPU's pick through spellAimProblemOn); the landing is within 4 of her; the ally jumps the arc (the `leap`
+             look, now for a thrown ally too) and the enemies round the landing take `chTossDmg` + Stagger when it lands.
+           - Gimme a D-C-U! (`chGimme`): a warCry (its statStageBoost lifts the allies within 4), then the heal for them and the
+             sonic hit + Stagger on the enemies within `chGimmeReach` of her.
+           - ASSIST (his, passive pgAssist): every enemy his basic attack or spell hits is left Marked (applyDamageToUnit, after a
+             landed hit); the next physical hit on it cashes it (STATUS_DEFS.marked).
+           - Crossover (`pgAnkles`): the enemies next to him BEFORE the escape (unit._pgFrom, noted where the cast rows are) are
+             Staggered + Marked. Alley-Oop (`pgOop`): the ally's next basic attack is a sure critical (the Monarch's `_deltaCrit`).
+           Host-side; texts through showFloatingTextForUnit, looks through ThreeVFXEffects.fire (both relayed: RULE #2).
+           Notes: docs/notes/champions-combat.md "THE CHEERLEADER + THE POINT GUARD". */
+        const CH_SPIRIT_MAX = 3;
+        window.CH_SPIRIT_MAX = CH_SPIRIT_MAX;
+        function _chFx(phase, id, p) { try { if (!_skipVisuals() && window.ThreeVFXEffects && ThreeVFXEffects.fire) ThreeVFXEffects.fire(phase, id, p); } catch (e) {} }
+        function _chFloat(u, txt, kind) { if (u && !u.dead && state.phase === 'battle' && !_skipVisuals()) showFloatingTextForUnit(u, txt, kind || 'buff', { durationMs: 1200, jitterY: -30 }); }
+        function _chNear(a, b, r) { return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y)) <= r; }
+        /* the ally a Basket Toss can pick: alive, on her side, not her, standing next to her */
+        function chTossPickOk(unit, u) { return !!u && !!unit && u.id !== unit.id && _nrAlive(u) && isAllyUnit(u, unit) && _chNear(u, unit, 1); }
+        window.chTossPickOk = chTossPickOk;
+        function _chStunt(unit) {
+            const crew = (state.units || []).filter(a => _nrAlive(a) && (a.id === unit.id || isAllyUnit(a, unit)) && _chNear(a, unit, 3));
+            addLog(`📣 ${_ctName(unit)} hits the STUNT: full Spirit!`);
+            _chFloat(unit, '📣 STUNT!', 'streak');
+            _chFx('stunt', 'chSpirit', { tx: unit.x, ty: unit.y, sx: unit.x, sy: unit.y });
+            for (const a of crew) {
+                applyHealingToUnit(a, 50, unit);
+                const gone = getActiveStatusKeys(a).filter(k => STATUS_DEFS[k] && STATUS_DEFS[k].kind === 'debuff' && k !== 'captured').slice(0, 1);
+                for (const k of gone) clearStatus(a, k);
+                if (gone.length) _logCleansed('Spirit', a, gone);
+            }
+        }
+        /* where the cast rows are made (doSpell): the Crossover remembers who stood next to him before he goes */
+        function _pgBeginCast(unit, spell) {
+            if (!unit || !spell || unit.race !== 'point guard') return;
+            unit._pgFrom = spell.pgAnkles ? (state.units || []).filter(e => _nrAlive(e) && isEnemyUnit(unit, e) && _chNear(e, unit, 1)).map(e => e.id) : null;
+        }
+        /* his mark: the next physical hit from an ALLY cashes it (applyDamageToUnit skips his own: target._pgMarkBy, an id) */
+        function _pgMark(target, src, label) {
+            if (!_nrAlive(target)) return;
+            applyStatusPayload(target, { id: 'marked', duration: 2 }, label, src);
+            if (unitHasStatus(target, 'marked')) target._pgMarkBy = src.id;
+        }
+        /* ASSIST: a landed hit of his leaves the target Marked (applyDamageToUnit; a plain id read, no object kept) */
+        function _pgAssistHit(src, target) {
+            if (!src || src.race !== 'point guard' || !target || target.dead || target.hp <= 0 || !isEnemyUnit(src, target)) return;
+            if (typeof unitHasPassive === 'function' && !unitHasPassive(src, 'pgAssist')) return;
+            if (state._pgMarking) return;
+            state._pgMarking = true;
+            try { _pgMark(target, src, 'Assist: '); } finally { state._pgMarking = false; }
+        }
+        window._pgAssistHit = _pgAssistHit;
+        /* finishAction: the toss's landing, the chant, the ankles, the lob, then Spirit */
+        function _chpgAfterCast(unit, spell, x, y) {
+            if (!unit || !spell || state.phase !== 'battle') return;
+            const mine = /^(ch|pg)[A-Z]/.test(spell.id || '');
+            if (!mine) return;
+            if (unit.race === 'point guard') {
+                if (spell.pgAnkles && Array.isArray(unit._pgFrom)) {
+                    for (const id of unit._pgFrom) {
+                        const e = unitFromId(id);
+                        if (!_nrAlive(e)) continue;
+                        applyStatusPayload(e, { id: 'stagger', duration: 1 }, 'Crossover: ', unit);
+                        _pgMark(e, unit, 'Crossover: ');
+                        _chFloat(e, '🏀 ANKLES BROKEN', 'debuff');
+                    }
+                    if (unit._pgFrom.length) addLog(`🏀 ${_ctName(unit)} crosses over: ${unit._pgFrom.length === 1 ? 'one defender is' : unit._pgFrom.length + ' defenders are'} left on the floor.`);
+                }
+                unit._pgFrom = null;
+                if (spell.pgOop) {
+                    const a = unitAt(x, y);
+                    if (_nrAlive(a) && (a.id === unit.id || isAllyUnit(a, unit))) {
+                        a._deltaCrit = true;
+                        addLog(`🏀 ${_ctName(unit)} throws it up for ${_ctName(a)}: the next basic attack is a sure critical hit.`);
+                        _chFloat(a, '🏀 ALLEY-OOP', 'buff');
+                    }
+                }
+                if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit });
+                return;
+            }
+            if (unit.race !== 'cheerleader') return;
+            /* 🤸 BASKET TOSS: the ally has landed on (x, y); the enemies round it are hit */
+            if (spell.chToss) {
+                const flier = unitAt(x, y);
+                const prey = (state.units || []).filter(e => _nrAlive(e) && isEnemyUnit(unit, e) && _chNear(e, { x, y }, 1));
+                _chFx('land', 'chBasketToss', { tx: x, ty: y, sx: unit.x, sy: unit.y });
+                if (prey.length) {
+                    const row = { id: 'chBasketTossLand', name: 'Basket Toss', families: ['cheer'], spellType: 'human', element: 'physical', type: 'damage', kind: 'aoe', damageType: 'physical', dmg: spell.chTossDmg || 70 };
+                    const sp = spellPowerOf(unit, row);
+                    _applyAoeDamage(unit, row, prey.map(e => ({ x: e.x, y: e.y })), (spell.chTossDmg || 70) + sp, sp, { rngRange: 16, minDmg: 25 });
+                    for (const e of prey) if (_nrAlive(e)) applyStatusPayload(e, { id: 'stagger', duration: 1 }, 'Basket Toss: ', unit);
+                    if (typeof checkWin === 'function') checkWin();
+                }
+                if (flier && _nrAlive(flier)) addLog(`🤸 ${_ctName(flier)} sticks the landing${prey.length ? ` on ${prey.length === 1 ? 'an enemy' : prey.length + ' enemies'}` : ''}.`);
+            }
+            /* 📣 GIMME A D-C-U!: the heal for the team, the shout in the enemies' faces */
+            if (spell.chGimme) {
+                const R = spell.auraRadius || 4;
+                _chFx('chant', 'chGimme', { tx: unit.x, ty: unit.y, sx: unit.x, sy: unit.y });
+                for (const a of (state.units || []).filter(a => _nrAlive(a) && (a.id === unit.id || isAllyUnit(a, unit)) && _chNear(a, unit, R))) applyHealingToUnit(a, spell.chGimmeHeal || 100, unit);
+                const prey = (state.units || []).filter(e => _nrAlive(e) && isEnemyUnit(unit, e) && _chNear(e, unit, spell.chGimmeReach || 2));
+                if (prey.length) {
+                    const row = { id: 'chGimmeShout', name: spell.name, families: ['cheer'], spellType: 'human', element: 'sonic', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: spell.chGimmeDmg || 110 };
+                    const sp = spellPowerOf(unit, row);
+                    _applyAoeDamage(unit, row, prey.map(e => ({ x: e.x, y: e.y })), (spell.chGimmeDmg || 110) + sp, sp, { rngRange: 20, minDmg: 35 });
+                    for (const e of prey) if (_nrAlive(e)) applyStatusPayload(e, { id: 'stagger', duration: 1 }, `${spell.name}: `, unit);
+                    if (typeof checkWin === 'function') checkWin();
+                }
+                addLog(`📣 ${_ctName(unit)}: "Gimme a D! Gimme a C! Gimme a U!"`);
+            }
+            /* SPIRIT: a cast at full Spirit is the stunt; otherwise one more */
+            if (_nrAlive(unit) && (typeof unitHasPassive !== 'function' || unitHasPassive(unit, 'chSpirit'))) {
+                const sp0 = Math.max(0, unit.spirit | 0);
+                if (sp0 >= CH_SPIRIT_MAX) { _chStunt(unit); unit.spirit = 0; }
+                else { unit.spirit = sp0 + 1; _chFloat(unit, `📣 SPIRIT ${unit.spirit}/${CH_SPIRIT_MAX}`, 'buff'); }
+            }
+            if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit });
+        }
+        window._chpgAfterCast = _chpgAfterCast;
+        /* ═══ THE MUSIC PRODUCER (2026-11-24, thread "Add the Music Producer unit"; mondo's plan: "I want him to build a beat
+           progressively. He could add a beat, chords, bass, and melody ... just the notes in C major"; the sounds approved in the Beat
+           Lab, project files music-producer/) ═══ THE SONG lives on him as plain values (unit._song, it rides the state sync):
+             { tempo 90|120|140|160, drums, chordsOn, chords: [≤4 of MP_CHORDS], sync, bass, melody: null|legato|staccato|arp,
+               building (a Bass Drop is on its way), slapN, fillN, dropN, dropLanded (one-shot counters the 4-track reads) }
+           audio.js THE PRODUCER'S 4-TRACK plays it (window._mpSongToHear: whose turn it is). EARSHOT = 3 squares (Chebyshev). At the end of
+           each round (_mpRoundEnd from _nrRoundEnd) every track playing does its job, unless he is SCRATCHED (stunned, asleep, frozen or
+           silenced: _mpScratched): Drums by tempo (90: allies take 15% less damage, live in applyDamageToUnit; 120: +15 MP; 140: enemies
+           Slowed 1; 160: allies Quickened 1 and he takes 15% more), Chords heal allies 10 + 10 a chord, Melody legato heal +20 /
+           staccato +10% crit (rollCrit, live) / arp 30 sonic on up to 3 enemies, Bass +8% damage a track on his own hits (live).
+           Passive On Loop: +8 MP a track. THE PICKER (bpPick rows): state._bpPick from hud.js _hrlgBeatBlades, the guest's rides the
+           cast as bpPick (online.js); no pick (the CPU, a stale arm) = _mpAutoPick. Bass Drop (mpDrop, a `delayed` row): the cast
+           sets building (drums + bass out, the riser); state.js _detonateDelayedSpellNow calls _mpDropLands: +15 a track and a chord,
+           then drums + bass back on, chords + melody gone (mondo 11-24). Notes: champions-combat.md "THE MUSIC PRODUCER". */
+        const MP_EARSHOT = 3;
+        const MP_TRACKS = ['drums', 'chords', 'bass', 'melody'];
+        const MP_CHORDS = ['Cmaj7', 'Dm7', 'Em7', 'Fmaj7', 'G7', 'Am7', 'Bm7b5'];
+        const MP_TEMPOS = [90, 120, 140, 160];
+        const MP_MELODIES = ['legato', 'staccato', 'arp'];
+        window.MP_CHORDS = MP_CHORDS; window.MP_TEMPOS = MP_TEMPOS; window.MP_MELODIES = MP_MELODIES; window.MP_TRACKS = MP_TRACKS;
+        function _mpIs(u) { return !!u && u.race === 'music producer'; }
+        function _mpSong(u) {
+            if (!u) return null;
+            if (!u._song || typeof u._song !== 'object') u._song = { tempo: 90, drums: false, chordsOn: false, chords: [], sync: false, bass: false, melody: null, building: false, slapN: 0, fillN: 0, dropN: 0, dropLanded: 0 };
+            return u._song;
+        }
+        /* a track counts while it plays: the build-up takes the drums and the bass out */
+        function _mpOn(song, t) {
+            if (!song) return false;
+            if (t === 'drums') return !!song.drums && !song.building;
+            if (t === 'chords') return !!song.chordsOn && Array.isArray(song.chords) && song.chords.length > 0;
+            if (t === 'bass') return !!song.bass && !song.building;
+            if (t === 'melody') return !!song.melody;
+            return false;
+        }
+        function _mpTracks(song) { return MP_TRACKS.filter(t => _mpOn(song, t)).length; }
+        function _mpScratched(u) {
+            if (!_nrAlive(u)) return true;
+            if (typeof unitSpellsBlocked === 'function' && unitSpellsBlocked(u)) return true;
+            return ['stun', 'sleep', 'frozen', 'silence'].some(k => unitHasStatus(u, k));
+        }
+        /* the producers whose song reaches `u` right now (alive, not scratched, a song with something in it) */
+        function _mpReaching(u, side) {
+            if (!u || !Array.isArray(state.units)) return [];
+            return state.units.filter(p => _mpIs(p) && p._song && _nrAlive(p) && !_mpScratched(p) && _chNear(p, u, MP_EARSHOT)
+                && (side === 'ally' ? (p.id === u.id || isAllyUnit(p, u)) : side === 'enemy' ? isEnemyUnit(p, u) : true));
+        }
+        /* applyDamageToUnit: the multiplier the songs put on one hit (90 BPM cover, 160 BPM exposure, the bass) */
+        function _mpDamageMult(src, target) {
+            let m = 1;
+            if (!target || !Array.isArray(state.units)) return m;
+            if (_mpReaching(target, 'ally').some(p => p._song.tempo === 90 && _mpOn(p._song, 'drums'))) m *= 0.85;
+            if (_mpIs(target) && target._song && target._song.tempo === 160 && _mpOn(target._song, 'drums') && !_mpScratched(target)) m *= 1.15;
+            if (_mpIs(src) && src._song && _mpOn(src._song, 'bass') && !_mpScratched(src) && isEnemyUnit(src, target)) m *= 1 + 0.08 * _mpTracks(src._song);
+            return m;
+        }
+        window._mpDamageMult = _mpDamageMult;
+        /* rollCrit: staccato in earshot = +10% */
+        function _mpCritBonus(u) {
+            if (!u || !Array.isArray(state.units)) return 0;
+            return _mpReaching(u, 'ally').some(p => p._song.melody === 'staccato') ? 0.10 : 0;
+        }
+        /* spellBlockReason: a move on a track that is not in the song */
+        function _mpBlockReason(unit, spell) {
+            if (!spell || !_mpIs(unit)) return null;
+            const s = _mpSong(unit);
+            if (spell.bpPick === 'track' && MP_TRACKS.every(t => (t === 'chords' ? s.chordsOn : t === 'melody' ? !!s.melody : !!s[t]))) return '🎛 All four tracks are in';
+            if (spell.mpNeeds === 'drums' && !s.drums) return '🥁 No drums yet';
+            if (spell.mpNeeds === 'chords' && !s.chordsOn) return '🎹 No chords yet';
+            if (spell.mpNeeds === 'bass' && !s.bass) return '🎸 No bass yet';
+            if (spell.mpNeeds === 'melody' && !s.melody) return '🎵 No melody yet';
+            if (spell.mpDrop && s.building) return '🔊 The drop is on its way';
+            return null;
+        }
+        window._mpBlockReason = _mpBlockReason;
+        /* THE PICKER's choices for a row (hud.js lists them; `value` is what state._bpPick holds) */
+        function mpPickChoices(unit, spell) {
+            if (!spell || !spell.bpPick) return [];
+            const s = _mpSong(unit) || {};
+            if (spell.bpPick === 'track') return [
+                { value: 'drums', label: 'Drums', sub: 'Kick, snare, hat', ok: !s.drums },
+                { value: 'chords', label: 'Chords', sub: 'Starts the progression', ok: !s.chordsOn },
+                { value: 'bass', label: 'Bass', sub: 'Follows the chords', ok: !s.bass },
+                { value: 'melody', label: 'Melody', sub: 'Starts as legato', ok: !s.melody }];
+            if (spell.bpPick === 'tempo') {
+                const L = { 90: ['Hip-hop', 'Allies take less damage'], 120: ['Pop', 'Allies +MP'], 140: ['Trap', 'Enemies Slowed'], 160: ['Fast', 'Allies Quickened'] };
+                return MP_TEMPOS.map(b => ({ value: b, label: b + ' BPM · ' + L[b][0], sub: L[b][1], ok: s.tempo !== b, now: s.tempo === b }));
+            }
+            if (spell.bpPick === 'chord') {
+                const NOTES = { Cmaj7: 'C E G B', Dm7: 'D F A C', Em7: 'E G B D', Fmaj7: 'F A C E', G7: 'G B D F', Am7: 'A C E G', Bm7b5: 'B D F A' };
+                const full = (s.chords || []).length >= 4;
+                return MP_CHORDS.map(c => ({ value: c, label: c.replace('b5', '♭5'), sub: NOTES[c] + (full ? ' · replaces ' + String(s.chords[0]).replace('b5', '♭5') : ''), ok: true }))
+                    .concat([{ value: 'sync', label: s.sync ? 'On the beat' : 'Syncopate', sub: s.sync ? 'Chords back on the beat' : 'Off the beat: enemies Discorded', ok: true }]);
+            }
+            if (spell.bpPick === 'melody') {
+                const L = { legato: ['Legato', 'Allies heal more'], staccato: ['Staccato', 'Allies crit more'], arp: ['Arpeggio', 'Notes hit 3 enemies'] };
+                return MP_MELODIES.map(m => ({ value: m, label: L[m][0], sub: L[m][1], ok: s.melody !== m, now: s.melody === m }));
+            }
+            return [];
+        }
+        window.mpPickChoices = mpPickChoices;
+        /* the CPU's pick (and any cast that arrives with none): the next missing track in order, the faster tempo when hurting, a
+           pop progression, the healing melody when the team is hurt */
+        function _mpAutoPick(unit, spell) {
+            const s = _mpSong(unit), ch = mpPickChoices(unit, spell).filter(c => c.ok);
+            if (!ch.length) return null;
+            if (spell.bpPick === 'track') return ch[0].value;
+            const allies = (state.units || []).filter(a => _nrAlive(a) && (a.id === unit.id || isAllyUnit(a, unit)) && _chNear(a, unit, MP_EARSHOT));
+            const hurt = allies.filter(a => a.hp < (a.maxHp || a.hp) * 0.6).length;
+            const foes = (state.units || []).filter(e => _nrAlive(e) && isEnemyUnit(unit, e) && _chNear(e, unit, MP_EARSHOT)).length;
+            if (spell.bpPick === 'tempo') return foes >= 2 && s.tempo !== 140 ? 140 : (s.tempo !== 160 && allies.length >= 2 ? 160 : ch[0].value);
+            if (spell.bpPick === 'chord') {
+                const POP = ['Cmaj7', 'G7', 'Am7', 'Fmaj7'], n = (s.chords || []).length;
+                return n < 4 ? POP[n] : (!s.sync && foes >= 2 ? 'sync' : POP[(state.round | 0) % 4]);
+            }
+            if (spell.bpPick === 'melody') return hurt >= 2 && s.melody !== 'legato' ? 'legato' : (foes >= 2 && s.melody !== 'arp' ? 'arp' : ch[0].value);
+            return ch[0].value;
+        }
+        function _mpLine(unit, txt) { addLog(`🎛 ${_ctName(unit)} ${txt}`); }
+        /* finishAction: the pick lands in the song; Slap Bass / Drum Fill / Bass Drop cue the 4-track */
+        function _mpAfterCast(unit, spell, pick) {
+            if (!_mpIs(unit) || !spell || state.phase !== 'battle' || !/^mp[A-Z]/.test(spell.id || '')) return;
+            const s = _mpSong(unit);
+            let v = pick;
+            if (spell.bpPick) {
+                const ok = mpPickChoices(unit, spell).filter(c => c.ok).map(c => c.value);
+                if (v == null || ok.indexOf(v) < 0) v = _mpAutoPick(unit, spell);
+                if (v == null) return;
+            }
+            if (spell.bpPick === 'track') {
+                if (v === 'drums') { s.drums = true; _mpLine(unit, `lays down the drums at ${s.tempo} BPM.`); }
+                else if (v === 'chords') { s.chordsOn = true; if (!s.chords.length) s.chords = ['Cmaj7']; _mpLine(unit, `lays down the chords: ${s.chords.join(' · ')}.`); }
+                else if (v === 'bass') { s.bass = true; _mpLine(unit, 'lays down the bass.'); }
+                else if (v === 'melody') { s.melody = 'legato'; _mpLine(unit, 'lays down the melody (legato).'); }
+                _chFloat(unit, '🎛 ' + String(v).toUpperCase() + ' IN', 'buff');
+            } else if (spell.bpPick === 'tempo') {
+                s.tempo = v | 0; _mpLine(unit, `switches the beat to ${s.tempo} BPM.`); _chFloat(unit, '🥁 ' + s.tempo + ' BPM', 'buff');
+            } else if (spell.bpPick === 'chord') {
+                if (v === 'sync') {
+                    s.sync = !s.sync;
+                    if (s.sync) {
+                        const prey = (state.units || []).filter(e => _nrAlive(e) && isEnemyUnit(unit, e) && _chNear(e, unit, MP_EARSHOT));
+                        for (const e of prey) applyStatusPayload(e, { id: 'discord', duration: 1 }, 'Syncopate: ', unit);
+                        _mpLine(unit, `pushes the chords off the beat${prey.length ? `: ${prey.length === 1 ? 'one enemy loses' : prey.length + ' enemies lose'} the count` : ''}.`);
+                    } else _mpLine(unit, 'puts the chords back on the beat.');
+                } else {
+                    if (s.chords.length >= 4) s.chords.shift();
+                    s.chords.push(v); _mpLine(unit, `adds ${v.replace('b5', '♭5')}: ${s.chords.map(c => c.replace('b5', '♭5')).join(' · ')}.`);
+                    _chFloat(unit, '🎹 ' + v.replace('b5', '♭5'), 'buff');
+                }
+            } else if (spell.bpPick === 'melody') {
+                s.melody = v; _mpLine(unit, `plays the melody ${v === 'arp' ? 'as an arpeggio' : v}.`); _chFloat(unit, '🎵 ' + (v === 'arp' ? 'ARPEGGIO' : String(v).toUpperCase()), 'buff');
+            }
+            if (spell.id === 'mpSlapBass') s.slapN = (s.slapN | 0) + 1;
+            if (spell.id === 'mpDrumFill') s.fillN = (s.fillN | 0) + 1;
+            if (spell.mpDrop) { s.building = true; s.dropN = (s.dropN | 0) + 1; _mpLine(unit, 'cuts the drums and the bass. Something is building...'); _chFloat(unit, '🔊 BUILD-UP', 'buff'); }
+            if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit });
+        }
+        /* state.js _detonateDelayedSpellNow: the drop lands */
+        function _mpDropLands(ds) {
+            const u = unitFromId(ds.sourceUnitId);
+            if (!u || !u._song) return ds;
+            const s = u._song;
+            const n = (s.drums ? 1 : 0) + (s.chordsOn ? 1 : 0) + (s.bass ? 1 : 0) + (s.melody ? 1 : 0) + ((s.chordsOn && Array.isArray(s.chords)) ? s.chords.length : 0);
+            const out = Object.assign({}, ds, { dmg: (ds.dmg || 0) + 15 * n });
+            if (n > 0) addLog(`🔊 THE DROP: the whole song behind it, +${15 * n} damage.`);
+            s.building = false; s.drums = true; s.bass = true; s.chordsOn = false; s.sync = false; s.melody = null;
+            s.dropLanded = (s.dropLanded | 0) + 1;
+            /* the boom on the board (three-vfx-effects.js mpDropLand; fire() is relayed, so the guest sees it) */
+            try { if (window.ThreeVFXEffects && typeof window.ThreeVFXEffects.fire === 'function' && ds.x != null) window.ThreeVFXEffects.fire('burst', 'mpDropLand', { tx: ds.x, ty: ds.y, sx: u.x, sy: u.y }); } catch (e) {}
+            return out;
+        }
+        window._mpDropLands = _mpDropLands;
+        /* _nrRoundEnd: every track playing does its job in earshot; On Loop pays the MP */
+        function _mpRoundEnd(u) {
+            const s = u && u._song;
+            if (!s || !_nrAlive(u)) return;
+            if (s.building && !(state._delayedSpells || []).some(d => d && d.sourceUnitId === u.id && d.spellId === 'mpBassDrop')) s.building = false;   // the drop never came (cancelled)
+            if (_mpScratched(u)) { addLog(`📀 ${_ctName(u)}'s record is scratched: no song this round.`); return; }
+            const near = (state.units || []).filter(a => _nrAlive(a) && _chNear(a, u, MP_EARSHOT));
+            const allies = near.filter(a => a.id === u.id || isAllyUnit(a, u)), foes = near.filter(e => isEnemyUnit(u, e));
+            if (_mpOn(s, 'drums')) {
+                if (s.tempo === 120) for (const a of allies) a.mp = Math.min(a.maxMp || a.mp || 0, (a.mp || 0) + 15);
+                if (s.tempo === 140) for (const e of foes) applyStatusPayload(e, { id: 'slow', duration: 1 }, 'Trap beat: ', u);
+                if (s.tempo === 160) for (const a of allies) applyStatusPayload(a, { id: 'quickened', duration: 1 }, 'Fast beat: ', u);
+            }
+            let heal = 0;
+            if (_mpOn(s, 'chords')) heal += 10 + 10 * s.chords.length;
+            if (s.melody === 'legato') heal += 20;
+            if (heal > 0) for (const a of allies) if (a.hp < (a.maxHp || a.hp)) applyHealingToUnit(a, heal, u);
+            if (s.melody === 'arp' && foes.length) {
+                const prey = foes.slice().sort((a, b) => (Math.abs(a.x - u.x) + Math.abs(a.y - u.y)) - (Math.abs(b.x - u.x) + Math.abs(b.y - u.y))).slice(0, 3);
+                const row = { id: 'mpArpeggioNotes', name: 'Arpeggio', families: ['beatmaking'], spellType: 'human', element: 'sonic', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 30 };
+                _applyAoeDamage(u, row, prey.map(e => ({ x: e.x, y: e.y })), 30, 0, { rngRange: 6, minDmg: 15 });
+                if (typeof checkWin === 'function') checkWin();
+            }
+            if (typeof unitHasPassive !== 'function' || unitHasPassive(u, 'mpOnLoop')) {
+                const t = _mpTracks(s);
+                if (t > 0) u.mp = Math.min(u.maxMp || u.mp || 0, (u.mp || 0) + 8 * t);
+            }
+            const t = _mpTracks(s);
+            if (t > 0) addLog(`🎛 ${_ctName(u)}'s song plays on (${t} track${t !== 1 ? 's' : ''}).`);
+        }
+        /* audio.js: the song to hear now: the side whose turn it is; if that side has no producer, the other side's keeps playing.
+           A copy, with `muted` worked out (scratched) so the 4-track needs no rules of its own. */
+        function _mpSongToHear() {
+            if (!state || state.phase !== 'battle' || !Array.isArray(state.units)) return null;
+            const ps = state.units.filter(p => _mpIs(p) && p._song && _nrAlive(p));
+            if (!ps.length) return null;
+            const act = (typeof unitFromId === 'function' && state._blitzActiveUnitId != null) ? unitFromId(state._blitzActiveUnitId) : null;
+            const side = act ? act.player : state.activePlayer;
+            const mine = ps.filter(p => p.player === side);
+            const pick = (mine.length ? mine : ps).sort((a, b) => _mpTracks(b._song) - _mpTracks(a._song))[0];
+            if (!pick || !MP_TRACKS.some(t => _mpOn(pick._song, t) || (t === 'drums' && pick._song.drums) || (t === 'bass' && pick._song.bass))) return null;
+            return Object.assign({}, pick._song, { muted: _mpScratched(pick), owner: pick.id, side: pick.player });
+        }
+        window._mpSongToHear = _mpSongToHear;
+        window._mpRoundEnd = _mpRoundEnd;   // (a probe can run one round end)
         /* ═══ THE BUTTERFLY GIRL (2026-11-23, blue morpho; mondo OK'd the plan) ═══ THE BUTTERFLY EFFECT: small flaps now, a twister
            later. A Flutter (STATUS_DEFS.flutter: the stack in unit._flutter, the caster's id in _flutterSrcId) grows by 1 at every
            round end (_bfRoundEnd from _nrRoundEnd); at 3 it touches down (_bfTwister): MEDIUM wind magic damage to the carrier's
@@ -18067,6 +18464,7 @@
             'ice queen': 'magic', 'seraphim': 'magic', 'watcher': 'magic', 'occulus': 'magic',
             'shadow entity': 'magic', 'siren': 'magic', 'chosen one': 'magic', 'symbiote': 'magic',
             'voidweaver': 'throw',
+            'point guard': 'throw',   // 2026-11-24 THE POINT GUARD: the chest pass (his basketball flies: UNIT_ANIM_OVERRIDES)
             'demon prince': 'claw', 'skinwalker': 'claw', 'bear': 'claw', 'abomination': 'claw',   // 2026-11-23 THE BEAR: the paw rakes, never the fist sprite; THE ABOMINATION's arm the same
             'cyclops': 'punch', 'juggernaut': 'punch', 'super sentai': 'punch', 'antihero': 'punch',
             'bigfoot': 'punch', 'giant': 'punch', 'werewolf': 'claw', 'catgirl': 'claw', 'ki fighter': 'punch',
@@ -19484,7 +19882,7 @@
 
         function rollCrit(unit) {
             if (unit && unit._deltaCrit) { unit._deltaCrit = false; return true; }   // 🔺 THE MONARCH: Delta Alter's sure crit (basic attacks)
-            return engineRng() < getCritChance(unit);
+            return engineRng() < getCritChance(unit) + _mpCritBonus(unit);   // 🎛 THE MUSIC PRODUCER: staccato in earshot
         }
 
         function getEvasionChance(unit) {
@@ -19511,7 +19909,7 @@
             if (getActiveStatusKeys(target).some(k => STATUS_DEFS[k]?.invulnerable)) return 0;
             const src = (from && from.x != null) ? { x: from.x, y: from.y } : attacker;
             const arc = (attacker._doorAttackOrigin && !attacker._doorAttackOrigin.projector) ? 'back' : getAttackArc(src, target);
-            let p = arc === 'back' ? 1 : 1 - getEvasionChance(target);
+            let p = (arc === 'back' || _cenOnTheRun(attacker, from)) ? 1 : 1 - getEvasionChance(target);   // 🐎 THE CENTAUR: on the run
             if (unitHasStatus(attacker, 'blind')) p *= 0.5;
             return Math.max(0, Math.min(1, p));
         }
@@ -44329,9 +44727,11 @@
             // its value on the hit. Only the status consumption lives here.
             const canConsumeMarked = opts.consumeMarked ?? (damageType === 'physical');
             let _markedBonus = 0;
-            if (sourceUnit && isEnemyUnit(sourceUnit, target) && opts.allowMarkBonus !== false && canConsumeMarked && unitHasStatus(target, 'marked')) {
+            if (sourceUnit && isEnemyUnit(sourceUnit, target) && opts.allowMarkBonus !== false && canConsumeMarked && unitHasStatus(target, 'marked')
+                && !(target._pgMarkBy != null && target._pgMarkBy === sourceUnit.id)) {   // 🏀 ASSIST: the Point Guard's own mark is for his team, not for him
                 _markedBonus = opts.markBonus ?? target.markBonus ?? 40;
                 if (live) {
+                target._pgMarkBy = null;
                 clearStatus(target, 'marked');
                 target.markBonus = 0;
                 addLog(`${_ctName(target)} was marked, so the hit deals extra damage.`);
@@ -44552,6 +44952,7 @@
 
             const sourceUnit_pre = opts.sourceUnit || null;
             if (damage > 0 && sourceUnit_pre && sourceUnit_pre.race === 'plastic surgeon') damage = Math.max(1, Math.round(damage * _psDmgMult(sourceUnit_pre, target, opts)));   // 💉 The Full Procedure: +25% a Work Done
+            if (damage > 0 && state.phase === 'battle') { const _mpm = _mpDamageMult(sourceUnit_pre, target); if (_mpm !== 1) damage = Math.max(1, Math.round(damage * _mpm)); }   // 🎛 THE MUSIC PRODUCER: 90 BPM cover, 160 BPM exposure, the bass
             const _ratHadBleed = !!(sourceUnit_pre && sourceUnit_pre.race === 'rat' && unitHasStatus(target, 'bleed'));   // 👑 Gnaw's +1 on a target already Bleeding (read before this hit's own Bleed)
             if (damage > 0 && sourceUnit_pre && sourceUnit_pre.race === 'gladiator') damage = Math.max(1, Math.round(damage * _crFavorMult(sourceUnit_pre, target, opts)));   // 🛡 THE CROWD: +4% a Favor
             if (state.fogOfWar && !state.devAutoSim && sourceUnit_pre && sidesHostile(sourceUnit_pre.player, target.player)) {
@@ -44848,6 +45249,7 @@
                     addLog(`💤 ${_ctName(target)} wakes up!`);
                 }
                 if (target.race === 'bear') _bearOnHurt(target, sourceUnit, damageType, opts, _bearHib);   // 🐻🐾 THE BEAR: the Grudge, the rude awakening
+                if (sourceUnit && sourceUnit.race === 'centaur') _cenOnHit(sourceUnit, target, damageType, opts);   // 🐎 THE CENTAUR: Hit and Run
                 /* Taking a hit blows your cover: blood spatter and the stagger of
                    impact give a hidden unit away. Any damage dealt by an enemy
                    strips Invisible — AoE sweeps, traps and turrets are the
@@ -44933,6 +45335,7 @@
                        basicAttackStatus): a landed BASIC hit (physical, no
                        spellType) rides the same path — Burn for the rounds
                        the buff names. */
+                    if (damageType !== 'dot' && target.hp > 0 && sourceUnit.race === 'point guard') _pgAssistHit(sourceUnit, target);   // 🏀 ASSIST: his hit leaves it Marked
                     if (damageType === 'physical' && !opts.spellType && target.hp > 0 && isEnemyUnit(sourceUnit, target)) {
                         for (const _bk of getActiveStatusKeys(sourceUnit)) {
                             const _bas = STATUS_DEFS[_bk]?.basicAttackStatus;
@@ -49545,6 +49948,7 @@
             _bendsWalk(unit, _originX, _originY, opts.trail);   // 🫧 THE BENDS: every square of the walk costs HP
             resolveTileArrival(unit, { via: 'move' });
             _skaterBankMove(unit, _originX, _originY, x, y, dist, opts.trail);   // 🛹 a straight roll banks Momentum
+            if (unit.race === 'centaur' && dist > 0) unit._cenMovedAt = _cenTurnKey();   // 🐎 THE CENTAUR: on the run this turn
             _serpentFollow(unit, _originX, _originY, opts.trail);   // 🐍 the serpent's body follows the path
             _magicianVanish(unit);   // 🎩 Vanishing Act: an enemy ended beside a Magician with it set
             _deliveryDrop(unit, _originX, _originY);   // 🛵 the Delivery Boy drops his rider off
@@ -51805,6 +52209,8 @@
                 if (spell.limbsMin > 0 && getLimbs(unit) < spell.limbsMin) return '🫀 Need ' + spell.limbsMin + ' limbs';   // 🫀 THE ABOMINATION: Unfold
                 if (spell.rewindTape > 0 && !getHostileUnits(unit.player, unit).some(e => e && !e.dead && _tvTapeAmount(e, spell) > 0)) return '📼 Nothing on tape';   // 📺 Rewind: no enemy took a hit last round
                 if (spell.partsCost > 0 && (unit._parts || 0) < spell.partsCost) return '🔩 Need ' + spell.partsCost + ' Parts';
+                if (spell.chToss && !(state.units || []).some(u => chTossPickOk(unit, u))) return '🤸 No ally next to her';   // Basket Toss
+                if (unit.race === 'music producer') { const _mpb = _mpBlockReason(unit, spell); if (_mpb) return _mpb; }   // 🎛 THE MUSIC PRODUCER: a move on a track not in the song
                 if (spell.wnSteer && !(state.activeWeather || []).some(Boolean)) return '🌦 No weather up';   // ☂ Storm Tracker   // 🔧 Jury Rig (SPARE PARTS)
                 if (spell.id === 'nrOverdue' && !spell.overdueOf) return '📚 Nothing to renew';   // THE LOADED BOOK: no teammate has cast yet
                 if (unitHasStatus(unit, 'celibate') && _isSummonSpell(spell)) return '⛪ Celibate';   // ⛪ Celibacy: no summoning
@@ -53810,6 +54216,7 @@
             if (spell.kind === 'skyThrow' && unit._skyThrowGrab) return null;   // the throw judges its own reach
             if (spell.kind === 'doorDeploy') return null;                       // the door's aim resolver judges
             if (spell.kind === 'projectorSwap') return vtProjectorsOf(unit).some(t => t.x === x && t.y === y) ? null : 'range';   // 📽 Scene Change: one of her projectors
+            if (spell.chToss) { const _ct = unitAt(x, y, z) || unitAt(x, y); return chTossPickOk(unit, _ct) ? null : 'range'; }   // 🤸 Basket Toss: an ally next to her (the landing is the phase above)
             if (z === undefined || z === null) {
                 z = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(x, y, unit.z ?? 0)
                     : (state.boardHeights?.[y]?.[x] ?? 0);
@@ -72932,6 +73339,13 @@
                     renderBattleSelectionUI({ includeBoard: false });
                     scheduleBoardRender();
                     return;
+                } else if (spell && spell.bpPick && unit && unit.race === 'music producer' && state._bpPick == null) {
+                    /* 🎛 THE MUSIC PRODUCER (2026-11-24, mondo: "picker"): the row opens its picker first (hud.js _hrlgBeatBlades, in
+                       the command menu's spot); the pick re-arms the spell, which then goes to the self-cast CONFIRM like any other */
+                    state.actionMenuView = 'bpPick';
+                    renderBattleSelectionUI({ includeBoard: false });
+                    scheduleBoardRender();
+                    return;
                 } else if (spell && spell.kind === 'tuneFrequency' && state._tunePick == null) {
                     /* C1 (mondo 2026-10-29): Tune opens its frequency pick first (hud.js _hrlgTuneBlades); the pick re-arms
                        the spell, which then goes to the self-cast CONFIRM like any other */
@@ -80995,7 +81409,7 @@
                 addLog(`🌫️ ${_ctName(unit)} swings blind — and misses!`);
                 showFloatingTextForUnit(unit, '🌫️ BLIND!', 'debuff', { durationMs: 900 });
             }
-            const evaded = _blindMiss ? true : (_atkArc === 'back' ? false : rollEvasion(target));
+            const evaded = _blindMiss ? true : ((_atkArc === 'back' || _cenOnTheRun(unit)) ? false : rollEvasion(target));   // 🐎 THE CENTAUR: never misses on the run
 
             // THE SPELL AUDIT Batch D — Umbral forces the crit; Foresight (`allyNoCritWithin` on a teammate of the
             // target) wards it off entirely.
@@ -85284,9 +85698,11 @@
             if (spell && (spell.favorSpend || spell.chargeSpend || spell.chargeStunAt)) spell = _crCastRow(unit, spell);
             /* 💉 THE PLASTIC SURGEON: a procedure becomes its ally or enemy cast (_psCastRow); his casts remember what finishAction needs */
             if (spell && spell.procedure) spell = _psCastRow(unit, spell, x, y, z);
+            if (spell && spell.bpPick && _mpIs(unit) && state._bpPick != null) unit._mpPickHeld = state._bpPick;   // 🎛 THE MUSIC PRODUCER: the picker's choice rides to finishAction
             /* ☂ THE WEATHERMAN: Cold Front reads the sky, Severe Weather Warning the ground (_wnCastRow) */
             if (spell && (spell.wnSkyRead || spell.wnByGround)) spell = _wnCastRow(unit, spell, x, y);
             _psBeginCast(unit, spell, x, y, z);
+            _pgBeginCast(unit, spell);   // 🏀 THE POINT GUARD: the Crossover notes who stood next to him
             if (unit && unit.race === 'rat') unit._ratCastId = spell ? spell.id : null;   // 👑 THE RAT KING: Gnaw's bonus reads the cast
             /* Clash final authority: movement/positioning spells can never
                fire, whatever path armed them (kits are already stripped —
@@ -86067,6 +86483,8 @@
                 _abAfterCast(unit, spell);   // 🫀 THE ABOMINATION: the mouths close
                 _psAfterCast(unit, spell, x, y, z);   // 💉 THE PLASTIC SURGEON: Work Done, Liposuction's shield
                 _wnAfterCast(unit, spell, x, y);   // ☂📺 THE WEATHERMAN + NEWS ANCHOR: The Forecast, the strike, Fake News, The Rundown
+                _chpgAfterCast(unit, spell, x, y);   // 📣🏀 THE CHEERLEADER + THE POINT GUARD: the toss's landing, the chant, the ankles, the lob, Spirit
+                if (_mpIs(unit)) { _mpAfterCast(unit, spell, unit._mpPickHeld); unit._mpPickHeld = null; state._bpPick = null; }   // 🎛 THE MUSIC PRODUCER: the song
                 if (spell.kind !== 'dash' && Array.isArray(spell.selfStatusAfter) && spell.selfStatusAfter.length && !unit.dead && state.phase === 'battle') {
                     applyStatusEffects(unit, spell.selfStatusAfter, `${spell.name}: `, unit);
                 }
@@ -89369,6 +89787,7 @@
                     statusEffects: spell.statusEffects || [],
                     friendlyFire: !!spell.friendlyFire,
                     perProgrammedStack: spell.perProgrammedStack || 0,   // 🦋 Chaos Theory: +N a Programmed stack at the blast
+                    mpDrop: !!spell.mpDrop,   // 🎛 THE MUSIC PRODUCER: Bass Drop (state.js calls _mpDropLands)
                     leaveTerrain: spell.leaveTerrain || null,
                     terrainDeform: spell.terrainDeform || null,
                     demolishesBuildings: !!spell.demolishesBuildings
@@ -91038,6 +91457,11 @@
                             playErrorSfx();
                             return 0;
                         }
+                        if (spell.chToss && !chTossPickOk(unit, teleTarget)) {   // 🤸 Basket Toss: she throws an ally standing next to her
+                            addLog(`${_ctSp(spell.name)}: pick an ally standing next to ${_ctName(unit)}.`, _clickSeat());
+                            playErrorSfx();
+                            return 0;
+                        }
                         if (teleTarget.id === unit.id && unitMoveBlockedByStatus(unit)) {   // THE MOVE BLOCK ON SPELLS
                             addLog(`${_ctName(unit)} is ${(moveBlockWord(unit) || 'Rooted').toLowerCase()} and cannot move: warp another unit.`, _clickSeat());
                             playErrorSfx();
@@ -91146,12 +91570,13 @@
                     const _tpLeave = (_tpSelf && _tpShot && _tpShot.mode === 'support' && _tpShot.totalMs > 0) ? Math.max(0, _tpShot.sourceHold || 0) : 0;
                     const _tpOnCut = (fn) => { if (_tpLeave > 0) window.setTimeout(() => { if (state.phase === 'battle') fn(); }, _tpLeave); else fn(); };
 
-                    if (spell.leap && tUnit === unit) {
+                    if (spell.leap && (tUnit === unit || spell.chToss)) {   // 🤸 Basket Toss: the thrown ally jumps the same arc
                         /* THE SPELL AUDIT Batch D: `leap` (Land on Your Feet) — the caster jumps the arc to the landing,
                            any height up or down, and lands on its feet (a teleport never pays fall damage). The arc is
                            relayed (online.js wraps animateJumpArc). */
                         const _lpToZ = (_tpLandZ !== null) ? _tpLandZ : (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(x, y, _tpFromZ) : _tpFromZ;
                         if (!_skipVisuals()) animateJumpArc(tUnit, _tpFromX, _tpFromY, x, y, _tpFromZ, _lpToZ, _tpLeapMs, _tpLeave > 0 ? { delayMs: _tpLeave } : undefined);
+                        if (spell.chToss) completionDelay = Math.max(completionDelay || 0, _tpLeave + _tpLeapMs + actionMs(120));   // the landing's hit waits for the landing (finishAction)
                     } else if (spell.doorGun) {
                         /* 🚪 DOOR DASH (the door wheel, DOOR_GUN_PLAN §3.5): the gun's shot to the landing, a door
                            at the agent's feet facing it, one at the landing facing back — in one, out the other
@@ -91201,6 +91626,7 @@
                         ? `${unitDisplayName(unit)} leaps from ${oldLabel} to ${coordLabel(x, y)}${spell.id === 'raceLandOnYourFeet' ? ' and lands on their feet' : ''}.`
                         : tUnit === unit
                             ? `${unitDisplayName(unit)} teleports from ${oldLabel} to ${coordLabel(x, y)}.`   // a self blink named the caster twice
+                            : spell.chToss ? `${unitDisplayName(unit)} throws ${unitDisplayName(tUnit)} from ${oldLabel} to ${coordLabel(x, y)}.`   // 🤸 Basket Toss
                             : `${unitDisplayName(unit)} teleports ${unitDisplayName(tUnit)} from ${oldLabel} to ${coordLabel(x, y)}.`,
                         undefined, undefined, { actor: unit });   // the caster's own blink always reads in its own log (PvP 11-09)
                     resolveTileArrival(tUnit, { via: tUnit === unit ? 'self' : 'teleport' });   // ⛓ the blink's landing

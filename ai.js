@@ -6027,6 +6027,21 @@
         const d = physical ? atk - def : it - md;   // a hitter that will hit like a tank
         return Math.max(0, d - 15) * 2.4;
     }
+    /* 🎛 THE MUSIC PRODUCER (2026-11-24): the song first (a missing track is worth a lot, the drums most), then the tweaks by who
+       is in his earshot; the hits score as hits, Bass Drop a little more for every track behind it. The pick itself is battle.js
+       _mpAutoPick (the CPU never sees the picker). */
+    function _mpScoreAI(unit, spell, target, v) {
+        const s = unit._song || {}, near = (u, r) => u && !u.dead && Math.max(Math.abs(u.x - unit.x), Math.abs(u.y - unit.y)) <= r;
+        const allies = (v.allies || []).filter(a => near(a, 3)).length + 1, foes = (v.visibleEnemies || []).filter(e => near(e, 3)).length;
+        const hurt = (v.allies || []).filter(a => near(a, 3) && a.hp < (a.maxHp || a.hp) * 0.6).length + (unit.hp < (unit.maxHp || unit.hp) * 0.6 ? 1 : 0);
+        if (spell.bpPick === 'track') return !s.drums ? 175 : (!s.chordsOn ? 150 : (!s.bass ? 140 : (!s.melody ? 120 : 0)));
+        if (spell.bpPick === 'tempo') return (foes >= 2 && s.tempo !== 140) || (allies >= 3 && s.tempo !== 160) ? 55 : 8;
+        if (spell.bpPick === 'chord') return ((s.chords || []).length < 4 ? 45 + 15 * Math.min(4, allies) : (foes >= 2 && !s.sync ? 60 : 5));
+        if (spell.bpPick === 'melody') return (hurt >= 2 && s.melody !== 'legato') || (foes >= 2 && s.melody !== 'arp') ? 55 : 6;
+        const base = _scoreSpellCore(unit, spell, target, v);
+        if (spell.mpDrop) { const t = (s.drums ? 1 : 0) + (s.chordsOn ? 1 : 0) + (s.bass ? 1 : 0) + (s.melody ? 1 : 0) + (s.chordsOn ? (s.chords || []).length : 0); return base > 0 ? base * (1 + 0.1 * t) : base; }
+        return base;
+    }
     function _psWorkAdjust(unit, spell, target, v, base) {
         const id = spell._procedureOf || spell.id;
         if (!/^ps[A-Z]/.test(id || '')) return base;
@@ -6055,6 +6070,7 @@
         }
         if (spell && spell.wnSkyRead && typeof window._wnCastRow === 'function') return _scoreSpellCore(unit, window._wnCastRow(unit, spell), target, v);   // ☂ Cold Front: the sky's element
         if (spell && unit && unit.race === 'plastic surgeon' && /^ps[A-Z]/.test(spell.id || '')) return _psWorkAdjust(unit, spell, target, v, _scoreSpellCore(unit, spell, target, v));
+        if (spell && unit && unit.race === 'music producer' && /^mp[A-Z]/.test(spell.id || '')) return _mpScoreAI(unit, spell, target, v);   // 🎛 THE MUSIC PRODUCER: build the song
         /* 🎮 THE VIEWERS (the Streamer + the E-Girl): too small a crowd is no cast; a streaming row is scored as the copy it casts
            (battle.js _streamCastRow: the count baked into the mark / heal / damage); a spend waits for a bigger crowd while it can */
         if (spell && (spell.viewersSpend || spell.viewersMarkAt || spell.viewersHealPer || spell.viewersDmgPer) && typeof window._streamCastRow === 'function') {
@@ -7548,6 +7564,7 @@
         // (2) a hurt ally carried out of reach; (3) ourselves, hurt, blinked away
         for (const a of ours) {
             if ((a.hp / Math.max(1, a.maxHp)) >= 0.4 || (a.id !== unit.id && !okPick(a))) continue;
+            if (spell.chToss && a.id === unit.id) continue;   // 🤸 Basket Toss throws a team-mate, never her
             if (a.id === unit.id && typeof window.unitMoveBlockedByStatus === 'function' && window.unitMoveBlockedByStatus(unit)) continue;   // a pinned caster warps others, never itself
             const here = v.threatFn ? v.threatFn(a.x, a.y, a.z).totalDmg : 0;
             if (here <= 0) continue;
@@ -7555,6 +7572,24 @@
                 const there = v.threatFn ? v.threatFn(t.x, t.y, t.z).totalDmg : 0;
                 const sc = Math.min(effHp(a), here - there) * 0.8 - aiHazardPenaltyAt(a, t.x, t.y);
                 consider(a, t, sc);
+            }
+        }
+        /* 🤸 BASKET TOSS (the Cheerleader, 2026-11-24): a team-mate next to her thrown onto a square beside enemies (the landing
+           hits each of them + Stagger); worth the hits, less the danger the thrown body lands in */
+        if (spell.chToss) {
+            const foes = (v.visibleEnemies || []).filter(e => e && !e.dead);
+            const row = { id: 'chBasketTossLand', name: 'Basket Toss', spellType: 'human', element: 'physical', type: 'damage', kind: 'aoe', damageType: 'physical', dmg: spell.chTossDmg || 70 };
+            for (const m of (v.allies || [])) {
+                if (!m || m.dead || m.id === unit.id || !okPick(m)) continue;
+                for (const t of lands) {
+                    const hit = foes.filter(e => Math.max(Math.abs(e.x - t.x), Math.abs(e.y - t.y)) <= 1);
+                    if (!hit.length) continue;
+                    let sc = 0;
+                    for (const e of hit) { let est = row.dmg; try { est = estDamage(g, unit, e, row); } catch (q) {} sc += Math.min(est, effHp(e)) * 0.8 + 25; }
+                    try { sc -= tileDangerCost(g, m, v, t.x, t.y, t.z) * 0.5; } catch (q) {}
+                    sc -= aiHazardPenaltyAt(m, t.x, t.y) + mpCost;
+                    consider(m, t, sc, 'toss');
+                }
             }
         }
         return best;
