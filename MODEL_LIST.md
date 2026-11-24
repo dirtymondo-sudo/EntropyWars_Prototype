@@ -25,11 +25,11 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 1331 |
+| Meshy AI | no | 1333 |
 | Meshy AI, reworked by Claude | no | 14 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 93 |
-| Built by Claude in code (a bake tool writes the file) | no (pack bark picture) | 14 |
+| Built by Claude in code (a bake tool writes the file) | no (pack bark picture) | 15 |
 | Motion capture (real actors), cut into loops by Claude | yes (motion) | 2 |
 | **UNSORTED** (no SOURCES row yet) | ? | 4 |
 
@@ -70,6 +70,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | butterfly girl (female) | `Assets/characters/races/butterfly_girl/female/Meshy_AI_butterfly_girl_wings2_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API from mondo's picked concepts (THE COMING RACES 2, 2026-11-23; the Bear's polar look + the Rat King are form looks; project files char-concepts-20261123/) |
 | cameraman | `Assets/characters/races/paparazzi/male/Meshy_AI_paparazzi_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES 2, mondo 2026-11-17 picks from the zone characters; concepts + models in project files new-races-2/; the Boltzmann Brain is unrigged) |
 | catgirl (female) — creator look also baked | `Assets/characters/races/catgirl/female/Meshy_AI_catgirl_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| cheerleader (female) | `Assets/characters/races/cheerleader/female/Meshy_AI_cheerleader_f_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API from mondo's picked concepts (THE CHEERLEADER + THE POINT GUARD, 2026-11-24: Cheerleader A with the DCU letters, Point Guard A; project files unit-concepts-20261124b/) |
 | chef — creator look also baked | `Assets/characters/races/chef/male/Meshy_AI_chef_male_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | chess piece | `Assets/world/packs/chess/Low Poly Chess Set.fbx#Low_Poly_Black_Pawn` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
 | cicada brood | `Assets/characters/races/cicada_brood/male/Meshy_AI_cicada_brood_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES 2, mondo 2026-11-17 picks from the zone characters; concepts + models in project files new-races-2/; the Boltzmann Brain is unrigged) |
@@ -194,6 +195,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | pirate | `Assets/characters/races/homosapien/male/pirate/Meshy_AI_dashingly_handsome_sw_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | pirate (female) | `Assets/characters/races/homosapien/female/pirate/Meshy_AI_hot_female_pirate_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | plastic surgeon | `Assets/characters/races/plastic_surgeon/male/Meshy_AI_plastic_surgeon_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API from mondo's picked concepts (THE COMING RACES 2, 2026-11-23; the Bear's polar look + the Rat King are form looks; project files char-concepts-20261123/) |
+| point guard | `Assets/characters/races/point_guard/male/Meshy_AI_point_guard_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API from mondo's picked concepts (THE CHEERLEADER + THE POINT GUARD, 2026-11-24: Cheerleader A with the DCU letters, Point Guard A; project files unit-concepts-20261124b/) |
 | police officer | `Assets/characters/races/police/Meshy_AI_a_black_police_officer_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | police officer · male (skin) | `Assets/characters/races/police/Meshy_AI_a_fat_white_police_officer_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | police officer · prebuilt_cyberpunk · female (skin) | `Assets/characters/races/police/Meshy_AI_a_cyberpunk_police_officer_female_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
@@ -3881,6 +3883,7 @@ Found by scanning the scripts for literal model URLs that no table above lists (
 | cosmic_wraith_cape | `Assets/characters/gear/capes/cosmic_wraith_cape.glb` | Meshy AI | Meshy AI part made by Claude (THE UNIT GEAR, 2026-11-18: halos cut out of the angel models, the fairy wing cut out of the old fairy, the trident + the hoodless cape made apart) | sprites.js |
 | angel_f_halo | `Assets/characters/gear/halos/angel_f_halo.glb` | Meshy AI | Meshy AI part made by Claude (THE UNIT GEAR, 2026-11-18: halos cut out of the angel models, the fairy wing cut out of the old fairy, the trident + the hoodless cape made apart) | sprites.js |
 | angel_m_halo | `Assets/characters/gear/halos/angel_m_halo.glb` | Meshy AI | Meshy AI part made by Claude (THE UNIT GEAR, 2026-11-18: halos cut out of the angel models, the fairy wing cut out of the old fairy, the trident + the hoodless cape made apart) | sprites.js |
+| basketball | `Assets/characters/gear/held/basketball.glb` | Built by Claude in code (a bake tool writes the file) | THE POINT GUARD's basketball (2026-11-24): a UV sphere + a painted texture (pebbled orange leather, black seams) written by Claude in code (project files cheer-guard/make_basketball.py, numpy + PIL, no Blender); his held gear and every ball he throws | three-renderer.js |
 | paparazzi_camera | `Assets/characters/gear/held/paparazzi_camera.glb` | Meshy AI | Meshy AI part made by Claude (THE UNIT GEAR, 2026-11-18: halos cut out of the angel models, the fairy wing cut out of the old fairy, the trident + the hoodless cape made apart) | sprites.js |
 | pitchfork | `Assets/characters/gear/held/pitchfork.glb` | Meshy AI | Meshy AI part made by Claude (THE UNIT GEAR, 2026-11-18: halos cut out of the angel models, the fairy wing cut out of the old fairy, the trident + the hoodless cape made apart) | sprites.js |
 | umbrella_closed | `Assets/characters/gear/held/umbrella_closed.glb` | Asset pack (author not recorded yet) | mondo's umbrella pack (inbox Umbrella_Blend_fbx_glb.zip, maker not recorded), the big umbrella exported by Claude with Blender: open with its Close shape key (spell prop) and shut with the key applied (the Weatherman's held gear), 2026-11-24 | sprites.js |

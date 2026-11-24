@@ -155,6 +155,8 @@ const EW_ASSET_MOVES = [
   ['Assets/Sprites/Races/butterfly_girl/', 'Assets/characters/races/butterfly_girl/'],   // 2026-11-23 THE COMING RACES 2
   ['Assets/Sprites/Races/plastic_surgeon/', 'Assets/characters/races/plastic_surgeon/'],   // 2026-11-23 THE COMING RACES 2
   ['Assets/Sprites/Races/weatherman/', 'Assets/characters/races/weatherman/'],   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR
+  ['Assets/Sprites/Races/cheerleader/', 'Assets/characters/races/cheerleader/'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
+  ['Assets/Sprites/Races/point_guard/', 'Assets/characters/races/point_guard/'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
   ['Assets/Sprites/Races/librarian/', 'Assets/characters/races/librarian/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/televangelist/', 'Assets/characters/races/televangelist/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/influencer/', 'Assets/characters/races/influencer/'],   // 2026-11-17 THE NEW RACES 2
@@ -610,6 +612,8 @@ const RACE_SPRITE_GENDERS = {
   'abomination': 'male',   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name) (one body; the model def sits under male)
   'streamer': 'both',   // 2026-11-18 THE STREAMER + E-GIRL (one race: the Streamer is the male, the E-Girl the female)
   'weatherman': 'both',   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR (one race: the Weatherman is the male, the News Anchor the female)
+  'cheerleader': 'female',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
+  'point guard': 'male',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
   'vtuber': 'female',   // 2026-11-18 THE V-TUBER (female only for now, mondo 11-18)
   'lifeguard': 'both',   // 2026-11-16; the man 2026-11-17
   'atlantean': 'both',
@@ -790,6 +794,8 @@ const _CHARACTER_SPRITES = {
   'monarch': `${_S}/Races/monarch/female/monarch_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'butterfly girl': `${_S}/Races/butterfly_girl/female/butterfly_girl_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'weatherman': `${_S}/Races/weatherman/male/weatherman_px.png`,   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR — 128x128 pixel sprite (Sprite AI restyle of his Meshy concept)
+  'cheerleader': `${_S}/Races/cheerleader/female/cheerleader_px.png`,   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — 128x128 pixel sprite (Sprite AI restyle of her Meshy concept)
+  'point guard': `${_S}/Races/point_guard/male/point_guard_px.png`,   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — 128x128 pixel sprite (Sprite AI restyle of his Meshy concept)
   'plastic surgeon': `${_S}/Races/plastic_surgeon/male/plastic_surgeon_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'librarian': `${_S}/Races/librarian/female/librarian_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'televangelist': `${_S}/Races/televangelist/male/televangelist_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
@@ -918,12 +924,14 @@ const _NEW_FEMALE_SPRITES = {
   'bear': `${_S}/Races/bear/polar/bear_polar_px.png`,   // 2026-11-23 THE BEAR'S COATS — the polar bear (the race's female side)
   'streamer': `${_S}/Races/streamer/female/egirl_f_px.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of the E-Girl's 3D model's front render)
   'weatherman': `${_S}/Races/weatherman/female/news_anchor_px.png`,   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR — the News Anchor (Sprite AI restyle of her Meshy concept)
+  'cheerleader': `${_S}/Races/cheerleader/female/cheerleader_px.png`,   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
   'vtuber': `${_S}/Races/vtuber/female/vtuber_f_px.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of her full Meshy 3D model's front render)
 };
 const _NEW_MALE_SPRITES = {
   'nordic': 'https://cdn.entropywars.net/Assets/characters/races/nordic/male/nordic_m_v2_px.png',   // 2026-11-24 his new model (Sprite AI restyle of its front render)
   'skinwalker': 'https://cdn.entropywars.net/Assets/characters/races/skinwalker/male/skinwalker_px.png',   // 2026-11-24 its new model, not a werewolf
   'weatherman': `${_S}/Races/weatherman/male/weatherman_px.png`,   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR
+  'point guard': `${_S}/Races/point_guard/male/point_guard_px.png`,   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
   'streamer': `${_S}/Races/streamer/male/streamer_m_px.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of his 3D model's front render)
   'skater': `${_S}/Races/skater/male/skater_m_px.png`,   // 2026-11-17 — the male skater (Meshy model + Sprite AI restyle of its front render)
   'lifeguard': `${_S}/Races/lifeguard/male/lifeguard_m_px.png`,   // 2026-11-17 — the male lifeguard (same way)
@@ -2845,6 +2853,23 @@ const RACE_MODELS_3D = {
       model: 'https://cdn.entropywars.net/Assets/characters/races/weatherman/female/Meshy_AI_news_anchor_f_Running.glb',
       heightRatio: 0.95, basicAttackKind: 'magic',
       procRig: 'unitGear', gear: { held: { url: 'https://cdn.entropywars.net/Assets/world/props/meshy/Meshy_AI_microphone_1027232053_texture.glb', len: 0.14, grip: 0.3 } },
+    }),
+  },
+  'cheerleader': {   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: Meshy image-to-3d + rigging from mondo's pick (Cheerleader A with the DCU letters); sources: project files
+                     // unit-concepts-20261124b/models/cheerleader_f*. Nothing held: her basic attack is a high kick.
+    female: _mkUAL('cheerleader/female', 'cheerleader_f', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/cheerleader/female/Meshy_AI_cheerleader_f_Running.glb',
+      heightRatio: 0.93,
+    }),
+  },
+  'point guard': {   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: Meshy image-to-3d + rigging from mondo's pick (Point Guard A, purple and gold #1); sources: project files
+                     // unit-concepts-20261124b/models/point_guard*. THE UNIT GEAR holds his basketball (a sphere + a painted texture made
+                     // in code, project files cheer-guard/make_basketball.py); the basic attack throws it (`weaponProj`: the held ball hides
+                     // while the thrown one flies, battle.js basicAttackDelivery).
+    male: _mkUAL('point_guard/male', 'point_guard', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/point_guard/male/Meshy_AI_point_guard_Running.glb',
+      heightRatio: 1.03, basicAttackKind: 'throw', weaponKind: 'throw', weaponProj: 'proj-basketball',
+      procRig: 'unitGear', gear: { held: { url: 'https://cdn.entropywars.net/Assets/characters/gear/held/basketball.glb', len: 0.13, grip: 0.5 } },
     }),
   },
   'plastic surgeon': {
@@ -7646,6 +7671,8 @@ const RACE_SPRITES = {
   'monarch': `${_S}/Races/monarch/female/monarch_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'butterfly girl': `${_S}/Races/butterfly_girl/female/butterfly_girl_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'weatherman': `${_S}/Races/weatherman/male/weatherman_px.png`,   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR — 128x128 pixel sprite (Sprite AI restyle of his Meshy concept)
+  'cheerleader': `${_S}/Races/cheerleader/female/cheerleader_px.png`,   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — 128x128 pixel sprite (Sprite AI restyle of her Meshy concept)
+  'point guard': `${_S}/Races/point_guard/male/point_guard_px.png`,   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — 128x128 pixel sprite (Sprite AI restyle of his Meshy concept)
   'plastic surgeon': `${_S}/Races/plastic_surgeon/male/plastic_surgeon_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'librarian': `${_S}/Races/librarian/female/librarian_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'televangelist': `${_S}/Races/televangelist/male/televangelist_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)

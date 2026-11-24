@@ -4085,6 +4085,11 @@ function _hrlgStatusChips(unit) {
     const vw = Math.max(0, Math.min(window.VIEWERS_MAX || 10, unit.viewers | 0));
     chips.push({ key: 'viewers', label: 'VIEWERS ' + vw + '/' + (window.VIEWERS_MAX || 10), kind: vw > 0 ? 'up' : 'dn', title: 'Viewers: +1 per hit landed, +2 per KO, +1 when a big hit gets clipped; going down halves them. Clip It marks at 5+; Donation Goal and Raid spend them all.' });
   }
+  /* 📣 SPIRIT (the Cheerleader, 2026-11-24): her count to the stunt (battle.js unit.spirit, rides the state sync) */
+  if (unit.race === 'cheerleader' && !unit.dead) {
+    const sp = Math.max(0, Math.min(window.CH_SPIRIT_MAX || 3, unit.spirit | 0)), mx = window.CH_SPIRIT_MAX || 3;
+    chips.push({ key: 'spirit', label: sp >= mx ? 'STUNT READY' : 'SPIRIT ' + sp + '/' + mx, kind: 'up', title: 'Spirit: each of her spells adds 1. A spell cast at full Spirit is a stunt: she and her allies within 3 heal and lose a debuff.' });
+  }
   /* 📺 THE RUNDOWN (the News Anchor, 2026-11-24): the segment her next spell runs (battle.js unit._rundown, rides the state sync) */
   if (unit.race === 'weatherman' && unit.gender === 'female' && !unit.dead) {
     const seg = ['HEADLINES', 'SPORTS', 'WEATHER'][Math.max(0, unit._rundown | 0) % 3];

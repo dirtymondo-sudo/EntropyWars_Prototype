@@ -3844,6 +3844,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             if (intent === 'windup' && _BUG_ON_WINDUP[spellId] && params && params.sx != null && !_catOff('spells') && !params.mark) try { _BUG_ON_WINDUP[spellId](params.sx, params.sy, params); } catch (e) {}
             /* THE SEVERED PARTS (2026-10-29): the Halloween pack's body parts in the dead races' gory spells, on the hit (relayed) */
             if (intent === 'burst' && _BP_ON_BURST[spellId] && params && params.tx != null && !_catOff('spells')) try { _BP_ON_BURST[spellId](params.tx, params.ty, params); } catch (e) {}
+            if (intent === 'burst' && _CHPG_ON_BURST[spellId] && params && params.tx != null && !_catOff('spells')) try { _CHPG_ON_BURST[spellId](params); } catch (e) { console.warn('[VFX] cheer/guard failed', spellId, e); }   // 📣🏀 THE CHEERLEADER + THE POINT GUARD
             return;
         }
         /* Timeline cues (Spell Lab) — same relay-riding trick as staging:
@@ -69537,6 +69538,108 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     SPELL_MAP['wnFakeNews']       = { aoe: 'wnFakeNews_fx' };
     SPELL_MAP['wnPrimeTime']      = { aoe: 'wnPrimeTime_fx' };
     SPELL_MAP['wnRundown']        = { segment: 'wnRundown_fx' };
+
+    /* ════ THE CHEERLEADER + THE POINT GUARD (2026-11-24; mondo: "Cheerleader (f) ... Point Guard m (basketball)"). Side colours
+       from the viewer's seat (_psSide), fog by _pzSeen, every piece on fire() (relayed online). Visuals only.
+       HERS (a game-day sideline): confetti in the side's colours (_chConfetti) and cheer cards (white letters on black, the
+       side's colour on the frame):
+       · High Kick (burst): a burst of confetti off the kicked body.
+       · Ready? OK! (burst, on the ally): READY? OK! card drops in over it, confetti rains.
+       · Basket Toss (`land`, battle.js after the landing): a shock ring + confetti + TOSS! over the landing.
+       · Gimme a D-C-U! (`chant`, battle.js after the cast): the letters D, C, U pop up one by one over her, then a ring rolls out.
+       · Spirit's stunt (`stunt`): STUNT! + a ring of confetti round her.
+       HIS (the court): the thrown basketball is the projectile model (three-renderer.js 'proj-basketball').
+       · Alley-Oop (burst, on the ally): ALLEY-OOP card + a ring.
+       · Buzzer Beater (burst): a shot-clock card 0.0 over the target + a ring. ════ */
+    function _chCardTex(word, px) {
+        return _pzTex('ch-card-' + word, 256, 80, function (g, w, h) {
+            g.fillStyle = 'rgba(0,0,0,0.88)'; g.fillRect(2, 2, w - 4, h - 4);
+            g.strokeStyle = '#ffffff'; g.lineWidth = 5; g.strokeRect(4, 4, w - 8, h - 8);
+            g.fillStyle = '#ffffff'; g.font = 'bold ' + (px || 40) + 'px Impact, "Arial Black", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+            g.fillText(word, w / 2, h / 2 + 2);
+        });
+    }
+    function _chConfettiTex() {
+        return _pzTex('ch-confetti', 16, 24, function (g, w, h) { g.fillStyle = '#ffffff'; g.fillRect(0, 0, w, h); });
+    }
+    /* a burst of paper in the side's colours + white, out and up, then fluttering down; returns a tick(el) */
+    function _chConfetti(F, C, n, spread, y0) {
+        var ts = F.ts, bits = [], tex = _chConfettiTex(), cols = [C[0], C[1] != null ? C[1] : C[0], 0xffffff];
+        for (var i = 0; i < n; i++) {
+            var s = _pzSprN(cols[i % 3], ts * 0.07, tex, F.g); s.scale.set(ts * 0.05, ts * 0.075, 1);
+            bits.push({ s: s, a: rn(0, 6.28), v: rn(0.4, 1.0) * spread, up: rn(0.5, 1.2), spin: rn(-0.02, 0.02) });
+        }
+        return function (el, vis) {
+            var t = _sigClamp01(el / 1300);
+            for (var j = 0; j < bits.length; j++) {
+                var B = bits[j], out = _sigEaseOutCubic(Math.min(1, t * 2.2)) * B.v * ts;
+                var y = ts * (y0 + B.up * 1.1 * Math.sin(Math.min(1, t * 1.6) * Math.PI * 0.5) - t * t * 1.3);
+                B.s.position.set(Math.cos(B.a) * out + Math.sin(el * 0.01 + j) * ts * 0.04, Math.max(ts * 0.03, y), Math.sin(B.a) * out);
+                B.s.material.rotation = el * B.spin; B.s.material.opacity = vis;
+            }
+        };
+    }
+    function _chCard(F, word, C, px) { var c = _pzSprN(0xffffff, F.ts, _chCardTex(word, px), F.g); c.scale.set(F.ts * 1.1, F.ts * 0.34, 1); return c; }
+
+    EFFECTS['chKick_fx'] = _pzDef('chKick', { pzOwn: true });
+    _PZ_SIGS.chKick = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty) || !_pzOnce('chKick@' + tx + ',' + ty, 300)) return;
+        var C = _psSide(p), F = _nrvFrame(tx, ty), conf = _chConfetti(F, C, 18, 0.7, 0.9);
+        _sigShockRing3D(tx, ty, { color: C[0], r0: F.ts * 0.1, r1: F.ts * 0.7, ms: 320 });
+        return _sigRunOwned(F.g, 1400, function (el) { conf(el, _pzEnv(el, 0, 40, 1000, 1400)); });
+    };
+    function _chCardBurst(key, word, n, px) {
+        return function (p) {
+            var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty) || !_pzOnce(key + '@' + tx + ',' + ty, 400)) return;
+            var C = _psSide(p), F = _nrvFrame(tx, ty), ts = F.ts, card = _chCard(F, word, C, px), conf = n ? _chConfetti(F, C, n, 0.8, 1.6) : null;
+            _sigShockRing3D(tx, ty, { color: C[0], r0: ts * 0.15, r1: ts * 0.95, ms: 380 });
+            return _sigRunOwned(F.g, 1700, function (el) {
+                var vis = _pzEnv(el, 0, 80, 1250, 1700), drop = _sigEaseOutBack(_sigClamp01(el / 340));
+                card.position.set(0, ts * (2.1 + 0.6 * (1 - drop)), 0); card.material.opacity = vis;
+                if (conf) conf(el, vis);
+            });
+        };
+    }
+    EFFECTS['chReadyOk_fx'] = _pzDef('chReadyOk', { pzOwn: true });
+    _PZ_SIGS.chReadyOk = _chCardBurst('chReadyOk', 'READY? OK!', 22, 38);
+    EFFECTS['chToss_fx'] = _pzDef('chToss', { pzOwn: true });
+    _PZ_SIGS.chToss = _chCardBurst('chToss', 'TOSS!', 26, 44);
+    EFFECTS['chStunt_fx'] = _pzDef('chStunt', { pzOwn: true });
+    _PZ_SIGS.chStunt = _chCardBurst('chStunt', 'STUNT!', 30, 44);
+    EFFECTS['pgOop_fx'] = _pzDef('pgOop', { pzOwn: true });
+    _PZ_SIGS.pgOop = _chCardBurst('pgOop', 'ALLEY-OOP', 0, 36);
+    EFFECTS['pgBuzzer_fx'] = _pzDef('pgBuzzer', { pzOwn: true });
+    _PZ_SIGS.pgBuzzer = _chCardBurst('pgBuzzer', '0.0', 0, 52);
+
+    /* ── GIMME A D-C-U! ── the three letters pop up over her one by one, then the ring rolls out */
+    EFFECTS['chChant_fx'] = _pzDef('chChant', { pzOwn: true });
+    _PZ_SIGS.chChant = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty) || !_pzOnce('chChant', 600)) return;
+        var C = _psSide(p), F = _nrvFrame(tx, ty), ts = F.ts, L = ['D', 'C', 'U'], cards = [];
+        var cd = (typeof _nbCamDir === 'function') ? _nbCamDir(F) : { x: 0, z: 1 }, sx = -cd.z, sz = cd.x;
+        for (var i = 0; i < 3; i++) { var c = _pzSprN(0xffffff, ts, _chCardTex(L[i], 60), F.g); c.scale.set(ts * 0.5, ts * 0.5, 1); cards.push(c); }
+        var conf = _chConfetti(F, C, 30, 1.6, 1.4), rung = false;
+        return _sigRunOwned(F.g, 2300, function (el) {
+            var vis = _pzEnv(el, 0, 60, 1900, 2300);
+            for (var j = 0; j < 3; j++) {
+                var t = _sigEaseOutBack(_sigClamp01((el - j * 260) / 260));
+                cards[j].position.set(sx * ts * (j - 1) * 0.6, ts * (1.6 + 0.5 * t), sz * ts * (j - 1) * 0.6);
+                cards[j].scale.set(ts * 0.5 * Math.max(0.05, t), ts * 0.5 * Math.max(0.05, t), 1); cards[j].material.opacity = el < j * 260 ? 0 : vis;
+            }
+            if (!rung && el >= 820) { rung = true; _sigShockRing3D(tx, ty, { color: C[0], r0: ts * 0.2, r1: ts * 4.2, ms: 620 }); }
+            conf(Math.max(0, el - 800), el < 800 ? 0 : vis);
+        });
+    };
+    SPELL_MAP['chSpirit']       = { stunt: 'chStunt_fx' };
+    SPELL_MAP['chBasketToss']   = { land: 'chToss_fx' };
+    SPELL_MAP['chGimme']        = { chant: 'chChant_fx' };
+    /* the hits (the staging's `burst`, fire() above): one look per spell */
+    var _CHPG_ON_BURST = {
+        chHighKick: function (p) { return _PZ_SIGS.chKick(p); },
+        chReadyOk: function (p) { return _PZ_SIGS.chReadyOk(p); },
+        pgAlleyOop: function (p) { return _PZ_SIGS.pgOop(p); },
+        pgBuzzerBeater: function (p) { return _PZ_SIGS.pgBuzzer(p); },
+    };
 
     /* ════ TAX EXEMPT (2026-11-17, mondo's ask): a green TAX EXEMPT stamp slams onto the floor under the unit, a white receipt
        floats up beside it and is torn in two, and blue mana motes (the MP it will not pay) rise into the body ════ */
