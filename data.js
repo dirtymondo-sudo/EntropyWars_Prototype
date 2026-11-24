@@ -91863,7 +91863,7 @@ function hqWalkInRows(room) {
            decor only (noBlock); anything the walker must walk round is a `boxes` ghost too */
         (S.furnish || []).forEach((f, j) => { const w = at(f[1], f[2]), o = f[4] || {};
             /* `lift` = stands that far over the ground (a stilt house's floor): `liftY`, read by the renderer over the house's own ground (THE LIFTED FLOOR: a hover read the wall tops beside it) */
-            const yy = (typeof o.lift === 'number') ? { liftY: _hqR4(pl + o.lift + (o.y || 0)) } : (typeof p.y === 'number') ? { y: p.y + (o.y || 0) } : {};
+            const yy = (typeof o.lift === 'number') ? { liftY: _hqR4(pl + o.lift + (o.y || 0)) } : (typeof p.y === 'number') ? { y: p.y + (o.y || 0) } : { floor: true };   // (`floor`: on the field's ground, never on a wall row's top beside it, 11-24)
             out.props.push(Object.assign({ key: f[0], x: w[0], z: w[1], face: (((+p.face || 0) + (f[3] || 0)) % 360 + 360) % 360, noBlock: true, walkIn: tag, id: tag + ':f' + j }, o, yy)); delete out.props[out.props.length - 1].lift; });
     });
     return out;
