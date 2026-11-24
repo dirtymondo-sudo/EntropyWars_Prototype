@@ -2996,3 +2996,12 @@
             setTimeout(() => { EWBeat.stop(); }, (secs || 20) * 1000);
             return song;
         };
+        /* THE 4-TRACK'S DRIVER: once a second (no scene reads, a look at the battle's units only), a producer's song in a battle
+           starts the 4-track; none (no producer alive, the fight over, the menu) stops it. battle.js _mpSongToHear picks the song. */
+        setInterval(function() {
+            try {
+                const want = (typeof window._mpSongToHear === 'function') ? window._mpSongToHear() : null;
+                if (want && !EWBeat.playing()) EWBeat.follow(function() { return window._mpSongToHear(); });
+                else if (!want && EWBeat.playing()) EWBeat.stop();
+            } catch (e) {}
+        }, 1000);
