@@ -2668,8 +2668,8 @@ function bindStory() {
 }
 /* ADD FROM A FILE (2026-11-24, mondo: "let's go ahead and add these to the story planner"): a file of chapters (the plan's own shape,
    `{ kind: 'entropy-wars-story-plan-add', chapters: [...], clues: [...] }`) is ADDED to his plan: nothing of his is changed, and a
-   chapter, quest or clue whose id is already in the plan is skipped, so loading the same file twice adds nothing. A chapter that carries `was`
-   replaces the draft an earlier file added, only while his copy is untouched (storyAddJSON). */
+   chapter, quest or clue whose id is already in the plan is skipped, so loading the same file twice adds nothing. A chapter that carries `was` (one copy, or a list of
+   the copies earlier files added) replaces such a draft, only while his copy is untouched (storyAddJSON). */
 function storyAddJSON(text) {
   let x; try { x = JSON.parse(text); } catch (e) { return { err: 'That is not valid JSON.' }; }
   const inc = x && Array.isArray(x.chapters) ? x.chapters : []; if (!inc.length) return { err: 'No chapters in that file.' };
@@ -2683,9 +2683,9 @@ function storyAddJSON(text) {
     const now = one(c); if (!now) return;
     const at = P.chapters.findIndex(o => o.id === now.id);
     if (at < 0) { if (!room()) return; now.quests = now.quests.filter(q => !haveQ.has(q.id)); P.chapters.push(now); nAdd++; nq += now.quests.length; now.quests.forEach(q => haveQ.add(q.id)); return; }
-    const mine = P.chapters[at], was = c.was && one(c.was);
+    const mine = P.chapters[at], was = [].concat(c.was || []).map(one).find(w => w && JSON.stringify(w) === JSON.stringify(mine));
     const others = new Set(P.chapters.filter((o, i) => i !== at).flatMap(o => o.quests.map(q => q.id)));
-    if (was && JSON.stringify(was) === JSON.stringify(mine)) { now.quests = now.quests.filter(q => !others.has(q.id)); P.chapters[at] = now; nUpd++; return; }
+    if (was) { now.quests = now.quests.filter(q => !others.has(q.id)); P.chapters[at] = now; nUpd++; return; }
     const add = now.quests.filter(q => !haveQ.has(q.id)); if (add.length) { mine.quests.push(...add); nq += add.length; add.forEach(q => haveQ.add(q.id)); } nKept++;
   });
   const ids = new Set(P.chapters.map(c => c.id));

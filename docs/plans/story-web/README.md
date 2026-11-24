@@ -181,7 +181,7 @@ chapter-by-chapter guide (https://claude.ai/artifact/ScTxXgtDrPMEyjTMnTrhPv). To
   doc https://claude.ai/artifact/94AJKBFP4o9keE9X4Mi9aL) = `/mnt/project-files/story-planner-add/Entropy_Wars_Story_Plan_Add_2026-11-24.json`.
   REVISED DRAFTS (2026-11-24, the synthesis): a file chapter may carry `was` = the exact copy an earlier file added. If his chapter
   still equals it (sanitized), the new version replaces it in place; if he changed anything his chapter stays and only quests it lacks
-  are added. The toast says added / updated / kept. The synthesis file = `.../Entropy_Wars_Story_Plan_Synthesis_2026-11-24.json`
+  are added (`was` may be a list: every earlier copy). The toast says added / updated / kept. Newest file covering both: `Entropy_Wars_Story_Plan_Update_2026-11-24b.json`. The synthesis file = `.../Entropy_Wars_Story_Plan_Synthesis_2026-11-24.json`
   (doc "Story arcs in detail" https://claude.ai/artifact/MGAzmypWQUqxdAPhBq1btX).
 
 ## The places as they stand now (2026-11-23)
