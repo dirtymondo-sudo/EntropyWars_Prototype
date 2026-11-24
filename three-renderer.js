@@ -99300,7 +99300,7 @@ const ThreeRenderer = (function () {
     function _hqStillAdded(par) {
         for (var q = par, top = null, d = 0; q && d < 32; top = q, q = q.parent, d++) {
             var fz = q._ew_fz;   // THE FREEZE: the frozen group's piece something landed under is walked once
-            if (fz) { if (top) fz.fresh.add(top); return; }
+            if (fz) { if (top) fz.fresh.add(top); if (q._ew_ckFar != null) q._ew_ckDirty = true; return; }   // (a frozen chunk is measured again for what landed in it: THE OUT CHUNKS WAIT)
         }
     }
     /* a piece that is about to move: walked every frame from now (until HOLD ms after it rests) */
@@ -99722,7 +99722,7 @@ const ThreeRenderer = (function () {
             /* THE MEASURES SPREAD (2026-11-18, his F3: "tick: chunks 23.0" in one frame): something joining the scene made every chunk due on the
                same frame (a door chunk's measure is a walk of the door). A count change or a first measure is done at once; the others stop at
                2 ms a frame and are done on the next frames. Off: window.EW_HQ_CHUNK_MEASURE_ALL. */
-            if (g._ew_ckN !== g.children.length || ((g._ew_pChunk || !_hqCkOldPoll() ? (g._ew_ckDirty || (g._ew_ckAdd !== addN && now - g._ew_ckAt > 4000) || now - g._ew_ckAt > 60000) : now - g._ew_ckAt > 2000) && (ckAll || performance.now() - ckT0 < 2))) { g._ew_ckN = g.children.length; g._ew_ckAt = now; g._ew_ckAdd = addN; g._ew_ckDirty = false; g._ew_ckSph = _hqChunkSphere(g); }
+            if (g._ew_ckN !== g.children.length || ((g._ew_pChunk || !_hqCkOldPoll() ? (g._ew_ckDirty || (!g._ew_fz && g._ew_ckAdd !== addN && now - g._ew_ckAt > 4000) || now - g._ew_ckAt > 60000) : now - g._ew_ckAt > 2000) && (ckAll || performance.now() - ckT0 < 2))) { g._ew_ckN = g.children.length; g._ew_ckAt = now; g._ew_ckAdd = addN; g._ew_ckDirty = false; g._ew_ckSph = _hqChunkSphere(g); }
             var sp = g._ew_ckSph, out = false;
             if (sp) {
                 var dx = sp.center.x - ce[12], dy = sp.center.y - ce[13], dz = sp.center.z - ce[14];
@@ -99736,7 +99736,12 @@ const ThreeRenderer = (function () {
                 g._ew_ckOut = out; g.visible = !out;
                 if (out && !mwAll) g.updateMatrixWorld(true);   // its world matrices current as it leaves the walk
                 g.matrixWorldAutoUpdate = !out || mwAll;
-            } else if (out && !g.matrixWorldAutoUpdate && (g._ew_fz ? (grew || g._ew_fz.fresh.size > 0 || addMoved) : addMoved)) { g.updateMatrixWorld(true); if (g._ew_fz) g._ew_fz.fresh.clear(); }   // something joined THIS chunk (a file landed, a prop swept in): an out chunk's new pieces get their place
+            } else if (out && !g.matrixWorldAutoUpdate && ((g._ew_fz || (g.parent && g.parent._ew_fz)) ? (grew || (g._ew_fz && g._ew_fz.fresh.size > 0)) : addMoved)) { g.updateMatrixWorld(true); if (g._ew_fz) g._ew_fz.fresh.clear(); }
+            /* THE OUT CHUNKS WAIT (2026-11-24, mondo's F3 in Disaster City: "tick: chunks" ~20 ms in 20 of 22 dips, every ~4.6 s): under THE
+               FREEZE a chunk off the camera was walked WHOLE (every piece's matrix) whenever anything joined the scene anywhere (a resident's
+               new body, a model landing): every out chunk of the city in one frame. A frozen chunk (or a door chunk in the frozen door
+               group) knows what landed under it (the add hook's `fresh`), so it is walked only for that or a count change; the rest waits
+               for its whole walk as it comes back on the camera (the freeze marks it stale). */   // something joined THIS chunk (a file landed, a prop swept in): an out chunk's new pieces get their place
             if (!out) drawn++;
         }
         H.ckDrawn = drawn;
