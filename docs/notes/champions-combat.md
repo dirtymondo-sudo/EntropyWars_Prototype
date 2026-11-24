@@ -6505,6 +6505,11 @@ sprites `*_px.png` same folders (Sprite AI). First-pass stats; finishers borrow 
 - Chest Pass (T1): ricochet. Crossover (T2, `pgAnkles`): escape 2; whoever stood next to him before (`unit._pgFrom`, noted at the
   cast rows: `_pgBeginCast`) is Staggered + Marked. Alley-Oop (T3, `pgOop`): ally +2 ATK and a sure critical next basic attack (the
   Monarch's `_deltaCrit`). Buzzer Beater (T4): range 7 over cover, execute under 15%.
+- Slam Dunk (T3, `pgSlamDunk`, added 11-24, mondo: "you gotta give him a slam dunk ability too"): a `chargeToTarget` damage row
+  (the charge's leap vault, so it works on flat ground; `leapStrike` needs higher ground), range 3, 145 physical + Stagger 1, cooldown 2.
+  VFX `pgSlam` (burst): a textured hoop drops over the victim, the rim shakes, SLAM! card, rings, confetti. The tree is four rungs by
+  schema, so his default kit carries it through data.js `RACE_DEFAULT_KIT_EXTRAS` (raceDefaultKit: rungs, then the extras, then the
+  family fill).
 - CPU (ai.js `_teleportAnyPick`): Basket Toss throws a team-mate next to her onto a square beside enemies (the hits less the danger).
 - VFX (three-vfx-effects.js "THE CHEERLEADER + THE POINT GUARD"): confetti + cheer cards in side colours (kick burst, READY? OK!,
   TOSS!, STUNT!, the D-C-U letters), ALLEY-OOP and a 0.0 shot clock; the hits ride the staging `burst` (`_CHPG_ON_BURST`), the rest

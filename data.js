@@ -11397,6 +11397,13 @@ const RACE_ABILITIES = {
           element: 'wind', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 165, range: 7, ignoresLineOfSight: true,
           executeBelowPct: 0.15, executeAfterHit: true, projectileOverride: 'proj-basketball',
           desc: 'Three, two, one... Deals HEAVY physical damage to a Single Enemy up to 7 squares away; the ball arcs over cover. If it leaves the target under 15% HP, it is out. Cooldown: 3 rounds.' },
+        /* SLAM DUNK (2026-11-24, mondo: "you gotta give him a slam dunk ability too"): a charge row that LEAPS (chargeToTarget's
+           vault, flat ground is fine, unlike leapStrike which needs higher ground) onto the tile beside the target and dunks on it;
+           a hoop drops in over the victim (three-vfx-effects.js pgSlam). Assist marks it like any of his hits. */
+        { id: 'pgSlamDunk', name: 'Slam Dunk', tier: 3, families: ['basketball'], cost: 70, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          element: 'physical', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 145, range: 3, chargeToTarget: true,
+          statusEffects: [{ id: 'stagger', duration: 1 }],
+          desc: 'Takes off from 3 squares out. Leaps onto a Single Enemy within 3 and dunks on it for MEDIUM physical damage, leaving it Staggered for 1 round. Cooldown: 2 rounds.' },
     ],
     'streamer': [
         /* THE VIEWERS (2026-11-18, the Streamer + the E-Girl; mondo OK'd the kit 11-18): a count from 0 to 10 on the unit
@@ -104247,10 +104254,17 @@ function hqPartyDefaultJob(race) { return UNIT_CLASS; }
 /* THE DEFAULT KIT (THE JOBS REMOVAL, 2026-09-27): `lead` ids first, then the race's four curated rungs, then the rest of
    its families cheapest first — trimmed to the 7 slots / 16 SP by treeLegalSubset. The forge's DEFAULTS and THE OFFICER's
    starting kit (lead = the Adaptable row: the story rule "only learn spells of units you have unlocked" rides on it). */
+/* THE KIT EXTRAS (2026-11-24): a race's own spell past its four tree rungs that its default kit should carry anyway (the tree
+   is four rungs by schema, and the family fill sorts by tier, so a tier III extra never made it in). Point Guard: Slam Dunk
+   (mondo 11-24: "you gotta give him a slam dunk ability too"). */
+const RACE_DEFAULT_KIT_EXTRAS = {
+    'point guard': ['pgSlamDunk'],
+};
 function raceDefaultKit(race, lead, gender) {   // `gender` (2026-10-27): RACE_GENDER_SPELLS
     const rung = (typeof getRaceTreeSpells === 'function') ? (getRaceTreeSpells(race, UNIT_CLASS, gender) || []) : [];
+    const extra = RACE_DEFAULT_KIT_EXTRAS[race] || [];
     const fam = raceFamilyPoolIds(race, gender).slice().sort((a, b) => spellTierOf(a) - spellTierOf(b));
-    const wish = (lead || []).concat(rung, fam).filter(Boolean);
+    const wish = (lead || []).concat(rung, extra, fam).filter(Boolean);
     return treeLegalSubset(race, UNIT_CLASS, '', wish, gender);
 }
 function hqOfficerKit(race) { return raceDefaultKit(race || HQ_OFFICER_RULES.race, [ADAPTABLE_ROW_ID]); }
