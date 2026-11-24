@@ -174,6 +174,11 @@ chapter-by-chapter guide (https://claude.ai/artifact/ScTxXgtDrPMEyjTMnTrhPv). To
 - Chapter 1 starts as the game's ORIENTATION quest (data.js STORY_QUESTS: steps, cutscene titles, Kit as reward); nothing else is filled
   for him. Units are roster ids, places map refs ('hq', 'z:<zone>', 'd:<zone>:<district>'). **Export the plan** = JSON; nothing in the game
   reads it yet.
+- **Add from a file** (2026-11-24, mondo: "let's go ahead and add these to the story planner"): app.js `storyImport` /
+  `storyAddJSON`. A file `{ kind: 'entropy-wars-story-plan-add', chapters, clues }` in the plan's own shape is ADDED to the plan;
+  a chapter, quest or clue whose id is already there is skipped (loading twice adds nothing), nothing of his changes. Used to hand
+  him drafted chapters when the live plan is behind his password. The 11-24 file (9 chapters, 19 quests, 6 clues from the storylines
+  doc https://claude.ai/artifact/94AJKBFP4o9keE9X4Mi9aL) = `/mnt/project-files/story-planner-add/Entropy_Wars_Story_Plan_Add_2026-11-24.json`.
 
 ## The places as they stand now (2026-11-23)
 mondo: "If the game has a place but the board doesnt, that means something is wrong with the board."
