@@ -52,6 +52,7 @@ user's notes; *[Claude]* = a reading of those notes, not a decision.
    > administrative leave for ignoring orders.
 4. **What did each parent actually do the night they died, and what did
    they leave behind?**
+   > **Superseded 2026-11-24 by §7** (Locke orders the executions: the mother pushed back through the door into the collapsing reality, the father into the Void Door; Dorian stays silent; August escapes to the future Bayside Mall). The text below is history.
    > **USER:** the MOTHER (a Closer) could have escaped the house fire
    > through a door and chose to keep it closed, sacrificing herself so
    > what was on the other side could not come through. The FATHER (an
@@ -85,6 +86,7 @@ user's notes; *[Claude]* = a reading of those notes, not a decision.
    > player gets to give one, is the user's.]*
 8. **Who performed the parents' cover-up — how high does it go, and who
    still knows?**
+   > **Superseded 2026-11-24 by §7** (Locke orders the executions: the mother pushed back through the door into the collapsing reality, the father into the Void Door; Dorian stays silent; August escapes to the future Bayside Mall). The text below is history.
    > PARTLY. **USER:** Glass was in the Closer raid that killed the
    > father; Dorian witnessed "how they murdered the Player's father";
    > Locke was close with the mother and hints at knowing both parents;
@@ -468,6 +470,162 @@ NAME: line
 
 ---
 
+## 7. The parents' death + the Bayside Mall — **USER, 2026-11-24 (canon, verbatim)**
+
+mondo, 2026-11-24 (thread "Flesh out story arcs and side quests"): "The parent's death is supposed to go more like this. It would
+be a late game cutscene or mission". This REPLACES the older accounts of the parents' deaths where they differ: the house fire,
+the "home invasion", Glass shooting the father (§1 Q4 + Q8, §2 #3, #4, #7, #12) and the 11-24 morning answer "Dorian does it to
+protect his cover" (Locke gives the order; Dorian stays SILENT to keep his cover). Those older lines are kept above as history.
+Claude's notes on it (questions, suggestions for the four "Unresolved" points) live in the doc "Story arcs in detail"
+(https://claude.ai/artifact/MGAzmypWQUqxdAPhBq1btX), never here.
+
+### SEQUENCE 1 — THE PARENTS' EXECUTION (late game cutscene or mission)
+
+Characters: The player's mother, the player's father, Dorian Gates, Locke, August, Chronocult refugees, DOOR agents, Shadow Beings.
+
+Dramatic purpose: Establish DOOR's brutality, the parents' involvement in an underground rescue network, Dorian's complicity through silence, and the temporal accident that leads to the mall incident.
+
+#### Scene 1 — Escape from the dying reality
+1. A reality is collapsing. Darkness is consuming the environment. The situation is urgent and increasingly hopeless.
+2. The player's mother and father lead a group of Chronocult refugees toward safety. They are secretly participating in an interdimensional underground railroad, helping people escape realities scheduled for deletion.
+3. August is among the refugees. The group moves through a series of corridors and doorways, attempting to escape the encroaching darkness.
+4. The group passes through a doorway into another room or corridor. They believe they are escaping the doomed reality.
+
+Directorial emphasis: Establish the physical doorway they just came through. It will become the mother's execution door.
+
+#### Scene 2 — Locke's interception
+5. Locke and several DOOR agents are waiting for them. Dorian Gates is also present.
+6. The refugees realize they've been intercepted. The rescue operation has been exposed.
+7. Locke confronts the parents and identifies them as traitors to DOOR. Their attempt to save people from a reality scheduled for deletion is treated as a crime.
+8. Dorian remains silent. He has secretly been working with the parents to help refugees escape, but revealing that now would expose him.
+
+Directorial emphasis: Dorian's silence matters. His reaction should convey that he understands what's happening but chooses to preserve his cover.
+
+#### Scene 3 — The mother's execution
+9. Locke orders DOOR agents to force the mother back through the doorway the refugees just used.
+10. The agents push her through into the collapsing reality. The darkness is still consuming everything beyond the threshold.
+11. The door is shut. Her screams and frantic knocking are audible from the other side.
+12. Her screams and knocking gradually fade.
+
+Directorial emphasis: The horror is in the closed door and the sounds behind it. The audience doesn't need to see exactly what happens to her.
+
+#### Scene 4 — The father's execution
+13. The father rushes forward, trying to save his wife.
+14. DOOR agents quickly place a different, freestanding door directly in his path. This is the Void Door, not the doorway the mother was forced through.
+15. The father rushes through the Void Door.
+16. He falls into an endless black void. There is no visible floor or destination.
+17. The agents close the Void Door, trapping him inside.
+
+Directorial emphasis: Make the distinction between the two doors unmistakable. The mother is sent back into the collapsing reality. The father is sent into an apparently bottomless void.
+
+#### Scene 5 — August's desperate escape
+18. Meanwhile, August is attempting to escape the confrontation. He has jellyfish oil, a substance that allows temporal travel through doorways.
+19. August rubs jellyfish oil onto the doorknob of a physical door.
+20. He opens the door. Instead of a normal destination, it reveals a different time period.
+21. The destination is unsuitable. August shuts the door and tries again.
+22. Each time August opens and closes the door, it connects to a different era. Possible glimpses include prehistoric Earth, dinosaurs, or other periods unsuitable for escape.
+23. August becomes increasingly frantic. He cannot reliably control the destination under pressure.
+
+Directorial emphasis: Intercut August's repeated attempts with the parents' executions. These events overlap in time; August isn't waiting for the executions to finish before attempting escape.
+
+#### Scene 6 — The Shadow Beings emerge
+24. After the father is sent into the Void Door and the mother's screams subside, Shadow Beings burst into the room.
+25. The room erupts into chaos. The Shadow Beings disrupt the confrontation between DOOR and the refugees.
+
+Unresolved: The Shadow Beings emerge from either the mother's collapsing-reality doorway or the father's Void Door. Their precise origin has not yet been chosen.
+
+#### Scene 7 — The doorway to the future
+26. August opens his time-shifting door again.
+27. This time, the doorway reveals Bayside Mall, years in the future. The contrast between the deadly corridor and the ordinary shopping mall should be immediately recognizable.
+28. August and at least some Chronocult refugees escape through the doorway.
+29. The Shadow Beings also pass through into Bayside Mall.
+30. Dorian catches a glimpse of the future mall. He sees enough to recognize where and when the doorway leads.
+31. The temporal doorway closes. August, the surviving refugees, and the Shadow Beings are now in the future.
+32. Dorian remains behind with Locke and the DOOR agents. He has witnessed the parents' executions and knows that August has escaped into the future.
+
+Directorial emphasis: Dorian's glimpse is a crucial setup. He will use the information to intercept August at Bayside Mall years later.
+
+Unresolved: The exact visual clue that tells Dorian the date and location of the future mall.
+
+### SEQUENCE 2 — THE BAYSIDE MALL INCIDENT
+PRESENT — OPENING OF THE MAIN GAME
+
+Setting: DOOR headquarters, followed by Bayside Mall.
+
+Characters: The player, Locke, Dorian Gates, DOOR personnel, police, Men in Black, August, Chronocult refugees, Shadow Beings.
+
+Dramatic purpose: Introduce the player to DOOR, establish the rivalry between DOOR and the Men in Black, deliver the first major combat encounter, reveal Dorian's betrayal, introduce the Mini Black Cube, and set up the door gun.
+
+#### Scene 8 — Day One: DOOR orientation
+33. The player arrives at DOOR headquarters for orientation. The player has joined the agency as an adult, motivated by the disappearance of their parents during childhood.
+34. The player meets Locke. She is a senior DOOR official and will become the player's superior.
+35. The player meets Dorian Gates. At this point, he is still publicly a DOOR employee.
+36. The player begins learning how the agency operates. DOOR regulates crossings between realities and responds to unauthorized doorways.
+
+Dramatic irony: The player possesses a photograph of their parents wearing DOOR jackets and believes they died in the line of duty. The player doesn't know that Locke ordered their executions or that Dorian was involved in their attempted rescue.
+
+#### Scene 9 — Day Two: Unauthorized doorway detected
+37. DOOR detects an unauthorized doorway at Bayside Mall.
+38. Locke and Dorian accompany the player on their first field mission.
+39. The team travels to Bayside Mall to investigate the breach.
+
+Directorial emphasis: This is the player's first real operation, so the mission can function as an introduction to DOOR fieldwork and combat.
+
+#### Scene 10 — The mall perimeter
+40. The team arrives to find the mall surrounded by police cars and black SUVs.
+41. Police officers and Men in Black have cordoned off the area. The situation has already attracted a major response.
+42. DOOR's arrival creates a jurisdictional confrontation. The Men in Black are a separate, rival organization, and Locke particularly dislikes them.
+43. The player must fight through police and Men in Black to gain entry to the mall.
+44. Locke and Dorian may participate as party members.
+
+Directorial emphasis: Play the contrast between an apparent public emergency and the absurdity of rival secret agencies fighting over jurisdiction. The Men in Black are not part of DOOR.
+
+#### Scene 11 — Inside Bayside Mall
+45. The player enters the mall.
+46. Shadow Beings are attacking inside. These are the same creatures that passed through August's temporal doorway during the parents' execution scene years earlier.
+47. The player fights the Shadow Beings. This is a major early supernatural combat encounter.
+48. The team investigates the ongoing chaos. August and surviving Chronocult members are somewhere inside the mall.
+
+Dramatic irony: The player is fighting creatures directly connected to the event that caused their parents' disappearance, but has no idea.
+
+#### Scene 12 — The Mini Black Cube manifests
+49. The temporal breach causes severe instability in reality. Unlike an ordinary doorway between orthogonal realities, August's time travel has violated the causal structure the Saturnian Black Cube maintains.
+50. A Mini Black Cube manifests automatically at Bayside Mall. It is a response from the larger Black Cube Apparatus, attempting to stabilize the temporal inconsistency.
+51. DOOR recovers the Mini Cube during or after the incident. Its stabilizing properties will allow the agency to finish its experimental door-gun prototype.
+
+Directorial emphasis: The Cube should feel uncanny and fundamentally different from the surrounding chaos: perfectly geometric, controlled, and seemingly indifferent to the humans fighting around it.
+
+Unresolved: Its exact appearance, the moment of manifestation, and how DOOR physically secures it. This scene can be intercut with the combat or placed after Dorian's escape.
+
+#### Scene 13 — Dorian finds August
+52. Dorian spots August amid the chaos. Dorian recognizes him from the failed evacuation years earlier.
+53. Dorian takes August hostage, or appears to do so. He uses August to force his escape.
+54. Dorian points a gun at Locke. His betrayal becomes public.
+55. The confrontation reveals that Dorian is no longer acting as a loyal DOOR employee.
+
+Directorial emphasis: This should be a sharp reversal. Dorian, who accompanied the player as an ally, suddenly becomes the central threat in the room.
+
+Unresolved: How much August knows about Dorian's intentions and whether he is genuinely being held against his will or cooperating.
+
+#### Scene 14 — The closet escape
+56. Dorian takes August into a closet inside the mall.
+57. Using August's temporal abilities, they turn the closet doorway into an escape route through time.
+58. Dorian and August escape into the future.
+59. The doorway closes, leaving Locke and the player behind.
+
+Directorial emphasis: An ordinary mall closet becoming a time-travel doorway is a strong visual payoff for the game's central mechanic.
+
+#### Scene 15 — Aftermath and the door gun
+60. DOOR regains control of the immediate situation at Bayside Mall. Dorian has escaped, and the agency has recovered the Mini Black Cube.
+61. DOOR uses the Mini Cube's stabilizing properties to complete its first functional door-gun prototype. The gun was already under development; the Cube supplies the missing breakthrough.
+62. Locke gives the prototype door gun to the player. It becomes a core gameplay tool that the player will upgrade throughout the game.
+63. Dorian, meanwhile, uses August to reach a future period where the door gun has been fully developed.
+64. Dorian obtains the completed future door gun. He now possesses the technology necessary to open large numbers of doorways as part of his campaign to destabilize the Black Cube Apparatus.
+
+Directorial emphasis: The player and Dorian now possess different stages of the same technology. The player begins with a limited prototype; Dorian has its fully developed future counterpart.
+
+---
+
 ## Change log
 - rev 0 — 2026-09-04 — empty worksheet created (DOOR_MASTER A14).
 - rev 1 — 2026-09-06 — the USER wrote the cast (20 entries), Chapter 1's
@@ -476,3 +634,4 @@ NAME: line
   they answer (§1), placed the fifteen rigged models in the headquarters
   (the "in the building" column; build detail in DOOR_HQ_BUILD_PLAN §9
   and DOOR_MASTER Part D) and listed the reconciliation items (§5).
+- rev 2 — 2026-11-24 — the USER wrote the parents' execution and the Bayside Mall incident (§7, verbatim, 15 scenes); it replaces the older death accounts in §1 Q4/Q8 and §2 where they differ (marked there, nothing deleted).

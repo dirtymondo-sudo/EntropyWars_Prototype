@@ -1129,3 +1129,12 @@ mondo: a Chapter/Quest planner with the game map, made easy to fill from the cha
 page (Settings > Developer > Relationship Web > **Story planner**), one plan saved on the game server as `story/plan`. Map + chapter
 beat-chart cards + quests with pins, Beat chart (with what it notices), Spine (bands + the guide's questions). Chapter 1 = ORIENTATION
 from STORY_QUESTS. Planning only: nothing in the game reads the plan. Full notes: docs/plans/story-web/README.md "The Story planner".
+
+## THE PARENTS' EXECUTION + THE BAYSIDE MALL, CANON (2026-11-24)
+mondo wrote the parents' death (a late game cutscene or mission) and the Bayside Mall incident (the opening) as 15 scenes:
+DOOR_STORY.md §7, word for word. It replaces the older death accounts (house fire, home invasion, Glass shooting the father,
+"Dorian does it"): Locke orders the mother pushed back into a collapsing reality and the father into the Void Door, Dorian stays
+silent to keep his cover, August escapes with jellyfish oil to the future Bayside Mall and the Shadow Beings follow. At the mall
+a Mini Black Cube manifests, DOOR uses it to finish the door-gun prototype Locke hands the player; Dorian takes August out
+through a mall closet into the future and gets the finished future door gun. Claude's suggestions + open points: the doc
+"Story arcs in detail" https://claude.ai/artifact/MGAzmypWQUqxdAPhBq1btX (thread cmsg_01XWpxyTn3nnw98znVzKdFjsHE2iMd4AQqW2Vqh9Nw8cdt).
