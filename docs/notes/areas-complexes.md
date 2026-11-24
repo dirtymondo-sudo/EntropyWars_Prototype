@@ -14304,6 +14304,11 @@ Used by every road end of a terrain room that is not a footpath (the room's floo
 road band (`urban:Road*` / asphalt) of `edges.roads` and seam roads, in every zone. The strip's paint is the highway standard's set, lit like the room's marks:
 white 0.5 m inside each edge, double yellow middle, white 7-in-14 dashes between lanes. Kill switch `window.EW_OLD_ROAD_STRIP = true` (before/after).
 Footpaths (dirt) keep their own sheet and tint (round 4 of the road gates).
+ROUND 2, NO BUMP (same day, mondo: "what is up with the hitch/raised part going across ... a straight smooth road out of the city?? no bump"): measured at the
+Southside end, the road was 0 m at the line and 0.95 m 1.2 m past it (the land's first rise + a flat 0.5 m margin), then rode every roll. Now (a) a `road` way
+end's lane is graded in the edge land like an open seam's (LANES, `road: true`: the gate's floor for 10 m, then to the land's level by 70 m), and (b) the
+strip's height is one profile (`PRO` in the road builder): over the land by 5 cm at the line growing to 0.5 m at 25 m, the upper hull (no dip), corners eased
+over 9 m. Measured after: 0, 0.06, 0.13, 0.20, 0.30 ... a straight 5 % grade. `EW_OLD_ROAD_STRIP` turns both off.
 
 ### THE HIGHWAY STANDARD (2026-11-22, mondo on the finished Badlands Highway: "yep looks good ... This should be the standard for how the rest of the highways get built")
 

@@ -79728,6 +79728,22 @@ const ThreeRenderer = (function () {
             return W;
         };
         var LANES = (E.seamRoads !== false && !(typeof window !== 'undefined' && window.EW_HQ_NO_SEAM_ROADS)) ? (room.doors || []).filter(function (d) { return d && d.way === 'open' && /^[nsew]$/.test(d.wall || '') && isFinite((d.wall === 'n' || d.wall === 's') ? +d.x : +d.z); }).map(function (d) { return { side: d.wall, at: (d.wall === 'n' || d.wall === 's') ? +d.x : +d.z, hw: ((d.passage && +d.passage.w) || 6) / 2 }; }) : null;
+        /* A ROAD END'S LANE IS GRADED TOO (2026-11-24, mondo at the city's south exit: "what is up with the hitch/raised part going across ... just making a
+           straight smooth road out of the city ... no bump"): the land just past the city's line rose half a metre in its first metre, and the road out
+           (a `road` way end: the gantry, _hqWayBuilders.road) climbed it in one step. A road end's lane takes the same grading as an open seam's: the
+           gate's floor for 10 m, then down or up to the land's own level by 70 m out. A free end (the city's) counts on the side its way out crosses. */
+        if (E.seamRoads !== false && !(typeof window !== 'undefined' && window.EW_OLD_ROAD_STRIP)) {
+            (room.doors || []).forEach(function (d) {
+                if (!d || d.way !== 'road' || d.hidden) return;
+                try {
+                    var side = null, at0 = 0;
+                    if (/^[nsew]$/.test(d.wall || '')) { side = d.wall; at0 = (side === 'n' || side === 's') ? +d.x : +d.z; }
+                    else if (d.wall === 'free') { var f = _hqBoxWall(room, 'free', d); if (!f) return; var ox = -f.nx, oz = -f.nz;
+                        if (Math.abs(ox) > 0.9) { side = ox > 0 ? 'e' : 'w'; at0 = f.wz; } else if (Math.abs(oz) > 0.9) { side = oz > 0 ? 's' : 'n'; at0 = f.wx; } }
+                    if (side && isFinite(at0)) (LANES = LANES || []).push({ side: side, at: at0, hw: (+d.w || 9) / 2 + 1, road: true });
+                } catch (eRL) {}
+            });
+        }
         if (LANES && !LANES.length) LANES = null;
         var worldW = function (x, z, dist, wob) {
             var W = { mountain: 0, forest: 0, desert: 0, coast: 0, scrub: 0, mesa: 0, grass: 0, snow: 0 };
@@ -85814,9 +85830,33 @@ const ThreeRenderer = (function () {
             };
             var crestX = [-W / 2 - 2.5, -W / 2, -W / 4, 0, W / 4, W / 2, W / 2 + 2.5];
             var crest = function (d) { var m = -Infinity; for (var ci = 0; ci < crestX.length; ci++) { var v = landAt(crestX[ci], d); if (v > m) m = v; } return m + (foot ? 0.15 : 0.5); };   // (a footpath lies low on the land: no half-metre hump)
+            /* THE SMOOTH ROAD OUT (2026-11-24, mondo: "what is so hard about just making a straight smooth road out of the city?? no bump"): the road past
+               the line was the land's crest + 0.5 m from the first metre (a step of a metre across the road at the city's line, then every roll of the land).
+               Now its height is ONE PROFILE worked out once: never under the land (+ a margin that grows from 5 cm at the line to 0.5 m 25 m out), with no
+               dip in it (the upper hull: straight grades between the high points, a hollow is bridged on the bank), its corners eased over 9 m. It starts
+               at the street's own height at the line. `window.EW_OLD_ROAD_STRIP = true` = the old crest road. */
+            var PRO = null;
+            if (EF && !(typeof window !== 'undefined' && window.EW_OLD_ROAD_STRIP)) {
+                try {
+                    var pd = [], ph = [], pq = [], dMax = Math.max(4, LEN - tOut), stp = 1.5;
+                    for (var dd0 = 0; dd0 <= dMax + 0.01; dd0 += stp) pd.push(Math.min(dd0, dMax));
+                    if (pd[pd.length - 1] < dMax - 0.01) pd.push(dMax);
+                    var h0 = fieldAt(0, -tOut);
+                    pd.forEach(function (d1, i1) { var mg = foot ? 0.15 : 0.05 + 0.45 * Math.min(1, d1 / 25); var mx = -Infinity; for (var ci1 = 0; ci1 < crestX.length; ci1++) { var v1 = landAt(crestX[ci1], d1); if (v1 > mx) mx = v1; } pq.push(i1 ? mx + mg : h0); });
+                    /* the upper hull (no dip anywhere: a hollow is crossed on a straight grade) */
+                    var hull = [0];
+                    for (var hi1 = 1; hi1 < pd.length; hi1++) { while (hull.length >= 2) { var a1 = hull[hull.length - 2], b1 = hull[hull.length - 1]; if ((pq[b1] - pq[a1]) * (pd[hi1] - pd[a1]) <= (pq[hi1] - pq[a1]) * (pd[b1] - pd[a1])) hull.pop(); else break; } hull.push(hi1); }
+                    for (var hj = 0; hj + 1 < hull.length; hj++) { var ia = hull[hj], ib = hull[hj + 1]; for (var kk1 = ia; kk1 <= ib; kk1++) ph[kk1] = pq[ia] + (pq[ib] - pq[ia]) * (pd[kk1] - pd[ia]) / Math.max(1e-6, pd[ib] - pd[ia]); }
+                    /* the corners eased (a 9 m window), never under the land, the first metres held at the street */
+                    var sm9 = ph.map(function (v, k3) { if (k3 < 2) return v; var s3 = 0, n3 = 0; for (var o3 = -3; o3 <= 3; o3++) { var j3 = Math.max(0, Math.min(ph.length - 1, k3 + o3)); s3 += ph[j3]; n3++; } return s3 / n3; });
+                    PRO = { d: pd, h: sm9.map(function (v, k4) { return k4 ? Math.max(v, pq[k4] - 0.03) : h0; }) };
+                } catch (ePR) { PRO = null; }
+            }
+            var proAt = function (d) { var D = PRO.d, Hh = PRO.h, i = Math.min(D.length - 2, Math.max(0, Math.floor(d / 1.5))); while (i < D.length - 2 && D[i + 1] < d) i++; var f = (d - D[i]) / Math.max(1e-6, D[i + 1] - D[i]); f = f < 0 ? 0 : f > 1 ? 1 : f; return Hh[i] * (1 - f) + Hh[i + 1] * f; };
             var gAt = function (lx, lz) {   // the road's own surface
                 if (!EF) return fieldAt(lx, lz);
                 var d = -lz - tOut; if (d <= 0) return fieldAt(lx, lz);
+                if (PRO) return proAt(d);
                 /* A CAUSEWAY (2026-11-22): the road's cross-section is level, half a metre over the HIGHEST land under it and its shoulders (the land
                    mesh is coarse across the road: laid on the land's own height at its two edges, rolling ground came up through the asphalt) */
                 var h = crest(d); if (d >= RAMP) return h;
