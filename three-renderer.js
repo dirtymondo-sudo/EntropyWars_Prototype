@@ -74212,6 +74212,27 @@ const ThreeRenderer = (function () {
         _ewNodeTag(m, { k: 'terrain', cliff: cliffTex, path: pathTex, TM: (info._TM || 1), pal: palTex, cliffK: 1 / look.cliffZoom, tFloor: look.floor, tCliff: look.cliff, tPath: look.path, ntF: ntF, ntP: ntP, ntC: ntC, steep: steepCliff, palNt: palNt, natC: natC });   // WEBGPU W1: the same sheets for the node renderer
         return m;
     }
+    /* THE SAME ROAD (2026-11-24, mondo: "Its the same road, it should blend in seamlessly"): a material that draws `key` EXACTLY as this room's field
+       draws it (the field's own shader: the sheet read by world position at the field's sheet size, the room's floorColor, its light and lift).
+       The room's floor sheet keeps the room's floorTint (it is the field's floor); any other sheet is drawn as the field PAINTS it (no floorTint).
+       `tint` = a colour multiplied over it; `off` = drawn a hair in front (a strip laid over the ground). One per key, kept on the field's info.
+       A mesh drawn with it needs the field's attributes: _hqGroundAttrs. */
+    function _hqGroundSheetMat(info, key, tint, off) {
+        if (!info || !info._fieldS || !key || typeof _hzTex !== 'function' || !_hzTex(key)) return null;
+        var C = info._sheetMats || (info._sheetMats = {}), ck = key + '|' + (tint == null ? '' : tint) + '|' + (off ? 1 : 0);
+        if (C[ck]) return C[ck];
+        var own = (key === info.floor), rm = info.room || {}, ri = Object.assign({}, info, { floor: key, paint: null });
+        if (!own) ri.room = Object.assign({}, rm, { terrain: Object.assign({}, rm.terrain || {}, { floorTint: null }) });
+        var m = _hqTerrainMat(ri, info._fieldS);
+        if (tint != null) { var tc = new THREE.Color(tint); m.color.multiply(tc); m.emissive.multiply(tc); }
+        if (off) { m.polygonOffset = true; m.polygonOffsetFactor = -1; m.polygonOffsetUnits = -1; }
+        C[ck] = m; return m;
+    }
+    function _hqGroundAttrs(geo, n) {
+        geo.setAttribute('aBlend', new THREE.Float32BufferAttribute(new Float32Array(n * 2), 2));
+        var ao = new Float32Array(n); for (var i = 0; i < n; i++) ao[i] = 1;
+        geo.setAttribute('aAO', new THREE.Float32BufferAttribute(ao, 1));
+    }
     function _hqTerrainGround(x, z) {
         var ti = _hq && _hq.terrain; if (!ti) return null;
         if (_hq.outer && (Math.abs(x) > _hq.outer.hx || Math.abs(z) > _hq.outer.hz)) return _hq.outer.yAt(x, z);
@@ -77502,6 +77523,7 @@ const ThreeRenderer = (function () {
         if (_hqSliceDue()) yield;
         info._TM = TS;   // ONE SPRITE PER SQUARE (the sheet, not the model scale) — THE TRIPLANAR CLIFF: the sheet's tile in world units (the uv = pos / TM rule, now on every axis)
         var fieldMat = _hqTerrainMat(info, S), field = null;
+        info._fieldS = S; info._sheetMats = null;   // THE SAME ROAD: a road out drawn in the field's own material (_hqGroundSheetMat)
         /* THE TILES (OPEN_WORLD_PLAN §5.5, Phase 1): the field is cut into HQ_ENGINE_RULES.tileM squares — one mesh each, the
            same material, the normals of the WHOLE field (no seam in the light) — so the frustum drops the squares behind the
            camera: "only a chunk of the map is being rendered". A field of one tile stays one mesh. */
@@ -80133,7 +80155,7 @@ const ThreeRenderer = (function () {
                 if (!fromR) ys[0] = Math.max(ys[0], eH0);   // at the line itself: the room's own ground
                 /* a seam's road: level with the gate's floor for 9 m (the walker crosses 6 m out, _hqTickPassages), then onto the land over 26 m */
                 var yAt = function (k) { var d = dOf(k), nat = ys[k] + (q.foot ? 0.1 + Math.min(0.08, Math.max(0, d) / 100) : (q.lift != null) ? +q.lift : 0.2 + Math.min(0.5, Math.max(0, d) / 30)); if (!q.seam) return nat;   /* (a footpath lies on the land: no half-metre causeway) */ var t = (d - 9) / 26; t = t < 0 ? 0 : t > 1 ? 1 : t; t = t * t * (3 - 2 * t); return (eH0 + 0.1) * (1 - t) + nat * t; };
-                var mkR = function (P3, I3, UV3, mat) { var g3 = new THREE.BufferGeometry(); g3.setAttribute('position', new THREE.Float32BufferAttribute(P3, 3)); if (UV3) g3.setAttribute('uv', new THREE.Float32BufferAttribute(UV3, 2)); g3.setIndex(I3); g3.computeVertexNormals(); g3.computeBoundingSphere();
+                var mkR = function (P3, I3, UV3, mat) { var g3 = new THREE.BufferGeometry(); g3.setAttribute('position', new THREE.Float32BufferAttribute(P3, 3)); if (UV3) g3.setAttribute('uv', new THREE.Float32BufferAttribute(UV3, 2)); if (mat && mat._ew_triplanar) _hqGroundAttrs(g3, P3.length / 3); g3.setIndex(I3); g3.computeVertexNormals(); g3.computeBoundingSphere();
                     var m3 = new THREE.Mesh(g3, mat); m3.position.y = 0.2; m3.receiveShadow = false; m3.castShadow = false; m3.renderOrder = 1; m3._ew_hqPart = 'floor'; m3._ew_hqOuter = true; m3._ew_hqEdgeLand = 'road' + qi; return m3; };
                 var gR = new THREE.Group(); gR.name = 'hq_edge_road'; gR._ew_hqEdgeLand = 'road' + qi;
                 /* the bank under both sides */
@@ -80148,7 +80170,8 @@ const ThreeRenderer = (function () {
                     for (var ka = 0; ka <= an; ka++) { var da = ap.len * ka / an - (ka ? 0 : 0.6), ta = ka / an, a1 = ap.a + (A0 - ap.a) * ta, b1 = ap.b + (B0 - ap.b) * ta, kf0 = Math.max(0, Math.min(n - 1, Math.floor(da / len * n))), fr0 = Math.max(0, da / len * n - kf0), ya = yAt(kf0) * (1 - fr0) + yAt(kf0 + 1) * fr0 - 0.04, La2 = roadPt(q, da, a1), Ra2 = roadPt(q, da, b1);
                         pa.push(La2[0] * U, ya * U, La2[1] * U, Ra2[0] * U, ya * U, Ra2[1] * U); ua.push(a1 * U / TM, da * U / TM, b1 * U / TM, da * U / TM);
                         if (ka > 0) { var aa = (ka - 1) * 2; ix.push(aa, aa + 1, aa + 2, aa + 1, aa + 3, aa + 2); } }
-                    gR.add(mkR(pa, ix, ua, new THREE.MeshLambertMaterial({ map: _hzTex(ap.key) || null, color: (ap.tint != null) ? ap.tint : 0xffffff, side: THREE.DoubleSide }))); }
+                    var apM = (!(typeof window !== 'undefined' && window.EW_OLD_ROAD_STRIP) && /^urban:Road|asphalt/i.test(ap.key || '')) ? _hqGroundSheetMat(info, ap.key, ap.tint) : null; if (apM) apM.side = THREE.DoubleSide;   /* THE SAME ROAD */
+                    gR.add(mkR(pa, ix, ua, apM || new THREE.MeshLambertMaterial({ map: _hzTex(ap.key) || null, color: (ap.tint != null) ? ap.tint : 0xffffff, side: THREE.DoubleSide }))); }
                 /* the road: one ribbon a band, each in its own sheet (a road of one sheet is one band) */
                 bands.forEach(function (bd) {
                     var pos = [], uv = [], idx = [], idxFar = [], bw = bd.b - bd.a;
@@ -80157,7 +80180,11 @@ const ThreeRenderer = (function () {
                         pos.push(Lb[0] * U, yb2 * U, Lb[1] * U, Rb[0] * U, yb2 * U, Rb[1] * U); uv.push(bd.a * U / TM, db * U / TM, bd.b * U / TM, db * U / TM);
                         if (kb > 0) { var a3 = (kb - 1) * 2; ((q.key2 && dOf(kb - 1) >= 11) ? idxFar : idx).push(a3, a3 + 1, a3 + 2, a3 + 1, a3 + 3, a3 + 2); }
                     }
-                    if (bw > 0.01) gR.add(mkR(pos, idx, uv, new THREE.MeshLambertMaterial({ map: _hzTex(bd.key || 'urban:RoadGeneric1a') || null, color: (bd.tint != null) ? bd.tint : 0xffffff, side: THREE.DoubleSide })));
+                    /* THE SAME ROAD (2026-11-24): a road sheet past the line is drawn in the room's own ground material (_hqGroundSheetMat), as the room's
+                       own roads are; a dirt or path sheet keeps its plain sheet */
+                    var sameM = (!(typeof window !== 'undefined' && window.EW_OLD_ROAD_STRIP) && /^urban:Road|asphalt/i.test(bd.key || 'urban:RoadGeneric1a')) ? _hqGroundSheetMat(info, bd.key || 'urban:RoadGeneric1a', bd.tint) : null;
+                    if (sameM) { sameM.side = THREE.DoubleSide; }
+                    if (bw > 0.01) gR.add(mkR(pos, idx, uv, sameM || new THREE.MeshLambertMaterial({ map: _hzTex(bd.key || 'urban:RoadGeneric1a') || null, color: (bd.tint != null) ? bd.tint : 0xffffff, side: THREE.DoubleSide })));
                     if (bw > 0.01 && idxFar.length) gR.add(mkR(pos, idxFar, uv, new THREE.MeshLambertMaterial({ map: _hzTex(q.key2) || null, color: 0xffffff, side: THREE.DoubleSide })));   /* (`key2`: a trail wears the far room's sheet from 11 m out) */
                 });
                 /* the paint: a solid line runs the whole way, a dashed one in its own beat */
@@ -80667,10 +80694,19 @@ const ThreeRenderer = (function () {
             for (var k = 0; k + 1 < n; k++) {
                 var d = dir(pts[k], pts[k + 1]), L = d.L, t0 = corner[k] || 0, t1 = L - (corner[k + 1] || 0);
                 var edgeOff = w / 2 - R.edgeIn;
-                /* THE CENTRE DASHES */
+                /* THE CENTRE DASHES. THE SPLIT ROAD (2026-11-24, mondo: "the white dashed road lines are on the median now ... put the dashed white lines in
+                   the middle of each side"): where a raised median (an arch row with `median: [x0, z0, x1, z1]` off its origin, unturned, Bayside's coast road) runs down this
+                   street's middle line, the street has two carriageways of two squares: no centre dashes there (the median is the middle), and a dashed lane
+                   line down the middle of each side, w/4 off the middle = on the square line between its two lane squares (the battle grid). The span runs
+                   from the median's first end to its last, crossings included. */
+                var medA = Infinity, medB = -Infinity;
+                (info.arch || []).forEach(function (r) { var m = r.median; if (!m || m.length < 4) return;
+                    [[(+r.x || 0) + m[0], (+r.z || 0) + m[1]], [(+r.x || 0) + m[2], (+r.z || 0) + m[3]]].forEach(function (q) { var rx = q[0] - pts[k][0], rz = q[1] - pts[k][1], along = rx * d.x + rz * d.z, off = Math.abs(rx * -d.z + rz * d.x);
+                        if (off < 0.5 && along > -1 && along < L + 1) { medA = Math.min(medA, along); medB = Math.max(medB, along); } }); });
                 for (var s = t0 + 0.4; s + R.dashLen <= t1; s += R.dashLen + R.dashGap) {
-                    var cx = pts[k][0] + d.x * (s + R.dashLen / 2), cz = pts[k][1] + d.z * (s + R.dashLen / 2);
+                    var sm = s + R.dashLen / 2, cx = pts[k][0] + d.x * sm, cz = pts[k][1] + d.z * sm;
                     if (inOther(cx, cz, si, 0.6) || inPad(cx, cz, 2.2)) continue;
+                    if (sm >= medA - 1.5 && sm <= medB + 1.5) { [-1, 1].forEach(function (sd) { var lo = w / 4, lx = cx + (-d.z) * sd * lo, lz = cz + d.x * sd * lo; if (!inOther(lx, lz, si, 0.6)) flat(Bw, cx, cz, d.x, d.z, R.dashLen, R.dashW, sd * lo); }); continue; }
                     flat(Bw, cx, cz, d.x, d.z, R.dashLen, R.dashW, 0);
                 }
                 /* THE EDGE LINES: runs of 0.5 m, broken where another street opens (a side street's mouth) */
@@ -85794,6 +85830,16 @@ const ThreeRenderer = (function () {
             var footKey = foot && (door.sheet || (ctx.room && ctx.room.terrain && ctx.room.terrain.path));   // the end's own `sheet` (data.js link end), else this room's path sheet
             if (footKey) { asphalt.color.setHex(door.tint != null ? door.tint : 0xffffff); asphalt.shininess = 0; asphalt.specular.setHex(0x000000); asphalt.emissive.setHex(0x060606); }   /* (dirt does not shine: mondo 2026-11-22, "why is the dirt shiny??") */
             var asT = (footKey && texOf(footKey)) || (EF && texOf('urban:RoadGeneric1a')) || texOf('urban:PlasterWallPainted1b'); if (asT) { asphalt.map = asT; asphalt.needsUpdate = true; }   // the pack's asphalt, the city streets' own sheet and tint
+            /* THE SAME ROAD (2026-11-24, mondo at Disaster City's south exit: "Why is it a totally different color??? ... Its the same road, it should blend in
+               seamlessly"): the strip wore its own grey (0xb4b4b8, a sheet every 1.75 m, its own shine) beside the city's street (the field's sheet every 3.5 m,
+               the room's floorColor and floorTint, the field's light). A road out of a terrain room is now drawn IN THE ROOM'S OWN GROUND MATERIAL
+               (_hqGroundSheetMat: the field's shader, read by world position), so the street and the road out are one surface with no seam: the room's floor
+               sheet when it is a road (the city), else the asphalt the room paints its roads in (a route room). `window.EW_OLD_ROAD_STRIP = true` = as before. */
+            var sameRoad = null;
+            if (!foot && !neon && _hq && _hq.terrain && !(typeof window !== 'undefined' && window.EW_OLD_ROAD_STRIP)) {
+                try { var TI = _hq.terrain, rk = /Road|asphalt/i.test(TI.floor || '') ? TI.floor : 'urban:RoadGeneric1a'; sameRoad = _hqGroundSheetMat(TI, rk, null, true); } catch (eSR) { sameRoad = null; }
+                if (sameRoad) asphalt = sameRoad;
+            }
             if (EF) { asphalt.polygonOffset = true; asphalt.polygonOffsetFactor = -1; asphalt.polygonOffsetUnits = -1; }
             var paint = _hqBasic(0xe8e6da, { transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide }); paint.polygonOffset = true;   /* (both sides: the paint quads wind face down, so the lane lines never drew, 2026-11-22) */ paint.polygonOffsetFactor = -2; paint.polygonOffsetUnits = -2;
             /* the strip: rows from the wall outward (−Z), each vertex on the ground + 3 cm (every 2 m; past the line: the land's rows, never over 4 m apart) */
@@ -85817,7 +85863,7 @@ const ThreeRenderer = (function () {
             }
             var hasBuf = !!(THREE.BufferGeometry && THREE.Float32BufferAttribute);
             var strip;
-            if (hasBuf) { var sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); sg.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); sg.setIndex(idx); sg.computeVertexNormals(); strip = new THREE.Mesh(sg, asphalt); }
+            if (hasBuf) { var sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); sg.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); if (sameRoad) _hqGroundAttrs(sg, pos.length / 3); sg.setIndex(idx); sg.computeVertexNormals(); strip = new THREE.Mesh(sg, asphalt); }
             else { strip = new THREE.Mesh(new THREE.PlaneGeometry(W * U, LEN * U), asphalt); strip.rotation.x = -Math.PI / 2; strip.position.set(0, 0.03 * U, -LEN / 2 * U); }
             strip.renderOrder = 1; strip.receiveShadow = true; g.add(strip);
             if (hasBuf && bidx.length) { var bg = new THREE.BufferGeometry(); bg.setAttribute('position', new THREE.Float32BufferAttribute(bpos, 3)); bg.setIndex(bidx); bg.computeVertexNormals(); var bankM = _hqMat(null, 1, 1, { color: 0x4a443c, shininess: 2 }); bankM.side = THREE.DoubleSide; var bank = new THREE.Mesh(bg, bankM); bank.receiveShadow = true; g.add(bank); }
@@ -85828,9 +85874,29 @@ const ThreeRenderer = (function () {
                 pts.forEach(function (p) { dpos.push(p[0] * U, (gAt(p[0], p[1]) + 0.05) * U, p[1] * U); duv.push(0, 0); });
                 didx.push(dn, dn + 2, dn + 1, dn, dn + 3, dn + 2); dn += 4;
             };
-            if (!foot) for (var z = -1.2; z > -LEN + 1; z -= 3.2) flat(W >= 10 ? -0.11 : -0.07, W >= 10 ? 0.11 : 0.07, z, z - 1.6);
-            if (!foot) for (var z2 = -0.4; z2 > -LEN + 1; z2 -= 2) { flat(W / 2 - 0.41, W / 2 - 0.29, z2, z2 - 2); flat(-W / 2 + 0.29, -W / 2 + 0.41, z2, z2 - 2); }
+            if (!foot && !sameRoad) for (var z = -1.2; z > -LEN + 1; z -= 3.2) flat(W >= 10 ? -0.11 : -0.07, W >= 10 ? 0.11 : 0.07, z, z - 1.6);
+            if (!foot && !sameRoad) for (var z2 = -0.4; z2 > -LEN + 1; z2 -= 2) { flat(W / 2 - 0.41, W / 2 - 0.29, z2, z2 - 2); flat(-W / 2 + 0.29, -W / 2 + 0.41, z2, z2 - 2); }
             if (hasBuf && dn) { var dg = new THREE.BufferGeometry(); dg.setAttribute('position', new THREE.Float32BufferAttribute(dpos, 3)); dg.setAttribute('uv', new THREE.Float32BufferAttribute(duv, 2)); dg.setIndex(didx); dg.computeVertexNormals(); var dashes = new THREE.Mesh(dg, paint); dashes.renderOrder = 3; g.add(dashes); }
+            /* THE SAME LINES (2026-11-24): with THE SAME ROAD the paint is the highway's own (the room marks' lit paint, never a self-lit white that glows at
+               dusk): the highway standard's set (data.js routes, _hqSeamSection's plain set), a white line 0.5 m inside each edge, a double yellow line down
+               the middle, a white line dashed 7 m in 14 between the lanes; the paint starts 1 m out from the gantry, where the room's own street ends */
+            if (!foot && sameRoad && hasBuf) {
+                var setL = [], mid0 = 0;
+                setL.push({ off: mid0 - 0.16, color: 0xe8b830, w: 0.14 }, { off: mid0 + 0.16, color: 0xe8b830, w: 0.14 });
+                if (W >= 10) { setL.push({ off: -W / 2 + 0.5, color: 0xf0f0f0, w: 0.14 }, { off: W / 2 - 0.5, color: 0xf0f0f0, w: 0.14 }); for (var lo3 = 3.5; lo3 < W / 2 - 2; lo3 += 3.5) setL.push({ off: mid0 - lo3, color: 0xf0f0f0, w: 0.14, on: 7, period: 14 }, { off: mid0 + lo3, color: 0xf0f0f0, w: 0.14, on: 7, period: 14 }); }
+                var byC = {};
+                setL.forEach(function (ln) {
+                    dpos = []; duv = []; didx = []; dn = 0; var hw2 = ln.w / 2;
+                    if (ln.on > 0) { for (var zd = -1 - 3.5; zd > -LEN + 1; zd -= ln.period) flat(ln.off - hw2, ln.off + hw2, zd, Math.max(-LEN + 0.5, zd - ln.on)); }
+                    else for (var zs = -1; zs > -LEN + 1; zs -= 2) flat(ln.off - hw2, ln.off + hw2, zs, Math.max(-LEN + 0.5, zs - 2));
+                    var o = byC[ln.color] || (byC[ln.color] = { P: [], I: [] }), b0 = o.P.length / 3;
+                    Array.prototype.push.apply(o.P, dpos); didx.forEach(function (ii) { o.I.push(ii + b0); });
+                });
+                Object.keys(byC).forEach(function (ck) { var o = byC[ck]; if (!o.I.length) return;
+                    var lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(o.P, 3)); lg.setIndex(o.I); lg.computeVertexNormals();
+                    var lm = new THREE.MeshLambertMaterial({ color: +ck, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+                    var lmesh = new THREE.Mesh(lg, lm); lmesh.renderOrder = 3; lmesh.receiveShadow = true; g.add(lmesh); });
+            }
             /* a shoulder post stands on the land beside the road, not on the door's floor in the air */
             var sideY = function (lx, lz) { if (!EF) return 0; var d = -lz - tOut; return (d <= 0) ? fieldAt(lx, lz) : landAt(lx, d); };
             /* THE GANTRY over the mouth: two posts on the shoulders, the beam, the green plate */

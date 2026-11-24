@@ -1555,10 +1555,13 @@ function last(ctx) {
       const runs = []; let a0 = -1; for (let cy = 8 * N; cy <= 12 * N; cy++) { const ok = cy < 12 * N && road(cy) && GAPS.indexOf(cy) < 0; if (ok && a0 < 0) a0 = cy; else if (!ok && a0 >= 0) { if (cy - a0 >= 2) runs.push([a0, cy]); a0 = -1; } }
       let n = 0, pieces = 0;
       runs.forEach((rn, ri) => { const z0 = gx(rn[0]) + 1.2, z1 = gx(rn[1]) - 1.2, L = z1 - z0, k = Math.max(1, Math.round(L / 0.875)), st = L / k, y0 = at(z0), parts = [];
-          for (let i = 0; i < k; i++) { const zc = z0 + (i + 0.5) * st, y = r3(at(zc) - y0), dz = r3(zc - z0);
-              parts.push({ s: 'box', p: [0, y - 0.3, dz], size: [1.5, 0.5, r3(st + 0.02)], key: CON, tint: 0xd8d4c8 }, { s: 'box', p: [0, r3(y + 0.2), dz], size: [1.14, 0.03, r3(st + 0.02)], key: 'desert', top: true }); pieces++; }
+          /* THE SLANTED MEDIAN (2026-11-24, mondo: "the medians with the palm trees ... SHOULD be slanted but they step up"): each piece is SHEARED from the
+             ground at its north end to the ground at its south end (`shear: [rise, length]`, three-renderer.js _hqArchGeometry), so the strip runs down the
+             hill as one smooth slope. Was: each piece a level box at the height under its middle, a 6 to 12 cm step at every joint. */
+          for (let i = 0; i < k; i++) { const za = z0 + i * st, zb = za + st, ya = at(za) - y0, rise = r3(at(zb) - at(za)), dz = r3(za + st / 2 - z0), sh = Math.abs(rise) > 0.001 ? { shear: [rise, r3(st + 0.02)] } : null;
+              parts.push(Object.assign({ s: 'box', p: [0, r3(ya - 0.3 - rise * 0.01 / (st + 0.02)), dz], size: [1.5, 0.5, r3(st + 0.02)], key: CON, tint: 0xd8d4c8 }, sh), Object.assign({ s: 'box', p: [0, r3(ya + 0.2 - rise * 0.01 / (st + 0.02)), dz], size: [1.14, 0.03, r3(st + 0.02)], key: 'desert', top: true }, sh)); pieces++; }
           [[0, 0], [L, at(z1) - y0]].forEach(e => parts.push({ s: 'cyl', p: [0, r3(e[1] - 0.3), r3(e[0])], r: 0.75, h: 0.5, key: CON, tint: 0xd8d4c8, seg: 12 }, { s: 'cyl', p: [0, r3(e[1] + 0.2), r3(e[0])], r: 0.57, h: 0.03, key: 'desert', seg: 12 }));
-          const row = { k: 'arch', id: 'dc:bay-median' + ri + ':arch', x: X, z: r3(z0), rot: 0, parts }; if (Math.abs(y0) > 0.001) row.y = r3(y0); features.push(row);
+          const row = { k: 'arch', id: 'dc:bay-median' + ri + ':arch', x: X, z: r3(z0), rot: 0, parts, median: [0, 0, 0, r3(z1 - z0)] };   /* `median`: [x0, z0, x1, z1] off the row's origin (a district move shifts the origin only); the road marks draw a lane line down each side in place of the centre dashes (three-renderer.js THE SPLIT ROAD) */ if (Math.abs(y0) > 0.001) row.y = r3(y0); features.push(row);
           /* IT IS REAL GROUND (mondo 11-20: "if you know how to do something right then do it the first time, otherwise ill be here in 3 months ... telling you to
              fix the collisions"): under the drawn kerb the field itself is raised, a `ramp` row a square long each (a ramp is a straight slope between two
              heights, so it follows the road down the hill exactly), so the walker steps up onto the median and down off it; nothing is only drawn. */

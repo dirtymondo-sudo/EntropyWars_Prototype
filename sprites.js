@@ -2597,9 +2597,13 @@ const RACE_MODELS_3D = {
   // Jellyfish (Black Mage, caster) — the Bermuda Triangle's drifting king. A biped rig under a bell: it WALKS
   // on the library's ordinary loops (the user's rule, 2026-09-21: "a walking animation, not swimming" — the
   // swim pair was tried and retired), flies (map.js SKY_RACES), and stings with a typed orb.
+  /* THE JELLYFISH REMAKE (2026-11-24, mondo: "a new normal jellyfish model too, with separate tentacles the same way as the jellyfish
+     UFO", no "weird t bars at the end of his hands"): a new Meshy body (bell head + crown, real fingers) rigged by Meshy, so every
+     library clip plays as before; 12 tentacles hang from the waist, each on its own chain of THE SWAY's spring bones, so they swing
+     behind every walk, cast and hit (bake-tentacles.py; sources project files jellyfish-remake/). The old rig stays on R2. */
   'jellyfish': {
     male: _mkUAL('jellyfish', 'a_jellyfish_king', {
-      model: `${_S}/Races/jellyfish/Meshy_AI_a_jellyfish_king_Running.glb`,
+      model: 'https://cdn.entropywars.net/Assets/characters/races/jellyfish/male/Meshy_AI_jellyfish_v2_Running.glb',
       heightRatio: 0.92, basicAttackKind: 'magic',
     }),
   },
@@ -2772,7 +2776,7 @@ const RACE_MODELS_3D = {
     }),
   },
   'jellyfish ufo': {
-    male: { model: `${_S}/Races/jellyfish_ufo/male/jellyfish_ufo.glb`, clips: { idle: `${_S}/Races/jellyfish_ufo/male/jellyfish_ufo.glb`, walk: `${_S}/Races/jellyfish_ufo/male/jellyfish_ufo.glb` },
+    male: { model: `${_S}/Races/jellyfish_ufo/male/jellyfish_ufo_v2.glb`, clips: { idle: `${_S}/Races/jellyfish_ufo/male/jellyfish_ufo_v2.glb`, walk: `${_S}/Races/jellyfish_ufo/male/jellyfish_ufo_v2.glb` },   // v2 (2026-11-24): the 12 tentacle sockets under the bell's rim cut out (the tentacles hang from the waist)
       heightRatio: 1.1, yawOffset: 0, basicAttackKind: 'physical' },
   },
   /* THE COMING RACES 2 (2026-11-23, mondo's picks in thread "Make concept art for new characters"): models only, no kits: they are in
