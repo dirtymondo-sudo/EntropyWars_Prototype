@@ -154,6 +154,7 @@ const EW_ASSET_MOVES = [
   ['Assets/Sprites/Races/monarch/', 'Assets/characters/races/monarch/'],   // 2026-11-23 THE COMING RACES 2
   ['Assets/Sprites/Races/butterfly_girl/', 'Assets/characters/races/butterfly_girl/'],   // 2026-11-23 THE COMING RACES 2
   ['Assets/Sprites/Races/plastic_surgeon/', 'Assets/characters/races/plastic_surgeon/'],   // 2026-11-23 THE COMING RACES 2
+  ['Assets/Sprites/Races/weatherman/', 'Assets/characters/races/weatherman/'],   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR
   ['Assets/Sprites/Races/librarian/', 'Assets/characters/races/librarian/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/televangelist/', 'Assets/characters/races/televangelist/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/influencer/', 'Assets/characters/races/influencer/'],   // 2026-11-17 THE NEW RACES 2
@@ -487,7 +488,7 @@ const RACE_SPRITE_GENDERS = {
   'door agent': 'both',
   'police officer': 'male',   // 2026-09-21 — the regular cops are male rigs; the female is the CYBERPUNK skin (RACE_MODEL_SKINS), Cyberpunk City only
   'time cop': 'male',   // 2026-10-24 — the sheriff and the cop are male rigs only
-  'jellyfish': 'male',        // 2026-09-21 — the jellyfish king
+  'jellyfish': 'both',        // 2026-09-21 — the jellyfish king; 2026-11-24 + the jellyfish queen (her own model + sprite)
   'cult leader': 'male',      // 2026-09-21
   'popstar': 'female',        // 2026-09-22 — the headliner
   'starfish': 'male',   // 2026-09-30
@@ -608,6 +609,7 @@ const RACE_SPRITE_GENDERS = {
   'hollow': 'male',   // 2026-11-23 THE HOLLOW (one body; the model def sits under male)
   'abomination': 'male',   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name) (one body; the model def sits under male)
   'streamer': 'both',   // 2026-11-18 THE STREAMER + E-GIRL (one race: the Streamer is the male, the E-Girl the female)
+  'weatherman': 'both',   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR (one race: the Weatherman is the male, the News Anchor the female)
   'vtuber': 'female',   // 2026-11-18 THE V-TUBER (female only for now, mondo 11-18)
   'lifeguard': 'both',   // 2026-11-16; the man 2026-11-17
   'atlantean': 'both',
@@ -787,6 +789,7 @@ const _CHARACTER_SPRITES = {
   'rat': `${_S}/Races/rat/male/rat_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'monarch': `${_S}/Races/monarch/female/monarch_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'butterfly girl': `${_S}/Races/butterfly_girl/female/butterfly_girl_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'weatherman': `${_S}/Races/weatherman/male/weatherman_px.png`,   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR — 128x128 pixel sprite (Sprite AI restyle of his Meshy concept)
   'plastic surgeon': `${_S}/Races/plastic_surgeon/male/plastic_surgeon_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'librarian': `${_S}/Races/librarian/female/librarian_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'televangelist': `${_S}/Races/televangelist/male/televangelist_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
@@ -903,6 +906,7 @@ const FOOTBALL_SPRITE = `${_S}/football.png`;
 // 2026-11-17 (mondo: female nordic + siren): their own 128x128 sprites, Sprite AI restyles of each new Meshy model's front render.
 // The mermaid woman keeps her blue sprite: her new model was made to match it.
 const _NEW_FEMALE_SPRITES = {
+  'jellyfish': 'https://cdn.entropywars.net/Assets/characters/races/jellyfish/female/jellyfish_f_px.png',   // 2026-11-24 THE JELLYFISH, MALE + FEMALE (Sprite AI restyle of her model's front render)
   'gladiator': `${_S}/Races/gladiator/female/gladiator_f_px.png`,   // 2026-11-19 THE COMING RACES — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'nordic': 'https://cdn.entropywars.net/Assets/characters/races/nordic/female/nordic_f_v2_px.png',   // 2026-11-24 her new model (Sprite AI restyle of its front render)
   'siren': `${_S}/Races/siren/female/siren_f_px2.png`,
@@ -913,11 +917,13 @@ const _NEW_FEMALE_SPRITES = {
   'mech': `${_S}/Races/mech/female/mech_f2_px2.png`,   // straight-on: Sprite AI restyle of her model's front render (the concept was turned)
   'bear': `${_S}/Races/bear/polar/bear_polar_px.png`,   // 2026-11-23 THE BEAR'S COATS — the polar bear (the race's female side)
   'streamer': `${_S}/Races/streamer/female/egirl_f_px.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of the E-Girl's 3D model's front render)
+  'weatherman': `${_S}/Races/weatherman/female/news_anchor_px.png`,   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR — the News Anchor (Sprite AI restyle of her Meshy concept)
   'vtuber': `${_S}/Races/vtuber/female/vtuber_f_px.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of her full Meshy 3D model's front render)
 };
 const _NEW_MALE_SPRITES = {
   'nordic': 'https://cdn.entropywars.net/Assets/characters/races/nordic/male/nordic_m_v2_px.png',   // 2026-11-24 his new model (Sprite AI restyle of its front render)
   'skinwalker': 'https://cdn.entropywars.net/Assets/characters/races/skinwalker/male/skinwalker_px.png',   // 2026-11-24 its new model, not a werewolf
+  'weatherman': `${_S}/Races/weatherman/male/weatherman_px.png`,   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR
   'streamer': `${_S}/Races/streamer/male/streamer_m_px.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of his 3D model's front render)
   'skater': `${_S}/Races/skater/male/skater_m_px.png`,   // 2026-11-17 — the male skater (Meshy model + Sprite AI restyle of its front render)
   'lifeguard': `${_S}/Races/lifeguard/male/lifeguard_m_px.png`,   // 2026-11-17 — the male lifeguard (same way)
@@ -2598,7 +2604,15 @@ const RACE_MODELS_3D = {
      behind every walk, cast and hit (bake-tentacles.py; sources project files jellyfish-remake/). The old rig stays on R2. */
   'jellyfish': {
     male: _mkUAL('jellyfish', 'a_jellyfish_king', {
-      model: 'https://cdn.entropywars.net/Assets/characters/races/jellyfish/male/Meshy_AI_jellyfish_v2_Running.glb',
+      model: 'https://cdn.entropywars.net/Assets/characters/races/jellyfish/male/Meshy_AI_jellyfish_m_v4_Running.glb',   // v4 (mondo 11-24): no hanging tentacles under the bell
+      heightRatio: 0.92, basicAttackKind: 'magic',
+    }),
+    /* THE JELLYFISH, MALE + FEMALE (2026-11-24, mondo on the v2: "looks more like a female ... it needs boobs"; the old one's look is
+       "basically how i want it to look like ... make one like that as the male version and another one for a female version"): v3 male =
+       the old bell + tentacle arms and legs, remade (no T-bars) (v4: the 10 hanging tentacles taken off, mondo: "they don't look attached correctly"); the female = the v2 idea with a
+       figure, 12 tentacles at the hips. Both on THE SWAY chains (bake-tentacles.py). One race, the same spells for both. */
+    female: _mkUAL('jellyfish/female', 'jellyfish_f', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/jellyfish/female/Meshy_AI_jellyfish_f_Running.glb',
       heightRatio: 0.92, basicAttackKind: 'magic',
     }),
   },
@@ -2810,6 +2824,20 @@ const RACE_MODELS_3D = {
     }),
   },
 
+  'weatherman': {   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: Meshy image-to-3d + rigging from mondo's picks (Weatherman B, the strand fixed; News Anchor 3b);
+                    // sources: project files unit-concepts-20261124/models/. THE UNIT GEAR holds mondo's umbrella (closed; it opens in the
+                    // spells, Assets/fx/spell_props/umbrella_open.glb) and the Popstar's microphone.
+    male: _mkUAL('weatherman/male', 'weatherman', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/weatherman/male/Meshy_AI_weatherman_Running.glb',
+      heightRatio: 1.0, basicAttackKind: 'physical',
+      procRig: 'unitGear', gear: { held: { url: 'https://cdn.entropywars.net/Assets/characters/gear/held/umbrella_closed.glb', len: 0.5, grip: 0.06, rot: [3.1416, 0, 0] } },
+    }),
+    female: _mkUAL('weatherman/female', 'news_anchor_f', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/weatherman/female/Meshy_AI_news_anchor_f_Running.glb',
+      heightRatio: 0.95, basicAttackKind: 'magic',
+      procRig: 'unitGear', gear: { held: { url: 'https://cdn.entropywars.net/Assets/world/props/meshy/Meshy_AI_microphone_1027232053_texture.glb', len: 0.14, grip: 0.3 } },
+    }),
+  },
   'plastic surgeon': {
     male: _mkUAL('plastic_surgeon', 'plastic_surgeon', {
       model: 'https://cdn.entropywars.net/Assets/characters/races/plastic_surgeon/male/Meshy_AI_plastic_surgeon_Running.glb',
@@ -5709,9 +5737,31 @@ const EW_APPEARANCE_LIMITS = {
   chest: [-1, 1, 0], waist: [-1, 1, 0], hips: [-1, 1, 0], bust: [-1, 1, 0],   // bust: 2026-11-01 (mondo)
   head: [-1, 1, 0], jaw: [-1, 1, 0], nose: [-1, 1, 0], cheeks: [-1, 1, 0],
   eyeSize: [-1, 1, 0], brows: [0, 1, 0.5],
-  jiggleChest: [0, 1, 0.5], jiggleButt: [0, 1, 0.5],   // THE JIGGLE (2026-11-02, mondo): the MPFB bodies' chest + glute spring strength (three-renderer.js jigTick; 0 = still)
+  jiggleChest: [0, 1, 0], jiggleButt: [0, 1, 0],   // THE JIGGLE (2026-11-02, mondo): the MPFB bodies' chest + glute spring strength (three-renderer.js jigTick; 0 = still)
   beltHeight: [-1, 1, 0]   // THE BELT HEIGHT (2026-11-02, mondo): a worn Blender belt raised / lowered to sit on any trousers' waistband (three-renderer.js wearBeltLift, ±8 cm)
 };
+/* THE JIGGLE DEFAULT (2026-11-24, mondo: "for all mpfb bodies can we make the default jiggle for males 0 and 10 for females, i think
+   rn the default is 50 and thats way too much"): a look that never set its jiggle takes its BODY's default, 0 on a male body and
+   0.10 on a female one (EW_MPFB_BODIES gender). The old default was 0.5 and every look the creator normalized wrote it out, so a
+   look without the `jiggleV: 2` mark that still holds exactly 0.5 is read as "never set" too; normalizeCharacterAppearance writes
+   the mark on every look it returns, so a 0.5 picked by hand from now on stays. three-renderer.js jigTick reads the same rule. */
+const EW_JIGGLE_DEFAULT = { male: 0, female: 0.1 };
+function mpfbJiggleDefault(body) {
+  const row = EW_MPFB_BODIES.find(b => b.id === body) || (typeof body === 'string' && /female/.test(body) ? { gender: 'female' } : null);
+  return EW_JIGGLE_DEFAULT[row && row.gender === 'female' ? 'female' : 'male'];
+}
+function mpfbJiggleOf(a, key, body) {
+  const v = a && a[key];
+  if (typeof v !== 'number' || !Number.isFinite(v) || (!(a && a.jiggleV >= 2) && Math.abs(v - 0.5) < 1e-6)) return mpfbJiggleDefault(body != null ? body : a && a.body);
+  return Math.max(0, Math.min(1, v));
+}
+/* a look moving onto another body: a jiggle still at its old body's default takes the new body's default (a hand-set one stays) */
+function mpfbJigglePatch(a, body) {
+  const o = {}, was = mpfbJiggleDefault(a && a.body), now = mpfbJiggleDefault(body);
+  for (const k of ['jiggleChest', 'jiggleButt']) { const v = mpfbJiggleOf(a, k); if (Math.abs(v - was) < 1e-6 && v !== now) o[k] = now; }
+  if (Object.keys(o).length) o.jiggleV = 2;
+  return o;
+}
 /* THE FACE SLIDERS (2026-11-02, mondo: "a standard AAA video game character creator where you can control the size of the
    eyes and the lips and everything"): an MPFB body (and an MPFB classic body's MPFB head) takes MakeHuman's OWN face
    modifiers, baked by bake-mpfb.py --shapes into mpfb/mpfb_shapes.glb and added by three-renderer.js shapeBody like the body
@@ -6086,6 +6136,7 @@ function normalizeCharacterAppearance(value) {
     const n = value[key];
     out[key] = typeof n === 'number' && Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : def;
   }
+  out.jiggleChest = mpfbJiggleOf(value, 'jiggleChest'); out.jiggleButt = mpfbJiggleOf(value, 'jiggleButt'); out.jiggleV = 2;   // THE JIGGLE DEFAULT
   for (const key of Object.keys(EW_APPEARANCE_COLORS)) {
     out[key] = typeof value[key] === 'string' && /^#[0-9a-f]{6}$/i.test(value[key]) ? value[key].toLowerCase() : EW_APPEARANCE_COLORS[key];
   }
@@ -6260,6 +6311,7 @@ function randomCharacterAppearance(rng) {
   for (const key of EW_SHAPE_PICK_KEYS) out[key] = 0;   // (no random wolf head / cat ears: those are OUTFIT picks)
   for (const row of EW_MPFB_BODY_SLIDERS) out[row[0]] = Math.round((r() * 2 - 1) * 30) / 100;   // THE BODY DETAILS
   out.beltHeight = 0;   // THE BELT HEIGHT: a random look keeps the belt where it was baked
+  delete out.jiggleChest; delete out.jiggleButt;   // THE JIGGLE DEFAULT: a random look keeps the jiggle it had (a new one takes its body's default)
   out.skin = pick(skinTones); out.hairColor = pick(hairTones); out.eyeColor = pick(eyeTones);
   out.lipColor = hex(350 + r() * 20, 0.25 + r() * 0.3, 0.32 + r() * 0.2);
   out.topColor = hex(r() * 360, 0.15 + r() * 0.5, 0.35 + r() * 0.35);
@@ -6903,7 +6955,7 @@ if (typeof window !== 'undefined') {
   window.creatorNamesList = creatorNamesList; window.creatorNamesReset = creatorNamesReset; window.creatorPickLabel = creatorPickLabel;
   window.EW_APPEARANCE_LIMITS = EW_APPEARANCE_LIMITS;
   window.ewPickSwitchedOff = ewPickSwitchedOff; window.EW_MPFB_FACE_SLIDERS = EW_MPFB_FACE_SLIDERS; window.EW_SHAPE_HEADS = EW_SHAPE_HEADS; window.EW_SHAPE_EARS = EW_SHAPE_EARS; window.EW_FACE_RESET_KEYS = EW_FACE_RESET_KEYS; window.EW_MPFB_BODY_SLIDERS = EW_MPFB_BODY_SLIDERS; window.EW_MPFB_FACE_KEYS = EW_MPFB_FACE_KEYS;   // THE FACE SLIDERS
-  window.EW_MPFB_DEFAULT_FACES = EW_MPFB_DEFAULT_FACES; window.mpfbFacePatch = mpfbFacePatch;   // THE DEFAULT FACES
+  window.EW_MPFB_DEFAULT_FACES = EW_MPFB_DEFAULT_FACES; window.mpfbFacePatch = mpfbFacePatch; window.mpfbJiggleOf = mpfbJiggleOf; window.mpfbJigglePatch = mpfbJigglePatch; window.mpfbJiggleDefault = mpfbJiggleDefault;   // THE JIGGLE DEFAULT   // THE DEFAULT FACES
   window.EW_MPFB_FACE_PRESETS = EW_MPFB_FACE_PRESETS;   // THE FACE PRESETS (bake-faces.js)
   window.EW_APPEARANCE_ENUMS = EW_APPEARANCE_ENUMS;
   window.EW_IDLE_POSES = EW_IDLE_POSES;   // THE IDLE POSE
@@ -7580,6 +7632,7 @@ const RACE_SPRITES = {
   'rat': `${_S}/Races/rat/male/rat_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'monarch': `${_S}/Races/monarch/female/monarch_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'butterfly girl': `${_S}/Races/butterfly_girl/female/butterfly_girl_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'weatherman': `${_S}/Races/weatherman/male/weatherman_px.png`,   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR — 128x128 pixel sprite (Sprite AI restyle of his Meshy concept)
   'plastic surgeon': `${_S}/Races/plastic_surgeon/male/plastic_surgeon_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'librarian': `${_S}/Races/librarian/female/librarian_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'televangelist': `${_S}/Races/televangelist/male/televangelist_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)

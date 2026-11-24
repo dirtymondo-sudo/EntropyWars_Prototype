@@ -3250,6 +3250,26 @@
         });
         return Math.max(0, vNew + relief);
     }
+    /* ☂ STORM TRACKER (the Weatherman, 2026-11-24): the square in reach with the most enemies on and next to it (none up = no cast) */
+    function _wnSteerValue(g, unit, target, v) {
+        const n = (g.state.activeWeather || []).filter(Boolean).length;
+        if (!n || !target) return 0;
+        const near = (list) => list.filter(e => e && !e.dead && Math.max(Math.abs(e.x - target.x), Math.abs(e.y - target.y)) <= 1).length;
+        const foes = near(v.visibleEnemies || []), mine = near([unit, ...(v.allies || [])]);
+        if (!foes) return 0;
+        return Math.max(0, n * (45 * foes - 60 * mine) + 10 * n);
+    }
+    function _wnSteerTile(g, unit, spell, v) {
+        if (!(g.state.activeWeather || []).some(Boolean)) return null;
+        const R = Math.max(0, _effRange(unit, spell) || 0);
+        let best = null, bestS = 0;
+        for (const e of (v.visibleEnemies || []).slice(0, 10)) {
+            if (Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y) > R) continue;
+            const sc = _wnSteerValue(g, unit, { x: e.x, y: e.y }, v);
+            if (sc > bestS) { bestS = sc; best = { x: e.x, y: e.y }; }
+        }
+        return best;
+    }
     function _pickWeatherTile(g, unit, spell, v) {
         const def = _wxDef(spell);
         if (!def || !v.visibleEnemies.length) return null;
@@ -6033,6 +6053,7 @@
             const base = spell.id === 'psMakeover' ? _psMakeoverScore(unit, target, ally) : _scoreSpellCore(unit, row, target, v);
             return _psWorkAdjust(unit, row, target, v, base);
         }
+        if (spell && spell.wnSkyRead && typeof window._wnCastRow === 'function') return _scoreSpellCore(unit, window._wnCastRow(unit, spell), target, v);   // ☂ Cold Front: the sky's element
         if (spell && unit && unit.race === 'plastic surgeon' && /^ps[A-Z]/.test(spell.id || '')) return _psWorkAdjust(unit, spell, target, v, _scoreSpellCore(unit, spell, target, v));
         /* 🎮 THE VIEWERS (the Streamer + the E-Girl): too small a crowd is no cast; a streaming row is scored as the copy it casts
            (battle.js _streamCastRow: the count baked into the mark / heal / damage); a spend waits for a bigger crowd while it can */
@@ -7164,6 +7185,20 @@
             return s;
         }
 
+        /* ☂ THE WEATHERMAN (2026-11-24): Storm Tracker moves the weather up (worth the bodies it lands on); Severe Weather
+           Warning is scored as the weather the aimed ground calls; Storm of the Century adds its lightning on the grounded near the eye */
+        if (kind === 'summonWeather' && spell.wnSteer) return _wnSteerValue(g, unit, target, v);
+        if (kind === 'summonWeather' && spell.wnByGround && target && typeof window._wnCastRow === 'function') spell = window._wnCastRow(unit, spell, target.x, target.y);
+        if (kind === 'summonWeather' && spell.wnStrikeWet > 0 && target && !window.EW_AI_OLD_WEATHER) {
+            let bolt = 0;
+            for (const e of v.visibleEnemies) {
+                if (Math.max(Math.abs(e.x - target.x), Math.abs(e.y - target.y)) > spell.wnStrikeWet) continue;
+                if (typeof g.isUnitAirborne === 'function' && g.isUnitAirborne(e)) continue;
+                const est = estDamage(g, unit, e, spell);
+                bolt += Math.min(est, effHp(e)) * 0.8 + (est >= effHp(e) ? killValue(g, unit, e, v) * 0.6 : 0);
+            }
+            return _weatherCastValue(g, unit, spell, target, v) + bolt;
+        }
         if (kind === 'summonWeather' && !window.EW_AI_OLD_WEATHER) return _weatherCastValue(g, unit, spell, target, v);
         if (kind === 'summonWeather') {
             const nearE = v.visibleEnemies.filter(e =>
@@ -10296,6 +10331,7 @@
             return null;
         }
 
+        if (kind === 'summonWeather' && spell.wnSteer) return _wnSteerTile(g, unit, spell, v);   // ☂ Storm Tracker
         if (kind === 'summonWeather' && !window.EW_AI_OLD_WEATHER) return _pickWeatherTile(g, unit, spell, v);
         if (kind === 'summonWeather') return v.visibleEnemies[0] || null;
         if (kind === 'warCry') return { x: unit.x, y: unit.y };

@@ -15795,6 +15795,8 @@ const ThreeRenderer = (function () {
         if (hgBuff > 0) badges.push('<span class="tp-sbadge tp-stat-up" title="Key Charge: +' + hgBuff + ' ATK/DEF points">' + ((typeof keyIconHtml === 'function') ? keyIconHtml(9) : 'KEY') + '+' + hgBuff + '</span>');
         /* 🐝 THE POLLEN (battle.js): the Bee Queen's carried pollen */
         if ((unit.pollen | 0) > 0) badges.push('<span class="tp-sbadge tp-stat-up" title="Pollen: +' + (unit.pollen * 8) + ' ATK, spell power and SPD">POL ' + (unit.pollen | 0) + '</span>');
+        /* 📺 THE RUNDOWN (battle.js): the News Anchor's next segment */
+        if (unit.race === 'weatherman' && unit.gender === 'female' && !unit.dead) badges.push('<span class="tp-sbadge tp-stat-up" title="The Rundown: her next spell runs this segment">📺 ' + ['NEWS', 'SPORTS', 'WEATHER'][Math.max(0, unit._rundown | 0) % 3] + '</span>');
         /* 🎮 THE VIEWERS (battle.js): the Streamer's / E-Girl's crowd */
         if (unit.race === 'streamer' && !unit.dead) badges.push('<span class="tp-sbadge ' + ((unit.viewers | 0) > 0 ? 'tp-stat-up' : 'tp-stat-dn') + '" title="Viewers: Clip It marks at 5+, Donation Goal and Raid spend them">👁 ' + Math.min(10, unit.viewers | 0) + '</span>');
         if (totalMov > 0) badges.push('<span class="tp-sbadge tp-stat-up">MOV+' + totalMov + '</span>');
@@ -65659,7 +65661,7 @@ const ThreeRenderer = (function () {
            round fall-off round the spot, full at the front of a breast / the back of a glute, none at the body wall), and does
            that for EVERY skinned layer on the body (the skin, the coded clothes, the pack + Blender clothes, the hair lying on
            them), so the clothes over a spot move with the skin and nothing clips. Strength per look: appearance.jiggleChest /
-           jiggleButt (0..1, 0.5 = default, 0 = still), the creator's BODY > Jiggle sliders; a male body's chest at 35 %.
+           jiggleButt (0..1, 0 = still; unset = the body's default, 0 male / 0.10 female since 2026-11-24), the creator's BODY > Jiggle sliders; a male body's chest at 35 %.
            Cosmetic and local: each screen runs its own (nothing relayed online). Kill switch: window.EW_DISABLE_JIGGLE = true
            (before the model loads: no bones, the weights untouched). */
         function jigExtend(mesh) {
@@ -65786,7 +65788,8 @@ const ThreeRenderer = (function () {
             if (!(dt > 0)) return;
             if (J.dirty) jigWeights(part);
             if (!_jgA) { _jgA = new THREE.Vector3(); _jgB = new THREE.Vector3(); _jgC = new THREE.Vector3(); _jgD = new THREE.Vector3(); _jgP = new THREE.Vector3(); _jgVA = new THREE.Vector3(); _jgM = new THREE.Matrix4(); _jgM3 = new THREE.Matrix3(); _jgB2M = new THREE.Matrix4(); }
-            var body = part.body, chestK = a && a.jiggleChest != null ? +a.jiggleChest : 0.5, buttK = a && a.jiggleButt != null ? +a.jiggleButt : 0.5;
+            var body = part.body, jgBody = /female/.test(part.mpfbBody || '') ? 'mpfb_female' : 'mpfb_male', jgOf = typeof window !== 'undefined' && window.mpfbJiggleOf,
+                chestK = jgOf ? jgOf(a, 'jiggleChest', jgBody) : (a && a.jiggleChest != null ? +a.jiggleChest : 0), buttK = jgOf ? jgOf(a, 'jiggleButt', jgBody) : (a && a.jiggleButt != null ? +a.jiggleButt : 0);   // THE JIGGLE DEFAULT (2026-11-24): an unset jiggle = the body's default (sprites.js mpfbJiggleOf)
             chestK *= (bustBody(part) ? 1 + 0.4 * Math.max(-1, Math.min(1, +(a && a.bust) || 0)) : 0.35) * 2;
             buttK *= 3;   // (the glutes sit on the hips: the walk's bob reaches them weaker than the chest)
             body.updateWorldMatrix(true, false);
