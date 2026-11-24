@@ -98,6 +98,86 @@ for v in horse.data.vertices:
 uarm.location=uarm.location+(target-hipW)
 bpy.context.view_layer.update()
 print('hip at',tuple(round(x,3) for x in uarm.matrix_world@hb.head_local),'neck base',tuple(round(x,3) for x in neckW))
+# --- THE JOIN (11-24, mondo: "a clear and visible gap"): a skin of the horse's coat lofted from inside the horse's chest up into
+# the rider's waist, under the sash, so the horse grows into the human. Rigid on the chest bone (the rider's Hips is held there too).
+if os.environ.get('NOLOFT')!='1':
+    from mathutils.bvhtree import BVHTree
+    from mathutils.kdtree import KDTree
+    import bmesh as _bm
+    hw=hum.matrix_world
+    b=_bm.new(); b.from_mesh(hum.data); b.edges.ensure_lookup_table()
+    _bw=[hw@v.co for e in b.edges if e.is_boundary for v in e.verts]
+    cz=min(p.z for p in _bw)
+    bnd=[p for p in _bw if p.z-cz<0.06*S]
+    print('cut ring z',round(cz,3),'verts',len(bnd))
+    b.free()
+    cxy=mathutils.Vector((sum(p.x for p in bnd)/len(bnd),sum(p.y for p in bnd)/len(bnd)))
+    NA=32
+    def ring_r(pts,th):
+        d=mathutils.Vector((math.cos(th),math.sin(th)));best=0
+        for p in pts:
+            q=mathutils.Vector((p.x-cxy.x,p.y-cxy.y))
+            if q.length<1e-6: continue
+            if q.normalized().dot(d)>math.cos(math.radians(14)): best=max(best,q.length)
+        return best
+    zA=cz+float(os.environ.get('LOFTUP','0.05'))*S
+    _all=[hw@v.co for v in hum.data.vertices]
+    cxy=mathutils.Vector((0.0,sum(p.y for p in _all if abs(p.z-zA)<0.03 and abs(p.x)<0.2)/max(1,len([p for p in _all if abs(p.z-zA)<0.03 and abs(p.x)<0.2]))))
+    sl=[p for p in _all if abs(p.z-zA)<0.03 and (mathutils.Vector((p.x,p.y))-cxy).length<float(os.environ.get('WAISTMAX','0.26'))]
+    rA=[ring_r(sl,2*math.pi*a/NA) for a in range(NA)]
+    print('waist ring',[round(r,2) for r in rA])
+    for a in range(NA):
+        if rA[a]<=0: rA[a]=max(rA)
+    zA=cz+float(os.environ.get('LOFTUP','0.05'))*S
+    hbm=_bm.new(); hbm.from_mesh(horse.data); hbm.transform(horse.matrix_world); bvh=BVHTree.FromBMesh(hbm)
+    zB=float(os.environ.get('LOFTZB',str(topz-float(os.environ.get('LOFTDOWN','0.45')))))
+    rB=[]; PB=[]
+    O=mathutils.Vector((0.0,cxy.y+float(os.environ.get('LOFTOY','0.25')),zB))
+    for a in range(NA):
+        th=2*math.pi*a/NA; d=mathutils.Vector((math.cos(th),math.sin(th),0))
+        hit=bvh.ray_cast(O,d,3.0)
+        H=hit[0] if hit[0] else O+d*0.3
+        PB.append(O+(H-O)*float(os.environ.get('RBK','0.97'))); rB.append((H-O).length)
+    # UVs from the nearest point of the horse's own skin
+    uvl=horse.data.uv_layers.active.data
+    kd=KDTree(len(horse.data.loops))
+    for li,l in enumerate(horse.data.loops): kd.insert(horse.matrix_world@horse.data.vertices[l.vertex_index].co,li)
+    kd.balance()
+    NR=int(os.environ.get('LOFTRINGS','8'))
+    verts=[];uvs=[]
+    for r in range(NR+1):
+        t=r/NR; e=1-(1-t)**float(os.environ.get('LOFTPOW','2'))
+        for a in range(NA):
+            th=2*math.pi*a/NA
+            pa=mathutils.Vector((cxy.x+rA[a]*0.93*math.cos(th),cxy.y+rA[a]*0.93*math.sin(th),zA))
+            verts.append(PB[a].lerp(pa,e) if r<NR else pa)
+    me=bpy.data.meshes.new('CentaurJoin'); faces=[]
+    for r in range(NR):
+        for a in range(NA):
+            a2=(a+1)%NA; faces.append((r*NA+a,r*NA+a2,(r+1)*NA+a2,(r+1)*NA+a))
+    me.from_pydata([tuple(v) for v in verts],[],faces); me.update()
+    _flip=0
+    for p in me.polygons:
+        c=p.center; out=mathutils.Vector((c.x-cxy.x,c.y-cxy.y,0))
+        if p.normal.dot(out)<0: p.flip(); _flip+=1
+    me.update(); print('loft faces flipped',_flip,'of',len(me.polygons))
+    _co,_idx,_d=kd.find(mathutils.Vector((0.12,cxy.y+0.35,topz-0.05))); uv0=mathutils.Vector(uvl[_idx].uv)
+    uv=me.uv_layers.new(name=horse.data.uv_layers.active.name)
+    for poly in me.polygons:
+        for li in poly.loop_indices:
+            vi=me.loops[li].vertex_index; uv.data[li].uv=uv0+mathutils.Vector(((vi%NA)/NA*0.12,(vi//NA)/NR*0.06))
+    jo=bpy.data.objects.new('CentaurJoin',me); bpy.context.scene.collection.objects.link(jo)
+    jo.data.materials.append(horse.data.materials[0])
+    # normals outward
+    jo.matrix_world=mathutils.Matrix.Identity(4)
+    bpy.context.view_layer.update()
+    vg=jo.vertex_groups.new(name='spine.008'); vg.add(list(range(len(verts))),1.0,'REPLACE')
+    for p in me.polygons: p.use_smooth=True
+    # into the horse mesh (its frame), so it shares the skin
+    bpy.ops.object.select_all(action='DESELECT')
+    jo.select_set(True); horse.select_set(True); bpy.context.view_layer.objects.active=horse
+    bpy.ops.object.join()
+    print('join loft', NR, 'rings', 'zB', round(zB,3), 'zA', round(zA,3), 'rA', round(min(rA),3), round(max(rA),3), 'rB', round(min(rB),3), round(max(rB),3))
 # --- one armature: join the human's into the horse's (Blender carries the object transforms over), Hips under spine.008
 bpy.ops.object.select_all(action='DESELECT')
 mwH=hum.matrix_world.copy()
