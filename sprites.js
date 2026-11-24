@@ -1587,6 +1587,11 @@ const EW_ANIM_LIB_URLS = [
   // deaths, blocks / dodges, taunts and cheers). Nothing plays them by default: they are in the spell editor's clip picker
   // and free for a per-character `lib: {slot: {clip, lib: 8, ts}}`.
   'https://cdn.entropywars.net/Assets/characters/animations/MAL5_Sniper.glb',
+  // lib 9 — MAL6_Sniper.glb (2026-11-24, THE MESHY CASTS, mondo: "For the influencer's go viral spell, is there not like a dancing or
+  // flirty animation we can use? ... utilize that as much possible to give the characters more variety for their spell animations"):
+  // 46 more of Meshy's library on the same sniper rig (the dances, the flirty + talking gestures, cheers, stomps, a push, a reload),
+  // packed by build-mal.py with its --rest calib. Spell rows play them through `animClip: { name, lib: 9, ts, trim, strikeAt }`.
+  'https://cdn.entropywars.net/Assets/characters/animations/MAL6_Sniper.glb',
 ];
 
 // Game slot → library clip (+ which library file) + timeScale. Durations are
@@ -2604,12 +2609,12 @@ const RACE_MODELS_3D = {
      behind every walk, cast and hit (bake-tentacles.py; sources project files jellyfish-remake/). The old rig stays on R2. */
   'jellyfish': {
     male: _mkUAL('jellyfish', 'a_jellyfish_king', {
-      model: 'https://cdn.entropywars.net/Assets/characters/races/jellyfish/male/Meshy_AI_jellyfish_m_v3_Running.glb',
+      model: 'https://cdn.entropywars.net/Assets/characters/races/jellyfish/male/Meshy_AI_jellyfish_m_v4_Running.glb',   // v4 (mondo 11-24): no hanging tentacles under the bell
       heightRatio: 0.92, basicAttackKind: 'magic',
     }),
     /* THE JELLYFISH, MALE + FEMALE (2026-11-24, mondo on the v2: "looks more like a female ... it needs boobs"; the old one's look is
        "basically how i want it to look like ... make one like that as the male version and another one for a female version"): v3 male =
-       the old bell + tentacle arms and legs, remade (no T-bars) with 10 hanging tentacles under the bell; the female = the v2 idea with a
+       the old bell + tentacle arms and legs, remade (no T-bars) (v4: the 10 hanging tentacles taken off, mondo: "they don't look attached correctly"); the female = the v2 idea with a
        figure, 12 tentacles at the hips. Both on THE SWAY chains (bake-tentacles.py). One race, the same spells for both. */
     female: _mkUAL('jellyfish/female', 'jellyfish_f', {
       model: 'https://cdn.entropywars.net/Assets/characters/races/jellyfish/female/Meshy_AI_jellyfish_f_Running.glb',
@@ -3898,6 +3903,10 @@ function registerSpellAnimClips(defs) {
     for (const t of tables) {
       if (t.lc[slot]) continue;
       t.lc[slot] = { clip: d.animClip.name, lib, defer: true };
+      /* THE MESHY CASTS (2026-11-24): a row's clip may carry the slot options UAL_SLOTS rows use: `strikeAt` (the SOURCE second the
+         spell lands on, so the VFX fires on that frame), `trim` [from, to] (a 2-3 s window of a 10 s dance), `pinXZ` (a dance that
+         steps about stays on its square), `turn`. One setting per clip: the first row that names a clip sets it for every row. */
+      for (const _k of ['strikeAt', 'trim', 'pinXZ', 'pinHips', 'turn']) if (d.animClip[_k] != null) t.lc[slot][_k] = d.animClip[_k];
       if (!t.lt[slot]) t.lt[slot] = (d.animClip.ts > 0 ? d.animClip.ts : 1);   // ⛪ a row may set the clip's pace (the Pope's 5 s finger wag at 2.5×)
       isNew = true;
     }

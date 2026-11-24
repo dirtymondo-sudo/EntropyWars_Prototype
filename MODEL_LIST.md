@@ -26,7 +26,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
 | Meshy AI | no | 1331 |
-| Meshy AI, reworked by Claude | no | 12 |
+| Meshy AI, reworked by Claude | no | 13 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 93 |
 | Built by Claude in code (a bake tool writes the file) | no (pack bark picture) | 14 |
@@ -135,7 +135,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | influencer (female) | `Assets/characters/races/influencer/female/Meshy_AI_influencer_f_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES 2, mondo 2026-11-17 picks from the zone characters; concepts + models in project files new-races-2/; the Boltzmann Brain is unrigged) |
 | jack o lantern | `Assets/characters/races/jackolantern/Meshy_AI_jack_o_lantern_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | janitor | `Assets/characters/races/janitor/male/Meshy_AI_janitor_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES 2, mondo 2026-11-17 picks from the zone characters; concepts + models in project files new-races-2/; the Boltzmann Brain is unrigged) |
-| jellyfish | `Assets/characters/races/jellyfish/male/Meshy_AI_jellyfish_m_v3_Running.glb` | Meshy AI | Meshy AI body + Meshy AI tentacle, made + rigged by Claude through the Meshy API (v2 11-24 retired the same day; v3 male + the female, mondo 11-24); tentacles hung on THE SWAY spring chains by bake-tentacles.py (THE JELLYFISH REMAKE, mondo 2026-11-24; project files jellyfish-remake/) |
+| jellyfish | `Assets/characters/races/jellyfish/male/Meshy_AI_jellyfish_m_v4_Running.glb` | Meshy AI | Meshy AI body + Meshy AI tentacle, made + rigged by Claude through the Meshy API (v2 11-24 retired the same day; v3 male + the female, mondo 11-24); tentacles hung on THE SWAY spring chains by bake-tentacles.py (THE JELLYFISH REMAKE, mondo 2026-11-24; project files jellyfish-remake/) |
 | jellyfish (female) | `Assets/characters/races/jellyfish/female/Meshy_AI_jellyfish_f_Running.glb` | Meshy AI | Meshy AI body + Meshy AI tentacle, made + rigged by Claude through the Meshy API (v2 11-24 retired the same day; v3 male + the female, mondo 11-24); tentacles hung on THE SWAY spring chains by bake-tentacles.py (THE JELLYFISH REMAKE, mondo 2026-11-24; project files jellyfish-remake/) |
 | jellyfish ufo | `Assets/characters/races/jellyfish_ufo/male/jellyfish_ufo_v2.glb` | Meshy AI | Meshy AI body + Meshy AI tentacle, put together by Claude in python (THE COMING RACES, 2026-11-19, mondo picked concept B: 8 copies of the tentacle on 6-bone chains under the waist, a Sway loop; project files gladiator-farmer-concepts/jelly.py; v2 2026-11-24: the 12 sockets under the bell rim cut out, jellyfish-remake/cut.py) |
 | juggernaut | `Assets/characters/races/juggernaut/Meshy_AI_a_giant_juggernaut_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
@@ -305,6 +305,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | MAL3_Sniper | `Assets/characters/animations/MAL3_Sniper.glb` | Meshy AI, reworked by Claude | Meshy's 20 animations exported from the male sniper, consolidated by Claude (build_mal2.js) |
 | MAL4_Sniper | `Assets/characters/animations/MAL4_Sniper.glb` | Meshy AI, reworked by Claude | Meshy's animation library pulled through the Meshy API on the male sniper's rig (2026-11-11), packed by Claude (build-mal.py) |
 | MAL5_Sniper | `Assets/characters/animations/MAL5_Sniper.glb` | Meshy AI, reworked by Claude | Meshy's animation library pulled through the Meshy API on the male sniper's rig (2026-11-11), packed by Claude (build-mal.py) |
+| MAL6_Sniper | `Assets/characters/animations/MAL6_Sniper.glb` | Meshy AI, reworked by Claude | Meshy's animation library (dances, gestures, cheers) pulled through the Meshy API on the male sniper's rig (2026-11-24, THE MESHY CASTS), packed by Claude (build-mal.py) |
 | MOC1_CMU | `Assets/characters/animations/MOC1_CMU.glb` | Motion capture (real actors), cut into loops by Claude | CMU Graphics Lab Motion Capture Database (mocap.cs.cmu.edu, BVH by B. Hahne), in-place loops by bake-mocap.py |
 | MOC2_100STYLE | `Assets/characters/animations/MOC2_100STYLE.glb` | Motion capture (real actors), cut into loops by Claude | The 100STYLE Dataset (Ian Mason, CC BY 4.0), converted by mocap-100style.py, in-place loops by bake-mocap.py |
 | UAL1_Standard | `Assets/characters/animations/UAL1_Standard.glb` | Asset pack | Universal Animation Library · Quaternius · CC0 |

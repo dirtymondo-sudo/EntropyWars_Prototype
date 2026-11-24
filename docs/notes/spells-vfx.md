@@ -5467,3 +5467,39 @@ Gnaw / Plague Bite = `_sigJawsBite3D` (+ green plague puffs and flies on Plague 
 styles `scurry` (low zig-zag dash) and `court` (carried on a wave of rats); Mischief of Rats = `_PZ_SIGS.ratGrate` (a drain grate
 bursts open, rats pour out); `nrRatCrown` (rats spiral up into the crown), `nrRatCrown:fall` (they scatter), `nrLongLiveKing`
 (rings out + a grate burst under every bitten enemy). All rats are the R2 prop rat; own cyan, enemy pink-orange. Kill-switch `EW_NO_RAT_VFX`.
+
+## THE MESHY CASTS (2026-11-24, thread "Use Meshy's animation library for spell casts")
+mondo: "For the influencer's go viral spell, is there not like a dancing or flirty animation we can use? Didn't we download all of
+meshy's animation library? ... utilize that as much possible to give the characters more variety for their spell animations, especially
+the last 20 or so units". ANSWER: no, the 11-11 pull took 130 of Meshy's ~680 biped clips and none of the 33 dances.
+- THE PULL: 46 more through the Meshy API (`meshy-anim-pull.json` set `spell`; the old rig task had expired, so a new rig + the `calib`
+  set again: 168 credits in all, balance 1,325 -> 1,157; action 464 Leap_and_Punch is gone from Meshy). Packed with
+  `python3 -I build-mal.py MAL6_Sniper.glb spell_*.glb --rest calib_0.glb MAL1_Sniper.glb Idle_5,Regular_Jump` = **lib 9,
+  `Assets/characters/animations/MAL6_Sniper.glb`** (3.3 MB). Clips: FunnyDancing_01/02/03, Gangnam_Groove, Love_You_Pop_Dance,
+  Shake_It_Off_Dance, Superlove_Pop_Dance, Boom_Dance, Magic_Genie, Hip_Hop_Dance, ymca_dance, jazz_danc (travels 1.6 m), Dont_You_Dare,
+  OMG_Groove, Big_Heart_Gesture, Call_Gesture, Jazz_Hands_inplace, Joyful_Dance_with_Hand_Sway, Happy_Sway_Standing, Breakdance_1990
+  (BROKEN: 0.5 s, hips under the floor), Punch_Pose, Relax_arms_then_strike_battle_pose, Head_Hold_in_Pain, 360_Power_Spin_Jump (travels),
+  Half_Squat_with_Thumb_Up, Mirror_Viewing, Hop_with_Arms_Raised, Big_Wave_Hello, Phone_Call_Gesture, Talk_Passionately,
+  Talk_with_Hands_Open, Stand_Talking_Angry (20 s), Cheer_with_Both_Hands_Up, Motivational_Cheer, Personalized_Gesture, Checkout_Gesture,
+  Stand_and_Drink, Talk_with_Left_Hand_Raised, Listening_Gesture, Angry_Ground_Stomp, Step_Forward_and_Push (travels), Standing_Reload,
+  Jumping_Head_Scissor_Takedown (travels 5.8 m), Arise (from lying down), Look_Around_Dumbfounded, Kick_a_Soccer_Ball.
+  Frame sheets: `node anim-sheets.js <out> --dir=<pull dir> --only=spell --multi` (new `--multi`: a many-clip batch with its mesh);
+  project files `meshy-casts/sheets/`.
+- THE ROW PICK: `animClip: { name, lib: 9, ts, trim: [from, to], strikeAt }` on a spell row. sprites.js registerSpellAnimClips now
+  copies `strikeAt` / `trim` / `pinXZ` / `pinHips` / `turn` onto the synthetic `clip:<name>` slot (before it dropped them, so a row
+  clip had no strike frame: the VFX fired at the old launch time). One setting per clip name: the first row naming a clip sets it.
+  THE 1400 MS CAP: three-renderer.js _maybeStartModelAnim plays any board cast clip for at most 1.4 s (a cast never holds a turn), so a
+  row's window is `(trim[1] - trim[0]) / ts <= ~1.45 s`: trim a ~2 s slice of a long dance and play it at ts 1.3-1.5, strikeAt on its
+  biggest pose (the first film played Dont_You_Dare's 3 s window and was cut half way). data.js validator takes lib 0-9.
+- BATCH 1 (24 spells, mechanics untouched): Influencer Go Viral = Gangnam_Groove, Sponsored = Talk_with_Hands_Open, Filter = Jazz_Hands,
+  Ratio = Dont_You_Dare; Streamer Rage Quit = Angry_Ground_Stomp, Raid = Motivational_Cheer, Donation Goal = Hop_with_Arms_Raised; E-Girl
+  Uwu = Big_Heart_Gesture, Gifted Sub = Cheer_with_Both_Hands_Up; V-Tuber Lo-Fi Loop = Happy_Sway_Standing, Collab Stream =
+  Love_You_Pop_Dance; Gambler High Roller = FunnyDancing_01; Mechanic Labor Fee = Checkout_Gesture; Trucker Air Horn = Call_Gesture,
+  Breaker Breaker = Phone_Call_Gesture; Gladiator Come At Me = Relax_arms_then_strike_battle_pose; Farmer Harvest Moon =
+  Joyful_Dance_with_Hand_Sway; Monarch Pendulum = Talk_with_Left_Hand_Raised, Kaleidoscope Wings = Magic_Genie, Trigger Word =
+  Personalized_Gesture; Butterfly Girl Eyespots = ymca_dance, Butterfly Effect = Superlove_Pop_Dance; Plastic Surgeon Makeover =
+  Talk_Passionately; Cameraman Say Cheese = Big_Wave_Hello; News Anchor Top Story + Prime Time = Talk_Passionately, Exclusive
+  Interview + Fake News = Talk_with_Hands_Open; Weatherman Cold Front + Storm Tracker = Checkout_Gesture (presenting his map), Severe
+  Weather Warning = Cheer_with_Both_Hands_Up, Storm of the Century = Motivational_Cheer (his thread asked). Grep `THE MESHY CASTS (11-24)` in data.js for every row.
+- LEFT ALONE: the parts-built units (Virus, Abomination, Hollow, Cursed TV, Jellyfish UFO: no biped rig) and
+  Skinwalker / Nordic (their own threads were active 11-24: batch 2), held-weapon spells (the held weapon stays the cast).

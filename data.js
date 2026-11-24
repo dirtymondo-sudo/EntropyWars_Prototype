@@ -10862,10 +10862,12 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'blind', duration: 1 }],
           desc: 'Say cheese. Blinds a Single Enemy within 3 for 1 round.' },
         { id: 'nrGoViral', name: 'Go Viral', tier: 2, families: ['socialmedia'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          animClip: { name: 'Gangnam_Groove', lib: 9, ts: 1.4, trim: [7.2, 9.2], strikeAt: 8.29 },   // THE MESHY CASTS (11-24): the viral dance (the trending one), 2.8 s of it
           type: 'debuff', kind: 'debuff', range: 5,
           statusEffects: [{ id: 'viral', duration: 2 }],
           desc: 'Tags a Single Enemy within 5 for 2 rounds. Every hit it takes also hits each of its teammates within 2 for 30% of the damage. Cooldown: 2 rounds.' },
         { id: 'nrSponsored', name: 'Sponsored', tier: 3, families: ['socialmedia'], cost: 75, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          animClip: { name: 'Talk_with_Hands_Open', lib: 9, ts: 1.5, trim: [0, 2.2], strikeAt: 0.9 },   // THE MESHY CASTS (11-24): the sponsor pitch, both hands open
           type: 'buff', kind: 'buff', range: 3, statStageBoost: { atk: 2, int: 2 },
           desc: 'A brand deal for a friend. Raises a Single Ally\'s ATK and INT by 2 stages. Cooldown: 2 rounds.' },
         /* THE INFLUENCER POLISH (2026-11-17, mondo: "flesh out their unique spells and spell animations/vfx and make sure that any
@@ -10875,12 +10877,14 @@ const RACE_ABILITIES = {
            CPU is fooled the same way: ai.js getTargetPriority prices a filtered enemy as the unit it looks like. Refused with no
            ally of another race to swap with. battle.js _influencerFilter. */
         { id: 'nrFilter', name: 'Filter', tier: 2, families: ['socialmedia'], cost: 50, apCost: 1, cooldownRounds: 3, spellType: 'human',
+          animClip: { name: 'Jazz_Hands_inplace', lib: 9, ts: 1.3, trim: [0.2, 2.0], strikeAt: 1.49 },   // THE MESHY CASTS (11-24): jazz hands: the face swap
           type: 'buff', kind: 'buff', range: 4, noDamage: true, filterSwap: true,
           statusEffects: [{ id: 'filtered', duration: 2 }],
           desc: 'Face swap. A Single Ally within 4 and the nearest ally of another race trade looks for 2 rounds: to the enemy each one looks, and is named, like the other. Cooldown: 3 rounds.' },
         /* RATIO (her capstone): the pile-on. A magic hit; on a Viral target the tag spreads to every teammate within 2 of it for
            1 round after the hit lands (the hit itself is shared first). The trade: it only pays when the enemy stands close. */
         { id: 'nrRatio', name: 'Ratio', tier: 4, families: ['socialmedia'], cost: 90, apCost: 1, cooldownRounds: 3, spellType: 'human',
+          animClip: { name: 'Dont_You_Dare', lib: 9, ts: 1.4, trim: [0.8, 2.8], strikeAt: 1.64 },   // THE MESHY CASTS (11-24): the sassy point, then the arm goes out
           element: 'light', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 150, range: 5,
           viralSpread: { radius: 2, duration: 1 },
           desc: 'Ratio\'d. Deals MEDIUM magic damage to a Single Enemy within 5. If it is Viral, every teammate within 2 of it goes Viral too, for 1 round. Cooldown: 3 rounds.' },
@@ -10984,6 +10988,7 @@ const RACE_ABILITIES = {
           vfxElement: 'arcane', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 250, range: 3, diceRoll: true, coinFlip: { tailsSelfPct: 0.1 },
           desc: 'A coin in the air over a Single Enemy within 3. Heads: VERY HEAVY magic damage. Tails: nothing lands, and he loses 10% of his own max HP. The dice still roll for the Streak. Cooldown: 2 rounds.' },
         { id: 'nrHighRoller', name: 'High Roller', tier: 4, families: ['highroller'], cost: 90, apCost: 1, cooldownRounds: 3, spellType: 'human',
+          animClip: { name: 'FunnyDancing_01', lib: 9, ts: 1.25, trim: [6.0, 7.73], strikeAt: 7.03 },   // THE MESHY CASTS (11-24): the winner's jig, one fist to the sky
           vfxElement: 'arcane', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 110, range: 4, aoeRadius: 1, diceRoll: true, streakCashIn: 0.25,
           desc: 'He cashes in. Deals MEDIUM magic damage to All Enemies in a 3×3 within 4, +25% for every Streak he holds (up to +125%), then the Streak is spent. Cooldown: 3 rounds.' },
     ],
@@ -11230,30 +11235,38 @@ const RACE_ABILITIES = {
            Headlines (+1 ATK, +1 M ATK), Sports (+1 SPD), Weather (+1 round on every weather up; clear skies = a SMALL heal).
            battle.js "THE WEATHERMAN + NEWS ANCHOR" (_wnCastRow, _wnAfterCast). Notes: champions-combat.md "THE WEATHERMAN + NEWS ANCHOR". */
         { id: 'wnColdFront', name: 'Cold Front', tier: 1, families: ['newsroom'], cost: 25, apCost: 1, spellType: 'human',
+          animClip: { name: 'Checkout_Gesture', lib: 9, ts: 1.45, trim: [1.8, 3.8], strikeAt: 2.94 },   // THE MESHY CASTS (11-24): presents the front on his map, arm out
           element: 'wind', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 80, range: 4, wnSkyRead: true,
           desc: 'And a cold front moves in. Deals WEAK magic damage to a Single Enemy within 4, and it reads the sky: wind under clear skies, lightning in a Thunderstorm, water and Wet in the rain, ice and Slow in a Blizzard, fire in a Drought or a Solar Flare, Blind in a Sandstorm, Stagger in a Tornado.' },
         { id: 'wnSevereWeather', name: 'Severe Weather Warning', tier: 2, families: ['newsroom'], cost: 50, apCost: 1, cooldownRounds: 3, spellType: 'human',
+          animClip: { name: 'Cheer_with_Both_Hands_Up', lib: 9, ts: 1.35, strikeAt: 0.85 },   // THE MESHY CASTS (11-24): both arms up: the warning goes out
           element: 'lightning', type: 'utility', kind: 'summonWeather', range: 5, weatherType: 'thunderstorm', weatherDuration: [3, 4], weatherTiles: [4, 6], wnByGround: true,
           desc: 'The forecast fits the ground. Calls the weather that suits the square he points at: a Thunderstorm on grass, dirt or water, a Sandstorm on sand, a Blizzard on snow or ice, a Drought on scorched ground or lava, a Tornado on rock. Lasts 3 to 4 rounds, +1 for The Forecast. Cooldown: 3 rounds.' },
         { id: 'wnStormTracker', name: 'Storm Tracker', tier: 3, families: ['newsroom'], cost: 60, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          animClip: { name: 'Checkout_Gesture', lib: 9, ts: 1.45, trim: [1.8, 3.8], strikeAt: 2.94 },   // THE MESHY CASTS (11-24): points out the storm on his map
           element: 'wind', type: 'utility', kind: 'summonWeather', range: 8, weatherType: 'tornado', wnSteer: true,
           desc: 'He points at the map like it is a green screen. Every weather that is up moves to the square he picks within 8: a storm\'s eye jumps there, a patch of weather moves over it, and each one stays 1 round longer. Needs a weather up. Cooldown: 2 rounds.' },
         { id: 'wnStormOfCentury', name: 'Storm of the Century', tier: 4, families: ['newsroom'], cost: 95, apCost: 1, cooldownRounds: 4, spellType: 'human',
+          animClip: { name: 'Motivational_Cheer', lib: 9, ts: 1.5, trim: [3.8, 5.9], strikeAt: 4.9 },   // THE MESHY CASTS (11-24): arms flung up to the sky
           element: 'lightning', type: 'damage', kind: 'summonWeather', damageType: 'magic', dmg: 130, range: 5, weatherType: 'hurricane', weatherDuration: [3, 4], weatherTiles: [5, 8], wnStrikeWet: 4,
           desc: 'They will name it after him. Calls a Hurricane on the square he picks (3 to 4 rounds, +1 for The Forecast). Its first downpour soaks every grounded enemy within 4 of the eye, then lightning strikes each of them for MEDIUM magic damage (the Wet take it worse). Cooldown: 4 rounds.' },
         { id: 'wnTopStory', name: 'Top Story', tier: 1, families: ['newsroom'], cost: 25, apCost: 1, spellType: 'human',
+          animClip: { name: 'Talk_Passionately', lib: 9, ts: 1.45, trim: [1.8, 3.8], strikeAt: 2.8 },   // THE MESHY CASTS (11-24): the anchor delivers the story, hands out
           element: 'sonic', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 80, range: 4,
           statusEffects: [{ id: 'stagger', duration: 1 }],
           desc: 'Tonight\'s top story is you. Deals WEAK sonic magic damage to a Single Enemy within 4 and Staggers it for 1 round. Runs the next segment of The Rundown.' },
         { id: 'wnExclusive', name: 'Exclusive Interview', tier: 2, families: ['newsroom'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          animClip: { name: 'Talk_with_Hands_Open', lib: 9, ts: 1.5, trim: [0, 2.2], strikeAt: 0.9 },   // THE MESHY CASTS (11-24): the interview, both hands open
           element: 'sonic', type: 'damage', kind: 'pull', damageType: 'magic', dmg: 60, range: 4, pullDistance: 2,
           statusEffects: [{ id: 'silence', duration: 1 }],
           desc: 'Just a few questions. Pulls a Single Enemy within 4 two squares toward her, deals WEAK sonic magic damage and Silences it for 1 round: no comment. Runs the next segment of The Rundown. Cooldown: 2 rounds.' },
         { id: 'wnFakeNews', name: 'Fake News', tier: 3, families: ['newsroom'], cost: 70, apCost: 1, cooldownRounds: 3, spellType: 'human',
+          animClip: { name: 'Talk_with_Hands_Open', lib: 9, ts: 1.5, trim: [0, 2.2], strikeAt: 0.9 },   // THE MESHY CASTS (11-24): says it with a straight face
           element: 'sonic', type: 'debuff', kind: 'aoe', range: 4, aoeRadius: 1, noDamage: true, wnFlipStages: true,
           statusEffects: [{ id: 'discord', duration: 1 }],
           desc: 'Sources say they are losing. Every enemy in a 3x3 within 4: each stat boost it has turns into a drop of the same size, and it gets Discord for 1 round. No damage. Runs the next segment of The Rundown. Cooldown: 3 rounds.' },
         { id: 'wnPrimeTime', name: 'Prime Time', tier: 4, families: ['newsroom'], cost: 95, apCost: 1, cooldownRounds: 4, spellType: 'human',
+          animClip: { name: 'Talk_Passionately', lib: 9, ts: 1.45, trim: [1.8, 3.8], strikeAt: 2.8 },   // THE MESHY CASTS (11-24): the anchor at full volume
           element: 'sonic', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 140, range: 4, aoeRadius: 2, wnAllSegments: true,
           desc: 'The whole show at once. Deals MEDIUM sonic magic damage to All Enemies in a 5x5 within 4, then runs all three segments of The Rundown together for her and her allies within 3: Headlines, Sports and the Weather. Then the show starts over. Cooldown: 4 rounds.' },
     ],
@@ -11267,6 +11280,7 @@ const RACE_ABILITIES = {
           element: 'lightning', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 70, range: 4, viewersMarkAt: 5,
           desc: 'That one is going in the highlights. Deals WEAK lightning magic damage to a Single Enemy within 4. At 5+ Viewers it is also Marked for 1 round.' },
         { id: 'nrRageQuit', name: 'Rage Quit', tier: 2, families: ['streaming'], cost: 50, apCost: 1, cooldownRounds: 3, spellType: 'human',
+          animClip: { name: 'Angry_Ground_Stomp', lib: 9, ts: 1.0, strikeAt: 0.45 },   // THE MESHY CASTS (11-24): the tantrum stomp
           type: 'damage', kind: 'barrage', range: 0, dmg: 100, damageType: 'physical', aoeRadius: 1, aoeOriginSelf: true,
           statusEffects: [{ id: 'stagger', duration: 1 }], selfStatusAfter: [{ id: 'invisible', duration: 1 }],
           desc: 'He smashes the desk. Deals MEDIUM physical damage to every enemy next to him and Staggers each of them, then he goes Invisible until his next turn (disconnected). Cooldown: 3 rounds.' },
@@ -11274,17 +11288,21 @@ const RACE_ABILITIES = {
           kind: 'dash', apCost: 1, dmg: 80, range: 4,
           desc: 'Skips the whole level. Dashes up to 4 tiles in a line and deals WEAK physical damage to the first enemy. Cooldown: 2 rounds.' }),
         { id: 'nrUwu', name: 'Uwu', tier: 2, families: ['streaming'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          animClip: { name: 'Big_Heart_Gesture', lib: 9, ts: 1.5, trim: [0.5, 2.6], strikeAt: 1.4 },   // THE MESHY CASTS (11-24): a heart over the head with both arms
           type: 'debuff', kind: 'debuff', range: 3, viewersGain: 1,
           statusEffects: [{ id: 'charm', duration: 1 }],
           desc: 'Hearts in the chat. Charms a Single Enemy within 3 for 1 round, and she gains 1 Viewer. Cooldown: 2 rounds.' },
         { id: 'nrGiftedSub', name: 'Gifted Sub', tier: 2, families: ['streaming'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          animClip: { name: 'Cheer_with_Both_Hands_Up', lib: 9, ts: 1.35, strikeAt: 0.85 },   // THE MESHY CASTS (11-24): both hands up: thanks for the sub
           type: 'buff', kind: 'buff', range: 4,
           statusEffects: [{ id: 'protect', duration: 1 }, { id: 'regen', duration: 2 }],
           desc: 'Thanks for the sub! A Single Ally within 4 gets Protect for 1 round and Regen for 2 rounds. Cooldown: 2 rounds.' },
         { id: 'nrDonationGoal', name: 'Donation Goal', tier: 3, families: ['streaming'], cost: 75, apCost: 1, cooldownRounds: 3, spellType: 'human',
+          animClip: { name: 'Hop_with_Arms_Raised', lib: 9, ts: 1.3, trim: [0.4, 2.2], strikeAt: 1.1 },   // THE MESHY CASTS (11-24): goal reached: the hop with arms up
           type: 'heal', kind: 'healAll', range: 0, auraRadius: 2, healAmt: 0, viewersSpend: true, viewersMin: 1, viewersHealPer: 20, viewersSpdAt: 5,
           desc: 'Goal reached! Spends all Viewers: the caster and every ally within 2 heal 20 HP per Viewer spent; at 5+ Viewers they also gain +1 SPD stage. Needs 1 Viewer. Cooldown: 3 rounds.' },
         { id: 'nrRaid', name: 'Raid', tier: 4, families: ['streaming'], cost: 90, apCost: 1, cooldownRounds: 3, spellType: 'human',
+          animClip: { name: 'Motivational_Cheer', lib: 9, ts: 1.5, trim: [3.8, 5.9], strikeAt: 4.9 },   // THE MESHY CASTS (11-24): the rally: arms flung up to send the chat
           element: 'sonic', type: 'damage', kind: 'aoe', range: 5, dmg: 130, damageType: 'magic', aoeRadius: 1,
           viewersSpend: true, viewersMin: 3, viewersDmgPer: 0.1, viewersFearAt: 8,
           desc: 'Sends the whole chat over. Spends all Viewers: MEDIUM sonic magic damage to All Enemies in a 3x3 within 5, +10% per Viewer spent; at 8+ Viewers they are Feared for 1 round. Needs 3 Viewers. Cooldown: 3 rounds.' },
@@ -11306,10 +11324,12 @@ const RACE_ABILITIES = {
           type: 'utility', kind: 'projectorSwap', range: 99, ignoresLineOfSight: true,
           desc: 'Cut to the other camera. Swaps places with one of her Holo Projectors, any distance. Cooldown: 2 rounds.' },
         { id: 'nrLoFiLoop', name: 'Lo-Fi Loop', tier: 3, families: ['vtubing'], cost: 75, apCost: 1, cooldownRounds: 3, spellType: 'tech',
+          animClip: { name: 'Happy_Sway_Standing', lib: 9, ts: 1.4, trim: [0.8, 2.8], strikeAt: 1.8 },   // THE MESHY CASTS (11-24): swaying to the beat
           type: 'debuff', kind: 'debuff', range: 4,
           statusEffects: [{ id: 'sleep', duration: 1 }],
           desc: 'Beats to sleep to. A Single Enemy within 4 falls asleep for 1 round: Sleeping. Any damage wakes it. Cooldown: 3 rounds.' },
         { id: 'nrCollabStream', name: 'Collab Stream', tier: 4, families: ['vtubing'], cost: 90, apCost: 1, cooldownRounds: 3, spellType: 'tech',
+          animClip: { name: 'Love_You_Pop_Dance', lib: 9, ts: 1.3, trim: [1.4, 3.2], strikeAt: 2.73 },   // THE MESHY CASTS (11-24): the idol dance, arms out on the pulse
           element: 'light', type: 'damage', kind: 'barrage', damageType: 'magic', dmg: 130, range: 0, aoeOriginSelf: true, aoeRadius: 1,
           projectorPulse: true, pulseAllyStatus: [{ id: 'regen', duration: 1 }],
           desc: 'Everyone is on stream. She and every Holo Projector pulse at once: MEDIUM light magic damage to All Enemies within 1 of any of them (each hit once), and allies in the rings get Regen for 1 round. Cooldown: 3 rounds.' },
@@ -11334,6 +11354,7 @@ const RACE_ABILITIES = {
           element: 'light', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 140, range: 5, critChance: 1,
           desc: 'The one shot that pays for the whole year. Deals MEDIUM magic damage to a Single Enemy within 5 and always lands a critical hit. Puts it On Camera. Cooldown: 3 rounds.' },
         { id: 'nrSayCheese', name: 'Say Cheese', tier: 4, families: ['cameraman'], cost: 100, apCost: 1, cooldownRounds: 4, spellType: 'human',
+          animClip: { name: 'Big_Wave_Hello', lib: 9, ts: 1.45, trim: [0.5, 2.5], strikeAt: 1.45 },   // THE MESHY CASTS (11-24): the big wave: everybody smile
           element: 'light', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 70, range: 0, aoeOriginSelf: true, aoeRadius: 12, aoeShape: 'diamond',
           aoeOnStatus: 'onCamera', reelSpend: 50,
           statusEffects: [{ id: 'blind', duration: 1 }],
@@ -11352,6 +11373,7 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'quickened', duration: 1 }],
           desc: 'Fresh oil, new filter. Heals a Single Ally beside him for 10% of its max HP (25% on a machine), cleanses 2 debuffs and Quickens it (+1 MOV) for 1 round. Cooldown: 2 rounds.' },
         { id: 'nrLaborFee', name: 'Labor Fee', tier: 2, families: ['mechanic'], cost: 20, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          animClip: { name: 'Checkout_Gesture', lib: 9, ts: 1.45, trim: [1.8, 3.8], strikeAt: 2.94 },   // THE MESHY CASTS (11-24): the hand out for the money
           type: 'debuff', kind: 'debuff', range: 3, mpDrain: 40, laborFee: true,
           statusEffects: [{ id: 'slow', duration: 1 }],
           desc: 'That will be extra. A Single Enemy within 3 loses 40 MP, which he pockets, and is Slowed for 1 round. Cooldown: 2 rounds.' },
@@ -11392,6 +11414,7 @@ const RACE_ABILITIES = {
            behind him at the end of his walk. It costs them nothing and they keep their own turn. battle.js "THE NEW RACES 3".
            (2026-11-19, mondo: "rename Convoy to Hitchhike", and Unload: cardboard boxes out the back of his truck.) */
         { id: 'nrAirHorn', name: 'Air Horn', tier: 1, families: ['trucking'], cost: 25, apCost: 1, spellType: 'human',
+          animClip: { name: 'Call_Gesture', lib: 9, ts: 1.45, trim: [1.2, 3.2], strikeAt: 2.19 },   // THE MESHY CASTS (11-24): the arm-pump for the horn
           element: 'sonic', type: 'damage', kind: 'linePush', damageType: 'magic', dmg: 75, range: 3, lineWidth: 1, pushDistance: 1,
           statusEffects: [{ id: 'stagger', duration: 1 }],
           desc: 'HOOONK. Deals WEAK magic damage to All Enemies in a line of 3, pushes them 1 square and Staggers them.' },
@@ -11402,6 +11425,7 @@ const RACE_ABILITIES = {
           type: 'buff', kind: 'buff', range: 0, noDamage: true, unload: { boxes: 3, dmg: 100, boxHp: 30, keep: 6 },
           desc: 'Rolls up the back door. Cardboard boxes tumble out onto the 3 squares behind him: each free square gets a box (cover that blocks the way, 30 HP), and an enemy standing there takes MEDIUM physical damage instead. Cooldown: 3 rounds.' },
         { id: 'nrBreakerBreaker', name: 'Breaker Breaker', tier: 4, families: ['trucking'], cost: 90, apCost: 1, cooldownRounds: 4, spellType: 'human',
+          animClip: { name: 'Phone_Call_Gesture', lib: 9, ts: 1.45, trim: [1.2, 3.2], strikeAt: 2.2 },   // THE MESHY CASTS (11-24): the CB handset to his ear
           type: 'buff', kind: 'warCry', range: 0, auraRadius: 4,
           teamStatusEffects: [{ id: 'quickened', duration: 1 }], statStageBoost: { def: 1 },
           desc: 'Breaker breaker, this is the big rig. Every ally within 4 is Quickened (+1 MOV) for 1 round and gains +1 DEF stage.' },
@@ -11503,6 +11527,7 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'stagger', duration: 1 }],
           desc: 'The bronze boss of the shield, in the face. Deals MEDIUM physical damage to an adjacent enemy, pushes it 1 square and Staggers it for 1 round. Cooldown: 2 rounds.' },
         { id: 'nrComeAtMe', name: 'Come At Me', tier: 3, families: ['gladiatorial'], cost: 60, apCost: 1, cooldownRounds: 3, spellType: 'human',
+          animClip: { name: 'Relax_arms_then_strike_battle_pose', lib: 9, ts: 1.45, trim: [0.2, 2.2], strikeAt: 1.82 },   // THE MESHY CASTS (11-24): the come-on battle pose
           type: 'buff', kind: 'buff', range: 0, statStageBoost: { def: 2 }, comeAtMe: { radius: 2, rounds: 1 },
           desc: 'He bangs his sword on his shield. Every enemy within 2 is Provoked for 1 round, and he gains +2 DEF stages. Cooldown: 3 rounds.' },
         { id: 'nrCrowdPleaser', name: 'Crowd Pleaser', tier: 4, families: ['gladiatorial'], cost: 90, apCost: 1, cooldownRounds: 4, spellType: 'human',
@@ -11520,15 +11545,18 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'programmed', duration: 1 }],
           desc: 'She blows a kiss and a butterfly carries it. Deals WEAK magic damage to a Single Enemy within 2 and Programs it (+1 stack).' },
         { id: 'monPendulum', name: 'Pendulum', tier: 2, families: ['monarchprogramming'], cost: 45, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+          animClip: { name: 'Talk_with_Left_Hand_Raised', lib: 9, ts: 1.45, trim: [0.8, 2.8], strikeAt: 2.1 },   // THE MESHY CASTS (11-24): the slow hypnotist's hand
           element: 'psychic', type: 'debuff', kind: 'aoe', noDamage: true, aoeRadius: 1, range: 3,
           statusEffects: [{ id: 'programmed', duration: 1 }, { id: 'slow', duration: 1 }],
           desc: 'The spiral on her choker swings. Every enemy in a 3×3 within 3 is Programmed (+1 stack) and Slowed for 1 round. Cooldown: 2 rounds.' },
         { id: 'monKaleidoscopeWings', name: 'Kaleidoscope Wings', tier: 2, families: ['monarchprogramming'], cost: 50, apCost: 1, cooldownRounds: 3, spellType: 'anomaly',
+          animClip: { name: 'Magic_Genie', lib: 9, ts: 1.3, trim: [3.2, 5.0], strikeAt: 4.4 },   // THE MESHY CASTS (11-24): turns to show the wings, one arm up
           element: 'psychic', type: 'debuff', kind: 'aoe', noDamage: true, aoeRadius: 1, range: 0, aoeOriginSelf: true,
           statusEffects: [{ id: 'charm', duration: 1 }, { id: 'programmed', duration: 1 }],
           selfStatusAfter: [{ id: 'levitating', duration: 1 }],
           desc: 'She opens the stained-glass wings. Every enemy next to her is Charmed for 1 round and Programmed (+1 stack), and she glides on them (Levitating) for 1 round. Cooldown: 3 rounds.' },
         { id: 'monTriggerWord', name: 'Trigger Word', tier: 3, families: ['monarchprogramming'], cost: 60, apCost: 1, cooldownRounds: 3, spellType: 'anomaly',
+          animClip: { name: 'Personalized_Gesture', lib: 9, ts: 1.15, trim: [0, 1.6], strikeAt: 0.55 },   // THE MESHY CASTS (11-24): the arm flung up: she says the word
           element: 'psychic', type: 'buff', kind: 'buff', range: 0, triggerWord: { discordRounds: 1, sleepRounds: 1 },
           desc: 'She says the word. Every Programmed enemy she can see goes off at once and its stacks clear. 1 stack: Discorded for 1 round. 2 stacks: it hits its nearest ally with its own basic attack (itself, with nobody in reach). 3 stacks: the same, then it falls Asleep for 1 round. Cooldown: 3 rounds.' },
         { id: 'monSleeperCell', name: 'Sleeper Cell', tier: 3, families: ['monarchprogramming'], cost: 50, apCost: 1, spellType: 'anomaly',
@@ -11564,6 +11592,7 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'feared', duration: 1 }],
           desc: 'The pitchfork comes up and he means it. Deals MEDIUM physical damage to All Enemies in a 3-square line, shoves them 2 squares back and Fears them for 1 round. Cooldown: 2 rounds.' },
         { id: 'nrHarvestMoon', name: 'Harvest Moon', tier: 4, families: ['farming'], cost: 90, apCost: 1, cooldownRounds: 4, spellType: 'human',
+          animClip: { name: 'Joyful_Dance_with_Hand_Sway', lib: 9, ts: 1.45, trim: [0, 2.0], strikeAt: 1.2 },   // THE MESHY CASTS (11-24): the harvest jig
           element: 'nature', type: 'buff', kind: 'buff', range: 0, noDamage: true, harvestMoon: { radius: 4, healPct: 0.15, dmg: 130 },
           desc: 'He brings the whole crop in. Every grown plant of his within 4 is harvested: each heals every ally next to it for 15% of its max HP and deals MEDIUM physical damage to every enemy next to it, then it is gone. No plant of his within 4: refused. Cooldown: 4 rounds.' },
     ],
@@ -11602,6 +11631,7 @@ const RACE_ABILITIES = {
           onAlly: { type: 'heal', kind: 'heal', healAmt: 50, statStageBoost: { def: 1 } },
           desc: 'A little something to smooth it out. On an enemy: WEAK magic damage and Slowed for 1 round. On an ally: a SMALL heal and +1 DEF stage. Range 2. +1 Work Done.' },
         { id: 'psMakeover', name: 'Makeover', tier: 2, families: ['cosmeticsurgery'], cost: 45, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          animClip: { name: 'Talk_Passionately', lib: 9, ts: 1.45, trim: [1.8, 3.8], strikeAt: 2.8 },   // THE MESHY CASTS (11-24): the big reveal, hands out
           type: 'debuff', kind: 'debuff', range: 3, procedure: true, anyTeam: true,
           statusEffects: [{ id: 'makeover', duration: 2 }],
           onAlly: { type: 'buff', kind: 'buff', statusEffects: [{ id: 'makeoverAlly', duration: 2 }] },
@@ -11630,10 +11660,12 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'flutter', duration: 9 }],
           desc: 'A flap of her wings sends a ribbon of scales. Deals WEAK wind magic damage to a Single Enemy within 4 and puts a Flutter on it (or grows the one it has). A Flutter grows by 1 every round end; at 3 it touches down as a twister on the 3x3 round it.' },
         { id: 'nrEyespots', name: 'Eyespots', tier: 2, families: ['morpho'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+          animClip: { name: 'ymca_dance', lib: 9, ts: 1.2, trim: [0, 1.7], strikeAt: 0.82 },   // THE MESHY CASTS (11-24): arms thrown up: the owl eyes open
           element: 'psychic', type: 'debuff', kind: 'aoe', noDamage: true, range: 0, aoeRadius: 2, aoeOriginSelf: true,
           statusEffects: [{ id: 'feared', duration: 1 }, { id: 'flutter', duration: 9 }],
           desc: 'She shows the owl eyes under her wings. All Enemies within 2 are Feared for 1 round and each gets a Flutter (or grows the one it has). Cooldown: 2 rounds.' },
         { id: 'nrButterflyEffect', name: 'Butterfly Effect', tier: 3, families: ['morpho'], cost: 75, apCost: 1, cooldownRounds: 3, spellType: 'anomaly',
+          animClip: { name: 'Superlove_Pop_Dance', lib: 9, ts: 1.45, trim: [2.3, 4.3], strikeAt: 3.09 },   // THE MESHY CASTS (11-24): arms out wide like wings
           element: 'wind', type: 'buff', kind: 'buff', range: 0, noDamage: true, butterflyEffect: true,
           desc: 'One flap, and everything she started speeds up. Every Flutter on the board grows by 1 right now; any that reach 3 touch down as twisters at once. No Flutter on the board: refused. Cooldown: 3 rounds.' },
     ],
@@ -27666,8 +27698,8 @@ function spellLint(d, ctx) {
     const picks = ['animVerb', 'animSlot', 'animClip'].filter(has);
     if (picks.length > 1) hits.push({ rule: 'animPick', level: 'amber', text: `${picks.join(' + ')} — only one animation pick is read: animVerb, then animSlot, then animClip` });
     if (has('animClip') && !(d.animClip && typeof d.animClip === 'object' && typeof d.animClip.name === 'string' && d.animClip.name
-        && Number.isInteger(d.animClip.lib) && d.animClip.lib >= 0 && d.animClip.lib <= 8))
-        hits.push({ rule: 'animClipInvalid', level: 'red', text: 'animClip must be { name: string, lib: 0–8 }' });
+        && Number.isInteger(d.animClip.lib) && d.animClip.lib >= 0 && d.animClip.lib <= 9))
+        hits.push({ rule: 'animClipInvalid', level: 'red', text: 'animClip must be { name: string, lib: 0–9 }' });
     for (const h of passiveHookLint(d)) hits.push(h);   // THE PASSIVES (Phase 4): the hooks
     if (typeof d.tier === 'number' && (d.tier < 1 || d.tier > 4 || !Number.isInteger(d.tier)))
         hits.push({ rule: 'tierRange', level: 'red', text: `tier ${d.tier} is not 1–4` });
