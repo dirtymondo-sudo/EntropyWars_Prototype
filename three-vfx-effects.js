@@ -11736,7 +11736,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         Object.keys(F).forEach(function (k) { _WPN_MODELS['ins_' + k] = { url: B + F[k], axis: 'y', instr: true }; });
     })();
     ['dynamite', 'grenade', 'landmine', 'shield', 'throwingKnife', 'bible', 'blackBlob', 'sack', 'crystalShard', 'crystalShards', 'ejectionSeat',
-     'frog', 'giantFoot', 'mic', 'rope', 'sandbags', 'syringe', 'teslaCoil', 'tongs', 'trumpet', 'voodooDoll'].forEach(function (k) { _WPN_MODELS[k].matte = true; });
+     'frog', 'giantFoot', 'mic', 'rope', 'sandbags', 'syringe', 'teslaCoil', 'tongs', 'trumpet', 'voodooDoll', 'umbrella'].forEach(function (k) { _WPN_MODELS[k].matte = true; });
     var _wpnCache = {};   /* key → { root, size, center, loading, failed } */
 
     /* THE ANIMALS (2026-10-27, mondo's upload, R2 Assets/world/animals/): a rigged animal through the renderer's one loader —
@@ -69021,9 +69021,16 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _wnBrolly(len, op) {
         var inst = _npInst('umbrella', len, op);
         if (!inst) return null;
-        var morphs = [];
-        inst.group.traverse(function (n) { if (n.isMesh && n.morphTargetInfluences && n.morphTargetInfluences.length) morphs.push(n); });
-        inst.shut = function (k) { for (var i = 0; i < morphs.length; i++) morphs[i].morphTargetInfluences[0] = k; };
+        /* the pack's `Close` shape key is dropped on this copy (a morphing clone drew nothing on the board): the canopy opens
+           by its own spread instead, k = 1 shut (a narrow furl) → 0 open. The copy's geometry is this cast's own (disposed with it). */
+        inst.group.traverse(function (n) {
+            if (!n.isMesh || !n.geometry || !n.geometry.morphAttributes || !Object.keys(n.geometry.morphAttributes).length) return;
+            var g2 = n.geometry.clone(); g2.morphAttributes = {}; n.geometry = g2;
+            n.morphTargetInfluences = undefined; n.morphTargetDictionary = undefined;
+            var ms = Array.isArray(n.material) ? n.material : [n.material];
+            for (var i = 0; i < ms.length; i++) if (ms[i] && ms[i].morphTargets) { ms[i].morphTargets = false; ms[i].needsUpdate = true; }
+        });
+        inst.shut = function (k) { var w = Math.max(0.12, 1 - 0.88 * k); inst.group.scale.set(w, 1 + 0.25 * k, w); };
         inst.shut(1);
         return inst;
     }
@@ -69032,12 +69039,17 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     EFFECTS['wnUmbrella_fx'] = _pzDef('wnUmbrella', { pzOwn: true });
     _PZ_SIGS.wnUmbrella = function (p) {
         var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty) || !_pzOnce('wnUmbrella@' + tx + ',' + ty, 600)) return;
-        var C = _psSide(p), F = _nrvFrame(tx, ty), ts = F.ts, topY = ts * 1.55;
-        var br = _wnBrolly(ts * 0.95, 1);
-        if (br) { br.group.position.set(ts * 0.08, topY, 0); F.g.add(br.group); }
-        var rim = _pzMesh(new THREE.TorusGeometry(ts * 0.48, ts * 0.014, 6, 36), _pzGlow(C[0]), F.g, 0, topY + ts * 0.12, 0); rim.rotation.x = Math.PI / 2;
+        var C = _psSide(p), F = _nrvFrame(tx, ty), ts = F.ts, topY = ts * 0.9;   /* over his head, under his nameplate */
+        var br = _wnBrolly(ts * 0.6, 1);
+        if (br) {
+            br.group.position.set(ts * 0.03, topY, 0); F.g.add(br.group);
+            /* the pack's canopy is near-black, and black draws as nothing in the effects layer: the cloth takes his side's colour */
+            br.group.traverse(function (n) { if (!n.isMesh) return; var ms = Array.isArray(n.material) ? n.material : [n.material];
+                for (var i = 0; i < ms.length; i++) if (ms[i] && /cloth/i.test(ms[i].name || '') && ms[i].color) { ms[i].color.setHex(C[0]); if (ms[i].emissive) ms[i].emissive.setHex(C[0]).multiplyScalar(0.35); } });
+        }
+        var rim = _pzMesh(new THREE.TorusGeometry(ts * 0.27, ts * 0.01, 6, 36), _pzGlow(C[0]), F.g, 0, topY + ts * 0.08, 0); rim.rotation.x = Math.PI / 2;
         var drops = [];
-        for (var i = 0; i < 12; i++) { var a = rn(0, 6.28); drops.push({ s: _pzSpr(C[0], ts * 0.07, F.g), a: a, r: rn(0, ts * 0.35), t0: rn(0, 700) }); }
+        for (var i = 0; i < 12; i++) { var a = rn(0, 6.28); drops.push({ s: _pzSpr(C[0], ts * 0.05, F.g), a: a, r: rn(0, ts * 0.2), t0: rn(0, 700) }); }
         return _sigRunOwned(F.g, 1500, function (el) {
             var open = _sigEaseOutBack(_sigClamp01(el / 260)), vis = _pzEnv(el, 0, 60, 1150, 1500);
             if (br) { br.shut(1 - _sigClamp01(open)); br.setFade(vis); br.group.rotation.z = Math.sin(el * 0.006) * 0.05; }
@@ -69046,8 +69058,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 var D = drops[j], t = ((el - D.t0) % 700) / 700; if (el < D.t0) { D.s.material.opacity = 0; continue; }
                 /* fall onto the canopy, then run off its edge and drop past it */
                 var y, rr;
-                if (t < 0.4) { y = topY + ts * 1.2 * (1 - t / 0.4) + ts * 0.15; rr = D.r; }
-                else { var u = (t - 0.4) / 0.6; rr = D.r + (ts * 0.55 - D.r) * Math.min(1, u * 2); y = topY + ts * 0.15 - ts * 0.1 * Math.min(1, u * 2) - (u > 0.5 ? (u - 0.5) * 2 * ts * 1.2 : 0); }
+                if (t < 0.4) { y = topY + ts * 0.9 * (1 - t / 0.4) + ts * 0.1; rr = D.r; }
+                else { var u = (t - 0.4) / 0.6; rr = D.r + (ts * 0.3 - D.r) * Math.min(1, u * 2); y = topY + ts * 0.1 - ts * 0.06 * Math.min(1, u * 2) - (u > 0.5 ? (u - 0.5) * 2 * ts * 0.6 : 0); }
                 D.s.position.set(Math.cos(D.a) * rr, y, Math.sin(D.a) * rr); D.s.material.opacity = 0.85 * vis;
             }
         });
@@ -69301,8 +69313,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var cd = _nbCamDir(F), sx = -cd.z, sz = cd.x;
         return _sigRunOwned(F.g, 1500, function (el) {
             var s = _sigEaseOutCubic(_sigClamp01(el / 300)), vis = _pzEnv(el, 0, 80, 1100, 1500), off = ts * 0.9 * (1 - s);
-            card.position.set(sx * off, ts * 1.85, sz * off); card.material.opacity = vis;
-            bar.position.set(sx * off, ts * 1.66, sz * off); bar.material.opacity = 0.9 * vis;
+            card.position.set(sx * off, ts * 2.45, sz * off); card.material.opacity = vis;
+            bar.position.set(sx * off, ts * 2.26, sz * off); bar.material.opacity = 0.9 * vis;
         });
     };
     SPELL_MAP['wnUmbrella']       = { brolly: 'wnUmbrella_fx' };
