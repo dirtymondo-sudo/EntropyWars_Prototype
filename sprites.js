@@ -904,7 +904,7 @@ const FOOTBALL_SPRITE = `${_S}/football.png`;
 // The mermaid woman keeps her blue sprite: her new model was made to match it.
 const _NEW_FEMALE_SPRITES = {
   'gladiator': `${_S}/Races/gladiator/female/gladiator_f_px.png`,   // 2026-11-19 THE COMING RACES — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
-  'nordic': `${_S}/Races/Nordic/Female/nordic_f_px.png`,
+  'nordic': 'https://cdn.entropywars.net/Assets/characters/races/nordic/female/nordic_f_v2_px.png',   // 2026-11-24 her new model (Sprite AI restyle of its front render)
   'siren': `${_S}/Races/siren/female/siren_f_px2.png`,
   'ninja': `${_S}/Races/ninja/female/ninja_f_px.png`,   // 2026-11-17 THE NINJA — the female ninja (Sprite AI restyle of her Meshy model)
   'robot': `${_S}/Races/robot/female/robot_f2_px.png`,   // 2026-11-17 THE ROBOT REDESIGN — Sprite AI restyles of the new Meshy concepts
@@ -916,6 +916,8 @@ const _NEW_FEMALE_SPRITES = {
   'vtuber': `${_S}/Races/vtuber/female/vtuber_f_px.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of her full Meshy 3D model's front render)
 };
 const _NEW_MALE_SPRITES = {
+  'nordic': 'https://cdn.entropywars.net/Assets/characters/races/nordic/male/nordic_m_v2_px.png',   // 2026-11-24 his new model (Sprite AI restyle of its front render)
+  'skinwalker': 'https://cdn.entropywars.net/Assets/characters/races/skinwalker/male/skinwalker_px.png',   // 2026-11-24 its new model, not a werewolf
   'streamer': `${_S}/Races/streamer/male/streamer_m_px.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of his 3D model's front render)
   'skater': `${_S}/Races/skater/male/skater_m_px.png`,   // 2026-11-17 — the male skater (Meshy model + Sprite AI restyle of its front render)
   'lifeguard': `${_S}/Races/lifeguard/male/lifeguard_m_px.png`,   // 2026-11-17 — the male lifeguard (same way)
@@ -2177,19 +2179,26 @@ const RACE_MODELS_3D = {
       heightRatio: 0.66, basicAttackKind: 'magic',   // small hyperspace elf: psychedelic zaps, not sword swings
     }),   // small clockwork elf — psychedelic zaps, not sword swings
   },
-  // Nordic (Warrior, support) — "nordic_alien_male". His only action export
-  // is the quick-draw, wired to castRanged ONLY so melee swings keep the
-  // engine lunge tween instead of a gun draw.
+  // Nordic (Warrior, support). 2026-11-24 (mondo: "unreasonably attractive like scandinavian models"; the old man was too short and
+  // his clothes dirty, the old woman not feminine enough): BOTH replaced by new Meshy models (concepts nordic_m_a2 + nordic_f_a,
+  // /mnt/project-files/unit-concepts-20261124/). Old files stay on R2 (nordic_alien_male*, Meshy_AI_nordic_f_Running.glb).
   'nordic': {
-    male: _mk3d('Nordic/Male', 'nordic_alien_male', {
-      idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump', hit: 'Face_Punch_Reaction',
-      death: 'Dead', castRanged: 'Cowboy_Quick_Draw_Shooting',
-      // spare on R2: Walking, Knock_Down
-    }, { castTimeScales: { castRanged: 5.0 }, heightRatio: 1.08 }),   // tall blond alien
-    // 2026-11-17 (mondo: female nordic) — platinum hair, white + silver flight suit (Meshy, made + rigged by Claude)
-    female: _mkUAL('Nordic/Female', 'nordic_f', {
-      model: `${_S}/Races/Nordic/Female/Meshy_AI_nordic_f_Running.glb`,
-      heightRatio: 1.03, basicAttackKind: 'magic',
+    male: _mkUAL('nordic', 'nordic_m_v2', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/nordic/male/Meshy_AI_nordic_m_v2_Running.glb',
+      heightRatio: 1.12, basicAttackKind: 'magic',   // tall blond alien, long platinum hair, spotless white flight suit
+    }),
+    female: _mkUAL('nordic', 'nordic_f_v2', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/nordic/female/Meshy_AI_nordic_f_v2_Running.glb',
+      heightRatio: 1.04, basicAttackKind: 'magic',
+    }),
+  },
+  // Skinwalker — 2026-11-24 its first 3D model (mondo: the old sprite looked like a werewolf). A lanky grey thing with a blank face
+  // in a tattered duster (concept skinwalker_c2). Its four stolen faces are separate props on R2 skinwalker/male/faces/
+  // skinwalker_face_a..d.glb, for its ability animations.
+  'skinwalker': {
+    male: _mkUAL('skinwalker', 'skinwalker', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/skinwalker/male/Meshy_AI_skinwalker_Running.glb',
+      heightRatio: 1.1, basicAttackKind: 'physical',
     }),
   },
   // Siren — 2026-11-17 her first 3D model (Meshy, made to match her sprite: wild black hair, green shell top, green tail).
@@ -2583,9 +2592,13 @@ const RACE_MODELS_3D = {
   // Jellyfish (Black Mage, caster) — the Bermuda Triangle's drifting king. A biped rig under a bell: it WALKS
   // on the library's ordinary loops (the user's rule, 2026-09-21: "a walking animation, not swimming" — the
   // swim pair was tried and retired), flies (map.js SKY_RACES), and stings with a typed orb.
+  /* THE JELLYFISH REMAKE (2026-11-24, mondo: "a new normal jellyfish model too, with separate tentacles the same way as the jellyfish
+     UFO", no "weird t bars at the end of his hands"): a new Meshy body (bell head + crown, real fingers) rigged by Meshy, so every
+     library clip plays as before; 12 tentacles hang from the waist, each on its own chain of THE SWAY's spring bones, so they swing
+     behind every walk, cast and hit (bake-tentacles.py; sources project files jellyfish-remake/). The old rig stays on R2. */
   'jellyfish': {
     male: _mkUAL('jellyfish', 'a_jellyfish_king', {
-      model: `${_S}/Races/jellyfish/Meshy_AI_a_jellyfish_king_Running.glb`,
+      model: 'https://cdn.entropywars.net/Assets/characters/races/jellyfish/male/Meshy_AI_jellyfish_v2_Running.glb',
       heightRatio: 0.92, basicAttackKind: 'magic',
     }),
   },
@@ -2758,7 +2771,7 @@ const RACE_MODELS_3D = {
     }),
   },
   'jellyfish ufo': {
-    male: { model: `${_S}/Races/jellyfish_ufo/male/jellyfish_ufo.glb`, clips: { idle: `${_S}/Races/jellyfish_ufo/male/jellyfish_ufo.glb`, walk: `${_S}/Races/jellyfish_ufo/male/jellyfish_ufo.glb` },
+    male: { model: `${_S}/Races/jellyfish_ufo/male/jellyfish_ufo_v2.glb`, clips: { idle: `${_S}/Races/jellyfish_ufo/male/jellyfish_ufo_v2.glb`, walk: `${_S}/Races/jellyfish_ufo/male/jellyfish_ufo_v2.glb` },   // v2 (2026-11-24): the 12 tentacle sockets under the bell's rim cut out (the tentacles hang from the waist)
       heightRatio: 1.1, yawOffset: 0, basicAttackKind: 'physical' },
   },
   /* THE COMING RACES 2 (2026-11-23, mondo's picks in thread "Make concept art for new characters"): models only, no kits: they are in

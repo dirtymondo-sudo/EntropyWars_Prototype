@@ -80692,10 +80692,19 @@ const ThreeRenderer = (function () {
             for (var k = 0; k + 1 < n; k++) {
                 var d = dir(pts[k], pts[k + 1]), L = d.L, t0 = corner[k] || 0, t1 = L - (corner[k + 1] || 0);
                 var edgeOff = w / 2 - R.edgeIn;
-                /* THE CENTRE DASHES */
+                /* THE CENTRE DASHES. THE SPLIT ROAD (2026-11-24, mondo: "the white dashed road lines are on the median now ... put the dashed white lines in
+                   the middle of each side"): where a raised median (an arch row with `median: [x0, z0, x1, z1]` off its origin, unturned, Bayside's coast road) runs down this
+                   street's middle line, the street has two carriageways of two squares: no centre dashes there (the median is the middle), and a dashed lane
+                   line down the middle of each side, w/4 off the middle = on the square line between its two lane squares (the battle grid). The span runs
+                   from the median's first end to its last, crossings included. */
+                var medA = Infinity, medB = -Infinity;
+                (info.arch || []).forEach(function (r) { var m = r.median; if (!m || m.length < 4) return;
+                    [[(+r.x || 0) + m[0], (+r.z || 0) + m[1]], [(+r.x || 0) + m[2], (+r.z || 0) + m[3]]].forEach(function (q) { var rx = q[0] - pts[k][0], rz = q[1] - pts[k][1], along = rx * d.x + rz * d.z, off = Math.abs(rx * -d.z + rz * d.x);
+                        if (off < 0.5 && along > -1 && along < L + 1) { medA = Math.min(medA, along); medB = Math.max(medB, along); } }); });
                 for (var s = t0 + 0.4; s + R.dashLen <= t1; s += R.dashLen + R.dashGap) {
-                    var cx = pts[k][0] + d.x * (s + R.dashLen / 2), cz = pts[k][1] + d.z * (s + R.dashLen / 2);
+                    var sm = s + R.dashLen / 2, cx = pts[k][0] + d.x * sm, cz = pts[k][1] + d.z * sm;
                     if (inOther(cx, cz, si, 0.6) || inPad(cx, cz, 2.2)) continue;
+                    if (sm >= medA - 1.5 && sm <= medB + 1.5) { [-1, 1].forEach(function (sd) { var lo = w / 4, lx = cx + (-d.z) * sd * lo, lz = cz + d.x * sd * lo; if (!inOther(lx, lz, si, 0.6)) flat(Bw, cx, cz, d.x, d.z, R.dashLen, R.dashW, sd * lo); }); continue; }
                     flat(Bw, cx, cz, d.x, d.z, R.dashLen, R.dashW, 0);
                 }
                 /* THE EDGE LINES: runs of 0.5 m, broken where another street opens (a side street's mouth) */

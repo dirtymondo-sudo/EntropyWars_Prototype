@@ -6171,6 +6171,13 @@ Model notes: the gladiators' Meshy gold came out pale tan; their files were reco
 files `gladiator-farmer-concepts/gold.py`). The Jellyfish UFO has no Meshy rig: one body mesh + one tentacle mesh drawn 8 times under the
 waist, each copy skinned to its own 6-bone chain, and a 2 s looping clip `Sway` in the same file (`jelly.py`); its RACE_MODELS_3D row plays
 that clip as idle and walk (`clips.idle` = the file). Its claw arms do not move. Flight / hover height is the kit thread's call.
+**2026-11-24 (thread "Remake the Jellyfish and fix the UFO's top"):** the UFO's file is `jellyfish_ufo_v2.glb`: the 12 little tentacle
+sockets hanging under the bell's rim are cut out (they were for tentacles that hang from the waist; whole pieces removed, nothing
+repainted; project files `jellyfish-remake/cut.py`). THE JELLYFISH REMAKE, same day: the Jellyfish (`jellyfish`, Psi-Ops) has a new
+Meshy body (bell head + crown, real fingers, no T-bar hands) rigged by Meshy, so all its library clips play as before, and 12 tentacles
+hanging from the waist, each skinned to its own chain of THE SWAY's spring bones (`ewsway_c200+_<j>` on Hips), so they swing behind
+every walk, cast and hit (repo tool `bake-tentacles.py`). File `Assets/characters/races/jellyfish/male/Meshy_AI_jellyfish_v2_Running.glb`;
+spells, stats and sprite unchanged; the old rig stays on R2.
 
 ## THE COMING RACES 2 (2026-11-23, thread "Make concept art for new characters")
 mondo picked Meshy concepts and said "wire them up and start a thread for each new one to come up with a plan for their unique
@@ -6424,3 +6431,17 @@ push, pull, reel-in, knock-back, bomb throw-back, storm fling, gun-door shove, b
 glide `_iceSlideSteps`, the creep walk (u.x = cx path), and Swing Door's board preview `_swingLanding`. A forecast
 (`simulate` + `opts.viewer`) stops only on a trap the viewer's side can see (a capture door is always seen). Teleports and
 swaps have no path: their landing chain already covered them. Proof: shots in /mnt/project-files/forced-move-traps/.
+
+## THE NEW NORDICS + THE SKINWALKER MODEL (2026-11-24, thread "Make concepts for new and redone units")
+mondo 11-24: the Nordic man looked too short with dirty clothes, the woman not feminine enough ("unreasonably attractive like
+scandinavian models"); the Skinwalker's sprite read as a werewolf. Meshy concepts -> his picks -> image-to-3d (meshy-t2.5, a-pose)
++ Meshy rig, all in `/mnt/project-files/unit-concepts-20261124/` (items.py, models.py, sheets, proof/).
+- **Nordic** (Nordic ALIENS, the Tall Blondes): sprites.js RACE_MODELS_3D `nordic` male = `nordic/male/Meshy_AI_nordic_m_v2_Running.glb`
+  (concept nordic_m_a2: long platinum hair, white flight suit, heightRatio 1.12), female = `nordic/female/Meshy_AI_nordic_f_v2_Running.glb`
+  (nordic_f_a, 1.04). Sprites `nordic_m_v2_px.png` (_NEW_MALE_SPRITES) + `nordic_f_v2_px.png` (_NEW_FEMALE_SPRITES), Sprite AI restyles
+  of each model's front render. Old files stay on R2; the man's remade creator look (RACE_REMADE_LOOKS) stays as a second look.
+- **Skinwalker**: its FIRST 3D model, `skinwalker/male/Meshy_AI_skinwalker_Running.glb` (concept skinwalker_c2: a lanky grey thing,
+  blank face with a thin smile, tattered duster; no fur, no snout), heightRatio 1.1; sprite `skinwalker_px.png`. With a model it is
+  now playable by the 3D-only roster rule. Its four STOLEN FACES are separate props for its ability animations:
+  `skinwalker/male/faces/skinwalker_face_a..d.glb` (a man, a freckled young woman, an old rancher, a chubby young man).
+- Weatherman + News Anchor models (same folder) went to their own thread.
