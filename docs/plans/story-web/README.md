@@ -179,6 +179,10 @@ chapter-by-chapter guide (https://claude.ai/artifact/ScTxXgtDrPMEyjTMnTrhPv). To
   a chapter, quest or clue whose id is already there is skipped (loading twice adds nothing), nothing of his changes. Used to hand
   him drafted chapters when the live plan is behind his password. The 11-24 file (9 chapters, 19 quests, 6 clues from the storylines
   doc https://claude.ai/artifact/94AJKBFP4o9keE9X4Mi9aL) = `/mnt/project-files/story-planner-add/Entropy_Wars_Story_Plan_Add_2026-11-24.json`.
+  REVISED DRAFTS (2026-11-24, the synthesis): a file chapter may carry `was` = the exact copy an earlier file added. If his chapter
+  still equals it (sanitized), the new version replaces it in place; if he changed anything his chapter stays and only quests it lacks
+  are added. The toast says added / updated / kept. The synthesis file = `.../Entropy_Wars_Story_Plan_Synthesis_2026-11-24.json`
+  (doc "Story arcs in detail" https://claude.ai/artifact/MGAzmypWQUqxdAPhBq1btX).
 
 ## The places as they stand now (2026-11-23)
 mondo: "If the game has a place but the board doesnt, that means something is wrong with the board."
