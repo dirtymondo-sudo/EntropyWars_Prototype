@@ -3834,6 +3834,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             _fireStage(intent, spellId, params || {});
             if (intent === 'windup') try { _rideWindup(spellId, params); } catch (e) {}   // THE HORSES
             if (intent === 'windup') try { _heldStart(spellId, params); } catch (e) { console.warn('[VFX] held prop failed', spellId, e); }   // THE PROPS IN THE HAND (row 24)
+            if (intent === 'windup') try { _skwWindup(spellId, params); } catch (e) { console.warn('[VFX] skinwalker face failed', spellId, e); }   // THE SKINWALKER'S FACES (2026-11-24)
             /* THE LIGHTNING PASS: every lightning damage spell marks what it hit (cage + scar) on the real hit */
             if (intent === 'burst') try { _lzBurstMark(spellId, params || {}); } catch (e) {}
             /* THE ANIMALS (2026-10-27): a bolt spell's own impact never rides the impact intent, so its animal comes on the hit */
@@ -12302,6 +12303,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                             'church_building', 'catholic_pew', 'church_pew', 'church_podium', 'field_goal_post', 'skull_pile',
                             'beach_life_ring',   /* THE LIFEGUARD (2026-11-16): her rescue ring */
                             'item_smartphone',   /* THE INFLUENCER (2026-11-17): her phone (Selfie Flash) */
+                            'skinwalker_face_a', 'skinwalker_face_b', 'skinwalker_face_c', 'skinwalker_face_d',   /* THE SKINWALKER'S FACES (2026-11-24) */
                             'lib_book', 'lib_open_book'];   /* THE LIBRARIAN (2026-11-17): the PSX Mega Pack's books (Overdue, Shush, Late Fee) */   /* THE FINISHER LOOK (2026-10-28): the P-Z finishers' props */
     var _SPELL_TERRAIN = ['enamel.png', 'leather.png', 'gilt.png', 'wood_planks.png', 'wood.png', 'parchment.png', 'obsidian.png',
                           'metal.png', 'marble_light.png', 'gunmetal.png', 'flesh.png', 'flesh_3.png', 'skin.png'];
@@ -45999,7 +46001,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var tor = new THREE.Mesh(new THREE.TorusGeometry(d * 0.36, d * 0.13, 10, 28), m);
             tor.rotation.x = -Math.PI / 2; g.add(tor); mats.push(m);
         }
-        return { g: g, fade: function (op) { for (var i = 0; i < mats.length; i++) { mats[i].opacity = op; mats[i].depthWrite = op > 0.6; } } };
+        return { g: g, fade: function (op) { for (var i = 0; i < mats.length; i++) { mats[i].opacity = op; } } };
     }
     /* where the body stands, in the frame F: its square on the board (state; the host moved it, the guest has it from the
        snapshot), eased toward each frame so the ring rides a haul at the slide's pace. (getUnitWorldPos read the model's
@@ -46315,6 +46317,214 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         'nrPopemobile:glass': _ppGlass3D,
     });
 
+    /* ══ THE SKINWALKER'S FACES (2026-11-24, mondo: "Skinwalker ... will need custom animations with his faces for his abilities";
+       the plan he OK'd 11-24) ══ Its own face is a blank grey oval. It steals faces: four Meshy face masks (R2
+       characters/races/skinwalker/male/faces/face_a..d.glb, catalogue rows skinwalker_face_a..d, warmed with the spell library;
+       no file = no face, NO STAND-INS). A victim's face is always the same one of the four (picked from its unit id). Drawn on
+       the cast's WINDUP (VFX3D.fire, relayed: the guest draws it too), only when the caster IS a skinwalker (Borrowed Claw and
+       the rest are pickable by other races through the families: they keep their own look). Every face follows the head bone
+       of the body it sits on (ThreeRenderer.unitHeadPose); a fogged body never shows one.
+         FAMILIAR VOICE: a stolen face floats out of its head toward the target, "speaks" (pulses, rings), flies back in.
+         WEAR YOUR SKIN: the target's face lifts off it, peels away, flies over and snaps onto the skinwalker's head, and it
+           WEARS that face until the end of the round two rounds on (the target dies or the match ends: it comes off).
+         BORROWED CLAW: the target's face peels off and flies into its coat with the stolen spell.
+         SKIN SWAP: for a moment each wears the other's face (the target gets the blank grey one), then they trade places.
+         MIMICRY: three faces circle its head, flickering from one to the next. */
+    var _SKW_KEYS = ['skinwalker_face_a', 'skinwalker_face_b', 'skinwalker_face_c', 'skinwalker_face_d'];
+    var _skwA = [0, 0, 0], _skwB = [0, 0, 0], _skwC = [0, 0, 0];
+    function _skwUnit(uid) {
+        try { var us = state.units; for (var i = 0; i < us.length; i++) if (us[i] && us[i].id === uid) return us[i]; } catch (e) {}
+        return null;
+    }
+    function _skwKeyFor(uid) {
+        var s = String(uid == null ? '' : uid), h = 7;
+        for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+        return _SKW_KEYS[Math.abs(h) % _SKW_KEYS.length];
+    }
+    /* a face clone `size` tall (its own front is +Z); grey = the skinwalker's own blank (no picture, flat grey) */
+    function _skwFace(key, size, grey) {
+        /* a face whose file is still on its way (the first cast of a match can beat the warm) comes in on the first frame it is there */
+        var g = new THREE.Group(); g.visible = false; g.name = 'skwFace';
+        var mats = [], raw = null, shown = false;
+        function take() {
+            try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getMiscModelClone) raw = ThreeRenderer.getMiscModelClone(key, size, 'center'); } catch (e) { raw = null; }
+            if (!raw) return;
+            raw.traverse(function (n) {
+                if (!n.isMesh || !n.material) return;
+                if (n.geometry) n.geometry._ew_shared = true;   // the cache's geometry outlives the cast
+                n.material.transparent = true; n.material.opacity = 0;
+                n.material.depthTest = false; n.renderOrder = 960;   // over the head it sits on, like the other cast props
+                n.frustumCulled = false;
+                if (grey) { n.material.map = null; n.material.color.setHex(0x9b9ea3); }
+                else n.material.color.setRGB(1.75, 1.65, 1.6);   // the flat (unlit) copy read dark and red beside the lit bodies: brought up to skin
+                mats.push(n.material);
+            });
+            g.add(raw);
+        }
+        take();
+        return { g: g, size: size, fade: function (op) {
+            if (!raw) take();
+            var on = !!raw && op > 0.01;
+            for (var i = 0; i < mats.length; i++) { mats[i].opacity = op; if (on && !shown) mats[i].needsUpdate = true; }
+            if (on) shown = true;
+            g.visible = on;
+        } };
+    }
+    /* where a face sits on a body this frame, in world space: { c: the face's centre (just in front of the head), d: its
+       facing (flat, unit), s: the head's size }; null when the body is gone or fogged */
+    function _skwHead(uid) {
+        var u = _skwUnit(uid);
+        if (!u || u.dead || _afFogHides(u.x, u.y)) return null;
+        var ok = false;
+        try { ok = ThreeRenderer.unitHeadPose && ThreeRenderer.unitHeadPose(uid, _skwA, _skwB, _skwC); } catch (e) { ok = false; }
+        if (!ok) {
+            var w = _worldPos(u.x, u.y), h = _lgBodyH(uid, w.ts);
+            return { c: new THREE.Vector3(w.x, w.y + h * 0.9, w.z), d: new THREE.Vector3(0, 0, 1), s: h * 0.13 };
+        }
+        var head = new THREE.Vector3(_skwA[0], _skwA[1], _skwA[2]), end = new THREE.Vector3(_skwB[0], _skwB[1], _skwB[2]);
+        var s = Math.max(1, head.distanceTo(end));
+        var d = isFinite(_skwC[0]) ? new THREE.Vector3(_skwC[0] - _skwA[0], 0, _skwC[2] - _skwA[2]) : new THREE.Vector3(0, 0, 1);
+        if (d.lengthSq() < 1e-6) d.set(0, 0, 1);
+        d.normalize();
+        var c = head.clone().lerp(end, 0.45).addScaledVector(d, s * 0.42);
+        return { c: c, d: d, s: s };
+    }
+    function _skwPlace(f, at, scale, tilt) {
+        f.g.position.copy(at.c);
+        f.g.rotation.set(tilt || 0, Math.atan2(at.d.x, at.d.z), 0);
+        f.g.scale.setScalar((scale == null ? 1 : scale) * at.s * 1.25 / f.size);
+    }
+    function _skwFrame() { var g = new THREE.Group(); return { g: g, wp: { x: 0, y: 0, z: 0 } }; }
+    var _skwWorn = {};   // caster uid → its worn-face run (WEAR YOUR SKIN)
+    function _skwWear(uid, key) {
+        var cur = _skwWorn[uid], u = _skwUnit(uid);
+        if (!u) return;
+        var until = ((state && state.round) || 0) + 2;
+        if (cur && !cur.entry.done) { cur.until = until; if (cur.key === key) return; cur.end = true; }
+        var F = _skwFrame(), base = 140;
+        var f = _skwFace(key, base, false);
+        if (!f) return;
+        F.g.add(f.g);
+        var rec = { key: key, until: until, end: false, entry: null }, fadeAt = 0;
+        rec.entry = _sigRunOwned(F.g, 1800000, function (el) {
+            var uu = _skwUnit(uid);
+            var gone = rec.end || !uu || uu.dead || !state || state.phase !== 'battle' || (state.round || 0) > rec.until;
+            if (gone && !fadeAt) fadeAt = el;
+            if (fadeAt && el - fadeAt > 260) { rec.entry.skip = 1e12; return; }
+            var at = _skwHead(uid);
+            if (!at) { f.fade(0); return; }
+            _skwPlace(f, at, 1, 0);
+            f.fade(fadeAt ? Math.max(0, 1 - (el - fadeAt) / 260) : 0.98);
+        });
+        if (rec.entry) _skwWorn[uid] = rec;
+    }
+    /* the move a face takes from one body's head to another (or to a chest), k 0..1, on a lifted arc */
+    function _skwFly(a, b, k, lift) {
+        var p = new THREE.Vector3().lerpVectors(a, b, k); p.y += Math.sin(k * Math.PI) * lift; return p;
+    }
+    function _skwRing(x, y, owner, r1, ms, delay) {
+        var ts = _worldPos(x, y).ts, side = _lgSide(owner, x, y);
+        _fxDelay(function () { try { _sigShockRing3D(x, y, { r0: ts * 0.2, r1: ts * (r1 || 0.9), ms: ms || 520, color: side, height: ts * 0.05 }); } catch (e) {} }, delay || 0);
+    }
+    function _skwRun(g, ms, tick) { return _sigRunOwned(g, ms, tick); }
+    var _SKW_MOVES = {
+        /* FAMILIAR VOICE: out of its head, toward the target, speaks, back in */
+        pzFamiliarVoice: function (cu, tu, hold) {
+            var F = _skwFrame(), f = _skwFace(_skwKeyFor(tu), 140, false); if (!f) return;
+            F.g.add(f.g);
+            var total = hold + 1000, out = Math.min(380, hold * 0.4);
+            _skwRing(_skwUnit(tu).x, _skwUnit(tu).y, null, 0.8, 480, hold);
+            _skwRun(F.g, total, function (el) {
+                var a = _skwHead(cu); if (!a) { f.fade(0); return; }
+                var b = _skwHead(tu) || a;
+                var mid = a.c.clone().lerp(b.c, 0.4);
+                var p, sc = 2.2;
+                if (el < out) p = a.c.clone().lerp(mid, _sigEaseOutBack(_sigClamp01(el / out)));
+                else if (el < hold + 300) { p = mid; sc = 2.2 + 0.35 * Math.abs(Math.sin((el - out) / 90)); }   // it speaks
+                else p = mid.clone().lerp(a.c, _sigClamp01((el - hold - 300) / 450));
+                var d = b.c.clone().sub(a.c); d.y = 0; if (d.lengthSq() < 1e-6) d.copy(a.d); d.normalize();
+                _skwPlace(f, { c: p, d: d, s: a.s }, sc, 0);
+                f.fade(0.95 * _afEnv(el, 0, 140, total - 260, total));
+            });
+        },
+        /* WEAR YOUR SKIN: off the target, over, onto its head, and worn */
+        pzWearYourSkin: function (cu, tu, hold) {
+            var key = _skwKeyFor(tu), F = _skwFrame(), f = _skwFace(key, 140, false); if (!f) return;
+            F.g.add(f.g);
+            var t1 = Math.max(300, hold * 0.45), t2 = t1 + 420, t3 = t2 + 460, done = false;
+            var me = _skwRun(F.g, t3 + 4000, function (el) {
+                var a = _skwHead(tu), b = _skwHead(cu);
+                if (el < t1) { if (!a) { f.fade(0); return; } _skwPlace(f, a, 1, 0); f.fade(0.95 * _sigClamp01(el / 160)); return; }
+                if (el < t2) { if (!a) { f.fade(0); return; } var k = _sigClamp01((el - t1) / (t2 - t1)); _skwPlace(f, { c: a.c.clone().addScaledVector(a.d, a.s * 0.9 * k).setY(a.c.y + a.s * 0.6 * k), d: a.d, s: a.s }, 1 + 0.9 * k, -0.6 * k); f.fade(0.95); return; }   // it peels away
+                if (!b) { f.fade(0); return; }
+                var k2 = _sigClamp01((el - t2) / (t3 - t2)), from = a ? a.c.clone().addScaledVector(a.d, a.s * 0.9).setY(a.c.y + a.s * 0.6) : b.c;
+                _skwPlace(f, { c: _skwFly(from, b.c, k2, b.s * 2.2), d: b.d, s: b.s }, 1.9 - 0.9 * k2 + 0.3 * Math.sin(k2 * Math.PI), -0.6 * (1 - k2));
+                f.fade(0.95);
+                if (k2 >= 1 && !done) { done = true; f.fade(0); _skwWear(cu, key); var cuu = _skwUnit(cu); if (cuu) _skwRing(cuu.x, cuu.y, null, 0.7, 420, 0); if (me) me.skip = 1e12; }   // ends itself once worn: a slow frame past the end must not skip the wearing
+            });
+        },
+        /* BORROWED CLAW: the face peels off the target and flies into its coat */
+        raceBorrowedClaw: function (cu, tu, hold) {
+            var F = _skwFrame(), f = _skwFace(_skwKeyFor(tu), 140, false); if (!f) return;
+            F.g.add(f.g);
+            var t1 = Math.max(260, hold * 0.6), t2 = t1 + 360, t3 = t2 + 520;
+            _skwRun(F.g, t3, function (el) {
+                var a = _skwHead(tu), b = _skwHead(cu);
+                if (el < t2) {
+                    if (!a) { f.fade(0); return; }
+                    var k = _sigClamp01((el - t1) / (t2 - t1));
+                    _skwPlace(f, { c: a.c.clone().addScaledVector(a.d, a.s * 0.8 * k), d: a.d, s: a.s }, 1 + 0.8 * k, -0.7 * k);
+                    f.fade(0.95 * _sigClamp01(el / 160)); return;
+                }
+                if (!b) { f.fade(0); return; }
+                var k2 = _sigClamp01((el - t2) / (t3 - t2)), chest = b.c.clone(); chest.y -= b.s * 2.6;
+                var from = a ? a.c.clone().addScaledVector(a.d, a.s * 0.8) : chest;
+                _skwPlace(f, { c: _skwFly(from, chest, k2, b.s * 1.6), d: b.d, s: b.s }, 1.8 * (1 - 0.8 * k2), -0.7);
+                f.fade(0.95 * (1 - Math.max(0, (k2 - 0.75) / 0.25)));
+            });
+        },
+        /* SKIN SWAP: each wears the other's face, then they trade places (the faces ride the bodies) */
+        raceSkinSwap: function (cu, tu, hold) {
+            var F = _skwFrame(), fc = _skwFace(_skwKeyFor(tu), 140, false), ft = _skwFace(_SKW_KEYS[0], 140, true);
+            if (!fc || !ft) return;
+            F.g.add(fc.g); F.g.add(ft.g);
+            var total = hold + 900;
+            _skwRun(F.g, total, function (el) {
+                var op = 0.95 * _afEnv(el, 0, 220, total - 320, total), a = _skwHead(cu), b = _skwHead(tu);
+                if (a) { _skwPlace(fc, a, 1, 0); fc.fade(op); } else fc.fade(0);
+                if (b) { _skwPlace(ft, b, 1, 0); ft.fade(op); } else ft.fade(0);
+            });
+        },
+        /* MIMICRY: three faces circle its head, one bright at a time */
+        raceMimicry: function (cu, tu, hold) {
+            var F = _skwFrame(), fs = [];
+            for (var i = 1; i < 4; i++) { var f = _skwFace(_SKW_KEYS[i], 140, false); if (f) { F.g.add(f.g); fs.push(f); } }
+            if (!fs.length) return;
+            var total = Math.max(2000, hold + 1200);
+            _skwRun(F.g, total, function (el) {
+                var a = _skwHead(cu); if (!a) { for (var j = 0; j < fs.length; j++) fs[j].fade(0); return; }
+                var env = _afEnv(el, 0, 240, total - 320, total), lit = Math.floor(el / 170) % fs.length;
+                for (var k = 0; k < fs.length; k++) {
+                    var ang = el * 0.0032 + k * Math.PI * 2 / fs.length, r = a.s * 2.4;
+                    var c = a.c.clone(); c.x += Math.sin(ang) * r; c.z += Math.cos(ang) * r; c.y += Math.sin(el * 0.004 + k) * a.s * 0.2;
+                    var d = new THREE.Vector3(Math.sin(ang), 0, Math.cos(ang));   // facing out
+                    _skwPlace(fs[k], { c: c, d: d, s: a.s }, k === lit ? 1.6 : 1.3, 0);
+                    fs[k].fade(env * (k === lit ? 0.98 : 0.35));
+                }
+            });
+        }
+    };
+    function _skwWindup(spellId, p) {
+        var mv = _SKW_MOVES[spellId];
+        if (!mv || !p || p.uid == null || _catOff('spells') || p.mark) return;
+        var cu = _skwUnit(p.uid);
+        if (!cu || String(cu.race || '').toLowerCase() !== 'skinwalker') return;
+        var tu = (p.tx != null) ? _lgUidAt(p.tx, p.ty) : null;
+        if (tu == null) tu = p.uid;
+        if (_afFogHides(cu.x, cu.y) && (tu === p.uid || _afFogHides(p.tx, p.ty))) return;
+        mv(p.uid, tu, Math.max(240, +p.holdMs || 420));
+    }
+
     /* ══ THE INFLUENCER (2026-11-17, mondo: "flesh out their unique spells and spell animations/vfx") ══ Her looks are the feed:
        a phone (the Meshy hand prop `item_smartphone`, warmed with the spell library; no file = no phone, NO STAND-INS), the
        camera flash, hearts and share links, a ring light. Side colours from the viewer's seat (THE RIOT PASS): a ring or link
@@ -46370,7 +46580,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var mats = [];
         raw.traverse(function (n) { if (n.isMesh && n.material) { n.material = n.material.clone(); n.material.transparent = true; mats.push(n.material); } });
         var g = new THREE.Group(); g.add(raw);
-        return { g: g, fade: function (op) { for (var i = 0; i < mats.length; i++) { mats[i].opacity = op; mats[i].depthWrite = op > 0.6; } } };
+        return { g: g, fade: function (op) { for (var i = 0; i < mats.length; i++) { mats[i].opacity = op; } } };
     }
     /* a floor ring in the side colour of the unit standing there (or `owner`) */
     function _infRing(tx, ty, owner, r1, ms, delay) {
@@ -48008,7 +48218,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var mats = [];
         raw.traverse(function (n) { if (n.isMesh && n.material) { mats.push(n.material); n.material.transparent = true; } });
         return { g: g, mats: mats, w: ex * k, h: ey * k, d: ez * k,
-                 fade: function (op) { for (var i = 0; i < mats.length; i++) { mats[i].opacity = op; mats[i].depthWrite = op > 0.6; } } };
+                 fade: function (op) { for (var i = 0; i < mats.length; i++) { mats[i].opacity = op; } } };
     }
     /* the lens's right and its away direction on the board, in the frame's (x, z) */
     function _spcDirs() {
@@ -70909,7 +71119,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var hinge = new THREE.Group(); hinge.position.set(0, hgt, -d / 2); g.add(hinge);
         var lid = _pzMesh(new THREE.PlaneGeometry(d, d), lidTop, hinge, 0, 0.6, d / 2); lid.rotation.x = -Math.PI / 2;
         base.renderOrder = 158;
-        return { g: g, hinge: hinge, fade: function (op) { for (var i = 0; i < mats.length; i++) { mats[i].opacity = op; mats[i].depthWrite = op > 0.6; } } };
+        return { g: g, hinge: hinge, fade: function (op) { for (var i = 0; i < mats.length; i++) { mats[i].opacity = op; } } };
     }
     /* the pack's box (_WPN_MODELS.pizzaBox) when it has loaded, else null and the drawn box stands in for that cast; its lid
        opens the same way the drawn one does (hinge.rotation.x < 0 = up and back), the pepperoni pizza inside when `withPizza` */
@@ -70934,7 +71144,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var g = new THREE.Group(); g.add(m);
         var hinge = { rotation: {} };
         Object.defineProperty(hinge.rotation, 'x', { get: function () { return -lid.rotation.x; }, set: function (v) { lid.rotation.x = -v; } });
-        return { g: g, hinge: hinge, fade: function (op) { for (var i = 0; i < mats.length; i++) { mats[i].opacity = op; mats[i].depthWrite = op > 0.6; } } };
+        return { g: g, hinge: hinge, fade: function (op) { for (var i = 0; i < mats.length; i++) { mats[i].opacity = op; } } };
     }
     function _dbUnitId(x, y) { var u = _fx5UnitAt(x, y); return u ? u.id : null; }
     function _dbHeadH(x, y, ts) {
