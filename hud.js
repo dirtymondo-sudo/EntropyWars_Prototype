@@ -25679,3 +25679,96 @@ syncPickerRows();
 window.applyHudTheme(window.getHudTheme());
 apply();
 })();
+
+/* ═══ 🎛 THE 4-TRACK STRIP (2026-11-24, thread "Add the Music Producer unit"; mondo OK'd the mock-up 11-24,
+   project files music-producer/four_track_mockup.png). A small PS1 window above the unit panel while a producer's song plays:
+   four lamps (lit = the track is playing), the tempo, the chords with the one playing now in amber, the melody's style, and 16
+   beat lights that move with the real beat (audio.js EWBeat.now(); the kick steps marked). Build-up: drums + bass dark, the
+   amber riser bar "BASS DROP · LANDS NEXT TURN". Scratched (stun / sleep / frozen / silence): every lamp dark, SCRATCHED.
+   The enemy's producer reads in the enemy colour. His earshot (3 squares) pulses on the floor on every bar
+   (ThreeVFXEffects.mpEarshotPulse). Each client draws it from the synced song (battle.js _mpSongToHear): nothing relayed.
+   One timer, 10 a second, reads one song object and one panel rect: no scene walks (RULE #1e). ═══ */
+(function () {
+  if (typeof document === 'undefined') return;
+  const CSS = `
+#ew4t{position:fixed;z-index:60;width:268px;padding:13px 8px 7px;background:rgba(0,0,0,.92);border:2px solid #f2f2f2;border-radius:3px;
+ box-shadow:0 0 0 1px #000;color:#f2f2f2;font-family:'Chakra Petch',sans-serif;pointer-events:none;display:none;box-sizing:border-box}
+#ew4t .tab{position:absolute;top:-10px;left:6px;background:#000;border:1px solid #f2f2f2;font:9px/1 'Silkscreen',monospace;padding:2px 4px;letter-spacing:.06em}
+#ew4t .hdr{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;gap:6px}
+#ew4t .t{font:700 11px/1.1 'Chakra Petch',sans-serif;color:var(--c4t);white-space:nowrap}
+#ew4t .lbl{font:8px/1 'Silkscreen',monospace;letter-spacing:.06em;color:#9aa3b2;white-space:nowrap}
+#ew4t .lbl.red{color:#ff5a5f}
+#ew4t .trk{display:grid;grid-template-columns:9px 52px 1fr;gap:5px;align-items:center;min-height:17px}
+#ew4t .lamp{width:8px;height:8px;border-radius:50%;background:#2a2a2a;border:1px solid #555}
+#ew4t .on .lamp{background:var(--c4t);border-color:var(--c4tl);box-shadow:0 0 5px var(--c4t)}
+#ew4t .n{font:9px/1 'Silkscreen',monospace;letter-spacing:.04em}
+#ew4t .v{font:700 10.5px/1.25 'Chakra Petch',sans-serif;white-space:normal}
+#ew4t .trk:not(.on) .n,#ew4t .trk:not(.on) .v{color:#666}
+#ew4t .ch{color:#9aa3b2}#ew4t .ch.cur{color:#000;background:#ffb02e;padding:0 3px;border-radius:2px}
+#ew4t .steps{display:grid;grid-template-columns:repeat(16,1fr);gap:2px;margin-top:5px}
+#ew4t .steps i{height:5px;background:#222;display:block}#ew4t .steps i.h{background:#7a1d22}#ew4t .steps i.now{background:#ffb02e}
+#ew4t .drop{margin-top:5px;font:9px/1 'Silkscreen',monospace;color:#ffb02e}
+#ew4t .riser{height:5px;margin-top:3px;background:linear-gradient(90deg,#3a2a00,#ffb02e)}`;
+  const TEMPO = { 90: 'Hip-hop', 120: 'Pop', 140: 'Trap', 160: 'Fast' };
+  const MEL = { legato: 'Legato', staccato: 'Staccato', arp: 'Arpeggio' };
+  let el = null, stepEls = [], lastKey = '', lastBar = null, lastSig = '';
+  function make() {
+    const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
+    el = document.createElement('div'); el.id = 'ew4t';
+    el.innerHTML = '<span class="tab">4-TRACK</span><div class="hdr"><span class="t"></span><span class="lbl"></span></div>'
+      + ['drums', 'chords', 'bass', 'melody'].map(k => `<div class="trk" data-k="${k}"><span class="lamp"></span><span class="n">${k.toUpperCase()}</span><span class="v"></span></div>`).join('')
+      + '<div class="dropw" style="display:none"><div class="drop">BASS DROP · LANDS NEXT TURN</div><div class="riser"></div></div>'
+      + '<div class="steps">' + '<i></i>'.repeat(16) + '</div>';
+    document.body.appendChild(el);
+    stepEls = [...el.querySelectorAll('.steps i')];
+  }
+  function esc(s) { return String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]); }
+  function place() {
+    const a = document.querySelector('.ewd-actor');
+    const r = a && a.getBoundingClientRect();
+    if (r && r.width > 0) { el.style.left = Math.max(8, r.left) + 'px'; el.style.bottom = Math.max(8, window.innerHeight - r.top + 16) + 'px'; }
+    else { el.style.left = '12px'; el.style.bottom = '260px'; }
+  }
+  function tick() {
+    let S = null;
+    try { S = (typeof state !== 'undefined' && state && state.phase === 'battle' && typeof window._mpSongToHear === 'function') ? window._mpSongToHear() : null; } catch (e) { S = null; }
+    if (!S) { if (el && el.style.display !== 'none') el.style.display = 'none'; lastKey = ''; lastBar = null; return; }
+    if (!el) make();
+    const B = window.EWBeat, now = (B && B.playing && B.playing()) ? B.now() : null;
+    const me = (typeof getLocalPlayer === 'function') ? getLocalPlayer() : 1, foe = S.side !== me;
+    const owner = (typeof unitFromId === 'function') ? unitFromId(S.owner) : null;
+    const name = owner ? ((typeof unitDisplayName === 'function') ? unitDisplayName(owner) : 'Music Producer') : 'Music Producer';
+    const on = { drums: !!S.drums && !S.building, chords: !!S.chordsOn, bass: !!S.bass && !S.building, melody: !!S.melody };
+    if (S.muted) for (const k in on) on[k] = false;
+    const nOn = ['drums', 'chords', 'bass', 'melody'].filter(k => k === 'drums' ? S.drums : k === 'bass' ? S.bass : k === 'chords' ? S.chordsOn : S.melody).length;
+    const cur = now && now.chord;
+    const chords = (S.chordsOn && S.chords && S.chords.length) ? S.chords : [];
+    const vals = {
+      drums: S.muted ? 'muted' : S.building && S.drums ? 'out for the build-up' : S.drums ? `${S.tempo} BPM · ${TEMPO[S.tempo] || ''}` : '— not laid yet',
+      chords: S.muted ? 'muted' : chords.length ? chords.map(c => `<span class="ch${c === cur ? ' cur' : ''}">${esc(c)}</span>`).join(' · ') + (S.sync ? ' · <span class="ch">sync</span>' : '') : '— not laid yet',
+      bass: S.muted ? 'muted' : S.building && S.bass ? 'out for the build-up' : S.bass ? 'On' : '— not laid yet',
+      melody: S.muted ? 'muted' : S.melody ? (MEL[S.melody] || S.melody) : '— not laid yet',
+    };
+    const lbl = S.muted ? 'SCRATCHED' : S.building ? 'BUILD-UP' : (now ? `BAR ${now.bar + 1} · ` : '') + `${nOn}/4 TRACKS`;
+    const key = [S.owner, foe, name, lbl, JSON.stringify(on), JSON.stringify(vals), S.building, S.muted].join('|');
+    if (key !== lastKey) {
+      lastKey = key;
+      el.style.setProperty('--c4t', foe ? '#ff7a5c' : '#3fd6ff'); el.style.setProperty('--c4tl', foe ? '#ffd3c7' : '#bff3ff');
+      el.querySelector('.t').textContent = `P${S.side} · ${name}`;
+      const L = el.querySelector('.lbl'); L.textContent = lbl; L.classList.toggle('red', !!S.muted);
+      for (const row of el.querySelectorAll('.trk')) { const k = row.dataset.k; row.classList.toggle('on', on[k]); row.querySelector('.v').innerHTML = vals[k]; }
+      el.querySelector('.dropw').style.display = (S.building && !S.muted) ? '' : 'none';
+    }
+    const P = (B && B.PATTERNS && B.PATTERNS[S.tempo]) || null;
+    const sig = (P ? P.k.join(',') : '') + '|' + (now && !S.muted ? now.step : -1);
+    if (sig !== lastSig) { lastSig = sig; stepEls.forEach((s, i) => { s.className = (P && P.k.includes(i) ? 'h' : '') + (now && !S.muted && now.step === i ? ' now' : ''); }); }
+    if (el.style.display !== 'block') el.style.display = 'block';
+    place();
+    /* the earshot pulse, once a bar, on his square */
+    if (now && !S.muted && now.bar !== lastBar && owner && !owner.dead) {
+      lastBar = now.bar;
+      try { if (window.ThreeVFXEffects && ThreeVFXEffects.mpEarshotPulse) ThreeVFXEffects.mpEarshotPulse(owner.x, owner.y, foe ? 0xff7a5c : 0x3fd6ff); } catch (e) {}
+    }
+  }
+  setInterval(tick, 100);
+})();
