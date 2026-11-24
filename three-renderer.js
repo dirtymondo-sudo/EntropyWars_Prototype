@@ -15795,6 +15795,8 @@ const ThreeRenderer = (function () {
         if (hgBuff > 0) badges.push('<span class="tp-sbadge tp-stat-up" title="Key Charge: +' + hgBuff + ' ATK/DEF points">' + ((typeof keyIconHtml === 'function') ? keyIconHtml(9) : 'KEY') + '+' + hgBuff + '</span>');
         /* 🐝 THE POLLEN (battle.js): the Bee Queen's carried pollen */
         if ((unit.pollen | 0) > 0) badges.push('<span class="tp-sbadge tp-stat-up" title="Pollen: +' + (unit.pollen * 8) + ' ATK, spell power and SPD">POL ' + (unit.pollen | 0) + '</span>');
+        /* 📺 THE RUNDOWN (battle.js): the News Anchor's next segment */
+        if (unit.race === 'weatherman' && unit.gender === 'female' && !unit.dead) badges.push('<span class="tp-sbadge tp-stat-up" title="The Rundown: her next spell runs this segment">📺 ' + ['NEWS', 'SPORTS', 'WEATHER'][Math.max(0, unit._rundown | 0) % 3] + '</span>');
         /* 🎮 THE VIEWERS (battle.js): the Streamer's / E-Girl's crowd */
         if (unit.race === 'streamer' && !unit.dead) badges.push('<span class="tp-sbadge ' + ((unit.viewers | 0) > 0 ? 'tp-stat-up' : 'tp-stat-dn') + '" title="Viewers: Clip It marks at 5+, Donation Goal and Raid spend them">👁 ' + Math.min(10, unit.viewers | 0) + '</span>');
         if (totalMov > 0) badges.push('<span class="tp-sbadge tp-stat-up">MOV+' + totalMov + '</span>');

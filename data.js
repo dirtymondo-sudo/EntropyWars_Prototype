@@ -395,6 +395,7 @@ const FINISHERS = {
     'cursed tv':      { id: 'fin_cursed_tv', name: 'Off the Air', glyph: '📺', type: 'anomaly', sig: 'corruptedSave', built: true, tagline: 'WE NOW RETURN YOU TO YOUR REGULARLY SCHEDULED PROGRAMMING', desc: 'The screen shrinks to a white line, then a dot, and the victim goes with it. The test card comes up and the anthem plays.' },   // 2026-11-17 THE CURSED TV (mondo approved the kit) (borrows the corruptedSave staging)
     'virus':          { id: 'fin_virus', name: 'Format C:', glyph: '🦠', type: 'anomaly', sig: 'corruptedSave', built: true, tagline: 'ALL DATA ON THIS DRIVE WILL BE LOST', desc: 'A progress bar opens over the victim and fills, file by file, and then there is nothing left to delete.' },   // 2026-11-18 THE VIRUS (mondo approved the kit) (borrows the corruptedSave staging)
     'hollow':         { id: 'fin_hollow', name: 'Lights Out', glyph: '🎭', type: 'anomaly', sig: 'devoured', built: true, tagline: 'SLEEP NOW', desc: 'A sleeping mask settles over the face, the eyes behind it close, and the maw takes what is left of the dream.' },   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name) (borrows the devoured staging)
+    'weatherman':     { id: 'fin_weatherman', name: 'Severe Weather Alert', glyph: '🌪', type: 'human', sig: 'upUpAndAway', built: true, tagline: 'STAY INDOORS', desc: 'The alert tone sounds, a funnel cloud drops out of a green sky and takes the victim up, live on the six o\'clock news.' },   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR (borrows the upUpAndAway staging)
     'streamer':       { id: 'fin_streamer', name: 'Banned', glyph: '🎮', type: 'anomaly', sig: 'corruptedSave', built: true, tagline: 'ACCOUNT SUSPENDED', desc: 'The chat floods, the mods wake up, and ACCOUNT SUSPENDED stamps down over the victim until nothing is left on the stream.' },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit) (borrows the corruptedSave staging)
     'vtuber':         { id: 'fin_vtuber', name: 'Graduation', glyph: '🎀', type: 'anomaly', sig: 'farewellTour', built: true, tagline: 'END OF STREAM', desc: 'She waves goodbye to the chat, the stream cuts to a pixel heart, and the victim\'s name card reads END OF STREAM.' },   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look) (borrows the farewellTour staging)
     'cameraman':      { id: 'fin_cameraman', name: "That's a Wrap", glyph: '🎥', type: 'human', sig: 'blurryFootage', built: true, tagline: 'CUT. PRINT.', desc: 'The light goes red, the lens racks in and the last frame is the victim, held forever.' },   // 2026-11-19 THE NEW RACES 3 (borrows the blurryFootage staging)
@@ -659,6 +660,7 @@ const RACE_ELEMENT_AFFINITY = {
     'cursed tv': { lightning: 'resist', water: 'weak' },   // 2026-11-17 THE CURSED TV (mondo approved the kit): it runs on the mains, and water in a set is the end of it
     'virus': { poison: 'resist', lightning: 'resist', water: 'weak' },   // 2026-11-18 THE VIRUS (mondo approved the kit): made of poison and current; water shorts it
     'hollow': { psychic: 'resist', light: 'weak' },   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name): a dream that moves you; light wakes it
+    'weatherman': { wind: 'resist', lightning: 'weak' },   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: dressed for the wind; a man with a metal umbrella in a thunderstorm
     'streamer': { sonic: 'resist', light: 'weak' },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit): the headset is on; never sees the sun
     'vtuber': { lightning: 'resist', water: 'weak' },   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look): lives on current; water shorts the projectors
     'cameraman': { light: 'resist', water: 'weak' },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models): the flash is his; water kills the camera
@@ -3050,6 +3052,12 @@ const RACE_PROFILES = {
         label: 'Virus',
         types: ['anomaly', 'tech']
     },
+    'weatherman': {   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: one race, like the Streamer + the E-Girl: the male is the Weatherman, the female the News Anchor, every spell their own (RACE_GENDER_SPELLS)
+        label: 'Weatherman',
+        labelMale: 'Weatherman',
+        labelFemale: 'News Anchor',
+        types: ['human']
+    },
     'hollow': {   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name)
         label: 'The Hollow',
         types: ['anomaly', 'alien']
@@ -3863,6 +3871,14 @@ const PASSIVE_DEFS = {
         basicAttackMagic: true,
         desc: 'Her basic attack is a pixel heart bolt: it uses M.ATK against M.DEF. Like her spells, it can fly from one of her Holo Projectors.',
     },
+    wnTheForecast: {   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: battle.js THE WEATHERMAN + NEWS ANCHOR
+        id: 'wnTheForecast', icon: '☂', name: 'The Forecast',
+        desc: 'The Weatherman. Any weather he calls lasts 1 round longer, and the weather never hurts him or leaves him Wet: the umbrella goes up.',
+    },
+    wnTheRundown: {   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: battle.js THE WEATHERMAN + NEWS ANCHOR
+        id: 'wnTheRundown', icon: '🎙', name: 'The Rundown',
+        desc: 'The News Anchor. Each of her spells runs the next segment of the show for her and every ally within 3, in order: Headlines (+1 ATK and +1 M ATK stage), Sports (+1 SPD stage), then the Weather (every weather up stays 1 round longer; under clear skies, a SMALL heal). Then back to the Headlines.',
+    },
     deltaAlter: {   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
         id: 'deltaAlter', icon: '🔺', name: 'Delta Alter',
         desc: 'Her killer programming, buried deep. The first time each battle she drops under half HP it switches on: +2 ATK stages for 2 rounds, and her next basic attack is a sure critical hit.',
@@ -3958,6 +3974,7 @@ const RACE_PASSIVES = {
     'vtuber':        ['heartBolt'],   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
     'monarch':       ['deltaAlter'],   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
     'butterfly girl': ['flashAndVanish'],   // 2026-11-23 THE BUTTERFLY GIRL (mondo OK'd the kit) — she flies too, so the slots are full
+    'weatherman':    ['wnTheForecast', 'wnTheRundown'],   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: his rule, her rule (each names who it is for)
 };
 
 /* 💔 Broken (STATUS_DEFS.broken, 2026-10-09): while it lasts the unit has no passives at all. Raw status read — this is a
@@ -4034,12 +4051,14 @@ const RACE_MERGED = { 'nun': { race: 'priest', gender: 'female' } };
 /* 👁🌑 THE REALM WINDOW: races that SEE a Shadow Realm pair on their own turns (they cannot touch it). A projecting
    spirit both sees and touches (battle.js unitSeesRealm / unitCrossesRealm). */
 const REALM_SIGHT_RACES = ['ghost', 'shadow entity'];
-const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber', 'pharaoh', 'deep sea diver', 'gambler', 'hacker', 'monk', 'shogun', 'cameraman', 'mechanic', 'janitor', 'trucker', 'gladiator', 'farmer', 'jellyfish ufo', 'bear', 'rat', 'butterfly girl', 'plastic surgeon', 'monarch', 'abomination', 'hollow'];
+const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber', 'pharaoh', 'deep sea diver', 'gambler', 'hacker', 'monk', 'shogun', 'cameraman', 'mechanic', 'janitor', 'trucker', 'gladiator', 'farmer', 'jellyfish ufo', 'bear', 'rat', 'butterfly girl', 'plastic surgeon', 'monarch', 'abomination', 'hollow', 'weatherman'];
 /* THE COMING RACES (2026-11-19, mondo: "wire them in the game at least in the relation web, give them sprite ai portraits ... my associate
    [does] their spell and combat plan on another account"): races whose model, sprite and name are in (sprites.js RACE_MODELS_3D,
    RACE_PROFILES) but whose kit is not. They are NOT playable: the Relationship Web lists them (docs/plans/story-web/build/fresh.js).
    To unlock one: give it its kit (RACE_ABILITIES, RACE_TREE, RACE_FAMILIES, stats, physique, prices, ...), MOVE it from here into
    AVAILABLE_RACES and server.js AVAILABLE_RACES. Notes: docs/notes/champions-combat.md "THE COMING RACES". */
+/* THE WEATHERMAN's FORECAST (2026-11-24 THE WEATHERMAN + NEWS ANCHOR): the weather never hurts or soaks him (state.js applyWeatherTurnEffects + stormStrikeUnit) */
+function wnWeatherproof(u) { return !!u && u.race === 'weatherman' && (u.gender || 'male') === 'male' && unitHasPassive(u, 'wnTheForecast'); }   /* Broken = no passives = no shelter */
 const EW_COMING_RACES = [];   // 2026-11-23 THE COMING RACES 2 (the Mannequin was cut 11-23, mondo; the Bear, the Rat, the Butterfly Girl and the Monarch got their kits 11-23 and moved to AVAILABLE_RACES) (models in, kits not yet; one spell thread a unit). 2026-11-19: the gladiator, the farmer and the jellyfish UFO got their kits and moved to AVAILABLE_RACES
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
@@ -4061,6 +4080,7 @@ const RACE_KITS = {
     'cursed tv': { range: 2 },   // 2026-11-17 THE CURSED TV (mondo approved the kit): the basic attack is a jolt down the power cable, and the cable reaches
     'virus': { range: 2 },   // 2026-11-18 THE VIRUS (mondo approved the kit): the basic attack is a lash of code from its tendrils, and they reach
     'hollow': { range: 3 },   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name): the basic attack is a crystal sliver a finger flicks
+    'weatherman': { range: 2 },   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: the umbrella jab reaches (his); the microphone's feedback whine (hers)
     'streamer': { range: 1 },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit): the basic attack is a keyboard slam
     'vtuber': { range: 2 },   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look): the basic attack is a pixel heart bolt (magic: her Heart Bolt passive)
     'gambler': { range: 2 },   // 2026-11-19 THE NEW RACES 4: the basic attack is a flicked casino chip
@@ -4207,6 +4227,7 @@ const RACE_CLASS = {
     'cursed tv': 'caster',   // 2026-11-17 THE CURSED TV (mondo approved the kit)
     'virus': 'specialist',   // 2026-11-18 THE VIRUS (mondo approved the kit)
     'hollow': 'specialist',   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name) (a controller)
+    'weatherman': 'specialist',   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: he moves the sky, she runs the show
     'streamer': 'specialist',   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
     'vtuber': 'caster',   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
     'cameraman': 'ranged',   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
@@ -4288,6 +4309,7 @@ const RACE_TERRAIN_PREFERENCE = {
     'cursed tv': 'wasteland',   // 2026-11-17 THE CURSED TV (mondo approved the kit)
     'virus': 'wasteland',   // 2026-11-18 THE VIRUS (mondo approved the kit)
     'hollow': 'tree',   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name) (as the Dreameater)
+    'weatherman': 'urban',   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: Disaster City's news station
     'streamer': 'urban',   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
     'vtuber': 'urban',   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
     'cameraman': 'urban',   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
@@ -4705,6 +4727,7 @@ const RACE_BASE_STATS = {
     'cursed tv':          { hp:  860, mp: 210, atk:  20, def:  85, mdef: 120, int: 156, vision: 4, crt: 15, spd: 140 },   // 2026-11-17 THE CURSED TV (mondo approved the kit) — frail and quick, a magic caster; LAB LOOP 11-22 PASS 4: HP 900→860, M.ATK 175→156 (55.4% over 240 games)
     'virus':              { hp:  930, mp: 220, atk:  40, def:  60, mdef: 160, int: 241, vision: 3, crt: 18, spd:  90 },   // 2026-11-18 THE VIRUS (mondo approved the kit) — first pass: a frail magic specialist; LAB LOOP 11-22 PASS 2: HP 780→860, M.ATK 180→212 (34.0% over 109 games); LAB LOOP 11-23 PASS 2: HP 860→930, M.ATK 212→241 (37.1% over 135 games)
     'hollow':             { hp:  880, mp: 230, atk:  40, def:  70, mdef: 150, int: 190, vision: 4, crt: 15, spd: 100 },   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name) — first pass (the plan's numbers): a floating controller
+    'weatherman':         { hp:  930, mp: 230, atk:  70, def:  80, mdef: 125, int: 160, vision: 4, crt: 18, spd: 105 },   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR — first pass on the specialist median
     'streamer':           { hp:  990, mp: 200, atk: 125, def:  80, mdef: 100, int: 142, vision: 3, crt: 25, spd: 110 },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit) — first pass: a skirmisher who banks a crowd; LAB LOOP 11-22 PASS 4: HP 950→990, ATK 120→125, M.ATK 130→142 (44.9% over 244 games)
     'vtuber':             { hp:  820, mp: 240, atk:  30, def:  70, mdef: 150, int: 185, vision: 3, crt: 20, spd: 100 },   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look) — first pass: a frail caster who is never where she seems
     'cameraman':          { hp:  900, mp: 140, atk: 105, def:  78, mdef:  70, int:  60, vision: 5, crt: 26, spd: 125 },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models) — first pass on the ranged median (vision 5: he sees everything)
@@ -4898,6 +4921,7 @@ const RACE_PHYSIQUE = {
     'cursed tv':           { h: 1.45, w: 40 },   // 2026-11-17 THE CURSED TV (mondo approved the kit): the set on its cart, antennae up
     'virus':               { h: 1.50, w: 30 },   // 2026-11-18 THE VIRUS (mondo approved the kit): the spiked ball hovering, tendrils down
     'hollow':              { h: 2.40, w: 60 },   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name): the maw ring hovering, the finger chandelier hanging under it
+    'weatherman':          { h: 1.80, w: 76 },   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR
     'streamer':            { h: 1.76, w: 70 },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
     'vtuber':              { h: 1.64, w: 50 },   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
     'cameraman':           { h: 1.78, w: 78 },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
@@ -11197,6 +11221,41 @@ const RACE_ABILITIES = {
           ignoresLineOfSight: true, hitsStatusOnly: 'masked', dragToCaster: 3, dragDmgPer: 30, masksHome: true, animSlot: 'hlWake',
           statusEffects: [{ id: 'feared', duration: 1 }],
           desc: 'Every mask opens its eyes and screams. Each Masked enemy within 7, through cover, is dragged up to 3 tiles toward the maw and takes MEDIUM magic damage, +30 for every tile it was dragged (a wall that stops it still counts that tile), then is Feared for 1 round. All the masks fly home. Needs a mask out. Cooldown: 3 rounds.' },
+    ],
+    'weatherman': [
+        /* THE WEATHERMAN + NEWS ANCHOR (2026-11-24, mondo: "Weatherman should have spells that summon and interact with the weather
+           system ... The News Anchor can maybe use the microphone the popstar uses"). One race; no spell is shared (RACE_GENDER_SPELLS).
+           HIS RULE, THE FORECAST: a weather he calls lasts 1 round longer; the weather never hurts him or soaks him (wnWeatherproof).
+           HER RULE, THE RUNDOWN: each of her spells runs the next segment for her and her allies within 3 (`unit._rundown`):
+           Headlines (+1 ATK, +1 M ATK), Sports (+1 SPD), Weather (+1 round on every weather up; clear skies = a SMALL heal).
+           battle.js "THE WEATHERMAN + NEWS ANCHOR" (_wnCastRow, _wnAfterCast). Notes: champions-combat.md "THE WEATHERMAN + NEWS ANCHOR". */
+        { id: 'wnColdFront', name: 'Cold Front', tier: 1, families: ['newsroom'], cost: 25, apCost: 1, spellType: 'human',
+          element: 'wind', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 80, range: 4, wnSkyRead: true,
+          desc: 'And a cold front moves in. Deals WEAK magic damage to a Single Enemy within 4, and it reads the sky: wind under clear skies, lightning in a Thunderstorm, water and Wet in the rain, ice and Slow in a Blizzard, fire in a Drought or a Solar Flare, Blind in a Sandstorm, Stagger in a Tornado.' },
+        { id: 'wnSevereWeather', name: 'Severe Weather Warning', tier: 2, families: ['newsroom'], cost: 50, apCost: 1, cooldownRounds: 3, spellType: 'human',
+          element: 'lightning', type: 'utility', kind: 'summonWeather', range: 5, weatherType: 'thunderstorm', weatherDuration: [3, 4], weatherTiles: [4, 6], wnByGround: true,
+          desc: 'The forecast fits the ground. Calls the weather that suits the square he points at: a Thunderstorm on grass, dirt or water, a Sandstorm on sand, a Blizzard on snow or ice, a Drought on scorched ground or lava, a Tornado on rock. Lasts 3 to 4 rounds, +1 for The Forecast. Cooldown: 3 rounds.' },
+        { id: 'wnStormTracker', name: 'Storm Tracker', tier: 3, families: ['newsroom'], cost: 60, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          element: 'wind', type: 'utility', kind: 'summonWeather', range: 8, weatherType: 'tornado', wnSteer: true,
+          desc: 'He points at the map like it is a green screen. Every weather that is up moves to the square he picks within 8: a storm\'s eye jumps there, a patch of weather moves over it, and each one stays 1 round longer. Needs a weather up. Cooldown: 2 rounds.' },
+        { id: 'wnStormOfCentury', name: 'Storm of the Century', tier: 4, families: ['newsroom'], cost: 95, apCost: 1, cooldownRounds: 4, spellType: 'human',
+          element: 'lightning', type: 'damage', kind: 'summonWeather', damageType: 'magic', dmg: 130, range: 5, weatherType: 'hurricane', weatherDuration: [3, 4], weatherTiles: [5, 8], wnStrikeWet: 4,
+          desc: 'They will name it after him. Calls a Hurricane on the square he picks (3 to 4 rounds, +1 for The Forecast). Its first downpour soaks every grounded enemy within 4 of the eye, then lightning strikes each of them for MEDIUM magic damage (the Wet take it worse). Cooldown: 4 rounds.' },
+        { id: 'wnTopStory', name: 'Top Story', tier: 1, families: ['newsroom'], cost: 25, apCost: 1, spellType: 'human',
+          element: 'sonic', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 80, range: 4,
+          statusEffects: [{ id: 'stagger', duration: 1 }],
+          desc: 'Tonight\'s top story is you. Deals WEAK sonic magic damage to a Single Enemy within 4 and Staggers it for 1 round. Runs the next segment of The Rundown.' },
+        { id: 'wnExclusive', name: 'Exclusive Interview', tier: 2, families: ['newsroom'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          element: 'sonic', type: 'damage', kind: 'pull', damageType: 'magic', dmg: 60, range: 4, pullDistance: 2,
+          statusEffects: [{ id: 'silence', duration: 1 }],
+          desc: 'Just a few questions. Pulls a Single Enemy within 4 two squares toward her, deals WEAK sonic magic damage and Silences it for 1 round: no comment. Runs the next segment of The Rundown. Cooldown: 2 rounds.' },
+        { id: 'wnFakeNews', name: 'Fake News', tier: 3, families: ['newsroom'], cost: 70, apCost: 1, cooldownRounds: 3, spellType: 'human',
+          element: 'sonic', type: 'debuff', kind: 'aoe', range: 4, aoeRadius: 1, noDamage: true, wnFlipStages: true,
+          statusEffects: [{ id: 'discord', duration: 1 }],
+          desc: 'Sources say they are losing. Every enemy in a 3x3 within 4: each stat boost it has turns into a drop of the same size, and it gets Discord for 1 round. No damage. Runs the next segment of The Rundown. Cooldown: 3 rounds.' },
+        { id: 'wnPrimeTime', name: 'Prime Time', tier: 4, families: ['newsroom'], cost: 95, apCost: 1, cooldownRounds: 4, spellType: 'human',
+          element: 'sonic', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 140, range: 4, aoeRadius: 2, wnAllSegments: true,
+          desc: 'The whole show at once. Deals MEDIUM sonic magic damage to All Enemies in a 5x5 within 4, then runs all three segments of The Rundown together for her and her allies within 3: Headlines, Sports and the Weather. Then the show starts over. Cooldown: 4 rounds.' },
     ],
     'streamer': [
         /* THE VIEWERS (2026-11-18, the Streamer + the E-Girl; mondo OK'd the kit 11-18): a count from 0 to 10 on the unit
@@ -21865,6 +21924,7 @@ const EW_RACE_BIOMES = {
     'cursed tv': ['urban', 'gothic'],   // 2026-11-17 THE CURSED TV (mondo approved the kit) — Disaster City's pawn shops, the Haunted House's attic
     'virus': ['neon_city', 'astral'],   // 2026-11-18 THE VIRUS (mondo approved the kit) — The Internet's quarantine
     'hollow': ['astral'],   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name) — The Astral Realm (its nightmares)
+    'weatherman': ['urban'],   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR — Disaster City (Hero Plaza's news office)
     'streamer': ['neon_city', 'urban'],   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit) — The Internet's stage
     'vtuber': ['neon_city', 'urban'],   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look) — The Internet, district V
     'cameraman': ['urban', 'forest', 'ranch'],   // 2026-11-19 THE NEW RACES 3 (mondo picked the models) — Disaster City, The Woods, the Lake
@@ -22546,6 +22606,7 @@ const RACE_TREE = {
     'cursed tv':     ['nrStaticBurst', 'nrEmergencyBroadcast', 'nrFastForward', 'nrRewind'],   // 2026-11-17 THE CURSED TV (mondo approved the kit): its own four
     'virus':         ['nrWorm', 'nrSelfReplicate', 'nrRansomware', 'nrZeroDay'],   // 2026-11-18 THE VIRUS (mondo approved the kit): its own four
     'hollow':        ['hlLull', 'hlStrings', 'hlBloom', 'hlWake'],   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name): its own four
+    'weatherman':    [['wnColdFront', 'wnTopStory'], ['wnSevereWeather', 'wnExclusive'], ['wnStormTracker', 'wnFakeNews'], ['wnStormOfCentury', 'wnPrimeTime']],   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: every rung is one of each (RACE_GENDER_SPELLS): his weather, her show
     'streamer':      ['nrClipIt', ['nrUwu', 'nrRageQuit'], 'nrDonationGoal', 'nrRaid'],   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit): the rung 2 pair is one of each version (RACE_GENDER_SPELLS)
     'vtuber':        ['nrKawaiiBeam', ['nrHoloProjector', 'nrSceneChange'], 'nrLoFiLoop', 'nrCollabStream'],   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
     'cameraman':     ['nrZoomIn', ['nrTiltShift', 'nrPhotographicEvidence'], 'nrMoneyShot', 'nrSayCheese'],   // 2026-11-19 THE NEW RACES 3
@@ -22751,8 +22812,11 @@ function getRaceTreeRow(race, cls) {
 
 /* Flat FACE ids (the first alternate of every twin) — the shape every
    pre-twin caller expects (default loadouts, optimize, balance exports). */
-function getRaceTreeSpells(race, cls) {
-    return getRaceTreeRow(race, cls).map(_treeEntryFace);
+function getRaceTreeSpells(race, cls, gender) {
+    /* `gender` (2026-11-24, THE WEATHERMAN + NEWS ANCHOR: every rung a pair of one of each): a twin's face is the first id that
+       gender learns (RACE_GENDER_SPELLS), so the News Anchor's curated four are hers, not the Weatherman's */
+    const off = (gender && typeof raceGenderOffSpellIds === 'function') ? raceGenderOffSpellIds(race, gender) : [];
+    return getRaceTreeRow(race, cls).map(e => (off.length && Array.isArray(e)) ? (_treeEntryIds(e).find(id => !off.includes(id)) || _treeEntryFace(e)) : _treeEntryFace(e));
 }
 
 /* { R2: ['raceBlitz', 'raceQbSneak'], … } — only the twin nodes. */
@@ -23200,6 +23264,10 @@ const RACE_GENDER_SPELLS = {
     'streamer': {   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
         male:   ['nrRageQuit', 'nrSpeedrun'],   // the Streamer: aggressive
         female: ['nrUwu', 'nrGiftedSub'],       // the E-Girl: support and control
+    },
+    'weatherman': {   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: no spell is shared
+        male:   ['wnColdFront', 'wnSevereWeather', 'wnStormTracker', 'wnStormOfCentury'],   // the Weatherman: the sky
+        female: ['wnTopStory', 'wnExclusive', 'wnFakeNews', 'wnPrimeTime'],                  // the News Anchor: the show
     },
     'bear': {   // 2026-11-23 THE BEAR (mondo OK'd: the polar bear gets "some spells in the ice family", the grizzly "a few nature spells too")
         male:   ['raceThornlash', 'raceTreelineRetreat', 'passivePhotosynthesis'],   // the Grizzly: the forest bear
@@ -24687,6 +24755,16 @@ const SPELL_FAMILIES = {
         desc: 'A living computer virus: it plants payloads that copy themselves from body to body, splits off replicas, and sets them all off at once.',
         unique: 'virus',
         identity: { who: ['Virus', 'Worm', 'Trojan'], adj: ['Spiked', 'Glitching', 'Infectious'], look: ['a spiked ball of dark green crystal', 'a ring of red eyes', 'tendrils of broken code'], vibe: ['copies itself from body to body', 'sets everything off at once'] }
+    },
+    newsroom: {   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR — the Weatherman's and the News Anchor's own
+        id: 'newsroom',
+        name: 'Newsroom',
+        glyph: '📺',
+        color: '#ffcc33',
+        kind: 'signature',
+        desc: 'Disaster City\'s evening news: the Weatherman calls, reads and moves the weather; the News Anchor runs the show, one segment after the next.',
+        unique: 'weatherman',
+        identity: { who: ['Weatherman', 'News Anchor', 'Storm Chaser'], adj: ['On Air', 'Live', 'Breaking'], look: ['a yellow storm-chaser raincoat', 'a red skirt suit', 'a black umbrella', 'a studio microphone'], vibe: ['calls the weather down', 'runs the next segment'] }
     },
     hollow: {   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name) — the Hollow's own
         id: 'hollow',
@@ -27148,6 +27226,7 @@ const RACE_FAMILIES = {
     'cursed tv': ['cursedtv', 'haunted', 'lightning', 'glitch'],   // 2026-11-17 THE CURSED TV (mondo approved the kit)
     'virus': ['malware', 'computerhacking', 'glitch', 'internetaddiction'],   // 2026-11-18 THE VIRUS (mondo approved the kit)
     'hollow': ['hollow', 'nightmares', 'astral', 'fractal'],   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name)
+    'weatherman': ['newsroom', 'wind', 'lightning', 'stagepresence'],   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR
     'streamer': ['streaming', 'stagepresence', 'computerhacking', 'internetaddiction'],   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
     'vtuber': ['vtubing', 'stagepresence', 'computerhacking', 'internetaddiction'],   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
     'cameraman': ['cameraman', 'stagepresence', 'eyesight', 'internetaddiction'],   // 2026-11-19 THE NEW RACES 3
@@ -27804,6 +27883,7 @@ const CAMPAIGN_RACE_PRICES = {
   'cursed tv': 450,   // 2026-11-17 THE CURSED TV (mondo approved the kit)
   'virus': 450,   // 2026-11-18 THE VIRUS (mondo approved the kit)
   'hollow': 500,   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name)
+  'weatherman': 400,   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR
   'streamer': 400,   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
   'vtuber': 400,   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
   'cameraman': 350,   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
@@ -29813,6 +29893,7 @@ const DOOR_TEXT = {
         'abomination': 'The Sewers',   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name) (a first pick, he did not name a home: the drains under Disaster City)
         'plastic surgeon': 'Downtown',   // 2026-11-23 THE PLASTIC SURGEON (the Disaster Hills, Disaster City's district N)
         'monarch': 'D.U.M.B.',   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
+        'weatherman': 'Downtown',   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR (the news office in Hero Plaza)
         'gambler': 'The Strip', 'hacker': 'Downtown', 'monk': 'The Bermuda Triangle', 'shogun': 'The Bermuda Triangle',   // 2026-11-19 THE NEW RACES 4 (the gambler lives in the Western Town too: HQ_AREA_ENCOUNTERS; the monk + the shogun on the Volcano Island)
         'cameraman': 'Downtown', 'mechanic': 'Downtown', 'janitor': 'Downtown', 'trucker': 'Downtown',   // 2026-11-19 THE NEW RACES 3
        
@@ -100340,6 +100421,8 @@ const HQ_SPAWN_RULES = {
                 { race: 'hippie', g: 'male', d: 'C', n: 1, work: 'p:P06-01', beat: 'B', homes: ['P10-09-B2'] },      // the protest on the Civic plaza; Bayside after
                 { race: 'hippie', g: 'female', d: 'C', n: 1, work: 'p:P06-01', beat: 'B', homes: ['P10-09-B2'] },
                 { race: 'cameraman', d: 'C', n: 1, work: 'p:P06-01', beat: 'H', homes: ['P07-04-B2'] },             // every Cameraman goes back to the News office (Hero Plaza)
+                { race: 'weatherman', g: 'male', d: 'H', n: 1, work: 'b:P04-04-B1', beat: 'C', homes: ['P07-04-B2'] },             // the Weatherman: the News office, out to the weather in Civic (2026-11-24 THE WEATHERMAN + NEWS ANCHOR)
+                { race: 'weatherman', g: 'female', d: 'H', n: 1, work: 'b:P04-04-B1', homes: ['P07-04-B2'] },             // the News Anchor: the News office's desk
                 { race: 'librarian', d: 'C', n: 1, work: 'p:P05-03', homes: ['P07-04-B2'] },                         // Public library
                 { race: 'janitor', d: 'C', n: 1, work: 'b:P06-00-B1', homes: ['P07-04-B2', 'P00-01-B2'] },           // City Hall
                 /* Financial */
@@ -100421,7 +100504,7 @@ const HQ_SPAWN_RULES = {
             races: {
                 'cameraman': 'common', 'mechanic': 'common', 'janitor': 'common', 'trucker': 'uncommon',
                 'police officer': 'common', 'chef': 'common', 'lifeguard': 'common', 'skater': 'common', 'delivery boy': 'common', 'gangster': 'common', 'hippie': 'common', 'honda civic': 'common', 'firefighter': 'common',
-                'gambler': 'common', 'streamer': 'common', 'hacker': 'uncommon', 'plastic surgeon': 'uncommon',
+                'gambler': 'common', 'streamer': 'common', 'hacker': 'uncommon', 'plastic surgeon': 'uncommon', 'weatherman': 'uncommon',
                 'priest': 'uncommon', 'conspiracy theorist': 'uncommon', 'goblin': 'uncommon', 'spy': 'uncommon', 'professor': 'uncommon', 'clown': 'uncommon', 'mime': 'uncommon', 'televangelist': 'uncommon',
                 'bunny girl': 'uncommon', 'quarterback': 'uncommon', 'luchador': 'uncommon', 'marksman': 'uncommon', 'politician': 'uncommon', 'florida man': 'uncommon', 'banker': 'uncommon', 'magician': 'uncommon', 'influencer': 'uncommon', 'librarian': 'uncommon', 'referee': 'uncommon',
                 'ki fighter': 'rare', 'swordfighter': 'rare', 'men in black': 'rare', 'halfdemon': 'rare', 'mad scientist': 'rare', 'reptilian': 'rare',
@@ -100515,6 +100598,7 @@ const HQ_NPC_TEMPERS = {
         'abomination': 'brute',   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name)
         'plastic surgeon': 'opportunist',   // 2026-11-23 THE PLASTIC SURGEON (mondo OK'd the kit)
         'monarch': 'guard',   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
+        'weatherman': 'coward',   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: the news reports the fight, it does not join it
         'zombie': 'brute', 'shadow entity': 'brute', 'werewolf': 'brute', 'wendigo': 'brute', 'ghoul': 'brute', 'flesheater': 'brute',
     },
     /* THE GROUPS: races who stand up for each other (no factions). Units of ONE race are a group by themselves (`sameRace`). A unit is in one
@@ -103935,7 +104019,7 @@ function hqPartyDefaultJob(race) { return UNIT_CLASS; }
    its families cheapest first — trimmed to the 7 slots / 16 SP by treeLegalSubset. The forge's DEFAULTS and THE OFFICER's
    starting kit (lead = the Adaptable row: the story rule "only learn spells of units you have unlocked" rides on it). */
 function raceDefaultKit(race, lead, gender) {   // `gender` (2026-10-27): RACE_GENDER_SPELLS
-    const rung = (typeof getRaceTreeSpells === 'function') ? (getRaceTreeSpells(race, UNIT_CLASS) || []) : [];
+    const rung = (typeof getRaceTreeSpells === 'function') ? (getRaceTreeSpells(race, UNIT_CLASS, gender) || []) : [];
     const fam = raceFamilyPoolIds(race, gender).slice().sort((a, b) => spellTierOf(a) - spellTierOf(b));
     const wish = (lead || []).concat(rung, fam).filter(Boolean);
     return treeLegalSubset(race, UNIT_CLASS, '', wish, gender);

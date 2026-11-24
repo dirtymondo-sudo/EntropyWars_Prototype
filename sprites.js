@@ -154,6 +154,7 @@ const EW_ASSET_MOVES = [
   ['Assets/Sprites/Races/monarch/', 'Assets/characters/races/monarch/'],   // 2026-11-23 THE COMING RACES 2
   ['Assets/Sprites/Races/butterfly_girl/', 'Assets/characters/races/butterfly_girl/'],   // 2026-11-23 THE COMING RACES 2
   ['Assets/Sprites/Races/plastic_surgeon/', 'Assets/characters/races/plastic_surgeon/'],   // 2026-11-23 THE COMING RACES 2
+  ['Assets/Sprites/Races/weatherman/', 'Assets/characters/races/weatherman/'],   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR
   ['Assets/Sprites/Races/librarian/', 'Assets/characters/races/librarian/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/televangelist/', 'Assets/characters/races/televangelist/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/influencer/', 'Assets/characters/races/influencer/'],   // 2026-11-17 THE NEW RACES 2
@@ -608,6 +609,7 @@ const RACE_SPRITE_GENDERS = {
   'hollow': 'male',   // 2026-11-23 THE HOLLOW (one body; the model def sits under male)
   'abomination': 'male',   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name) (one body; the model def sits under male)
   'streamer': 'both',   // 2026-11-18 THE STREAMER + E-GIRL (one race: the Streamer is the male, the E-Girl the female)
+  'weatherman': 'both',   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR (one race: the Weatherman is the male, the News Anchor the female)
   'vtuber': 'female',   // 2026-11-18 THE V-TUBER (female only for now, mondo 11-18)
   'lifeguard': 'both',   // 2026-11-16; the man 2026-11-17
   'atlantean': 'both',
@@ -787,6 +789,7 @@ const _CHARACTER_SPRITES = {
   'rat': `${_S}/Races/rat/male/rat_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'monarch': `${_S}/Races/monarch/female/monarch_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'butterfly girl': `${_S}/Races/butterfly_girl/female/butterfly_girl_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'weatherman': `${_S}/Races/weatherman/male/weatherman_px.png`,   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR — 128x128 pixel sprite (Sprite AI restyle of his Meshy concept)
   'plastic surgeon': `${_S}/Races/plastic_surgeon/male/plastic_surgeon_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'librarian': `${_S}/Races/librarian/female/librarian_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'televangelist': `${_S}/Races/televangelist/male/televangelist_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
@@ -913,11 +916,13 @@ const _NEW_FEMALE_SPRITES = {
   'mech': `${_S}/Races/mech/female/mech_f2_px2.png`,   // straight-on: Sprite AI restyle of her model's front render (the concept was turned)
   'bear': `${_S}/Races/bear/polar/bear_polar_px.png`,   // 2026-11-23 THE BEAR'S COATS — the polar bear (the race's female side)
   'streamer': `${_S}/Races/streamer/female/egirl_f_px.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of the E-Girl's 3D model's front render)
+  'weatherman': `${_S}/Races/weatherman/female/news_anchor_px.png`,   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR — the News Anchor (Sprite AI restyle of her Meshy concept)
   'vtuber': `${_S}/Races/vtuber/female/vtuber_f_px.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of her full Meshy 3D model's front render)
 };
 const _NEW_MALE_SPRITES = {
   'nordic': 'https://cdn.entropywars.net/Assets/characters/races/nordic/male/nordic_m_v2_px.png',   // 2026-11-24 his new model (Sprite AI restyle of its front render)
   'skinwalker': 'https://cdn.entropywars.net/Assets/characters/races/skinwalker/male/skinwalker_px.png',   // 2026-11-24 its new model, not a werewolf
+  'weatherman': `${_S}/Races/weatherman/male/weatherman_px.png`,   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR
   'streamer': `${_S}/Races/streamer/male/streamer_m_px.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of his 3D model's front render)
   'skater': `${_S}/Races/skater/male/skater_m_px.png`,   // 2026-11-17 — the male skater (Meshy model + Sprite AI restyle of its front render)
   'lifeguard': `${_S}/Races/lifeguard/male/lifeguard_m_px.png`,   // 2026-11-17 — the male lifeguard (same way)
@@ -2810,6 +2815,20 @@ const RACE_MODELS_3D = {
     }),
   },
 
+  'weatherman': {   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: Meshy image-to-3d + rigging from mondo's picks (Weatherman B, the strand fixed; News Anchor 3b);
+                    // sources: project files unit-concepts-20261124/models/. THE UNIT GEAR holds mondo's umbrella (closed; it opens in the
+                    // spells, Assets/fx/spell_props/umbrella_open.glb) and the Popstar's microphone.
+    male: _mkUAL('weatherman/male', 'weatherman', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/weatherman/male/Meshy_AI_weatherman_Running.glb',
+      heightRatio: 1.0, basicAttackKind: 'physical',
+      procRig: 'unitGear', gear: { held: { url: 'https://cdn.entropywars.net/Assets/characters/gear/held/umbrella_closed.glb', len: 0.5, grip: 0.06, rot: [3.1416, 0, 0] } },
+    }),
+    female: _mkUAL('weatherman/female', 'news_anchor_f', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/weatherman/female/Meshy_AI_news_anchor_f_Running.glb',
+      heightRatio: 0.95, basicAttackKind: 'magic',
+      procRig: 'unitGear', gear: { held: { url: 'https://cdn.entropywars.net/Assets/world/props/meshy/Meshy_AI_microphone_1027232053_texture.glb', len: 0.14, grip: 0.3 } },
+    }),
+  },
   'plastic surgeon': {
     male: _mkUAL('plastic_surgeon', 'plastic_surgeon', {
       model: 'https://cdn.entropywars.net/Assets/characters/races/plastic_surgeon/male/Meshy_AI_plastic_surgeon_Running.glb',
@@ -7580,6 +7599,7 @@ const RACE_SPRITES = {
   'rat': `${_S}/Races/rat/male/rat_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'monarch': `${_S}/Races/monarch/female/monarch_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'butterfly girl': `${_S}/Races/butterfly_girl/female/butterfly_girl_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'weatherman': `${_S}/Races/weatherman/male/weatherman_px.png`,   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR — 128x128 pixel sprite (Sprite AI restyle of his Meshy concept)
   'plastic surgeon': `${_S}/Races/plastic_surgeon/male/plastic_surgeon_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'librarian': `${_S}/Races/librarian/female/librarian_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'televangelist': `${_S}/Races/televangelist/male/televangelist_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)

@@ -20,12 +20,12 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | made by | human-made? | count |
 | --- | --- | --- |
 | Asset pack | yes | 1180 |
-| Asset pack (author not recorded yet) | yes | 179 |
+| Asset pack (author not recorded yet) | yes | 181 |
 | MakeHuman community asset | yes | 546 |
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 1328 |
+| Meshy AI | no | 1330 |
 | Meshy AI, reworked by Claude | no | 12 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 93 |
@@ -259,6 +259,8 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | virus | `Assets/characters/races/virus/male/virus.glb` | Meshy AI, reworked by Claude | Meshy AI parts (a dark green crystal core and ONE crystal spike) put together by Claude in code (project files internet-units/virus/assemble.mjs): the spike used 14 times, each its own node, the eight red eyes and the nine code tendrils built in code, for the Virus race's moving-parts rig (three-renderer.js THE VIRUS) |
 | voidweaver | `Assets/characters/races/voidweaver/male/Meshy_AI_giant_spider_realisti_quadruped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | vtuber (female) — creator look also baked | `Assets/characters/races/vtuber/female/Meshy_AI_vtuber_f_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API from the approved concepts (the Streamer + the E-Girl, mondo 2026-11-18: the Meshy look is the default, the MPFB look stays pickable) |
+| weatherman | `Assets/characters/races/weatherman/male/Meshy_AI_weatherman_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API from mondo's picked concepts (THE WEATHERMAN + NEWS ANCHOR, 2026-11-24: Weatherman B with the hair strand fixed, News Anchor 3b; project files unit-concepts-20261124/ + weather-news/) |
+| weatherman (female) | `Assets/characters/races/weatherman/female/Meshy_AI_news_anchor_f_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API from mondo's picked concepts (THE WEATHERMAN + NEWS ANCHOR, 2026-11-24: Weatherman B with the hair strand fixed, News Anchor 3b; project files unit-concepts-20261124/ + weather-news/) |
 | wendigo | `Assets/characters/races/wendigo/male/Meshy_AI_wendigo_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES 2, mondo 2026-11-17 picks from the zone characters; concepts + models in project files new-races-2/; the Boltzmann Brain is unrigged) |
 | werewolf — creator look also baked | `Assets/characters/races/werewolf/male/Meshy_AI_werewolf_m_v2_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API from mondo's picked concepts (THE COMING RACES 2, 2026-11-23; the Bear's polar look + the Rat King are form looks; project files char-concepts-20261123/) |
 | wizard | `Assets/characters/races/homosapien/male/blackmage/Meshy_AI_wizard_realistic_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
@@ -3510,6 +3512,7 @@ These rows draw mondo's car pack (GGBot low-poly cars, Assets/vehicles/, `_CAR_P
 | trumpet | `Assets/world/props/meshy/Meshy_AI_trumpet_1027232058_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | ufo | `Assets/world/props/meshy/Meshy_AI_Triangle_UFO_0727195842_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | ulna | `Assets/fx/spell_props/Meshy_AI_ulna_bone_realistic_0725070052_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| umbrella | `Assets/fx/spell_props/umbrella_open.glb` | Asset pack (author not recorded yet) | mondo's umbrella pack (inbox Umbrella_Blend_fbx_glb.zip, maker not recorded), the big umbrella exported by Claude with Blender: open with its Close shape key (spell prop) and shut with the key applied (the Weatherman's held gear), 2026-11-24 |
 | voodooDoll | `Assets/world/props/meshy/Meshy_AI_voodoo_doll_1027232238_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | wand (held in the hand) | `Assets/world/props/misc/magic_wand.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
 | whip (held in the hand) | `Assets/world/props/misc/bullwhip_rigged.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
@@ -3876,6 +3879,7 @@ Found by scanning the scripts for literal model URLs that no table above lists (
 | angel_m_halo | `Assets/characters/gear/halos/angel_m_halo.glb` | Meshy AI | Meshy AI part made by Claude (THE UNIT GEAR, 2026-11-18: halos cut out of the angel models, the fairy wing cut out of the old fairy, the trident + the hoodless cape made apart) | sprites.js |
 | paparazzi_camera | `Assets/characters/gear/held/paparazzi_camera.glb` | Meshy AI | Meshy AI part made by Claude (THE UNIT GEAR, 2026-11-18: halos cut out of the angel models, the fairy wing cut out of the old fairy, the trident + the hoodless cape made apart) | sprites.js |
 | pitchfork | `Assets/characters/gear/held/pitchfork.glb` | Meshy AI | Meshy AI part made by Claude (THE UNIT GEAR, 2026-11-18: halos cut out of the angel models, the fairy wing cut out of the old fairy, the trident + the hoodless cape made apart) | sprites.js |
+| umbrella_closed | `Assets/characters/gear/held/umbrella_closed.glb` | Asset pack (author not recorded yet) | mondo's umbrella pack (inbox Umbrella_Blend_fbx_glb.zip, maker not recorded), the big umbrella exported by Claude with Blender: open with its Close shape key (spell prop) and shut with the key applied (the Weatherman's held gear), 2026-11-24 | sprites.js |
 | deep_sea_diver_helmet | `Assets/characters/gear/helmets/deep_sea_diver_helmet.glb` | Meshy AI | Meshy AI prop (the diver helmet concept), dome cut out by Claude in Blender-free python (pharaoh-diver/models/cut.py); the glass dome is a three.js sphere drawn in three-renderer.js THE BUBBLE HELMET | sprites.js |
 | fairy_wing_single | `Assets/characters/gear/wings/fairy_wing_single.glb` | Meshy AI | Meshy AI part made by Claude (THE UNIT GEAR, 2026-11-18: halos cut out of the angel models, the fairy wing cut out of the old fairy, the trident + the hoodless cape made apart) | sprites.js |
 | feathered_serpent | `Assets/characters/races/aztec/feathered_serpent.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API for Quetzalcoatl's serpent body (THE NEW RACES, mondo 2026-11-16) | three-renderer.js |
