@@ -69697,6 +69697,103 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         pgSlamDunk: function (p) { return _PZ_SIGS.pgSlam(p); },
     };
 
+    /* ════ 🎛 THE MUSIC PRODUCER (2026-11-24): his moves on the board, in the caster's side colours (_psSide), all off fire()'s
+       burst so the guest sees them too. The song itself is audio.js THE PRODUCER'S 4-TRACK; rules battle.js "THE MUSIC PRODUCER".
+       mpNotes = a pick (Lay It Down / Beat Switch / Add Chord / Melody Style): notes rise off him and the earshot ring rolls out
+       3 squares. mpSlap = a low wave + SLAP!. mpFill = four drum hits on the target, the last a crash. mpBuild = the riser over the
+       5x5 the drop will land on. mpDropLand (battle.js _mpDropLands fires it when the drop lands) = the boom rings + DROP! ════ */
+    function _mpNoteTex(k) {
+        return _pzTex('mp-note-' + k, 64, 64, function (g, w, h) {
+            g.fillStyle = '#ffffff'; g.strokeStyle = '#ffffff'; g.lineWidth = 5;
+            g.beginPath(); g.ellipse(20, 48, 11, 8, -0.4, 0, 6.29); g.fill();
+            g.fillRect(28, 10, 5, 38);
+            if (k) { g.beginPath(); g.ellipse(48, 42, 11, 8, -0.4, 0, 6.29); g.fill(); g.fillRect(56, 6, 5, 36); g.fillRect(28, 6, 33, 7); }
+            else { g.beginPath(); g.moveTo(33, 10); g.quadraticCurveTo(52, 18, 46, 34); g.stroke(); }
+        });
+    }
+    function _mpNotes(F, C, n, y0) {
+        var ts = F.ts, bits = [];
+        for (var i = 0; i < n; i++) {
+            var s = _pzSprN(i % 3 === 2 ? 0xffffff : (i % 2 ? (C[1] != null ? C[1] : C[0]) : C[0]), ts * 0.22, _mpNoteTex(i % 2), F.g);
+            bits.push({ s: s, a: (i / n) * 6.28 + rn(-0.3, 0.3), r: rn(0.25, 0.6), d: i * 70, up: rn(0.9, 1.5) });
+        }
+        return function (el, vis) {
+            for (var j = 0; j < bits.length; j++) {
+                var B = bits[j], t = _sigClamp01((el - B.d) / 1300), a = B.a + t * 1.4;
+                B.s.position.set(Math.cos(a) * B.r * ts, ts * (y0 + B.up * t), Math.sin(a) * B.r * ts);
+                B.s.material.opacity = vis * (t > 0 ? Math.min(1, t * 6) * (1 - t * t) : 0);
+            }
+        };
+    }
+    function _mpNotesBurst(key, word) {
+        return function (p) {
+            var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty) || !_pzOnce('mp' + key + '@' + tx + ',' + ty, 600)) return;
+            var C = _psSide(p), F = _nrvFrame(tx, ty), ts = F.ts, notes = _mpNotes(F, C, 10, 0.6), card = _chCard(F, word, C, 40);
+            _sigShockRing3D(tx, ty, { color: C[0], r0: ts * 0.2, r1: ts * 3.4, ms: 700 });
+            _sigShockRing3D(tx, ty, { color: 0xffffff, r0: ts * 0.1, r1: ts * 1.2, ms: 380 });
+            return _sigRunOwned(F.g, 1900, function (el) {
+                notes(el, _pzEnv(el, 0, 60, 1500, 1900));
+                var pop = _sigEaseOutBack(_sigClamp01((el - 120) / 300));
+                card.position.set(0, ts * (2.0 + 0.25 * pop), 0); card.material.opacity = _pzEnv(el, 120, 260, 1300, 1700);
+            });
+        };
+    }
+    _PZ_SIGS.mpLay = _mpNotesBurst('Lay', 'LAY IT DOWN');
+    _PZ_SIGS.mpSwitch = _mpNotesBurst('Switch', 'BEAT SWITCH');
+    _PZ_SIGS.mpChord = _mpNotesBurst('Chord', 'NEW CHORD');
+    _PZ_SIGS.mpMelody = _mpNotesBurst('Melody', 'MELODY');
+    _PZ_SIGS.mpSlap = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty) || !_pzOnce('mpSlap@' + tx + ',' + ty, 400)) return;
+        var C = _psSide(p), F = _nrvFrame(tx, ty), ts = F.ts, card = _chCard(F, 'SLAP!', C, 48);
+        for (var i = 0; i < 3; i++) (function (k) { setTimeout(function () { _sigShockRing3D(tx, ty, { color: k === 1 ? 0xffffff : C[0], r0: ts * 0.1, r1: ts * (0.8 + 0.3 * k), ms: 300 }); }, k * 90); })(i);
+        return _sigRunOwned(F.g, 1400, function (el) {
+            var pop = _sigEaseOutBack(_sigClamp01(el / 260));
+            card.position.set(0, ts * (1.9 + 0.3 * pop), 0); card.material.opacity = _pzEnv(el, 0, 120, 900, 1300);
+        });
+    };
+    _PZ_SIGS.mpFill = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty) || !_pzOnce('mpFill@' + tx + ',' + ty, 1500)) return;
+        var C = _psSide(p), F = _nrvFrame(tx, ty), ts = F.ts, card = _chCard(F, 'CRASH!', C, 46), W = ['TAK', 'TAK', 'DOOM', 'CRASH!'];
+        var hits = [0, 160, 320, 520];
+        hits.forEach(function (at, k) { setTimeout(function () { _sigShockRing3D(tx, ty, { color: k === 3 ? 0xffffff : C[k % 2 ? 1 : 0] != null ? C[k % 2 ? 1 : 0] : C[0], r0: ts * 0.1, r1: ts * (k === 3 ? 1.4 : 0.6 + 0.1 * k), ms: k === 3 ? 480 : 260 }); }, at); });
+        var small = [0, 1, 2].map(function (k) { return _chCard(F, W[k], C, 44); });
+        return _sigRunOwned(F.g, 1900, function (el) {
+            for (var k = 0; k < 3; k++) { small[k].position.set((k - 1) * ts * 0.5, ts * (1.6 + 0.2 * k), 0); small[k].scale.set(ts * 0.6, ts * 0.19, 1); small[k].material.opacity = _pzEnv(el, hits[k], hits[k] + 40, hits[k] + 220, hits[k] + 380); }
+            var pop = _sigEaseOutBack(_sigClamp01((el - 520) / 280));
+            card.position.set(0, ts * (2.1 + 0.3 * pop), 0); card.material.opacity = _pzEnv(el, 520, 600, 1400, 1800);
+        });
+    };
+    _PZ_SIGS.mpBuild = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty) || !_pzOnce('mpBuild@' + tx + ',' + ty, 800)) return;
+        var C = _psSide(p), F = _nrvFrame(tx, ty), ts = F.ts, notes = _mpNotes(F, C, 14, 0.2), card = _chCard(F, 'BUILD UP...', C, 36);
+        for (var i = 0; i < 4; i++) (function (k) { setTimeout(function () { _sigShockRing3D(tx, ty, { color: C[0], r0: ts * (2.4 - 0.5 * k), r1: ts * (2.2 - 0.5 * k), ms: 360 }); }, k * 220); })(i);
+        return _sigRunOwned(F.g, 2000, function (el) {
+            notes(el, _pzEnv(el, 0, 80, 1600, 2000));
+            card.position.set(0, ts * (1.8 + 0.6 * _sigClamp01(el / 1600)), 0); card.material.opacity = _pzEnv(el, 0, 200, 1400, 1900);
+        });
+    };
+    _PZ_SIGS.mpDropLand = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty) || !_pzOnce('mpDrop@' + tx + ',' + ty, 800)) return;
+        var C = _psSide(p), F = _nrvFrame(tx, ty), ts = F.ts, card = _chCard(F, 'DROP!', C, 52), notes = _mpNotes(F, C, 12, 0.3);
+        _sigShockRing3D(tx, ty, { color: 0xffffff, r0: ts * 0.2, r1: ts * 1.6, ms: 300 });
+        _sigShockRing3D(tx, ty, { color: C[0], r0: ts * 0.3, r1: ts * 2.6, ms: 560 });
+        setTimeout(function () { _sigShockRing3D(tx, ty, { color: C[1] != null ? C[1] : C[0], r0: ts * 0.3, r1: ts * 2.6, ms: 560 }); }, 200);
+        return _sigRunOwned(F.g, 1800, function (el) {
+            notes(el, _pzEnv(el, 0, 60, 1300, 1800));
+            var pop = _sigEaseOutBack(_sigClamp01(el / 260));
+            card.position.set(0, ts * (2.0 + 0.4 * pop), 0); card.scale.set(ts * 1.4 * (0.6 + 0.4 * pop), ts * 0.43 * (0.6 + 0.4 * pop), 1); card.material.opacity = _pzEnv(el, 0, 80, 1100, 1600);
+        });
+    };
+    ['mpLay', 'mpSwitch', 'mpChord', 'mpMelody', 'mpSlap', 'mpFill', 'mpBuild', 'mpDropLand'].forEach(function (k) { EFFECTS[k + '_fx'] = _pzDef(k, { pzOwn: true }); });
+    _CHPG_ON_BURST.mpLayItDown = function (p) { return _PZ_SIGS.mpLay(p); };
+    _CHPG_ON_BURST.mpBeatSwitch = function (p) { return _PZ_SIGS.mpSwitch(p); };
+    _CHPG_ON_BURST.mpAddChord = function (p) { return _PZ_SIGS.mpChord(p); };
+    _CHPG_ON_BURST.mpMelodyStyle = function (p) { return _PZ_SIGS.mpMelody(p); };
+    _CHPG_ON_BURST.mpSlapBass = function (p) { return _PZ_SIGS.mpSlap(p); };
+    _CHPG_ON_BURST.mpDrumFill = function (p) { return _PZ_SIGS.mpFill(p); };
+    _CHPG_ON_BURST.mpBassDrop = function (p) { return _PZ_SIGS.mpBuild(p); };
+    _CHPG_ON_BURST.mpDropLand = function (p) { return _PZ_SIGS.mpDropLand(p); };
+
     /* ════ TAX EXEMPT (2026-11-17, mondo's ask): a green TAX EXEMPT stamp slams onto the floor under the unit, a white receipt
        floats up beside it and is torn in two, and blue mana motes (the MP it will not pay) rise into the body ════ */
     function _tvExemptTex() {

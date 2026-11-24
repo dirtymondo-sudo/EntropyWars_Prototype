@@ -25,7 +25,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 1335 |
+| Meshy AI | no | 1337 |
 | Meshy AI, reworked by Claude | no | 14 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 93 |
@@ -182,6 +182,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | mummy | `Assets/characters/races/mummy/male/Meshy_AI_mummy_m_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES, the men; mondo 2026-11-16) |
 | mummy (female) | `Assets/characters/races/mummy/Meshy_AI_mummy_female_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | mushroom girl (female) | `Assets/characters/races/mushroomgirl/Meshy_AI_mushroom_girl_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| music producer | `Assets/characters/races/music_producer/male/Meshy_AI_music_producer_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API from mondo's own Music Producer image (THE MUSIC PRODUCER, 2026-11-24; project files unit-concepts-20261124b/) |
 | necromancer | `Assets/characters/races/necromancer/male/Meshy_AI_necromancer_m_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES, the men; mondo 2026-11-16) |
 | necromancer (female) | `Assets/characters/races/necromancer/female/Meshy_AI_necromancer_f_v2_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW LOOKS, mondo 2026-11-18 concepts round; wings / halo / cape / trident apart: THE UNIT GEAR; project files unit-concepts-20261118/) |
 | nephilim | `Assets/characters/races/nephilim/male/Meshy_AI_nephilim_realistic_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
@@ -3886,6 +3887,7 @@ Found by scanning the scripts for literal model URLs that no table above lists (
 | angel_f_halo | `Assets/characters/gear/halos/angel_f_halo.glb` | Meshy AI | Meshy AI part made by Claude (THE UNIT GEAR, 2026-11-18: halos cut out of the angel models, the fairy wing cut out of the old fairy, the trident + the hoodless cape made apart) | sprites.js |
 | angel_m_halo | `Assets/characters/gear/halos/angel_m_halo.glb` | Meshy AI | Meshy AI part made by Claude (THE UNIT GEAR, 2026-11-18: halos cut out of the angel models, the fairy wing cut out of the old fairy, the trident + the hoodless cape made apart) | sprites.js |
 | basketball | `Assets/characters/gear/held/basketball.glb` | Built by Claude in code (a bake tool writes the file) | THE POINT GUARD's basketball (2026-11-24): a UV sphere + a painted texture (pebbled orange leather, black seams) written by Claude in code (project files cheer-guard/make_basketball.py, numpy + PIL, no Blender); his held gear and every ball he throws | three-renderer.js |
+| beat_pad | `Assets/characters/gear/held/beat_pad.glb` | Meshy AI | THE MUSIC PRODUCER's beat pad (2026-11-24): Meshy AI text-to-3d, pad B (a retro grey MPC with red pads) mondo picked; texture cut to 1024 px by Claude (project files music-producer/models/) | sprites.js |
 | paparazzi_camera | `Assets/characters/gear/held/paparazzi_camera.glb` | Meshy AI | Meshy AI part made by Claude (THE UNIT GEAR, 2026-11-18: halos cut out of the angel models, the fairy wing cut out of the old fairy, the trident + the hoodless cape made apart) | sprites.js |
 | pitchfork | `Assets/characters/gear/held/pitchfork.glb` | Meshy AI | Meshy AI part made by Claude (THE UNIT GEAR, 2026-11-18: halos cut out of the angel models, the fairy wing cut out of the old fairy, the trident + the hoodless cape made apart) | sprites.js |
 | umbrella_closed | `Assets/characters/gear/held/umbrella_closed.glb` | Asset pack (author not recorded yet) | mondo's umbrella pack (inbox Umbrella_Blend_fbx_glb.zip, maker not recorded), the big umbrella exported by Claude with Blender: open with its Close shape key (spell prop) and shut with the key applied (the Weatherman's held gear), 2026-11-24 | sprites.js |

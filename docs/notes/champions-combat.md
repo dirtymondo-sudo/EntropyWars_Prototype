@@ -6559,3 +6559,41 @@ never misses on the run." One race `centaur`, male (chestnut) and female (dapple
   knockback 1), Sagittarius (T4, 3x3 up to 7 over walls, magic light, Blind). Rung 3 can be Ride-By. Finisher borrows Robin Hood's.
 - Claude's picks (mondo named none): home Mount Olympus (with the Cyclops and the Minotaur), biomes ancient + forest, temper territorial,
   stats a first pass between Robin Hood and the Unicorn. The spells use the stock VFX of their kinds (no own VFX yet).
+
+## THE MUSIC PRODUCER (2026-11-24, thread "Add the Music Producer unit"; mondo's own image + his plan: "I want him to build a beat progressively. He could add a beat, chords, bass, and melody ... just the notes in C major"; plan https://claude.ai/artifact/PCvHQykaa2oXjaY4umTK8K, sounds approved in the Beat Lab https://claude.ai/artifact/Cj3L7skrLrQ7HBJikSoSNV, project files `music-producer/`)
+Race `'music producer'` (male only, human, specialist, home Downtown / Mid Records, range 2, sonic resist / water weak, price 400). Model: Meshy
+(his image, pad removed) at R2 `Assets/characters/races/music_producer/male/Meshy_AI_music_producer_Running.glb`, sprite `music_producer_px.png`
+same folder (Sprite AI); THE UNIT GEAR holds the grey beat pad (pad B, `Assets/characters/gear/held/beat_pad.glb`, texture cut to 1024 px) in his
+left hand. Family `beatmaking` + sonic, stagepresence, maincharacter. Finisher Platinum Record borrows the Popstar's `farewellTour` stage.
+- THE SONG (unit._song, plain values, rides the state sync): tempo 90/120/140/160, drums, chordsOn + chords (up to 4 of Cmaj7 Dm7 Em7 Fmaj7 G7
+  Am7 Bm7♭5: every chord with its 7th, mondo 11-24), sync, bass, melody (legato / staccato / arp), building, and the one-shot counters slapN,
+  fillN, dropN, dropLanded. EARSHOT = 3 squares (Chebyshev). battle.js block "THE MUSIC PRODUCER".
+- At each round end (`_mpRoundEnd` from _nrRoundEnd) every track playing works in earshot, unless he is SCRATCHED (stun, sleep, frozen,
+  silence: `_mpScratched`): drums by tempo (90 allies take 15% less damage, live in applyDamageToUnit `_mpDamageMult`; 120 allies +15 MP;
+  140 enemies Slowed 1; 160 allies Quickened 1 and he takes 15% more), chords heal 10 + 10 a chord, legato +20 heal, staccato +10% crit
+  (rollCrit `_mpCritBonus`, live), arp 30 sonic on up to 3 enemies; bass = his hits +8% a track (live). Passive On Loop (`mpOnLoop`): +8 MP a track.
+- THE MOVES (7 slots, 15 SP): Lay It Down (T1, pick a track), Beat Switch (T1, pick a tempo), Add Chord (T2, pick a chord or Syncopate: a
+  fifth chord replaces the oldest; Syncopate toggles the off-beat chords and Discords enemies in earshot), Melody Style (T2), Slap Bass (T2,
+  a displacement row: 100 sonic + knock back 1, the bass goes slap for 2 bars), Drum Fill (T3, multiHit 35/35/40/50, the fill with the toms),
+  Bass Drop (T4, a `delayed` row 5×5 within 4, 120 + 15 a track and a chord). `mpNeeds` greys a move whose track is not in the song
+  (spellBlockReason via `_mpBlockReason`). RACE_TREE = Lay It Down, [Add Chord, Melody Style], Drum Fill, Bass Drop; RACE_DEFAULT_KIT_EXTRAS
+  adds Beat Switch, Slap Bass, Melody Style.
+- BASS DROP (mondo 11-24): the cast sets `building` (the drums and the bass drop out, the riser climbs; the chords and melody keep going);
+  state.js `_detonateDelayedSpellNow` calls `_mpDropLands` at the blast: +15 a track and a chord, then the drums and bass come back in and the
+  chords and melody are gone.
+- THE PICKER (mondo 11-24: "picker"): a `bpPick` row ('track' / 'tempo' / 'chord' / 'melody') opens its choices in the command menu's spot
+  first (battle.js setTool → actionMenuView 'bpPick'; hud.js `_hrlgBeatBlades` from battle.js `mpPickChoices`), like Tune Frequency's
+  sub-menu. The pick files state._bpPick (per-viewer: online.js skip list + guest UI keys) and re-arms the row for its CONFIRM; doSpell
+  copies it to unit._mpPickHeld, finishAction's `_mpAfterCast` applies it (checked against the legal choices; none = `_mpAutoPick`, the
+  CPU's). Online the guest's pick rides the cast as `bpPick`.
+- THE SOUND: audio.js THE PRODUCER'S 4-TRACK (`EWBeat`, the Beat Lab's engine: WebAudio synth, a slot per voice in window.EW_BEAT_SAMPLES for
+  mondo's samples later). A once-a-second driver starts it when battle.js `_mpSongToHear` returns a song (the side whose turn it is; else the
+  other side's), stops it when none. Each client plays the synced song itself: nothing relayed. The battle music ducks to a third
+  (getMusicBaseVolume); volume = the music slider × the mixer row music.producerBeat. Console: `ewBeatAudition()`.
+- CPU (ai.js `_mpScoreAI`): a missing track first (drums most), the tweaks by who is in earshot, Bass Drop +10% a track.
+- THE VFX (three-vfx-effects.js block "THE MUSIC PRODUCER", off `_CHPG_ON_BURST`, side colours `_psSide`, relayed through fire()): the four
+  picks = notes rising off him + the 3-square earshot ring + a word card; Slap Bass = three low rings + SLAP!; Drum Fill = TAK TAK DOOM CRASH!
+  in time with the hits; Bass Drop's cast = BUILD UP... (rings closing in, notes); the landing = `mpDropLand`, fired by battle.js
+  `_mpDropLands` (rings + DROP!).
+- STILL TO COME: the 4-track strip on the HUD (mock-up `music-producer/four_track_mockup.png`, waits mondo's OK), the pad on
+  a strap, residents at Mid Records.

@@ -16206,6 +16206,8 @@
             if (n > 0) addLog(`🔊 THE DROP: the whole song behind it, +${15 * n} damage.`);
             s.building = false; s.drums = true; s.bass = true; s.chordsOn = false; s.sync = false; s.melody = null;
             s.dropLanded = (s.dropLanded | 0) + 1;
+            /* the boom on the board (three-vfx-effects.js mpDropLand; fire() is relayed, so the guest sees it) */
+            try { if (window.ThreeVFXEffects && typeof window.ThreeVFXEffects.fire === 'function' && ds.x != null) window.ThreeVFXEffects.fire('burst', 'mpDropLand', { tx: ds.x, ty: ds.y, sx: u.x, sy: u.y }); } catch (e) {}
             return out;
         }
         window._mpDropLands = _mpDropLands;
@@ -16253,6 +16255,7 @@
             return Object.assign({}, pick._song, { muted: _mpScratched(pick), owner: pick.id, side: pick.player });
         }
         window._mpSongToHear = _mpSongToHear;
+        window._mpRoundEnd = _mpRoundEnd;   // (a probe can run one round end)
         /* ═══ THE BUTTERFLY GIRL (2026-11-23, blue morpho; mondo OK'd the plan) ═══ THE BUTTERFLY EFFECT: small flaps now, a twister
            later. A Flutter (STATUS_DEFS.flutter: the stack in unit._flutter, the caster's id in _flutterSrcId) grows by 1 at every
            round end (_bfRoundEnd from _nrRoundEnd); at 3 it touches down (_bfTwister): MEDIUM wind magic damage to the carrier's
