@@ -2395,7 +2395,9 @@ const RACE_MODELS_3D = {
       model: 'https://cdn.entropywars.net/Assets/characters/races/vampire/female/Meshy_AI_vampire_f_Running.glb',
       heightRatio: 0.97,      // tall, elegant
          basicAttackKind: 'claw',   // fangs and nails, never a sword
-         lib: { idle: { clip: 'Idle_FoldArms_Loop', lib: 1 },
+         // 2026-11-24 (mondo: "the one with the arms crossed doesnt look good"): the Meshy hand-on-hip idle (lib 7), poised, one
+         // hand to the waist; was Idle_FoldArms_Loop (lib 1). Picked on her own model beside Happy_Sway, Proud and Idle_11.
+         lib: { idle: { clip: 'Hand_on_Hip_Gesture', lib: 7 },
                 castMelee: { clip: 'Zombie_Scratch', lib: 1, ts: 1.5 } } }),
   },
   // ── Sniper (marksman) — 2026-07-11. The male sniper IS the MAL library's
@@ -3873,7 +3875,7 @@ const RACE_MODELS_3D = {
 // ── Gendered library defaults (2026-07-11) ─────────────────────────────────
 // Every `female:` def idles/walks with the female Meshy clips (Idle_11 /
 // Walking_Woman) unless the character claimed the slot itself via opts.lib
-// (vampire folded arms, mermaid swim…). The Pistol_Idle_Loop gun-pose idles
+// (vampire hand on hip, mermaid swim…). The Pistol_Idle_Loop gun-pose idles
 // were retired 2026-08-09 (owner call: nobody mimes holding a gun at rest).
 (function _applyFemaleSlotDefaults() {
   for (const race in RACE_MODELS_3D) {
