@@ -18548,6 +18548,159 @@ const ThreeRenderer = (function () {
         clips.castHurl = clips.cast;
         return clips;
     }
+    /* 🐎 THE CENTAUR (2026-11-24, mondo: "a centaur ... made of separate parts ... the human upper body animate like a normal
+       meshy model and the horse like a horse"; plan /mnt/project-files/unit-concepts-20261124b/CENTAUR_PLAN.md). One GLB per
+       look, baked offline (docs/notes/champions-combat.md "THE CENTAUR"): a Meshy rigged human cut below the sash, stood on a copy
+       of THE HORSES' file (the tack, the neck and the head off), one skeleton: the human's Hips bone is a child of the horse's
+       chest bone (spine.008), so the rider goes wherever the horse's body goes. The shared library animates the human bones
+       like any Meshy unit; procRig 'centaur' keeps the library (it returns no clips) and records the horse's own clips and
+       bones here, and _libBakeClips (the one place every screen's clips are made) lays the horse's motion into each baked
+       clip: the Idle under the idles, the Trot under the walk, the Gallop under the run (whole loops fitted to the clip), and
+       a pose of the horse's own under the rest (the casts paw, rear, buck or lunge, the flinch, the fall: _CEN_POSES, the
+       Unicorn's pose maths, _UNI_POSES). The human's Hips is held at its rest on the horse (its own sway and drop would lift
+       the rider off the back); the spine, the arms and the head keep the clip. Display only: the guest bakes the same. */
+    var _cenByRoot = (typeof WeakMap === 'function') ? new WeakMap() : null;
+    function _cenBuild(root, anims) {
+        if (!_cenByRoot) return null;
+        root.updateMatrixWorld(true);
+        var hips = root.getObjectByName('Hips');
+        if (!hips) return null;
+        var human = {};
+        hips.traverse(function (n) { human[n.name] = 1; });
+        var R = { bones: {} };
+        for (var k in UNI_BONES) {
+            var node = root.getObjectByName(UNI_BONES[k]);
+            if (!node || !node.parent) return null;
+            var pw = node.parent.getWorldQuaternion(new THREE.Quaternion());
+            R.bones[k] = { node: node, rest: node.quaternion.clone(), pw: pw, pwInv: pw.clone().invert() };
+        }
+        var rb = R.bones.root.node;
+        R.rootPos = rb.position.clone();
+        R.rootPInv = new THREE.Matrix3().setFromMatrix4(new THREE.Matrix4().copy(rb.parent.matrixWorld).invert());
+        /* the horse's clips, its own bones only (the bake wrote every bone of the joined skeleton into every clip) */
+        var horse = {};
+        (anims || []).forEach(function (c) {
+            if (!/^(Idle|Idle_2|Trot|Gallop)$/.test(c.name)) return;
+            var tr = c.tracks.filter(function (t) { var nn = t.name.split('.')[0]; return !human[nn]; });
+            horse[c.name] = { dur: c.duration, tracks: tr };
+        });
+        _cenByRoot.set(root, { R: R, horse: horse, hipsT: hips.position.toArray(), hipsQ: hips.quaternion.toArray() });
+        return null;   // the library animates the rider (no clips of its own)
+    }
+    /* which part of the horse goes under a slot */
+    function _cenGroup(slot) {
+        if (/^idle|^hq(Ride|Sit|Drive|Aim|Getup|SwimIdle|ClimbIdle)$/.test(slot)) return 'Idle';
+        if (/^walk|^hq(Swim|Climb)$/.test(slot)) return 'Trot';
+        if (/^run|^hq(Push|SkatePush)$/.test(slot)) return 'Gallop';
+        if (/^death/.test(slot)) return 'death';
+        if (/^hit|^fall|^hqFall/.test(slot)) return 'hit';
+        if (slot === 'block') return 'brace';
+        if (/^jump|^dodge|^hqMantle/.test(slot)) return 'hop';
+        if (/^cast(AOE|Slam|Smash|Leap|Ultimate|Skyward|Roar|Rise|Rally|Call)/.test(slot)) return 'rear';
+        if (/^cast(Kick|Sweep|Roundhouse)/.test(slot)) return 'buck';
+        if (/^cast(Melee|Punch|Claw|Jab|Chop|Dash|Tackle|Throw|Stab|Slash)/.test(slot)) return 'lunge';
+        if (/^cast|^clip:|^hqShoot/.test(slot)) return 'paw';
+        return 'Idle';
+    }
+    /* the horse's poses (u 0 … 1 over the rider's clip; the fields are _UNI_POSES'; 0 at both ends = standing) */
+    var _CEN_POSES = {
+        /* a shot or a plain cast: the right fore paws the ground twice, the body sets itself under the rider */
+        paw: function (u) {
+            var k = _uniBump(u, 0, 0.2, 0.9), ph = _UNI_T * 2 * _uniS(u, 0.1, 0.8);
+            var lift = Math.max(0, Math.sin(ph));
+            return { by: -0.04 * k, ch: 0.04 * k, flR: (0.15 + 0.55 * lift) * k, fsR: (0.2 + 1.1 * lift) * k, hlL: -0.06 * k, hlR: -0.06 * k, tl: 0.15 * k };
+        },
+        /* the big casts: it rears on the hind legs, paws the air, and both fores come down */
+        rear: function (u) {
+            var up = _uniS(u, 0, 0.38) * (1 - _uniS(u, 0.55, 0.72)), slam = _uniBump(u, 0.6, 0.7, 0.95);
+            var p = _uniRear({}, up * 0.85, Math.sin(_UNI_T * 2 * _uniS(u, 0.1, 0.5)));
+            p.by -= 0.08 * slam; p.flL -= 0.2 * slam; p.flR -= 0.2 * slam;
+            return p;
+        },
+        /* the kicks: the head of the body down, both hinds fire back */
+        buck: function (u) {
+            var kick = _uniBump(u, 0.15, 0.38, 0.8);
+            return { bp: -0.28 * kick, by: -0.05 * kick, hlL: -0.8 * kick, hlR: -0.9 * kick, hsL: -0.2 * kick, hsR: -0.2 * kick, flL: -0.12 * kick, flR: -0.12 * kick, tl: 0.6 * kick };
+        },
+        /* the close blows: a lunge forward off the hinds, the fores reaching */
+        lunge: function (u) {
+            var coil = _uniBump(u, 0, 0.22, 0.38), go = _uniS(u, 0.22, 0.4) * (1 - _uniS(u, 0.6, 0.95));
+            return { by: -0.08 * coil, bz: -0.12 * coil + 0.4 * go, bp: 0.06 * go, hlL: -0.22 * coil + 0.18 * go, hlR: -0.22 * coil + 0.18 * go, flL: 0.4 * go, flR: 0.15 * go, fsL: 0.35 * go, tl: 0.3 * go };
+        },
+        /* the flinch: it shies back, the fore leg up */
+        hit: function (u) {
+            var k = _uniBump(u, 0, 0.2, 1);
+            return { bz: -0.18 * k, bp: 0.1 * k, br: 0.05 * k, flL: 0.2 * k, fsL: 0.4 * k, tl: 0.3 * k };
+        },
+        /* the guard: the legs set wide, the body low */
+        brace: function (u) {
+            var k = _uniS(u, 0, 0.25) * (1 - _uniS(u, 0.8, 1));
+            return { by: -0.1 * k, flL: 0.12 * k, flR: -0.12 * k, hlL: -0.1 * k, hlR: 0.1 * k };
+        },
+        /* a jump or a dodge: a little rear and a spring */
+        hop: function (u) {
+            var up = _uniBump(u, 0, 0.3, 0.75);
+            var p = _uniRear({}, up * 0.45, 0);
+            p.by += 0.15 * _uniBump(u, 0.25, 0.45, 0.7);
+            return p;
+        },
+        /* the fall: the Unicorn's (the legs fold and it lies over on its side) */
+        death: function (u) { return _UNI_POSES.death[1](u); }
+    };
+    /* the tracks a pose writes on the horse's bones (the Unicorn's _uniClip, no wings) */
+    function _cenPoseTracks(pose, dur, R) {
+        var N = Math.max(8, Math.round(dur * 30)), tt = [], tr = {}, rp = [];
+        var q = new THREE.Quaternion(), d = new THREE.Quaternion(), v = new THREE.Vector3(), e = new THREE.Euler();
+        var keys = Object.keys(R.bones);
+        keys.forEach(function (k) { tr[k] = []; });
+        for (var i = 0; i <= N; i++) {
+            var u = i / N, p = pose(u) || {};
+            var f = function (k) { return p[k] || 0; };
+            tt.push(u * dur);
+            keys.forEach(function (k) {
+                var B = R.bones[k], ax = 0, rl = 0, yw = 0;
+                if (k === 'root') { ax = -f('bp'); rl = f('br'); }
+                else if (k === 'chest') ax = -f('ch');
+                else if (k === 'neck' || k === 'neck2' || k === 'head') ax = 0;   // cut away under the rider
+                else if (k === 'tail') ax = f('tl');
+                else ax = -f(k);
+                e.set(ax, yw, rl, 'YXZ'); d.setFromEuler(e);
+                q.copy(B.pwInv).multiply(d).multiply(B.pw).multiply(B.rest);
+                tr[k].push(q.x, q.y, q.z, q.w);
+            });
+            v.set(0, f('by'), f('bz')).applyMatrix3(R.rootPInv).add(R.rootPos);
+            rp.push(v.x, v.y, v.z);
+        }
+        var out = keys.map(function (k) { return new THREE.QuaternionKeyframeTrack(R.bones[k].node.name + '.quaternion', tt, tr[k]); });
+        out.push(new THREE.VectorKeyframeTrack(R.bones.root.node.name + '.position', tt, rp));
+        return out;
+    }
+    /* a horse loop fitted to the rider's clip: whole cycles, stretched or squeezed a little to land on its length */
+    function _cenLoopTracks(h, dur) {
+        var n = Math.max(1, Math.round(dur / Math.max(0.05, h.dur))), sc = dur / (n * h.dur);
+        return h.tracks.map(function (t) {
+            var T = t.times, V = t.values, sz = t.getValueSize(), nt = [], nv = [];
+            var seam = T.length > 1 && T[T.length - 1] >= h.dur - 1e-4 && T[0] <= 1e-4;   // the last key is the next cycle's first
+            for (var c = 0; c < n; c++) for (var i = 0; i < T.length; i++) {
+                if (c > 0 && i === 0 && seam) continue;
+                nt.push((T[i] + c * h.dur) * sc);
+                for (var j = 0; j < sz; j++) nv.push(V[i * sz + j]);
+            }
+            var Ctor = t.constructor;
+            return new Ctor(t.name, nt, nv);
+        });
+    }
+    /* _libBakeClips: the rider's baked tracks + the horse under them */
+    function _cenMerge(cen, slot, tracks, dur) {
+        var out = tracks.filter(function (t) { return t.name !== 'Hips.position' && t.name !== 'Hips.quaternion'; });
+        out.push(new THREE.VectorKeyframeTrack('Hips.position', [0, dur], cen.hipsT.concat(cen.hipsT)));
+        out.push(new THREE.QuaternionKeyframeTrack('Hips.quaternion', [0, dur], cen.hipsQ.concat(cen.hipsQ)));
+        var g = _cenGroup(slot), h = cen.horse[g];
+        if (g === 'Idle' && slot !== 'idle' && /^idle/.test(slot) && cen.horse.Idle_2) h = cen.horse.Idle_2;   // the second idle: the horse's own second one
+        if (h) return out.concat(_cenLoopTracks(h, dur));
+        if (_CEN_POSES[g]) return out.concat(_cenPoseTracks(_CEN_POSES[g], dur, cen.R));
+        return out;
+    }
     /* a sheetless part (the grey's saucer: flat colours, its lights glowing blue) gets its colour as a swatch sheet, since the
        board's unit look keeps a part's sheet and nothing else (_buildUnitEntry); the file's colours are linear, the swatch the
        colour on screen, its glow added in */
@@ -19707,6 +19860,8 @@ const ThreeRenderer = (function () {
         craftBarbarella: function (root) { var r = _ufoBuild(root, Math.PI / 2, true); try { _ufoDiscoBall(root, _HQ_UFO_LOOK.ship_barbarella.ball); } catch (e) { console.warn('[3D] the disco ball', e); } return r; },
         /* THE UNICORN (above, _uniBuild): the horse + the horn + the angel wing twice; `deps` load first */
         unicornWings: function (root, anims, deps) { return _uniBuild(root, anims, deps); },
+        /* 🐎 THE CENTAUR (above, _cenBuild): the rider on the library, the horse's clips kept for _libBakeClips */
+        centaur: function (root, anims) { return _cenBuild(root, anims); },
         /* 📺 THE CURSED TV (above, _tvBuild): the cart's casters, the wheels, the ears, the remote, THE CHANNELS */
         cursedTv: function (root) { return _tvBuild(root); },
         /* 🦠 THE VIRUS (above, _vrBuild): the spikes, the eye ring, the code tendrils */
@@ -20564,7 +20719,8 @@ const ThreeRenderer = (function () {
             return (ctxByLib[idx] = { src: src, setup: _libRetargetSetup(src, modelEntry, standardPose, !!(def && def.palmTwist)) });
         }
         var pv = new THREE.Vector3(), qv = new THREE.Quaternion(), sv = new THREE.Vector3();
-        var bakedByClip = (opts && opts.byClip) || {}, out = {}, missing = [];   // (opts.byClip: THE BAKE IN SLICES shares one clip between its slots across calls)
+        var bakedByClip = (opts && opts.byClip) || {}, out = {}, missing = [];
+        var cen = _cenByRoot && modelEntry && modelEntry.root ? _cenByRoot.get(modelEntry.root) : null;   // 🐎 THE CENTAUR: the horse under the rider   // (opts.byClip: THE BAKE IN SLICES shares one clip between its slots across calls)
         Object.keys(def.libClips).forEach(function (slot) {
             var ref = def.libClips[slot];
             if (only ? slot !== only : (ref && typeof ref === 'object' && ref.defer)) return;
@@ -20607,6 +20763,7 @@ const ThreeRenderer = (function () {
             var turnC = Math.cos(turnDeg * Math.PI / 180), turnS = Math.sin(turnDeg * Math.PI / 180);
             var key = libIdx + ':' + clipName + (pinHips ? ':pin' : (pinXZ ? ':pxz' : '')) + (travel ? (':tr' + ((ref && typeof ref.strikeAt === 'number') ? ref.strikeAt : '')) : '') + (trim ? (':t' + trim[0] + '-' + trim[1]) : '')
                 + (turnDeg ? ':y' + turnDeg : '') + thenList.map(function (tn) { return '+' + (tn.lib == null ? libIdx : tn.lib) + ':' + tn.clip + (tn.trim ? ':t' + tn.trim[0] + '-' + tn.trim[1] : ''); }).join('');
+            if (cen) key += '|cen:' + _cenGroup(slot) + (/^idle./.test(slot) ? '2' : '');   // 🐎 the horse's part is the slot's
             var supSide = _LIB_SUPPORT_HAND[clipName] || null;   // THE SUPPORT HAND (a two-handed clip's off hand re-reaches the gun hand)
             if (bakedByClip[key]) { out[slot] = bakedByClip[key]; return; }
             var ctx = libCtx(libIdx);
@@ -20715,6 +20872,7 @@ const ThreeRenderer = (function () {
             });
             tracks.push(new THREE.VectorKeyframeTrack('Hips.position', times, hipsPos));
             if (supSide) _libSupportCurl(setup, supSide).forEach(function (c) { tracks.push(new THREE.QuaternionKeyframeTrack(c.name + '.quaternion', [0, dur], c.q.concat(c.q))); });
+            if (cen) tracks = _cenMerge(cen, slot, tracks, dur);   // 🐎 THE CENTAUR
             var baked = new THREE.AnimationClip('EWLib_' + key, dur, tracks);
             if (travXZ) baked.userData = { ewTravel: _libTravelCurve(times, travXZ, (ref && typeof ref.strikeAt === 'number') ? ref.strikeAt - t0 : -1) };
             bakedByClip[key] = baked;
