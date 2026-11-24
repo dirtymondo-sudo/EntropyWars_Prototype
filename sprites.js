@@ -2871,11 +2871,11 @@ const RACE_MODELS_3D = {
      the rider and lays the horse's own Idle / Trot / Gallop and its poses (paw, rear, buck, lunge, the fall) under every clip. */
   'centaur': {
     male: _mkUAL('centaur/male', 'centaur_m', {
-      model: 'https://cdn.entropywars.net/Assets/characters/races/centaur/male/centaur_m.glb',
+      model: 'https://cdn.entropywars.net/Assets/characters/races/centaur/male/centaur_m_v2.glb',
       procRig: 'centaur', heightRatio: 1.55, yawOffset: 0, basicAttackKind: 'arrow',
     }),
     female: _mkUAL('centaur/female', 'centaur_f', {
-      model: 'https://cdn.entropywars.net/Assets/characters/races/centaur/female/centaur_f.glb',
+      model: 'https://cdn.entropywars.net/Assets/characters/races/centaur/female/centaur_f_v2.glb',
       procRig: 'centaur', heightRatio: 1.5, yawOffset: 0, basicAttackKind: 'arrow',
     }),
   },
