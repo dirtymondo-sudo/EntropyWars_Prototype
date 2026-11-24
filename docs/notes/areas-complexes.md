@@ -15117,3 +15117,7 @@ Same fault class as THE GROUNDED FENCES: a long thing drawn as level pieces, eac
 - **Highway median barriers** (bake-route.js THE MEDIAN BARRIER, rows `hw:<route>:median:N`): `hug: true`, every corner on the ground under it
   (data.js THE HUGGING ROWS), so a 14 m run slants with the road. The route kit's own pole wires (south-kit.js poleLine) were already sheared.
 - Proof: /mnt/project-files/slope-medians-wires/ (before/after).
+- **THE SPLIT ROAD** (2026-11-24, mondo: "the white dashed road lines are on the median now"): Bayside's coast road stays 4 squares (2 a side; mondo
+  "dont widen it if it doesnt need it, just trying to respect the battle grid"). A median arch row carries `median: [x0, z0, x1, z1]` (off its origin);
+  three-renderer.js road marks (THE SPLIT ROAD) drop the centre dashes along it and draw a dashed lane line down the middle of each side, w/4 off the
+  middle = on the square line between that side's two squares, from the median's first end to its last.
