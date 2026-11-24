@@ -6171,6 +6171,19 @@ Model notes: the gladiators' Meshy gold came out pale tan; their files were reco
 files `gladiator-farmer-concepts/gold.py`). The Jellyfish UFO has no Meshy rig: one body mesh + one tentacle mesh drawn 8 times under the
 waist, each copy skinned to its own 6-bone chain, and a 2 s looping clip `Sway` in the same file (`jelly.py`); its RACE_MODELS_3D row plays
 that clip as idle and walk (`clips.idle` = the file). Its claw arms do not move. Flight / hover height is the kit thread's call.
+**2026-11-24 (thread "Remake the Jellyfish and fix the UFO's top"):** the UFO's file is `jellyfish_ufo_v2.glb`: the 12 little tentacle
+sockets hanging under the bell's rim are cut out (they were for tentacles that hang from the waist; whole pieces removed, nothing
+repainted; project files `jellyfish-remake/cut.py`). THE JELLYFISH REMAKE, same day: the Jellyfish (`jellyfish`, Psi-Ops) has a new
+Meshy body (bell head + crown, real fingers, no T-bar hands) rigged by Meshy, so all its library clips play as before, and 12 tentacles
+hanging from the waist, each skinned to its own chain of THE SWAY's spring bones (`ewsway_c200+_<j>` on Hips), so they swing behind
+every walk, cast and hit (repo tool `bake-tentacles.py`). File `Assets/characters/races/jellyfish/male/Meshy_AI_jellyfish_v2_Running.glb`;
+spells, stats and sprite unchanged; the old rig stays on R2.
+**Same day, mondo on the v2:** "looks more like a female ... it needs boobs"; the old one's look "is basically how i want it to look like
+... make one like that as the male version and another one for a female version". So the race is now BOTH genders, the same spells
+(no RACE_GENDER_SPELLS split): the MALE (`male/Meshy_AI_jellyfish_m_v3_Running.glb`) is the old look remade from a fresh concept (bell
++ crown points, two curling tentacle arms, two tentacle legs, no T-bars) with 10 hanging tentacles under the bell; the FEMALE
+(`female/Meshy_AI_jellyfish_f_Running.glb`, sprite `female/jellyfish_f_px.png` in `_NEW_FEMALE_SPRITES`) is the v2 idea with a figure
+and a face, 12 tentacles at the hips. RACE_SPRITE_GENDERS `jellyfish: 'both'`. The v2 file stays on R2, unused.
 
 ## THE COMING RACES 2 (2026-11-23, thread "Make concept art for new characters")
 mondo picked Meshy concepts and said "wire them up and start a thread for each new one to come up with a plan for their unique
@@ -6424,3 +6437,49 @@ push, pull, reel-in, knock-back, bomb throw-back, storm fling, gun-door shove, b
 glide `_iceSlideSteps`, the creep walk (u.x = cx path), and Swing Door's board preview `_swingLanding`. A forecast
 (`simulate` + `opts.viewer`) stops only on a trap the viewer's side can see (a capture door is always seen). Teleports and
 swaps have no path: their landing chain already covered them. Proof: shots in /mnt/project-files/forced-move-traps/.
+
+<<<<<<< Updated upstream
+## THE NEW NORDICS + THE SKINWALKER MODEL (2026-11-24, thread "Make concepts for new and redone units")
+mondo 11-24: the Nordic man looked too short with dirty clothes, the woman not feminine enough ("unreasonably attractive like
+scandinavian models"); the Skinwalker's sprite read as a werewolf. Meshy concepts -> his picks -> image-to-3d (meshy-t2.5, a-pose)
++ Meshy rig, all in `/mnt/project-files/unit-concepts-20261124/` (items.py, models.py, sheets, proof/).
+- **Nordic** (Nordic ALIENS, the Tall Blondes): sprites.js RACE_MODELS_3D `nordic` male = `nordic/male/Meshy_AI_nordic_m_v2_Running.glb`
+  (concept nordic_m_a2: long platinum hair, white flight suit, heightRatio 1.12), female = `nordic/female/Meshy_AI_nordic_f_v2_Running.glb`
+  (nordic_f_a, 1.04). Sprites `nordic_m_v2_px.png` (_NEW_MALE_SPRITES) + `nordic_f_v2_px.png` (_NEW_FEMALE_SPRITES), Sprite AI restyles
+  of each model's front render. Old files stay on R2; the man's remade creator look (RACE_REMADE_LOOKS) stays as a second look.
+- **Skinwalker**: its FIRST 3D model, `skinwalker/male/Meshy_AI_skinwalker_Running.glb` (concept skinwalker_c2: a lanky grey thing,
+  blank face with a thin smile, tattered duster; no fur, no snout), heightRatio 1.1; sprite `skinwalker_px.png`. With a model it is
+  now playable by the 3D-only roster rule. Its four STOLEN FACES are separate props for its ability animations:
+  `skinwalker/male/faces/skinwalker_face_a..d.glb` (a man, a freckled young woman, an old rancher, a chubby young man).
+- Weatherman + News Anchor models (same folder) went to their own thread.
+=======
+## THE WEATHERMAN + THE NEWS ANCHOR (2026-11-24, thread "Add the Weatherman and News Anchor units"; mondo: "Weatherman should have spells that summon and interact with the weather system. I uploaded an umbrella zip ... for his abilities. The News Anchor can maybe use the microphone the popstar uses")
+ONE race `'weatherman'` (like the Streamer + E-Girl): male = the Weatherman, female = the News Anchor (`labelMale` /
+`labelFemale`). `RACE_GENDER_SPELLS` splits the eight spells, none shared; every `RACE_TREE` rung is a `[his, hers]` pair.
+`getRaceTreeSpells(race, cls, gender)` now takes the gender: a twin rung's face is the first id that gender learns (the
+female's default kit had none of her own spells before). Specialist, range 2, urban, home Downtown, works at the DCN 4 News
+office (plot P04-04-B1, Hero Plaza). Models: Meshy (Weatherman B, News Anchor 3b), sprites Sprite AI. Held gear (THE UNIT
+GEAR): his shut umbrella (`Assets/characters/gear/held/umbrella_closed.glb`), her Popstar microphone.
+- HIS PASSIVE, The Forecast: no weather touches him (state.js `wnWeatherproof(u)` = race weatherman + male: skipped by
+  applyWeatherTurnEffects, stormStrikeUnit (fires `brolly` = his umbrella opening), the storm fling, the homing displace,
+  the spawn effects). A weather HE summons lasts +1 round.
+- Cold Front (T1): wind magic 80, range 4; `wnSkyRead`: the sky up changes it (battle.js `WN_SKY` / `_wnCastRow`).
+- Severe Weather Warning (T2): `summonWeather` with `wnByGround`: the weather is read off the target's ground
+  (`_wnGroundWeather`: ice/snow blizzard, sand sandstorm, lava drought, rock tornado, else thunderstorm).
+- Storm Tracker (T3): `wnSteer`: moves every weather up (homing eyes + patches) to the picked tile, +1 round; refused when
+  no weather is up (`spellBlockReason` "🌦 No weather up").
+- Storm of the Century (T4): a hurricane; `wnStrikeWet: 4`: every grounded enemy within 4 of the eye is soaked Wet and takes
+  a lightning bolt (`wnCenturyBolt`, `_applyAoeDamage`).
+- HER PASSIVE, The Rundown: her casts walk HEADLINES (allies within 3: +1 ATK, +1 INT) -> SPORTS (+1 SPD) -> WEATHER
+  (+1 round on every weather, else heal 40); `unit._rundown`, the HUD chip "NEXT …", a 📺 nameplate badge.
+- Top Story (T1): sonic 80 + Stagger. Exclusive (T2): pull 2, 60 + Silence. Fake News (T3): 3×3, no damage, Discord +
+  `wnFlipStages` (every positive non-permanent stat stage flips to a drop). Prime Time (T4): 5×5, 140, runs all three
+  segments at once and resets the Rundown.
+- CPU (ai.js): Cold Front scored on the sky-read copy; `_wnSteerValue` / `_wnSteerTile` for the tracker; the century's bolt
+  estimate added to its weather value.
+- VFX (three-vfx-effects.js "THE WEATHERMAN + THE NEWS ANCHOR"): his = a weather map come alive (the cold-front triangles, an
+  ALERT ring, a radar sweep, a cloud hurricane + CAT 5, a forked bolt, his umbrella `_WPN_MODELS.umbrella` = the pack's big
+  umbrella with its `Close` shape key, opened by `_wnBrolly`); hers = a newsroom (sound rings + TOP STORY card, the mic on
+  its cord + EXCLUSIVE, newspaper pages + a FAKE stamp, three studio lights + LIVE + the mic rising, the lower-third banner
+  per segment). Side colours by `_psSide`; all through fire() (relayed online).
+>>>>>>> Stashed changes

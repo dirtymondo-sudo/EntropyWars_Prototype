@@ -429,7 +429,7 @@ if (SPEC.raised && LOOK === 'highway') { if (JOINS.length) { console.error('bake
     RAISED = require('./ow-raised.js')({ SPEC, ID, C, N, W, Dq, r2, gx, gz, Hc, plotOf, CAT, errs, marks, F, props, clear, feat, TRAFFIC, LINE: PARTS[0].LINE, ASPH, SHOULDER, edgeRoads: EDGE_ROADS,
         roadHalf: (x, y) => 1.5 + 2 * taperAt(x, y), reslope: writeSlope, floorAt: (x, y) => kitOf(kindAt(x, y)).floor, setPaint: (x, y, key) => { if (x >= 0 && y >= 0 && x < W && y < Dq && plotOf(x, y) >= 0) paint[y * W + x] = pal(key); },
         laneLine: (o, back) => offT(back ? carPts.slice().reverse() : carPts, o) }); }
-if (RAISED && MEDIAN.length) {   // THE MEDIAN BARRIER: off the deck and its ramps (they carry their own), in runs; sand barrels at each end
+if (RAISED && MEDIAN.length) {   // THE MEDIAN BARRIER: off the deck and its ramps (they carry their own), in runs; sand barrels at each end. `hug` (2026-11-24, mondo: medians "SHOULD be slanted but they step up"): every corner on the ground under it, so a run up a hill slants with the road, never a level block stepping at each joint
     const R = SPEC.raised, ax = R.axis === 'x', ends = [R.up[0], R.up[1], R.down[0], R.down[1]], lo = Math.min(...ends) + 1, hi = Math.max(...ends) - 1;
     const keep = MEDIAN.filter(q => { const a = ax ? (q[0] + q[2]) / 2 : (q[1] + q[3]) / 2; return a < lo || a > hi; });
     const runs = []; keep.forEach(q => { const r = runs[runs.length - 1]; if (r && Math.abs(r[2] - q[0]) < 0.01 && Math.abs(r[3] - q[1]) < 0.01 && Math.abs((r[2] - r[0]) * (q[3] - q[1]) - (r[3] - r[1]) * (q[2] - q[0])) < 0.01 && r[4] < 4) { r[2] = q[2]; r[3] = q[3]; r[4]++; } else runs.push(q.concat([1])); });
@@ -438,7 +438,7 @@ if (RAISED && MEDIAN.length) {   // THE MEDIAN BARRIER: off the deck and its ram
     for (let i = runs.length - 1; i > 0; i--) { const p = runs[i - 1], q = runs[i]; if (near(p, q) && Math.hypot(p[2] - q[0], p[3] - q[1]) > 0.01) runs.splice(i, 0, [p[2], p[3], q[0], q[1], 1]); }
     const CONC = 'urban:ConcretePanels1a', CT = 0xcfcbc2; let nm = 0;
     runs.forEach((r, i) => { const a = M(r[0], r[1]), b = M(r[2], r[3]), L = r2(Math.hypot(b[0] - a[0], b[1] - a[1])), rot = Math.round(Math.atan2(-(b[0] - a[0]), b[1] - a[1]) * 180 / Math.PI);
-        feat({ k: 'arch', id: 'hw:' + ID.toLowerCase() + ':median:' + (nm++), x: r2((a[0] + b[0]) / 2), z: r2((a[1] + b[1]) / 2), rot: (rot + 360) % 360, parts: [
+        feat({ k: 'arch', id: 'hw:' + ID.toLowerCase() + ':median:' + (nm++), x: r2((a[0] + b[0]) / 2), z: r2((a[1] + b[1]) / 2), rot: (rot + 360) % 360, hug: true, parts: [
             { s: 'box', p: [0, 0, 0], size: [0.6, 0.5, r2(L + 0.02)], key: CONC, tint: CT, uv: 3.5, clean: true }, { s: 'box', p: [0, 0.5, 0], size: [0.32, 0.4, r2(L + 0.02)], key: CONC, tint: CT, uv: 3.5, clean: true }] }); });
     if (CAT.traffic_barrel) runs.forEach((r, i) => { const prev = runs[i - 1], next = runs[i + 1], d = [r[2] - r[0], r[3] - r[1]], l = Math.hypot(d[0], d[1]) || 1, u = [d[0] / l, d[1] / l];
         const byDeck = (x, y) => { const v = ax ? x : y; return v > lo - 2.5 && v < hi + 2.5; };   // (it runs on as the ramp's own barrier there)

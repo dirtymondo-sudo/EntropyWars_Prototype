@@ -14294,6 +14294,17 @@ Gantries stand before the exit lane opens (a post stood in the lane). Known and 
   cross road: a mast for the ramp that comes off and one for the cross road's traffic from outside. A signal row's `back` = metres from its middle to the stop line.
   The Police Officer (x2) joined the Trucker and the Honda Civic on `HQ_NPC_PLACES.site_ow_r9` on his word ("let's add police officers to the highway too").
 
+### THE SAME ROAD (2026-11-24, mondo at Disaster City's south exit: "Why is it a totally different color??? ... Its the same road, it should blend in seamlessly")
+WHY IT DIFFERED: a road end's strip (three-renderer.js `_hqWayBuilders.road`) drew its own material: `urban:RoadGeneric1a` read every 1.75 m (the field reads it
+every 3.5 m), its own grey 0xb4b4b8 with its own shine, while the city's street is the FIELD's shader with the room's floorColor (0xa8a8a4) and floorTint
+(#dcdce0); its paint was self-lit white (glowing at dusk). The roads past the line (`edges.roads`, seam roads) were plain Lambert sheets the same way.
+NOW: `_hqGroundSheetMat(info, key, tint, off)` = a material that draws a sheet EXACTLY as the room's field draws it (the field's own shader, by world position:
+same size, colour, light, lift); the room's floor sheet keeps its floorTint, a painted sheet none. A mesh drawn with it gets `_hqGroundAttrs` (aBlend 0, aAO 1).
+Used by every road end of a terrain room that is not a footpath (the room's floor sheet when it is a road, else `urban:RoadGeneric1a`) and by every
+road band (`urban:Road*` / asphalt) of `edges.roads` and seam roads, in every zone. The strip's paint is the highway standard's set, lit like the room's marks:
+white 0.5 m inside each edge, double yellow middle, white 7-in-14 dashes between lanes. Kill switch `window.EW_OLD_ROAD_STRIP = true` (before/after).
+Footpaths (dirt) keep their own sheet and tint (round 4 of the road gates).
+
 ### THE HIGHWAY STANDARD (2026-11-22, mondo on the finished Badlands Highway: "yep looks good ... This should be the standard for how the rest of the highways get built")
 
 `site_ow_r9` is the model. A highway is built to this list (all of it is in `ow-raised.js`, `bake-route.js` and `docs/areas/routes/south-kit.js`; a new highway = a spec + a hook):
@@ -15123,3 +15134,19 @@ share stays where it is. `info.straightSide` / `info.straightIds` = the nodes an
 **What it fixed (every terrain room compiled, 32 with flights):** Disaster City 7 flights (P07-02S, P11-03E, P02-04S, P02-05S, P07-05E, P09-08S, the
 canal stair), Katana Island 7, Hell 6, Antarctica 3 (the west stair), Giza's pyramid inside 2, Agartha 1, Vatican 1, the Temple (clash) 1.
 The other 121 city flights stand on the lower plot over flat ground (nothing beside them is higher) and were already clean.
+
+## THE SLANTED MEDIANS + STRUNG WIRES — no stairs on a hill (2026-11-24, mondo: "the medians with the palm trees and the telephone pole wires that SHOULD be slanted but they step up")
+Same fault class as THE GROUNDED FENCES: a long thing drawn as level pieces, each at one height.
+- **Bayside's median** (`docs/disaster-city/districts/B.js` last(), THE SLANTED MEDIAN): each 0.875 m piece of the kerb and its sand top is SHEARED
+  (`shear: [rise, length]`, three-renderer.js `_hqArchGeometry`) from the ground at its start to the ground at its end, so the strip is one smooth slope.
+  The ramp rows under it (its collision) were already straight slopes.
+- **Pole wires in Disaster City** (Southside/Detroit, `districts/R.js`): a district file now writes a `wire: { to: [dx, dz], top, sag, offs, tint }` row on
+  one pole; bake-disaster-city.js THE STRUNG WIRES strings it in its levels pass from the crossarm height over the REAL ground under each pole (`LV.at`,
+  not the plot's level), 8 sheared pieces along the sag. Any new wire line in the city: use a `wire` row, never level boxes.
+- **Highway median barriers** (bake-route.js THE MEDIAN BARRIER, rows `hw:<route>:median:N`): `hug: true`, every corner on the ground under it
+  (data.js THE HUGGING ROWS), so a 14 m run slants with the road. The route kit's own pole wires (south-kit.js poleLine) were already sheared.
+- Proof: /mnt/project-files/slope-medians-wires/ (before/after).
+- **THE SPLIT ROAD** (2026-11-24, mondo: "the white dashed road lines are on the median now"): Bayside's coast road stays 4 squares (2 a side; mondo
+  "dont widen it if it doesnt need it, just trying to respect the battle grid"). A median arch row carries `median: [x0, z0, x1, z1]` (off its origin);
+  three-renderer.js road marks (THE SPLIT ROAD) drop the centre dashes along it and draw a dashed lane line down the middle of each side, w/4 off the
+  middle = on the square line between that side's two squares, from the median's first end to its last.
