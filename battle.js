@@ -16038,6 +16038,26 @@
             if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit });
         }
         window._chpgAfterCast = _chpgAfterCast;
+        /* ═══ THE PRINCESS (2026-11-24; mondo: "a blonde princess of an ancient magical kingdom", his pick Princess B of Came A Lot).
+           Her four spells are plain rows (data.js RACE_ABILITIES 'princess'); her rule is here.
+           - DAMSEL IN DISTRESS (passive prDamsel): the first time each round an enemy's hit lands on her and she lives, every ally
+             within 3 gets +1 ATK stage. `unit._prDamselRound` = the round it last fired (a plain number: rides the state sync).
+           Host-side, from applyDamageToUnit; texts through showFloatingTextForUnit (relayed: RULE #2).
+           Notes: docs/notes/champions-combat.md "THE PRINCESS". */
+        function _prDamselHit(target, src) {
+            if (!target || target.race !== 'princess' || target.dead || target.hp <= 0 || !src || !isEnemyUnit(src, target)) return;
+            if (state.phase !== 'battle') return;
+            if (typeof unitHasPassive === 'function' && !unitHasPassive(target, 'prDamsel')) return;
+            const rnd = state.round | 0;
+            if (target._prDamselRound === rnd) return;
+            const knights = (state.units || []).filter(a => _nrAlive(a) && a.id !== target.id && isAllyUnit(a, target) && _chNear(a, target, 3));
+            if (!knights.length) return;
+            target._prDamselRound = rnd;
+            addLog(`👑 ${_ctName(target)} cries for help: ${knights.length === 1 ? _ctName(knights[0]) + ' rushes' : knights.length + ' allies rush'} to her defence.`);
+            _chFloat(target, '👑 HELP!', 'debuff');
+            for (const a of knights) applyStatStageBoost(a, { atk: 1 }, 'Damsel in Distress: ', target);
+        }
+        window._prDamselHit = _prDamselHit;
         /* ═══ THE MUSIC PRODUCER (2026-11-24, thread "Add the Music Producer unit"; mondo's plan: "I want him to build a beat
            progressively. He could add a beat, chords, bass, and melody ... just the notes in C major"; the sounds approved in the Beat
            Lab, project files music-producer/) ═══ THE SONG lives on him as plain values (unit._song, it rides the state sync):
@@ -45336,6 +45356,7 @@
                        spellType) rides the same path — Burn for the rounds
                        the buff names. */
                     if (damageType !== 'dot' && target.hp > 0 && sourceUnit.race === 'point guard') _pgAssistHit(sourceUnit, target);   // 🏀 ASSIST: his hit leaves it Marked
+                    if (damageType !== 'dot' && target.hp > 0 && target.race === 'princess') _prDamselHit(target, sourceUnit);   // 👑 DAMSEL IN DISTRESS: her allies rush to her
                     if (damageType === 'physical' && !opts.spellType && target.hp > 0 && isEnemyUnit(sourceUnit, target)) {
                         for (const _bk of getActiveStatusKeys(sourceUnit)) {
                             const _bas = STATUS_DEFS[_bk]?.basicAttackStatus;

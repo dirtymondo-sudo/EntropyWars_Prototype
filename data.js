@@ -398,6 +398,7 @@ const FINISHERS = {
     'weatherman':     { id: 'fin_weatherman', name: 'Severe Weather Alert', glyph: '🌪', type: 'human', sig: 'upUpAndAway', built: true, tagline: 'STAY INDOORS', desc: 'The alert tone sounds, a funnel cloud drops out of a green sky and takes the victim up, live on the six o\'clock news.' },   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR (borrows the upUpAndAway staging)
     'centaur':        { id: 'fin_centaur', name: 'Run Down', glyph: '🏹', type: 'anomaly', sig: 'splitTheArrow', built: true, tagline: 'NEVER MISSES ON THE RUN', desc: 'Hooves on the horizon, a bow drawn at a full gallop, and one arrow that has been waiting for the victim the whole ride.' },   // 2026-11-24 THE CENTAUR (borrows Robin Hood's signature)
     'cheerleader':    { id: 'fin_cheerleader', name: 'Pyramid Collapse', glyph: '📣', type: 'human', sig: 'pileOn', built: true, tagline: 'GO, FIGHT, WIN', desc: 'The whole squad runs on from the sidelines, builds the pyramid on top of the victim and holds the pose for the cameras.' },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD (borrows the pileOn staging)
+    'princess':       { id: 'fin_princess', name: 'Happily Never After', glyph: '👑', type: 'divine', sig: 'pileOn', built: true, tagline: 'THE END', desc: 'The whole royal court rushes in to defend her honour and piles on, and a storybook closes over what is left.' },   // 2026-11-24 THE PRINCESS (borrows the pileOn staging)
     'point guard':    { id: 'fin_point_guard', name: 'Posterized', glyph: '🏀', type: 'human', sig: 'motionCarries', built: true, tagline: 'AND ONE', desc: 'A hoop drops out of the sky, he takes off from the free-throw line and slams the victim through it, ball and all.' },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD (borrows the motionCarries staging)
     'music producer': { id: 'fin_music_producer', name: 'Platinum Record', glyph: '💿', type: 'human', sig: 'farewellTour', built: true, tagline: 'GOING PLATINUM', desc: 'He drops the needle on one last track. A stage stands up round the victim, the lights find them, the whole song plays its drop, and when the lights come back up a gold record hangs where they stood.' },   // 2026-11-24 THE MUSIC PRODUCER (borrows the Popstar's stage)
     'streamer':       { id: 'fin_streamer', name: 'Banned', glyph: '🎮', type: 'anomaly', sig: 'corruptedSave', built: true, tagline: 'ACCOUNT SUSPENDED', desc: 'The chat floods, the mods wake up, and ACCOUNT SUSPENDED stamps down over the victim until nothing is left on the stream.' },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit) (borrows the corruptedSave staging)
@@ -667,6 +668,7 @@ const RACE_ELEMENT_AFFINITY = {
     'weatherman': { wind: 'resist', lightning: 'weak' },   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: dressed for the wind; a man with a metal umbrella in a thunderstorm
     'centaur': { earth: 'resist', ice: 'weak' },   // 2026-11-24 THE CENTAUR: four hooves on the ground; a horse on ice
     'cheerleader': { sonic: 'resist', poison: 'weak' },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: she out-yells anything; a whole season of energy drinks
+    'princess': { light: 'resist', poison: 'weak' },   // 2026-11-24 THE PRINCESS: blessed at her christening; one bite of the wrong apple
     'point guard': { wind: 'resist', ice: 'weak' },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: quick on his feet; the cold gets in his knees
     'music producer': { sonic: 'resist', water: 'weak' },   // 2026-11-24 THE MUSIC PRODUCER: he lives in the loud; water and his gear do not mix
     'streamer': { sonic: 'resist', light: 'weak' },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit): the headset is on; never sees the sun
@@ -3074,6 +3076,10 @@ const RACE_PROFILES = {
         label: 'Cheerleader',
         types: ['human']
     },
+    'princess': {   // 2026-11-24 THE PRINCESS (mondo 11-24: "a blonde princess of an ancient magical kingdom", his pick Princess B): the princess of Came A Lot
+        label: 'Princess',
+        types: ['human', 'divine']
+    },
     'point guard': {   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD (mondo 11-24: two separate units, not one race)
         label: 'Point Guard',
         types: ['human']
@@ -3903,6 +3909,10 @@ const PASSIVE_DEFS = {
         id: 'chSpirit', icon: '📣', name: 'Spirit',
         desc: 'Each of her spells adds 1 Spirit (up to 3). A spell she casts at 3 Spirit is a STUNT: when it lands, she and every ally within 3 heal a SMALL amount and lose 1 debuff, and the Spirit starts over.',
     },
+    prDamsel: {   // 2026-11-24 THE PRINCESS: battle.js THE PRINCESS (_prDamselHit, from applyDamageToUnit)
+        id: 'prDamsel', icon: '👑', name: 'Damsel in Distress',
+        desc: 'The first time each round an enemy hits her, every ally within 3 rushes to her defence: +1 ATK stage.',
+    },
     pgAssist: {   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: battle.js THE CHEERLEADER + THE POINT GUARD (applyDamageToUnit)
         id: 'pgAssist', icon: '🏀', name: 'Assist',
         desc: 'Every enemy he hits with a basic attack or a spell is left Marked for 2 rounds, for his team: the next physical hit an ALLY lands on it deals bonus damage (his own hits never cash it).',
@@ -4017,6 +4027,7 @@ const RACE_PASSIVES = {
     'weatherman':    ['wnTheForecast', 'wnTheRundown'],   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: his rule, her rule (each names who it is for)
     'centaur':       ['cenHitAndRun'],   // 2026-11-24 THE CENTAUR
     'cheerleader':   ['chSpirit'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
+    'princess':      ['prDamsel'],   // 2026-11-24 THE PRINCESS
     'point guard':   ['pgAssist'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
     'music producer': ['mpOnLoop'],   // 2026-11-24 THE MUSIC PRODUCER
 };
@@ -4095,7 +4106,7 @@ const RACE_MERGED = { 'nun': { race: 'priest', gender: 'female' } };
 /* 👁🌑 THE REALM WINDOW: races that SEE a Shadow Realm pair on their own turns (they cannot touch it). A projecting
    spirit both sees and touches (battle.js unitSeesRealm / unitCrossesRealm). */
 const REALM_SIGHT_RACES = ['ghost', 'shadow entity'];
-const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber', 'pharaoh', 'deep sea diver', 'gambler', 'hacker', 'monk', 'shogun', 'cameraman', 'mechanic', 'janitor', 'trucker', 'gladiator', 'farmer', 'jellyfish ufo', 'bear', 'rat', 'butterfly girl', 'plastic surgeon', 'monarch', 'abomination', 'hollow', 'weatherman', 'cheerleader', 'point guard', 'centaur', 'music producer'];
+const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber', 'pharaoh', 'deep sea diver', 'gambler', 'hacker', 'monk', 'shogun', 'cameraman', 'mechanic', 'janitor', 'trucker', 'gladiator', 'farmer', 'jellyfish ufo', 'bear', 'rat', 'butterfly girl', 'plastic surgeon', 'monarch', 'abomination', 'hollow', 'weatherman', 'cheerleader', 'point guard', 'centaur', 'music producer', 'princess'];
 /* THE COMING RACES (2026-11-19, mondo: "wire them in the game at least in the relation web, give them sprite ai portraits ... my associate
    [does] their spell and combat plan on another account"): races whose model, sprite and name are in (sprites.js RACE_MODELS_3D,
    RACE_PROFILES) but whose kit is not. They are NOT playable: the Relationship Web lists them (docs/plans/story-web/build/fresh.js).
@@ -4127,6 +4138,7 @@ const RACE_KITS = {
     'weatherman': { range: 2 },   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: the umbrella jab reaches (his); the microphone's feedback whine (hers)
     'centaur': { range: 4 },   // 2026-11-24 THE CENTAUR: the bow
     'cheerleader': { range: 1 },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: the basic attack is a high kick
+    'princess': { range: 2 },   // 2026-11-24 THE PRINCESS: the basic attack is a flick of the wrist, a little spark
     'point guard': { range: 3 },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: the basic attack is a chest pass with his basketball (it flies and comes back to his hands)
     'music producer': { range: 2 },   // 2026-11-24 THE MUSIC PRODUCER: the basic attack is a pad hit; the sound wave reaches
     'streamer': { range: 1 },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit): the basic attack is a keyboard slam
@@ -4278,6 +4290,7 @@ const RACE_CLASS = {
     'weatherman': 'specialist',   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: he moves the sky, she runs the show
     'centaur': 'ranged',   // 2026-11-24 THE CENTAUR: a horse archer
     'cheerleader': 'support',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
+    'princess': 'support',   // 2026-11-24 THE PRINCESS
     'point guard': 'ranged',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
     'music producer': 'specialist',   // 2026-11-24 THE MUSIC PRODUCER: he builds the song, the song does the work
     'streamer': 'specialist',   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
@@ -4364,6 +4377,7 @@ const RACE_TERRAIN_PREFERENCE = {
     'weatherman': 'urban',   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: Disaster City's news station
     'centaur': 'grass',   // 2026-11-24 THE CENTAUR: open ground to run on
     'cheerleader': 'urban',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: Disaster City University
+    'princess': 'grass',   // 2026-11-24 THE PRINCESS: the gardens of Came A Lot
     'point guard': 'urban',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: Disaster City's Sports district
     'music producer': 'urban',   // 2026-11-24 THE MUSIC PRODUCER: Disaster City (Mid Records)
     'streamer': 'urban',   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
@@ -4786,6 +4800,7 @@ const RACE_BASE_STATS = {
     'weatherman':         { hp:  930, mp: 230, atk:  70, def:  80, mdef: 125, int: 160, vision: 4, crt: 18, spd: 105 },   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR — first pass on the specialist median
     'centaur':            { hp:  900, mp: 150, atk: 118, def:  78, mdef:  62, int:  95, vision: 5, crt: 20, spd: 128 },   // 2026-11-24 THE CENTAUR — first pass between Robin Hood (ranged) and the Unicorn (a horse's body)
     'cheerleader':        { hp: 1020, mp: 210, atk:  95, def:  85, mdef: 120, int: 140, vision: 3, crt: 20, spd: 125 },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — first pass: a quick support who kicks
+    'princess':           { hp:  960, mp: 230, atk:  60, def:  75, mdef: 135, int: 150, vision: 4, crt: 15, spd: 120 },   // 2026-11-24 THE PRINCESS — first pass: a frail royal caster, magic and healing
     'point guard':        { hp:  940, mp: 140, atk: 112, def:  78, mdef:  62, int:  40, vision: 4, crt: 26, spd: 150 },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — first pass on the ranged median, the fastest hands on the court
     'music producer':     { hp:  980, mp: 230, atk:  60, def:  80, mdef: 120, int: 160, vision: 3, crt: 18, spd: 105 },   // 2026-11-24 THE MUSIC PRODUCER — first pass on the specialist median
     'streamer':           { hp:  990, mp: 200, atk: 125, def:  80, mdef: 100, int: 142, vision: 3, crt: 25, spd: 110 },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit) — first pass: a skirmisher who banks a crowd; LAB LOOP 11-22 PASS 4: HP 950→990, ATK 120→125, M.ATK 130→142 (44.9% over 244 games)
@@ -4984,6 +4999,7 @@ const RACE_PHYSIQUE = {
     'weatherman':          { h: 1.80, w: 76 },   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR
     'centaur':             { h: 2.40, w: 480 },   // 2026-11-24 THE CENTAUR: a horse with a rider's body on it, head to hoof
     'cheerleader':         { h: 1.66, w: 55 },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
+    'princess':            { h: 1.68, w: 52 },   // 2026-11-24 THE PRINCESS (the crown not counted)
     'point guard':         { h: 1.88, w: 84 },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
     'music producer':      { h: 1.80, w: 74 },   // 2026-11-24 THE MUSIC PRODUCER
     'streamer':            { h: 1.76, w: 70 },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
@@ -11398,6 +11414,28 @@ const RACE_ABILITIES = {
           element: 'sonic', type: 'buff', kind: 'warCry', range: 0, aoeRadius: 4, auraRadius: 4, statStageBoost: { atk: 1, def: 1 },
           chGimme: true, chGimmeHeal: 100, chGimmeDmg: 110, chGimmeReach: 2,
           desc: 'Gimme a D! Gimme a C! Gimme a U! Every ally within 4 heals a MEDIUM amount and gets +1 ATK and +1 DEF stage; every enemy within 2 of her takes MEDIUM sonic magic damage and is Staggered for 1 round. Cooldown: 4 rounds.' },
+    ],
+    'princess': [
+        /* THE PRINCESS (2026-11-24; mondo: "a blonde princess of an ancient magical kingdom", his pick Princess B: the spoiled princess of
+           Came A Lot in pink, gold crown, white boots, hands empty). A fairy-tale caster: a wish, a kiss, a spindle's curse and the end of
+           the story. HER RULE, DAMSEL IN DISTRESS (prDamsel): the first time each round an enemy hits her, every ally within 3 gets +1 ATK
+           stage (battle.js _prDamselHit). Library casts (THE MESHY CASTS): Magic_Genie, Big_Heart_Gesture, Dont_You_Dare, Formal_Bow. */
+        { id: 'prWishingStar', name: 'Wishing Star', tier: 1, families: ['fairytale'], cost: 25, apCost: 1, spellType: 'divine', vfxElement: 'light',
+          animClip: { name: 'Magic_Genie', lib: 9, ts: 1.3, trim: [3.2, 5.0], strikeAt: 4.4 },   // THE MESHY CASTS (11-24): the wish
+          element: 'light', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 90, range: 4,
+          desc: 'When you wish upon a star, it lands on someone. Deals WEAK magic damage to a Single Enemy within 4.' },
+        { id: 'prTrueLove', name: 'True Love\'s Kiss', tier: 2, families: ['fairytale'], cost: 40, apCost: 1, cooldownRounds: 2, spellType: 'divine', vfxElement: 'light',
+          animClip: { name: 'Big_Heart_Gesture', lib: 9, ts: 1.5, trim: [0.5, 2.6], strikeAt: 1.4 },   // THE MESHY CASTS (11-24): the blown kiss
+          element: 'light', type: 'heal', kind: 'heal', range: 3, healAmt: 130, cleanse: 1,
+          desc: 'She blows a kiss and the curse breaks. Heals a Single Ally within 3 a BIG amount and removes 1 debuff. Cooldown: 2 rounds.' },
+        { id: 'prSpindle', name: 'Spindle Curse', tier: 3, families: ['fairytale'], cost: 55, apCost: 1, cooldownRounds: 3, spellType: 'divine', vfxElement: 'arcane',
+          animClip: { name: 'Dont_You_Dare', lib: 9, ts: 1.4, trim: [0.8, 2.8], strikeAt: 1.64 },   // THE MESHY CASTS (11-24): the wagging finger
+          element: 'psychic', type: 'debuff', kind: 'debuff', range: 4, noDamage: true, statusEffects: [{ id: 'sleep', duration: 2 }],
+          desc: 'A prick of the finger and off to bed. A Single Enemy within 4 falls asleep for 2 rounds: Sleeping. Any damage wakes it. Cooldown: 3 rounds.' },
+        { id: 'prEverAfter', name: 'Happily Ever After', tier: 4, families: ['fairytale'], cost: 90, apCost: 1, cooldownRounds: 4, spellType: 'divine', vfxElement: 'light',
+          animClip: { name: 'Formal_Bow', lib: 8, ts: 1.4, trim: [1.4, 3.4], strikeAt: 2.6 },   // THE MESHY CASTS (11-24): the curtsey at the end of the story
+          element: 'light', type: 'buff', kind: 'aoeShield', range: 0, aoeOriginSelf: true, aoeRadius: 3, shieldHp: 170,
+          desc: 'And they all lived happily ever after. Every ally within 3, and she, gets a 170-point shield. Cooldown: 4 rounds.' },
     ],
     'point guard': [
         /* THE POINT GUARD (2026-11-24 THE CHEERLEADER + THE POINT GUARD; mondo 11-24: "Point Guard m (basketball)", "needs a basketball, just a sphere geometry
@@ -22151,6 +22189,7 @@ const EW_RACE_BIOMES = {
     'weatherman': ['urban'],   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR — Disaster City (Hero Plaza's news office)
     'centaur': ['ancient', 'forest'],   // 2026-11-24 THE CENTAUR — Mount Olympus and its woods (Claude's pick: mondo named no home)
     'cheerleader': ['urban'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — Disaster City University (the DCU Aftershocks)
+    'princess': ['arthurian'],   // 2026-11-24 THE PRINCESS — Came A Lot
     'point guard': ['urban'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — Disaster City's Sports district
     'music producer': ['urban'],   // 2026-11-24 THE MUSIC PRODUCER — Disaster City
     'streamer': ['neon_city', 'urban'],   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit) — The Internet's stage
@@ -22837,6 +22876,7 @@ const RACE_TREE = {
     'weatherman':    [['wnColdFront', 'wnTopStory'], ['wnSevereWeather', 'wnExclusive'], ['wnStormTracker', 'wnFakeNews'], ['wnStormOfCentury', 'wnPrimeTime']],   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: every rung is one of each (RACE_GENDER_SPELLS): his weather, her show
     'centaur':       ['cenHoofStomp', 'cenParthianShot', ['cenWildHerd', 'raceRideBy'], 'cenSagittarius'],   // 2026-11-24 THE CENTAUR
     'cheerleader':   ['chHighKick', 'chReadyOk', 'chBasketToss', 'chGimme'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: her own four
+    'princess':      ['prWishingStar', 'prTrueLove', 'prSpindle', 'prEverAfter'],   // 2026-11-24 THE PRINCESS: her own four
     'point guard':   ['pgChestPass', 'pgCrossover', 'pgAlleyOop', 'pgBuzzerBeater'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: his own four
     'music producer': ['mpLayItDown', ['mpAddChord', 'mpMelodyStyle'], 'mpDrumFill', 'mpBassDrop'],   // 2026-11-24 THE MUSIC PRODUCER (Beat Switch + Slap Bass ride RACE_DEFAULT_KIT_EXTRAS)
     'streamer':      ['nrClipIt', ['nrUwu', 'nrRageQuit'], 'nrDonationGoal', 'nrRaid'],   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit): the rung 2 pair is one of each version (RACE_GENDER_SPELLS)
@@ -25007,6 +25047,16 @@ const SPELL_FAMILIES = {
         desc: 'The DCU Aftershocks\' cheer squad: high kicks, a chant for the team, and a team-mate thrown where it is needed.',
         unique: 'cheerleader',
         identity: { who: ['Cheerleader', 'Flyer', 'Squad Captain'], adj: ['Peppy', 'Loud', 'Spirited'], look: ['a crimson DCU uniform', 'a big hair bow', 'pom-poms'], vibe: ['throws a team-mate in the air', 'leads the chant'] }
+    },
+    fairytale: {   // 2026-11-24 THE PRINCESS — the Princess's own
+        id: 'fairytale',
+        name: 'Fairy Tale',
+        glyph: '👑',
+        color: '#f4a6c8',
+        kind: 'signature',
+        desc: 'The princess of Came A Lot\'s storybook magic: a wish on a star, true love\'s kiss, a spindle\'s curse and a happy ending.',
+        unique: 'princess',
+        identity: { who: ['Princess', 'Royal Highness', 'Heir'], adj: ['Spoiled', 'Enchanted', 'Royal'], look: ['a pink and gold gown', 'a tall golden crown', 'white boots'], vibe: ['makes a wish', 'ends the story'] }
     },
     basketball: {   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — the Point Guard's own
         id: 'basketball',
@@ -27501,6 +27551,7 @@ const RACE_FAMILIES = {
     'weatherman': ['newsroom', 'wind', 'lightning', 'stagepresence'],   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR
     'centaur': ['centaur', 'archery', 'horsebackriding', 'athleticism'],   // 2026-11-24 THE CENTAUR (the idea list's own three)
     'cheerleader': ['cheer', 'teamwork', 'athleticism', 'stagepresence'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
+    'princess': ['fairytale', 'royalty', 'healingmagic', 'light'],   // 2026-11-24 THE PRINCESS
     'point guard': ['basketball', 'athleticism', 'teamwork', 'stagepresence'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
     'music producer': ['beatmaking', 'sonic', 'stagepresence', 'maincharacter'],   // 2026-11-24 THE MUSIC PRODUCER
     'streamer': ['streaming', 'stagepresence', 'computerhacking', 'internetaddiction'],   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
@@ -28162,6 +28213,7 @@ const CAMPAIGN_RACE_PRICES = {
   'weatherman': 400,   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR
   'centaur': 450,   // 2026-11-24 THE CENTAUR
   'cheerleader': 400,   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
+  'princess': 400,   // 2026-11-24 THE PRINCESS
   'point guard': 400,   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
   'music producer': 400,   // 2026-11-24 THE MUSIC PRODUCER
   'streamer': 400,   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
@@ -30176,6 +30228,7 @@ const DOOR_TEXT = {
         'weatherman': 'Downtown',   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR (the news office in Hero Plaza)
         'centaur': 'Mount Olympus',   // 2026-11-24 THE CENTAUR (Claude's pick: with the Cyclops and the Minotaur)
         'cheerleader': 'Downtown', 'point guard': 'Downtown',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD (University; the Sports district)
+        'princess': 'Came A Lot',   // 2026-11-24 THE PRINCESS
         'music producer': 'Downtown',   // 2026-11-24 THE MUSIC PRODUCER (Mid Records)
         'gambler': 'The Strip', 'hacker': 'Downtown', 'monk': 'The Bermuda Triangle', 'shogun': 'The Bermuda Triangle',   // 2026-11-19 THE NEW RACES 4 (the gambler lives in the Western Town too: HQ_AREA_ENCOUNTERS; the monk + the shogun on the Volcano Island)
         'cameraman': 'Downtown', 'mechanic': 'Downtown', 'janitor': 'Downtown', 'trucker': 'Downtown',   // 2026-11-19 THE NEW RACES 3
@@ -100903,6 +100956,7 @@ const HQ_NPC_TEMPERS = {
         'weatherman': 'coward',   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: the news reports the fight, it does not join it
         'centaur': 'territorial',   // 2026-11-24 THE CENTAUR: wild, warns once, then the hooves
         'cheerleader': 'coward', 'point guard': 'opportunist',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
+        'princess': 'coward',   // 2026-11-24 THE PRINCESS: she calls for help, she does not wade in
         'music producer': 'opportunist',   // 2026-11-24 THE MUSIC PRODUCER
         'zombie': 'brute', 'shadow entity': 'brute', 'werewolf': 'brute', 'wendigo': 'brute', 'ghoul': 'brute', 'flesheater': 'brute',
     },
@@ -102354,6 +102408,7 @@ const HQ_AREA_ENCOUNTERS = {
     "site_prebuilt_camelot_keep": { list: [
         { race: "dragon", w: 10 },
         { race: "king arthur", w: 10 },
+        { race: "princess", w: 5 },   // 2026-11-24 THE PRINCESS
         { race: "knight", w: 10 },
         { race: "robinhood", w: 10 },
         { race: "swordfighter", w: 10 },
@@ -102666,8 +102721,8 @@ const HQ_NPC_PLACES = {
         'politician m @G:Stones stay night', 'banker @G:Stones stay night', 'tech ceo @G:Fire stay night'],   // the Members' tunnel from the club opens here
     /* ── CAME A LOT ── */
     site_prebuilt_camelot_kingdom: ['king arthur @K:Great Hall >K,T day', 'knight m @K:Barracks >K', 'knight f @K:Bailey >K', 'knight m @T:North Gate stay', 'knight f @T:Drawbridge stay',
-        'wizard m @K:Keep >K,T', 'wizard f @K:Orchard >K,T', 'gnome @T:Market >T x2', 'farmer @T:Smithy >T', 'priest m @T:Chapel >T', 'chef @T:Inn stay'],
-    site_prebuilt_camelot_palace: ['king arthur night', 'knight m', 'knight f', 'wizard m'],
+        'wizard m @K:Keep >K,T', 'wizard f @K:Orchard >K,T', 'princess @K:Great Hall >K day', 'gnome @T:Market >T x2', 'farmer @T:Smithy >T', 'priest m @T:Chapel >T', 'chef @T:Inn stay'],
+    site_prebuilt_camelot_palace: ['king arthur night', 'knight m', 'knight f', 'wizard m', 'princess night'],   // 2026-11-24 THE PRINCESS (her nights in the castle)
     site_prebuilt_camelot_ow_pines: ['gnome @N:Hermit >N', 'yeti @N:Wolf Run >N x2', 'krampus @N:High Pines >N'],
     site_prebuilt_camelot_ow_garden: ['fairy @L:Tea Party >L', 'tree person @L:Hedges stay', 'rabbit @L:Lawn >L', 'mushroom girl @L:Tea Party >L', 'chess piece @L:Chessboard stay x2'],
     site_prebuilt_camelot_ow_fairy: ['fairy @F:Fairy Ring >F x2', 'mushroom girl @F:Glow-Worm >F', 'rabbit @F:Knoll >F', 'tree person @F:Hollow Oak stay', 'unicorn @F:Wishing Pool >F', 'gnome @F:Root Stair >F', 'robinhood @F:Woods Trail >F h12-16'],
@@ -110392,6 +110447,11 @@ const DOOR_ROSTER_LINES = {
         '“For Came A Lot!”',
         '“A sword from a lake is a perfectly legitimate hiring credential.”',
         '“The table was round on purpose.”',
+    ],
+    'princess': [   // 2026-11-24 THE PRINCESS
+        '“I asked for a pony. I asked for a unicorn. They are not the same thing.”',
+        '“Somebody defend my honour. Anybody. I am right here.”',
+        '“The crown is heavy. That is what the servants are for.”',
     ],
     'quarterback': [
         '“Back in college I could throw a pigskin over them mountains.”',
