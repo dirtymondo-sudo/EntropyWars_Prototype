@@ -4158,3 +4158,10 @@ Texture with 'PointSha…" and "i always get this huge frame drop in door hq and
 - THE GLOBE LAMPS OUT OF DOOR HQ (same day, mondo: "can we just get rid of those lamps, they dont even look like lamps"): every
   `globe_lamp` row of the handmade DOOR HQ rooms is gone from data.js (36 rows: the main hall's 13, the wings, the garden, the
   wood stair, the observatorium ...). The plot-built zones keep theirs (their bakes write them).
+- THE OUT CHUNKS WAIT (11-24, mondo's F3 in Disaster City after step 4: 45 FPS, 1% low 19, "tick: chunks" ~20 ms in 20 of 22
+  dips, every ~4.6 s): the freeze took chunks off THE STILL WALK, so `_hqChunkTick`'s off-camera branch fell back to "anything
+  joined the scene anywhere -> walk this out chunk whole": every resident's new body walked every off-camera chunk of the city
+  in one frame. Now a frozen chunk (or a door chunk under the frozen door group) is walked out of view only for what landed in
+  it (`fresh`) or a count change, and is MEASURED again only when something landed in it (`_hqStillAdded` sets `_ew_ckDirty`)
+  or every 60 s, not on every add in the room. Cloud, the Estate's lake with an add every 400 ms: tick: chunks 15.3 -> 2.2 ms a
+  frame (old worst frames 468 / 145 ms at the cloud's speed).
