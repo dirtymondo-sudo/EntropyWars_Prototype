@@ -4085,6 +4085,11 @@ function _hrlgStatusChips(unit) {
     const vw = Math.max(0, Math.min(window.VIEWERS_MAX || 10, unit.viewers | 0));
     chips.push({ key: 'viewers', label: 'VIEWERS ' + vw + '/' + (window.VIEWERS_MAX || 10), kind: vw > 0 ? 'up' : 'dn', title: 'Viewers: +1 per hit landed, +2 per KO, +1 when a big hit gets clipped; going down halves them. Clip It marks at 5+; Donation Goal and Raid spend them all.' });
   }
+  /* 📺 THE RUNDOWN (the News Anchor, 2026-11-24): the segment her next spell runs (battle.js unit._rundown, rides the state sync) */
+  if (unit.race === 'weatherman' && unit.gender === 'female' && !unit.dead) {
+    const seg = ['HEADLINES', 'SPORTS', 'WEATHER'][Math.max(0, unit._rundown | 0) % 3];
+    chips.push({ key: 'rundown', label: 'NEXT ' + seg, kind: 'up', title: 'The Rundown: her next spell runs this segment for her and her allies within 3. Headlines +1 ATK and M ATK, Sports +1 SPD, Weather +1 round on every weather up (clear skies: a small heal).' });
+  }
   /* 🫀 THE LIMBS (the Abomination, 2026-11-23): the arms and tentacles it has (battle.js unit.limbs, rides the state sync; no value = 4) */
   if (unit.race === 'abomination' && !unit.dead) {
     const lb = typeof window.getLimbs === 'function' ? window.getLimbs(unit) : (unit.limbs == null ? 4 : unit.limbs | 0), lm = window.LIMBS_MAX || 6;

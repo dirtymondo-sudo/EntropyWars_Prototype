@@ -2893,6 +2893,7 @@
                         if (unit.dead || !tileSet.has(posKey(unit.x, unit.y))) continue;
                         if (typeof shadowRealmKey === 'function' && shadowRealmKey(unit)) continue;   // 🌑 nor a quake's first blow
                         if (typeof unitIsSpirit === 'function' && unitIsSpirit(unit)) continue;   // 👁 nor a spirit: nothing of the ground or the sky touches it
+                        if (typeof wnWeatherproof === 'function' && wnWeatherproof(unit)) continue;   // ☂ THE FORECAST (2026-11-24)
 
                         if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) continue;
                         const eff = def.onSpawnEffect(unit);
@@ -2975,7 +2976,8 @@
                so nobody in a realm (battle.js shadowRealmKey) gets its rain, its heal or its burn */
             const units = (player ? aliveUnitsFor(player) : state.units.filter(u => !u.dead))
                 .filter(u => !(typeof shadowRealmKey === 'function' && shadowRealmKey(u)))
-                .filter(u => !(typeof unitIsSpirit === 'function' && unitIsSpirit(u)));   // 👁 no weather on a spirit
+                .filter(u => !(typeof unitIsSpirit === 'function' && unitIsSpirit(u)))   // 👁 no weather on a spirit
+                .filter(u => !(typeof wnWeatherproof === 'function' && wnWeatherproof(u)));   // ☂ THE FORECAST (2026-11-24): the Weatherman's umbrella is up
             for (const weather of state.activeWeather) {
                 const def = WEATHER_REGISTRY[weather.type];
                 // Homing storms resolve all of their effects at end of round (processHomingWeather) —
@@ -3067,6 +3069,10 @@
             if (!v || v.dead || v._dying || v.hp <= 0 || !weather || !def) return false;
             if (typeof shadowRealmKey === 'function' && shadowRealmKey(v)) return false;   // 🌑 the storm is the board's
             if (typeof unitIsSpirit === 'function' && unitIsSpirit(v)) return false;   // 👁 no storm strikes a spirit
+            if (typeof wnWeatherproof === 'function' && wnWeatherproof(v)) {   // ☂ THE FORECAST (2026-11-24): the umbrella goes up
+                if (typeof window !== 'undefined' && window.ThreeVFXEffects && window.ThreeVFXEffects.fire) { try { window.ThreeVFXEffects.fire('brolly', 'wnUmbrella', { tx: v.x, ty: v.y, sx: v.x, sy: v.y }); } catch (e) {} }
+                return false;
+            }
             const caster = weather._casterUnitId ? unitFromId(weather._casterUnitId) : null;
             // 🌧️ Rain-bearing vortices (hurricane, thunderstorm)
             // drench whoever they sweep over — BEFORE the strike,
@@ -3308,7 +3314,7 @@
                     for (const v of struck) {
                         if (!v || v.dead) continue;
                         if (stormStrikeUnit(v, weather, def)) actedVisibly = true;
-                        if (def.displaces && !v.dead) {
+                        if (def.displaces && !v.dead && !(typeof wnWeatherproof === 'function' && wnWeatherproof(v))) {   // ☂ THE FORECAST: the storm never takes the Weatherman
                             /* 🧭 THE FORCED MOVE (2026-10-18): the storm flings on its heading this round — north the
                                round it formed, then east, south, west (battle.js vortexFlingDir) — through the shared
                                slide, one lift-spin-hurl arc, and the landing's chain with the fling's momentum (onto
