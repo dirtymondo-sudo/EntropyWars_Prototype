@@ -15812,8 +15812,9 @@
         }
         /* finishAction: The Forecast's round, the strike, the flip, the segment */
         function _wnAfterCast(unit, spell, x, y) {
-            if (!unit || !spell || unit.race !== 'weatherman' || state.phase !== 'battle' || !/^wn[A-Z]/.test(spell.id || '')) return;
-            if (_wnIsHim(unit) && spell.kind === 'summonWeather' && !spell.wnSteer) {
+            if (!unit || !spell || unit.race !== 'weatherman' || state.phase !== 'battle') return;
+            /* the passives ride every spell she / he casts (a family spell too); Broken = no passives (unitHasPassive) */
+            if (_wnIsHim(unit) && spell.kind === 'summonWeather' && !spell.wnSteer && unitHasPassive(unit, 'wnTheForecast')) {
                 const w = (state.activeWeather || []).find(o => o && o.type === spell.weatherType);
                 if (w) {
                     w.remaining = (w.remaining | 0) + 1;
@@ -15829,7 +15830,9 @@
                         const row = { id: 'wnCenturyBolt', name: 'Storm of the Century', families: ['newsroom'], spellType: 'human', element: 'lightning', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: spell.dmg || 130 };
                         const sp = spellPowerOf(unit, row);
                         for (const e of prey) _wnFx('bolt', 'wnStormOfCentury', { tx: e.x, ty: e.y, sx: unit.x, sy: unit.y });
-                        _applyAoeDamage(unit, row, prey.map(e => ({ x: e.x, y: e.y })), (spell.dmg || 130) + sp, sp, { rngRange: 24, minDmg: 40 });
+                        /* only the grounded prey: a flyer over one of them is not struck (findTarget names the body per square) */
+                        _applyAoeDamage(unit, row, prey.map(e => ({ x: e.x, y: e.y })), (spell.dmg || 130) + sp, sp,
+                            { rngRange: 24, minDmg: 40, findTarget: t => prey.find(e => e.x === t.x && e.y === t.y && _nrAlive(e)) || null });
                         if (typeof checkWin === 'function') checkWin();
                     }
                 }
@@ -15841,6 +15844,8 @@
                 const keys = new Set(tiles.map(t => t.x + ',' + t.y));
                 for (const e of (state.units || [])) {
                     if (!_nrAlive(e) || !isEnemyUnit(unit, e) || !keys.has(e.x + ',' + e.y) || !Array.isArray(e.statStageMods)) continue;
+                    /* a stat that cannot change (Fermata's lock) or a body across the Shadow Realm keeps its boosts: check before the ledger is touched */
+                    if (unitHasStatus(e, 'statLock') || (typeof isUnitRealmShieldedFrom === 'function' && isUnitRealmShieldedFrom(e, unit))) continue;
                     const flip = {};
                     e.statStageMods = e.statStageMods.filter(m => { if (m && m.n > 0 && !m.perm) { flip[m.stat] = (flip[m.stat] || 0) - m.n; return false; } return true; });
                     if (!Object.keys(flip).length) continue;
@@ -15849,8 +15854,8 @@
                     applyStatStageBoost(e, flip, 'Fake News: ', unit);
                 }
             }
-            if (spell.wnAllSegments) { for (let k = 0; k < 3; k++) _wnSegment(unit, k); unit._rundown = 0; }
-            else { const seg = Math.max(0, (unit._rundown | 0)) % 3; _wnSegment(unit, seg); unit._rundown = (seg + 1) % 3; }
+            if (spell.wnAllSegments) { for (let k = 0; k < 3; k++) _wnSegment(unit, k); unit._rundown = 0; }   // Prime Time's own effect
+            else if (unitHasPassive(unit, 'wnTheRundown')) { const seg = Math.max(0, (unit._rundown | 0)) % 3; _wnSegment(unit, seg); unit._rundown = (seg + 1) % 3; }
             if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit });
         }
         window._wnAfterCast = _wnAfterCast;

@@ -4058,7 +4058,7 @@ const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scie
    To unlock one: give it its kit (RACE_ABILITIES, RACE_TREE, RACE_FAMILIES, stats, physique, prices, ...), MOVE it from here into
    AVAILABLE_RACES and server.js AVAILABLE_RACES. Notes: docs/notes/champions-combat.md "THE COMING RACES". */
 /* THE WEATHERMAN's FORECAST (2026-11-24 THE WEATHERMAN + NEWS ANCHOR): the weather never hurts or soaks him (state.js applyWeatherTurnEffects + stormStrikeUnit) */
-function wnWeatherproof(u) { return !!u && u.race === 'weatherman' && (u.gender || 'male') === 'male'; }
+function wnWeatherproof(u) { return !!u && u.race === 'weatherman' && (u.gender || 'male') === 'male' && unitHasPassive(u, 'wnTheForecast'); }   /* Broken = no passives = no shelter */
 const EW_COMING_RACES = [];   // 2026-11-23 THE COMING RACES 2 (the Mannequin was cut 11-23, mondo; the Bear, the Rat, the Butterfly Girl and the Monarch got their kits 11-23 and moved to AVAILABLE_RACES) (models in, kits not yet; one spell thread a unit). 2026-11-19: the gladiator, the farmer and the jellyfish UFO got their kits and moved to AVAILABLE_RACES
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
