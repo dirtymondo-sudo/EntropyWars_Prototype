@@ -78607,6 +78607,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         sigMagicCircle3D: _sigMagicCircle3D,
         sigMagicOrb3D: _sigMagicOrb3D,
         sigShockRing3D: _sigShockRing3D,
+        /* 🎛 THE MUSIC PRODUCER's earshot (3 squares) pulsing on the bar: hud.js THE 4-TRACK STRIP calls it, on each client (no relay) */
+        mpEarshotPulse: function (tx, ty, color) { try { var wp = _worldPos(tx, ty); return _sigShockRing3D(tx, ty, { color: color, r0: wp.ts * 2.9, r1: wp.ts * 3.5, ms: 520, height: 4 }); } catch (e) { return null; } },
         sigSpeedBurst3D: _sigSpeedBurst3D,
         sigLightPillar3D: _sigLightPillar3D,
         sigCrescentSlash3D: _sigCrescentSlash3D,
