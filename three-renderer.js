@@ -41117,7 +41117,7 @@ const ThreeRenderer = (function () {
         for (var u in _miscModelCache) { var e = _miscModelCache[u]; if (!e.root || e._ewPiece) continue; if (e.bytes == null) e.bytes = _mmBytes(e.root, {}); mb += e.bytes; n++; }
         for (var r in _unitGlbCache) { var ue = _unitGlbCache[r]; if (!ue || !ue.root) continue; if (ue._ew_mmBytes == null) ue._ew_mmBytes = _mmBytes(ue.root, seen); rb += ue._ew_mmBytes; rn++; }
         return { misc: { n: n, mb: +(mb / 1048576).toFixed(1) }, rigs: { n: rn, mb: +(rb / 1048576).toFixed(1) }, budget: _mmBudgetMB(),
-                 evicted: _mmEvicted, freedMB: +(_mmFreed / 1048576).toFixed(1), off: _mmOff(), undrawn: _hqPbrDropped, smallCapped: _hqSmallCapped, bmpClosed: _mmBmpClosed, bmpKept: _mmBmpKept, bmpClosedMB: +(_mmBmpClosedB / 1048576).toFixed(1) };
+                 evicted: _mmEvicted, freedMB: +(_mmFreed / 1048576).toFixed(1), off: _mmOff(), undrawn: _hqPbrDropped, smallCapped: _hqSmallCapped, bmpClosed: _mmBmpClosed, bmpKept: _mmBmpKept, unlinked: _hqUnlinked, scrubbed: _hqScrubbed, bmpClosedMB: +(_mmBmpClosedB / 1048576).toFixed(1) };
     }
     /* THE HOLDERS (2026-11-15, mondo: "Crashed inside the door main hall/lobby"; his readout: MEM 1726/700 MB in the Foyer, 2047/700
        in the Main Hall, Firefox M1 WebGPU). The readout said how much, never WHAT: nothing could be checked from a console paste.
@@ -105881,7 +105881,7 @@ const ThreeRenderer = (function () {
     /* leaving the room: the neighbours' gates close, the detached ones are disposed (the attached ones go with the scene) */
     function _hqStageLeave(H) {
         var st = H && H.stage; if (!st) return;
-        for (var id in st.parts) { var E = st.parts[id]; try { if (E.gate) E.gate.close(); } catch (e) {} if (!E.attached) { try { E.P.partRoot.traverse(function (o) { _disposeR(o); }); } catch (e) {} } }
+        for (var id in st.parts) { var E = st.parts[id]; try { if (E.gate) E.gate.close(); } catch (e) {} if (!E.attached) { try { E.P.partRoot.traverse(function (o) { _disposeR(o); }); _hqUnlinkLeft(E.P.partRoot); } catch (e) {} } }   // (THE LEFT ROOM LETS GO)
     }
     /* ══ THE PLOT DUNGEONS (docs/PLOT_DUNGEONS_PLAN.md §6.3, 2026-11-14) ══════════════════════════════════════════════════════════
        A dungeon's plots are stage parts (data.js pdInstall): each is built once in its own frame and placed by its pose. A MOVE
@@ -107090,6 +107090,51 @@ const ThreeRenderer = (function () {
         _hqRoomHandover = { roomId: H.opts.room || 'central_egress', shellGroup: H.shellGroup, doorGroup: H.doorGroup, propGroup: H.propGroup, sky: sky, fxPulse: H.fxPulse || [], at: performance.now() };
         return true;
     }
+    /* THE LEFT ROOM LETS GO (2026-11-23, mondo's Firefox at 120 GB; after THE BITMAPS GO WITH THE FILE): measured in the cloud, the
+       Clearing's whole room (37,585 scene pieces) was still in memory after walking back to the lobby, and every visit added
+       another copy (45,775 pieces on the first visit, 89,559 on the second). A three.js piece holds its parent and the parent
+       holds every child, so ONE piece of the left room still named anywhere (a closure of a model landing, a list of the last
+       few of something, a record of a late callback) kept the whole room alive. After the room's disposal its own trees (the
+       part roots, `hq_part*`) are cut apart: every piece drops its parent and its children, so a stray reference keeps one
+       piece, not the room. Only the left room's own parts (never a parked room, never what was handed to a fight).
+       Off: window.EW_KEEP_LEFT_TREES. Count: ThreeRenderer.hq.mem().unlinked. */
+    var _hqUnlinked = 0, _hqScrubbed = 0;
+    /* ... and the left room's RECORD lets go too: cut apart, the 42,000 pieces of the Clearing were still each alive after the
+       walk back (measured), because the record (_hq of that visit) is still named by some late callback, and its lists (the
+       props, the blockers, the instance pass, the chunks, the stage) name every piece. After the disposal the record keeps only
+       its plain values, its opts and its room: lists become empty lists, groups empty groups, other records null. A late callback
+       of the left room then finds an empty room. Off: window.EW_KEEP_LEFT_TREES (both). */
+    /* THE HERO LAMP'S LIST (found with it, 11-23): the hero point lamp keeps the room's shadow casters on itself (`_ew_gate.list` and
+       `.seen`: 16,278 meshes in the Clearing) and the lamp is still named after the room is gone (THE ONE RIG keeps its lights), so
+       that list kept the left room's meshes alive. It is dropped with the room; the next room's lamp builds its own. */
+    function _hqHeroGateDrop(H) {
+        if (typeof window !== 'undefined' && window.EW_KEEP_LEFT_TREES) return;
+        var L = H && H.heroLit; if (!L || !L.isLight) return;
+        try { _hqHeroRelease(L); } catch (e) {}
+        var G = L._ew_gate; if (G) { G.list = null; G.seen = null; G.scn = null; G.near = null; } L._ew_gate = null; L._ew_heroFaces = null;
+    }
+    function _hqScrubLeft(H) {
+        if (!H || (typeof window !== 'undefined' && window.EW_KEEP_LEFT_TREES)) return;
+        var keep = { opts: 1, room: 1, profile: 1, gate: 1, camera: 1 };
+        for (var k in H) {
+            if (!Object.prototype.hasOwnProperty.call(H, k) || keep[k]) continue;
+            var v = H[k]; if (!v || typeof v !== 'object') continue;
+            if (Array.isArray(v)) H[k] = [];
+            else if (v instanceof Map) H[k] = new Map();
+            else if (v instanceof Set) H[k] = new Set();
+            else if (v.isObject3D) { if (v.isCamera) continue; H[k] = v.isScene ? new THREE.Scene() : new THREE.Group(); }
+            else if (Object.getPrototypeOf(v) === Object.prototype) H[k] = null;
+            else continue;
+            _hqScrubbed++;
+        }
+    }
+    function _hqUnlinkLeft(root) {
+        if (!root || !/^hq_part/.test(root.name || '') || (typeof window !== 'undefined' && window.EW_KEEP_LEFT_TREES)) return;
+        var st = [root], all = [];
+        while (st.length) { var o = st.pop(); all.push(o); var ch = o.children; for (var i = 0; i < ch.length; i++) st.push(ch[i]); }
+        for (var j = 0; j < all.length; j++) { var q = all[j]; q.parent = null; q.children = []; }
+        _hqUnlinked += all.length;
+    }
     function _hqLeave(opts) {
         var H = _hq; if (!H) return;
         var keepGr = false; try { keepGr = _hqParkOk(H, opts) && !_fwOff() && !H.stage; } catch (eKG) { keepGr = false; }   // THE FIGHT IN THE WALKED ROOM: the parked room keeps its grass and plants (the fight draws them)
@@ -107154,6 +107199,7 @@ const ThreeRenderer = (function () {
                 var c = H.scene.children[i];
                 H.scene.remove(c);
                 _disposeR(c);
+                if (!handed) _hqUnlinkLeft(c);   // THE LEFT ROOM LETS GO
             }
         } catch (e) {}
         /* hand the canvas back to the battle layout */
@@ -107167,6 +107213,7 @@ const ThreeRenderer = (function () {
                 if (css2dRenderer) css2dRenderer.domElement.style.display = 'none';
             }
         } catch (e) {}
+        if (!park && !handed) { try { _hqHeroGateDrop(H); _hqScrubLeft(H); } catch (e) {} }   // THE LEFT ROOM LETS GO: the hero lamp's caster list + the record's own lists
         console.log('[HQ] left' + (park ? ' (the room PARKED for the ' + ((opts && opts.parkDoor) ? 'building' : 'fight') + ': nothing handed back, nothing disposed)' : handed ? ' (the room handed to the battle)' : ''));
         if (!handed && !(opts && opts.dissolve)) { try { _mmLeaveSweep(); } catch (e) { console.warn('[ThreeRenderer] the leave sweep failed', e); } }   // THE ROOM GIVES ITS FILES BACK WHEN YOU LEAVE
     }
