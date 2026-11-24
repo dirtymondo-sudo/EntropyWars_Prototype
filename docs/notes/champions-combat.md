@@ -6542,6 +6542,10 @@ never misses on the run." One race `centaur`, male (chestnut) and female (dapple
   build files centaur-build/) below the sash, takes the tack, the neck and the head off a copy of the Horse pack's `Horse_glb.glb`, swells the
   withers up under the waist, and joins the two skeletons: the human's Hips is a child of the horse's chest bone (spine.008). One GLB per look
   on R2 `Assets/characters/races/centaur/<male|female>/centaur_<m|f>.glb`; px sprites beside them (Sprite AI restyle of the built model).
+  THE JOIN (v2, 11-24, mondo: "a clear and visible gap between them"): bake-centaur.py now lofts a skin of the horse's own coat
+  (one sheet spot, 8 rings x 32) from the horse's chest surface (ray hits at topz-0.45) up into the rider's waist just under the
+  sash, weighted to spine.008 like the rider's Hips, so the horse grows into the human. Files renamed `centaur_<m|f>_v2.glb`
+  (GLBs are long-cached). Env LOFTDOWN / LOFTUP / LOFTPOW / RBK shape it; NOLOFT=1 = the old open join.
 - THE ANIMATION: sprites.js def `procRig: 'centaur'` (three-renderer.js THE CENTAUR, `_cenBuild`) returns no clips, so the shared library
   animates the rider like any Meshy unit, and `_libBakeClips` (every screen's clips come from it) lays the horse under each baked clip
   (`_cenMerge`): Idle under the idles (Idle_2 under the second ones), Trot under the walk, Gallop under the run (whole loops fitted to the
