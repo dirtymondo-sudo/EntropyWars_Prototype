@@ -1587,6 +1587,11 @@ const EW_ANIM_LIB_URLS = [
   // deaths, blocks / dodges, taunts and cheers). Nothing plays them by default: they are in the spell editor's clip picker
   // and free for a per-character `lib: {slot: {clip, lib: 8, ts}}`.
   'https://cdn.entropywars.net/Assets/characters/animations/MAL5_Sniper.glb',
+  // lib 9 — MAL6_Sniper.glb (2026-11-24, THE MESHY CASTS, mondo: "For the influencer's go viral spell, is there not like a dancing or
+  // flirty animation we can use? ... utilize that as much possible to give the characters more variety for their spell animations"):
+  // 46 more of Meshy's library on the same sniper rig (the dances, the flirty + talking gestures, cheers, stomps, a push, a reload),
+  // packed by build-mal.py with its --rest calib. Spell rows play them through `animClip: { name, lib: 9, ts, trim, strikeAt }`.
+  'https://cdn.entropywars.net/Assets/characters/animations/MAL6_Sniper.glb',
 ];
 
 // Game slot → library clip (+ which library file) + timeScale. Durations are
@@ -3898,6 +3903,10 @@ function registerSpellAnimClips(defs) {
     for (const t of tables) {
       if (t.lc[slot]) continue;
       t.lc[slot] = { clip: d.animClip.name, lib, defer: true };
+      /* THE MESHY CASTS (2026-11-24): a row's clip may carry the slot options UAL_SLOTS rows use: `strikeAt` (the SOURCE second the
+         spell lands on, so the VFX fires on that frame), `trim` [from, to] (a 2-3 s window of a 10 s dance), `pinXZ` (a dance that
+         steps about stays on its square), `turn`. One setting per clip: the first row that names a clip sets it for every row. */
+      for (const _k of ['strikeAt', 'trim', 'pinXZ', 'pinHips', 'turn']) if (d.animClip[_k] != null) t.lc[slot][_k] = d.animClip[_k];
       if (!t.lt[slot]) t.lt[slot] = (d.animClip.ts > 0 ? d.animClip.ts : 1);   // ⛪ a row may set the clip's pace (the Pope's 5 s finger wag at 2.5×)
       isNew = true;
     }
