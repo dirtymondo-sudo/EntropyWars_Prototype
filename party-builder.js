@@ -1979,7 +1979,7 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
                 const all = [['classic', 'male', 'MALE'], ['classic', 'female', 'FEMALE']].concat((window.EW_MPFB_BODIES || []).map(b => [b.id, b.gender, b.label.toUpperCase()]));
                 const btn = ([id, g, label]) => {
                   const on = (appearance.body || 'classic') === id && (id !== 'classic' || gender === g);
-                  return h('button', { key: id + g, className: 'ms-tty-btn' + (on ? ' primary' : ''), 'aria-pressed': on, onClick: () => changeAppearance(Object.assign({ body: id }, window.mpfbFacePatch ? window.mpfbFacePatch(appearance, id) : {}), g) }, label);   // THE DEFAULT FACES: an untouched face follows the body's gender
+                  return h('button', { key: id + g, className: 'ms-tty-btn' + (on ? ' primary' : ''), 'aria-pressed': on, onClick: () => changeAppearance(Object.assign({ body: id }, window.mpfbFacePatch ? window.mpfbFacePatch(appearance, id) : {}, window.mpfbJigglePatch ? window.mpfbJigglePatch(appearance, id) : {}), g) }, label);   // THE DEFAULT FACES: an untouched face follows the body's gender
                 };
                 return [['male', 'Men\u2019s bodies'], ['female', 'Women\u2019s bodies']].map(([g, head]) => h(React.Fragment, { key: g },
                   h('div', { className: 'pb-creator-colorlabel pb-cc-shelf-sub' }, head),

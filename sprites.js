@@ -5709,9 +5709,31 @@ const EW_APPEARANCE_LIMITS = {
   chest: [-1, 1, 0], waist: [-1, 1, 0], hips: [-1, 1, 0], bust: [-1, 1, 0],   // bust: 2026-11-01 (mondo)
   head: [-1, 1, 0], jaw: [-1, 1, 0], nose: [-1, 1, 0], cheeks: [-1, 1, 0],
   eyeSize: [-1, 1, 0], brows: [0, 1, 0.5],
-  jiggleChest: [0, 1, 0.5], jiggleButt: [0, 1, 0.5],   // THE JIGGLE (2026-11-02, mondo): the MPFB bodies' chest + glute spring strength (three-renderer.js jigTick; 0 = still)
+  jiggleChest: [0, 1, 0], jiggleButt: [0, 1, 0],   // THE JIGGLE (2026-11-02, mondo): the MPFB bodies' chest + glute spring strength (three-renderer.js jigTick; 0 = still)
   beltHeight: [-1, 1, 0]   // THE BELT HEIGHT (2026-11-02, mondo): a worn Blender belt raised / lowered to sit on any trousers' waistband (three-renderer.js wearBeltLift, ±8 cm)
 };
+/* THE JIGGLE DEFAULT (2026-11-24, mondo: "for all mpfb bodies can we make the default jiggle for males 0 and 10 for females, i think
+   rn the default is 50 and thats way too much"): a look that never set its jiggle takes its BODY's default, 0 on a male body and
+   0.10 on a female one (EW_MPFB_BODIES gender). The old default was 0.5 and every look the creator normalized wrote it out, so a
+   look without the `jiggleV: 2` mark that still holds exactly 0.5 is read as "never set" too; normalizeCharacterAppearance writes
+   the mark on every look it returns, so a 0.5 picked by hand from now on stays. three-renderer.js jigTick reads the same rule. */
+const EW_JIGGLE_DEFAULT = { male: 0, female: 0.1 };
+function mpfbJiggleDefault(body) {
+  const row = EW_MPFB_BODIES.find(b => b.id === body) || (typeof body === 'string' && /female/.test(body) ? { gender: 'female' } : null);
+  return EW_JIGGLE_DEFAULT[row && row.gender === 'female' ? 'female' : 'male'];
+}
+function mpfbJiggleOf(a, key, body) {
+  const v = a && a[key];
+  if (typeof v !== 'number' || !Number.isFinite(v) || (!(a && a.jiggleV >= 2) && Math.abs(v - 0.5) < 1e-6)) return mpfbJiggleDefault(body != null ? body : a && a.body);
+  return Math.max(0, Math.min(1, v));
+}
+/* a look moving onto another body: a jiggle still at its old body's default takes the new body's default (a hand-set one stays) */
+function mpfbJigglePatch(a, body) {
+  const o = {}, was = mpfbJiggleDefault(a && a.body), now = mpfbJiggleDefault(body);
+  for (const k of ['jiggleChest', 'jiggleButt']) { const v = mpfbJiggleOf(a, k); if (Math.abs(v - was) < 1e-6 && v !== now) o[k] = now; }
+  if (Object.keys(o).length) o.jiggleV = 2;
+  return o;
+}
 /* THE FACE SLIDERS (2026-11-02, mondo: "a standard AAA video game character creator where you can control the size of the
    eyes and the lips and everything"): an MPFB body (and an MPFB classic body's MPFB head) takes MakeHuman's OWN face
    modifiers, baked by bake-mpfb.py --shapes into mpfb/mpfb_shapes.glb and added by three-renderer.js shapeBody like the body
@@ -6086,6 +6108,7 @@ function normalizeCharacterAppearance(value) {
     const n = value[key];
     out[key] = typeof n === 'number' && Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : def;
   }
+  out.jiggleChest = mpfbJiggleOf(value, 'jiggleChest'); out.jiggleButt = mpfbJiggleOf(value, 'jiggleButt'); out.jiggleV = 2;   // THE JIGGLE DEFAULT
   for (const key of Object.keys(EW_APPEARANCE_COLORS)) {
     out[key] = typeof value[key] === 'string' && /^#[0-9a-f]{6}$/i.test(value[key]) ? value[key].toLowerCase() : EW_APPEARANCE_COLORS[key];
   }
@@ -6260,6 +6283,7 @@ function randomCharacterAppearance(rng) {
   for (const key of EW_SHAPE_PICK_KEYS) out[key] = 0;   // (no random wolf head / cat ears: those are OUTFIT picks)
   for (const row of EW_MPFB_BODY_SLIDERS) out[row[0]] = Math.round((r() * 2 - 1) * 30) / 100;   // THE BODY DETAILS
   out.beltHeight = 0;   // THE BELT HEIGHT: a random look keeps the belt where it was baked
+  delete out.jiggleChest; delete out.jiggleButt;   // THE JIGGLE DEFAULT: a random look keeps the jiggle it had (a new one takes its body's default)
   out.skin = pick(skinTones); out.hairColor = pick(hairTones); out.eyeColor = pick(eyeTones);
   out.lipColor = hex(350 + r() * 20, 0.25 + r() * 0.3, 0.32 + r() * 0.2);
   out.topColor = hex(r() * 360, 0.15 + r() * 0.5, 0.35 + r() * 0.35);
@@ -6903,7 +6927,7 @@ if (typeof window !== 'undefined') {
   window.creatorNamesList = creatorNamesList; window.creatorNamesReset = creatorNamesReset; window.creatorPickLabel = creatorPickLabel;
   window.EW_APPEARANCE_LIMITS = EW_APPEARANCE_LIMITS;
   window.ewPickSwitchedOff = ewPickSwitchedOff; window.EW_MPFB_FACE_SLIDERS = EW_MPFB_FACE_SLIDERS; window.EW_SHAPE_HEADS = EW_SHAPE_HEADS; window.EW_SHAPE_EARS = EW_SHAPE_EARS; window.EW_FACE_RESET_KEYS = EW_FACE_RESET_KEYS; window.EW_MPFB_BODY_SLIDERS = EW_MPFB_BODY_SLIDERS; window.EW_MPFB_FACE_KEYS = EW_MPFB_FACE_KEYS;   // THE FACE SLIDERS
-  window.EW_MPFB_DEFAULT_FACES = EW_MPFB_DEFAULT_FACES; window.mpfbFacePatch = mpfbFacePatch;   // THE DEFAULT FACES
+  window.EW_MPFB_DEFAULT_FACES = EW_MPFB_DEFAULT_FACES; window.mpfbFacePatch = mpfbFacePatch; window.mpfbJiggleOf = mpfbJiggleOf; window.mpfbJigglePatch = mpfbJigglePatch; window.mpfbJiggleDefault = mpfbJiggleDefault;   // THE JIGGLE DEFAULT   // THE DEFAULT FACES
   window.EW_MPFB_FACE_PRESETS = EW_MPFB_FACE_PRESETS;   // THE FACE PRESETS (bake-faces.js)
   window.EW_APPEARANCE_ENUMS = EW_APPEARANCE_ENUMS;
   window.EW_IDLE_POSES = EW_IDLE_POSES;   // THE IDLE POSE
