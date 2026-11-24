@@ -1992,3 +1992,11 @@ Proof: /mnt/project-files/meshy-remake-batch1/resting_mouth_before_after.jpg (pl
 - three-renderer.js: `_computeUnitStructuralSerial` hashes the switch (flipping it mid-battle rebuilds the units); `_ptSpec` photographs the remade look for the battle portrait of a unit with no look of its own (`_ptRemade`).
 - Viewer-local, looks only: nothing relayed online (each player sees by their own switch). `?likeness=1` is a different switch (the face-likeness picks in the creator).
 - Seen on screen (creator viewer, sheriff / popstar / pirate: off, on, on after reload): /mnt/project-files/remade-looks-switch/remade_looks_switch_proof.jpg. NOT seen: a battle board with the models drawn (the cloud browser was still loading them); there only the resolver was checked (5 of 8 units switched to their remade look).
+
+## THE JIGGLE DEFAULT (2026-11-24)
+mondo: "for all mpfb bodies can we make the default jiggle for males 0 and 10 for females, i think rn the default is 50 and thats way
+too much". sprites.js `mpfbJiggleOf` / `mpfbJiggleDefault` / `mpfbJigglePatch`: a look's unset jiggleChest / jiggleButt = its body's
+default (EW_MPFB_BODIES gender: male 0, female 0.10). The old 0.5 default was written into every normalized look, so a look without
+the `jiggleV: 2` mark holding exactly 0.5 counts as unset; normalizeCharacterAppearance stamps `jiggleV: 2` on every look, so a hand
+picked 0.5 from now on sticks. Other values (0, 0.11, 0.13, 0.2 in the baked looks) are kept. Changing body in the creator moves a
+jiggle still at the old body's default to the new body's default. three-renderer.js jigTick uses the same rule (raw story / NPC looks).
