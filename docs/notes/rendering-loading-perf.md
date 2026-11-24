@@ -4082,3 +4082,9 @@ Disaster City pre-bake plan): https://claude.ai/artifact/JA81YtXbyhfQchxF5GuYkR.
   8,055 still pieces never walked, matrix walk 10.6 -> 6.4 ms (the rest: 157 rigs, the animals, the instance cells); a fight
   from the corn and back: fine. Disaster City itself is too big for the cloud browser: checked through its insides + the
   same code; its first frozen frame logs "[FREEZE] site_prebuilt_downtown_streets frozen: ..." on his machine.
+- STEP 3 (11-24): `freeze.all: true`, every plot room. One room of each zone checked in the cloud with the freeze on (all froze,
+  no errors): Ski Lodge 7,064 still pieces, Giza 529, Camelot Kingdom 4,514, Redwood Trail 3,644, Katana 2,996, the Cavern
+  (`…_ug_cavern`) 978, Hell 254, Babel 871, the D.U.M.B. 2,712 (3 late movers caught by the sweep), Antarctica 893, the
+  Internet 4,075, the Astral Realm 2,236, the Deep 1,471. Not frozen by design: DOOR HQ (the stage), the round worlds of Outer
+  Space (the Moon probe: `freeze null`), a vessel under way. Next: the originals out of the drawn scene (projection walk), then
+  step 4 (delete THE STILL WALK + the batch watchdog).
