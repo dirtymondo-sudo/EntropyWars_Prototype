@@ -4155,3 +4155,6 @@ Texture with 'PointSha…" and "i always get this huge frame drop in door hq and
   Proof (cloud, llvmpipe, main hall, before/after): /mnt/project-files/hq-freeze-lamps/.
 - THE 28 LAMPS vs "stage lamp budget 19": not a leak. The budget counts only the parts' prop lamps; the hall's own 8 lights
   (`_hqRoundRoomLamps`: 4 over the floor, 4 under the cone) hang on the scene, plus 4 dark match pads and the key (intensity 0).
+- THE GLOBE LAMPS OUT OF DOOR HQ (same day, mondo: "can we just get rid of those lamps, they dont even look like lamps"): every
+  `globe_lamp` row of the handmade DOOR HQ rooms is gone from data.js (36 rows: the main hall's 13, the wings, the garden, the
+  wood stair, the observatorium ...). The plot-built zones keep theirs (their bakes write them).
