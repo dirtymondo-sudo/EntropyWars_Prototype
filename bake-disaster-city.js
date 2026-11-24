@@ -1363,6 +1363,25 @@ const railOnBridge = () => { let n = 0; const add = [];
     add.forEach(r => { delete r.y; features.push(r); });
     return n; };
 count.railOnBridge = railOnBridge();
+/* THE STAIR IS CLEAR (2026-11-24, mondo on a University stair: "can you fix this hedge going into it as well"): a boundary run on a plot line stops at the
+   square where a crossing's flight stands, so its end met the flight's side exactly, and a row is drawn half its thickness past each end: the 0.9 m
+   hedge reached 0.45 m over the treads and the railing (a wall 0.15 m, a rail its posts). Any fence / hedge / wall row whose end reaches into a flight
+   (a crossing's stair, a door stoop, a roof stair) is pulled back to stand clear of its side. Nothing is dropped; a row wholly on a flight is named. */
+const stairClear = () => { let n = 0; const bad = [];
+    const fl = features.filter(f => f.k === 'ramp' && f.stairs && f.x0 != null && f.w > 0 && (f.x0 === f.x1 || f.z0 === f.z1)).map(f => { const h = f.w / 2 + 0.05;
+        return f.x0 === f.x1 ? { x0: f.x0 - h, x1: f.x0 + h, z0: Math.min(f.z0, f.z1) - 0.05, z1: Math.max(f.z0, f.z1) + 0.05, id: f.id } : { x0: Math.min(f.x0, f.x1) - 0.05, x1: Math.max(f.x0, f.x1) + 0.05, z0: f.z0 - h, z1: f.z0 + h, id: f.id }; });
+    features.forEach(f => { if ((f.k !== 'wall' && f.k !== 'rail') || f.ghost || f.x0 == null || f.pts || f.arc || f.y != null) return;
+        if (f.x0 !== f.x1 && f.z0 !== f.z1) return;
+        const h = f.k === 'wall' ? (+f.t || 0.3) / 2 : 0.15;
+        fl.forEach(M => {
+            const over = () => Math.min(f.x0, f.x1) - h < M.x1 && Math.max(f.x0, f.x1) + h > M.x0 && Math.min(f.z0, f.z1) - h < M.z1 && Math.max(f.z0, f.z1) + h > M.z0;
+            if (!over()) return;
+            const ax = f.z0 === f.z1 ? 'x' : 'z', a = ax + '0', e = ax + '1', lo = f[a] <= f[e] ? a : e, hi = lo === a ? e : a, was = [f[lo], f[hi]];
+            if ((f[lo] + f[hi]) / 2 < (M[a] + M[e]) / 2) f[hi] = r3(Math.min(f[hi], M[a] - h - 0.02)); else f[lo] = r3(Math.max(f[lo], M[e] + h + 0.02));
+            if (f[hi] - f[lo] < 0.3 || over()) { f[lo] = was[0]; f[hi] = was[1]; bad.push(M.id + ' ' + J(f)); } else n++; }); });
+    if (bad.length) console.warn('[stair clear] ' + bad.length + ' row(s) still on a flight:\n  ' + bad.slice(0, 12).join('\n  '));
+    return n; };
+count.stairClear = stairClear();
 const featLine = lines.length, featN = features.filter(f => f.k !== 'gone').length;
 features.forEach(f => { if (f.k !== 'gone') lines.push("                    " + J(f) + ","); });
 lines.push("                ],");
