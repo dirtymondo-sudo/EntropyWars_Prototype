@@ -87494,8 +87494,8 @@ const HQ_ENGINE_RULES = {
        is ready; sweepMs: how long the late-mover slice takes to look at every frozen piece once. */
     freeze: { rooms: ['site_prebuilt_area51_ow_town', 'site_prebuilt_fairy_forest_ow_clearing',   // step 1 (11-23)
         'site_prebuilt_downtown_streets', 'site_prebuilt_bayside_mall', 'site_prebuilt_hotel_*', 'site_prebuilt_hero_tower*', 'site_prebuilt_downtown_underworld',   // step 2: Disaster City + its insides
-        'site_prebuilt_skinwalker_ow_*'],   // step 3 begins: The Estate
-    all: false, watchMs: 8000, sweepMs: 12000, watchSliceMs: 1.5 },
+        'site_prebuilt_skinwalker_ow_*'],   // step 3 begins: The Estate. all: true = step 3 (11-24), every zone (one room of each checked in the cloud); never the stage, a round world or a vessel under way
+    all: true, watchMs: 8000, sweepMs: 12000, watchSliceMs: 1.5 },
     /* THE CHUNKS (2026-11-13, mondo in the 144-plot Disaster City at 12 fps: "we have the plots already, why not just make those
        the chunks or like a group of them"): in a room at least `chunkMinSpanM` across, the pack fences (one mesh per fence kind
        and chunk, `chunkM` = one plot) and the instance pass's cells are their own groups; a group whose sphere (+ `chunkPadM`,
