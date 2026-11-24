@@ -2095,21 +2095,38 @@ function bindStory() {
 }
 /* ADD FROM A FILE (2026-11-24, mondo: "let's go ahead and add these to the story planner"): a file of chapters (the plan's own shape,
    `{ kind: 'entropy-wars-story-plan-add', chapters: [...], clues: [...] }`) is ADDED to his plan: nothing of his is changed, and a
-   chapter, quest or clue whose id is already in the plan is skipped, so loading the same file twice adds nothing. */
+   chapter, quest or clue whose id is already in the plan is skipped, so loading the same file twice adds nothing. A chapter that carries `was`
+   replaces the draft an earlier file added, only while his copy is untouched (storyAddJSON). */
 function storyAddJSON(text) {
   let x; try { x = JSON.parse(text); } catch (e) { return { err: 'That is not valid JSON.' }; }
   const inc = x && Array.isArray(x.chapters) ? x.chapters : []; if (!inc.length) return { err: 'No chapters in that file.' };
-  const P = plan(), haveC = new Set(P.chapters.map(c => c.id)), haveQ = new Set(P.chapters.flatMap(c => c.quests.map(q => q.id)));
-  const s = sanitizePlan({ chapters: P.chapters.concat(inc), clues: x.clues || [] }); if (!s) return { err: 'No chapters in that file.' };
-  const room = Math.max(0, 60 - P.chapters.length);
-  const add = s.chapters.slice(P.chapters.length).filter(c => !haveC.has(c.id)).slice(0, room);
-  add.forEach(c => { c.quests = c.quests.filter(q => !haveQ.has(q.id)); });
-  const ids = new Set(P.chapters.map(c => c.id).concat(add.map(c => c.id)));
-  const clues = s.clues.filter(k => !P.clues.some(o => o.id === k.id) && (!k.plant || ids.has(k.plant)) && (!k.pay || ids.has(k.pay)));
-  if (!add.length && !clues.length) return { err: 'Everything in that file is already in the plan.' };
-  P.chapters.push(...add); P.clues.push(...clues); storySave();
-  const nq = add.reduce((n, c) => n + c.quests.length, 0);
-  return { msg: 'Added ' + add.length + (add.length === 1 ? ' chapter, ' : ' chapters, ') + nq + (nq === 1 ? ' quest' : ' quests') + (clues.length ? ', ' + clues.length + ' clues' : '') };
+  const P = plan(), haveQ = new Set(P.chapters.flatMap(c => c.quests.map(q => q.id)));
+  /* THE REVISED DRAFT (2026-11-24): a file chapter may carry `was`, the copy an earlier file added. If his chapter is still exactly
+     that copy (he has not touched it), the new version takes its place where it stands; if he changed anything, his chapter stays
+     and only quests it does not have yet are added to it. A chapter with no copy in the plan is added as before. */
+  const one = c => { const s = sanitizePlan({ chapters: [c], clues: [] }); return s && s.chapters[0]; };
+  let nAdd = 0, nUpd = 0, nKept = 0, nq = 0; const room = () => Math.max(0, 60 - P.chapters.length);
+  inc.forEach(c => {
+    const now = one(c); if (!now) return;
+    const at = P.chapters.findIndex(o => o.id === now.id);
+    if (at < 0) { if (!room()) return; now.quests = now.quests.filter(q => !haveQ.has(q.id)); P.chapters.push(now); nAdd++; nq += now.quests.length; now.quests.forEach(q => haveQ.add(q.id)); return; }
+    const mine = P.chapters[at], was = c.was && one(c.was);
+    const others = new Set(P.chapters.filter((o, i) => i !== at).flatMap(o => o.quests.map(q => q.id)));
+    if (was && JSON.stringify(was) === JSON.stringify(mine)) { now.quests = now.quests.filter(q => !others.has(q.id)); P.chapters[at] = now; nUpd++; return; }
+    const add = now.quests.filter(q => !haveQ.has(q.id)); if (add.length) { mine.quests.push(...add); nq += add.length; add.forEach(q => haveQ.add(q.id)); } nKept++;
+  });
+  const ids = new Set(P.chapters.map(c => c.id));
+  const raw = (Array.isArray(x.clues) ? x.clues : []).filter(k => k && k.id && !P.clues.some(o => o.id === k.id) && (!k.plant || ids.has(k.plant)) && (!k.pay || ids.has(k.pay)));
+  const clues = raw.map(k => ({ id: String(k.id).slice(0, 40), text: String(k.text || '').slice(0, 300), plant: k.plant || '', pay: k.pay || '' }));
+  if (!nAdd && !nUpd && !nq && !clues.length) return { err: 'Everything in that file is already in the plan.' };
+  P.clues.push(...clues); storySave();
+  const parts = [];
+  if (nAdd) parts.push('added ' + nAdd + (nAdd === 1 ? ' chapter' : ' chapters'));
+  if (nUpd) parts.push('updated ' + nUpd + ' of the draft chapters');
+  if (nq) parts.push(nq + (nq === 1 ? ' new quest' : ' new quests'));
+  if (clues.length) parts.push(clues.length + ' clues');
+  if (nKept) parts.push('kept ' + nKept + ' you had changed');
+  const m = parts.join(', '); return { msg: m.charAt(0).toUpperCase() + m.slice(1) };
 }
 function storyImport() {
   modal('<h2>Add from a file</h2><div class="prow"><button class="btn" data-x="pick">Choose a file…</button><span class="muted" id="mFile"></span></div><textarea class="inp code" id="mText" style="min-height:140px"></textarea><p class="muted" id="mErr"></p><div class="acts"><button class="btn" data-x="cancel">Cancel</button><button class="btn pri" data-x="add">Add to the plan</button></div>',
