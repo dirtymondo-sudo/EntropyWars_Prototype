@@ -62,7 +62,11 @@ import bmesh
 mw=hum.matrix_world
 bm=bmesh.new(); bm.from_mesh(hum.data); bm.verts.ensure_lookup_table()
 cutz=CUT*S
-kill=[v for v in bm.verts if (mw@v.co).z<cutz]
+# the hands hang below the cut in the A-pose: keep every vertex the arms carry (mondo 11-24: "both of their hands are cut off")
+_arm={g.index for g in hum.vertex_groups if any(k in g.name for k in ('Arm','Hand','Shoulder','Thumb','Index','Middle','Ring','Pinky'))}
+_dl=bm.verts.layers.deform.active
+def _armw(v): return sum(w for gi,w in v[_dl].items() if gi in _arm) if _dl else 0
+kill=[v for v in bm.verts if (mw@v.co).z<cutz and _armw(v)<0.5]
 bmesh.ops.delete(bm,geom=kill,context='VERTS'); bm.to_mesh(hum.data); bm.free()
 print('human verts cut',len(kill),'left',len(hum.data.vertices))
 LEGS=['LeftUpLeg','LeftLeg','LeftFoot','LeftToeBase','RightUpLeg','RightLeg','RightFoot','RightToeBase']
@@ -107,6 +111,7 @@ if os.environ.get('NOLOFT')!='1':
     hw=hum.matrix_world
     b=_bm.new(); b.from_mesh(hum.data); b.edges.ensure_lookup_table()
     _bw=[hw@v.co for e in b.edges if e.is_boundary for v in e.verts]
+    _bw=[q for q in _bw if abs(q.x)<0.22] or _bw   # the waist's own edge, not the kept hands
     cz=min(p.z for p in _bw)
     bnd=[p for p in _bw if p.z-cz<0.06*S]
     print('cut ring z',round(cz,3),'verts',len(bnd))

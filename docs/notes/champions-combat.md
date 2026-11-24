@@ -6546,6 +6546,7 @@ never misses on the run." One race `centaur`, male (chestnut) and female (dapple
   (one sheet spot, 8 rings x 32) from the horse's chest surface (ray hits at topz-0.45) up into the rider's waist just under the
   sash, weighted to spine.008 like the rider's Hips, so the horse grows into the human. Files renamed `centaur_<m|f>_v2.glb`
   (GLBs are long-cached). Env LOFTDOWN / LOFTUP / LOFTPOW / RBK shape it; NOLOFT=1 = the old open join.
+  THE HANDS (v3, 11-24, mondo: "both of their hands are cut off"): the waist cut keeps every vertex the arm bones carry (the A-pose hands hang below it); files `centaur_<m|f>_v3.glb`.
 - THE ANIMATION: sprites.js def `procRig: 'centaur'` (three-renderer.js THE CENTAUR, `_cenBuild`) returns no clips, so the shared library
   animates the rider like any Meshy unit, and `_libBakeClips` (every screen's clips come from it) lays the horse under each baked clip
   (`_cenMerge`): Idle under the idles (Idle_2 under the second ones), Trot under the walk, Gallop under the run (whole loops fitted to the
