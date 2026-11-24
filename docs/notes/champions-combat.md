@@ -6483,3 +6483,19 @@ GEAR): his shut umbrella (`Assets/characters/gear/held/umbrella_closed.glb`), he
   its cord + EXCLUSIVE, newspaper pages + a FAKE stamp, three studio lights + LIVE + the mic rising, the lower-third banner
   per segment). Side colours by `_psSide`; all through fire() (relayed online).
 >>>>>>> Stashed changes
+
+### THE SKINWALKER'S FACES (2026-11-24, mondo: "Skinwalker ... will need custom animations with his faces for his abilities"; plan OK'd "okay sounds good")
+Built in code, no new models. Four stolen faces (Meshy, decimated to 5k tris + 512 px JPEG) on R2
+`Assets/characters/races/skinwalker/male/faces/face_a..d.glb` = catalogue rows `skinwalker_face_a..d` (data.js, group "Meshy hand props"),
+in three-renderer.js `_SPELL_CAT_KEYS` and warmed with the spell library (three-vfx-effects.js `_SPELL_MISC_KEYS`). A target's face is
+picked from its uid (`_skwKeyFor`), so a unit always loses the same face. three-vfx-effects.js "THE SKINWALKER'S FACES" (`_SKW_MOVES`, on the
+spell's windup, only when the caster's race is skinwalker; relayed like every windup):
+- Familiar Voice: a face floats out of its head toward the target, "speaks" (pulses), floats back.
+- Wear Your Skin: the target's face lifts off, peels away, flies onto the Skinwalker's blank head and is WORN until the round after next
+  (`_skwWear`: one run per caster; it ends on death, the round limit or leaving the fight; a second cast swaps the face).
+- Borrowed Claw: a face peels off the target and flies into its coat. Skin Swap: each wears the other's face (the Skinwalker's own is a
+  grey blank). Mimicry: three faces circle its head, one bright at a time.
+Head place: new `ThreeRenderer.unitHeadPose(uid, head, end, front)` (the rig's Head / head_end / headfront bones, cached per model).
+Lessons: a face is drawn over (depthTest off, renderOrder 960); a face whose file is not there yet comes in on the first frame it is
+(`_skwFace` take()); the Wear run ends itself once the face is worn, so a slow frame past its end cannot skip the wearing.
+Probe: /mnt/project-files/unit-concepts-20261124/probe_faces.js (fires the windup directly; shots on the game clock).

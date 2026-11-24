@@ -32213,6 +32213,7 @@ const ThreeRenderer = (function () {
         return 1 - Math.pow(1 - t, 3);
     }
 
+    var _ewHeadV = null;   // THE SKINWALKER'S FACES: unitHeadPose's scratch vector
     function _getUnitEntry(unitId) {
         return unitEntries.get(unitId) || null;
     }
@@ -42355,7 +42356,8 @@ const ThreeRenderer = (function () {
        never finds it gone) and its sheets capped at 1024. Returns one settle check per key (true once landed or failed). */
     /* THE SPACE PROPS (2026-10-27): a spell prop that is a DOOR_HQ.catalogue row's model and no _MISC_GLB key (Assets/world/hq/models/:
        the lunar lander, which the Lunar Lander flies; the Mars rover): the room's own url, so a room that places it and a cast share one cache entry */
-    var _SPELL_CAT_KEYS = { mars_rover: 1, lunar_lander: 1, beach_life_ring: 1, popemobile: 1 };   // ⛪ + the Pope's ride (2026-11-17)   // + THE LIFEGUARD's rescue ring (2026-11-16)
+    var _SPELL_CAT_KEYS = { mars_rover: 1, lunar_lander: 1, beach_life_ring: 1, popemobile: 1,
+        skinwalker_face_a: 1, skinwalker_face_b: 1, skinwalker_face_c: 1, skinwalker_face_d: 1 };   // THE SKINWALKER'S FACES (2026-11-24)   // ⛪ + the Pope's ride (2026-11-17)   // + THE LIFEGUARD's rescue ring (2026-11-16)
     function _spellCatUrl(key) {
         if (!_SPELL_CAT_KEYS[key] || typeof DOOR_HQ === 'undefined' || !DOOR_HQ.catalogue) return null;
         var cat = DOOR_HQ.catalogue[key];
@@ -109425,6 +109427,27 @@ const ThreeRenderer = (function () {
         },
         /* a standing body's height in world units (heightRatio 1 = 1.75 m): THE CUTSCENES measure their shots in bodies */
         bodyUnit: function () { return (CONFIG.tileSize || BASE_TILE) * UNIT_SPRITE_SIZE_RATIO; },
+        /* THE SKINWALKER'S FACES (2026-11-24): where a unit's head is this frame, for a face worn over it. World positions of its
+           Head, head_end and headfront bones (the Meshy rig's own; headfront may be missing: then outFront[0] is NaN). The bones
+           are looked up ONCE per model and kept on the entry (no walk per frame). false with no live model or no Head bone. */
+        unitHeadPose: function (uid, outHead, outEnd, outFront) {
+            var e = _getUnitEntry(uid);
+            if (!e || !e.model || !e.group || e.group.visible === false) return false;
+            if (e._ew_headFor !== e.model) {
+                e._ew_headFor = e.model;
+                var hb = e.model.getObjectByName('Head');
+                e._ew_headBones = hb ? [hb, e.model.getObjectByName('head_end') || null, e.model.getObjectByName('headfront') || null] : null;
+            }
+            var B = e._ew_headBones;
+            if (!B) return false;
+            var v = _ewHeadV || (_ewHeadV = new THREE.Vector3());
+            B[0].getWorldPosition(v); outHead[0] = v.x; outHead[1] = v.y; outHead[2] = v.z;
+            if (B[1]) { B[1].getWorldPosition(v); outEnd[0] = v.x; outEnd[1] = v.y; outEnd[2] = v.z; }
+            else { outEnd[0] = outHead[0]; outEnd[1] = outHead[1] + (CONFIG.tileSize || BASE_TILE) * 0.12; outEnd[2] = outHead[2]; }
+            if (B[2]) { B[2].getWorldPosition(v); outFront[0] = v.x; outFront[1] = v.y; outFront[2] = v.z; }
+            else outFront[0] = NaN;
+            return isFinite(outHead[0] + outHead[1] + outHead[2]);
+        },
         getUnitWorldPos: function (uid, out) {
             var e = _getUnitEntry(uid);
             if (!e || !e.group || e.group.visible === false) return false;

@@ -92925,6 +92925,10 @@ const HQ_CATALOGUE_ALL = {
     item_potion_flask: { file: 'world/props/misc/potion_flask.glb', base: 'asset', h: 0.2, foot: 0, group: 'Meshy hand props' },
     item_scalpel: { file: 'world/props/misc/scalpel.glb', base: 'asset', span: 0.15, foot: 0, group: 'Meshy hand props' },
     item_smartphone: { file: 'world/props/misc/smartphone.glb', base: 'asset', span: 0.15, foot: 0, group: 'Meshy hand props' },
+    skinwalker_face_a: { file: 'characters/races/skinwalker/male/faces/face_a.glb', base: 'asset', h: 0.24, foot: 0, group: 'Meshy hand props' },   // 2026-11-24 THE SKINWALKER'S FACES: a stolen face it wears (its spells)
+    skinwalker_face_b: { file: 'characters/races/skinwalker/male/faces/face_b.glb', base: 'asset', h: 0.24, foot: 0, group: 'Meshy hand props' },   // 2026-11-24 THE SKINWALKER'S FACES: a stolen face it wears (its spells)
+    skinwalker_face_c: { file: 'characters/races/skinwalker/male/faces/face_c.glb', base: 'asset', h: 0.24, foot: 0, group: 'Meshy hand props' },   // 2026-11-24 THE SKINWALKER'S FACES: a stolen face it wears (its spells)
+    skinwalker_face_d: { file: 'characters/races/skinwalker/male/faces/face_d.glb', base: 'asset', h: 0.24, foot: 0, group: 'Meshy hand props' },   // 2026-11-24 THE SKINWALKER'S FACES: a stolen face it wears (its spells)
     item_spyglass: { file: 'world/props/misc/spyglass.glb', base: 'asset', span: 0.45, foot: 0, group: 'Meshy hand props' },
     item_talisman_pendant: { file: 'world/props/misc/talisman_pendant.glb', base: 'asset', span: 0.08, foot: 0, group: 'Meshy hand props' },
     item_walkie_talkie: { file: 'world/props/misc/walkie_talkie.glb', base: 'asset', h: 0.22, foot: 0, group: 'Meshy hand props' },
