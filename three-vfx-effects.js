@@ -12242,6 +12242,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 if (state.units.some(function (u) { return u && u.race === 'quarterback'; })) _wpnDripQueue.unshift('race:homosapien');
                 if (state.units.some(function (u) { return u && u.race === 'super sentai'; })) _wpnDripQueue.unshift('race:mech');
                 if (state.units.some(function (u) { return u && u.race === 'skater'; })) _wpnDripQueue.unshift('skateDeck');   // 🛹 her deck (THE SKATER'S LOOKS)
+                if (state.units.some(function (u) { return u && u.race === 'weatherman'; })) { _wpnDripQueue.unshift('mic'); _wpnDripQueue.unshift('umbrella'); }   // ☂ his umbrella, her mic (THE WEATHERMAN + THE NEWS ANCHOR)
             }
         } catch (e) {}
         var step = Math.max(500, ms || 4000);
