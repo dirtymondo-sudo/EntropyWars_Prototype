@@ -4127,3 +4127,31 @@ pieces, the Clearing 49,000, back in the lobby 51,000: the whole Clearing stayed
   frame's one walk). The renderer's projection walk was looked at: chunk culling, the lamp's reach cells and the WebGPU
   bundles already trim it; the cost left there is the draws, which only merging per square + look would cut.
 - Dev: `ThreeRenderer.hq.dev.doors()` / `.cityDoors()` (the room's door records, for probes).
+
+## THE STALE RECORDING NEVER REPLAYS + THE LAMPS LOSE THE HALO (2026-11-24, DOOR HQ main hall)
+mondo's F3 in the main hall (Firefox WebGPU, build drawrec-01): "GPU errors 1 (first: In Queue::submit · In a execute_bundle command ·
+Texture with 'PointSha…" and "i always get this huge frame drop in door hq and the game freezes and some stuff goes black". Then:
+"the lamps are ugly anyway and the glow looks fake/cheap" (his pick on the card: every lamp in the game; fires, torches, orbs keep theirs).
+- THE BUNDLE ERROR (the class noted twice before, "THE CITY AT 5.5 GB" + "THE DOOR CHUNKS", never fixed): a recorded group whose
+  recording holds a freed buffer / texture was flagged (`_ew_bunFree`) but re-recorded only by `_ewBunTick`, which skips groups
+  (a chunk off the camera, a resting group, a quiet one, a camera it has not checked). A skipped group replayed a recording that
+  named a freed point-shadow map; Firefox throws the WHOLE submit away = the picture freezes while the game runs (FPS stays high),
+  and what came back first drew without its lamp's shadow (black). Three changes, three-renderer.js:
+  · `rbOne` (the replay): a flagged group bumps its version and records again right there, whoever asked. Off `EW_BUN_FREE_AT_TICK`.
+    Count `_ewBun.freeAtReplay`.
+  · the backend `destroyTexture` wrapper: a texture named /Shadow/ (three's PointShadowMap / PointShadowDepthTexture / ShadowDepthTexture)
+    flags EVERY marked group (a recording can hold it through a binding listed after `_ewBunUse` read the list). Count `_ewBun.shadowFrees`.
+  · the device's `uncapturederror`: an error naming a bundle flags every group (the next frame records again); 3 within 10 s =
+    `_ewBun.offErr` = the recordings off for the page (`_ewBunOff`), never a frozen picture. The full message goes to the console
+    (the crash trail keeps it); the lens's first-error line drops the "Validation Error Caused by:" filler so the name fits.
+  NOT reproduced: the cloud's SwiftShader WebGPU loses its device in the hall ("createBuffer failed", "Instance dropped").
+- THE LAMPS LOSE THE HALO: a catalogue `glow` was an additive camera-facing disc (`_hzGlowSprite`), the bloom stand-in from before bloom
+  went off. `HQ_LAMP_KEYS` (lamps, lanterns, chandeliers, lit signs: 27 keys) no longer get it in rooms (`_hqLampHalo(key)` at the three
+  catalogue sites: proc rows, model rows, drop slices); a lamp drawn from a model gets its own sheet lit on landing (`_hqLampBulb`:
+  emissive = the glow colour through the model's colour sheet, intensity `glow.lit` or 0.22). The built-in lamps lose theirs too
+  (`_ewLampHalos()`): the main hall's 16 strip-light discs, the D.U.M.B. hall strips, city street lamps (both builders), battle board
+  street lamps (two), the far exit sign + fluorescent, the room-kit street lamps, flicker_tube, bare_bulb. Kept: fires, torches,
+  braziers, crystals, orbs, machines, cars, signals, portals, finds. Old look: `window.EW_LAMP_HALOS = true` before the room builds.
+  Proof (cloud, llvmpipe, main hall, before/after): /mnt/project-files/hq-freeze-lamps/.
+- THE 28 LAMPS vs "stage lamp budget 19": not a leak. The budget counts only the parts' prop lamps; the hall's own 8 lights
+  (`_hqRoundRoomLamps`: 4 over the floor, 4 under the cone) hang on the scene, plus 4 dark match pads and the key (intensity 0).

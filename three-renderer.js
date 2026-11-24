@@ -8489,7 +8489,7 @@ const ThreeRenderer = (function () {
         lamp.rotation.y = -rot * Math.PI / 180;
         g.add(lamp);
 
-        if (typeof _hzGlowCore === 'function') {
+        if (typeof _hzGlowCore === 'function' && _ewLampHalos()) {   // THE LAMPS LOSE THE HALO (2026-11-24)
             var glow = _hzGlowCore(ts * 0.30, 0xffd27a, 0xff9a3c);
             glow.position.y = headY;
             g.add(glow);
@@ -39809,6 +39809,34 @@ const ThreeRenderer = (function () {
     }
     // A camera-facing additive glow sprite with a soft radial falloff (no hard
     // silhouette). Optionally breathes.
+    /* THE LAMPS LOSE THE HALO (2026-11-24, mondo in DOOR HQ: "the lamps are ugly anyway and the glow looks fake/cheap, why are they
+       even like that"; his pick: every lamp in the game, fires / torches / orbs keep theirs). A catalogue `glow` drew a flat additive
+       disc (_hzGlowSprite, 0.6-13 m wide, pulsing) in front of the prop, the stand-in for bloom from before bloom was turned off. A
+       LAMP (the keys below: lamps, lanterns, chandeliers, lit signs) no longer gets it: its own light stays, and a lamp drawn from a
+       model has its own sheet lit instead (_hqLampBulb: the material's emissive = the glow's colour through the model's own colour
+       sheet, so the pale shade / globe / sign face shines and the dark stand barely does). Flames, crystals, orbs, machines and
+       cars keep the disc. The old halos: window.EW_LAMP_HALOS = true (before the room is built). */
+    var HQ_LAMP_KEYS = { desk_lamp: 1, table_lamp: 1, globe_lamp: 1, ship_lantern: 1, crystal_chandelier: 1, studio_light: 1, paper_lantern: 1,
+                         lighthouse: 1, lighthouse_tall: 1, exit_sign: 1, lava_lamp: 1, lava_lamp_floor: 1, sputnik_lamp: 1, saucer_pendant: 1,
+                         disc_cluster: 1, mushroom_lamp: 1, grow_lamp: 1, banker_lamp: 1, library_chandelier: 1, flood_mast: 1, now_serving: 1,
+                         departures_board: 1, scoreboard: 1, sea_buoy: 1, makeup_vanity: 1, barber_mirror: 1, star_projector: 1 };
+    function _ewLampHalos() { return typeof window !== 'undefined' && !!window.EW_LAMP_HALOS; }   // the built-in lamps (street lamps, strip lights, bulbs, tubes): no disc unless asked
+    function _hqLampHalo(key) { return !HQ_LAMP_KEYS[key] || _ewLampHalos(); }
+    function _hqLampBulb(root, cat, key) {
+        if (!root || !cat || !cat.glow || _hqLampHalo(key)) return;
+        var col = cat.glow.color != null ? cat.glow.color : 0xfff2c0, k = (cat.glow.lit != null) ? cat.glow.lit : 0.22;
+        root.traverse(function (o) {
+            if (!o.isMesh || !o.material) return;
+            (Array.isArray(o.material) ? o.material : [o.material]).forEach(function (m) {
+                if (!m || m._ew_bulbLit || !m.emissive || !m.emissive.isColor) return;
+                m._ew_bulbLit = true;
+                m.emissive.setHex(col);
+                if (m.map && !m.emissiveMap) m.emissiveMap = m.map;
+                m.emissiveIntensity = Math.max(m.emissiveIntensity || 0, k);
+                m.needsUpdate = true;
+            });
+        });
+    }
     function _hzGlowSprite(size, color, opacity, opAmp, sclAmp, spd) {
         var mat = new THREE.SpriteMaterial({
             map: _hzGlowTexture(), color: new THREE.Color(color),
@@ -42910,8 +42938,7 @@ const ThreeRenderer = (function () {
         var faceB = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.86, ts * 0.34), faceMat);
         faceB.rotation.y = Math.PI; faceB.position.set(0, postH + ts * 0.21, -ts * 0.07); g.add(faceB);
         _hzPulse(faceMat, null, 0.14, 0, 0.8 + rng() * 1.2);
-        var glow = _hzGlowCore(ts * 0.45, 0x8fffb4, 0x4fe07f);
-        glow.position.y = postH + ts * 0.21; g.add(glow);
+        if (_ewLampHalos()) { var glow = _hzGlowCore(ts * 0.45, 0x8fffb4, 0x4fe07f); glow.position.y = postH + ts * 0.21; g.add(glow); }   // THE LAMPS LOSE THE HALO
         return g;
     }
 
@@ -42936,8 +42963,7 @@ const ThreeRenderer = (function () {
         var panel = new THREE.Mesh(new THREE.PlaneGeometry(ts * 1.15, ts * 0.34), panelMat);
         panel.rotation.x = Math.PI / 2; panel.position.y = conduitH - ts * 0.07; g.add(panel);
         _hzPulse(panelMat, null, 0.2, 0, 1.3 + rng() * 1.8);     // sickly flicker/hum
-        var glow = _hzGlowCore(ts * 0.6, 0xf8f4d0, 0xeae6b0);
-        glow.position.y = conduitH - ts * 0.2; g.add(glow);
+        if (_ewLampHalos()) { var glow = _hzGlowCore(ts * 0.6, 0xf8f4d0, 0xeae6b0); glow.position.y = conduitH - ts * 0.2; g.add(glow); }   // THE LAMPS LOSE THE HALO
         return g;
     }
 
@@ -44897,7 +44923,7 @@ const ThreeRenderer = (function () {
             if (o.p != null && rng() > o.p) return;
             var lamp = _miscModelInstance(_R2_MISC + 'streetlamp/Street%20Lamp.obj', false, lampH, { matPick: lampMat });
             lamp.position.set(x, K.fy, z); lamp.rotation.y = K.face(x, z); K.add(lamp);
-            var glow = _hzGlowCore(ts * 0.26, col, o.aura || 0xff9a3c); glow.position.set(x, K.fy + lampH * 0.86, z); K.add(glow);
+            if (_ewLampHalos()) { var glow = _hzGlowCore(ts * 0.26, col, o.aura || 0xff9a3c); glow.position.set(x, K.fy + lampH * 0.86, z); K.add(glow); }   // THE LAMPS LOSE THE HALO
         }, { skipLanes: true, laneHalf: 1.4 * ts, corners: !!o.corners, only: o.only });
     }
     /* place a ready-made _hz* prop (built with rng) on the setting floor */
@@ -48327,9 +48353,11 @@ const ThreeRenderer = (function () {
             lamp.rotation.y = Math.atan2(cx - wx, cz - wz) + (rng() - 0.5) * 0.4;
             _streetLampGroup.add(lamp);
 
+            if (_ewLampHalos()) {   // THE LAMPS LOSE THE HALO (2026-11-24)
             var glow = _hzGlowCore(ts * 0.30, 0xffd27a, 0xff9a3c);
             glow.position.set(wx, topY + headY, wz);
             _streetLampGroup.add(glow);
+            }
 
             heads.push({ wx: wx, wy: topY + headY, wz: wz });
         }
@@ -51009,7 +51037,7 @@ const ThreeRenderer = (function () {
     var _EW_BUN_NONE = [];
     var _EW_BUN_TEX = ['map', 'emissiveMap', 'normalMap', 'alphaMap', 'aoMap', 'lightMap', 'bumpMap', 'roughnessMap', 'metalnessMap', 'specularMap', 'envMap', 'gradientMap', 'matcap'];
     function _ewBunOff() {
-        try { return !!window.EW_NO_BUNDLES || /[?&]ew_bundles=0\b/.test(location.search); } catch (e) { return false; }
+        try { return !!window.EW_NO_BUNDLES || !!_ewBun.offErr || /[?&]ew_bundles=0\b/.test(location.search); } catch (e) { return false; }
     }
     function _ewBunFreed(res) {
         var gs = res && _ewBun.used.get(res);
@@ -51062,7 +51090,15 @@ const ThreeRenderer = (function () {
             /* THE FREES BY GROUP (2026-10-12, mondo's heavy spells): only the groups whose recording holds the freed resource
                re-record. The epoch re-recorded every group of a battle's room (700+ field pieces) each time a unit's ring
                or a spell mesh went, 300-500 re-records/s and ~6 ms/frame of checks */
-            B[k] = function (res) { _ewBunFreed(res); return f.apply(this, arguments); };
+            B[k] = function (res) {
+                _ewBunFreed(res);
+                /* THE SHADOW MAPS (2026-11-24, same F3): a light's shadow map (three names them PointShadowMap / PointShadowDepthTexture /
+                   ShadowDepthTexture ...) is read by EVERY lit piece of the room, and a recording can hold it through a binding three
+                   made after the list of what it holds was taken. A freed shadow map flags every recorded group, so none replays it.
+                   Shadow maps go seldom (a room left, a lamp's map resized), so this re-records each group once. */
+                try { if (k === 'destroyTexture' && res && res.isTexture && /Shadow/.test(res.name || '')) { for (var mi = 0; mi < _ewBun.marked.length; mi++) _ewBun.marked[mi]._ew_bunFree = true; _ewBun.shadowFrees = (_ewBun.shadowFrees | 0) + 1; } } catch (eS) {}
+                return f.apply(this, arguments);
+            };
         });
         /* a draw whose pipeline is still compiling (the room warm-up's renderer.compile is compileAsync here) is left out of
            the recording; three never re-records a bundle on its own, so those walls stayed missing for good (W6 fix 2, the
@@ -51365,6 +51401,14 @@ const ThreeRenderer = (function () {
         };
         var rbOne = function (bundle) {   // the count three keeps for the bundle, for ThreeRenderer.bundles()
             var out, g0 = bundle.bundleGroup, fast = false, cur = false, bd0 = null;
+            /* THE STALE RECORDING NEVER REPLAYS (2026-11-24, mondo's F3 in DOOR HQ's main hall: "GPU errors 1 (first: In Queue::submit
+               In a execute_bundle command Texture with 'PointSha…" and "the game freezes and some stuff goes black"). A group whose
+               recording holds a freed buffer / texture was flagged (_ew_bunFree) and re-recorded only by the next _ewBunTick, and the
+               tick skips some groups (a chunk off the camera, a group resting, a camera it has not checked): a recording that still
+               named a freed point-shadow map was replayed, Firefox threw the WHOLE frame away (the picture froze while the game ran
+               on), and the parts that came back first drew without their lamps' shadow (black). Here, at the replay itself: a
+               flagged group is recorded again before it draws, every time, whoever asked for it. Off: window.EW_BUN_FREE_AT_TICK. */
+            if (g0 && g0._ew_bunFree && !(typeof window !== 'undefined' && window.EW_BUN_FREE_AT_TICK)) { g0.version = (g0.version | 0) + 1; g0._ew_bunFree = false; _ewBun.recs++; _ewBun.freeAtReplay = (_ewBun.freeAtReplay | 0) + 1; }
             try {
                 bd0 = this.backend.get(this._bundles.get(g0, bundle.camera, this._currentRenderContext));
                 cur = bd0.bundleGPU !== undefined && g0.version === bd0.version && !!bd0.renderObjects;
@@ -53626,7 +53670,20 @@ const ThreeRenderer = (function () {
                 var dev = r.backend && r.backend.device;
                 if (dev && dev.addEventListener) dev.addEventListener('uncapturederror', function (ev) {
                     _ewGpuInfo.errors = (_ewGpuInfo.errors || 0) + 1;
-                    if (!_ewGpuInfo.firstError) _ewGpuInfo.firstError = String(ev && ev.error && ev.error.message || ev).slice(0, 160);
+                    var em = String(ev && ev.error && ev.error.message || ev);
+                    if (!_ewGpuInfo.firstError) _ewGpuInfo.firstError = em.replace(/\s+/g, ' ').replace(/Validation Error Caused by: /g, '').slice(0, 160);
+                    /* THE FRAME THAT WAS THROWN AWAY HEALS (2026-11-24): a GPU error naming a recorded group (execute_bundle) means a frame
+                       never reached the screen. Every recorded group is taken again before it next draws, so the next frame does; a
+                       third such error within 10 s turns the recordings off for this page (the room draws piece by piece, as with
+                       ?ew_bundles=0) rather than freeze the picture. The full line goes to the console (the crash trail keeps it). */
+                    try {
+                        if (/execute_bundle|bundle/i.test(em)) {
+                            for (var mi = 0; mi < _ewBun.marked.length; mi++) _ewBun.marked[mi]._ew_bunFree = true;
+                            var nw = performance.now(), E = _ewBun.gpuErrAt || (_ewBun.gpuErrAt = []); E.push(nw); while (E.length && nw - E[0] > 10000) E.shift();
+                            if (E.length >= 3 && !_ewBun.offErr) { _ewBun.offErr = true; console.warn('[ThreeRenderer] three GPU errors in recorded groups within 10 s: the recordings are off for this page'); }
+                            if (E.length <= 3) console.warn('[ThreeRenderer] GPU error in a recorded group, every group records again: ' + em.replace(/\s+/g, ' ').slice(0, 400));
+                        }
+                    } catch (eH) {}
                 });
             } catch (e) {}
             console.log('[ThreeRenderer] board renderer: ' + _ewGpuBackendName() + (_ewGpuInfo.limits ? ' · ' + _ewGpuInfo.limits : ''));
@@ -72742,9 +72799,11 @@ const ThreeRenderer = (function () {
             e.set(0, -_hqRad(sa), 0, 'YXZ'); e.x = -coneTilt;
             q.setFromEuler(e);
             mtx.compose(pos, q, one); strips.setMatrixAt(si, mtx);
+            if (_ewLampHalos()) {   // THE LAMPS LOSE THE HALO (2026-11-24): the hall's strip lights shine on their own
             var gl = _hzGlowSprite(1.9 * U, 0xdfe9ff, 0.28, 0.03, 0.02, 0.35);
             gl.position.copy(pos); gl.position.y -= 0.25 * U;
             G.add(gl);
+            }
         }
         for (var li = 0; li < nLid; li++) {
             var la = (360 / nLid) * li;
@@ -74450,7 +74509,7 @@ const ThreeRenderer = (function () {
             if (made >= cap) return;
             if (typeof hqTerrainMaskAt === 'function' && info.maskD && hqTerrainMaskAt(info, px, pz) < 0.5) return;   // over the open floor only
             var m = new THREE.Mesh(geo, tubeMat); m.position.set(px * U, h * U, pz * U); m.rotation.y = yaw; G.add(m);
-            var gl = _hzGlowSprite(2.2 * U, col, 0.16, 0, 0, 0); gl.position.set(px * U, (h - 0.18) * U, pz * U); G.add(gl);
+            if (_ewLampHalos()) { var gl = _hzGlowSprite(2.2 * U, col, 0.16, 0, 0, 0); gl.position.set(px * U, (h - 0.18) * U, pz * U); G.add(gl); }   // THE LAMPS LOSE THE HALO
             made++;
         };
         (plan.corridors || []).concat(plan.halls || []).forEach(function (c) {
@@ -80770,7 +80829,7 @@ const ThreeRenderer = (function () {
                 var lk = looks && lp.d && looks[lp.d], lo = lk && lk.lamp ? lookOf(lk.lamp) : null, colL = lo ? lo.col : col;
                 var lampL = _miscModelInstance(_R2_MISC + 'streetlamp/Street%20Lamp.obj', false, lampH, { matPick: lo ? lo.pick : lampMat });
                 lampL.position.set(lp.x * U, gyL * U + 0.3, lp.z * U); lampL.rotation.y = Math.atan2(lp.nx, lp.nz) + Math.PI / 2; G.add(lampL);
-                var glowL = _hzGlowSprite(0.9 * U, colL, 0.32, 0.0, 0.0, 0.0); glowL.position.set(lp.x * U, (gyL + 3.1) * U, lp.z * U); G.add(glowL);
+                if (_ewLampHalos()) { var glowL = _hzGlowSprite(0.9 * U, colL, 0.32, 0.0, 0.0, 0.0); glowL.position.set(lp.x * U, (gyL + 3.1) * U, lp.z * U); G.add(glowL); }   // THE LAMPS LOSE THE HALO
                 if (lk && lp.b && lk.name) {
                     var nl = Math.hypot(lp.nx, lp.nz) || 1, ax = -lp.nz / nl, az = lp.nx / nl;   // along the kerb
                     var fl = flags[lp.d] || (flags[lp.d] = { pos: [], uv: [], nor: [], idx: [], lk: lk });
@@ -80809,7 +80868,7 @@ const ThreeRenderer = (function () {
                     var gy = hqTerrainHeight(info, px, pz);
                     var lamp = _miscModelInstance(_R2_MISC + 'streetlamp/Street%20Lamp.obj', false, lampH, { matPick: lampMat });
                     lamp.position.set(px * U, gy * U + 0.3, pz * U); lamp.rotation.y = Math.atan2(-dz * side, dx * side) + Math.PI / 2; G.add(lamp);
-                    var glow = _hzGlowSprite(0.9 * U, col, 0.32, 0.0, 0.0, 0.0); glow.position.set(px * U, (gy + 3.1) * U, pz * U); G.add(glow);
+                    if (_ewLampHalos()) { var glow = _hzGlowSprite(0.9 * U, col, 0.32, 0.0, 0.0, 0.0); glow.position.set(px * U, (gy + 3.1) * U, pz * U); G.add(glow); }   // THE LAMPS LOSE THE HALO
                     var blk = new THREE.Object3D(); blk.position.set(px * U, gy * U, pz * U); G.add(blk);
                     _hq.blockers.push({ obj: blk, y: gy, top: null, rad: 0.22, lamp: true });
                     made++;
@@ -83185,7 +83244,7 @@ const ThreeRenderer = (function () {
             var fix = _hqBox(1.3, 0.08, 0.2, _hqMat(null, 1, 1, { color: 0x9aa0a6, shininess: 40 })); fix.position.y = -0.04 * U; g.add(fix);
             var tubeMat = new THREE.MeshBasicMaterial({ color: 0xeef3ff });
             var tube = new THREE.Mesh(new THREE.CylinderGeometry(0.018 * U, 0.018 * U, 1.2 * U, 8), tubeMat); tube.rotation.z = Math.PI / 2; tube.position.y = -0.1 * U; g.add(tube);
-            var glow = _hzGlowSprite(1.6 * U, 0xdfe9ff, 0.22, 0, 0, 0); glow.position.y = -0.3 * U; g.add(glow);
+            var glow = _hzGlowSprite(1.6 * U, 0xdfe9ff, 0.22, 0, 0, 0); glow.position.y = -0.3 * U; if (_ewLampHalos()) g.add(glow);   // THE LAMPS LOSE THE HALO (the flicker still drives it, unseen; the tube flickers)
             /* THE ONE MODEL (2026-11-03, mondo: swap the stand-ins to the models we have): the catalogue's `fluorescent` fixture
                hangs in place of the box + tube (1.3 m long, its top at the ceiling); the glow keeps the flicker */
             var fixGlb = (typeof _hqCatGlb === 'function' ? _hqCatGlb : function () { return null; })('fluorescent', U, { fit: 'span', h: 1.3, hide: [fix, tube] });
@@ -83205,7 +83264,7 @@ const ThreeRenderer = (function () {
             var cord = new THREE.Mesh(new THREE.CylinderGeometry(0.006 * U, 0.006 * U, 0.2 * U, 6), _hqMat(null, 1, 1, { color: 0x2a2a2e })); cord.position.y = -0.1 * U; g.add(cord);
             var cap = new THREE.Mesh(new THREE.CylinderGeometry(0.02 * U, 0.025 * U, 0.04 * U, 10), _hqMat(null, 1, 1, { color: 0x8a8480, shininess: 40 })); cap.position.y = -0.22 * U; g.add(cap);
             var bulb = new THREE.Mesh(new THREE.SphereGeometry(0.045 * U, 12, 10), _hqBasic(0xffe6b0)); bulb.position.y = -0.29 * U; g.add(bulb);
-            var glow = _hzGlowSprite(0.9 * U, 0xffd9a0, 0.4, 0.06, 0.03, 0.6); glow.position.y = -0.3 * U; g.add(glow);
+            var glow = _hzGlowSprite(0.9 * U, 0xffd9a0, 0.4, 0.06, 0.03, 0.6); glow.position.y = -0.3 * U; if (_ewLampHalos()) g.add(glow);   // THE LAMPS LOSE THE HALO
             /* THE PACK WEAR (2026-11-04): the Abandoned House bulb in its ceiling socket (no cord), 0.14 m, its plate on the ceiling; the glow
                follows the bulb up */
             _hqDecorWear('bare_bulb', U, g, { h: 0.14, top: true, onDone: function (grp, d) { glow.position.y = (d.y + d.h * 0.35) * U; } });
@@ -87045,7 +87104,7 @@ const ThreeRenderer = (function () {
                 grp.add(pg);
                 /* THE ROW'S OWN LIGHT (2026-11-20, thread 11): a proc row's `light` / `glow` objects override the catalogue's (a colour, a reach) */
                 if ((p.light && typeof p.light === 'object') || (p.glow && typeof p.glow === 'object')) { cat = Object.assign({}, cat); if (p.light && typeof p.light === 'object') cat.light = Object.assign({}, cat.light || {}, p.light); if (p.glow && typeof p.glow === 'object') cat.glow = Object.assign({ y: 0, size: 1 }, cat.glow || {}, p.glow); }
-                if (cat.glow) { var pgl = _hzGlowSprite(cat.glow.size * U, cat.glow.color, 0.5, 0.05, 0.03, 0.4); pgl.position.y = cat.glow.y * U; grp.add(pgl); if (cat.light && cat.light.night) { pgl._ew_glowC = pgl.material.color.clone(); _hq.clockLamps.push(pgl); } }   // THE WORLD CLOCK: a night lamp's head dims by day
+                if (cat.glow && _hqLampHalo(p.key)) { var pgl = _hzGlowSprite(cat.glow.size * U, cat.glow.color, 0.5, 0.05, 0.03, 0.4); pgl.position.y = cat.glow.y * U; grp.add(pgl); if (cat.light && cat.light.night) { pgl._ew_glowC = pgl.material.color.clone(); _hq.clockLamps.push(pgl); } }   // THE WORLD CLOCK: a night lamp's head dims by day
                 /* Phase 8 (2026-09-14): a proc may carry a POINT LIGHT (catalogue `light`: colour / intensity / dist / y) — the torches, the bulbs, the orb; capped at HQ_PROP_LIGHT_MAX per room */
                 if (cat.light && !p.noLight && _hq.propLights < HQ_PROP_LIGHT_MAX && (!litRows || litRows.has(p))) {   // THE CEILING LAMPS FIRST
                     var ppl = new THREE.PointLight(cat.light.color != null ? cat.light.color : 0xffd9a0, (cat.light.intensity != null ? cat.light.intensity : 0.6) * _hqLampK(room), (cat.light.dist || 6) * U, 2);   // THE ROOM'S OWN LAMPS (shell.lampK)
@@ -87087,6 +87146,7 @@ const ThreeRenderer = (function () {
                 fit: fitSpan ? 'span' : 'height', matPick: (cat.statue != null || p.statue != null) ? _hqStatuePick(p.statue != null ? p.statue : cat.statue) : (cat.petal != null ? function (n, mm) { return _hqPetalMat(_hqPropMatPick(n, mm) || mm, cat.petal); } : _hqPropMatPick),   // THE PETAL COLOURS
                 still: !!(cat.statue != null || p.statue != null),   // THE STATUES (2026-11-15, Chicago): a cast animal holds its pose
                 onDone: function (g, s, bb) {
+                    try { _hqLampBulb(g, cat, p.key); } catch (eLB) {}   // THE LAMPS LOSE THE HALO: the lamp's own sheet is lit
                     /* `lay`: the model is authored on edge (rugs) — turn its
                        thinnest axis upright and re-seat it on the floor */
                     if (cat.lay) {
@@ -87126,7 +87186,7 @@ const ThreeRenderer = (function () {
             var inst = packed ? _carPackModel(cat.pack, U, { hq: true, rng: _carPackRng(p), snow: _carPackSnowy(room), paint: p.paint, scale: fs, onDone: instO.onDone })
                               : _miscModelInstance(_hqModelUrl(cat), true, target, instO);
             grp.add(inst);
-            if (cat.glow) {
+            if (cat.glow && _hqLampHalo(p.key)) {
                 var gl = _hzGlowSprite(cat.glow.size * U, cat.glow.color, 0.5, 0.05, 0.03, 0.4);
                 gl.position.y = cat.glow.y * U;
                 grp.add(gl);
@@ -105813,7 +105873,7 @@ const ThreeRenderer = (function () {
                         var target = ((fitSpan ? (r.span || cat.span) : (r.h || cat.h)) || 1) * U;
                         pg.add(_miscModelInstance(_hqModelUrl(cat), true, target, { fit: fitSpan ? 'span' : 'height', matPick: _hqPropMatPick, still: true, onDone: function () { if (_hq) _hq.dirty = true; } }));
                     }
-                    if (cat.glow) { var gl = _hzGlowSprite(cat.glow.size * U, cat.glow.color, 0.5, 0.05, 0.03, 0.4); gl.position.y = cat.glow.y * U; pg.add(gl); }
+                    if (cat.glow && _hqLampHalo(r.key)) { var gl = _hzGlowSprite(cat.glow.size * U, cat.glow.color, 0.5, 0.05, 0.03, 0.4); gl.position.y = cat.glow.y * U; pg.add(gl); }
                 } catch (e) { console.warn('[DROP] ' + r.key, e); }
                 gg.add(pg);
             });
