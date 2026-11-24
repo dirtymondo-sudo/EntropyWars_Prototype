@@ -6505,6 +6505,11 @@ sprites `*_px.png` same folders (Sprite AI). First-pass stats; finishers borrow 
 - Chest Pass (T1): ricochet. Crossover (T2, `pgAnkles`): escape 2; whoever stood next to him before (`unit._pgFrom`, noted at the
   cast rows: `_pgBeginCast`) is Staggered + Marked. Alley-Oop (T3, `pgOop`): ally +2 ATK and a sure critical next basic attack (the
   Monarch's `_deltaCrit`). Buzzer Beater (T4): range 7 over cover, execute under 15%.
+- Slam Dunk (T3, `pgSlamDunk`, added 11-24, mondo: "you gotta give him a slam dunk ability too"): a `chargeToTarget` damage row
+  (the charge's leap vault, so it works on flat ground; `leapStrike` needs higher ground), range 3, 145 physical + Stagger 1, cooldown 2.
+  VFX `pgSlam` (burst): a textured hoop drops over the victim, the rim shakes, SLAM! card, rings, confetti. The tree is four rungs by
+  schema, so his default kit carries it through data.js `RACE_DEFAULT_KIT_EXTRAS` (raceDefaultKit: rungs, then the extras, then the
+  family fill).
 - CPU (ai.js `_teleportAnyPick`): Basket Toss throws a team-mate next to her onto a square beside enemies (the hits less the danger).
 - VFX (three-vfx-effects.js "THE CHEERLEADER + THE POINT GUARD"): confetti + cheer cards in side colours (kick burst, READY? OK!,
   TOSS!, STUNT!, the D-C-U letters), ALLEY-OOP and a 0.0 shot clock; the hits ride the staging `burst` (`_CHPG_ON_BURST`), the rest
@@ -6528,3 +6533,68 @@ Head place: new `ThreeRenderer.unitHeadPose(uid, head, end, front)` (the rig's H
 Lessons: a face is drawn over (depthTest off, renderOrder 960); a face whose file is not there yet comes in on the first frame it is
 (`_skwFace` take()); the Wear run ends itself once the face is worn, so a slow frame past its end cannot skip the wearing.
 Probe: /mnt/project-files/unit-concepts-20261124/probe_faces.js (fires the windup directly; shots on the game clock).
+
+## THE CENTAUR (2026-11-24)
+mondo 11-24: "a centaur if we can. It would have to be made of separate parts ... the human upper body animate like a normal meshy model and
+the horse like a horse"; then, on the card, a male and female pair. The game's own idea list (ui.js) already had it: "Half horse, half archer,
+never misses on the run." One race `centaur`, male (chestnut) and female (dapple grey), one shared kit.
+- THE MODEL: `bake-centaur.py` (Blender as `bpy`) cuts a Meshy rigged human (concepts + rigs in project files unit-concepts-20261124b/,
+  build files centaur-build/) below the sash, takes the tack, the neck and the head off a copy of the Horse pack's `Horse_glb.glb`, swells the
+  withers up under the waist, and joins the two skeletons: the human's Hips is a child of the horse's chest bone (spine.008). One GLB per look
+  on R2 `Assets/characters/races/centaur/<male|female>/centaur_<m|f>.glb`; px sprites beside them (Sprite AI restyle of the built model).
+  THE JOIN (v2, 11-24, mondo: "a clear and visible gap between them"): bake-centaur.py now lofts a skin of the horse's own coat
+  (one sheet spot, 8 rings x 32) from the horse's chest surface (ray hits at topz-0.45) up into the rider's waist just under the
+  sash, weighted to spine.008 like the rider's Hips, so the horse grows into the human. Files renamed `centaur_<m|f>_v2.glb`
+  (GLBs are long-cached). Env LOFTDOWN / LOFTUP / LOFTPOW / RBK shape it; NOLOFT=1 = the old open join.
+  THE HANDS (v3, 11-24, mondo: "both of their hands are cut off"): the waist cut keeps every vertex the arm bones carry (the A-pose hands hang below it); files `centaur_<m|f>_v3.glb`.
+- THE ANIMATION: sprites.js def `procRig: 'centaur'` (three-renderer.js THE CENTAUR, `_cenBuild`) returns no clips, so the shared library
+  animates the rider like any Meshy unit, and `_libBakeClips` (every screen's clips come from it) lays the horse under each baked clip
+  (`_cenMerge`): Idle under the idles (Idle_2 under the second ones), Trot under the walk, Gallop under the run (whole loops fitted to the
+  clip), and a horse pose under the rest (`_CEN_POSES`: paw for shots and plain casts, rear for the big ones, buck for kicks, lunge for the
+  close blows, flinch, brace, hop, and the Unicorn's fall for death). The rider's Hips is held at rest on the horse; spine, arms, head keep the clip.
+- THE RULE, HIT AND RUN (`cenHitAndRun`, battle.js THE CENTAUR): once a turn its first hit on an enemy Quickens it (+1 move) until the end of
+  its next turn (`_cenOnHit` in applyDamageToUnit); on a turn it has walked (`_cenMovedAt`) its basic shot cannot be dodged (`_cenOnTheRun`
+  in doAttack's dodge roll and the attack button's hit chance).
+- THE KIT (family `centaur`, + archery, horsebackriding, athleticism): Hoof Stomp (T1, 3x3 round it, Stagger), Parthian Shot (T2, a shot,
+  then `cenHopBack: 2` springs it straight back from the target, stopping at a wall, a unit or a drop), Call of the Herd (T3, linePush 5,
+  knockback 1), Sagittarius (T4, 3x3 up to 7 over walls, magic light, Blind). Rung 3 can be Ride-By. Finisher borrows Robin Hood's.
+- Claude's picks (mondo named none): home Mount Olympus (with the Cyclops and the Minotaur), biomes ancient + forest, temper territorial,
+  stats a first pass between Robin Hood and the Unicorn. The spells use the stock VFX of their kinds (no own VFX yet).
+
+## THE MUSIC PRODUCER (2026-11-24, thread "Add the Music Producer unit"; mondo's own image + his plan: "I want him to build a beat progressively. He could add a beat, chords, bass, and melody ... just the notes in C major"; plan https://claude.ai/artifact/PCvHQykaa2oXjaY4umTK8K, sounds approved in the Beat Lab https://claude.ai/artifact/Cj3L7skrLrQ7HBJikSoSNV, project files `music-producer/`)
+Race `'music producer'` (male only, human, specialist, home Downtown / Mid Records, range 2, sonic resist / water weak, price 400). Model: Meshy
+(his image, pad removed) at R2 `Assets/characters/races/music_producer/male/Meshy_AI_music_producer_Running.glb`, sprite `music_producer_px.png`
+same folder (Sprite AI); THE UNIT GEAR holds the grey beat pad (pad B, `Assets/characters/gear/held/beat_pad.glb`, texture cut to 1024 px) in his
+left hand. Family `beatmaking` + sonic, stagepresence, maincharacter. Finisher Platinum Record borrows the Popstar's `farewellTour` stage.
+- THE SONG (unit._song, plain values, rides the state sync): tempo 90/120/140/160, drums, chordsOn + chords (up to 4 of Cmaj7 Dm7 Em7 Fmaj7 G7
+  Am7 Bm7♭5: every chord with its 7th, mondo 11-24), sync, bass, melody (legato / staccato / arp), building, and the one-shot counters slapN,
+  fillN, dropN, dropLanded. EARSHOT = 3 squares (Chebyshev). battle.js block "THE MUSIC PRODUCER".
+- At each round end (`_mpRoundEnd` from _nrRoundEnd) every track playing works in earshot, unless he is SCRATCHED (stun, sleep, frozen,
+  silence: `_mpScratched`): drums by tempo (90 allies take 15% less damage, live in applyDamageToUnit `_mpDamageMult`; 120 allies +15 MP;
+  140 enemies Slowed 1; 160 allies Quickened 1 and he takes 15% more), chords heal 10 + 10 a chord, legato +20 heal, staccato +10% crit
+  (rollCrit `_mpCritBonus`, live), arp 30 sonic on up to 3 enemies; bass = his hits +8% a track (live). Passive On Loop (`mpOnLoop`): +8 MP a track.
+- THE MOVES (7 slots, 15 SP): Lay It Down (T1, pick a track), Beat Switch (T1, pick a tempo), Add Chord (T2, pick a chord or Syncopate: a
+  fifth chord replaces the oldest; Syncopate toggles the off-beat chords and Discords enemies in earshot), Melody Style (T2), Slap Bass (T2,
+  a displacement row: 100 sonic + knock back 1, the bass goes slap for 2 bars), Drum Fill (T3, multiHit 35/35/40/50, the fill with the toms),
+  Bass Drop (T4, a `delayed` row 5×5 within 4, 120 + 15 a track and a chord). `mpNeeds` greys a move whose track is not in the song
+  (spellBlockReason via `_mpBlockReason`). RACE_TREE = Lay It Down, [Add Chord, Melody Style], Drum Fill, Bass Drop; RACE_DEFAULT_KIT_EXTRAS
+  adds Beat Switch, Slap Bass, Melody Style.
+- BASS DROP (mondo 11-24): the cast sets `building` (the drums and the bass drop out, the riser climbs; the chords and melody keep going);
+  state.js `_detonateDelayedSpellNow` calls `_mpDropLands` at the blast: +15 a track and a chord, then the drums and bass come back in and the
+  chords and melody are gone.
+- THE PICKER (mondo 11-24: "picker"): a `bpPick` row ('track' / 'tempo' / 'chord' / 'melody') opens its choices in the command menu's spot
+  first (battle.js setTool → actionMenuView 'bpPick'; hud.js `_hrlgBeatBlades` from battle.js `mpPickChoices`), like Tune Frequency's
+  sub-menu. The pick files state._bpPick (per-viewer: online.js skip list + guest UI keys) and re-arms the row for its CONFIRM; doSpell
+  copies it to unit._mpPickHeld, finishAction's `_mpAfterCast` applies it (checked against the legal choices; none = `_mpAutoPick`, the
+  CPU's). Online the guest's pick rides the cast as `bpPick`.
+- THE SOUND: audio.js THE PRODUCER'S 4-TRACK (`EWBeat`, the Beat Lab's engine: WebAudio synth, a slot per voice in window.EW_BEAT_SAMPLES for
+  mondo's samples later). A once-a-second driver starts it when battle.js `_mpSongToHear` returns a song (the side whose turn it is; else the
+  other side's), stops it when none. Each client plays the synced song itself: nothing relayed. The battle music ducks to a third
+  (getMusicBaseVolume); volume = the music slider × the mixer row music.producerBeat. Console: `ewBeatAudition()`.
+- CPU (ai.js `_mpScoreAI`): a missing track first (drums most), the tweaks by who is in earshot, Bass Drop +10% a track.
+- THE VFX (three-vfx-effects.js block "THE MUSIC PRODUCER", off `_CHPG_ON_BURST`, side colours `_psSide`, relayed through fire()): the four
+  picks = notes rising off him + the 3-square earshot ring + a word card; Slap Bass = three low rings + SLAP!; Drum Fill = TAK TAK DOOM CRASH!
+  in time with the hits; Bass Drop's cast = BUILD UP... (rings closing in, notes); the landing = `mpDropLand`, fired by battle.js
+  `_mpDropLands` (rings + DROP!).
+- STILL TO COME: the 4-track strip on the HUD (mock-up `music-producer/four_track_mockup.png`, waits mondo's OK), the pad on
+  a strap, residents at Mid Records.

@@ -4806,6 +4806,7 @@
             state.hoverUnitId = null;
             state._spellOrientation = null;
             state._tunePick = null;   // Tune Frequency's picked frequency (C1)
+            state._bpPick = null;   // 🎛 THE MUSIC PRODUCER's picker choice
             state._spellPick1 = null;   // two-click casts (wave B) forget their first pick
             if (typeof _clearBuildHoverPreview === 'function') _clearBuildHoverPreview();
             state.focusedUnitId = state.selectedUnitId || null;
@@ -4904,7 +4905,7 @@
                is NOT its own level — it clears as part of leaving the
                targeting step (the old pending-only step made back feel like
                it "didn't work" half the time). */
-            if (state.actionMenuView === 'spellTargets' || state.actionMenuView === 'spellOrientation' || state.actionMenuView === 'tuneFreq') {
+            if (state.actionMenuView === 'spellTargets' || state.actionMenuView === 'spellOrientation' || state.actionMenuView === 'tuneFreq' || state.actionMenuView === 'bpPick') {
                 playSfx('uiBack');
                 _dropHeldSpellPick();
                 state.actionMenuView = 'spells';
@@ -4913,6 +4914,7 @@
                 state.pendingTarget = null;
                 state._spellOrientation = null;
                 state._tunePick = null;   // Tune Frequency's picked frequency (C1)
+                state._bpPick = null;   // 🎛 THE MUSIC PRODUCER's picker choice
                 renderBattleSelectionUI();
                 return;
             }
@@ -4970,6 +4972,7 @@
                 state.pendingTarget = null;
                 state._spellOrientation = null;
                 state._tunePick = null;   // Tune Frequency's picked frequency (C1)
+                state._bpPick = null;   // 🎛 THE MUSIC PRODUCER's picker choice
                 if (typeof clearAoePreview === 'function') clearAoePreview();
                 if (typeof clearSpellRangePreview === 'function') clearSpellRangePreview();
                 renderBattleSelectionUI();
@@ -5035,6 +5038,7 @@
             state.pendingTarget = null;
             state._spellOrientation = null;
             state._tunePick = null;   // Tune Frequency's picked frequency (C1)
+            state._bpPick = null;   // 🎛 THE MUSIC PRODUCER's picker choice
             state._quickAoePlace = null;
             state._quickAoeStage = null;
             state._quickAoeFrom = null;
@@ -8919,7 +8923,8 @@
             'jellyfish ufo': 'Anomaly + Tech. Not a UFO: an advanced, sentient jellyfish species from the deep, the jellyfishes\' fighter. A glass bell full of lightning on a metal body with claw arms. Every claw hit and every round in water adds Charge (up to 3), each Charge makes its lightning hit harder, and Abyssal Overload lets it all out.',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
             'weatherman': 'Human. Disaster City\'s evening news, one race in two halves. The Weatherman (male) calls, reads and moves the weather: weather he calls lasts a round longer and never hurts him, Cold Front changes with the sky, Severe Weather Warning calls the weather that fits the ground, Storm Tracker drags every storm onto the enemy. The News Anchor (female) runs the show: each of her spells runs the next segment for her allies within 3, Headlines, Sports, then the Weather.',   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR
             'cheerleader': 'Human. A cheerleader for the DCU Aftershocks, Disaster City University\'s team, in a crimson uniform and a big bow. Every spell builds her Spirit, and every fourth one is a stunt that heals and cleans up her whole side. High Kick sends an enemy flying, Ready? OK! fires up an ally, Basket Toss throws a team-mate into the fight, and Gimme a D-C-U! lifts the whole team.',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
-            'point guard': 'Human. A point guard from Disaster City\'s Sports district, purple and gold, number 1, with his basketball always in his hands. Everything he hits is left open for his team (Marked). Chest Pass bounces to a second enemy, Crossover breaks the ankles of anyone next to him, Alley-Oop sets an ally up for a sure critical, and Buzzer Beater finishes from 7 squares away.',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
+            'point guard': 'Human. A point guard from Disaster City\'s Sports district, purple and gold, number 1, with his basketball always in his hands. Everything he hits is left open for his team (Marked). Chest Pass bounces to a second enemy, Crossover breaks the ankles of anyone next to him, Alley-Oop sets an ally up for a sure critical, Slam Dunk leaps in and dunks on an enemy, and Buzzer Beater finishes from 7 squares away.',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
+            'music producer': 'Human. A Disaster City music producer in a black hoodie, headphones round his neck and a grey beat pad on a strap. He builds one song over the fight, a track at a time, all in C major: drums, chords, bass and melody. Every track playing helps his side within 3 squares at the end of each round, and Bass Drop spends the whole song on one big hit. Stun or silence him and the record scratches.',   // 2026-11-24 THE MUSIC PRODUCER
             'plastic surgeon': 'Human. A Disaster Hills plastic surgeon in a spotless white coat. He operates on anyone: Botox and Makeover work on an ally or an enemy. Every procedure leaves Work Done, and the third botches the patient (Stunned 1 round). Makeover swaps ATK with DEF and M.ATK with M.DEF; Liposuction turns what it takes into a Shield for an ally; Anesthesia puts a 3x3 to sleep; The Full Procedure works on everyone in a 5x5.',   // 2026-11-23 THE PLASTIC SURGEON
             'butterfly girl': 'Anomaly. A woman with huge blue morpho wings, from the Fairy Forest. Every spell leaves a Flutter on an enemy that grows by itself each round, and at 3 it touches down as a twister on everyone round it. Eyespots scare divers off, Butterfly Effect speeds every Flutter up, and the first hit on her each other round makes her vanish in a blue flash.',   // 2026-11-23 THE BUTTERFLY GIRL
             'rat': 'Anomaly. A rat man out of the sewers, in a burlap tunic. Every hit he or his rats land is Mischief, and at 5 Mischief the rats crown him the Rat King: a new body, harder hits, and a crowned version of each spell. Stun, Frozen or Feared scatter his rats; Long Live the King spends the whole court at once.',   // 2026-11-23 THE RAT KING

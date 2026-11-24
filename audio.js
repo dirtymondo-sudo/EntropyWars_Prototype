@@ -1222,7 +1222,8 @@
         AudioMixer.isOpen = function() { const r = document.getElementById('audioMixer'); return !!r && r.style.display !== 'none'; };
 
         function getMusicBaseVolume(key) {
-            return Math.max(0, Math.min(1, _mixLevel('music', key, AUDIO_BASE_VOLUMES[key] ?? 0.55) * (state.musicVolume ?? 1)));
+            const duck = (window._ewBeatPlaying && key !== 'victory' && key !== 'defeat') ? 0.33 : 1;   // THE PRODUCER'S 4-TRACK: his song plays over the battle music
+            return Math.max(0, Math.min(1, _mixLevel('music', key, AUDIO_BASE_VOLUMES[key] ?? 0.55) * (state.musicVolume ?? 1) * duck));
         }
 
         function getSfxBaseVolume(key) {
@@ -2797,3 +2798,210 @@
                 delay += (k === 'identSting') ? 4.2 : 2.0;
             });
         };
+
+        /* ===== THE PRODUCER'S 4-TRACK (2026-11-24, thread "Add the Music Producer unit"; mondo approved the sounds in the
+           Beat Lab test page, project files music-producer/beat-lab.html, which this engine is copied from).
+           The Music Producer builds one song over a fight: drums (kick, snare, hat, toms in the fill), chords (C major,
+           every chord with its 7th), bass (the chord roots on the kick), melody (chord tones; legato / staccato / arp).
+           All made live with WebAudio, nothing downloaded. Every voice is a slot: EW_BEAT_SAMPLES[name] = an AudioBuffer
+           plays in place of the synth (mondo will supply samples later).
+           THE SONG is a plain object the battle keeps (it syncs to the guest with the state, so each client plays it):
+             { tempo: 90|120|140|160, drums, chordsOn, chords: ['Cmaj7', …≤4], sync, bass, melody: null|'legato'|'staccato'|'arp',
+               slapN, fillN, dropN, dropLanded, muted }
+           The *N fields are counters: a raise since the last bar = play that one-shot on the next bar (no relay needed).
+           dropN raise = the build-up (drums + bass out, riser; chords + melody keep going); dropLanded raise = the drop
+           (boom + crash; the battle then sets drums + bass back on and chords + melody off, mondo 11-24).
+           EWBeat.follow(fn): fn() returns the song to hear now (whoever's turn it is; null = silence). EWBeat.stop().
+           The battle music ducks to a third while a song plays (getMusicBaseVolume). Volume = the music slider x the
+           mixer row music.producerBeat. Console: window.ewBeatAudition() plays the lab's example song for 20 s. */
+        const EW_BEAT_SAMPLES = (window.EW_BEAT_SAMPLES = window.EW_BEAT_SAMPLES || {});
+        const EWBeat = (() => {
+            const CHORDS = {
+                Cmaj7: { n: [60, 64, 67, 71], r: 36 }, Dm7: { n: [62, 65, 69, 72], r: 38 }, Em7: { n: [64, 67, 71, 74], r: 40 },
+                Fmaj7: { n: [53, 57, 60, 64], r: 41 }, G7: { n: [55, 59, 62, 65], r: 43 }, Am7: { n: [57, 60, 64, 67], r: 45 },
+                Bm7b5: { n: [59, 62, 65, 69], r: 47 } };
+            const PATTERNS = {
+                90: { k: [0, 7, 10], s: [4, 12], h: [0, 2, 4, 6, 8, 10, 12, 14], ho: [], g: [15], roll: [], swing: 0.28 },
+                120: { k: [0, 4, 8, 12], s: [4, 12], h: [0, 1, 3, 5, 7, 9, 11, 13, 15], ho: [2, 6, 10, 14], g: [], roll: [], swing: 0 },
+                140: { k: [0, 3, 10, 11], s: [8], h: [0, 2, 4, 6, 8, 10, 12], ho: [], g: [], roll: [13, 14, 15], swing: 0 },
+                160: { k: [0, 6, 10], s: [4, 12], h: [0, 2, 4, 6, 8, 10, 12, 14], ho: [], g: [7, 9, 15], roll: [], swing: 0 } };
+            let ctx = null, bus = null, out = null, delay = null, noiseBuf = null, getSong = null, timer = null;
+            let nextT = 0, step = 0, bar = -1, plan = null, lastMel = null, seen = null, crashQ = false, riserBars = 0, slapBars = 0;
+            const hz = m => 440 * Math.pow(2, (m - 69) / 12);
+            const vol = () => { try { return Math.max(0, Math.min(1, _mixLevel('music', 'producerBeat', 0.8) * (state.musicVolume ?? 0.68))); } catch (e) { return 0.55; } };
+            function init() {
+                ctx = _doorCtx();
+                out = ctx.createGain(); out.gain.value = vol();
+                const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 4;
+                bus = ctx.createGain(); bus.connect(comp); comp.connect(out); out.connect(ctx.destination);
+                delay = ctx.createDelay(1.5); const fb = ctx.createGain(); fb.gain.value = 0.3; const dl = ctx.createGain(); dl.gain.value = 0.25;
+                delay.connect(fb); fb.connect(delay); delay.connect(dl); dl.connect(bus);
+                noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+                const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+            }
+            function env(g, t, a, peak, dec) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + dec); return t + a + dec + 0.02; }
+            function noise(t, type, freq, q, peak, dec) {
+                const s = ctx.createBufferSource(); s.buffer = noiseBuf; const f = ctx.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q || 0.7;
+                const g = ctx.createGain(); s.connect(f); f.connect(g); g.connect(bus); s.start(t, Math.random()); s.stop(env(g, t, 0.002, peak, dec)); return { s, f, g };
+            }
+            function sample(name, t, gain) { // a slot mondo's own sample fills
+                const buf = EW_BEAT_SAMPLES[name]; if (!buf) return false;
+                const s = ctx.createBufferSource(), g = ctx.createGain(); s.buffer = buf; g.gain.value = gain == null ? 1 : gain; s.connect(g); g.connect(bus); s.start(t); return true;
+            }
+            const SND = {
+                k(t) { if (sample('kick', t)) return; const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.13);
+                    o.connect(g); g.connect(bus); o.start(t); o.stop(env(g, t, 0.003, 1.0, 0.42)); noise(t, 'highpass', 3000, 0.7, 0.15, 0.012); },
+                s(t, v) { if (sample('snare', t, v)) return; noise(t, 'bandpass', 1900, 0.8, 0.55 * v, 0.17); const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'triangle';
+                    o.frequency.setValueAtTime(200, t); o.frequency.exponentialRampToValueAtTime(150, t + 0.08); o.connect(g); g.connect(bus); o.start(t); o.stop(env(g, t, 0.002, 0.4 * v, 0.09)); },
+                h(t, v) { if (sample('hat', t, v)) return; noise(t, 'highpass', 7500, 0.7, 0.16 * (v || 1), 0.04); },
+                ho(t) { if (sample('openHat', t)) return; noise(t, 'highpass', 6500, 0.7, 0.13, 0.22); },
+                tom(t, f, key) { if (sample(key, t)) return; const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.setValueAtTime(f * 1.6, t); o.frequency.exponentialRampToValueAtTime(f, t + 0.05);
+                    o.connect(g); g.connect(bus); o.start(t); o.stop(env(g, t, 0.002, 0.75, 0.32)); noise(t, 'lowpass', 1800, 0.7, 0.12, 0.05); },
+                crash(t) { if (sample('crash', t)) return; noise(t, 'highpass', 4200, 0.5, 0.3, 1.6); },
+                chord(notes, t, dur) {
+                    notes.forEach(m => { const f = hz(m);
+                        const o = ctx.createOscillator(), o2 = ctx.createOscillator(), g = ctx.createGain(), g2 = ctx.createGain(), lp = ctx.createBiquadFilter();
+                        lp.type = 'lowpass'; lp.frequency.value = 2400; o.type = 'triangle'; o.frequency.value = f; o2.frequency.value = f * 4.01;
+                        o.connect(g); o2.connect(g2); g2.connect(lp); g.connect(lp); lp.connect(bus);
+                        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.09, t + 0.012); g.gain.exponentialRampToValueAtTime(0.04, t + 0.5);
+                        g.gain.setValueAtTime(0.04, t + Math.max(0.5, dur - 0.08)); g.gain.exponentialRampToValueAtTime(0.0001, t + Math.max(0.6, dur + 0.25));
+                        env(g2, t, 0.004, 0.025, 0.35); o.start(t); o2.start(t); o.stop(t + dur + 0.3); o2.stop(t + 0.5); });
+                },
+                bass(m, t, dur, slap, pop) {
+                    const f = hz(m), g = ctx.createGain(), lp = ctx.createBiquadFilter(); lp.type = 'lowpass';
+                    const sub = ctx.createOscillator(); sub.frequency.value = f; const saw = ctx.createOscillator(); saw.type = slap ? 'square' : 'sawtooth'; saw.frequency.value = f;
+                    const sg = ctx.createGain(); sg.gain.value = slap ? 0.35 : 0.22; saw.connect(sg); sg.connect(lp); sub.connect(lp); lp.connect(g); g.connect(bus);
+                    if (slap) { lp.frequency.setValueAtTime(pop ? 3200 : 2200, t); lp.frequency.exponentialRampToValueAtTime(300, t + 0.18); lp.Q.value = 4; } else lp.frequency.value = 420;
+                    const end = t + Math.max(0.12, dur); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(pop ? 0.35 : 0.55, t + 0.006);
+                    g.gain.exponentialRampToValueAtTime(slap ? 0.12 : 0.4, t + 0.15); g.gain.setValueAtTime(slap ? 0.12 : 0.4, end - 0.04); g.gain.exponentialRampToValueAtTime(0.0001, end);
+                    sub.start(t); saw.start(t); sub.stop(end + 0.02); saw.stop(end + 0.02);
+                },
+                lead(m, t, dur, st, from) {
+                    const f = hz(m), o = ctx.createOscillator(), o2 = ctx.createOscillator(), g = ctx.createGain(), lp = ctx.createBiquadFilter();
+                    o.type = st === 'legato' ? 'triangle' : 'square'; o2.type = 'sawtooth'; o2.detune.value = 8;
+                    if (st === 'legato' && from) { [o, o2].forEach(x => { x.frequency.setValueAtTime(hz(from), t); x.frequency.exponentialRampToValueAtTime(f, t + 0.07); }); }
+                    else { o.frequency.value = f; o2.frequency.value = f; }
+                    const o2g = ctx.createGain(); o2g.gain.value = 0.35; o2.connect(o2g); o2g.connect(lp); o.connect(lp);
+                    lp.type = 'lowpass'; lp.frequency.value = st === 'staccato' ? 2600 : 3400; lp.connect(g); g.connect(bus); g.connect(delay);
+                    const a = st === 'legato' ? 0.04 : 0.004, peak = st === 'arp' ? 0.06 : 0.08, end = t + dur;
+                    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a); g.gain.setValueAtTime(peak, Math.max(t + a, end - 0.03));
+                    g.gain.exponentialRampToValueAtTime(0.0001, end + (st === 'legato' ? 0.18 : 0.03)); o.start(t); o2.start(t); o.stop(end + 0.25); o2.stop(end + 0.25);
+                },
+                riser(t, dur) { const n = noise(t, 'bandpass', 300, 3, 0.0001, dur); n.f.frequency.setValueAtTime(250, t); n.f.frequency.exponentialRampToValueAtTime(7000, t + dur);
+                    n.g.gain.cancelScheduledValues(t); n.g.gain.setValueAtTime(0.0001, t); n.g.gain.exponentialRampToValueAtTime(0.32, t + dur); n.g.gain.setValueAtTime(0.0001, t + dur + 0.01); n.s.stop(t + dur + 0.05);
+                    const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sawtooth'; o.frequency.setValueAtTime(110, t); o.frequency.exponentialRampToValueAtTime(880, t + dur);
+                    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.05, t + dur); g.gain.setValueAtTime(0.0001, t + dur + 0.01); o.connect(g); g.connect(bus); o.start(t); o.stop(t + dur + 0.05); },
+                boom(t) { if (sample('drop', t)) return; const o = ctx.createOscillator(), g = ctx.createGain(), ws = ctx.createWaveShaper(), c = new Float32Array(256);
+                    for (let i = 0; i < 256; i++) c[i] = Math.tanh(3 * (i / 128 - 1)); ws.curve = c;
+                    o.frequency.setValueAtTime(90, t); o.frequency.exponentialRampToValueAtTime(30, t + 1.4); o.connect(ws); ws.connect(g); g.connect(bus);
+                    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.9, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 2.2); o.start(t); o.stop(t + 2.3); },
+                scratch(t) { if (sample('scratch', t)) return; const n = noise(t, 'bandpass', 900, 6, 0.6, 0.5); [0, 0.12, 0.22, 0.36, 0.5].forEach((d, i) => n.f.frequency.linearRampToValueAtTime(i % 2 ? 2400 : 500, t + d)); }
+            };
+            const empty = () => { const p = { d: [], c: [], b: [], m: [] }; for (let i = 0; i < 16; i++) { p.d.push([]); p.c.push(null); p.b.push(null); p.m.push(null); } return p; };
+            function planBar(S) {
+                const p = empty(); p.bar = bar; if (!S) return p;
+                const tempo = PATTERNS[S.tempo] ? S.tempo : 90, P = PATTERNS[tempo];
+                const prev = seen || S; seen = { fillN: S.fillN | 0, dropN: S.dropN | 0, dropLanded: S.dropLanded | 0, slapN: S.slapN | 0, muted: !!S.muted };
+                if ((S.dropN | 0) > (prev.dropN | 0)) { p.riserStart = true; riserBars = 99; }
+                if ((S.dropLanded | 0) > (prev.dropLanded | 0)) { p.drop = true; riserBars = 0; }
+                if ((S.slapN | 0) > (prev.slapN | 0)) slapBars = 2;
+                p.riser = riserBars > 0;
+                const fill = !p.riser && (S.fillN | 0) > (prev.fillN | 0);
+                if (S.muted && !prev.muted) p.scratch = true;
+                p.muted = !!S.muted;
+                const names = (S.chords && S.chords.length) ? S.chords.filter(c => CHORDS[c]) : ['Cmaj7'];
+                const cname = names[Math.max(0, bar) % names.length] || 'Cmaj7', ch = CHORDS[cname];
+                p.chord = S.chordsOn ? cname : null;
+                if (S.drums && !p.riser) {
+                    if (crashQ || p.drop) { p.d[0].push({ t: 'crash' }); crashQ = false; }
+                    const to = fill ? 8 : 16;
+                    P.k.forEach(i => p.d[i].push({ t: 'k' }));
+                    P.s.forEach(i => { if (i < to) p.d[i].push({ t: 's', v: 1 }); });
+                    P.g.forEach(i => { if (i < to) p.d[i].push({ t: 's', v: 0.3 }); });
+                    P.h.forEach(i => { if (i < to) p.d[i].push({ t: 'h' }); });
+                    P.ho.forEach(i => { if (i < to) p.d[i].push({ t: 'ho' }); });
+                    P.roll.forEach(i => { if (i < to) p.d[i].push({ t: 'h', n: 3 }); });
+                    if (fill) { crashQ = true; [['s', 0.6], ['s', 0.7], ['th'], ['th'], ['tm'], ['tm', 0, 2], ['tl'], ['tl', 0, 2]].forEach(([t, v, n], j) => {
+                        p.d[8 + j].push({ t, v: v || 1, n: n || 1 }); if (j === 4 || j === 7) p.d[8 + j].push({ t: 'k' }); }); }
+                }
+                if (p.drop) p.d[0].push({ t: 'boom' });
+                if (p.riser) for (let i = 0; i < 16; i++) if (i % 2 === 0 || i >= 8) p.d[i].push({ t: 's', v: 0.2 + 0.5 * i / 15, n: i >= 12 ? 2 : 1 });
+                if (S.chordsOn) {
+                    if (S.sync) [0, 3, 6, 10, 13].forEach((i, j, a) => { p.c[i] = { n: ch.n, dur: Math.min(2, (a[j + 1] ?? 16) - i) }; });
+                    else p.c[0] = { n: ch.n, dur: 16 };
+                }
+                if (S.bass && !p.riser) {
+                    const slap = slapBars > 0, hits = P.k.slice().sort((a, b) => a - b);
+                    hits.forEach((i, j) => { p.b[i] = { m: ch.r, dur: (hits[j + 1] ?? 16) - i, slap }; });
+                    if (slap) [2, 6, 10, 14].forEach(i => { if (!p.b[i]) p.b[i] = { m: ch.r + 12, dur: 1, slap, pop: true }; });
+                }
+                if (slapBars > 0) slapBars--;
+                if (S.melody) {
+                    const tones = ch.n.map(x => { let y = x; while (y < 72) y += 12; while (y > 84) y -= 12; return y; }).sort((a, b) => a - b), v = bar % 2;
+                    if (S.melody === 'legato') [[0, 2], [4, 1], [8, 3], [12, v ? 0 : 2]].forEach(([i, k]) => { p.m[i] = { m: tones[k], dur: 4, st: 'legato' }; });
+                    else if (S.melody === 'staccato') [1, 0, 1, 1, 0, 1, 1, v].forEach((on, j) => { if (on) p.m[j * 2] = { m: tones[[3, 0, 2, 1, 0, 3, 2, 1][j]], dur: 0.6, st: 'staccato' }; });
+                    else { const up = [0, 1, 2, 3, 2, 1, 0, 1]; for (let i = 0; i < 16; i++) p.m[i] = { m: tones[up[i % 8]] + (i >= 8 && v ? 12 : 0), dur: 0.9, st: 'arp' }; }
+                }
+                p.tempo = tempo;
+                return p;
+            }
+            function scheduleStep(t) {
+                if (step === 0) { bar++; let S = null; try { S = getSong ? getSong() : null; } catch (e) { S = null; } plan = planBar(S);
+                    if (plan.scratch) SND.scratch(t);
+                    if (plan.riserStart && !plan.muted) SND.riser(t, 60 / plan.tempo * 8); }
+                const sd = 60 / (plan.tempo || 90) / 4, sw = (PATTERNS[plan.tempo] || PATTERNS[90]).swing, tt = t + ((step % 4 === 2) ? sd * sw : 0);
+                if (!plan.muted) {
+                    plan.d[step].forEach(e => { const n = e.n || 1; for (let r = 0; r < n; r++) { const at = (e.t === 'h' ? tt : t) + r * sd / n;
+                        if (e.t === 'k') SND.k(at); else if (e.t === 's') SND.s(at, e.v); else if (e.t === 'h') SND.h(at, n > 1 ? 0.7 : 1); else if (e.t === 'ho') SND.ho(tt);
+                        else if (e.t === 'crash') SND.crash(at); else if (e.t === 'boom') SND.boom(at);
+                        else if (e.t === 'th' || e.t === 'tm' || e.t === 'tl') SND.tom(at, { th: 210, tm: 150, tl: 100 }[e.t], { th: 'tomHigh', tm: 'tomMid', tl: 'tomLow' }[e.t]); } });
+                    if (plan.c[step]) SND.chord(plan.c[step].n, t, plan.c[step].dur * sd);
+                    if (plan.b[step]) SND.bass(plan.b[step].m, t, plan.b[step].dur * sd * 0.95, plan.b[step].slap, plan.b[step].pop);
+                    if (plan.m[step]) { const m = plan.m[step]; SND.lead(m.m, tt, m.dur * sd * (m.st === 'legato' ? 0.98 : 1), m.st, lastMel); lastMel = m.m; }
+                }
+                if (delay) delay.delayTime.value = 0.75 * 60 / (plan.tempo || 90);
+                step = (step + 1) % 16; nextT += sd;
+            }
+            function tick() {
+                if (!ctx) return;
+                if (out) out.gain.value = vol();
+                if (nextT < ctx.currentTime - 0.5) nextT = ctx.currentTime + 0.05; // the tab slept: start fresh, no burst
+                while (nextT < ctx.currentTime + 0.12) scheduleStep(nextT);
+            }
+            function setDuck(on) { if (window._ewBeatPlaying === on) return; window._ewBeatPlaying = on; try { applyMusicVolumeMix(); } catch (e) {} }
+            return {
+                CHORDS, PATTERNS,
+                follow(fn) {
+                    getSong = fn;
+                    if (!ctx) init();
+                    try { ctx.resume(); } catch (e) {}
+                    if (!timer) { step = 0; bar = -1; seen = null; riserBars = 0; slapBars = 0; crashQ = false; nextT = ctx.currentTime + 0.06; timer = setInterval(tick, 25); }
+                    setDuck(true);
+                },
+                stop() {
+                    if (timer) clearInterval(timer); timer = null; getSong = null; plan = null;
+                    if (out && ctx) { const t = ctx.currentTime; out.gain.cancelScheduledValues(t); out.gain.setValueAtTime(out.gain.value, t); out.gain.linearRampToValueAtTime(0, t + 0.6);
+                        const o = out; setTimeout(() => { try { o.disconnect(); } catch (e) {} }, 900); out = null; ctx = null; }
+                    setDuck(false);
+                },
+                playing() { return !!timer; },
+                now() { return plan ? { bar: plan.bar, step: (step + 15) % 16, chord: plan.chord, tempo: plan.tempo } : null; } // for the 4-track strip's lights
+            };
+        })();
+        window.EWBeat = EWBeat;
+        window.ewBeatAudition = function(secs) {
+            const song = { tempo: 90, drums: true, chordsOn: true, chords: ['Cmaj7', 'Am7', 'Fmaj7', 'G7'], bass: true, melody: 'legato', fillN: 0, dropN: 0, dropLanded: 0, slapN: 0 };
+            EWBeat.follow(() => song);
+            setTimeout(() => { song.fillN++; }, 6000);
+            setTimeout(() => { EWBeat.stop(); }, (secs || 20) * 1000);
+            return song;
+        };
+        /* THE 4-TRACK'S DRIVER: once a second (no scene reads, a look at the battle's units only), a producer's song in a battle
+           starts the 4-track; none (no producer alive, the fight over, the menu) stops it. battle.js _mpSongToHear picks the song. */
+        setInterval(function() {
+            try {
+                const want = (typeof window._mpSongToHear === 'function') ? window._mpSongToHear() : null;
+                if (want && !EWBeat.playing()) EWBeat.follow(function() { return window._mpSongToHear(); });
+                else if (!want && EWBeat.playing()) EWBeat.stop();
+            } catch (e) {}
+        }, 1000);
