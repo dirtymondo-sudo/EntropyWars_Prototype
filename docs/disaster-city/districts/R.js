@@ -1078,11 +1078,12 @@ function build(ctx) {
         /* the hot dog stand on the corner of the avenue and the cross street */
         if (open(45, 15, 'P')) { prop('hot_dog_stand', gcc(45), gcc(15), 180); ctx.take(45, 15); }
         /* the power poles down the avenue's west kerb and behind the long walk, wires between */
+        /* THE WIRES (2026-11-24, mondo: the pole wires "SHOULD be slanted but they step up"): a `wire` row; the tool strings it in its levels pass
+           (bake-disaster-city.js THE STRUNG WIRES) from the crossarm of one pole to the next at the ground under EACH pole, every piece sheared along the
+           sag. Was: eight level pieces at heights from the plots' levels, a stair. */
         const wires = (A, B) => {
-            const dx = B.x - A.x, dz = B.z - A.z, L = Math.hypot(dx, dz), N = 8, dy = B.g - A.g, alongX = Math.abs(dx) > Math.abs(dz), P = [];
-            for (let i = 0; i < N; i++) { const t = (i + 0.5) / N, sag = 1.5 * 4 * t * (1 - t);
-                [-0.9, 0.9].forEach(o => P.push({ s: 'box', p: [r3(dx * t + (alongX ? 0 : o)), r3(9.9 + dy * t - sag), r3(dz * t + (alongX ? o : 0))], size: alongX ? [r3(L / N + 0.05), 0.05, 0.05] : [0.05, 0.05, r3(L / N + 0.05)], tint: 0x16181c })); }
-            out.push({ k: 'arch', id: 'dc:R-wire-' + n.poles + '-' + Math.round(A.x) + '_' + Math.round(A.z), x: A.x, z: A.z, y: 0, rot: 0, parts: P });
+            out.push({ k: 'arch', id: 'dc:R-wire-' + n.poles + '-' + Math.round(A.x) + '_' + Math.round(A.z), x: A.x, z: A.z, y: 0, rot: 0, parts: [],
+                wire: { to: [r3(B.x - A.x), r3(B.z - A.z)], top: 9.9, sag: 1.5, offs: [-0.9, 0.9], tint: 0x16181c } });
         };
         const line = (cells, face) => { let last = null; cells.forEach(c => { if (!open(c[0], c[1], '.P')) { return; } const q = { x: gcc(c[0]), z: gcc(c[1]), g: LV(c[0], c[1]) };
             prop('power_pole', q.x, q.z, face); ctx.take(c[0], c[1]); n.poles++; if (last && Math.hypot(q.x - last.x, q.z - last.z) < 40) wires(last, q); last = q; }); };

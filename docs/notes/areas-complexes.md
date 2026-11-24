@@ -15105,3 +15105,15 @@ mondo picked one name: the district that was "The Ritual Ground" (room `site_pre
 data.js HQ_ZONE_MAP. The old Bohemian Grove room was folded into it on 11-16, so they were always one place. A bake rerun keeps the name.
 The unit dossier's printed home now reads through `DOOR_TEXT.POINT_OF_ENTRY_NOW` (Mount Shasta is gone: The Mountains; the Lodge,
 Strip, Stadium and Downtown: Disaster City's districts); POINT_OF_ENTRY's own labels stay (they match the old site boards).
+
+## THE SLANTED MEDIANS + STRUNG WIRES — no stairs on a hill (2026-11-24, mondo: "the medians with the palm trees and the telephone pole wires that SHOULD be slanted but they step up")
+Same fault class as THE GROUNDED FENCES: a long thing drawn as level pieces, each at one height.
+- **Bayside's median** (`docs/disaster-city/districts/B.js` last(), THE SLANTED MEDIAN): each 0.875 m piece of the kerb and its sand top is SHEARED
+  (`shear: [rise, length]`, three-renderer.js `_hqArchGeometry`) from the ground at its start to the ground at its end, so the strip is one smooth slope.
+  The ramp rows under it (its collision) were already straight slopes.
+- **Pole wires in Disaster City** (Southside/Detroit, `districts/R.js`): a district file now writes a `wire: { to: [dx, dz], top, sag, offs, tint }` row on
+  one pole; bake-disaster-city.js THE STRUNG WIRES strings it in its levels pass from the crossarm height over the REAL ground under each pole (`LV.at`,
+  not the plot's level), 8 sheared pieces along the sag. Any new wire line in the city: use a `wire` row, never level boxes.
+- **Highway median barriers** (bake-route.js THE MEDIAN BARRIER, rows `hw:<route>:median:N`): `hug: true`, every corner on the ground under it
+  (data.js THE HUGGING ROWS), so a 14 m run slants with the road. The route kit's own pole wires (south-kit.js poleLine) were already sheared.
+- Proof: /mnt/project-files/slope-medians-wires/ (before/after).

@@ -1157,11 +1157,22 @@ if (LV.mixed) console.warn('THE LEVELS: squares under two buildings of different
         stepped++;
     });
     lvCount.roofFlights = stepped;
+    /* THE STRUNG WIRES (2026-11-24, mondo: pole wires "SHOULD be slanted but they step up"): a row with `wire: { to: [dx, dz], top, sag, offs, tint }`
+       (a district file's, standing on one pole, `to` = the next pole) gets its parts here, where the ground is known: each line runs from `top` m over
+       the ground under this pole to `top` m over the ground under the next (LV.at, the game's own slope arithmetic), hanging `sag` m at its middle, in
+       8 pieces each SHEARED from its start height to its end height (`shear`, three-renderer.js), so it is one smooth slanted curve, never a stair. */
+    const stringWire = f => { const W = f.wire, dx = W.to[0], dz = W.to[1], L = Math.hypot(dx, dz) || 1, ux = dx / L, uz = dz / L, NP = 8, top = W.top != null ? W.top : 9.9, sag = W.sag != null ? W.sag : 1.5;
+        const gA = LV.at(f.x, f.z), gB = LV.at(f.x + dx, f.z + dz), ry = r3(-Math.atan2(dx, dz) * 180 / Math.PI), seg = L / NP;
+        const hOf = t => (gA - f.y) + top + (gB - gA) * t - sag * 4 * t * (1 - t), P = [];
+        for (let i = 0; i < NP; i++) { const t0 = i / NP, t1 = (i + 1) / NP, tm = (t0 + t1) / 2, h0 = hOf(t0), rise = r3(hOf(t1) - h0);
+            (W.offs || [0]).forEach(o => P.push(Object.assign({ s: 'box', p: [r3(dx * tm - uz * o), r3(h0 - 0.025), r3(dz * tm + ux * o)], ry, size: [0.05, 0.05, r3(seg)], tint: W.tint != null ? W.tint : 0x16181c }, Math.abs(rise) > 0.001 ? { shear: [rise, r3(seg)] } : null))); }
+        f.parts = P; delete f.wire; };
     /* the architecture rows: each on its building's base (a row with no building of the plan: the ground under its origin, a hair inside its plot) */
     features.forEach(f => {
         if (f.k !== 'arch') return;
         const m = /(P\d\d-\d\d-B\d+)/.exec(f.id || ''), g = (m && LV.baseOf[m[1]] != null) ? LV.baseOf[m[1]] : LV.at(f.x + 0.01, f.z + 0.01);
         f.y = r3((typeof f.y === 'number' ? f.y : 0) + g);
+        if (f.wire) stringWire(f);
     });
     /* a prop hung at a height (a stacked container): the height is from the room's floor (three-renderer.js THE TIER HEIGHT), so the ground under it is added */
     props.forEach(q => { if (typeof q.y === 'number' && (q.y >= 1 || q.y <= -0.5)) q.y = r3(q.y + LV.at(q.x, q.z)); });
