@@ -1259,6 +1259,8 @@
                     addLog(`🦋 ${_ctStacks} Programmed stack${_ctStacks !== 1 ? 's' : ''} on the board feed the storm: +${ds.perProgrammedStack * _ctStacks} damage.`);
                 }
             }
+            /* 🎛 THE MUSIC PRODUCER's Bass Drop: +15 for every track and chord in his song, then the song changes (battle.js _mpDropLands) */
+            if (ds.mpDrop && typeof window !== 'undefined' && typeof window._mpDropLands === 'function') ds = window._mpDropLands(ds);
             const allUnits = state.units.filter(u => !u.dead);
             for (const tile of area) {
                 const hit = allUnits.find(u => u.x === tile.x && u.y === tile.y && (ds.friendlyFire || sidesHostile(u.player, ds.sourcePlayer)));

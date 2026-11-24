@@ -4709,7 +4709,7 @@ function _ewDeckScale() {
 /* a menu's name in the breadcrumb / on the plate */
 const _EWD_NAMES = { root: 'COMMAND', cubeTurn: 'TURN CUBE', spells: 'ABILITIES', items: 'ITEMS', switch: 'SWITCH', tacParty: 'TACTICS', tactics: 'TACTIC',
   entropy: 'ENTROPY', finTargets: 'FINISHER', pings: 'PING', orient: 'ORIENTATION', atkTargets: 'ATTACK', combo: 'COMBO',
-  build: 'BUILD', tuneFreq: 'FREQUENCY', aim: 'AIM', itemTargets: 'TARGET', spTargets: 'TARGET' };
+  build: 'BUILD', tuneFreq: 'FREQUENCY', bpPick: 'PICK', aim: 'AIM', itemTargets: 'TARGET', spTargets: 'TARGET' };
 function _ewdUnitById(id) {
   return ((typeof state !== 'undefined' && state && state.units) || []).find(x => String(x.id) === String(id) && !x.dead) || null;
 }
@@ -5482,7 +5482,7 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
     const _anc = _panels.slice(0, -1).filter(p => p.key !== 'root');
     const ancEls = _anc.map((p, k) => {
       const last = k === _anc.length - 1;
-      if (last && /^(tacParty|tuneFreq|aim\||combo|orient)/.test(p.key || '')) {
+      if (last && /^(tacParty|tuneFreq|bpPick|aim\||combo|orient)/.test(p.key || '')) {
         return h('div', { key: 'anc' + k, className: 'ewd-parent', title: 'Back to this menu', onClick: () => pressBack() },
           p.blades.map((b, i) => (b && !b.tbtn) ? mkB(b, i, false) : null));
       }
@@ -6794,6 +6794,27 @@ function _hrlgTuneBlades(unit, st) {
   return { title: { icon: '✦', text: st.selectedTool || 'Tune Frequency' }, blades };
 }
 
+/* 🎛 THE MUSIC PRODUCER (2026-11-24, mondo: "picker"): a bpPick row's choices (battle.js mpPickChoices: the tracks, the four
+   tempos, the seven chords + Syncopate, the melody styles). A pick files state._bpPick (per-viewer; online.js sends it with the
+   cast as bpPick) and re-arms the row for its CONFIRM, like Tune Frequency's. */
+function _hrlgBeatBlades(unit, st) {
+  const tool = st.selectedTool || '';
+  const sp = unit ? ((unit.spells || []).find(s => s && s.name === tool) || (unit._raceAbilities || []).find(s => s && s.name === tool)) : null;
+  const list = (sp && typeof window.mpPickChoices === 'function') ? window.mpPickChoices(unit, sp) : [];
+  const ICON = { track: '🎛', tempo: '🥁', chord: '🎹', melody: '🎵' };
+  const blades = list.map(c => ({
+    id: 'bp:' + c.value, icon: c.value === 'sync' ? '↯' : (ICON[sp && sp.bpPick] || '🎛'), label: c.label,
+    available: !!c.ok, selected: st._bpPick === c.value,
+    sub: c.now ? 'Now' : (c.ok ? c.sub : 'In the song'),
+    fire: () => {
+      if (!c.ok || typeof setTool !== 'function') return;
+      st._bpPick = c.value;
+      setTool('spell', tool);
+    },
+  }));
+  return { title: { icon: ICON[sp && sp.bpPick] || '🎛', text: tool || 'Pick' }, blades };
+}
+
 function _hrlgOrientationBlades(st) {
   // The current pick wears the selected highlight; while aiming, these two
   // blades stay up beside the aim panel so switching is ONE click (or R) —
@@ -8044,6 +8065,11 @@ function ActionMenu({ st, hidden }) {
     } else if (_aimSelf) {
       modeLabel = (st.selectedTool + ' — SELF CAST · CONFIRM TO CAST').toUpperCase();
       /* C1: Tune's picked frequency stays in view (and can be changed) while it waits for CONFIRM */
+      if (_aimSp.bpPick && st._bpPick != null) {   // 🎛 the producer's pick stays in view (and can be changed) while it waits for CONFIRM
+        const _bc = (typeof window.mpPickChoices === 'function' ? window.mpPickChoices(unit, _aimSp) : []).find(c => c.value === st._bpPick);
+        if (_bc) modeLabel = (st.selectedTool + ' → ' + _bc.label + ' · CONFIRM TO CAST').toUpperCase();
+        panels.push(_mkPanel('bpPick|' + st._bpPick, _hrlgBeatBlades(unit, st)));
+      }
       if (_aimSp.kind === 'tuneFrequency' && st._tunePick != null) {
         const _tf = (window.MIRROR_FREQS || [])[st._tunePick];
         if (_tf) modeLabel = (st.selectedTool + ' → ' + _tf.label + ' · CONFIRM TO CAST').toUpperCase();
@@ -8130,6 +8156,10 @@ function ActionMenu({ st, hidden }) {
   } else if (menuView === 'spellOrientation') {
     panels.push(_mkPanel('spells', _hrlgSpellBlades(unit, st)));
     panels.push(_mkPanel('orient', _hrlgOrientationBlades(st))); view = 'sub';
+  } else if (menuView === 'bpPick') {
+    panels.push(_mkPanel('spells', _hrlgSpellBlades(unit, st)));
+    panels.push(_mkPanel('bpPick', _hrlgBeatBlades(unit, st), cancelBlade)); view = 'sub';
+    modeLabel = ((st.selectedTool || 'PICK') + ' — PICK ONE').toUpperCase();
   } else if (menuView === 'tuneFreq') {
     panels.push(_mkPanel('spells', _hrlgSpellBlades(unit, st)));
     panels.push(_mkPanel('tuneFreq', _hrlgTuneBlades(unit, st), cancelBlade)); view = 'sub';

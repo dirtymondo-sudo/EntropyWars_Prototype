@@ -399,6 +399,7 @@ const FINISHERS = {
     'centaur':        { id: 'fin_centaur', name: 'Run Down', glyph: '🏹', type: 'anomaly', sig: 'splitTheArrow', built: true, tagline: 'NEVER MISSES ON THE RUN', desc: 'Hooves on the horizon, a bow drawn at a full gallop, and one arrow that has been waiting for the victim the whole ride.' },   // 2026-11-24 THE CENTAUR (borrows Robin Hood's signature)
     'cheerleader':    { id: 'fin_cheerleader', name: 'Pyramid Collapse', glyph: '📣', type: 'human', sig: 'pileOn', built: true, tagline: 'GO, FIGHT, WIN', desc: 'The whole squad runs on from the sidelines, builds the pyramid on top of the victim and holds the pose for the cameras.' },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD (borrows the pileOn staging)
     'point guard':    { id: 'fin_point_guard', name: 'Posterized', glyph: '🏀', type: 'human', sig: 'motionCarries', built: true, tagline: 'AND ONE', desc: 'A hoop drops out of the sky, he takes off from the free-throw line and slams the victim through it, ball and all.' },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD (borrows the motionCarries staging)
+    'music producer': { id: 'fin_music_producer', name: 'Platinum Record', glyph: '💿', type: 'human', sig: 'farewellTour', built: true, tagline: 'GOING PLATINUM', desc: 'He drops the needle on one last track. A stage stands up round the victim, the lights find them, the whole song plays its drop, and when the lights come back up a gold record hangs where they stood.' },   // 2026-11-24 THE MUSIC PRODUCER (borrows the Popstar's stage)
     'streamer':       { id: 'fin_streamer', name: 'Banned', glyph: '🎮', type: 'anomaly', sig: 'corruptedSave', built: true, tagline: 'ACCOUNT SUSPENDED', desc: 'The chat floods, the mods wake up, and ACCOUNT SUSPENDED stamps down over the victim until nothing is left on the stream.' },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit) (borrows the corruptedSave staging)
     'vtuber':         { id: 'fin_vtuber', name: 'Graduation', glyph: '🎀', type: 'anomaly', sig: 'farewellTour', built: true, tagline: 'END OF STREAM', desc: 'She waves goodbye to the chat, the stream cuts to a pixel heart, and the victim\'s name card reads END OF STREAM.' },   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look) (borrows the farewellTour staging)
     'cameraman':      { id: 'fin_cameraman', name: "That's a Wrap", glyph: '🎥', type: 'human', sig: 'blurryFootage', built: true, tagline: 'CUT. PRINT.', desc: 'The light goes red, the lens racks in and the last frame is the victim, held forever.' },   // 2026-11-19 THE NEW RACES 3 (borrows the blurryFootage staging)
@@ -667,6 +668,7 @@ const RACE_ELEMENT_AFFINITY = {
     'centaur': { earth: 'resist', ice: 'weak' },   // 2026-11-24 THE CENTAUR: four hooves on the ground; a horse on ice
     'cheerleader': { sonic: 'resist', poison: 'weak' },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: she out-yells anything; a whole season of energy drinks
     'point guard': { wind: 'resist', ice: 'weak' },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: quick on his feet; the cold gets in his knees
+    'music producer': { sonic: 'resist', water: 'weak' },   // 2026-11-24 THE MUSIC PRODUCER: he lives in the loud; water and his gear do not mix
     'streamer': { sonic: 'resist', light: 'weak' },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit): the headset is on; never sees the sun
     'vtuber': { lightning: 'resist', water: 'weak' },   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look): lives on current; water shorts the projectors
     'cameraman': { light: 'resist', water: 'weak' },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models): the flash is his; water kills the camera
@@ -3076,6 +3078,10 @@ const RACE_PROFILES = {
         label: 'Point Guard',
         types: ['human']
     },
+    'music producer': {   // 2026-11-24 THE MUSIC PRODUCER (mondo's own image; his plan: the song he builds turn by turn)
+        label: 'Music Producer',
+        types: ['human']
+    },
     'hollow': {   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name)
         label: 'The Hollow',
         types: ['anomaly', 'alien']
@@ -3901,6 +3907,10 @@ const PASSIVE_DEFS = {
         id: 'pgAssist', icon: '🏀', name: 'Assist',
         desc: 'Every enemy he hits with a basic attack or a spell is left Marked for 2 rounds, for his team: the next physical hit an ALLY lands on it deals bonus damage (his own hits never cash it).',
     },
+    mpOnLoop: {   // 2026-11-24 THE MUSIC PRODUCER: battle.js THE MUSIC PRODUCER (_mpRoundEnd)
+        id: 'mpOnLoop', icon: '🎛', name: 'On Loop',
+        desc: 'His song keeps him going: at the end of each round he gets back 8 MP for every track playing in it (up to 32).',
+    },
     wnTheForecast: {   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: battle.js THE WEATHERMAN + NEWS ANCHOR
         id: 'wnTheForecast', icon: '☂', name: 'The Forecast',
         desc: 'The Weatherman. Any weather he calls lasts 1 round longer, and the weather never hurts him or leaves him Wet: the umbrella goes up.',
@@ -4008,6 +4018,7 @@ const RACE_PASSIVES = {
     'centaur':       ['cenHitAndRun'],   // 2026-11-24 THE CENTAUR
     'cheerleader':   ['chSpirit'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
     'point guard':   ['pgAssist'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
+    'music producer': ['mpOnLoop'],   // 2026-11-24 THE MUSIC PRODUCER
 };
 
 /* 💔 Broken (STATUS_DEFS.broken, 2026-10-09): while it lasts the unit has no passives at all. Raw status read — this is a
@@ -4084,7 +4095,7 @@ const RACE_MERGED = { 'nun': { race: 'priest', gender: 'female' } };
 /* 👁🌑 THE REALM WINDOW: races that SEE a Shadow Realm pair on their own turns (they cannot touch it). A projecting
    spirit both sees and touches (battle.js unitSeesRealm / unitCrossesRealm). */
 const REALM_SIGHT_RACES = ['ghost', 'shadow entity'];
-const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber', 'pharaoh', 'deep sea diver', 'gambler', 'hacker', 'monk', 'shogun', 'cameraman', 'mechanic', 'janitor', 'trucker', 'gladiator', 'farmer', 'jellyfish ufo', 'bear', 'rat', 'butterfly girl', 'plastic surgeon', 'monarch', 'abomination', 'hollow', 'weatherman', 'cheerleader', 'point guard', 'centaur'];
+const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber', 'pharaoh', 'deep sea diver', 'gambler', 'hacker', 'monk', 'shogun', 'cameraman', 'mechanic', 'janitor', 'trucker', 'gladiator', 'farmer', 'jellyfish ufo', 'bear', 'rat', 'butterfly girl', 'plastic surgeon', 'monarch', 'abomination', 'hollow', 'weatherman', 'cheerleader', 'point guard', 'centaur', 'music producer'];
 /* THE COMING RACES (2026-11-19, mondo: "wire them in the game at least in the relation web, give them sprite ai portraits ... my associate
    [does] their spell and combat plan on another account"): races whose model, sprite and name are in (sprites.js RACE_MODELS_3D,
    RACE_PROFILES) but whose kit is not. They are NOT playable: the Relationship Web lists them (docs/plans/story-web/build/fresh.js).
@@ -4117,6 +4128,7 @@ const RACE_KITS = {
     'centaur': { range: 4 },   // 2026-11-24 THE CENTAUR: the bow
     'cheerleader': { range: 1 },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: the basic attack is a high kick
     'point guard': { range: 3 },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: the basic attack is a chest pass with his basketball (it flies and comes back to his hands)
+    'music producer': { range: 2 },   // 2026-11-24 THE MUSIC PRODUCER: the basic attack is a pad hit; the sound wave reaches
     'streamer': { range: 1 },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit): the basic attack is a keyboard slam
     'vtuber': { range: 2 },   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look): the basic attack is a pixel heart bolt (magic: her Heart Bolt passive)
     'gambler': { range: 2 },   // 2026-11-19 THE NEW RACES 4: the basic attack is a flicked casino chip
@@ -4267,6 +4279,7 @@ const RACE_CLASS = {
     'centaur': 'ranged',   // 2026-11-24 THE CENTAUR: a horse archer
     'cheerleader': 'support',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
     'point guard': 'ranged',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
+    'music producer': 'specialist',   // 2026-11-24 THE MUSIC PRODUCER: he builds the song, the song does the work
     'streamer': 'specialist',   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
     'vtuber': 'caster',   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
     'cameraman': 'ranged',   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
@@ -4352,6 +4365,7 @@ const RACE_TERRAIN_PREFERENCE = {
     'centaur': 'grass',   // 2026-11-24 THE CENTAUR: open ground to run on
     'cheerleader': 'urban',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: Disaster City University
     'point guard': 'urban',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: Disaster City's Sports district
+    'music producer': 'urban',   // 2026-11-24 THE MUSIC PRODUCER: Disaster City (Mid Records)
     'streamer': 'urban',   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
     'vtuber': 'urban',   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
     'cameraman': 'urban',   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
@@ -4773,6 +4787,7 @@ const RACE_BASE_STATS = {
     'centaur':            { hp:  900, mp: 150, atk: 118, def:  78, mdef:  62, int:  95, vision: 5, crt: 20, spd: 128 },   // 2026-11-24 THE CENTAUR — first pass between Robin Hood (ranged) and the Unicorn (a horse's body)
     'cheerleader':        { hp: 1020, mp: 210, atk:  95, def:  85, mdef: 120, int: 140, vision: 3, crt: 20, spd: 125 },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — first pass: a quick support who kicks
     'point guard':        { hp:  940, mp: 140, atk: 112, def:  78, mdef:  62, int:  40, vision: 4, crt: 26, spd: 150 },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — first pass on the ranged median, the fastest hands on the court
+    'music producer':     { hp:  980, mp: 230, atk:  60, def:  80, mdef: 120, int: 160, vision: 3, crt: 18, spd: 105 },   // 2026-11-24 THE MUSIC PRODUCER — first pass on the specialist median
     'streamer':           { hp:  990, mp: 200, atk: 125, def:  80, mdef: 100, int: 142, vision: 3, crt: 25, spd: 110 },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit) — first pass: a skirmisher who banks a crowd; LAB LOOP 11-22 PASS 4: HP 950→990, ATK 120→125, M.ATK 130→142 (44.9% over 244 games)
     'vtuber':             { hp:  820, mp: 240, atk:  30, def:  70, mdef: 150, int: 185, vision: 3, crt: 20, spd: 100 },   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look) — first pass: a frail caster who is never where she seems
     'cameraman':          { hp:  900, mp: 140, atk: 105, def:  78, mdef:  70, int:  60, vision: 5, crt: 26, spd: 125 },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models) — first pass on the ranged median (vision 5: he sees everything)
@@ -4970,6 +4985,7 @@ const RACE_PHYSIQUE = {
     'centaur':             { h: 2.40, w: 480 },   // 2026-11-24 THE CENTAUR: a horse with a rider's body on it, head to hoof
     'cheerleader':         { h: 1.66, w: 55 },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
     'point guard':         { h: 1.88, w: 84 },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
+    'music producer':      { h: 1.80, w: 74 },   // 2026-11-24 THE MUSIC PRODUCER
     'streamer':            { h: 1.76, w: 70 },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
     'vtuber':              { h: 1.64, w: 50 },   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
     'cameraman':           { h: 1.78, w: 78 },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
@@ -11404,6 +11420,36 @@ const RACE_ABILITIES = {
           element: 'physical', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 145, range: 3, chargeToTarget: true,
           statusEffects: [{ id: 'stagger', duration: 1 }],
           desc: 'Takes off from 3 squares out. Leaps onto a Single Enemy within 3 and dunks on it for MEDIUM physical damage, leaving it Staggered for 1 round. Cooldown: 2 rounds.' },
+    ],
+    'music producer': [
+        /* THE MUSIC PRODUCER (2026-11-24, mondo's own image + his plan: "I want him to build a beat progressively. He could add a beat,
+           chords, bass, and melody ... just the notes in C major"; the sounds approved in the Beat Lab test page, project files
+           music-producer/). THE SONG lives on him (unit._song: tempo, the four tracks, up to 4 chords, the melody style) and really plays
+           (audio.js THE PRODUCER'S 4-TRACK; you hear the song of the side whose turn it is). Every track playing helps the units in his
+           EARSHOT (3 squares) at the end of each round; a stun, sleep, freeze or silence on him scratches the record (no song that round).
+           `bpPick` rows open THE PICKER first (hud.js _hrlgBeatBlades, like Tune Frequency's): state._bpPick, sent online as bpPick;
+           a cast with no pick (the CPU) takes battle.js _mpAutoPick. battle.js "THE MUSIC PRODUCER"; notes champions-combat.md. */
+        { id: 'mpLayItDown', name: 'Lay It Down', tier: 1, families: ['beatmaking'], cost: 20, apCost: 1, spellType: 'human',
+          element: 'sonic', type: 'buff', kind: 'buff', range: 0, bpPick: 'track',
+          desc: 'He lays a new track into his song: pick Drums, Chords, Bass or Melody. Every track playing helps the units in his earshot (3 squares) at the end of each round: Drums by the tempo, Chords heal, Bass powers his hits, Melody by its style.' },
+        { id: 'mpBeatSwitch', name: 'Beat Switch', tier: 1, families: ['beatmaking'], cost: 20, apCost: 1, spellType: 'human',
+          element: 'sonic', type: 'buff', kind: 'buff', range: 0, bpPick: 'tempo', mpNeeds: 'drums',
+          desc: 'Pick a new tempo for the drums. 90 Hip-hop: allies in earshot take 15% less damage. 120 Pop: allies in earshot get 15 MP each round. 140 Trap: enemies in earshot are Slowed. 160 Fast: allies in earshot are Quickened, but he takes 15% more damage. Needs the drums.' },
+        { id: 'mpAddChord', name: 'Add Chord', tier: 2, families: ['beatmaking'], cost: 30, apCost: 1, spellType: 'human',
+          element: 'sonic', type: 'buff', kind: 'buff', range: 0, bpPick: 'chord', mpNeeds: 'chords',
+          desc: 'Pick the next chord of the progression (up to 4; a fifth replaces the oldest), or Syncopate: the chords move off the beat and every enemy in earshot is Discorded for 1 round. Each round the chords heal allies in earshot: 10, +10 for every chord. Needs the chords.' },
+        { id: 'mpMelodyStyle', name: 'Melody Style', tier: 2, families: ['beatmaking'], cost: 30, apCost: 1, spellType: 'human',
+          element: 'sonic', type: 'buff', kind: 'buff', range: 0, bpPick: 'melody', mpNeeds: 'melody',
+          desc: 'Pick how the melody plays. Legato: allies in earshot heal 20 more each round. Staccato: allies in earshot are Focused (+crit) each round. Arpeggio: each round the notes run over up to 3 enemies in earshot, 30 sonic damage each. Needs the melody.' },
+        { id: 'mpSlapBass', name: 'Slap Bass', tier: 2, families: ['beatmaking'], cost: 40, apCost: 1, cooldownRounds: 1, spellType: 'human',
+          element: 'sonic', type: 'damage', kind: 'displacement', damageType: 'magic', dmg: 100, range: 2, displaceDistance: 1, collisionBonus: 30, mpNeeds: 'bass',
+          desc: 'He slaps the low string. Deals WEAK sonic magic damage to a Single Enemy within 2 and knocks it 1 square back; the bass line goes slap for 2 bars. Needs the bass. Cooldown: 1 round.' },
+        { id: 'mpDrumFill', name: 'Drum Fill', tier: 3, families: ['beatmaking'], cost: 55, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          element: 'sonic', type: 'damage', kind: 'multiHit', damageType: 'magic', range: 3, hitDamages: [35, 35, 40, 50], mpNeeds: 'drums',
+          desc: 'Snare, snare, down the toms, crash. Deals MEDIUM sonic magic damage to a Single Enemy within 3 across 4 hits. Needs the drums. Cooldown: 2 rounds.' },
+        { id: 'mpBassDrop', name: 'Bass Drop', tier: 4, families: ['beatmaking'], cost: 90, apCost: 1, cooldownRounds: 4, spellType: 'human',
+          element: 'sonic', type: 'damage', kind: 'delayed', damageType: 'magic', dmg: 120, range: 4, aoeRadius: 2, delayTurns: 1, mpDrop: true, mpNeeds: 'bass',
+          desc: 'The build-up: the drums and bass cut out and a riser climbs (the chords and melody keep going). At the end of the round the drop lands on the 5×5 within 4: HEAVY sonic magic damage, +15 for every track and every chord in his song. Then the drums and bass come back in, and the chords and melody are gone. Needs the bass. Cooldown: 4 rounds.' },
     ],
     'streamer': [
         /* THE VIEWERS (2026-11-18, the Streamer + the E-Girl; mondo OK'd the kit 11-18): a count from 0 to 10 on the unit
@@ -22099,6 +22145,7 @@ const EW_RACE_BIOMES = {
     'centaur': ['ancient', 'forest'],   // 2026-11-24 THE CENTAUR — Mount Olympus and its woods (Claude's pick: mondo named no home)
     'cheerleader': ['urban'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — Disaster City University (the DCU Aftershocks)
     'point guard': ['urban'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — Disaster City's Sports district
+    'music producer': ['urban'],   // 2026-11-24 THE MUSIC PRODUCER — Disaster City
     'streamer': ['neon_city', 'urban'],   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit) — The Internet's stage
     'vtuber': ['neon_city', 'urban'],   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look) — The Internet, district V
     'cameraman': ['urban', 'forest', 'ranch'],   // 2026-11-19 THE NEW RACES 3 (mondo picked the models) — Disaster City, The Woods, the Lake
@@ -22784,6 +22831,7 @@ const RACE_TREE = {
     'centaur':       ['cenHoofStomp', 'cenParthianShot', ['cenWildHerd', 'raceRideBy'], 'cenSagittarius'],   // 2026-11-24 THE CENTAUR
     'cheerleader':   ['chHighKick', 'chReadyOk', 'chBasketToss', 'chGimme'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: her own four
     'point guard':   ['pgChestPass', 'pgCrossover', 'pgAlleyOop', 'pgBuzzerBeater'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: his own four
+    'music producer': ['mpLayItDown', ['mpAddChord', 'mpMelodyStyle'], 'mpDrumFill', 'mpBassDrop'],   // 2026-11-24 THE MUSIC PRODUCER (Beat Switch + Slap Bass ride RACE_DEFAULT_KIT_EXTRAS)
     'streamer':      ['nrClipIt', ['nrUwu', 'nrRageQuit'], 'nrDonationGoal', 'nrRaid'],   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit): the rung 2 pair is one of each version (RACE_GENDER_SPELLS)
     'vtuber':        ['nrKawaiiBeam', ['nrHoloProjector', 'nrSceneChange'], 'nrLoFiLoop', 'nrCollabStream'],   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
     'cameraman':     ['nrZoomIn', ['nrTiltShift', 'nrPhotographicEvidence'], 'nrMoneyShot', 'nrSayCheese'],   // 2026-11-19 THE NEW RACES 3
@@ -24962,6 +25010,16 @@ const SPELL_FAMILIES = {
         desc: 'The point guard\'s game: passes off the chest, crossovers that break ankles, the lob for a team-mate and the shot at the buzzer.',
         unique: 'point guard',
         identity: { who: ['Point Guard', 'Floor General', 'Baller'], adj: ['Quick', 'Smooth', 'Clutch'], look: ['a purple and gold jersey', 'a headband', 'a basketball'], vibe: ['breaks ankles', 'finds the open man'] }
+    },
+    beatmaking: {   // 2026-11-24 THE MUSIC PRODUCER — the Music Producer's own
+        id: 'beatmaking',
+        name: 'Beat Making',
+        glyph: '🎛',
+        color: '#e0303a',
+        kind: 'signature',
+        desc: 'A song built one track at a time on a grey beat pad: drums, chords, bass and melody, all in C major. Every track playing helps his side; the bass is how he spends it.',
+        unique: 'music producer',
+        identity: { who: ['Music Producer', 'Beatmaker', 'Studio Rat'], adj: ['Locked In', 'On Beat', 'Platinum'], look: ['a black hoodie', 'headphones round his neck', 'a grey beat pad'], vibe: ['builds the song turn by turn', 'drops the bass on you'] }
     },
     newsroom: {   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR — the Weatherman's and the News Anchor's own
         id: 'newsroom',
@@ -27437,6 +27495,7 @@ const RACE_FAMILIES = {
     'centaur': ['centaur', 'archery', 'horsebackriding', 'athleticism'],   // 2026-11-24 THE CENTAUR (the idea list's own three)
     'cheerleader': ['cheer', 'teamwork', 'athleticism', 'stagepresence'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
     'point guard': ['basketball', 'athleticism', 'teamwork', 'stagepresence'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
+    'music producer': ['beatmaking', 'sonic', 'stagepresence', 'maincharacter'],   // 2026-11-24 THE MUSIC PRODUCER
     'streamer': ['streaming', 'stagepresence', 'computerhacking', 'internetaddiction'],   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
     'vtuber': ['vtubing', 'stagepresence', 'computerhacking', 'internetaddiction'],   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
     'cameraman': ['cameraman', 'stagepresence', 'eyesight', 'internetaddiction'],   // 2026-11-19 THE NEW RACES 3
@@ -28097,6 +28156,7 @@ const CAMPAIGN_RACE_PRICES = {
   'centaur': 450,   // 2026-11-24 THE CENTAUR
   'cheerleader': 400,   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
   'point guard': 400,   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
+  'music producer': 400,   // 2026-11-24 THE MUSIC PRODUCER
   'streamer': 400,   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
   'vtuber': 400,   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
   'cameraman': 350,   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
@@ -30109,6 +30169,7 @@ const DOOR_TEXT = {
         'weatherman': 'Downtown',   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR (the news office in Hero Plaza)
         'centaur': 'Mount Olympus',   // 2026-11-24 THE CENTAUR (Claude's pick: with the Cyclops and the Minotaur)
         'cheerleader': 'Downtown', 'point guard': 'Downtown',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD (University; the Sports district)
+        'music producer': 'Downtown',   // 2026-11-24 THE MUSIC PRODUCER (Mid Records)
         'gambler': 'The Strip', 'hacker': 'Downtown', 'monk': 'The Bermuda Triangle', 'shogun': 'The Bermuda Triangle',   // 2026-11-19 THE NEW RACES 4 (the gambler lives in the Western Town too: HQ_AREA_ENCOUNTERS; the monk + the shogun on the Volcano Island)
         'cameraman': 'Downtown', 'mechanic': 'Downtown', 'janitor': 'Downtown', 'trucker': 'Downtown',   // 2026-11-19 THE NEW RACES 3
        
@@ -100835,6 +100896,7 @@ const HQ_NPC_TEMPERS = {
         'weatherman': 'coward',   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: the news reports the fight, it does not join it
         'centaur': 'territorial',   // 2026-11-24 THE CENTAUR: wild, warns once, then the hooves
         'cheerleader': 'coward', 'point guard': 'opportunist',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
+        'music producer': 'opportunist',   // 2026-11-24 THE MUSIC PRODUCER
         'zombie': 'brute', 'shadow entity': 'brute', 'werewolf': 'brute', 'wendigo': 'brute', 'ghoul': 'brute', 'flesheater': 'brute',
     },
     /* THE GROUPS: races who stand up for each other (no factions). Units of ONE race are a group by themselves (`sameRace`). A unit is in one
@@ -104259,6 +104321,7 @@ function hqPartyDefaultJob(race) { return UNIT_CLASS; }
    (mondo 11-24: "you gotta give him a slam dunk ability too"). */
 const RACE_DEFAULT_KIT_EXTRAS = {
     'point guard': ['pgSlamDunk'],
+    'music producer': ['mpBeatSwitch', 'mpSlapBass', 'mpMelodyStyle'],   // 2026-11-24 THE MUSIC PRODUCER: the rest of his eight moves fit his 7 slots / 16 SP
 };
 function raceDefaultKit(race, lead, gender) {   // `gender` (2026-10-27): RACE_GENDER_SPELLS
     const rung = (typeof getRaceTreeSpells === 'function') ? (getRaceTreeSpells(race, UNIT_CLASS, gender) || []) : [];

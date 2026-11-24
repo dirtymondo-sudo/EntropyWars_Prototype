@@ -157,6 +157,7 @@ const EW_ASSET_MOVES = [
   ['Assets/Sprites/Races/weatherman/', 'Assets/characters/races/weatherman/'],   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR
   ['Assets/Sprites/Races/cheerleader/', 'Assets/characters/races/cheerleader/'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
   ['Assets/Sprites/Races/point_guard/', 'Assets/characters/races/point_guard/'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
+  ['Assets/Sprites/Races/music_producer/', 'Assets/characters/races/music_producer/'],   // 2026-11-24 THE MUSIC PRODUCER
   ['Assets/Sprites/Races/librarian/', 'Assets/characters/races/librarian/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/televangelist/', 'Assets/characters/races/televangelist/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/influencer/', 'Assets/characters/races/influencer/'],   // 2026-11-17 THE NEW RACES 2
@@ -615,6 +616,7 @@ const RACE_SPRITE_GENDERS = {
   'centaur': 'both',   // 2026-11-24 THE CENTAUR: a male (chestnut) and a female (dapple grey), one race
   'cheerleader': 'female',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
   'point guard': 'male',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
+  'music producer': 'male',   // 2026-11-24 THE MUSIC PRODUCER
   'vtuber': 'female',   // 2026-11-18 THE V-TUBER (female only for now, mondo 11-18)
   'lifeguard': 'both',   // 2026-11-16; the man 2026-11-17
   'atlantean': 'both',
@@ -798,6 +800,7 @@ const _CHARACTER_SPRITES = {
   'centaur': `${_S}/Races/centaur/male/centaur_m_px.png`,   // 2026-11-24 THE CENTAUR — 128x128 pixel sprite (Sprite AI restyle of his built model)
   'cheerleader': `${_S}/Races/cheerleader/female/cheerleader_px.png`,   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — 128x128 pixel sprite (Sprite AI restyle of her Meshy concept)
   'point guard': `${_S}/Races/point_guard/male/point_guard_px.png`,   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — 128x128 pixel sprite (Sprite AI restyle of his Meshy concept)
+  'music producer': `${_S}/Races/music_producer/male/music_producer_px.png`,   // 2026-11-24 THE MUSIC PRODUCER — 128x128 pixel sprite (Sprite AI restyle of his Meshy concept)
   'plastic surgeon': `${_S}/Races/plastic_surgeon/male/plastic_surgeon_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'librarian': `${_S}/Races/librarian/female/librarian_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'televangelist': `${_S}/Races/televangelist/male/televangelist_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
@@ -936,6 +939,7 @@ const _NEW_MALE_SPRITES = {
   'weatherman': `${_S}/Races/weatherman/male/weatherman_px.png`,   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR
   'centaur': `${_S}/Races/centaur/male/centaur_m_px.png`,   // 2026-11-24 THE CENTAUR
   'point guard': `${_S}/Races/point_guard/male/point_guard_px.png`,   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
+  'music producer': `${_S}/Races/music_producer/male/music_producer_px.png`,   // 2026-11-24 THE MUSIC PRODUCER
   'streamer': `${_S}/Races/streamer/male/streamer_m_px.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of his 3D model's front render)
   'skater': `${_S}/Races/skater/male/skater_m_px.png`,   // 2026-11-17 — the male skater (Meshy model + Sprite AI restyle of its front render)
   'lifeguard': `${_S}/Races/lifeguard/male/lifeguard_m_px.png`,   // 2026-11-17 — the male lifeguard (same way)
@@ -2890,6 +2894,15 @@ const RACE_MODELS_3D = {
       model: 'https://cdn.entropywars.net/Assets/characters/races/point_guard/male/Meshy_AI_point_guard_Running.glb',
       heightRatio: 1.03, basicAttackKind: 'throw', weaponKind: 'throw', weaponProj: 'proj-basketball',
       procRig: 'unitGear', gear: { held: { url: 'https://cdn.entropywars.net/Assets/characters/gear/held/basketball.glb', len: 0.13, grip: 0.5 } },
+    }),
+  },
+  'music producer': {   // 2026-11-24 THE MUSIC PRODUCER: Meshy image-to-3d + rigging from mondo's own image (sources: project files
+                        // unit-concepts-20261124b/models/music_producer*). THE UNIT GEAR holds his grey beat pad (pad B, the retro MPC; its texture
+                        // cut to 1024 px, project files music-producer/models/beat_pad.glb) in his left hand; the basic attack is a pad hit (a sound wave).
+    male: _mkUAL('music_producer/male', 'music_producer', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/music_producer/male/Meshy_AI_music_producer_Running.glb',
+      heightRatio: 1.0, basicAttackKind: 'magic',
+      procRig: 'unitGear', gear: { held: { url: 'https://cdn.entropywars.net/Assets/characters/gear/held/beat_pad.glb', hand: 'LeftHand', len: 0.22, fit: 'max', grip: 0.5 } },
     }),
   },
   'plastic surgeon': {
@@ -7694,6 +7707,7 @@ const RACE_SPRITES = {
   'centaur': `${_S}/Races/centaur/male/centaur_m_px.png`,   // 2026-11-24 THE CENTAUR
   'cheerleader': `${_S}/Races/cheerleader/female/cheerleader_px.png`,   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — 128x128 pixel sprite (Sprite AI restyle of her Meshy concept)
   'point guard': `${_S}/Races/point_guard/male/point_guard_px.png`,   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — 128x128 pixel sprite (Sprite AI restyle of his Meshy concept)
+  'music producer': `${_S}/Races/music_producer/male/music_producer_px.png`,   // 2026-11-24 THE MUSIC PRODUCER — 128x128 pixel sprite (Sprite AI restyle of his Meshy concept)
   'plastic surgeon': `${_S}/Races/plastic_surgeon/male/plastic_surgeon_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'librarian': `${_S}/Races/librarian/female/librarian_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'televangelist': `${_S}/Races/televangelist/male/televangelist_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)

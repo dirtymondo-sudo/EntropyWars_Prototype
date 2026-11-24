@@ -672,8 +672,11 @@
                 partnerId: _tcPick ? _tcPick.id : null,
                 pickX: _tcDoorPick ? _tcDoorPick.x : null, pickY: _tcDoorPick ? _tcDoorPick.y : null,
                 /* Tune Frequency (mondo 10-29, C1): the frequency the guest picked in the Tune sub-menu */
-                tuneTo: (state._tunePick != null) ? state._tunePick : null });
+                tuneTo: (state._tunePick != null) ? state._tunePick : null,
+                /* 🎛 THE MUSIC PRODUCER (2026-11-24): the guest's picker choice (a track, a tempo, a chord, a melody style) */
+                bpPick: (state._bpPick != null) ? state._bpPick : null });
             state._tunePick = null;
+            state._bpPick = null;
             if (_tcPick || _tcDoorPick) state._spellPick1 = null;
             if (_heldPickStep) {
                 /* THE GUEST HELD PICK: nothing resolved yet: the spell stays armed (the board is the drum) */
@@ -2335,9 +2338,11 @@
                                     state._spellPick1 = null;
                                 }
                                 state._tunePick = (data.tuneTo != null && isFinite(data.tuneTo)) ? (data.tuneTo | 0) : null;
+                                state._bpPick = (data.bpPick != null && (typeof data.bpPick === 'number' || /^[A-Za-z0-9]{1,12}$/.test(String(data.bpPick)))) ? data.bpPick : null;   // 🎛 the guest's pick (checked again in _mpAfterCast)
                                 doSpell(engUnit, data.x, data.y, data.z);
                                 state._spellPick1 = null;
                                 state._tunePick = null;
+                                state._bpPick = null;
                                 break;
                             }
                             case 'doMove': doMove(engUnit, data.x, data.y, data.z); break;
@@ -6628,7 +6633,7 @@
                     /* two-click casts (wave B): the first pick is per-viewer
                        aiming UI — the guest's own pick must survive the sync */
                     _spellPick1: 1,
-                    _tunePick: 1,   // Tune Frequency's picked frequency (mondo 10-29, C1): per-viewer menu pick, travels as the action's tuneTo
+                    _tunePick: 1, _bpPick: 1,   // Tune Frequency's picked frequency (mondo 10-29, C1): per-viewer menu pick, travels as the action's tuneTo
                     /* an AoE armed from a quick menu places with no target
                        list (hud.js _hrlgArmAoePlacement) — per-viewer UI */
                     _quickAoePlace: 1,
@@ -7552,7 +7557,7 @@
                 // two-click casts (wave B): the first pick is per-viewer aiming UI
                 '_spellPick1',
                 // Tune Frequency's picked frequency (C1): per-viewer menu pick
-                '_tunePick',
+                '_tunePick', '_bpPick',
                 // quick-menu AoE placement: no target list (per-viewer aiming UI)
                 '_quickAoePlace', '_quickAoeStage', '_quickAoeFrom',
                 // the Tab spell-target cycle (per-viewer aiming UI; its rows hold unit objects)
