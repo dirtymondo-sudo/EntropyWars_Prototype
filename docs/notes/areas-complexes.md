@@ -15155,3 +15155,10 @@ Same fault class as THE GROUNDED FENCES: a long thing drawn as level pieces, eac
   "dont widen it if it doesnt need it, just trying to respect the battle grid"). A median arch row carries `median: [x0, z0, x1, z1]` (off its origin);
   three-renderer.js road marks (THE SPLIT ROAD) drop the centre dashes along it and draw a dashed lane line down the middle of each side, w/4 off the
   middle = on the square line between that side's two squares, from the median's first end to its last.
+
+## THE STAIR IS CLEAR — no hedge or fence over a flight (2026-11-24, mondo on the same University stair: "can you fix this hedge going into it as well")
+A Disaster City boundary run (THE BOUNDARIES) stops at the square a crossing's flight stands on, so its end met the flight's side exactly, and a wall
+row is drawn half its thickness past each end: the 0.9 m hedge reached 0.45 m over the treads and the rail (a wall 0.15 m, a rail its posts).
+`bake-disaster-city.js` `stairClear` (run before the features are written) pulls the end of every fence / hedge / wall row that reaches into a flight
+(crossing stair, door stoop, roof stair) back to 2 cm clear of its side; nothing is dropped, a row it cannot clear is named in the bake's output.
+First run: 117 ends pulled back, none left on a flight.
