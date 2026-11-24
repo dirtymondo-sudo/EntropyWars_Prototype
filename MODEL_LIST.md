@@ -26,11 +26,12 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
 | Meshy AI | no | 1331 |
-| Meshy AI, reworked by Claude | no | 13 |
+| Meshy AI, reworked by Claude | no | 14 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 93 |
 | Built by Claude in code (a bake tool writes the file) | no (pack bark picture) | 14 |
 | Motion capture (real actors), cut into loops by Claude | yes (motion) | 2 |
+| **UNSORTED** (no SOURCES row yet) | ? | 4 |
 
 Counts are distinct files (a pack kit cut into pieces counts each piece used; the MakeHuman count is the creator's
 picks, each a GLB per body; the code count is procedural catalogue rows).
@@ -306,6 +307,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | MAL4_Sniper | `Assets/characters/animations/MAL4_Sniper.glb` | Meshy AI, reworked by Claude | Meshy's animation library pulled through the Meshy API on the male sniper's rig (2026-11-11), packed by Claude (build-mal.py) |
 | MAL5_Sniper | `Assets/characters/animations/MAL5_Sniper.glb` | Meshy AI, reworked by Claude | Meshy's animation library pulled through the Meshy API on the male sniper's rig (2026-11-11), packed by Claude (build-mal.py) |
 | MAL6_Sniper | `Assets/characters/animations/MAL6_Sniper.glb` | Meshy AI, reworked by Claude | Meshy's animation library (dances, gestures, cheers) pulled through the Meshy API on the male sniper's rig (2026-11-24, THE MESHY CASTS), packed by Claude (build-mal.py) |
+| MAL7_Sniper | `Assets/characters/animations/MAL7_Sniper.glb` | Meshy AI, reworked by Claude | Meshy's animation library (dances, gestures, cheers) pulled through the Meshy API on the male sniper's rig (2026-11-24, THE MESHY CASTS), packed by Claude (build-mal.py) |
 | MOC1_CMU | `Assets/characters/animations/MOC1_CMU.glb` | Motion capture (real actors), cut into loops by Claude | CMU Graphics Lab Motion Capture Database (mocap.cs.cmu.edu, BVH by B. Hahne), in-place loops by bake-mocap.py |
 | MOC2_100STYLE | `Assets/characters/animations/MOC2_100STYLE.glb` | Motion capture (real actors), cut into loops by Claude | The 100STYLE Dataset (Ian Mason, CC BY 4.0), converted by mocap-100style.py, in-place loops by bake-mocap.py |
 | UAL1_Standard | `Assets/characters/animations/UAL1_Standard.glb` | Asset pack | Universal Animation Library · Quaternius · CC0 |
@@ -4669,4 +4671,13 @@ before asking for a new one (THE PACK-FIRST RULE).
 | `Assets/world/vehicles/Car 08` | another format of a model listed above (source file, the game loads the listed one) | Asset pack · Low-poly cars · GGBot | 1: Car8.blend | 0.7 |
 | `Assets/world/vehicles/Shadow (3D)` | on R2, the game does not load it | Asset pack · Low-poly cars · GGBot | 2: Car_Shadow.blend, Car_Shadow.obj | 0.7 |
 | `Assets/world/vehicles/Wheel` | on R2, the game does not load it | Asset pack · Low-poly cars · GGBot | 2: Wheel.blend, Wheel.obj | 0.7 |
+
+## UNSORTED — found in the game, no SOURCES row yet
+
+| name | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| skinwalker_face_a | `Assets/characters/races/skinwalker/male/faces/face_a.glb` | **UNSORTED** | add a SOURCES row in list-models.js |
+| skinwalker_face_b | `Assets/characters/races/skinwalker/male/faces/face_b.glb` | **UNSORTED** | add a SOURCES row in list-models.js |
+| skinwalker_face_c | `Assets/characters/races/skinwalker/male/faces/face_c.glb` | **UNSORTED** | add a SOURCES row in list-models.js |
+| skinwalker_face_d | `Assets/characters/races/skinwalker/male/faces/face_d.glb` | **UNSORTED** | add a SOURCES row in list-models.js |
 
