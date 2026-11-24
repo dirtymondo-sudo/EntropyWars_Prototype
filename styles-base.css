@@ -7688,6 +7688,12 @@ html.ew-mobile .pause-card { max-height: calc(100dvh - 16px); }
 #squadDeskPage .sq-plate-name, .sq-plate-name, #squadDeskPage .sq-drop-name, .sq-drop-name { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: break-word; word-break: normal; }
 #squadDeskPage .sq-drop-n, .sq-drop-n, #squadDeskPage .sq-plate-n, .sq-plate-n { white-space: nowrap; }
 #squadDeskPage .sq-drop-faces, .sq-drop-faces { flex: 0 1 158px; min-width: 60px; }
+/* THE LIST SITS ON THE PLATE (2026-11-24, mondo: "Why does this dropdown menu have a horizontal scroll bar?"): the UI Maker's
+   selected-button pop (scale 1.08 on .is-focus) drew the focused row 4% past each side of the list, so the list scrolled sideways
+   and "4 VESSELS" was cut at its right edge. The rows stand in from the sides by more than the pop, and the list never scrolls
+   sideways. Its width and place come from the plate (map.js _sqDropPlace). */
+#squadDeskPage .sq-drop, .sq-drop { overflow-x: hidden; max-width: none; }
+#squadDeskPage .sq-drop-row, .sq-drop-row { margin-left: 5%; margin-right: 5%; }
 /* THE PAUSE TITLE BAR CLEARS ITS SLANTED ENDS (playtest 2026-11-03: under a slanted plate skin the mode name read "EAM…" and
    the KILLS count sat under the right end's stripe). The skin stretches with the bar, its slant ~10% of the width each side,
    so the words sit in from both ends by that much. */

@@ -557,7 +557,7 @@
                 + (_sqSavedCount() < max ? `<button class="sq-ghost" data-sq-new>New Team</button>` : '')
                 + `<button class="sq-cta${locked ? '' : ' is-ready'}" data-sq-go${locked ? ' disabled' : ''}>Deploy</button>`;
             if (bump) _sqBump(plate, 'sq-swap');
-            if (_sqDropOpen) _sqDropPaint();
+            if (_sqDropOpen) { _sqDropPaint(); _sqDropPlace(); }
             _sqRoomTeam();
             _sqKeepActs();
             try { if (window._ewSqFitRO) { window._ewSqFitRO.disconnect(); window._ewSqFitRO.observe(plate); } } catch (e) {}
@@ -768,7 +768,7 @@
                 }
             } catch (e) {}
         }
-        if (!window._ewSqKeepActsWired) { window._ewSqKeepActsWired = true; window.addEventListener('resize', () => { try { _sqKeepActs(); _sqFitPlateSoon(); } catch (e) {} }); }
+        if (!window._ewSqKeepActsWired) { window._ewSqKeepActsWired = true; window.addEventListener('resize', () => { try { _sqKeepActs(); _sqFitPlateSoon(); if (_sqDropOpen) _sqDropPlace(); } catch (e) {} }); }
         function _sqFocusCard(id) {
             if (!id || id === _sqFocusId) return;
             _sqFocusId = id;
@@ -796,11 +796,27 @@
                     + `<span class="sq-drop-n">${gone.length ? 'Out of the game' : twice.length ? 'Same unit twice' : locked ? `Needs ${SQ_DEPLOY}` : `${n} ${n === 1 ? 'VESSEL' : 'VESSELS'}`}</span></div>`;
             }).join('');
         }
+        /* THE LIST SITS ON THE PLATE (2026-11-24, mondo: "Why does this dropdown menu have a horizontal scroll bar? There is more
+           than enough room"). The UI Maker grows the bar (sqbar: scale 1.65, moved up) with a CSS `scale`, which layout never sees:
+           the list kept its own 660px and its spot above the UNSCALED bar, so it was narrower than the plate and covered the team
+           name. It is placed from the plate's drawn box now: as wide as the plate, its foot just over the plate's top edge, never
+           taller than the room above it. (The rows' sideways spill is the CSS's: see styles-base.css THE LIST SITS ON THE PLATE.) */
+        function _sqDropPlace() {
+            const drop = document.getElementById('sqDrop'), plate = document.getElementById('sqPlate'), host = drop && drop.offsetParent;
+            if (!drop || !plate || !host) return;
+            const P = plate.getBoundingClientRect(), H = host.getBoundingClientRect();
+            if (!P.width) return;
+            const sc = parseFloat(getComputedStyle(drop).scale) || 1;   // the UI Maker can scale the list too (pick "Team list")
+            drop.style.left = Math.round(P.left + P.width / 2 - H.left) + 'px';
+            drop.style.width = Math.round(P.width / sc) + 'px';
+            drop.style.bottom = Math.round(H.bottom - P.top + 6) + 'px';
+            drop.style.maxHeight = Math.max(120, Math.round(Math.min(window.innerHeight * 0.52, P.top - 12) / sc)) + 'px';
+        }
         function _sqDropSet(open) {
             const drop = document.getElementById('sqDrop');
             if (!drop) { _sqDropOpen = false; return; }
             _sqDropOpen = !!open;
-            if (_sqDropOpen) _sqDropPaint();
+            if (_sqDropOpen) { _sqDropPaint(); _sqDropPlace(); }
             drop.classList.toggle('is-open', _sqDropOpen);
             drop.setAttribute('aria-hidden', _sqDropOpen ? 'false' : 'true');
             document.getElementById('sqPlate')?.classList.toggle('is-open', _sqDropOpen);
