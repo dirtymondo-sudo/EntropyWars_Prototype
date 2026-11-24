@@ -4074,3 +4074,20 @@ Disaster City pre-bake plan): https://claude.ai/artifact/JA81YtXbyhfQchxF5GuYkR.
 - NOT YET (next steps of the plan): the originals leaving the drawn scene (the renderer's own projection walk, 12 ms in the
   Clearing on WebGL; on WebGPU a quiet bundle skips it), the other zones (add each to `freeze.rooms` after its check),
   deleting THE STILL WALK / batch watchdog layers once every room is frozen.
+
+## THE LEFT ROOM LETS GO (2026-11-23, same thread, the second leak)
+After THE BITMAPS GO WITH THE FILE the JS heap still grew ~250 MB per return to a room. Census (CDP `Runtime.queryObjects` on
+`THREE.Object3D.prototype`, results in their own object group and released, else the census itself keeps everything): lobby 9,000
+pieces, the Clearing 49,000, back in the lobby 51,000: the whole Clearing stayed after leaving, every visit another copy.
+- THE CAUSE FOUND: the hero point lamp (`H.heroLit`) keeps the room's shadow casters ON ITSELF (`_ew_gate.list` + `.seen`, 16,278
+  meshes in the Clearing) and the lamp outlives the room (THE ONE RIG keeps its lights). One named piece keeps its parent and the
+  parent every child, so the lamp's list kept the whole room. `_hqHeroGateDrop(H)` in `_hqLeave` drops the gate.
+- Belt and braces in `_hqLeave` (not for a parked room, not for what is handed to a fight): `_hqUnlinkLeft` cuts the left room's
+  `hq_part*` trees apart after the disposal (a stray reference keeps one piece, not the room) and `_hqScrubLeft` empties the left
+  record's lists / groups / sub-records (a late callback holding the record holds an empty room). Off: `window.EW_KEEP_LEFT_TREES`.
+  Counts: `ThreeRenderer.hq.mem().unlinked / scrubbed`.
+- MEASURED (cloud, lobby -> Clearing -> lobby -> Clearing -> lobby): BEFORE 9.0K, 49.1K, 51.1K pieces; AFTER 6.1K, 43.9K, 15.5K,
+  53.1K, 25.3K. About 80 % of a left room now goes; ~10K pieces a Clearing visit are still kept (NOT FOUND YET: next suspects are
+  other per-light / per-object lists outliving the room; find them with an Array.prototype queryObjects scan for arrays holding
+  detached pieces, `/tmp/q7.js`-style, in the thread's scratchpad memprobe.js `--serve`). Heap snapshots crash the cloud tab
+  (1.7 GB heap): use the queryObjects scans.
