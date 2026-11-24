@@ -80143,15 +80143,33 @@ const ThreeRenderer = (function () {
             add(W.scrub || 0, 0.84, 0.8, 0.64); add(W.mesa || 0, 1, 0.96, 0.86); add(W.grass || 0, 0.8, 0.88, 0.62); add(W.snow || 0, 0.97, 0.98, 1);
             if (P.mesa > 0.02) { var mt = Math.min(1, P.mesa * 1.6), band = 0.86 + 0.14 * Math.sin(P.y * 0.55); c = [c[0] * (1 - mt) + 1.0 * band * mt, c[1] * (1 - mt) + 0.6 * band * mt, c[2] * (1 - mt) + 0.42 * band * mt]; }   // the tables: red rock in bands
             if (Array.isArray(E.tint)) c = [c[0] * E.tint[0], c[1] * E.tint[1], c[2] * E.tint[2]];   // `edges.tint: [r, g, b]` (2026-11-20, The Woods): a room whose floor is darker than the map's green, the land past its line wears the room's tone
+            if (OWNC && !Array.isArray(E.tint)) c = [c[0] * OWNC.light[0], c[1] * OWNC.light[1], c[2] * OWNC.light[2]];   // THE SAME GROUND: the room's light (floorColor) on the land too
             return c;
         };
+        /* THE SAME GROUND (2026-11-24, mondo at the city's woods edge: "why does the grass on the outskirts look different than inside the city? ... No logical
+           reason to make the same terrain look different just because its outside the boundaries of the map. Fix everywhere"): THE ROOM'S GROUND RUNS ON past
+           the line in the room's own sheet, but drawn untinted at HALF the field's sheet size (the land read its sheets every model tile, 1.75 m; the field
+           reads them every fight square, 3.5 m) while the field draws its sheets times the room's floorColor (the city: 0xa8a8a4) and its floor sheet times
+           floorTint too. So the same grass was a finer, half again brighter grass past a hard line. Now the land past the line reads every sheet at the
+           field's sheet size and wears the room's own sheets in the field's own colour (floorColor; floorTint on the floor sheet), so the ground runs on
+           across the line with no seam and gives way to the land's own ground in tongues further out. `EW_HQ_OLD_EDGE_GROUND = true` = as before. */
+        var SAMEG = !(typeof window !== 'undefined' && window.EW_HQ_OLD_EDGE_GROUND);
+        var OWNC = null, OWNP = {};
+        if (SAMEG) { try {
+            var fc0 = (room.shell && room.shell.floorColor != null) ? new THREE.Color(room.shell.floorColor) : new THREE.Color(1, 1, 1);
+            var ft0 = (typeof _hqTintOf === 'function') ? _hqTintOf(room.terrain && room.terrain.floorTint) : null;
+            /* the room's light on its ground (the field multiplies EVERY sheet by floorColor): the land past the line gets the same, on every sheet */
+            OWNC = { light: [fc0.r, fc0.g, fc0.b], paint: [1, 1, 1], floor: ft0 ? [ft0.r, ft0.g, ft0.b] : [1, 1, 1] };
+            ((info.paint && info.paint.pal) || []).forEach(function (k) { OWNP[k] = true; });
+        } catch (eOC) { OWNC = null; } }
         var tintOf = function (key, P) {   // THE BLENDED LAND: the tint of ONE sheet at a point (colOf mixes the kinds' tints for the one sheet a piece wore)
             var W = P.W, c, t;
             if (key === 'grass') { var f = W.forest, g = W.grass || 0; t = f + g; c = t > 1e-3 ? [(f * 0.62 + g * 0.8) / t, (f * 0.74 + g * 0.88) / t, (f * 0.56 + g * 0.62) / t] : [0.8, 0.88, 0.62]; }
             else if (key === 'desert') { var d = W.desert + (W.mesa || 0), s = (W.sh || (E.sheets && E.sheets.scrub)) ? 0 : (W.scrub || 0), cc = W.coast; t = d + s + cc; c = t > 1e-3 ? [(d + s * 0.84 + cc * 0.8) / t, (d * 0.96 + s * 0.8 + cc * 0.74) / t, (d * 0.86 + s * 0.64 + cc * 0.66) / t] : [1, 0.96, 0.86]; }
-            else c = [HQ_EDGE_OWN_TINT[0], HQ_EDGE_OWN_TINT[1], HQ_EDGE_OWN_TINT[2]];
+            else c = (OWNC && (key === info.floor || OWNP[key])) ? (key === info.floor ? OWNC.floor : OWNC.paint).slice() : [HQ_EDGE_OWN_TINT[0], HQ_EDGE_OWN_TINT[1], HQ_EDGE_OWN_TINT[2]];   // THE SAME GROUND (below): the room's own sheet in the field's own colour
             if (P.mesa > 0.02) { var mt = Math.min(1, P.mesa * 1.6), band = 0.86 + 0.14 * Math.sin(P.y * 0.55); c = [c[0] * (1 - mt) + 1.0 * band * mt, c[1] * (1 - mt) + 0.6 * band * mt, c[2] * (1 - mt) + 0.42 * band * mt]; }
             if (Array.isArray(E.tint)) c = [c[0] * E.tint[0], c[1] * E.tint[1], c[2] * E.tint[2]];
+            if (OWNC && !Array.isArray(E.tint)) c = [c[0] * OWNC.light[0], c[1] * OWNC.light[1], c[2] * OWNC.light[2]];   // THE SAME GROUND
             return c;
         };
         var keyOf = function (P, x, z, yTop) {   // yTop = the piece's highest corner (a far piece is up to 60 m long: one that climbs out of the sea is rock, not a slab of beach sand up a cliff)
@@ -80181,7 +80199,7 @@ const ThreeRenderer = (function () {
                     if (!nv) { var nxv = 2 * (p.y - F.at(vx + e, vz).y), nzv = 2 * (p.y - F.at(vx, vz + e).y), nl = Math.hypot(nxv, 2 * e, nzv); nv = NRM[v] = [nxv / nl, 2 * e / nl, nzv / nl]; }   // (one step each way: a third fewer samples)
                     var n = b.pos.length / 3; b.map[v] = n;
                     b.pos.push(vx * U, p.y * U, vz * U); if (layer) b.col.push(c[0], c[1], c[2], alpha[q]); else b.col.push(c[0], c[1], c[2]); b.nrm.push(nv[0], nv[1], nv[2]);
-                    var ts = far ? TM * 6 : TM; b.uv.push(vx * U / ts, vz * U / ts);
+                    var ts = far ? TM * 6 : ((SAMEG && info._TM > 0) ? info._TM : TM); b.uv.push(vx * U / ts, vz * U / ts);   // THE SAME GROUND: the near land reads its sheets at the field's own size
                     return n;
                 });
                 var flip = ((xs[i + 1] - xs[i]) * (zs[j + 1] - zs[j])) < 0;   // (never: both lists ascend) kept for a patch built the other way

@@ -14309,6 +14309,13 @@ Southside end, the road was 0 m at the line and 0.95 m 1.2 m past it (the land's
 end's lane is graded in the edge land like an open seam's (LANES, `road: true`: the gate's floor for 10 m, then to the land's level by 70 m), and (b) the
 strip's height is one profile (`PRO` in the road builder): over the land by 5 cm at the line growing to 0.5 m at 25 m, the upper hull (no dip), corners eased
 over 9 m. Measured after: 0, 0.06, 0.13, 0.20, 0.30 ... a straight 5 % grade. `EW_OLD_ROAD_STRIP` turns both off.
+ROUND 3, THE SAME GROUND (same day, mondo at the city's woods edge: "why does the grass on the outskirts look different than inside the city? ... No
+logical reason to make the same terrain look different just because its outside the boundaries of the map. Fix everywhere"): the land past the line
+(`_hqBuildEdgeLand`) read its sheets every model tile (1.75 m) and drew them untinted, while the field reads every fight square (3.5 m) times the room's
+floorColor (the city 0xa8a8a4) and its floor sheet times floorTint. So the room's own grass ran on past the line finer and half again brighter, and the
+land's own sheets (the city's south: grass_rocky) brighter still. Now the near land reads its sheets at the field's size (`info._TM`) and every land
+tint is multiplied by the room's floorColor (OWNC.light; skipped where the room writes its own `edges.tint`), the room's floor sheet also by floorTint.
+Rooms with a white floorColor only change in sheet size. `window.EW_HQ_OLD_EDGE_GROUND = true` = as before.
 
 ### THE HIGHWAY STANDARD (2026-11-22, mondo on the finished Badlands Highway: "yep looks good ... This should be the standard for how the rest of the highways get built")
 
