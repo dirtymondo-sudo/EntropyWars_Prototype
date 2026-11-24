@@ -6596,5 +6596,9 @@ left hand. Family `beatmaking` + sonic, stagepresence, maincharacter. Finisher P
   picks = notes rising off him + the 3-square earshot ring + a word card; Slap Bass = three low rings + SLAP!; Drum Fill = TAK TAK DOOM CRASH!
   in time with the hits; Bass Drop's cast = BUILD UP... (rings closing in, notes); the landing = `mpDropLand`, fired by battle.js
   `_mpDropLands` (rings + DROP!).
-- STILL TO COME: the 4-track strip on the HUD (mock-up `music-producer/four_track_mockup.png`, waits mondo's OK), the pad on
-  a strap, residents at Mid Records.
+- THE 4-TRACK STRIP (mondo OK'd the mock-up 11-24, `music-producer/four_track_mockup.png`): hud.js block "THE 4-TRACK STRIP", a fixed
+  PS1 window above the unit panel (`.ewd-actor`; bottom-left when that is hidden) while `_mpSongToHear` returns a song: four lamps, tempo,
+  chords (the one playing now in amber from `EWBeat.now()`), melody, 16 beat lights (kick steps marked), BUILD-UP + the amber riser bar,
+  SCRATCHED. Enemy producer = enemy colour. The earshot pulses on the floor once a bar (three-vfx-effects.js `mpEarshotPulse`). A 100 ms
+  timer, one song object + one rect, no scene walks; each client draws it, nothing relayed.
+- STILL TO COME: the pad on a strap, residents at Mid Records.
