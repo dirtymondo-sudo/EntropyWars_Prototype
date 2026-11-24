@@ -4074,3 +4074,11 @@ Disaster City pre-bake plan): https://claude.ai/artifact/JA81YtXbyhfQchxF5GuYkR.
 - NOT YET (next steps of the plan): the originals leaving the drawn scene (the renderer's own projection walk, 12 ms in the
   Clearing on WebGL; on WebGPU a quiet bundle skips it), the other zones (add each to `freeze.rooms` after its check),
   deleting THE STILL WALK / batch watchdog layers once every room is frozen.
+- STEP 2 (11-23): `freeze.rooms` takes `'<prefix>*'` (every room whose id starts so). On: Disaster City
+  (`site_prebuilt_downtown_streets`), the Bayside Mall, every Hotel floor (`site_prebuilt_hotel_*`), Hero Tower, the Sewers,
+  and The Estate's rooms (`site_prebuilt_skinwalker_ow_*`, the first of step 3). THE SLOW WATCH: a slow frame sums more of the
+  watch (the slice grows with the frame's length, at most 12 ms) and after four watches' time one full round is enough; before
+  this the cloud's 0.5 FPS in the Estate's lake (43,120 objects, 8,431 top pieces) never finished the watch. The lake, cloud:
+  8,055 still pieces never walked, matrix walk 10.6 -> 6.4 ms (the rest: 157 rigs, the animals, the instance cells); a fight
+  from the corn and back: fine. Disaster City itself is too big for the cloud browser: checked through its insides + the
+  same code; its first frozen frame logs "[FREEZE] site_prebuilt_downtown_streets frozen: ..." on his machine.
