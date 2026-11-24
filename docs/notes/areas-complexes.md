@@ -14899,6 +14899,14 @@ inside (the pizzeria's back store), ghost walls for counters / shelves / booths,
 pizzeria, glass + office + security at the store, a bathroom door on the washroom block), the inside prop (noBlock). `city_pizzeria_shut` /
 `city_gas_store_shut` = the old solid cuts. Placements 11-23: 4 pizzerias in the city, gas stores on R9 and DH1.
 `hqTexbDoor` reads `doorLx` / `doorW` / `doorH` (metres) before the column rule; `hqTexBuildingRows` cuts `gaps: [{ side: 'b'|'l'|'r'|'f', u, w, h }]`.
+THE WALK-IN'S OWN FLOOR (2026-11-24, mondo in Hero Plaza's pizzeria, "Invisible wall in front of me, i cant move"): three-renderer.js copied the
+compiler's scatter into `_hq.terrainScatter` with only a few fields, dropping a walk-in prop's `floor`, `noBlock` and `y`. The inside model then read
+the ground at its middle with the walker's rule, which there is the back store's solid row (its top, 11 m up), and stood on that roof, while the
+booths' and counter's ghost walls stayed on the floor, unseen. The copy now keeps `walkIn`, `floor`, `noBlock`, `y`, `id` for walk-in props, and a
+furnished piece (`furnish`) of a building with no `y` gets `floor: true` (data.js hqWalkInRows). All four city pizzerias' insides now stand at their
+outsides' height (probe: `ThreeRenderer.hq.dev.props()`). `ThreeRenderer.hq.dev.why(x, z, curY)` (new) says why a step is refused: the floor with and
+without the furniture, the terrain's own answer, every blocker under the spot. To find an invisible wall headless: data.js `hqTerrainWallAt` via
+load-data.js (a `ghost: true` wall in the answer is a collision-only wall: look for the drawn thing it stands for).
 R2: `Assets/world/packs/elbolilloduro/ebd_pizzeriascene_city_pizzeria_{open,inside}.glb`, `ebd_gasscene_city_gas_store_{open,inside}.glb` + their
 `Assets/opt/*.opt.glb` (in ASSET_MANIFEST.json `files` + `alt`).
 

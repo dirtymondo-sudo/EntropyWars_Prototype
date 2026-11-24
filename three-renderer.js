@@ -77820,7 +77820,13 @@ const ThreeRenderer = (function () {
         if (info.race) { try { _hqBuildRace(room, info, G, TM); } catch (e) { console.warn('[HQ] the circuit failed', e); } }
         if (_hqSliceDue()) yield;
         /* ── THE SCATTER: catalogue props at the compiler's spots, placed by _hqPlaceProps on the ground ── */
-        _hq.terrainScatter = info.scatter.map(function (q) { return { key: q.key, x: q.x, z: q.z, face: q.face, foot: q.foot, rect: false, scatter: true, h: q.h, sea: q.sea, y: q.lift, noSeat: q.noSeat, liftY: q.liftY }; });   // (`liftY`: a stilt house's furniture on its floor, THE LIFTED FLOOR 11-23)   // THE FLORA's accents (11-20): a lotus rides its pond's surface (`lift`), never seated on the bed   // THE OCEAN PACK (2026-10-27): a scatter row's `h` sizes its props
+        _hq.terrainScatter = info.scatter.map(function (q) { var o = { key: q.key, x: q.x, z: q.z, face: q.face, foot: q.foot, rect: false, scatter: true, h: q.h, sea: q.sea, y: q.lift, noSeat: q.noSeat, liftY: q.liftY };
+            /* THE WALK-IN'S OWN FLOOR (2026-11-24, mondo in the Hero Plaza pizzeria: "Invisible wall in front of me, i cant move"): a walk-in building's inside and
+               furniture (data.js hqWalkInRows, `walkIn`) keep their `floor`, `noBlock` and `y`. This copy dropped them, so the pizzeria's inside model stood on
+               its own back store's solid row 11 m up (the ground read at its middle was that row's top) while the booths' and counter's ghost walls stayed on
+               the floor: walls nobody could see. Every walk-in in every room (the pizzerias, the gas stores, the huts) stood its inside the same way. */
+            if (q.walkIn) { o.walkIn = q.walkIn; if (q.floor === true) o.floor = true; if (q.noBlock) o.noBlock = true; if (q.lift == null && typeof q.y === 'number') o.y = q.y; if (q.id != null) o.id = q.id; }
+            return o; });   // (`liftY`: a stilt house's furniture on its floor, THE LIFTED FLOOR 11-23)   // THE FLORA's accents (11-20): a lotus rides its pond's surface (`lift`), never seated on the bed   // THE OCEAN PACK (2026-10-27): a scatter row's `h` sizes its props
         /* ── THE STALACTITES under a closed ceiling, over the open floor ── */
         /* LEVEL_DESIGN_PLAN (2026-09-30): stalactites hang only in a CAVE (a `cave` floor plan, a LAYOUT in the rock look) or where a room asks
            (`terrain.stalactites: true`) — a basilica, an archive, a sewer, a base, a stair hall has a built ceiling, not rock cones */
@@ -107915,6 +107921,10 @@ const ThreeRenderer = (function () {
             scene: function () { return scene; },
             hqScene: function () { return _hq ? _hq.scene : null; },   // the walk's own scene (THE SPACESHIP probe, 2026-11-17)
             /* what stands in the walker's way near (x, z), metres (2026-11-22, the gate probes: "why does the walk stop here"): the blockers within `r` m */
+            /* why a step is refused (2026-11-24, the Hero workshop wall probe): the floor at (x, z) from feet curY, with and without the furniture, the terrain's own answer, and each blocker under it */
+            why: function (x, z, curY) { if (!_hq) return null; var o = { all: _hqSurface(x, z, curY, false), bare: _hqSurface(x, z, curY, true), terr: _hq.terrain ? hqTerrainFeet(_hq.terrain, x, z, curY) : 'none', ground: _hqTerrainGround(x, z), hits: [] };
+                try { _hqBlockersUnder(x, z).forEach(function (b) { var key = ''; for (var i = 0; i < (_hq.props || []).length; i++) if (_hq.props[i].grp === b.obj) { key = _hq.props[i].key; break; } o.hits.push({ key: key || b.way || b.kind || '', mc: !!b.mc, top: _hqBlkTop(b), y: b.y, rect: b.rect || null, rad: b.rad, at: b.obj ? [+(b.obj.position.x / _hqUnits()).toFixed(2), +(b.obj.position.z / _hqUnits()).toFixed(2)] : null, mcFeet: b.mc ? _mcFeet(b, x, z, o.bare, curY) : undefined, id: b.id || b.rowId || null }); }); } catch (e) { o.err = e.message; }
+                return o; },
             blockersNear: function (x, z, r) { if (!_hq) return []; var U = _hqUnits(), out = []; (_hq.blockers || []).forEach(function (b) { if (!b || !b.obj) return; var bx = b.obj.position.x / U, bz = b.obj.position.z / U, d = Math.hypot(bx - x, bz - z); if (d - (b.rad || 0) > (r || 6)) return; var key = ''; for (var i = 0; i < (_hq.props || []).length; i++) if (_hq.props[i].grp === b.obj) { key = _hq.props[i].key; break; } out.push({ key: key || b.way || b.kind || '', x: +bx.toFixed(2), z: +bz.toFixed(2), rad: b.rad, rect: b.rect || null, y: b.y, top: b.top }); }); return out; },
             /* the WebGL renderer (shader diagnostics from a probe — THE WORLD, 2026-09-13) */
             renderer: function () { return renderer; },
