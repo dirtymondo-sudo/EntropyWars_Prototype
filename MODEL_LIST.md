@@ -25,7 +25,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 1337 |
+| Meshy AI | no | 1338 |
 | Meshy AI, reworked by Claude | no | 15 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 93 |
@@ -209,6 +209,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | popstar (female) | `Assets/characters/races/popstar/Meshy_AI_a_blonde_popstar_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | priest — creator look also baked | `Assets/characters/races/priest/Meshy_AI_priest_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | priest (female) — creator look also baked | `Assets/characters/races/homosapien/female/whitemage/Meshy_AI_sexy_nun_girl_realis_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| princess (female) | `Assets/characters/races/princess/female/Meshy_AI_princess_f_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API from mondo's picked concept (THE PRINCESS, 2026-11-24: Princess B of Came A Lot, pink gown + gold crown; project files unit-concepts-20261124b/) |
 | professor — creator look also baked | `Assets/characters/races/professor/Meshy_AI_male_college_professor_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | professor (female) — creator look also baked | `Assets/characters/races/professor/female/Meshy_AI_professor_f_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES, the women; mondo 2026-11-16) |
 | quarterback | `Assets/characters/races/quarterback/Meshy_AI_football_quarterback_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |

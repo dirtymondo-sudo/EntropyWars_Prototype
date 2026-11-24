@@ -156,6 +156,7 @@ const EW_ASSET_MOVES = [
   ['Assets/Sprites/Races/plastic_surgeon/', 'Assets/characters/races/plastic_surgeon/'],   // 2026-11-23 THE COMING RACES 2
   ['Assets/Sprites/Races/weatherman/', 'Assets/characters/races/weatherman/'],   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR
   ['Assets/Sprites/Races/cheerleader/', 'Assets/characters/races/cheerleader/'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
+  ['Assets/Sprites/Races/princess/', 'Assets/characters/races/princess/'],   // 2026-11-24 THE PRINCESS
   ['Assets/Sprites/Races/point_guard/', 'Assets/characters/races/point_guard/'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
   ['Assets/Sprites/Races/music_producer/', 'Assets/characters/races/music_producer/'],   // 2026-11-24 THE MUSIC PRODUCER
   ['Assets/Sprites/Races/librarian/', 'Assets/characters/races/librarian/'],   // 2026-11-17 THE NEW RACES 2
@@ -615,6 +616,7 @@ const RACE_SPRITE_GENDERS = {
   'weatherman': 'both',   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR (one race: the Weatherman is the male, the News Anchor the female)
   'centaur': 'both',   // 2026-11-24 THE CENTAUR: a male (chestnut) and a female (dapple grey), one race
   'cheerleader': 'female',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
+  'princess': 'female',   // 2026-11-24 THE PRINCESS
   'point guard': 'male',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
   'music producer': 'male',   // 2026-11-24 THE MUSIC PRODUCER
   'vtuber': 'female',   // 2026-11-18 THE V-TUBER (female only for now, mondo 11-18)
@@ -799,6 +801,7 @@ const _CHARACTER_SPRITES = {
   'weatherman': `${_S}/Races/weatherman/male/weatherman_px.png`,   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR — 128x128 pixel sprite (Sprite AI restyle of his Meshy concept)
   'centaur': `${_S}/Races/centaur/male/centaur_m_px.png`,   // 2026-11-24 THE CENTAUR — 128x128 pixel sprite (Sprite AI restyle of his built model)
   'cheerleader': `${_S}/Races/cheerleader/female/cheerleader_px.png`,   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — 128x128 pixel sprite (Sprite AI restyle of her Meshy concept)
+  'princess': `${_S}/Races/princess/female/princess_px.png`,   // 2026-11-24 THE PRINCESS — 128x128 pixel sprite (Sprite AI restyle of her Meshy concept)
   'point guard': `${_S}/Races/point_guard/male/point_guard_px.png`,   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — 128x128 pixel sprite (Sprite AI restyle of his Meshy concept)
   'music producer': `${_S}/Races/music_producer/male/music_producer_px.png`,   // 2026-11-24 THE MUSIC PRODUCER — 128x128 pixel sprite (Sprite AI restyle of his Meshy concept)
   'plastic surgeon': `${_S}/Races/plastic_surgeon/male/plastic_surgeon_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
@@ -931,6 +934,7 @@ const _NEW_FEMALE_SPRITES = {
   'weatherman': `${_S}/Races/weatherman/female/news_anchor_px.png`,   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR — the News Anchor (Sprite AI restyle of her Meshy concept)
   'centaur': `${_S}/Races/centaur/female/centaur_f_px.png`,   // 2026-11-24 THE CENTAUR — the female (Sprite AI restyle of her built model)
   'cheerleader': `${_S}/Races/cheerleader/female/cheerleader_px.png`,   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
+  'princess': `${_S}/Races/princess/female/princess_px.png`,   // 2026-11-24 THE PRINCESS
   'vtuber': `${_S}/Races/vtuber/female/vtuber_f_px.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of her full Meshy 3D model's front render)
 };
 const _NEW_MALE_SPRITES = {
@@ -2887,6 +2891,13 @@ const RACE_MODELS_3D = {
     female: _mkUAL('cheerleader/female', 'cheerleader_f', {
       model: 'https://cdn.entropywars.net/Assets/characters/races/cheerleader/female/Meshy_AI_cheerleader_f_Running.glb',
       heightRatio: 0.93,
+    }),
+  },
+  'princess': {   // 2026-11-24 THE PRINCESS: Meshy image-to-3d + rigging from mondo's pick (Princess B, Came A Lot: pink gown, gold crown, white boots);
+                  // sources: project files unit-concepts-20261124b/models/princess_f*. Nothing held: her basic attack is a magic spark.
+    female: _mkUAL('princess/female', 'princess_f', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/princess/female/Meshy_AI_princess_f_Running.glb',
+      heightRatio: 1.03,   // the crown is in the measured bounds: the body stands about the Cheerleader's height
     }),
   },
   'point guard': {   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: Meshy image-to-3d + rigging from mondo's pick (Point Guard A, purple and gold #1); sources: project files
@@ -7709,6 +7720,7 @@ const RACE_SPRITES = {
   'weatherman': `${_S}/Races/weatherman/male/weatherman_px.png`,   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR — 128x128 pixel sprite (Sprite AI restyle of his Meshy concept)
   'centaur': `${_S}/Races/centaur/male/centaur_m_px.png`,   // 2026-11-24 THE CENTAUR
   'cheerleader': `${_S}/Races/cheerleader/female/cheerleader_px.png`,   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — 128x128 pixel sprite (Sprite AI restyle of her Meshy concept)
+  'princess': `${_S}/Races/princess/female/princess_px.png`,   // 2026-11-24 THE PRINCESS — 128x128 pixel sprite (Sprite AI restyle of her Meshy concept)
   'point guard': `${_S}/Races/point_guard/male/point_guard_px.png`,   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — 128x128 pixel sprite (Sprite AI restyle of his Meshy concept)
   'music producer': `${_S}/Races/music_producer/male/music_producer_px.png`,   // 2026-11-24 THE MUSIC PRODUCER — 128x128 pixel sprite (Sprite AI restyle of his Meshy concept)
   'plastic surgeon': `${_S}/Races/plastic_surgeon/male/plastic_surgeon_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)

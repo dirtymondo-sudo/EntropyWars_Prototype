@@ -6602,3 +6602,21 @@ left hand. Family `beatmaking` + sonic, stagepresence, maincharacter. Finisher P
   SCRATCHED. Enemy producer = enemy colour. The earshot pulses on the floor once a bar (three-vfx-effects.js `mpEarshotPulse`). A 100 ms
   timer, one song object + one rect, no scene walks; each client draws it, nothing relayed.
 - STILL TO COME: the pad on a strap, residents at Mid Records.
+
+## THE PRINCESS (2026-11-24, thread "Add the Came A Lot Princess unit"; mondo: "a blonde princess of an ancient magical kingdom", then his pick Princess B of Came A Lot, then "can we go ahead and add that princess in the game")
+Race `'princess'` (female only, support, types human + divine), the princess of Came A Lot. LORE: there was no princess anywhere
+(notes, Relationship Web, DOOR_CAST) before her; nothing about her family is set (not called Arthur's daughter), only that she is
+Came A Lot's princess and spoiled. Model: Meshy (concept `princess_f_b`, pink + white gown, tall gold crown, white boots, hands empty)
+at R2 `Assets/characters/races/princess/female/Meshy_AI_princess_f_Running.glb` (heightRatio 1.03: the crown is in the measured
+bounds), sprite `princess_px.png` same folder (Sprite AI restyle; project files `princess/sprites/`). First-pass stats; finisher
+borrows pileOn (Happily Never After).
+- HER RULE, Damsel in Distress (`prDamsel`): the first time each round an enemy's hit lands on her and she lives, every ally within
+  3 gets +1 ATK stage (battle.js `_prDamselHit`, called from applyDamageToUnit next to the Point Guard's Assist; `unit._prDamselRound`).
+  No allies near = nothing fires and the round's use is not spent.
+- Wishing Star (T1): WEAK magic light damage, range 4. True Love's Kiss (T2): heal 130 + 1 cleanse, range 3. Spindle Curse (T3):
+  Sleep 2 rounds, no damage, range 4 (any hit wakes). Happily Ever After (T4): 170 shield on her and every ally within 3.
+  All four are plain rows (no new spell code); family `fairytale` (unique to her) + royalty, healingmagic, light.
+- Meshy library casts: Magic_Genie (lib 9), Big_Heart_Gesture (lib 9), Dont_You_Dare (lib 9), Formal_Bow (lib 8), the trims the
+  other rows already use. VFX: the element looks (light / arcane), side colours as everywhere.
+- Residents: Came A Lot (HQ_NPC_PLACES `princess @K:Great Hall >K day`, the castle at night), the Keep's encounter list (w 5),
+  DOOR_TEXT home Came A Lot, three roster lines. Proof: project files `princess/proof/` (probe `princess/probe_pr.js`).
