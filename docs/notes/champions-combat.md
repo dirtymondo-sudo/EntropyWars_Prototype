@@ -6183,7 +6183,7 @@ spells, stats and sprite unchanged; the old rig stays on R2.
 (no RACE_GENDER_SPELLS split): the MALE (`male/Meshy_AI_jellyfish_m_v3_Running.glb`) is the old look remade from a fresh concept (bell
 + crown points, two curling tentacle arms, two tentacle legs, no T-bars) with 10 hanging tentacles under the bell; the FEMALE
 (`female/Meshy_AI_jellyfish_f_Running.glb`, sprite `female/jellyfish_f_px.png` in `_NEW_FEMALE_SPRITES`) is the v2 idea with a figure
-and a face, 12 tentacles at the hips. RACE_SPRITE_GENDERS `jellyfish: 'both'`. The v2 file stays on R2, unused.
+and a face, 12 tentacles at the hips. RACE_SPRITE_GENDERS `jellyfish: 'both'`. The v2 file stays on R2, unused. Later the same day (mondo: the male's thin tentacles "don't look attached correctly"): the male is `male/Meshy_AI_jellyfish_m_v4_Running.glb`, the plain Meshy rig with no added tentacles (v3 unused).
 
 ## THE COMING RACES 2 (2026-11-23, thread "Make concept art for new characters")
 mondo picked Meshy concepts and said "wire them up and start a thread for each new one to come up with a plan for their unique

@@ -2604,12 +2604,12 @@ const RACE_MODELS_3D = {
      behind every walk, cast and hit (bake-tentacles.py; sources project files jellyfish-remake/). The old rig stays on R2. */
   'jellyfish': {
     male: _mkUAL('jellyfish', 'a_jellyfish_king', {
-      model: 'https://cdn.entropywars.net/Assets/characters/races/jellyfish/male/Meshy_AI_jellyfish_m_v3_Running.glb',
+      model: 'https://cdn.entropywars.net/Assets/characters/races/jellyfish/male/Meshy_AI_jellyfish_m_v4_Running.glb',   // v4 (mondo 11-24): no hanging tentacles under the bell
       heightRatio: 0.92, basicAttackKind: 'magic',
     }),
     /* THE JELLYFISH, MALE + FEMALE (2026-11-24, mondo on the v2: "looks more like a female ... it needs boobs"; the old one's look is
        "basically how i want it to look like ... make one like that as the male version and another one for a female version"): v3 male =
-       the old bell + tentacle arms and legs, remade (no T-bars) with 10 hanging tentacles under the bell; the female = the v2 idea with a
+       the old bell + tentacle arms and legs, remade (no T-bars) (v4: the 10 hanging tentacles taken off, mondo: "they don't look attached correctly"); the female = the v2 idea with a
        figure, 12 tentacles at the hips. Both on THE SWAY chains (bake-tentacles.py). One race, the same spells for both. */
     female: _mkUAL('jellyfish/female', 'jellyfish_f', {
       model: 'https://cdn.entropywars.net/Assets/characters/races/jellyfish/female/Meshy_AI_jellyfish_f_Running.glb',
