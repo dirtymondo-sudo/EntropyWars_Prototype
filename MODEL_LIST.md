@@ -25,7 +25,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 1331 |
+| Meshy AI | no | 1333 |
 | Meshy AI, reworked by Claude | no | 14 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 93 |
@@ -70,6 +70,8 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | butterfly girl (female) | `Assets/characters/races/butterfly_girl/female/Meshy_AI_butterfly_girl_wings2_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API from mondo's picked concepts (THE COMING RACES 2, 2026-11-23; the Bear's polar look + the Rat King are form looks; project files char-concepts-20261123/) |
 | cameraman | `Assets/characters/races/paparazzi/male/Meshy_AI_paparazzi_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES 2, mondo 2026-11-17 picks from the zone characters; concepts + models in project files new-races-2/; the Boltzmann Brain is unrigged) |
 | catgirl (female) — creator look also baked | `Assets/characters/races/catgirl/female/Meshy_AI_catgirl_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| centaur | `Assets/characters/races/centaur/male/centaur_m.glb` | Meshy AI | Meshy AI human half (made + rigged by Claude through the Meshy API from mondo's picked centaur concepts, 2026-11-24, project files unit-concepts-20261124b/) joined in Blender (bake-centaur.py) to a copy of the Horse pack's Horse_glb (mondo's upload; tack, neck and head off; her dapple-grey coat a recolour of a copy of the white sheet) |
+| centaur (female) | `Assets/characters/races/centaur/female/centaur_f.glb` | Meshy AI | Meshy AI human half (made + rigged by Claude through the Meshy API from mondo's picked centaur concepts, 2026-11-24, project files unit-concepts-20261124b/) joined in Blender (bake-centaur.py) to a copy of the Horse pack's Horse_glb (mondo's upload; tack, neck and head off; her dapple-grey coat a recolour of a copy of the white sheet) |
 | chef — creator look also baked | `Assets/characters/races/chef/male/Meshy_AI_chef_male_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | chess piece | `Assets/world/packs/chess/Low Poly Chess Set.fbx#Low_Poly_Black_Pawn` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
 | cicada brood | `Assets/characters/races/cicada_brood/male/Meshy_AI_cicada_brood_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES 2, mondo 2026-11-17 picks from the zone characters; concepts + models in project files new-races-2/; the Boltzmann Brain is unrigged) |

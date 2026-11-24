@@ -610,6 +610,7 @@ const RACE_SPRITE_GENDERS = {
   'abomination': 'male',   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name) (one body; the model def sits under male)
   'streamer': 'both',   // 2026-11-18 THE STREAMER + E-GIRL (one race: the Streamer is the male, the E-Girl the female)
   'weatherman': 'both',   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR (one race: the Weatherman is the male, the News Anchor the female)
+  'centaur': 'both',   // 2026-11-24 THE CENTAUR: a male (chestnut) and a female (dapple grey), one race
   'vtuber': 'female',   // 2026-11-18 THE V-TUBER (female only for now, mondo 11-18)
   'lifeguard': 'both',   // 2026-11-16; the man 2026-11-17
   'atlantean': 'both',
@@ -790,6 +791,7 @@ const _CHARACTER_SPRITES = {
   'monarch': `${_S}/Races/monarch/female/monarch_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'butterfly girl': `${_S}/Races/butterfly_girl/female/butterfly_girl_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'weatherman': `${_S}/Races/weatherman/male/weatherman_px.png`,   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR — 128x128 pixel sprite (Sprite AI restyle of his Meshy concept)
+  'centaur': `${_S}/Races/centaur/male/centaur_m_px.png`,   // 2026-11-24 THE CENTAUR — 128x128 pixel sprite (Sprite AI restyle of his built model)
   'plastic surgeon': `${_S}/Races/plastic_surgeon/male/plastic_surgeon_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'librarian': `${_S}/Races/librarian/female/librarian_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'televangelist': `${_S}/Races/televangelist/male/televangelist_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
@@ -918,12 +920,14 @@ const _NEW_FEMALE_SPRITES = {
   'bear': `${_S}/Races/bear/polar/bear_polar_px.png`,   // 2026-11-23 THE BEAR'S COATS — the polar bear (the race's female side)
   'streamer': `${_S}/Races/streamer/female/egirl_f_px.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of the E-Girl's 3D model's front render)
   'weatherman': `${_S}/Races/weatherman/female/news_anchor_px.png`,   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR — the News Anchor (Sprite AI restyle of her Meshy concept)
+  'centaur': `${_S}/Races/centaur/female/centaur_f_px.png`,   // 2026-11-24 THE CENTAUR — the female (Sprite AI restyle of her built model)
   'vtuber': `${_S}/Races/vtuber/female/vtuber_f_px.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of her full Meshy 3D model's front render)
 };
 const _NEW_MALE_SPRITES = {
   'nordic': 'https://cdn.entropywars.net/Assets/characters/races/nordic/male/nordic_m_v2_px.png',   // 2026-11-24 his new model (Sprite AI restyle of its front render)
   'skinwalker': 'https://cdn.entropywars.net/Assets/characters/races/skinwalker/male/skinwalker_px.png',   // 2026-11-24 its new model, not a werewolf
   'weatherman': `${_S}/Races/weatherman/male/weatherman_px.png`,   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR
+  'centaur': `${_S}/Races/centaur/male/centaur_m_px.png`,   // 2026-11-24 THE CENTAUR
   'streamer': `${_S}/Races/streamer/male/streamer_m_px.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of his 3D model's front render)
   'skater': `${_S}/Races/skater/male/skater_m_px.png`,   // 2026-11-17 — the male skater (Meshy model + Sprite AI restyle of its front render)
   'lifeguard': `${_S}/Races/lifeguard/male/lifeguard_m_px.png`,   // 2026-11-17 — the male lifeguard (same way)
@@ -2845,6 +2849,20 @@ const RACE_MODELS_3D = {
       model: 'https://cdn.entropywars.net/Assets/characters/races/weatherman/female/Meshy_AI_news_anchor_f_Running.glb',
       heightRatio: 0.95, basicAttackKind: 'magic',
       procRig: 'unitGear', gear: { held: { url: 'https://cdn.entropywars.net/Assets/world/props/meshy/Meshy_AI_microphone_1027232053_texture.glb', len: 0.14, grip: 0.3 } },
+    }),
+  },
+  /* 🐎 THE CENTAUR (2026-11-24, mondo: "a centaur ... made of separate parts"): a Meshy rigged human (mondo's approved concepts,
+     cut below the sash) joined to a copy of THE HORSES' file in one skeleton (the rider's Hips under the horse's chest bone), baked
+     offline by bake-centaur.py. procRig 'centaur' (three-renderer.js THE CENTAUR) keeps the shared library on
+     the rider and lays the horse's own Idle / Trot / Gallop and its poses (paw, rear, buck, lunge, the fall) under every clip. */
+  'centaur': {
+    male: _mkUAL('centaur/male', 'centaur_m', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/centaur/male/centaur_m.glb',
+      procRig: 'centaur', heightRatio: 1.55, yawOffset: 0, basicAttackKind: 'arrow',
+    }),
+    female: _mkUAL('centaur/female', 'centaur_f', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/centaur/female/centaur_f.glb',
+      procRig: 'centaur', heightRatio: 1.5, yawOffset: 0, basicAttackKind: 'arrow',
     }),
   },
   'plastic surgeon': {
@@ -7646,6 +7664,7 @@ const RACE_SPRITES = {
   'monarch': `${_S}/Races/monarch/female/monarch_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'butterfly girl': `${_S}/Races/butterfly_girl/female/butterfly_girl_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'weatherman': `${_S}/Races/weatherman/male/weatherman_px.png`,   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR — 128x128 pixel sprite (Sprite AI restyle of his Meshy concept)
+  'centaur': `${_S}/Races/centaur/male/centaur_m_px.png`,   // 2026-11-24 THE CENTAUR
   'plastic surgeon': `${_S}/Races/plastic_surgeon/male/plastic_surgeon_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'librarian': `${_S}/Races/librarian/female/librarian_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'televangelist': `${_S}/Races/televangelist/male/televangelist_px.png`,   // 2026-11-17 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)

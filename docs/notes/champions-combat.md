@@ -6499,3 +6499,25 @@ Head place: new `ThreeRenderer.unitHeadPose(uid, head, end, front)` (the rig's H
 Lessons: a face is drawn over (depthTest off, renderOrder 960); a face whose file is not there yet comes in on the first frame it is
 (`_skwFace` take()); the Wear run ends itself once the face is worn, so a slow frame past its end cannot skip the wearing.
 Probe: /mnt/project-files/unit-concepts-20261124/probe_faces.js (fires the windup directly; shots on the game clock).
+
+## THE CENTAUR (2026-11-24)
+mondo 11-24: "a centaur if we can. It would have to be made of separate parts ... the human upper body animate like a normal meshy model and
+the horse like a horse"; then, on the card, a male and female pair. The game's own idea list (ui.js) already had it: "Half horse, half archer,
+never misses on the run." One race `centaur`, male (chestnut) and female (dapple grey), one shared kit.
+- THE MODEL: `bake-centaur.py` (Blender as `bpy`) cuts a Meshy rigged human (concepts + rigs in project files unit-concepts-20261124b/,
+  build files centaur-build/) below the sash, takes the tack, the neck and the head off a copy of the Horse pack's `Horse_glb.glb`, swells the
+  withers up under the waist, and joins the two skeletons: the human's Hips is a child of the horse's chest bone (spine.008). One GLB per look
+  on R2 `Assets/characters/races/centaur/<male|female>/centaur_<m|f>.glb`; px sprites beside them (Sprite AI restyle of the built model).
+- THE ANIMATION: sprites.js def `procRig: 'centaur'` (three-renderer.js THE CENTAUR, `_cenBuild`) returns no clips, so the shared library
+  animates the rider like any Meshy unit, and `_libBakeClips` (every screen's clips come from it) lays the horse under each baked clip
+  (`_cenMerge`): Idle under the idles (Idle_2 under the second ones), Trot under the walk, Gallop under the run (whole loops fitted to the
+  clip), and a horse pose under the rest (`_CEN_POSES`: paw for shots and plain casts, rear for the big ones, buck for kicks, lunge for the
+  close blows, flinch, brace, hop, and the Unicorn's fall for death). The rider's Hips is held at rest on the horse; spine, arms, head keep the clip.
+- THE RULE, HIT AND RUN (`cenHitAndRun`, battle.js THE CENTAUR): once a turn its first hit on an enemy Quickens it (+1 move) until the end of
+  its next turn (`_cenOnHit` in applyDamageToUnit); on a turn it has walked (`_cenMovedAt`) its basic shot cannot be dodged (`_cenOnTheRun`
+  in doAttack's dodge roll and the attack button's hit chance).
+- THE KIT (family `centaur`, + archery, horsebackriding, athleticism): Hoof Stomp (T1, 3x3 round it, Stagger), Parthian Shot (T2, a shot,
+  then `cenHopBack: 2` springs it straight back from the target, stopping at a wall, a unit or a drop), Call of the Herd (T3, linePush 5,
+  knockback 1), Sagittarius (T4, 3x3 up to 7 over walls, magic light, Blind). Rung 3 can be Ride-By. Finisher borrows Robin Hood's.
+- Claude's picks (mondo named none): home Mount Olympus (with the Cyclops and the Minotaur), biomes ancient + forest, temper territorial,
+  stats a first pass between Robin Hood and the Unicorn. The spells use the stock VFX of their kinds (no own VFX yet).

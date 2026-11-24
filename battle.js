@@ -2682,6 +2682,7 @@
                 clearStatus(unit, 'momentum');
                 delete unit._momentum;
             }
+            if (spell.cenHopBack && target && !unit.dead) _cenHopBack(unit, spell, target);   // 🐎 THE CENTAUR: Parthian Shot
             /* ⛪ Celibacy (`summonPenalty`): N more for every summon the target's team has on the board, a second blow */
             if (spell.summonPenalty > 0 && target && !target.dead && !target._dying && !unit.dead) {
                 const _cn = _popeSummonCount(target.player);
@@ -15431,6 +15432,56 @@
             _bearFx('grudge', foe);
             return true;
         }
+        /* ═══ 🐎 THE CENTAUR (2026-11-24; the game's idea list: "Half horse, half archer, never misses on the run") ═══ HIT AND RUN
+           (data.js RACE_PASSIVES cenHitAndRun). Host-side; the guest gets it through the state sync (the `quickened` status, the
+           unit's plain _cen* fields) and the relayed floating text. Notes: docs/notes/champions-combat.md "THE CENTAUR".
+           - _cenOnHit (applyDamageToUnit): once a turn, its first hit on an enemy (not a damage-over-time tick, not an echo)
+             Quickens it (+1 move) until the end of its next turn.
+           - _cenOnTheRun (doAttack's dodge roll + the hit chance on the attack button): on a turn it has walked (moveUnit stamps
+             _cenMovedAt), its basic shot cannot be dodged.
+           - `cenHopBack: n` on a row (Parthian Shot, _runPostEffects): after the shot it springs up to n squares straight back,
+             away from the target, a square at a time while the next one is open ground it can stand on. */
+        function _cenTurnKey() { return (state.round || 0) + ':' + (state._blitzActiveUnitId || ''); }
+        function _cenOnHit(src, target, damageType, opts) {
+            if (!src || src.race !== 'centaur' || !_nrAlive(src) || !target || target.id === src.id) return;
+            if (damageType === 'dot' || (opts && opts._linkEcho)) return;
+            if (!sidesHostile(src.player, target.player) || !unitHasPassive(src, 'cenHitAndRun')) return;
+            const key = _cenTurnKey();
+            if (src._cenRanAt === key) return;
+            src._cenRanAt = key;
+            applyStatusPayload(src, { id: 'quickened', duration: 1 }, 'Hit and Run: ', src);
+            if (unitHasStatus(src, 'quickened')) _crFloat(src, '🏹 HIT AND RUN', 'buff');
+        }
+        function _cenOnTheRun(unit, from) {
+            if (!unit || unit.race !== 'centaur' || !unitHasPassive(unit, 'cenHitAndRun')) return false;
+            if (from && from.x != null && (from.x !== unit.x || from.y !== unit.y)) return true;   // a MOVE→ATK row: it will have moved
+            return unit._cenMovedAt === _cenTurnKey() && state._blitzActiveUnitId === unit.id;
+        }
+        function _cenHopBack(unit, spell, target) {
+            const n = spell && spell.cenHopBack;
+            if (!(n > 0) || !_nrAlive(unit) || !target) return;
+            if (typeof _isClashMode === 'function' && _isClashMode()) return;   // Clash: nobody budges
+            let dx = Math.sign(unit.x - target.x), dy = Math.sign(unit.y - target.y);
+            if (dx && dy) { if (Math.abs(unit.x - target.x) >= Math.abs(unit.y - target.y)) dy = 0; else dx = 0; }
+            if (!dx && !dy) return;
+            const fx = unit.x, fy = unit.y;
+            let x = fx, y = fy, z = unit.z;
+            for (let i = 0; i < n; i++) {
+                const nx = x + dx, ny = y + dy;
+                if (!isInside(nx, ny) || !canOccupy(nx, ny)) break;
+                const info = _slideStepInfo(unit, x, y, z, dx, dy);
+                if (!info || info.kind !== 'open') break;
+                const nz = (info.nz != null) ? info.nz : ((typeof nearestWalkableZ === 'function') ? nearestWalkableZ(nx, ny, z) : z);
+                if (z - nz > 1) break;   // no leap off a ledge
+                x = nx; y = ny; z = nz;
+            }
+            if (x === fx && y === fy) return;
+            unit.x = x; unit.y = y; unit.z = z;
+            unit._trackTilesMoved = (unit._trackTilesMoved || 0) + Math.abs(x - fx) + Math.abs(y - fy);
+            animateDisplacement(unit, fx, fy, x, y, 260 * (Math.abs(x - fx) + Math.abs(y - fy)), { leap: true });
+            resolveTileArrival(unit, { via: 'self' });
+            addLog(`🐎 ${_ctName(unit)} springs back to ${coordLabel(x, y)}.`);
+        }
         /* applyDamageToUnit, after the hit (and after the sleeper's wake): the Grudge + the rude awakening */
         function _bearOnHurt(bear, src, damageType, opts, wasHibernating) {
             if (!bear || bear.race !== 'bear' || !(bear.hp > 0) || bear._dying) return;
@@ -19511,7 +19562,7 @@
             if (getActiveStatusKeys(target).some(k => STATUS_DEFS[k]?.invulnerable)) return 0;
             const src = (from && from.x != null) ? { x: from.x, y: from.y } : attacker;
             const arc = (attacker._doorAttackOrigin && !attacker._doorAttackOrigin.projector) ? 'back' : getAttackArc(src, target);
-            let p = arc === 'back' ? 1 : 1 - getEvasionChance(target);
+            let p = (arc === 'back' || _cenOnTheRun(attacker, from)) ? 1 : 1 - getEvasionChance(target);   // 🐎 THE CENTAUR: on the run
             if (unitHasStatus(attacker, 'blind')) p *= 0.5;
             return Math.max(0, Math.min(1, p));
         }
@@ -44848,6 +44899,7 @@
                     addLog(`💤 ${_ctName(target)} wakes up!`);
                 }
                 if (target.race === 'bear') _bearOnHurt(target, sourceUnit, damageType, opts, _bearHib);   // 🐻🐾 THE BEAR: the Grudge, the rude awakening
+                if (sourceUnit && sourceUnit.race === 'centaur') _cenOnHit(sourceUnit, target, damageType, opts);   // 🐎 THE CENTAUR: Hit and Run
                 /* Taking a hit blows your cover: blood spatter and the stagger of
                    impact give a hidden unit away. Any damage dealt by an enemy
                    strips Invisible — AoE sweeps, traps and turrets are the
@@ -49545,6 +49597,7 @@
             _bendsWalk(unit, _originX, _originY, opts.trail);   // 🫧 THE BENDS: every square of the walk costs HP
             resolveTileArrival(unit, { via: 'move' });
             _skaterBankMove(unit, _originX, _originY, x, y, dist, opts.trail);   // 🛹 a straight roll banks Momentum
+            if (unit.race === 'centaur' && dist > 0) unit._cenMovedAt = _cenTurnKey();   // 🐎 THE CENTAUR: on the run this turn
             _serpentFollow(unit, _originX, _originY, opts.trail);   // 🐍 the serpent's body follows the path
             _magicianVanish(unit);   // 🎩 Vanishing Act: an enemy ended beside a Magician with it set
             _deliveryDrop(unit, _originX, _originY);   // 🛵 the Delivery Boy drops his rider off
@@ -80995,7 +81048,7 @@
                 addLog(`🌫️ ${_ctName(unit)} swings blind — and misses!`);
                 showFloatingTextForUnit(unit, '🌫️ BLIND!', 'debuff', { durationMs: 900 });
             }
-            const evaded = _blindMiss ? true : (_atkArc === 'back' ? false : rollEvasion(target));
+            const evaded = _blindMiss ? true : ((_atkArc === 'back' || _cenOnTheRun(unit)) ? false : rollEvasion(target));   // 🐎 THE CENTAUR: never misses on the run
 
             // THE SPELL AUDIT Batch D — Umbral forces the crit; Foresight (`allyNoCritWithin` on a teammate of the
             // target) wards it off entirely.
