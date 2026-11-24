@@ -97393,7 +97393,7 @@ function hqTerrainCompile(room, roomId) {
     const flights = F.filter(f => f.k === 'ramp' && f.x0 != null && f.w > 0 && (f.escalator || (f.stairs && !f.float)));
     if (flights.length) {
         const gw = (px, pz) => { skipFlights = true; try { return hFinal(px, pz); } finally { skipFlights = false; } };
-        const D = new Map(), XZ = new Map(), LO = new Map(), hits = new Uint8Array(nx * nz), SR = (typeof HQ_STAIR_RULES !== 'undefined') ? HQ_STAIR_RULES : { riser: 0.18, minSteps: 2, maxSteps: 90 };
+        const D = new Map(), XZ = new Map(), LO = new Map(), hits = new Uint8Array(nx * nz), outs = [], straightIds = new Set(), noStraight = typeof window !== 'undefined' && !!window.EW_NO_STRAIGHT_SIDE; let straightSide = 0; const SR = (typeof HQ_STAIR_RULES !== 'undefined') ? HQ_STAIR_RULES : { riser: 0.18, minSteps: 2, maxSteps: 90 };
         for (const f of flights) {
             const R0 = Math.abs(f.h1 - f.h0), steps = Math.max(SR.minSteps || 2, Math.min(SR.maxSteps || 90, Math.round(R0 / (SR.riser || 0.18))));
             const margin = f.escalator ? 0.4 : 0.5 * R0 / steps + 0.08, hw = f.w / 2;
@@ -97401,10 +97401,19 @@ function hqTerrainCompile(room, roomId) {
             const i0 = Math.max(0, Math.floor((cx - ex - x0) / res)), i1 = Math.min(nx - 1, Math.ceil((cx + ex - x0) / res));
             const j0 = Math.max(0, Math.floor((cz - ez - z0) / res)), j1 = Math.min(nz - 1, Math.ceil((cz + ez - z0) / res));
             for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
-                const px = x0 + i * res, pz = z0 + j * res, L = _hqTRamp(px, pz, f);
-                if (L.s < 0 || L.s > L.L || Math.abs(L.v) >= hw) continue;
-                const k = j * nx + i, sg = L.v >= 0 ? 1 : -1, top = f.h0 + (f.h1 - f.h0) * (L.s / L.L) - margin;
+                const px = x0 + i * res, pz = z0 + j * res, L = _hqTRamp(px, pz, f), av = Math.abs(L.v);
+                if (L.s < 0 || L.s > L.L || (noStraight && av >= hw)) continue;   // (window.EW_NO_STRAIGHT_SIDE: the old rule, a kill switch)
+                const k = j * nx + i, sg = L.v >= 0 ? 1 : -1, surf = f.h0 + (f.h1 - f.h0) * (L.s / L.L), top = surf - margin;
                 const fx = f.x0 + L.ux * L.s, fz = f.z0 + L.uz * L.s, ox = -L.uz * sg, oz = L.ux * sg;
+                /* THE STRAIGHT SIDE (2026-11-24, mondo on a Disaster City stair: "the sides next to it are clipping into it, again because you raise the
+                   ground with this gradient on the side instead of just raising it straight up"). A flight whose side lies ON a lattice line (every
+                   city flight: the squares' lines are the lattice's) left its side nodes out (|v| >= hw), so the higher ground beside it (the plot
+                   cut a flight climbs through, a tier it runs along) stood on the side line and fell to the treads across the flight's first
+                   cell: a bank 0.875 m wide leaning over the steps and burying the rails. Now the side line is the flight's (drawn at its foot, on
+                   its side), the bank's own first node outside is drawn on the side too (a straight face, no run of slope), and the walk's
+                   field on the side line is the flight's (the face stands outside the treads, a wall to the walker). Every room's flights. */
+                if (av > hw + 1e-6) { if (!noStraight && !f.escalator && av <= hw + res + 1e-6) outs.push({ k, surf, x: _hqR4(fx + ox * (hw + 0.02)), z: _hqR4(fz + oz * (hw + 0.02)) }); continue; }
+                if (!noStraight && !f.escalator && hw - av < res * 0.75 && H[k] > surf + 0.3) { H[k] = surf; straightSide++; straightIds.add(f.id || (f.x0 + ',' + f.z0)); }
                 const ground = Math.max(gw(px, pz), gw(fx + ox * (hw + 0.3), fz + oz * (hw + 0.3)));
                 D.set(k, Math.min(D.has(k) ? D.get(k) : H[k], H[k], top, ground));
                 const lo = Math.min(H[k], ground); if (!(LO.get(f) <= lo)) LO.set(f, lo);
@@ -97413,7 +97422,10 @@ function hqTerrainCompile(room, roomId) {
             }
         }
         XZ.forEach((v, k) => { if (hits[k] > 1) XZ.delete(k); });   // a node two flights share stays where it is
-        info.drawH = D; info.drawXZ = XZ;
+        /* THE STRAIGHT SIDE (above): the bank's first node past a side, when it stands over the flight there, is drawn ON the side (2 cm out) */
+        const outN = new Map(); outs.forEach(o => { if (hits[o.k] || !(H[o.k] > o.surf + 0.3)) return; outN.set(o.k, (outN.get(o.k) || 0) + 1); if (!XZ.has(o.k)) XZ.set(o.k, [o.x, o.z]); });
+        outN.forEach((n, k) => { if (n > 1) XZ.delete(k); });   // between two flights: it stays where it is
+        info.drawH = D; info.drawXZ = XZ; info.straightSide = straightSide; info.straightIds = [...straightIds];   // (the count a check reads: the side nodes set straight, the flights they belong to)
         info.flightLo = LO;   // a flight's lowest ground under it: its wedge stands down to it (three-renderer.js _hqBuildBuiltStairs) — no slit under a flank where the floor dips
     }
     info.exact = _hqTExactList(info.builts, decks, F.filter(f => f.k === 'plateau' && f.bld && !f.r && !f.sink && f.w > 0 && f.d > 0));   // THE EXACT SURFACES (2026-10-06): the flights and the field decks read edge to edge

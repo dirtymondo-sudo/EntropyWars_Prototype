@@ -15105,3 +15105,21 @@ mondo picked one name: the district that was "The Ritual Ground" (room `site_pre
 data.js HQ_ZONE_MAP. The old Bohemian Grove room was folded into it on 11-16, so they were always one place. A bake rerun keeps the name.
 The unit dossier's printed home now reads through `DOOR_TEXT.POINT_OF_ENTRY_NOW` (Mount Shasta is gone: The Mountains; the Lodge,
 Strip, Stadium and Downtown: Disaster City's districts); POINT_OF_ENTRY's own labels stay (they match the old site boards).
+
+## THE STRAIGHT SIDE — no bank leans over a stair (2026-11-24, mondo on a University stair in Disaster City: "All over disaster city there are these stairs where the sides next to it are clipping into it, again because you raise the ground with this gradient on the side instead of just raising it straight up")
+
+**What it was (engine, every room):** data.js hqTerrainCompile THE JOINED FLIGHTS draws the field under each flight at the ground it stands on and pulls
+the nodes near its side ONTO the side. It took only nodes strictly inside the flight (`|v| < hw`). A flight whose side lies ON a lattice line (every
+Disaster City flight: the squares' lines are the lattice's, 0.875 m) left its side-line nodes out, and those nodes carry the HIGHER side (the slope
+field's on-a-line rule). Where the flight climbs through a cut into the upper plot (the crossing stairs with squares on the high side), the high ground
+stood on the side line and fell to the treads across the flight's first cell: a bank 0.875 m wide and up to 3.5 m tall leaning over the steps and
+burying the rails. The walk read the same bank (a slope off the stair's edge up onto the high ground).
+
+**The fix (data.js, generic):** the side-line nodes are the flight's now (drawn at its foot, on its side), the bank's first node past the side is drawn
+ON the side, 2 cm out (`drawXZ`), so the face stands straight up OUTSIDE the treads, and the walk field on the side band is the flight's own surface
+(the face is a wall to the walker). Only where the ground beside stands more than 0.3 m over the flight; escalators untouched; a node two flights
+share stays where it is. `info.straightSide` / `info.straightIds` = the nodes and the flights it set straight. No bake, no row changed.
+
+**What it fixed (every terrain room compiled, 32 with flights):** Disaster City 7 flights (P07-02S, P11-03E, P02-04S, P02-05S, P07-05E, P09-08S, the
+canal stair), Katana Island 7, Hell 6, Antarctica 3 (the west stair), Giza's pyramid inside 2, Agartha 1, Vatican 1, the Temple (clash) 1.
+The other 121 city flights stand on the lower plot over flat ground (nothing beside them is higher) and were already clean.
