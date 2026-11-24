@@ -99419,7 +99419,7 @@ const ThreeRenderer = (function () {
     function _hqFreezeWanted(H) {
         if (!H || H !== _hq || H.field || H.ghost || H.stage || !H.ready || !H.partRoot || _hqFreezeOff()) return false;
         var id = H.opts && H.opts.room, RU = _hqFreezeRules();
-        if (!(RU.all || (typeof window !== 'undefined' && window.EW_FREEZE_ALL) || RU.rooms.indexOf(id) >= 0)) return false;
+        if (!(RU.all || (typeof window !== 'undefined' && window.EW_FREEZE_ALL) || RU.rooms.some(function (r) { return r === id || (r.slice(-1) === '*' && String(id).indexOf(r.slice(0, -1)) === 0); }))) return false;   // ('…*' = every room whose id starts so)
         var room = H.room;
         if (room && room.space && room.space.round && room.space.round.length) return false;
         if (room && room.shell && room.shell.open && room.shell.sky && room.shell.sky.voyage) return false;
@@ -99537,15 +99537,18 @@ const ThreeRenderer = (function () {
         }
         /* THE WATCH: each top piece's own pose summed, a slice a frame, for watchMs */
         var RU = _hqFreezeRules(), t0 = performance.now(), P = Z.pieces;
+        /* a slow frame sums more (a slow machine still ends its watch in about watchMs; capped at 12 ms a frame) */
+        var fdt = Z.lastAt ? now - Z.lastAt : 16.7; Z.lastAt = now;
+        var slice = Math.min(12, RU.watchSliceMs * Math.max(1, fdt / 16.7));
         if (P.length) {
-            while (performance.now() - t0 < RU.watchSliceMs) {
+            while (performance.now() - t0 < slice) {
                 var c = P[Z.pi]; Z.pi = (Z.pi + 1) % P.length;
                 if (c && c.parent) { var s = _hqStillSum(c), s0 = Z.sum.get(c); if (s0 !== undefined && s0 !== s) Z.moved.add(c); Z.sum.set(c, s); }
                 if (Z.pi === 0) Z.rounds = (Z.rounds | 0) + 1;
             }
         }
         Z.ms += performance.now() - t0;
-        if (now - Z.t0 < RU.watchMs || (Z.rounds | 0) < 3) return;
+        if (now - Z.t0 < RU.watchMs || ((Z.rounds | 0) < 3 && !((Z.rounds | 0) >= 1 && now - Z.t0 > RU.watchMs * 4))) return;   // (three rounds; one is enough after four watches' time: the late sweep finds the rest)
         /* THE FREEZE itself */
         var t1 = performance.now(), G2 = _hqFzGroups(H);
         for (var g2 = 0; g2 < G2.length; g2++) _hqFzArm(Z, G2[g2], now);
@@ -99571,7 +99574,7 @@ const ThreeRenderer = (function () {
     }
     function _hqFreezeStats() {
         var Z = _hqFz; if (!Z) return null;
-        var o = { room: Z.room, on: Z.on, groups: Z.list.length, still: 0, movers: 0, why: Object.assign({}, Z.why), late: Z.lateN | 0, watchMs: Math.round(Z.ms), armMs: Z.armMs ? +Z.armMs.toFixed(1) : 0, last: _hqFzStat ? Object.assign({}, _hqFzStat) : null };
+        var o = { room: Z.room, on: Z.on, pieces: Z.pieces ? Z.pieces.length : 0, rounds: Z.rounds | 0, pi: Z.pi | 0, age: Math.round(performance.now() - Z.t0), groups: Z.list.length, still: 0, movers: 0, why: Object.assign({}, Z.why), late: Z.lateN | 0, watchMs: Math.round(Z.ms), armMs: Z.armMs ? +Z.armMs.toFixed(1) : 0, last: _hqFzStat ? Object.assign({}, _hqFzStat) : null };
         o.list = [];
         for (var i = 0; i < Z.list.length; i++) { var g = Z.list[i], F = g._ew_fz; if (F) { o.still += F.n - F.mv.size; o.movers += F.mv.size; o.list.push({ name: g.name || g.type, n: F.n, movers: F.mv.size, whole: Object.assign({}, F.fw || {}) }); } }
         return o;
