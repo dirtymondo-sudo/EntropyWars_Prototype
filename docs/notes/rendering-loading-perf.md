@@ -4106,3 +4106,14 @@ pieces, the Clearing 49,000, back in the lobby 51,000: the whole Clearing stayed
   Internet 4,075, the Astral Realm 2,236, the Deep 1,471. Not frozen by design: DOOR HQ (the stage), the round worlds of Outer
   Space (the Moon probe: `freeze null`), a vessel under way. Next: the originals out of the drawn scene (projection walk), then
   step 4 (delete THE STILL WALK + the batch watchdog).
+- STEP 4 (11-24): THE STILL WALK IS GONE (`_hqStillArm` / `_hqStillUpdate` / `_hqStillBook` and its riders THE MERGED QUARTER,
+  THE HELD BOOK, THE MOVERS STAY OUT, the door hold). The freeze took its last job, THE DOORS REST: the door group is frozen
+  too and a door wakes itself while it moves (`_hqStillWake` -> the frozen group's `wake` map, walked until HQ_FZ_WAKE_MS =
+  600 ms after the last wake): the exit doors through `_hqDoorMotionStep`, the revolving door, and the city's swinging doors
+  (`_hqTickCityDoors`, added this step). A door-gun door (`_ew_noDChunk`) is a mover. `EW_HQ_STILL_OFF` now = `EW_NO_FREEZE`.
+  Checked: Katana's city door swings under a frozen door group (leaf placed every frame, no late mover), a fight there and
+  back fine, Western Town frozen with the doors in it. KEPT on purpose: the static batch's watchdog (it already skips every
+  frozen room; it still guards the battle board and DOOR HQ), `_hqStillSum` (the freeze's checksum), `_hqStWalk` (the
+  frame's one walk). The renderer's projection walk was looked at: chunk culling, the lamp's reach cells and the WebGPU
+  bundles already trim it; the cost left there is the draws, which only merging per square + look would cut.
+- Dev: `ThreeRenderer.hq.dev.doors()` / `.cityDoors()` (the room's door records, for probes).
