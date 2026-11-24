@@ -488,7 +488,7 @@ const RACE_SPRITE_GENDERS = {
   'door agent': 'both',
   'police officer': 'male',   // 2026-09-21 — the regular cops are male rigs; the female is the CYBERPUNK skin (RACE_MODEL_SKINS), Cyberpunk City only
   'time cop': 'male',   // 2026-10-24 — the sheriff and the cop are male rigs only
-  'jellyfish': 'male',        // 2026-09-21 — the jellyfish king
+  'jellyfish': 'both',        // 2026-09-21 — the jellyfish king; 2026-11-24 + the jellyfish queen (her own model + sprite)
   'cult leader': 'male',      // 2026-09-21
   'popstar': 'female',        // 2026-09-22 — the headliner
   'starfish': 'male',   // 2026-09-30
@@ -906,6 +906,7 @@ const FOOTBALL_SPRITE = `${_S}/football.png`;
 // 2026-11-17 (mondo: female nordic + siren): their own 128x128 sprites, Sprite AI restyles of each new Meshy model's front render.
 // The mermaid woman keeps her blue sprite: her new model was made to match it.
 const _NEW_FEMALE_SPRITES = {
+  'jellyfish': 'https://cdn.entropywars.net/Assets/characters/races/jellyfish/female/jellyfish_f_px.png',   // 2026-11-24 THE JELLYFISH, MALE + FEMALE (Sprite AI restyle of her model's front render)
   'gladiator': `${_S}/Races/gladiator/female/gladiator_f_px.png`,   // 2026-11-19 THE COMING RACES — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'nordic': 'https://cdn.entropywars.net/Assets/characters/races/nordic/female/nordic_f_v2_px.png',   // 2026-11-24 her new model (Sprite AI restyle of its front render)
   'siren': `${_S}/Races/siren/female/siren_f_px2.png`,
@@ -2603,7 +2604,15 @@ const RACE_MODELS_3D = {
      behind every walk, cast and hit (bake-tentacles.py; sources project files jellyfish-remake/). The old rig stays on R2. */
   'jellyfish': {
     male: _mkUAL('jellyfish', 'a_jellyfish_king', {
-      model: 'https://cdn.entropywars.net/Assets/characters/races/jellyfish/male/Meshy_AI_jellyfish_v2_Running.glb',
+      model: 'https://cdn.entropywars.net/Assets/characters/races/jellyfish/male/Meshy_AI_jellyfish_m_v3_Running.glb',
+      heightRatio: 0.92, basicAttackKind: 'magic',
+    }),
+    /* THE JELLYFISH, MALE + FEMALE (2026-11-24, mondo on the v2: "looks more like a female ... it needs boobs"; the old one's look is
+       "basically how i want it to look like ... make one like that as the male version and another one for a female version"): v3 male =
+       the old bell + tentacle arms and legs, remade (no T-bars) with 10 hanging tentacles under the bell; the female = the v2 idea with a
+       figure, 12 tentacles at the hips. Both on THE SWAY chains (bake-tentacles.py). One race, the same spells for both. */
+    female: _mkUAL('jellyfish/female', 'jellyfish_f', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/jellyfish/female/Meshy_AI_jellyfish_f_Running.glb',
       heightRatio: 0.92, basicAttackKind: 'magic',
     }),
   },
