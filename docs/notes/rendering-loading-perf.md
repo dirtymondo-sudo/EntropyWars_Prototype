@@ -4091,3 +4091,18 @@ pieces, the Clearing 49,000, back in the lobby 51,000: the whole Clearing stayed
   other per-light / per-object lists outliving the room; find them with an Array.prototype queryObjects scan for arrays holding
   detached pieces, `/tmp/q7.js`-style, in the thread's scratchpad memprobe.js `--serve`). Heap snapshots crash the cloud tab
   (1.7 GB heap): use the queryObjects scans.
+
+- STEP 2 (11-23): `freeze.rooms` takes `'<prefix>*'` (every room whose id starts so). On: Disaster City
+  (`site_prebuilt_downtown_streets`), the Bayside Mall, every Hotel floor (`site_prebuilt_hotel_*`), Hero Tower, the Sewers,
+  and The Estate's rooms (`site_prebuilt_skinwalker_ow_*`, the first of step 3). THE SLOW WATCH: a slow frame sums more of the
+  watch (the slice grows with the frame's length, at most 12 ms) and after four watches' time one full round is enough; before
+  this the cloud's 0.5 FPS in the Estate's lake (43,120 objects, 8,431 top pieces) never finished the watch. The lake, cloud:
+  8,055 still pieces never walked, matrix walk 10.6 -> 6.4 ms (the rest: 157 rigs, the animals, the instance cells); a fight
+  from the corn and back: fine. Disaster City itself is too big for the cloud browser: checked through its insides + the
+  same code; its first frozen frame logs "[FREEZE] site_prebuilt_downtown_streets frozen: ..." on his machine.
+- STEP 3 (11-24): `freeze.all: true`, every plot room. One room of each zone checked in the cloud with the freeze on (all froze,
+  no errors): Ski Lodge 7,064 still pieces, Giza 529, Camelot Kingdom 4,514, Redwood Trail 3,644, Katana 2,996, the Cavern
+  (`…_ug_cavern`) 978, Hell 254, Babel 871, the D.U.M.B. 2,712 (3 late movers caught by the sweep), Antarctica 893, the
+  Internet 4,075, the Astral Realm 2,236, the Deep 1,471. Not frozen by design: DOOR HQ (the stage), the round worlds of Outer
+  Space (the Moon probe: `freeze null`), a vessel under way. Next: the originals out of the drawn scene (projection walk), then
+  step 4 (delete THE STILL WALK + the batch watchdog).
