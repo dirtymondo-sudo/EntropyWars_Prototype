@@ -6482,7 +6482,36 @@ GEAR): his shut umbrella (`Assets/characters/gear/held/umbrella_closed.glb`), he
   umbrella with its `Close` shape key, opened by `_wnBrolly`); hers = a newsroom (sound rings + TOP STORY card, the mic on
   its cord + EXCLUSIVE, newspaper pages + a FAKE stamp, three studio lights + LIVE + the mic rising, the lower-third banner
   per segment). Side colours by `_psSide`; all through fire() (relayed online).
->>>>>>> Stashed changes
+
+## THE CHEERLEADER + THE POINT GUARD (2026-11-24, thread "Add the Cheerleader and Point Guard units"; mondo: "Cheerleader (f) ... Point Guard m (basketball)", "needs a basketball, just a sphere geometry and hopefully you can make a good looking realistic basketball texture for it"; his pick on the card: TWO SEPARATE UNITS, not one M/F race)
+Two races: `'cheerleader'` (female only, support, the DCU Aftershocks' cheer squad: Disaster City University, district U, game
+days in Sports) and `'point guard'` (male only, ranged, the Sports district's courts). Models: Meshy (Cheerleader A with the DCU
+letters, Point Guard A, purple + gold #1) at R2 `Assets/characters/races/<cheerleader/female | point_guard/male>/Meshy_AI_*_Running.glb`,
+sprites `*_px.png` same folders (Sprite AI). First-pass stats; finishers borrow pileOn (Pyramid Collapse) / motionCarries (Posterized).
+- THE BASKETBALL: a UV sphere + a painted texture made in code (project files `cheer-guard/make_basketball.py`: pebbled orange
+  leather from 3D cellular noise, two great-circle seams + the two curved seams, 24 cm). ONE file, `Assets/characters/gear/held/basketball.glb`:
+  his held gear (THE UNIT GEAR `gear.held`) AND the thrown ball (three-renderer.js `_PROJ_MODELS['proj-basketball']`, a light arc;
+  sprite fallback `Assets/loose_sprites/basketball.png`). battle.js UNIT_ANIM_OVERRIDES makes every throw of his the ball; his basic
+  attack is `throw` with `weaponProj` (the held ball hides while the thrown one flies).
+- HER RULE, Spirit (`chSpirit`): `unit.spirit` 0-3 (HUD chip SPIRIT n/3 | STUNT READY, nameplate 📣 badge). Each spell +1; a spell cast at
+  3 is a STUNT (she + allies within 3 heal 50 and lose 1 debuff), then 0. battle.js `_chpgAfterCast` / `_chStunt`.
+- High Kick (T1): displacement, kick 2 back. Ready? OK! (T2): ally +1 ATK +1 SPD. Basket Toss (T3, `chToss`): a teleportAnyUnit row;
+  the pick must be an ally NEXT TO HER (`chTossPickOk`: spellAimProblem, doSpell's first click, spellBlockReason "No ally next to
+  her"), the landing within 4 of her; the ally jumps the `leap` arc (now for a thrown ally too); when it lands the enemies round the
+  landing take `chTossDmg` + Stagger. Gimme a D-C-U! (T4, `chGimme`): warCry +1 ATK +1 DEF within 4, then heal 100 for them and a
+  sonic hit + Stagger on enemies within 2.
+- HIS RULE, Assist (`pgAssist`): every enemy his hit lands on (basic or spell, applyDamageToUnit) is Marked 2 rounds FOR HIS TEAM:
+  `target._pgMarkBy` = his id and the mark consumption skips his own hits (an ally's physical hit cashes it).
+- Chest Pass (T1): ricochet. Crossover (T2, `pgAnkles`): escape 2; whoever stood next to him before (`unit._pgFrom`, noted at the
+  cast rows: `_pgBeginCast`) is Staggered + Marked. Alley-Oop (T3, `pgOop`): ally +2 ATK and a sure critical next basic attack (the
+  Monarch's `_deltaCrit`). Buzzer Beater (T4): range 7 over cover, execute under 15%.
+- CPU (ai.js `_teleportAnyPick`): Basket Toss throws a team-mate next to her onto a square beside enemies (the hits less the danger).
+- VFX (three-vfx-effects.js "THE CHEERLEADER + THE POINT GUARD"): confetti + cheer cards in side colours (kick burst, READY? OK!,
+  TOSS!, STUNT!, the D-C-U letters), ALLEY-OOP and a 0.0 shot clock; the hits ride the staging `burst` (`_CHPG_ON_BURST`), the rest
+  their own fire() phases (`land`, `chant`, `stunt`), all relayed. Meshy library casts: Kick_a_Soccer_Ball, Cheer_with_Both_Hands_Up,
+  Female_Crouch_Pick_Throw_Forward, Backflip_inplace (hers), Hop_with_Arms_Raised (Alley-Oop).
+- Residents: cheerleader U x2 (quad, beat S) + S x1; point guard S x2 (data.js HQ_SPAWN_RULES), both uncommon. Proof: project files
+  `cheer-guard/proof/` (probe `cheer-guard/probe_cg.js`).
 
 ### THE SKINWALKER'S FACES (2026-11-24, mondo: "Skinwalker ... will need custom animations with his faces for his abilities"; plan OK'd "okay sounds good")
 Built in code, no new models. Four stolen faces (Meshy, decimated to 5k tris + 512 px JPEG) on R2

@@ -7548,6 +7548,7 @@
         // (2) a hurt ally carried out of reach; (3) ourselves, hurt, blinked away
         for (const a of ours) {
             if ((a.hp / Math.max(1, a.maxHp)) >= 0.4 || (a.id !== unit.id && !okPick(a))) continue;
+            if (spell.chToss && a.id === unit.id) continue;   // 🤸 Basket Toss throws a team-mate, never her
             if (a.id === unit.id && typeof window.unitMoveBlockedByStatus === 'function' && window.unitMoveBlockedByStatus(unit)) continue;   // a pinned caster warps others, never itself
             const here = v.threatFn ? v.threatFn(a.x, a.y, a.z).totalDmg : 0;
             if (here <= 0) continue;
@@ -7555,6 +7556,24 @@
                 const there = v.threatFn ? v.threatFn(t.x, t.y, t.z).totalDmg : 0;
                 const sc = Math.min(effHp(a), here - there) * 0.8 - aiHazardPenaltyAt(a, t.x, t.y);
                 consider(a, t, sc);
+            }
+        }
+        /* 🤸 BASKET TOSS (the Cheerleader, 2026-11-24): a team-mate next to her thrown onto a square beside enemies (the landing
+           hits each of them + Stagger); worth the hits, less the danger the thrown body lands in */
+        if (spell.chToss) {
+            const foes = (v.visibleEnemies || []).filter(e => e && !e.dead);
+            const row = { id: 'chBasketTossLand', name: 'Basket Toss', spellType: 'human', element: 'physical', type: 'damage', kind: 'aoe', damageType: 'physical', dmg: spell.chTossDmg || 70 };
+            for (const m of (v.allies || [])) {
+                if (!m || m.dead || m.id === unit.id || !okPick(m)) continue;
+                for (const t of lands) {
+                    const hit = foes.filter(e => Math.max(Math.abs(e.x - t.x), Math.abs(e.y - t.y)) <= 1);
+                    if (!hit.length) continue;
+                    let sc = 0;
+                    for (const e of hit) { let est = row.dmg; try { est = estDamage(g, unit, e, row); } catch (q) {} sc += Math.min(est, effHp(e)) * 0.8 + 25; }
+                    try { sc -= tileDangerCost(g, m, v, t.x, t.y, t.z) * 0.5; } catch (q) {}
+                    sc -= aiHazardPenaltyAt(m, t.x, t.y) + mpCost;
+                    consider(m, t, sc, 'toss');
+                }
             }
         }
         return best;

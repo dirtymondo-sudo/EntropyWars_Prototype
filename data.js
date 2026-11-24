@@ -397,6 +397,8 @@ const FINISHERS = {
     'hollow':         { id: 'fin_hollow', name: 'Lights Out', glyph: '🎭', type: 'anomaly', sig: 'devoured', built: true, tagline: 'SLEEP NOW', desc: 'A sleeping mask settles over the face, the eyes behind it close, and the maw takes what is left of the dream.' },   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name) (borrows the devoured staging)
     'weatherman':     { id: 'fin_weatherman', name: 'Severe Weather Alert', glyph: '🌪', type: 'human', sig: 'upUpAndAway', built: true, tagline: 'STAY INDOORS', desc: 'The alert tone sounds, a funnel cloud drops out of a green sky and takes the victim up, live on the six o\'clock news.' },   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR (borrows the upUpAndAway staging)
     'centaur':        { id: 'fin_centaur', name: 'Run Down', glyph: '🏹', type: 'anomaly', sig: 'splitTheArrow', built: true, tagline: 'NEVER MISSES ON THE RUN', desc: 'Hooves on the horizon, a bow drawn at a full gallop, and one arrow that has been waiting for the victim the whole ride.' },   // 2026-11-24 THE CENTAUR (borrows Robin Hood's signature)
+    'cheerleader':    { id: 'fin_cheerleader', name: 'Pyramid Collapse', glyph: '📣', type: 'human', sig: 'pileOn', built: true, tagline: 'GO, FIGHT, WIN', desc: 'The whole squad runs on from the sidelines, builds the pyramid on top of the victim and holds the pose for the cameras.' },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD (borrows the pileOn staging)
+    'point guard':    { id: 'fin_point_guard', name: 'Posterized', glyph: '🏀', type: 'human', sig: 'motionCarries', built: true, tagline: 'AND ONE', desc: 'A hoop drops out of the sky, he takes off from the free-throw line and slams the victim through it, ball and all.' },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD (borrows the motionCarries staging)
     'streamer':       { id: 'fin_streamer', name: 'Banned', glyph: '🎮', type: 'anomaly', sig: 'corruptedSave', built: true, tagline: 'ACCOUNT SUSPENDED', desc: 'The chat floods, the mods wake up, and ACCOUNT SUSPENDED stamps down over the victim until nothing is left on the stream.' },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit) (borrows the corruptedSave staging)
     'vtuber':         { id: 'fin_vtuber', name: 'Graduation', glyph: '🎀', type: 'anomaly', sig: 'farewellTour', built: true, tagline: 'END OF STREAM', desc: 'She waves goodbye to the chat, the stream cuts to a pixel heart, and the victim\'s name card reads END OF STREAM.' },   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look) (borrows the farewellTour staging)
     'cameraman':      { id: 'fin_cameraman', name: "That's a Wrap", glyph: '🎥', type: 'human', sig: 'blurryFootage', built: true, tagline: 'CUT. PRINT.', desc: 'The light goes red, the lens racks in and the last frame is the victim, held forever.' },   // 2026-11-19 THE NEW RACES 3 (borrows the blurryFootage staging)
@@ -663,6 +665,8 @@ const RACE_ELEMENT_AFFINITY = {
     'hollow': { psychic: 'resist', light: 'weak' },   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name): a dream that moves you; light wakes it
     'weatherman': { wind: 'resist', lightning: 'weak' },   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: dressed for the wind; a man with a metal umbrella in a thunderstorm
     'centaur': { earth: 'resist', ice: 'weak' },   // 2026-11-24 THE CENTAUR: four hooves on the ground; a horse on ice
+    'cheerleader': { sonic: 'resist', poison: 'weak' },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: she out-yells anything; a whole season of energy drinks
+    'point guard': { wind: 'resist', ice: 'weak' },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: quick on his feet; the cold gets in his knees
     'streamer': { sonic: 'resist', light: 'weak' },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit): the headset is on; never sees the sun
     'vtuber': { lightning: 'resist', water: 'weak' },   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look): lives on current; water shorts the projectors
     'cameraman': { light: 'resist', water: 'weak' },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models): the flash is his; water kills the camera
@@ -3064,6 +3068,14 @@ const RACE_PROFILES = {
         labelFemale: 'News Anchor',
         types: ['human']
     },
+    'cheerleader': {   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD (mondo 11-24: two separate units, not one race): the DCU Aftershocks' cheer squad
+        label: 'Cheerleader',
+        types: ['human']
+    },
+    'point guard': {   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD (mondo 11-24: two separate units, not one race)
+        label: 'Point Guard',
+        types: ['human']
+    },
     'hollow': {   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name)
         label: 'The Hollow',
         types: ['anomaly', 'alien']
@@ -3881,6 +3893,14 @@ const PASSIVE_DEFS = {
         id: 'cenHitAndRun', icon: '🏹', name: 'Hit and Run',
         desc: 'Half archer, half horse. Once a turn, the first time it hits an enemy it is Quickened (+1 move) until the end of its next turn, to ride away. On a turn it has moved, its basic shot cannot be dodged.',
     },
+    chSpirit: {   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: battle.js THE CHEERLEADER + THE POINT GUARD (_chAfterCast)
+        id: 'chSpirit', icon: '📣', name: 'Spirit',
+        desc: 'Each of her spells adds 1 Spirit (up to 3). A spell she casts at 3 Spirit is a STUNT: when it lands, she and every ally within 3 heal a SMALL amount and lose 1 debuff, and the Spirit starts over.',
+    },
+    pgAssist: {   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: battle.js THE CHEERLEADER + THE POINT GUARD (applyDamageToUnit)
+        id: 'pgAssist', icon: '🏀', name: 'Assist',
+        desc: 'Every enemy he hits with a basic attack or a spell is left Marked for 2 rounds, for his team: the next physical hit an ALLY lands on it deals bonus damage (his own hits never cash it).',
+    },
     wnTheForecast: {   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: battle.js THE WEATHERMAN + NEWS ANCHOR
         id: 'wnTheForecast', icon: '☂', name: 'The Forecast',
         desc: 'The Weatherman. Any weather he calls lasts 1 round longer, and the weather never hurts him or leaves him Wet: the umbrella goes up.',
@@ -3986,6 +4006,8 @@ const RACE_PASSIVES = {
     'butterfly girl': ['flashAndVanish'],   // 2026-11-23 THE BUTTERFLY GIRL (mondo OK'd the kit) — she flies too, so the slots are full
     'weatherman':    ['wnTheForecast', 'wnTheRundown'],   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: his rule, her rule (each names who it is for)
     'centaur':       ['cenHitAndRun'],   // 2026-11-24 THE CENTAUR
+    'cheerleader':   ['chSpirit'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
+    'point guard':   ['pgAssist'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
 };
 
 /* 💔 Broken (STATUS_DEFS.broken, 2026-10-09): while it lasts the unit has no passives at all. Raw status read — this is a
@@ -4062,7 +4084,7 @@ const RACE_MERGED = { 'nun': { race: 'priest', gender: 'female' } };
 /* 👁🌑 THE REALM WINDOW: races that SEE a Shadow Realm pair on their own turns (they cannot touch it). A projecting
    spirit both sees and touches (battle.js unitSeesRealm / unitCrossesRealm). */
 const REALM_SIGHT_RACES = ['ghost', 'shadow entity'];
-const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber', 'pharaoh', 'deep sea diver', 'gambler', 'hacker', 'monk', 'shogun', 'cameraman', 'mechanic', 'janitor', 'trucker', 'gladiator', 'farmer', 'jellyfish ufo', 'bear', 'rat', 'butterfly girl', 'plastic surgeon', 'monarch', 'abomination', 'hollow', 'weatherman', 'centaur'];
+const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber', 'pharaoh', 'deep sea diver', 'gambler', 'hacker', 'monk', 'shogun', 'cameraman', 'mechanic', 'janitor', 'trucker', 'gladiator', 'farmer', 'jellyfish ufo', 'bear', 'rat', 'butterfly girl', 'plastic surgeon', 'monarch', 'abomination', 'hollow', 'weatherman', 'cheerleader', 'point guard', 'centaur'];
 /* THE COMING RACES (2026-11-19, mondo: "wire them in the game at least in the relation web, give them sprite ai portraits ... my associate
    [does] their spell and combat plan on another account"): races whose model, sprite and name are in (sprites.js RACE_MODELS_3D,
    RACE_PROFILES) but whose kit is not. They are NOT playable: the Relationship Web lists them (docs/plans/story-web/build/fresh.js).
@@ -4093,6 +4115,8 @@ const RACE_KITS = {
     'hollow': { range: 3 },   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name): the basic attack is a crystal sliver a finger flicks
     'weatherman': { range: 2 },   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: the umbrella jab reaches (his); the microphone's feedback whine (hers)
     'centaur': { range: 4 },   // 2026-11-24 THE CENTAUR: the bow
+    'cheerleader': { range: 1 },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: the basic attack is a high kick
+    'point guard': { range: 3 },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: the basic attack is a chest pass with his basketball (it flies and comes back to his hands)
     'streamer': { range: 1 },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit): the basic attack is a keyboard slam
     'vtuber': { range: 2 },   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look): the basic attack is a pixel heart bolt (magic: her Heart Bolt passive)
     'gambler': { range: 2 },   // 2026-11-19 THE NEW RACES 4: the basic attack is a flicked casino chip
@@ -4241,6 +4265,8 @@ const RACE_CLASS = {
     'hollow': 'specialist',   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name) (a controller)
     'weatherman': 'specialist',   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: he moves the sky, she runs the show
     'centaur': 'ranged',   // 2026-11-24 THE CENTAUR: a horse archer
+    'cheerleader': 'support',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
+    'point guard': 'ranged',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
     'streamer': 'specialist',   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
     'vtuber': 'caster',   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
     'cameraman': 'ranged',   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
@@ -4324,6 +4350,8 @@ const RACE_TERRAIN_PREFERENCE = {
     'hollow': 'tree',   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name) (as the Dreameater)
     'weatherman': 'urban',   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: Disaster City's news station
     'centaur': 'grass',   // 2026-11-24 THE CENTAUR: open ground to run on
+    'cheerleader': 'urban',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: Disaster City University
+    'point guard': 'urban',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: Disaster City's Sports district
     'streamer': 'urban',   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
     'vtuber': 'urban',   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
     'cameraman': 'urban',   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
@@ -4743,6 +4771,8 @@ const RACE_BASE_STATS = {
     'hollow':             { hp:  880, mp: 230, atk:  40, def:  70, mdef: 150, int: 190, vision: 4, crt: 15, spd: 100 },   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name) — first pass (the plan's numbers): a floating controller
     'weatherman':         { hp:  930, mp: 230, atk:  70, def:  80, mdef: 125, int: 160, vision: 4, crt: 18, spd: 105 },   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR — first pass on the specialist median
     'centaur':            { hp:  900, mp: 150, atk: 118, def:  78, mdef:  62, int:  95, vision: 5, crt: 20, spd: 128 },   // 2026-11-24 THE CENTAUR — first pass between Robin Hood (ranged) and the Unicorn (a horse's body)
+    'cheerleader':        { hp: 1020, mp: 210, atk:  95, def:  85, mdef: 120, int: 140, vision: 3, crt: 20, spd: 125 },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — first pass: a quick support who kicks
+    'point guard':        { hp:  940, mp: 140, atk: 112, def:  78, mdef:  62, int:  40, vision: 4, crt: 26, spd: 150 },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — first pass on the ranged median, the fastest hands on the court
     'streamer':           { hp:  990, mp: 200, atk: 125, def:  80, mdef: 100, int: 142, vision: 3, crt: 25, spd: 110 },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit) — first pass: a skirmisher who banks a crowd; LAB LOOP 11-22 PASS 4: HP 950→990, ATK 120→125, M.ATK 130→142 (44.9% over 244 games)
     'vtuber':             { hp:  820, mp: 240, atk:  30, def:  70, mdef: 150, int: 185, vision: 3, crt: 20, spd: 100 },   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look) — first pass: a frail caster who is never where she seems
     'cameraman':          { hp:  900, mp: 140, atk: 105, def:  78, mdef:  70, int:  60, vision: 5, crt: 26, spd: 125 },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models) — first pass on the ranged median (vision 5: he sees everything)
@@ -4938,6 +4968,8 @@ const RACE_PHYSIQUE = {
     'hollow':              { h: 2.40, w: 60 },   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name): the maw ring hovering, the finger chandelier hanging under it
     'weatherman':          { h: 1.80, w: 76 },   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR
     'centaur':             { h: 2.40, w: 480 },   // 2026-11-24 THE CENTAUR: a horse with a rider's body on it, head to hoof
+    'cheerleader':         { h: 1.66, w: 55 },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
+    'point guard':         { h: 1.88, w: 84 },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
     'streamer':            { h: 1.76, w: 70 },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
     'vtuber':              { h: 1.64, w: 50 },   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
     'cameraman':           { h: 1.78, w: 78 },   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
@@ -11319,6 +11351,52 @@ const RACE_ABILITIES = {
           animClip: { name: 'Talk_Passionately', lib: 9, ts: 1.45, trim: [1.8, 3.8], strikeAt: 2.8 },   // THE MESHY CASTS (11-24): the anchor at full volume
           element: 'sonic', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 140, range: 4, aoeRadius: 2, wnAllSegments: true,
           desc: 'The whole show at once. Deals MEDIUM sonic magic damage to All Enemies in a 5x5 within 4, then runs all three segments of The Rundown together for her and her allies within 3: Headlines, Sports and the Weather. Then the show starts over. Cooldown: 4 rounds.' },
+    ],
+    'cheerleader': [
+        /* THE CHEERLEADER (2026-11-24 THE CHEERLEADER + THE POINT GUARD; mondo 11-24: "Cheerleader (f)", two separate units). The DCU Aftershocks' squad: she kicks,
+           she cheers, she throws her own team. HER RULE, SPIRIT (chSpirit): each of her spells adds 1 Spirit (unit.spirit, 0-3); a spell
+           cast at 3 is a STUNT (she and her allies within 3 heal a SMALL amount and lose 1 debuff) and the count starts over.
+           Basket Toss (`chToss`) is a teleportAnyUnit row: the pick is an ally NEXT TO HER (spellAimProblem), the landing within 4 of
+           her; the ally jumps the arc and the enemies round the landing are hit. battle.js "THE CHEERLEADER + THE POINT GUARD". */
+        { id: 'chHighKick', name: 'High Kick', tier: 1, families: ['cheer'], cost: 25, apCost: 1, spellType: 'human',
+          animClip: { name: 'Kick_a_Soccer_Ball', lib: 9, ts: 1.2, trim: [0, 1.6], strikeAt: 0.72 },   // THE MESHY CASTS (11-24): the kick
+          element: 'physical', type: 'damage', kind: 'displacement', damageType: 'physical', dmg: 85, range: 1, displaceDistance: 2, collisionBonus: 40,
+          desc: 'Toe to the sky. Kicks an adjacent enemy 2 squares back: WEAK physical damage, more if it slams into something.' },
+        { id: 'chReadyOk', name: 'Ready? OK!', tier: 2, families: ['cheer'], cost: 40, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          animClip: { name: 'Cheer_with_Both_Hands_Up', lib: 9, ts: 1.35, strikeAt: 0.85 },   // THE MESHY CASTS (11-24)
+          element: 'sonic', type: 'buff', kind: 'buff', range: 4, statStageBoost: { atk: 1, spd: 1 },
+          desc: 'Ready? OK! A Single Ally within 4 gets +1 ATK and +1 SPD stage. Cooldown: 2 rounds.' },
+        { id: 'chBasketToss', name: 'Basket Toss', tier: 3, families: ['cheer'], cost: 60, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          animClip: { name: 'Female_Crouch_Pick_Throw_Forward', lib: 10, ts: 1.4, trim: [0.9, 2.8], strikeAt: 2.21 },   // THE MESHY CASTS (11-24): the toss
+          element: 'physical', type: 'utility', kind: 'teleport', teleportAnyUnit: true, chToss: true, leap: true, range: 4, chTossDmg: 70,
+          desc: 'Up they go. Throws an ally standing next to her onto an empty square within 4 of her. It lands on its feet, and every enemy next to the landing takes WEAK physical damage and is Staggered for 1 round. Cooldown: 2 rounds.' },
+        { id: 'chGimme', name: 'Gimme a D-C-U!', tier: 4, families: ['cheer'], cost: 90, apCost: 1, cooldownRounds: 4, spellType: 'human',
+          animClip: { name: 'Backflip_inplace', lib: 10, ts: 1.5, trim: [0, 2.1], strikeAt: 1.5 },   // THE MESHY CASTS (11-24): the backflip
+          element: 'sonic', type: 'buff', kind: 'warCry', range: 0, aoeRadius: 4, auraRadius: 4, statStageBoost: { atk: 1, def: 1 },
+          chGimme: true, chGimmeHeal: 100, chGimmeDmg: 110, chGimmeReach: 2,
+          desc: 'Gimme a D! Gimme a C! Gimme a U! Every ally within 4 heals a MEDIUM amount and gets +1 ATK and +1 DEF stage; every enemy within 2 of her takes MEDIUM sonic magic damage and is Staggered for 1 round. Cooldown: 4 rounds.' },
+    ],
+    'point guard': [
+        /* THE POINT GUARD (2026-11-24 THE CHEERLEADER + THE POINT GUARD; mondo 11-24: "Point Guard m (basketball)", "needs a basketball, just a sphere geometry
+           and ... a good looking realistic basketball texture"). The ball is his held gear and every throw (proj-basketball). HIS RULE,
+           ASSIST (pgAssist): every enemy his basic attack or spell hits is left Marked (STATUS_DEFS.marked: the next physical hit cashes
+           it). Crossover (`pgAnkles`) Staggers + Marks whoever stood next to him before the escape; Alley-Oop (`pgOop`) gives the ally a
+           sure critical on its next basic attack (the Monarch's `_deltaCrit`). battle.js "THE CHEERLEADER + THE POINT GUARD". */
+        { id: 'pgChestPass', name: 'Chest Pass', tier: 1, families: ['basketball'], cost: 25, apCost: 1, spellType: 'human',
+          element: 'physical', type: 'damage', kind: 'ricochet', damageType: 'physical', dmg: 80, range: 4, bounceDamage: 45, bounceRadius: 2,
+          projectileOverride: 'proj-basketball',
+          desc: 'Two hands, off the chest. Deals WEAK physical damage to a Single Enemy within 4, then the ball bounces to another enemy within 2 for less.' },
+        { id: 'pgCrossover', name: 'Crossover', tier: 2, families: ['basketball'], cost: 35, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          element: 'wind', type: 'utility', kind: 'escape', range: 0, teleportDistance: 2, pgAnkles: true,
+          desc: 'Ankle breaker. He crosses over and is gone, up to 2 squares away; every enemy that was next to him is Staggered for 1 round and left Marked. Cooldown: 2 rounds.' },
+        { id: 'pgAlleyOop', name: 'Alley-Oop', tier: 3, families: ['basketball'], cost: 60, apCost: 1, cooldownRounds: 3, spellType: 'human',
+          animClip: { name: 'Hop_with_Arms_Raised', lib: 9, ts: 1.3, trim: [0.4, 2.2], strikeAt: 1.1 },   // THE MESHY CASTS (11-24): the lob
+          element: 'wind', type: 'buff', kind: 'buff', range: 5, statStageBoost: { atk: 2 }, pgOop: true,
+          desc: 'He throws it up, they put it down. A Single Ally within 5 gets +2 ATK stages, and its next basic attack is a sure critical hit. Cooldown: 3 rounds.' },
+        { id: 'pgBuzzerBeater', name: 'Buzzer Beater', tier: 4, families: ['basketball'], cost: 90, apCost: 1, cooldownRounds: 3, spellType: 'human',
+          element: 'wind', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 165, range: 7, ignoresLineOfSight: true,
+          executeBelowPct: 0.15, executeAfterHit: true, projectileOverride: 'proj-basketball',
+          desc: 'Three, two, one... Deals HEAVY physical damage to a Single Enemy up to 7 squares away; the ball arcs over cover. If it leaves the target under 15% HP, it is out. Cooldown: 3 rounds.' },
     ],
     'streamer': [
         /* THE VIEWERS (2026-11-18, the Streamer + the E-Girl; mondo OK'd the kit 11-18): a count from 0 to 10 on the unit
@@ -22012,6 +22090,8 @@ const EW_RACE_BIOMES = {
     'hollow': ['astral'],   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name) — The Astral Realm (its nightmares)
     'weatherman': ['urban'],   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR — Disaster City (Hero Plaza's news office)
     'centaur': ['ancient', 'forest'],   // 2026-11-24 THE CENTAUR — Mount Olympus and its woods (Claude's pick: mondo named no home)
+    'cheerleader': ['urban'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — Disaster City University (the DCU Aftershocks)
+    'point guard': ['urban'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — Disaster City's Sports district
     'streamer': ['neon_city', 'urban'],   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit) — The Internet's stage
     'vtuber': ['neon_city', 'urban'],   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look) — The Internet, district V
     'cameraman': ['urban', 'forest', 'ranch'],   // 2026-11-19 THE NEW RACES 3 (mondo picked the models) — Disaster City, The Woods, the Lake
@@ -22695,6 +22775,8 @@ const RACE_TREE = {
     'hollow':        ['hlLull', 'hlStrings', 'hlBloom', 'hlWake'],   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name): its own four
     'weatherman':    [['wnColdFront', 'wnTopStory'], ['wnSevereWeather', 'wnExclusive'], ['wnStormTracker', 'wnFakeNews'], ['wnStormOfCentury', 'wnPrimeTime']],   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: every rung is one of each (RACE_GENDER_SPELLS): his weather, her show
     'centaur':       ['cenHoofStomp', 'cenParthianShot', ['cenWildHerd', 'raceRideBy'], 'cenSagittarius'],   // 2026-11-24 THE CENTAUR
+    'cheerleader':   ['chHighKick', 'chReadyOk', 'chBasketToss', 'chGimme'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: her own four
+    'point guard':   ['pgChestPass', 'pgCrossover', 'pgAlleyOop', 'pgBuzzerBeater'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: his own four
     'streamer':      ['nrClipIt', ['nrUwu', 'nrRageQuit'], 'nrDonationGoal', 'nrRaid'],   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit): the rung 2 pair is one of each version (RACE_GENDER_SPELLS)
     'vtuber':        ['nrKawaiiBeam', ['nrHoloProjector', 'nrSceneChange'], 'nrLoFiLoop', 'nrCollabStream'],   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
     'cameraman':     ['nrZoomIn', ['nrTiltShift', 'nrPhotographicEvidence'], 'nrMoneyShot', 'nrSayCheese'],   // 2026-11-19 THE NEW RACES 3
@@ -24853,6 +24935,26 @@ const SPELL_FAMILIES = {
         desc: 'Half archer, half horse, from the slopes of Mount Olympus: hooves for anyone too close, a bow for everyone else, and never standing still.',
         unique: 'centaur',
         identity: { who: ['Centaur', 'Horse Archer', 'Wild Rider'], adj: ['Galloping', 'Wild', 'Olympian'], look: ['a horse body', 'a laurel wreath', 'a leather strap', 'a cloth sash'], vibe: ['shoots on the run', 'rears and stomps'] },
+    },
+    cheer: {   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — the Cheerleader's own
+        id: 'cheer',
+        name: 'Cheer',
+        glyph: '📣',
+        color: '#c8243c',
+        kind: 'signature',
+        desc: 'The DCU Aftershocks\' cheer squad: high kicks, a chant for the team, and a team-mate thrown where it is needed.',
+        unique: 'cheerleader',
+        identity: { who: ['Cheerleader', 'Flyer', 'Squad Captain'], adj: ['Peppy', 'Loud', 'Spirited'], look: ['a crimson DCU uniform', 'a big hair bow', 'pom-poms'], vibe: ['throws a team-mate in the air', 'leads the chant'] }
+    },
+    basketball: {   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — the Point Guard's own
+        id: 'basketball',
+        name: 'Basketball',
+        glyph: '🏀',
+        color: '#e8742a',
+        kind: 'signature',
+        desc: 'The point guard\'s game: passes off the chest, crossovers that break ankles, the lob for a team-mate and the shot at the buzzer.',
+        unique: 'point guard',
+        identity: { who: ['Point Guard', 'Floor General', 'Baller'], adj: ['Quick', 'Smooth', 'Clutch'], look: ['a purple and gold jersey', 'a headband', 'a basketball'], vibe: ['breaks ankles', 'finds the open man'] }
     },
     newsroom: {   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR — the Weatherman's and the News Anchor's own
         id: 'newsroom',
@@ -27326,6 +27428,8 @@ const RACE_FAMILIES = {
     'hollow': ['hollow', 'nightmares', 'astral', 'fractal'],   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name)
     'weatherman': ['newsroom', 'wind', 'lightning', 'stagepresence'],   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR
     'centaur': ['centaur', 'archery', 'horsebackriding', 'athleticism'],   // 2026-11-24 THE CENTAUR (the idea list's own three)
+    'cheerleader': ['cheer', 'teamwork', 'athleticism', 'stagepresence'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
+    'point guard': ['basketball', 'athleticism', 'teamwork', 'stagepresence'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
     'streamer': ['streaming', 'stagepresence', 'computerhacking', 'internetaddiction'],   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
     'vtuber': ['vtubing', 'stagepresence', 'computerhacking', 'internetaddiction'],   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
     'cameraman': ['cameraman', 'stagepresence', 'eyesight', 'internetaddiction'],   // 2026-11-19 THE NEW RACES 3
@@ -27984,6 +28088,8 @@ const CAMPAIGN_RACE_PRICES = {
   'hollow': 500,   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name)
   'weatherman': 400,   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR
   'centaur': 450,   // 2026-11-24 THE CENTAUR
+  'cheerleader': 400,   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
+  'point guard': 400,   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
   'streamer': 400,   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
   'vtuber': 400,   // 2026-11-18 THE V-TUBER (mondo approved the kit + picked the pop idol look)
   'cameraman': 350,   // 2026-11-19 THE NEW RACES 3 (mondo picked the models)
@@ -29995,6 +30101,7 @@ const DOOR_TEXT = {
         'monarch': 'D.U.M.B.',   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
         'weatherman': 'Downtown',   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR (the news office in Hero Plaza)
         'centaur': 'Mount Olympus',   // 2026-11-24 THE CENTAUR (Claude's pick: with the Cyclops and the Minotaur)
+        'cheerleader': 'Downtown', 'point guard': 'Downtown',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD (University; the Sports district)
         'gambler': 'The Strip', 'hacker': 'Downtown', 'monk': 'The Bermuda Triangle', 'shogun': 'The Bermuda Triangle',   // 2026-11-19 THE NEW RACES 4 (the gambler lives in the Western Town too: HQ_AREA_ENCOUNTERS; the monk + the shogun on the Volcano Island)
         'cameraman': 'Downtown', 'mechanic': 'Downtown', 'janitor': 'Downtown', 'trucker': 'Downtown',   // 2026-11-19 THE NEW RACES 3
        
@@ -100565,6 +100672,7 @@ const HQ_SPAWN_RULES = {
                 { race: 'hippie', g: 'male', d: 'U', n: 2, work: 'p:P00-05', beat: 'C', homes: ['P00-04-B1'] },
                 { race: 'janitor', d: 'U', n: 1, work: 'b:P01-05-B1', homes: ['P00-04-B1'] },
                 { race: 'hacker', d: 'U', n: 2, work: 'p:P00-04', beat: 'E', homes: ['P00-04-B1'] },                 // the Dorm court; the Arcade after
+                { race: 'cheerleader', d: 'U', n: 2, work: 'p:P00-05', beat: 'S', homes: ['P00-04-B1'] },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: the DCU Aftershocks practise on the quad, game day in Sports
                 { race: 'streamer', g: 'female', d: 'U', n: 1, work: 'p:P00-04', beat: 'E', homes: ['P00-04-B1'] },
                 { race: 'streamer', g: 'male', d: 'U', n: 1, work: 'p:P00-04', beat: 'E', homes: ['P00-04-B1'] },
                 { race: 'professor', g: 'male', d: 'U', n: 1, work: 'b:P01-05-B1', homes: ['P03-04-B1'] },
@@ -100594,6 +100702,8 @@ const HQ_SPAWN_RULES = {
                 /* Sports + Culture */
                 { race: 'referee', d: 'S', n: 2, work: 'p:P04-10', homes: ['P06-09-B2', 'P07-08-B2', 'P07-10-B2'] },
                 { race: 'quarterback', d: 'S', n: 2, work: 'p:P05-09', homes: ['P06-09-B2', 'P07-08-B2', 'P07-10-B2'] },
+                { race: 'point guard', d: 'S', n: 2, work: 'p:P05-09', homes: ['P06-09-B2', 'P07-08-B2', 'P07-10-B2'] },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: the Sports district's courts
+                { race: 'cheerleader', d: 'S', n: 1, work: 'p:P05-09', homes: ['P06-09-B2'] },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: game day on the sidelines
                 { race: 'luchador', d: 'S', n: 2, work: 'b:P06-08-B1', homes: ['P06-09-B2', 'P07-08-B2', 'P07-10-B2'] },
                 { race: 'eagleman', d: 'S', n: 1, work: 'd:S', patrol: true, beat: 'CFH', homes: ['P07-10-B2'] },
                 { race: 'gambler', d: 'S', n: 1, work: 'p:P07-10', beat: 'E', homes: ['P07-08-B2'] },                            // the Event square (he bets on the Referee's games)
@@ -100621,7 +100731,7 @@ const HQ_SPAWN_RULES = {
             races: {
                 'cameraman': 'common', 'mechanic': 'common', 'janitor': 'common', 'trucker': 'uncommon',
                 'police officer': 'common', 'chef': 'common', 'lifeguard': 'common', 'skater': 'common', 'delivery boy': 'common', 'gangster': 'common', 'hippie': 'common', 'honda civic': 'common', 'firefighter': 'common',
-                'gambler': 'common', 'streamer': 'common', 'hacker': 'uncommon', 'plastic surgeon': 'uncommon', 'weatherman': 'uncommon',
+                'gambler': 'common', 'streamer': 'common', 'hacker': 'uncommon', 'plastic surgeon': 'uncommon', 'weatherman': 'uncommon', 'cheerleader': 'uncommon', 'point guard': 'uncommon',
                 'priest': 'uncommon', 'conspiracy theorist': 'uncommon', 'goblin': 'uncommon', 'spy': 'uncommon', 'professor': 'uncommon', 'clown': 'uncommon', 'mime': 'uncommon', 'televangelist': 'uncommon',
                 'bunny girl': 'uncommon', 'quarterback': 'uncommon', 'luchador': 'uncommon', 'marksman': 'uncommon', 'politician': 'uncommon', 'florida man': 'uncommon', 'banker': 'uncommon', 'magician': 'uncommon', 'influencer': 'uncommon', 'librarian': 'uncommon', 'referee': 'uncommon',
                 'ki fighter': 'rare', 'swordfighter': 'rare', 'men in black': 'rare', 'halfdemon': 'rare', 'mad scientist': 'rare', 'reptilian': 'rare',
@@ -100717,6 +100827,7 @@ const HQ_NPC_TEMPERS = {
         'monarch': 'guard',   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
         'weatherman': 'coward',   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: the news reports the fight, it does not join it
         'centaur': 'territorial',   // 2026-11-24 THE CENTAUR: wild, warns once, then the hooves
+        'cheerleader': 'coward', 'point guard': 'opportunist',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
         'zombie': 'brute', 'shadow entity': 'brute', 'werewolf': 'brute', 'wendigo': 'brute', 'ghoul': 'brute', 'flesheater': 'brute',
     },
     /* THE GROUPS: races who stand up for each other (no factions). Units of ONE race are a group by themselves (`sameRace`). A unit is in one

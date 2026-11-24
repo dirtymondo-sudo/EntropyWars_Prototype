@@ -949,6 +949,10 @@
                 projectileClass: 'proj-spider',
                 applyTo: 'all',
             },
+            'point guard': {   // 2026-11-24 THE POINT GUARD: every throw of his is the basketball
+                projectileClass: 'proj-basketball',
+                applyTo: 'all',
+            },
             'honda civic': {
                 /* THE CAR STAYS A CAR (2026-10-24, mondo: "it should be driving by default but can transform with its
                    ability. So if i attack as a car i wanna see the car do it, not the robot, unless i transform
@@ -15910,6 +15914,129 @@
             if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit });
         }
         window._wnAfterCast = _wnAfterCast;
+        /* ═══ THE CHEERLEADER + THE POINT GUARD (2026-11-24; mondo: "Cheerleader (f) ... Point Guard m (basketball)", "needs a
+           basketball"; two separate units, his pick). Each has one rule and four spells of her / his own (data.js RACE_ABILITIES).
+           - SPIRIT (hers, passive chSpirit): `unit.spirit` (0-3, a plain number: rides the state sync). Each of her spells adds 1;
+             a spell cast at 3 is a STUNT (_chStunt: she and her allies within 3 heal a SMALL amount and lose 1 debuff) and the
+             count starts over. The HUD chip / nameplate badge read it.
+           - Basket Toss (`chToss`): a teleportAnyUnit row. The pick must be an ally NEXT TO HER (spellAimProblem, doSpell's first
+             click, the CPU's pick through spellAimProblemOn); the landing is within 4 of her; the ally jumps the arc (the `leap`
+             look, now for a thrown ally too) and the enemies round the landing take `chTossDmg` + Stagger when it lands.
+           - Gimme a D-C-U! (`chGimme`): a warCry (its statStageBoost lifts the allies within 4), then the heal for them and the
+             sonic hit + Stagger on the enemies within `chGimmeReach` of her.
+           - ASSIST (his, passive pgAssist): every enemy his basic attack or spell hits is left Marked (applyDamageToUnit, after a
+             landed hit); the next physical hit on it cashes it (STATUS_DEFS.marked).
+           - Crossover (`pgAnkles`): the enemies next to him BEFORE the escape (unit._pgFrom, noted where the cast rows are) are
+             Staggered + Marked. Alley-Oop (`pgOop`): the ally's next basic attack is a sure critical (the Monarch's `_deltaCrit`).
+           Host-side; texts through showFloatingTextForUnit, looks through ThreeVFXEffects.fire (both relayed: RULE #2).
+           Notes: docs/notes/champions-combat.md "THE CHEERLEADER + THE POINT GUARD". */
+        const CH_SPIRIT_MAX = 3;
+        window.CH_SPIRIT_MAX = CH_SPIRIT_MAX;
+        function _chFx(phase, id, p) { try { if (!_skipVisuals() && window.ThreeVFXEffects && ThreeVFXEffects.fire) ThreeVFXEffects.fire(phase, id, p); } catch (e) {} }
+        function _chFloat(u, txt, kind) { if (u && !u.dead && state.phase === 'battle' && !_skipVisuals()) showFloatingTextForUnit(u, txt, kind || 'buff', { durationMs: 1200, jitterY: -30 }); }
+        function _chNear(a, b, r) { return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y)) <= r; }
+        /* the ally a Basket Toss can pick: alive, on her side, not her, standing next to her */
+        function chTossPickOk(unit, u) { return !!u && !!unit && u.id !== unit.id && _nrAlive(u) && isAllyUnit(u, unit) && _chNear(u, unit, 1); }
+        window.chTossPickOk = chTossPickOk;
+        function _chStunt(unit) {
+            const crew = (state.units || []).filter(a => _nrAlive(a) && (a.id === unit.id || isAllyUnit(a, unit)) && _chNear(a, unit, 3));
+            addLog(`📣 ${_ctName(unit)} hits the STUNT: full Spirit!`);
+            _chFloat(unit, '📣 STUNT!', 'streak');
+            _chFx('stunt', 'chSpirit', { tx: unit.x, ty: unit.y, sx: unit.x, sy: unit.y });
+            for (const a of crew) {
+                applyHealingToUnit(a, 50, unit);
+                const gone = getActiveStatusKeys(a).filter(k => STATUS_DEFS[k] && STATUS_DEFS[k].kind === 'debuff' && k !== 'captured').slice(0, 1);
+                for (const k of gone) clearStatus(a, k);
+                if (gone.length) _logCleansed('Spirit', a, gone);
+            }
+        }
+        /* where the cast rows are made (doSpell): the Crossover remembers who stood next to him before he goes */
+        function _pgBeginCast(unit, spell) {
+            if (!unit || !spell || unit.race !== 'point guard') return;
+            unit._pgFrom = spell.pgAnkles ? (state.units || []).filter(e => _nrAlive(e) && isEnemyUnit(unit, e) && _chNear(e, unit, 1)).map(e => e.id) : null;
+        }
+        /* his mark: the next physical hit from an ALLY cashes it (applyDamageToUnit skips his own: target._pgMarkBy, an id) */
+        function _pgMark(target, src, label) {
+            if (!_nrAlive(target)) return;
+            applyStatusPayload(target, { id: 'marked', duration: 2 }, label, src);
+            if (unitHasStatus(target, 'marked')) target._pgMarkBy = src.id;
+        }
+        /* ASSIST: a landed hit of his leaves the target Marked (applyDamageToUnit; a plain id read, no object kept) */
+        function _pgAssistHit(src, target) {
+            if (!src || src.race !== 'point guard' || !target || target.dead || target.hp <= 0 || !isEnemyUnit(src, target)) return;
+            if (typeof unitHasPassive === 'function' && !unitHasPassive(src, 'pgAssist')) return;
+            if (state._pgMarking) return;
+            state._pgMarking = true;
+            try { _pgMark(target, src, 'Assist: '); } finally { state._pgMarking = false; }
+        }
+        window._pgAssistHit = _pgAssistHit;
+        /* finishAction: the toss's landing, the chant, the ankles, the lob, then Spirit */
+        function _chpgAfterCast(unit, spell, x, y) {
+            if (!unit || !spell || state.phase !== 'battle') return;
+            const mine = /^(ch|pg)[A-Z]/.test(spell.id || '');
+            if (!mine) return;
+            if (unit.race === 'point guard') {
+                if (spell.pgAnkles && Array.isArray(unit._pgFrom)) {
+                    for (const id of unit._pgFrom) {
+                        const e = unitFromId(id);
+                        if (!_nrAlive(e)) continue;
+                        applyStatusPayload(e, { id: 'stagger', duration: 1 }, 'Crossover: ', unit);
+                        _pgMark(e, unit, 'Crossover: ');
+                        _chFloat(e, '🏀 ANKLES BROKEN', 'debuff');
+                    }
+                    if (unit._pgFrom.length) addLog(`🏀 ${_ctName(unit)} crosses over: ${unit._pgFrom.length === 1 ? 'one defender is' : unit._pgFrom.length + ' defenders are'} left on the floor.`);
+                }
+                unit._pgFrom = null;
+                if (spell.pgOop) {
+                    const a = unitAt(x, y);
+                    if (_nrAlive(a) && (a.id === unit.id || isAllyUnit(a, unit))) {
+                        a._deltaCrit = true;
+                        addLog(`🏀 ${_ctName(unit)} throws it up for ${_ctName(a)}: the next basic attack is a sure critical hit.`);
+                        _chFloat(a, '🏀 ALLEY-OOP', 'buff');
+                    }
+                }
+                if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit });
+                return;
+            }
+            if (unit.race !== 'cheerleader') return;
+            /* 🤸 BASKET TOSS: the ally has landed on (x, y); the enemies round it are hit */
+            if (spell.chToss) {
+                const flier = unitAt(x, y);
+                const prey = (state.units || []).filter(e => _nrAlive(e) && isEnemyUnit(unit, e) && _chNear(e, { x, y }, 1));
+                _chFx('land', 'chBasketToss', { tx: x, ty: y, sx: unit.x, sy: unit.y });
+                if (prey.length) {
+                    const row = { id: 'chBasketTossLand', name: 'Basket Toss', families: ['cheer'], spellType: 'human', element: 'physical', type: 'damage', kind: 'aoe', damageType: 'physical', dmg: spell.chTossDmg || 70 };
+                    const sp = spellPowerOf(unit, row);
+                    _applyAoeDamage(unit, row, prey.map(e => ({ x: e.x, y: e.y })), (spell.chTossDmg || 70) + sp, sp, { rngRange: 16, minDmg: 25 });
+                    for (const e of prey) if (_nrAlive(e)) applyStatusPayload(e, { id: 'stagger', duration: 1 }, 'Basket Toss: ', unit);
+                    if (typeof checkWin === 'function') checkWin();
+                }
+                if (flier && _nrAlive(flier)) addLog(`🤸 ${_ctName(flier)} sticks the landing${prey.length ? ` on ${prey.length === 1 ? 'an enemy' : prey.length + ' enemies'}` : ''}.`);
+            }
+            /* 📣 GIMME A D-C-U!: the heal for the team, the shout in the enemies' faces */
+            if (spell.chGimme) {
+                const R = spell.auraRadius || 4;
+                _chFx('chant', 'chGimme', { tx: unit.x, ty: unit.y, sx: unit.x, sy: unit.y });
+                for (const a of (state.units || []).filter(a => _nrAlive(a) && (a.id === unit.id || isAllyUnit(a, unit)) && _chNear(a, unit, R))) applyHealingToUnit(a, spell.chGimmeHeal || 100, unit);
+                const prey = (state.units || []).filter(e => _nrAlive(e) && isEnemyUnit(unit, e) && _chNear(e, unit, spell.chGimmeReach || 2));
+                if (prey.length) {
+                    const row = { id: 'chGimmeShout', name: spell.name, families: ['cheer'], spellType: 'human', element: 'sonic', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: spell.chGimmeDmg || 110 };
+                    const sp = spellPowerOf(unit, row);
+                    _applyAoeDamage(unit, row, prey.map(e => ({ x: e.x, y: e.y })), (spell.chGimmeDmg || 110) + sp, sp, { rngRange: 20, minDmg: 35 });
+                    for (const e of prey) if (_nrAlive(e)) applyStatusPayload(e, { id: 'stagger', duration: 1 }, `${spell.name}: `, unit);
+                    if (typeof checkWin === 'function') checkWin();
+                }
+                addLog(`📣 ${_ctName(unit)}: "Gimme a D! Gimme a C! Gimme a U!"`);
+            }
+            /* SPIRIT: a cast at full Spirit is the stunt; otherwise one more */
+            if (_nrAlive(unit) && (typeof unitHasPassive !== 'function' || unitHasPassive(unit, 'chSpirit'))) {
+                const sp0 = Math.max(0, unit.spirit | 0);
+                if (sp0 >= CH_SPIRIT_MAX) { _chStunt(unit); unit.spirit = 0; }
+                else { unit.spirit = sp0 + 1; _chFloat(unit, `📣 SPIRIT ${unit.spirit}/${CH_SPIRIT_MAX}`, 'buff'); }
+            }
+            if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit });
+        }
+        window._chpgAfterCast = _chpgAfterCast;
         /* ═══ THE BUTTERFLY GIRL (2026-11-23, blue morpho; mondo OK'd the plan) ═══ THE BUTTERFLY EFFECT: small flaps now, a twister
            later. A Flutter (STATUS_DEFS.flutter: the stack in unit._flutter, the caster's id in _flutterSrcId) grows by 1 at every
            round end (_bfRoundEnd from _nrRoundEnd); at 3 it touches down (_bfTwister): MEDIUM wind magic damage to the carrier's
@@ -18118,6 +18245,7 @@
             'ice queen': 'magic', 'seraphim': 'magic', 'watcher': 'magic', 'occulus': 'magic',
             'shadow entity': 'magic', 'siren': 'magic', 'chosen one': 'magic', 'symbiote': 'magic',
             'voidweaver': 'throw',
+            'point guard': 'throw',   // 2026-11-24 THE POINT GUARD: the chest pass (his basketball flies: UNIT_ANIM_OVERRIDES)
             'demon prince': 'claw', 'skinwalker': 'claw', 'bear': 'claw', 'abomination': 'claw',   // 2026-11-23 THE BEAR: the paw rakes, never the fist sprite; THE ABOMINATION's arm the same
             'cyclops': 'punch', 'juggernaut': 'punch', 'super sentai': 'punch', 'antihero': 'punch',
             'bigfoot': 'punch', 'giant': 'punch', 'werewolf': 'claw', 'catgirl': 'claw', 'ki fighter': 'punch',
@@ -44380,9 +44508,11 @@
             // its value on the hit. Only the status consumption lives here.
             const canConsumeMarked = opts.consumeMarked ?? (damageType === 'physical');
             let _markedBonus = 0;
-            if (sourceUnit && isEnemyUnit(sourceUnit, target) && opts.allowMarkBonus !== false && canConsumeMarked && unitHasStatus(target, 'marked')) {
+            if (sourceUnit && isEnemyUnit(sourceUnit, target) && opts.allowMarkBonus !== false && canConsumeMarked && unitHasStatus(target, 'marked')
+                && !(target._pgMarkBy != null && target._pgMarkBy === sourceUnit.id)) {   // 🏀 ASSIST: the Point Guard's own mark is for his team, not for him
                 _markedBonus = opts.markBonus ?? target.markBonus ?? 40;
                 if (live) {
+                target._pgMarkBy = null;
                 clearStatus(target, 'marked');
                 target.markBonus = 0;
                 addLog(`${_ctName(target)} was marked, so the hit deals extra damage.`);
@@ -44985,6 +45115,7 @@
                        basicAttackStatus): a landed BASIC hit (physical, no
                        spellType) rides the same path — Burn for the rounds
                        the buff names. */
+                    if (damageType !== 'dot' && target.hp > 0 && sourceUnit.race === 'point guard') _pgAssistHit(sourceUnit, target);   // 🏀 ASSIST: his hit leaves it Marked
                     if (damageType === 'physical' && !opts.spellType && target.hp > 0 && isEnemyUnit(sourceUnit, target)) {
                         for (const _bk of getActiveStatusKeys(sourceUnit)) {
                             const _bas = STATUS_DEFS[_bk]?.basicAttackStatus;
@@ -51858,6 +51989,7 @@
                 if (spell.limbsMin > 0 && getLimbs(unit) < spell.limbsMin) return '🫀 Need ' + spell.limbsMin + ' limbs';   // 🫀 THE ABOMINATION: Unfold
                 if (spell.rewindTape > 0 && !getHostileUnits(unit.player, unit).some(e => e && !e.dead && _tvTapeAmount(e, spell) > 0)) return '📼 Nothing on tape';   // 📺 Rewind: no enemy took a hit last round
                 if (spell.partsCost > 0 && (unit._parts || 0) < spell.partsCost) return '🔩 Need ' + spell.partsCost + ' Parts';
+                if (spell.chToss && !(state.units || []).some(u => chTossPickOk(unit, u))) return '🤸 No ally next to her';   // Basket Toss
                 if (spell.wnSteer && !(state.activeWeather || []).some(Boolean)) return '🌦 No weather up';   // ☂ Storm Tracker   // 🔧 Jury Rig (SPARE PARTS)
                 if (spell.id === 'nrOverdue' && !spell.overdueOf) return '📚 Nothing to renew';   // THE LOADED BOOK: no teammate has cast yet
                 if (unitHasStatus(unit, 'celibate') && _isSummonSpell(spell)) return '⛪ Celibate';   // ⛪ Celibacy: no summoning
@@ -53863,6 +53995,7 @@
             if (spell.kind === 'skyThrow' && unit._skyThrowGrab) return null;   // the throw judges its own reach
             if (spell.kind === 'doorDeploy') return null;                       // the door's aim resolver judges
             if (spell.kind === 'projectorSwap') return vtProjectorsOf(unit).some(t => t.x === x && t.y === y) ? null : 'range';   // 📽 Scene Change: one of her projectors
+            if (spell.chToss) { const _ct = unitAt(x, y, z) || unitAt(x, y); return chTossPickOk(unit, _ct) ? null : 'range'; }   // 🤸 Basket Toss: an ally next to her (the landing is the phase above)
             if (z === undefined || z === null) {
                 z = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(x, y, unit.z ?? 0)
                     : (state.boardHeights?.[y]?.[x] ?? 0);
@@ -85340,6 +85473,7 @@
             /* ☂ THE WEATHERMAN: Cold Front reads the sky, Severe Weather Warning the ground (_wnCastRow) */
             if (spell && (spell.wnSkyRead || spell.wnByGround)) spell = _wnCastRow(unit, spell, x, y);
             _psBeginCast(unit, spell, x, y, z);
+            _pgBeginCast(unit, spell);   // 🏀 THE POINT GUARD: the Crossover notes who stood next to him
             if (unit && unit.race === 'rat') unit._ratCastId = spell ? spell.id : null;   // 👑 THE RAT KING: Gnaw's bonus reads the cast
             /* Clash final authority: movement/positioning spells can never
                fire, whatever path armed them (kits are already stripped —
@@ -86120,6 +86254,7 @@
                 _abAfterCast(unit, spell);   // 🫀 THE ABOMINATION: the mouths close
                 _psAfterCast(unit, spell, x, y, z);   // 💉 THE PLASTIC SURGEON: Work Done, Liposuction's shield
                 _wnAfterCast(unit, spell, x, y);   // ☂📺 THE WEATHERMAN + NEWS ANCHOR: The Forecast, the strike, Fake News, The Rundown
+                _chpgAfterCast(unit, spell, x, y);   // 📣🏀 THE CHEERLEADER + THE POINT GUARD: the toss's landing, the chant, the ankles, the lob, Spirit
                 if (spell.kind !== 'dash' && Array.isArray(spell.selfStatusAfter) && spell.selfStatusAfter.length && !unit.dead && state.phase === 'battle') {
                     applyStatusEffects(unit, spell.selfStatusAfter, `${spell.name}: `, unit);
                 }
@@ -91091,6 +91226,11 @@
                             playErrorSfx();
                             return 0;
                         }
+                        if (spell.chToss && !chTossPickOk(unit, teleTarget)) {   // 🤸 Basket Toss: she throws an ally standing next to her
+                            addLog(`${_ctSp(spell.name)}: pick an ally standing next to ${_ctName(unit)}.`, _clickSeat());
+                            playErrorSfx();
+                            return 0;
+                        }
                         if (teleTarget.id === unit.id && unitMoveBlockedByStatus(unit)) {   // THE MOVE BLOCK ON SPELLS
                             addLog(`${_ctName(unit)} is ${(moveBlockWord(unit) || 'Rooted').toLowerCase()} and cannot move: warp another unit.`, _clickSeat());
                             playErrorSfx();
@@ -91199,12 +91339,13 @@
                     const _tpLeave = (_tpSelf && _tpShot && _tpShot.mode === 'support' && _tpShot.totalMs > 0) ? Math.max(0, _tpShot.sourceHold || 0) : 0;
                     const _tpOnCut = (fn) => { if (_tpLeave > 0) window.setTimeout(() => { if (state.phase === 'battle') fn(); }, _tpLeave); else fn(); };
 
-                    if (spell.leap && tUnit === unit) {
+                    if (spell.leap && (tUnit === unit || spell.chToss)) {   // 🤸 Basket Toss: the thrown ally jumps the same arc
                         /* THE SPELL AUDIT Batch D: `leap` (Land on Your Feet) — the caster jumps the arc to the landing,
                            any height up or down, and lands on its feet (a teleport never pays fall damage). The arc is
                            relayed (online.js wraps animateJumpArc). */
                         const _lpToZ = (_tpLandZ !== null) ? _tpLandZ : (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(x, y, _tpFromZ) : _tpFromZ;
                         if (!_skipVisuals()) animateJumpArc(tUnit, _tpFromX, _tpFromY, x, y, _tpFromZ, _lpToZ, _tpLeapMs, _tpLeave > 0 ? { delayMs: _tpLeave } : undefined);
+                        if (spell.chToss) completionDelay = Math.max(completionDelay || 0, _tpLeave + _tpLeapMs + actionMs(120));   // the landing's hit waits for the landing (finishAction)
                     } else if (spell.doorGun) {
                         /* 🚪 DOOR DASH (the door wheel, DOOR_GUN_PLAN §3.5): the gun's shot to the landing, a door
                            at the agent's feet facing it, one at the landing facing back — in one, out the other
@@ -91254,6 +91395,7 @@
                         ? `${unitDisplayName(unit)} leaps from ${oldLabel} to ${coordLabel(x, y)}${spell.id === 'raceLandOnYourFeet' ? ' and lands on their feet' : ''}.`
                         : tUnit === unit
                             ? `${unitDisplayName(unit)} teleports from ${oldLabel} to ${coordLabel(x, y)}.`   // a self blink named the caster twice
+                            : spell.chToss ? `${unitDisplayName(unit)} throws ${unitDisplayName(tUnit)} from ${oldLabel} to ${coordLabel(x, y)}.`   // 🤸 Basket Toss
                             : `${unitDisplayName(unit)} teleports ${unitDisplayName(tUnit)} from ${oldLabel} to ${coordLabel(x, y)}.`,
                         undefined, undefined, { actor: unit });   // the caster's own blink always reads in its own log (PvP 11-09)
                     resolveTileArrival(tUnit, { via: tUnit === unit ? 'self' : 'teleport' });   // ⛓ the blink's landing

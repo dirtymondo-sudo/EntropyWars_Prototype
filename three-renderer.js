@@ -3833,6 +3833,7 @@ const ThreeRenderer = (function () {
         'proj-knife':       { url: _R2_PROJ + 'proj_knife.png',         glow: 0xc0c0cc },
 
         'proj-football':    { url: 'https://cdn.entropywars.net/Assets/loose_sprites/football.png',    glow: 0x8b5e3c },
+        'proj-basketball':  { url: 'https://cdn.entropywars.net/Assets/loose_sprites/basketball.png',  glow: 0xce561c },   // 2026-11-24 THE POINT GUARD
     };
 
     /* Real 3D models for select projectiles — Meshy GLBs on R2
@@ -3848,6 +3849,12 @@ const ThreeRenderer = (function () {
                Long Bomb ball as "about the size of a person" in the bullet cam. A real ball is ~0.28 m; 0.22 tiles
                keeps it a touch big so it still reads across the board. */
             lenTiles: 0.22, spin: 9.0,
+        },
+        /* THE POINT GUARD's basketball (2026-11-24): the same ball he holds (a sphere + a painted texture, project files
+           cheer-guard/make_basketball.py), a touch big so it reads across the board, turning end over end */
+        'proj-basketball': {
+            url: 'https://cdn.entropywars.net/Assets/characters/gear/held/basketball.glb',
+            lenTiles: 0.16, tumble: 7.0,
         },
         /* 2026-07-25: every gun spell's tracer is a real spinning round now
            (rifling roll around the flight axis). Sprite = loading fallback. */
@@ -15795,6 +15802,8 @@ const ThreeRenderer = (function () {
         if (hgBuff > 0) badges.push('<span class="tp-sbadge tp-stat-up" title="Key Charge: +' + hgBuff + ' ATK/DEF points">' + ((typeof keyIconHtml === 'function') ? keyIconHtml(9) : 'KEY') + '+' + hgBuff + '</span>');
         /* 🐝 THE POLLEN (battle.js): the Bee Queen's carried pollen */
         if ((unit.pollen | 0) > 0) badges.push('<span class="tp-sbadge tp-stat-up" title="Pollen: +' + (unit.pollen * 8) + ' ATK, spell power and SPD">POL ' + (unit.pollen | 0) + '</span>');
+        /* 📣 SPIRIT (battle.js THE CHEERLEADER): her count to the stunt */
+        if (unit.race === 'cheerleader' && !unit.dead) badges.push('<span class="tp-sbadge tp-stat-up" title="Spirit: each spell adds 1; a spell at full Spirit is a stunt">📣 ' + Math.min(window.CH_SPIRIT_MAX || 3, unit.spirit | 0) + '/' + (window.CH_SPIRIT_MAX || 3) + '</span>');
         /* 📺 THE RUNDOWN (battle.js): the News Anchor's next segment */
         if (unit.race === 'weatherman' && unit.gender === 'female' && !unit.dead) badges.push('<span class="tp-sbadge tp-stat-up" title="The Rundown: her next spell runs this segment">📺 ' + ['NEWS', 'SPORTS', 'WEATHER'][Math.max(0, unit._rundown | 0) % 3] + '</span>');
         /* 🎮 THE VIEWERS (battle.js): the Streamer's / E-Girl's crowd */
@@ -35065,7 +35074,8 @@ const ThreeRenderer = (function () {
                      : (projClass === 'proj-bomb' || projClass === 'proj-dynamite') ? ts * 0.55
                      : (projClass === 'proj-handgrenade') ? ts * 0.6
                      : (projClass === 'proj-grenade') ? ts * 0.6
-                     : (projClass === 'proj-football') ? ts * 0.55 : 0,
+                     : (projClass === 'proj-football') ? ts * 0.55
+                     : (projClass === 'proj-basketball') ? ts * 0.4 : 0,   // 2026-11-24 THE POINT GUARD: a pass with a little loft
             needsDirRot: needsDirRot,
             sizeK: _sizeK,
             travelDX: endX - startX,
