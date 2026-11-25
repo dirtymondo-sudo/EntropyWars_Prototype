@@ -193,3 +193,26 @@ mondo: "If the game has a place but the board doesnt, that means something is wr
 - **Printed homes**: `build.js` maps each unit's home through data.js `DOOR_TEXT.POINT_OF_ENTRY_NOW` (Mount Shasta -> The Mountains,
   The Lodge / The Strip / Football Stadium / Downtown -> Disaster City's districts). POINT_OF_ENTRY itself is unchanged: its labels are
   the keys `doorSiteCrossings` matches against the old site boards.
+
+## The Character Sheets (2026-11-25)
+mondo: "a Character Sheet tool alongside the relationship web and story planner ... a full one that goes more in depth and has more
+structured and useful info", then "add a family section ... add the sheets for pretty much every character mentioned in the story ...
+ill go back in and give them specific names or delete them if its a group". A fourth tab of the Story planner screen (**Character
+sheets**; also the web's toolbar button and **Open the full character sheet** in a unit's side panel). app.js "THE CHARACTER SHEETS".
+- **Saved** as doc `story/cast` beside the boards and the plan (server.js `STORY_WEB_PATH`, the same password, the same 10 s pull) and in
+  the browser (`S.cast`). One set for every board. Each sheet has its own `t`; `mergeCast` keeps the newer copy of each sheet, so two
+  computers editing different sheets both keep their work. `del[id]` = time of a delete (minus = a restore); Delete only hides a sheet,
+  its text stays and **Deleted** lists it with **Bring back**. Nothing on a board is deleted from here.
+- **The story cast is worked out, not stored** (`storyCastIds`): every story character (DOOR_CAST), every unit a chapter or quest of the
+  plan names (enemies, boss, characters), every unit a timeline event names, every unit or character with a note or a story name on a
+  board, every unit whose game name appears in the boards' notes, events, tie labels or the plan's text, and every sheet with typing in it.
+  11-25: 113 from his board. **All units** lists every roster unit; typing on one makes it part of the story list.
+- **Sections:** header (portrait, story name = the board's `nick` on the open board, game name, places and factions from the board,
+  status, one-line pitch), Overview, Inside (want, need, fear, flaw, the lie, lines they won't cross), Family (family + created ties from
+  the board, and his own rows: relation, a unit picked or a typed name, notes), Secrets (who knows, planted, revealed; the chapter list
+  is offered), History (the backstory IS the board node's note on the open board, the same field as the side panel; a unit not on the
+  board keeps `back` on the sheet; the timeline events), Arc (Start, a row per chapter they are in from the plan, End: where they stand,
+  what changes), Ties (from the board + what they think of you), Voice (way of speaking, catchphrase, sample lines by mood), In the game
+  (read-only from EW_DATA: race or cast facts, spells, quotes, finisher, chapters), Questions (what the sheet noticed + his own).
+  **+ Add a field** in every section (`extra`), **Hide empty fields**, **Export sheets** (JSON), **Print this sheet**.
+- Left list: find, Story | All units | Deleted, A-Z | Least done; the bar = how much of the core is filled (`scDone`).
