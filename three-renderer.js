@@ -82,7 +82,7 @@ const ThreeRenderer = (function () {
         }
     })();
     /* THE BUILD LINE (the perf lens): bump the stamp in every PR that changes this file's walk / fight drawing */
-    var _EW_TR_STAMP = '11-25 look-named';
+    var _EW_TR_STAMP = '11-25 warm-queue';
     function _ewBuildTok() {
         var sc = document.querySelectorAll('script[src*="three-renderer.js"]'), t = '';
         for (var i = 0; i < sc.length; i++) { var m = /[?&]v=([^&#]+)/.exec(sc[i].src || ''); if (m) { t = m[1]; break; } }
@@ -105368,8 +105368,21 @@ const ThreeRenderer = (function () {
         if (m.uniforms) for (var u in m.uniforms) { var v = m.uniforms[u] && m.uniforms[u].value; if (v && v.isTexture) out.push(v); }
     }
     /* one frame of the warm-up; true = done */
+    /* THE WARM'S QUEUE (2026-11-25, mondo's trail: 2.6 s and 1.7 s stalls 3-6 s after a room or the Drop-off, as the room beside
+       it warmed, in Firefox on WebGPU). A warm after the card asks for new GPU pipelines a piece at a time, each one "async"; Firefox
+       compiles them one after another on the GPU side, and the frame's own drawing waits in the same queue behind all of them, so
+       a hundred asked in a few frames were one long frozen picture. Once the card is up at most HQ_WARM_FLY (4) pieces' pipelines are
+       in flight; the warm waits for them before it asks for more (under the card it asks as fast as it likes). Off:
+       window.EW_WARM_FLY_ALL. */
+    var HQ_WARM_FLY = 4, HQ_WARM_FLY_HOLD_MS = 2000;   // a pipeline that never answers holds the warm 2 s at most
+    function _hqWarmFull(H, W) {
+        if (!H.ready || (W.flying | 0) < HQ_WARM_FLY || (typeof window !== 'undefined' && window.EW_WARM_FLY_ALL)) { W.flyHold = 0; return false; }
+        var now = _alNow(); if (!W.flyHold) W.flyHold = now;
+        return now - W.flyHold < HQ_WARM_FLY_HOLD_MS;
+    }
     function _hqWarmRun(H, W) {
         if (W.done) return true;
+        if (_hqWarmFull(H, W)) { W.flyWaits = (W.flyWaits | 0) + 1; return false; }
         var t0 = _alNow(), end = t0 + (!H.ready ? HQ_CARD_SLICE_MS : (HQ_STAGE_RULES.compileMs > 0) ? HQ_STAGE_RULES.compileMs : HQ_WARM_MS), n = 0;   // THE CARD WAITS: under the card the warm-up takes HQ_CARD_SLICE_MS a frame
         W.frames++;
         /* THE WARM-UP USES THE FRAME'S LAMPS (2026-11-23, mondo's fight-start F3: "built: 4x MeshLambert node:wind on hq_batch | 2x
@@ -105414,7 +105427,7 @@ const ThreeRenderer = (function () {
                         W.real = (W.real || 0) + 1;
                         if (_wpp.length) { W.flying = (W.flying || 0) + 1; var _wl2 = function () { W.flying--; }; Promise.all(_wpp).then(_wl2, _wl2); }
                         if (_wt) renderer.setRenderTarget(_wp);
-                        n++; if (_alNow() >= end) break;
+                        n++; if (_alNow() >= end || _hqWarmFull(H, W)) break;
                         continue;
                     }
                 }
@@ -105438,7 +105451,7 @@ const ThreeRenderer = (function () {
                 if (_wRC) { _wRCg = _wRC.get; _wRC.get = function () { return ctxW.context; }; if (renderer.setMRT && renderer.getMRT && (ctxW.context.mrt || null) !== renderer.getMRT()) { _wMrt0 = renderer.getMRT(); renderer.setMRT(ctxW.context.mrt || null); _wMrtSet = true; } }
                 try { var _wpr = renderer.compile(_wHS || W.fake, H.camera); if (_wpr && typeof _wpr.then === 'function') { W.flying = (W.flying || 0) + 1; var _wland = function () { W.flying--; }; _wpr.then(_wland, _wland); } } finally { o.visible = _wVis; o.frustumCulled = _wFc; if (_wRC) _wRC.get = _wRCg; if (_wMrtSet) renderer.setMRT(_wMrt0); if (_wKids) _wHS.children = _wKids; if (_wt) renderer.setRenderTarget(_wp); }   // the node renderer's compile is a promise: a failure never goes uncaught
                 n++;
-                if (_alNow() >= end) break;
+                if (_alNow() >= end || _hqWarmFull(H, W)) break;
             }
             if (W.i >= W.objs.length && (n === 0 || _alNow() < end)) {
                 var P = renderer.properties;

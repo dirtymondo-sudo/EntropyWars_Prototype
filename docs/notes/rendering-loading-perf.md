@@ -4236,3 +4236,10 @@ the vertex stage`.
   in the ... stage" / "not found on geometry" warnings of a session are followed by `[ThreeRenderer] the look being built: <type>
   on <object path> (skinned) · attributes ...`. The cloud hall (probe, default hero) shows none of them and has no skinned mesh
   without skin attributes, no lit mesh without normals and no flat look; the next trail names it.
+- **Third trail (11-25 21:05, build shheal-01)**: stalls of 2.6 s and 1.7 s came 3-6 s after entering the hall / during the Drop-off
+  replay, each time as the room beside was warming ("warmed 526 material(s) in 34 frames"). **THE WARM'S QUEUE** (`HQ_WARM_FLY`,
+  `_hqWarmFull`): after the card at most 4 pieces' pipelines are in flight; the warm waits for them before asking for more
+  (a pipeline that never answers holds it 2 s at most). Why: Firefox compiles "async" pipelines one after another on the GPU
+  side and the frame's own submit queues behind them. Reasoned, not measured here (no Firefox in the cloud). Off:
+  `window.EW_WARM_FLY_ALL`. The memory line at 858-1000 of 700 MB was the Drop-off's cutscene files (sedan, Locke outfit,
+  Bigfoot, spear) right after it ended: the budget drops them once 30 s idle, two a frame (146 dropped so far in that session).
