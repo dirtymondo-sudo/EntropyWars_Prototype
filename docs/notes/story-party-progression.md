@@ -1226,3 +1226,8 @@ card, the quick menu header, the quick panel) draws the same plate as "LV n" (`m
 `unitLevelChipHtml` for HTML screens), battle.js `_mlStampUnit` stamps no `ulv` (so the pause menu's party cards and the
 result list lose the M plate; they already print the level), and the result screen's "Unit Mastery" block is skipped (THE
 EXPERIENCE rows cover it). Online, Practice and VS-CPU keep the mastery plate as before. Mastery XP still accrues (unchanged).
+- **Follow-up (same day, mondo: "The cash ... clipping inside it, and there's a gap b/w the top of the door and the frame").** The bills
+  sat inside the hand: the Meshy rig has no finger bones, so the palm's facing was MEASURED in the Checkout_Gesture pose (world up in
+  LeftHand's frame = (-0.87, 0, 0.49), the fingers along +Y). The hold is now `pos [-0.017, 0.085, 0.009]`, `rot [-90, 0, 119]`: the
+  bills' face on that normal, their length down the fingers, ~2 cm off the bone. The crossing door's leaf (`_introBuildDoor`) stood
+  0.03 tile short of the lintel; it is fitted to `oh + 0.012 tile` now, its top tucked into the lintel (every crossing door).
