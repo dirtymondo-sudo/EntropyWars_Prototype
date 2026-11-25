@@ -255,3 +255,14 @@ new fields), so it saves and syncs like the chapters.
   feeds (its ending, or a fact one of its endings changes; red dashed = it closes it), and how many different runs the endings make.
   Pick a quest (or click one): what opens it, its steps, its endings (coloured by tone, what each changes, who dies or joins) and the
   quests each ending opens or closes. app.js `feeds()`, `flowQuest`, `flowAll`.
+- **Play it** tab (step D): PLAY IT THROUGH. One path through the story: every quest that opens takes the ending picked for it
+  (the first by default, or Skip it); a locked quest says why (the gates that fail at that moment). The side panel is the world after
+  the chosen chapter: who joined, who died, the FACTION STANDING table (every number fact with a faction, `fac`, chapter by chapter),
+  every fact's value, what the player knows (revealed / hinted secrets), the places reached. **Try every path** plays 400 random
+  paths: quests no path opens, main quests some paths lock (dead ends), how many different ends. The checks run 120 such paths
+  (cached on `P.t`). The picks are not saved. app.js `simRun`, `renderPlay`, `randomPaths`.
+- **Lore** tab (step D): THE LORE GLOSSARY, `P.lore`: name, kind (object / idea / group / event / word), other names, canon, still
+  open, the secret it belongs to; "Mentioned in" is found by the names in the chapters, quests, secrets and the board's timeline.
+  Checks: mentioned but no canon, open questions.
+- **Pitches** tab (step D): SIDE QUEST PITCHES, `P.pitches`: the idea, where, faction, level, mood. "Make it a quest in…" adds a side
+  quest (status Idea, the idea as its summary) to that chapter and the pitch keeps the link (`q`).
