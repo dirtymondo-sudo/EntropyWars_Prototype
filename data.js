@@ -107670,8 +107670,11 @@ var ZONE_FLORA = (function () {
     const GRASS = (s, tall) => [['rf_grass_1' + s, 3], ['rf_grass_2' + s, 3], ['rf_grass_3' + s, 3], ['rf_grass_4' + s, 2], ['rf_grass_5' + s, tall || 0.6], ['rf_grass_6' + s, tall || 0.6]];
     const M = {
         grass: GRASS(''), dry: GRASS('_dry'), frost: GRASS('_frost'), dark: GRASS('_dark'), tall: GRASS('', 4), dune: [['rf_grass_5_dry', 3], ['rf_grass_6_dry', 3], ['rf_grass_3_dry', 1]],
-        fern: [['rf_plant_7', 5], ['rf_plant_3', 2], ['rf_plant_1', 0.7], ['rf_plant_10', 1]],
-        bush: [['rf_plant_4', 1]],
+        /* THE WOODS' FERNS (2026-11-25, mondo: "these little shrubs or ferns all over the ground in the woods that look terrible"): the kit's three real
+           ferns, no one above 40 % (flora.md G7), each deepened by its tint (ZONE_FLORA.tint: their own leaf picture is pale yellow-white and glowed
+           on the dark floor); the lime rosette rf_plant_3 is out (it read as a neon blob). The layer grows by trees, rocks and props (the lead's `near`) */
+        fern: [['rf_plant_7', 4], ['rf_plant_1', 3], ['rf_plant_10', 3]],
+        bush: [['rf_plant_9', 2], ['rf_plant_1', 1]],                                                                                            // a low shrub: the sage bush and a big fern, tinted green (the white-flecked egg rf_plant_4 is out)
         reed: [['rf_grass_5', 4], ['rf_grass_6', 4], ['rf_plant_5', 2], ['rf_plant_6', 1.5]],                                             // rushes at the water's edge, a few cattails
         sage: [['rf_plant_9', 3], ['rf_plant_8', 3]],
         meadow: [['hp_daisy', 3], ['hp_daisy_bunch', 3], ['rf_flower_7', 2], ['rf_flower_6', 2], ['rf_flower_2', 2], ['rf_flower_4', 2], ['hp_bluebell', 1], ['rf_flower_1', 1], ['rf_flower_10', 1]],
@@ -107729,7 +107732,7 @@ var ZONE_FLORA = (function () {
         lush: 2.2, lushG: 1.2,
         /* a plant's size against its file: [from, to] (default below) */
         size: { '*': [1.0, 1.5], hp_bluebell: [0.6, 0.9], hp_daisy_bunch: [0.6, 0.9], hp_daisy: [0.6, 0.9], hp_flameflower: [0.6, 0.85], hp_orange_flower: [0.55, 0.8], hp_purple_flower: [0.6, 0.85], hp_violet: [0.6, 0.9],
-                hp_sunflower: [1.3, 1.9], rf_plant_4: [0.6, 1.0], rf_plant_5: [1.3, 2.0], rf_plant_6: [1.2, 1.9], rf_plant_7: [0.9, 1.5], rf_plant_1: [0.8, 1.3] },
+                hp_sunflower: [1.3, 1.9], rf_plant_4: [0.6, 1.0], rf_plant_5: [1.3, 2.0], rf_plant_6: [1.2, 1.9], rf_plant_7: [0.75, 1.35], rf_plant_1: [0.85, 1.6], rf_plant_10: [2.1, 3.3], rf_plant_9: [1.3, 2.1] },   // a fern knee-high, 0.45-0.85 m (G7)
         /* the ground class of a sheet (a sheet with no row grows nothing: paving, road, ice, cave floor; `rock` only where a climate names it, and never on a steep face) */
         sheets: { grass: 'lawn', grass_2: 'lawn', grass_3: 'lawn', grass_4: 'lawn', calm_grass: 'lawn', grass_rocky: 'rough', grass_dark_fantasy: 'floor', purple_grass: 'floor',
                   dirt_2: 'dirt', dirt: 'dirt', calm_dirt: 'dirt', dirt_4: 'dry', wasteland: 'dry', desert: 'sand', ice: 'snow', calm_snow: 'snow', rocks_5: 'rock' },
@@ -107787,9 +107790,9 @@ var ZONE_FLORA = (function () {
                         rough: [L('grass', 0.05, 0.3, 'g'), L('fern', 0.03, 0.5)], dirt: [L('fern', 0.02, 0.7)], sand: [L('dune', 0.008, 0.85)], wet: [L('reed', 0.2, 0.2)] },
             japan:    { name: 'Katana Island', trees: T.japan, lawn: [L('grass', 0.08, 0.3, 'g'), L('japan', 0.04, 0.7), L('fern', 0.02, 0.6)], floor: [L('dark', 0.05, 0.3, 'g'), L('fern', 0.05, 0.5), L('japan', 0.015, 0.85)],
                         dirt: [L('fern', 0.012, 0.8)], sand: [L('dune', 0.008, 0.85)], wet: [L('reed', 0.2, 0.2)] },
-            horror:   { name: 'the horror wood', trees: T.horror, lawn: [L('dark', 0.07, 0.3, 'g'), L('fern', 0.035, 0.55), L('horror', 0.02, 0.8)], floor: [L('dark', 0.06, 0.3, 'g'), L('fern', 0.04, 0.5), L('horror', 0.02, 0.8)],
+            horror:   { name: 'the horror wood', trees: T.horror, lawn: [L('dark', 0.07, 0.3, 'g'), L('fern', 0.03, 0.8), L('horror', 0.02, 0.8)], floor: [L('dark', 0.06, 0.3, 'g'), L('fern', 0.045, 0.75), L('horror', 0.02, 0.8)],
                         rough: [L('dark', 0.05, 0.3, 'g'), L('horror', 0.012, 0.8)], dirt: [L('horror', 0.008, 0.85)], wet: [L('reed', 0.18, 0.2)], snow: [L('frost', 0.02, 0.6)] },
-            redwood:  { name: 'the redwoods', like: 'horror', trees: T.redwood, lawn: [L('dark', 0.06, 0.3, 'g'), L('fern', 0.09, 0.35), L('wood', 0.01, 0.9)], floor: [L('dark', 0.05, 0.3, 'g'), L('fern', 0.1, 0.3), L('wood', 0.008, 0.9)],
+            redwood:  { name: 'the redwoods', like: 'horror', trees: T.redwood, lawn: [L('dark', 0.06, 0.3, 'g'), L('fern', 0.09, 0.7), L('wood', 0.01, 0.9)], floor: [L('dark', 0.05, 0.3, 'g'), L('fern', 0.1, 0.65), L('wood', 0.008, 0.9)],
                         dirt: [L('fern', 0.03, 0.6)] },
             fairy:    { name: 'the fairy wood', trees: T.fairy, stones: 0.6, grassH: 0.6,
                         /* G10: a designed flower field (terrain.floraFields): dense drifts of the fairy blooms over short grass, a few meadow flowers */
@@ -107988,7 +107991,44 @@ function zoneFloraProps(roomId, info, freeFor) {
     });
     return n;
 }
-if (typeof window !== 'undefined') Object.assign(window, { ZONE_FLORA, zoneFloraRule, zoneFloraAt, zoneFloraGround, zoneFloraSheet, zoneFloraTrees, zoneFloraProps, zoneFloraClimateOf });
+/* THE WOODS' FERNS (2026-11-25, mondo: "there are these little shrubs or ferns all over the ground in the woods that look terrible, how did the previous
+   foilage pass not fix those?"). The 11-20 pass never read the rooms' own prop rows, so three things stayed: the kit ferns' pale picture, ~1,560 copies of the
+   old Meshy 'fern' (a fat agave rosette, 7,700 triangles each, sprinkled by bake-woods.js, bake-route.js and the district files) and ~800 'psxg_dead_bush_1'
+   (three bare sticks).
+   THE TINT: a flora field plant's colour times this (three-renderer.js _hqFloraCell reads it; the plant's own picture is never repainted).
+   THE SWAP: a room's prop or scatter row of a key here is worked out by the climate of its spot when the room's props stand (zoneFloraSwap, once a room
+   build, never a frame): `'='` keeps it, `null` drops it (the field's tree-hugging ferns grow there instead), `{ key, h, foot }` stands another piece.
+   No room, tool or district file is edited: a rebaked room comes out the same. A climate not named takes `'*'`; a room in no zone keeps its rows. */
+ZONE_FLORA.tint = { rf_plant_7: [0.4, 0.55, 0.33], rf_plant_1: [0.4, 0.54, 0.34], rf_plant_10: [0.45, 0.6, 0.37] };   // (the sage bush keeps its own grey-green: it is the desert's too)
+ZONE_FLORA.swap = {
+    fern: { '*': null, tropical: '=', japan: '=', hollow: '=' },                     // the Meshy rosette stays only where it reads as a tropical plant
+    psxg_dead_bush_1: { '*': { key: 'psxg_dead_bush_2', h: 0.62, foot: 0.3 } },     // three sticks -> the pack's thorn bush (its footprint kept)
+};
+var _zfRoomIds = null;
+function zoneFloraRoomId(room) {
+    if (typeof room === 'string') return room;
+    if (!room || typeof DOOR_HQ === 'undefined') return null;
+    if (!_zfRoomIds) { _zfRoomIds = new WeakMap(); Object.keys(DOOR_HQ.rooms || {}).forEach(id => { const r = DOOR_HQ.rooms[id]; if (r && typeof r === 'object') _zfRoomIds.set(r, id); }); }
+    return _zfRoomIds.get(room) || null;
+}
+/* rows in, rows out (the room's own rows are never changed: a swapped row is a copy) */
+function zoneFloraSwap(room, rows, fallbackId) {
+    if (!rows || !rows.length || (typeof window !== 'undefined' && (window.EW_NO_FLORA || window.EW_NO_FLORA_SWAP))) return rows;
+    const S = ZONE_FLORA.swap, id = zoneFloraRoomId(room) || fallbackId || null; if (!S || !id || !zoneFloraRule(id)) return rows;
+    let out = null, n = 0;
+    for (let i = 0; i < rows.length; i++) {
+        const p = rows[i], W = p && S[p.key];
+        if (!W) { if (out) out.push(p); continue; }
+        const C = zoneFloraAt(id, p.x || 0, p.z || 0), to = (C && W[C.id] !== undefined) ? W[C.id] : W['*'];
+        if (to === '=' || to === undefined) { if (out) out.push(p); continue; }
+        if (!out) out = rows.slice(0, i);
+        n++;
+        if (to && DOOR_HQ.catalogue[to.key]) out.push(Object.assign({}, p, { key: to.key, h: to.h, foot: to.foot }));
+    }
+    if (n && typeof window !== 'undefined') { try { window._ewHqFloraSwap = { room: id, swapped: n }; } catch (e) {} }
+    return out || rows;
+}
+if (typeof window !== 'undefined') Object.assign(window, { ZONE_FLORA, zoneFloraRule, zoneFloraAt, zoneFloraGround, zoneFloraSheet, zoneFloraTrees, zoneFloraProps, zoneFloraClimateOf, zoneFloraSwap, zoneFloraRoomId });
 /* ══ THE ZONE LOOKS (2026-11-18, mondo: "I added an SBS horror texture pack in the inbox. Its basically just more textured and weathered
    textures. Can you use this horror pack and the urban decay texture pack to improve the aesthetics of the game, zone by zone. I especially
    want the "calm" textures replaced, those textures were only meant to be used on the ground, and even then i am okay with you not using them

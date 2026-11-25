@@ -226,6 +226,30 @@ Meshy trees) and handed the names here. What the rule does with them, again with
   tree and barrel cacti on the Desert Highway. NOT looked at: the jungle trees (Katana's view missed them, the Volcano
   Island and the Cavern were not opened).
 
+## 3c. THE WOODS' FERNS (2026-11-25, G7 + G5)
+
+mondo, 11-25: "there are these little shrubs or ferns all over the ground in the woods that look terrible, how did the previous
+foilage pass not fix those?" Seen in the browser (the Clearing, build ceb80af): three things, and why 11-20 missed them.
+
+| What he saw | What it was | Why the 11-20 pass left it |
+|---|---|---|
+| pale yellow-white fronds glowing on the dark floor, sprinkled evenly | the flora field's kit ferns `rf_plant_7` / `rf_plant_1` (their own leaf picture is pale) and the neon lime rosette `rf_plant_3` | the pass ADDED them (layer `M.fern`), and only looked from far |
+| dark fat rosettes everywhere | the old Meshy `fern` (an agave, not a fern; 7,700 triangles each): 346 scatter + 1,213 prop rows in 50 rooms (bake-woods.js 140 a room, bake-route.js, district files) | the rule never read a room's own prop rows ("no room edited") |
+| bare white sticks | `psxg_dead_bush_1` (three sticks, 84 triangles): ~800 rows, mostly desert routes and the Woods | same |
+
+What changed (all in data.js, nothing in a room, tool or district file):
+- `M.fern` = `rf_plant_7` 4 · `rf_plant_1` 3 · `rf_plant_10` 3 (none above 40 %); `rf_plant_3` is out. `M.bush` = sage `rf_plant_9` 2 + a big
+  `rf_plant_1` 1; the white-flecked egg `rf_plant_4` is out. Sizes: a fern 0.45-0.85 m (`size`).
+- **`ZONE_FLORA.tint`** `{ plant: [r, g, b] }` multiplies a field plant's colour (the lead thread's `_hqFloraCell` reads it): the three ferns
+  deep green. A tint never repaints a picture; it is the way to fix a plant that reads too pale or too bright.
+- The Woods' fern layers clump harder (horror 0.75-0.8, redwood 0.65-0.7) and, with the lead's `near`, grow round trees, rocks and props.
+- **`ZONE_FLORA.swap`** + `zoneFloraSwap` (run by `_hqPlaceProps` once a room build): a prop / scatter row of a listed key stands as the climate
+  of its spot says: `'='` keep, `null` drop, `{ key, h, foot }` another piece. Today: the Meshy `fern` is dropped everywhere but `tropical`,
+  `japan`, `hollow` (Katana, the Volcano Island, the Cove keep it: there it reads as a tropical plant); `psxg_dead_bush_1` stands as
+  `psxg_dead_bush_2` (the pack's thorn bush, footprint kept). Rooms in no zone (the old handmade sites, plot dungeons) keep their rows.
+  Off: `EW_NO_FLORA_SWAP`. Readout: `window._ewHqFloraSwap`. The editor still shows and saves the room's own rows.
+- **To retire another bad model game-wide: a row in `swap`, not an edit in 50 rooms.**
+
 ## 4. Everything that grows in the game, and where it belongs
 
 | Asset | Source | Belongs in |
