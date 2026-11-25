@@ -14908,7 +14908,7 @@ buildings, THIRTY floors each, from one table `MD_BUILDINGS` (a building leaves 
 | office | ACT OF GOD INSURANCE (`dc:P09-00-B1`, the skyline tower lobby) | its left lift (`md_office_lift`) | FLOOR n, SUITE n01 | the roof | the Banker (F) / the Reptilian / the Tech CEO |
 | haunted | THE HAUNTED HOUSE, down from its cellar | `md_haunted_down`, the cellar's south wall | CELLAR n, VAULT n01 | a hall: THE BOTTOM | the Haunted Doll / the Cursed TV / the Vampire |
 | dumb | THE D.U.M.B. under Sub-Level 7 | `md_dumb_down`, the hub's south wall | SUB-LEVEL 7+n, LAB | a hall | the Juggernaut / the Mad Scientist / the Abomination |
-| archives | THE ARCHIVES (the Internet, tile P07-08 The Archive) | `md_archives_down`, the tile's south side; THE HACKER stands by it (the giver, outside DOOR; mondo 11-25 picked him over the Glitch); his scout THE GLITCH stands by the way in on floors 1-20, a friend (`scout`, spot `friend: true`: hqEncounterCharOk never fights it) | the year (2026 - n), PAGE | a hall: THE OLDEST BACKUP, nobody in it (the doc: floor 30 is story, left open), its page dated 1953 | the Influencer (F) / the Virus / none |
+| archives | THE ARCHIVES (the Internet, tile P07-08 The Archive) | `md_archives_down`, the tile's south side; THE HACKER stands by it (the giver, outside DOOR; mondo 11-25 picked him over the Glitch); his scout THE GLITCH stands by the way in on floors 1-20, a friend (`scout`, spot `friend: true`: hqEncounterCharOk never fights it) | the year (2026 - n), PAGE | a hall: THE OLDEST BACKUP, its page dated 1953; THE DEMON alone there (mondo 11-25: "it can be a demon perhaps") | the Influencer (F) / the Virus / the Demon |
 - **Room ids:** the Hotel keeps `site_prebuilt_hotel_f<n>` + `site_prebuilt_hotel_roof`; the rest are `site_prebuilt_md_<key>_f<n>` + `..._roof` / `..._bottom`.
 - **THE MEMORY RULE:** only floor 1 of each building is laid at load (~1 ms each; the Hotel used to lay all ten). Going in from outside (map.js
   `_hqGoRoom` -> `hotelBeforeGo`, now called BEFORE the room is looked up, so a floor not laid yet is laid there) lays the whole building from a
@@ -14955,8 +14955,11 @@ buildings, THIRTY floors each, from one table `MD_BUILDINGS` (a building leaves 
   whether it must be an arrest is mondo's call). FIX: `hqEncounterRecord` now calls `hotelBossBeaten` for EVERY NPC down in a won fight
   (`ev.beaten`), not only the one struck: an IT IS NOT ALONE case fought as one group never let its door close, a boss downed in a group fight
   did not open its stairs.
-- **STILL OPEN, waits mondo:** story notes in the rest rooms, floor kinds (flooded, on fire), Archives floor 30, the chapter gates (the game
-  keeps no chapter flag), the givers' quest lines and the Act II / III twist cards.
+- **mondo's answers 11-25 (18:03):** the Archives' bottom = a DEMON boss (done). THE BOUNTIES: an arrest case is either WANTED DEAD OR ALIVE
+  (`arrest`: a knock-out or a capture closes it, 2 rolls) or WANTED ALIVE ONLY (`alive`: only an arrest / a capture door pays, `jobRolls.alive`
+  = 4 rolls; a knock-out closes the door with no pay: CASE CLOSED · NO PAY). Floor kinds (flooded, on fire): SKIP for now. The chapter gates:
+  fine to stay open (no chapter flag). Story notes in the rest rooms: never asked for by him, dropped.
+- **STILL OPEN:** the givers' quest lines and the Act II / III twist cards (the side-quests doc's side).
 
 ## THE INTERIOR KITS + THE CHAIN INSIDES + THE DOOR FINDER + THE PARKED CITY (2026-11-23, building-interiors plan step 1)
 mondo 11-23: "I want every building to have an interior. If there is a door the player should be able to walk inside of it (very important

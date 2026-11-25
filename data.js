@@ -113534,7 +113534,7 @@ const MD_BUILDINGS = {
         lamp: null, liftButtons: false,
         natives: null,
         guests: f => f <= 10 ? ['influencer', 'streamer', 'vtuber', 'glitch', 'virus', 'ai'] : f <= 20 ? ['hacker', 'virus', 'glitch', 'conspiracy theorist', 'ghost', 'streamer'] : ['ghost', 'glitch', 'ai', 'hacker', 'virus'],
-        boss: null, bossName: 'THE OLDEST BACKUP',   // the bottom's title, not a boss: floor 30 is story, left open (the doc): the bottom page stands empty and its way out is open
+        boss: 'demon', bossGender: 'male',   // THE BOTTOM (mondo 11-25, on "floor 30 is story, left open": "it can be a demon perhaps"): a demon alone under the oldest page
         floorBoss: { 10: { race: 'influencer', gender: 'female' }, 20: { race: 'virus', gender: 'male' } },
         words: { floor: f => String(2026 - f), roomNo: (f, i) => 'PAGE ' + (2026 - f) + '/' + String(i + 1).padStart(3, '0'), out: 'THE ARCHIVE', top: 'THE OLDEST BACKUP', loot: 'SAVED FILES', rest: 'A CACHED PAGE', cleared: 'THE ARCHIVES ARE READ' } },
 };
@@ -114247,7 +114247,11 @@ const MD_CASES = {
         ['site_prebuilt_bermuda_beach', 'THE HARBOUR'], ['site_prebuilt_skinwalker_ow_corn', 'THE ESTATE'], ['site_prebuilt_atlantis_deep', 'THE DEEP'],
         ['site_prebuilt_moon_plots', 'THE MOON'], ['site_prebuilt_hollow_earth_cavern', 'THE CAVERN'], ['site_prebuilt_lookingglass_realm', 'THE ASTRAL REALM'],
         ['site_prebuilt_hell_plots', 'HELL'], ['site_prebuilt_heaven_plots', 'HEAVEN'], ['site_prebuilt_antarctica_plots', 'ANTARCTICA'], ['site_prebuilt_bermuda_katana', 'KATANA ISLAND']],
-    jobs: [['arrest', 'ARREST IT AND BRING IT BACK'], ['escort', 'ESCORT IT HOME'], ['rescue', 'RESCUE WHO IT TOOK'], ['close', 'CLOSE THE DOOR FROM THE FAR SIDE']],
+    /* THE BOUNTIES (mondo 11-25: "it should be dead or alive (kill or capture), or alive only (just capture), but alive only would pay more"):
+       'arrest' = DEAD OR ALIVE, a knock-out or a capture both close it; 'alive' = ALIVE ONLY, only an arrest or a capture door pays (`rolls`),
+       a knock-out closes the door for nothing */
+    jobs: [['arrest', 'WANTED DEAD OR ALIVE: KILL OR CAPTURE IT'], ['alive', 'WANTED ALIVE ONLY: CAPTURE IT · PAYS DOUBLE'], ['escort', 'ESCORT IT HOME'], ['rescue', 'RESCUE WHO IT TOOK'], ['close', 'CLOSE THE DOOR FROM THE FAR SIDE']],
+    jobRolls: { alive: 4 },   // ALIVE ONLY pays more: twice the floor-table rolls
     twists: [['child', 'IT IS A CHILD LOOKING FOR ITS PARENT'], ['rent', 'SOMEONE IN THE BUILDING IS CHARGING IT RENT'], ['knox', 'KNOX GOT THERE FIRST'], ['notalone', 'IT IS NOT ALONE']],
     rolls: 2,   // the reward: this many rolls of the floor table
 };
@@ -114284,13 +114288,14 @@ function mdCaseClose(profile, roomId) {
     if (mdCaseClosed(mc.id)) return { ok: false, reason: 'closed' };
     const run = _hotelRunOn(r.mdB || 'hotel'); if (!mc.ids.every(x => run.caseDown && run.caseDown[x])) return { ok: false, reason: 'anomaly' };
     try { const o = JSON.parse(localStorage.getItem('ew_md_cases_closed') || '{}'); o[mc.id] = Date.now(); localStorage.setItem('ew_md_cases_closed', JSON.stringify(o)); } catch (e) {}
-    const got = [];
-    for (let i = 0; i < MD_CASES.rolls; i++) { const item = hotelLootRoll(roomId, 'case' + i, mc.id), a = (typeof hqBagAdd === 'function' && profile) ? hqBagAdd(profile, item, 1) : { ok: false };
+    const cs = mdCaseToday(), arrested = !!(run.caseArrested && mc.ids.every(x => run.caseArrested[x])), job = cs && cs.id === mc.id ? cs.job.k : null;
+    /* ALIVE ONLY and it went down instead: the door closes, the case closes, nothing is paid */
+    if (job === 'alive' && !arrested) return { ok: true, reward: [], arrested: false, job, failed: true };
+    const got = [], rolls = (MD_CASES.jobRolls || {})[job] || MD_CASES.rolls;
+    for (let i = 0; i < rolls; i++) { const item = hotelLootRoll(roomId, 'case' + i, mc.id), a = (typeof hqBagAdd === 'function' && profile) ? hqBagAdd(profile, item, 1) : { ok: false };
         if (a && a.ok) got.push({ item, n: 1, name: (typeof ITEM_RULES !== 'undefined' && ITEM_RULES[item] && ITEM_RULES[item].name) || item }); }
-    /* an ARREST case (MD_CASES.jobs 'arrest'): says ARRESTED when what came through was taken in (the give-up panel's ARREST, or a capture
-       door); it closes either way, the reward is the same (no rule beyond the board's words: mondo decides if an arrest case needs the arrest) */
-    const cs = mdCaseToday(), arrested = !!(run.caseArrested && mc.ids.every(x => run.caseArrested[x]));
-    return { ok: true, reward: got, arrested, job: cs && cs.id === mc.id ? cs.job.k : null };
+    /* `arrested`: what came through was taken in (the give-up panel's ARREST, or a capture door): the toast says ARRESTED */
+    return { ok: true, reward: got, arrested, job };
 }
 /* the case board's words (a building's way in): today's case, whichever building it is in */
 function mdCaseBoard(b) {
