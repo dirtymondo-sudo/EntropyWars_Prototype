@@ -107,6 +107,20 @@ function room(k) {
       /* life */
       A('butterfly', 9, 36, { floor: true, y: 1.1 }); A('blue_morpho', 13, 38.5, { floor: true, y: 1.4 }); A('monarch', 8.4, 40.2, { floor: true, y: 1.2 }); A('butterfly', 12, 33.4, { floor: true, y: 1.3 }); }
 
+    /* ── THE SCENIC PASS (2026-11-25, zone group 2, flora.md 00b S9: "every 20-40 m of path, a small composed scene that tells something") ──
+       A vignette = an anchor (a log, a stump, a rock, a dead tree) + its supporting layer on a loose triangle, mixed sizes, on a way's verge where the
+       walker sees it, never on the trodden middle. The flora field and the zone's compose row (data.js ZONE_FLORA.zones.<zone>.compose) do the rest. */
+    const VG = (list) => list.forEach(([key, dx, dy, o], i) => A(key, VX + dx, VY + dy, Object.assign({ face: (i * 67 + 20) % 360, hand: true }, o || {})));
+    let VX = 0, VY = 0; const at0 = (x, y) => { VX = x; VY = y; };
+    /* THE FAIRY WALK and THE SOUTH LOOP: a scene every 25-35 m on the verges; glowcaps and toadstools grow from stumps and logs, the small flowers in one-colour drifts */
+    at0(6.4, 19); VG([['fallen_log', 0, 0, { face: 5 }], ['woods_glowcap', 0.3, 0.3, { noLight: true }], ['woods_glowcap', 0.45, -0.1, { noLight: true }], ['moss_clump', -0.2, -0.35], ['fae_flower_small_violet', -0.45, 0.4], ['fae_flower_small_violet', -0.2, 0.65]]);   // a glowing log by the first lane
+    at0(18.4, 17); VG([['stump', 0, 0], ['fae_toadstool', 0.35, 0.2, { noLight: true, h: 0.8 }], ['fae_toadstool', 0.1, 0.45, { noLight: true, h: 0.55 }], ['woods_glowcap', -0.3, 0.3, { noLight: true }], ['moss_clump', 0.4, -0.3], ['rf_grass_6', -0.4, -0.3]]);   // toadstools from a stump
+    at0(20, 27.3); VG([['lake_rock', 0, 0, { face: 30 }], ['ocean_rock_7', 0.4, 0.15, { noBlock: true, h: 0.35 }], ['fae_flower_small_blue', -0.4, -0.1], ['fae_flower_small_blue', -0.25, 0.3], ['fae_flower_small_blue', -0.6, 0.25], ['rf_grass_5', 0.55, -0.25]]);   // a rock in a blue drift
+    at0(35, 27.2); VG([['woods_healflower', 0, 0], ['woods_healflower', 0.4, -0.3], ['leafy_bush', -0.45, -0.35], ['fae_flower_small_pink', 0.3, 0.35], ['fae_flower_small_pink', -0.15, 0.4], ['moss_clump', 0.6, 0.1]]);   // heal flowers over the glow-worm hollow
+    at0(42.4, 18); VG([['meshy_fallen_log', 0, 0, { face: 0 }], ['woods_glowcap', 0.35, 0.4, { noLight: true }], ['woods_glowcap', 0.2, -0.45, { noLight: true }], ['moss_clump', -0.3, 0.1], ['fae_flower_small_pink', 0.55, 0.05]]);   // a log under the last lane, caps along it
+    at0(22.5, 42.3); VG([['meshy_stump', 0, 0], ['fae_toadstool', 0.3, -0.25, { noLight: true, h: 0.7 }], ['woods_glowcap', -0.3, -0.2, { noLight: true }], ['moss_clump', 0.1, 0.35], ['fae_flower_small_violet', -0.55, 0.2], ['fae_flower_small_violet', 0.55, 0.25]]);   // a stump below the Root Stair
+    at0(35.6, 41.3); VG([['psxg_rock_1', 0, 0], ['psxg_rock_3', 0.4, 0.2], ['fae_flower_small_violet', -0.35, -0.15], ['fae_flower_small_violet', -0.2, 0.3], ['woods_glowcap', 0.35, -0.3, { noLight: true }], ['rf_grass_6', -0.55, 0.3]]);   // rocks on the way to the lanterns
+
     /* the air: fireflies in the hollow and the lantern glade, violet motes over the south loop, sea-green motes at the pool */
     k.air({ x0: mx(25), z0: mz(26), x1: mx(35), z1: mz(36), kind: 'fireflies', n: 46 });
     k.air({ x0: mx(37), z0: mz(36), x1: mx(46), z1: mz(45), kind: 'fireflies', n: 30 });

@@ -101,7 +101,7 @@ Probe lesson: the blade grass streams in over a few seconds; a view needs `"sett
 | Group | Rooms | Notes |
 |---|---|---|
 | 1 · The Woods (PILOT) | the Clearing, the Redwood Trail, the Ritual Ground, Dead Man's Cave's mouth | the "Fix ugly ground ferns" thread; proves the rules and the kit first |
-| 2 · Camelot | the village, the Forest, the Fairy Forest (beside its new meadow), the Snowy Pines, the Looking-Glass Garden | |
+| 2 · Camelot | the village, the Forest, the Fairy Forest (beside its new meadow), the Snowy Pines, the Looking-Glass Garden | DONE pass 1 (11-25), see 00f |
 | 3 · Disaster City outdoors | parks, yards, the Hollywood Hills, the coast / beach front, street trees | the palm-pit thread's rules (G9) still stand |
 | 4 · Countryside | the Estate (corn, lake, haunted house, ranch), Leylines (the Line, Babel, Bug Colony), Stonehenge, the green routes | |
 | 5 · Dry and cold | the Desert (Western Town, Giza, Area 51, the circus), dry routes, the Mountains + Olympus, the North Pole | desert composition = rock outcrops, cactus groups, dry washes |
@@ -148,6 +148,26 @@ over the climate's, so the Snowy Pines and Leylines, which share the `snow` / `s
 Counts (headless, every room fewer pieces than before; the heavy ones roughly halve): R5 heaps 265 -> 129, rocks 241 -> 154; R8 dead bushes 134 -> 76,
 rocks 339 -> 270, cacti 26 -> 12; DH4 tumbleweeds 90 -> 47. The Woods' result is byte-for-byte the same. find-softlocks: no new trap in the 15 rooms.
 Readout: `hqTerrainInfo(room).composed` (`outcrops`, `gathered`). Not done: dry washes (terrain, the zone tools'), vignettes by hand (S9), the landmark reveal.
+
+### 00f. Came A Lot's pass (2026-11-25, zone group 2)
+
+- **Compose BY ZONE ROW, not climate.** `forest` (the Forest), `meadow` (the village) and `snow` (the Snowy Pines) are shared with the routes, Stonehenge,
+  the Mountains and the North Pole, whose own threads own those climates' rows. So each zone row names its own row (group 5's convention, 00e): `ZONE_FLORA.compose.cal_camelot` (the Forest + R4 + R12),
+  `cal_village`, `cal_pines`, `cal_fairy` (data.js, the "CAME A LOT, THE SCENIC PASS" block).
+- **`keepGroups` (m, a row option):** a hand row with 2+ of the row's plants that near is already a group (a fairy ring, a drift, a bed, the meadow's
+  drifts) and stays where it stood; only the lone plants dotted over open ground are taken and stood again at anchors. Came A Lot uses 2.6.
+- **`hand: true` on a prop:** a vignette a zone thread composed by hand; the compose never takes it.
+- **The Looking-Glass Garden** is a formal garden (rose beds, hedge-foot flowers, the croquet lawn are the design): its own zone row `garden`
+  (climate still `fairy`), no compose name.
+- **The village**: its plants stay as the district files stood them; only `islands` (a half-sunk rock with meadow flowers, one per 700 m2 of lawn, 24 max).
+- **The vignettes (S9), by hand in the room files' "THE SCENIC PASS" blocks** (`VG` list round an anchor, squares as fractions):
+  the Forest (`W-room.js`): seven along the Crown's Road (moss log, rocks at the bend, a stump, a boundary stone in flowers, a log seat under the Bluff,
+  a mossy rock with heal flowers, brush at the charcoal burners), moss and caps on the poachers' and the Glade's logs, a drift on the Glade's rim, heal flowers
+  at the Old Oak's foot (the south's focal). The Snowy Pines (`N-room.js`): six along the Sleigh Road (a log under the snow, rocks with dead brush, a felled
+  stump with its saw, a windfall, a waymark cairn, a dead pine at the Pass with a crow) + two at the drift field and the tarn; frost tufts are the low layer.
+  The Fairy Forest (`F-room.js`): seven along the Fairy Walk and the south loop (a glowing log, toadstools from a stump, a rock in a blue drift, heal flowers
+  over the hollow, a log of caps, a stump under the Root Stair, rocks with violet flowers).
+- Readout after the bake: Forest 10 groups / 50 islands, Fairy Forest 25 groups / 30 islands (54 lone caps and flowers re-grouped), Pines 4 / 26, village 24 islands.
 
 ## 0. THE GROUND RULES (2026-11-25, the second foliage pass; READ FIRST)
 
