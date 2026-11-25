@@ -82,7 +82,7 @@ const ThreeRenderer = (function () {
         }
     })();
     /* THE BUILD LINE (the perf lens): bump the stamp in every PR that changes this file's walk / fight drawing */
-    var _EW_TR_STAMP = '11-25 shadow-heal';
+    var _EW_TR_STAMP = '11-25 look-named';
     function _ewBuildTok() {
         var sc = document.querySelectorAll('script[src*="three-renderer.js"]'), t = '';
         for (var i = 0; i < sc.length; i++) { var m = /[?&]v=([^&#]+)/.exec(sc[i].src || ''); if (m) { t = m[1]; break; } }
@@ -49758,6 +49758,33 @@ const ThreeRenderer = (function () {
             return usr.apply(this, arguments);
         };
     }
+    /* THE LOOK NAMED (2026-11-25): three's shader warnings ("'dFdx' is not supported in the vertex stage", "Vertex attribute
+       skinIndex not found on geometry") name no material or object. While a look builds, the piece is remembered, and the first
+       twelve such warnings of a session are followed by one line that names it, so a crash trail says which look to fix. */
+    var _ewBlame = { ro: null, n: 0 };
+    function _ewBlameText(ro) {
+        var o = ro.object, m = ro.material, g = ro.geometry, nm = '', q = o;
+        for (var d = 0; q && d < 5; d++, q = q.parent) nm += (d ? ' < ' : '') + (q.name || q.type);
+        return (m ? m.type + (m.name ? ' "' + m.name + '"' : '') + (m.flatShading ? ' flat' : '') : '?') + ' on ' + nm + (o && o.isSkinnedMesh ? ' (skinned)' : '')
+            + ' · attributes ' + (g && g.attributes ? Object.keys(g.attributes).join(',') : '?');
+    }
+    function _ewBlameSetup(r) {
+        var N = r && r._nodes; if (!N || N._ewBlame || typeof N.getForRender !== 'function') return;
+        N._ewBlame = true;
+        var gfr = N.getForRender;
+        N.getForRender = function (ro) { var p = _ewBlame.ro; _ewBlame.ro = ro; try { return gfr.apply(this, arguments); } finally { _ewBlame.ro = p; } };
+        ['warn', 'error'].forEach(function (k) {
+            var f = console[k]; if (typeof f !== 'function' || f._ewBlame) return;
+            var w = function () {
+                var line = null;
+                try { var ro = _ewBlame.ro, a0 = arguments[0]; if (ro && _ewBlame.n < 12 && typeof a0 === 'string' && /not supported in the|not found on geometry/.test(a0)) { _ewBlame.n++; line = '[ThreeRenderer] the look being built: ' + _ewBlameText(ro); } } catch (e) {}
+                var res = f.apply(console, arguments);
+                if (line) f.call(console, line);
+                return res;
+            };
+            w._ewBlame = true; console[k] = w;
+        });
+    }
     var EW_FREE_PER_FRAME = 48;
     function _ewGpuFreeLater(r) {
         var q = r._ew_freeLater;
@@ -54434,6 +54461,7 @@ const ThreeRenderer = (function () {
             _ewGpuSafeBuffers(r);
             _ewGpuSafeBindings(r);
             try { _ewShHealSetup(r); } catch (e) { console.warn('[ThreeRenderer] node renderer: the shadow heal failed', e); }
+            try { _ewBlameSetup(r); } catch (e) {}
             try { _ewGpuSafeTextures(r); } catch (e) {}
             try { _ewGpuNearestGrad(r); } catch (e) {}
             _ewGpuOneWrite(r);
