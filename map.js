@@ -2138,7 +2138,7 @@
             if (opts.from === 'play' && !opts.room && !opts.at && _introDue()) {
                 roomId = _INTRO_ROOM; _resume = null; window._ewIntroLive = true;
                 const _or0 = opts.onReady;
-                opts = Object.assign({}, opts, { onReady: () => { try { if (_or0) _or0(); } catch (e) {} setTimeout(() => _introStart(false, null), 400); } });
+                opts = Object.assign({}, opts, { holdCard: true, onReady: () => { try { if (_or0) _or0(); } catch (e) {} setTimeout(() => _introStart(false, null), 400); } });
             }
             /* THE ENTRY (2026-09-17 — the user: "if I walk into a door or entry labeled Cyberpunk City it needs to take me to the grid;
                same with the Strip"): a bypassed BOARD ROOM (data.js DOOR_HQ.siteRooms.entry — Cyberpunk City, the Strip, Downtown)
@@ -2317,7 +2317,10 @@
                         if (_qRoomScene) setTimeout(() => { try { _questRoomSceneGo(roomId); } catch (e) { console.warn('[SCENE] room scene', e); } }, 300);
                         if (seamless) { try { ThreeRenderer.hq.hush((window.HQ_CROWD_RULES && window.HQ_CROWD_RULES.hushMs) || 1800); } catch (e) {} try { seamless.fade(); } catch (e) {} return; }   // THE HUSH (2026-10-01): no people prompt as the held frame fades   // THE WAY BACK: the held frame fades over the ready room (no card, no arrival card)
                         const wait = Math.max(0, (walking ? 150 : 900) - (performance.now() - enteredAt));   // THE GATE: enteredAt is when the card went up — the renderer's ready is the real wait
-                        _hqLoadFadeTimer = setTimeout(() => {
+                        /* THE HELD CARD (mondo 11-25: "the game stays on this bird's eye view shot of the empty desert road for a long time
+                           before the actual cutscene starts"): a scene room entered with `holdCard` keeps its load card up until the scene
+                           is on screen; the scene's starter calls window._hqLoadRelease() (a 60 s cap lets it go regardless) */
+                        const fade = () => _hqLoadFadeTimer = setTimeout(() => {
                             if (loadGeneration !== _hqLoadGeneration) return;
                             _hqLoadFadeTimer = null;
                             try { ThreeRenderer.hq.hush((walking ? 320 : 650) + ((window.HQ_CROWD_RULES && window.HQ_CROWD_RULES.hushMs) || 1800)); } catch (e) {}   // THE HUSH (2026-10-01): no talk / attack prompt while the card fades and just after (the arrival card extends it)
@@ -2333,6 +2336,13 @@
                                 }, walking ? 320 : 650);
                             }
                         }, wait);
+                        if (opts.holdCard) {
+                            let let_go = false;
+                            const rel = () => { if (let_go || loadGeneration !== _hqLoadGeneration) return; let_go = true; if (window._hqLoadRelease === rel) window._hqLoadRelease = null; fade(); };
+                            window._hqLoadRelease = rel;
+                            const nt = _hqEl('hqLoadNote'); if (nt) nt.textContent = 'setting the scene…';
+                            setTimeout(rel, 60000);
+                        } else fade();
                     },
                     /* THE STAGE (OPEN_WORLD_PLAN Phase 1): the walker crossed a join into the next part of the zone (no load);
                        a crossing the stage cannot take yet falls back to the plain load at the same spot; a neighbour
@@ -5000,6 +5010,8 @@
         function _introStart(replay, backRoom) {
             const TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
             /* the end: the flag, and the walk is the recruit's (a replay goes back to the room it was asked from) */
+            /* THE HELD CARD: the room's load card stays up until a scene's first shot is on screen */
+            const release = (ms) => setTimeout(() => { try { if (typeof window._hqLoadRelease === 'function') window._hqLoadRelease(); } catch (e) {} }, ms || 0);
             window._ewIntroChain = true;   // the whole opening (the road, the car, the foyer) is running: up until `done` (the cutscene editor's watch reads it)
             const done = (stay) => {
                 window._ewIntroLive = false; window._ewIntroChain = false;
@@ -5019,10 +5031,11 @@
                     if (!up && performance.now() - t1 < 20000) { setTimeout(play, 250); return; }
                     let ok = false;
                     try { ok = _questHqScene({ scene, sceneAt: at }, { onEnd: () => next(true) }, () => next(true)); } catch (e) { console.error('[SCENE] ' + scene + ' did not start', e); ok = false; }
+                    release(ok ? 350 : 0);
                     if (!ok) next(false);
                 };
                 setTimeout(() => {
-                    try { if (state.gameState === GS.HQ && !_hqSuspended && window._hqEnter({ room, quiet: true, from: 'walk', onReady: () => setTimeout(play, 400) })) return; } catch (e) { console.warn('[SCENE] the way to ' + room, e); }
+                    try { if (state.gameState === GS.HQ && !_hqSuspended && window._hqEnter({ room, quiet: true, from: 'walk', holdCard: true, onReady: () => setTimeout(play, 400) })) return; } catch (e) { console.warn('[SCENE] the way to ' + room, e); }
                     next(false);
                 }, 60);
             };
@@ -5043,6 +5056,7 @@
                 if (!up && performance.now() - t0 < 20000) { setTimeout(go, 250); return; }
                 let ok = false;
                 try { ok = _questHqScene({ scene: _INTRO_SCENE, sceneAt: { x: -3.4, z: -41, face: 270 } }, { onEnd: out }, out); } catch (e) { console.error('[SCENE] the opening did not start', e); ok = false; }
+                release(ok ? 350 : 0);
                 if (!ok) out();
             };
             go();
@@ -5054,7 +5068,7 @@
             window._ewIntroLive = true;
             try { window._hqClosePanel(); } catch (e) {}
             _hqSetPrompt(null);
-            if (!window._hqEnter({ room: _INTRO_ROOM, quiet: true, from: 'walk', onReady: () => setTimeout(() => _introStart(true, back), 400) })) { window._ewIntroLive = false; return false; }
+            if (!window._hqEnter({ room: _INTRO_ROOM, quiet: true, from: 'walk', holdCard: true, onReady: () => setTimeout(() => _introStart(true, back), 400) })) { window._ewIntroLive = false; return false; }
             return true;
         }
         function _questRoomSceneGo(room) {
@@ -5114,6 +5128,7 @@
                 else if (a.do === 'door' && TR.hq.sceneDoor) TR.hq.sceneDoor({ id: a.id, x: a.x, z: a.z, face: a.face, leaf: a.leaf, open: a.open, ms: a.ms, remove: a.remove, cab: a.cab });
                 else if (a.do === 'shaft' && TR.hq.sceneShaft) TR.hq.sceneShaft(a.k);
                 else if (a.do === 'drop' && TR.hq.sceneDrop) TR.hq.sceneDrop({ from: a.from, to: a.to, ms: a.ms, ease: a.ease });   // THE DROP: the ride down's shaft
+                else if (a.who && a.do === 'hold' && TR.hq.sceneHold) TR.hq.sceneHold(a.who, a.key ? { key: a.key, bone: a.bone, pos: a.pos, rot: a.rot, h: a.h, turn: a.turn } : null);   // a prop in the hand (scene A's tip, 11-25)
                 else if (a.do === 'screen' && TR.hq.sceneScreen) TR.hq.sceneScreen({ x: a.x, y: a.y, z: a.z, w: a.w, h: a.h, face: a.face, off: a.off });
             } catch (e) { console.warn('[SCENE] ' + (a && a.do), e); } };
             const host = { unit: 1, point: () => null, act: hand,

@@ -31586,10 +31586,13 @@ STORY_CUTSCENES.orientation_intro = {
           act: [{ at: 0, do: 'place', who: 'sedaniel', x: -6, z: -22, face: 0 }, { at: 0.05, do: 'walk', who: 'sedaniel', x: -6, z: -41, ms: 3600, face: 0 }] },
         /* A6 · over the car roof: the recruit is out, holding out a tip */
         { dur: 3.6, shot: { cam: [-8.9, 2.15, -39.3, -79, -13, 32] },
-          act: [{ at: 0, do: 'place', who: 'sedaniel', x: -6, z: -41, face: 0 }, { at: 0, do: 'place', who: 'player', x: -3.4, z: -41, face: 270 }, { at: 0, do: 'show', who: 'player' }] },
+          act: [{ at: 0, do: 'place', who: 'sedaniel', x: -6, z: -41, face: 0 }, { at: 0, do: 'place', who: 'player', x: -3.4, z: -41, face: 270 }, { at: 0, do: 'show', who: 'player' },
+                /* the tip (mondo 11-25): the arm out (MAL6 Checkout_Gesture, sprites.js _CAST_POSES.hqTip) with real bills from the PSX pack */
+                { at: 0.25, do: 'place', who: 'player', clip: 'hqTip', ms: 3300 },
+                { at: 0.25, do: 'hold', who: 'player', key: 'psx_cash_2', bone: 'LeftHand', pos: [0, 0.08, -0.018], rot: [90, 0, 0], h: 0.14 }] },
         /* A7 · he drives off; the recruit is left small in the frame */
         { dur: 4.6, shot: { cam: [-0.6, 1.3, -33.5, 28, 0, 45], to: { cam: [-0.6, 1.3, -33.5, 16, 0, 45] } },
-          act: [{ at: 0.2, do: 'walk', who: 'sedaniel', x: -6, z: -140, ms: 6500, face: 0 }, { at: 0.9, do: 'place', who: 'player', face: 0, turn: 1100 }] },   // (mondo 11-15: a smooth turn, never a snap)
+          act: [{ at: 0.9, do: 'hold', who: 'player' }, { at: 0.2, do: 'walk', who: 'sedaniel', x: -6, z: -140, ms: 6500, face: 0 }, { at: 0.9, do: 'place', who: 'player', face: 0, turn: 1100 }] },   // (the tip back in the pocket)   // (mondo 11-15: a smooth turn, never a snap)
         /* A8 · the one close-up: the scoff */
         { dur: 3.4, shot: { cam: [-3.1, 1.5, -43.3, 172, 0, 26], eye: { who: 'player', dy: -0.04 } },
           act: [{ at: 0, do: 'hide', who: 'sedaniel' }, { at: 0.3, do: 'place', who: 'player', clip: 'hqNo', ms: 2600 }] },   // (mondo 11-13: "i shake my head no after he drives off")
@@ -31598,7 +31601,7 @@ STORY_CUTSCENES.orientation_intro = {
           act: [{ at: 0, do: 'place', who: 'player', x: 0, z: -41.6, face: 0 }, { at: 0.7, do: 'door', open: 1, ms: 1300 },
                 { at: 2.4, do: 'walk', who: 'player', x: 0, z: -44.9, ms: 1700, face: 0 }] },
     ],
-    end: [{ do: 'door', remove: true }, { do: 'show', who: 'player' }],
+    end: [{ do: 'door', remove: true }, { do: 'hold', who: 'player' }, { do: 'show', who: 'player' }],
 };
 /* A (2) · THE RIDE DOWN + THE ARRIVAL (mondo's OK 2026-11-13 on storyboard_A_elevator.jpg; "make the lift the front door"; both
    REBUILT 2026-11-15 on his OK of plan_15nov_ride.jpg + plan_15nov_foyer.jpg): played by map.js _introStart after the desert. The
@@ -40287,8 +40290,10 @@ const DOOR_HQ = {
             sub: 'ONE ROAD · ONE DOOR',
             kind: 'box', sceneRoom: true, noWalkers: true, quiet: true,
             shell: hqAncientShell({ w: 160, d: 300, h: 20, wallH: 20, floor: 'desert', apron: 'desert', skirt: 'dirt_2', apronColor: 0xffffff, floorColor: 0xffffff, plate: { x: 0, z: -147, y: 5.0 },
-                                    mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xfff0d0, ambient: 0.62 },
-                                    sky: { night: 0, tint: 0xd9b46a, tintAmt: 0.35, stars: 0.5, nebula: 0.4, day: 1, clouds: 0.05, fog: { color: 0xd8b370, amount: 0.55, top: 0.05, band: 0.45, density: 0.018 }, scenery: 'none' },   // an empty horizon
+                                    /* THE SUNSET (mondo 2026-11-25: "can we make it sunset/sunrise to be more cinematic?"): the clock held at 18.85 h
+                                       (hqRoomClock: a shell's own `sky.hold`, lit by the clock), the sun low in the west, a warm key and an orange haze */
+                                    mood: { lamp: 0xff9a50, glow: 0xff7a30, strip: 0xffc080, light: 0xffb878, ambient: 0.5 },
+                                    sky: { night: 0, hold: 18.85, tint: 0xe08a50, tintAmt: 0.65, stars: 0.5, nebula: 0.4, day: 1, clouds: 0.08, fog: { color: 0xe29a60, amount: 0.55, top: 0.05, band: 0.45, density: 0.018 }, scenery: 'none' },   // an empty horizon
                                     look: HQ_ROOM_LOOKS.plateau }),
             terrain: { res: 1, levelM: 3.5,
                 floor: 'desert', cliff: 'bricks_1', path: 'urban_street',
@@ -88142,7 +88147,10 @@ function hqRoomClock(roomId) {
     if ((HQ_WORLD_CLOCK.still || []).indexOf(roomId) >= 0) return null;
     const L = HQ_WORLD_CLOCK.lock || {};
     const lockH = (S.sky.lock != null && S.sky.lock !== false) ? (typeof S.sky.lock === 'number' ? S.sky.lock : (S.sky.night ? 23 : 13)) : (L[roomId] != null ? L[roomId] : null);
-    return { zone: F ? F.zone : 'site', rot: F ? (F.rot || 0) : 0, locked: lockH != null, hour: lockH != null ? hqClockNorm(lockH) : null, dayLook: (HQ_WORLD_CLOCK.dayLook || {})[roomId] || null };
+    /* `sky.hold` (2026-11-25, the drop-off's sunset): the room stands at that hour like a locked one, but LIT by the clock (the low
+       sun's warm key, the dusk haze and the Sunset sheet), where `lock` keeps the room's authored light */
+    const holdH = (lockH == null && typeof S.sky.hold === 'number') ? hqClockNorm(S.sky.hold) : null;
+    return { zone: F ? F.zone : 'site', rot: F ? (F.rot || 0) : 0, locked: lockH != null, hour: lockH != null ? hqClockNorm(lockH) : null, hold: holdH, dayLook: (HQ_WORLD_CLOCK.dayLook || {})[roomId] || null };
 }
 /* THE PAINTED SKIES (2026-10-24, mondo painted 80s/90s anime watercolour skies): a zone's sky as his paintings on R2
    (Assets/world/sky/<key>_day / _night / _silhouette .webp, a `_low` copy of each for the low-power setting). Day and night are
