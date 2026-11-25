@@ -91,6 +91,14 @@ when its cell drops.
 (metres, room frame). Inside the outline the spot's ground class is `field` (the climate's `field` layers: dense drifts), fading to the
 sheet's own class over `fade` m. A climate with no `field` row grows its `lawn` row there at double weight. Hand-placed `fae_*` /
 `hp_*` / `rf_flower_*` props are for the few big accents only (they are heavier), not for the field's mass.
+**THE FAIRY FOREST'S FLOWER MEADOW (built 11-25, the first G10 field):** `site_prebuilt_camelot_ow_fairy`, squares x 6..15, y 32..42
+(between the Fairy Walk's west turn, the Wishing Pool and the south loop), written by `docs/areas/camelot/districts/F-room.js` "THE FLOWER MEADOW":
+an irregular clearing cut from the mass, `noTrees` over it, a soft grass path through it and a spur to the pool, the outline handed to
+`kit.floraField(...)` (bake-camelot.js writes `terrain.floraFields`). Accents only by hand: five giant heal flowers, two one-colour drifts of the
+small ones, two rock clusters (lake rock + ocean rocks, G6), butterflies. The fairy climate's `field` row = ONE OR TWO SPECIES A LAYER (`fbell`,
+`fviolet`, `fpink`, `flilac`, `fwhite` in `M`), each twice over: the flora field grows at most one plant a layer a 1.4 m spot, so a single mixed
+`fairy` layer at any density gave ~0.5 flowers/m² of confetti (seen 11-25); a layer per species gives each its own patches (clump 0.45-0.6),
+drifts of one or two colours with grass between, ~1 flower/m² inside a drift. Another zone's field: copy that pattern into its climate's `field`.
 
 ### 0d. What the code does (built 11-25, the lead thread's PR)
 

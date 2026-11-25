@@ -107687,6 +107687,8 @@ var ZONE_FLORA = (function () {
         med: [['hp_purple_flower', 3], ['hp_daisy', 3], ['rf_flower_10', 2], ['rf_flower_8', 2], ['rf_flower_7', 1]],                             // lavender, daisies, poppies
         japan: [['rf_flower_1', 3], ['hp_violet', 2], ['rf_flower_7', 2], ['hp_purple_flower', 2], ['rf_flower_11', 1]],                         // pink cosmos, iris, white
         lawn: [['hp_daisy', 3], ['rf_flower_7', 2], ['hp_daisy_bunch', 1]],
+        /* THE FAIRY FOREST'S FLOWER MEADOW (G10, 11-25): one or two species a list, each its own layer with its own patches, so the field reads as drifts, never confetti */
+        fbell: [['hp_bluebell', 1]], fviolet: [['hp_violet', 2], ['hp_purple_flower', 1]], fpink: [['rf_flower_1', 2], ['rf_flower_9', 1]], flilac: [['rf_flower_8', 2], ['rf_flower_6', 1]], fwhite: [['rf_flower_7', 2], ['hp_daisy', 1]],
     };
     /* ── the tree lists: '=' keeps the tree as it was planted ── */
     const keep = (w) => [['=', w]];
@@ -107791,7 +107793,9 @@ var ZONE_FLORA = (function () {
                         dirt: [L('fern', 0.03, 0.6)] },
             fairy:    { name: 'the fairy wood', trees: T.fairy, stones: 0.6, grassH: 0.6,
                         /* G10: a designed flower field (terrain.floraFields): dense drifts of the fairy blooms over short grass, a few meadow flowers */
-                        field: [L('grass', 0.05, 0.3, 'g'), L('fairy', 0.5, 0.3), L('meadow', 0.06, 0.6)],
+                        /* one plant a layer a 1.4 m spot at most: each species twice over (two patch maps, ~1 flower/m² inside a drift), drifts by clump 0.45 (about 60 % of the field in bloom, grass between) */
+                         field: [L('grass', 0.05, 0.3, 'g'), L('fbell', 1.2, 0.45), L('fbell', 1.2, 0.45), L('fviolet', 1.2, 0.45), L('fviolet', 1.2, 0.45), L('fpink', 1.2, 0.5), L('fpink', 1.2, 0.5),
+                                 L('flilac', 1.2, 0.45), L('flilac', 1.2, 0.45), L('fwhite', 0.8, 0.6), L('meadow', 0.06, 0.6)],
                         lawn: [L('grass', 0.07, 0.3, 'g'), L('fairy', 0.11, 0.5), L('fern', 0.025, 0.6)], floor: [L('grass', 0.06, 0.3, 'g'), L('fairy', 0.09, 0.5), L('fern', 0.03, 0.6)],
                         dirt: [L('fairy', 0.02, 0.8)], wet: [L('reed', 0.2, 0.2)], snow: [L('frost', 0.02, 0.6)] },
             autumn:   { name: 'autumn country', trees: T.autumn, grassDry: 0.3, lawn: [L('dry', 0.08, 0.3, 'g'), L('autumn', 0.035, 0.7), L('bush', 0.002, 0.5)], rough: [L('dry', 0.06, 0.3, 'g'), L('autumn', 0.02, 0.8)],
