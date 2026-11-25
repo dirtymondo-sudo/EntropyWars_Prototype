@@ -9433,7 +9433,16 @@ const ThreeRenderer = (function () {
            lowest share of the blade) */
         sink: 0.07, base: [0.66, 0.50],
         /* G17 THE WALKER: the grass bows down and away round the walker's feet (shader; r0..r1 m, down = how far it lies), so he reads */
-        walker: { r0: 0.7, r1: 2.0, down: 0.55 }
+        walker: { r0: 0.7, r1: 2.0, down: 0.55 },
+        /* G19 THE LITTER (mondo's critique, "the forest floor is missing an intermediate layer": fallen leaves, twigs, moss at roots,
+           contact darkening): soft-edged ground patches of the game's own leaf-litter sheet (leaves_5: leaves + twigs), never a tall mesh.
+           Each is a 3 x 3 sheet that hugs the ground, cut out by one made mask (ragged blob), tinted per patch. rate = patches per m² on the
+           thin (bare) ground, short sward, near a trunk / the wood's rim (shade); k = the climate's share (climates not listed grow none);
+           foot = the dark contact patch at a trunk's foot (G16 for the ground). Off: EW_NO_LITTER */
+        litter: { sheet: 'leaves_5', tileM: 2.4, size: [1.6, 3.4], lift: 0.035,
+                  rate: { bare: 0.21, short: 0.045, shade: 0.16 }, foot: { m: 0.9, rate: 0.30, size: [1.4, 2.2], tint: [0.48, 0.47, 0.45] },
+                  tints: [[1.16, 0.96, 0.72], [1.04, 0.88, 0.68], [0.92, 0.90, 0.70], [0.84, 0.74, 0.62]],
+                  k: { forest: 1, wood: 1, redwood: 1, horror: 1.1, fairy: 0.6, autumn: 1.4, japan: 0.6, hills: 0.4, foothill: 0.6, meadow: 0.45, alpine: 0.25, med: 0.35, hollow: 0.7, marsh: 0.5, farm: 0.15, grass: 0.3 } }
     };
     try { window.EW_GROUND_RULES = GROUND_RULES; } catch (e) {}
     function _grOn() { try { return !window.EW_NO_GROUND_RULES; } catch (e) { return true; } }
@@ -9486,7 +9495,7 @@ const ThreeRenderer = (function () {
         return best > max ? Infinity : best;
     }
     /* G1-G3 at a spot: { keep 0..1, h ×, t brightness ×, lean angle (or -1), lush 0..1, dry 0..1 } (o is reused: no garbage per tuft) */
-    function _grAt(x, z, o, bias) {
+    function _grAt(x, z, o, bias, cvK) {
         var G = GROUND_RULES, C = G.clumpM, gx = Math.floor(x / C), gz = Math.floor(z / C), f1 = Infinity, f2 = Infinity, hid = 0;
         for (var dz = -1; dz <= 1; dz++) for (var dx = -1; dx <= 1; dx++) {
             var cx = gx + dx, cz = gz + dz, px = (cx + _ewValHash(cx * 1.13 + 5.1, cz * 0.97 + 2.3)) * C, pz = (cz + _ewValHash(cx * 0.91 + 8.7, cz * 1.07 + 6.9)) * C;
@@ -9504,7 +9513,7 @@ const ThreeRenderer = (function () {
         o.hue = ((hid * 29.3) % 1) * 2 - 1;   // G15: the clump's hue step
         var CV = G.cover, cvOn = true; try { cvOn = !!CV && !window.EW_NO_COVER; } catch (e) {}
         if (cvOn) {   // G12 THE COVER SPLIT (+ G13's bias): bare / short sward / dense
-            var cv = _grCoverRank(x, z) + (bias || 0), bd = CV.band;
+            var cv = 1 - (1 - _grCoverRank(x, z)) * (cvK == null ? 1 : cvK) + (bias || 0), bd = CV.band;   // cvK: the climate's own share of the split (a mown lawn 0.25)
             var tb = Math.max(0, Math.min(1, (cv - CV.q[0] + bd) / (2 * bd))), tsd = Math.max(0, Math.min(1, (cv - CV.q[1] + bd) / (2 * bd)));
             tb = tb * tb * (3 - 2 * tb); tsd = tsd * tsd * (3 - 2 * tsd);
             o.keep *= CV.bareKeep + (CV.shortKeep + (1 - CV.shortKeep) * tsd - CV.bareKeep) * tb;
@@ -9579,10 +9588,10 @@ const ThreeRenderer = (function () {
             if (hqTerrainSlope(info, xm, zm) > HQ_GRASS.steep) continue;
             var pathE = Infinity;   // G13: how far past the nearest path's edge (m)
             if (S.paths.length) { var onP = false; for (var pq = 0; pq < S.paths.length; pq++) { var PP = S.paths[pq]; if (xm > PP.x0 - 3 && xm < PP.x1 + 3 && zm > PP.z0 - 3 && zm < PP.z1 + 3) { var pe = _hqTPolyDist(xm, zm, PP.pts).d - PP.w / 2; if (pe < 0.15) { onP = true; break; } if (pe < pathE) pathE = pe; } } if (onP) continue; }   // never on a path (the flora field's rule)
-            var cK = 1, cD = 0;
+            var cK = 1, cD = 0, cCv = 1;
             if (S.rid && typeof zoneFloraAt === 'function') {   // the climate's grass: its height (a mown city lawn, the fairy wood's low sward) and its dry share (ZONE_FLORA climates grassH / grassDry)
                 var ck7 = Math.floor(xm / 7) + ',' + Math.floor(zm / 7), CL = S.clim[ck7]; if (CL === undefined) { try { CL = S.clim[ck7] = zoneFloraAt(S.rid, xm, zm) || null; } catch (e7) { CL = S.clim[ck7] = null; } }
-                if (CL) { cK = CL.grassH || 1; cD = CL.grassDry || 0; }
+                if (CL) { cK = CL.grassH || 1; cD = CL.grassDry || 0; cCv = (CL.cover != null) ? CL.cover : 1; }
             }
             var shadeK = 0, sunK = 0, pathK = 0;
             if (GRo) {   // THE GROUND RULES (G1-G4): the clump, the patch, the bare blobs, the edges
@@ -9597,7 +9606,7 @@ const ThreeRenderer = (function () {
                 var ndB = _grNearD(GRo.near, xm, zm, 2); if (ndB < 2) bias += CA.nearBias * (1 - Math.max(0, ndB) / 2);   // a stump, a log, a rock: the grass gathers at its foot
                 if (pathE < GR.path.m) { pathK = 1 - Math.max(0, pathE) / GR.path.m; bias += GR.path.bias * pathK; }
                 if (GRo.marks) for (var mq = 0; mq < GRo.marks.length; mq++) { var MK = GRo.marks[mq], md = Math.hypot(xm - MK[0], zm - MK[1]); if (md < MK[2]) { var mk = 1 - md / MK[2]; bias += GR.mark.bias * Math.min(1, mk * 1.6); } }
-                gO = _grAt(xm, zm, GRo.o, bias);
+                gO = _grAt(xm, zm, GRo.o, bias * cCv, cCv);
                 if (r0 > gO.keep) continue;
                 var trod = false, tr = GR.trodM;
                 if (PT) for (var e4 = 0; e4 < 4 && !trod; e4++) { var ex = xm + (e4 === 0 ? tr : e4 === 1 ? -tr : 0), ez = zm + (e4 === 2 ? tr : e4 === 3 ? -tr : 0), ei = Math.round((ex - info.x0) / info.res), ej = Math.round((ez - info.z0) / info.res);
@@ -9782,7 +9791,7 @@ const ThreeRenderer = (function () {
     }
     function _hqFloraCellDrop(c) {
         if (!c) return;
-        [c.mesh, c.stones].forEach(function (m) { if (m) { if (m.parent) m.parent.remove(m); try { m.geometry.dispose(); } catch (e) {} } });
+        [c.mesh, c.stones, c.litter].forEach(function (m) { if (m) { if (m.parent) m.parent.remove(m); try { m.geometry.dispose(); } catch (e) {} } });
     }
     /* THE GROUND RULES, the flora field's share (flora.md section 0): G6 THE STONES = pebbles and small stones of the kit's four rocks, cut to ankle
        height, walked through, in clusters, more on rough / dry / dirt ground; G5 `near` = a layer that grows by standing things (ferns, bushes at
@@ -9802,6 +9811,60 @@ const ThreeRenderer = (function () {
         }
         return 0;
     }
+    /* G6b THE STONES KEEP OFF THE ROADS (11-25, the desert / cold scenic thread: "angular rocks on the dry and snow roads at even spacing"): a road on a
+       route or a mountain is PAINT (dirt_4, dirt_2, ice_1 on its own floor), not a path row, so a stone spot must stand inside one painted ground:
+       the same sheet `off` metres to all four sides and the four corners (a road, its shoulder, a band under 2 x off wide = no stones), and clear of a
+       path row by `pathM`. Only asked for a spot whose dice already said "stones" (a few in a hundred) */
+    function _hqStoneOpen(S, info, PT, near, x, z, nk) {
+        var FS = ZONE_FLORA.stones, R = FS.off || 0, q;
+        for (q = 0; q < near.length; q++) if (_hqTPolyDist(x, z, near[q].pts).d < near[q].w / 2 + (FS.pathM || 1.2)) return false;
+        if (!PT || !R) return true;
+        var me = PT.P[nk], d = R * 0.72, O = [[R, 0], [-R, 0], [0, R], [0, -R], [d, d], [-d, d], [d, -d], [-d, -d]];
+        for (q = 0; q < 8; q++) {
+            var i = Math.round((x + O[q][0] - info.x0) / info.res), j = Math.round((z + O[q][1] - info.z0) / info.res);
+            if (i < 0 || j < 0 || i >= info.nx || j >= info.nz) continue;
+            if (PT.P[j * info.nx + i] !== me) return false;
+        }
+        return true;
+    }
+    /* G19 THE LITTER: the one mask (a ragged blob, made once in code: the sheet itself is never touched) and the one material on the litter sheet */
+    var _grLitMat = null;
+    function _grLitterMat() {
+        if (_grLitMat) return _grLitMat;
+        var LT = GROUND_RULES.litter, tex = (typeof _hzTex === 'function') ? _hzTex(LT.sheet) : null; if (!tex) return null;
+        var N = 64, cv = document.createElement('canvas'); cv.width = cv.height = N; var cx2 = cv.getContext('2d'), im = cx2.createImageData(N, N);
+        for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) {
+            var u = (x + 0.5) / N * 2 - 1, w = (y + 0.5) / N * 2 - 1, a = Math.atan2(w, u), r = Math.hypot(u, w);
+            var edge = 0.78 + 0.13 * Math.sin(a * 3 + 1.3) + 0.08 * Math.sin(a * 7 + 0.4) + 0.12 * (_ewSmoothNoise(x / 6 + 3.1, y / 6 + 7.7) - 0.5);
+            var vv = Math.max(0, Math.min(1, (edge - r) / 0.16 + 0.5 + 0.35 * (_ewValHash(x * 1.7, y * 2.3) - 0.5) * Math.max(0, 1 - Math.abs(edge - r) * 6)));
+            var o = (y * N + x) * 4; im.data[o] = im.data[o + 1] = im.data[o + 2] = Math.round(vv * 255); im.data[o + 3] = 255;
+        }
+        cx2.putImageData(im, 0, 0);
+        var mk = new THREE.CanvasTexture(cv); mk.channel = 1; mk.magFilter = THREE.NearestFilter; mk.minFilter = THREE.LinearFilter; mk.generateMipmaps = false;
+        var t2 = tex.clone(); t2.wrapS = t2.wrapT = THREE.RepeatWrapping; t2.channel = 0; t2.needsUpdate = true;
+        _grLitMat = new THREE.MeshLambertMaterial({ map: t2, alphaMap: mk, alphaTest: 0.5, vertexColors: true, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+        _grLitMat._ew_shared = true; _grLitMat.name = 'ew_litter';
+        try { window._ewLitterMat = _grLitMat; } catch (e) {}
+        return _grLitMat;
+    }
+    function _grLitterK(C) {
+        var LT = GROUND_RULES.litter, Z = (typeof ZONE_FLORA !== 'undefined') ? ZONE_FLORA.climates : null; if (!C || !Z) return 0;
+        if (C._ewLitK === undefined) { var k = 0; for (var nm in Z) if (Z[nm] === C) { k = LT.k[nm] || 0; break; } try { Object.defineProperty(C, '_ewLitK', { value: k, enumerable: false, configurable: true }); } catch (e) { return k; } }
+        return C._ewLitK;
+    }
+    /* one patch: a 3 x 3 sheet on the ground at (x, z), size s m, turned a, tint T, into L's buffers */
+    function _grLitterPut(L, info, U, x, z, s, a, T) {
+        if (L.v + 9 > L.maxV) return false;
+        var tm = GROUND_RULES.litter.tileM, lift = GROUND_RULES.litter.lift, co = Math.cos(a), si = Math.sin(a), v0 = L.v;
+        for (var j = 0; j < 3; j++) for (var i = 0; i < 3; i++) {
+            var lx = (i / 2 - 0.5) * s, lz = (j / 2 - 0.5) * s, wx = x + lx * co - lz * si, wz = z + lx * si + lz * co, k = L.v;
+            L.pos[k * 3] = wx * U; L.pos[k * 3 + 1] = (hqTerrainHeight(info, wx, wz) + lift) * U; L.pos[k * 3 + 2] = wz * U;
+            L.uv[k * 2] = wx / tm; L.uv[k * 2 + 1] = wz / tm; L.uv1[k * 2] = i / 2; L.uv1[k * 2 + 1] = j / 2;
+            L.col[k * 3] = T[0]; L.col[k * 3 + 1] = T[1]; L.col[k * 3 + 2] = T[2]; L.v++;
+        }
+        for (j = 0; j < 2; j++) for (i = 0; i < 2; i++) { var a0 = v0 + j * 3 + i; L.ix[L.i++] = a0; L.ix[L.i++] = a0 + 3; L.ix[L.i++] = a0 + 1; L.ix[L.i++] = a0 + 1; L.ix[L.i++] = a0 + 3; L.ix[L.i++] = a0 + 4; }
+        return true;
+    }
     function _hqFloraCell(S, cx, cz) {
         var F = ZONE_FLORA, info = S.info, U = S.U, cm = F.cellM, x0 = cx * cm, z0 = cz * cm, none = { mesh: null, cx: cx, cz: cz, n: 0, tris: 0 };
         if (x0 + cm < info.x0 || z0 + cm < info.z0 || x0 > info.x0 + (info.nx - 1) * info.res || z0 > info.z0 + (info.nz - 1) * info.res) return none;   // wholly off the room's ground
@@ -9811,6 +9874,7 @@ const ThreeRenderer = (function () {
         var near = [], q, b; for (q = 0; q < S.paths.length; q++) { var pp = S.paths[q]; if (pp.x1 > x0 - 1 && pp.x0 < x0 + cm + 1 && pp.z1 > z0 - 1 && pp.z0 < z0 + cm + 1) near.push(pp); }
         var v = 0, ii = 0, made = 0, yLo = Infinity, yHi = -Infinity, full = false, SS = S.stoneScratch || null;
         if (SS) { SS.v = 0; SS.i = 0; SS.n = 0; }
+        var LS = S.litter || null; if (LS) { LS.v = 0; LS.i = 0; }
         for (var j = 0; j < n && !full; j++) for (var i = 0; i < n && !full; i++) {
             var xm = x0 + (i + rnd()) * step, zm = z0 + (j + rnd()) * step;
             var ni = Math.round((xm - info.x0) / info.res), nj = Math.round((zm - info.z0) / info.res);
@@ -9834,14 +9898,27 @@ const ThreeRenderer = (function () {
             for (q = 0; q < near.length; q++) if (_hqTPolyDist(xm, zm, near[q].pts).d < near[q].w / 2 + 0.25) { inB = true; break; }
             if (inB) continue;
             var gy = hqTerrainHeight(info, xm, zm), gO = S.gr ? _grAt(xm, zm, S.gr.o) : null, nd = -1;
+            if (LS && (cls === 'floor' || cls === 'lawn' || cls === 'rough' || cls === 'dirt')) {   // G19 THE LITTER: leaves and twigs on thin ground, in the shade, a dark patch at a trunk's foot
+                var lk = _grLitterK(C);
+                if (lk > 0) {
+                    var LT = GROUND_RULES.litter, dT2 = LS.trees ? _grNearD(LS.trees, xm, zm, 3) : Infinity, st2 = step * step, lr = rnd(), la = rnd() * 6.2832, ls = rnd();
+                    if (dT2 > 1.5 && info.mask) for (var e6 = 0; e6 < 4; e6++) { var em6 = 2.5, ei6 = Math.round((xm + (e6 === 0 ? em6 : e6 === 1 ? -em6 : 0) - info.x0) / info.res), ej6 = Math.round((zm + (e6 === 2 ? em6 : e6 === 3 ? -em6 : 0) - info.z0) / info.res); if (ei6 >= 0 && ej6 >= 0 && ei6 < info.nx && ej6 < info.nz && !info.mask[ej6 * info.nx + ei6]) { dT2 = 1.5; break; } }   // the wood's rim drops its leaves too
+                    if (dT2 < LT.foot.m && lr < LT.foot.rate) _grLitterPut(LS, info, U, xm, zm, LT.foot.size[0] + (LT.foot.size[1] - LT.foot.size[0]) * ls, la, LT.foot.tint);
+                    else {
+                        var lp = (gO ? ((gO.bare || 0) * LT.rate.bare + (gO.short || 0) * (1 - (gO.bare || 0)) * LT.rate.short) : LT.rate.short) + (dT2 < 3 ? LT.rate.shade * (1 - dT2 / 3) : 0);
+                        if (lr < lp * st2 * lk) _grLitterPut(LS, info, U, xm, zm, LT.size[0] + (LT.size[1] - LT.size[0]) * ls, la, LT.tints[Math.floor(rnd() * LT.tints.length) % LT.tints.length]);
+                    }
+                }
+            }
             /* THE STONES (G6): a pebble cluster here? (a spot of a cluster blob, more on rough / dry ground) */
             if (S.stones && SS && F.stones.on[cls] && C.stones !== 0) {
-                var sw = _ewSmoothNoise(xm / F.stones.blobM + 71.3, zm / F.stones.blobM + 23.9), sp = F.stones.on[cls] * (C.stones || 1) * step * step * Math.max(0, (sw - 0.45) / 0.55) * 2.2 * S.thin;
+                var FSt = F.stones, sc0 = FSt.clump != null ? FSt.clump : 0.45, sw = _ewSmoothNoise(xm / FSt.blobM + 71.3, zm / FSt.blobM + 23.9), sw1 = Math.max(0, (sw - sc0) / (1 - sc0));
+                var sp = FSt.on[cls] * (C.stones || 1) * step * step * Math.pow(sw1, FSt.pow || 1) * (FSt.gain || 2.2) * S.thin;
                 if (gO && gO.keep < 0.5) sp *= 1.8;   // the bare blobs show their stones
-                if (rnd() < sp) for (var sn = 1 + Math.floor(rnd() * 3), si0 = 0; si0 < sn; si0++) {
-                    var RK = S.stones[Math.floor(rnd() * S.stones.length)], big = rnd() < F.stones.bigShare, sz0 = big ? F.stones.big : F.stones.size, ss = (sz0[0] + (sz0[1] - sz0[0]) * rnd()) / RK.span, sa = rnd() * Math.PI * 2, sco = Math.cos(sa) * ss, ssi = Math.sin(sa) * ss;
+                if (sp > 0 && rnd() < sp && _hqStoneOpen(S, info, PT, near, xm, zm, nk)) for (var sn = 1 + Math.floor(rnd() * 3), si0 = 0; si0 < sn; si0++) {
+                    var RK = S.stones[Math.floor(rnd() * S.stones.length)], big = rnd() < F.stones.bigShare, sz0 = big ? F.stones.big : F.stones.size, ss = (sz0[0] + (sz0[1] - sz0[0]) * rnd()) / Math.max(RK.span, RK.h * 1.6), sa = rnd() * Math.PI * 2, sco = Math.cos(sa) * ss, ssi = Math.sin(sa) * ss;
                     if (SS.v + RK.nv > SS.maxV || SS.i + RK.ix.length > SS.maxI) break;
-                    var sx = xm + (rnd() - 0.5) * 1.1, sz = zm + (rnd() - 0.5) * 1.1, sgy = hqTerrainHeight(info, sx, sz) - RK.h * ss * F.stones.sink, ka, sv3;
+                    var sx = xm + (rnd() - 0.5) * (FSt.spread || 1.1), sz = zm + (rnd() - 0.5) * (FSt.spread || 1.1), sgy = hqTerrainHeight(info, sx, sz) - RK.h * ss * F.stones.sink, ka, sv3;
                     for (ka = 0; ka < RK.nv; ka++) { var k3a = ka * 3; sv3 = (SS.v + ka) * 3; var px0 = RK.p[k3a], pz0 = RK.p[k3a + 2], nx0 = RK.n[k3a], nz0 = RK.n[k3a + 2];
                         SS.pos[sv3] = (sx + px0 * sco + pz0 * ssi) * U; SS.pos[sv3 + 1] = (sgy + RK.p[k3a + 1] * ss) * U; SS.pos[sv3 + 2] = (sz - px0 * ssi + pz0 * sco) * U;
                         SS.nor[sv3] = nx0 * Math.cos(sa) + nz0 * Math.sin(sa); SS.nor[sv3 + 1] = RK.n[k3a + 1]; SS.nor[sv3 + 2] = -nx0 * Math.sin(sa) + nz0 * Math.cos(sa);
@@ -9888,7 +9965,16 @@ const ThreeRenderer = (function () {
             stones = new THREE.Mesh(sg, S.stoneMat); stones.name = 'ew_hq_stones'; stones._ew_flora = true; stones.receiveShadow = true; stones.castShadow = false; stones.raycast = function () {};
             S.parent.add(stones);
         }
-        if (!made) return stones ? { mesh: null, stones: stones, cx: cx, cz: cz, n: 0, tris: SS.i / 3 } : none;
+        var litter = null;
+        if (LS && LS.v && LS.mat) {   // G19: one merged mesh a cell on the litter sheet, dropped with the cell
+            var lg = new THREE.BufferGeometry(), lnor = new Float32Array(LS.v * 3); for (q = 1; q < lnor.length; q += 3) lnor[q] = 1;
+            lg.setAttribute('position', new THREE.BufferAttribute(LS.pos.slice(0, LS.v * 3), 3)); lg.setAttribute('normal', new THREE.BufferAttribute(lnor, 3));
+            lg.setAttribute('uv', new THREE.BufferAttribute(LS.uv.slice(0, LS.v * 2), 2)); lg.setAttribute('uv1', new THREE.BufferAttribute(LS.uv1.slice(0, LS.v * 2), 2)); lg.setAttribute('color', new THREE.BufferAttribute(LS.col.slice(0, LS.v * 3), 3));
+            lg.setIndex(new THREE.BufferAttribute(new Uint16Array(LS.ix.subarray(0, LS.i)), 1)); lg.computeBoundingSphere();
+            litter = new THREE.Mesh(lg, LS.mat); litter.name = 'ew_hq_litter'; litter._ew_flora = true; litter.receiveShadow = true; litter.castShadow = false; litter.raycast = function () {}; litter.renderOrder = -1;
+            S.parent.add(litter);
+        }
+        if (!made) return (stones || litter) ? { mesh: null, stones: stones, litter: litter, cx: cx, cz: cz, n: 0, tris: (stones ? SS.i / 3 : 0) + (litter ? LS.i / 3 : 0) } : none;
         var geo = new THREE.BufferGeometry(), nor = new Float32Array(v * 3); for (q = 1; q < nor.length; q += 3) nor[q] = 1;   // a small plant takes the ground's light
         geo.setAttribute('position', new THREE.BufferAttribute(pos.slice(0, v * 3), 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uvs.slice(0, v * 2), 2));
         geo.setAttribute('color', new THREE.BufferAttribute(cols.slice(0, v * 3), 3));   // a plant's tint + the ground rules' patches (THE GROUND RULES, 11-25)
@@ -9896,7 +9982,7 @@ const ThreeRenderer = (function () {
         geo.boundingSphere = new THREE.Sphere(new THREE.Vector3((x0 + cm / 2) * U, (yLo + yHi) / 2 * U, (z0 + cm / 2) * U), Math.hypot(cm * 0.7072 + 1.5, (yHi - yLo) / 2) * U);
         var mesh = new THREE.Mesh(geo, S.mat); mesh.name = 'ew_hq_flora'; mesh._ew_flora = true; mesh.receiveShadow = true; mesh.castShadow = false;
         S.parent.add(mesh);
-        return { mesh: mesh, stones: stones, cx: cx, cz: cz, n: made, tris: ii / 3 + (stones ? SS.i / 3 : 0) };
+        return { mesh: mesh, stones: stones, litter: litter, cx: cx, cz: cz, n: made, tris: ii / 3 + (stones ? SS.i / 3 : 0) + (litter ? LS.i / 3 : 0) };
     }
     var _hqStoneMat = null;
     function _hqFloraTick() {
@@ -9943,6 +10029,7 @@ const ThreeRenderer = (function () {
                 seed: ((typeof hqHash === 'function') ? hqHash('flora|' + rid) : 7) & 0x3FFFFFFF, reach: LOW ? F.low.reach : F.reach, thin: LOW ? F.low.thin : 1, grassOn: !!(_hqGrassWanted(T, rid) && _ggOn() && !window.EW_NO_HQ_GRASS),
                 at: 0, busy: true, born: now, filled: false, parent: (H.propGroup && H.propGroup.parent) || scene,
                 gr: _grOn() ? { near: _grNearBucket(info, H.room), o: {} } : null, fields: fields, stones: stones, stoneMat: _hqStoneMat,
+                litter: (_grOn() && !window.EW_NO_LITTER && GROUND_RULES.litter && _grLitterMat()) ? { mat: _grLitterMat(), trees: _grTreeBucket(info), maxV: 9000, pos: new Float32Array(27000), uv: new Float32Array(18000), uv1: new Float32Array(18000), col: new Float32Array(27000), ix: new Uint16Array(24000), v: 0, i: 0 } : null,
                 stoneScratch: stones ? { maxV: 20000, maxI: 60000, pos: new Float32Array(60000), nor: new Float32Array(60000), uv: new Float32Array(40000), ix: new Uint16Array(60000), v: 0, i: 0, n: 0 } : null,
                 scratch: { maxV: maxV, maxI: maxV * 4, pos: new Float32Array(maxV * 3), uv: new Float32Array(maxV * 2), ix: new Uint32Array(maxV * 4), col: new Float32Array(maxV * 3) } };
         }
@@ -9956,7 +10043,7 @@ const ThreeRenderer = (function () {
         S.cells.forEach(function (c, key) {   // its own cells only (never the room's objects)
             var d = Math.hypot(Math.max(c.cx * cm, Math.min(px, c.cx * cm + cm)) - px, Math.max(c.cz * cm, Math.min(pz, c.cz * cm + cm)) - pz);
             if (d > R + cm) { _hqFloraCellDrop(c); S.cells.delete(key); }
-            else if (c.mesh || c.stones) { cells++; n += c.n; tris += c.tris; }
+            else if (c.mesh || c.stones || c.litter) { cells++; n += c.n; tris += c.tris; }
         });
         want.sort(function (a, b) { return a[0] - b[0]; });
         var tb = performance.now(), budget = S.filled ? F.buildMs : F.fillMs, w = 0;
@@ -9967,7 +10054,7 @@ const ThreeRenderer = (function () {
             if (made.mesh || made.stones) { cells++; n += made.n; tris += made.tris; }
         }
         S.busy = w < want.length; if (!S.busy) S.filled = true;
-        try { window._ewHqFlora = { room: rid, cells: cells, plants: n, tris: tris, reach: R, low: S.low, lastBuildMs: +(performance.now() - tb).toFixed(1), built: w, kinds: Object.keys(S.plants).length }; } catch (e) {}
+        try { window._ewHqFlora = { room: rid, cells: cells, plants: n, tris: tris, reach: R, low: S.low, lastBuildMs: +(performance.now() - tb).toFixed(1), built: w, kinds: Object.keys(S.plants).length, litter: (function () { var k = 0; S.cells.forEach(function (c) { if (c.litter) k += c.litter.geometry.attributes.position.count / 9; }); return k; })(), litterOn: !!S.litter }; } catch (e) {}
     }
     function _buildGrassTuft3D(x, y) {
         if (!GRASS.enabled) return null;

@@ -101,23 +101,41 @@ Probe lesson: the blade grass streams in over a few seconds; a view needs `"sett
 | Group | Rooms | Notes |
 |---|---|---|
 | 1 · The Woods (PILOT) | the Clearing, the Redwood Trail, the Ritual Ground, Dead Man's Cave's mouth | the "Fix ugly ground ferns" thread; proves the rules and the kit first |
-| 2 · Camelot | the village, the Forest, the Fairy Forest (beside its new meadow), the Snowy Pines, the Looking-Glass Garden | DONE pass 1 (11-25), see 00e |
+| 2 · Camelot | the village, the Forest, the Fairy Forest (beside its new meadow), the Snowy Pines, the Looking-Glass Garden | DONE pass 1 (11-25), see 00f |
 | 3 · Disaster City outdoors | parks, yards, the Hollywood Hills, the coast / beach front, street trees | the palm-pit thread's rules (G9) still stand |
 | 4 · Countryside | the Estate (corn, lake, haunted house, ranch), Leylines (the Line, Babel, Bug Colony), Stonehenge, the green routes | |
 | 5 · Dry and cold | the Desert (Western Town, Giza, Area 51, the circus), dry routes, the Mountains + Olympus, the North Pole | desert composition = rock outcrops, cactus groups, dry washes |
 | 6 · Islands and the rest | Katana Island, the Harbour + islands, the Vatican's gardens, Hollow Earth | |
 
-### 00e. Came A Lot's pass (2026-11-25, zone group 2)
+### 00e. GROUP 5, DRY AND COLD (built 11-25): the Desert, its highway, the dry routes, the Mountains + Olympus, the mountain roads, the North Pole
+
+What the census found: the bake tools and district files had sprinkled every rock, dead bush, tumbleweed and snow heap ONE BY ONE over the whole ground
+(R5 alone: 265 heaps, 241 rocks; R8: 134 dead bushes, 300 rocks), plus the rule's 26 barrel cacti a room at even spacing. data.js has two zone rows
+`ZONE_FLORA.compose.dry` (zone `desert`) and `ZONE_FLORA.compose.cold` (zones `mountains`, `northpole`); a zone row's `compose` names its row (it wins
+over the climate's, so the Snowy Pines and Leylines, which share the `snow` / `scrub` climates, are untouched). What they do at room build:
+- **THE OUTCROPS (`gather`, new in the kit):** a rock (`psxg_rock_*`, `cave_stone`, `lake_rock`, `ocean_rock_*`; never a cairn, a menhir or Giza's
+  `hw_stone_*`) standing alone or as one of a pair (fewer than two other rocks within `loose` 4.5 m) and with no trunk or building that near leaves its spot; `thin` 0.5 of them stand again as OUTCROPS of 3-5 (one big
+  1.0-1.6 m, never the lake rock: it reads as a white blob, two middle, the rest small, on a crescent) centred on old spots at least `apart` 11 m apart, with dry tufts / sage / a thorn bush (cold: frost
+  tufts, a small drift) at the foot. Rocks that already stood together (a district's rock garden) stay. The outcrops are anchors for the groups.
+- **THE GROUPS:** barrel cactus 2-3 under a nurse rock or a saguaro / Joshua tree; agave, yucca, dead bushes at rocks, trees, walls; TUMBLEWEEDS piled
+  against walls, rocks, logs (the wind's work); SNOW HEAPS banked as drifts against a rock, a trunk, a wall, a log; alpine flowers + bushes in drifts at
+  rocks and logs. The rule's barrel cacti (ZONE_FLORA.props) join the groups (zoneFloraProps skips a composed key).
+- The desert climate's sage / grey weed / bloom layers take `near` (far 0.45): they gather round the standing things.
+- `freeDropped: true` on a row: a dropped row no longer blocks the spots round it (freeFor `skip`), so an outcrop can stand where its rocks stood.
+Counts (headless, every room fewer pieces than before; the heavy ones roughly halve): R5 heaps 265 -> 129, rocks 241 -> 154; R8 dead bushes 134 -> 76,
+rocks 339 -> 270, cacti 26 -> 12; DH4 tumbleweeds 90 -> 47. The Woods' result is byte-for-byte the same. find-softlocks: no new trap in the 15 rooms.
+Readout: `hqTerrainInfo(room).composed` (`outcrops`, `gathered`). Not done: dry washes (terrain, the zone tools'), vignettes by hand (S9), the landmark reveal.
+
+### 00f. Came A Lot's pass (2026-11-25, zone group 2)
 
 - **Compose BY ZONE ROW, not climate.** `forest` (the Forest), `meadow` (the village) and `snow` (the Snowy Pines) are shared with the routes, Stonehenge,
-  the Mountains and the North Pole, whose own threads own those climates' rows. So a zone row may carry its own `compose` (data.js, the "CAME A LOT, THE
-  SCENIC PASS" block after the Woods' rows); `zoneFloraComposeOf` takes the zone row's first, `compose: null` = compose nothing. Rows: `camelot` (the Forest
-  + R4 + R12), `village`, `pines`, `fairy`. Another zone may do the same instead of writing a shared climate's row.
+  the Mountains and the North Pole, whose own threads own those climates' rows. So each zone row names its own row (group 5's convention, 00e): `ZONE_FLORA.compose.cal_camelot` (the Forest + R4 + R12),
+  `cal_village`, `cal_pines`, `cal_fairy` (data.js, the "CAME A LOT, THE SCENIC PASS" block).
 - **`keepGroups` (m, a row option):** a hand row with 2+ of the row's plants that near is already a group (a fairy ring, a drift, a bed, the meadow's
   drifts) and stays where it stood; only the lone plants dotted over open ground are taken and stood again at anchors. Came A Lot uses 2.6.
 - **`hand: true` on a prop:** a vignette a zone thread composed by hand; the compose never takes it.
 - **The Looking-Glass Garden** is a formal garden (rose beds, hedge-foot flowers, the croquet lawn are the design): its own zone row `garden`
-  (climate still `fairy`), `compose: null`.
+  (climate still `fairy`), no compose name.
 - **The village**: its plants stay as the district files stood them; only `islands` (a half-sunk rock with meadow flowers, one per 700 m2 of lawn, 24 max).
 - **The vignettes (S9), by hand in the room files' "THE SCENIC PASS" blocks** (`VG` list round an anchor, squares as fractions):
   the Forest (`W-room.js`): seven along the Crown's Road (moss log, rocks at the bend, a stump, a boundary stone in flowers, a log seat under the Bluff,
@@ -174,6 +192,13 @@ or trunk, the field's rim, the bank of water. A tall fringe (x1.3-1.8) a metre o
 ankle-high), a few larger rocks half-sunk in the ground (the existing `rf_rock_*` / rock models, placed by a holder: they block),
 in clusters of 2-5 of mixed sizes, more on rough ground and slopes, near paths and at a rock's foot. Never a lone, evenly spaced rock.
 
+**G6b · THE PEBBLES CLUSTER AND KEEP OFF ROADS (built 11-25, the dry + cold scenic thread saw rocks on the desert and snow roads at even
+spacing).** The flora field's pebbles now take only a blob's top (`ZONE_FLORA.stones.clump` 0.62, `pow` 1.6, `gain` 6.5: about the same count
+on 31 % of the ground instead of 58 %, in heaps `spread` 0.8 m across). A road on a route or a mountain is PAINT (`dirt_4`, `dirt_2`, `ice_1`
+on its own floor), not a path row, so a pebble spot must sit inside ONE painted sheet: the same sheet `off` 3.2 m to all four sides and
+corners (a road, its shoulder, any band under 6.4 m = no pebbles), and `pathM` 1.2 m clear of a path row. Three-renderer.js `_hqStoneOpen`.
+A pebble is sized by its rock's width OR 1.6 x its height, whichever is more: a tall kit rock had stood up as a knee-high grey slab.
+
 **G7 · A GROUND PLANT MUST READ AS A PLANT.** No single flat card that shows as a sheet from the walker's camera or from above;
 no plant floating, sunk to its leaves or at a wrong scale (a fern is knee-high, 0.4-0.9 m; a flower 0.15-0.5 m). If a plant model
 looks bad from the game camera, replace it with a better existing one or drop it from the list. Never let one plant model carpet
@@ -206,6 +231,10 @@ the split holds in every room: about a QUARTER thin (42 % of tufts kept, under h
 short lawn, never a flat floor), a QUARTER short sward (0.7 height), HALF dense. Large irregular patches, never even clumps.
 Replaces G3's bare blobs (EW_NO_COVER = G3 back). On a dirt sheet the bare quarter shows the dirt, its pebbles and its litter.
 
+**G12b · A CLIMATE'S OWN SHARE OF THE SPLIT.** ZONE_FLORA climates take `cover` (0..1, default 1): how strongly the G12 split and the
+G13 bias apply there. A mown city lawn is `cover: 0.3` (nearly even, a few short patches); a wild wood, meadow or scrub keeps 1. A zone's
+thread tunes its own climate's `cover` here; never a per-room number in the code.
+
 **G13 · THE ECOLOGY.** The rank is pushed: UP at a trunk's foot (6.5 m), at the wood's rim (the thicket's mass within 3.5 m) and at
 a stump, log or rock (2 m); DOWN within 2.6 m of a path's edge and round a landmark (a grand stair's foot and the 7 m approach in
 front of it, 8 m; the room's spawn, 3.5 m). So clearings open round where you walk and arrive, and the cover gathers where nobody does.
@@ -222,7 +251,16 @@ the open, duller brown-green beside a path, and each clump its own hue step towa
 **G17 · THE WALKER.** The grass bows down and away round the walker's feet (0.7-2 m, shader, WebGL + the WebGPU twin), so he
 reads in dense cover. No scan: the walker's spot is one uniform.
 
-Not done yet (asked, waiting): G18 lighting and depth (dappled light, contact shadows; a distance desaturation without fog needs
+**G19 · THE LITTER (built 11-25).** The intermediate layer: soft, ragged ground patches (1.6-3.4 m) of the game's own leaf-litter sheet
+`leaves_5` (leaves + twigs; one mask made in code cuts the blob, the sheet is never touched), lying on the ground on 3 x 3 corners,
+tinted per patch (brown, olive, dark). Where: the thin (bare) cover share, a little on the short sward, more within 3 m of a trunk or
+the wood's rim, and a dark contact patch at a trunk's foot. Only in woody climates (GROUND_RULES.litter.k: forest, wood, redwood,
+horror, autumn 1-1.4; fairy, japan, hollow 0.6-0.7; meadow 0.45; city, desert, snow, shore none). One mesh a flora cell, dropped with
+the cell. Off: EW_NO_LITTER. Readout `_ewHqFlora.litter`.
+
+THE FAR COLOUR (built 11-25, his OK): rendering-loading-perf.md. Fog back ON by default (11-25).
+
+Not done yet: G18 lighting and depth (dappled light, contact shadows; a distance desaturation without fog needs
 mondo's OK, bloom + fog stay off); G19 the leaf litter, moss, twigs and roots layer (ground cards / sheets, no tall meshes).
 
 ### 0c. What each part of the game does about it (who owns what, 11-25)
