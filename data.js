@@ -16539,6 +16539,24 @@ function unitMasteryChipHtml(level, extraClass) {
   return '<span class="ml-chip' + (extraClass ? ' ' + extraClass : '') + '" style="--ml:' + band.color + '" title="Mastery level ' + level + ' (' + band.name + '). Shows how much this unit is played. No effect on the fight.">'
     + '<i>M</i>' + level + '</span>';
 }
+/* THE STORY LEVEL PLATE (mondo 2026-11-25: "in story mode the battle panel displays the levels instead of the mastery;
+   mastery is PvP only"). ewStoryBattle() = this fight is a story fight (a party member or native built at its story level,
+   or a story launch's state.storyLevel), never online. In one, the panels draw unitLevelChipHtml (the same plate, "LV 12")
+   where the mastery plate stood, and battle.js _mlStampUnit stamps no mastery. Online / Practice / VS-CPU keep mastery. */
+function ewStoryBattle() {
+  try {
+    if (typeof window !== 'undefined' && window._NET && window._NET.online) return false;
+    const s = (typeof state !== 'undefined') ? state : null;
+    if (!s) return false;
+    if ((s.storyLevel | 0) > 0) return true;
+    return (s.units || []).some(u => u && (u._storyLevel | 0) > 0);
+  } catch (e) { return false; }
+}
+function unitLevelChipHtml(level, extraClass) {
+  level = Math.floor(Number(level));
+  if (!(level >= 1)) return '';
+  return '<span class="ml-chip lv-chip' + (extraClass ? ' ' + extraClass : '') + '" title="Level ' + level + '"><i>LV</i>' + level + '</span>';
+}
 
 // Personal records (ACHIEVEMENTS_PLAN.md §5, Phase 3). Stored in
 // profile.progress.records[id][bucket] = { value, ts, meta } with SEPARATE
@@ -28522,7 +28540,7 @@ Object.assign(window, {
   ACCT_STARTER_UNITS, ACCT_PVP_MODES, isUnitUnlocked, isUnitOwned, unitRosterScope, computeAccountMatchGold,
   ACH_CATALOG, ACH_CHAMP_LINES, ACH_TIER_NAMES, ACH_TIER_COLORS,
   ACH_MASTERY, ACH_TIER_REWARDS, ACH_RECORD_DEFS,
-  ACH_CHAMP_COUNTERS, UNIT_MASTERY_RULES, unitMasteryXp, unitMasteryNeed, unitMasteryFromXp, unitMasteryBand, unitMasteryOf, unitMasteryClean, unitMasteryChipHtml,
+  ACH_CHAMP_COUNTERS, UNIT_MASTERY_RULES, unitMasteryXp, unitMasteryNeed, unitMasteryFromXp, unitMasteryBand, unitMasteryOf, unitMasteryClean, unitMasteryChipHtml, ewStoryBattle, unitLevelChipHtml,
   mergeProgressBlobs, achUnlockKeyReward, achCountMasteredChamps, achComputeSyncRewards, hqFindsSyncPay,
   STEAM_STAT_DEFS, STEAM_ACH_DEFS, steamComputeStats, steamEvalAchievements,
   /* spell tree (Tree of Life selector) */

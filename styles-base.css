@@ -7821,6 +7821,8 @@ html.ew-mobile .pause-card { max-height: calc(100dvh - 16px); }
     background: #05050a; border: 1px solid var(--ml); border-radius: 2px; box-shadow: 0 1px 0 rgba(0,0,0,0.8); vertical-align: middle; text-shadow: none; }
 .ml-chip > i { position: static; inset: auto; font-style: normal; color: var(--ml); background: none; }
 .ml-chip.is-old { opacity: 0.55; }
+/* THE STORY LEVEL PLATE (mondo 2026-11-25): the same plate showing the unit's level in a story fight (data.js unitLevelChipHtml) */
+.ml-chip.lv-chip { --ml: #ffffff; }
 /* on a round face: the plate hangs on the bottom edge, so the face stops clipping (the picture keeps its own round clip) */
 .sq-face:has(> .ml-chip) { overflow: visible; }
 .sq-face:has(> .ml-chip) > i:first-child { border-radius: 50%; }

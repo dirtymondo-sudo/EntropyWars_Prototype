@@ -27907,7 +27907,7 @@
                    the face, the name, the level plate (old -> new when it rose), the bar inside the new level and the XP
                    earned ("+250 from achievements" when a tier of the unit's own lines was reached). Viewer-local. */
                 const mlRows = window._lastMasteryRows || [];
-                if (mlRows.length && typeof unitMasteryChipHtml === 'function') {
+                if (mlRows.length && typeof unitMasteryChipHtml === 'function' && !(typeof ewStoryBattle === 'function' && ewStoryBattle())) {   // mastery is PvP only (mondo 2026-11-25)
                     html += '<div class="vic-achievements vic-mastery"><div class="vic-ach-title">Unit Mastery</div><div class="ml-row-list">';
                     for (const r of mlRows.slice(0, 8)) {
                         const up = r.after.level > r.before.level;
@@ -50297,6 +50297,8 @@
         function _mlStampUnit(unit, player, meta) {
             try {
                 if (!unit || !unit.race) return;
+                /* THE STORY LEVEL PLATE (mondo 2026-11-25): mastery is PvP only, a story unit carries none (the panels show its level) */
+                if (((meta && meta.storyLevel) | 0) > 0 || (state.storyLevel | 0) > 0) return;
                 if (state.devAutoSim || (typeof _balanceSimMode !== 'undefined' && _balanceSimMode) || (typeof _aiTrainingMode !== 'undefined' && _aiTrainingMode) || (typeof _strengthTestMode !== 'undefined' && _strengthTestMode)) return;
                 const mine = () => (window.ProfileSystem && typeof window.ProfileSystem.unitMasteryLevel === 'function') ? window.ProfileSystem.unitMasteryLevel(unit.race) : 0;
                 const net = window._NET;
