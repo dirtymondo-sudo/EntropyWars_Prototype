@@ -9441,6 +9441,12 @@ const ThreeRenderer = (function () {
            Each is a 3 x 3 sheet that hugs the ground, cut out by one made mask (ragged blob), tinted per patch. rate = patches per m² on the
            thin (bare) ground, short sward, near a trunk / the wood's rim (shade); k = the climate's share (climates not listed grow none);
            foot = the dark contact patch at a trunk's foot (G16 for the ground). Off: EW_NO_LITTER */
+        /* G18 THE LIGHT ON THE FLOOR (11-25): the key's real shadow map already lays the crowns' shade on the ground, but the grass and the low
+           plants cover the ground and their own light read flat. Baked per tuft / plant (its corner colours, no new material, no triangle):
+           `fleck` = SUN FLECKS under a crown (a `fleckM` noise: its top share stands in the sun, warm, the rest in a deeper shade by `shadeK`);
+           `foot` = THE CONTACT SHADOW at a trunk's foot (darkest at the bark, gone by `m`), `nearFoot` = the same at a rock, a stump, a prop.
+           Off: EW_NO_DAPPLE */
+        light: { fleckM: 1.8, fleck: [0.56, 0.70], fleckK: 1, shadeK: 1.4, deep: [0.66, 0.76, 0.90], fleckSun: [1.24, 1.18, 0.94], foot: { m: 1.4, k: 0.52 }, nearFoot: { m: 0.8, k: 0.74 } },
         litter: { sheet: 'leaves_5', tileM: 2.4, size: [1.6, 3.4], lift: 0.035,
                   rate: { bare: 0.21, short: 0.045, shade: 0.16 }, foot: { m: 0.9, rate: 0.30, size: [1.4, 2.2], tint: [0.48, 0.47, 0.45] },
                   tints: [[1.16, 0.96, 0.72], [1.04, 0.88, 0.68], [0.92, 0.90, 0.70], [0.84, 0.74, 0.62]],
@@ -9469,6 +9475,26 @@ const ThreeRenderer = (function () {
         return B;
     }
     /* G13: the room's trunks alone, in 8 m buckets (the canopy reads further than the edges), and its landmarks as clear circles [x, z, r] */
+    /* G18: one tuft's light: shadeK (0-1 under a crown or the wood's rim), sunK (0-1 out in the open), dT = to the nearest trunk, dN = to the
+       nearest other standing thing (m). Writes o.shade, o.sun (the canopy tint's two weights) and o.k (the contact shadow's darkening) */
+    function _grLight(x, z, shadeK, sunK, dT, dN, o) {
+        var LG = GROUND_RULES.light, CA = GROUND_RULES.canopy, sh = CA.shade, su = CA.sun, fl = 0, k = 1;
+        if (LG && !window.EW_NO_DAPPLE) {
+            sh = LG.deep;
+            if (shadeK > 0) {
+                var fn = _ewSmoothNoise(x / LG.fleckM + 5.7, z / LG.fleckM + 9.1), dp = Math.min(1, Math.max(0, (fn - LG.fleck[0]) / (LG.fleck[1] - LG.fleck[0]))); dp = dp * dp * (3 - 2 * dp);
+                fl = dp * Math.min(1, shadeK * 1.6) * LG.fleckK; shadeK = Math.min(1, shadeK * LG.shadeK) * (1 - dp);
+            }
+            if (dT < LG.foot.m) k = LG.foot.k + (1 - LG.foot.k) * Math.max(0, dT) / LG.foot.m;
+            if (dN < LG.nearFoot.m) k = Math.min(k, LG.nearFoot.k + (1 - LG.nearFoot.k) * Math.max(0, dN) / LG.nearFoot.m);
+        }
+        var F = LG ? LG.fleckSun : su;
+        o.r = (1 + (sh[0] - 1) * shadeK) * (1 + (su[0] - 1) * sunK) * (1 + (F[0] - 1) * fl) * k;
+        o.g = (1 + (sh[1] - 1) * shadeK) * (1 + (su[1] - 1) * sunK) * (1 + (F[1] - 1) * fl) * k;
+        o.b = (1 + (sh[2] - 1) * shadeK) * (1 + (su[2] - 1) * sunK) * (1 + (F[2] - 1) * fl) * k;
+        return o;
+    }
+    var _grLightO = { r: 1, g: 1, b: 1 };
     function _grTreeBucket(info) {
         var B = new Map(), bm = 8; B._bm = bm;
         try { (info.trees || []).forEach(function (t) { if (!t || !isFinite(t.x) || !isFinite(t.z)) return; var k = Math.floor(t.x / bm) + ',' + Math.floor(t.z / bm), a = B.get(k); if (!a) B.set(k, a = []); a.push(t.x, t.z, Math.min(1.5, t.r || 0.35)); }); } catch (e) {}
@@ -9635,10 +9661,8 @@ const ThreeRenderer = (function () {
                 var Lu = GR.lush, lu = gO.lush * (1 - cD), dm = Math.min(0.85, gO.dry * GR.dryMix + cD + pathK * GR.path.dull), gt = gO.t;
                 tipR = (tipR * (1 + (Lu[0] - 1) * lu) * (1 - dm) + GGRASS.dry[0] * 1.25 * dm) * gt; tipG = (tipG * (1 + (Lu[1] - 1) * lu) * (1 - dm) + GGRASS.dry[1] * 1.25 * dm) * gt; tipB = (tipB * (1 + (Lu[2] - 1) * lu) * (1 - dm) + GGRASS.dry[2] * 1.25 * dm) * gt;
                 /* G15 THE LIGHT IN THE COLOUR: cool and dark under a crown, warm yellow-green out in the open, each clump its own hue step (per tuft, no new material) */
-                var CA2 = GR.canopy, hu = gO.hue * GR.hue;
-                bR = (1 + (CA2.shade[0] - 1) * shadeK) * (1 + (CA2.sun[0] - 1) * sunK) * (1 + hu * 0.9);
-                bG = (1 + (CA2.shade[1] - 1) * shadeK) * (1 + (CA2.sun[1] - 1) * sunK);
-                bB = (1 + (CA2.shade[2] - 1) * shadeK) * (1 + (CA2.sun[2] - 1) * sunK) * (1 - hu * 1.2);
+                var hu = gO.hue * GR.hue, LO = _grLight(xm, zm, shadeK, sunK, dT, ndB, _grLightO);   // G15 + G18: the crown's shade, its sun flecks, the contact shadow
+                bR = LO.r * (1 + hu * 0.9); bG = LO.g; bB = LO.b * (1 - hu * 1.2);
                 tipR *= bR; tipG *= bG; tipB *= bB;
                 /* G14 THE SHAPES: which of the six silhouettes this tuft is (the short sward picks the low ones) */
                 if (R.shape.C && GR.forms) { var FS = GR.forms, sh = gO.short > 0.5, tw = 0, fr = r3; for (var fq = 0; fq < FS.length; fq++) tw += sh ? FS[fq].ws : FS[fq].w; fr *= tw; for (fq = 0; fq < FS.length; fq++) { fr -= sh ? FS[fq].ws : FS[fq].w; if (fr < 0) { FM = FS[fq]; break; } } if (!FM) FM = FS[FS.length - 1]; }
@@ -9899,7 +9923,7 @@ const ThreeRenderer = (function () {
             if (inB) continue;
             for (q = 0; q < near.length; q++) if (_hqTPolyDist(xm, zm, near[q].pts).d < near[q].w / 2 + 0.25) { inB = true; break; }
             if (inB) continue;
-            var gy = hqTerrainHeight(info, xm, zm), gO = S.gr ? _grAt(xm, zm, S.gr.o) : null, nd = -1;
+            var gy = hqTerrainHeight(info, xm, zm), gO = S.gr ? _grAt(xm, zm, S.gr.o) : null, nd = -1, fL = null;
             if (LS && (cls === 'floor' || cls === 'lawn' || cls === 'rough' || cls === 'dirt')) {   // G19 THE LITTER: leaves and twigs on thin ground, in the shade, a dark patch at a trunk's foot
                 var lk = _grLitterK(C);
                 if (lk > 0) {
@@ -9952,6 +9976,12 @@ const ThreeRenderer = (function () {
                 var tn = (F.tint && F.tint[name]) || null, tr0 = tn ? tn[0] : 1, tg0 = tn ? tn[1] : 1, tb0 = tn ? tn[2] : 1;   // a plant's own base tint (ZONE_FLORA.tint)
                 if (gO && L.g) { var gLu2 = GROUND_RULES.lush, gl2 = gO.lush, gd2 = gO.dry * GROUND_RULES.dryMix, gt2 = gO.t;   // G2 on the tufts: the clump's step, the lush and dry patches
                     tr0 *= (1 + (gLu2[0] - 1) * gl2) * (1 + 0.35 * gd2) * gt2; tg0 *= (1 + (gLu2[1] - 1) * gl2) * (1 + 0.05 * gd2) * gt2; tb0 *= (1 + (gLu2[2] - 1) * gl2) * (1 - 0.30 * gd2) * gt2; }
+                if (S.gr && S.gr.trees && GROUND_RULES.light) {   // G18 on the low plants: the crown's shade and its sun flecks, the contact shadow at a foot
+                    if (fL === null) { var CA3 = GROUND_RULES.canopy, dT3 = _grNearD(S.gr.trees, xm, zm, CA3.openM), sh3 = dT3 < CA3.m ? 1 - dT3 / CA3.m : 0, su3 = dT3 === Infinity ? 1 : dT3 < CA3.m ? 0 : (dT3 - CA3.m) / (CA3.openM - CA3.m);
+                        if (nd < 0) nd = _grNearD(S.gr.near, xm, zm, F.near.m);
+                        var LO3 = _grLight(xm, zm, sh3, su3, dT3, nd, _grLightO); fL = [LO3.r, LO3.g, LO3.b]; }
+                    tr0 *= fL[0]; tg0 *= fL[1]; tb0 *= fL[2];
+                }
                 for (k = 0; k < P.nv; k++) { cols[(v + k) * 3] = tr0; cols[(v + k) * 3 + 1] = tg0; cols[(v + k) * 3 + 2] = tb0; }
                 for (k = 0; k < P.nv; k++) { k3 = k * 3; v3 = (v + k) * 3; pos[v3] = (ox + pa[k3] * co + pa[k3 + 2] * si) * U; pos[v3 + 1] = (gy + pa[k3 + 1] * s) * U; pos[v3 + 2] = (oz - pa[k3] * si + pa[k3 + 2] * co) * U; uvs[(v + k) * 2] = ua[k * 2]; uvs[(v + k) * 2 + 1] = ua[k * 2 + 1]; }
                 for (k = 0; k < P.ix.length; k++) idx[ii + k] = P.ix[k] + v;
@@ -10030,7 +10060,7 @@ const ThreeRenderer = (function () {
             S = _hqFF = { H: H, rid: rid, low: LOW, info: info, U: _hqUnits(), plants: plants, mat: _hqFFMat, cells: new Map(), boxes: boxes, paths: paths, wet: wet, clim: {},
                 seed: ((typeof hqHash === 'function') ? hqHash('flora|' + rid) : 7) & 0x3FFFFFFF, reach: LOW ? F.low.reach : F.reach, thin: LOW ? F.low.thin : 1, grassOn: !!(_hqGrassWanted(T, rid) && _ggOn() && !window.EW_NO_HQ_GRASS),
                 at: 0, busy: true, born: now, filled: false, parent: (H.propGroup && H.propGroup.parent) || scene,
-                gr: _grOn() ? { near: _grNearBucket(info, H.room), o: {} } : null, fields: fields, stones: stones, stoneMat: _hqStoneMat,
+                gr: _grOn() ? { near: _grNearBucket(info, H.room), trees: _grTreeBucket(info), o: {} } : null, fields: fields, stones: stones, stoneMat: _hqStoneMat,
                 litter: (_grOn() && !window.EW_NO_LITTER && GROUND_RULES.litter && _grLitterMat()) ? { mat: _grLitterMat(), trees: _grTreeBucket(info), maxV: 9000, pos: new Float32Array(27000), uv: new Float32Array(18000), uv1: new Float32Array(18000), col: new Float32Array(27000), ix: new Uint16Array(24000), v: 0, i: 0 } : null,
                 stoneScratch: stones ? { maxV: 20000, maxI: 60000, pos: new Float32Array(60000), nor: new Float32Array(60000), uv: new Float32Array(40000), ix: new Uint16Array(60000), v: 0, i: 0, n: 0 } : null,
                 scratch: { maxV: maxV, maxI: maxV * 4, pos: new Float32Array(maxV * 3), uv: new Float32Array(maxV * 2), ix: new Uint32Array(maxV * 4), col: new Float32Array(maxV * 3) } };
