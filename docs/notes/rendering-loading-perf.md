@@ -4228,3 +4228,11 @@ the vertex stage`.
   here loses its device before a fight can load). If the error is still in a trail, the shader name next to it says which look.
 - Not touched: the `[MEM] ... nothing idle long enough to drop` line 7 s after a room change is the budget waiting its 30 s for
   the left room's files to go idle (by design).
+- **Second trail (11-25 20:50)**: the heal's first-remake line named the freer: the SUN's map (`ShadowDepthTexture`) resized inside
+  three's shadow render (`updateRenderTarget` -> `updateTexture`), i.e. THE ONE RIG's shadow lamp taking a new sun's `mapSize`
+  (`_ewRigShadow` copies it). A normal remake: the heal covers it. The dFdx/dFdy line was still there, so the hair was not (only)
+  it. Read in r186: MathNode turns a vertex-stage dFdx into a comment, so the shader still compiles; it is a wrong value on one
+  look, not a crash. **THE LOOK NAMED** (`_ewBlame*`): while a look builds its piece is remembered, and the first 12 "not supported
+  in the ... stage" / "not found on geometry" warnings of a session are followed by `[ThreeRenderer] the look being built: <type>
+  on <object path> (skinned) · attributes ...`. The cloud hall (probe, default hero) shows none of them and has no skinned mesh
+  without skin attributes, no lit mesh without normals and no flat look; the next trail names it.
