@@ -92,6 +92,29 @@ when its cell drops.
 sheet's own class over `fade` m. A climate with no `field` row grows its `lawn` row there at double weight. Hand-placed `fae_*` /
 `hp_*` / `rf_flower_*` props are for the few big accents only (they are heavier), not for the field's mass.
 
+### 0d. What the code does (built 11-25, the lead thread's PR)
+
+- **three-renderer.js THE GROUND RULES** (`GROUND_RULES`, `_grAt`, `_grNearBucket`, `_grNearD`; tunables live as `window.EW_GROUND_RULES`,
+  off: `EW_NO_GROUND_RULES`): G1 Voronoi clumps 2.6 m (height x0.48-1.5, brightness ±14 %, one lean, 40 % kept on a seam); G2 patches 26 m
+  (lush / yellow-green / dry, straw up to a third); G3 bare blobs 7 m; G4 taller (x1.5) within 1.3 m of a building, tree, rock, prop or
+  placed prop's footprint, x1.4 at the water, shorter (x0.68, 70 % kept) within 1.1 m of a path / paving / any non-grass sheet. Used by
+  the walked room's blade grass (`_hqGrassCell`), the board's grass (battle maps) and the flora field's tufts (`_hqFloraCell`).
+- **THE GRASS EVERYWHERE** (`_hqGrassWanted`): the blade grass grows in every room with a climate row (it was 18 rooms with
+  `terrain.grassField: true`; every other green room was a flat sheet with a few kit tufts). `grassField: false` keeps a room off;
+  `EW_NO_GRASS_AUTO` = the old rule. A room the rule turned on grows 7 tufts a square side (`HQ_GRASS.autoN`, low 5) against 9.
+  It also grows on a plan's flat MASS (the woodland floor beside the paths you cannot walk into), 55 % as thick (`massKeep`),
+  never on a city block, hall or cave wall. Off: `EW_NO_GRASS_MASS`. Never on a path or a deck (boardwalks, jetties: `_hqDeckPaths`),
+  nor inside a prop's footprint.
+- **Per climate**: `grassH` (blade height ×: city 0.55 mown, fairy 0.6 sward, med 0.7, desert 0.75, scrub 0.8, meadow 0.9) and
+  `grassDry` (straw share: hills 0.45, autumn 0.3, scrub 0.55, desert 0.6, med 0.15) in `ZONE_FLORA.climates`.
+- **ZONE_FLORA additions**: `near` (G5: fern and bush layers 2.6x within 2.6 m of a standing thing, 0.3x in the open), `stones` (G6:
+  pebbles from the kit's four rocks, ~100 triangles each, one merged mesh a cell, `stones: 0` on a climate = none, the city has none;
+  off `EW_NO_FLORA_STONES`), `tint` (a plant's base colour ×, the Woods ferns thread owns the table), the fairy climate's `field` row
+  and the `terrain.floraFields` reader (G10).
+- **Measured in the cloud probe (11-25)**: Camelot village ~250 k blade triangles before the thinner auto density, the Fairy Forest
+  208 k after (the old High was ~200 k). Frame rate on a real machine NOT measured: Settings > Video > Grass Low / Off still apply.
+- Proof pictures: `/mnt/project-files/foliage-pass-2/`.
+
 ## 1. The one idea: a RULE, not rows
 
 Nothing of this pass is written into a room. A room's foliage is WORKED OUT each time the room is built, from three things

@@ -107702,7 +107702,9 @@ var ZONE_FLORA = (function () {
     };
     T.temperate.snow = T.winter; T.open.snow = T.winter; T.autumn.snow = T.winter; T.horror.snow = T.winter; T.redwood.snow = T.winter; T.hills.snow = T.winter;
     /* ── a layer: [list, plants a square metre, clump 0..1 (0 = even, 1 = only in drifts), 'g' = a grass layer (left out where the room grows the blade grass)] ── */
-    const L = (mix, per, clump, g) => ({ mix: M[mix], n: per, clump: clump || 0, g: g === 'g' });
+    /* THE GROUND RULES (11-25, flora.md section 0, G5): ferns and low bushes grow BY standing things (trunks, rocks, props), in groups, never sprinkled over open lawn */
+    const NEAR = { fern: true, bush: true };
+    const L = (mix, per, clump, g) => ({ mix: M[mix], n: per, clump: clump || 0, g: g === 'g', near: NEAR[mix] || undefined });
     return {
         field: 'asset:world/nature/flora/ew_flora_field.glb',
         /* the field's reach round the walker (m), a cell's side, the candidate spots' spacing; `low` = the low grass setting / a weak machine */
@@ -107736,13 +107738,20 @@ var ZONE_FLORA = (function () {
         mass: { front: 3.5, share: 0.45, deep: 0.06, light: { rf_birch_1: 1, rf_birch_2: 1, rf_birch_4: 1, rf_oak_4: 1, rf_fir_4: 1, rf_birch_1_autumn: 1, rf_birch_2_autumn: 1, rf_birch_4_autumn: 1, rf_oak_4_autumn: 1,
                 rf_birch_1_winter: 1, rf_birch_2_winter: 1, rf_birch_4_winter: 1, rf_oak_4_winter: 1, rf_fir_4_winter: 1, rf_fir_4_dead: 1 } },
         water: 5,   // a tree this near open water (m) takes its climate's `water` list (the willows)
+        /* THE GROUND RULES (11-25, flora.md section 0). G5 `near`: a layer flagged near (ferns, bushes) is `k` times as likely within `m` metres of a
+           standing thing (a tree, a rock, a prop) and `far` times out in the open. G6 THE STONES: pebbles and small stones cut from the kit's four rocks,
+           walked through, in clusters (`blobM`), `on` = the chance a spot of a cluster gets 1-3 stones by ground class; `size` / `big` = across (m);
+           a climate's `stones` multiplies it (0 = none: the city's mown lawns). Off: window.EW_NO_FLORA_STONES, all of it: EW_NO_GROUND_RULES */
+        near: { m: 2.6, k: 2.6, far: 0.3 },
+        stones: { files: [1, 2, 3, 4].map(i => 'asset:world/packs/afgameassets_retro_foliage/rf_rock_' + i + '.glb'), blobM: 9, size: [0.10, 0.30], big: [0.35, 0.70], bigShare: 0.12, sink: 0.25,
+                  on: { lawn: 0.012, rough: 0.06, floor: 0.025, dirt: 0.045, dry: 0.05, sand: 0.01, rock: 0.07, snow: 0.006 } },
         /* ── THE CLIMATES: per ground class, the layers that grow there · `trees` = the tree lists · `like` = the rest as that climate ── */
         climates: {
             forest:   { name: 'temperate forest', trees: T.temperate,
                         lawn: [L('grass', 0.07, 0.3, 'g'), L('fern', 0.03, 0.6), L('wood', 0.022, 0.85), L('bush', 0.003, 0.5)], rough: [L('grass', 0.05, 0.3, 'g'), L('fern', 0.02, 0.6)],
                         floor: [L('dark', 0.05, 0.3, 'g'), L('fern', 0.05, 0.5), L('wood', 0.012, 0.9)], dirt: [L('fern', 0.012, 0.8)], wet: [L('reed', 0.22, 0.2)], snow: [L('frost', 0.02, 0.6)] },
             wood:     { name: 'open woodland', like: 'forest', trees: T.open, lawn: [L('grass', 0.08, 0.3, 'g'), L('fern', 0.018, 0.7), L('meadow', 0.035, 0.75), L('bush', 0.004, 0.5)] },
-            meadow:   { name: 'meadow', trees: T.open, lawn: [L('grass', 0.09, 0.25, 'g'), L('meadow', 0.07, 0.6), L('bush', 0.002, 0.5)], rough: [L('grass', 0.06, 0.3, 'g'), L('meadow', 0.03, 0.7)],
+            meadow:   { name: 'meadow', trees: T.open, grassH: 0.9, lawn: [L('grass', 0.09, 0.25, 'g'), L('meadow', 0.07, 0.6), L('bush', 0.002, 0.5)], rough: [L('grass', 0.06, 0.3, 'g'), L('meadow', 0.03, 0.7)],
                         floor: [L('dark', 0.05, 0.3, 'g'), L('fern', 0.03, 0.6)], dirt: [L('dry', 0.012, 0.8)], wet: [L('reed', 0.22, 0.2)], snow: [L('frost', 0.02, 0.6)] },
             grass:    { name: 'grassland', like: 'meadow', lawn: [L('grass', 0.1, 0.25, 'g'), L('meadow', 0.03, 0.75)] },
             farm:     { name: 'farmland', like: 'meadow', lawn: [L('grass', 0.07, 0.3, 'g'), L('farm', 0.045, 0.7)], rough: [L('dry', 0.05, 0.3, 'g'), L('farm', 0.02, 0.8)], dry: [L('dry', 0.03, 0.5, 'g')] },
@@ -107752,10 +107761,10 @@ var ZONE_FLORA = (function () {
             alpine:   { name: 'alpine', trees: T.temperate, lawn: [L('grass', 0.05, 0.4, 'g'), L('alpine', 0.055, 0.65)], rough: [L('grass', 0.04, 0.4, 'g'), L('alpine', 0.04, 0.7)], dirt: [L('alpine', 0.01, 0.85)],
                         snow: [L('frost', 0.018, 0.65)], wet: [L('reed', 0.12, 0.3)], rock: [L('alpine', 0.012, 0.85), L('dry', 0.012, 0.8)] },
             snow:     { name: 'snow country', trees: T.winter, snow: [L('frost', 0.02, 0.65), L('sage', 0.003, 0.7)], lawn: [L('frost', 0.05, 0.4, 'g'), L('alpine', 0.02, 0.8)], rough: [L('frost', 0.04, 0.4, 'g')], dirt: [L('frost', 0.01, 0.8)] },
-            scrub:    { name: 'scrub', trees: T.dry, lawn: [L('dry', 0.07, 0.3, 'g'), L('sage', 0.02, 0.6), L('desert', 0.01, 0.8)], rough: [L('dry', 0.06, 0.3, 'g'), L('sage', 0.025, 0.6), L('desert', 0.008, 0.8)],
+            scrub:    { name: 'scrub', trees: T.dry, grassDry: 0.55, grassH: 0.8, lawn: [L('dry', 0.07, 0.3, 'g'), L('sage', 0.02, 0.6), L('desert', 0.01, 0.8)], rough: [L('dry', 0.06, 0.3, 'g'), L('sage', 0.025, 0.6), L('desert', 0.008, 0.8)],
                         dry: [L('dry', 0.03, 0.5), L('sage', 0.012, 0.7)], sand: [L('dune', 0.012, 0.7), L('sage', 0.005, 0.7)], dirt: [L('dry', 0.015, 0.7)], wet: [L('reed', 0.2, 0.2)], rock: [L('sage', 0.006, 0.8)] },
             badlands: { name: 'badlands', like: 'scrub', lawn: [L('dry', 0.04, 0.5, 'g'), L('sage', 0.012, 0.7)], rough: [L('dry', 0.035, 0.5, 'g'), L('sage', 0.012, 0.7)] },
-            desert:   { name: 'desert', trees: T.dry, sand: [L('dune', 0.006, 0.8), L('desert', 0.004, 0.8)], dry: [L('dry', 0.014, 0.7), L('desert', 0.007, 0.75)], dirt: [L('dry', 0.008, 0.8)],
+            desert:   { name: 'desert', trees: T.dry, grassDry: 0.6, grassH: 0.75, sand: [L('dune', 0.006, 0.8), L('desert', 0.004, 0.8)], dry: [L('dry', 0.014, 0.7), L('desert', 0.007, 0.75)], dirt: [L('dry', 0.008, 0.8)],
                         lawn: [L('dry', 0.05, 0.4, 'g'), L('sage', 0.015, 0.7)], rough: [L('dry', 0.04, 0.4, 'g'), L('sage', 0.015, 0.7)], wet: [L('reed', 0.3, 0.1)] },
             shore:    { name: 'shore', sand: [L('dune', 0.01, 0.8)], lawn: [L('grass', 0.07, 0.3, 'g'), L('meadow', 0.02, 0.8)], rough: [L('dry', 0.05, 0.4, 'g')], dry: [L('dune', 0.02, 0.7)] },
             tropical: { name: 'tropical island', trees: T.tropical, lawn: [L('grass', 0.08, 0.25, 'g'), L('fern', 0.05, 0.45), L('tropic', 0.035, 0.65), L('bush', 0.006, 0.4)], floor: [L('dark', 0.06, 0.3, 'g'), L('fern', 0.07, 0.4), L('tropic', 0.02, 0.8)],
@@ -107766,15 +107775,18 @@ var ZONE_FLORA = (function () {
                         rough: [L('dark', 0.05, 0.3, 'g'), L('horror', 0.012, 0.8)], dirt: [L('horror', 0.008, 0.85)], wet: [L('reed', 0.18, 0.2)], snow: [L('frost', 0.02, 0.6)] },
             redwood:  { name: 'the redwoods', like: 'horror', trees: T.redwood, lawn: [L('dark', 0.06, 0.3, 'g'), L('fern', 0.09, 0.35), L('wood', 0.01, 0.9)], floor: [L('dark', 0.05, 0.3, 'g'), L('fern', 0.1, 0.3), L('wood', 0.008, 0.9)],
                         dirt: [L('fern', 0.03, 0.6)] },
-            fairy:    { name: 'the fairy wood', trees: T.fairy, lawn: [L('grass', 0.07, 0.3, 'g'), L('fairy', 0.11, 0.5), L('fern', 0.025, 0.6)], floor: [L('grass', 0.06, 0.3, 'g'), L('fairy', 0.09, 0.5), L('fern', 0.03, 0.6)],
+            fairy:    { name: 'the fairy wood', trees: T.fairy, stones: 0.6, grassH: 0.6,
+                        /* G10: a designed flower field (terrain.floraFields): dense drifts of the fairy blooms over short grass, a few meadow flowers */
+                        field: [L('grass', 0.05, 0.3, 'g'), L('fairy', 0.5, 0.3), L('meadow', 0.06, 0.6)],
+                        lawn: [L('grass', 0.07, 0.3, 'g'), L('fairy', 0.11, 0.5), L('fern', 0.025, 0.6)], floor: [L('grass', 0.06, 0.3, 'g'), L('fairy', 0.09, 0.5), L('fern', 0.03, 0.6)],
                         dirt: [L('fairy', 0.02, 0.8)], wet: [L('reed', 0.2, 0.2)], snow: [L('frost', 0.02, 0.6)] },
-            autumn:   { name: 'autumn country', trees: T.autumn, lawn: [L('dry', 0.08, 0.3, 'g'), L('autumn', 0.035, 0.7), L('bush', 0.002, 0.5)], rough: [L('dry', 0.06, 0.3, 'g'), L('autumn', 0.02, 0.8)],
+            autumn:   { name: 'autumn country', trees: T.autumn, grassDry: 0.3, lawn: [L('dry', 0.08, 0.3, 'g'), L('autumn', 0.035, 0.7), L('bush', 0.002, 0.5)], rough: [L('dry', 0.06, 0.3, 'g'), L('autumn', 0.02, 0.8)],
                         floor: [L('dry', 0.05, 0.3, 'g'), L('autumn', 0.03, 0.7), L('fern', 0.015, 0.7)], dirt: [L('dry', 0.012, 0.8)], dry: [L('dry', 0.03, 0.5)], wet: [L('reed', 0.3, 0.1)] },
-            city:     { name: 'city lawns', lawn: [L('grass', 0.035, 0.5, 'g'), L('lawn', 0.03, 0.85)], sand: [L('dune', 0.008, 0.85)], dirt: [L('dry', 0.01, 0.8)] },
-            hills:    { name: 'dry coast hills', trees: T.hills, lawn: [L('dry', 0.08, 0.3, 'g'), L('poppy', 0.04, 0.7), L('sage', 0.012, 0.7)], rough: [L('dry', 0.07, 0.3, 'g'), L('poppy', 0.03, 0.75), L('sage', 0.015, 0.7)],
+            city:     { name: 'city lawns', stones: 0, grassH: 0.55, lawn: [L('grass', 0.035, 0.5, 'g'), L('lawn', 0.03, 0.85)], sand: [L('dune', 0.008, 0.85)], dirt: [L('dry', 0.01, 0.8)] },
+            hills:    { name: 'dry coast hills', trees: T.hills, grassDry: 0.45, lawn: [L('dry', 0.08, 0.3, 'g'), L('poppy', 0.04, 0.7), L('sage', 0.012, 0.7)], rough: [L('dry', 0.07, 0.3, 'g'), L('poppy', 0.03, 0.75), L('sage', 0.015, 0.7)],
                         dirt: [L('dry', 0.02, 0.7), L('sage', 0.006, 0.8)], dry: [L('dry', 0.03, 0.6), L('sage', 0.01, 0.7)], sand: [L('dune', 0.008, 0.85)],
                         rock: [L('dry', 0.03, 0.6), L('sage', 0.012, 0.7), L('poppy', 0.01, 0.85)] },
-            med:      { name: 'Mediterranean garden', trees: T.med, lawn: [L('grass', 0.05, 0.4, 'g'), L('med', 0.04, 0.7)], dirt: [L('med', 0.008, 0.85)], rough: [L('dry', 0.05, 0.4, 'g'), L('med', 0.02, 0.8)] },
+            med:      { name: 'Mediterranean garden', trees: T.med, grassH: 0.7, grassDry: 0.15, lawn: [L('grass', 0.05, 0.4, 'g'), L('med', 0.04, 0.7)], dirt: [L('med', 0.008, 0.85)], rough: [L('dry', 0.05, 0.4, 'g'), L('med', 0.02, 0.8)] },
             hollow:   { name: 'the inner-sun country', trees: T.hollow, floor: [L('dark', 0.06, 0.3, 'g'), L('fern', 0.08, 0.4), L('tropic', 0.02, 0.8), L('fairy', 0.015, 0.85)], lawn: [L('grass', 0.07, 0.3, 'g'), L('fern', 0.06, 0.4), L('tropic', 0.03, 0.7)],
                         dirt: [L('fern', 0.02, 0.7)], wet: [L('reed', 0.2, 0.2)] },
         },
