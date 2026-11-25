@@ -3856,14 +3856,14 @@
             /* THE DOOR CASES (data.js mdCaseToday): the board at a building's way in reads today's case; the unauthorized door closes once
                what came through it is down, and the case's reward goes in the bag */
             if (H.act === 'board') {
-                const b = (typeof window.mdCaseBoard === 'function') ? window.mdCaseBoard() : null; if (!b) return;
+                const b = (typeof window.mdCaseBoard === 'function') ? window.mdCaseBoard(H.b || null) : null; if (!b) return;   // H.b: a way in's board (its building's deepest); none = Locke's board in DOOR HQ (every building)
                 _hqToast(`<b>${_hqEsc(b.title)}</b><span>${b.lines.map(_hqEsc).join('<br>')}</span>`, 6500); try { playSfx('uiButtonConfirm'); } catch (e) {}
                 return;
             }
             if (H.act === 'case') {
                 const r = _hqPartyTx(p => (typeof window.mdCaseClose === 'function') ? window.mdCaseClose(p, _hqCurRoom) : null);
                 if (r && r.ok) { try { playSfx('uiButtonConfirm'); playDoorSfx('doorBuzz', { volume: 0.6 }); } catch (e) {}
-                    _hqToast(`<b>CASE CLOSED</b><span>${(r.reward || []).map(x => _hqEsc(String(x.name).toUpperCase())).join(' · ') || 'THE DOOR IS SHUT'}</span>`, 4200); }
+                    _hqToast(`<b>${r.arrested ? 'ARRESTED · ' : ''}CASE CLOSED</b><span>${(r.reward || []).map(x => _hqEsc(String(x.name).toUpperCase())).join(' · ') || 'THE DOOR IS SHUT'}</span>`, 4200); }
                 else { _hqToast(`<b>AN UNAUTHORIZED DOOR</b><span>${r && r.reason === 'anomaly' ? 'DEAL WITH WHAT CAME THROUGH FIRST' : 'IT IS SHUT'}</span>`, 2600); try { playSfx('uiError'); } catch (e) {} }
                 return;
             }
