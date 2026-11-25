@@ -7932,3 +7932,32 @@ html.ew-mobile .pause-card { max-height: calc(100dvh - 16px); }
 .hq-zm-key .zk-hq { background: #ffd040; width: 8px; height: 12px; } .hq-zm-key .zk-way { background: #58e890; border-radius: 50%; }
 .hq-zm-key .zk-in { background: #fff; transform: rotate(45deg) scale(.8); } .hq-zm-key .zk-bord { background: transparent; border: 0; outline: 0; height: 2px; box-shadow: 0 0 0 1px #000; background: #fff; width: 16px; }
 .hq-zm-key .zk-here { background: #ffd040; clip-path: polygon(50% 0, 100% 100%, 50% 75%, 0 100%); border: 0; outline: 0; }
+
+/* ══ STORY SPELL LEARNING (mondo 2026-11-25) — THE SPELL PICK on the member sheet (map.js _hqPauseLearnHtml): the unit's families
+   side by side, lowest tier on top; KNOWN green, OPEN (a pick can take it) teal, LOCKED dashed. Black panel, white outline. ══ */
+#hqPage .hq-learn { margin: 6px 0 10px; padding: 8px 10px 10px; border: 1px solid rgba(255,255,255,0.55); background: rgba(0,0,0,0.72); }
+#hqPage .hq-learn.due { border-color: #5ee0c8; box-shadow: 0 0 12px rgba(94,224,200,0.25); }
+#hqPage .hq-learn-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+#hqPage .hq-learn-bar b { font-family: 'Cormorant SC', serif; font-size: 15px; letter-spacing: 0.1em; color: #ece7d8; }
+#hqPage .hq-learn-bar b.due { color: #5ee0c8; }
+#hqPage .hq-learn-bar span { font-size: 9px; letter-spacing: 0.14em; color: #b8a060; flex: 1 1 auto; min-width: 0; }
+#hqPage .hq-learn-note { margin: 6px 0 0; font-size: 9px; letter-spacing: 0.12em; color: #b8a060; }
+#hqPage .hq-learn-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; margin-top: 8px; }
+#hqPage .hq-learn-fam { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+#hqPage .hq-learn-famhead { display: flex; justify-content: space-between; gap: 6px; padding-bottom: 3px; border-bottom: 2px solid var(--fam, #8a8270); }
+#hqPage .hq-learn-famhead b { font-size: 10px; letter-spacing: 0.1em; color: #ece7d8; white-space: normal; overflow-wrap: anywhere; }
+#hqPage .hq-learn-famhead i { font-style: normal; font-family: 'IBM Plex Mono', monospace; font-size: 9px; color: #b8a060; white-space: nowrap; }
+#hqPage .hq-learn-taught { font-size: 8px; letter-spacing: 0.14em; color: #5ee0c8; }
+#hqPage .hq-learn-rung { display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto; column-gap: 6px; align-items: center; width: 100%; min-width: 0; padding: 5px 7px; text-align: left; font-family: inherit; color: #ece7d8; border: 1px solid rgba(255,255,255,0.18); background: rgba(255,255,255,0.03); cursor: default; }
+#hqPage .hq-learn-rung b { font-family: 'Cormorant SC', serif; font-size: 13px; letter-spacing: 0.06em; line-height: 1.15; white-space: normal; overflow-wrap: anywhere; }
+#hqPage .hq-learn-rung i { font-style: normal; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #b8a060; }
+#hqPage .hq-learn-rung em { grid-column: 1 / span 2; font-style: normal; font-size: 8px; letter-spacing: 0.14em; color: #8a8270; }
+#hqPage .hq-learn-rung.st-known { border-color: rgba(110,220,120,0.75); background: rgba(110,220,120,0.10); }
+#hqPage .hq-learn-rung.st-known em { color: #7be08a; }
+#hqPage .hq-learn-rung.st-open { border-color: rgba(94,224,200,0.75); }
+#hqPage .hq-learn-rung.st-open em { color: #5ee0c8; }
+#hqPage .hq-learn-rung.st-open.can { cursor: pointer; background: rgba(94,224,200,0.10); }
+#hqPage .hq-learn-rung.st-open.can:hover { background: rgba(94,224,200,0.24); transform: translateY(-1px); }
+#hqPage .hq-learn-rung.st-locked { border-style: dashed; opacity: 0.6; }
+#hqPage .hq-learn-due { color: #5ee0c8; font-style: normal; }
+#hqPage .hq-pp-lv.hq-learn-due { border-color: #5ee0c8; }

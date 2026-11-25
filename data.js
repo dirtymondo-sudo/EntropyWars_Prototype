@@ -23398,6 +23398,14 @@ function swingDoorPushDir(hx, hy, vx, vy) {
    TRIMS — earlier picks win, an id that is off the pool or no longer fits the slots / SP is skipped, never a crash.
    The old API names stay (every caller already routes through them); the secJob parameter is ignored. ═══ */
 const SPELL_SP_MAX = 16;
+/* THE LEARNING CONTEXT (STORY SPELL LEARNING, mondo 2026-11-25 — plan: https://claude.ai/artifact/HvDgiBR7Q6A71zLtMjBrUJ): while a
+   story party member's kit is read or written, the pool is what that member KNOWS (meta.learn) and the SP budget is its level's
+   (storySpBudget). One scoped context, set by withSpellLearnCtx around a synchronous call; null everywhere else, so Online,
+   Practice, the forge, the Balance Lab and the online host keep the whole pool and 16 SP exactly as before.
+   ctx = { race, known: Set, taught: [ids], sp }. */
+let _ewLearnCtx = null;
+function spBudgetNow() { return (_ewLearnCtx && _ewLearnCtx.sp > 0) ? _ewLearnCtx.sp : SPELL_SP_MAX; }
+function withSpellLearnCtx(ctx, fn) { const was = _ewLearnCtx; _ewLearnCtx = ctx || null; try { return fn(); } finally { _ewLearnCtx = was; } }
 const SPELL_TIER_SP = [0, 1, 2, 3, 4];                  // index = tier (1–4)
 const SPELL_TIER_NUMERALS = ['', 'I', 'II', 'III', 'IV'];
 
@@ -23594,7 +23602,16 @@ function unitSpellPoolParts(race, cls, ids, gender) {   // `gender` (2026-10-27)
     /* THE GEAR POOL (Phase 4, the user 2026-09-25): every row of a UNIVERSAL family (GEAR, and TRAINING since the jobs
        removal) is in every unit's pool — never "borrowed". */
     parts.gear = take(universalPassiveIds());
-    if (loadoutBorrows(ids)) parts.borrowRace = take(flRacePool(race).map(sp => sp.id));
+    const L = (_ewLearnCtx && _ewLearnCtx.race === race) ? _ewLearnCtx : null;
+    if (!L && loadoutBorrows(ids)) parts.borrowRace = take(flRacePool(race).map(sp => sp.id));
+    /* STORY SPELL LEARNING (mondo 2026-11-25): a story member's pool is what it KNOWS — its own families' known spells, then the
+       known spells of the families a captive taught it; Adaptable leaves story mode (no borrow window, not in the gear part).
+       The door wheel and GEAR / TRAINING stay open until the DOOR HQ shop and the DOOR teacher exist (mondo's answer). */
+    if (L) {
+        parts.race = parts.race.filter(id => L.known.has(id)).concat(take((L.taught || []).filter(id => L.known.has(id))));
+        parts.gear = parts.gear.filter(id => id !== ADAPTABLE_ROW_ID);
+        parts.borrowRace = [];
+    }
     return parts;
 }
 /* Every id the unit may equip (sealed ones included — spellSealedIds says which). `ids` = the loadout (the borrow). */
@@ -23608,15 +23625,16 @@ function spellAddVerdict(race, cls, ids, id, poolSet, ups, gender) {
     const eq = (ids || []).filter(Boolean);
     const cap = (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 7;
     const used = loadoutSpUsed(eq, ups), need = spellSpCost(id);   // `ups` (Phase 5): the kit's upgrades spend SP too
-    const out = { ok: false, reason: '', note: '', slots: eq.length, cap, sp: used, spMax: SPELL_SP_MAX, need };
+    const out = { ok: false, reason: '', note: '', slots: eq.length, cap, sp: used, spMax: spBudgetNow(), need };
     if (!id) return Object.assign(out, { reason: 'none', note: 'NOTHING TO EQUIP' });
     if (eq.includes(id)) return Object.assign(out, { reason: 'dup', note: 'ALREADY EQUIPPED' });
     const pool = poolSet || new Set(unitSpellPool(race, cls, eq, gender));
+    if (!pool.has(id) && _ewLearnCtx && _ewLearnCtx.race === race && raceFamilyPoolIds(race, gender).includes(id)) return Object.assign(out, { reason: 'unlearned', note: 'NOT LEARNED YET · LEARN IT WITH A LEVEL-UP PICK' });   // STORY SPELL LEARNING
     if (!pool.has(id)) return Object.assign(out, { reason: 'pool', note: loadoutBorrows(eq) || !new Set(unitSpellPool(race, cls, eq.concat(ADAPTABLE_ROW_ID), gender)).has(id) ? 'NOT IN THIS UNIT’S SPELLS' : 'BORROWED · EQUIP ADAPTABLE FIRST' });
     if (_spellSealed(id)) return Object.assign(out, { reason: 'sealed', note: 'SEALED · NOT ALLOWED IN THIS MODE' });
     if (eq.length >= cap) return Object.assign(out, { reason: 'slots', note: 'NO SLOT · ' + eq.length + '/' + cap + ' SLOTS · UNEQUIP SOMETHING' });
     // THE PASSIVE CAP is gone (the user 2026-10-06): passive / gear / training rows only need a slot and their SP
-    if (used + need > SPELL_SP_MAX) return Object.assign(out, { reason: 'sp', note: 'NOT ENOUGH SP · ' + used + '/' + SPELL_SP_MAX + ' USED · NEEDS ' + need + ' · FREE ' + (used + need - SPELL_SP_MAX) + ' MORE' });
+    if (used + need > spBudgetNow()) return Object.assign(out, { reason: 'sp', note: 'NOT ENOUGH SP · ' + used + '/' + spBudgetNow() + ' USED · NEEDS ' + need + ' · FREE ' + (used + need - spBudgetNow()) + ' MORE' });
     return Object.assign(out, { ok: true, reason: 'ok', note: 'EQUIP · ' + need + ' SP' });
 }
 
@@ -23646,7 +23664,7 @@ function isTreeLoadoutLegal(race, cls, secJob, spellIds, ups, gender) {
     const cap = (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 7;
     if (ids.length > cap) return false;
     if (new Set(ids).size !== ids.length) return false;
-    if (loadoutSpUsed(ids, ups) > SPELL_SP_MAX) return false;
+    if (loadoutSpUsed(ids, ups) > spBudgetNow()) return false;
     /* THE UPGRADES (Phase 5): a kit with upgrades is legal only when the repair would keep every one of them */
     if (ups && typeof ups === 'object') {
         const clean = spellUpgradesClean(ids, ups);
@@ -23675,7 +23693,7 @@ function treeLegalSubset(race, cls, secJob, spellIds, gender) {   // `gender` (2
             if (out.length >= cap) break;
             if (!id || out.includes(id) || !pool.has(id) || _spellSealed(id)) continue;
             const c = spellSpCost(id);
-            if (sp + c > SPELL_SP_MAX) continue;
+            if (sp + c > spBudgetNow()) continue;
             out.push(id);   // no passive cap since 2026-10-06 — passives only need a slot and their SP
             sp += c;
         }
@@ -23707,7 +23725,7 @@ function buildTreeLegalLoadout(race, cls, secJob, budget, rng, gender) {
         const picks = [];
         let sp = 0;
         while (picks.length < cap) {
-            const opts = weighted.filter(([id]) => !picks.includes(id) && sp + spellSpCost(id) <= SPELL_SP_MAX);
+            const opts = weighted.filter(([id]) => !picks.includes(id) && sp + spellSpCost(id) <= spBudgetNow());
             if (!opts.length) break;
             let total = 0;
             for (const o of opts) total += o[1];
@@ -27147,7 +27165,7 @@ function spellUpgradeVerdict(race, cls, ids, ups, spellId, upId) {
     const u = SPELL_UPGRADES[upId];
     const need = spellUpgradeSp(upId);
     const used = loadoutSpUsed(eq, ups);
-    const out = { ok: false, reason: '', note: '', need, sp: used, spMax: SPELL_SP_MAX, count: cur.length, max: SPELL_UPGRADE_MAX };
+    const out = { ok: false, reason: '', note: '', need, sp: used, spMax: spBudgetNow(), count: cur.length, max: SPELL_UPGRADE_MAX };
     if (!u || !spellId) return Object.assign(out, { reason: 'none', note: 'NO SUCH UPGRADE' });
     if (!eq.includes(spellId)) return Object.assign(out, { reason: 'unequipped', note: 'EQUIP THE SPELL FIRST' });
     if (cur.includes(upId)) return Object.assign(out, { reason: 'dup', note: 'ALREADY ON' });
@@ -27158,7 +27176,7 @@ function spellUpgradeVerdict(race, cls, ids, ups, spellId, upId) {
         const o = cur.find(x => SPELL_UPGRADES[x] && SPELL_UPGRADES[x].excl === u.excl);
         return Object.assign(out, { reason: 'excl', note: 'ONE OF A KIND · ' + String((SPELL_UPGRADES[o] && SPELL_UPGRADES[o].name) || o).toUpperCase() + ' IS ON' });
     }
-    if (used + need > SPELL_SP_MAX) return Object.assign(out, { reason: 'sp', note: 'NOT ENOUGH SP · ' + used + '/' + SPELL_SP_MAX + ' USED · NEEDS ' + need });
+    if (used + need > spBudgetNow()) return Object.assign(out, { reason: 'sp', note: 'NOT ENOUGH SP · ' + used + '/' + spBudgetNow() + ' USED · NEEDS ' + need });
     return Object.assign(out, { ok: true, reason: 'ok', note: 'UPGRADE · ' + need + ' SP' });
 }
 /* THE REPAIR (the host's check, createUnit's, every write's): the kit `ids` is already legal (treeLegalSubset); walk it in
@@ -27181,7 +27199,7 @@ function treeLegalUpgrades(race, cls, ids, ups) {
             if (row.after && !keep.includes(row.after)) continue;   // +2 needs +1
             if (row.excl && keep.some(o => SPELL_UPGRADES[o].excl === row.excl)) continue;
             const c = spellUpgradeSp(u);
-            if (sp + c > SPELL_SP_MAX) continue;
+            if (sp + c > spBudgetNow()) continue;
             keep.push(u); sp += c;
         }
         if (keep.length) out[id] = keep;
@@ -104206,6 +104224,11 @@ function hqPartyGrantXp(m, gain, base) {
     m.lvl = xpLevelFor(m.xp);
     const after = hqPartyXp(m);
     const levels = (after.lvl > before.lvl) ? hqPartyLevelGains(base && base.hp, base && base.mp, before.lvl, after.lvl) : [];
+    /* STORY SPELL LEARNING (2026-11-25): a level that brings a pick says so on its beat (the debrief prints the milestone line) */
+    if (levels.length && typeof hqLearnPicksBetween === 'function') {
+        const picks = hqLearnPicksBetween(m, before.lvl, after.lvl);
+        levels.forEach(b => { const n = picks[b.lvl] | 0; if (n) { b.learn = n; const t = SPELL_LEARN_RULES.labels.pick + (n > 1 ? ' ×' + n : ''); b.milestone = b.milestone ? b.milestone + ' · ' + t : t; } });
+    }
     return { id: m.id, gain: add, before: { lvl: before.lvl, xp: before.xp, pct: before.pct }, after: { lvl: after.lvl, xp: after.xp, pct: after.pct, left: after.left, max: after.max }, levels };
 }
 /* THE SHARE of a fight's pool one member takes home: dead at the end → nothing; fought → the whole share;
@@ -104345,6 +104368,9 @@ function hqPartyNormMember(m, r) {
     if (m.xpCurve !== XP_CURVE.v) { m.xp = xpThreshold((Number.isFinite(+m.lvl) && +m.lvl >= 1) ? Math.min(LEVEL_CAP, +m.lvl | 0) : HQ_LEVEL_RULES.start); m.xpCurve = XP_CURVE.v; }
     m.xp = Math.max(0, Math.min(xpThreshold(LEVEL_CAP), Math.round(+m.xp)));
     m.lvl = xpLevelFor(m.xp);
+    /* STORY SPELL LEARNING (2026-11-25): the ledger exists and the kit holds only known spells within the level's SP (no old-save
+       migration, mondo's standing rule: a member filed before starts with the level-1 three and every earned pick to spend) */
+    if (spellLearnOn()) { const fresh = !(m.meta.learn && Array.isArray(m.meta.learn.known)); hqLearnLedger(m); hqLearnFitKit(m, fresh); }
     return m;
 }
 /* the races the officer may ENLIST: the account's unlocked units (the starters offline), the 3D-only rule kept, the dev switch honoured */
@@ -104391,6 +104417,225 @@ function raceDefaultKit(race, lead, gender) {   // `gender` (2026-10-27): RACE_G
     return treeLegalSubset(race, UNIT_CLASS, '', wish, gender);
 }
 function hqOfficerKit(race) { return raceDefaultKit(race || HQ_OFFICER_RULES.race, [ADAPTABLE_ROW_ID]); }
+/* ══ STORY SPELL LEARNING (mondo 2026-11-25; the plan he approved: https://claude.ai/artifact/HvDgiBR7Q6A71zLtMjBrUJ) ══
+   mondo: "You can have 7 Abilities/Passives Equipped with upgrades · Learn spells by leveling up · unlock them in order (you can
+   choose from any family but you have to climb up each tier in order) · Units should never forget spells/abilities and the player
+   should never have to choose to delete them." His answers (11-25): everything learned by level 64; 3 spells at level 1, 4 at
+   level 5; the SP budget climbs with the level; a captive teaches a SHARED family (never a signature one) for its freedom; Gear and
+   Training are not learned by leveling (the DOOR HQ shop / a DOOR teacher, later); no cap on taught families; Adaptable leaves
+   story mode. STORY ONLY: everything here runs inside withSpellLearnCtx (the party's own reads and writes, a story native's build);
+   Online / Practice / the forge / the Balance Lab never set it.
+   THE LEDGER: member.meta.learn = { known: [ids], used: picks spent, taught: [{ fam, from, ids }], taughtAt: level of the first
+   taught family }. `known` only ever grows. THE SCHEDULE: a unit with N own spells knows `start` at level 1 and takes N − start
+   picks, evenly spread to `finish`, never more than `maxGap` levels apart (small pools finish early: 12 spells → level 37).
+   Once a captive has taught it a family a unit picks every `taughtGap` levels. THE LADDER: in each family a spell opens when the
+   unit knows a spell of the family's next-lower tier (a family's lowest tier is open at once); tier III waits for level 16 and
+   tier IV for 32 (`floors`) unless nothing else is left to learn. */
+const SPELL_LEARN_RULES = {
+    on: true,
+    start: 3,                    // spells known at level 1
+    maxGap: 4,                   // never more than 4 levels between two picks
+    finish: 64,                  // every own spell learned by this level (mondo: 64)
+    floors: { 3: 16, 4: 32 },    // tier → the level it opens at (waived when nothing else is left)
+    taughtGap: 2,                // a unit a captive has taught picks every 2 levels from then on
+    sp: { base: 5, every: 5, max: 16 },   // THE SP CLIMB (mondo 11-25): 5 SP + 1 every 5 levels → 6 at 5, 9 at 20, 16 at 55
+    labels: { pick: 'NEW SPELL TO LEARN' },
+};
+function spellLearnOn() { return !!(SPELL_LEARN_RULES && SPELL_LEARN_RULES.on); }
+function storySpBudget(lvl) { const S = SPELL_LEARN_RULES.sp; return Math.max(1, Math.min(S.max, S.base + Math.floor(Math.max(1, lvl | 0) / S.every))); }
+/* the families a unit learns from, in its RACE_FAMILIES order, then the taught ones: [{ fam, ids (tier, then name), own, from }] */
+function spellLearnFamilies(race, gender, taught) {
+    const out = [];
+    const ok = id => typeof SPELL_BY_ID !== 'undefined' && !!SPELL_BY_ID[id];
+    const byTier = ids => ids.filter(ok).map((id, i) => [id, i]).sort((a, b) => (spellTierOf(a[0]) - spellTierOf(b[0])) || (a[1] - b[1])).map(x => x[0]);
+    for (const f of raceFamilyIds(race)) { const ids = byTier(raceFamilyMemberIds(race, f, gender)); if (ids.length) out.push({ fam: f, ids, own: true, from: null }); }
+    for (const t of (taught || [])) {
+        if (!t || !t.fam || out.some(x => x.fam === t.fam)) continue;
+        const ids = byTier(Array.isArray(t.ids) ? t.ids : []);
+        if (ids.length) out.push({ fam: t.fam, ids, own: false, from: t.from || null });
+    }
+    return out;
+}
+function spellLearnOwnCount(race, gender) { return spellLearnFamilies(race, gender, null).reduce((a, F) => a + F.ids.length, 0); }
+/* THE LADDER: is `id` open in its family, given what is known? */
+function spellLearnOpen(famIds, knownSet, id) {
+    const t = spellTierOf(id);
+    const tiers = Array.from(new Set(famIds.map(x => spellTierOf(x)))).sort((a, b) => a - b);
+    const i = tiers.indexOf(t);
+    if (i <= 0) return true;
+    return famIds.some(x => knownSet.has(x) && spellTierOf(x) === tiers[i - 1]);
+}
+function spellLearnFloor(tier) { return (SPELL_LEARN_RULES.floors && SPELL_LEARN_RULES.floors[tier]) || 1; }
+/* every spell one pick can take now: [{ id, fam, tier }] (the floors hold unless nothing else is open) */
+function spellLearnOptions(race, gender, known, lvl, taught) {
+    const K = new Set(known || []);
+    const open = [];
+    for (const F of spellLearnFamilies(race, gender, taught)) for (const id of F.ids) if (!K.has(id) && spellLearnOpen(F.ids, K, id)) open.push({ id, fam: F.fam, tier: spellTierOf(id) });
+    const ok = open.filter(o => (lvl | 0) >= spellLearnFloor(o.tier));
+    return ok.length ? ok : open;
+}
+/* THE LEVEL-1 THREE: the lowest tier first, one spell from each family in turn (the unit's own family order) */
+function spellLearnStart(race, gender) {
+    const fams = spellLearnFamilies(race, gender, null);
+    const K = new Set(), out = [], n = SPELL_LEARN_RULES.start;
+    for (let t = 1; t <= 4 && out.length < n; t++) {
+        let added = true;
+        while (added && out.length < n) {
+            added = false;
+            for (const F of fams) {
+                if (out.length >= n) break;
+                const id = F.ids.find(x => !K.has(x) && spellTierOf(x) === t && spellLearnOpen(F.ids, K, x));
+                if (id) { K.add(id); out.push(id); added = true; }
+            }
+        }
+    }
+    return out;
+}
+/* the levels a unit with `total` own spells takes its picks at */
+function spellLearnPickLevels(total) {
+    const R = SPELL_LEARN_RULES, n = Math.max(0, (total | 0) - R.start);
+    if (!n) return [];
+    const gap = Math.min(R.maxGap, (R.finish - 1) / n);
+    const out = [];
+    for (let k = 1; k <= n; k++) out.push(1 + Math.ceil(k * gap - 1e-9));
+    return out;
+}
+/* the picks a unit has EARNED by level `lvl` (`taughtAt` > 0: a pick every taughtGap levels after it) */
+function spellLearnPicksAt(race, gender, lvl, taughtAt) {
+    const L = Math.max(1, lvl | 0);
+    const levels = spellLearnPickLevels(spellLearnOwnCount(race, gender));
+    const T = taughtAt | 0;
+    if (!(T > 0) || L <= T) return levels.filter(x => x <= L).length;
+    return levels.filter(x => x <= T).length + Math.floor((L - T) / Math.max(1, SPELL_LEARN_RULES.taughtGap | 0));
+}
+/* the next level that brings a pick (null = none left on the schedule) */
+function spellLearnNextAt(race, gender, lvl, taughtAt) {
+    const have = spellLearnPicksAt(race, gender, lvl, taughtAt);
+    for (let L = (lvl | 0) + 1; L <= LEVEL_CAP; L++) if (spellLearnPicksAt(race, gender, L, taughtAt) > have) return L;
+    return null;
+}
+/* A STORY NATIVE / ALLY / CAPTIVE knows what its level gives it: the level-1 three + every pick its schedule earned, chosen by a
+   seeded draw (the same race, level and seed always know the same spells) */
+function spellLearnAutoKnown(race, gender, lvl, seed) {
+    const known = spellLearnStart(race, gender);
+    const levels = spellLearnPickLevels(spellLearnOwnCount(race, gender)).filter(x => x <= Math.max(1, lvl | 0));
+    const rnd = hqLevelRng(seed != null ? seed : (race + ':' + gender + ':' + lvl));
+    for (const at of levels) {
+        const opts = spellLearnOptions(race, gender, known, at, null);
+        if (!opts.length) break;
+        known.push(opts[Math.floor(rnd() * opts.length) % opts.length].id);
+    }
+    return known;
+}
+/* the context a STORY NATIVE is built under (map.js createUnit's story branch) */
+function spellLearnNativeCtx(race, gender, lvl, seed) {
+    if (!spellLearnOn() || !race) return null;
+    return { race, known: new Set(spellLearnAutoKnown(race, gender, lvl, seed)), taught: [], sp: storySpBudget(lvl) };
+}
+/* THE MEMBER'S LEDGER — read and repaired in place (a member filed before learning starts with the level-1 three, every earned
+   pick still to spend) */
+function hqLearnLedger(m) {
+    if (!m || !m.meta) return null;
+    const race = m.meta.race || 'door agent', gender = m.meta.gender;
+    let L = m.meta.learn;
+    if (!L || typeof L !== 'object' || !Array.isArray(L.known)) L = m.meta.learn = { known: spellLearnStart(race, gender), used: 0, taught: [], taughtAt: 0 };
+    L.known = L.known.filter((id, i, a) => typeof id === 'string' && id && a.indexOf(id) === i);
+    if (!Array.isArray(L.taught)) L.taught = [];
+    L.used = Math.max(0, L.used | 0);
+    L.taughtAt = Math.max(0, L.taughtAt | 0);
+    return L;
+}
+/* a new member that arrives already knowing what its level gives it (a recruit, a capture, a quest's reward) */
+function hqLearnSeedMember(m, seed) {
+    if (!m || !m.meta) return;
+    const race = m.meta.race || 'door agent', gender = m.meta.gender, lvl = hqPartyXp(m).lvl;
+    m.meta.learn = { known: spellLearnAutoKnown(race, gender, lvl, seed != null ? seed : m.id), used: spellLearnPicksAt(race, gender, lvl, 0), taught: [], taughtAt: 0 };
+}
+function hqLearnCtx(m) {
+    if (!spellLearnOn() || !m || !m.meta) return null;
+    const L = hqLearnLedger(m);
+    const taught = [];
+    for (const t of L.taught) for (const id of (t && Array.isArray(t.ids) ? t.ids : [])) taught.push(id);
+    return { race: m.meta.race || 'door agent', known: new Set(L.known), taught, sp: storySpBudget(hqPartyXp(m).lvl) };
+}
+function hqLearnRun(m, fn) { return withSpellLearnCtx(hqLearnCtx(m), fn); }
+function hqLearnRunId(profile, memberId, fn) {
+    const r = hqPartyRecordRaw(profile);
+    const m = r ? r.members.find(x => x && x.id === memberId) : null;
+    return m ? hqLearnRun(m, fn) : fn();
+}
+/* THE MODEL the spell pick screen draws: the families side by side, each rung known / open / locked (and why) */
+function hqLearnInfo(m) {
+    if (!spellLearnOn() || !m || !m.meta) return null;
+    const L = hqLearnLedger(m);
+    const race = m.meta.race || 'door agent', gender = m.meta.gender, lvl = hqPartyXp(m).lvl;
+    const fams = spellLearnFamilies(race, gender, L.taught);
+    const K = new Set(L.known);
+    const opts = spellLearnOptions(race, gender, L.known, lvl, L.taught);
+    const openSet = new Set(opts.map(o => o.id));
+    let total = 0, knownCount = 0;
+    const families = fams.map(F => {
+        const meta = SPELL_FAMILIES[F.fam] || {};
+        total += F.ids.length;
+        const rows = F.ids.map(id => {
+            const tier = spellTierOf(id);
+            const st = K.has(id) ? 'known' : openSet.has(id) ? 'open' : 'locked';
+            if (st === 'known') knownCount++;
+            const why = st !== 'locked' ? '' : (spellLearnOpen(F.ids, K, id) ? 'LEVEL ' + spellLearnFloor(tier) : 'TIER BELOW FIRST');
+            return { id, sp: SPELL_BY_ID[id], tier, numeral: SPELL_TIER_NUMERALS[tier], st, why };
+        });
+        return { fam: F.fam, name: meta.name || F.fam, glyph: meta.glyph || '◇', color: meta.color || '#8a8270', own: F.own, from: F.from, rows, known: rows.filter(x => x.st === 'known').length };
+    });
+    const earned = spellLearnPicksAt(race, gender, lvl, L.taughtAt);
+    const left = total - knownCount;
+    const picks = left > 0 ? Math.max(0, earned - L.used) : 0;
+    return { lvl, total, knownCount, left, picks: Math.min(picks, left), earned, used: L.used, sp: storySpBudget(lvl), nextAt: left > 0 ? spellLearnNextAt(race, gender, lvl, L.taughtAt) : null, families, taught: L.taught.slice() };
+}
+/* THE PICK: learn `spellId` with one earned pick — the only write of `known` besides a captive's family */
+function hqPartyLearnSpell(profile, memberId, spellId) {
+    const r = hqPartyRecord(profile); if (!r) return { ok: false, reason: 'noprofile' };
+    const m = r.members.find(x => x.id === memberId); if (!m) return { ok: false, reason: 'member' };
+    const I = hqLearnInfo(m); if (!I) return { ok: false, reason: 'off', note: 'SPELL LEARNING IS OFF' };
+    const sp = SPELL_BY_ID[spellId];
+    if (!I.picks) return { ok: false, reason: 'nopick', note: I.nextAt ? 'NO SPELL TO LEARN YET · NEXT AT LEVEL ' + I.nextAt : 'NOTHING LEFT TO LEARN' };
+    let row = null; I.families.forEach(F => F.rows.forEach(x => { if (x.id === spellId) row = x; }));
+    if (!row || !sp) return { ok: false, reason: 'pool', note: 'NOT ONE OF THIS UNIT’S SPELLS' };
+    if (row.st === 'known') return { ok: false, reason: 'dup', note: 'ALREADY KNOWN' };
+    if (row.st !== 'open') return { ok: false, reason: 'locked', note: 'LOCKED · ' + (row.why === 'TIER BELOW FIRST' ? 'LEARN THE TIER BELOW IN THIS FAMILY FIRST' : 'OPENS AT ' + row.why) };
+    const L = hqLearnLedger(m);
+    L.known.push(spellId); L.used += 1;
+    r.at = Date.now();
+    return { ok: true, kind: 'learn', id: spellId, note: 'LEARNED · ' + String(sp.name || spellId).toUpperCase() + ' · TIER ' + SPELL_TIER_NUMERALS[spellTierOf(spellId)], picks: Math.max(0, I.picks - 1), member: m };
+}
+/* the picks each new level brings (the debrief's level beats) */
+function hqLearnPicksBetween(m, from, to) {
+    if (!spellLearnOn() || !m || !m.meta) return {};
+    const L = hqLearnLedger(m), race = m.meta.race || 'door agent', gender = m.meta.gender;
+    const out = {};
+    let prev = spellLearnPicksAt(race, gender, from, L.taughtAt);
+    for (let lv = (from | 0) + 1; lv <= (to | 0); lv++) { const n = spellLearnPicksAt(race, gender, lv, L.taughtAt); if (n > prev) out[lv] = n - prev; prev = n; }
+    return out;
+}
+/* THE KIT REPAIR: a member's kit holds only what it knows and fits its level's SP (cheap check first; runs on every record read) */
+function hqLearnFitKit(m, fresh) {   // `fresh`: the ledger was just made — an empty kit is filled from what it knows
+    if (!spellLearnOn() || !m || !m.meta || !m.loadout) return false;
+    const C = hqLearnCtx(m); if (!C) return false;
+    const race = C.race, gender = m.meta.gender;
+    const eq = hqPartySpellIds(m);
+    const wheel = new Set(doorGunWheelPool(race));
+    const uni = new Set(universalPassiveIds()); uni.delete(ADAPTABLE_ROW_ID);
+    const ok = eq.every(id => C.known.has(id) || wheel.has(id) || uni.has(id)) && loadoutSpUsed(eq, m.meta.spellUpgrades) <= C.sp
+        && !(fresh && !eq.some(id => !spellIsPassive(id)));
+    if (ok) return false;
+    withSpellLearnCtx(C, () => {
+        let ids = treeLegalSubset(race, UNIT_CLASS, '', eq, gender);
+        if (!ids.some(id => !spellIsPassive(id))) ids = treeLegalSubset(race, UNIT_CLASS, '', raceDefaultKit(race, null, gender), gender);
+        m.meta.customSpells = ids.slice();
+        m.loadout.spells = ids.slice();
+        if (m.meta.spellUpgrades) { m.meta.spellUpgrades = treeLegalUpgrades(race, UNIT_CLASS, ids, m.meta.spellUpgrades); if (!Object.keys(m.meta.spellUpgrades).length) delete m.meta.spellUpgrades; }
+    });
+    return true;
+}
 function hqPartyGenders(race) {
     let g = null;
     try { g = (typeof getAvailableGendersForRace === 'function') ? getAvailableGendersForRace(race) : null; } catch (e) { g = null; }
@@ -104607,7 +104852,9 @@ function hqPartySpellIds(m) {
     return ((m.loadout && Array.isArray(m.loadout.spells)) ? m.loadout.spells : []).filter(Boolean);
 }
 function hqPartySpellCap() { return (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 7; }
-function hqPartySpellTree(m) {
+/* STORY SPELL LEARNING (2026-11-25): run inside the member's learning context (its known spells, its level's SP) */
+function hqPartySpellTree(m) { return hqLearnRun(m, () => _hqPartySpellTreeRaw(m)); }
+function _hqPartySpellTreeRaw(m) {
     if (!m) return null;
     const race = (m.meta && m.meta.race) || 'door agent', cls = UNIT_CLASS;
     const equipped = hqPartySpellIds(m);
@@ -104615,7 +104862,7 @@ function hqPartySpellTree(m) {
     const parts = unitSpellPoolParts(race, cls, equipped, gender);   // the Adaptable row in the kit opens the borrow part
     const ups = treeLegalUpgrades(race, cls, equipped, m.meta && m.meta.spellUpgrades);   // THE UPGRADES (Phase 5): as createUnit will keep them
     const borrows = loadoutBorrows(equipped);
-    return { parts, equipped, ups, race, gender, cls, cap: hqPartySpellCap(), spMax: SPELL_SP_MAX, spUsed: loadoutSpUsed(equipped, ups), borrows, isFreelancer: borrows };
+    return { parts, equipped, ups, race, gender, cls, cap: hqPartySpellCap(), spMax: spBudgetNow(), spUsed: loadoutSpUsed(equipped, ups), borrows, isFreelancer: borrows };
 }
 /* one ability's state for the rack: equipped · ok · slots (no slot left) · sp (not enough SP) · sealed */
 function hqPartySpellState(T, id, poolSet) {
@@ -104626,7 +104873,9 @@ function hqPartySpellState(T, id, poolSet) {
 /* THE MODEL the pause menu draws: four tier rows, IV → I, every ability of the unit's pool on its tier with its state;
    an Adaptable kit's rows also carry its borrowed (equipped) abilities and a BORROW key per tier. (`isFreelancer` is the
    old name of `borrows`, kept for the drawer.) */
-function hqPartyTreeCircuit(m) {
+/* STORY SPELL LEARNING (2026-11-25): run inside the member's learning context (its known spells, its level's SP) */
+function hqPartyTreeCircuit(m) { const C = hqLearnRun(m, () => _hqPartyTreeCircuitRaw(m)); if (C) C.learn = hqLearnInfo(m); return C; }
+function _hqPartyTreeCircuitRaw(m) {
     const T = hqPartySpellTree(m);
     if (!T) return null;
     const { parts, equipped, cap } = T;
@@ -104673,7 +104922,9 @@ function hqPartyTreeCircuit(m) {
     return { tiers, families, borrowAll, passives, upgrades, ups: T.ups, upMax: SPELL_UPGRADE_MAX, equipped: equipped.slice(), used: equipped.length, cap, spUsed: T.spUsed, spMax: T.spMax, borrows: T.borrows, isFreelancer: T.borrows, unplaced: dropped, race: T.race, cls: T.cls };
 }
 /* THE ONE WRITE: a member's spell list, made legal (the forge's own repair), into both places */
-function hqPartySetSpells(profile, memberId, ids) {
+/* STORY SPELL LEARNING (2026-11-25): run inside the member's learning context (its known spells, its level's SP) */
+function hqPartySetSpells(profile, memberId, ids) { return hqLearnRunId(profile, memberId, () => _hqPartySetSpellsRaw(profile, memberId, ids)); }
+function _hqPartySetSpellsRaw(profile, memberId, ids) {
     const r = hqPartyRecord(profile); if (!r) return { ok: false, reason: 'noprofile' };
     const m = r.members.find(x => x.id === memberId); if (!m) return { ok: false, reason: 'member' };
     const race = m.meta.race || 'door agent', cls = UNIT_CLASS;
@@ -104692,7 +104943,9 @@ function hqPartySetSpells(profile, memberId, ids) {
 }
 /* THE CLICK — `key` is an ability id (altId, the old fork option, wins when given): equipped → unequip it (just it);
    else equip it when the verdict allows; an Adaptable kit's BORROW key → the picker (the caller's). */
-function hqPartyTreeClick(profile, memberId, key, altId) {
+/* STORY SPELL LEARNING (2026-11-25): run inside the member's learning context (its known spells, its level's SP) */
+function hqPartyTreeClick(profile, memberId, key, altId) { return hqLearnRunId(profile, memberId, () => _hqPartyTreeClickRaw(profile, memberId, key, altId)); }
+function _hqPartyTreeClickRaw(profile, memberId, key, altId) {
     const r = hqPartyRecord(profile); if (!r) return { ok: false, reason: 'noprofile' };
     const m = r.members.find(x => x.id === memberId); if (!m) return { ok: false, reason: 'member' };
     const T = hqPartySpellTree(m); if (!T) return { ok: false, reason: 'notree', note: 'NO SPELLS TO PICK' };
@@ -104743,14 +104996,18 @@ function hqPartySocketEquip(profile, memberId, key, spellId) {
     return { ok: true, kind: 'socket', ids: w.ids, added: [spellId], note: 'BORROWED · ' + spellTierOf(spellId) + ' SP' };
 }
 /* DEFAULTS (raceDefaultKit — THE OFFICER's leads with Adaptable) · RANDOM (buildTreeLegalLoadout) · CLEAR */
-function hqPartySpellsDefault(profile, memberId) {
+/* STORY SPELL LEARNING (2026-11-25): run inside the member's learning context (its known spells, its level's SP) */
+function hqPartySpellsDefault(profile, memberId) { return hqLearnRunId(profile, memberId, () => _hqPartySpellsDefaultRaw(profile, memberId)); }
+function _hqPartySpellsDefaultRaw(profile, memberId) {
     const r = hqPartyRecord(profile); if (!r) return { ok: false, reason: 'noprofile' };
     const m = r.members.find(x => x.id === memberId); if (!m) return { ok: false, reason: 'member' };
     const race = m.meta.race || 'door agent';
     const w = hqPartySetSpells(profile, memberId, m.you ? hqOfficerKit(race) : raceDefaultKit(race, null, m.meta.gender));
     return Object.assign({ kind: 'defaults', note: 'THE DEFAULT KIT' }, w);
 }
-function hqPartySpellsRandom(profile, memberId, rng) {
+/* STORY SPELL LEARNING (2026-11-25): run inside the member's learning context (its known spells, its level's SP) */
+function hqPartySpellsRandom(profile, memberId, rng) { return hqLearnRunId(profile, memberId, () => _hqPartySpellsRandomRaw(profile, memberId, rng)); }
+function _hqPartySpellsRandomRaw(profile, memberId, rng) {
     const r = hqPartyRecord(profile); if (!r) return { ok: false, reason: 'noprofile' };
     const m = r.members.find(x => x.id === memberId); if (!m) return { ok: false, reason: 'member' };
     const ids = buildTreeLegalLoadout(m.meta.race || 'door agent', m.cls, '', hqPartySpellCap(), rng, m.meta.gender);
@@ -104762,7 +105019,9 @@ function hqPartySpellsRandom(profile, memberId, rng) {
 }
 /* ⚙ THE UPGRADE CLICK (Phase 5): toggle upgrade `upId` on equipped spell `spellId` — off gives its SP back; on when
    spellUpgradeVerdict allows (allowed · ≤ 2 · one of a kind · the SP). Viewer-local like every rack write (RULE #2). */
-function hqPartyUpgradeClick(profile, memberId, spellId, upId) {
+/* STORY SPELL LEARNING (2026-11-25): run inside the member's learning context (its known spells, its level's SP) */
+function hqPartyUpgradeClick(profile, memberId, spellId, upId) { return hqLearnRunId(profile, memberId, () => _hqPartyUpgradeClickRaw(profile, memberId, spellId, upId)); }
+function _hqPartyUpgradeClickRaw(profile, memberId, spellId, upId) {
     const r = hqPartyRecord(profile); if (!r) return { ok: false, reason: 'noprofile' };
     const m = r.members.find(x => x.id === memberId); if (!m) return { ok: false, reason: 'member' };
     const T = hqPartySpellTree(m); if (!T) return { ok: false, reason: 'notree', note: 'NO SPELLS TO PICK' };
@@ -104809,6 +105068,8 @@ function hqPartyEnlist(profile, spec) {
     if ((spec.lvl | 0) > 0) { m.xp = xpThreshold(spec.lvl | 0); m.lvl = xpLevelFor(m.xp); }   // THE ONE-WAY DOOR: a capture keeps the level it was fought at (the user, 2026-09-25)
     else if (HQ_LEVEL_RULES.enlist === 'party') { m.xp = xpThreshold(Math.max(HQ_LEVEL_RULES.start, hqPartyLevel(profile))); m.lvl = xpLevelFor(m.xp); }   // THE LEVELS: a recruit joins at the party's level
     m.id = 'p' + (r.seq++);
+    /* STORY SPELL LEARNING (2026-11-25): a recruit / capture / reward arrives knowing what its level gives it (its picks spent) */
+    if (spellLearnOn()) { hqLearnSeedMember(m, m.id + ':' + race); hqLearnFitKit(m, true); }
     r.members.push(m); r.at = Date.now();
     return { ok: true, member: m, index: r.members.length - 1 };
 }
@@ -104888,7 +105149,14 @@ function hqPartyForLaunch(profile) {
     if (!fit.length) return null;
     const members = fit.map(m => {
         const mx = hqPartyXp(m);
+        /* STORY SPELL LEARNING (2026-11-25): a kit with no active spell would get the race's whole default kit in createUnit — fill it
+           here from what the member KNOWS instead (its level's SP), so no unknown spell reaches the board */
+        if (spellLearnOn() && !hqPartySpellIds(m).some(id => !spellIsPassive(id))) {
+            const ids = hqLearnRun(m, () => raceDefaultKit(m.meta.race || 'door agent', null, m.meta.gender));
+            if (ids.some(id => !spellIsPassive(id))) { m.meta.customSpells = ids.slice(); m.loadout.spells = ids.slice(); }
+        }
         const meta = Object.assign({}, m.meta, { partyId: m.id, storyLevel: mx.lvl, storyXp: mx.xp });   // THE LEVELS: map.js createUnit builds the member at its ledger's level; the xp rides for the HUD's bar
+        delete meta.learn;   // the ledger stays home
         if (m.hp != null && m.hpMax != null) { meta.hp = m.hp; meta.hpMax = m.hpMax; }
         if (m.mp != null && m.mpMax != null) { meta.mp = m.mp; meta.mpMax = m.mpMax; }
         /* THE SHARED BAG (2026-09-21): nobody carries pockets — the party's ONE bag rides as `bag` and every member pulls from it

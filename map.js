@@ -3204,7 +3204,12 @@
         }
         /* THE LEVELS (2026-09-21): the ledger on the card — the Lv chip before the race, the XP bar under the vitals (data.js hqPartyXp) */
         function _hqPauseXpOf(m) { try { return (typeof window.hqPartyXp === 'function') ? window.hqPartyXp(m) : null; } catch (e) { return null; } }
-        function _hqPauseLvChip(m) { const x = _hqPauseXpOf(m); return x ? `<i class="hq-pp-lv">LV ${x.lvl}</i> ` : ''; }
+        function _hqPauseLvChip(m) {
+            const x = _hqPauseXpOf(m);
+            /* STORY SPELL LEARNING (2026-11-25): a member with an unspent pick wears ✦ on its card */
+            let due = 0; try { const I = (typeof window.hqLearnInfo === 'function') ? window.hqLearnInfo(m) : null; due = I ? I.picks : 0; } catch (e) { due = 0; }
+            return (x ? `<i class="hq-pp-lv">LV ${x.lvl}</i> ` : '') + (due ? `<i class="hq-pp-lv hq-learn-due" title="${due} spell${due === 1 ? '' : 's'} to learn: open the member, ABILITIES, EDIT">✦ ${due} NEW SPELL${due === 1 ? '' : 'S'}</i> ` : '');
+        }
         function _hqPauseXpRow(m) {
             const x = _hqPauseXpOf(m); if (!x) return '';
             return `<span class="hq-pp-vit xp"><span class="hq-pp-vbar xp"><i style="width:${(x.pct * 100).toFixed(1)}%"></i></span><em>${x.max ? 'MAX LEVEL' : 'EXP ' + x.into + ' / ' + x.need}</em></span>`;
@@ -3473,7 +3478,8 @@
             }
             const field = (typeof window.hqPartyFieldSpells === 'function') ? window.hqPartyFieldSpells(u, m) : [];
             const circOpen = _hqPause.circuit === m.id;   // THE SPELL TIERS IN THE FIELD (2026-09-24; was THE CIRCUIT, 2026-09-21): the tier rack on the sheet
-            html += `<div class="hq-pp-sec"><b>ABILITIES</b><span>${spells.length} EQUIPPED${field.length ? ' · ' + field.length + ' USABLE HERE' : ''}</span><button class="hq-btn hq-btn-xs hq-pp-sec-btn${circOpen ? ' on' : ''}" data-party-act="circuit:${_hqEsc(m.id)}" title="Equip abilities by tier (I–IV = 1–4 SP · 7 slots · 16 SP), as in the party builder">${circOpen ? '◂ CLOSE · SPELLS' : '✎ EDIT · SPELLS'}</button></div>`;
+            const _lrn = (typeof window.hqLearnInfo === 'function') ? window.hqLearnInfo(m) : null;   // STORY SPELL LEARNING (2026-11-25)
+            html += `<div class="hq-pp-sec"><b>ABILITIES</b><span>${spells.length} EQUIPPED${field.length ? ' · ' + field.length + ' USABLE HERE' : ''}${_lrn ? ' · KNOWS ' + _lrn.knownCount + ' OF ' + _lrn.total : ''}${_lrn && _lrn.picks ? ` · <em class="hq-learn-due">${_lrn.picks} TO LEARN</em>` : ''}</span><button class="hq-btn hq-btn-xs hq-pp-sec-btn${circOpen ? ' on' : ''}" data-party-act="circuit:${_hqEsc(m.id)}" title="Equip abilities by tier (I–IV = 1–4 SP · 7 slots · 16 SP), as in the party builder">${circOpen ? '◂ CLOSE · SPELLS' : '✎ EDIT · SPELLS'}</button></div>`;
             if (circOpen) html += _hqPauseCircuitHtml(m);
             if (!spells.length) html += `<p class="hq-panel-note">No abilities on the record.</p>`;
             else {
@@ -3625,6 +3631,39 @@
                 + `<span class="hq-circ-meta">${_hqEsc(aoe ? _hqPauseSpellMeta(sp).replace(/ · AOE \d+/, '') : _hqPauseSpellMeta(sp))}</span>`
                 + `<em>${_hqEsc(verdict)}</em>${aoe}</button>`;
         }
+        /* ══ STORY SPELL LEARNING (mondo 2026-11-25 — the plan's mock-up 1): THE SPELL PICK. The unit's families side by side,
+           lowest tier on top; a rung is KNOWN (green), OPEN (can be learned now — a click spends one pick) or LOCKED (the tier
+           below first, or its level). Never a forget / replace button: a learned spell stays learned (data.js hqLearnInfo /
+           hqPartyLearnSpell). Viewer-local like every rack write (RULE #2: the party is local). ══ */
+        function _hqPauseLearnHtml(m, I) {
+            if (!I) return '';
+            const P = _hqPause;
+            const open = !!I.picks || (P && P.learnOpen === m.id);
+            const head = I.picks
+                ? `<b class="due">${I.picks} SPELL${I.picks === 1 ? '' : 'S'} TO LEARN</b>`
+                : `<b>LEARNED ${I.knownCount} OF ${I.total}</b>`;
+            const sub = I.left <= 0 ? 'EVERY SPELL LEARNED' : (I.nextAt ? `NEXT PICK AT LEVEL ${I.nextAt}` : '');
+            let html = `<div class="hq-learn${I.picks ? ' due' : ''}"><div class="hq-learn-bar">${head}<span>KNOWS ${I.knownCount} OF ${I.total}${sub ? ' · ' + sub : ''}</span>`
+                + (I.picks ? '' : `<button class="hq-btn hq-btn-xs" data-party-act="learnview:${_hqEsc(m.id)}">${open ? '◂ HIDE' : 'ALL SPELLS ▸'}</button>`) + `</div>`;
+            if (!open) return html + `</div>`;
+            if (I.picks) html += `<p class="hq-learn-note">PICK ONE · CLIMB EACH FAMILY LOWEST TIER FIRST · TIER III OPENS AT LEVEL 16, TIER IV AT 32 · NOTHING IS EVER FORGOTTEN</p>`;
+            html += `<div class="hq-learn-grid">`;
+            I.families.forEach(F => {
+                html += `<div class="hq-learn-fam" style="--fam:${_hqEsc(F.color)}"><div class="hq-learn-famhead"><b>${_hqEsc(F.glyph)} ${_hqEsc(String(F.name).toUpperCase())}</b><i>${F.known} / ${F.rows.length}</i></div>`;
+                if (!F.own) html += `<div class="hq-learn-taught">TAUGHT${F.from ? ' BY ' + _hqEsc(String(F.from).toUpperCase()) : ''}</div>`;
+                F.rows.forEach(x => {
+                    const sp = x.sp || {};
+                    const can = x.st === 'open' && I.picks > 0;
+                    const tag = x.st === 'known' ? '✓' : x.st === 'locked' ? (x.why || 'LOCKED') : (I.picks ? 'LEARN ▸' : 'NEXT PICK');
+                    const title = `${sp.name || x.id} — TIER ${x.numeral}${sp.kind === 'passive' ? ' · PASSIVE' : ''} — ${_hqPauseSpellDesc(sp)}`;
+                    html += `<button type="button" class="hq-learn-rung st-${x.st}${can ? ' can' : ''}" data-party-act="learn:${_hqEsc(m.id)}:${_hqEsc(x.id)}"${can ? '' : ' disabled'} title="${_hqEsc(title)}">`
+                        + `<b>${_hqEsc(sp.name || x.id)}${sp.kind === 'passive' ? ' ◈' : ''}</b><i>${_hqEsc(x.numeral)}</i><em>${_hqEsc(tag)}</em></button>`;
+                });
+                html += `</div>`;
+            });
+            html += `</div></div>`;
+            return html;
+        }
         function _hqPauseCircuitHtml(m) {
             const C = (typeof window.hqPartyTreeCircuit === 'function') ? window.hqPartyTreeCircuit(m) : null;
             if (!C) return `<div class="hq-circ"><p class="hq-panel-note">This vessel has no spells to pick — its abilities are fixed.</p><div class="hq-panel-actions"><button class="hq-btn hq-btn-sm" data-party-act="circuit:${_hqEsc(m.id)}">◂ DONE</button></div></div>`;
@@ -3633,7 +3672,10 @@
             let html = `<div class="hq-circ">`;
             html += `<div class="hq-circ-bar"><b>SPELLS</b><span class="hq-circ-sp" title="Spell Points: Tier I–IV costs 1–4">${Array.from({ length: spMax }, (_, i) => `<i${i < spUsed ? ' class="on"' : ''}></i>`).join('')}</span><span class="hq-circ-count">SP ${spUsed} / ${spMax}</span><span class="hq-circ-count">${C.used} / ${C.cap} SLOTS</span>`
                 + `<span class="hq-circ-tools"><button class="hq-btn hq-btn-xs" data-party-act="spelldef:${_hqEsc(m.id)}" title="The race's default kit, trimmed to the budget">DEFAULTS</button><button class="hq-btn hq-btn-xs" data-party-act="spellrnd:${_hqEsc(m.id)}">RANDOM</button><button class="hq-btn hq-btn-xs danger" data-party-act="spellclr:${_hqEsc(m.id)}"${C.used ? '' : ' disabled'}>CLEAR</button><button class="hq-btn hq-btn-sm" data-party-act="circuit:${_hqEsc(m.id)}">◂ DONE</button></span></div>`;
-            html += `<p class="hq-circ-note">ANY ABILITY, ANY TIER · TIER I–IV COSTS 1–4 SP · ${C.cap} SLOTS · ${spMax} SP · PASSIVES / GEAR: NO CAP, +1 / +2 IN ⚙ UPGRADES${C.borrows ? ' · ADAPTABLE: BORROWS ANY OTHER RACE\'S ABILITY' : ''}</p>`;
+            html += C.learn
+                ? `<p class="hq-circ-note">EQUIP WHAT THIS UNIT KNOWS · TIER I–IV COSTS 1–4 SP · ${C.cap} SLOTS · ${spMax} SP AT LEVEL ${C.learn.lvl} · PASSIVES / GEAR: +1 / +2 IN ⚙ UPGRADES</p>`
+                : `<p class="hq-circ-note">ANY ABILITY, ANY TIER · TIER I–IV COSTS 1–4 SP · ${C.cap} SLOTS · ${spMax} SP · PASSIVES / GEAR: NO CAP, +1 / +2 IN ⚙ UPGRADES${C.borrows ? ' · ADAPTABLE: BORROWS ANY OTHER RACE\'S ABILITY' : ''}</p>`;
+            if (C.learn) html += _hqPauseLearnHtml(m, C.learn);
             if (C.unplaced.length) html += `<p class="hq-circ-note bad">${C.unplaced.length} ABILIT${C.unplaced.length === 1 ? 'Y' : 'IES'} ON THE RECORD NO LONGER FIT THIS UNIT (${_hqEsc(C.unplaced.join(', '))}) — THEY ARE DROPPED AT THE NEXT WRITE</p>`;
             html += _hqPauseFinisherHtml(m);
             /* THE RACK BY FAMILY (SPELL_LIBRARY_PLAN.md §9 row 7, Phase 7): the FOLD — a row per family (the default; C.families,
@@ -3732,6 +3774,8 @@
             if (verb === 'spellrnd') { land(_hqPartyTx(p => window.hqPartySpellsRandom(p, a)), 'RANDOMISED'); P.socket = null; return true; }
             if (verb === 'spellclr') { land(_hqPartyTx(p => window.hqPartySpellsClear(p, a)), 'CLEARED'); P.socket = null; return true; }
             if (verb === 'upg') { const r = _hqPartyTx(p => window.hqPartyUpgradeClick(p, a, b, c)); land(r, '⚙'); return true; }   // ⚙ THE UPGRADES (Phase 5)
+            if (verb === 'learn') { const r = _hqPartyTx(p => window.hqPartyLearnSpell(p, a, b)); land(r, 'LEARNED'); if (r && r.ok) sfx('levelUp'); return true; }   // STORY SPELL LEARNING (2026-11-25)
+            if (verb === 'learnview') { P.learnOpen = (P.learnOpen === a) ? null : a; sfx('uiCursorMove'); return true; }
             return false;
         }
         /* the PARTY sheet's actions (data-party-act): enlist · relieve · swap / swapto · cast / castto · item / itemto · cancel */
@@ -3743,7 +3787,7 @@
             const units = rec ? _hqPauseUnits(rec) : {};
             const nameOf = id => { const m = rec.members.find(x => x.id === id); return m ? _hqEsc(_hqMemberName(m)) : ''; };
             const say = (h, bad) => _hqPauseSay(h, bad);
-            if (verb === 'circuit' || verb === 'node' || verb === 'fold' || verb === 'sock' || verb === 'sockclose' || verb === 'spelldef' || verb === 'spellrnd' || verb === 'spellclr' || verb === 'upg') { _hqPartyCircuitAct(verb, a, b, String(act).split(':')[3] || null); }   // THE CIRCUIT IN THE FIELD (2026-09-21)
+            if (verb === 'circuit' || verb === 'node' || verb === 'fold' || verb === 'sock' || verb === 'sockclose' || verb === 'spelldef' || verb === 'spellrnd' || verb === 'spellclr' || verb === 'upg' || verb === 'learn' || verb === 'learnview') { _hqPartyCircuitAct(verb, a, b, String(act).split(':')[3] || null); }   // THE CIRCUIT IN THE FIELD (2026-09-21)
             else if (verb === 'cancel') { P.arm = null; }
             else if (verb === 'rename' || verb === 'unname') {   // THE NAME (2026-09-30)
                 const inp = document.querySelector(`#hqPause [data-party-rename="${a}"]`);
@@ -19802,6 +19846,14 @@
                    learnset used to fill it. Deterministic (data.js raceDefaultKit), and the host builds every unit online. */
                 if (typeof raceDefaultKit === 'function' && !(_customSpells || []).some(id => { const _s = getSpellById(id); return _s && _s.kind !== 'passive'; }))
                     _customSpells = raceDefaultKit(newUnit.race, null, newUnit.gender).concat(_customSpells || []);
+                /* STORY SPELL LEARNING (mondo 2026-11-25): a story NATIVE / quest ally / guest (no partyId — a party member's kit was
+                   already fitted to what it knows, data.js hqLearnFitKit) knows only what its level gives it (spellLearnAutoKnown,
+                   seeded by race + level) and fields it within its level's SP. Online / Practice never reach this branch. */
+                const _learnCtx = (!identityOverride.partyId && typeof spellLearnNativeCtx === 'function') ? spellLearnNativeCtx(newUnit.race, newUnit.gender, targetLevel, newUnit.race + ':' + (newUnit.gender || '') + ':' + targetLevel) : null;
+                if (_learnCtx) {
+                    const _kit = withSpellLearnCtx(_learnCtx, () => raceDefaultKit(newUnit.race, null, newUnit.gender));
+                    _customSpells = withSpellLearnCtx(_learnCtx, () => treeLegalSubset(newUnit.race, template.cls, '', (_customSpells || []).concat(_kit), newUnit.gender));
+                }
                 if (_customSpells && _customSpells.length > 0) {
                     const _slotCap = (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 6;
                     // Slot-budget aware: over-budget saved builds are trimmed
@@ -19816,7 +19868,7 @@
                            disconnected loadout can't reach battle no matter
                            where it came from. (The jobs removal 2026-09-27:
                            every unit is on the tree — no non-tree branch.) */
-                        _validIds = treeLegalSubset(newUnit.race, template.cls, _secJobForBudget, _customSpells, newUnit.gender);
+                        _validIds = _learnCtx ? withSpellLearnCtx(_learnCtx, () => treeLegalSubset(newUnit.race, template.cls, _secJobForBudget, _customSpells, newUnit.gender)) : treeLegalSubset(newUnit.race, template.cls, _secJobForBudget, _customSpells, newUnit.gender);
                     } else {
                         const _seen = new Set();
                         _validIds = [];
