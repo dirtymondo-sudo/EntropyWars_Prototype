@@ -136,6 +136,22 @@ function room(k) {
     [[14.5, 26], [19.6, 28.5], [13.4, 35.5], [20.4, 38.4], [14.4, 14.4], [21.6, 14.5]].forEach(q => A('snow_heap', q[0], q[1]));
     /* the high pines: the beacon on the knoll, firewood for it */
     P('brazier', 16, 5); P('firewood_stack', 18, 4, { face: 90 }); A('cairn', 15.4, 6.6); A('mountain_goat', 17.5, 6.5, { face: 160 }); A('crow', 19.5, 9.4);
+    /* ── THE SCENIC PASS (2026-11-25, zone group 2, flora.md 00b S9: "every 20-40 m of path, a small composed scene that tells something") ──
+       A vignette = an anchor (a log, a stump, a rock, a dead tree) + its supporting layer on a loose triangle, mixed sizes, on a way's verge where the
+       walker sees it, never on the trodden middle. The flora field and the zone's compose row (data.js ZONE_FLORA.zones.<zone>.compose) do the rest. */
+    const VG = (list) => list.forEach(([key, dx, dy, o], i) => A(key, VX + dx, VY + dy, Object.assign({ face: (i * 67 + 20) % 360, hand: true }, o || {})));
+    let VX = 0, VY = 0; const at0 = (x, y) => { VX = x; VY = y; };
+    /* THE SLEIGH ROAD, the gate to the Pass (~330 m): six scenes on its verges; frost tufts (rf_*_frost) are the snow's low layer */
+    at0(14.5, 72.5); VG([['fallen_log', 0, 0, { face: 85 }], ['snow_heap', 0.2, 0.35, { h: 0.5 }], ['rf_grass_5_frost', -0.45, -0.25], ['rf_grass_6_frost', 0.55, -0.3], ['psxg_dead_bush_2', -0.6, 0.35]]);   // a log under the snow
+    at0(22.4, 60); VG([['psxg_rock_1', 0, 0], ['psxg_rock_2', -0.35, 0.4], ['psxg_rock_4', 0.25, -0.4], ['psxg_dead_bush_1', -0.45, -0.3], ['rf_grass_5_frost', 0.3, 0.45], ['rf_grass_4_frost', -0.1, 0.75]]);   // rocks with dead brush in their lee
+    at0(22.4, 49); VG([['meshy_stump', 0, 0], ['axe_chopping_block', 0.15, 0.55], ['psx_hand_saw_1', 0.5, 0.2], ['rf_grass_6_frost', -0.4, 0.2], ['psxg_dead_bush_2', -0.35, -0.4]]);   // a felled pine's stump, the saw left by it
+    at0(27.5, 36); VG([['meshy_fallen_log', 0, 0, { face: 0 }], ['snow_heap', -0.15, -0.6, { h: 0.6 }], ['psxg_dead_bush_1', 0.3, 0.6], ['rf_grass_5_frost', -0.3, 0.5], ['rf_grass_6_frost', 0.35, -0.5]]);   // a windfall on the bend
+    at0(33.4, 16); VG([['cairn', 0, 0], ['psxg_rock_2', 0.4, 0.3], ['psxg_rock_3', -0.35, 0.35], ['rf_grass_4_frost', 0.1, -0.45], ['psxg_dead_bush_2', -0.45, -0.3]]);   // a waymark cairn for the last climb
+    at0(31.8, 3.4); VG([['psxg_dead_tree_1', 0, 0], ['psxg_rock_1', 0.45, 0.3], ['psxg_rock_4', -0.3, 0.45], ['rf_grass_5_frost', 0.35, -0.35], ['crow', 0.1, 0.05, { y: 3.2 }]]);   // a dead pine at the Pass, a crow on it
+    /* the drift field's rim and the tarn's shore: brush in the drifts' lee */
+    at0(13.6, 21.5); VG([['psxg_dead_bush_1', 0, 0], ['psxg_dead_bush_2', 0.4, 0.3], ['rf_grass_5_frost', -0.35, 0.2], ['psxg_rock_3', 0.15, -0.4]]);
+    at0(37.4, 29.5); VG([['psxg_rock_1', 0, 0, { face: 120 }], ['psxg_dead_bush_2', 0.4, -0.3], ['rf_grass_6_frost', -0.35, 0.3], ['rf_grass_4_frost', 0.3, 0.45]]);
+
     /* the tarn: the fishing camp on the north shore, a hole in the ice */
     P('canvas_tent', 40, 18, { face: 180 }); A('campfire', 41.5, 20.4); A('kettle', 42.2, 20.6); P('wooden_barrel', 44, 18); A('snow_sled', 43.4, 21.2, { face: 20 }); A('ice_fishing_hole', 41.5, 24.4); A('fishing_rod', 42, 24.2); A('snowshoes', 40.2, 19.5);
     A('ice_block', 38.4, 30.5); A('xmas_snowman_2', 45, 32.6, { face: 250 });
