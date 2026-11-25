@@ -8,6 +8,90 @@ future changes to the map preserve their foliage from your decisions in this thr
 
 **Read this before planting anything in a zone, changing a zone's ground sheets, or moving a room on the One World map.**
 
+## 00. THE SCENIC PASS: composing, not scattering (2026-11-25, READ FIRST)
+
+mondo, 11-25, on the Woods' before / after: "i still feel like all of these plants are just randomly placed and it looks ugly as hell.
+you need to do a beauty/scenic pass on all the zones now. Thats what i really meant." Section 0 made the GROUND (grass, tufts,
+pebbles) less samey. This section is about the PLACEMENT of everything bigger than a tuft: trees, shrubs, ferns, flowers, hero plants,
+rocks, logs. What his picture shows, and what every zone must stop doing:
+- single plants of many different kinds dotted at even spacing over an open lawn, none touching anything;
+- hero pieces (a giant lily, a thorn bush, a big fern) standing alone in the open with nothing round them;
+- no grouping, no layers, no edge, no place for the eye to land: the same density everywhere, so nothing reads as a place.
+
+### 00a. What artists and designers do (the research, with sources)
+
+| Source | What it says | What we take |
+|---|---|---|
+| Game Developer, [Composition in level design](https://gamedeveloper.com/design/composition-in-level-design), [6 elements of visual guidance](https://gamedeveloper.com/design/6-elements-of-visual-guidance), [Applying the elements and principles of design in level art](https://www.gamedeveloper.com/art/applying-the-elements-of-design-and-principles-of-design-in-level-art), [Leading lines in The Vanishing of Ethan Carter](https://gamedeveloper.com/design/guiding-the-player-leading-lines-in-quot-the-vanishing-of-ethan-carter-quot-); [Magnopus, rules of visual composition](https://www.magnopus.com/blog/why-it-looks-amazing-the-foundational-rules-of-visual-composition); [Envato Tuts+, views and vistas](https://code.tutsplus.com/level-design-views-and-vistas--cms-25036a) | A view has a FOCAL POINT, best in the midground and the place of most contrast. LEADING LINES (paths, rivers, ridges, rows of trees) pull the eye to it. FRAMING (dense trees left and right) closes the sides and opens a window onto it. Every placement serves the composition, never fills empty space. | Each space has one focal; trees and shrubs frame it; paths lead to it; the open middle stays open. |
+| Disney's "weenie" and Ghost of Tsushima's landmarks ([A taxonomy of weenies, GDC 2021](https://gamedeveloper.com/design/a-taxonomy-of-weenies-the-landmarks-that-define-i-ghost-of-tsushima-i-)) | A tall, readable landmark the player always steers by; hidden, then revealed from new angles along the way. | Every room has a landmark, and the planting hides and reveals it along the path. |
+| Piet Oudolf / naturalistic planting ([Wikipedia](https://en.wikipedia.org/wiki/Piet_Oudolf), [UBC planting design: grouping plants](https://blogs.ubc.ca/plantingdesignlandscape/?p=54), [Homes & Gardens, the new perennial movement](https://www.homesandgardens.com/gardens/what-is-the-new-perennial-movement)) | Three tiers: a quiet MATRIX (grasses en masse), PRIMARY plants in drifts and clumps (colour, structure), SCATTER plants for rhythm. "Composed, but not wild." Diversity, but unity by REPETITION. | Matrix = the rule's grass; primary = 2 or 3 species per zone in drifts; scatter = a few accents repeated. |
+| Woodland edge design ([UK gov, edge design for woodland](https://www.gov.uk/guidance/edge-design-for-woodland-integration-resilience-and-biodiversity), [Forestry Commission, why woodland edge matters](https://forestrycommission.blog.gov.uk/2025/04/16/why-woodland-edge-matters/), [Wikipedia, forest edge](https://en.wikipedia.org/wiki/Forest_edge), [Missouri DoC, woodland edges](https://mdc.mo.gov/your-property/improve-your-property/habitat-management/forest-and-woodland-management/woodland)) | A natural edge is GRADED: open grass, then a fringe of tall herbs and flowers, then a mantle of shrubs and small trees, then the canopy, rising toward the interior; "feathered", never a hard wall. | Every wood meets its clearing / path in steps of height. |
+| Environment-art breakdowns ([80.lv, tips on creating a perfect forest](https://80.lv/articles/tips-on-creating-a-perfect-forest/), [80.lv, vegetation that supports narratives](https://80.lv/articles/3-ways-to-create-vegetation-that-supports-narratives/), [80.lv, the art of the background: shapes and lines](https://80.lv/articles/the-art-of-the-background-shapes-and-lines), [Game Developer, art tips for building forests](https://www.gamedeveloper.com/art/art-tips-for-building-forests)) | Big forests are scattered by tools, but the places the player looks at are placed BY HAND, in clumps that look grown; scale and turn vary within a clump; plants tell a story (what grew here and why). | The rule does the matrix; a zone's thread composes the structure and the vignettes. |
+
+### 00b. The scenic rules (S1-S12)
+
+**S1 · ONE FOCAL A SPACE.** Every space the walker stands in (a clearing, a square, a garden, a bend of the trail) has ONE thing to look at:
+a hero tree, a rock outcrop, a ruin, a pond, a statue, a building's door. It stands in the MIDGROUND of the main way in (10-30 m from
+where you enter), and it is the place of most contrast (the lightest bloom, the darkest trunk, the only red).
+
+**S2 · FRAME IT.** Taller things (trees, big shrubs, a wall) stand left and right of the way in and at a path's bends, so the view
+opens like a window onto the focal. Nothing tall stands between the entrance and the focal.
+
+**S3 · THREE TIERS (Oudolf).** MATRIX = the rule's grass and ground cover, continuous, 60-70 % of the green. PRIMARY = 2 or 3 species
+per zone (its palette), in drifts and clumps, 20-30 %. SCATTER = a few accents, 5-10 %, the same few repeated for rhythm. Never one each
+of many species.
+
+**S4 · GROUPS, NOT SINGLES.** Plants stand in groups of 3, 5 or 7, mixed sizes (one large, two middle, the rest small), on a loose
+triangle, never in a line, a ring or a grid. A drift is long and narrow, follows the ground (a bank, a path, a wall), and its ends thin
+out. A lone plant only as a deliberate accent, and never more than one in view.
+
+**S5 · ANCHOR EVERY GROUP.** A group grows FROM something: a trunk's foot, a rock, a log, a wall corner, a step, a path's bend, a
+water's edge. Nothing floats in the middle of an open lawn.
+
+**S6 · LAYER THE EDGES.** Where wood meets open ground: grass, then a fringe of tall grass and flowers (1-2 m), then shrubs and ferns
+(2-4 m), then small trees, then the canopy. Feathered: the bands interlock, the line wanders. A path gets a soft band of low plants
+on both sides, denser on the outside of a bend.
+
+**S7 · KEEP THE OPEN OPEN.** A clearing, a lawn, a square is NEGATIVE SPACE: matrix grass only in its middle, the planting at its rim.
+Density rises from the middle to the edges, never the same everywhere.
+
+**S8 · NO HERO ALONE.** A big or strange piece (a giant flower, a thorn bush, a mushroom, a fae cap, a statue) always stands with its
+supporting layer (low plants at its foot, a smaller one of its kind nearby) and against a backdrop (a trunk, a rock, a wall), never in the open.
+
+**S9 · VIGNETTES ON THE WAY.** Every 20-40 m of path, a small composed scene that tells something: a fallen log with ferns and mushrooms,
+a rock with moss and a puddle, a bench under a tree with a drift of flowers, a shrine with offerings and blossom, a broken cart in tall
+grass. Built from the zone's own pieces, at a path's side or bend, framed and seen from the path.
+
+**S10 · LEAD THE EYE, HIDE AND REVEAL.** Paths curve; rows of trees, a hedge, a stream, a fence run toward the focal or the landmark.
+The landmark is hidden by planting along the way and revealed at a bend (the weenie).
+
+**S11 · A PALETTE PER ZONE.** Each zone's primary species and accent colour are few and repeated (section 5's climates name them). The
+accent colour sits at the focal. Variety comes from size, age and grouping, not from more species.
+
+**S12 · WHO DOES WHAT.** The RULE (flora field, grass, pebbles) does the matrix and the texture, and keeps out of a composed space's middle.
+A ZONE'S THREAD composes the structure by hand: focal, framing, edges, groups, vignettes, the landmark's reveal, in its district files
+with the shared kit below. Even scatter rows of single plants (the old "throw N props over the district" rows) are replaced by groups.
+
+### 00c. How a zone's thread does its pass (the checklist)
+
+1. Walk the room in the probe; for each space write down: its way in, its focal, what frames it, where its open middle is.
+2. Delete or move every single plant dotted over open ground (S4, S5, S7); move hero pieces onto anchors with their supporting layer (S8).
+3. Plant the edges in bands (S6) and the groups at anchors (S4, S5) from the zone's palette (S3, S11).
+4. Add a vignette every 20-40 m of path (S9) and the landmark's reveal (S10).
+5. Before / after pictures of the same views from the walker's camera; post them.
+6. `node find-softlocks.js <room>` and the door finder if anything solid moved; nothing blocks a path or a door.
+
+### 00d. The zone groups (sibling threads, 11-25)
+
+| Group | Rooms | Notes |
+|---|---|---|
+| 1 · The Woods (PILOT) | the Clearing, the Redwood Trail, the Ritual Ground, Dead Man's Cave's mouth | the "Fix ugly ground ferns" thread; proves the rules and the kit first |
+| 2 · Camelot | the village, the Forest, the Fairy Forest (beside its new meadow), the Snowy Pines, the Looking-Glass Garden | |
+| 3 · Disaster City outdoors | parks, yards, the Hollywood Hills, the coast / beach front, street trees | the palm-pit thread's rules (G9) still stand |
+| 4 · Countryside | the Estate (corn, lake, haunted house, ranch), Leylines (the Line, Babel, Bug Colony), Stonehenge, the green routes | |
+| 5 · Dry and cold | the Desert (Western Town, Giza, Area 51, the circus), dry routes, the Mountains + Olympus, the North Pole | desert composition = rock outcrops, cactus groups, dry washes |
+| 6 · Islands and the rest | Katana Island, the Harbour + islands, the Vatican's gardens, Hollow Earth | |
+
 ## 0. THE GROUND RULES (2026-11-25, the second foliage pass; READ FIRST)
 
 mondo, 11-25: "make the grass/foliage look better and more realistic. Research how video games do this. But basically you have to
