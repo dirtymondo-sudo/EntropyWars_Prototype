@@ -82,7 +82,7 @@ const ThreeRenderer = (function () {
         }
     })();
     /* THE BUILD LINE (the perf lens): bump the stamp in every PR that changes this file's walk / fight drawing */
-    var _EW_TR_STAMP = '11-25 warm-queue';
+    var _EW_TR_STAMP = '11-25 wax-no-shadow';
     function _ewBuildTok() {
         var sc = document.querySelectorAll('script[src*="three-renderer.js"]'), t = '';
         for (var i = 0; i < sc.length; i++) { var m = /[?&]v=([^&#]+)/.exec(sc[i].src || ''); if (m) { t = m[1]; break; } }
@@ -74228,7 +74228,12 @@ const ThreeRenderer = (function () {
         else g.add(new THREE.Mesh(new THREE.LatheGeometry([0.05, 0.062, 0.058, 0.048, 0.036, 0.024].map(function (r, i) { return new THREE.Vector2(r * K * U, (0.135 + i * 0.062) * K * U); }), 20), liquid));
         var waxMat = _hqMat(null, 1, 1, { color: waxC, emissive: waxC, emissiveIntensity: 0.65, shininess: 60 });
         var blobs = [], bR = floor ? 0.045 : 0.02 * K;
-        for (var i = 0; i < 4; i++) { var b = new THREE.Mesh(new THREE.SphereGeometry(bR * U, 10, 8), waxMat); g.add(b); blobs.push({ m: b, ph: i * 1.7, sp: 0.35 + i * 0.09, sz: 0.85 + (i % 2) * 0.4 }); }
+        /* THE WAX CASTS NO SHADOW (2026-11-25, mondo's F3 in the main hall: "lamp shadow 6 side renders, 1.22M tris", the frame dips).
+           A lava lamp is often the room's shadow lamp, and its light stands INSIDE the glass with the wax: four moving blobs a few
+           centimetres from the light touched all six cube sides, so the whole room's lamp map (1.2M triangles) was drawn ten times a
+           second for blobs the glass hides anyway. The wax neither casts nor takes a shadow (set again each tick: a prop pass that
+           flags its meshes later must not turn it back on). */
+        for (var i = 0; i < 4; i++) { var b = new THREE.Mesh(new THREE.SphereGeometry(bR * U, 10, 8), waxMat); b.castShadow = false; b.receiveShadow = false; b._ew_shadowFlagged = true; b._ew_wax = true; g.add(b); blobs.push({ m: b, ph: i * 1.7, sp: 0.35 + i * 0.09, sz: 0.85 + (i % 2) * 0.4 }); }
         var y0 = floor ? bH + 0.08 : 0.16 * K, y1 = floor ? gTop - 0.08 : 0.41 * K, seed = (_hqProcSeed++) * 0.9;
         if (_hq && _hq.tickers) _hq.tickers.push(function (dt, now) {
             var t = now * 0.001 + seed;
@@ -74238,6 +74243,7 @@ const ThreeRenderer = (function () {
                 bl.m.position.set(Math.sin(t * 0.7 + bl.ph) * r * U, y * U, Math.cos(t * 0.5 + bl.ph) * r * U);
                 var sq = 1 + 0.35 * Math.sin(t * 1.3 + bl.ph);
                 bl.m.scale.set(bl.sz / Math.sqrt(sq), bl.sz * sq, bl.sz / Math.sqrt(sq));
+                if (bl.m.castShadow) bl.m.castShadow = false;
             }
         });
         return g;
