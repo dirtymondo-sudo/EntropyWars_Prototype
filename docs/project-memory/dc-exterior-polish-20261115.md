@@ -4,7 +4,7 @@ description: Disaster City exterior polish LIVE PR #1412 (11-15): bake-time exte
 metadata:
   type: project
 ---
-Thread (thread in the owner project) "Polish Disaster City exteriors" (mondo 11-15 09:16: bench clipping a wall/curb from the elevation pass; generated shapes need a texture; 09:16:59 "give each district its own vibe ... while disaster city as a whole feels connected").
+Thread (owner-project id) "Polish Disaster City exteriors" (mondo 11-15 09:16: bench clipping a wall/curb from the elevation pass; generated shapes need a texture; 09:16:59 "give each district its own vibe ... while disaster city as a whole feels connected").
 
 - LIVE PR #1412 (data.js 6c581609, three-renderer.js 17adf9ca, token 20261115-extpolish-01-cors). NOT SEEN ON SCREEN (RULE #1c); checked offline on the compiled room.
 - `docs/disaster-city/exterior-polish.js` runs LAST in `node bake-disaster-city.js` (DC_NO_EXT=1 skips, DC_EXT_LOG=1 lists rows). The bake compiles the room headless from a scratch data.js (adds about 10 s) so the pass reads the real `hqTerrainHeight` / `hqTerrainFeet`. Tally 11-15: 104 props off wall tops (`floor: true`), 125 moved off level steps, 12 wall things hung at a bank top, 14 dropped props put back, 1 taxi left (Financial Taxi court canopy).

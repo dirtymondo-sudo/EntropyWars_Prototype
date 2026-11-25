@@ -4,7 +4,7 @@ description: 11-11 PvP demo item 3 (who-hit-whom at the hit): plan parts 1-4 BUI
 metadata:
   type: project
 ---
-Thread "Make hits readable in two-player VFX and SFX" (thread in the owner project) (item 3 of the
+Thread "Make hits readable in two-player VFX and SFX" (owner-project id) (item 3 of the
 PvP-demo list mondo approved with "All" 11-10). Plan doc: https://claude.ai/artifact/W2nQT5ZYg5h3jCRPk7F7eT. mondo chose
 "Build 1-4" 11-11 01:18Z (5, the pop fan-out, NOT chosen: do not build it unless he asks).
 

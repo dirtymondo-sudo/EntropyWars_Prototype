@@ -6,7 +6,7 @@ metadata:
   modified: 2026-11-05T23:39:49.203Z
 ---
 
-11-05 thread "Playtest battles and document bugs" (thread in the owner project), main 26bcd34, report only.
+11-05 thread "Playtest battles and document bugs" ((owner-project id)), main 26bcd34, report only.
 Report: /mnt/project-files/playtest-battles-20261105/PLAYTEST_BUGS_20261105.md (+ shots/, ledger, match exports).
 Battle 1 Mount Shasta (Bigfoot/Jack-o'-Lantern/Annunaki/Ice Queen), battle 2 Camelot (saved looks Cowboy/Catgirl/Santa + DOOR Agent).
 

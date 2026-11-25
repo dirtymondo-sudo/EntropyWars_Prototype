@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-15T15:02:07.100Z
 ---
-Thread (thread in the owner project). mondo 11-15: props block him on the board but not on foot (globe lamps, DOOR HQ Main Hall). LIVE PR #1443 (three-renderer.js febc0a68, token 20261115-wayround-01-cors). NOT seen in a browser (RULE #1c); waits his Mac check.
+Thread (owner-project id). mondo 11-15: props block him on the board but not on foot (globe lamps, DOOR HQ Main Hall). LIVE PR #1443 (three-renderer.js febc0a68, token 20261115-wayround-01-cors). NOT seen in a browser (RULE #1c); waits his Mac check.
 
 - Cause: board and walker read the SAME colliders (`_hqSurface`). Walker slides round an edge; the board stopped dead (`_hqRideWall`), and `_hqRideObstacleSlide` skips mesh-collider props (`b.mc`). Plus the lamp's globe (r 0.2 m at 1.5-1.9 m, 1 cm pole) was solid at full body disc down to the floor.
 - Fix: THE THIN BODY (`_mcBodySolid`, HQ_MC.shoulder 1.3 / headR 0.14: over the shoulders only the head's width blocks) + THE WAY ROUND (in `_hqTickRide`: a blocked step tries the step turned up to ~70° either side). Game-wide.

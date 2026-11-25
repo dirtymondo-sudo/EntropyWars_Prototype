@@ -4,7 +4,7 @@ description: 11-15 "props move with the camera" (HQ + city): held objects in a r
 metadata:
   type: project
 ---
-mondo 11-15 10:48 UTC: "trees and other props are moving when i move my camera ... its in door hq too". Thread (thread in the owner project).
+mondo 11-15 10:48 UTC: "trees and other props are moving when i move my camera ... its in door hq too". Thread (owner-project id).
 - Cause: #1409 THE COPIES REST held instanced batches in the quiet replay (three-renderer.js `rpReplay`). The camera lives in SHARED uniform buffers, written when the first object reading them is refreshed in a render; instanced shaders read their own set, so nobody wrote it: instanced props drawn with a camera up to 20 frames old.
 - Fix PR #1418 (token heldcam-01): `rpShared`, first held object per shared bind group gets `updateSharedForRender` each render. Off `window.EW_BUN_HELD_NO_SHARED`. Notes: docs/notes/rendering-loading-perf.md "THE HELD KEEP THE CAMERA".
 - RULE for perf threads: anything that skips an object's refresh in a replayed bundle must still refresh the shared buffers it reads. Related [[perf-city-propchunks-20261114]].

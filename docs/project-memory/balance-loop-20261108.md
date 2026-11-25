@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-08T08:54:21.776Z
 ---
-Thread (thread in the owner project). Folder /mnt/project-files/balance-loop-20261108/ (PASS_LOG.md, harness/an.js plan.js apply.js propose.js, runs/).
+Thread (owner-project id). Folder /mnt/project-files/balance-loop-20261108/ (PASS_LOG.md, harness/an.js plan.js apply.js propose.js, runs/).
 Harness: `bash /mnt/project-files/balance/weak-races-harness/setup.sh` then `EW_HARNESS_DIR=/tmp/ew-harness node /tmp/ew-harness/lab4.js --minutes 170 --workers 3 --recycle 12 --out DIR`
 (serves the REPO working tree, so local edits are what runs; ~9.5 matches/min on 11-08 main, 125 races → ~105 games/race in 170 min).
 GOTCHA: `git fetch origin main` BEFORE `git checkout -B branch origin/main` — the first baseline ran on a stale PR #813 checkout and was thrown out.

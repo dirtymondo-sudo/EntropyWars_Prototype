@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-12T05:48:20.153Z
 ---
-mondo 11-12 uploaded 4 folders of noise + texture packs, wants them used where most impactful (spells/VFX, psychic/astral terrain, astral realm / dreamy maps, liquids, tile effects on spell hits), EXAMPLES FIRST. Thread (thread in the owner project). Related [[riot-vfx-plan-20261108]] [[calm-rollout-20261111]] [[visual-rules]].
+mondo 11-12 uploaded 4 folders of noise + texture packs, wants them used where most impactful (spells/VFX, psychic/astral terrain, astral realm / dreamy maps, liquids, tile effects on spell hits), EXAMPLES FIRST. Thread (owner-project id). Related [[riot-vfx-plan-20261108]] [[calm-rollout-20261111]] [[visual-rules]].
 
 - WHERE: R2 bucket `dirtymondo`, prefix `inbox/SBS Abstract Noise Pack/` (100 grey), `inbox/SBS Abstract Texture Pack/` (100 colour), `inbox/SBS Noise Texture Pack/<18 families>/` (262 grey: Cracks, Craters, Gabor, Grainy, Manifold, Marble, Melt, Milky, Perlin, Spokes, Streak, Super Noise, Super Perlin, Swirl, Techno, Turbulence, Vein, Voronoi), `inbox/SBS Seamless Abstract Pack/` (50 colour). 512 PNGs, all 128x128, seamless, 14 MB. `._*` files there are Mac junk. NOT yet sorted out of the inbox (still there).
 - LICENCE: Screaming Brain Studios, CC0 (License.txt in three folders; the fourth has none but is the same maker).

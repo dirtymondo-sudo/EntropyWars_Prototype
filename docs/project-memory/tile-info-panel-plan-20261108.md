@@ -7,7 +7,7 @@ metadata:
 ---
 mondo 2026-11-08 asked for a tile info panel like the unit info panel: the square's terrain picture, its effects as badges, Move/Inspect/Jump as small buttons on one row. The same for turrets (attack), trees (chop) and other objects. Tabs per layer.
 
-Plan + mockup: /mnt/project-files/tile-info-panel/ (PLAN.md, tile_info_panel_mockup.jpg/.html). Thread (thread in the owner project). APPROVED 11-08 (decision "Build it, open on the top thing"). SHIPPED PR #1048 (merged + R2 live 11-08, ?v=20261108-tilecard-01-cors). Proof shots /mnt/project-files/tile-info-panel/shots/. Awaiting his review/feedback.
+Plan + mockup: /mnt/project-files/tile-info-panel/ (PLAN.md, tile_info_panel_mockup.jpg/.html). Thread (owner-project id). APPROVED 11-08 (decision "Build it, open on the top thing"). SHIPPED PR #1048 (merged + R2 live 11-08, ?v=20261108-tilecard-01-cors). Proof shots /mnt/project-files/tile-info-panel/shots/. Awaiting his review/feedback.
 
 Approved rule:
 - Tabs run ground up: TERRAIN · OBJECT · UNIT.

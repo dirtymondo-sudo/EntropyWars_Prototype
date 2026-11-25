@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-13T04:29:58.345Z
 ---
-mondo 11-13 03:54 pasted an F3 readout (Mac, Firefox, WebGPU): 4.7 FPS, 3750 draws, "3415 room hq_piece (outside its bundle)", "Pick (raycasts) 164/s · 819 ms/s". Thread (thread in the owner project). The coordinator guessed Training Room; it was the ATLANTIS board (PR #1246, sea life). Tell: 405 bundle groups all named `hq_piece`, no `hq_wall_*`.
+mondo 11-13 03:54 pasted an F3 readout (Mac, Firefox, WebGPU): 4.7 FPS, 3750 draws, "3415 room hq_piece (outside its bundle)", "Pick (raycasts) 164/s · 819 ms/s". Thread (owner-project id). The coordinator guessed Training Room; it was the ATLANTIS board (PR #1246, sea life). Tell: 405 bundle groups all named `hq_piece`, no `hq_wall_*`.
 
 SHIPPED PR #1249 (token 20261113-skinpick-01-cors, three-renderer.js ca262998 live). Notes: docs/notes/rendering-loading-perf.md "THE MATERIAL RUNS + THE SKINNED PICK".
 - THE MATERIAL RUNS `_ewGroupRuns` (at load, `_loadMiscModel` + `_ewRig.src`, `_loadUnitGLB`): ocean pack FBX meshes had up to 185 geometry groups over 2-3 materials = one draw each, and the unit ink / pixel mask pass (three-post.js side render, bundles off, room props wear `_ew_pixelate`) drew them all again classic. Now one run per material. Off: `window.EW_NO_GROUP_RUNS`.

@@ -1,11 +1,11 @@
 ---
 name: cutscene-editor-20261115
-description: Cutscene editor (edit dialogue live, per-shot notes, export for Claude) SHIPPED PR #1413 + #1427 + #1472 + #1489 11-15; how to bake his export;
+description: Cutscene editor (edit dialogue live, per-shot notes, export for Claude) SHIPPED PR #1413 + #1427 + #1472 + #1489 11-15; how to bake his export; thread cmsg_...QN9Pddtsc8sJgTWkUbuTpY
 metadata:
   type: project
   modified: 2026-11-15T13:46:41.441Z
 ---
-mondo asked 2026-11-15 for an in-game cutscene editor: change dialogue easily, give notes, export it all for Claude to implement. Thread (thread in the owner project). He OK'd the plan + mock-up ("okay") and it SHIPPED in PR #1413 (token 20261115-sceneed-01-cors, live on R2).
+mondo asked 2026-11-15 for an in-game cutscene editor: change dialogue easily, give notes, export it all for Claude to implement. Thread (owner-project id). He OK'd the plan + mock-up ("okay") and it SHIPPED in PR #1413 (token 20261115-sceneed-01-cors, live on R2).
 
 - WHERE: Settings > Developer > Open Cutscene Editor; EDIT beside every REPLAY in Pause > QUESTS. PLAY works from anywhere (see PR #1427 below).
 - WHAT: lines typed in the editor show in the replay at once (his device, localStorage `ew_scene_editor_v1`, never IndexedDB); add / cut / split a line; notes per shot tagged CAMERA / ACTING / TIMING / DIALOGUE / OTHER + one per scene; in a playing scene PREV SHOT / NEXT SHOT / N = note (freezes the scene clock). EXPORT FOR CLAUDE = `Entropy_Wars_Cutscene_Notes_<stamp>.json` in his Downloads + readable text copied.

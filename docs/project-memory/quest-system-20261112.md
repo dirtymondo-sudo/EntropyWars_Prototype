@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-12T05:29:33.461Z
 ---
-mondo 2026-11-12 (thread in the owner project): "implement a quest system in the story mode"; his docx spec gives the system, its suggested first quest is IGNORED. First quest, his words: walk to the training room, do the first couple tutorials, "which turns into the Catgirl appearing from a portal that forms in the room as she is chased by two shadow beings, which you must defeat together".
+mondo 2026-11-12 ((thread in the owner project)): "implement a quest system in the story mode"; his docx spec gives the system, its suggested first quest is IGNORED. First quest, his words: walk to the training room, do the first couple tutorials, "which turns into the Catgirl appearing from a portal that forms in the room as she is chased by two shadow beings, which you must defeat together".
 
 - HIS PICK on the card (11-12): reward = THE CATGIRL JOINS YOU; in story mode she is locked until the quest is won (Online / Practice untouched, ACCT_STARTER_UNITS untouched: the lock is `questLockedUnits` inside `hqPartyUnlocked`).
 - My guesses he has not answered yet: shadow beings = two Shadow Entity roster units; the Catgirl = the plain Catgirl unit, not KIT at Reception; quest title shows ORIENTATION until he names it.

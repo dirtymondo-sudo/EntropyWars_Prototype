@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-03T06:37:22.272Z
 ---
-PR #827 merged 2026-11-03 (thread in the owner project), plan row 24 SPELLS + GEAR DONE.
+PR #827 merged 2026-11-03 ((thread in the owner project)), plan row 24 SPELLS + GEAR DONE.
 - R2 Assets/props/<name>.glb = optimize-assets.js --size 512 output under the PLAIN name (no original). NOT picked up by sync-zip.js: added by hand to zip 20261103-0635.
 - three-vfx-effects.js _HELD_PROPS (18 spells) + _HELD_BY_RACE.wizard (wand); ThreeRenderer.unitHoldProp / unitPropMetre; whip = _whipSetup/_whipPose (world-space lash pose); dev still window.EW_HELD_T.
 - three-renderer.js UNIT_GEAR_WEAR (EQUIP_DEFS keys) via _unitGearSync on build.

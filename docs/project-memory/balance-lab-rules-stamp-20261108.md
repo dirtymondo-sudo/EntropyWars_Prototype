@@ -6,7 +6,7 @@ metadata:
   modified: 2026-11-08T01:44:00.295Z
 ---
 mondo 11-08 01:17: "make sure the balance lab is still up to date and gives useful/relevant data. Anything else you would add?"
-Thread (thread in the owner project). PR #1045 merged (main c351c63), token 20261108-ballab-01-cors,
+Thread (owner-project id). PR #1045 merged (main c351c63), token 20261108-ballab-01-cors,
 uploaded battle.js 32ef0461 / state.js 279c6804 / ai.js b7fa4be4.
 
 Finding: the lab runs the REAL engine, so every rule fix already applied; only the telemetry was stale.

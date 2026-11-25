@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-14T01:10:00.000Z
 ---
-Thread (thread in the owner project) "Design Southside district buildings" (mondo's 11-13 16:41 ask; his OK 17:14 "pizza yes, ok").
+Thread (owner-project id) "Design Southside district buildings" (mondo's 11-13 16:41 ask; his OK 17:14 "pizza yes, ok").
 Plots P00-00..P03-03. All code in `docs/disaster-city/districts/R.js`; rerun `node bake-disaster-city.js`. Notes: docs/notes/areas-complexes.md "DISASTER CITY, SOUTHSIDE".
 
 - LIVE: PR #1289 (30 buildings as `arch` rows, pack whole buildings, 7 walk-in shells) + PR #1307 (bigger windows + ground row shop panes per his 18:49 rule,
@@ -20,7 +20,7 @@ Plots P00-00..P03-03. All code in `docs/disaster-city/districts/R.js`; rerun `no
   pawn 5x3, kitchen 8x3, dojo 9x3, garage 8x6 (+1 m back strip). No-model pieces (ring, bags, weights, lift, tyres, mat, posts, counters) = arch row `dc:<id>-in`.
   LESSONS: a prop standing in a ghost wall stands ON its top unless `floor: true`; a vehicle ignores that, so the lift's ghost top (1.55) is the car's
   height; floor overlays need >= 0.05 m or they z-fight the room floor.
-- SECOND INTERIOR PASS LIVE PR #1355 (11-14, (thread in the owner project): 18 Meshy props (ring, bags, lift, tyres, dummies, taiko,
+- SECOND INTERIOR PASS LIVE PR #1355 (11-14, (thread in the owner project)): 18 Meshy props (ring, bags, lift, tyres, dummies, taiko,
   candelabra, votive, jewelry case, steam tables...), `R.liner`/`R.lamp`/`R.wq` look. Inside walls stand 0.30 m in; ceiling = texbuilding h - 0.32; wall props via
   `mount`. Shots project files disaster-city-southside/interiors-2/.
 - BEDROOMS LIVE PR #1370 (11-14): P00-01-B2, P00-02-B2, P02-01-B1, P03-00-B2 walk-ins, 9 beds; 5 displaced residents moved in (told residents thread). Headless: prop static batch drops props (EW_HQ_NO_PROP_BATCH shows them).

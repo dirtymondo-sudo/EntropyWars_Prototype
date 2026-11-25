@@ -5,9 +5,9 @@ metadata:
   type: project
   modified: 2026-11-03T04:29:31.355Z
 ---
-mondo 11-03 (thread in the owner project): Claude makes the Meshy list (character-models-plan.md
+mondo 11-03 ((thread in the owner project)): Claude makes the Meshy list (character-models-plan.md
 section 4a #1-46 + 6b/6c #47-72) itself through the Meshy API. This overrides "never generate art" for THIS work only.
-His API key is in his (thread in the owner project) (never write it to repo/memory/zips/logs).
+His API key is in his message (owner-project id) (never write it to repo/memory/zips/logs).
 
 Flow he set: concept image first (Meshy text-to-image) -> HIS APPROVAL -> image-to-3d + texture in low-poly mode -> show
 him, he names redos. Batch concepts so he approves several at once. Poly targets scaled by size vs a character

@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-13T00:23:24.468Z
 ---
-mondo 11-12 (thread in the owner project): dropped folder DOOR (R2 `dirtymondo/inbox/DOOR/`, NOT /mnt/project-files/inbox) = his official logo, color + blackandwhite, png + svg, pieces arc / cube / door / door-text / subtitle. "replace any ai generated DOOR logos with these assets"; small spots need no text ("the game is already putting the text").
+mondo 11-12 ((thread in the owner project)): dropped folder DOOR (R2 `dirtymondo/inbox/DOOR/`, NOT /mnt/project-files/inbox) = his official logo, color + blackandwhite, png + svg, pieces arc / cube / door / door-text / subtitle. "replace any ai generated DOOR logos with these assets"; small spots need no text ("the game is already putting the text").
 
 SHIPPED PR #1243, token 20261113-doorlogo-01-cors:
 - His 24 files verbatim at R2 `ewmusicsfx` `Assets/ui/brand/door_logo/{color,blackandwhite}/{png,svg}/`. Text SVGs need STIX Two Text font: use PNGs for text. His text pieces are BLACK even in the "black bg" set (shown white with CSS invert in the intro).

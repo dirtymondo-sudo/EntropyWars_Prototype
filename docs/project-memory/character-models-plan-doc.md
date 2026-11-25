@@ -11,7 +11,7 @@ Every brief for model/creator/clothes/sway/Meshy/face work must say: read it fir
 Where the promises were (mondo asked 11-01 07:31 "where is that thread?"): research (thread in the owner project)
 + report https://claude.ai/artifact/RKFPXXHKcruZtWtR9xSQHr ("creator garments GENERATED in code ... 12 revisions"; "Not Meshy for clothes";
 05:25 reply "Nothing to make on Meshy yet ... I'll send that list once the body is in"). Meshy list = section 4 of the doc, FINAL since 11-01 (PR #747,
- (thread in the owner project): 46 Meshy pieces (4a, cowboy hat + gun belt first), 5 animal-pack
+(thread in the owner project)): 46 Meshy pieces (4a, cowboy hat + gun belt first), 5 animal-pack
 target checks Claude owes before mondo makes those (4b), per race (4c), Blender soft-clothes list (4d = row 12), keep-own-model
 list (4e: insects/apes/robots etc, my recommendation, flagged). Now WAITING ON MONDO to make pieces.
 Section 6 / row 24 (PR #750, mondo 11-01 10:39): spells HOLD their weapon in the model's hand (finishers stay board-sized),

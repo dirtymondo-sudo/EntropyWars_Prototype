@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-12T16:56:41.134Z
 ---
-mondo 11-12: "the second tutorial shows an all black screen, HUD and everything still there and responsive". Thread (thread in the owner project). SHIPPED PR #1229, token 20261112-nexttape-02-cors, ui.js 5a39f32e, map.js 7f8f27e4.
+mondo 11-12: "the second tutorial shows an all black screen, HUD and everything still there and responsive". Thread (owner-project id). SHIPPED PR #1229, token 20261112-nexttape-02-cors, ui.js 5a39f32e, map.js 7f8f27e4.
 
 - Cause: NEXT TAPE / RESTART on a lesson started at the Range Console (`_tut.from === 'hq'`) tore down through backToMainMenu, whose way home (map.js `_hqReturnOrMenu`) re-entered the building while the next lesson's match started; the building owned the canvas, the board was never drawn. Any renderer (WebGPU and the WebGL 2 backend both black). NOT the Entropy Style, NOT PR #1215 / #1214 (the coordinator's suspects).
 - Fix: ui.js `_tutChain` holds `window._tutChainPending` round the teardown; `_hqReturnOrMenu` returns early on it (same pattern as `_questFightPending`). Any new "lesson/fight straight into another match from HQ" needs the same marker.

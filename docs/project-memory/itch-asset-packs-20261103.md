@@ -6,7 +6,7 @@ metadata:
   modified: 2026-11-03T07:05:32.643Z
 ---
 mondo 11-03: goal is to eventually replace Meshy models with human-made packs; he likes Elbolilloduro and Pizza Doggy.
-Thread (thread in the owner project) downloaded 45 FREE packs (original archives) to
+Thread (owner-project id) downloaded 45 FREE packs (original archives) to
 /mnt/project-files/asset-packs/: elbolilloduro/<pack>/ (33 packs, all CC0 except Characters PSX = free commercial, no re-upload)
 and other/<author>_<pack>/ (12: derelict furniture, castle+fort, gothic church CC0, BlenderVoyage graveyard+submarine CC-BY = credit,
 Molten Maps sci-fi CC0, industrial, alxinc lab (license vague), jamzuz, playground, beach props (no license), DreamKit monsters).

@@ -1,0 +1,16 @@
+---
+name: new-char-concepts-20261119
+description: 11-19 Meshy CONCEPT images only (no models) for 21 new characters incl. 6 new supers; folder, scripts, cost, waits mondo's picks
+metadata:
+  type: project
+  modified: 2026-11-19T04:11:35.159Z
+---
+Thread (owner-project id) (mondo 11-19 04:05Z). Concepts only, models wait his picks.
+Folder /mnt/project-files/new-char-concepts-20261119/: items.py (prompts), gen.py (`python3 <abs>/gen.py <keys|all> [_suffix]`, Meshy text-to-image nano-banana-pro 3:4, 9 credits each), sheet.py, concepts/<key>_1.png, sheet_1_city_and_trades.jpg, sheet_2_world.jpg, sheet_3_supers.jpg, current_heroes.jpg (render of live antihero/sidekick/superhero F/M via render_current.js).
+Keys: paparazzi_m + paparazzi_camera (prop), mechanic_m (new, not Otto), janitor_m, gambler_m, trucker_m, hacker_f, vampire_hunter_m, pharaoh_m, pharaoh_f (Cleopatra), monk_m, shogun_m, deep_diver_f, explorer_m, robot_dino, superhero_m, superhero_m_alt, superhero_f, sidekick_m, vigilante_m (v1 hockey mask rejected: looked like a film slasher), supervillain_m, supervillain_f.
+Meshy balance 1018 before, 811 after (NOT ~18 as coordinator thought). Model + rig was ~20 credits each.
+Next: his picks/edits, then models (meshy-t2.5 a-pose) + rig like [[unit-concepts-20261118]].
+Round 2 (his 11-19 04:23Z notes): items2.py (ITEMS=items2.py), sheet_4_round2.jpg: camera NO strap (straps clip when animated; strap separate or like creator necklace strings), gambler = sleazy Vegas high roller, hacker MALE, vampire hunter _3 (priest/silver, dark undercut), diver _3 WITHOUT helmet + separate clear bubble helmet prop (dome must be a real transparent 3D part showing her face, never textured on), explorer _2, robot dino _2 (shoulder laser cannons, robot fists/legs, mechanical wings). Balance ~720 after.
+MODELS 11-19 (his 04:43Z picks; rest SCRAPPED: vampire hunter, explorer, robot dino, hacker F, sidekick, vigilante, superhero F, villain alts): models.py (models|rig [keys]) -> models/<key>.glb + _rigged/_running/_walking: paparazzi_m (+ paparazzi_camera prop, no strap), mechanic_m, janitor_m, trucker_m, gambler_m (_2), hacker_m (_3, keyboard+mouse = PSX pack pc_keyboard_mp_* / pc_mouse_mp_*), pharaoh_m, pharaoh_f, monk_m, shogun_m, deep_diver_f (+ deep_diver_helmet prop, dome must become clear glass in game), superhero_m + superhero_m_alt (he can't decide), supervillain_m (opt 1), supervillain_f (opt 1), ice_queen_super (= villain F alt: HIS IDEA, Ice Queen turns into this skin only when another super person is on the board, roster-dependent transformation like werewolf/sedan). Sheets models_sheet.jpg + models_sheet_villains.jpg. Balance 344. Not in game yet.
+11-19 05:50Z SHIPPED PR #2146: antihero = supervillain model, machine elves = DMT elf (concept C), Ice Queen super form (sprites.js EW_SUPER_RACES/ewSuperOnBoard, ice_queen_super v1; v2 face worse). Trucker fix = trucker_m_v2_*, Cleopatra = pharaoh_f_v3_* (UV-seam bleed + despeck). New races handed to 3 threads: paparazzi/mechanic/janitor/trucker (owner-project id), gambler/hacker/monk/shogun (owner-project id), pharaohs+diver (owns glass helmet) (owner-project id). Superhero M: both models made, not wired (he can't decide).
+11-19 PR #2147: superhero M = white sun hero (superhero_sun).

@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-13T18:58:36.853Z
 ---
-Thread (thread in the owner project) "Add verticality to Disaster City". mondo 11-13 18:07 asked for sloped streets, ramps, stairs, districts at different elevations with Bayside at sea level; 18:30 tapped "Build it as drawn". LIVE PR #1299 (data.js ec0af29b). Thread left open for his look.
+Thread (owner-project id) "Add verticality to Disaster City". mondo 11-13 18:07 asked for sloped streets, ramps, stairs, districts at different elevations with Bayside at sea level; 18:30 tapped "Build it as drawn". LIVE PR #1299 (data.js ec0af29b). Thread left open for his look.
 
 - Numbers: `docs/disaster-city/levels.js` (`grid[y][x]` level per plot, 1 level = 1.75 m, 0 Bayside .. 14 Church; `pieces` bowls; `stairs` kind per district). Rerun `node bake-disaster-city.js` after any change. Notes: docs/notes/areas-complexes.md "DISASTER CITY, THE LEVELS".
 - Engine: `terrain.slope.cells` (four corner heights a square, flag byte for walk-in floors); every slope-riding row follows it, so district files need no edits. `absY: true` = row already absolute. District hooks get `ctx.LEVELS` + `ctx.lvOf(plot)`.

@@ -4,7 +4,7 @@ description: Game-wide unifying shader (11-12): mondo picked Entropy Grade + Ink
 metadata:
   type: project
 ---
-mondo 11-12: wants a full-screen shader "other than the CRT filter" to blend Meshy/MPFB/PSX/pixel assets into one Entropy Wars style, OPTIONS first. Thread (thread in the owner project). Related [[visual-rules]] [[webgpu-default-20261111]].
+mondo 11-12: wants a full-screen shader "other than the CRT filter" to blend Meshy/MPFB/PSX/pixel assets into one Entropy Wars style, OPTIONS first. Thread (owner-project id). Related [[visual-rules]] [[webgpu-default-20261111]].
 
 - POSTED 11-12: 4 comparison sheets (today + 7 looks each) in /mnt/project-files/shader-style-20261112/ (Fairy Forest battle, Spaceship, DOOR HQ main hall, character close-up). Looks: 1 Entropy Grade (shared palette pull: indigo shadows, warm lights, evened saturation), 2 Ink + Cel, 3 Painterly (Kuwahara), 4 Storybook (watercolour + paper), 5 Comic Print (halftone), 6 Dream Haze, 7 Chunky Pixel. WAITING on his pick. My recommendation: 1 as the base, optionally with 2.
 - HOW MADE: real game captures (node renderer WebGL2, shared harness /tmp/ph) run through GLSL in `looks_bench.html` (same folder; `window.run(url, look)`). NOTHING is in the game: no branch commit, no toggle. Frame costs given to him are ESTIMATES from tap counts, not measured.

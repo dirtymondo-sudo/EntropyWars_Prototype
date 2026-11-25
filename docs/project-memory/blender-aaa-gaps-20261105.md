@@ -7,7 +7,7 @@ metadata:
 ---
 mondo 11-05 asked: now that Claude can use Blender, what next (rigging, animations, cutscenes, pre-rendered intros/Entropy
 Strikes, maps/DOOR HQ as GLB), what AAA would do, what the gaps are. Thread "Plan Blender upgrades and AAA gaps"
- (thread in the owner project). Doc: https://claude.ai/artifact/AJ51krxhmmE93EMbWEkLkh . Nothing built.
+((owner-project id)). Doc: https://claude.ai/artifact/AJ51krxhmmE93EMbWEkLkh . Nothing built.
 
 Ranked list given: 1 mocap library MAL4 (retarget free CMU mocap in Blender onto Meshy bone names, per-race `lib` opt; pilot 5
 races; needs his OK to download) 2 creature rigs (dragon/dinosaur/kaiju play human UAL clips today) 3 Entropy Strike Blender

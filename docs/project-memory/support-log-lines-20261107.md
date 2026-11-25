@@ -6,7 +6,7 @@ metadata:
   modified: 2026-11-07T05:58:46.727Z
 ---
 
-Buffs/utility playtest family E DELIVERED 11-07, PR #989 (thread in the owner project),
+Buffs/utility playtest family E DELIVERED 11-07, PR #989 ((thread in the owner project)),
 token 20261107-supportlog-02-cors, uploaded battle/hud/ui/online/three-renderer.js. Text + badges only, no rules changed.
 - battle.js `_logCleansed` (every cleanse kind), `_logStatusTickHeal` (round-end heal ticks), escape cast line, Free Energy MP number.
 - New log tool: `addLog(msg, undefined, undefined, { seats: [p] })` → entry.sn = only those seats see it (battle.js _logVisible,

@@ -6,7 +6,7 @@ metadata:
   modified: 2026-11-07T06:00:43.563Z
 ---
 
-11-07 thread "Playtest buff, stance and utility spells" (thread in the owner project), main b3ab112,
+11-07 thread "Playtest buff, stance and utility spells" ((owner-project id)), main b3ab112,
 report only, nothing changed. Report: /mnt/project-files/playtest-mechanics-20261107/PLAYTEST_BUFFS_UTILITY_20261107.md
 (+ buffs-utility/: shots, ledger, 3 match exports, raw-notes.md). 473 in-scope abilities / 14 families. Part 2 (full family, sent back for sampling): 149 code variants, all proven; 238 cast (69 battle + 169 Spell Lab), 148 share code, 87 covered by sibling reports; per-ability table appended + buffs-utility/lab/.
 

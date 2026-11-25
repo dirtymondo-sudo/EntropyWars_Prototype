@@ -6,7 +6,7 @@ metadata:
   modified: 2026-11-09T03:57:49.524Z
 ---
 mondo 11-09: "Everything in the model list should be available in the map editor" (after finding only the Meshy road there).
-Thread (thread in the owner project), PR #1068 merged, token 20261109-allmodels-01-cors, uploaded.
+Thread (owner-project id), PR #1068 merged, token 20261109-allmodels-01-cors, uploaded.
 
 - RULE: any new model on R2 that can stand in a room gets a DOOR_HQ.catalogue row in the same PR (or a HQ_TREE_KINDS kind).
 - data.js HQ_CATALOGUE_ALL (721 rows: PSX Mega Pack 584 `psx_<file>`, Elbolilloduro pieces, unlisted Meshy props/decor/hand props/

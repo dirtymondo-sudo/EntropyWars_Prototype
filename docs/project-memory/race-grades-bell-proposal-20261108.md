@@ -4,7 +4,7 @@ description: 11-08 race letter grades moved to a bell curve (rank in roster) aft
 metadata:
   type: project
 ---
-mondo 11-08 23:47 asked even ranges vs bell curve; 23:52 "go ahead". Thread (thread in the owner project).
+mondo 11-08 23:47 asked even ranges vs bell curve; 23:52 "go ahead". Thread (owner-project id).
 SHIPPED PR #1064 (token 20261108-grades-01-cors, data.js f6d7c2b1, ui.js 8b966a57 live on R2).
 STAT_GRADE_BANDS = 10/20/40/20/10 rank of 134 playable races, tie-aware cuts: hp 1500/1180/880/678, mp 225/200/115/90,
 atk 160/122/65/23, int 195/159/60/20, def 170/130/79/42, mdef 181/146/68/33, crt 30/26/19/13 (CRT 26 % = A for 56 races).

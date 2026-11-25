@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-12T17:50:40.317Z
 ---
-Thread (thread in the owner project) (mondo "yeah sure" 11-12). SHIPPED PR #1237, token 20261112-warmtwin-01-cors, three-renderer.js 1da21173 live.
+Thread (owner-project id) (mondo "yeah sure" 11-12). SHIPPED PR #1237, token 20261112-warmtwin-01-cors, three-renderer.js 1da21173 live.
 
 - The earlier reading "one HQ object not drawn" was wrong: nothing was missing. The line came from `_hqWarmRun` -> renderer.compile (= compileAsync on the node renderer), which calls `renderObject` past the draw hook, so the foyer dust motes (`atmos:dust`, Points ShaderMaterial) were warmed raw. They always drew in real frames.
 - Fix: `_ewGpuCompat`'s `r.renderObject` wrap gives an unswapped classic shader material its twin / point proxy. Note: docs/notes/rendering-loading-perf.md "THE WARMED TWIN".

@@ -6,7 +6,7 @@ metadata:
   modified: 2026-11-06T15:55:25.887Z
 ---
 
-11-06 thread "playtest elements and liquid terrains" (thread in the owner project), main d0928fc, report only, nothing changed.
+11-06 thread "playtest elements and liquid terrains" ((owner-project id)), main d0928fc, report only, nothing changed.
 Report: /mnt/project-files/playtest-elements-20261106/PLAYTEST_ELEMENTS_20261106.md (+ shots/, ledger, 2 match exports).
 2 battles Mount Shasta Arena 4v4 (Kraken/Ice Queen/Witch/Black Goo; Demon/Anubis/Ice Queen/Mothman).
 

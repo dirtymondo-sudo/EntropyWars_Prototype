@@ -4,7 +4,7 @@ description: Story rooms pitch black on WebGPU default (barbershop, puddle rooms
 metadata:
   type: project
 ---
-mondo 11-11: "interiors of rooms in exploration mode completely dark ... Occam's barbershop pitch black", wanted the root cause for every room. Thread (thread in the owner project).
+mondo 11-11: "interiors of rooms in exploration mode completely dark ... Occam's barbershop pitch black", wanted the root cause for every room. Thread (owner-project id).
 
 - Cause: node renderer only (default since PR #1124). `_ewRigTick` (THE ONE RIG) masks every room light and draws through one lamp group; it trusted `group.parent`. Rooms with a reflector (barber_mirror, any puddle decal: sewers, tunnels, Haunted cellar, drains/manholes) lend `scene.children` to a ClippingGroup in `_hqTickReflectors`, so the rig was pushed on the temp list and lost. Classic WebGL unaffected.
 - Fix PR #1149: rig must be in the child list (`scene._ew_lentKids` while lent); reflector hands back what joined. Token 20261112-lostrig-02-cors, three-renderer.js a1496b02. Proof /mnt/project-files/dark-rooms-20261111/.

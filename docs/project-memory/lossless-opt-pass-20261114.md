@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-14T11:00:38.459Z
 ---
-Thread (thread in the owner project) (mondo 11-14: optimize every model with no optimized version, for creator + Disaster City load).
+Thread (owner-project id) (mondo 11-14: optimize every model with no optimized version, for creator + Disaster City load).
 - PR #1385 LIVE, token 20261114-optall02-cors. 1,513 copies on R2 `Assets/opt/<sha8>_<name>.opt.glb`, ASSET_MANIFEST alt rows; 786 MB -> 577 MB.
 - New mode `optimize-assets.js --lossless`: NO gltf-transform round trip (it pads 3/6-byte attributes -> InterleavedBufferAttribute, breaks
   creator wear `_N`/`_D_*` `.array` reads; reorder breaks mpfb_classic_bust / mpfb_shapes vertex ranges). Meshopt per view in place,

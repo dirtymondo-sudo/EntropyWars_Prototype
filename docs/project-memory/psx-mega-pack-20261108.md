@@ -6,7 +6,7 @@ metadata:
   modified: 2026-11-08T11:31:11.498Z
 ---
 mondo 11-08 bought Pizza Doggy's PSX Mega Pack (creator coupon), dropped it unzipped in `dirtymondo:inbox/psxmegapack/`.
-Thread "Add PSX Mega Pack models to the game" (thread in the owner project):
+Thread "Add PSX Mega Pack models to the game" ((owner-project id)):
 - 584 of 592 GLBs uploaded to `ewmusicsfx:Assets/world/packs/pizzadoggy_psx_mega_pack/<category>/<pack name>.glb`
   (categories: furniture, modular_structures, items_and_weapons, small_props, electronics_and_misc, large_props, lighting, decals).
   Textures embedded, static, real metres (wall module 4 m x 3 m).

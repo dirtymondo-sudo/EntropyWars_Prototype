@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-12T16:21:01.343Z
 ---
-11-12 thread "Make loading screen wait for full load" (thread in the owner project), PR #1221, token 20261112-cardwaits-02-cors. mondo: "what is the point of the loading screen before hand if it always loads slow, it needs to wait until the game is loaded".
+11-12 thread "Make loading screen wait for full load" ((owner-project id)), PR #1221, token 20261112-cardwaits-02-cors. mondo: "what is the point of the loading screen before hand if it always loads slow, it needs to wait until the game is loaded".
 
 Causes found (three-renderer.js `_hqGateTick`): 75 s clock from entry; 60 s file stall counted from the request, so queued models were written off; card dropped when the last file landed, before the hall beside the foyer built / warmed and before the instance pass + static batch + late shaders.
 

@@ -5,7 +5,7 @@ metadata:
   type: feedback
   modified: 2026-11-10T09:40:00.000Z
 ---
-mondo 11-10 (thread in the owner project): spell action camera "spins around/pans when a cut would be better, or vice versa ... zoom in/out and spin/rotate/pan at the same time but then it cuts to a different angle anyway ... cuts too early away from the spell landing or the person taking damage ... AAA studio quality". He approved the grammar below ("okay sounds good").
+mondo 11-10 ((thread in the owner project)): spell action camera "spins around/pans when a cut would be better, or vice versa ... zoom in/out and spin/rotate/pan at the same time but then it cuts to a different angle anyway ... cuts too early away from the spell landing or the person taking damage ... AAA studio quality". He approved the grammar below ("okay sounds good").
 
 THE GRAMMAR (every spell shot, shared code, never per-spell hacks):
 1. Four shots only: CAST, HIT, FOLLOW (a travelling body, pan only), REVEAL (weather/zone/summon: one slow pull-back, no turn).

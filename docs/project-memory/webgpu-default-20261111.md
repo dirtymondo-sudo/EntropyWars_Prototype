@@ -4,7 +4,7 @@ description: WebGPU is the default renderer since PR #1124 (Auto pick, probe, fa
 metadata:
   type: project
 ---
-mondo 11-11: "make the default game webgpu ... I dont wanna have to type ?ew_gpu=webgpu anymore or tell friends". Thread (thread in the owner project). SHIPPED PR #1124 (token 20261111-gpuauto-01-cors). Notes: docs/notes/rendering-loading-perf.md "WEBGPU BY DEFAULT".
+mondo 11-11: "make the default game webgpu ... I dont wanna have to type ?ew_gpu=webgpu anymore or tell friends". Thread (owner-project id). SHIPPED PR #1124 (token 20261111-gpuauto-01-cors). Notes: docs/notes/rendering-loading-perf.md "WEBGPU BY DEFAULT".
 
 - index.html: `EW_GPU_PICK` auto (default) | webgpu | webgl2 | webgl; `EW_GPU_MODE` = what runs; `EW_GPU_WHY` = reason (F3 backend line, ?ewdiag=1). Auto = WebGPU if navigator.gpu + probe (adapter, not software/fallback adapter, device) passes, else the CLASSIC WebGLRenderer (not the node renderer's WebGL 2 backend). Probe result in localStorage `ew_gpu_probe` (`ok`, `no:why`, `bad:time:why` = node renderer failed after a passed probe, kept a week).
 - Settings > Video > Renderer row: Auto / WebGPU / WebGL + Reload now (drops ?ew_gpu= from the address, keeps ?join=).

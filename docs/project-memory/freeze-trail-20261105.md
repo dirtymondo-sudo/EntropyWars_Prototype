@@ -6,7 +6,7 @@ metadata:
   modified: 2026-11-05T12:33:11.053Z
 ---
 
-11-05 mondo: "Game froze" in a Hell Arena battle (Firefox M1, ?ew_gpu=webgpu, whole page locked, no JS error, he doesn't remember the last click). Thread "Fix game freeze in battle" (thread in the owner project).
+11-05 mondo: "Game froze" in a Hell Arena battle (Firefox M1, ?ew_gpu=webgpu, whole page locked, no JS error, he doesn't remember the last click). Thread "Fix game freeze in battle" (owner-project id).
 
 Not reproduced in the sandbox Chromium (WebGL + WebGPU, his 4 assigned looks injected via localStorage ew_assigned_looks from his export /mnt/project-files/uploads/hearth/07bcc105-..., tile quick menu, Demon Hellmouth, 9 rounds). The console lines in his log were fixed by other threads (#927 fonts, #929 ORB portraits = CSS backgrounds on old R2 paths, #930 atlas.png).
 

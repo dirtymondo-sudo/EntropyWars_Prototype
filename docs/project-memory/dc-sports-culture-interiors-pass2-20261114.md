@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-14T03:21:58.484Z
 ---
-Thread (thread in the owner project) "Deepen Sports + Culture interiors, second pass" (mondo 11-13 22:33 brief). First pass = [[disaster-city-sports-culture-20261113]] PR #1361.
+Thread (owner-project id) "Deepen Sports + Culture interiors, second pass" (mondo 11-13 22:33 brief). First pass = [[disaster-city-sports-culture-20261113]] PR #1361.
 
 - Code: docs/disaster-city/districts/S.js `inside()` kit new methods: I.doors, edges/runs, coat, band, liner, floorOf, ceilLit, strip, pendant, picLight, onWall(key,u,v,th,y) (mount 0). Each walk-in has a "THE SECOND PASS" block before I.done(). Notes: areas-complexes.md "THE SECOND PASS" under Sports + Culture.
 - OUTER WALL OFFSET: a hollow texbuilding's drawn face is 0.06 m inside the row edge, its inside face 0.24 m more = 0.30 m. A coat at 0.26 hid behind it; use 0.33.

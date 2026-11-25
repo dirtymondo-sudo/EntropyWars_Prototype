@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-12T17:24:31.369Z
 ---
-mondo 11-12 (Firefox M1, WebGPU, ?likeness=1): "there are these black screen tears now" in the Main Hall. Thread (thread in the owner project). SHIPPED PR #1234, token 20261112-wholestep-02-cors, three-post.js fb93f9b2.
+mondo 11-12 (Firefox M1, WebGPU, ?likeness=1): "there are these black screen tears now" in the Main Hall. Thread (owner-project id). SHIPPED PR #1234, token 20261112-wholestep-02-cors, three-post.js fb93f9b2.
 
 - Cause: NOT lighting / shadows. The ink line (three-post.js `_StyleShader` / `_ngStyle`) read depth a fraction of a texel out; nearest sampling snapped up/down reads unevenly on some screen rows, so a flat speckled floor took ink across the whole row. Tell-tale: bars sit on the SAME screen rows whatever the camera does, far floor only.
 - Fix "THE WHOLE STEP": depth reads on texel centres, whole texels apart, in-between widths blend two tests (GLSL `sEdge`, TSL `edgeAt`). Note in docs/notes/rendering-loading-perf.md.

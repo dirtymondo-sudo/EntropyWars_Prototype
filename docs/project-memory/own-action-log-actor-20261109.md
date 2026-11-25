@@ -5,7 +5,7 @@ metadata:
   type: project
 ---
 
-PR #1074 (merged + live 2026-11-09, (thread in the owner project): a player's own throw/push/pull/teleport line
+PR #1074 (merged + live 2026-11-09, (thread in the owner project)): a player's own throw/push/pull/teleport line
 was dropped from their own log when the landing square sat in their fog. Both seats had it (guest = online.js _gvLogShows, host = battle.js _logFogVisible).
 
 Rule now: battle.js `addLog(msg, vis, hp, { actor: unit|player })` writes `entry.a`. `_logVisible` and `_gvLogShows` always show a line to seat `a`.

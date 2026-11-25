@@ -4,7 +4,7 @@ description: Story mode froze on the loading screen after the 504 m Disaster Cit
 metadata:
   type: project
 ---
-mondo 11-13 15:54: "story mode isnt loading anymore ... loading screen just stayed forever and the browser slowed down" (thread in the owner project). He later said it loaded (maybe his internet) but wanted it fixed anyway.
+mondo 11-13 15:54: "story mode isnt loading anymore ... loading screen just stayed forever and the browser slowed down" ((thread in the owner project)). He later said it loaded (maybe his internet) but wanted it fixed anyway.
 
 - CAUSE: not the terrain compile (survey worker). After the worker's record for the new 504 m `site_prebuilt_downtown_streets` (PR #1258) was adopted, the background finds warm (map.js `_hqScheduleFindsWarm` -> data.js `hqFindsWarm` -> `hqFindSpot`) scanned the room in 0.5 m steps on the page: one task of 4.5 min headless, in the foyer too.
 - FIX PR #1267 (token 20261113-findsfix-02-cors, data.js + map.js live): worker places the room's finds (`hqTerrainWorkerServe` -> `hqFindsAdopt`/`hqFindsGen`), `hqFindGrid` (4 m blocker cells), `hqFindOrder` (farthest first, early stop). Finds byte-identical in the 90 other rooms. Notes: docs/notes/rendering-loading-perf.md "THE FINDS FREEZE".

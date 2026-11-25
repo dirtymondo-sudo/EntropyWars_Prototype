@@ -1,0 +1,12 @@
+---
+name: unit-concepts-20261118
+description: 11-18 new Meshy looks for 12 units + Angel M, IN GAME PR #2099 with THE UNIT GEAR (wings/halo/cape/trident on Meshy rigs); (thread in the owner project)
+metadata:
+  type: project
+  modified: 2026-11-18T05:01:19.129Z
+---
+mondo 11-18 asked for new Meshy CONCEPTS (no models/sprites yet): bigfoot, valkraye, necromancer F, atlantean (F; trident separate), cosmic wraith (cape separate), angel F, angel M (new), dragon (no wings, reuse dragon wings), fairy (no wings, reuse fairy wings), fallen angel F, fortune teller F, krampus (no sack).
+Folder /mnt/project-files/unit-concepts-20261118/: concepts/<key>_1.png, current/ (renders of the live models), sheet_A_1-5.jpg, sheet_B_6-12.jpg, gen.py + items.py (Meshy image-to-image, nano-banana-pro, current model render as reference, ~9 credits each). "bikini" in a prompt = Meshy NSFW block.
+Gargoyle M: the poking piece was a 14-tri strip claw-tip -> wing-tip skinned to RightUpLeg; fixed by GLB edit, new key ..._Running_v2.glb, PR #2088 merged + uploaded.
+Round 2 (his 11-18 asks): all females more skin/bare belly (Meshy blocks 'bikini'/'sexy costume'/'Halloween'), angels without wings (game already has single feathered/bat/dragon wing models that beat, sprites.js EW_WINGS_STYLES, one colour), wraith cape without hood, A-pose legs apart, Angel M shirtless (_3), Necromancer F _4 (open A-line skirt over leggings).
+MODELS 11-18 (his OK): 12 units + trident + cape made (meshy-t2.5 a-pose, 15 each) + Meshy-rigged (5 each): unit-concepts-20261118/models/<key>.glb, _rigged/_running/_walking; models_sheet.jpg; models.py. FIXED 11-18: Valkraye spike + a hidden leg-to-head strip (10 tris degenerate, all 3 GLBs; originals models/orig/); angel F/M halos cut out to models/<key>_halo.glb (he wants halos separate, bobbing over the head). Atlantean cape drags on floor. IN GAME 11-18 PR #2099 (sprites.js v2 models; Angel M new race gender angel/male). THE UNIT GEAR in three-renderer.js: def `procRig:'unitGear', gear:{wings:'angel'|'dragon'|{url,root,lift}, wingLen, wingTint, halo:url, haloSize, cape:url, capeLen, held:{url,len,grip,hand}}`, animated in _swayTick (_gearTick). Gear GLBs R2 Assets/characters/gear/. Proof proof/ingame_1.jpg, ingame_2.jpg. Credits 96 left. Round-2 review fixes PR #2102: Atlantean NO trident (Meshy hands have no fingers; he says a trident needs MPFB), wraith cape centred on its collar, dragon regenerated (dragon_r2_v2, with tail). Valkraye remade with DARK hair PR #2105 (valkraye_r2_v2).

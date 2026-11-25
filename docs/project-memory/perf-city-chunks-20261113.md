@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-13T17:13:41.804Z
 ---
-mondo 11-13 16:27 pasted an F3 readout walking the 144-plot Disaster City (Mac, Firefox, WebGPU): 12 fps, submit 65 ms, 109 draws, 3.29M tris in 13 "hq_part terrain" draws. Thread (thread in the owner project). He said: "we have the plots already, why not just make those the chunks or like a group of them".
+mondo 11-13 16:27 pasted an F3 readout walking the 144-plot Disaster City (Mac, Firefox, WebGPU): 12 fps, submit 65 ms, 109 draws, 3.29M tris in 13 "hq_part terrain" draws. Thread (owner-project id). He said: "we have the plots already, why not just make those the chunks or like a group of them".
 
 SHIPPED PR #1271 (token 20261113-chunks-01-cors; three-renderer.js bfca5234, data.js 76d5a90d live). Notes: docs/notes/rendering-loading-perf.md "THE CHUNKS + THE ONE MATRIX WALK".
 - Cause: STAIRS PACK fences (`_spBuildRailings`) = one mesh per fence kind for the whole room (12 meshes, 4.27M tris), in the unculled shell bundle + redrawn by the model mask (lens "extra" pass, `_ew_pixelate`). Instance pass (989 batches, 4.4M tris) in ONE bundle, never culled. 20,700 objects matrix-walked 4x a frame.

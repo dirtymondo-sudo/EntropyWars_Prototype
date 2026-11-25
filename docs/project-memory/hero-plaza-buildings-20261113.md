@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-13T17:12:36.354Z
 ---
-Thread (thread in the owner project) "Design Hero Plaza district buildings" (mondo 11-13 16:41: nine district threads architect their plots' buildings, exteriors first, unique + recognizable, interiors need swinging doors, fix pack shop-block scale).
+Thread (owner-project id) "Design Hero Plaza district buildings" (mondo 11-13 16:41: nine district threads architect their plots' buildings, exteriors first, unique + recognizable, interiors need swinging doors, fix pack shop-block scale).
 
 - District = plots x4..7, y4..7 (room metres x -84..84, z -84..84), district id 'H' in docs/disaster-city/city-layout.json. Landmark Superhero Tower P06-04. Roof-route buildings (flat roof at 7 m): Training hall P06-05, Transit court P06-06, Office annex P07-06-B2.
 - 11-13 17:12 mondo: "looks good, just remember we absolutely never use that gold texture anywhere in the game, there is a better gold texture" = OK TO BUILD the plan. RULE: never the terrain `gold` sheet (gold.png); use the better gold.

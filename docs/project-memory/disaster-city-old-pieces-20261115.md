@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-15T08:40:20.985Z
 ---
-Thread (thread in the owner project) "Port old Disaster City landmarks" (mondo 11-15).
+Thread (owner-project id) "Port old Disaster City landmarks" (mondo 11-15).
 
 - SIZE: old `site_prebuilt_downtown_oldstreets` 224 x 176 m (still in data.js, unlinked: the Downtown PvP boards are cut from it). New city 504 x 504 m, 144 plots.
 - HIS ANSWERS 11-15 08:06: GRAND PRIX = a SIDEQUEST LATER (not before the orientation vertical slice is perfect; do not build). Collapse as a 12x12 plot (only the 12x12 matters). Canal "mini venice / san antonio board walk, leading out to the ocean". Parking deck + overpass. Dress plots with fitting models, keeping to the city's perf fixes. He tapped "Build it as drawn".

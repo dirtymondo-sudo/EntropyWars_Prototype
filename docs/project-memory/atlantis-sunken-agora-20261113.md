@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-13T02:47:10.883Z
 ---
-mondo 11-13: "redesign the atlantis map ... i dont see any fish or coral at all ... epic underwater deep oceanic kingdom with greek inspired architecture ... merges science fiction technology and magic". Thread (thread in the owner project).
+mondo 11-13: "redesign the atlantis map ... i dont see any fish or coral at all ... epic underwater deep oceanic kingdom with greek inspired architecture ... merges science fiction technology and magic". Thread (owner-project id).
 
 - Cause: the Atlantis board was a window of THE TEMPLE (dry air pocket). All the ocean pack life lives in THE ABYSS room.
 - Built (SHIPPED PR #1246 11-13 after his "thats good for now", token 20261113-atlantis-01-cors, data.js 3dbdbabd + three-renderer.js 10c219bb live; shots in /mnt/project-files/atlantis-redesign/): board pinned to site_prebuilt_atlantis_abyss at (-3.5, 42): `board` feature 12x12 pale marble at h 1.2, corner marble blocks, 7 m columns, 4 lit crystal pylons, coral stands, THE PALACE north (podium, stair, temple_dome, columns, obelisks, statues, tesla coils), flank colonnades, jellies, sharks, dolphins, mantas, fish schools. Sizes 9-12 baked, fit.js true. Temple room untouched.

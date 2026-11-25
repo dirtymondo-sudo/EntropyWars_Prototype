@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-12T17:48:13.694Z
 ---
-mondo 11-12: "Continuing the game from the main menu, after the load screen loads its just a black screen". Thread (thread in the owner project). SHIPPED PR #1236, token 20261112-stalelights-01-cors, three-renderer.js 2d9546fa.
+mondo 11-12: "Continuing the game from the main menu, after the load screen loads its just a black screen". Thread (owner-project id). SHIPPED PR #1236, token 20261112-stalelights-01-cors, three-renderer.js 2d9546fa.
 
 - His console named it: `a draw failed and was skipped (Render Pipeline / RenderPipeline: can't access property "map", lightData is undefined)`, stack NodeMaterialObserver.equals < needsRefresh < _renderBundle. ANY "draw failed ... Render Pipeline" line = the WHOLE frame is skipped (black world, HUD fine).
 - Cause: three keeps one record per shadow-casting light per render object; a bundle replay never re-fetches render objects, so a shadow light joining after a non-static group was recorded read past the record and threw. `r._ew_lights` is noted at the frame's first real draw, which never came, so `_ewBunTick` never re-recorded: black for good. WebGPU only. NOT the save (PR #1219) and not the lamp budget (PR #1231) as such.

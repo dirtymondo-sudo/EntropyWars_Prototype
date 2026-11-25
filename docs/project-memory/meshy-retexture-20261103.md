@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-03T08:43:16.307Z
 ---
-2026-11-03 (thread in the owner project): mondo asked if Meshy can texture an uploaded model; tried on his
+2026-11-03 ((thread in the owner project)): mondo asked if Meshy can texture an uploaded model; tried on his
 cowboy hat (charactercreation/wear/ewb_cowboyhat.glb, 1364 verts / 2020 tris, bone Head, no sway chains).
 - API: POST https://api.meshy.ai/openapi/v1/retexture, model_url as data:application/octet-stream;base64 GLB, text_style_prompt,
   enable_original_uv true, ai_model meshy-6 (+ remove_lighting true) or latest (meshy-7). 10 credits each, ~4 min. Proxy injects the key.

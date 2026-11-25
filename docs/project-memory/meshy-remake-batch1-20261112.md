@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-12T05:50:29.903Z
 ---
-Thread (thread in the owner project) ("Remake demo starter looks batch one"), plan [[meshy-remake-plan-20261112]].
+Thread (owner-project id) ("Remake demo starter looks batch one"), plan [[meshy-remake-plan-20261112]].
 
 - SHIPPED PR #1170 (11-12 ~05:50Z): remade looks for zombie (F), catgirl (F; his saved catgirl look's body + face + hair, T2 ears kept as a separate Hats piece, not in the look), robinhood (M), quarterback (M). Pieces `ewm_t2<unit>_outfit/_hat` uploaded with `sync-zip.js --put`. Meshy models stay defaults.
 - DJINN: Meshy image-to-3d REFUSED twice (`provider_content_refused`, bare-chested render). Not worked around; told mondo, waits on his word.

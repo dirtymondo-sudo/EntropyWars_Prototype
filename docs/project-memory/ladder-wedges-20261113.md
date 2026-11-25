@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-13T20:17:27.125Z
 ---
-Thread (thread in the owner project) "Make ladders climbable without ramps". mondo 11-13 19:41: wherever there are ladders there is a raised slanted terrain piece that looks wrong, can be jumped onto, is easy to fall off; he wants to climb the ladder and stand on the platform. He picked "Steel platform you stand on" on the card (19:56).
+Thread (owner-project id) "Make ladders climbable without ramps". mondo 11-13 19:41: wherever there are ladders there is a raised slanted terrain piece that looks wrong, can be jumped onto, is easy to fall off; he wants to climb the ladder and stand on the platform. He picked "Steel platform you stand on" on the card (19:56).
 
 - LIVE PR #1313 (token 20261113-ladders-01-cors; data.js 6cd16699, three-renderer.js 91e8c7cb). Thread left open for his look.
 - What the lump was: the fire escape's halfway LANDING, a terrain `plateau` 1.6 x 2.2 m. Only in city rooms: `site_prebuilt_downtown_streets` 18 (bake-disaster-city.js `escapeAt` loop), `site_prebuilt_cyberpunk_streets` 5 (now 4 rows), `site_prebuilt_downtown_oldstreets` 2. The other 31 ladder rooms climb straight onto real tiers.

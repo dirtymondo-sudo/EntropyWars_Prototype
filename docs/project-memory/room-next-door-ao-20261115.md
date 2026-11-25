@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-15T16:22:34.012Z
 ---
-mondo 11-15: "the lighting isnt on at first and suddenly turns on as i walk through the door". Thread (thread in the owner project).
+mondo 11-15: "the lighting isnt on at first and suddenly turns on as i walk through the door". Thread (owner-project id).
 
 - Cause: three-renderer.js THE ROOM-BOX AO (`_hqAoHook` GLSL + `_ewNodeAo` node). The box = the room you stand in (`_hqAoArm`, re-armed at `_hqStageSwap`), but the shader runs on everything drawn; a point outside the box read as against 2 walls + ceiling, so a joined room seen from a box room drew at the 0.3 clamp, bar strips in line with the box's walls (looked like hard shadows). This is also the "seen, not fixed" line in [[main-hall-far-walls-20261112]].
 - Fix PR #1457: outside the box (past 0.15 of the reach) walls/ceiling shade nothing; floor contact stays. Token 20261115-nextdoor-02-cors, three-renderer.js d34bc140. Note docs/notes/rendering-loading-perf.md "THE ROOM NEXT DOOR". Proof /mnt/project-files/hall-light-pop/.

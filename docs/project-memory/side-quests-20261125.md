@@ -1,0 +1,12 @@
+---
+name: side-quests-20261125
+description: 11-25 side quests + storylines doc (Katana Bay gator/frogs/slugs/Rat, Haunted House, DMT elves, Televangelist church, quest givers, Door Cases) waits his + outside AI review
+metadata:
+  type: project
+  modified: 2026-11-25T14:01:35.269Z
+---
+11-25 mondo asked ((thread in the owner project)) for side stories: Katana Bay (anime friends, karate frogs, samurai slugs, the Rat, sewer gator -> Kaiju protects Katana in future), Haunted House, DMT elves + Astral Realm, quest givers (DOOR division leaders, Conspiracy Theorist, Cameraman), mini-boss lines (Televangelist church w/ hypnotized Trucker, Farmer, Florida Man), generated "unauthorized door on floor N" cases in more Hotel-like mystery-dungeon buildings with >10 floors. Workflow: he has the OTHER AI review the doc, brings feedback back, we iterate.
+
+Draft 1 = Claude Doc https://claude.ai/artifact/KUDvsuDxPB5KtncRaSajFb ("Entropy Wars: Side Quests and Storylines"). Marked Yours / Board / Suggestion. Nothing written to the Story planner yet (only after his OK; back up board first).
+Board read live via Cloudflare D1 MCP (db entropy-wars 5f3a90f5-..., table story_web_docs, paths boards/main, story/plan, story/cast); EW_WEB_KEY is not in every container's env.
+His answers 11-25 14:31Z: Bigfoot = Agent Woody Forrest (DOOR_CAST forrest) leads Cryptid Division (not yet on board/planner); Internet gets own giver outside DOOR + mystery dungeon 'the Archives' (old web pages); Kaiju protects wherever the cyberpunk city is (DC vs Katana Island undecided); Ch1 Kaiju-looks-at-you beat OK; Rat story must use his Rat King kit; frogs = Katana refugees OK; Televangelist loosh buyer pays off Ch10; Belle is Ringer's daughter; planner 'Supervillain' = the Antihero (rename); 30 floors; buildings (all but Hero Tower + Archives) in (thread in the owner project). Cyberpunk city = future Disaster City (locked earlier), Kaiju guards it. Buildings LIVE PR #2575 (MD_BUILDINGS hotel, office=Act of God Insurance, haunted cellar, dumb SL 8-37, archives; mdCaseToday/mdCaseClose; chapter gates need a chapter flag -> hotelTopGate). 16:33Z: ET head = Glass, Spirit Realm head = Ringer; Internet giver = the Hacker (Glitch = his scout); the Antihero unit should be NAMED Supervillain. Future city reopened (he's torn): recommended DC taken over by Katana Empire + the AI (card posted). Mystery-dungeon buildings need a separate build thread. Related [[outside-ai-plan-20261125]] [[story-mystery-restraint]] [[story-jrpg-conflict]].

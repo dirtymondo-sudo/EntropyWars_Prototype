@@ -6,7 +6,7 @@ metadata:
   modified: 2026-11-11T01:29:57.635Z
 ---
 
-PvP-only demo list item 2. Thread (thread in the owner project), branch claude/project-thread-h0bcuy.
+PvP-only demo list item 2. Thread (owner-project id), branch claude/project-thread-h0bcuy.
 mondo picked "Build as drawn" 11-11 00:42Z. SHIPPED PR #1103 (merged, R2 uploaded, token 20261111-lobbyroom-01-cors).
 - Plan doc https://claude.ai/artifact/TeHn4KtCBeL7vjDwzhk7hk; mock-ups /mnt/project-files/demo-lobby-20261110/mockups/; proof (31 two-seat shots, 720+540) ../proof/.
 

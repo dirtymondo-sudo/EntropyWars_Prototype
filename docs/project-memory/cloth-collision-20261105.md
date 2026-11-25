@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-05T10:23:15.233Z
 ---
-mondo 11-05 08:42 (furious): "Can you not just add collision to all the mpfb bodies and clothes?" Thread "Add collision between bodies and clothes" (thread in the owner project). PR #932 merged, three-renderer.js live (sha e7c123b4), token 20261105-clothcol-01-cors.
+mondo 11-05 08:42 (furious): "Can you not just add collision to all the mpfb bodies and clothes?" Thread "Add collision between bodies and clothes" (owner-project id). PR #932 merged, three-renderer.js live (sha e7c123b4), token 20261105-clothcol-01-cors.
 
 What it is (three-renderer.js, notes character-creator.md "THE CLOTH COLLISION", plan row 12w): fit-time anchor per cloth vertex on the skin (rig collideFit, 5-43 ms per clothes change) + vertex-shader push back into a band off the skin every frame (GLSL _ewColPatch, node twin _ewNodeCol), second anchor at joints (off in creases), polygonOffset by layer rank (no flicker). Board/team room/spell doubles call _ewColMark on their Lambert swaps; any NEW material swap of creator garments must call _ewColMark(mat, mesh) too. Kill-switch window.EW_CLOTH_COLLIDE.x=0 / ?ew_collide=0.
 

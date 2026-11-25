@@ -4,7 +4,7 @@ description: DOOR HQ garden "dark" when walked into from the pool (mondo 11-12) 
 metadata:
   type: project
 ---
-mondo 11-12: "The garden is dark" (walked in from the natatorium, Firefox M1 WebGPU). Thread (thread in the owner project).
+mondo 11-12: "The garden is dark" (walked in from the natatorium, Firefox M1 WebGPU). Thread (owner-project id).
 
 - Cause: garden (annex zone), executive `pool`, `site_prebuilt_derelict_deck` are OPEN rooms (own sky) on the stage of an INDOOR zone. A door crossing (`_hqStageSwap`) built no sky dome and no lamp masts: black void overhead, no lamps at night. The world clock did set hemisphere + key to the hour, so by day the ground was lit. Walking back, the pool kept the garden's light (blown white by day, night-lit by night). A fast walker got a plain load (`_hqStageLoad`) with the sky, so it was intermittent.
 - Fix PR #1240 (+ #1241 comment/notes): three-renderer.js `_hqStageSkyUp`, `_hqOpenRoomLamps`, `_hqStageAirCross`, `H.sky.air`. Token 20261112-gardensky-02-cors. Note docs/notes/hq-building-rooms.md "THE OPEN-AIR ROOM INDOORS". Proof /mnt/project-files/dark-garden/ (day, night, pool after).

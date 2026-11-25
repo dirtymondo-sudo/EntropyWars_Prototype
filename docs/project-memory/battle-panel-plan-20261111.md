@@ -7,7 +7,7 @@ metadata:
 ---
 
 mondo asked 11-11: merge the unit info / tile info panel and the actions list into ONE cohesive panel, "AAA JRPG", all info + actions reachable.
-Thread (thread in the owner project). Plan page https://claude.ai/artifact/SGAvR8qW2ywVjM9AKJkyYZ ; files + proof /mnt/project-files/battle-panel-20261111/ (proof/ = shots at 1728x904 and 1280x540).
+Thread (owner-project id). Plan page https://claude.ai/artifact/SGAvR8qW2ywVjM9AKJkyYZ ; files + proof /mnt/project-files/battle-panel-20261111/ (proof/ = shots at 1728x904 and 1280x540).
 
 He said "build it" 11-11 10:46 UTC; his three picks taken as recommended: right bay = own stats when nothing picked, AP icons docked in the panel, zoom cone off in the new layout.
 SHIPPED PR #1131 (11-11): hud.js deck branch `div.hrlg-rig.ewd` (WHO / WHAT / ON WHAT / footer), compact layout for 1280x540, UI Maker Layout > Battle panel (One panel / Classic, dFocus, dAp, dCone), kill switch window.EW_CLASSIC_PANEL. battle.js _menuFreeArea + three-renderer _wmMenuRects know it. Notes: docs/notes/ui-menus-audio.md "THE ONE BATTLE PANEL".

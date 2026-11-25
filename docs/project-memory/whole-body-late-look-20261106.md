@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-06T15:39:44.734Z
 ---
-11-06 thread "Fix created looks missing at battle spawn" (thread in the owner project), PR #964, token 20261106-wholebody-02-cors, three-renderer.js live 79b420bf.
+11-06 thread "Fix created looks missing at battle spawn" ((owner-project id)), PR #964, token 20261106-wholebody-02-cors, three-renderer.js live 79b420bf.
 
 Cause of playtest A1/C4: NOT the spawn prism or culling. THE LATE LOOK (node renderer _ewLateSetup + WebGL _glScSetup) builds new shader looks a few per DRAWN frame and draws each piece when its own build stands. Created (MPFB) bodies = ~25 looks each, so they came in piece by piece (Santa red suit only, specks). The playtest harness draws 3 frames per screenshot (draw on demand) so pieces took minutes; a real browser drawing every frame mostly builds them under the loading card.
 

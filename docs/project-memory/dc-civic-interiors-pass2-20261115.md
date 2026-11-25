@@ -4,7 +4,7 @@ description: Civic Center (Disaster City) interiors SECOND PASS LIVE PR #1399 (1
 metadata:
   type: project
 ---
-Thread (thread in the owner project). First pass = [[disaster-city-civic-interiors-20261115]] PR #1397.
+Thread (owner-project id). First pass = [[disaster-city-civic-interiors-20261115]] PR #1397.
 
 - LIVE PR #1399 merged 11-15 ~02:30, data.js 7637c9b0 + ASSET_MANIFEST 232d9311 on R2, token 20261115-civic2-02-cors. Waits mondo's Mac look (headless never draws Meshy GLBs; no in-game shots taken, proof = plan sheet + fronts sheet in project files disaster-city-civic/interiors2/).
 - Code: C.js "THE SECOND PASS": LOOK[key] feeds A.line (lit lining glow/gain, ceiling deck glow+roof, lower H, floor, dado); SECOND[key](A, K) with kit() (sheet/coat/band/liner/coffers/panel/strip/pend/sconce/win/pilaster/rug/sign/P/hang). toArch: `t:'raw'` parts, gain/roof on boxes.

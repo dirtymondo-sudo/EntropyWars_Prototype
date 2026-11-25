@@ -4,7 +4,7 @@ description: Plot layout PROPOSALS for the 11 zones not yet planned + the whole-
 metadata:
   type: project
 ---
-Thread (thread in the owner project) "Plan plot layouts for remaining zones" (mondo 11-15 16:57: "plot layout proposals for the other zones ... and after that i want a layout of the entire map with all zones, to see how the world could potentially fit together spatially"). Follows [[world-areas-plan-20261115]]; skips Woods (built), Camelot [[camelot-kingdom-plots-20261115]], Desert [[desert-plots-20261115]], Disaster City.
+Thread (owner-project id) "Plan plot layouts for remaining zones" (mondo 11-15 16:57: "plot layout proposals for the other zones ... and after that i want a layout of the entire map with all zones, to see how the world could potentially fit together spatially"). Follows [[world-areas-plan-20261115]]; skips Woods (built), Camelot [[camelot-kingdom-plots-20261115]], Desert [[desert-plots-20261115]], Disaster City.
 
 Files: /mnt/project-files/world-zones-plan/ : zone-layout-proposals.md (summary + questions), world_layout.png, <zone>_plot_plan.png + <zone>-layout.json for estate, beach, the-deep, dumb, cavern, leylines, heaven-hell-vatican, outer-space, antarctica, astral-realm, sewers; scripts engine.py, zones_a/b/c.py, world.py (rerun to redraw). No repo change.
 

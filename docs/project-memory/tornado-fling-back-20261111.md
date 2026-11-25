@@ -4,7 +4,7 @@ description: PR #1132 (11-11) tornado/hurricane fling that bounces back into the
 metadata:
   type: project
 ---
-mondo 11-11 (Hell Arena (Calm), Sheriff): "tornado moved to the same tile as my cowboy in between rounds, but it didnt fling him". Thread (thread in the owner project).
+mondo 11-11 (Hell Arena (Calm), Sheriff): "tornado moved to the same tile as my cowboy in between rounds, but it didnt fling him". Thread (owner-project id).
 
 - Cause (reproduced, WebGL2 headless): battle.js `vortexFlingUnit` returned silently when the body ended on its start tile: thrown 1 square into the board edge / wall and rebounded straight back into the eye, or stopped at once by a neighbour (bowling crash hands momentum over). Damage landed, no fling line / FX / pop. A free fling always worked. Natural tornado only (no Summon Tornado spell exists).
 - Fix PR #1132 (token 20261111-flingback-01-cors, battle.js 01745bcf live): no rule change; logs "flings X north, and X is thrown straight back into the eye" / "is stopped short and stays in the eye", lift-spin-hurl to the struck square + slide steps back, FLUNG pop, round waits. Notes: docs/notes/champions-combat.md "THE FLING THAT COMES BACK". Related [[forced-movement-rules]].

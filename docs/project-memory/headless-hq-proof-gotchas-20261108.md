@@ -5,7 +5,7 @@ metadata:
   type: reference
   modified: 2026-11-08T15:00:13.077Z
 ---
-Found 11-08 proving PSX pack prop swaps (thread in the owner project).
+Found 11-08 proving PSX pack prop swaps ((thread in the owner project)).
 
 - Playwright `context.route('**/*')` serving every CDN file makes big site rooms (bunker, Camelot keep) close the page/browser a few seconds after `_hqEnter`. Don't route everything.
 - Fix that worked: run a local HTTPS stand-in for cdn.entropywars.net (Node https, self-signed cert, port 443). It serves repo .js/.css, then a disk cache, then `curl -m 90` from the live CDN. Launch Chromium with `--host-resolver-rules=MAP cdn.entropywars.net 127.0.0.1` and add cdn.entropywars.net to the proxy bypass. Use `ignoreHTTPSErrors`. Node http2 gave ERR_HTTP2_PROTOCOL_ERROR, so stay on HTTP/1.1.

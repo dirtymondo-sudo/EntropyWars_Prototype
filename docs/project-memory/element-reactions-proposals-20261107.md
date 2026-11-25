@@ -7,7 +7,7 @@ metadata:
 ---
 
 mondo 11-07 05:02 asked for "more reactions almost like chemistry, as long as it makes sense and is consistent" (like Wet making
-lightning hit harder). Thread "Propose new status, element, terrain and weather reactions" (thread in the owner project).
+lightning hit harder). Thread "Propose new status, element, terrain and weather reactions" ((owner-project id)).
 Doc: /mnt/project-files/proposals/ELEMENT_REACTIONS_PROPOSALS_20261107.md (current-reaction matrix + 17 proposals + dropped list).
 
 R1 dry weather dries Wet (reads close to a bug: Drought dries squares, not units); R2 Solar Flare thaws/melts/dries; R3 Drought feeds fire;

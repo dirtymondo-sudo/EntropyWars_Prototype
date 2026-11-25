@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-15T09:11:40.075Z
 ---
-Thread (thread in the owner project) "interior polish" (mondo 11-15: rugs flicker, desks through chairs, zombie floating; 09:07 floating orchestra over the concert hall dome).
+Thread (owner-project id) "interior polish" (mondo 11-15: rugs flicker, desks through chairs, zombie floating; 09:07 floating orchestra over the concert hall dome).
 
 - LIVE PR #1408 merged 11-15 ~09:40 UTC, data.js 195b593e, three-renderer.js 8a26e406, token 20261115-inpolish-01-cors.
 - `docs/disaster-city/interior-polish.js` runs LAST in `node bake-disaster-city.js` over every hollow texbuilding (DC_NO_POLISH=1 skips, DC_POLISH_LOG=1 lists what is left). District threads need not fix these by hand any more: floor:true on every interior prop, coplanar faces 6 mm apart, rugs over the floor sheet, linings out to 0.33 m, props out of walls / ceilings / each other.

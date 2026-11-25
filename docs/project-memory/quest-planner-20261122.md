@@ -1,0 +1,15 @@
+---
+name: quest-planner-20261122
+description: Story planner (chapters/quests on the world map, beat chart, spine) in the Relationship Web page, SHIPPED PR #2453 11-22; where it lives, how it saves
+metadata:
+  type: project
+  modified: 2026-11-22T22:03:49.526Z
+---
+mondo 11-22 ((thread in the owner project)): "add a Chapter/Quest planner, where I can add chapters with multiple quests, and the game map on the screen so I can plan the route the player is meant to take and how the story will play out".
+
+- PLAN (posted 11-22 ~22:05Z, NOT BUILT, waits his explicit OK): a second tab "Chapters + Quests" inside the Relationship Web page (docs/plans/story-web/, served at /dev/relationship-web), so it shares the server save (/api/story-web, password), both computers, the cast portraits, places and timeline events. Left = chapters with their quests; centre = big zoomable world map painted from the game's own ground pictures (Assets/ui/map/<room>.png decoded like map.js `_zmPaint`, rooms placed from HQ_ZONE_MAP wx/wy + DOOR_HQ shell), numbered pins per quest coloured by chapter, arrows in order, dashed = side quest, dotted = underground leg, Surface/Underground toggle, off-map tray (DOOR HQ, Heaven, Space, Astral, Internet); right = quest panel (main/side, where, summary, steps with own pins, characters, cutscenes, reward, timeline events, link to a game STORY_QUESTS id). Chapter 1 = the real ORIENTATION quest imported from data.js. Export shaped like STORY_QUESTS, nothing in the game reads it yet. Black panels white outline.
+- Mock-up: /mnt/project-files/quest-planner/planner_mockup.png (+ mock.html, its scripts). Chapters 2-4 in the picture are marked examples, no story invented.
+- V2 (11-22 22:45Z, his ask: "see what this plan is asking of me and make the planner easy", plan doc https://claude.ai/artifact/ScTxXgtDrPMEyjTMnTrhPv): tabs Story: Map | Beat chart | Spine. Chapter card = the plan's beat-chart fields as pickers (band L1-L6, nine-step story step, goal Escape/Explore/Learn/Choice, zone on map, new enemies from web/factions, new mechanic, boss, reward, clues plant->payoff, the lie + what DOOR trusts you with). Map 'World at Ch N' greys zones not open yet. Beat chart tab builds the table itself + flags (no new mechanic twice, same goal, unpaid clues, no boss) + mechanics intro/repeat/combine grid; side = the plan's 7 'answer these first' questions with answer boxes. Spine tab = one-sheet, six bands, every chapter's questions. Pictures planner_v2_map.png, planner_v2_beat_chart.png. Waits OK.
+- SHIPPED PR #2453 (11-22, his OK on v2): Relationship Web toolbar 'Story planner'; app.js THE STORY PLANNER; plan saved as doc `story/plan` (server STORY_WEB_PATH) + S.story; build.js storyData() (rooms + STORY_QUESTS). Notes docs/plans/story-web/README.md 'The Story planner'. No R2 files. Proof built_map.png / built_beat_chart.png. NOT tested: server save round trip (needs D1), real Mac browser.
+- Another thread fixes the Relationship Web's show/hide world map toggle (same message).
+- Related [[relationship-web-tool-20261118]] [[quest-system-20261112]].

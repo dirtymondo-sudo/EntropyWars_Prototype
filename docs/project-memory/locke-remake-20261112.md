@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-12T17:16:38.797Z
 ---
-Thread (thread in the owner project). mondo 11-12 16:18Z (portraits thread): "Do B" = "Ship, and remake Locke to blink". Follows [[meshy-remake-batch2-round2-20261112]].
+Thread (owner-project id). mondo 11-12 16:18Z (portraits thread): "Do B" = "Ship, and remake Locke to blink". Follows [[meshy-remake-batch2-round2-20261112]].
 
 - SHIPPED PR #1233 (~17:25Z), live: ewm_t2locke_outfit.glb 030cbb44, skin_ew_face_locke.jpg c789d039, mpfb_shapes.glb ce57a0c4 (adds lockeFace).
 - WIRING: sprites.js CAST_CREATOR_LOOKS { locke: { gender, look } } + getCastLookModel(id, race, gender). getCastModel (DOOR HQ spawns, portrait studio) and getRace3DModel's cast branch (board; keeps the Door Agent's gun) return a creator def with def.raceLook. normalizeCharacterAppearance({cast}) still returns null: read the look from def.raceLook. Kill switch window.EW_DISABLE_CAST_LOOKS = true. To remake another cast member: add a row there, nothing else.

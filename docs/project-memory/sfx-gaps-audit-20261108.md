@@ -6,7 +6,7 @@ metadata:
   modified: 2026-11-08T12:06:02.956Z
 ---
 mondo 11-08 asked which elemental cast/hit SFX are missing + priority + lengths. Thread "Audit battle SFX gaps for elemental casts"
- (thread in the owner project). Doc: /mnt/project-files/sfx-audit-20261108/SFX_GAPS_ELEMENTAL_20261108.md.
+((owner-project id)). Doc: /mnt/project-files/sfx-audit-20261108/SFX_GAPS_ELEMENTAL_20261108.md.
 Repo SFX_AUDIT.md (08-03) is stale for elements.
 
 Findings (main 87460d0): router battle.js `_SFX_EL_ALIAS`/`spellLaunchSfx`/`_SFX_THEME_IMPACT` knows only lightning/ice/water/earth

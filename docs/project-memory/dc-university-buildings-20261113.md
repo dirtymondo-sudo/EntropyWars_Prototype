@@ -1,6 +1,6 @@
 ---
 name: dc-university-buildings-20261113
-description: Disaster City UNIVERSITY district building redesign (thread in the owner project): plan + 3D mock-up posted 11-13 ~17:00 UTC, WAITS mondo's OK; nothing built or merged
+description: Disaster City UNIVERSITY district building redesign ((thread in the owner project)): plan + 3D mock-up posted 11-13 ~17:00 UTC, WAITS mondo's OK; nothing built or merged
 metadata:
   type: project
   modified: 2026-11-13T16:55:10.386Z

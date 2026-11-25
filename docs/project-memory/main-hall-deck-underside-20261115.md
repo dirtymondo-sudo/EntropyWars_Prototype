@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-15T19:01:45.781Z
 ---
-mondo 11-15: "the 3rd floor/2nd deck's floor does not show/is invisible ... it only shows when i am walking in it". Thread (thread in the owner project).
+mondo 11-15: "the 3rd floor/2nd deck's floor does not show/is invisible ... it only shows when i am walking in it". Thread (owner-project id).
 
 - Cause: three-renderer.js `_hqSectorMesh(..., down)` mirrored a FLAT sheet with `g.scale(1,-1,1)`: normals turned, winding did not, so every underside (mezzanine, gallery x2, soffit lip, stair landings) was back-face culled from below; the slab top faces up too, so from the deck under it nothing drew. Likely always so, not a regression of the 11-15 perf / memory / AO PRs (breaking the batches changed nothing).
 - Fix PR #1483: the mirror also swaps each triangle's winding. Only caller of `down`. Token 20261115-underside-02-cors, three-renderer.js d0623ca1. Note docs/notes/hq-building-rooms.md "THE SEEN UNDERSIDE". Proof /mnt/project-files/main-hall-deck/.

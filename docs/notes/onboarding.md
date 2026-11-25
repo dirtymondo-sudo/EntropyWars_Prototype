@@ -94,10 +94,10 @@ the workflow above is built for it:
 | Area layouts | `docs/disaster-city/`, `docs/areas/<area>/layout.json`, `docs/notes/areas-complexes.md` |
 | Story and world design | `DOOR_MASTER.md`, `DOOR_STORY.md`, `docs/notes/door-docs.md` |
 | How to drive the game in a browser | `PLAYTEST_NOTES.md` |
-| The owner project's memory, as it stood 2026-11-15 | `docs/project-memory/` (`INDEX.md` first; 668 dated notes, grep by topic) |
+| The owner project's memory, as it stood 2026-11-25 (refreshed by the PROJECT_HANDOFF PR) | `docs/project-memory/` (`INDEX.md` first; 816 dated notes, grep by topic) |
 | What changed and why | The merged PR descriptions on GitHub (over 1,480 of them) |
 
-`docs/project-memory/` is a frozen copy. It is not updated after 2026-11-15. New lasting facts go in the matching
+`docs/project-memory/` is a frozen copy, last refreshed 2026-11-25 (see `docs/plans/PROJECT_HANDOFF.md`). New lasting facts go in the matching
 `docs/notes/` file, in the same PR as the change, so both accounts see them.
 
 ## 6. What does NOT travel to another account

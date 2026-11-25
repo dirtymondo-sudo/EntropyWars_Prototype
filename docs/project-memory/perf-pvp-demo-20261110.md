@@ -4,7 +4,7 @@ description: PvP demo frame rate (weak Chrome PC = classic WebGL renderer): PR #
 metadata:
   type: project
 ---
-Thread "Improve frame rate on the weak Chrome PC" (thread in the owner project) (item 4 of mondo's "All" to the PvP demo list, 11-10). Notes: docs/notes/rendering-loading-perf.md "THE WEIGHTED SHEETS + THE LIGHT'S REACH". Files + tools: /mnt/project-files/perf-pvp-demo-20261110/.
+Thread "Improve frame rate on the weak Chrome PC" (owner-project id) (item 4 of mondo's "All" to the PvP demo list, 11-10). Notes: docs/notes/rendering-loading-perf.md "THE WEIGHTED SHEETS + THE LIGHT'S REACH". Files + tools: /mnt/project-files/perf-pvp-demo-20261110/.
 
 KEY FACT: the friend's Chrome runs the DEFAULT classic WebGLRenderer (ew_gpu unset); mondo plays the node renderer (?ew_gpu=webgpu). Plan 1's AO skip is node-only, so it does nothing for the friend. Check which renderer a perf fix lands on.
 

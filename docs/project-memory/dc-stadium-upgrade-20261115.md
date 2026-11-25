@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-15T11:47:58.860Z
 ---
-Thread (thread in the owner project) (mondo 11-15: city football field "looks worse than the stadium battle map", seats/stands). District notes: [[disaster-city-sports-culture-20261113]].
+Thread (owner-project id) (mondo 11-15: city football field "looks worse than the stadium battle map", seats/stands). District notes: [[disaster-city-sports-culture-20261113]].
 
 - LIVE PR #1415: S.js stadium block = 14 tier wall rows a stand (engine's instanced seats, ~3,200), old `hqGridironMarks` paint via new bake `ctx.marks` (code strings -> room `terrain.marks`), bowl-style flood masts in the arch row. data.js 54bb0f37, three-renderer.js fd8ca597, token 20261115-stadium-01-cors. Notes: areas-complexes.md "THE STADIUM, AS GOOD AS THE BOWL".
 - GOTCHA: in the sloped city room a wall row's `y` is OVER THE GROUND (`_hqTSlopeFeatures` adds the level). Adding the plot level yourself lifts it twice.

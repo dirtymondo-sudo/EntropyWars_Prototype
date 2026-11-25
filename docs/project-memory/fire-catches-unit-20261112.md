@@ -6,7 +6,7 @@ metadata:
   modified: 2026-11-12T04:54:17.466Z
 ---
 
-11-12 thread "Fix burning tile not applying Burning" (thread in the owner project), PR #1165, battle.js live.
+11-12 thread "Fix burning tile not applying Burning" ((owner-project id)), PR #1165, battle.js live.
 mondo: "this chess piece is clearly on a tile on fire but it doesnt have the burning status effect" (Dragon Fist on Training Room tall grass).
 Cause: only the forest fire set the unit Burning at ignition; grass fire spells, Wall of Fire, fanned flames, round spread, Hell door own-side
 bodies waited for the end-of-round tick. Fix: battle.js igniteTile -> _fireCatchesUnitAt (Burn 2, status only, NO ignition damage; skips flyers,

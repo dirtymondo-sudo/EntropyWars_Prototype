@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-12T13:22:37.743Z
 ---
-Thread (thread in the owner project). mondo 11-12 12:55Z: "the occulus eyeball doesnt show up on this screen, only the wings" (Select Your Team).
+Thread (owner-project id). mondo 11-12 12:55Z: "the occulus eyeball doesnt show up on this screen, only the wings" (Select Your Team).
 
 - SHIPPED PR #1211, token 20261112-occeye-02-cors, three-renderer.js ac436fd1, live.
 - Cause: team room `_trBuildMember` never read `entry.procClips`, so procedural rigs (Occulus, Seraphim, UFO forms, chess pieces, unicorn) got no core eye, no idle, no poses there. Fixed for all of them; board untouched. Note: docs/notes/models-assets.md "THE PROCEDURAL RIGS IN THE TEAM ROOM".
