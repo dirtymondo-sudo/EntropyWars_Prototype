@@ -4173,3 +4173,36 @@ Texture with 'PointSha…" and "i always get this huge frame drop in door hq and
   it (`fresh`) or a count change, and is MEASURED again only when something landed in it (`_hqStillAdded` sets `_ew_ckDirty`)
   or every 60 s, not on every add in the room. Cloud, the Estate's lake with an add every 400 ms: tick: chunks 15.3 -> 2.2 ms a
   frame (old worst frames 468 / 145 ms at the cloud's speed).
+
+## THE WARM THAT MISSED (2026-11-25, mondo's F3 in the DOOR HQ Main Hall, Firefox / Mac / WebGPU: "game drops to 0 fps randomly in door hq")
+His lens: dips to 2 FPS every ~7 s, each with "1-31 shader builds · 1-22 new pipelines" (10x MeshPhong on hq_part, see-through
+variants, skinned bodies), 69 % of the dips' time outside our JS (Firefox building the pipelines). The load card's warm-up was
+meant to build all of it. A cloud probe of the hall (node renderer on WebGL 2, every build logged with its keys) showed it built
+NONE of what the frames then used: 34 builds under the card, 142 new ones in the first minute of walking. Four faults, one each:
+- **The light list.** The warm compiled each piece with only THE ONE RIG's lamps; the frame draws with the rig AND every light the
+  rig never carries (the hero torch: a shadow-casting point lamp, id 946 in the hall). three keys every look on that list, so no
+  warmed look matched. The rig now keeps those real lights in three's own walk order (`R.real`, `R.pre` = how many come before
+  the rig's group) and the warm uses the frame's whole list (`_ewRigWarmKids`, `_ewRigFrameLights`).
+- **The rig grew after the warm.** Under the card the point rig grew 8 -> 20 -> 28 as the foyer / reception / office lit their lamps,
+  each step a new light list. Every walk room now takes HQ_RIG_PREGROW_P = 32 point slots on its first frame (was 20, big chunked
+  rooms only; the spare ones are dark). A warm whose light list changed while it ran starts over (`W.sig` = `_ewRigSig()` + the
+  context id; `W.restarts`), and the settle warms the room again when the list moved after it finished. Old rule: `EW_RIG_PREGROW_BIG_ONLY`.
+- **The wrong render context.** three puts the render context's id in every material key. `renderer.compile` (= compileAsync)
+  asks for the context of call depth 0, while the walk's scene pass draws one call deep in the post chain; and compileAsync
+  builds later, one piece per macrotask, reading whatever the frames in between left. **THE WARM ON THE REAL PIECE**
+  (`_ewWarmReal`): for each piece the warm now does a real draw's own steps at once (the render object for the piece, the room's
+  scene + camera + its render list's lights node + the scene pass's own context and clipping, then the node build, bindings and
+  pipeline), with the lights / target / MRT pinned (`_ewScPin`). The render object made is the one the frame's draw fetches.
+  The context comes from `_ewWarmCtx`: every context a real render asked for, by its target (`RC._ew_by`, kept from the first
+  call); under the card the warm waits up to 4 s for the first frame that draws the scene pass. Off: `EW_WARM_COMPILE` (the old
+  compile), `EW_WARM_OWN_CTX`.
+- **The camera's view.** compile drops a piece outside the walk camera's view or switched off, so the old warm built only what the
+  card's camera faced. The old compile path now counts the piece as shown and in view for its call (the real-piece path never culls).
+Also: the warm's "seen" key takes the geometry's attribute layout (+ an InstancedMesh's id, a skeleton's bone count), as three's key does.
+Proof (cloud llvmpipe, node renderer on WebGL 2, the hall, drawing under the card like the game: `EW_PROBE_DRAW_LOAD=1`; the same
+two stops each turned a full circle, at 3,1 and 1,-6): builds after the card **56 -> 8** (stop one 33 -> 8, stop two 23 -> 0); the 8
+left are see-through fades (a wall or a prop fading in front of the camera = a new material key) and one unit outline.
+The card: settled in 24 s after landing vs 32 s before (llvmpipe); the log line "[HQ] central_egress landed ..." now says
+"N drawn the real way". Not reproduced: Firefox itself (the cloud has no real WebGPU). NOT touched yet: the see-through fade
+variants, the shadow-pass builds (sun + hero torch faces), and the bundle re-records of "central_egress doors" (an hq_plate
+hiding / showing by distance re-records the 153-piece doors group).
