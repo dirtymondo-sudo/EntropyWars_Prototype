@@ -948,6 +948,7 @@ lines.push("                gen: { kind: 'city', seed: 144, allOpen: true, noRes
 const lampLine = lines.length; lines.push("");   // written after the district files' build (a district may take a lamp off a square it built on: ctx.lamps)
 lines.push("                       open: [] },");
 const paintLine = lines.length; lines.push("");   // written last of all: THE TREES STAND IN SOIL may still lay a bed
+const bedsLine = lines.length; lines.push("");   // THE TREE PITS (2026-11-25): written by THE TREES STAND IN SOIL, the kerb ring round every small bed in paving
 const marksLine = lines.length; lines.push("");   // THE PAINT (2026-11-15): a district's flat marks (ctx.marks: code that returns `terrain.marks` rows, e.g. the stadium's hqGridironMarks call), written after the build
 lines.push("                features: [");
 dcCtx.lamps = lamps;
@@ -1208,6 +1209,34 @@ count.levels = lvCount;
   const bad = features.filter(t => t.k === 'tree').map(t => [t.x, t.z]).concat(props.filter(q => TREE_PROPS.indexOf(q.key) >= 0 && !(cellOfM(q.x) < 144 && cellAt(cellOfM(q.x), cellOfM(q.z)) === 'I')).map(q => [q.x, q.z]))
       .filter(q => { const sh = sheetAt(cellOfM(q[0]), cellOfM(q[1])); return sh != null && SOIL.indexOf(sh) < 0; });
   if (bad.length) throw new Error('THE TREES STAND IN SOIL: ' + bad.length + ' tree(s) on paving: ' + JSON.stringify(bad.slice(0, 8)));
+  count.soil = tally;
+  /* THE TREE PITS (2026-11-25, mondo: "The palm trees in disaster city that are on one sand tile need like a border/holder around it ... not
+     just blend in to the concrete"; flora.md rule G9). Every outdoor tree's bed is found (the soil squares joined to its own, side by side);
+     a bed of at most PIT_MAX squares is a street pit, a bigger one is a lawn or a park and is left open. Each side of a pit's square that meets
+     paving (any sheet not soil, the asphalt too) gets a KERB: a row of `terrain.beds` [x0, z0, x1, z1, nx, nz] (metres, the side's two ends +
+     the normal into the bed, sides on one line merged), which three-renderer.js _hqBuildTreePits draws as a raised concrete kerb in the
+     streets' own kerb stone, inside the square's edge. The soil stays (a palm keeps its sand, edged; a broadleaf its grass). */
+  { const PIT_MAX = 6, seen = new Set(), segs = new Map(), isSoil = (cx, cy) => { const sh = sheetAt(cx, cy); return sh != null && SOIL.indexOf(sh) >= 0; };
+    const trees = features.filter(t => t.k === 'tree').map(t => [t.x, t.z]).concat(props.filter(q => TREE_PROPS.indexOf(q.key) >= 0).map(q => [q.x, q.z]));
+    let pits = 0;
+    trees.forEach(([x, z]) => { const cx0 = cellOfM(x), cy0 = cellOfM(z), k0 = cy0 * NXP + cx0; if (seen.has(k0) || !isSoil(cx0, cy0)) return;
+        if (cx0 < 144 && cellAt(cx0, cy0) === 'I') return;   // an indoor palm: the district's own planting
+        const comp = [], q = [[cx0, cy0]]; seen.add(k0); let big = false;
+        while (q.length) { const [cx, cy] = q.pop(); comp.push([cx, cy]); if (comp.length > PIT_MAX) { big = true; }
+            [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dy]) => { const nx = cx + dx, ny = cy + dy, kk = ny * NXP + nx; if (!seen.has(kk) && isSoil(nx, ny)) { seen.add(kk); q.push([nx, ny]); } }); }
+        if (big) return;
+        pits++;
+        comp.forEach(([cx, cy]) => [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dy]) => { if (sheetAt(cx + dx, cy + dy) == null || isSoil(cx + dx, cy + dy)) return;
+            /* the side between (cx, cy) and its paving neighbour: a line x = const (dx) or z = const (dy); the key = the line + the side it faces */
+            const key = dx ? 'x' + (cx + (dx > 0 ? 1 : 0)) + ':' + dx : 'z' + (cy + (dy > 0 ? 1 : 0)) + ':' + dy, run = dx ? cy : cx;
+            if (!segs.has(key)) segs.set(key, []); segs.get(key).push(run); })); });
+    const rows = [];
+    segs.forEach((runs, key) => { const ax = key[0], [ln, d] = key.slice(1).split(':').map(Number); runs.sort((a, b) => a - b);
+        for (let i = 0; i < runs.length;) { let j = i; while (j + 1 < runs.length && runs[j + 1] === runs[j] + 1) j++;
+            const a = r3(-HALF + runs[i] * C), b = r3(-HALF + (runs[j] + 1) * C), l = r3(-HALF + ln * C);
+            rows.push(ax === 'x' ? [l, a, l, b, -d, 0] : [a, l, b, l, 0, -d]); i = j + 1; } });
+    tally.pits = pits; tally.kerbs = rows.length;
+    if (rows.length) lines[bedsLine] = "                beds: " + J(rows) + ",   // THE TREE PITS: the kerb round every tree's small bed in paving"; }
   count.soil = tally;
   /* THE ROOM PAST THE PLOTS, NORTH: its rows' sheets lie ahead of the city's; a sheet the city's eight do not hold joins the palette's end (read only by its ground zone) */
   const palOut = (UD ? UD.pal(PAL) : PAL).slice(), nr = NORTH ? NORTH.rows : 0, paintAll = new Uint8Array(NXP * (144 + nr)); paintAll.set(paint, NXP * nr);
