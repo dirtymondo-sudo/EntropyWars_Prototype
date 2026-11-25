@@ -103108,6 +103108,7 @@ function hqEncounterCharOk(ch) {
     if (!ch || ch.kind !== 'npc' || !ch.race) return false;
     if (ch.cast || ch.agent) return false;
     if (ch.race === 'men in black') return false;
+    if (ch.spot && ch.spot.friend) return false;   // a friend on a dungeon floor (the Archives' Glitch, mondo 11-25): talks, never a fight
     if (/^hq-(clone|online|agent)-/.test(String(ch.id || ''))) return false;
     return (typeof AVAILABLE_RACES === 'undefined') || AVAILABLE_RACES.indexOf(ch.race) >= 0;
 }
@@ -113167,10 +113168,12 @@ const MD_BUILDINGS = {
     /* THE ARCHIVES: "each floor is one year further back. Floors 1-10 are dead apps and influencer pages, 11-20 are forums, flash games and
        blogs, 21-30 are guestbooks, hit counters and chat rooms. Rest rooms are cached pages and loot is saved files. Bosses on floors 10, 20
        and 30 (the Influencer's deleted account; the Virus's first draft, only after Chapter 7; floor 30 is story, left open)" (the doc,
-       mondo's point 2). The Internet's own look (holo floors, gunmetal) and its giver, the Glitch, at the door, outside DOOR. */
+       mondo's point 2). The Internet's own look (holo floors, gunmetal) and its giver, the Hacker, at the door, outside DOOR (mondo 11-25); his scout the Glitch on floors 1-20. */
     archives: { key: 'archives', name: 'THE ARCHIVES', kit: 'archive', up: false,
         city: 'site_prebuilt_internet_web', site: null,
-        entry: { room: 'site_prebuilt_internet_web', door: 'md_archives_down', plot: 'P07-08', lx: 6, ly: 10.6, face: 0, giver: 'glitch' },
+        entry: { room: 'site_prebuilt_internet_web', door: 'md_archives_down', plot: 'P07-08', lx: 6, ly: 10.6, face: 0,
+            giver: { race: 'hacker', name: 'THE HACKER', line: ['The Archives. Every floor down is a year further back. My scout is already in there.', 'Old pages, dead links, saved files. Bring back what you find. Something in there was deleted on purpose.'] } },   // mondo 11-25: the Internet's giver is the Hacker
+        scout: { race: 'glitch', name: 'THE GLITCH', upTo: 20, line: f => f >= 20 ? ['ThIs is as deEp as I go. The forUms end here. Below is the olD web.', 'GO on. I\'ll keep the doOr warm.'] : ['ThE Hacker sent me. I scOut ahead. Every floor is a yEar older.', 'DeaD links bite. SaVed files don\'t.'] },   // the Hacker's scout, friendly on the floors
         room: n => 'site_prebuilt_md_archives_f' + n, roof: 'site_prebuilt_md_archives_bottom', top: 'hall',
         h: 3.5, floorKey: 'holo', wallKey: 'zl_hz_Metal_02__gunmetal', wallTint: 0x9ab4c8, skirt: 0x40e0ff, frame: 0x7fffd0,
         ceiling: 'holo', leaf: 'leaf_glass', stairLeaf: 'leaf_glass', skirtGlow: 1,
@@ -113558,6 +113561,8 @@ function hotelFloorRoom(f, seed, guests, base, H, cs) {
         if (hallDecor) { props.push({ key: hallDecor[ri(hallDecor.length)], x: wx, z: wz, y: 1.3, face: FACE[OPP[s]] }); return; }
         const ry = (FACE[OPP[s]] + 180) % 360, al = s === 'n' || s === 's';   // the archives: a lit strip of the grid's light along the wall
         P.push({ s: 'box', p: [r2(C(c[0]) + q[0] * (SQ / 2 - 0.17)), 1.2, r2(C(c[1]) + q[1] * (SQ / 2 - 0.17))], size: al ? [2.4, 0.08, 0.04] : [0.04, 0.08, 2.4], tint: 0x7fffd0, glow: 1 }); void ry; });
+    /* a friend on the floors (the Archives' Glitch, the Hacker's scout, mondo 11-25): stands by the way in, talks, never fights; floors up to `upTo` */
+    if (H.scout && f <= (H.scout.upTo || H.floors)) { const sc = H.scout; npc.push({ x: r2(C(M.IN[0]) + 1.0), z: r2(C(M.IN[1]) - 1.0), face: 180, race: sc.race, label: sc.name, stay: true, fixed: true, friend: true, talk: { name: sc.name }, line: sc.line(f) }); }
     const tag = H.key === 'hotel' ? 'hotel' : 'md:' + H.key;
     const F2 = F.concat([{ k: 'arch', id: tag + ':f' + f + ':maze', x: 0, z: 0, y: 0, rot: 0, parts: P }]);
     if (inner.length) F2.push({ k: 'texbuilding', id: tag + ':f' + f + ':doors', x: 0, z: 0, y: 0, w: 2, d: 2, rot: 0, storeys: 1, skin: false, doorsOnly: true, leaf: H.leaf, inner });
@@ -113937,8 +113942,7 @@ function hotelInstall() {
                 if (m) { x = r2(-(sw.w || 0) / 2 + (+m[1]) * 42 + ent.lx * 3.5); z = r2(-(sw.d || 0) / 2 + (+m[2]) * 42 + ent.ly * 3.5); } void n0; }
             door = { id: ent.door, wall: 'free', x, z, face: ent.face || 0, noEntrance: true, leaf: H.stairLeaf, label: H.name, sub: '', action: act };
             board = { x: r2(x + 2.6), z: r2(z + 0.1), face: ent.face || 0 };
-            if (ent.giver) (home.npcSpots = home.npcSpots || []).push({ x: r2(x - 2.4), z: r2(z - 1.2), face: ent.face || 0, race: ent.giver, label: 'THE GLITCH', stay: true, talk: { name: 'THE GLITCH' },
-                line: ['ThE ArchIves. Every flOor is a year further back. I cAn\'t go deeper than the forums. You can.', 'Old pages, dead links. Bring back what you find. I\'m looking for an olDer versIon of something.'] });
+            if (ent.giver) (home.npcSpots = home.npcSpots || []).push({ x: r2(x - 2.4), z: r2(z - 1.2), face: ent.face || 0, race: ent.giver.race, label: ent.giver.name, stay: true, talk: { name: ent.giver.name }, line: ent.giver.line });
         }
         (home.doors = home.doors || []).push(door);
         if (board) (home.props = home.props || []).push({ key: 'notice_board', x: board.x, z: board.z, y: 1.15, face: board.face, noBlock: true });   // the board itself (a pack notice board)
