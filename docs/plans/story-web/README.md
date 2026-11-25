@@ -216,3 +216,24 @@ sheets**; also the web's toolbar button and **Open the full character sheet** in
   (read-only from EW_DATA: race or cast facts, spells, quotes, finisher, chapters), Questions (what the sheet noticed + his own).
   **+ Add a field** in every section (`extra`), **Hide empty fields**, **Export sheets** (JSON), **Print this sheet**.
 - Left list: find, Story | All units | Deleted, A-Z | Least done; the bar = how much of the core is filled (`scDone`).
+
+## The story toolkit (2026-11-25)
+mondo: "What other tools or features or ui would be nice to add ... How does a AAA game studio write their stories and keep track of
+everything", then, on the plan (https://claude.ai/artifact/VATSqHLywWbGkeYfn4ANhz, file `/mnt/project-files/story-tools-plan/`):
+"Yeah yeah do all of that". app.js "THE STORY TOOLKIT". Everything is stored in the plan doc (`story/plan`; `kitSanitize` keeps the
+new fields), so it saves and syncs like the chapters.
+- **Facts** tab (step A): STORY FACTS, `P.facts`: what can be true in the world (Witcher 3's facts database, articy's global variables).
+  A fact is a plain sentence (its id stays hidden; mondo did not pick, the default was plain sentences); kinds yes/no, a number, one of a
+  few (`opts`); the start value; a number can be a faction's standing (`fac` = the faction's name). The table shows how many things
+  change it and check it (red / amber = loose ends); the side panel lists them and opens the quest.
+- **The quest card** (step A): Status (idea / draft / locked / in the game), Given by (+ where they stand), **Opens when** (all of:
+  chapter reached, quest finished (with an ending), a fact, party level, has been to a place, is alive / dead / has joined),
+  party level at least (`lvl`), **Closes when** (any of), **Endings** (`ends`: name, tone, facts it changes, who dies, who joins,
+  places it opens, reward). "+ A new fact…" in any fact pick makes one on the spot. The chapter card has the expected party level
+  (`lv`; mondo did not pick, the default: level gates check both the party level and the chapter's level) and a status.
+- **Checks** tab (step A): `storyChecks()` reads the plan, the facts, the open board and the sheets: facts nothing changes / nothing
+  checks, gates on later chapters or deleted things, places not reached by then, level gates against the chapter's level, side quests
+  with no gate, a main quest that does not open on the first path (`simRun`), characters an earlier ending kills, chapters with no zone
+  or quests elsewhere, timeline events with no chapter (the event panel has **Happens in the story at**, `ev.ch`) or out of order,
+  and the beat chart's own notices. The tab shows the number of problems.
+- Ties carry `from` / `until` (chapter ids) and events `ch`: kept by `sanitizeBoard`.

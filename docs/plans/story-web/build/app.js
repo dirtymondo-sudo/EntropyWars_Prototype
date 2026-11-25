@@ -131,11 +131,11 @@ function sanitizeBoard(b) {
   Object.values(b.links || {}).forEach(l => {
     if (l && (remap[l.a] || remap[l.b])) l = Object.assign({}, l, { a: remap[l.a] || l.a, b: remap[l.b] || l.b });
     if (!l || !l.id || !o.nodes[l.a] || !o.nodes[l.b] || l.a === l.b || o.nodes[l.a].kind === 'note' || o.nodes[l.b].kind === 'note') return;
-    o.links[l.id] = { id: String(l.id), a: l.a, b: l.b, type: TYPE[l.type] ? l.type : 'other', dir: /^(ab|ba|both)$/.test(l.dir) ? l.dir : 'ab', label: String(l.label || '').slice(0, 300), s: clamp(Math.round(num(l.s, 2)), 1, 3), ...(l.secret ? { secret: true } : {}), ...(l.type === 'member' && Number.isFinite(+l.cx) && Number.isFinite(+l.cy) && l.cx !== null && l.cy !== null ? { cx: Math.round(+l.cx), cy: Math.round(+l.cy) } : {}) };
+    o.links[l.id] = { id: String(l.id), a: l.a, b: l.b, type: TYPE[l.type] ? l.type : 'other', dir: /^(ab|ba|both)$/.test(l.dir) ? l.dir : 'ab', label: String(l.label || '').slice(0, 300), s: clamp(Math.round(num(l.s, 2)), 1, 3), ...(l.secret ? { secret: true } : {}), ...(l.from ? { from: String(l.from).slice(0, 40) } : {}), ...(l.until ? { until: String(l.until).slice(0, 40) } : {}), ...(l.type === 'member' && Number.isFinite(+l.cx) && Number.isFinite(+l.cy) && l.cx !== null && l.cy !== null ? { cx: Math.round(+l.cx), cy: Math.round(+l.cy) } : {}) };
   });
   if (b.gweb && typeof b.gweb === 'object') { o.gweb = {}; ['place', 'faction'].forEach(k => { const L = b.gweb[k]; if (!L || typeof L !== 'object') return; o.gweb[k] = {}; Object.keys(L).forEach(id => { const q = L[id], nid = remap[id] || id; if (Array.isArray(q) && o.nodes[nid]) o.gweb[k][nid] = [num(q[0], 0), num(q[1], 0)]; }); }); }
   if (b.events && typeof b.events === 'object') { o.events = {}; Object.values(b.events).forEach(ev => { if (!ev || !ev.id) return; const id = String(ev.id).replace(/[^A-Za-z0-9_\-]/g, '_');
-    o.events[id] = { id, title: String(ev.title || '').slice(0, 120), when: String(ev.when || '').slice(0, 60), t: num(ev.t, 0), text: String(ev.text || '').slice(0, 4000), refs: [...new Set((Array.isArray(ev.refs) ? ev.refs : []).map(r => remap[r] || String(r)).filter(r => o.nodes[r] && o.nodes[r].kind !== 'note'))], col: clamp(Math.round(num(ev.col, 0)), 0, GCOL.length - 1) }; }); }
+    o.events[id] = { id, title: String(ev.title || '').slice(0, 120), when: String(ev.when || '').slice(0, 60), t: num(ev.t, 0), text: String(ev.text || '').slice(0, 4000), refs: [...new Set((Array.isArray(ev.refs) ? ev.refs : []).map(r => remap[r] || String(r)).filter(r => o.nodes[r] && o.nodes[r].kind !== 'note'))], col: clamp(Math.round(num(ev.col, 0)), 0, GCOL.length - 1), ...(ev.ch ? { ch: String(ev.ch).slice(0, 40) } : {}) }; }); }
   try { repairPlaces(o); } catch (e) {}
   try { renamePlaces(o); } catch (e) {}
   return o;
@@ -575,6 +575,7 @@ function renderInspector() {
     const ev = evS, rf = evRefs(ev), L = evList(), i = L.indexOf(ev);
     h += '<h2>Event</h2><label class="field"><span>Title</span><input class="inp" id="evTitle" maxlength="120" value="' + esc(ev.title) + '"></label>' +
       '<label class="field"><span>When</span><input class="inp" id="evWhen" maxlength="60" value="' + esc(ev.when) + '" placeholder="Year 1999, before the Fall, day 3\u2026"></label>' +
+      '<label class="field"><span>Happens in the story at</span><select class="inp" id="evCh"><option value="">Before the game, or not in a chapter</option>' + (S.story ? S.story.chapters : []).map((c, i) => '<option value="' + esc(c.id) + '"' + (ev.ch === c.id ? ' selected' : '') + '>Ch ' + (i + 1) + (c.name ? ' · ' + esc(c.name) : '') + '</option>').join('') + '</select></label>' +
       '<div><h4>Colour</h4><div class="gsw">' + GCOL.map((c, k) => '<button data-evcol="' + k + '"' + ((ev.col || 0) === k ? ' class="on"' : '') + ' style="--gc:' + c + '" aria-label="Colour ' + (k + 1) + '"></button>').join('') + '</div></div>' +
       '<label class="field"><span>What happens</span><textarea class="inp" id="evText" style="min-height:90px">' + esc(ev.text) + '</textarea></label>' +
       '<div><h4>Linked to (' + rf.length + ')</h4>' + (rf.length ? '<div class="prow">' + rf.map(id => { const g = B.nodes[id]; return (isGrp(g) ? '<span class="gchip sm' + (gkOf(g) === 'faction' ? ' fac' : '') + ' evref" style="--gc:' + gcol(g) + '"><button data-node="' + esc(id) + '">' + esc(g.name) + '</button>' : '<span class="evref unit"><button data-node="' + esc(id) + '">' + esc(nm(id)) + '</button>') + '<button class="x" data-evunref="' + esc(id) + '" aria-label="Unlink">\u00d7</button></span>'; }).join('') + '</div>' : '<p class="muted">Nothing yet.</p>') + '</div>' +
@@ -1355,6 +1356,7 @@ $('inspector').addEventListener('change', e => {
   if (t.id === 'insLabel' && sel && B.links[sel.id]) { B.links[sel.id].label = t.value.trim(); return commit({ light: true }); }
   if (t.id === 'insNote') return commit({ light: true });
   if (t.id === 'insSecret') return setLink({ secret: t.checked });
+  if (t.id === 'evCh') { const ev = sel && sel.kind === 'event' && B.events && B.events[sel.id]; if (ev) { if (t.value) ev.ch = t.value; else delete ev.ch; commit({ light: true }); } return; }
   if (!n) return;
   if (t.id === 'gParent') { if (t.value) n.parent = t.value; else delete n.parent; return commit(); }
   if (t.id === 'cNick') { const v = t.value.trim(); if (v && v !== info(Object.assign({}, n, { nick: '' })).gname) n.nick = v; else delete n.nick; } else if (t.id === 'cName') n.name = t.value.trim() || 'Unnamed'; else if (t.id === 'cSub') n.sub = t.value.trim(); else if (t.id === 'cShape') n.shape = t.value; else if (t.id === 'cFaction') n.faction = t.value; else if (t.id === 'cRace') { if (t.value) n.race = t.value; else delete n.race; } else return;
@@ -1656,6 +1658,8 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) { sav
    SPINE (the one-sheet, the six bands, every chapter's questions). Units are roster ids (r:<race>, s:<cast>), places are map refs
    ('hq', 'z:<zone>', 'd:<zone>:<district>'), so a plan does not hang on any one board. Nothing in the game reads it yet. */
 const SD = D.story || { rooms: [], quests: [] };
+const STORY_TABS = ['map', 'beat', 'spine', 'chars', 'facts', 'checks'];
+const KIT_RENDER = {};   // THE STORY TOOLKIT's tabs (filled below)
 const ST = { open: false, tab: 'map', sel: null, pick: null, at: 0, mapLayer: 'surface' };
 const STEPS9 = ['1 · The hero wants something', '2 · Something disrupts their life', '3 · The hero tries to fix it', '4 · The attempt fails', '5 · A reversal makes it worse', '6 · A bigger problem', '7 · The final problem, the most at risk', '8 · The hero faces it and wins', '9 · The hero gets what they wanted'];
 const GOALS = [['escape', 'Escape'], ['explore', 'Explore'], ['learn', 'Learn'], ['choice', 'Choice']];
@@ -1699,6 +1703,7 @@ function sanitizePlan(p) {
   (Array.isArray(p.clues) ? p.clues : []).slice(0, 200).forEach(c => { if (c && c.id) o.clues.push({ id: sStr(c.id, 40), text: sStr(c.text, 300), plant: chIds.has(c.plant) ? c.plant : '', pay: chIds.has(c.pay) ? c.pay : '' }); });
   Object.keys(p.ans || {}).forEach(k => { if (SPINE_BY[k] && p.ans[k]) o.ans[k] = sStr(p.ans[k], 4000); });
   BANDS.forEach(b => { const x = p.bands && p.bands[b]; if (!x) return; const y = {}; BAND_F.forEach(f => { if (x[f[0]]) y[f[0]] = sStr(x[f[0]], 400); }); if (Object.keys(y).length) o.bands[b] = y; });
+  kitSanitize(p, o);   // THE STORY TOOLKIT (2026-11-25): facts, gates, endings, secrets, lore, pitches
   return o;
 }
 /* the first plan: Chapter 1 = the ORIENTATION quest that is in the game (its facts only; everything else is his to fill) */
@@ -1890,6 +1895,7 @@ function chapterForm(c) {
   h += fld('Name', '<input class="stinp" data-f="name" value="' + esc(c.name) + '" placeholder="Chapter name">');
   h += fld('Colour', '<div class="stcols">' + CHCOL.map((k, i) => '<button data-col="' + i + '" style="background:' + k + '"' + (i === c.col ? ' class="on"' : '') + '></button>').join('') + '</div>');
   h += fld('Band (rank)', seg('band', BANDS.map(b => [b, b]), c.band));
+  h += fld('Expected party level <span class="stmuted">(at the start of the chapter)</span>', '<input class="stinp sm" type="number" min="0" data-kclv="1" value="' + (c.lv || '') + '" placeholder="level">') + fld('Status', seg('cstatus', QSTAT, c.status || ''));
   h += fld('Story step (the nine steps)', '<select class="stinp" data-f="step"><option value="0">Pick a step…</option>' + STEPS9.map((s, i) => '<option value="' + (i + 1) + '"' + (c.step === i + 1 ? ' selected' : '') + '>' + esc(s) + '</option>').join('') + '</select>');
   h += fld('Goal of the chapter', seg('goal', GOALS, c.goal));
   h += fld('Zone it opens', '<div class="strow">' + pickBox('zone', placeOf(c.zone) ? 'Change…' : 'Type a zone or district…', placeOf(c.zone) ? placeOf(c.zone).n : '') + '<button class="stbtn sm" data-act="pickZone">On map</button></div>');
@@ -1914,6 +1920,7 @@ function questForm(c, q) {
   h += '<div class="strow" style="margin-top:8px">' + seg('kind', [['main', 'Main'], ['side', 'Side']], q.kind) + (q.game ? '<span class="stmuted">In the game: ' + esc(q.game) + '</span>' : '') + '</div>';
   h += fld('Chapter', '<select class="stinp" data-act="moveQ">' + plan().chapters.map((x, i) => '<option value="' + esc(x.id) + '"' + (x === c ? ' selected' : '') + '>Ch ' + (i + 1) + (x.name ? ' · ' + esc(x.name) : '') + '</option>').join('') + '</select>');
   h += fld('Where', '<div class="strow">' + pickBox('where', p ? 'Change…' : 'Type a place…', p ? p.n : '') + '<button class="stbtn sm" data-act="pickQ">On map</button></div>' + (q.at ? '<div class="stsub">Pinned on the map · <button class="stlink" data-act="unpinQ">unpin</button></div>' : '') + '<label class="stcheck"><input type="checkbox" data-act="ug"' + (qUnder(q) ? ' checked' : '') + (UG_HUBS.has(zoneOfRef(q.where)) ? ' disabled' : '') + '> Underground</label>');
+  h += questKitForm(c, q);
   h += fld('Summary', '<textarea class="stinp" data-qf="summary" rows="3">' + esc(q.summary) + '</textarea>');
   h += fld('Steps <span class="stmuted">(each can have its own pin)</span>', q.steps.map((s, i) => '<div class="ststep"><b>' + (i + 1) + '</b><input class="stinp" data-step="' + esc(s.id) + '" value="' + esc(s.text) + '"><button class="stbtn sm' + (s.at ? ' on' : '') + '" data-pickstep="' + esc(s.id) + '" title="Place this step on the map">⌖</button><button class="stx" data-delstep="' + esc(s.id) + '">×</button></div>').join('') + '<button class="stadd" data-act="addStep">+ Step</button>');
   h += fld('Characters', '<div class="stchips">' + q.cast.map(face).join('') + '</div>' + pickBox('cast', 'Add a character or unit…'));
@@ -1956,12 +1963,14 @@ function renderSpine() {
   SPINE_Q.forEach(g => { h += '<h3 style="margin-top:20px">' + esc(g.h.toUpperCase()) + '</h3>'; g.q.forEach(q => { h += '<div class="stqa"><div>' + (q[2] ? '<b class="stfirst">FIRST</b> ' : '') + esc(q[1]) + '</div><textarea class="stinp" data-ans="' + q[0] + '" rows="2" placeholder="Type here…">' + esc(P.ans[q[0]] || '') + '</textarea></div>'; }); });
   const el = $('st_spine'), sc = el.scrollTop; el.innerHTML = h; el.scrollTop = sc;
 }
-function storyLight() { if (!ST.open || ST.tab === 'chars') return; if (ST.tab === 'map') { renderLeft(); renderTray(); storyDrawMap(); } }
+function storyLight() { if (!ST.open || ST.tab === 'chars') return; if (KIT_RENDER[ST.tab]) { if (ST.tab === 'checks') renderChecks(); return; } if (ST.tab === 'map') { renderLeft(); renderTray(); storyDrawMap(); } }
 function storyRender() {
   if (!ST.open) return;
   $('story').querySelectorAll('[data-sttab]').forEach(b => b.classList.toggle('on', b.dataset.sttab === ST.tab));
-  ['map', 'beat', 'spine', 'chars'].forEach(t => { $('st_' + t).hidden = ST.tab !== t; });
+  STORY_TABS.forEach(t => { const el = $('st_' + t); if (el) el.hidden = ST.tab !== t; });
+  kitTabCounts();
   if (ST.tab === 'chars') { sheetsRender(); return; }
+  if (KIT_RENDER[ST.tab]) { KIT_RENDER[ST.tab](); return; }
   const atSel = $('stAt'); atSel.innerHTML = '<option value="0">All chapters</option>' + plan().chapters.map((c, i) => '<option value="' + (i + 1) + '"' + (ST.at === i + 1 ? ' selected' : '') + '>World at Ch ' + (i + 1) + '</option>').join('');
   $('stLayer').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === ST.mapLayer));
   if (ST.tab === 'map') { renderLeft(); renderTray(); renderRight(); requestAnimationFrame(storyDrawMap); }
@@ -2143,7 +2152,8 @@ function storyExport() {
   const P = plan(), pl = r => { const p = placeOf(r); return p ? p.n : ''; };
   const out = { kind: 'entropy-wars-story-plan', v: 1, at: new Date().toISOString(), answers: Object.fromEntries(Object.entries(P.ans).map(([k, v]) => [k, { q: SPINE_BY[k][1], a: v }])), bands: P.bands,
     chapters: P.chapters.map((c, i) => ({ no: i + 1, id: c.id, name: c.name, band: c.band, step: c.step ? STEPS9[c.step - 1] : '', goal: c.goal, zone: c.zone, zoneName: pl(c.zone), enemies: c.enemies.map(id => ({ id, name: entName(id) })), mechanics: c.mech, newMechanics: newMech(i), boss: c.boss ? { id: c.boss, name: entName(c.boss) } : null, bossNote: c.bossText, reward: c.reward, trust: c.trust, lie: c.lie, notes: c.notes,
-      quests: c.quests.map(q => ({ id: q.game || q.id, title: q.name, kind: q.kind, where: q.where, whereName: pl(q.where), at: q.at, underground: qUnder(q), summary: q.summary, stages: q.steps.map((s, j) => ({ id: 's' + (j + 1), objective: s.text, at: s.at })), cast: q.cast.map(id => ({ id, name: entName(id) })), scenes: q.scenes, reward: q.reward, notes: q.notes })) })),
+      quests: c.quests.map(q => ({ id: q.game || q.id, title: q.name, kind: q.kind, where: q.where, whereName: pl(q.where), at: q.at, underground: qUnder(q), summary: q.summary, stages: q.steps.map((s, j) => ({ id: 's' + (j + 1), objective: s.text, at: s.at })), cast: q.cast.map(id => ({ id, name: entName(id) })), scenes: q.scenes, reward: q.reward, notes: q.notes, status: q.status || '', givenBy: q.giver ? { id: q.giver, name: entName(q.giver), at: q.giverAt } : null, level: q.lvl || 0, opensWhen: (q.open || []).map(c => Object.assign({ text: condText(c) }, c)), closesWhen: (q.close || []).map(c => Object.assign({ text: condText(c) }, c)), endings: (q.ends || []).map(e => ({ id: e.id, name: e.name, tone: e.tone, changes: e.sets.map(x => Object.assign({ text: setText(x) }, x)), dies: e.kills.map(entName), joins: e.joins.map(entName), opens: e.opens.map(placeName), reward: e.reward })) })), level: c.lv || 0, status: c.status || '' })),
+    facts: (P.facts || []).map(f => ({ id: f.id, text: f.text, kind: f.kind, choices: f.opts, start: f.start, standing: f.fac || null })),
     clues: P.clues.map(k => ({ text: k.text, planted: chNo(k.plant) || null, paysOff: chNo(k.pay) || null })) };
   const txt = JSON.stringify(out, null, 2);
   modal('<h2>Export the story plan</h2><textarea class="inp code" readonly>' + esc(txt) + '</textarea><div class="acts"><button class="btn" data-x="copy">Copy</button><button class="btn" data-x="save">Save file</button><button class="btn pri" data-x="cancel">Done</button></div>', d => d.addEventListener('click', e => { const x = e.target.dataset.x; if (x === 'copy') copyText(d.querySelector('textarea')); else if (x === 'save') saveFile('Entropy_Wars_Story_Plan_' + new Date().toISOString().slice(0, 10) + '.json', txt); else if (x === 'cancel') closeModal(); }));
@@ -2458,13 +2468,364 @@ bindSheets();
 $('btnSheets').addEventListener('click', () => { ST.tab = 'chars'; S.ui.storyTab = 'chars'; storyOpen(true); });
 window.__ewStory = { ST, MV, plan, storyOpen, storyRender, noticed, SC, sheetOpen, storyCastIds, scNoticed, castDoc, mergeCast };
 
+/* ═════════ THE STORY TOOLKIT (2026-11-25) ═════════
+   mondo: "What other tools or features or ui would be nice to add ... to help me write the story and build the sidequests? How does a
+   AAA game studio ... keep track of everything", then "Yeah yeah do all of that" (the plan: https://claude.ai/artifact/VATSqHLywWbGkeYfn4ANhz).
+   Everything here lives in the plan doc (`story/plan`), so it saves, syncs and merges like the chapters do.
+   - STORY FACTS (`P.facts`): what can be true in the world (Witcher 3's facts database, articy's global variables). A fact is a plain
+     sentence; its id stays hidden. Kinds: yes/no, a number (a standing: `fac` = the faction's name), one of a few (`opts`).
+   - GATES + ENDINGS on a quest: `open` (all must hold), `close` (any closes it), `lvl` (party level at least), `giver`, `status`,
+     `ends` = the ways it can end, each with the facts it changes (`sets`), who dies (`kills`), who joins (`joins`), places it opens.
+     A condition row = { t, a, op, v }: t = ch (chapter reached) | quest (finished, a = quest id, v = ending id or '') | fact
+     (a = fact id, op is / not / >= / <= , v) | level (v) | place (a = place ref, visited) | alive | dead | joined (a = unit id).
+   - THE CHECKS: one list of contradictions across the plan, the facts, the boards and the sheets; each one opens what it names. */
+const FACT_KINDS = [['flag', 'Yes / no'], ['num', 'A number'], ['pick', 'One of a few']];
+const COND_T = [['ch', 'Chapter reached'], ['quest', 'Quest finished'], ['fact', 'A fact'], ['level', 'Party level at least'], ['place', 'Has been to'], ['alive', 'Is alive'], ['dead', 'Is dead'], ['joined', 'Has joined you']];
+const COND_N = Object.fromEntries(COND_T);
+const QSTAT = [['idea', 'Idea'], ['draft', 'Draft'], ['locked', 'Locked'], ['game', 'In the game']];
+const TONES = [['good', 'Good'], ['mid', 'Mixed'], ['bad', 'Bad']];
+const STEP_HOW = [['seen', 'Seen without knowing'], ['hint', 'Hint'], ['suspect', 'Suspected'], ['reveal', 'Revealed']];
+const LORE_K = [['object', 'Object'], ['idea', 'Idea'], ['group', 'Group'], ['event', 'Event'], ['word', 'Word']];
+const sId = v => sStr(v, 80);
+function sCond(c) {
+  if (!c || !COND_N[c.t]) return null;
+  return { t: c.t, a: sId(c.a), op: /^(is|not|>=|<=)$/.test(c.op) ? c.op : 'is', v: sStr(c.v, 60) };
+}
+const sConds = a => (Array.isArray(a) ? a : []).slice(0, 30).map(sCond).filter(Boolean);
+const sSets = a => (Array.isArray(a) ? a : []).slice(0, 30).map(x => x && x.f ? { f: sId(x.f), op: x.op === 'add' ? 'add' : 'set', v: sStr(x.v, 60) } : null).filter(Boolean);
+function kitSanitize(p, o) {
+  const rawC = {}, rawQ = {}; (Array.isArray(p.chapters) ? p.chapters : []).forEach(c => { if (c && c.id) { rawC[c.id] = c; (Array.isArray(c.quests) ? c.quests : []).forEach(q => { if (q && q.id) rawQ[q.id] = q; }); } });
+  o.chapters.forEach(ch => {
+    const c = rawC[ch.id] || {};
+    ch.lv = Number.isFinite(+c.lv) && +c.lv > 0 ? Math.round(+c.lv) : 0;
+    ch.status = QSTAT.some(s => s[0] === c.status) ? c.status : '';
+    ch.quests.forEach(q => {
+      const r = rawQ[q.id] || {};
+      q.open = sConds(r.open); q.close = sConds(r.close);
+      q.lvl = Number.isFinite(+r.lvl) && +r.lvl > 0 ? Math.round(+r.lvl) : 0;
+      q.giver = ENT[r.giver] ? r.giver : ''; q.giverAt = sStr(r.giverAt, 120);
+      q.status = QSTAT.some(s => s[0] === r.status) ? r.status : '';
+      q.ends = (Array.isArray(r.ends) ? r.ends : []).slice(0, 12).map(e => e && e.id ? { id: sId(e.id), name: sStr(e.name, 100), tone: TONES.some(t => t[0] === e.tone) ? e.tone : '', sets: sSets(e.sets), kills: sIds(e.kills), joins: sIds(e.joins), opens: (Array.isArray(e.opens) ? e.opens : []).map(sRef).filter(Boolean).slice(0, 10), reward: sStr(e.reward, 160), note: sStr(e.note, 2000) } : null).filter(Boolean);
+      /* the scene rows keep their game scene (`id`), when they play and what they change */
+      q.scenes.forEach((sc, i) => { const rs = (Array.isArray(r.scenes) ? r.scenes : [])[i] || {}; sc.id = sStr(rs.id, 60); sc.when = sConds(rs.when); sc.sets = sSets(rs.sets); });
+    });
+  });
+  o.facts = (Array.isArray(p.facts) ? p.facts : []).slice(0, 2000).map(f => f && f.id ? { id: sId(f.id), text: sStr(f.text, 300), kind: FACT_KINDS.some(k => k[0] === f.kind) ? f.kind : 'flag', opts: (Array.isArray(f.opts) ? f.opts : []).map(x => sStr(x, 40)).filter(Boolean).slice(0, 12), start: sStr(f.start, 60), fac: sStr(f.fac, 80), note: sStr(f.note, 2000) } : null).filter(Boolean);
+  /* a clue is a SECRET in the mystery ledger: plant / pay stay its first hint and its reveal; the rest is the ladder between */
+  const rawK = {}; (Array.isArray(p.clues) ? p.clues : []).forEach(k => { if (k && k.id) rawK[k.id] = k; });
+  const chIds = new Set(o.chapters.map(c => c.id));
+  o.clues.forEach(k => { const r = rawK[k.id] || {};
+    k.truth = sStr(r.truth, 3000); k.kind = r.kind === 'herring' ? 'herring' : 'secret'; k.about = sIds(r.about); k.words = sStr(r.words, 300); k.lore = (Array.isArray(r.lore) ? r.lore : []).map(sId).slice(0, 20); k.from = sStr(r.from, 80); k.fact = sId(r.fact);
+    k.steps = (Array.isArray(r.steps) ? r.steps : []).slice(0, 40).map(s => s && chIds.has(s.ch) ? { id: sId(s.id || uid('h')), ch: s.ch, how: STEP_HOW.some(h => h[0] === s.how) ? s.how : 'hint', q: sId(s.q), where: sStr(s.where, 300), scene: sStr(s.scene, 60) } : null).filter(Boolean);
+    k.knows = (Array.isArray(r.knows) ? r.knows : []).slice(0, 60).map(x => x && ENT[x.e] ? { e: x.e, ch: chIds.has(x.ch) ? x.ch : '' } : null).filter(Boolean);
+  });
+  o.lore = (Array.isArray(p.lore) ? p.lore : []).slice(0, 1000).map(l => l && l.id ? { id: sId(l.id), name: sStr(l.name, 100), kind: LORE_K.some(k => k[0] === l.kind) ? l.kind : 'object', aka: sStr(l.aka, 200), canon: sStr(l.canon, 6000), open: sStr(l.open, 3000), clue: sId(l.clue) } : null).filter(Boolean);
+  o.pitches = (Array.isArray(p.pitches) ? p.pitches : []).slice(0, 1000).map(x => x && x.id ? { id: sId(x.id), text: sStr(x.text, 600), where: sRef(x.where), fac: sStr(x.fac, 80), lvl: Number.isFinite(+x.lvl) && +x.lvl > 0 ? Math.round(+x.lvl) : 0, mood: sStr(x.mood, 40) } : null).filter(Boolean);
+}
+/* old rows made before the toolkit (a new chapter, a new quest) get the toolkit's fields on first touch */
+function kq(q) { if (!q) return q; ['open', 'close', 'ends'].forEach(k => { if (!Array.isArray(q[k])) q[k] = []; }); if (q.lvl == null) q.lvl = 0; if (q.giver == null) q.giver = ''; if (q.giverAt == null) q.giverAt = ''; if (q.status == null) q.status = ''; q.scenes.forEach(s => { if (!Array.isArray(s.when)) s.when = []; if (!Array.isArray(s.sets)) s.sets = []; if (s.id == null) s.id = ''; }); return q; }
+function kp() { const P = plan(); ['facts', 'lore', 'pitches'].forEach(k => { if (!Array.isArray(P[k])) P[k] = []; }); P.chapters.forEach(c => { if (c.lv == null) c.lv = 0; if (c.status == null) c.status = ''; c.quests.forEach(kq); }); P.clues.forEach(k => { ['steps', 'knows', 'about', 'lore'].forEach(f => { if (!Array.isArray(k[f])) k[f] = []; }); ['truth', 'words', 'from', 'fact'].forEach(f => { if (k[f] == null) k[f] = ''; }); if (!k.kind) k.kind = 'secret'; }); return P; }
+const factById = id => kp().facts.find(f => f.id === id) || null;
+const factText = id => { const f = factById(id); return f ? (f.text || 'An unnamed fact') : 'a deleted fact'; };
+const questName = id => { const f = findQ(id); return f ? (f.q.name || 'Untitled quest') : 'a deleted quest'; };
+const qNo = id => { const f = flatQuests().find(x => x.q.id === id); return f ? f.no : '?'; };
+const endName = (qid, eid) => { const f = findQ(qid), e = f && (f.q.ends || []).find(x => x.id === eid); return e ? (e.name || 'an unnamed ending') : ''; };
+const placeName = ref => { const p = placeOf(ref); return p ? p.n : 'a place'; };
+/* a condition as a sentence */
+function condText(c) {
+  switch (c.t) {
+    case 'ch': return 'Chapter ' + (chNo(c.a) || '?') + ' reached';
+    case 'quest': return '“' + questName(c.a) + '” finished' + (c.v ? ' with “' + endName(c.a, c.v) + '”' : '');
+    case 'fact': { const f = factById(c.a), t = '“' + factText(c.a) + '”'; if (!f || f.kind === 'flag') return c.op === 'not' ? t + ' is not true' : t; return t + ' ' + ({ is: 'is', not: 'is not', '>=': 'at least', '<=': 'at most' }[c.op]) + ' ' + (c.v || '?'); }
+    case 'level': return 'Party level ' + (c.v || '?') + ' or more';
+    case 'place': return 'Has been to ' + placeName(c.a);
+    case 'alive': return entName(c.a) + ' is alive';
+    case 'dead': return entName(c.a) + ' is dead';
+    case 'joined': return entName(c.a) + ' has joined you';
+  }
+  return '';
+}
+function setText(s) { const f = factById(s.f), t = '“' + factText(s.f) + '”'; if (!f || f.kind === 'flag') return (s.v === 'no' ? t + ' becomes false' : t + ' becomes true'); return s.op === 'add' ? t + ' ' + (+s.v >= 0 ? '+' : '') + (s.v || 0) : t + ' = ' + (s.v || '?'); }
+
+/* who sets and who checks each fact */
+function factUses() {
+  const P = kp(), set = {}, chk = {}, add = (m, id, x) => { (m[id] = m[id] || []).push(x); };
+  flatQuests().forEach(({ c, q }) => {
+    kq(q);
+    q.open.forEach(cd => { if (cd.t === 'fact') add(chk, cd.a, { q: q.id, what: 'opens ' + qLabel(q.id) }); });
+    q.close.forEach(cd => { if (cd.t === 'fact') add(chk, cd.a, { q: q.id, what: 'closes ' + qLabel(q.id) }); });
+    q.ends.forEach(e => e.sets.forEach(s => add(set, s.f, { q: q.id, what: qLabel(q.id) + ' · ' + (e.name || 'an ending') })));
+    q.scenes.forEach(sc => { sc.when.forEach(cd => { if (cd.t === 'fact') add(chk, cd.a, { q: q.id, what: 'scene “' + (sc.n || 'a scene') + '” in ' + qLabel(q.id) }); }); sc.sets.forEach(s => add(set, s.f, { q: q.id, what: 'scene “' + (sc.n || 'a scene') + '” in ' + qLabel(q.id) })); });
+  });
+  P.clues.forEach(k => { if (k.fact) add(set, k.fact, { clue: k.id, what: 'the reveal of “' + (k.text || 'a secret') + '”' }); });
+  return { set, chk };
+}
+const qLabel = id => qNo(id) + ' “' + questName(id) + '”';
+
+/* ── the world at a point in the story: run the chapters in order, every quest that opens takes the ending picked for it ── */
+function simRun(upto, pick, opts) {
+  const P = kp(), st = { ch: 0, done: {}, facts: {}, lvl: 0, seen: new Set(['hq']), dead: new Set(), joined: new Set(), opened: new Set(), closed: new Set(), skipped: new Set() };
+  P.facts.forEach(f => { st.facts[f.id] = f.kind === 'flag' ? (f.start === 'yes') : f.kind === 'num' ? (+f.start || 0) : (f.start || ''); });
+  const last = Math.min(upto == null ? P.chapters.length : upto, P.chapters.length);
+  for (let ci = 0; ci < last; ci++) {
+    const c = P.chapters[ci]; st.ch = ci + 1; if (c.lv) st.lvl = Math.max(st.lvl, c.lv);
+    c.quests.forEach(q0 => {
+      const q = kq(q0);
+      if (!condsOk(q.open, st, q) || q.close.some(cd => condOk(cd, st, q))) { st.closed.add(q.id); return; }
+      st.opened.add(q.id);
+      const e = pick ? pick(q, st) : (q.ends[0] || null);
+      if (e === 'skip') { st.skipped.add(q.id); return; }
+      st.done[q.id] = e ? e.id : '';
+      if (q.where) st.seen.add(q.where);
+      if (e) { e.sets.forEach(s => applySet(s, st)); e.kills.forEach(id => { st.dead.add(id); st.joined.delete(id); }); e.joins.forEach(id => { if (!st.dead.has(id)) st.joined.add(id); }); e.opens.forEach(r => st.seen.add(r)); }
+      q.scenes.forEach(sc => { if (condsOk(sc.when, st, q)) sc.sets.forEach(s => applySet(s, st)); });
+    });
+    P.clues.forEach(k => { if (k.fact && chNo(k.pay) === ci + 1) st.facts[k.fact] = true; });
+  }
+  return st;
+}
+function applySet(s, st) { const f = factById(s.f); if (!f) return; if (f.kind === 'flag') st.facts[s.f] = s.v !== 'no'; else if (f.kind === 'num') st.facts[s.f] = s.op === 'add' ? (+st.facts[s.f] || 0) + (+s.v || 0) : (+s.v || 0); else st.facts[s.f] = s.v; }
+function condOk(c, st, q) {
+  switch (c.t) {
+    case 'ch': return st.ch >= chNo(c.a);
+    case 'quest': return c.a in st.done && (!c.v || st.done[c.a] === c.v);
+    case 'fact': { const f = factById(c.a), v = st.facts[c.a]; if (!f) return false; if (f.kind === 'flag') return c.op === 'not' ? !v : !!v; if (f.kind === 'num') { const n = +c.v || 0; return c.op === '>=' ? v >= n : c.op === '<=' ? v <= n : c.op === 'not' ? v !== n : v === n; } return c.op === 'not' ? v !== c.v : v === c.v; }
+    case 'level': return !st.lvl || st.lvl >= (+c.v || 0);
+    case 'place': return st.seen.has(c.a) || [...st.seen].some(r => r.startsWith(c.a.replace(/^z:/, 'd:') + ':'));
+    case 'alive': return !st.dead.has(c.a);
+    case 'dead': return st.dead.has(c.a);
+    case 'joined': return st.joined.has(c.a);
+  }
+  return true;
+}
+const condsOk = (list, st, q) => list.every(c => condOk(c, st, q)) && (!q || !q.lvl || !st.lvl || st.lvl >= q.lvl);
+
+/* ── THE CHECKS ── each = { lvl: 'p' (problem) | 'q' (question), text, go: { kind, id } } */
+function storyChecks() {
+  const P = kp(), out = [], add = (lvl, text, go) => out.push({ lvl, text, go });
+  const U = factUses(), C = P.chapters, FQ = flatQuests(), qCh = {}; FQ.forEach(f => { qCh[f.q.id] = f.ci + 1; });
+  const goQ = id => ({ kind: 'quest', id }), goC = id => ({ kind: 'chapter', id }), goF = id => ({ kind: 'fact', id });
+  /* facts */
+  P.facts.forEach(f => {
+    const s = U.set[f.id] || [], k = U.chk[f.id] || [], name = '“' + (f.text || 'An unnamed fact') + '”';
+    if (!f.text.trim()) add('p', 'A fact has no sentence.', goF(f.id));
+    if (!s.length && k.length) add('p', name + ' is checked ' + k.length + (k.length === 1 ? ' time' : ' times') + ' but nothing ever changes it, so it always stays ' + (f.kind === 'flag' ? (f.start === 'yes' ? 'true' : 'false') : 'at its start (' + (f.start || 'empty') + ')') + '.', goF(f.id));
+    if (s.length && !k.length) add('q', name + ' is changed by ' + s[0].what + (s.length > 1 ? ' and ' + (s.length - 1) + ' more' : '') + ', but nothing checks it yet: a choice with no consequence.', goF(f.id));
+  });
+  /* quests: gates and endings */
+  const noGate = [];
+  FQ.forEach(({ c, q, ci }) => {
+    const my = ci + 1, lab = qLabel(q.id);
+    q.open.concat(q.close).forEach(cd => {
+      if (cd.t === 'quest') { if (!findQ(cd.a)) add('p', lab + ' needs a quest that was deleted.', goQ(q.id)); else if (qCh[cd.a] > my) add('p', lab + ' (Ch ' + my + ') needs ' + qLabel(cd.a) + ', which is only in Ch ' + qCh[cd.a] + '.', goQ(q.id)); else if (cd.a === q.id) add('p', lab + ' needs itself to be finished.', goQ(q.id)); else if (cd.v && !endName(cd.a, cd.v)) add('p', lab + ' needs an ending of ' + qLabel(cd.a) + ' that was deleted.', goQ(q.id)); }
+      if (cd.t === 'ch' && chNo(cd.a) > my) add('p', lab + ' is in Ch ' + my + ' but waits for Ch ' + chNo(cd.a) + ' to be reached.', goQ(q.id));
+      if (cd.t === 'ch' && !chNo(cd.a)) add('p', lab + ' waits for a chapter that was deleted.', goQ(q.id));
+      if (cd.t === 'fact' && !factById(cd.a)) add('p', lab + ' checks a fact that was deleted.', goQ(q.id));
+      if (cd.t === 'place') { const z = zoneOfRef(cd.a); if (z && !openZones(my).has(z)) add('q', lab + ' needs the player to have been to ' + placeName(cd.a) + ', but no chapter up to Ch ' + my + ' goes there.', goQ(q.id)); }
+    });
+    if (q.lvl && c.lv && (q.lvl > c.lv + 8)) add('q', lab + ' needs party level ' + q.lvl + ', but Ch ' + my + ' expects about level ' + c.lv + '.', goQ(q.id));
+    if (q.lvl && !c.lv) add('q', lab + ' has a level gate (' + q.lvl + ') but Ch ' + my + ' has no expected party level to check it against.', goC(c.id));
+    q.ends.forEach(e => e.sets.forEach(s => { if (!factById(s.f)) add('p', lab + ', ending “' + (e.name || '?') + '”, changes a fact that was deleted.', goQ(q.id)); }));
+    if (q.kind === 'side' && q.open.length === 0 && my > 1) noGate.push(q);
+    if (q.kind === 'main' && q.open.some(cd => cd.t === 'fact' || cd.t === 'joined' || cd.t === 'alive')) {
+      const st = simRun(ci, null); if (!condsOk(q.open, st, q)) add('p', 'Main quest ' + lab + ' does not open on the first path through the story: ' + q.open.filter(cd => !condOk(cd, st, q)).map(condText).join('; ') + '.', goQ(q.id));
+    }
+    /* who can be dead by now */
+    q.cast.concat(q.giver ? [q.giver] : []).forEach(id => { FQ.filter(o => o.ci < ci || (o.ci === ci && o.qi < FQ.find(z => z.q === q).qi)).forEach(o => { kq(o.q); const kill = o.q.ends.filter(e => e.kills.includes(id)); if (!kill.length) return; const all = o.q.ends.length && kill.length === o.q.ends.length; add(all ? 'p' : 'q', entName(id) + ' is in ' + lab + ', but ' + (all ? 'every' : 'the “' + kill.map(e => e.name || '?').join('” / “') + '”') + ' ending of ' + qLabel(o.q.id) + ' kills them' + (all ? '.' : ' first. Does this quest have a version without them?'), goQ(q.id)); }); });
+  });
+  if (noGate.length) add('q', noGate.length === 1 ? 'Side quest ' + qLabel(noGate[0].id) + ' has no gate: it is open from the start of its chapter.' : noGate.length + ' side quests have no gate, so each is open from the start of its chapter: ' + noGate.map(q => qNo(q.id)).join(', ') + '.', goQ(noGate[0].id));
+  /* chapters */
+  C.forEach((c, i) => {
+    if (!c.zone) add('p', 'Ch ' + (i + 1) + (c.name ? ' “' + c.name + '”' : '') + ' has no zone.', goC(c.id));
+    const mains = c.quests.filter(q => q.kind === 'main'), zc = zoneOfRef(c.zone);
+    if (zc && mains.length && !mains.some(q => zoneOfRef(q.where) === zc)) add('q', 'Ch ' + (i + 1) + ' “' + (c.name || '') + '” is set in ' + placeName('z:' + zc) + ', but its main ' + (mains.length === 1 ? 'quest is' : 'quests are') + ' in ' + [...new Set(mains.map(q => q.where ? placeName(q.where) : 'no place'))].join(', ') + '.', goC(c.id));
+  });
+  const noLv = C.filter(c => !c.lv).length; if (C.length && noLv === C.length) add('q', 'No chapter has an expected party level yet, so level gates cannot be checked.', null);
+  /* the timeline */
+  const evs = Object.values(B.events || {}); if (evs.length) { const noCh = evs.filter(e => !e.ch).length; if (noCh) add('q', noCh + ' of ' + evs.length + ' timeline events on “' + B.name + '” say no chapter, so the checks cannot match the timeline to the story.', null);
+    const ordered = evs.filter(e => e.ch && chNo(e.ch)).sort((a, b) => a.t - b.t); for (let i = 1; i < ordered.length; i++) if (chNo(ordered[i].ch) < chNo(ordered[i - 1].ch)) add('p', 'Timeline: “' + ordered[i].title + '” (Ch ' + chNo(ordered[i].ch) + ') comes after “' + ordered[i - 1].title + '” (Ch ' + chNo(ordered[i - 1].ch) + ') on the timeline, but earlier in the story.', { kind: 'event', id: ordered[i].id }); }
+  /* the planner's own notices */
+  const N0 = noticed(), mech = N0.map(t => /^Ch (\d+) and Ch (\d+) teach no new mechanic/.exec(t)).filter(Boolean);
+  if (mech.length > 1) add('q', 'Ch ' + mech[0][1] + ' to Ch ' + mech[mech.length - 1][2] + ' teach no new mechanic (the beat chart wants something new every chapter or two).', null);
+  N0.filter(t => mech.length < 2 || !/teach no new mechanic/.test(t)).forEach(t => add(/never pays|before or where|never planted|no main quest/.test(t) ? 'p' : 'q', t, null));
+  /* names used twice */
+  const seen = {}; FQ.forEach(f => { const n = (f.q.name || '').trim().toLowerCase(); if (!n) return; if (seen[n]) add('q', 'Two quests are called “' + f.q.name + '” (' + seen[n] + ' and ' + f.no + ').', goQ(f.q.id)); else seen[n] = f.no; });
+  if (typeof kitChecksMore === 'function') kitChecksMore(out, add);
+  return out.sort((a, b) => (a.lvl === 'p' ? 0 : 1) - (b.lvl === 'p' ? 0 : 1));
+}
+
+/* ── the quest card's new parts ── */
+const opts = (list, cur, first) => (first ? '<option value="">' + esc(first) + '</option>' : '') + list.map(o => '<option value="' + esc(o[0]) + '"' + (String(cur) === String(o[0]) ? ' selected' : '') + '>' + esc(o[1]) + '</option>').join('');
+let castOptsMemo = null;
+function castOpts() { if (castOptsMemo && Date.now() - castOptsMemo.t < 800) return castOptsMemo.v; const ids = new Set(storyCastIds()); const v = ENTS.filter(e => ids.has(e.id)).map(e => [e.id, entName(e.id)]).sort((a, b) => a[1].localeCompare(b[1])); castOptsMemo = { t: Date.now(), v }; return v; }
+function factOpts() { return kp().facts.map(f => [f.id, f.text || 'An unnamed fact']).concat([['__new', '+ A new fact…']]); }
+function condRow(list, i, c) {
+  const P = kp(), k = 'data-cl="' + list + '" data-ci="' + i + '"';
+  let h = '<div class="kcond"><select class="stinp" ' + k + ' data-ck="t">' + opts(COND_T, c.t) + '</select>';
+  if (c.t === 'ch') h += '<select class="stinp" ' + k + ' data-ck="a">' + opts(P.chapters.map((x, j) => [x.id, 'Ch ' + (j + 1) + (x.name ? ' · ' + x.name : '')]), c.a, 'Pick a chapter…') + '</select>';
+  else if (c.t === 'quest') { h += '<select class="stinp" ' + k + ' data-ck="a">' + opts(flatQuests().map(f => [f.q.id, f.no + ' ' + (f.q.name || 'Untitled')]), c.a, 'Pick a quest…') + '</select>'; const f = findQ(c.a); if (f && kq(f.q).ends.length) h += '<select class="stinp" ' + k + ' data-ck="v">' + opts(f.q.ends.map(e => [e.id, 'ending: ' + (e.name || '?')]), c.v, 'any ending') + '</select>'; }
+  else if (c.t === 'fact') { const f = factById(c.a); h += '<select class="stinp" ' + k + ' data-ck="a">' + opts(factOpts(), c.a, 'Pick a fact…') + '</select>';
+    if (f && f.kind === 'flag') h += '<select class="stinp sm" ' + k + ' data-ck="op">' + opts([['is', 'is true'], ['not', 'is false']], c.op) + '</select>';
+    else if (f && f.kind === 'num') h += '<select class="stinp sm" ' + k + ' data-ck="op">' + opts([['>=', 'at least'], ['<=', 'at most'], ['is', 'exactly'], ['not', 'not']], c.op) + '</select><input class="stinp sm" type="number" ' + k + ' data-ck="v" value="' + esc(c.v) + '">';
+    else if (f) h += '<select class="stinp sm" ' + k + ' data-ck="op">' + opts([['is', 'is'], ['not', 'is not']], c.op) + '</select><select class="stinp sm" ' + k + ' data-ck="v">' + opts(f.opts.map(o => [o, o]), c.v, '…') + '</select>'; }
+  else if (c.t === 'level') h += '<input class="stinp sm" type="number" min="1" ' + k + ' data-ck="v" value="' + esc(c.v) + '" placeholder="level">';
+  else if (c.t === 'place') h += '<select class="stinp" ' + k + ' data-ck="a">' + opts(PLACES.map(p => [p.ref, p.n]), c.a, 'Pick a place…') + '</select>';
+  else h += '<select class="stinp" ' + k + ' data-ck="a">' + opts(castOpts(), c.a, 'Pick a character…') + '</select>';
+  return h + '<button class="stx" data-cdel="' + list + '" data-ci="' + i + '" aria-label="Remove">×</button></div>';
+}
+function setRow(path, i, s) {
+  const f = factById(s.f), k = 'data-sl="' + path + '" data-si="' + i + '"';
+  let h = '<div class="kcond"><select class="stinp" ' + k + ' data-sk="f">' + opts(factOpts(), s.f, 'Pick a fact…') + '</select>';
+  if (f && f.kind === 'flag') h += '<select class="stinp sm" ' + k + ' data-sk="v">' + opts([['yes', 'becomes true'], ['no', 'becomes false']], s.v || 'yes') + '</select>';
+  else if (f && f.kind === 'num') h += '<select class="stinp sm" ' + k + ' data-sk="op">' + opts([['add', 'add'], ['set', 'set to']], s.op) + '</select><input class="stinp sm" type="number" ' + k + ' data-sk="v" value="' + esc(s.v) + '">';
+  else if (f) h += '<span class="stmuted">becomes</span><select class="stinp sm" ' + k + ' data-sk="v">' + opts(f.opts.map(o => [o, o]), s.v, '…') + '</select>';
+  return h + '<button class="stx" data-sdel="' + path + '" data-si="' + i + '" aria-label="Remove">×</button></div>';
+}
+function questKitForm(c, q) {
+  kq(q); const P = kp();
+  let h = fld('Status', seg('qstatus', QSTAT, q.status));
+  h += fld('Given by', '<div class="strow"><select class="stinp" data-kq="giver">' + opts(castOpts(), q.giver, 'Nobody (found by walking in)') + '</select><input class="stinp" data-kq="giverAt" value="' + esc(q.giverAt) + '" placeholder="where they stand"></div>');
+  h += fld('Opens when <span class="stmuted">(all of these)</span>', q.open.map((cd, i) => condRow('open', i, cd)).join('') + '<div class="strow"><button class="stadd" data-cadd="open">+ Condition</button><span class="stmuted">Party level at least</span><input class="stinp sm" type="number" min="0" data-kq="lvl" value="' + (q.lvl || '') + '" placeholder="any"></div>');
+  h += fld('Closes when <span class="stmuted">(any of these: the quest is gone)</span>', q.close.map((cd, i) => condRow('close', i, cd)).join('') + '<button class="stadd" data-cadd="close">+ Condition</button>');
+  h += fld('Endings <span class="stmuted">(the ways it can end; each changes the world)</span>', q.ends.map((e, i) => '<div class="kend t-' + (e.tone || 'x') + '"><div class="strow"><b>' + String.fromCharCode(65 + i) + '</b><input class="stinp" data-ke="' + i + '" data-kf="name" value="' + esc(e.name) + '" placeholder="How it ends">' + seg('tone' + i, TONES, e.tone) + '<button class="stx" data-edel="' + i + '" aria-label="Delete this ending">×</button></div>'
+    + e.sets.map((s, j) => setRow('end:' + i, j, s)).join('') + '<button class="stadd" data-sadd="end:' + i + '">+ Changes a fact</button>'
+    + '<div class="strow kmini"><span class="stmuted">Dies</span>' + e.kills.map(id => '<span class="stchip">' + esc(entName(id)) + '<b data-ekill="' + i + '" data-id="' + esc(id) + '">×</b></span>').join('') + '<select class="stinp sm" data-eadd="kills" data-ke="' + i + '">' + opts(castOpts(), '', '+ who dies') + '</select>'
+    + '<span class="stmuted">Joins</span>' + e.joins.map(id => '<span class="stchip">' + esc(entName(id)) + '<b data-ejoin="' + i + '" data-id="' + esc(id) + '">×</b></span>').join('') + '<select class="stinp sm" data-eadd="joins" data-ke="' + i + '">' + opts(castOpts(), '', '+ who joins') + '</select></div>'
+    + '<div class="strow kmini"><span class="stmuted">Opens</span>' + e.opens.map((r, j) => '<span class="stchip">' + esc(placeName(r)) + '<b data-eopen="' + i + '" data-j="' + j + '">×</b></span>').join('') + '<select class="stinp sm" data-eadd="opens" data-ke="' + i + '">' + opts(PLACES.map(p => [p.ref, p.n]), '', '+ a place it opens') + '</select></div>'
+    + '<input class="stinp" data-ke="' + i + '" data-kf="reward" value="' + esc(e.reward) + '" placeholder="Reward for this ending"></div>').join('') + '<button class="stadd" data-act="addEnd">+ Ending</button>');
+  return h;
+}
+
+/* ── THE FACTS tab ── */
+const KF = { sel: null, show: 'all' };
+function renderFacts() {
+  const P = kp(), U = factUses(), rows = P.facts.filter(f => KF.show === 'all' || (KF.show === 'stand' ? f.fac : !(U.set[f.id] || []).length || !(U.chk[f.id] || []).length));
+  let h = '<div class="sthd"><h3>STORY FACTS</h3><span class="stmuted">' + P.facts.length + ' · what can be true in the world</span><span class="sp"></span>' + seg('kfshow', [['all', 'All'], ['stand', 'Standings'], ['loose', 'Loose ends']], KF.show) + '<button class="stbtn g sm" data-act="addFact">+ Fact</button></div>';
+  h += '<div class="sttbl"><table class="kfacts"><tr><th>Fact</th><th>Kind</th><th>At the start</th><th>Changed by</th><th>Checked by</th></tr>';
+  rows.forEach(f => { const s = U.set[f.id] || [], k = U.chk[f.id] || [];
+    h += '<tr data-kfsel="' + esc(f.id) + '"' + (KF.sel === f.id ? ' class="on"' : '') + '><td><input class="stinp" data-kft="' + esc(f.id) + '" value="' + esc(f.text) + '" placeholder="A plain sentence: Dorian has left DOOR">' + (f.fac ? '<span class="stmini kstand">standing · ' + esc(f.fac) + '</span>' : '') + '</td><td>' + esc((FACT_KINDS.find(x => x[0] === f.kind) || [])[1]) + '</td><td>' + esc(f.kind === 'flag' ? (f.start === 'yes' ? 'true' : 'false') : f.start || '—') + '</td>'
+      + '<td>' + (s.length ? s.length : '<span class="stmiss">nothing</span>') + '</td><td>' + (k.length ? k.length : '<span class="stwarn">nothing</span>') + '</td></tr>'; });
+  if (!rows.length) h += '<tr><td colspan="5" class="stmuted">' + (P.facts.length ? 'Nothing here.' : 'No facts yet. Add one here, or pick “+ A new fact…” in a quest’s gates or endings.') + '</td></tr>';
+  h += '</table></div>';
+  $('kfMain').innerHTML = h;
+  const f = factById(KF.sel); let r = '';
+  if (f) { const s = U.set[f.id] || [], k = U.chk[f.id] || [], facs = [...new Set(Object.values(B.nodes).filter(n => isGrp(n) && gkOf(n) === 'faction').map(n => n.name))].sort();
+    r += '<h3>THE FACT</h3>' + fld('Sentence', '<textarea class="stinp" rows="2" data-kft="' + esc(f.id) + '">' + esc(f.text) + '</textarea>');
+    r += fld('Kind', seg('kfkind', FACT_KINDS, f.kind));
+    if (f.kind === 'pick') r += fld('Choices <span class="stmuted">(one a line)</span>', '<textarea class="stinp" rows="3" data-kfopts="' + esc(f.id) + '">' + esc(f.opts.join('\n')) + '</textarea>');
+    r += fld('At the start of the game', f.kind === 'flag' ? seg('kfstart', [['no', 'False'], ['yes', 'True']], f.start === 'yes' ? 'yes' : 'no') : f.kind === 'num' ? '<input class="stinp" type="number" data-kfstart="' + esc(f.id) + '" value="' + esc(f.start) + '" placeholder="0">' : '<select class="stinp" data-kfstart="' + esc(f.id) + '">' + opts(f.opts.map(o => [o, o]), f.start, 'none yet') + '</select>');
+    r += fld('A faction’s standing with you? <span class="stmuted">(numbers only)</span>', '<select class="stinp" data-kffac="' + esc(f.id) + '"' + (f.kind !== 'num' ? ' disabled' : '') + '>' + opts(facs.map(n => [n, n]), f.fac, 'Not a standing') + '</select>');
+    r += fld('Changed by', s.length ? s.map(x => '<div class="kuse"' + (x.q ? ' data-kgo="' + esc(x.q) + '"' : '') + '>▸ ' + esc(x.what) + '</div>').join('') : '<div class="stmiss">Nothing changes it.</div>');
+    r += fld('Checked by', k.length ? k.map(x => '<div class="kuse" data-kgo="' + esc(x.q) + '">▸ ' + esc(x.what) + '</div>').join('') : '<div class="stwarn">Nothing checks it.</div>');
+    r += fld('Notes', '<textarea class="stinp" rows="3" data-kfnote="' + esc(f.id) + '">' + esc(f.note) + '</textarea>');
+    r += '<div class="strow" style="margin-top:14px"><span class="sp"></span><button class="stbtn r" data-act="delFact">Delete fact</button></div>';
+  } else r = '<h3>THE FACT</h3><div class="stmuted">Pick a fact to see what changes it and what checks it.</div>';
+  const el = $('kfSide'), sc = el.scrollTop; el.innerHTML = r; el.scrollTop = sc;
+}
+function newFactBox(fn) {
+  modal('<h2>A new story fact</h2><p class="muted">Write it as a plain sentence that can be true or false, or a number that can go up and down.</p><input class="inp" id="kNewFact" placeholder="Dorian has left DOOR"><div class="prow" id="kNewKind">' + FACT_KINDS.map((k, i) => '<button class="btn sm' + (i ? '' : ' on') + '" data-k="' + k[0] + '">' + k[1] + '</button>').join('') + '</div><div class="acts"><button class="btn" data-x="cancel">Cancel</button><button class="btn pri" data-x="ok">Add the fact</button></div>',
+    d => { let kind = 'flag'; setTimeout(() => $('kNewFact').focus(), 0);
+      const ok = () => { const t = $('kNewFact').value.trim(); if (!t) { $('kNewFact').focus(); return; } const f = { id: uid('f'), text: t, kind, opts: [], start: '', fac: '', note: '' }; kp().facts.push(f); closeModal(); fn(f); };
+      d.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; if (b.dataset.k) { kind = b.dataset.k; d.querySelectorAll('#kNewKind button').forEach(x => x.classList.toggle('on', x === b)); } else if (b.dataset.x === 'cancel') closeModal(); else if (b.dataset.x === 'ok') ok(); });
+      d.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'kNewFact') ok(); }); });
+}
+
+/* ── THE CHECKS tab ── */
+const KC = { show: 'all' };
+function renderChecks() {
+  const L = storyChecks(), nP = L.filter(x => x.lvl === 'p').length, rows = L.filter(x => KC.show === 'all' || (KC.show === 'p') === (x.lvl === 'p'));
+  let h = '<div class="sthd"><h3>THE CHECKS</h3><span class="stmuted">' + nP + ' problems · ' + (L.length - nP) + ' questions · read from the plan, the facts, the board “' + esc(B.name) + '” and the sheets</span><span class="sp"></span>' + seg('kcshow', [['all', 'All'], ['p', 'Problems'], ['q', 'Questions']], KC.show) + '</div>';
+  h += rows.length ? rows.map(x => '<div class="kchk"><span class="kpill ' + x.lvl + '">' + (x.lvl === 'p' ? 'PROBLEM' : 'QUESTION') + '</span><span class="kct">' + esc(x.text) + '</span>' + (x.go ? '<button class="stbtn g sm" data-kgoto="' + esc(x.go.kind) + '" data-id="' + esc(x.go.id) + '">Show</button>' : '') + '</div>').join('') : '<div class="stmuted">Nothing found.</div>';
+  $('st_checks').innerHTML = h;
+  kitTabCounts(L);
+}
+function kitTabCounts(L) { const b = $('story').querySelector('[data-sttab="checks"]'); if (b) { const n = (L || storyChecks()).filter(x => x.lvl === 'p').length; b.textContent = 'Checks' + (n ? ' · ' + n : ''); } }
+function kitGo(kind, id) {
+  if (kind === 'quest' && findQ(id)) { ST.sel = { kind: 'quest', id }; ST.tab = 'map'; }
+  else if (kind === 'chapter' && findC(id)) { ST.sel = { kind: 'chapter', id }; ST.tab = 'map'; }
+  else if (kind === 'fact') { KF.sel = id; ST.tab = 'facts'; }
+  else if (kind === 'clue' && typeof KM !== 'undefined') { KM.sel = id; ST.tab = 'myst'; }
+  else if (kind === 'event') { storyOpen(false); selectEvent(id); return; }
+  S.ui.storyTab = ST.tab; storyRender();
+}
+
+/* ── the toolkit's clicks, typing and picks on the planner screen ── */
+function bindKit() {
+  const root = $('story');
+  const cq = () => { const f = curQ(); return f ? kq(f.q) : null; };
+  const condList = (l) => { const q = cq(); if (!q) return null; if (l === 'open' || l === 'close') return q[l]; const m = /^scene:(\d+)$/.exec(l); return m && q.scenes[+m[1]] ? q.scenes[+m[1]].when : null; };
+  const setList = (l) => { const q = cq(); if (!q) return null; let m = /^end:(\d+)$/.exec(l); if (m) return q.ends[+m[1]] ? q.ends[+m[1]].sets : null; m = /^scene:(\d+)$/.exec(l); return m && q.scenes[+m[1]] ? q.scenes[+m[1]].sets : null; };
+  root.addEventListener('click', e => {
+    const b = e.target.closest('button, [data-kfsel], [data-kgo]'); if (!b) return;
+    const P = kp(), q = cq();
+    if (b.dataset.kgoto) { e.stopImmediatePropagation(); kitGo(b.dataset.kgoto, b.dataset.id); return; }
+    if (b.dataset.kgo) { e.stopImmediatePropagation(); kitGo('quest', b.dataset.kgo); return; }
+    if (b.dataset.kfsel && !e.target.closest('input')) { KF.sel = b.dataset.kfsel; renderFacts(); return; }
+    const sg = b.closest('[data-seg]');
+    if (sg && b.dataset.v != null) {
+      const f = sg.dataset.seg, v = b.dataset.v, F = factById(KF.sel);
+      if (f === 'qstatus' && q) { e.stopImmediatePropagation(); q.status = q.status === v ? '' : v; storySave(); return; }
+      if (f === 'cstatus') { const c = curC(); if (c) { e.stopImmediatePropagation(); c.status = c.status === v ? '' : v; storySave(); } return; }
+      if (/^tone\d+$/.test(f) && q) { e.stopImmediatePropagation(); const en = q.ends[+f.slice(4)]; if (en) { en.tone = en.tone === v ? '' : v; storySave(); } return; }
+      if (f === 'kfshow') { e.stopImmediatePropagation(); KF.show = v; renderFacts(); return; }
+      if (f === 'kcshow') { e.stopImmediatePropagation(); KC.show = v; renderChecks(); return; }
+      if (f === 'kfkind' && F) { e.stopImmediatePropagation(); F.kind = v; if (v !== 'num') F.fac = ''; F.start = ''; storySave(); return; }
+      if (f === 'kfstart' && F) { e.stopImmediatePropagation(); F.start = v; storySave(); return; }
+      if (typeof kitSegMore === 'function' && kitSegMore(f, v)) { e.stopImmediatePropagation(); return; }
+      return;
+    }
+    if (b.dataset.cadd) { const L = condList(b.dataset.cadd); if (L) { e.stopImmediatePropagation(); L.push({ t: 'ch', a: '', op: 'is', v: '' }); storySave(); } return; }
+    if (b.dataset.cdel) { const L = condList(b.dataset.cdel); if (L) { e.stopImmediatePropagation(); L.splice(+b.dataset.ci, 1); storySave(); } return; }
+    if (b.dataset.sadd) { const L = setList(b.dataset.sadd); if (L) { e.stopImmediatePropagation(); L.push({ f: '', op: 'set', v: '' }); storySave(); } return; }
+    if (b.dataset.sdel) { const L = setList(b.dataset.sdel); if (L) { e.stopImmediatePropagation(); L.splice(+b.dataset.si, 1); storySave(); } return; }
+    if (b.dataset.edel != null && q) { e.stopImmediatePropagation(); const en = q.ends[+b.dataset.edel]; confirmBox('Delete the ending “' + ((en && en.name) || 'unnamed') + '”?', 'Delete ending', () => { q.ends.splice(+b.dataset.edel, 1); storySave(); }); return; }
+    if (e.target.dataset.ekill != null && q) { e.stopImmediatePropagation(); const en = q.ends[+e.target.dataset.ekill]; en.kills = en.kills.filter(x => x !== e.target.dataset.id); storySave(); return; }
+    if (e.target.dataset.ejoin != null && q) { e.stopImmediatePropagation(); const en = q.ends[+e.target.dataset.ejoin]; en.joins = en.joins.filter(x => x !== e.target.dataset.id); storySave(); return; }
+    if (e.target.dataset.eopen != null && q) { e.stopImmediatePropagation(); const en = q.ends[+e.target.dataset.eopen]; en.opens.splice(+e.target.dataset.j, 1); storySave(); return; }
+    switch (b.dataset.act) {
+      case 'addEnd': if (q) { e.stopImmediatePropagation(); q.ends.push({ id: uid('e'), name: '', tone: '', sets: [], kills: [], joins: [], opens: [], reward: '', note: '' }); storySave(); } return;
+      case 'addFact': e.stopImmediatePropagation(); newFactBox(f => { KF.sel = f.id; storySave(); }); return;
+      case 'delFact': { e.stopImmediatePropagation(); const F = factById(KF.sel); if (F) confirmBox('Delete the fact “' + (F.text || 'unnamed') + '”? Gates and endings that use it will show in the checks.', 'Delete fact', () => { P.facts = P.facts.filter(x => x !== F); KF.sel = null; storySave(); }); return; }
+    }
+  }, true);
+  /* a select that picks “+ A new fact…” opens the new-fact box first */
+  const pickNewFact = (t, put) => { newFactBox(f => { put(f.id); storySave(); }); };
+  root.addEventListener('change', e => {
+    const t = e.target, q = cq(), F = factById(KF.sel);
+    if (t.dataset.cl != null) { e.stopImmediatePropagation(); const L = condList(t.dataset.cl), c = L && L[+t.dataset.ci]; if (!c) return; const k = t.dataset.ck;
+      if (k === 'a' && t.value === '__new') { pickNewFact(t, id => { c.a = id; c.op = 'is'; c.v = ''; }); return; }
+      c[k] = t.value; if (k === 't') { c.a = ''; c.v = ''; c.op = c.t === 'fact' ? 'is' : 'is'; } if (k === 'a' && c.t === 'fact') { const f = factById(c.a); c.op = f && f.kind === 'num' ? '>=' : 'is'; c.v = ''; } if (k === 'a' && c.t === 'quest') c.v = '';
+      storySave(); return; }
+    if (t.dataset.sl != null) { e.stopImmediatePropagation(); const L = setList(t.dataset.sl), s = L && L[+t.dataset.si]; if (!s) return; const k = t.dataset.sk;
+      if (k === 'f' && t.value === '__new') { pickNewFact(t, id => { s.f = id; s.op = factById(id).kind === 'num' ? 'add' : 'set'; s.v = factById(id).kind === 'flag' ? 'yes' : ''; }); return; }
+      s[k] = t.value; if (k === 'f') { const f = factById(s.f); s.op = f && f.kind === 'num' ? 'add' : 'set'; s.v = f && f.kind === 'flag' ? 'yes' : ''; } storySave(); return; }
+    if (t.dataset.eadd && q && t.value) { e.stopImmediatePropagation(); const en = q.ends[+t.dataset.ke], k = t.dataset.eadd; if (en && !en[k].includes(t.value)) en[k].push(t.value); storySave(); return; }
+    if (t.dataset.kq && q) { e.stopImmediatePropagation(); const k = t.dataset.kq; q[k] = k === 'lvl' ? Math.max(0, Math.round(+t.value || 0)) : t.value; storySave(k === 'giverAt'); return; }
+    if (t.dataset.kclv != null) { const c = curC(); if (c) { e.stopImmediatePropagation(); c.lv = Math.max(0, Math.round(+t.value || 0)); storySave(); } return; }
+    if (t.dataset.kfstart && F) { e.stopImmediatePropagation(); F.start = t.value; storySave(); return; }
+    if (t.dataset.kffac && F) { e.stopImmediatePropagation(); F.fac = t.value; storySave(); return; }
+    if (t.dataset.kfopts && F) { e.stopImmediatePropagation(); F.opts = t.value.split('\n').map(x => x.trim()).filter(Boolean).slice(0, 12); storySave(); return; }
+    if (typeof kitChangeMore === 'function' && kitChangeMore(e)) e.stopImmediatePropagation();
+  }, true);
+  root.addEventListener('input', e => {
+    const t = e.target, q = cq();
+    if (t.dataset.ke != null && t.dataset.kf && q) { e.stopImmediatePropagation(); const en = q.ends[+t.dataset.ke]; if (en) { en[t.dataset.kf] = t.value; storySave(true); } return; }
+    if (t.dataset.kft) { e.stopImmediatePropagation(); const f = factById(t.dataset.kft); if (f) { f.text = t.value; root.querySelectorAll('[data-kft="' + t.dataset.kft + '"]').forEach(o => { if (o !== t) o.value = t.value; }); storySave(true); } return; }
+    if (t.dataset.kfnote) { e.stopImmediatePropagation(); const f = factById(t.dataset.kfnote); if (f) { f.note = t.value; storySave(true); } return; }
+    if (t.dataset.kq === 'giverAt' && q) { e.stopImmediatePropagation(); q.giverAt = t.value; storySave(true); return; }
+    if (typeof kitInputMore === 'function' && kitInputMore(e)) e.stopImmediatePropagation();
+  }, true);
+}
+Object.assign(KIT_RENDER, { facts: renderFacts, checks: renderChecks });
+bindKit();
+
 /* ───────── boot ───────── */
 S = loadLocal(); B = S.boards[S.active];
 initWhere();
 $('legend').open = S.ui.legend === true && !window.matchMedia('(max-width: 860px)').matches;
 ensureView(); fit(true); pushHist(); renderAll(); setSave();
 requestAnimationFrame(() => { if (!drag) fit(); });
-if (S.ui.story) { ST.tab = /^(map|beat|spine|chars)$/.test(S.ui.storyTab) ? S.ui.storyTab : 'map'; storyOpen(true); }
+if (S.ui.story) { ST.tab = STORY_TABS.includes(S.ui.storyTab) ? S.ui.storyTab : 'map'; storyOpen(true); }
 cloudInit();
 window.__ewWeb = { get state() { return S; }, gameExport, defence, hooks, cloud };
 })();
