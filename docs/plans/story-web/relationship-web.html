@@ -660,6 +660,7 @@ dl.facts dt { color: var(--ink3); font-size: 12px; } dl.facts dd { margin: 0; mi
     <button class="sttab" data-sttab="map">Map</button><button class="sttab" data-sttab="beat">Beat chart</button><button class="sttab" data-sttab="spine">Spine</button><button class="sttab" data-sttab="chars">Character sheets</button><button class="sttab" data-sttab="facts">Facts</button><button class="sttab" data-sttab="myst">Mysteries</button><button class="sttab" data-sttab="world">World</button><button class="sttab" data-sttab="flow">Flow</button><button class="sttab" data-sttab="play">Play it</button><button class="sttab" data-sttab="lore">Lore</button><button class="sttab" data-sttab="pitch">Pitches</button><button class="sttab" data-sttab="checks">Checks</button>
     <span class="sp"></span>
     <button class="stbtn" data-act="import" title="Add chapters and quests from a file">Add from a file</button>
+    <button class="stbtn" data-act="readerExport" title="The whole story as plain text, for another AI or a person to read and critique">Export for a reader</button>
     <button class="stbtn" data-act="export">Export the plan</button>
   </div>
   <div class="stbody">
@@ -2739,6 +2740,7 @@ function bindStory() {
       case 'delCh': if (c) confirmBox('Delete Ch ' + chNo(c.id) + (c.name ? ' · ' + c.name : '') + ' and its ' + c.quests.length + ' quests?', 'Delete chapter', () => { P.chapters = P.chapters.filter(x => x !== c); P.clues.forEach(k => { if (k.plant === c.id) k.plant = ''; if (k.pay === c.id) k.pay = ''; }); ST.sel = null; storySave(); }); break;
       case 'delQ': if (fq) confirmBox('Delete the quest ' + (fq.q.name || 'Untitled quest') + '?', 'Delete quest', () => { fq.c.quests = fq.c.quests.filter(x => x !== fq.q); ST.sel = { kind: 'chapter', id: fq.c.id }; storySave(); }); break;
       case 'export': storyExport(); break;
+      case 'readerExport': readerExportBox(); break;
       case 'import': storyImport(); break;
       case 'mfit': mapFit(); storyDrawMap(); break;
       case 'min': case 'mout': { const f = b.dataset.act === 'min' ? 1.35 : 1 / 1.35; MV.k = clamp(MV.k * f, 3, 90); storyDrawMap(); } break;
@@ -3950,6 +3952,102 @@ function kitChangeMoreE(e) {
   const t = e.target; if (t.dataset.ksc == null) return false;
   const f = curQ(); if (!f) return false; const s = kq(f.q).scenes[+t.dataset.ksc]; if (!s) return true;
   s.id = t.value; if (s.id && !s.n && CUTS[s.id]) s.n = CUTS[s.id].title; storySave(); return true;
+}
+
+/* ── EXPORT FOR A READER (2026-11-25, mondo: "an export button where it can export the story for a different ai to analyze the story
+   from a writing/literature perspective"): the whole story as one plain Markdown text, nothing coded (no ids): a short note for the
+   reader at the top, the spine answers, every chapter and quest in play order (gates and endings as sentences, the game scenes'
+   spoken lines), the character sheets, the secrets, the world's facts, the lore, the timeline, the ties on the board, the pitches
+   and the checks' open problems. The words are mondo's; this only lays them out. ── */
+function readerExport() {
+  const P = kp(), FQ = flatQuests(), E = sceneEdits(), L = [], o = s => L.push(s), t = s => String(s || '').trim();
+  const para = (lab, v) => { v = t(v); if (v) o('**' + lab + ':** ' + v.replace(/\n+/g, ' ') + '\n'); };
+  o('# ' + 'Entropy Wars: the story as planned');
+  o('_Exported ' + new Date().toISOString().slice(0, 10) + ' from the story planner, board “' + B.name + '”._\n');
+  o('## For the reader');
+  o('This is the working story plan of Entropy Wars, a tactics RPG in the style of a PS1-era JRPG with online player-versus-player and a story mode. The world is a satirical parody of the real world. Everything below is the writer’s own plan, still in progress: some chapters are only outlines, some quests have no endings yet, and the open problems the planning tool found are listed at the end.\n');
+  o('Please read it as a story editor would, from a writing and literature point of view: the structure and pacing of the chapters, each main character’s arc and motivation, the themes, the tone and humour, the mysteries (what is hinted, when, and whether each reveal is earned), the side quests, and anything that contradicts itself or does not yet make emotional or logical sense. Point out what works, what is missing, and ask the questions a writer would need to answer.\n');
+  /* the spine */
+  const ans = Object.entries(P.ans || {}).filter(([k, v]) => t(v) && SPINE_BY[k]);
+  if (ans.length) { o('## The big questions, answered'); ans.forEach(([k, v]) => o('- **' + SPINE_BY[k][1] + '** ' + t(v))); o(''); }
+  /* the chapters */
+  o('## The story, chapter by chapter');
+  P.chapters.forEach((c, ci) => {
+    o('### Chapter ' + (ci + 1) + (c.name ? ': ' + c.name : ''));
+    const meta = [c.band ? 'band ' + c.band : '', c.step ? 'story step ' + STEPS9[c.step - 1] : '', c.goal ? 'goal: ' + ((GOALS.find(g => g[0] === c.goal) || [])[1] || c.goal) : '', c.zone ? 'set in ' + placeName(c.zone) : '', c.lv ? 'party level about ' + c.lv : ''].filter(Boolean);
+    if (meta.length) o('_' + meta.join(' · ') + '_\n');
+    para('What DOOR trusts you with', c.trust); para('The lie', c.lie);
+    if (c.boss || c.bossText) para('Boss', [c.boss ? entName(c.boss) : '', c.bossText].filter(Boolean).join(', '));
+    if (c.enemies.length) para('New enemies', c.enemies.map(entName).join(', '));
+    para('Reward', c.reward); para('Notes', c.notes);
+    FQ.filter(f => f.ci === ci).forEach(f => { const q = kq(f.q);
+      o('#### ' + f.no + ' ' + (q.name || 'Untitled') + ' (' + (q.kind === 'side' ? 'side quest' : 'main quest') + ')');
+      const m = [q.where ? 'at ' + placeName(q.where) : '', q.giver ? 'given by ' + entName(q.giver) + (q.giverAt ? ' (' + q.giverAt + ')' : '') : '', q.status ? 'status: ' + ((QSTAT.find(x => x[0] === q.status) || [])[1] || q.status) : ''].filter(Boolean);
+      if (m.length) o('_' + m.join(' · ') + '_\n');
+      para('Summary', q.summary);
+      if (q.cast.length) para('Characters', q.cast.map(entName).join(', '));
+      if (q.open.length || q.lvl) para('Opens when', q.open.map(condText).concat(q.lvl ? ['party level ' + q.lvl + ' or more'] : []).join('; '));
+      if (q.close.length) para('Closes for good when', q.close.map(condText).join('; '));
+      if (q.steps.length) { o('**Steps:**'); q.steps.forEach((s, i) => o((i + 1) + '. ' + t(s.text))); o(''); }
+      q.scenes.forEach(s => { const c2 = s.id && CUTS[s.id], lines = c2 ? cutLines(s.id, E) : [];
+        o('**Scene: ' + t(s.n || (c2 && c2.title) || 'a scene') + '** (' + (s.how === 'played' ? 'played through' : 'cutscene') + (s.when.length ? '; plays when ' + s.when.map(condText).join(', ') : '') + (s.sets.length ? '; afterwards ' + s.sets.map(setText).join(', ') : '') + ')' + (lines.length ? '' : '\n'));
+        if (lines.length) { o(''); lines.forEach(l => o('> **' + t(l.who) + ':** ' + t(l.text) + '  ')); o(''); } });
+      if (q.ends.length) { o('**How it can end:**'); q.ends.forEach((e, i) => o('- ' + String.fromCharCode(65 + i) + '. ' + (t(e.name) || 'an ending') + (e.tone ? ' (' + ((TONES.find(x => x[0] === e.tone) || [])[1] || '').toLowerCase() + ')' : '') + [e.sets.length ? ' ' + e.sets.map(setText).join(', ') + '.' : '', e.kills.length ? ' Dies: ' + e.kills.map(entName).join(', ') + '.' : '', e.joins.length ? ' Joins you: ' + e.joins.map(entName).join(', ') + '.' : '', e.opens.length ? ' Opens: ' + e.opens.map(placeName).join(', ') + '.' : '', t(e.reward) ? ' Reward: ' + t(e.reward) + '.' : '', t(e.note) ? ' ' + t(e.note) : ''].join(''))); o(''); }
+      para('Reward', q.reward); para('Notes', q.notes);
+    });
+  });
+  /* the characters */
+  const ids = storyCastIds().filter(id => !scDeleted(id)).concat(Object.keys(castDoc().sheets).filter(id => castDoc().sheets[id].t > 0 && !scDeleted(id))).filter((v, i, a) => a.indexOf(v) === i);
+  if (ids.length) { o('## The characters');
+    ids.forEach(id => { const s = scSheet(id) || { f: {}, extra: [], fam: [], sec: [], arc: {}, voice: [] }, f = s.f || {};
+      const at = L.length;
+      o('### ' + scName(id) + (scName(id) !== scGame(id) ? ' (' + scGame(id) + ')' : ''));
+      para('In one line', f.pitch);
+      SC_SECS.forEach(sec => (sec.f || []).forEach(([k, lab]) => para(lab, f[k])));
+      (s.extra || []).forEach(x => para(x.label || 'Note', x.text));
+      para('Backstory', scBack(id));
+      const fam = scFamTies(id).map(l => sentence(l, scNameOnBoard, true)).concat((s.fam || []).map(r => (r.rel || 'Family') + ': ' + (r.who ? scName(r.who) : r.name) + (r.note ? ' (' + r.note + ')' : '')));
+      if (fam.length) para('Family', fam.join('; '));
+      (s.sec || []).forEach(x => para('Secret', t(x.text) + [x.who ? ' Who knows: ' + x.who + '.' : '', x.plant ? ' First hinted: ' + x.plant + '.' : '', x.reveal ? ' Revealed: ' + x.reveal + '.' : ''].join('')));
+      const arc = [['_start', 'At the start']].concat(scChapters(id).map(x => [x.c.id, 'Chapter ' + (x.i + 1)]), [['_end', 'At the end']]).map(([k, n]) => { const a = (s.arc || {})[k]; return a && (a.s || a.c) ? n + ': ' + [t(a.s), t(a.c) ? 'changes: ' + t(a.c) : ''].filter(Boolean).join('; ') : ''; }).filter(Boolean);
+      if (arc.length) { o('**Arc:**'); arc.forEach(x => o('- ' + x)); o(''); }
+      if ((s.voice || []).length) { o('**Voice:**'); s.voice.forEach(v => o('- ' + (v.mood ? '(' + v.mood + ') ' : '') + '“' + t(v.line) + '”')); o(''); }
+      const ties = scTies(id).filter(l => l.type !== 'family' && l.type !== 'created').map(l => sentence(l, scNameOnBoard, true));
+      if (ties.length) para('Ties', ties.join('; '));
+      const ch = scChapters(id); if (L.length === at + 1) { L.pop(); return; } if (ch.length) para('Appears in', ch.map(x => 'Chapter ' + (x.i + 1)).join(', '));
+    }); }
+  /* the secrets */
+  if (P.clues.length) { o('## The mysteries and secrets');
+    P.clues.forEach(k => { o('### ' + (t(k.text) || 'A secret') + (k.kind === 'herring' ? ' (a red herring)' : ''));
+      para('The whole truth', k.truth);
+      const lad = ladder(k); if (lad.length) { o('**How the player learns it:**'); lad.forEach(s => o('- Chapter ' + (chNo(s.ch) || '?') + ', ' + ((STEP_HOW.find(x => x[0] === s.how) || [])[1] || s.how).toLowerCase() + (s.where ? ': ' + t(s.where) : '') + (s.q && findQ(s.q) ? ' (in “' + questName(s.q) + '”)' : ''))); o(''); }
+      if (k.about.length) para('About', k.about.map(entName).join(', '));
+      if (k.knows.length) para('Who knows', k.knows.map(x => entName(x.e) + (x.ch ? ' from chapter ' + chNo(x.ch) : ' from before the game')).join('; '));
+    }); }
+  /* the facts */
+  if (P.facts.length) { o('## What can be true in the world'); P.facts.forEach(f => o('- ' + t(f.text) + (f.fac ? ' (the ' + f.fac + ' standing with you)' : '') + (f.kind === 'pick' && f.opts.length ? ' (one of: ' + f.opts.join(', ') + ')' : '') + (t(f.note) ? ': ' + t(f.note) : ''))); o(''); }
+  /* the lore */
+  if (P.lore.length) { o('## The lore'); P.lore.slice().sort((a, b) => (a.name || '').localeCompare(b.name || '')).forEach(l => { o('### ' + (t(l.name) || 'Unnamed') + (l.aka ? ' (also: ' + t(l.aka) + ')' : '')); para('Canon', l.canon); para('Still open', l.open); }); }
+  /* the timeline */
+  const evs = evList(); if (evs.length) { o('## The timeline'); evs.forEach(ev => o('- ' + (ev.when ? '**' + t(ev.when) + '**: ' : '') + (t(ev.title) || 'Untitled') + (ev.ch && chNo(ev.ch) ? ' (story chapter ' + chNo(ev.ch) + ')' : '') + (t(ev.text) ? '. ' + t(ev.text).replace(/\n+/g, ' ') : '') + (evRefs(ev).length ? ' [' + evRefs(ev).map(nm).join(', ') + ']' : ''))); o(''); }
+  /* the board: groups, ties, notes */
+  const groups = Object.values(B.nodes).filter(isGrp);
+  if (groups.length) { o('## The factions and places on the board'); groups.forEach(g => { const m = membersOf(g.id).map(nm); o('- **' + t(g.name) + '** (' + gkOf(g) + ')' + (m.length ? ': ' + m.join(', ') : '') + (t(g.note) ? '. ' + t(g.note).replace(/\n+/g, ' ') : '')); }); o(''); }
+  const ties = Object.values(B.links).filter(l => l.type !== 'member' && B.nodes[l.a] && B.nodes[l.b]);
+  if (ties.length) { o('## Who is tied to whom'); ties.forEach(l => o('- ' + sentence(l, scNameOnBoard, true) + (l.from || l.until ? ' (' + [l.from ? 'from chapter ' + chNo(l.from) : '', l.until ? 'until chapter ' + chNo(l.until) : ''].filter(Boolean).join(', ') + ')' : ''))); o(''); }
+  const notes = Object.values(B.nodes).filter(n => !isGrp(n) && t(n.note) && !ids.includes(n.id));
+  if (notes.length) { o('## Notes on everyone else'); notes.forEach(n => o('- **' + nm(n.id) + ':** ' + t(n.note).replace(/\n+/g, ' '))); o(''); }
+  /* the pitches */
+  const pit = P.pitches.filter(x => t(x.text) && !(x.q && findQ(x.q)));
+  if (pit.length) { o('## Side quest ideas not yet placed'); pit.forEach(x => o('- ' + t(x.text) + [x.where ? ' At ' + placeName(x.where) + '.' : '', x.fac ? ' Faction: ' + x.fac + '.' : '', x.mood ? ' Mood: ' + x.mood + '.' : ''].join(''))); o(''); }
+  /* the checks */
+  const ck = storyChecks(); if (ck.length) { o('## Open problems the planning tool found'); ck.forEach(x => o('- ' + (x.lvl === 'p' ? 'Problem: ' : 'Question: ') + x.text)); o(''); }
+  return L.join('\n').replace(/\n{3,}/g, '\n\n');
+}
+function readerExportBox() {
+  const txt = readerExport(), name = 'Entropy_Wars_Story_for_a_reader_' + new Date().toISOString().slice(0, 10) + '.md';
+  modal('<h2>Export the story for a reader</h2><p class="muted">The whole story as plain text for another AI (or a person) to read and critique as writing. ' + Math.round(txt.length / 1000) + ' KB, about ' + Math.round(txt.split(/\s+/).length / 100) / 10 + 'k words.</p><textarea class="inp code" readonly>' + esc(txt) + '</textarea><div class="acts"><button class="btn" data-x="copy">Copy</button><button class="btn" data-x="save">Save file</button><button class="btn pri" data-x="cancel">Done</button></div>',
+    d => d.addEventListener('click', e => { const x = e.target.dataset.x; if (x === 'copy') copyText(d.querySelector('textarea')); else if (x === 'save') saveFile(name, txt); else if (x === 'cancel') closeModal(); }));
 }
 
 Object.assign(KIT_RENDER, { facts: renderFacts, checks: renderChecks, myst: renderMyst, world: renderWorld, flow: renderFlow, play: renderPlay, lore: renderLore, pitch: renderPitches });
