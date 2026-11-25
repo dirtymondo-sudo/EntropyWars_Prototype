@@ -1196,3 +1196,24 @@ Two bugs, both proved on a fresh profile in the cloud browser (before + after pi
 - Harness used: a scratch fresh-profile probe (probe-fast.js; `_hqIntakeEnlist(null)` then `_goToPlayHub({ afterDoor: true, enlisted: true })`;
   `EW_NO_INTRO` + `_hqEnter({ room: 'training', from: 'walk' })` for the tape). Desert -> shaft -> foyer takes ~3 min, the TV scene
   to the board ~2 min.
+
+## THE DESERT DROP-OFF POLISH (2026-11-25, mondo after the first-quest fix)
+Proof pictures: project files `desert-dropoff-polish/`.
+- **The loading card holds until the first shot.** It used to drop as soon as the room stood, so the walk's top-down road showed for a
+  long time while the cast loaded. `_hqEnter(opts.holdCard)` keeps the card up and hangs `window._hqLoadRelease` (the note says
+  "setting the scene…"); `_introStart` calls it right after `_questHqScene` starts (350 ms in). A 60 s cap lets go anyway. The intro
+  entry, `sceneIn` and `_introReplay` all pass `holdCard: true`.
+- **The tip.** `_CAST_POSES.hqTip` = MAL6 `Checkout_Gesture` (lib 9, trim 1.8-3.8 s: the arm out, palm up; the same clip a spell
+  already uses as "the hand out for the money"). The bills = PSX Mega Pack `psx_cash_2`. New scene act `hold`
+  (`{ do: 'hold', who, key, bone, pos, rot, h }`; no key = put it away) -> three-renderer `TR.hq.sceneHold`: it stashes and hides the
+  hand's own prop (the door gun) and brings it back on the empty `hold`. The scene's `end` puts it away too. Dev hook:
+  `window.EW_HQ_SCENE_CLIPS = ['slot', …]` bakes extra `_CAST_POSES` slots into a cast's clips for a probe.
+- **No DOOR marks.** The seal plate, the seal and the CROSSING line on `_introBuildDoor` are named `introDoorMark`; `sceneDoor` hides them
+  unless the act passes `marked: true` (a secret organisation's door is a plain door).
+- **The dark fills the doorway.** It was a flat plane; now a black BOX in the door proper's frame (`introDoorProper`), its sides in the
+  jambs, its top in the lintel, 0.6 tile deep behind the leaf. It must WRITE DEPTH: with `depthWrite: false` the sky and the far sand
+  drew after it and painted over it (the doorway showed the desert though its opacity read 1).
+- **The sunset.** A shell's `sky.hold` (data.js `hqRoomClock` -> `hold`; three-renderer `_hqClockVals`) stands the room at that hour
+  like `sky.lock`, but lit by the clock (low warm sun, dusk haze), where `lock` keeps the authored day light. `intro_desert` holds
+  18.85 h with a warm mood + orange fog. Not 18.95: at <1 deg sun the A1 `skyFit` shot falls back to its 58 deg tilt and opens on
+  empty sky.

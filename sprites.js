@@ -7327,6 +7327,7 @@ const _CAST_POSES = {
   hqReach:   { clip: 'PickUp_Table',           lib: 0, ts: 0.7, pinXZ: true },
   hqCrouch:  { clip: 'Crouch_Idle_Loop',       lib: 0, ts: 1.0, pinXZ: true },
   hqNo:      { clip: 'Idle_No_Loop',           lib: 1, ts: 1.0 },
+  hqTip:     { clip: 'Checkout_Gesture',       lib: 9, ts: 1.0, trim: [1.8, 3.8] },   // scene A's tip held out to the car (mondo 11-25: "sticking out one hand"; MAL6, the spells' "hand out for the money")
   hqStaff:   { clip: 'Sword_Idle',             lib: 0, ts: 1.0 },
   hqLean:    { clip: 'Idle_Rail_Loop',         lib: 1, ts: 1.0 },
 };

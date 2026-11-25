@@ -59741,6 +59741,7 @@ const ThreeRenderer = (function () {
         var g = new THREE.Group(); g.name = 'introCrossing';
         rec.group = g;
         var D = new THREE.Group();                        // the door proper, at the door plane
+        D.name = 'introDoorProper';
         D.position.set(0, 0, doorOut * ts);
         if (bk !== 1) D.scale.setScalar(bk);   // THE DOOR AT BODY SIZE
         g.add(D);
@@ -59757,7 +59758,7 @@ const ThreeRenderer = (function () {
            the board (-Z), where the camera and the arriving line are */
         var plateW = Math.max(ow, 0.7 * ts);
         var plate = _box(plateW * 0.62, plateW * 0.62, 0.03 * ts, plateMat);
-        plate.position.set(0, oh + lh + 0.08 * ts + plateW * 0.31, 0); D.add(plate);
+        plate.position.set(0, oh + lh + 0.08 * ts + plateW * 0.31, 0); plate.name = 'introDoorMark'; D.add(plate);
         var sealUrl = (typeof DOOR_TEXT !== 'undefined' && DOOR_TEXT.LOGO) ? (DOOR_TEXT.LOGO.mark || DOOR_TEXT.LOGO.onDark) : null;   // his no-text mark (2026-11-12)
         if (sealUrl && typeof textureLoader !== 'undefined') {
             if (!_introSealTex) {
@@ -59767,7 +59768,7 @@ const ThreeRenderer = (function () {
             var sealMat = new THREE.MeshBasicMaterial({ map: _introSealTex, transparent: true, depthWrite: false, fog: false });
             _introFadeMats.push(sealMat);
             var seal = new THREE.Mesh(new THREE.PlaneGeometry(plateW * 0.54, plateW * 0.54 * 0.776), sealMat);   // the mark is 1024 x 795
-            seal.position.set(0, plate.position.y, -0.02 * ts); seal.rotation.y = Math.PI;
+            seal.position.set(0, plate.position.y, -0.02 * ts); seal.rotation.y = Math.PI; seal.name = 'introDoorMark';
             D.add(seal);
         }
         try {
@@ -59779,7 +59780,7 @@ const ThreeRenderer = (function () {
                 var caseMat = new THREE.MeshBasicMaterial({ map: caseTex, transparent: true, depthWrite: false, fog: false });
                 _introFadeMats.push(caseMat);
                 var caseM = new THREE.Mesh(new THREE.PlaneGeometry((ow + jw * 2) * 0.92, lh * 0.7), caseMat);
-                caseM.position.set(0, oh + lh / 2, -pd / 2 - 1); caseM.rotation.y = Math.PI;
+                caseM.position.set(0, oh + lh / 2, -pd / 2 - 1); caseM.rotation.y = Math.PI; caseM.name = 'introDoorMark';
                 D.add(caseM);
             }
         } catch (e) {}
@@ -88256,9 +88257,9 @@ const ThreeRenderer = (function () {
         /* THE SCENE CLIPS (mondo 2026-11-15: "where is the shaking head no animation, its one of the idles"): the cutscenes' own
            clips on the officer (hq.scenePlace `clip`: hqNo = UAL2 Idle_No_Loop, the head shake), baked with the rig like the rest;
            a creator-look body never had the cast poses, so the shake silently did nothing */
-        if (spec.kind === 'player' && def.libClips && typeof _CAST_POSES !== 'undefined' && !def.libClips.hqNo) {
+        if (spec.kind === 'player' && def.libClips && typeof _CAST_POSES !== 'undefined' && !(def.libClips.hqNo && def.libClips.hqTip)) {
             var nlc = Object.assign({}, def.libClips), nlt = Object.assign({}, def.libTimeScales);
-            ['hqNo'].forEach(function (k) { var C = _CAST_POSES[k]; if (!C) return; nlc[k] = { clip: C.clip, lib: C.lib || 0 }; if (C.ts) nlt[k] = C.ts; });
+            ['hqNo', 'hqTip'].concat((typeof window !== 'undefined' && window.EW_HQ_SCENE_CLIPS) || []).forEach(function (k) { var C = _CAST_POSES[k]; if (!C) return; nlc[k] = { clip: C.clip, lib: C.lib || 0 }; if (C.trim) nlc[k].trim = C.trim; if (C.ts) nlt[k] = C.ts; });   // hqTip (11-25): the tip held out to the car
             def = Object.assign({}, def, { libClips: nlc, libTimeScales: nlt });
         }
         /* THE DOOR GUN rev 4 (2026-09-16): the walker's GUN clips (sprites.js HQ_GUN_CLIPS — the
@@ -106537,7 +106538,7 @@ const ThreeRenderer = (function () {
         if (typeof hqRoomClock !== 'function' || typeof hqWorldSun !== 'function' || !room || !room.shell || !room.shell.sky) return null;
         var C = null; try { C = hqRoomClock(id); } catch (e) { C = null; }
         if (!C) return null;
-        var CK = HQ_WORLD_CLOCK, sky = room.shell.sky, sun = hqWorldSun(C.locked ? C.hour : hour);
+        var CK = HQ_WORLD_CLOCK, sky = room.shell.sky, sun = hqWorldSun(C.locked ? C.hour : (C.hold != null ? C.hold : hour));   // (`hold`: a scene room's fixed hour, lit by the clock)
         var out = { locked: C.locked, sun: sun, sunDome: _hqClkV(hqWorldDir(sun.sunAz, sun.sunEl, C.rot)), moonDome: _hqClkV(hqWorldDir(sun.moonAz, sun.moonEl, C.rot)),
                     dusk: C.locked ? 0 : sun.dusk, lamp: C.locked ? 1 : sun.lamp };
         if (C.locked) return out;
@@ -108617,6 +108618,29 @@ const ThreeRenderer = (function () {
             g.updateMatrixWorld(true); _hq.dirty = true;
             return true;
         },
+        /* a prop in a body's hand for a scene (mondo 2026-11-25: the tip, real cash from the PSX pack): `o` = { key (catalogue),
+           bone (default RightHand), pos [m], rot [deg], h (the size, m) } as THE HELD props take; null = take it out of the hand */
+        sceneHold: function (who, o) {
+            if (!_hq || !who) return false;
+            var ch = null;
+            if (who === 'player') ch = _hq.player; else for (var i = 0; i < _hq.chars.length; i++) { if (_hq.chars[i] && _hq.chars[i].cast === who) { ch = _hq.chars[i]; break; } }
+            if (!ch) return false;
+            /* (the model is the shared cache's instance: taken out of the hand, never disposed) */
+            /* the hand's own prop (the walker's door gun) steps aside for the scene's and comes back after */
+            var back = function () { var P = ch._sceneHeldPrev; if (!P) return; ch._sceneHeldPrev = null; if (P.held) P.held.visible = P.vis; ch.held = P.held; ch.heldBone = P.heldBone; ch.hold = P.hold; };
+            var drop = function (h) { if (h && h.parent) h.parent.remove(h); if (ch.held === h) { ch.held = null; ch.heldBone = null; ch.hold = null; } back(); };
+            if (ch._sceneHeld) { drop(ch._sceneHeld); ch._sceneHeld = null; }
+            ch._sceneHoldOff = !(o && o.key);
+            if (!o || !o.key) { back(); _hq.dirty = true; return true; }
+            if (ch.held && !ch._sceneHeldPrev) { ch._sceneHeldPrev = { held: ch.held, heldBone: ch.heldBone, hold: ch.hold, vis: ch.held.visible }; ch.held.visible = false; ch.held = null; ch.heldBone = null; ch.hold = null; }
+            if (ch._sceneHoldWait) { clearInterval(ch._sceneHoldWait); ch._sceneHoldWait = 0; }
+            _hqAttachHeld(ch, o);
+            var n = 0; ch._sceneHoldWait = setInterval(function () {
+                if (ch.held && ch.hold && ch.hold.key === o.key) { clearInterval(ch._sceneHoldWait); ch._sceneHoldWait = 0; if (ch._sceneHoldOff) drop(ch.held); else ch._sceneHeld = ch.held; }   // (taken back before it landed: out at once)
+                else if (++n > 600) { clearInterval(ch._sceneHoldWait); ch._sceneHoldWait = 0; }
+            }, 50);
+            return true;
+        },
         /* is a body's rig up WITH its clips (idle + walk)? The opening plays as the building first loads: it waits for this, or
            the officer steps out of the car in the bind pose. */
         /* a TV switched on to STATIC (scene B, mondo 2026-11-14: "needs to have static / tv turn on"): an unlit sheet of moving
@@ -108726,14 +108750,21 @@ const ThreeRenderer = (function () {
                     var bx = new THREE.Box3().setFromObject(dr.group), cw = bx.getCenter(new THREE.Vector3()), cl = rec.root.worldToLocal(cw.clone());
                     dr.group.position.x -= cl.x; dr.group.position.z -= cl.z;
                 } catch (e) {}
+                /* NO MARKS (mondo 2026-11-25: "The door should not be marked DOOR, its a little too obvious bc its a secret
+                   organization"): the seal plate, the seal and the CROSSING line are off on a scene's door (`marked: true` keeps them) */
+                if (!o.marked) { try { dr.group.traverse(function (n) { if (n.name === 'introDoorMark') n.visible = false; }); } catch (e) {} }
                 /* the DARK in the doorway (mondo 2026-11-15: "i want this to be darkness instead of light"; it was a white sheet and a
-                   lamp): an unlit black sheet the size of the opening, just behind the leaf's plane, no lamp */
-                var mo = dr.motion || {}, gw = (mo.ow || 0.72 * ts) * 0.96, gh = (mo.oh || 1.35 * ts) * 0.98;
-                var gm = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0, side: THREE.DoubleSide, fog: false, depthWrite: false });
+                   lamp). 2026-11-25 (mondo: "the black darkness ... is not perfectly in the door frame so i can see behind the door
+                   still"): a black BOX in the door's own frame, its sides tucked into the jambs and its top into the lintel, going
+                   back from the leaf's plane, so no angle sees past it; drawn over whoever walks into it (they go into the dark) */
+                var mo = dr.motion || {}, gow = mo.ow || 0.72 * ts, goh = mo.oh || 1.35 * ts, gjw = 0.14 * ts, glh = 0.2 * ts;
+                var gw = gow + gjw, gh = goh + glh * 0.5, gd = 0.6 * ts;
+                var gm = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0, side: THREE.DoubleSide, fog: false, depthWrite: true });   // it writes its depth: the sky and the far sand draw after the see-through pass and painted over it (11-25 probe)
                 gm.toneMapped = false;
-                rec.glow = new THREE.Mesh(new THREE.PlaneGeometry(gw, gh), gm);
-                rec.glow.position.set(0, gh / 2, 0.04 * U); rec.glow.visible = false; rec.glow.renderOrder = 2;
-                rec.root.add(rec.glow);
+                rec.glow = new THREE.Mesh(new THREE.BoxGeometry(gw, gh, gd), gm);
+                rec.glow.position.set(0, gh / 2 + 0.01 * ts, 0.03 * ts + gd / 2); rec.glow.visible = false; rec.glow.renderOrder = 2;
+                var DP = dr.group.getObjectByName('introDoorProper');
+                if (DP) { if (DP.scale.x !== 1) rec.glow.scale.setScalar(1); DP.add(rec.glow); } else { rec.glow.position.z = 0.04 * U + gd / 2; rec.root.add(rec.glow); }
                 H.dirty = true;
             };
             var url = null; try { url = cat.file ? _hqModelUrl(cat) : null; } catch (e) {}
