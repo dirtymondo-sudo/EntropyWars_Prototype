@@ -335,8 +335,12 @@ the cell. Off: EW_NO_LITTER. Readout `_ewHqFlora.litter`.
 
 THE FAR COLOUR (built 11-25, his OK): rendering-loading-perf.md. Fog back ON by default (11-25).
 
-Not done yet: G18 lighting and depth (dappled light, contact shadows; a distance desaturation without fog needs
-mondo's OK, bloom + fog stay off); G19 the leaf litter, moss, twigs and roots layer (ground cards / sheets, no tall meshes).
+**G18 · THE LIGHT ON THE FLOOR (built 11-25).** What the probe found: the key light's shadow map already lays the crowns' shade and
+dapple on the GROUND (the Clearing's leaf cards cast with their cut-out), but the blade grass and the low plants cover that ground and
+were lit flat, so the shade vanished under them. Now baked per tuft and per plant into their corner colours (no material, no triangle,
+GROUND_RULES.light, `_grLight`): under a crown a DEEPER shade (`deep` [0.66, 0.76, 0.90]) broken by SUN FLECKS (a 1.8 m noise, its top
+share warm and bright, `fleckSun`), and a CONTACT SHADOW at a trunk's foot (x0.52 at the bark, gone by 1.4 m) and at a rock, stump or
+prop (x0.74, gone by 0.8 m). Out in the open nothing changes. Off: EW_NO_DAPPLE. Not done: moss, roots.
 
 ### 0c. What each part of the game does about it (who owns what, 11-25)
 
