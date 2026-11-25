@@ -128,6 +128,25 @@ Probe lesson: the blade grass streams in over a few seconds; a view needs `"sett
   benches and the north walk; an olive grove with a vine trellis and a bench (south-east). Trees in the gardens' column: 58 -> 37 + 9 cypresses + 3 olives.
 - Not done: a route's own scatter (R10 the Coast Road is dry country, group 5); topiary (no model).
 
+### 00e. GROUP 5, DRY AND COLD (built 11-25): the Desert, its highway, the dry routes, the Mountains + Olympus, the mountain roads, the North Pole
+
+What the census found: the bake tools and district files had sprinkled every rock, dead bush, tumbleweed and snow heap ONE BY ONE over the whole ground
+(R5 alone: 265 heaps, 241 rocks; R8: 134 dead bushes, 300 rocks), plus the rule's 26 barrel cacti a room at even spacing. data.js has two zone rows
+`ZONE_FLORA.compose.dry` (zone `desert`) and `ZONE_FLORA.compose.cold` (zones `mountains`, `northpole`); a zone row's `compose` names its row (it wins
+over the climate's, so the Snowy Pines and Leylines, which share the `snow` / `scrub` climates, are untouched). What they do at room build:
+- **THE OUTCROPS (`gather`, new in the kit):** a rock (`psxg_rock_*`, `cave_stone`, `lake_rock`, `ocean_rock_*`; never a cairn, a menhir or Giza's
+  `hw_stone_*`) standing alone or as one of a pair (fewer than two other rocks within `loose` 4.5 m) and with no trunk or building that near leaves its spot; `thin` 0.5 of them stand again as OUTCROPS of 3-5 (one big
+  1.0-1.6 m, never the lake rock: it reads as a white blob, two middle, the rest small, on a crescent) centred on old spots at least `apart` 11 m apart, with dry tufts / sage / a thorn bush (cold: frost
+  tufts, a small drift) at the foot. Rocks that already stood together (a district's rock garden) stay. The outcrops are anchors for the groups.
+- **THE GROUPS:** barrel cactus 2-3 under a nurse rock or a saguaro / Joshua tree; agave, yucca, dead bushes at rocks, trees, walls; TUMBLEWEEDS piled
+  against walls, rocks, logs (the wind's work); SNOW HEAPS banked as drifts against a rock, a trunk, a wall, a log; alpine flowers + bushes in drifts at
+  rocks and logs. The rule's barrel cacti (ZONE_FLORA.props) join the groups (zoneFloraProps skips a composed key).
+- The desert climate's sage / grey weed / bloom layers take `near` (far 0.45): they gather round the standing things.
+- `freeDropped: true` on a row: a dropped row no longer blocks the spots round it (freeFor `skip`), so an outcrop can stand where its rocks stood.
+Counts (headless, every room fewer pieces than before; the heavy ones roughly halve): R5 heaps 265 -> 129, rocks 241 -> 154; R8 dead bushes 134 -> 76,
+rocks 339 -> 270, cacti 26 -> 12; DH4 tumbleweeds 90 -> 47. The Woods' result is byte-for-byte the same. find-softlocks: no new trap in the 15 rooms.
+Readout: `hqTerrainInfo(room).composed` (`outcrops`, `gathered`). Not done: dry washes (terrain, the zone tools'), vignettes by hand (S9), the landmark reveal.
+
 ## 0. THE GROUND RULES (2026-11-25, the second foliage pass; READ FIRST)
 
 mondo, 11-25: "make the grass/foliage look better and more realistic. Research how video games do this. But basically you have to
@@ -206,6 +225,10 @@ the split holds in every room: about a QUARTER thin (42 % of tufts kept, under h
 short lawn, never a flat floor), a QUARTER short sward (0.7 height), HALF dense. Large irregular patches, never even clumps.
 Replaces G3's bare blobs (EW_NO_COVER = G3 back). On a dirt sheet the bare quarter shows the dirt, its pebbles and its litter.
 
+**G12b · A CLIMATE'S OWN SHARE OF THE SPLIT.** ZONE_FLORA climates take `cover` (0..1, default 1): how strongly the G12 split and the
+G13 bias apply there. A mown city lawn is `cover: 0.3` (nearly even, a few short patches); a wild wood, meadow or scrub keeps 1. A zone's
+thread tunes its own climate's `cover` here; never a per-room number in the code.
+
 **G13 · THE ECOLOGY.** The rank is pushed: UP at a trunk's foot (6.5 m), at the wood's rim (the thicket's mass within 3.5 m) and at
 a stump, log or rock (2 m); DOWN within 2.6 m of a path's edge and round a landmark (a grand stair's foot and the 7 m approach in
 front of it, 8 m; the room's spawn, 3.5 m). So clearings open round where you walk and arrive, and the cover gathers where nobody does.
@@ -222,7 +245,16 @@ the open, duller brown-green beside a path, and each clump its own hue step towa
 **G17 · THE WALKER.** The grass bows down and away round the walker's feet (0.7-2 m, shader, WebGL + the WebGPU twin), so he
 reads in dense cover. No scan: the walker's spot is one uniform.
 
-Not done yet (asked, waiting): G18 lighting and depth (dappled light, contact shadows; a distance desaturation without fog needs
+**G19 · THE LITTER (built 11-25).** The intermediate layer: soft, ragged ground patches (1.6-3.4 m) of the game's own leaf-litter sheet
+`leaves_5` (leaves + twigs; one mask made in code cuts the blob, the sheet is never touched), lying on the ground on 3 x 3 corners,
+tinted per patch (brown, olive, dark). Where: the thin (bare) cover share, a little on the short sward, more within 3 m of a trunk or
+the wood's rim, and a dark contact patch at a trunk's foot. Only in woody climates (GROUND_RULES.litter.k: forest, wood, redwood,
+horror, autumn 1-1.4; fairy, japan, hollow 0.6-0.7; meadow 0.45; city, desert, snow, shore none). One mesh a flora cell, dropped with
+the cell. Off: EW_NO_LITTER. Readout `_ewHqFlora.litter`.
+
+THE FAR COLOUR (built 11-25, his OK): rendering-loading-perf.md. Fog back ON by default (11-25).
+
+Not done yet: G18 lighting and depth (dappled light, contact shadows; a distance desaturation without fog needs
 mondo's OK, bloom + fog stay off); G19 the leaf litter, moss, twigs and roots layer (ground cards / sheets, no tall meshes).
 
 ### 0c. What each part of the game does about it (who owns what, 11-25)
