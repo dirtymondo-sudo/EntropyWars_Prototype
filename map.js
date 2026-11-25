@@ -2554,6 +2554,9 @@
         window._hqGoRoom = function (roomId, at, onReady) {
             { const _rt = _hqRetiredTo(roomId); if (_rt) { roomId = _rt; if (!(at && (DOOR_HQ.rooms[_rt].doors || []).some(d => d && d.id === at))) at = null; } }   /* a door id the new room kept (the Sewers' `pump`) still lands at that door (2026-11-16) */   // THE RETIRED ROOMS (data.js DOOR_HQ.retired)
             /* `site_<mapId>` is an alias since the board rooms went (2026-09-27): it walks into the site's entry part */
+            /* THE MYSTERY DUNGEONS (data.js hotelBeforeGo): going in from outside lays a new building (a new seed, thirty new floors); it runs
+               before the room is looked up, since a floor not laid yet is laid here */
+            try { if (typeof window.hotelBeforeGo === 'function') window.hotelBeforeGo(roomId, _hqCurRoom, _hqPartyLevelNow()); } catch (e) { console.warn('[HOTEL] the way in', e); }
             if (!_hqRoomExists(roomId)) { try { const ent = (typeof window.hqSiteEntry === 'function') ? window.hqSiteEntry(roomId, at) : null; if (ent && ent.room) { roomId = ent.room; at = ent.at; } } catch (e) {} }
             if (!_hqRoomExists(roomId)) { console.warn('[HQ] no such room', roomId); return false; }
             if (_hqSuspended) return false;
@@ -2566,8 +2569,6 @@
                 if (out) out.action = back ? { room: fr, at: back.id } : { room: 'central_egress', at: 'elevator' };
                 if (out) out.label = String((DOOR_HQ.rooms[out.action.room] || {}).label || 'THE DOORS').toUpperCase();   // the plate over the doors names the floor (the replate rule)
             } catch (e) { console.warn('[HQ] car way out', e); } }
-            /* THE HOTEL (2026-11-23): the lift from the lobby builds a new hotel (data.js hotelBeforeGo: a new seed, ten new floors) */
-            try { if (typeof window.hotelBeforeGo === 'function') window.hotelBeforeGo(roomId, _hqCurRoom, _hqPartyLevelNow()); } catch (e) { console.warn('[HOTEL] the lift', e); }
             _hqLastRoom = roomId;
             _hqLastDoor = at || null;
             window._hqClosePanel();
@@ -2958,7 +2959,7 @@
                     if (encRes && encRes.quest && encRes.quest.changes && encRes.quest.changes.length) { try { _questShow(encRes.quest.changes, 5200); } catch (e) {} }   // THE QUESTS: after the fight's own toast
                     /* THE HOTEL: the boss down = the exit is open (data.js hotelBossBeaten, written by the fight's record) */
                     try { const hr = (encRes && encRes.won && typeof window.hotelRunState === 'function') ? window.hotelRunState() : null;
-                        if (hr && hr.bossDown && !hr.bossToast) { hr.bossToast = true; setTimeout(() => { try { _hqToast('<b>THE BANKER IS DOWN</b><span>THE EXIT IS OPEN</span>', 4200); } catch (e) {} }, 4200); } } catch (e) {}
+                        const ld = hr && hr.lastDown; if (ld && !ld.shown) { ld.shown = true; setTimeout(() => { try { _hqToast('<b>' + _hqEsc(ld.who) + '</b><span>' + _hqEsc(ld.what) + '</span>', 4200); } catch (e) {} }, 4200); } } catch (e) {}
                     /* THE CROWD (NPC encounters step 7b): an Opportunist that watched a fight the party won weak comes to mug it (the built mugging, once a game day) */
                     if (encRes && encRes.won && encRes.crowdMug && encRes.crowdMug.id) { const cm = encRes.crowdMug, rm = encRes.room; setTimeout(() => { try {
                         if (state.gameState !== GS.HQ || _hqCurRoom !== rm || typeof window.hqNpcMugLine !== 'function' || !window.hqNpcMugLine(cm.race)) return;
@@ -3852,16 +3853,31 @@
                 try { _hqSetPrompt(ThreeRenderer.hq.target()); } catch (e) {}
                 return;
             }
+            /* THE DOOR CASES (data.js mdCaseToday): the board at a building's way in reads today's case; the unauthorized door closes once
+               what came through it is down, and the case's reward goes in the bag */
+            if (H.act === 'board') {
+                const b = (typeof window.mdCaseBoard === 'function') ? window.mdCaseBoard() : null; if (!b) return;
+                _hqToast(`<b>${_hqEsc(b.title)}</b><span>${b.lines.map(_hqEsc).join('<br>')}</span>`, 6500); try { playSfx('uiButtonConfirm'); } catch (e) {}
+                return;
+            }
+            if (H.act === 'case') {
+                const r = _hqPartyTx(p => (typeof window.mdCaseClose === 'function') ? window.mdCaseClose(p, _hqCurRoom) : null);
+                if (r && r.ok) { try { playSfx('uiButtonConfirm'); playDoorSfx('doorBuzz', { volume: 0.6 }); } catch (e) {}
+                    _hqToast(`<b>CASE CLOSED</b><span>${(r.reward || []).map(x => _hqEsc(String(x.name).toUpperCase())).join(' · ') || 'THE DOOR IS SHUT'}</span>`, 4200); }
+                else { _hqToast(`<b>AN UNAUTHORIZED DOOR</b><span>${r && r.reason === 'anomaly' ? 'DEAL WITH WHAT CAME THROUGH FIRST' : 'IT IS SHUT'}</span>`, 2600); try { playSfx('uiError'); } catch (e) {} }
+                return;
+            }
+            const tl = _hqEsc(String(c.label || 'THE SAFE'));
             if (H.act === 'loot') {
                 const r = _hqPartyTx(p => (typeof window.hotelLootTake === 'function') ? window.hotelLootTake(p, _hqCurRoom, H.cell) : null);
-                if (r && r.ok) { try { playSfx('uiButtonConfirm'); } catch (e) {} _hqToast(`<b>THE SAFE</b><span>${String(r.name).toUpperCase()}</span>`, 3200); }
-                else _hqToast(`<b>THE SAFE</b><span>${r && r.reason === 'full' ? 'THE BAG IS FULL' : 'EMPTY'}</span>`, 2400);
+                if (r && r.ok) { try { playSfx('uiButtonConfirm'); } catch (e) {} _hqToast(`<b>${tl}</b><span>${String(r.name).toUpperCase()}</span>`, 3200); }
+                else _hqToast(`<b>${tl}</b><span>${r && r.reason === 'full' ? 'THE BAG IS FULL' : 'EMPTY'}</span>`, 2400);
             } else if (H.act === 'rest') {
                 /* THE BED (round 2, mondo: "bed doesn't restore my MP, there's no animation or vfx or anything"): the screen goes dark, the party
                    sleeps, HP and MP come back (the dock is drawn again: it kept the old bars), and the walker wakes in the cyan rest effect */
                 if (_hotelSleeping) return;
                 const st = window.hotelRunState ? window.hotelRunState() : null;
-                if (st && st.slept && st.slept[_hqCurRoom + '|' + H.cell]) { _hqToast(`<b>THE BED</b><span>ALREADY SLEPT IN</span>`, 2200); return; }
+                if (st && st.slept && st.slept[_hqCurRoom + '|' + H.cell]) { _hqToast(`<b>${tl}</b><span>ALREADY RESTED HERE</span>`, 2200); return; }
                 _hotelSleeping = true;
                 const veil = document.createElement('div');
                 veil.className = 'hq-sleep-veil';
@@ -9990,10 +10006,10 @@
                 if (from && from.kind === 'door' && from.door && from.door.station) _hqSubwayStair(from.door);   // THE SUBWAY (2026-11-18): the stair head's station goes on file
                 const at = act.at || (act.sector ? _hqBayEntry(act.sector) : null);
                 /* THE HOTEL'S EXIT (data.js hotelTopGate): shut while the boss stands; the first time through, his safe goes in the bag */
-                if (act.hotelTop && typeof window.hotelTopGate === 'function') {
-                    let g = null; _hqPartyTx(p => { g = window.hotelTopGate(p); return g; }); if (!g) g = window.hotelTopGate(null);
-                    if (!g || !g.ok) { _hqToast('<b>THE EXIT IS LOCKED</b><span>BEAT THE BANKER</span>', 2600); try { playSfx('uiError'); } catch (e) {} return; }
-                    if (g.reward && g.reward.length) setTimeout(() => { try { _hqToast('<b>THE HOTEL IS CLEARED</b><span>' + g.reward.map(x => _hqEsc(String(x.name).toUpperCase()) + ' ×' + x.n).join(' · ') + '</span>', 5200); playSfx('uiButtonConfirm'); } catch (e) {} }, 900);
+                if ((act.hotelTop || act.mdGate) && typeof window.hotelTopGate === 'function') {   // THE MYSTERY DUNGEONS: a tenth floor's stairs (`mdGate`) the same way
+                    let g = null; _hqPartyTx(p => { g = window.hotelTopGate(p, act); return g; }); if (!g) g = window.hotelTopGate(null, act);
+                    if (!g || !g.ok) { _hqToast('<b>' + (act.mdGate ? 'THE STAIRS ARE LOCKED' : 'THE EXIT IS LOCKED') + '</b><span>BEAT ' + _hqEsc(String((g && g.who) || 'THE BOSS')) + '</span>', 2600); try { playSfx('uiError'); } catch (e) {} return; }
+                    if (g.reward && g.reward.length) setTimeout(() => { try { _hqToast('<b>' + _hqEsc(String(g.title || 'CLEARED')) + '</b><span>' + g.reward.map(x => _hqEsc(String(x.name).toUpperCase()) + ' ×' + x.n).join(' · ') + '</span>', 5200); playSfx('uiButtonConfirm'); } catch (e) {} }, 900);
                 }
                 /* a `way` seam voices its own kind (the creak, the rope) instead of the strike plate */
                 const waySfx = (from && from.kind === 'door' && from.door && from.door.way) ? _hqWayCat(from.door.way).sfx : null;

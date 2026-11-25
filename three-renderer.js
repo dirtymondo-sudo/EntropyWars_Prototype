@@ -56194,7 +56194,7 @@ const ThreeRenderer = (function () {
         if (seen[hm.UP[1] * N + hm.UP[0]]) {
             var ux = ox + (hm.UP[0] + 0.5) * cs, uy = oy + (hm.UP[1] + 0.5) * cs, ur = cs * 0.38;
             ctx.beginPath(); ctx.moveTo(ux, uy - ur); ctx.lineTo(ux + ur, uy + ur * 0.8); ctx.lineTo(ux - ur, uy + ur * 0.8); ctx.closePath();
-            ctx.fillStyle = H.room.hotel >= ((typeof HOTEL_MD !== 'undefined' && HOTEL_MD.floors) || 10) ? L.foe : '#39ff6a'; ctx.fill(); ctx.strokeStyle = '#000'; ctx.lineWidth = 1; ctx.stroke();
+            ctx.fillStyle = H.room.hotelTopFloor ? L.foe : '#39ff6a'; ctx.fill(); ctx.strokeStyle = '#000'; ctx.lineWidth = 1; ctx.stroke();
         }
         /* the guests you can see */
         var ir = Math.max(2.5, cs * 0.26);
