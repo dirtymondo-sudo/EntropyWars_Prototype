@@ -105,7 +105,28 @@ Probe lesson: the blade grass streams in over a few seconds; a view needs `"sett
 | 3 · Disaster City outdoors | parks, yards, the Hollywood Hills, the coast / beach front, street trees | the palm-pit thread's rules (G9) still stand |
 | 4 · Countryside | the Estate (corn, lake, haunted house, ranch), Leylines (the Line, Babel, Bug Colony), Stonehenge, the green routes | |
 | 5 · Dry and cold | the Desert (Western Town, Giza, Area 51, the circus), dry routes, the Mountains + Olympus, the North Pole | desert composition = rock outcrops, cactus groups, dry washes |
-| 6 · Islands and the rest | Katana Island, the Harbour + islands, the Vatican's gardens, Hollow Earth | |
+| 6 · Islands and the rest | Katana Island, the Harbour + islands, the Vatican's gardens, Hollow Earth | BUILT 11-25, see 00e |
+
+### 00e. Group 6, the islands and the rest (built 11-25)
+
+- **Compose rows** (data.js, the block "THE SCENIC PASS, ZONE GROUP 6" after the Woods' block; `Object.assign(ZONE_FLORA.compose, ...)`, so a sibling's
+  `ZONE_FLORA.compose = {...}` line stays its own): `tropical` (the Harbour, the Triangle, the Volcano Island, the Cove), `japan` (Katana Island),
+  `hollow` (the Cavern rooms). Keys: the Meshy `fern` (7,700 triangles each), `tropical_bush`, `banana_plant`, `moss_clump` (Katana), `mushroom2` /
+  `fae_toadstool` (Hollow Earth: each fae cap carries a light, so fewer). `thin` 0.75 (0.5 left the islands emptier than before in the probe; the hollow row 0.55): three quarters of the heavy plants stand again, in groups at a palm,
+  a rock, a stone lantern, a hut's corner, the jungle's rim; the low layer is the kit's tufts, fern and the zone's blooms (72-164 triangles each).
+  `islands`: a rock with blooms out in the open grass (tropical every 320 m2, Katana 360).
+- **Anchors added** (`ZONE_FLORA.anchorKeys.rock`, extended in the same block): `ocean_rock_N`, `lake_rock`, `kt_stone_lantern`, `kt_stone_buddha`,
+  `stone_lantern`, `kt_komainu`. A row's `treeR: { <kind>: m }` widens a broad tree's anchor (the jungle tree's buttress roots, 2.8 m, hid the groups;
+  the one small addition to `zoneFloraCompose`). The field's own ferns and blooms in these climates grow `near` standing things, `far` 0.3 in the
+  open (they were an even sprinkle over the Volcano Island's lawn).
+- **Readout at build** (`hqTerrainInfo(room).composed`, headless): Katana 28 groups, 70 loose hand plants restood, 24 islands; the Volcano Island 38
+  groups, 93 restood, 27 islands; the Cove 2; the Triangle 2; the Harbour none (no loose plants); Hollow Earth 0 (every cap already grows by a
+  rock or log: nothing to move). Triangles of these plants: Katana ~430 k -> ~260 k, the Volcano Island ~640 k -> ~330 k.
+- **The Vatican's gardens** (`docs/areas/afterlife/districts/G.js` dress, by hand, then `node bake-afterlife.js`): the pine on 16 % of the lawn
+  squares at random is out. Focal = the Campanile's stump; a cypress avenue either side of the long walk leads to it from the south cross walk;
+  two pine clumps of three frame the west gate; a grove of five in the north-east corner; the east lawn's middle stays open; rose beds by the
+  benches and the north walk; an olive grove with a vine trellis and a bench (south-east). Trees in the gardens' column: 58 -> 37 + 9 cypresses + 3 olives.
+- Not done: a route's own scatter (R10 the Coast Road is dry country, group 5); topiary (no model).
 
 ## 0. THE GROUND RULES (2026-11-25, the second foliage pass; READ FIRST)
 
