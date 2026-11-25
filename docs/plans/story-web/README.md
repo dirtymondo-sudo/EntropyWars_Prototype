@@ -273,3 +273,8 @@ new fields), so it saves and syncs like the chapters.
   checks read the lines: a character an earlier ending kills who still speaks, a secret's tell-tale word said before its first hint,
   a game cutscene in no quest, a link to a scene that is gone; the lore search reads them too. Dialogue with choices, later, is a
   choice inside the cutscene editor, not here.
+- **Export for a reader** (2026-11-25, mondo: "export the story for a different ai to analyze the story from a writing/literature
+  perspective"): the story bar button gives the whole story as one Markdown file, no ids: a note for the reader (what the game is,
+  read it as a story editor), the spine answers, every chapter and quest in play order (gates and endings as sentences, the game
+  scenes' spoken lines with his editor edits), the character sheets (empty ones left out), the secrets with their ladders, the facts,
+  the lore, the timeline, the factions and ties on the open board, the unplaced pitches, the checks. app.js `readerExport`.
