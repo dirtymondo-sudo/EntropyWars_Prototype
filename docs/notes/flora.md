@@ -103,7 +103,7 @@ Probe lesson: the blade grass streams in over a few seconds; a view needs `"sett
 | 1 · The Woods (PILOT) | the Clearing, the Redwood Trail, the Ritual Ground, Dead Man's Cave's mouth | the "Fix ugly ground ferns" thread; proves the rules and the kit first |
 | 2 · Camelot | the village, the Forest, the Fairy Forest (beside its new meadow), the Snowy Pines, the Looking-Glass Garden | DONE pass 1 (11-25), see 00f |
 | 3 · Disaster City outdoors | parks, yards, the Hollywood Hills, the coast / beach front, street trees | the palm-pit thread's rules (G9) still stand. Pass 1 built 11-25: section 00e |
-| 4 · Countryside | the Estate (corn, lake, haunted house, ranch), Leylines (the Line, Babel, Bug Colony), Stonehenge, the green routes | |
+| 4 · Countryside | the Estate (corn, lake, haunted house, ranch), Leylines (the Line, Babel, Bug Colony), Stonehenge, the green routes | BUILT 11-25: rows by room, path-side vignettes, focal groves, litter; see 00h |
 | 5 · Dry and cold | the Desert (Western Town, Giza, Area 51, the circus), dry routes, the Mountains + Olympus, the North Pole | desert composition = rock outcrops, cactus groups, dry washes |
 | 6 · Islands and the rest | Katana Island, the Harbour + islands, the Vatican's gardens, Hollow Earth | BUILT 11-25, see 00e |
 
@@ -189,6 +189,37 @@ but the flora field and the blade grass read the room's own street sheet under i
   - data.js, the city's field: lawn daisies and beach dune grass grow by standing things (`near`, `far` 0.22 / 0.4): mown lawns, flowers at the feet.
 - Not done (other holders, or waits): the Records garden (Civic Center), the Private garden (F), the beach front's palms (the ONE BEACH rows; the dune
   grass rule reaches them without editing B.js), the street trees' pits (PR #2549 stands).
+
+### 00h. GROUP 4 · THE COUNTRYSIDE (built 11-25: the Estate, Leylines, Stonehenge, the green routes)
+
+mondo 11-25: "is this just the woods or are you gonna do something similar for the rest of the game or any where there's nature". What the
+Woods pilot's kit lacked and this group added (data.js, beside the groups kit; every other zone may use it with one row):
+- **Rows by ROOM, not by climate** (`ZONE_FLORA.composeRooms[room] = <row>`, read first by `zoneFloraComposeOf`): the meadow / forest / wood
+  climates are shared with Camelot and others, so the countryside's rows (`compose.estate`, `.ley`, `.henge`, `.route`) never reach a room
+  of another group. Rooms: Estate = `…skinwalker_ow_lake` (corn, lake, ranch), `…_ow_house`, `…_ow_trail`; Leylines = `…gobekli_ow_line`,
+  `…_ow_babel`, `…_ow_bugs`; Stonehenge = `…gobekli_ow_henge`; routes = `site_ow_r1`, `r6` (R4 and R12 are in the `camelot` zone row, composed by group 2's `cal_camelot`).
+- **S9 THE VIGNETTES** (`row.scenes = { every, off, max, list }` + the recipe book `ZONE_FLORA.scenes`): at room build `zoneFloraScenes` reads the
+  room's path sheet (and any paved sheet) once, finds the way's grass edge, and stands a small composed scene just off it, at least `every` m
+  from the last (20-40), never at the spawn, a door's lane or a keep-clear square, and only where grass goes on behind it. A recipe is a hand
+  composition in the scene's own frame: `[key, x along the way, z away from it, scale, face]` (`'par'` = along the way, `'path'` = facing it);
+  `'TREE:<kind>'` stands a tree the climate then turns. Recipes: woods' edge `log_ferns`, `rock_moss`, `stump_caps`, `bench_glade`, `cairn_drift`;
+  Estate `pumpkins`, `hay_corner`, `scarecrow`, `barrow`, `leaf_log`; Leylines `outcrop`, `plough`, `urns`; Stonehenge `meadow_rock`, `daisy_cairn`;
+  focal `frame_grove`, `hero_oak`. Every recipe carries its own ground litter (G19 in small: `rf_plant_2/3/8/10` leaves and low herbs, pebbles).
+- **S1 / S2 / S10 THE FOCAL SPOTS** (`ZONE_FLORA.focal[room] = [{ at: [x, z], a, scene }]`, by hand from the walker's views): Stonehenge, two groves
+  either side of the avenue from the south gate framing the stones, a hero oak back on the plain; the Haunted House, two groves either side of
+  the drive's last stretch opening on the house.
+- **S7 `row.open`**: discs nothing composed stands in (Stonehenge's plain inside the ring stays open grass).
+- **Triangles**: the Meshy plants are heavy (leafy_bush 8.2 k triangles, the fae flowers 8.3 k, wild_flowers 1.9 k, moss_clump 1.3 k; the kit's
+  tufts, flowers and rocks 20-260), so the recipes use the kit and hand-painted pieces, and `thin` 0.45-0.6 on the Meshy rows pays for them.
+  Measured 11-25 (props only, each model's own triangle count, Halloween-pack FBX pieces not counted): the nine rooms 17.6 M -> 16.2 M
+  (-8 %): the Lake room 11.46 -> 11.08 M, the Line 0.98 -> 0.82, Babel 0.75 -> 0.60, Bug Colony 0.97 -> 0.94, Stonehenge 0.47 -> 0.44,
+  R1 1.63 -> 1.22, R6 1.16 -> 0.88; the two small Estate rooms with few Meshy plants to thin went up a
+  little (the Haunted House 79 k -> 87 k, the House Trail 98 k -> 114 k). +5 trees in all (the focal groves).
+- Off: `EW_NO_FLORA_SCENES` (scenes + focal), `EW_NO_FLORA_COMPOSE` (all of it). Readout: `hqTerrainInfo(room).composed.scenes` (`at` lists each).
+  PROBE LESSON: those switches (and every `EW_NO_FLORA*`) are read where the room compiles, and a room compiles in THE SURVEY's Web Worker
+  (map.js), which never sees a flag set on the page; so `--flags=EW_NO_FLORA_COMPOSE` gives the same picture. A true "before" picture =
+  the old data.js in the checkout for that run (`git show <base>:data.js > data.js`, then put yours back). A scene's spot for a probe:
+  the view's `eval` reads `hqTerrainInfo(room).composed.scenes.at[k]` ([recipe, x, z, angle away from the way]) and teleports beside it.
 
 ## 0. THE GROUND RULES (2026-11-25, the second foliage pass; READ FIRST)
 
