@@ -49782,8 +49782,8 @@ const DOOR_HQ = {
                     {k:'tree',x:-36.75,z:36.75,kind:'tree_3',h:3.6},
                     {k:'tree',x:-5.25,z:36.75,kind:'tree_3',h:3.6},
                     {k:'tree',x:-246.75,z:-36.75,kind:'tree_2',h:6.12},
-                    {k:'tree',x:-239.75,z:-29.75,kind:'tree_4',h:6.8},
-                    {k:'tree',x:-222.25,z:-36.75,kind:'tree_3',h:7.48},
+                    {k:'tree',x:-245.875,z:-31.85,kind:'tree_4',h:6.8},
+                    {k:'tree',x:-217.525,z:-36.4,kind:'tree_3',h:7.48},
                     {k:'tree',x:-215.25,z:-29.75,kind:'tree',h:6.12},
                     {k:'tree',x:-246.75,z:-12.25,kind:'tree_2',h:6.8},
                     {k:'tree',x:-239.75,z:-5.25,kind:'tree_4',h:7.48},
@@ -57016,382 +57016,318 @@ const DOOR_HQ = {
                 {key:'roads_g_sign_013',x:-229.25,z:-320.25,face:0},
                 {key:'roads_g_sign_003',x:-103.25,z:-309.75,face:180},
                 {key:'roads_g_sign_007',x:183.75,z:-274.75,face:90},
-                {key:'leafy_bush',x:-207.62,z:-351.83,face:57},
-                {key:'psxg_dead_bush_1',x:-197.02,z:-350.67,face:184},
-                {key:'ocean_rock_7',x:-200.84,z:-347.87,face:123},
-                {key:'fern',x:-193.98,z:-348.28,face:4},
-                {key:'leafy_bush',x:-175.58,z:-347.39,face:111},
-                {key:'ocean_rock_2',x:-170.47,z:-348.11,face:225},
-                {key:'leafy_bush',x:-207.54,z:-345.1,face:172},
-                {key:'leafy_bush',x:-201.57,z:-345.17,face:329},
-                {key:'leafy_bush',x:-183.75,z:-343.59,face:71},
-                {key:'leafy_bush',x:-177.39,z:-345.15,face:233},
-                {key:'psxg_dead_bush_1',x:-166.45,z:-352.3,face:207},
-                {key:'ocean_rock_2',x:-131.93,z:-348.67,face:195},
-                {key:'psxg_dead_bush_2',x:-140.8,z:-345.19,face:206},
-                {key:'psxg_dead_bush_2',x:-138.03,z:-344.6,face:214},
-                {key:'psxg_dead_bush_1',x:-130.63,z:-344.6,face:309},
-                {key:'psxg_dead_bush_2',x:-165.69,z:-341.89,face:232},
-                {key:'ocean_rock_2',x:-102.94,z:-352.4,face:110},
-                {key:'leafy_bush',x:-81.81,z:-352.74,face:260},
-                {key:'leafy_bush',x:-74.33,z:-351.89,face:34},
-                {key:'hw_stone_3',x:-72.75,z:-352.82,face:209},
-                {key:'fern',x:-43.19,z:-350.86,face:84},
-                {key:'psxg_dead_bush_2',x:-81.41,z:-348.73,face:205},
-                {key:'fern',x:-68.53,z:-349.27,face:21},
-                {key:'ocean_rock_5',x:-79.91,z:-345.88,face:216},
-                {key:'leafy_bush',x:-44.57,z:-345.53,face:314},
-                {key:'leafy_bush',x:-79.54,z:-341.56,face:204},
-                {key:'yucca',x:-58.03,z:-341.77,face:243},
-                {key:'ocean_rock_2',x:-53.16,z:-341.62,face:143},
-                {key:'leafy_bush',x:-43.56,z:-342.1,face:155},
-                {key:'hw_stone_3',x:-71.28,z:-338.05,face:313},
-                {key:'psxg_dead_bush_2',x:-49.97,z:-337.57,face:174},
-                {key:'psxg_dead_bush_1',x:-47.26,z:-338.18,face:164},
-                {key:'leafy_bush',x:-43.45,z:-336.67,face:268},
-                {key:'fern',x:7.63,z:-351.58,face:161},
-                {key:'fern',x:23.93,z:-351.38,face:291},
-                {key:'leafy_bush',x:7.66,z:-348.81,face:287},
-                {key:'hw_stone_1',x:25.49,z:-344.42,face:275},
-                {key:'fern',x:32.35,z:-343.68,face:291},
-                {key:'leafy_bush',x:37.74,z:-345.02,face:179},
-                {key:'psxg_dead_bush_1',x:2.87,z:-340.43,face:266},
-                {key:'leafy_bush',x:6.03,z:-341.11,face:3},
-                {key:'psxg_dead_bush_1',x:13.1,z:-338.89,face:45},
-                {key:'psxg_dead_bush_1',x:26.44,z:-338.69,face:265},
-                {key:'psxg_dead_bush_1',x:36.94,z:-336.91,face:244},
-                {key:'leafy_bush',x:39.51,z:-337.15,face:349},
-                {key:'leafy_bush',x:42.64,z:-352.56,face:90},
-                {key:'leafy_bush',x:58.83,z:-351.63,face:94},
-                {key:'leafy_bush',x:65.17,z:-350.84,face:334},
-                {key:'leafy_bush',x:46.24,z:-348.55,face:308},
-                {key:'leafy_bush',x:57.91,z:-344.62,face:282},
-                {key:'psxg_dead_bush_2',x:65.06,z:-345.16,face:33},
-                {key:'hw_stone_1',x:67.47,z:-344.45,face:100},
-                {key:'leafy_bush',x:42.83,z:-341.66,face:314},
-                {key:'ocean_rock_7',x:67.17,z:-340.44,face:154},
-                {key:'hw_stone_3',x:78.14,z:-340.05,face:249},
-                {key:'fern',x:60.4,z:-338.25,face:281},
-                {key:'leafy_bush',x:71.34,z:-338.15,face:357},
-                {key:'psxg_dead_bush_2',x:79.12,z:-338.76,face:276},
-                {key:'ocean_rock_2',x:83.31,z:-337.5,face:253},
-                {key:'leafy_bush',x:110.98,z:-350.9,face:352},
-                {key:'psxg_dead_bush_1',x:120.82,z:-351.71,face:166},
-                {key:'psxg_dead_bush_2',x:104.27,z:-347.55,face:301},
-                {key:'ocean_rock_2',x:116.24,z:-347.56,face:10},
-                {key:'hw_stone_1',x:124.31,z:-348.56,face:334},
-                {key:'leafy_bush',x:109.35,z:-343.91,face:342},
-                {key:'leafy_bush',x:116.09,z:-344.85,face:325},
-                {key:'leafy_bush',x:124.2,z:-344.8,face:86},
-                {key:'psxg_dead_bush_2',x:86.22,z:-340.57,face:136},
-                {key:'leafy_bush',x:91.95,z:-342.31,face:137},
-                {key:'leafy_bush',x:103.61,z:-342.34,face:52},
-                {key:'ocean_rock_2',x:109.56,z:-340.52,face:198},
-                {key:'fern',x:90.33,z:-338.61,face:44},
-                {key:'yucca',x:93.82,z:-338.86,face:29},
-                {key:'leafy_bush',x:151.68,z:-352.54,face:270},
-                {key:'fern',x:162.47,z:-351.55,face:6},
-                {key:'leafy_bush',x:132.26,z:-347.31,face:331},
-                {key:'ocean_rock_5',x:135.48,z:-348.82,face:151},
-                {key:'leafy_bush',x:140.71,z:-349.44,face:109},
-                {key:'fern',x:144.08,z:-347.52,face:166},
-                {key:'leafy_bush',x:149.28,z:-349.23,face:171},
-                {key:'leafy_bush',x:153.28,z:-347.6,face:108},
-                {key:'psxg_dead_bush_2',x:126.56,z:-344.92,face:143},
-                {key:'psxg_dead_bush_2',x:134.34,z:-344.06,face:262},
-                {key:'hw_stone_3',x:142.19,z:-345.29,face:7},
-                {key:'ocean_rock_2',x:163.91,z:-345.75,face:77},
-                {key:'leafy_bush',x:152.56,z:-340.51,face:279},
-                {key:'ocean_rock_2',x:162.97,z:-342.15,face:286},
-                {key:'ocean_rock_5',x:130.41,z:-338.89,face:65},
-                {key:'psxg_dead_bush_2',x:135.61,z:-338.19,face:272},
-                {key:'leafy_bush',x:142.68,z:-337.13,face:1},
-                {key:'leafy_bush',x:148.83,z:-336.72,face:310},
-                {key:'psxg_dead_bush_1',x:170.38,z:-352.54,face:89},
-                {key:'fern',x:194.84,z:-351.56,face:225},
-                {key:'leafy_bush',x:203.57,z:-351.83,face:207},
-                {key:'psxg_dead_bush_2',x:208.06,z:-352.32,face:52},
-                {key:'leafy_bush',x:193.13,z:-348.99,face:288},
-                {key:'psxg_dead_bush_1',x:194.25,z:-344.46,face:199},
-                {key:'psxg_dead_bush_2',x:196.88,z:-345.58,face:339},
-                {key:'psxg_dead_bush_2',x:168.83,z:-341.4,face:214},
-                {key:'ocean_rock_7',x:203.55,z:-340.18,face:328},
-                {key:'ocean_rock_5',x:177.79,z:-337.11,face:63},
-                {key:'hw_stone_3',x:183.27,z:-337.45,face:245},
-                {key:'leafy_bush',x:193.34,z:-338.08,face:47},
-                {key:'ocean_rock_2',x:-222.53,z:-324.88,face:281},
-                {key:'hw_stone_1',x:-216.07,z:-324.01,face:95},
-                {key:'ocean_rock_2',x:-250.43,z:-320.57,face:349},
-                {key:'leafy_bush',x:-238.55,z:-319.86,face:283},
-                {key:'fern',x:-217.91,z:-320.85,face:109},
-                {key:'psxg_dead_bush_1',x:-243.86,z:-310.7,face:133},
-                {key:'ocean_rock_2',x:-239.05,z:-309.79,face:93},
-                {key:'hw_stone_3',x:-229.42,z:-309.87,face:169},
-                {key:'leafy_bush',x:-216.13,z:-310.16,face:228},
-                {key:'fern',x:-230.38,z:-305.54,face:8},
-                {key:'yucca',x:-225.57,z:-303.84,face:192},
-                {key:'psxg_dead_bush_1',x:-231.92,z:-299,face:78},
-                {key:'fern',x:-230.32,z:-298.89,face:257},
-                {key:'leafy_bush',x:-224.83,z:-300.08,face:65},
-                {key:'leafy_bush',x:-222.37,z:-299.27,face:76},
-                {key:'ocean_rock_5',x:-211.47,z:-298.46,face:1},
-                {key:'hw_stone_1',x:-246.41,z:-295.01,face:355},
-                {key:'leafy_bush',x:-235.69,z:-296.6,face:320},
-                {key:'leafy_bush',x:-231.95,z:-294.7,face:36},
-                {key:'hw_stone_1',x:-173,z:-333.76,face:212},
-                {key:'agave',x:-174.21,z:-331.65,face:244},
-                {key:'leafy_bush',x:-205.77,z:-320,face:202},
-                {key:'leafy_bush',x:-203.87,z:-308.61,face:36},
-                {key:'leafy_bush',x:-202.3,z:-309.16,face:74},
-                {key:'ocean_rock_5',x:-194.79,z:-305.84,face:236},
-                {key:'psxg_dead_bush_1',x:-183.06,z:-306.05,face:177},
-                {key:'ocean_rock_2',x:-172.53,z:-305.2,face:100},
-                {key:'leafy_bush',x:-183.3,z:-303.7,face:6},
-                {key:'leafy_bush',x:-198.83,z:-300.43,face:20},
-                {key:'prickly_pear',x:-175.75,z:-299.83,face:357},
-                {key:'leafy_bush',x:-208.23,z:-294.82,face:34},
-                {key:'leafy_bush',x:-198.6,z:-296.88,face:248},
-                {key:'leafy_bush',x:-195.09,z:-296.09,face:11},
-                {key:'psxg_dead_bush_2',x:-151.59,z:-310.63,face:232},
-                {key:'leafy_bush',x:-146.31,z:-309.89,face:57},
-                {key:'agave',x:-166.41,z:-305.93,face:196},
-                {key:'leafy_bush',x:-163.63,z:-307.04,face:47},
-                {key:'leafy_bush',x:-154.62,z:-306.17,face:268},
-                {key:'leafy_bush',x:-148.38,z:-301.57,face:113},
-                {key:'psxg_dead_bush_2',x:-130.23,z:-302.08,face:242},
-                {key:'psxg_dead_bush_2',x:-149.24,z:-296.89,face:291},
-                {key:'leafy_bush',x:-123.06,z:-331.61,face:6},
-                {key:'leafy_bush',x:-102.48,z:-326.99,face:254},
-                {key:'hw_stone_3',x:-91.57,z:-327.63,face:40},
-                {key:'ocean_rock_5',x:-90.06,z:-324.69,face:120},
-                {key:'leafy_bush',x:-124.05,z:-320.74,face:160},
-                {key:'fern',x:-116.62,z:-321.13,face:18},
-                {key:'leafy_bush',x:-93.15,z:-320.6,face:44},
-                {key:'leafy_bush',x:-110.64,z:-309.2,face:89},
-                {key:'leafy_bush',x:-99.99,z:-308.72,face:174},
-                {key:'psxg_dead_bush_2',x:-96.8,z:-308.6,face:356},
-                {key:'psxg_dead_bush_2',x:-124.38,z:-296.54,face:78},
-                {key:'leafy_bush',x:-116.35,z:-295.47,face:234},
-                {key:'leafy_bush',x:-82.7,z:-320.88,face:113},
-                {key:'leafy_bush',x:-54.94,z:-309.84,face:198},
-                {key:'saguaro_cactus',x:-75.28,z:-306.3,face:111},
-                {key:'leafy_bush',x:-71.73,z:-305.76,face:197},
-                {key:'leafy_bush',x:-67.9,z:-305.3,face:305},
-                {key:'psxg_dead_bush_2',x:-44.11,z:-302.82,face:264},
-                {key:'fern',x:-82.48,z:-300.19,face:10},
-                {key:'hw_stone_1',x:-79.13,z:-300.15,face:232},
-                {key:'hw_stone_1',x:-58.76,z:-298.13,face:142},
-                {key:'leafy_bush',x:-4.8,z:-324.33,face:125},
-                {key:'leafy_bush',x:-12.65,z:-320.47,face:133},
-                {key:'psxg_dead_bush_2',x:-22.56,z:-310.45,face:192},
-                {key:'leafy_bush',x:-18.45,z:-310.67,face:148},
-                {key:'leafy_bush',x:-25.94,z:-298.77,face:122},
-                {key:'leafy_bush',x:-32.15,z:-295.88,face:322},
-                {key:'leafy_bush',x:-30.58,z:-295.52,face:307},
-                {key:'ocean_rock_7',x:22.11,z:-326.71,face:12},
-                {key:'hw_stone_1',x:25.68,z:-327.78,face:271},
-                {key:'leafy_bush',x:28.68,z:-327.42,face:89},
-                {key:'psxg_dead_bush_2',x:37.89,z:-328.17,face:271},
-                {key:'hw_stone_1',x:34.18,z:-323.95,face:44},
-                {key:'hw_stone_3',x:37.73,z:-324.01,face:32},
-                {key:'psxg_dead_bush_1',x:9.17,z:-319.42,face:268},
-                {key:'psxg_dead_bush_2',x:11.17,z:-320.11,face:75},
-                {key:'agave',x:30.08,z:-319.05,face:26},
-                {key:'ocean_rock_2',x:39.5,z:-320.93,face:203},
-                {key:'fern',x:25.62,z:-317.77,face:300},
-                {key:'leafy_bush',x:11.51,z:-313.82,face:270},
-                {key:'leafy_bush',x:16.24,z:-312.46,face:81},
-                {key:'ocean_rock_2',x:26.14,z:-310.79,face:283},
-                {key:'hw_stone_3',x:30.26,z:-310.42,face:226},
-                {key:'psxg_dead_bush_2',x:4.3,z:-298.8,face:328},
-                {key:'psxg_dead_bush_1',x:13.22,z:-299.03,face:359},
-                {key:'fern',x:27.06,z:-298.69,face:321},
-                {key:'psxg_dead_bush_1',x:15.45,z:-295.3,face:55},
-                {key:'leafy_bush',x:23.65,z:-295.87,face:219},
-                {key:'leafy_bush',x:78.74,z:-326.2,face:9},
-                {key:'ocean_rock_5',x:46.27,z:-322.64,face:320},
-                {key:'ocean_rock_5',x:51.08,z:-323.43,face:156},
-                {key:'psxg_dead_bush_1',x:76.31,z:-324.7,face:26},
-                {key:'leafy_bush',x:50.5,z:-313.58,face:340},
-                {key:'fern',x:82.51,z:-312.61,face:285},
-                {key:'fern',x:46.97,z:-309.78,face:126},
-                {key:'leafy_bush',x:56.81,z:-309.88,face:256},
-                {key:'hw_stone_3',x:46.73,z:-299.67,face:182},
-                {key:'psxg_dead_bush_2',x:50.57,z:-295.6,face:175},
-                {key:'leafy_bush',x:53.52,z:-295.94,face:265},
-                {key:'ocean_rock_5',x:71.48,z:-295.47,face:353},
-                {key:'hw_stone_1',x:78.71,z:-295.25,face:82},
-                {key:'psxg_dead_bush_2',x:86.48,z:-326.28,face:245},
-                {key:'leafy_bush',x:91.67,z:-328.43,face:275},
-                {key:'psxg_dead_bush_2',x:109.43,z:-326.53,face:64},
-                {key:'yucca',x:98.81,z:-323.35,face:80},
-                {key:'fern',x:102.24,z:-324.74,face:33},
-                {key:'ocean_rock_2',x:116.94,z:-322.74,face:263},
-                {key:'psxg_dead_bush_1',x:123.71,z:-323.8,face:29},
-                {key:'hw_stone_3',x:90.06,z:-320.75,face:208},
-                {key:'leafy_bush',x:93.04,z:-319.4,face:246},
-                {key:'yucca',x:96.1,z:-314.21,face:334},
-                {key:'leafy_bush',x:124.75,z:-313,face:105},
-                {key:'ocean_rock_5',x:90.4,z:-310.36,face:47},
-                {key:'psxg_dead_bush_2',x:111.2,z:-308.99,face:359},
-                {key:'ocean_rock_5',x:117.01,z:-299.64,face:329},
-                {key:'hw_stone_1',x:88.67,z:-295.57,face:259},
-                {key:'ocean_rock_2',x:91.65,z:-295.22,face:96},
-                {key:'psxg_dead_bush_2',x:96.27,z:-296.92,face:313},
-                {key:'leafy_bush',x:104.32,z:-296.16,face:286},
-                {key:'leafy_bush',x:162.89,z:-326.8,face:25},
-                {key:'leafy_bush',x:166.17,z:-327.22,face:186},
-                {key:'leafy_bush',x:166.29,z:-324.92,face:238},
-                {key:'ocean_rock_2',x:134.2,z:-319.23,face:144},
-                {key:'yucca',x:144.92,z:-320.97,face:335},
-                {key:'psxg_dead_bush_1',x:141.91,z:-312.95,face:56},
-                {key:'ocean_rock_2',x:144.16,z:-313.03,face:317},
-                {key:'ocean_rock_5',x:163.06,z:-314.04,face:255},
-                {key:'psxg_dead_bush_2',x:134.49,z:-310.09,face:277},
-                {key:'psxg_dead_bush_2',x:162.37,z:-310.34,face:209},
-                {key:'leafy_bush',x:135.92,z:-299.34,face:136},
-                {key:'saguaro_cactus',x:146.16,z:-295.78,face:116},
-                {key:'leafy_bush',x:148.47,z:-295.21,face:273},
-                {key:'leafy_bush',x:152.52,z:-296.14,face:242},
-                {key:'ocean_rock_5',x:155.74,z:-294.64,face:163},
-                {key:'ocean_rock_5',x:181.18,z:-333.91,face:266},
-                {key:'leafy_bush',x:205.33,z:-334.59,face:112},
-                {key:'psxg_dead_bush_1',x:170.47,z:-326.14,face:214},
-                {key:'leafy_bush',x:207.65,z:-327.4,face:147},
-                {key:'psxg_dead_bush_2',x:170.23,z:-313.1,face:100},
-                {key:'leafy_bush',x:239.4,z:-333.71,face:179},
-                {key:'psxg_dead_bush_1',x:215.5,z:-330.21,face:159},
-                {key:'psxg_dead_bush_1',x:240.74,z:-329.92,face:161},
-                {key:'psxg_dead_bush_2',x:214.44,z:-328.23,face:327},
-                {key:'leafy_bush',x:218.39,z:-326.67,face:63},
-                {key:'yucca',x:222.81,z:-327.8,face:336},
-                {key:'leafy_bush',x:247.53,z:-327.51,face:172},
-                {key:'fern',x:225.38,z:-324.41,face:288},
-                {key:'ocean_rock_2',x:243.46,z:-324.32,face:113},
-                {key:'fern',x:235.81,z:-319.13,face:279},
-                {key:'agave',x:244.17,z:-321.14,face:86},
-                {key:'psxg_dead_bush_2',x:226.91,z:-316.77,face:231},
-                {key:'leafy_bush',x:226.28,z:-313.66,face:201},
-                {key:'leafy_bush',x:211.92,z:-310.75,face:7},
-                {key:'fern',x:217.64,z:-309.78,face:11},
-                {key:'fern',x:224.71,z:-310.44,face:350},
-                {key:'psxg_dead_bush_2',x:219.66,z:-299.71,face:358},
-                {key:'ocean_rock_2',x:-226.07,z:-293.18,face:76},
-                {key:'psxg_dead_bush_2',x:-212.83,z:-291.66,face:285},
-                {key:'yucca',x:-214.8,z:-282.88,face:36},
-                {key:'leafy_bush',x:-210.58,z:-282.23,face:239},
-                {key:'ocean_rock_7',x:-228.99,z:-278.25,face:175},
-                {key:'leafy_bush',x:-219.48,z:-267.69,face:333},
-                {key:'psxg_dead_bush_2',x:-215.15,z:-267.73,face:108},
-                {key:'yucca',x:-214.54,z:-254.49,face:101},
-                {key:'prickly_pear',x:-209.03,z:-291.57,face:156},
-                {key:'psxg_dead_bush_1',x:-198.61,z:-292.72,face:142},
-                {key:'leafy_bush',x:-198.44,z:-278.64,face:83},
-                {key:'leafy_bush',x:-189.55,z:-278.85,face:14},
-                {key:'ocean_rock_2',x:-187.08,z:-266.59,face:164},
-                {key:'fern',x:-207.97,z:-265.34,face:232},
-                {key:'psxg_dead_bush_1',x:-184.65,z:-264.08,face:315},
-                {key:'ocean_rock_5',x:-204.6,z:-258,face:131},
-                {key:'leafy_bush',x:-188.41,z:-256.95,face:342},
-                {key:'fern',x:-169.21,z:-256.63,face:100},
-                {key:'psxg_dead_bush_1',x:-173,z:-253.5,face:123},
-                {key:'prickly_pear',x:-159.08,z:-291.51,face:109},
-                {key:'leafy_bush',x:-137.78,z:-291.25,face:260},
-                {key:'leafy_bush',x:-132.23,z:-293.3,face:190},
-                {key:'saguaro_cactus',x:-167.18,z:-289.92,face:203},
-                {key:'hw_stone_1',x:-138.38,z:-289.92,face:143},
-                {key:'leafy_bush',x:-135.16,z:-289.29,face:217},
-                {key:'ocean_rock_7',x:-166.02,z:-285.09,face:54},
-                {key:'leafy_bush',x:-162.54,z:-282.75,face:17},
-                {key:'ocean_rock_2',x:-154.62,z:-277.62,face:311},
-                {key:'yucca',x:-159.35,z:-264.7,face:47},
-                {key:'fern',x:-156.59,z:-263.36,face:62},
-                {key:'ocean_rock_2',x:-139.36,z:-263.26,face:215},
-                {key:'ocean_rock_2',x:-154.72,z:-261.26,face:104},
-                {key:'leafy_bush',x:-151.09,z:-261.49,face:291},
-                {key:'leafy_bush',x:-139.04,z:-257.43,face:84},
-                {key:'leafy_bush',x:-128.24,z:-257.71,face:192},
-                {key:'yucca',x:-163.4,z:-254.29,face:107},
-                {key:'prickly_pear',x:-105.86,z:-292.86,face:87},
-                {key:'psxg_dead_bush_2',x:-103.7,z:-289.56,face:193},
-                {key:'leafy_bush',x:-106.92,z:-285.34,face:293},
-                {key:'yucca',x:-90.08,z:-284.45,face:328},
-                {key:'psxg_dead_bush_1',x:-85.51,z:-286.31,face:153},
-                {key:'fern',x:-121.63,z:-279.15,face:175},
-                {key:'psxg_dead_bush_2',x:-119.83,z:-268.57,face:116},
-                {key:'ocean_rock_2',x:-85.42,z:-267.33,face:254},
-                {key:'psxg_dead_bush_1',x:-74.21,z:-292.97,face:20},
-                {key:'leafy_bush',x:-50.84,z:-292.45,face:158},
-                {key:'psxg_dead_bush_1',x:-44.41,z:-288.03,face:266},
-                {key:'psxg_dead_bush_1',x:-81.72,z:-267.69,face:143},
-                {key:'leafy_bush',x:-57.9,z:-254.37,face:74},
-                {key:'fern',x:-33.21,z:-291.32,face:247},
-                {key:'psxg_dead_bush_1',x:-19.25,z:-287.92,face:187},
-                {key:'leafy_bush',x:-8.02,z:-288.02,face:347},
-                {key:'fern',x:-18.91,z:-285.18,face:344},
-                {key:'hw_stone_3',x:-16.16,z:-285.3,face:147},
-                {key:'fern',x:-37.55,z:-282.51,face:348},
-                {key:'psxg_dead_bush_2',x:-16.39,z:-282.94,face:359},
-                {key:'ocean_rock_5',x:-29.84,z:-278.94,face:142},
-                {key:'leafy_bush',x:-8.83,z:-268.31,face:4},
-                {key:'leafy_bush',x:-30.15,z:-264.53,face:187},
-                {key:'leafy_bush',x:-33.97,z:-259.9,face:336},
-                {key:'psxg_dead_bush_2',x:-19.79,z:-261.91,face:108},
-                {key:'saguaro_cactus',x:19.45,z:-292.29,face:215},
-                {key:'fern',x:20.28,z:-288.89,face:350},
-                {key:'leafy_bush',x:27.29,z:-289.44,face:33},
-                {key:'leafy_bush',x:29.37,z:-287.63,face:354},
-                {key:'fern',x:22.08,z:-286.31,face:113},
-                {key:'saguaro_cactus',x:37.5,z:-285.36,face:102},
-                {key:'yucca',x:2.64,z:-281.13,face:118},
-                {key:'fern',x:41.07,z:-278.53,face:126},
-                {key:'ocean_rock_7',x:1.22,z:-271.47,face:284},
-                {key:'ocean_rock_2',x:8.9,z:-257.01,face:129},
-                {key:'fern',x:22.12,z:-257.09,face:242},
-                {key:'leafy_bush',x:15.13,z:-254.55,face:144},
-                {key:'leafy_bush',x:29.49,z:-254.18,face:39},
-                {key:'prickly_pear',x:54.7,z:-292.23,face:133},
-                {key:'psxg_dead_bush_2',x:68.84,z:-285.77,face:153},
-                {key:'leafy_bush',x:56.8,z:-277.71,face:29},
-                {key:'leafy_bush',x:68.11,z:-257.37,face:130},
-                {key:'ocean_rock_2',x:110.52,z:-292.06,face:343},
-                {key:'psxg_dead_bush_2',x:117.73,z:-291.61,face:74},
-                {key:'hw_stone_3',x:121.5,z:-293.15,face:190},
-                {key:'leafy_bush',x:95.82,z:-288.46,face:337},
-                {key:'agave',x:106.97,z:-287.86,face:48},
-                {key:'agave',x:109.69,z:-288.3,face:69},
-                {key:'hw_stone_1',x:120.51,z:-287.88,face:270},
-                {key:'leafy_bush',x:103.46,z:-284.27,face:120},
-                {key:'leafy_bush',x:116.53,z:-282.28,face:77},
-                {key:'fern',x:100.63,z:-270.94,face:309},
-                {key:'leafy_bush',x:85.94,z:-267.78,face:298},
-                {key:'hw_stone_1',x:114.94,z:-267.5,face:314},
-                {key:'fern',x:117.37,z:-266.94,face:334},
-                {key:'leafy_bush',x:85.4,z:-256.97,face:33},
-                {key:'ocean_rock_2',x:112.78,z:-257.74,face:242},
-                {key:'psxg_dead_bush_1',x:97.3,z:-254.63,face:355},
-                {key:'yucca',x:120.4,z:-254.57,face:63},
-                {key:'fern',x:127.72,z:-291.15,face:311},
-                {key:'fern',x:137.2,z:-291.41,face:165},
-                {key:'fern',x:144.37,z:-293.36,face:152},
-                {key:'ocean_rock_2',x:155.56,z:-287.71,face:279},
-                {key:'fern',x:152.93,z:-252.92,face:67},
-                {key:'hw_stone_1',x:204.97,z:-293.2,face:311},
-                {key:'leafy_bush',x:195.01,z:-285.44,face:239},
-                {key:'hw_stone_1',x:201.39,z:-268.55,face:284},
-                {key:'leafy_bush',x:197.99,z:-257.53,face:177},
-                {key:'leafy_bush',x:209.34,z:-257.38,face:120},
-                {key:'leafy_bush',x:174.01,z:-252.74,face:185},
-                {key:'prickly_pear',x:212.33,z:-289.88,face:306},
-                {key:'ocean_rock_2',x:236.38,z:-285.58,face:89},
-                {key:'agave',x:239.03,z:-284.42,face:267},
-                {key:'leafy_bush',x:223.33,z:-281.69,face:168},
-                {key:'psxg_dead_bush_2',x:238.72,z:-282.32,face:271},
-                {key:'agave',x:222.27,z:-278.57,face:83},
-                {key:'leafy_bush',x:243.39,z:-277.08,face:87},
-                {key:'leafy_bush',x:218.26,z:-271.98,face:317},
-                {key:'yucca',x:240.33,z:-270.47,face:134},
-                {key:'leafy_bush',x:216.39,z:-268.68,face:62},
+                {key:'psxg_rock_1',x:-123.62,z:-347.83,face:294,h:0.82},
+                {key:'psxg_rock_3',x:-125.49,z:-347.19,face:162,h:0.39},
+                {key:'psxg_rock_3',x:-124.59,z:-349.65,face:64,h:0.45},
+                {key:'psxg_rock_2',x:-81.68,z:-347.69,face:210,h:0.74},
+                {key:'psxg_rock_1',x:-54.92,z:-303.4,face:307,h:1.19},
+                {key:'psxg_rock_2',x:123.76,z:-253.03,face:201,h:0.77},
+                {key:'psxg_rock_1',x:117.63,z:-254.33,face:221,h:1},
+                {key:'psxg_rock_1',x:-151.78,z:-256.85,face:176,h:0.83},
+                {key:'psxg_rock_2',x:-153.27,z:-258.04,face:267,h:0.43},
+                {key:'psxg_rock_1',x:96.7,z:-278.41,face:356,h:1.23},
+                {key:'psxg_rock_4',x:95.9,z:-277.04,face:288,h:0.26},
+                {key:'psxg_rock_2',x:-71.12,z:-348.82,face:97,h:0.98},
+                {key:'psxg_rock_3',x:-71.69,z:-347.06,face:232,h:0.55},
+                {key:'psxg_rock_1',x:18.49,z:-254.36,face:177,h:0.98},
+                {key:'psxg_rock_1',x:-130.9,z:-347.48,face:307,h:1.12},
+                {key:'psxg_rock_3',x:-132.62,z:-348.21,face:9,h:0.39},
+                {key:'psxg_rock_2',x:-132.54,z:-347.25,face:184,h:0.46},
+                {key:'psxg_rock_1',x:145.46,z:-295.72,face:25,h:0.83},
+                {key:'psxg_rock_1',x:141.65,z:-313.97,face:92,h:1.21},
+                {key:'psxg_rock_1',x:-54.72,z:-295.34,face:278,h:1.3},
+                {key:'psxg_rock_1',x:-43.61,z:-295.79,face:181,h:1.09},
+                {key:'psxg_rock_4',x:-43.33,z:-297.1,face:160,h:0.28},
+                {key:'psxg_rock_2',x:-43.77,z:-296.76,face:205,h:0.4},
+                {key:'psxg_rock_1',x:-47.99,z:-303.06,face:72,h:0.83},
+                {key:'psxg_rock_4',x:-47.15,z:-303.97,face:225,h:0.19},
+                {key:'psxg_rock_1',x:100.45,z:-285.16,face:284,h:1.24},
+                {key:'psxg_rock_2',x:98.72,z:-286,face:145,h:0.47},
+                {key:'psxg_rock_1',x:-201.33,z:-302.42,face:151,h:1.28},
+                {key:'psxg_rock_4',x:-200.68,z:-301.79,face:124,h:0.21},
+                {key:'psxg_rock_1',x:99.45,z:-270.82,face:37,h:0.86},
+                {key:'psxg_rock_2',x:100.83,z:-270.23,face:213,h:0.62},
+                {key:'psxg_rock_2',x:99.33,z:-270.21,face:16,h:0.66},
+                {key:'psxg_rock_2',x:-106.73,z:-298.81,face:187,h:0.74},
+                {key:'psxg_rock_4',x:-105.31,z:-298.67,face:180,h:0.21},
+                {key:'psxg_rock_1',x:26.05,z:-254.06,face:126,h:1.22},
+                {key:'psxg_rock_2',x:25.72,z:-254.78,face:182,h:0.58},
+                {key:'psxg_rock_2',x:-158.61,z:-253.62,face:56,h:0.91},
+                {key:'psxg_rock_1',x:-29.58,z:-296.27,face:10,h:1.31},
+                {key:'psxg_rock_3',x:-28.23,z:-295.9,face:193,h:0.47},
+                {key:'psxg_rock_1',x:-176.81,z:-347.84,face:153,h:0.94},
+                {key:'psxg_rock_2',x:-175.91,z:-347.07,face:243,h:0.45},
+                {key:'psxg_rock_2',x:135.1,z:-295.35,face:143,h:0.88},
+                {key:'psxg_rock_1',x:96.11,z:-347.69,face:165,h:0.89},
+                {key:'psxg_rock_2',x:54.12,z:-275.03,face:269,h:0.74},
+                {key:'psxg_rock_3',x:52.74,z:-274.11,face:181,h:0.35},
+                {key:'psxg_rock_1',x:240.39,z:-277.67,face:11,h:1.16},
+                {key:'psxg_rock_1',x:40.54,z:-274.97,face:86,h:0.99},
+                {key:'psxg_rock_1',x:88.78,z:-348.75,face:90,h:0.87},
+                {key:'psxg_rock_1',x:134.27,z:-313.09,face:154,h:1.28},
+                {key:'psxg_rock_3',x:133.21,z:-313.67,face:43,h:0.52},
+                {key:'psxg_rock_3',x:134.49,z:-314.73,face:355,h:0.52},
+                {key:'psxg_rock_2',x:82.43,z:-348.57,face:156,h:0.96},
+                {key:'psxg_rock_2',x:-156.51,z:-264.09,face:55,h:0.72},
+                {key:'psxg_rock_1',x:19.63,z:-323.19,face:304,h:0.95},
+                {key:'psxg_rock_1',x:103.71,z:-348.51,face:303,h:0.84},
+                {key:'psxg_rock_2',x:103.5,z:-349.3,face:152,h:0.49},
+                {key:'psxg_rock_1',x:40.43,z:-284.58,face:54,h:0.86},
+                {key:'psxg_rock_4',x:40.59,z:-284.14,face:218,h:0.24},
+                {key:'psxg_rock_1',x:-116.76,z:-348.92,face:182,h:1.02},
+                {key:'psxg_rock_1',x:-106.66,z:-291.78,face:300,h:1.2},
+                {key:'psxg_rock_2',x:-106.43,z:-293.83,face:244,h:0.55},
+                {key:'psxg_rock_2',x:-105.39,z:-291.54,face:144,h:0.47},
+                {key:'psxg_rock_2',x:-99.57,z:-292.75,face:159,h:0.75},
+                {key:'psxg_rock_2',x:-101.19,z:-292.92,face:49,h:0.62},
+                {key:'psxg_rock_2',x:-101.21,z:-291.91,face:256,h:0.46},
+                {key:'psxg_rock_2',x:61.28,z:-348.55,face:243,h:0.86},
+                {key:'psxg_rock_1',x:22.42,z:-337.05,face:3,h:1.27},
+                {key:'psxg_rock_3',x:24.3,z:-337.14,face:257,h:0.44},
+                {key:'psxg_rock_4',x:24.32,z:-338.27,face:197,h:0.31},
+                {key:'psxg_rock_1',x:116.64,z:-348.94,face:73,h:0.88},
+                {key:'psxg_rock_1',x:-36.11,z:-295.59,face:316,h:1.16},
+                {key:'psxg_rock_4',x:-36.33,z:-294.68,face:16,h:0.28},
+                {key:'prickly_pear',x:-178.88,z:-348.56,face:198},
+                {key:'prickly_pear',x:-178.71,z:-348.7,face:184},
+                {key:'yucca',x:-173.47,z:-347.76,face:318},
+                {key:'yucca',x:-174.67,z:-347.77,face:47},
+                {key:'yucca',x:-179.49,z:-345.67,face:120},
+                {key:'yucca',x:-179.61,z:-345.82,face:29},
+                {key:'agave',x:-176.55,z:-345.07,face:232},
+                {key:'agave',x:-176.53,z:-344.74,face:226},
+                {key:'prickly_pear',x:-116.82,z:-345.91,face:34},
+                {key:'prickly_pear',x:-117.43,z:-345.23,face:86},
+                {key:'agave',x:-113.7,z:-346.14,face:239},
+                {key:'saguaro_cactus',x:-79.18,z:-348.46,face:352},
+                {key:'agave',x:-79.02,z:-347.98,face:156},
+                {key:'yucca',x:-73.73,z:-347.98,face:287},
+                {key:'yucca',x:-74.42,z:-348.28,face:306},
+                {key:'yucca',x:-69.43,z:-347.58,face:336},
+                {key:'yucca',x:-79.55,z:-345.83,face:169},
+                {key:'agave',x:-74.22,z:-345.87,face:285},
+                {key:'yucca',x:-71.05,z:-345.08,face:66},
+                {key:'yucca',x:-71.24,z:-345.11,face:270},
+                {key:'agave',x:-68.89,z:-344.78,face:305},
+                {key:'agave',x:19.97,z:-339.84,face:357},
+                {key:'saguaro_cactus',x:22.19,z:-339.95,face:292},
+                {key:'agave',x:22.42,z:-341.3,face:143},
+                {key:'prickly_pear',x:19.03,z:-338.33,face:280},
+                {key:'agave',x:64.1,z:-348.76,face:39},
+                {key:'agave',x:64.84,z:-348.75,face:130},
+                {key:'agave',x:61.76,z:-345.05,face:153},
+                {key:'prickly_pear',x:64.57,z:-345.79,face:272},
+                {key:'prickly_pear',x:78.64,z:-345.55,face:339},
+                {key:'prickly_pear',x:79.21,z:-345,face:62},
+                {key:'agave',x:82.55,z:-345.95,face:223},
+                {key:'agave',x:106.3,z:-348.41,face:258},
+                {key:'agave',x:114.6,z:-348.92,face:265},
+                {key:'psxg_dead_bush_2',x:90.12,z:-351.6,face:323,h:0.7},
+                {key:'leafy_bush',x:89.25,z:-350.65,face:200,h:0.91},
+                {key:'psxg_dead_bush_2',x:-123.5,z:-309.26,face:107,h:0.67},
+                {key:'psxg_dead_bush_2',x:-122.13,z:-309.41,face:294,h:0.76},
+                {key:'psxg_dead_bush_2',x:92.69,z:-351.24,face:15,h:0.69},
+                {key:'psxg_dead_bush_2',x:84.72,z:-344.2,face:37,h:0.82},
+                {key:'psxg_dead_bush_2',x:89.67,z:-344.69,face:71,h:0.67},
+                {key:'psxg_dead_bush_2',x:-123.73,z:-303.01,face:118,h:0.77},
+                {key:'psxg_dead_bush_2',x:-50.55,z:-351.15,face:115,h:0.69},
+                {key:'psxg_dead_bush_2',x:93.15,z:-346.14,face:343,h:0.65},
+                {key:'psxg_dead_bush_2',x:-121.05,z:-303.17,face:210,h:0.6},
+                {key:'psxg_dead_bush_2',x:-121.22,z:-305.83,face:6,h:0.72},
+                {key:'psxg_dead_bush_2',x:-116.81,z:-296.5,face:316,h:0.61},
+                {key:'psxg_dead_bush_2',x:-116.47,z:-298.63,face:288,h:0.67},
+                {key:'psxg_dead_bush_2',x:-117.23,z:-298.78,face:62,h:0.4},
+                {key:'leafy_bush',x:-127.18,z:-309,face:243,h:1.42},
+                {key:'psxg_dead_bush_2',x:-47.1,z:-351.14,face:37,h:0.83},
+                {key:'leafy_bush',x:-47.6,z:-351.7,face:266,h:0.97},
+                {key:'leafy_bush',x:82.08,z:-351.34,face:76,h:1.17},
+                {key:'leafy_bush',x:81.87,z:-350.1,face:249,h:0.82},
+                {key:'psxg_dead_bush_2',x:85.54,z:-351.68,face:122,h:0.81},
+                {key:'leafy_bush',x:-69.72,z:-350.73,face:252,h:1.27},
+                {key:'leafy_bush',x:-69.78,z:-351.88,face:296,h:0.73},
+                {key:'leafy_bush',x:-77.75,z:-336.95,face:296,h:1.75},
+                {key:'leafy_bush',x:-72.35,z:-337.47,face:266,h:1.53},
+                {key:'psxg_dead_bush_2',x:85.83,z:-338.7,face:282,h:0.56},
+                {key:'leafy_bush',x:-75.99,z:-340.81,face:137,h:1.18},
+                {key:'leafy_bush',x:-74.53,z:-340.66,face:106,h:0.82},
+                {key:'leafy_bush',x:-72.39,z:-340.89,face:315,h:1.42},
+                {key:'leafy_bush',x:-72.78,z:-340.92,face:216,h:0.9},
+                {key:'psxg_dead_bush_2',x:-53.34,z:-347.59,face:207,h:0.57},
+                {key:'psxg_dead_bush_2',x:-53.29,z:-348.09,face:34,h:0.35},
+                {key:'psxg_dead_bush_2',x:84.67,z:-341.51,face:32,h:0.79},
+                {key:'leafy_bush',x:84.58,z:-341.84,face:148,h:0.87},
+                {key:'leafy_bush',x:82.23,z:-338.18,face:302,h:1.63},
+                {key:'leafy_bush',x:-77.78,z:-340.05,face:265,h:1.69},
+                {key:'leafy_bush',x:-72.46,z:-350.45,face:249,h:1.27},
+                {key:'leafy_bush',x:-64.72,z:-341.28,face:349,h:1.24},
+                {key:'leafy_bush',x:-68.75,z:-340.54,face:192,h:1.23},
+                {key:'psxg_dead_bush_2',x:-61.1,z:-340.57,face:145,h:0.77},
+                {key:'psxg_dead_bush_2',x:-124,z:-344.94,face:175,h:0.82},
+                {key:'psxg_dead_bush_2',x:-52.86,z:-344.88,face:5,h:0.76},
+                {key:'psxg_dead_bush_2',x:-54.12,z:-344.71,face:306,h:0.39},
+                {key:'leafy_bush',x:79.64,z:-338.32,face:158,h:1.41},
+                {key:'leafy_bush',x:78.54,z:-350.8,face:92,h:1.53},
+                {key:'leafy_bush',x:79,z:-341.61,face:136,h:1.57},
+                {key:'psxg_dead_bush_2',x:-50.73,z:-348.19,face:154,h:0.58},
+                {key:'psxg_dead_bush_2',x:-50.94,z:-347.85,face:353,h:0.46},
+                {key:'psxg_dead_bush_2',x:-53.57,z:-342.93,face:50,h:0.67},
+                {key:'psxg_dead_bush_2',x:-61.12,z:-338.25,face:168,h:0.71},
+                {key:'psxg_dead_bush_2',x:95.04,z:-351.7,face:269,h:0.63},
+                {key:'leafy_bush',x:-126.6,z:-304.24,face:280,h:1.53},
+                {key:'leafy_bush',x:-127.66,z:-303.72,face:86,h:1.02},
+                {key:'leafy_bush',x:-126.01,z:-306.39,face:290,h:1.23},
+                {key:'leafy_bush',x:-127.05,z:-306.79,face:180,h:0.88},
+                {key:'psxg_dead_bush_2',x:-43.91,z:-350.52,face:131,h:0.8},
+                {key:'psxg_dead_bush_2',x:-131.54,z:-345.37,face:312,h:0.57},
+                {key:'psxg_dead_bush_2',x:-132.25,z:-346.03,face:70,h:0.49},
+                {key:'psxg_dead_bush_2',x:-50.4,z:-341.81,face:166,h:0.78},
+                {key:'leafy_bush',x:242.66,z:-274.42,face:312,h:1.29},
+                {key:'leafy_bush',x:243.16,z:-274.57,face:267,h:0.74},
+                {key:'psxg_dead_bush_2',x:95.07,z:-345.42,face:284,h:0.6},
+                {key:'leafy_bush',x:-73.71,z:-351.76,face:189,h:1.24},
+                {key:'psxg_dead_bush_2',x:-124.24,z:-342.65,face:15,h:0.7},
+                {key:'leafy_bush',x:-123.47,z:-320.64,face:207,h:1.47},
+                {key:'psxg_dead_bush_2',x:84.57,z:-347.7,face:42,h:0.59},
+                {key:'psxg_dead_bush_2',x:-46.84,z:-345.55,face:142,h:0.78},
+                {key:'psxg_dead_bush_2',x:-46.59,z:-345.54,face:279,h:0.46},
+                {key:'psxg_dead_bush_2',x:-116.55,z:-310.2,face:306,h:0.79},
+                {key:'leafy_bush',x:-117.51,z:-310.22,face:20,h:1.02},
+                {key:'leafy_bush',x:-239.18,z:-321.73,face:24,h:1.39},
+                {key:'psxg_dead_bush_2',x:-131.38,z:-337.9,face:192,h:0.8},
+                {key:'psxg_dead_bush_2',x:-132.59,z:-338.26,face:190,h:0.44},
+                {key:'leafy_bush',x:-158.45,z:-256.26,face:19,h:1.37},
+                {key:'leafy_bush',x:241.88,z:-277.98,face:275,h:1.33},
+                {key:'leafy_bush',x:242.72,z:-277.56,face:77,h:0.86},
+                {key:'leafy_bush',x:79.76,z:-348.48,face:66,h:1.37},
+                {key:'psxg_dead_bush_2',x:24.96,z:-337.09,face:67,h:0.78},
+                {key:'leafy_bush',x:26.28,z:-338.28,face:200,h:0.87},
+                {key:'leafy_bush',x:-57.72,z:-306,face:318,h:1.3},
+                {key:'leafy_bush',x:-56.99,z:-304.93,face:200,h:0.77},
+                {key:'leafy_bush',x:-82.17,z:-345.07,face:131,h:1.44},
+                {key:'psxg_dead_bush_2',x:-120.96,z:-341.48,face:351,h:0.72},
+                {key:'leafy_bush',x:-235.55,z:-321.35,face:139,h:1.68},
+                {key:'psxg_dead_bush_2',x:-57.89,z:-351.41,face:214,h:0.75},
+                {key:'psxg_dead_bush_2',x:-61.7,z:-351.19,face:316,h:0.59},
+                {key:'psxg_dead_bush_2',x:-54.9,z:-351.89,face:43,h:0.64},
+                {key:'leafy_bush',x:-64.93,z:-351.25,face:65,h:1.54},
+                {key:'psxg_dead_bush_2',x:-47.94,z:-342.1,face:293,h:0.68},
+                {key:'psxg_dead_bush_2',x:-47.75,z:-342.35,face:74,h:0.44},
+                {key:'psxg_dead_bush_2',x:-135.2,z:-346.09,face:284,h:0.58},
+                {key:'psxg_dead_bush_2',x:-123.96,z:-350.96,face:269,h:0.56},
+                {key:'leafy_bush',x:208.17,z:-278.17,face:118,h:1.32},
+                {key:'leafy_bush',x:-232.99,z:-320.31,face:81,h:1.7},
+                {key:'leafy_bush',x:-233.75,z:-320.92,face:264,h:0.95},
+                {key:'leafy_bush',x:-117.6,z:-320.25,face:258,h:1.71},
+                {key:'leafy_bush',x:163.51,z:-337.26,face:208,h:1.53},
+                {key:'leafy_bush',x:162.9,z:-338.55,face:13,h:0.97},
+                {key:'leafy_bush',x:148.77,z:-351.89,face:195,h:1.18},
+                {key:'leafy_bush',x:194.86,z:-337.52,face:32,h:1.73},
+                {key:'leafy_bush',x:195.48,z:-337.59,face:306,h:0.96},
+                {key:'psxg_dead_bush_2',x:-134.23,z:-338.53,face:45,h:0.6},
+                {key:'psxg_dead_bush_2',x:-43.8,z:-348.07,face:196,h:0.65},
+                {key:'psxg_dead_bush_2',x:-43.53,z:-349.05,face:71,h:0.39},
+                {key:'psxg_dead_bush_2',x:-113.88,z:-309.72,face:250,h:0.59},
+                {key:'leafy_bush',x:215.62,z:-291.95,face:148,h:1.3},
+                {key:'leafy_bush',x:215.21,z:-291,face:70,h:0.92},
+                {key:'leafy_bush',x:102,z:-289.57,face:233,h:1.37},
+                {key:'leafy_bush',x:152.36,z:-350.98,face:28,h:1.73},
+                {key:'psxg_dead_bush_2',x:-128.82,z:-351.31,face:198,h:0.68},
+                {key:'leafy_bush',x:212.53,z:-291.92,face:243,h:1.5},
+                {key:'leafy_bush',x:213.09,z:-286.02,face:270,h:1.6},
+                {key:'leafy_bush',x:212.44,z:-288.74,face:229,h:1.4},
+                {key:'leafy_bush',x:212.96,z:-288.91,face:274,h:0.72},
+                {key:'leafy_bush',x:162.72,z:-341.92,face:197,h:1.21},
+                {key:'leafy_bush',x:209.31,z:-275.54,face:242,h:1.59},
+                {key:'leafy_bush',x:236.23,z:-275.28,face:351,h:1.36},
+                {key:'leafy_bush',x:237.41,z:-275.08,face:260,h:0.89},
+                {key:'leafy_bush',x:243.37,z:-272.41,face:254,h:1.2},
+                {key:'leafy_bush',x:215.15,z:-285.26,face:207,h:1.2},
+                {key:'psxg_dead_bush_2',x:-45.01,z:-346.01,face:290,h:0.58},
+                {key:'leafy_bush',x:-44.24,z:-345.19,face:244,h:0.91},
+                {key:'psxg_dead_bush_2',x:96.75,z:-341.73,face:66,h:0.8},
+                {key:'leafy_bush',x:215.91,z:-281.36,face:152,h:1.72},
+                {key:'leafy_bush',x:57.2,z:-272.13,face:297,h:1.4},
+                {key:'leafy_bush',x:56.31,z:-272.23,face:22,h:1},
+                {key:'psxg_dead_bush_2',x:208.51,z:-271.09,face:141,h:0.83},
+                {key:'leafy_bush',x:195.57,z:-340.63,face:5,h:1.7},
+                {key:'leafy_bush',x:195.12,z:-339.68,face:196,h:0.73},
+                {key:'psxg_dead_bush_2',x:-148.68,z:-296.15,face:119,h:0.7},
+                {key:'leafy_bush',x:-148.94,z:-295.24,face:146,h:0.86},
+                {key:'psxg_dead_bush_2',x:-120.9,z:-350.54,face:21,h:0.58},
+                {key:'leafy_bush',x:-121.51,z:-351.68,face:119,h:0.78},
+                {key:'leafy_bush',x:-57.1,z:-310.3,face:206,h:1.64},
+                {key:'leafy_bush',x:144.53,z:-351.82,face:237,h:1.32},
+                {key:'leafy_bush',x:144.93,z:-351.06,face:217,h:0.95},
+                {key:'leafy_bush',x:17.28,z:-326.1,face:358,h:1.41},
+                {key:'leafy_bush',x:17.17,z:-326.06,face:25,h:0.85},
+                {key:'psxg_dead_bush_2',x:220.11,z:-268.43,face:302,h:0.71},
+                {key:'leafy_bush',x:-116.55,z:-293.85,face:6,h:1.49},
+                {key:'leafy_bush',x:-116.96,z:-292.35,face:304,h:0.93},
+                {key:'leafy_bush',x:21.73,z:-323.92,face:96,h:1.43},
+                {key:'leafy_bush',x:22.8,z:-323.53,face:199,h:0.82},
+                {key:'psxg_dead_bush_2',x:98.98,z:-268.42,face:341,h:0.57},
+                {key:'leafy_bush',x:99.07,z:-268.77,face:171,h:0.74},
+                {key:'leafy_bush',x:-141.73,z:-310.23,face:86,h:1.67},
+                {key:'leafy_bush',x:-78.91,z:-350.43,face:272,h:1.49},
+                {key:'leafy_bush',x:-79.08,z:-350.32,face:71,h:0.94},
+                {key:'psxg_dead_bush_2',x:222.75,z:-268.57,face:113,h:0.81},
+                {key:'leafy_bush',x:-133.98,z:-309.71,face:76,h:1.54},
+                {key:'psxg_dead_bush_2',x:26,z:-340.94,face:15,h:0.69},
+                {key:'psxg_dead_bush_2',x:25.73,z:-340.04,face:94,h:0.47},
+                {key:'leafy_bush',x:-130.98,z:-309.14,face:172,h:1.65},
+                {key:'leafy_bush',x:-131.39,z:-310.04,face:105,h:1},
+                {key:'psxg_dead_bush_2',x:57.62,z:-275.02,face:300,h:0.73},
+                {key:'leafy_bush',x:21.65,z:-326.74,face:110,h:1.51},
+                {key:'leafy_bush',x:22.54,z:-326.27,face:322,h:0.95},
+                {key:'leafy_bush',x:-250.06,z:-309.77,face:165,h:1.17},
+                {key:'leafy_bush',x:-250.17,z:-310.37,face:60,h:0.87},
+                {key:'leafy_bush',x:237.15,z:-272.52,face:285,h:1.28},
+                {key:'leafy_bush',x:-138.62,z:-309.03,face:167,h:1.47},
+                {key:'leafy_bush',x:-144.9,z:-309.77,face:106,h:1.37},
+                {key:'leafy_bush',x:22.38,z:-320.15,face:96,h:1.73},
+                {key:'leafy_bush',x:-247.37,z:-310.51,face:75,h:1.51},
+                {key:'leafy_bush',x:-247.48,z:-309.56,face:64,h:0.96},
+                {key:'leafy_bush',x:211.21,z:-277.89,face:208,h:1.43},
+                {key:'leafy_bush',x:19.63,z:-321.61,face:221,h:1.7},
+                {key:'leafy_bush',x:183.46,z:-338.53,face:75,h:1.69},
+                {key:'psxg_dead_bush_2',x:-108.87,z:-306.01,face:251,h:0.74},
+                {key:'psxg_dead_bush_2',x:-170.39,z:-342.38,face:321,h:0.83},
+                {key:'leafy_bush',x:19.24,z:-326.66,face:54,h:1.22},
+                {key:'leafy_bush',x:216.34,z:-279.45,face:72,h:1.49},
+                {key:'leafy_bush',x:239.99,z:-272.56,face:297,h:1.39},
+                {key:'leafy_bush',x:240.23,z:-272.33,face:237,h:0.8},
+                {key:'leafy_bush',x:-242.54,z:-309.23,face:294,h:1.24},
+                {key:'psxg_dead_bush_2',x:-136.73,z:-338.63,face:173,h:0.66},
+                {key:'psxg_dead_bush_2',x:-138.16,z:-338.17,face:122,h:0.39},
+                {key:'psxg_dead_bush_2',x:-134.8,z:-351.36,face:137,h:0.78},
+                {key:'leafy_bush',x:-134.37,z:-320.43,face:101,h:1.43},
+                {key:'leafy_bush',x:-135.05,z:-319.89,face:138,h:0.87},
+                {key:'psxg_dead_bush_2',x:-150.2,z:-298.53,face:177,h:0.57},
+                {key:'leafy_bush',x:-149.85,z:-299.04,face:216,h:0.97},
+                {key:'leafy_bush',x:100.25,z:-288.66,face:245,h:1.75},
+                {key:'leafy_bush',x:-128.51,z:-319.85,face:140,h:1.2},
+                {key:'leafy_bush',x:-128.27,z:-320.85,face:352,h:0.89},
+                {key:'psxg_dead_bush_2',x:-208.61,z:-351.1,face:63,h:0.59},
+                {key:'psxg_dead_bush_2',x:-208.82,z:-351.32,face:233,h:0.48},
+                {key:'psxg_dead_bush_2',x:225.24,z:-271.71,face:298,h:0.69},
+                {key:'leafy_bush',x:224.43,z:-270.48,face:66,h:0.92},
+                {key:'leafy_bush',x:-131.8,z:-320.56,face:81,h:1.69},
+                {key:'psxg_dead_bush_2',x:-128.88,z:-345.2,face:280,h:0.65},
+                {key:'psxg_dead_bush_2',x:56.84,z:-277.26,face:245,h:0.79},
+                {key:'leafy_bush',x:57.18,z:-278.08,face:172,h:0.87},
+                {key:'leafy_bush',x:-239.01,z:-309.24,face:235,h:1.34},
+                {key:'leafy_bush',x:162.04,z:-345.21,face:11,h:1.32},
+                {key:'psxg_dead_bush_2',x:-149.37,z:-310.16,face:117,h:0.57},
+                {key:'leafy_bush',x:218.1,z:-292.3,face:322,h:1.39},
+                {key:'leafy_bush',x:217.81,z:-292,face:92,h:0.73},
+                {key:'leafy_bush',x:151.93,z:-347.95,face:181,h:1.19},
+                {key:'leafy_bush',x:218.38,z:-286.42,face:305,h:1.4},
+                {key:'leafy_bush',x:218.26,z:-285.84,face:16,h:0.97},
+                {key:'leafy_bush',x:218.31,z:-289.5,face:95,h:1.59},
+                {key:'leafy_bush',x:217.44,z:-289.37,face:189,h:0.96},
+                {key:'leafy_bush',x:103.13,z:-294.24,face:301,h:1.58},
+                {key:'leafy_bush',x:85.23,z:-310.37,face:234,h:1.24},
+                {key:'leafy_bush',x:88.55,z:-309.52,face:286,h:1.21},
                 {key:'iron_lamp_post',x:176.4,z:-327.6},
                 {key:'iron_lamp_post',x:201.6,z:-327.6},
                 {key:'iron_lamp_post',x:176.4,z:-302.4},
@@ -58297,6 +58233,18 @@ const DOOR_HQ = {
                 {key:'exit_sign',x:-147.892,z:73.92,face:180,floor:true},
                 {key:'potted_plant',x:-153.45,z:74.348,face:180,floor:true},
                 {key:'meshy_rowboat',x:-232.75,z:-12.25,face:0,y:0.74},
+                {key:'leafy_bush',x:-246.75,z:-5.25,face:289,h:1.45},
+                {key:'leafy_bush',x:-246.75,z:-1.75,face:46,h:1},
+                {key:'rose_bed',x:-236.25,z:-5.25,face:0},
+                {key:'wild_flowers',x:-248.5,z:-16.1,face:129},
+                {key:'wild_flowers',x:-243.25,z:-1.75,face:128},
+                {key:'leafy_bush',x:-242.9,z:-33.6,face:19,h:1.2},
+                {key:'wild_flowers',x:-241.15,z:-30.8,face:110},
+                {key:'wild_flowers',x:-244.3,z:-29.575,face:42},
+                {key:'leafy_bush',x:-214.9,z:-33.775,face:73,h:1.3},
+                {key:'wild_flowers',x:-219.1,z:-32.9,face:330},
+                {key:'wild_flowers',x:-216.3,z:-28.35,face:116},
+                {key:'wild_flowers',x:-220.85,z:-9.8,face:271},
                 {key:'metro_bin',x:-240.8,z:-96.25,face:0},
                 {key:'metro_bin',x:-219.8,z:-96.25,face:0},
                 {key:'metro_bin',x:-246.75,z:203.7,face:90},
@@ -61692,46 +61640,25 @@ const DOOR_HQ = {
                     {k:'tree',x:36.75,z:113.75,kind:'pine',h:8,r:0.8},
                     {k:'tree',x:8.75,z:138.25,kind:'pine',h:8,r:0.8},
                     {k:'tree',x:36.75,z:138.25,kind:'pine',h:8,r:0.8},
-                    {k:'tree',x:-120.75,z:26.25,kind:'pine',h:7.082845580298454,r:0.8},
-                    {k:'tree',x:-117.25,z:26.25,kind:'pine',h:6.927347888471559,r:0.8},
-                    {k:'tree',x:-103.25,z:26.25,kind:'tree_5',h:7.766346181277186,r:0.8},
-                    {k:'tree',x:-120.75,z:29.75,kind:'pine',h:8.01493307040073,r:0.8},
-                    {k:'tree',x:-117.25,z:29.75,kind:'pine',h:7.472362847998738,r:0.8},
-                    {k:'tree',x:-110.25,z:29.75,kind:'pine',h:8.29122278932482,r:0.8},
-                    {k:'tree',x:-103.25,z:29.75,kind:'tree_5',h:8.591159533476457,r:0.8},
-                    {k:'tree',x:-113.75,z:33.25,kind:'pine',h:7.437872199341655,r:0.8},
-                    {k:'tree',x:-120.75,z:36.75,kind:'pine',h:6.083670246647671,r:0.8},
-                    {k:'tree',x:-113.75,z:50.75,kind:'pine',h:7.772910141851753,r:0.8},
-                    {k:'tree',x:-110.25,z:54.25,kind:'pine',h:7.134009873960167,r:0.8},
-                    {k:'tree',x:-120.75,z:71.75,kind:'tree_5',h:6.045500738080591,r:0.8},
-                    {k:'tree',x:-113.75,z:75.25,kind:'pine',h:7.1623702046927065,r:0.8},
-                    {k:'tree',x:-99.75,z:75.25,kind:'pine',h:8.38599960040301,r:0.8},
-                    {k:'tree',x:-89.25,z:75.25,kind:'pine',h:6.791518421145156,r:0.8},
-                    {k:'tree',x:-117.25,z:82.25,kind:'tree_5',h:8.473399673122913,r:0.8},
-                    {k:'tree',x:-92.75,z:85.75,kind:'pine',h:6.548156751086935,r:0.8},
-                    {k:'tree',x:-110.25,z:89.25,kind:'pine',h:7.180170132312924,r:0.8},
-                    {k:'tree',x:-113.75,z:92.75,kind:'pine',h:7.270374169573188,r:0.8},
-                    {k:'tree',x:-92.75,z:92.75,kind:'pine',h:7.79423539317213,r:0.8},
-                    {k:'tree',x:-113.75,z:99.75,kind:'pine',h:8.731642013881356,r:0.8},
-                    {k:'tree',x:-110.25,z:99.75,kind:'pine',h:8.294840566115454,r:0.8},
-                    {k:'tree',x:-99.75,z:99.75,kind:'pine',h:7.448985861847177,r:0.8},
-                    {k:'tree',x:-89.25,z:103.25,kind:'pine',h:6.414222965715453,r:0.8},
-                    {k:'tree',x:-117.25,z:106.75,kind:'pine',h:8.536966500570998,r:0.8},
-                    {k:'tree',x:-110.25,z:106.75,kind:'tree_5',h:6.62466672132723,r:0.8},
-                    {k:'tree',x:-99.75,z:106.75,kind:'tree_5',h:6.625093508278951,r:0.8},
-                    {k:'tree',x:-92.75,z:106.75,kind:'tree_5',h:7.956395617453381,r:0.8},
-                    {k:'tree',x:-89.25,z:106.75,kind:'pine',h:8.093896221835166,r:0.8},
-                    {k:'tree',x:-120.75,z:110.25,kind:'pine',h:6.547129561426118,r:0.8},
-                    {k:'tree',x:-110.25,z:110.25,kind:'pine',h:8.564611101988703,r:0.8},
-                    {k:'tree',x:-99.75,z:110.25,kind:'pine',h:7.175671914126724,r:0.8},
-                    {k:'tree',x:-96.25,z:110.25,kind:'pine',h:8.753566405037418,r:0.8},
-                    {k:'tree',x:-92.75,z:113.75,kind:'pine',h:6.0604489215184,r:0.8},
-                    {k:'tree',x:-89.25,z:124.25,kind:'tree_5',h:6.669678075006232,r:0.8},
-                    {k:'tree',x:-113.75,z:127.75,kind:'pine',h:8.972396523691714,r:0.8},
-                    {k:'tree',x:-89.25,z:127.75,kind:'pine',h:7.730444549582899,r:0.8},
-                    {k:'tree',x:-89.25,z:131.25,kind:'pine',h:7.861131205921993,r:0.8},
-                    {k:'tree',x:-113.75,z:134.75,kind:'pine',h:6.087111826054752,r:0.8},
-                    {k:'tree',x:-99.75,z:138.25,kind:'pine',h:8.232559551950544,r:0.8},
+                    {k:'tree',x:-120.75,z:54.25,kind:'pine',h:8.205548859667033,r:0.8},
+                    {k:'tree',x:-117.25,z:50.75,kind:'pine',h:6.379826151533052,r:0.8},
+                    {k:'tree',x:-120.75,z:47.25,kind:'pine',h:6.860948526766151,r:0.8},
+                    {k:'tree',x:-120.75,z:78.75,kind:'pine',h:8.582583400653675,r:0.8},
+                    {k:'tree',x:-117.25,z:82.25,kind:'pine',h:6.371041031554341,r:0.8},
+                    {k:'tree',x:-120.75,z:85.75,kind:'pine',h:6.809115962823853,r:0.8},
+                    {k:'tree',x:-92.75,z:26.25,kind:'pine',h:8.98408734658733,r:0.8},
+                    {k:'tree',x:-89.25,z:29.75,kind:'pine',h:7.72664624848403,r:0.8},
+                    {k:'tree',x:-96.25,z:26.25,kind:'pine',h:6.04141292674467,r:0.8},
+                    {k:'tree',x:-89.25,z:33.25,kind:'pine',h:6.9398473154287785,r:0.8},
+                    {k:'tree',x:-92.75,z:29.75,kind:'pine',h:5.794391030212864,r:0.8},
+                    {k:'tree',x:-120.75,z:99.75,kind:'pine',h:8.042797163012438,r:0.8},
+                    {k:'tree',x:-117.25,z:106.75,kind:'pine',h:6.867910157889128,r:0.8},
+                    {k:'tree',x:-120.75,z:110.25,kind:'pine',h:8.391628373181447,r:0.8},
+                    {k:'tree',x:-89.25,z:57.75,kind:'pine',h:7.953937821555883,r:0.8},
+                    {k:'tree',x:-89.25,z:64.75,kind:'pine',h:6.088493278482929,r:0.8},
+                    {k:'tree',x:-92.75,z:61.25,kind:'pine',h:6.010434770025313,r:0.8},
+                    {k:'tree',x:-117.25,z:134.75,kind:'pine',h:7.671644356800243,r:0.8},
+                    {k:'tree',x:-120.75,z:127.75,kind:'pine',h:6.059070897754282,r:0.8},
                     {k:'tree',x:-107.05,z:-137.87,kind:'pine',h:11.47,r:0.8},
                     {k:'tree',x:61.25,z:-137.83,kind:'pine',h:11.97,r:0.8},
                     {k:'tree',x:93.33,z:-137.29,kind:'pine',h:9.7,r:0.8},
@@ -63439,7 +63366,12 @@ const DOOR_HQ = {
                 {key:'park_bench',x:33.25,z:134.75,face:315}, {key:'angel_statue',x:12.25,z:134.75,face:45}, {key:'angel_statue',x:36.75,z:120.75,face:225}, {key:'angel_statue',x:-103.25,z:1.75,face:180},
                 {key:'stone_urn',x:-110.25,z:36.75}, {key:'stone_urn',x:-99.75,z:36.75}, {key:'iron_garden_bench',x:-103.25,z:43.75,face:180}, {key:'lion_statue',x:-110.25,z:120.75,face:90},
                 {key:'lion_statue',x:-99.75,z:120.75,face:270}, {key:'iron_garden_bench',x:-103.25,z:85.75,face:270}, {key:'iron_lamp_post',x:-103.25,z:33.25}, {key:'iron_lamp_post',x:-103.25,z:99.75},
-                {key:'iron_lamp_post',x:-103.25,z:134.75}, {key:'lion_statue',x:-29.75,z:-141.75,face:180}, {key:'lion_statue',x:-12.25,z:-141.75,face:180}, {key:'lion_statue',x:-29.75,z:-40.25,face:0},
+                {key:'iron_lamp_post',x:-103.25,z:134.75}, {key:'cypress_tree',x:-110.25,z:78.75}, {key:'cypress_tree',x:-103.25,z:78.75}, {key:'cypress_tree',x:-110.25,z:89.25},
+                {key:'cypress_tree',x:-110.25,z:99.75}, {key:'cypress_tree',x:-110.25,z:110.25}, {key:'cypress_tree',x:-103.25,z:110.25}, {key:'cypress_tree',x:-110.25,z:54.25},
+                {key:'cypress_tree',x:-103.25,z:54.25}, {key:'olive_tree',x:-92.75,z:127.75,face:20}, {key:'olive_tree',x:-96.25,z:134.75,face:200}, {key:'olive_tree',x:-89.25,z:138.25,face:110},
+                {key:'grape_trellis',x:-89.25,z:124.25,face:90}, {key:'iron_garden_bench',x:-99.75,z:127.75,face:90}, {key:'rose_bed',x:-99.75,z:85.75,face:90}, {key:'rose_bed',x:-99.75,z:43.75,face:0},
+                {key:'rose_bed',x:-110.25,z:43.75,face:0}, {key:'rose_bed',x:-113.75,z:26.25,face:0}, {key:'rose_bed',x:-96.25,z:33.25,face:0}, {key:'stone_urn',x:-117.25,z:26.25},
+                {key:'cypress_tree',x:-113.75,z:138.25}, {key:'lion_statue',x:-29.75,z:-141.75,face:180}, {key:'lion_statue',x:-12.25,z:-141.75,face:180}, {key:'lion_statue',x:-29.75,z:-40.25,face:0},
                 {key:'lion_statue',x:-12.25,z:-40.25,face:0}, {key:'brazier',x:-27.6,z:-137.75}, {key:'brazier',x:-14.4,z:-137.75}, {key:'brazier',x:-27.6,z:-44.25},
                 {key:'brazier',x:-14.4,z:-44.25}, {key:'chariot',x:-21,z:-136.75,y:7.75,face:180}, {key:'chariot',x:-21,z:-45.25,y:7.75,face:0}, {key:'god_statue',x:31.46,z:-85.13,y:7,face:99},
                 {key:'angel_statue',x:28.91,z:-76.58,y:7,face:114}, {key:'god_statue',x:24.32,z:-68.94,y:7,face:128}, {key:'angel_statue',x:17.98,z:-62.6,y:7,face:140}, {key:'god_statue',x:10.59,z:-57.35,y:7,face:149},
@@ -66109,15 +66041,25 @@ const DOOR_HQ = {
                 {key:'snow_sled',x:-39.9,z:-41.3,face:300}, {key:'snow_heap',x:-33.25,z:-56}, {key:'snow_heap',x:-15.4,z:-47.25}, {key:'snow_heap',x:-37.1,z:-22.75},
                 {key:'snow_heap',x:-12.6,z:-12.6}, {key:'snow_heap',x:-33.6,z:-96.6}, {key:'snow_heap',x:-8.4,z:-96.25}, {key:'brazier',x:-26.25,z:-127.75},
                 {key:'firewood_stack',x:-19.25,z:-131.25,face:90}, {key:'cairn',x:-30.1,z:-123.9}, {key:'mountain_goat',x:-22.75,z:-124.25,face:160}, {key:'crow',x:-15.75,z:-114.1},
-                {key:'canvas_tent',x:57.75,z:-82.25,face:180}, {key:'campfire',x:61.25,z:-75.6}, {key:'kettle',x:63.7,z:-74.9}, {key:'wooden_barrel',x:71.75,z:-82.25},
-                {key:'snow_sled',x:67.9,z:-72.8,face:20}, {key:'ice_fishing_hole',x:61.25,z:-61.6}, {key:'fishing_rod',x:63,z:-62.3}, {key:'snowshoes',x:56.7,z:-78.75},
-                {key:'ice_block',x:50.4,z:-40.25}, {key:'xmas_snowman_2',x:73.5,z:-32.9,face:250}, {key:'stone_altar',x:68.25,z:-134.75,face:180}, {key:'hw_candles',x:68.25,z:-134.75,y:0.9},
-                {key:'votive_stand',x:75.25,z:-134.75}, {key:'sea_chest',x:57.75,z:-134.75,face:180}, {key:'campfire',x:61.25,z:-123.9}, {key:'fur_rug',x:68.6,z:-123.55,face:20},
-                {key:'owl_perched',x:75.6,z:-121.1}, {key:'cairn',x:64.4,z:8.4}, {key:'firewood_stack',x:50.75,z:19.6}, {key:'psxg_dead_tree_2',x:66.5,z:15.75},
-                {key:'meshy_stump',x:-75.95,z:-5.25,face:0}, {key:'snow_heap',x:-50.05,z:-9.1,face:67}, {key:'psxg_dead_bush_1',x:-68.6,z:-16.45,face:134}, {key:'meshy_stump',x:-33.95,z:-85.75,face:201},
-                {key:'snow_heap',x:-8.05,z:-81.9,face:268}, {key:'psxg_dead_bush_1',x:-22.75,z:-71.05,face:335}, {key:'meshy_stump',x:11.55,z:36.75,face:42}, {key:'snow_heap',x:37.45,z:32.9,face:109},
-                {key:'psxg_dead_bush_1',x:22.4,z:25.55,face:176}, {key:'meshy_stump',x:26.25,z:51.45,face:243}, {key:'psxg_dead_bush_2',x:-26.6,z:-92.4}, {key:'psxg_dead_bush_1',x:-15.4,z:-86.1},
-                {key:'psxg_rock_1',x:-29.75,z:-79.1}, {key:'meshy_fallen_log',x:-16.45,z:-75.6,face:110}, {key:'psxg_rock_2',x:-12.25,z:-89.6}, {key:'psxg_dead_tree_1',x:-32.9,z:-72.1},
+                {key:'fallen_log',x:-33.25,z:106.75,face:85,hand:true}, {key:'snow_heap',x:-32.55,z:107.97,face:87,hand:true,h:0.5}, {key:'rf_grass_5_frost',x:-34.82,z:105.88,face:154,hand:true}, {key:'rf_grass_6_frost',x:-31.32,z:105.7,face:221,hand:true},
+                {key:'psxg_dead_bush_2',x:-35.35,z:107.97,face:288,hand:true}, {key:'psxg_rock_1',x:-5.6,z:63,face:20,hand:true}, {key:'psxg_rock_2',x:-6.83,z:64.4,face:87,hand:true}, {key:'psxg_rock_4',x:-4.73,z:61.6,face:154,hand:true},
+                {key:'psxg_dead_bush_1',x:-7.17,z:61.95,face:221,hand:true}, {key:'rf_grass_5_frost',x:-4.55,z:64.58,face:288,hand:true}, {key:'rf_grass_4_frost',x:-5.95,z:65.63,face:355,hand:true}, {key:'meshy_stump',x:-5.6,z:24.5,face:20,hand:true},
+                {key:'axe_chopping_block',x:-5.08,z:26.42,face:87,hand:true}, {key:'psx_hand_saw_1',x:-3.85,z:25.2,face:154,hand:true}, {key:'rf_grass_6_frost',x:-7,z:25.2,face:221,hand:true}, {key:'psxg_dead_bush_2',x:-6.83,z:23.1,face:288,hand:true},
+                {key:'meshy_fallen_log',x:12.25,z:-21,face:0,hand:true}, {key:'snow_heap',x:11.73,z:-23.1,face:87,hand:true,h:0.6}, {key:'psxg_dead_bush_1',x:13.3,z:-18.9,face:154,hand:true}, {key:'rf_grass_5_frost',x:11.2,z:-19.25,face:221,hand:true},
+                {key:'rf_grass_6_frost',x:13.48,z:-22.75,face:288,hand:true}, {key:'cairn',x:32.9,z:-91,face:20,hand:true}, {key:'psxg_rock_2',x:34.3,z:-89.95,face:87,hand:true}, {key:'psxg_rock_3',x:31.67,z:-89.77,face:154,hand:true},
+                {key:'rf_grass_4_frost',x:33.25,z:-92.57,face:221,hand:true}, {key:'psxg_dead_bush_2',x:31.32,z:-92.05,face:288,hand:true}, {key:'psxg_dead_tree_1',x:27.3,z:-135.1,face:20,hand:true}, {key:'psxg_rock_1',x:28.88,z:-134.05,face:87,hand:true},
+                {key:'psxg_rock_4',x:26.25,z:-133.52,face:154,hand:true}, {key:'rf_grass_5_frost',x:28.52,z:-136.32,face:221,hand:true}, {key:'crow',x:27.65,z:-134.93,face:288,hand:true,y:3.2}, {key:'psxg_dead_bush_1',x:-36.4,z:-71.75,face:20,hand:true},
+                {key:'psxg_dead_bush_2',x:-35,z:-70.7,face:87,hand:true}, {key:'rf_grass_5_frost',x:-37.62,z:-71.05,face:154,hand:true}, {key:'psxg_rock_3',x:-35.87,z:-73.15,face:221,hand:true}, {key:'psxg_rock_1',x:46.9,z:-43.75,face:120,hand:true},
+                {key:'psxg_dead_bush_2',x:48.3,z:-44.8,face:87,hand:true}, {key:'rf_grass_6_frost',x:45.67,z:-42.7,face:154,hand:true}, {key:'rf_grass_4_frost',x:47.95,z:-42.17,face:221,hand:true}, {key:'canvas_tent',x:57.75,z:-82.25,face:180},
+                {key:'campfire',x:61.25,z:-75.6}, {key:'kettle',x:63.7,z:-74.9}, {key:'wooden_barrel',x:71.75,z:-82.25}, {key:'snow_sled',x:67.9,z:-72.8,face:20},
+                {key:'ice_fishing_hole',x:61.25,z:-61.6}, {key:'fishing_rod',x:63,z:-62.3}, {key:'snowshoes',x:56.7,z:-78.75}, {key:'ice_block',x:50.4,z:-40.25},
+                {key:'xmas_snowman_2',x:73.5,z:-32.9,face:250}, {key:'stone_altar',x:68.25,z:-134.75,face:180}, {key:'hw_candles',x:68.25,z:-134.75,y:0.9}, {key:'votive_stand',x:75.25,z:-134.75},
+                {key:'sea_chest',x:57.75,z:-134.75,face:180}, {key:'campfire',x:61.25,z:-123.9}, {key:'fur_rug',x:68.6,z:-123.55,face:20}, {key:'owl_perched',x:75.6,z:-121.1},
+                {key:'cairn',x:64.4,z:8.4}, {key:'firewood_stack',x:50.75,z:19.6}, {key:'psxg_dead_tree_2',x:66.5,z:15.75}, {key:'meshy_stump',x:-75.95,z:-5.25,face:0},
+                {key:'snow_heap',x:-50.05,z:-9.1,face:67}, {key:'psxg_dead_bush_1',x:-68.6,z:-16.45,face:134}, {key:'meshy_stump',x:-33.95,z:-85.75,face:201}, {key:'snow_heap',x:-8.05,z:-81.9,face:268},
+                {key:'psxg_dead_bush_1',x:-22.75,z:-71.05,face:335}, {key:'meshy_stump',x:11.55,z:36.75,face:42}, {key:'snow_heap',x:37.45,z:32.9,face:109}, {key:'psxg_dead_bush_1',x:22.4,z:25.55,face:176},
+                {key:'meshy_stump',x:26.25,z:51.45,face:243}, {key:'psxg_dead_bush_2',x:-26.6,z:-92.4}, {key:'psxg_dead_bush_1',x:-15.4,z:-86.1}, {key:'psxg_rock_1',x:-29.75,z:-79.1},
+                {key:'meshy_fallen_log',x:-16.45,z:-75.6,face:110}, {key:'psxg_rock_2',x:-12.25,z:-89.6}, {key:'psxg_dead_tree_1',x:-32.9,z:-72.1},
             ],
             agents: [],
             npcSpots: [{x:19.25,z:-117.25,face:0,race:'ice queen'},{x:-19.25,z:8.75,face:180,race:'bigfoot'},{x:-61.25,z:-5.25,face:90,race:'wendigo'},{x:29.75,z:40.25,face:270,race:'yeti'},{x:64.75,z:-127.75,face:180,race:'monk'}],
@@ -66531,7 +66473,17 @@ const DOOR_HQ = {
                 {key:'fae_flower_small_pink',x:-34.65,z:44.8,face:70}, {key:'fae_flower_small_pink',x:-37.8,z:45.5,face:140}, {key:'fae_flower_small_pink',x:-32.9,z:41.65,face:210}, {key:'fae_flower_small_pink',x:-38.85,z:43.75,face:280},
                 {key:'lake_rock',x:-51.45,z:35,face:40}, {key:'ocean_rock_6',x:-49.35,z:37.1,face:160,noBlock:true,h:0.55}, {key:'ocean_rock_7',x:-53.2,z:37.45,face:300,noBlock:true,h:0.35}, {key:'lake_rock',x:-39.9,z:61.25,face:210},
                 {key:'ocean_rock_9',x:-37.45,z:59.85,face:20,noBlock:true,h:0.7}, {key:'ocean_rock_7',x:-41.65,z:63.35,face:110,noBlock:true,h:0.3}, {key:'ocean_rock_6',x:-36.4,z:62.65,face:250,noBlock:true,h:0.4}, {key:'butterfly',x:-52.5,z:42,floor:true,y:1.1},
-                {key:'blue_morpho',x:-38.5,z:50.75,floor:true,y:1.4}, {key:'monarch',x:-54.6,z:56.7,floor:true,y:1.2}, {key:'butterfly',x:-42,z:32.9,floor:true,y:1.3},
+                {key:'blue_morpho',x:-38.5,z:50.75,floor:true,y:1.4}, {key:'monarch',x:-54.6,z:56.7,floor:true,y:1.2}, {key:'butterfly',x:-42,z:32.9,floor:true,y:1.3}, {key:'fallen_log',x:-61.6,z:-17.5,face:5,hand:true},
+                {key:'woods_glowcap',x:-60.55,z:-16.45,face:87,hand:true,noLight:true}, {key:'woods_glowcap',x:-60.02,z:-17.85,face:154,hand:true,noLight:true}, {key:'moss_clump',x:-62.3,z:-18.73,face:221,hand:true}, {key:'fae_flower_small_violet',x:-63.17,z:-16.1,face:288,hand:true},
+                {key:'fae_flower_small_violet',x:-62.3,z:-15.23,face:355,hand:true}, {key:'stump',x:-19.6,z:-24.5,face:20,hand:true}, {key:'fae_toadstool',x:-18.37,z:-23.8,face:87,hand:true,noLight:true,h:0.8}, {key:'fae_toadstool',x:-19.25,z:-22.93,face:154,hand:true,noLight:true,h:0.55},
+                {key:'woods_glowcap',x:-20.65,z:-23.45,face:221,hand:true,noLight:true}, {key:'moss_clump',x:-18.2,z:-25.55,face:288,hand:true}, {key:'rf_grass_6',x:-21,z:-25.55,face:355,hand:true}, {key:'lake_rock',x:-14,z:11.55,face:30,hand:true},
+                {key:'ocean_rock_7',x:-12.6,z:12.08,face:87,hand:true,noBlock:true,h:0.35}, {key:'fae_flower_small_blue',x:-15.4,z:11.2,face:154,hand:true}, {key:'fae_flower_small_blue',x:-14.87,z:12.6,face:221,hand:true}, {key:'fae_flower_small_blue',x:-16.1,z:12.42,face:288,hand:true},
+                {key:'rf_grass_5',x:-12.08,z:10.67,face:355,hand:true}, {key:'woods_healflower',x:38.5,z:11.2,face:20,hand:true}, {key:'woods_healflower',x:39.9,z:10.15,face:87,hand:true}, {key:'leafy_bush',x:36.92,z:9.97,face:154,hand:true},
+                {key:'fae_flower_small_pink',x:39.55,z:12.42,face:221,hand:true}, {key:'fae_flower_small_pink',x:37.98,z:12.6,face:288,hand:true}, {key:'moss_clump',x:40.6,z:11.55,face:355,hand:true}, {key:'meshy_fallen_log',x:64.4,z:-21,face:0,hand:true},
+                {key:'woods_glowcap',x:65.63,z:-19.6,face:87,hand:true,noLight:true}, {key:'woods_glowcap',x:65.1,z:-22.57,face:154,hand:true,noLight:true}, {key:'moss_clump',x:63.35,z:-20.65,face:221,hand:true}, {key:'fae_flower_small_pink',x:66.32,z:-20.82,face:288,hand:true},
+                {key:'meshy_stump',x:-5.25,z:64.05,face:20,hand:true}, {key:'fae_toadstool',x:-4.2,z:63.17,face:87,hand:true,noLight:true,h:0.7}, {key:'woods_glowcap',x:-6.3,z:63.35,face:154,hand:true,noLight:true}, {key:'moss_clump',x:-4.9,z:65.28,face:221,hand:true},
+                {key:'fae_flower_small_violet',x:-7.17,z:64.75,face:288,hand:true}, {key:'fae_flower_small_violet',x:-3.33,z:64.92,face:355,hand:true}, {key:'psxg_rock_1',x:40.6,z:60.55,face:20,hand:true}, {key:'psxg_rock_3',x:42,z:61.25,face:87,hand:true},
+                {key:'fae_flower_small_violet',x:39.38,z:60.03,face:154,hand:true}, {key:'fae_flower_small_violet',x:39.9,z:61.6,face:221,hand:true}, {key:'woods_glowcap',x:41.83,z:59.5,face:288,hand:true,noLight:true}, {key:'rf_grass_6',x:38.68,z:61.6,face:355,hand:true},
             ],
             agents: [],
             npcSpots: [{x:-12.25,z:-15.75,face:220,race:'fairy',gender:'female'},{x:22.75,z:-1.75,face:135,race:'unicorn'},{x:29.75,z:-12.25,face:250,race:'mushroom girl'},{x:-54.25,z:-50.75,face:230,race:'gnome',gender:'male'}],
@@ -66755,7 +66707,23 @@ const DOOR_HQ = {
                 {key:'fern',x:-1.75,z:39.9}, {key:'psxg_rock_1',x:-7,z:74.9}, {key:'fern',x:9.1,z:75.6}, {key:'psxg_rock_1',x:-8.4,z:88.9},
                 {key:'fern',x:10.5,z:89.25}, {key:'hw_candles',x:5.6,z:78.4}, {key:'owl_perched',x:-3.5,z:89.6}, {key:'chimney_smoke',x:28,z:29.4,y:1.84,rise:5},
                 {key:'chimney_smoke',x:35.7,z:42.7,y:1.6,rise:5}, {key:'firewood_stack',x:22.75,z:22.75}, {key:'firewood_stack',x:22.75,z:50.75,face:90}, {key:'hand_cart',x:36.4,z:23.1,face:30},
-                {key:'axe_chopping_block',x:25.9,z:40.25}, {key:'canvas_tent',x:29.75,z:49.7,face:0}, {key:'wooden_barrel',x:39.9,z:36.4}, {key:'canvas_tent',x:82.25,z:40.25,face:200},
+                {key:'axe_chopping_block',x:25.9,z:40.25}, {key:'canvas_tent',x:29.75,z:49.7,face:0}, {key:'wooden_barrel',x:39.9,z:36.4}, {key:'fallen_log',x:-47.25,z:-49,face:2,hand:true},
+                {key:'moss_clump',x:-47.77,z:-50.22,face:87,hand:true}, {key:'moss_clump',x:-46.9,z:-47.6,face:154,hand:true}, {key:'mushroom2',x:-46.02,z:-49.7,face:221,hand:true,h:0.55}, {key:'mushroom2',x:-45.67,z:-48.82,face:288,hand:true,h:0.38},
+                {key:'rf_grass_6',x:-48.3,z:-46.9,face:355,hand:true}, {key:'rf_grass_5',x:-46.02,z:-46.55,face:62,hand:true}, {key:'psxg_rock_1',x:-25.9,z:-32.9,face:20,hand:true}, {key:'psxg_rock_3',x:-24.33,z:-31.85,face:87,hand:true},
+                {key:'psxg_rock_4',x:-26.95,z:-31.5,face:154,hand:true}, {key:'moss_clump',x:-25.37,z:-33.95,face:221,hand:true}, {key:'wild_flowers',x:-27.3,z:-33.77,face:288,hand:true}, {key:'wild_flowers',x:-24.15,z:-34.3,face:355,hand:true},
+                {key:'rf_grass_5',x:-23.62,z:-32.55,face:62,hand:true}, {key:'meshy_stump',x:-7,z:-23.45,face:20,hand:true}, {key:'mushroom2',x:-5.95,z:-22.75,face:87,hand:true,h:0.5}, {key:'mushroom2',x:-7.87,z:-22.4,face:154,hand:true,h:0.34},
+                {key:'moss_clump',x:-6.83,z:-22.22,face:221,hand:true}, {key:'leafy_bush',x:-9.1,z:-24.5,face:288,hand:true}, {key:'rf_grass_6',x:-5.25,z:-24.15,face:355,hand:true}, {key:'hw_stone_2',x:5.25,z:-2.1,face:20,hand:true},
+                {key:'psxg_rock_2',x:6.65,z:-1.58,face:87,hand:true}, {key:'wild_flowers',x:3.85,z:-1.75,face:154,hand:true}, {key:'wild_flowers',x:4.55,z:-0.53,face:221,hand:true}, {key:'wild_flowers',x:6.13,z:-0.35,face:288,hand:true},
+                {key:'rf_flower_1',x:7.17,z:-0.53,face:355,hand:true}, {key:'rf_grass_5',x:3.15,z:-0.7,face:62,hand:true}, {key:'meshy_fallen_log',x:26.25,z:-25.55,face:90,hand:true}, {key:'wild_flowers',x:24.5,z:-24.67,face:87,hand:true},
+                {key:'wild_flowers',x:28.35,z:-24.5,face:154,hand:true}, {key:'moss_clump',x:26.6,z:-26.6,face:221,hand:true}, {key:'woods_healflower',x:23.63,z:-26.25,face:288,hand:true}, {key:'rf_grass_5',x:29.22,z:-25.9,face:355,hand:true},
+                {key:'psxg_rock_1',x:60.9,z:1.75,face:200,hand:true}, {key:'psxg_rock_3',x:62.13,z:0.52,face:87,hand:true}, {key:'moss_clump',x:60.2,z:0.7,face:154,hand:true}, {key:'leafy_bush',x:62.47,z:3.67,face:221,hand:true},
+                {key:'woods_healflower',x:59.85,z:3.33,face:288,hand:true}, {key:'rf_grass_6',x:63.35,z:2.1,face:355,hand:true}, {key:'leafy_bush',x:40.25,z:15.75,face:20,hand:true}, {key:'leafy_bush',x:41.47,z:18.2,face:87,hand:true},
+                {key:'wild_flowers',x:39.2,z:17.15,face:154,hand:true}, {key:'wild_flowers',x:39.55,z:14.17,face:221,hand:true}, {key:'rf_flower_3',x:41.3,z:14.35,face:288,hand:true}, {key:'psxg_rock_4',x:38.67,z:18.73,face:355,hand:true},
+                {key:'moss_clump',x:-89.95,z:-71.4,face:20,hand:true}, {key:'mushroom2',x:-87.68,z:-71.05,face:87,hand:true,h:0.45}, {key:'mushroom2',x:-87.15,z:-71.75,face:154,hand:true,h:0.3}, {key:'rf_grass_6',x:-90.3,z:-73.32,face:221,hand:true},
+                {key:'moss_clump',x:-54.95,z:3.85,face:20,hand:true}, {key:'mushroom2',x:-53.55,z:4.02,face:87,hand:true,h:0.5}, {key:'rf_grass_5',x:-56,z:6.65,face:154,hand:true}, {key:'wild_flowers',x:-57.4,z:-1.4,face:20,hand:true},
+                {key:'wild_flowers',x:-56,z:-0.52,face:87,hand:true}, {key:'wild_flowers',x:-58.1,z:0.35,face:154,hand:true}, {key:'rf_flower_1',x:-55.3,z:0.7,face:221,hand:true}, {key:'rf_grass_5',x:-58.8,z:-1.05,face:288,hand:true},
+                {key:'woods_healflower',x:-0.35,z:75.6,face:20,hand:true}, {key:'woods_healflower',x:4.2,z:75.25,face:87,hand:true}, {key:'wild_flowers',x:1.05,z:74.55,face:154,hand:true}, {key:'wild_flowers',x:2.63,z:74.38,face:221,hand:true},
+                {key:'moss_clump',x:1.75,z:76.83,face:288,hand:true}, {key:'rf_grass_5',x:-1.75,z:74.55,face:355,hand:true}, {key:'rf_grass_6',x:5.6,z:74.38,face:62,hand:true}, {key:'canvas_tent',x:82.25,z:40.25,face:200},
                 {key:'meshy_campfire_ring',x:87.15,z:44.8}, {key:'firewood_stack',x:78.75,z:43.75,face:90}, {key:'wooden_bucket',x:85.4,z:42}, {key:'stump',x:89.25,z:43.75},
             ],
             agents: [],
@@ -98149,7 +98117,7 @@ function hqTerrainCompile(room, roomId) {
         /* THE KERB RULE (2026-09-17 — "the cone and fire hydrant placement feels completely random"): in a city plan the street furniture stands on the SIDEWALK, never in the roadway (the traffic's) and never deep in a yard */
         if (opts.kerb && info.gen && info.gen.sidewalk > 0 && info.maskD) { const md = hqTerrainMaskAt(info, px, pz); if (md > info.gen.sidewalk - rad * 0.5 || md < rad + 0.35) return false; }
         for (const q of placed) if (Math.hypot(px - q.x, pz - q.z) < q.r + rad + (opts.apart || 0.6)) return false;
-        for (const p of room.props || []) { if (p.wall || p.ceil) continue; if (Math.hypot(px - (p.x || 0), pz - (p.z || 0)) < rad + 0.9) return false; }
+        for (const p of room.props || []) { if (p.wall || p.ceil || (opts.skip && opts.skip.has(p))) continue; if (Math.hypot(px - (p.x || 0), pz - (p.z || 0)) < rad + 0.9) return false; }   // (`skip`: the scenic pass's dropped rows, 11-25)
         for (const q of (room.npcSpots || []).concat(room.agents || [], room.onlineSpots || [])) if (q && q.x != null && Math.hypot(px - q.x, pz - q.z) < rad + 1.0) return false;
         for (const c of room.counters || []) if (Math.hypot(px - c.x, pz - c.z) < (c.radius || 2) + rad) return false;
         if (room.spawn && Math.hypot(px - room.spawn.x, pz - room.spawn.z) < rad + 1.6) return false;
@@ -107768,6 +107736,7 @@ var ZONE_FLORA = (function () {
            a climate's `stones` multiplies it (0 = none: the city's mown lawns). Off: window.EW_NO_FLORA_STONES, all of it: EW_NO_GROUND_RULES */
         near: { m: 2.6, k: 2.6, far: 0.3 },
         stones: { files: [1, 2, 3, 4].map(i => 'asset:world/packs/afgameassets_retro_foliage/rf_rock_' + i + '.glb'), blobM: 9, size: [0.10, 0.30], big: [0.35, 0.70], bigShare: 0.12, sink: 0.25,
+                  clump: 0.62, pow: 1.6, gain: 6.5, spread: 0.8, off: 3.2, pathM: 1.2,   // G6b (11-25): fewer, tighter heaps (a blob's top, not half the ground) and never on a painted road or its shoulder (`off` m of one sheet all round)
                   on: { lawn: 0.012, rough: 0.06, floor: 0.025, dirt: 0.045, dry: 0.05, sand: 0.01, rock: 0.07, snow: 0.006 } },
         /* ── THE CLIMATES: per ground class, the layers that grow there · `trees` = the tree lists · `like` = the rest as that climate ── */
         climates: {
@@ -107808,7 +107777,7 @@ var ZONE_FLORA = (function () {
                         dirt: [L('fairy', 0.02, 0.8)], wet: [L('reed', 0.2, 0.2)], snow: [L('frost', 0.02, 0.6)] },
             autumn:   { name: 'autumn country', trees: T.autumn, grassDry: 0.3, lawn: [L('dry', 0.08, 0.3, 'g'), L('autumn', 0.035, 0.7), L('bush', 0.002, 0.5)], rough: [L('dry', 0.06, 0.3, 'g'), L('autumn', 0.02, 0.8)],
                         floor: [L('dry', 0.05, 0.3, 'g'), L('autumn', 0.03, 0.7), L('fern', 0.015, 0.7)], dirt: [L('dry', 0.012, 0.8)], dry: [L('dry', 0.03, 0.5)], wet: [L('reed', 0.3, 0.1)] },
-            city:     { name: 'city lawns', stones: 0, grassH: 0.55, lawn: [L('grass', 0.035, 0.5, 'g'), L('lawn', 0.03, 0.85)], sand: [L('dune', 0.008, 0.85)], dirt: [L('dry', 0.01, 0.8)] },
+            city:     { name: 'city lawns', stones: 0, grassH: 0.55, cover: 0.3, lawn: [L('grass', 0.035, 0.5, 'g'), L('lawn', 0.03, 0.85)], sand: [L('dune', 0.008, 0.85)], dirt: [L('dry', 0.01, 0.8)] },
             hills:    { name: 'dry coast hills', trees: T.hills, grassDry: 0.45, lawn: [L('dry', 0.08, 0.3, 'g'), L('poppy', 0.04, 0.7), L('sage', 0.012, 0.7)], rough: [L('dry', 0.07, 0.3, 'g'), L('poppy', 0.03, 0.75), L('sage', 0.015, 0.7)],
                         dirt: [L('dry', 0.02, 0.7), L('sage', 0.006, 0.8)], dry: [L('dry', 0.03, 0.6), L('sage', 0.01, 0.7)], sand: [L('dune', 0.008, 0.85)],
                         rock: [L('dry', 0.03, 0.6), L('sage', 0.012, 0.7), L('poppy', 0.01, 0.85)] },
@@ -107913,7 +107882,26 @@ function zoneFloraAt(roomId, x, z) {
 function zoneFloraGround(info, x, z) {
     const ni = Math.round((x - info.x0) / info.res), nj = Math.round((z - info.z0) / info.res); if (ni < 0 || nj < 0 || ni >= info.nx || nj >= info.nz) return null;
     const PT = info.paint, v = PT ? PT.P[nj * info.nx + ni] : 0, sheet = v ? PT.pal[v - 1] : info.floor;
-    return zoneFloraSheet(sheet);
+    return zoneFloraSheet(zoneFloraZoneSheet(info, x, z, sheet));
+}
+/* THE GROUND ZONES SEEN (2026-11-25, the Disaster City scenic pass): a room's `terrain.zones` box draws its squares in its own sheets (three-renderer.js
+   _hqGroundZones: a painted sheet the zone has a slot for stays, any other square, the unpainted ones too, is the zone's `floor`). The flora field, the blade
+   grass and the compose read the sheet the EYE sees, so the city's Hollywood Hills (zone floor grass_rocky) grow their dry grass, poppies and sage: they grew
+   nothing, the field read the city's street sheet under them. Read once a room (the zones are a handful of boxes); a zone's `out` boxes stay the room's own */
+function zoneFloraZoneSheet(info, x, z, sheet) {
+    let Z = info._zfZones;
+    if (Z === undefined) {
+        const zs = info.room && info.room.terrain && info.room.terrain.zones;
+        Z = (Array.isArray(zs) && zs.length && !(typeof window !== 'undefined' && window.EW_HQ_NO_GROUND_ZONES)) ? zs.filter(q => q && q.x1 > q.x0 && q.z1 > q.z0).map(q => ({ x0: +q.x0, z0: +q.z0, x1: +q.x1, z1: +q.z1,
+            out: Array.isArray(q.out) ? q.out : null, floor: q.floor || null, pal: new Set((q.pal || []).slice(0, 8).map(String)) })) : null;
+        if (Z && !Z.length) Z = null;
+        try { info._zfZones = Z; } catch (e) {}
+    }
+    if (!Z || (typeof window !== 'undefined' && window.EW_NO_FLORA_ZONES)) return sheet;   // (EW_NO_FLORA_ZONES: the old read, for a before / after)
+    for (let i = 0; i < Z.length; i++) { const q = Z[i]; if (x < q.x0 || x >= q.x1 || z < q.z0 || z >= q.z1) continue;
+        if (q.out && q.out.some(o => x >= o[0] && x < o[2] && z >= o[1] && z < o[3])) return sheet;
+        return (sheet && q.pal.has(String(sheet))) ? sheet : (q.floor || sheet); }
+    return sheet;
 }
 var _zfSheet = {};
 function zoneFloraSheet(sheet) {
@@ -107961,8 +107949,10 @@ function zoneFloraProps(roomId, info, freeFor) {
     if (typeof window !== 'undefined' && (window.EW_NO_FLORA || window.EW_NO_FLORA_PROPS)) return 0;
     const Z = zoneFloraRule(roomId); if (!Z || !info || !info.scatter || !info.S) return 0;
     const F = ZONE_FLORA, hw = info.S.w / 2, hd = info.S.d / 2; let n = 0;
+    const CMP = (typeof zoneFloraComposeOf === 'function') ? zoneFloraComposeOf(roomId) : null;
     (F.props || []).forEach(P => {
         if (!DOOR_HQ.catalogue[P.key]) return;
+        if (CMP && !P.water && CMP.keys && CMP.keys[P.key]) return;   // THE SCENIC PASS: a composed key's accents stand in its groups
         let s = ((typeof hqHash === 'function') ? hqHash('flora-prop|' + roomId + '|' + P.key) : 11) >>> 0, made = 0;
         const rnd = () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; };
         const mine = [], far = (x, z) => !mine.some(q => Math.hypot(q[0] - x, q[1] - z) < P.apart);
@@ -108079,6 +108069,149 @@ ZONE_FLORA.anchorKeys = {
     /* the Woods' field ferns and flowers grow most by standing things (the lead's `near`); in the grass in drifts, on bare dirt hardly at all */
     ['horror', 'redwood'].forEach(c => { const K = ZONE_FLORA.climates[c]; if (!K) return; ['lawn', 'floor', 'rough', 'dirt'].forEach(g => (K[g] || []).forEach(L => { if (!L.g) { L.near = true; L.far = (g === 'lawn' || g === 'floor') ? 0.55 : 0.05; } })); });   // in the grass: drifts (the clump), and more by every standing thing
 })();
+/* THE CITY'S GREEN SPACES (2026-11-25, scenic group 3: Disaster City's parks, yards, the Hollywood Hills, the beach front, the street trees; flora.md 00d).
+   No compose row for the city: the kit regroups a key's loose rows at anchors anywhere in the room, and the city room is one room of many places (a lobby's
+   fern, a yard's bush, the Hills' chaparral would trade places). Its pass is by hand in the district files (docs/disaster-city/districts/N.js THE CHAPARRAL IN
+   DRIFTS, U.js THE CAMPUS GREEN, COMPOSED) and here, in the city's field: a city lawn is MOWN, so its daisies grow at the feet of trees, benches, planters and
+   walls and hardly in a lawn's open middle (S7); the beach's dune grass gathers round the palms, rocks and huts the same way. The Hills (district N) keep
+   their own row: dry gold grass, poppy and sage drifts, which they now grow at all (zoneFloraZoneSheet: their grass_rocky ground zone). */
+(function () {
+    const K = ZONE_FLORA.climates.city; if (!K) return;
+    (K.lawn || []).forEach(L => { if (!L.g) { L.near = true; L.far = 0.22; L.n *= 0.5; } });   // half the daisies, nearly all of them at the feet (a lone tall daisy in a mown lawn read as a lollipop)
+    (K.sand || []).forEach(L => { if (!L.g) { L.near = true; L.far = 0.4; } });
+})();
+/* THE SCENIC PASS, ZONE GROUP 6: THE ISLANDS AND THE REST (2026-11-25, flora.md 00d group 6; the Woods' kit, no new code path): the tropical islands (the
+   Harbour, the Triangle, the Volcano Island, the Cove), Katana Island and Hollow Earth. Their hand-placed ferns, bushes, bananas and caps stood one by one
+   over open ground (S4/S5); here they stand in groups at a palm's foot, a rock, a lantern, a hut's corner, the jungle's edge. `thin` 0.75 keeps three quarters of
+   them (the Meshy fern is 7,700 triangles: the Volcano Island's 71 cost more than the rest of its plants together), so the triangles go down. The low layer
+   is the kit's own cheap tufts and blooms. The Vatican's gardens are composed by hand in docs/areas/afterlife/districts/G.js (no plant props to move). */
+(function () {
+    const AK = ZONE_FLORA.anchorKeys;   // a stone lantern, a Buddha, a sea rock or a lake rock is something a plant grows against, like a rock
+    if (!/kt_stone_lantern/.test(AK.rock.source)) AK.rock = new RegExp(AK.rock.source.replace(/\)\$$/, '|ocean_rock_\\d+|lake_rock|kt_stone_lantern|kt_stone_buddha|stone_lantern|kt_komainu)$'));
+    const grp = (on, per, size, low) => { const g = { per: per || [1, 1], size: size || [3, 5], on: on || ['tree', 'edge', 'rock'] }; if (low) g.low = low; return g; };
+    /* THE TROPICAL ISLANDS: palm-foot groups (fern + bush + a bloom), bananas by the huts' corners and the jungle's rim, a rock with flowers out in the grass */
+    const TLOW = [['rf_grass_5', 3], ['rf_grass_6', 3], ['rf_plant_7', 2], ['hp_flameflower', 1], ['hp_orange_flower', 1], ['hp_violet', 0.6]];
+    const tropical = { thin: 0.75, loose: 2.5, low: TLOW, treeR: { fl_jungle_tree: 2.8 }, keys: {   // (the low layer is cheap: bigger groups, the same few heavy plants)
+        fern: grp(['tree', 'edge', 'rock', 'log'], [1, 2], [5, 7]),
+        tropical_bush: grp(['tree', 'rock', 'wall', 'edge'], [1, 1], [5, 7]),
+        banana_plant: grp(['wall', 'edge', 'tree'], [1, 2], [3]),
+    },
+        islands: { every: 320, apart: 11, max: 40, on: { lawn: 1, floor: 1 }, rocks: [['psxg_rock_1', 2], ['psxg_rock_2', 2], ['psxg_rock_3', 2], ['psxg_rock_4', 1], ['rf_rock_1', 1]],
+                   with: [['hp_flameflower', 2], ['hp_orange_flower', 2], ['rf_grass_5', 3], ['rf_grass_6', 3], ['rf_plant_7', 2]], size: [3, 5] } };
+    /* KATANA ISLAND: a Japanese garden's way: ferns and moss at a stone lantern's foot, a rock, a trunk; bushes at a wall's corner; cosmos and iris beside them */
+    const JLOW = [['rf_grass_5', 2], ['rf_grass_6', 2], ['rf_plant_7', 2], ['rf_flower_1', 1], ['hp_violet', 1], ['rf_flower_7', 0.6]];
+    const japan = { thin: 0.75, loose: 2.5, low: JLOW, treeR: { fl_jungle_tree: 2.8 }, keys: {
+        fern: grp(['rock', 'tree', 'edge', 'stump'], [1, 2], [3, 5]),
+        tropical_bush: grp(['wall', 'tree', 'edge', 'rock'], [1, 1], [3, 5]),
+        banana_plant: grp(['wall', 'edge', 'tree'], [1, 1], [3]),
+        moss_clump: grp(['rock', 'log', 'stump'], [1, 2], [3], [['rf_grass_6', 1], ['rf_plant_7', 1]]),
+    },
+        islands: { every: 360, apart: 12, max: 30, on: { lawn: 1, floor: 1 }, rocks: [['psxg_rock_1', 2], ['psxg_rock_2', 2], ['psxg_rock_3', 2], ['rf_rock_1', 1], ['rf_rock_2', 1]],
+                   with: [['moss_clump', 1], ['rf_plant_7', 2], ['rf_grass_6', 3], ['rf_flower_1', 1.5], ['hp_violet', 1.5]], size: [3, 5] } };
+    /* HOLLOW EARTH: the caps grow from the fallen logs, the stumps and the rocks (never out on the open floor); each fae cap carries a light, so fewer of them */
+    const caps = grp(['log', 'stump', 'rock', 'tree'], [2, 3], [3, 5], [['rf_plant_7', 2], ['rf_grass_6_dark', 2], ['moss_clump', 0.6]]);
+    const hollow = { thin: 0.55, treeR: { fl_jungle_tree: 2.8 }, loose: 2.5, low: [['rf_plant_7', 2], ['rf_grass_6_dark', 2], ['rf_grass_5_dark', 2], ['hp_violet', 0.6]], keys: { mushroom2: caps, fae_toadstool: Object.assign({}, caps, { per: [1, 1] }) } };
+    Object.assign(ZONE_FLORA.compose, { tropical, japan, hollow });
+    /* the field's own ferns and blooms here were an even sprinkle over the open lawn (seen 11-25 on the Volcano Island): like the Woods, they now grow
+       most by standing things (`near`) and in a few drifts in the grass (`far` 0.3), so the open middle reads as grass with a fern bank at its rim (S6, S7) */
+    ['tropical', 'japan', 'hollow'].forEach(c => { const K = ZONE_FLORA.climates[c]; if (!K) return; ['lawn', 'floor'].forEach(g => (K[g] || []).forEach(L => { if (!L.g) { L.near = true; L.far = 0.3; } })); });
+})();
+/* ══ THE SCENIC PASS, GROUP 5: DRY AND COLD (2026-11-25, flora.md 00d; mondo: "is this just the woods or are you gonna do something similar for the rest of
+   the game or any where there's nature"). The Desert (Western Town, Giza, Area 51, the Circus), its highway and the dry routes, the Mountains + Olympus,
+   the mountain roads and the North Pole. The Woods' kit adapted to sparse ground: the bake tools sprinkled single rocks, dead bushes, tumbleweeds and
+   snow heaps one by one over the whole ground (R5 alone: 265 heaps and 241 rocks, every one alone). Here:
+   - THE OUTCROPS (`gather`): a rock standing ALONE (no other rock, trunk or wall within `loose` m) leaves its spot; the same rocks, `thin` of them, stand
+     again as OUTCROPS of 3-5 (one big, two middle, the rest small) centred on a few of the old spots (they were valid ground), a few dry tufts or a bush
+     at their foot. Rocks that already stood together, a district's hand-built rock garden, stay as they were.
+   - THE GROUPS (`keys`): cactus, agave, yucca, dead bush and tumbleweed grow FROM something (a nurse rock, a saguaro, a Joshua tree, a wall or fence where
+     the wind piles the weeds); snow heaps are DRIFTS banked against a rock, a trunk or a wall; alpine flowers and bushes in drifts at rocks and logs.
+   - the rule's barrel cacti (ZONE_FLORA.props, 26 a room at even spacing) join the groups instead.
+   A zone row names its row with `compose` (the climate name stays for the map and the Woods). Fewer pieces than before in every room (flora.md G11). */
+(function () {
+    const DRYLOW = [['rf_grass_5_dry', 3], ['rf_grass_6_dry', 3], ['rf_grass_3_dry', 2], ['rf_plant_9', 1.5], ['rf_plant_8', 1.5]];
+    const COLDLOW = [['rf_grass_3_frost', 3], ['rf_grass_5_frost', 2], ['rf_grass_6_frost', 2], ['rf_plant_9', 1]];
+    const ROCKS = /^(psxg_rock_\d|cave_stone|lake_rock|ocean_rock_\d)$/;
+    /* an outcrop's pieces: [key, weight] for the big one and the rest; heights in m (the pack rocks are knee-high as they come) */
+    const rocks = (big, rest) => ({ keys: ROCKS, loose: 4.5, thin: 0.5, apart: 11, size: [3, 4, 5], big, rest, bigH: [1.0, 1.6], midH: [0.55, 0.9], smallH: [0.25, 0.5] });
+    const dry = { thin: 0.45, loose: 2.5, low: DRYLOW, freeDropped: true,
+        gather: Object.assign(rocks([['psxg_rock_1', 3], ['cave_stone', 2]], [['psxg_rock_2', 3], ['psxg_rock_3', 3], ['psxg_rock_4', 3], ['psxg_rock_1', 1]]),
+                              { with: [['rf_grass_5_dry', 3], ['rf_grass_6_dry', 3], ['rf_plant_9', 2], ['psxg_dead_bush_2', 1]], foot: [2, 4] }),
+        keys: {
+            /* a cactus under its nurse: by a rock or a saguaro / Joshua tree, a small one or two beside it */
+            fl_barrel_cactus: { per: [2, 3], size: [3, 4], on: ['rock', 'tree'], low: [['rf_grass_6_dry', 2], ['rf_plant_8', 1]] },
+            agave:            { per: [1, 2], size: [3], on: ['rock', 'tree', 'wall'] },
+            yucca:            { per: [1, 1], size: [3], on: ['rock', 'wall', 'tree'] },
+            psxg_dead_bush_1: { per: [1, 2], size: [3, 5], on: ['rock', 'tree', 'stump', 'log'] },
+            psxg_dead_bush_2: { per: [1, 2], size: [3, 5], on: ['rock', 'tree', 'stump', 'log'] },
+            /* the wind piles tumbleweeds against a wall, a fence, a rock */
+            tumbleweed:       { per: [1, 2], size: [2, 3], on: ['wall', 'rock', 'stump', 'log', 'tree'], low: [['rf_grass_5_dry', 1]] },
+            /* the dry routes' desert flowers and bushes: a drift at a rock or a tree */
+            wild_flowers:     { per: [2, 3], size: [3, 5], on: ['rock', 'tree', 'log'], low: [['rf_grass_6_dry', 1]] },
+            leafy_bush:       { per: [1, 2], size: [3], on: ['tree', 'rock', 'log'] },
+        } };
+    const cold = { thin: 0.45, loose: 2.5, low: COLDLOW, freeDropped: true,
+        gather: Object.assign(rocks([['psxg_rock_1', 3], ['cave_stone', 2]], [['psxg_rock_2', 3], ['psxg_rock_3', 3], ['psxg_rock_4', 2], ['ocean_rock_5', 1]]),
+                              { with: [['rf_grass_3_frost', 3], ['rf_grass_5_frost', 2], ['snow_heap', 0.6]], foot: [1, 3] }),
+        keys: {
+            /* a drift banks against something: a rock, a trunk, a wall, a log; never a lone heap in the open */
+            snow_heap:        { per: [1, 2], size: [2, 3], on: ['rock', 'tree', 'wall', 'log', 'stump'], low: [['rf_grass_3_frost', 1]] },
+            wild_flowers:     { per: [2, 3], size: [3, 5], on: ['rock', 'tree', 'log'], low: [['rf_grass_3_frost', 1], ['rf_grass_3', 1]] },
+            woods_healflower: { per: [1, 2], size: [3], on: ['rock', 'tree', 'log'] },
+            leafy_bush:       { per: [1, 2], size: [3], on: ['tree', 'rock', 'log', 'edge'] },
+            psxg_dead_bush_1: { per: [1, 1], size: [3], on: ['rock', 'stump', 'log'] },
+            psxg_dead_bush_2: { per: [1, 1], size: [3], on: ['rock', 'stump', 'log'] },
+        } };
+    ZONE_FLORA.compose.dry = dry; ZONE_FLORA.compose.cold = cold;
+    if (ZONE_FLORA.zones.desert) ZONE_FLORA.zones.desert.compose = 'dry';
+    if (ZONE_FLORA.zones.mountains) ZONE_FLORA.zones.mountains.compose = 'cold';
+    if (ZONE_FLORA.zones.northpole) ZONE_FLORA.zones.northpole.compose = 'cold';
+    /* the desert's field plants (sage, grey weed, the rare bloom) gather round the standing things too (G5: under a nurse rock or a cactus), thin in the open */
+    ['desert'].forEach(c => { const K = ZONE_FLORA.climates[c]; if (!K) return; ['sand', 'dry', 'dirt', 'lawn', 'rough'].forEach(g => (K[g] || []).forEach(L => { if (!L.g && L.mix && L.mix[0] && /^rf_plant_[89]$/.test(L.mix[0][0])) { L.near = true; L.far = 0.45; } })); });
+})();
+/* ══ CAME A LOT, THE SCENIC PASS (2026-11-25, zone group 2, flora.md 00d): the Forest, the village, the Snowy Pines and the Fairy Forest compose BY ZONE ROW
+   (a zone row's `compose` NAME wins over the climate's row: `forest`, `meadow` and `snow` are shared with the routes, Stonehenge, the Mountains and the North Pole,
+   whose own threads write those climates' rows). `keepGroups` (m): a hand row with 2+ composed plants that near is ALREADY a group (a fairy ring, a drift, a
+   bed): it stays where it stood; only the lone ones dotted over open ground are taken and stood again at anchors. The Looking-Glass Garden is a formal garden
+   (its beds and hedge-foot flowers are the design): its own zone row, nothing composed. ══ */
+(function () {
+    const Zs = ZONE_FLORA.zones; if (!Zs || !Zs.fairy || !ZONE_FLORA.compose) return;
+    Zs.fairy.rooms = (Zs.fairy.rooms || []).filter(r => r !== 'site_prebuilt_camelot_ow_garden');
+    Zs.garden = { rooms: ['site_prebuilt_camelot_ow_garden'], c: 'fairy' };   // no compose name: nothing composed (the `fairy` climate has no row)
+    const hero = (on, per, size, low) => { const o = { per: per || [1, 1], size: size || [3, 5], on: on || ['tree', 'edge', 'rock'] }; if (low) o.low = low; return o; };
+    const caps = (low) => ({ per: [2, 4], size: [3, 5], on: ['log', 'stump', 'tree'], low: low || [['moss_clump', 1], ['rf_grass_6', 1]] });
+    const ROCKS = [['psxg_rock_1', 2], ['psxg_rock_2', 2], ['psxg_rock_3', 2], ['psxg_rock_4', 2], ['rf_rock_1', 1], ['rf_rock_2', 1]];
+    /* THE FOREST (temperate, green): oak and birch shade, ferns at the trunks (the field's), flowers in drifts at the rim, thorn and brush on the edge */
+    Zs.camelot.compose = 'cal_camelot'; ZONE_FLORA.compose['cal_camelot'] = { thin: 0.6, loose: 2.5, keepGroups: 2.6, low: [['rf_grass_5', 3], ['rf_grass_6', 3], ['rf_grass_4', 2], ['moss_clump', 1]], keys: {
+        woods_healflower: hero(['tree', 'edge', 'rock'], [1, 2], [3, 5]),
+        woods_thornvine: hero(['edge', 'tree', 'log'], [1, 1], [3]),
+        psxg_dead_bush_1: hero(['edge', 'log', 'rock'], [1, 2], [3]), psxg_dead_bush_2: hero(['edge', 'log', 'rock'], [1, 1], [3]),
+        leafy_bush: hero(['edge', 'tree', 'rock', 'wall'], [1, 2], [3, 5]),
+        wild_flowers: { per: [3, 4], size: [5, 7], on: ['edge', 'tree', 'rock'], low: [['rf_grass_5', 1], ['rf_flower_1', 1]] },
+        moss_clump: { per: [2, 3], size: [3], on: ['log', 'rock', 'stump'], low: [['rf_grass_6', 1]] },
+        mushroom2: caps() },
+      islands: { every: 340, apart: 11, max: 50, on: { lawn: 1, floor: 1 }, rocks: ROCKS,
+                 with: [['wild_flowers', 2], ['moss_clump', 2], ['rf_grass_5', 3], ['rf_grass_6', 3], ['woods_healflower', 0.6], ['mushroom2', 0.5]], size: [3, 5] } };
+    /* THE SNOWY PINES (winter): frosted brush and dead bushes at the pines' feet and by the stones; a few frost-rimmed rocks out in the snow */
+    Zs.pines.compose = 'cal_pines'; ZONE_FLORA.compose['cal_pines'] = { thin: 0.7, loose: 2.5, keepGroups: 2.6, low: [['rf_grass_5_frost', 3], ['rf_grass_6_frost', 3], ['rf_grass_4_frost', 2]], keys: {
+        psxg_dead_bush_1: hero(['tree', 'edge', 'rock', 'log'], [1, 2], [3, 5]), psxg_dead_bush_2: hero(['tree', 'edge', 'rock', 'log'], [1, 1], [3]) },
+      islands: { every: 520, apart: 14, max: 26, on: { lawn: 1, floor: 1, snow: 1, rough: 1 }, rocks: ROCKS.concat([['cairn', 0.4]]),
+                 with: [['rf_grass_5_frost', 3], ['rf_grass_6_frost', 3], ['psxg_dead_bush_2', 1]], size: [3] } };
+    /* THE FAIRY FOREST (always in bloom): glowcaps and toadstools at stumps, logs and trunks; the small fae flowers in drifts at the rim; the giant heal flower
+       never alone. Its rings, the meadow's drifts and the pool's edge are groups already (keepGroups) */
+    Zs.fairy.compose = 'cal_fairy'; ZONE_FLORA.compose['cal_fairy'] = { thin: 0.75, loose: 2.5, keepGroups: 2.6, low: [['rf_grass_5', 2], ['rf_grass_6', 2], ['fae_flower_small_blue', 1], ['fae_flower_small_pink', 1], ['moss_clump', 1]], keys: {
+        woods_glowcap: caps([['moss_clump', 1], ['rf_grass_6', 1], ['fae_flower_small_violet', 1]]), fae_toadstool: caps([['moss_clump', 1], ['woods_glowcap', 1]]),
+        fae_flower_small_pink: { per: [3, 4], size: [5, 7], on: ['edge', 'tree', 'rock'], low: [['rf_grass_5', 1]] },
+        fae_flower_small_blue: { per: [3, 4], size: [5, 7], on: ['edge', 'tree', 'rock'], low: [['rf_grass_5', 1]] },
+        fae_flower_small_violet: { per: [3, 4], size: [5, 7], on: ['edge', 'tree', 'rock'], low: [['rf_grass_5', 1]] },
+        woods_healflower: hero(['tree', 'edge', 'rock'], [1, 2], [3, 5]), leafy_bush: hero(['edge', 'tree', 'rock'], [1, 2], [3, 5]),
+        wild_flowers: { per: [3, 4], size: [5, 7], on: ['edge', 'tree', 'rock'] }, moss_clump: { per: [2, 3], size: [3], on: ['log', 'rock', 'stump'] }, mushroom2: caps() },
+      islands: { every: 380, apart: 11, max: 30, on: { lawn: 1, floor: 1 }, rocks: [['lake_rock', 2], ['psxg_rock_1', 2], ['psxg_rock_2', 2], ['psxg_rock_3', 1]],
+                 with: [['fae_flower_small_blue', 2], ['fae_flower_small_pink', 2], ['fae_flower_small_violet', 1], ['woods_glowcap', 2], ['moss_clump', 2], ['rf_grass_5', 2]], size: [3, 5] } };
+    /* THE VILLAGE (meadow round the town): its plants are kept as the district files stood them (beds, planters, reeds by the moat); out on the lawns a few
+       half-sunk rocks with meadow flowers at their foot break the grass (G6) */
+    Zs.village.compose = 'cal_village'; ZONE_FLORA.compose['cal_village'] = { thin: 1, loose: 2.5, keepGroups: 2.6, low: [['rf_grass_5', 2], ['rf_grass_6', 2], ['rf_flower_1', 1], ['rf_flower_3', 1]], keys: {},
+      islands: { every: 700, apart: 16, max: 24, on: { lawn: 1 }, rocks: ROCKS, with: [['wild_flowers', 3], ['rf_grass_5', 3], ['rf_grass_6', 2], ['rf_flower_1', 1], ['rf_flower_3', 1]], size: [3, 5] } };
+})();
 /* ══ THE SCENIC PASS, GROUP 4 · THE COUNTRYSIDE (2026-11-25, flora.md 00d: the Estate, Leylines, Stonehenge, the green routes). mondo: "is this just the
    woods or are you gonna do something similar for the rest of the game or any where there's nature". The Woods' groups kit, plus what the pilot had not
    done yet: S9 VIGNETTES (a small composed scene beside the path every 20-40 m, read off the room's own path sheet once at build), S1/S2/S10 THE FOCAL
@@ -108118,7 +108251,7 @@ ZONE_FLORA.composeRooms = {
     site_prebuilt_skinwalker_ow_lake: 'estate', site_prebuilt_skinwalker_ow_house: 'estate', site_prebuilt_skinwalker_ow_trail: 'estate',
     site_prebuilt_gobekli_ow_line: 'ley', site_prebuilt_gobekli_ow_babel: 'ley', site_prebuilt_gobekli_ow_bugs: 'ley',
     site_prebuilt_gobekli_ow_henge: 'henge',
-    site_ow_r1: 'route', site_ow_r6: 'route', site_ow_r4: 'route', site_ow_r12: 'route',
+    site_ow_r1: 'route', site_ow_r6: 'route',   // (R4 and R12 sit in the `camelot` zone row: Came A Lot's pass, group 2, composes them with `cal_camelot`)
 };
 (function () {
     const C = ZONE_FLORA.compose || (ZONE_FLORA.compose = {});
@@ -108149,7 +108282,7 @@ ZONE_FLORA.composeRooms = {
         islands: { every: 420, apart: 12, max: 14, on: { lawn: 1 }, rocks: [['psxg_rock_1', 2], ['psxg_rock_2', 2], ['psxg_rock_3', 2], ['lake_rock', 1]],
                    with: [['hp_daisy_bunch', 3], ['hp_daisy', 2], ['hp_bluebell', 2], ['rf_grass_5', 3], ['moss_clump', 1]], size: [3, 5] },
         scenes: { every: 26, off: [1.2, 2.4], max: 10, list: [['meadow_rock', 2], ['daisy_cairn', 2], ['rock_moss', 1]] } };
-    /* THE GREEN ROUTES (R1, R6, R4, R12): open woodland roads; the flowers and bushes gather at trunks, logs and rocks, the verges get their scenes */
+    /* THE GREEN ROUTES (R1, R6): open woodland roads; the flowers and bushes gather at trunks, logs and rocks, the verges get their scenes */
     C.route = { thin: 0.45, loose: 2.5, low: GREEN, keys: {
         wild_flowers: drift(), leafy_bush: hero(['tree', 'edge', 'rock', 'log'], [1, 2], [3, 5]), moss_clump: { per: [2, 3], size: [3], on: ['log', 'rock', 'stump'], low: [['rf_grass_6', 1]] },
         psxg_dead_bush_1: hero(['log', 'rock', 'edge'], [1, 1], [3]) },
@@ -108181,7 +108314,7 @@ function zoneFloraScenes(roomId, info, room, C, K, X) {
             const c = DOOR_HQ.catalogue[key]; if (!c) return; const rad = Math.max(0.2, c.foot || 0.25);
             if (!X.free(x, z, c.block ? rad : 0.15)) return;
             const face = f === 'par' ? Math.round(-Math.atan2(tz, tx) / D2R) : f === 'path' ? Math.round(-Math.atan2(-nz, -nx) / D2R + 90) : null;
-            X.stand(key, x, z, s, face); got++; out.pieces++; });
+            X.stand(key, x, z, s, null, face); got++; out.pieces++; });
         return got;
     };
     /* 1. the focal spots, by hand */
@@ -108210,22 +108343,68 @@ function zoneFloraScenes(roomId, info, room, C, K, X) {
 function zoneFloraComposeOf(roomId) {
     if (typeof window !== 'undefined' && (window.EW_NO_FLORA || window.EW_NO_FLORA_COMPOSE)) return null;
     const own = ZONE_FLORA.composeRooms && ZONE_FLORA.composeRooms[roomId]; if (own && ZONE_FLORA.compose && ZONE_FLORA.compose[own]) return ZONE_FLORA.compose[own];   // a room's own row (the countryside, group 4)
-    const Z = zoneFloraRule(roomId); return (Z && Z.c && ZONE_FLORA.compose && ZONE_FLORA.compose[Z.c]) || null;
+    const Z = zoneFloraRule(roomId), CC = ZONE_FLORA.compose; return (Z && CC && ((Z.compose && CC[Z.compose]) || (Z.c && CC[Z.c]))) || null;   // a zone row's own `compose` first (group 5: the Desert, the Mountains), else its climate's
 }
 function zoneFloraCompose(roomId, info, room, C, rows, K) {
     const cat = DOOR_HQ.catalogue, AK = ZONE_FLORA.anchorKeys, TAU = Math.PI * 2;
     let s = ((typeof hqHash === 'function') ? hqHash('compose|' + roomId) : 99) >>> 0;
     const rnd = () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; };
     const hw = info.S.w / 2 - 1.5, hd = info.S.d / 2 - 1.5;
+    /* 0. THE OUTCROPS (group 5, dry and cold, 11-25): the lone rocks leave their spots and stand again, fewer, as outcrops of 3-5 on a few of those spots */
+    const drop = new Set(), GA = C.gather; let outcrops = 0, gathered = 0;
+    const pick = (list) => { let t = 0; list.forEach(q => { t += q[1]; }); let r = rnd() * t; for (const q of list) { r -= q[1]; if (r <= 0) return q[0]; } return list[list.length - 1][0]; };
+    const free = (x, z, r) => !(Math.abs(x) > hw || Math.abs(z) > hd || (C.open && C.open.some(o => Math.hypot(x - o[0], z - o[1]) < o[2] + r)) || (K.keepClear && K.keepClear(x, z)) || (K.gate && K.gate(x, z, r)) || !K.freeFor(x, z, r, { slope: 0.35, apart: 0.3, skip: C.freeDropped ? drop : null }));
+    const stand = (key, x, z, scale, H, face) => { const c = cat[key]; if (!c) return; const rad = Math.max(0.25, (c.foot || 0.3));
+        K.placed.push({ x, z, r: rad }); const row = { key, x: Math.round(x * 100) / 100, z: Math.round(z * 100) / 100, y: K.hAt(x, z), face: (face != null ? face : Math.round(rnd() * 360)), r: rad, composed: true };
+        if (H) row.h = Math.round(H * 100) / 100; else if (c.h) row.h = Math.round(c.h * scale * 100) / 100; if (c.foot != null) row.foot = c.foot; info.scatter.push(row); };
+    if (GA) {
+        const rk = [];   // every rock of the room: hand rows (room.props) and the sprinkled scatter rows
+        (room.props || []).forEach(p => { if (p && p.key && GA.keys.test(p.key) && !p.level && !p.wall && !p.y && !p.pd && !p.lift) rk.push({ x: p.x || 0, z: p.z || 0, p }); });
+        info.scatter.forEach(f => { if (f && f.key && GA.keys.test(f.key) && !f.composed && !f.lift) rk.push({ x: f.x, z: f.z, f }); });
+        const others = [];   // what a rock may stand WITH: another rock, a trunk, a building's wall
+        (info.trees || []).forEach(t => others.push([t.x, t.z, Math.max(0.5, t.r || 0.6)]));
+        ((room.terrain && room.terrain.features) || []).forEach(f => { if (f && f.k === 'texbuilding' && f.w && f.d) others.push([f.x, f.z, Math.max(f.w, f.d) / 2]); });
+        const lone = rk.filter(q => rk.filter(o => o !== q && Math.hypot(o.x - q.x, o.z - q.z) < GA.loose).length < (GA.with2 || 2) && !others.some(o => Math.hypot(o[0] - q.x, o[1] - q.z) - o[2] < GA.loose));   // alone, or one of a pair: a real outcrop is three or more
+        if (lone.length >= 3) {
+            const gone = new Set();
+            lone.forEach(q => { if (q.p) drop.add(q.p); else gone.add(q.f); });
+            if (gone.size) { info.scatter = info.scatter.filter(f => !gone.has(f)); for (let i = K.placed.length - 1; i >= 0; i--) { const q = K.placed[i]; for (const f of gone) if (Math.abs(q.x - f.x) < 0.01 && Math.abs(q.z - f.z) < 0.01) { K.placed.splice(i, 1); break; } } }
+            gathered = lone.length;
+            let left = Math.max(3, Math.round(lone.length * GA.thin));
+            const order = lone.slice(); for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)), t = order[i]; order[i] = order[j]; order[j] = t; }
+            const centres = [], R = (a) => a[0] + rnd() * (a[1] - a[0]);
+            for (const q of order) {
+                if (left <= 0) break;
+                if (centres.some(c => Math.hypot(c[0] - q.x, c[1] - q.z) < GA.apart)) continue;
+                const bk = pick(GA.big), br = Math.max(0.3, (cat[bk] && cat[bk].foot) || 0.4) * 1.4;
+                if (!cat[bk] || !free(q.x, q.z, br)) continue;
+                centres.push([q.x, q.z]); outcrops++;
+                stand(bk, q.x, q.z, 1, R(GA.bigH)); left--; let n = 1;
+                const size = GA.size[Math.floor(rnd() * GA.size.length)], a0 = rnd() * Math.PI * 2;
+                for (let k = 1; k < size && left > 0; k++) {
+                    const key2 = pick(GA.rest), c2 = cat[key2]; if (!c2) continue; const r2 = Math.max(0.25, c2.foot || 0.3);
+                    for (let t = 0; t < 4; t++) {   // round the big one on one side (a loose crescent, never a ring), the middle ones nearest
+                        const th = a0 + (k - size / 2) * (0.7 + rnd() * 0.5) + (rnd() - 0.5) * 0.4, d = br + r2 + 0.1 + rnd() * (k < 3 ? 0.6 : 1.3);
+                        const x = q.x + Math.cos(th) * d, z = q.z + Math.sin(th) * d; if (!free(x, z, r2)) continue;
+                        stand(key2, x, z, 1, R(k < 3 ? GA.midH : GA.smallH)); left--; n++; break;
+                    }
+                }
+                const nf = GA.foot ? GA.foot[0] + Math.floor(rnd() * (GA.foot[1] - GA.foot[0] + 1)) : 0;   // a few plants at its foot: it grows out of the ground, not onto it
+                for (let k = 0; k < nf; k++) { const key3 = pick(GA.with), c3 = cat[key3]; if (!c3) continue; const r3 = Math.max(0.2, c3.foot || 0.25);
+                    const th = a0 + Math.PI + (rnd() - 0.5) * 2.2, d = br + 0.3 + rnd() * 1.2, x = q.x + Math.cos(th) * d, z = q.z + Math.sin(th) * d;
+                    if (free(x, z, r3)) stand(key3, x, z, 0.55 + rnd() * 0.45); }
+            }
+        }
+    }
     /* 1. the anchors (read once) */
     const A = [], addA = (kind, x, z, ra) => { if (isFinite(x) && isFinite(z) && Math.abs(x) < hw && Math.abs(z) < hd) A.push({ kind, x, z, ra, used: false }); };
-    (info.trees || []).forEach(t => addA('tree', t.x, t.z, Math.max(0.5, t.r || 0.6)));
+    (info.trees || []).forEach(t => addA('tree', t.x, t.z, Math.max(0.5, (C.treeR && C.treeR[t.kind]) || t.r || 0.6)));   // `treeR`: a row's own trunk reach for a broad tree (a jungle tree's buttress roots hid the group)
     (info.thicket || []).forEach(t => { if (t.d == null || t.d > -3.5) addA('edge', t.x, t.z, Math.max(0.45, t.r || 0.5)); });
     const kindOf = (k) => AK.log.test(k) ? 'log' : AK.stump.test(k) ? 'stump' : AK.rock.test(k) ? 'rock' : null;
-    (info.scatter || []).concat(room.props || []).forEach(p => { if (!p || !p.key || p.level || p.wall) return; const k = kindOf(p.key); if (k) addA(k, p.x, p.z, k === 'log' ? 1.1 : k === 'rock' ? 0.8 : 0.5); });
+    (info.scatter || []).concat(room.props || []).forEach(p => { if (!p || !p.key || p.level || p.wall || drop.has(p)) return; const k = kindOf(p.key); if (k) addA(k, p.x, p.z, k === 'log' ? 1.1 : k === 'rock' ? 0.8 : 0.5); });
     ((room.terrain && room.terrain.features) || []).forEach(f => { if (f && f.k === 'texbuilding' && f.w && f.d) { const a = (f.rot || 0) * Math.PI / 180, c = Math.cos(a), si = Math.sin(a);
         [[1, 1], [1, -1], [-1, 1], [-1, -1]].forEach(([sx, sz]) => { const lx = sx * (f.w / 2 + 0.8), lz = sz * (f.d / 2 + 0.8); addA('wall', f.x + lx * c - lz * si, f.z + lx * si + lz * c, 0.4); }); } });
-    if (!A.length) return null;
+    if (!A.length) { info.composeDrop = drop; return null; }
     const G = new Map(), cell = 6, gk = (x, z) => Math.floor(x / cell) + ',' + Math.floor(z / cell);
     A.forEach((a, i) => { const k = gk(a.x, a.z); if (!G.has(k)) G.set(k, []); G.get(k).push(i); });
     const nearest = (x, z, R) => { let best = null, bd = R; const cx = Math.floor(x / cell), cz = Math.floor(z / cell), m = Math.ceil(R / cell);
@@ -108233,15 +108412,14 @@ function zoneFloraCompose(roomId, info, room, C, rows, K) {
     /* 2. the budget: the taken scatter rows + the hand rows standing loose in the open (those are dropped where they stood: info.composeDrop) */
     const want = {}, disc = {};
     rows.forEach(f => { want[f.key] = (want[f.key] || 0) + (f.n || 6); if (f.x != null && f.r) (disc[f.key] = disc[f.key] || []).push({ x: f.x, z: f.z, r: f.r }); });
-    const drop = new Set();
-    (room.props || []).forEach(p => { if (!p || !C.keys[p.key] || p.level || p.wall || p.y || p.pd || p.lift) return; if (nearest(p.x || 0, p.z || 0, C.loose || 3.5)) return; drop.add(p); want[p.key] = (want[p.key] || 0) + 1; });
+    /* the rule's accents of a composed key (the barrel cacti) join the groups: zoneFloraProps leaves them out */
+    { const Z = zoneFloraRule(roomId); (ZONE_FLORA.props || []).forEach(P => { if (P.water || !C.keys[P.key]) return; const w = (Z && P.climates && P.climates[Z.c]) || 0; if (w > 0) want[P.key] = (want[P.key] || 0) + Math.round(P.max * w); }); }
+    const KG = C.keepGroups ? (room.props || []).filter(q => q && C.keys[q.key] && !q.level && !q.wall) : null;   // (11-25, Came A Lot) a hand row with 2+ of its kind this near is a group already: it stays
+    (room.props || []).forEach(p => { if (!p || !C.keys[p.key] || drop.has(p) || p.level || p.wall || p.y || p.pd || p.lift || p.hand) return; if (nearest(p.x || 0, p.z || 0, C.loose || 3.5)) return;   // `hand`: a zone thread composed it by hand (a vignette): it stays
+        if (KG) { let n = 0; for (const q of KG) { if (q !== p && Math.abs((q.x || 0) - (p.x || 0)) < C.keepGroups && Math.abs((q.z || 0) - (p.z || 0)) < C.keepGroups && Math.hypot((q.x || 0) - (p.x || 0), (q.z || 0) - (p.z || 0)) < C.keepGroups && ++n >= 2) break; } if (n >= 2) return; }
+        drop.add(p); want[p.key] = (want[p.key] || 0) + 1; });
     /* 3. the groups */
-    const pick = (list) => { let t = 0; list.forEach(q => { t += q[1]; }); let r = rnd() * t; for (const q of list) { r -= q[1]; if (r <= 0) return q[0]; } return list[list.length - 1][0]; };
     const order = A.map((a, i) => i); for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)), t = order[i]; order[i] = order[j]; order[j] = t; }
-    const free = (x, z, r) => !(Math.abs(x) > hw || Math.abs(z) > hd || (C.open && C.open.some(o => Math.hypot(x - o[0], z - o[1]) < o[2] + r)) || (K.keepClear && K.keepClear(x, z)) || (K.gate && K.gate(x, z, r)) || !K.freeFor(x, z, r, { slope: 0.35, apart: 0.3 }));
-    const stand = (key, x, z, scale, face) => { const c = cat[key]; if (!c) return; const rad = Math.max(0.25, (c.foot || 0.3));
-        K.placed.push({ x, z, r: rad }); const row = { key, x: Math.round(x * 100) / 100, z: Math.round(z * 100) / 100, y: K.hAt(x, z), face: (face != null ? face : Math.round(rnd() * 360)), r: rad, composed: true };
-        if (c.h) row.h = Math.round(c.h * scale * 100) / 100; if (c.foot != null) row.foot = c.foot; info.scatter.push(row); };
     let groups = 0, pieces = 0, oi = 0;
     Object.keys(want).sort().forEach(key => {
         const R = C.keys[key]; if (!R || !cat[key]) return;
@@ -108290,9 +108468,9 @@ function zoneFloraCompose(roomId, info, room, C, rows, K) {
     /* 5. the vignettes beside the way + the focal spots (group 4, the countryside: zoneFloraScenes) */
     let scenes = null; if ((C.scenes || (ZONE_FLORA.focal && ZONE_FLORA.focal[roomId])) && typeof zoneFloraScenes === 'function') { try { scenes = zoneFloraScenes(roomId, info, room, C, K, { rnd, pick, free, stand }); } catch (e) { if (typeof console !== 'undefined') console.warn('[FLORA] the scenes', e); } }
     info.composeDrop = drop;
-    return { groups, pieces, dropped: drop.size, anchors: A.length, islands, scenes };
+    return { groups, pieces, dropped: drop.size, anchors: A.length, islands, outcrops, gathered, scenes };
 }
-if (typeof window !== 'undefined') Object.assign(window, { ZONE_FLORA, zoneFloraRule, zoneFloraAt, zoneFloraGround, zoneFloraSheet, zoneFloraTrees, zoneFloraProps, zoneFloraClimateOf, zoneFloraSwap, zoneFloraRoomId });
+if (typeof window !== 'undefined') Object.assign(window, { ZONE_FLORA, zoneFloraRule, zoneFloraAt, zoneFloraGround, zoneFloraZoneSheet, zoneFloraSheet, zoneFloraTrees, zoneFloraProps, zoneFloraClimateOf, zoneFloraSwap, zoneFloraRoomId });
 /* ══ THE ZONE LOOKS (2026-11-18, mondo: "I added an SBS horror texture pack in the inbox. Its basically just more textured and weathered
    textures. Can you use this horror pack and the urban decay texture pack to improve the aesthetics of the game, zone by zone. I especially
    want the "calm" textures replaced, those textures were only meant to be used on the ground, and even then i am okay with you not using them
