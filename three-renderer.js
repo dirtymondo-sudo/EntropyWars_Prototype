@@ -80827,9 +80827,9 @@ const ThreeRenderer = (function () {
        just blend in to the concrete"; docs/notes/flora.md rule G9): a street tree's small bed in paving gets a raised kerb in the streets' own
        kerb stone (_hqRoadTexKey('kerb'), the same concrete as the sidewalks' kerbs). `room.terrain.beds` rows = [x0, z0, x1, z1, nx, nz]: one side
        of the bed that meets paving (metres) + the normal into the bed (bake-disaster-city.js THE TREE PITS writes them; any room may carry them).
-       The kerb stands inside the bed's edge, HQ_PIT.h tall, HQ_PIT.w wide, cut every 1.75 m so it rides the ground. One merged mesh, built once
+       The kerb straddles the bed's edge (HQ_PIT.out of it past the edge, over the two sheets' soft blend), HQ_PIT.h tall, HQ_PIT.w wide, cut every 1.75 m so it rides the ground. One merged mesh, built once
        with the room: nothing runs per frame. */
-    var HQ_PIT = { h: 0.24, w: 0.22, step: 1.75 };
+    var HQ_PIT = { h: 0.32, w: 0.42, out: 0.27, step: 1.75 };   // out = the part of the kerb's width past the bed's edge: it covers the soft blend of the two ground sheets
     function _hqBuildTreePits(room, info, G) {
         var rows = room.terrain.beds, U = _hqUnits(), P = HQ_PIT, pos = [], uv = [], idx = [], n = 0;
         var hAt = function (x, z) { var y = hqTerrainHeight(info, x, z); return (y == null || y !== y) ? 0 : y; };
@@ -80839,12 +80839,14 @@ const ThreeRenderer = (function () {
         };
         for (var r = 0; r < rows.length; r++) {
             var q = rows[r], x0 = q[0], z0 = q[1], x1 = q[2], z1 = q[3], nx = q[4], nz = q[5];
-            var L = Math.hypot(x1 - x0, z1 - z0); if (!(L > 0)) continue;
-            var ux = (x1 - x0) / L, uz = (z1 - z0) / L, k = Math.max(1, Math.round(L / P.step));
+            var L0 = Math.hypot(x1 - x0, z1 - z0); if (!(L0 > 0)) continue;
+            var ux = (x1 - x0) / L0, uz = (z1 - z0) / L0;
+            x0 -= ux * P.out; z0 -= uz * P.out; x1 += ux * P.out; z1 += uz * P.out;   // each run reaches past its ends by the outer part: the corners close
+            var L = L0 + 2 * P.out, k = Math.max(1, Math.round(L / P.step));
             for (var i = 0; i < k; i++) {
                 var sa = L * i / k, sb = L * (i + 1) / k, pa = [x0 + ux * sa, z0 + uz * sa], pb = [x0 + ux * sb, z0 + uz * sb];
                 /* the outer line (on the side) and the inner line (W into the bed); the ground under each end, the kerb's top over the higher */
-                var oa = pa, ob = pb, ia = [pa[0] + nx * P.w, pa[1] + nz * P.w], ib = [pb[0] + nx * P.w, pb[1] + nz * P.w];
+                var oa = [pa[0] - nx * P.out, pa[1] - nz * P.out], ob = [pb[0] - nx * P.out, pb[1] - nz * P.out], ia = [pa[0] + nx * (P.w - P.out), pa[1] + nz * (P.w - P.out)], ib = [pb[0] + nx * (P.w - P.out), pb[1] + nz * (P.w - P.out)];
                 var goa = hAt(oa[0] - nx * 0.05, oa[1] - nz * 0.05), gob = hAt(ob[0] - nx * 0.05, ob[1] - nz * 0.05), gia = hAt(ia[0], ia[1]), gib = hAt(ib[0], ib[1]);
                 var ta = Math.max(goa, gia) + P.h, tb = Math.max(gob, gib) + P.h, uw = (sb - sa) / 1.75;
                 var OA0 = [oa[0], goa - 0.05, oa[1]], OB0 = [ob[0], gob - 0.05, ob[1]], OA1 = [oa[0], ta, oa[1]], OB1 = [ob[0], tb, ob[1]];

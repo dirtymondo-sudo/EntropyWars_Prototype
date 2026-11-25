@@ -3451,6 +3451,19 @@ print (`soil`): 11-15 = 31 removed (Cordon plaza 8, Mall concourse 8, Street mar
 beds, 38 palm beds; 399 trees left. No new art, no renderer change (the bed is the ground paint). Unseen in game (RULE #1c). Offer not
 built: a kerb stone / tree grate round a bed standing alone in a plaza.
 
+## DISASTER CITY, THE TREE PITS (2026-11-25, mondo: "The palm trees in disaster city that are on one sand tile need like a border/holder around it or something, not just blend in to the concrete"; flora.md rule G9)
+- The bed THE TREES STAND IN SOIL paints under a tree in paving was one bare square of sand or grass fading into the concrete. Now the same pass
+  (bake-disaster-city.js, right after the soil check) finds every outdoor tree's bed (its soil squares joined side by side); a bed of at most
+  6 squares is a STREET PIT, a bigger one is a lawn / park and stays open. Every side of a pit square that meets paving (the asphalt too) is a
+  row of `terrain.beds` [x0, z0, x1, z1, nx, nz] (the side's ends in metres + the normal into the bed, sides on one line merged).
+- three-renderer.js `_hqBuildTreePits` draws them once with the room: a raised kerb 0.32 m tall, 0.42 m wide, straddling the bed's edge (0.27 m of it past the edge: it hides the soft blend of the two ground sheets), in the
+  streets' own kerb stone (`_hqRoadTexKey('kerb')`, reused, no new model), cut every 1.75 m to ride the ground, ONE merged mesh, nothing per frame.
+  Any room may carry `terrain.beds`.
+- 11-25 bake: 110 pits, 431 kerb runs (palms on Bayside sand keep their sand, edged; broadleaf keep their grass). Indoor palms (an 'I' cell)
+  are skipped. The survey that day found no other zone with a tree on one bare square in paving (Vatican, Katana, Camelot: none).
+- A district thread adding a tree just rebakes: its pit gets a kerb by itself.
+- Proof 11-25: `/mnt/project-files/tree-pits/` (cloud probe with `--nogltf`: the full city with models no longer fits the cloud browser, so the palms themselves are not in the pictures).
+
 ## DISASTER CITY, THE EXTERIOR POLISH (2026-11-15, mondo: "do an exterior pass too on disaster city ... Bench clipping through a wall or curb, probably from the elevation pass. Make sure any generated shapes for buildings and stuff have a texture/material")
 One pass over every OUTDOOR prop of `site_prebuilt_downtown_streets` + the bare generated shapes. It lives in the BAKE (`docs/disaster-city/exterior-polish.js`, run by `node bake-disaster-city.js` after every other pass; `DC_NO_EXT=1` skips it, `DC_EXT_LOG=1` lists every row it touched), so a later district edit cannot bring a fault back. It MOVES rows and sets `floor`; it never drops one. NOT SEEN ON SCREEN (RULE #1c): checked offline against the compiled room.
 - **Why the prop check missed them**: props.js reads the ground from the tool's own squares (`LV.at`). The game stands a prop on the COMPILED ground. So the bake now writes the room to a scratch copy of data.js, loads it headless (load-data.js `file`), compiles it (`hqTerrainInfo`, about 8 s) and hands the real `hqTerrainHeight` / `hqTerrainFeet` to the pass, then writes the props again.
