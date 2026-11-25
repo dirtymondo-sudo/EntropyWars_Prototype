@@ -87500,6 +87500,9 @@ const ThreeRenderer = (function () {
             try { _hqPolishProp(p, cat, grp, { U: U, y: y, onWall: onWall, onCeil: onCeil, flip: flip, tabletop: tabletop, kick: kick }); } catch (e) {}   // THE PREMIUM POLISH: the contact disc, the sway, the kick, the seat
         };
         var rows = (room.props || []).concat(_hq.terrainScatter || []);
+        /* THE WOODS' FERNS (2026-11-25): a row of a key in data.js ZONE_FLORA.swap stands as its climate says (the Meshy rosette off the temperate
+           ground, the three-stick dead bush as the thorn bush); copies, never the room's own rows. Once a room build */
+        try { if (typeof zoneFloraSwap === 'function') rows = zoneFloraSwap(room, rows, _hq.terrain && _hq.terrain.roomId); } catch (e) { console.warn('[FLORA] the swap', e); }
         /* THE CEILING LAMPS FIRST (2026-11-09, mondo: "the inside of the mall is all black"): the room's HQ_PROP_LIGHT_MAX prop lights
            went to the first rows that asked, so the mall's two table lava lamps, two floor lamps and six slot machines took all ten and
            its nine saucers and sputniks over the atrium hung dark. When a room asks for more lights than it has left, the ceiling
