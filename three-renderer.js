@@ -3055,6 +3055,9 @@ const ThreeRenderer = (function () {
        the distance fog on a thing is thinned by how high over the horizon line it is SEEN, by the very curve the sky's haze uses, so a
        far ridge and the sky behind it carry the same share at every height. Rules + writers: EW_AIR and _ewAirHold. */
     var _EW_AIR = { x: 1, y: 0, z: 0, w: 0 }, _EW_AIR2 = { x: 0.001, y: 0, z: 0, w: 0 };
+    /* THE FAR COLOUR (2026-11-25, mondo: "yes you can do the distance thing"): atmospheric perspective. uEwDsat = { x: how far a thing very far off
+       loses its colour (0 = off), y: 1 / the distance (world units) over which it goes }. With or without Scene Fog; written by _ewAirHold (EW_AIR.desat / desatM) */
+    var _EW_DSAT = { x: 0, y: 0.001, z: 0, w: 0 };
     var _ewHFogPatched = false;
     function _ewHeightFogPatch() {
         if (_ewHFogPatched || typeof THREE === 'undefined' || !THREE.ShaderChunk || !THREE.ShaderLib) return false;
@@ -3067,7 +3070,7 @@ const ThreeRenderer = (function () {
             if (SC.fog_pars_vertex && SC.fog_vertex && SC.fog_pars_fragment && SC.fog_fragment && SC.fog_pars_vertex.indexOf('vEwFogY') < 0) {
                 SC.fog_pars_vertex = SC.fog_pars_vertex.replace('varying float ' + FD + ';', 'varying float ' + FD + ';\n\tvarying float vEwFogY;\n\tvarying vec2 vEwFogXZ;');
                 SC.fog_vertex = SC.fog_vertex.replace(FD + ' = - mvPosition.z;', FD + ' = - mvPosition.z;\n\tvec4 ewFogWp = vec4( position, 1.0 );\n\t#ifdef USE_INSTANCING\n\t\tewFogWp = instanceMatrix * ewFogWp;\n\t#endif\n\tewFogWp = modelMatrix * ewFogWp;\n\tvEwFogY = ewFogWp.y;\n\tvEwFogXZ = ewFogWp.xz;');
-                SC.fog_pars_fragment = SC.fog_pars_fragment.replace('varying float ' + FD + ';', 'varying float ' + FD + ';\n\tvarying float vEwFogY;\n\tvarying vec2 vEwFogXZ;\n\tuniform vec4 uEwHFog;\n\tuniform vec4 uEwBFog;\n\tuniform vec4 uEwBFog2;\n\tuniform vec4 uEwBFog3;\n\tuniform vec4 uEwAir;\n\tuniform vec4 uEwAir2;');
+                SC.fog_pars_fragment = SC.fog_pars_fragment.replace('varying float ' + FD + ';', 'varying float ' + FD + ';\n\tvarying float vEwFogY;\n\tvarying vec2 vEwFogXZ;\n\tuniform vec4 uEwHFog;\n\tuniform vec4 uEwBFog;\n\tuniform vec4 uEwBFog2;\n\tuniform vec4 uEwBFog3;\n\tuniform vec4 uEwAir;\n\tuniform vec4 uEwAir2;\n\tuniform vec4 uEwDsat;');
                 SC.fog_fragment = SC.fog_fragment.replace('gl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor, fogFactor );',
                     'float ewHf = uEwHFog.z * exp( - max( 0.0, vEwFogY - uEwHFog.x ) * uEwHFog.y ) * ( 1.0 - exp( - uEwHFog.w * ' + FD + ' ) );\n' +
                     '\tfogFactor *= exp( - max( ( vEwFogY - cameraPosition.y ) / max( length( vec3( vEwFogXZ - cameraPosition.xz, vEwFogY - cameraPosition.y ) ), 0.0001 ) - uEwAir2.w, 0.0 ) * uEwAir2.z );\n' +
@@ -3077,12 +3080,14 @@ const ThreeRenderer = (function () {
                     '\tfogFactor = clamp( 1.0 - ( 1.0 - fogFactor ) * ( 1.0 - ewHf ), 0.0, 1.0 );\n' +
                     '\tvec2 ewBq = max( max( uEwBFog.xy - vEwFogXZ, vEwFogXZ - uEwBFog.zw ), 0.0 );\n\tfloat ewBd = length( ewBq );\n\tfloat ewBr = ewBd * uEwBFog2.y;\n' +
                     '\tfloat ewBf = mix( 1.0 - exp( - ewBr * ewBr ), clamp( ewBd * uEwBFog3.y, 0.0, 1.0 ), uEwBFog3.z ) * exp( - max( 0.0, vEwFogY - uEwBFog2.z - ewBd * uEwBFog2.w ) * uEwBFog3.x );\n' +
-                    '\tfogFactor = mix( fogFactor, clamp( ewBf, 0.0, 1.0 ), uEwBFog2.x );\n\tgl_FragColor.rgb = mix( gl_FragColor.rgb, ewFc, fogFactor );');
+                    '\tfogFactor = mix( fogFactor, clamp( ewBf, 0.0, 1.0 ), uEwBFog2.x );\n' +
+                    '\tfloat ewDs = uEwDsat.x * ( 1.0 - exp( - ' + FD + ' * uEwDsat.y ) );\n\tgl_FragColor.rgb = mix( gl_FragColor.rgb, vec3( dot( gl_FragColor.rgb, vec3( 0.299, 0.587, 0.114 ) ) ), ewDs );\n' +   // THE FAR COLOUR
+                    '\tgl_FragColor.rgb = mix( gl_FragColor.rgb, ewFc, fogFactor );');
                 if (SC.fog_pars_fragment.indexOf('vEwFogY') < 0 || SC.fog_vertex.indexOf('vEwFogY') < 0) console.warn('[ThreeRenderer] the height fog patch found no anchor in three.js ' + THREE.REVISION);
             }
             var lib = THREE.ShaderLib;
-            for (var k in lib) if (lib[k] && lib[k].uniforms && lib[k].uniforms.fogColor) { lib[k].uniforms.uEwHFog = { value: _EW_HFOG }; lib[k].uniforms.uEwBFog = { value: _EW_BFOG }; lib[k].uniforms.uEwBFog2 = { value: _EW_BFOG2 }; lib[k].uniforms.uEwBFog3 = { value: _EW_BFOG3 }; lib[k].uniforms.uEwAir = { value: _EW_AIR }; lib[k].uniforms.uEwAir2 = { value: _EW_AIR2 }; }
-            if (THREE.UniformsLib && THREE.UniformsLib.fog) { THREE.UniformsLib.fog.uEwHFog = { value: _EW_HFOG }; THREE.UniformsLib.fog.uEwBFog = { value: _EW_BFOG }; THREE.UniformsLib.fog.uEwBFog2 = { value: _EW_BFOG2 }; THREE.UniformsLib.fog.uEwBFog3 = { value: _EW_BFOG3 }; THREE.UniformsLib.fog.uEwAir = { value: _EW_AIR }; THREE.UniformsLib.fog.uEwAir2 = { value: _EW_AIR2 }; }
+            for (var k in lib) if (lib[k] && lib[k].uniforms && lib[k].uniforms.fogColor) { lib[k].uniforms.uEwHFog = { value: _EW_HFOG }; lib[k].uniforms.uEwBFog = { value: _EW_BFOG }; lib[k].uniforms.uEwBFog2 = { value: _EW_BFOG2 }; lib[k].uniforms.uEwBFog3 = { value: _EW_BFOG3 }; lib[k].uniforms.uEwAir = { value: _EW_AIR }; lib[k].uniforms.uEwAir2 = { value: _EW_AIR2 }; lib[k].uniforms.uEwDsat = { value: _EW_DSAT }; }
+            if (THREE.UniformsLib && THREE.UniformsLib.fog) { THREE.UniformsLib.fog.uEwHFog = { value: _EW_HFOG }; THREE.UniformsLib.fog.uEwBFog = { value: _EW_BFOG }; THREE.UniformsLib.fog.uEwBFog2 = { value: _EW_BFOG2 }; THREE.UniformsLib.fog.uEwBFog3 = { value: _EW_BFOG3 }; THREE.UniformsLib.fog.uEwAir = { value: _EW_AIR }; THREE.UniformsLib.fog.uEwAir2 = { value: _EW_AIR2 }; THREE.UniformsLib.fog.uEwDsat = { value: _EW_DSAT }; }
             return true;
         } catch (e) { console.warn('[ThreeRenderer] the height fog patch failed', e); return false; }
     }
@@ -50824,7 +50829,7 @@ const ThreeRenderer = (function () {
         var V4 = function () { return T.uniform(new THREE.Vector4()).setGroup(T.renderGroup); };
         var F = function (v) { return T.uniform(v).setGroup(T.renderGroup); };
         /* kept across a rebuilt renderer (W4, device lost): the dressed materials, twins and cached Fn graphs read these nodes */
-        if (!_ewNodeU) _ewNodeU = { T: T, G: G, hfog: V4(), bfog: V4(), bfog2: V4(), bfog3: V4(), air: V4(), air2: V4(), ao: V4(), ao2: V4(), ftime: F(0), ftile: F(1), triCut: F(0.0005), fflow: F(new THREE.Vector2()), dressed: {} };
+        if (!_ewNodeU) _ewNodeU = { T: T, G: G, hfog: V4(), bfog: V4(), bfog2: V4(), bfog3: V4(), air: V4(), air2: V4(), dsat: V4(), ao: V4(), ao2: V4(), ftime: F(0), ftile: F(1), triCut: F(0.0005), fflow: F(new THREE.Vector2()), dressed: {} };
         try { _ewPlNodeSetup(r, G); } catch (e) { console.warn('[ThreeRenderer] the round worlds: no node bend', e); }   // THE ROUND WORLDS (2026-11-17)
         _ewNodeTick();
         /* the height fog: the scene's FogExp2 node, with the floor term folded in exactly as the GLSL patch does */
@@ -50864,7 +50869,11 @@ const ThreeRenderer = (function () {
                     var av = pw.xz.sub(T.cameraPosition.xz), as1 = T.max(T.dot(av, A.xy).div(T.max(T.length(av), 0.0001)), 0), asw = as1.mul(as1).mul(as1).mul(A.z);
                     fcol = T.mix(T.vec3(col), T.vec3(col).mul(T.vec3(1.30, 1.05, 0.76)).add(T.vec3(0.06, 0.025, 0)), asw);
                 }
-                fn = T.fog(fcol, T.mix(camF, T.clamp(bf, 0, 1), B2.x));
+                var ffac = T.mix(camF, T.clamp(bf, 0, 1), B2.x), DS = _ewNodeU.dsat;
+                if (DS) {   // THE FAR COLOUR (the GLSL patch's twin): the colour thins with distance, then the fog
+                    var ods = DS.x.mul(vz.mul(DS.y).negate().exp().oneMinus()), orgb = T.output.rgb, olum = T.dot(orgb, T.vec3(0.299, 0.587, 0.114));
+                    fn = T.vec4(T.mix(T.mix(orgb, T.vec3(olum, olum, olum), ods), T.vec3(fcol), ffac), T.output.a);
+                } else fn = T.fog(fcol, ffac);
                 fogs.set(f, fn);
             }
             this.get(scene).fogNode = fn;
@@ -50942,6 +50951,7 @@ const ThreeRenderer = (function () {
         var U = _ewNodeU; if (!U) return;
         U.hfog.value.set(_EW_HFOG.x, _EW_HFOG.y, _EW_HFOG.z, _EW_HFOG.w);
         if (U.air) { U.air.value.set(_EW_AIR.x, _EW_AIR.y, _EW_AIR.z, _EW_AIR.w); U.air2.value.set(_EW_AIR2.x, _EW_AIR2.y, _EW_AIR2.z, _EW_AIR2.w); }   // THE ONE AIR
+        if (U.dsat) U.dsat.value.set(_EW_DSAT.x, _EW_DSAT.y, _EW_DSAT.z, _EW_DSAT.w);   // THE FAR COLOUR
         if (U.bfog) { U.bfog.value.set(_EW_BFOG.x, _EW_BFOG.y, _EW_BFOG.z, _EW_BFOG.w); U.bfog2.value.set(_EW_BFOG2.x, _EW_BFOG2.y, _EW_BFOG2.z, _EW_BFOG2.w); U.bfog3.value.set(_EW_BFOG3.x, _EW_BFOG3.y, _EW_BFOG3.z, _EW_BFOG3.w); }
         U.ao.value.set(_HQ_AO.x, _HQ_AO.y, _HQ_AO.z, _HQ_AO.w);
         U.ao2.value.set(_HQ_AO2.x, _HQ_AO2.y, _HQ_AO2.z, _HQ_AO2.w);
@@ -107252,7 +107262,8 @@ const ThreeRenderer = (function () {
        colour the far ground fades to, and both turn warm toward a low sun (`warmDay` / `warmDusk`). The ground mist drifts
        (`mistMove`, patches `mistSize` m wide). Under water the water's own look is kept. A fight is drawn inside the same
        hold (_ewAirFightHold): no fog of its own. Off: window.EW_NO_ONE_AIR (the rooms' own fog, as before). */
-    var EW_AIR = { rho: 0.0045, base: 0.0022, farM: 420, hazeH: 0.16, mist: 0.42, mistH: 2.6, mistMove: 0.32, mistSize: 14, mistSpeed: 0.22, warmDay: 0.2, warmDusk: 0.75 };
+    var EW_AIR = { desat: 0.45, desatM: 60, rho: 0.0045, base: 0.0022, farM: 420, hazeH: 0.16, mist: 0.42, mistH: 2.6, mistMove: 0.32, mistSize: 14, mistSpeed: 0.22, warmDay: 0.2, warmDusk: 0.75 };
+    try { window.EW_AIR = EW_AIR; } catch (e) {}   // retune live (the hold reads it every frame)
     function _ewAirOff() { return typeof window !== 'undefined' && !!window.EW_NO_ONE_AIR; }
     /* the air's density per scene unit for a place drawn at U units a metre */
     function _ewAirDen(U, on, m) { return (EW_AIR.base + (on ? EW_AIR.rho * m : 0)) / (U || 73); }   // Scene Fog on only ever ADDS to the clear day's haze
@@ -107314,6 +107325,7 @@ const ThreeRenderer = (function () {
             _EW_HFOG.z = Math.min(1, EW_AIR.mist * m) * keep; _EW_HFOG.y = 1 / (EW_AIR.mistH * U * climb);
             _EW_HFOG.w = Math.max((f && f.isFogExp2) ? f.density * 4 : 0, 0.012 / U);
         } else _EW_HFOG.z = 0;
+        _EW_DSAT.x = (EW_AIR.desat || 0) * keep; _EW_DSAT.y = 1 / (Math.max(1, EW_AIR.desatM || 60) * U);   // THE FAR COLOUR
         _EW_AIR2.x = 6.2832 / (EW_AIR.mistSize * U); _EW_AIR2.y = EW_AIR.mistMove; _EW_AIR2.z = 1 / (EW_AIR.hazeH * climb); _EW_AIR2.w = on ? Math.max(-0.05, sh.lift) : 0; _EW_AIR.w = (performance.now() / 1000 * EW_AIR.mistSpeed) % 6283.2;
         /* warm toward the sun: the clock's sun, while it is up; never over the player's own colour */
         var warm = 0, sv = o.sun;
