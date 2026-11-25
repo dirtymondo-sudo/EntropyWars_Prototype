@@ -3906,7 +3906,9 @@
             }
             if (H.act === 'case') {
                 const r = _hqPartyTx(p => (typeof window.mdCaseClose === 'function') ? window.mdCaseClose(p, _hqCurRoom) : null);
-                if (r && r.ok) { try { playSfx('uiButtonConfirm'); playDoorSfx('doorBuzz', { volume: 0.6 }); } catch (e) {}
+                if (r && r.ok && r.failed) { try { playSfx('uiError'); playDoorSfx('doorBuzz', { volume: 0.6 }); } catch (e) {}   // ALIVE ONLY, and it went down: the door shuts, no pay
+                    _hqToast(`<b>CASE CLOSED · NO PAY</b><span>IT WAS WANTED ALIVE</span>`, 4200); }
+                else if (r && r.ok) { try { playSfx('uiButtonConfirm'); playDoorSfx('doorBuzz', { volume: 0.6 }); } catch (e) {}
                     _hqToast(`<b>${r.arrested ? 'ARRESTED · ' : ''}CASE CLOSED</b><span>${(r.reward || []).map(x => _hqEsc(String(x.name).toUpperCase())).join(' · ') || 'THE DOOR IS SHUT'}</span>`, 4200); }
                 else { _hqToast(`<b>AN UNAUTHORIZED DOOR</b><span>${r && r.reason === 'anomaly' ? 'DEAL WITH WHAT CAME THROUGH FIRST' : 'IT IS SHUT'}</span>`, 2600); try { playSfx('uiError'); } catch (e) {} }
                 return;
