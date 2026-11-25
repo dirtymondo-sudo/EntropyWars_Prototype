@@ -237,3 +237,13 @@ new fields), so it saves and syncs like the chapters.
   or quests elsewhere, timeline events with no chapter (the event panel has **Happens in the story at**, `ev.ch`) or out of order,
   and the beat chart's own notices. The tab shows the number of problems.
 - Ties carry `from` / `until` (chapter ids) and events `ch`: kept by `sanitizeBoard`.
+- **Mysteries** tab (step B): THE MYSTERY LEDGER. Every plan clue is a secret: its row runs across the chapters; plant = the first
+  hint, pay = the reveal, `steps` = the ladder between (seen without knowing / hint / suspected / revealed, each in a chapter, a quest,
+  how), `truth` (the whole answer, for him), `kind` (a real secret or a red herring), `about` (characters), `knows` (who knows it from
+  which chapter; the view picker shows one character's knowledge), `words` (tell-tale words: the checks warn when a chapter says them
+  before the first hint), `fact` (a fact that becomes true at the reveal). Click a square to add a step there. The bottom rows count
+  open mysteries and reveals per chapter. A character sheet's secret can be tracked here (`Track it here`: a clue with `from` = the
+  sheet; the sheet row keeps `k` and shows a "ledger" link). The checks add: reveals with no hint before them, 3+ reveals in one
+  chapter, hinted secrets never revealed, tell-tale words said early, sheet secrets not in the ledger.
+- **Ties over time** (step B): a tie's panel has **In the story** from Ch N / ends in Ch N (`from`, `until`); the web's toolbar
+  **Story at** select draws only the ties that stand at that chapter (`S.ui.storyAt`, app.js `tieOn`).

@@ -463,6 +463,7 @@ function drawEdges() {
       if (VIEW && (!VIEW.pos[l.a] || !VIEW.pos[l.b] || (!l.bx && (VIEW.links === 'sel' ? focus !== l.a && focus !== l.b : !VIEW.links.has(l.id))))) return;
       if (l.type === 'member' && !VIEW && !away && focus !== l.a && focus !== l.b && !(sel && sel.kind === 'link' && sel.id === l.id)) return;
       if (offK(B.nodes[l.a]) || offK(B.nodes[l.b])) return;
+      if (l.type !== 'member' && !tieOn(l)) return;   // THE STORY TOOLKIT: the board at one chapter
       const g = geom(l, i, arr.length); if (!g) return; G[l.id] = g;
       const mem = l.type === 'member', c = mem ? gcol(B.nodes[l.b]) : 'var(--t-' + g.T.id + ')', isSel = sel && (sel.kind === 'link' || sel.kind === 'bundle') && sel.id === l.id, dim = (focus && l.a !== focus && l.b !== focus) || (evS && !(evS.has(l.a) && evS.has(l.b)));
       if (l.bx) { const nb = l.bx.ties.length; svg += '<g class="edge bundle' + (isSel ? ' sel' : '') + '" data-id="' + esc(l.id) + '"' + (dim ? ' opacity=".18"' : '') + '><path class="hit" d="' + g.path + '" stroke-width="' + (g.sw + 14) + '"/>' + (isSel ? '<path class="halo" d="' + g.path + '" stroke-width="' + (g.sw + 9) + '"/>' : '') + '<path class="ln" d="' + g.path + '" stroke="' + c + '" stroke-width="' + g.sw.toFixed(1) + '"' + (g.T.dash ? ' stroke-dasharray="' + g.T.dash + '"' : '') + '/>' + (g.heads ? '<path class="ah" d="' + g.heads + '" fill="' + c + '"/>' : '') + '</g>';
@@ -590,6 +591,7 @@ function renderInspector() {
       '<label class="field"><span>Why? This text sits on the line.</span><textarea class="inp" id="insLabel" maxlength="300" placeholder="He owes him a debt from the Roswell job…">' + esc(l.label) + '</textarea></label>' +
       '<div><h4>How strong</h4>' + strengthSeg(l) + '</div>' +
       '<label class="prow"><input type="checkbox" id="insSecret"' + (l.secret ? ' checked' : '') + '> <span>Secret: the others on the board do not know</span></label>' +
+      (S.story && S.story.chapters.length ? '<div><h4>In the story</h4><div class="prow"><select class="sel" id="tieFrom" aria-label="From chapter"><option value="">from the start</option>' + S.story.chapters.map((c, i) => '<option value="' + esc(c.id) + '"' + (l.from === c.id ? ' selected' : '') + '>from Ch ' + (i + 1) + '</option>').join('') + '</select><select class="sel" id="tieUntil" aria-label="Until chapter"><option value="">to the end</option>' + S.story.chapters.map((c, i) => '<option value="' + esc(c.id) + '"' + (l.until === c.id ? ' selected' : '') + '>ends in Ch ' + (i + 1) + '</option>').join('') + '</select></div></div>' : '') +
       (TYPE[l.type].fx ? '<p class="muted">In a fight: ' + FX_NOTE[TYPE[l.type].fx] + '.</p>' : '<p class="muted">This kind of tie has no effect on who joins a fight.</p>') +
       '<div class="prow"><button class="btn danger" data-act="delSel">Delete this tie</button></div>';
   } else if (sel && sel.kind === 'node' && B.nodes[sel.id] && B.nodes[sel.id].kind === 'note') {
@@ -1356,6 +1358,7 @@ $('inspector').addEventListener('change', e => {
   if (t.id === 'insLabel' && sel && B.links[sel.id]) { B.links[sel.id].label = t.value.trim(); return commit({ light: true }); }
   if (t.id === 'insNote') return commit({ light: true });
   if (t.id === 'insSecret') return setLink({ secret: t.checked });
+  if (t.id === 'tieFrom' || t.id === 'tieUntil') { const l = sel && sel.kind === 'link' && B.links[sel.id]; if (l) { const k = t.id === 'tieFrom' ? 'from' : 'until'; if (t.value) l[k] = t.value; else delete l[k]; commit(); } return; }
   if (t.id === 'evCh') { const ev = sel && sel.kind === 'event' && B.events && B.events[sel.id]; if (ev) { if (t.value) ev.ch = t.value; else delete ev.ch; commit({ light: true }); } return; }
   if (!n) return;
   if (t.id === 'gParent') { if (t.value) n.parent = t.value; else delete n.parent; return commit(); }
@@ -1658,7 +1661,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) { sav
    SPINE (the one-sheet, the six bands, every chapter's questions). Units are roster ids (r:<race>, s:<cast>), places are map refs
    ('hq', 'z:<zone>', 'd:<zone>:<district>'), so a plan does not hang on any one board. Nothing in the game reads it yet. */
 const SD = D.story || { rooms: [], quests: [] };
-const STORY_TABS = ['map', 'beat', 'spine', 'chars', 'facts', 'checks'];
+const STORY_TABS = ['map', 'beat', 'spine', 'chars', 'facts', 'myst', 'checks'];
 const KIT_RENDER = {};   // THE STORY TOOLKIT's tabs (filled below)
 const ST = { open: false, tab: 'map', sel: null, pick: null, at: 0, mapLayer: 'surface' };
 const STEPS9 = ['1 · The hero wants something', '2 · Something disrupts their life', '3 · The hero tries to fix it', '4 · The attempt fails', '5 · A reversal makes it worse', '6 · A bigger problem', '7 · The final problem, the most at risk', '8 · The hero faces it and wins', '9 · The hero gets what they wanted'];
@@ -2199,7 +2202,7 @@ function sanitizeSheet(s) {
   const secK = new Set(SC_SECS.map(x => x.k)), row = (a, n, fn) => (Array.isArray(a) ? a : []).slice(0, n).map(fn).filter(Boolean);
   o.extra = row(s.extra, 60, x => x && secK.has(x.sec) ? { id: sStr(x.id || uid('x'), 40), sec: x.sec, label: sStr(x.label, 80), text: sStr(x.text, 6000) } : null);
   o.fam = row(s.fam, 60, x => x ? { id: sStr(x.id || uid('f'), 40), rel: sStr(x.rel, 40), who: sStr(x.who, 80), name: sStr(x.name, 80), note: sStr(x.note, 600) } : null);
-  o.sec = row(s.sec, 60, x => x ? { id: sStr(x.id || uid('k'), 40), text: sStr(x.text, 1000), who: sStr(x.who, 300), plant: sStr(x.plant, 60), reveal: sStr(x.reveal, 60) } : null);
+  o.sec = row(s.sec, 60, x => x ? { id: sStr(x.id || uid('k'), 40), text: sStr(x.text, 1000), who: sStr(x.who, 300), plant: sStr(x.plant, 60), reveal: sStr(x.reveal, 60), ...(x.k ? { k: sStr(x.k, 80) } : {}) } : null);
   Object.keys(s.arc || {}).slice(0, 80).forEach(k => { const a = s.arc[k]; if (a && (a.s || a.c)) o.arc[sStr(k, 40)] = { s: sStr(a.s, 1000), c: sStr(a.c, 1000) }; });
   o.voice = row(s.voice, 40, x => x ? { id: sStr(x.id || uid('v'), 40), mood: sStr(x.mood, 40), line: sStr(x.line, 600) } : null);
   return o;
@@ -2355,7 +2358,7 @@ function sheetsMain() {
     } else if (sec.k === 'secrets') {
       const ks = s ? s.sec : [], chs = plan().chapters.map((c, i) => 'Ch ' + (i + 1) + (c.name ? ' ' + c.name : ''));
       h += ks.length ? '<table class="sctbl"><tr><th>Secret</th><th style="width:150px">Who knows</th><th style="width:150px">Planted</th><th style="width:150px">Revealed</th><th></th></tr>' + ks.map(k => '<tr><td><textarea class="stinp" rows="1" data-scsec="' + esc(k.id) + '" data-k="text">' + esc(k.text) + '</textarea></td><td><input class="stinp" data-scsec="' + esc(k.id) + '" data-k="who" value="' + esc(k.who) + '"></td>'
-        + ['plant', 'reveal'].map(f => '<td><input class="stinp' + (f === 'reveal' && k.text.trim() && !k.reveal.trim() ? ' miss' : '') + '" list="scChList" data-scsec="' + esc(k.id) + '" data-k="' + f + '" value="' + esc(k[f]) + '" placeholder="' + (f === 'reveal' ? 'never set' : '') + '"></td>').join('') + '<td><button class="stx" data-scsecdel="' + esc(k.id) + '" aria-label="Remove">×</button></td></tr>').join('') + '</table>' : '<div class="stmuted">No secrets yet.</div>';
+        + ['plant', 'reveal'].map(f => '<td><input class="stinp' + (f === 'reveal' && k.text.trim() && !k.reveal.trim() ? ' miss' : '') + '" list="scChList" data-scsec="' + esc(k.id) + '" data-k="' + f + '" value="' + esc(k[f]) + '" placeholder="' + (f === 'reveal' ? 'never set' : '') + '"></td>').join('') + '<td>' + (k.k && plan().clues.some(c => c.id === k.k) ? '<button class="stlink" data-kmgo="' + esc(k.k) + '">ledger</button>' : '') + '<button class="stx" data-scsecdel="' + esc(k.id) + '" aria-label="Remove">×</button></td></tr>').join('') + '</table>' : '<div class="stmuted">No secrets yet.</div>';
       h += '<datalist id="scChList">' + chs.map(c => '<option value="' + esc(c) + '">').join('') + '</datalist><button class="stadd" data-scact="secAdd">+ Add a secret</button>';
     } else if (sec.k === 'history') {
       h += '<label class="scf"><span>Backstory' + (n ? ' · the note on ' + esc(B.name) : '') + '</span><textarea class="stinp big" rows="6" data-scback="1">' + esc(scBack(id)) + '</textarea></label>';
@@ -2647,7 +2650,7 @@ function storyChecks() {
   /* the planner's own notices */
   const N0 = noticed(), mech = N0.map(t => /^Ch (\d+) and Ch (\d+) teach no new mechanic/.exec(t)).filter(Boolean);
   if (mech.length > 1) add('q', 'Ch ' + mech[0][1] + ' to Ch ' + mech[mech.length - 1][2] + ' teach no new mechanic (the beat chart wants something new every chapter or two).', null);
-  N0.filter(t => mech.length < 2 || !/teach no new mechanic/.test(t)).forEach(t => add(/never pays|before or where|never planted|no main quest/.test(t) ? 'p' : 'q', t, null));
+  N0.filter(t => (mech.length < 2 || !/teach no new mechanic/.test(t)) && !/before or where it is planted/.test(t)).forEach(t => add(/never pays|before or where|never planted|no main quest/.test(t) ? 'p' : 'q', t, null));
   /* names used twice */
   const seen = {}; FQ.forEach(f => { const n = (f.q.name || '').trim().toLowerCase(); if (!n) return; if (seen[n]) add('q', 'Two quests are called “' + f.q.name + '” (' + seen[n] + ' and ' + f.no + ').', goQ(f.q.id)); else seen[n] = f.no; });
   if (typeof kitChecksMore === 'function') kitChecksMore(out, add);
@@ -2744,7 +2747,8 @@ function kitGo(kind, id) {
   if (kind === 'quest' && findQ(id)) { ST.sel = { kind: 'quest', id }; ST.tab = 'map'; }
   else if (kind === 'chapter' && findC(id)) { ST.sel = { kind: 'chapter', id }; ST.tab = 'map'; }
   else if (kind === 'fact') { KF.sel = id; ST.tab = 'facts'; }
-  else if (kind === 'clue' && typeof KM !== 'undefined') { KM.sel = id; ST.tab = 'myst'; }
+  else if (kind === 'clue') { KM.sel = id; ST.tab = 'myst'; }
+  else if (kind === 'myst') { ST.tab = 'myst'; }
   else if (kind === 'event') { storyOpen(false); selectEvent(id); return; }
   S.ui.storyTab = ST.tab; storyRender();
 }
@@ -2756,6 +2760,8 @@ function bindKit() {
   const condList = (l) => { const q = cq(); if (!q) return null; if (l === 'open' || l === 'close') return q[l]; const m = /^scene:(\d+)$/.exec(l); return m && q.scenes[+m[1]] ? q.scenes[+m[1]].when : null; };
   const setList = (l) => { const q = cq(); if (!q) return null; let m = /^end:(\d+)$/.exec(l); if (m) return q.ends[+m[1]] ? q.ends[+m[1]].sets : null; m = /^scene:(\d+)$/.exec(l); return m && q.scenes[+m[1]] ? q.scenes[+m[1]].sets : null; };
   root.addEventListener('click', e => {
+    if (e.target.closest('#st_myst')) { if (kitMystClick(e, e.target.closest('button'))) { e.stopImmediatePropagation(); return; } }
+    { const g = e.target.closest('[data-kmgo]'); if (g) { e.stopImmediatePropagation(); kitGo('clue', g.dataset.kmgo); return; } }
     const b = e.target.closest('button, [data-kfsel], [data-kgo]'); if (!b) return;
     const P = kp(), q = cq();
     if (b.dataset.kgoto) { e.stopImmediatePropagation(); kitGo(b.dataset.kgoto, b.dataset.id); return; }
@@ -2816,7 +2822,138 @@ function bindKit() {
     if (typeof kitInputMore === 'function' && kitInputMore(e)) e.stopImmediatePropagation();
   }, true);
 }
-Object.assign(KIT_RENDER, { facts: renderFacts, checks: renderChecks });
+
+/* ── THE MYSTERY LEDGER (step B): every secret (a plan clue) across the chapters. The ladder = the clue's plant (a hint), its own steps
+   (seen without knowing / hint / suspected / revealed, each in a chapter, a quest, a scene), its pay (the reveal). The player's view
+   or one character's: `knows` = who knows it, from which chapter (empty = before the game). A character sheet's secret can be
+   tracked here (`Track`: a clue with `from` = the sheet, `about` = the character; the sheet row keeps `k` = the clue). ── */
+const KM = { sel: null, who: '' };
+const HOW_G = { seen: '◇', hint: '◐', suspect: '◑', reveal: '●' };
+const HOW_N = Object.fromEntries(STEP_HOW);
+function ladder(k) {
+  const L = [];
+  if (k.plant) L.push({ ch: k.plant, how: 'hint', src: 'plant' });
+  (k.steps || []).forEach(s => L.push(Object.assign({ src: 'step' }, s)));
+  if (k.pay) L.push({ ch: k.pay, how: 'reveal', src: 'pay' });
+  return L.filter(s => chNo(s.ch)).sort((a, b) => chNo(a.ch) - chNo(b.ch) || ['seen', 'hint', 'suspect', 'reveal'].indexOf(a.how) - ['seen', 'hint', 'suspect', 'reveal'].indexOf(b.how));
+}
+const revealCh = k => { const r = ladder(k).find(s => s.how === 'reveal'); return r ? chNo(r.ch) : 0; };
+const firstCh = k => { const L = ladder(k); return L.length ? chNo(L[0].ch) : 0; };
+function sheetSecrets() { const out = []; Object.entries(castDoc().sheets).forEach(([id, s]) => { if (scDeleted(id)) return; (s.sec || []).forEach(x => { if (x.text && x.text.trim()) out.push({ id, s: x }); }); }); return out; }
+const chFromText = t => { const m = /ch(?:apter)?\s*(\d+)/i.exec(t || ''); const P = plan(); if (m && P.chapters[+m[1] - 1]) return P.chapters[+m[1] - 1].id; const c = t && P.chapters.find(c => c.name && t.toLowerCase().includes(c.name.toLowerCase())); return c ? c.id : ''; };
+function renderMyst() {
+  const P = kp(), C = P.chapters, who = KM.who;
+  const K = P.clues;
+  let h = '<div class="sthd"><h3>THE MYSTERY LEDGER</h3><span class="stmuted">' + K.length + ' secrets · when the player (or a character) learns each one</span><span class="sp"></span><select class="stinp" id="kmWho" style="width:230px"><option value="">View: what the player knows</option>' + castOpts().map(o => '<option value="' + esc(o[0]) + '"' + (who === o[0] ? ' selected' : '') + '>View: what ' + esc(o[1]) + ' knows</option>').join('') + '</select><button class="stbtn g sm" data-act="addSecret">+ Secret</button></div>';
+  h += '<div class="sttbl"><table class="kmyst"><tr><th>Secret</th>' + C.map((c, i) => '<th title="' + esc(c.name) + '">Ch ' + (i + 1) + '<small>' + esc((c.name || '').slice(0, 14)) + '</small></th>').join('') + '</tr>';
+  K.forEach(k => {
+    const L = ladder(k), rv = revealCh(k), first = firstCh(k), noHint = rv && !L.some(s => s.how !== 'reveal' && chNo(s.ch) < rv);
+    h += '<tr' + (KM.sel === k.id ? ' class="on"' : '') + '><td class="kmname" data-kmsel="' + esc(k.id) + '">' + (k.kind === 'herring' ? '<span class="kherr">RED HERRING</span> ' : '') + esc(k.text || 'An unnamed secret') + (k.about.length ? '<small>' + esc(k.about.map(entName).join(', ')) + '</small>' : '') + '</td>';
+    C.forEach((c, i) => {
+      const n = i + 1, here = L.filter(s => chNo(s.ch) === n);
+      let cell = '', cls = '';
+      if (who) { const kn = k.knows.find(x => x.e === who); const from = kn ? (kn.ch ? chNo(kn.ch) : 0) : 99; if (n >= from) { cell = n === from ? '● learns' : '●'; cls = 'g'; } else cell = '·'; }
+      else if (here.length) { const top = here[here.length - 1]; cell = here.map(s => HOW_G[s.how]).join('') + ' ' + (top.how === 'reveal' ? (noHint ? 'REVEAL, no hint' : 'REVEAL') : HOW_N[top.how].toLowerCase()); cls = top.how === 'reveal' ? (noHint ? 'r' : 'g') : top.how === 'seen' ? 'p' : 'a'; }
+      else if (first && n > first && (!rv || n < rv)) cell = '·';
+      else if (first && !rv && n > first) cell = '·';
+      if (!who && !rv && first && n === C.length && !here.length) cell = '· open ▸';
+      h += '<td class="kmc ' + cls + '" data-kmcell="' + esc(k.id) + '" data-ch="' + esc(c.id) + '">' + cell + '</td>';
+    });
+    h += '</tr>';
+  });
+  /* open at the end of each chapter, and reveals in it */
+  const open = C.map((c, i) => K.filter(k => k.kind !== 'herring' && firstCh(k) && firstCh(k) <= i + 1 && (!revealCh(k) || revealCh(k) > i + 1)).length);
+  const rev = C.map((c, i) => K.filter(k => revealCh(k) === i + 1).length);
+  h += '<tr class="kmsum"><td>Open mysteries at the chapter’s end</td>' + open.map(n => '<td>' + n + '</td>').join('') + '</tr>';
+  h += '<tr class="kmsum"><td>Revealed in the chapter</td>' + rev.map(n => '<td' + (n >= 3 ? ' class="r"' : '') + '>' + n + '</td>').join('') + '</tr></table></div>';
+  h += '<div class="kmlegend"><span class="p">◇ seen without knowing</span><span class="a">◐ hint</span><span class="a">◑ suspected</span><span class="g">● revealed</span><span class="r">red: revealed with no hint before it, or 3+ reveals in one chapter</span><span class="stmuted">Click a square to add a step there.</span></div>';
+  const loose = sheetSecrets().filter(x => !(x.s.k && P.clues.some(k => k.id === x.s.k)));
+  if (loose.length) h += '<h3 style="margin-top:18px">ON THE CHARACTER SHEETS, NOT IN THE LEDGER YET</h3>' + loose.map(x => '<div class="kchk"><span class="kct"><b>' + esc(scName(x.id)) + ':</b> ' + esc(x.s.text) + (x.s.plant || x.s.reveal ? ' <span class="stmuted">(' + [x.s.plant && 'planted ' + x.s.plant, x.s.reveal && 'revealed ' + x.s.reveal].filter(Boolean).join(', ') + ')</span>' : '') + '</span><button class="stbtn g sm" data-kmtrack="' + esc(x.id) + '" data-row="' + esc(x.s.id) + '">Track it here</button></div>').join('');
+  $('kmMain').innerHTML = h;
+  renderMystSide();
+}
+function renderMystSide() {
+  const P = kp(), k = P.clues.find(x => x.id === KM.sel), C = P.chapters, chO = (cur, first) => opts(C.map((c, i) => [c.id, 'Ch ' + (i + 1) + (c.name ? ' · ' + c.name : '')]), cur, first);
+  let r = '';
+  if (!k) r = '<h3>THE SECRET</h3><div class="stmuted">Pick a secret, or click a square in its row to add a step there.</div>';
+  else {
+    r += '<h3>THE SECRET</h3>' + fld('What the player may find out', '<textarea class="stinp" rows="2" data-kmf="text">' + esc(k.text) + '</textarea>');
+    r += fld('The whole truth <span class="stmuted">(for you, never shown)</span>', '<textarea class="stinp" rows="3" data-kmf="truth">' + esc(k.truth) + '</textarea>');
+    r += fld('Kind', seg('kmkind', [['secret', 'A real secret'], ['herring', 'A red herring']], k.kind));
+    r += fld('About', '<div class="stchips">' + k.about.map(id => '<span class="stchip">' + esc(entName(id)) + '<b data-kmunabout="' + esc(id) + '">×</b></span>').join('') + '</div><select class="stinp" data-kmadd="about">' + opts(castOpts(), '', '+ a character it is about') + '</select>');
+    r += fld('First hint', '<select class="stinp" data-kmf="plant">' + chO(k.plant, 'none') + '</select>') + fld('Revealed', '<select class="stinp" data-kmf="pay">' + chO(k.pay, 'not yet (stays open)') + '</select>');
+    r += fld('The steps between <span class="stmuted">(each in a chapter, a quest, a scene)</span>', k.steps.map((s, i) => { const cq = (findC(s.ch) || { quests: [] }).quests; return '<div class="kstep"><div class="kcond"><select class="stinp" data-kms="' + i + '" data-k="ch">' + chO(s.ch) + '</select><select class="stinp sm" data-kms="' + i + '" data-k="how">' + opts(STEP_HOW, s.how) + '</select><button class="stx" data-kmsdel="' + i + '" aria-label="Remove">×</button></div><div class="kcond"><select class="stinp" data-kms="' + i + '" data-k="q">' + opts(cq.map(q => [q.id, qNo(q.id) + ' ' + (q.name || 'Untitled')]), s.q, 'in which quest…') + '</select></div><input class="stinp" data-kms="' + i + '" data-k="where" value="' + esc(s.where) + '" placeholder="How: a line, an object, a tape, a scene…"></div>'; }).join('') + '<button class="stadd" data-act="addStepK">+ Step</button>');
+    r += fld('Who knows it, and from when', k.knows.map((x, i) => '<div class="kcond"><select class="stinp" data-kmk="' + i + '" data-k="e">' + opts(castOpts(), x.e) + '</select><select class="stinp" data-kmk="' + i + '" data-k="ch">' + chO(x.ch, 'before the game') + '</select><button class="stx" data-kmkdel="' + i + '" aria-label="Remove">×</button></div>').join('') + '<button class="stadd" data-act="addKnow">+ Someone who knows</button>');
+    r += fld('Tell-tale words <span class="stmuted">(the checks warn when a quest or scene says them before the first hint)</span>', '<input class="stinp" data-kmf="words" value="' + esc(k.words) + '" placeholder="jellyfish oil, time travel">');
+    r += fld('When it is revealed, this becomes true', '<select class="stinp" data-kmf="fact">' + opts(factOpts(), k.fact, 'no fact') + '</select>');
+    if (k.from) r += '<div class="stsub">From the character sheet of ' + esc(scName(k.from)) + ' · <button class="stlink" data-kmsheet="' + esc(k.from) + '">open it</button></div>';
+    r += '<div class="strow" style="margin-top:14px"><span class="sp"></span><button class="stbtn r" data-act="delSecret">Delete secret</button></div>';
+  }
+  const el = $('kmSide'), sc = el.scrollTop; el.innerHTML = r; el.scrollTop = sc;
+}
+function kitMystClick(e, b) {
+  const P = kp(), k = P.clues.find(x => x.id === KM.sel);
+  const t = e.target;
+  if (t.closest('[data-kmsel]')) { KM.sel = t.closest('[data-kmsel]').dataset.kmsel; renderMyst(); return true; }
+  const cell = t.closest('[data-kmcell]');
+  if (cell) { const kk = P.clues.find(x => x.id === cell.dataset.kmcell); KM.sel = kk.id; if (!KM.who && !ladder(kk).some(s => s.ch === cell.dataset.ch)) kk.steps.push({ id: uid('h'), ch: cell.dataset.ch, how: !kk.plant && !ladder(kk).length ? 'hint' : 'hint', q: '', where: '', scene: '' }); storySave(); return true; }
+  if (t.dataset.kmunabout && k) { k.about = k.about.filter(x => x !== t.dataset.kmunabout); storySave(); return true; }
+  if (!b) return false;
+  if (b.dataset.kmtrack) { const s = scSheet(b.dataset.kmtrack), row = s && s.sec.find(x => x.id === b.dataset.row); if (!row) return true; const nk = { id: uid('k'), text: row.text, plant: chFromText(row.plant), pay: chFromText(row.reveal), truth: '', kind: 'secret', about: ENT[b.dataset.kmtrack] ? [b.dataset.kmtrack] : [], words: '', lore: [], from: b.dataset.kmtrack, fact: '', steps: [], knows: [] }; P.clues.push(nk); row.k = nk.id; scTouch(b.dataset.kmtrack); castSave(); KM.sel = nk.id; storySave(); return true; }
+  if (b.dataset.kmsheet) { sheetOpen(b.dataset.kmsheet); return true; }
+  if (b.dataset.kmsdel != null && k) { k.steps.splice(+b.dataset.kmsdel, 1); storySave(); return true; }
+  if (b.dataset.kmkdel != null && k) { k.knows.splice(+b.dataset.kmkdel, 1); storySave(); return true; }
+  switch (b.dataset.act) {
+    case 'addSecret': { const nk = { id: uid('k'), text: '', plant: '', pay: '', truth: '', kind: 'secret', about: [], words: '', lore: [], from: '', fact: '', steps: [], knows: [] }; P.clues.push(nk); KM.sel = nk.id; storySave(); setTimeout(() => { const i = $('kmSide').querySelector('[data-kmf="text"]'); if (i) i.focus(); }, 0); return true; }
+    case 'addStepK': if (k) { k.steps.push({ id: uid('h'), ch: k.plant || (P.chapters[0] || {}).id || '', how: 'hint', q: '', where: '', scene: '' }); storySave(); } return true;
+    case 'addKnow': if (k) { k.knows.push({ e: (castOpts()[0] || [''])[0], ch: '' }); storySave(); } return true;
+    case 'delSecret': if (k) confirmBox('Delete the secret “' + (k.text || 'unnamed') + '”?', 'Delete secret', () => { P.clues = P.clues.filter(x => x !== k); KM.sel = null; storySave(); }); return true;
+  }
+  return false;
+}
+function kitMystChange(e) {
+  const t = e.target, P = kp(), k = P.clues.find(x => x.id === KM.sel);
+  if (t.id === 'kmWho') { KM.who = t.value; renderMyst(); return true; }
+  if (!k) return false;
+  if (t.dataset.kmf && t.tagName === 'SELECT') { if (t.dataset.kmf === 'fact' && t.value === '__new') { newFactBox(f => { k.fact = f.id; storySave(); }); return true; } k[t.dataset.kmf] = t.value; storySave(); return true; }
+  if (t.dataset.kmadd === 'about' && t.value) { if (!k.about.includes(t.value)) k.about.push(t.value); storySave(); return true; }
+  if (t.dataset.kms != null) { const s = k.steps[+t.dataset.kms]; if (s) { s[t.dataset.k] = t.value; if (t.dataset.k === 'ch') s.q = ''; storySave(); } return true; }
+  if (t.dataset.kmk != null) { const x = k.knows[+t.dataset.kmk]; if (x) { x[t.dataset.k] = t.value; storySave(); } return true; }
+  return false;
+}
+function kitMystInput(e) {
+  const t = e.target, k = kp().clues.find(x => x.id === KM.sel); if (!k) return false;
+  if (t.dataset.kmf && t.tagName !== 'SELECT') { k[t.dataset.kmf] = t.value; storySave(true); return true; }
+  if (t.dataset.kms != null && t.dataset.k === 'where') { const s = k.steps[+t.dataset.kms]; if (s) { s.where = t.value; storySave(true); } return true; }
+  return false;
+}
+/* the ledger's checks */
+function kitChecksMyst(out, add) {
+  const P = kp(), C = P.chapters, goK = id => ({ kind: 'clue', id });
+  P.clues.forEach(k => {
+    const L = ladder(k), rv = revealCh(k), name = '“' + (k.text || 'A secret') + '”';
+    if (rv && k.kind !== 'herring' && !L.some(s => s.how !== 'reveal' && chNo(s.ch) < rv)) add('p', name + ' is revealed in Ch ' + rv + ' with no hint in any chapter before it.', goK(k.id));
+    if (k.kind === 'herring' && rv) add('q', 'Red herring ' + name + ' has a reveal in Ch ' + rv + '. Is that where the player learns it was false?', goK(k.id));
+    k.knows.forEach(x => { if (x.ch && rv && chNo(x.ch) > rv && k.about.includes(x.e)) add('q', entName(x.e) + ' learns ' + name + ' in Ch ' + chNo(x.ch) + ', after the player (Ch ' + rv + '), though it is about them.', goK(k.id)); });
+    /* tell-tale words said before the first hint */
+    const words = (k.words || '').split(',').map(w => w.trim().toLowerCase()).filter(w => w.length > 2), first = firstCh(k);
+    if (words.length && first) C.slice(0, first - 1).forEach((c, i) => { const txt = [c.name, c.notes, c.reward, c.lie, c.trust].concat(...c.quests.map(q => [q.name, q.summary, q.notes, q.reward].concat(q.steps.map(s => s.text), q.scenes.map(s => s.n)))).filter(Boolean).join(' ').toLowerCase(); const hit = words.find(w => txt.includes(w)); if (hit) add('p', 'Ch ' + (i + 1) + ' says “' + hit + '”, a tell-tale word of ' + name + ', before its first hint in Ch ' + first + '.', goK(k.id)); });
+  });
+  C.forEach((c, i) => { const n = P.clues.filter(k => revealCh(k) === i + 1).length; if (n >= 3) add('q', 'Ch ' + (i + 1) + ' reveals ' + n + ' secrets at once. Can some of them wait for a later chapter?', { kind: 'chapter', id: c.id }); });
+  const open = P.clues.filter(k => k.kind !== 'herring' && firstCh(k) && !revealCh(k)); if (open.length) add('q', open.length + ' secrets are hinted and never revealed: ' + open.map(k => '“' + (k.text || '?').slice(0, 40) + '”').slice(0, 4).join(', ') + (open.length > 4 ? '…' : '') + '. Mean to keep them open?', goK(open[0].id));
+  const loose = sheetSecrets().filter(x => !(x.s.k && P.clues.some(k => k.id === x.s.k))).length; if (loose) add('q', loose + ' secrets on the character sheets are not in the mystery ledger yet.', { kind: 'myst', id: '' });
+}
+
+/* ── TIES OVER TIME (step B): a tie `from` a chapter `until` a chapter; the web's toolbar "Story at" shows the board at one chapter ── */
+const tieOn = l => { const n = S.ui.storyAt ? chNo(S.ui.storyAt) : 0; if (!n) return true; const f = l.from ? chNo(l.from) : 0, u = l.until ? chNo(l.until) : 0; return (!f || f <= n) && (!u || n < u); };
+function storyAtFill() { const el = $('storyAt'); if (!el) return; const C = S.story ? S.story.chapters : []; el.innerHTML = '<option value="">Story: every tie</option>' + C.map((c, i) => '<option value="' + esc(c.id) + '"' + (S.ui.storyAt === c.id ? ' selected' : '') + '>Story at Ch ' + (i + 1) + (c.name ? ' · ' + esc(c.name) : '') + '</option>').join(''); el.classList.toggle('on', !!S.ui.storyAt && C.some(c => c.id === S.ui.storyAt)); }
+
+function kitChecksMore(out, add) { kitChecksMyst(out, add); if (typeof kitChecksMoreC === 'function') kitChecksMoreC(out, add); }
+function kitSegMore(f, v) { const k = kp().clues.find(x => x.id === KM.sel); if (f === 'kmkind' && k) { k.kind = v; storySave(); return true; } if (typeof kitSegMoreC === 'function') return kitSegMoreC(f, v); return false; }
+function kitChangeMore(e) { if (kitMystChange(e)) return true; if (typeof kitChangeMoreC === 'function') return kitChangeMoreC(e); return false; }
+function kitInputMore(e) { if (kitMystInput(e)) return true; if (typeof kitInputMoreC === 'function') return kitInputMoreC(e); return false; }
+
+Object.assign(KIT_RENDER, { facts: renderFacts, checks: renderChecks, myst: renderMyst });
 bindKit();
 
 /* ───────── boot ───────── */
@@ -2826,6 +2963,7 @@ $('legend').open = S.ui.legend === true && !window.matchMedia('(max-width: 860px
 ensureView(); fit(true); pushHist(); renderAll(); setSave();
 requestAnimationFrame(() => { if (!drag) fit(); });
 if (S.ui.story) { ST.tab = STORY_TABS.includes(S.ui.storyTab) ? S.ui.storyTab : 'map'; storyOpen(true); }
+storyAtFill(); $('storyAt').addEventListener('focus', storyAtFill); $('storyAt').addEventListener('change', e => { if (e.target.value) S.ui.storyAt = e.target.value; else delete S.ui.storyAt; saveLocalSoon(); storyAtFill(); drawEdges(); });
 cloudInit();
 window.__ewWeb = { get state() { return S; }, gameExport, defence, hooks, cloud };
 })();
