@@ -82,7 +82,7 @@ const ThreeRenderer = (function () {
         }
     })();
     /* THE BUILD LINE (the perf lens): bump the stamp in every PR that changes this file's walk / fight drawing */
-    var _EW_TR_STAMP = '11-25 warm-real';
+    var _EW_TR_STAMP = '11-25 shadow-heal';
     function _ewBuildTok() {
         var sc = document.querySelectorAll('script[src*="three-renderer.js"]'), t = '';
         for (var i = 0; i < sc.length; i++) { var m = /[?&]v=([^&#]+)/.exec(sc[i].src || ''); if (m) { t = m[1]; break; } }
@@ -49369,6 +49369,7 @@ const ThreeRenderer = (function () {
                 } catch (e) {}
             };
             tu.destroyTexture = function (texture, isDefaultTexture) {
+                try { if (texture && /Shadow/.test(texture.name || '')) _ewShHealFreed(texture); } catch (eH) {}   // THE SHADOW HEAL
                 try {
                     var td = B.get(texture);
                     if (td.texture !== undefined && isDefaultTexture !== true && texture.isExternalTexture !== true && td.externalTexture !== true) later(td.texture);
@@ -49707,6 +49708,56 @@ const ThreeRenderer = (function () {
             return ua.call(this, attribute, type);
         };
     }
+    /* THE SHADOW HEAL (2026-11-25, mondo's crash trail in the DOOR HQ: "Texture with 'PointShadowDepthTexture' label has been
+       destroyed", in draws and in bundles, then a pipeline that failed). A light's shadow map is remade whenever its size moves or
+       its shadow node is rebuilt: three destroys the old depth texture and makes a new one on the SAME texture object, same id,
+       same version. A piece that was drawn with the old one keeps its old GPU bind group, because three rebuilds a bind group
+       only when (a) the piece goes through a FULL bindings update and (b) that group was on the texture's list of users. Most of a
+       still room only gets the SHARED update each frame (nothing about the piece changed), and the bundle and late-look paths
+       skip the list, so the old group, pointing at a texture the late frees then destroy, was drawn every frame after: the GPU
+       refused those draws and the pass with them. Now a freed shadow map is stamped, and the next bindings update of any piece
+       that samples it resets those bindings, drops the group's cached GPU groups and runs the full update once, so it binds the
+       new map. Only pieces that read a freed shadow map pay, once per free. Off: window.EW_NO_SHADOW_HEAL. */
+    var _ewShHeal = { gen: 0, frees: 0, healed: 0, warned: false };
+    function _ewShHealFreed(t) {
+        if (typeof window !== 'undefined' && window.EW_NO_SHADOW_HEAL) return;
+        t._ew_shFree = ++_ewShHeal.gen; _ewShHeal.frees++;
+        if (!_ewShHeal.warned) {
+            _ewShHeal.warned = true;
+            var st = ''; try { st = String(new Error().stack || '').split('\n').slice(2, 18).map(function (s) { s = s.trim().replace(/^at /, ''); var m = (s.indexOf('@') > 0 && s.match(/^(.*?)@(?:.*\/)?([^\/?]+)(?:\?[^:]*)?:(\d+):\d+$/)) || s.match(/^(.*?)\s*\(?(?:[^ ()]*\/)?([^\/ ()?]+)(?:\?[^:]*)?:(\d+):\d+\)?$/); return m ? ((m[1] || '?').slice(-40) + ' ' + m[2].replace('three.webgpu.js', 'three') + ':' + m[3]) : s.slice(-60); }).join(' < '); } catch (e) {}
+            try { console.warn('[ThreeRenderer] a shadow map was remade (' + (t.name || 'texture ' + t.id) + '): the pieces that read it rebind on their next update. Freed by: ' + st); } catch (e) {}
+        }
+    }
+    function _ewShHealSetup(r) {
+        var BN = r && r._bindings, B = r && r.backend;
+        if (!BN || BN._ewShHeal || !B || !B.isWebGPUBackend || typeof BN.updateForRender !== 'function' || typeof BN.updateSharedForRender !== 'function') return;
+        BN._ewShHeal = true;
+        try { window.__ewShHeal = _ewShHeal; } catch (e) {}
+        var ufr = BN.updateForRender, usr = BN.updateSharedForRender;
+        var heal = function (ro) {
+            var since = ro._ew_shg | 0, hit = false; ro._ew_shg = _ewShHeal.gen;
+            var bg = (typeof ro.getBindings === 'function') ? ro.getBindings() : null; if (!bg) return false;
+            for (var i = 0; i < bg.length; i++) {
+                var g = bg[i], bs = g && g.bindings, gh = false; if (!bs) continue;
+                for (var k = 0; k < bs.length; k++) {
+                    var b = bs[k]; if (!b || !b.isSampledTexture) continue;
+                    var t = (b.textureNode && b.textureNode.value) || b._texture;
+                    if (t && t._ew_shFree > since) { b.reset(); gh = true; }
+                }
+                if (gh) { hit = true; try { var bd = B.get(g); bd.groups = undefined; bd.versions = undefined; } catch (e) {} }
+            }
+            if (hit) _ewShHeal.healed++;
+            return hit;
+        };
+        BN.updateForRender = function (ro) {
+            if (_ewShHeal.gen !== 0 && ro && ro._ew_shg !== _ewShHeal.gen) heal(ro);
+            return ufr.apply(this, arguments);
+        };
+        BN.updateSharedForRender = function (ro) {
+            if (_ewShHeal.gen !== 0 && ro && ro._ew_shg !== _ewShHeal.gen && heal(ro)) return ufr.call(this, ro);   // the full one, once
+            return usr.apply(this, arguments);
+        };
+    }
     var EW_FREE_PER_FRAME = 48;
     function _ewGpuFreeLater(r) {
         var q = r._ew_freeLater;
@@ -49966,6 +50017,9 @@ const ThreeRenderer = (function () {
         return out;
     }
     function _ewRigSig() { return _ewRigG ? _ewRigG.sig : ''; }
+    /* what a warm was built for: the light list + the scene pass's context (the same string both places compare: 11-25, the settle
+       compared the warm's own string, which carries the context, with the rig's alone, never equal, and warmed the room 8 times) */
+    function _hqWarmSig(H, ctxW) { if (ctxW === undefined) ctxW = _ewWarmCtx(H); return _ewRigSig() + '/' + (ctxW ? ctxW.context.id : '-'); }
     /* the walk's scene-pass draw as a real build of it was made (THE SHADER CACHE's note): its render context, for the warm-up */
     function _ewWarmCtx(H) {
         if (typeof window !== 'undefined' && window.EW_WARM_OWN_CTX) return null;
@@ -51190,7 +51244,10 @@ const ThreeRenderer = (function () {
         };
         if (strand > 0) {
             _ewNodeDiffuseMul(nm, function () { return T.clamp(strandsH().mul(2.2 * strand).add(1), 0.3, 1.5); });
-            nm.normalNode = T.Fn(function () {
+            nm.normalNode = T.Fn(function (inputs, builder) {
+                /* a normal asked for in the VERTEX stage (2026-11-25, mondo's trail: "'dFdx' is not supported in the vertex stage", then a
+                   pipeline that failed): derivatives exist only in the fragment stage, so there the plain normal stands in */
+                if (builder && builder.shaderStage && builder.shaderStage !== 'fragment') return T.normalViewGeometry;
                 var h = strandsH().mul(bump), pos = T.positionView, nv = T.normalize(T.materialNormal);   // the pack's normal map kept (the GLSL bumps after normal_fragment_maps)
                 var sx = T.normalize(T.dFdx(pos)), sy = T.normalize(T.dFdy(pos)), R1 = T.cross(sy, nv), R2 = T.cross(nv, sx);
                 var det = T.dot(sx, R1).mul(T.faceDirection);
@@ -54376,6 +54433,7 @@ const ThreeRenderer = (function () {
             try { _ewGpuPropMaps(r, G); } catch (e) { console.warn('[ThreeRenderer] node renderer: the maps stay WeakMaps', e); }
             _ewGpuSafeBuffers(r);
             _ewGpuSafeBindings(r);
+            try { _ewShHealSetup(r); } catch (e) { console.warn('[ThreeRenderer] node renderer: the shadow heal failed', e); }
             try { _ewGpuSafeTextures(r); } catch (e) {}
             try { _ewGpuNearestGrad(r); } catch (e) {}
             _ewGpuOneWrite(r);
@@ -58136,6 +58194,7 @@ const ThreeRenderer = (function () {
         L.push('Scene meshes ' + (c.meshes || 0) + ' · skinned ' + (c.skinned || 0) + ' · rigs animating ' + (c.rigs || 0));
         L.push('Lights point ' + (c.point || 0) + (S.lampN != null && S.lampN >= 0 ? ' (stage lamp budget ' + S.lampN + ')' : '') + ' · spot ' + (c.spot || 0) + ' · dir ' + (c.dir || 0) + ' · hemi ' + (c.hemi || 0) + (c.rigN ? ' · rig ' + (c.rig || 0) + '/' + c.rigN : ''));
         L.push('Shadow casters ' + ((c.casters && c.casters.length) ? c.casters.length + ': ' + c.casters.join(', ') : '0'));
+        if (_ewShHeal.frees) L.push('Shadow maps remade: ' + _ewShHeal.frees + ' · pieces rebound to the new map: ' + _ewShHeal.healed + ' (session; THE SHADOW HEAL)');
         try { var hl = _hq && _hq.heroLit, hs = (typeof _heroStat !== 'undefined') ? _heroStat : null; if (hl && hl.isLight && hs) L.push('Hero lamp: ' + (hs.why || 'drawn') + ' · frames held ' + hs.held + ' / drawn ' + hs.drawn + ' · in reach ' + hs.inReach + ' of ' + hs.casters + ' casters · moving ' + hs.moving + ' · sides drawn ' + hs.sidesDrawn + ' / skipped ' + hs.sidesSkipped + ' (session)' + _lensLampWhere(hl)); } catch (eH) {}   // THE SHADOW SPLIT
         L.push('Geometries ' + S.geometries + ' · Textures ' + S.textures + ' · Programs ' + S.programs);
         if (_ewSlow.length) L.push('Slow first-time work (session\'s worst): ' + _ewSlow.slice().sort(function (x, y) { return y.ms - x.ms; }).map(function (e) { return Math.round(e.ms) + ' ms ' + e.k + ' · ' + e.w + ' · ' + e.f + ' ' + e.at; }).join(' | '));
@@ -101137,7 +101196,7 @@ const ThreeRenderer = (function () {
         else if (!_hqInstOff() && !H._instTried) why = 'props';
         else if (!walk && !_hqBatchesLive(H)) why = 'props';   // a walk through a door keeps its blink: the batch follows in the room
         else {
-            if (S.warm && S.warm.done && S.warm.sig != null && S.warm.sig !== _ewRigSig() && S.warms < 8) { S.mats += S.warm.mats; S.texN += S.warm.texN; S.warm = null; }   // THE WARM THAT MISSED: the light list moved after the warm (a part beside it lit its lamps): warm the room again for it
+            if (S.warm && S.warm.done && S.warm.sig != null && S.warm.sig !== _hqWarmSig(H) && S.warms < 8) { S.mats += S.warm.mats; S.texN += S.warm.texN; S.warm = null; }   // THE WARM THAT MISSED: the light list moved after the warm (a part beside it lit its lamps): warm the room again for it
             if (!S.warm) { S.warm = _hqWarmWholeNew(H); S.warms++; }
             if (!_hqWarmRun(H, S.warm)) why = 'warm';
             else if (_hqShadersBusy(S.warm)) why = 'shaders';
@@ -105299,8 +105358,7 @@ const ThreeRenderer = (function () {
             if (rigW && rigW.length) W.lights = rigW.concat(_ewRigG ? _ewRigG.real : []);   // THE WARM THAT MISSED: the real lights too
             /* the light list moved since this warm began (the rig grew, the hero torch came on): what it built is keyed on a list no
                frame draws with any more, so it starts over for the new one (the card waits; a part's attach waits) */
-            var sgW = _ewRigSig(), ctxW = _ewWarmCtx(H);
-            sgW += '/' + (ctxW ? ctxW.context.id : '-');
+            var ctxW = _ewWarmCtx(H), sgW = _hqWarmSig(H, ctxW);
             /* under the card, before any frame has drawn the room's scene pass, its context is not known yet: wait for one (a few s at most) */
             if (!ctxW && !H.ready && renderer.isWebGPURenderer && ThreePost && ThreePost.warmTarget && ThreePost.warmTarget()) {
                 if (!W.ctxWait) W.ctxWait = t0;

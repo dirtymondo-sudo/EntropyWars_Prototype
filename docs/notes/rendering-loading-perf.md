@@ -4206,3 +4206,25 @@ The card: settled in 24 s after landing vs 32 s before (llvmpipe); the log line 
 "N drawn the real way". Not reproduced: Firefox itself (the cloud has no real WebGPU). NOT touched yet: the see-through fade
 variants, the shadow-pass builds (sun + hero torch faces), and the bundle re-records of "central_egress doors" (an hq_plate
 hiding / showing by distance re-records the 153-piece doors group).
+
+## THE SHADOW HEAL + THE WARM'S ONE SIGNATURE (2026-11-25, mondo's crash trail after PR #2583)
+His trail (Mac M1, Firefox, WebGPU, DOOR HQ hall, a fight in setup): "Texture with 'PointShadowDepthTexture' label has been
+destroyed" in draws and in bundles, then "Async render pipeline creation failed", a 3.1 s stall, `'dFdx' is not supported in
+the vertex stage`.
+- **THE SHADOW HEAL** (three-renderer.js `_ewShHeal*`, set up with the node renderer): three remakes a light's shadow map on the
+  SAME texture object (same id, same version) when its size moves or its shadow node is rebuilt. A bind group is rebuilt only by
+  a FULL bindings update of a group that was on the texture's list of users; a still piece gets the SHARED update each frame and
+  the bundle / late-look paths skip the list, so pieces kept drawing with the old group, which points at the destroyed texture
+  once the late frees run. Now a freed shadow texture is stamped (`t._ew_shFree`), and the next bindings update of any piece
+  that samples it resets those bindings, drops the group's cached GPU groups and runs the full update once. The first remake
+  of a session prints `a shadow map was remade (...) Freed by: <stack>` so the trail names who remade it; F3 shows
+  "Shadow maps remade: N · pieces rebound: M". The cloud WebGPU probe saw a real remake (`ShadowDepthTexture`) 2 s after the
+  hall settled. Off: `window.EW_NO_SHADOW_HEAL`.
+- **THE WARM'S ONE SIGNATURE**: the settle compared the warm's `rig/context` string with the rig signature alone, which never
+  matched, so it re-warmed the room up to 8 times after the card (30 s of shader churn in the probe). Both sides use
+  `_hqWarmSig(H)` now.
+- **The hair in the vertex stage**: the creator hair's bump normal (`_ewNodeHair`) uses dFdx/dFdy; a vertex-stage request for the
+  normal now gets the plain geometry normal. This is the likeliest source of the dFdx error, NOT proven (SwiftShader WebGPU
+  here loses its device before a fight can load). If the error is still in a trail, the shader name next to it says which look.
+- Not touched: the `[MEM] ... nothing idle long enough to drop` line 7 s after a room change is the budget waiting its 30 s for
+  the left room's files to go idle (by design).
