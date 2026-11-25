@@ -9,6 +9,7 @@
        12  O the Pond       O the Fairy Ring  O the Woods Trail     O the Spring
        24  The Moth Glade   O Knoll, south    The Glow-Worm Hollow  The Mossy Stair
        36  The Wishing Pool The Root Stair    The Hollow Oak        The Lantern Glade
+   THE FLOWER MEADOW (11-25) lies across the Moth Glade, the Wishing Pool and the Root Stair's west edge: squares x 6..15, y 32..42.
    In: the east gate's seam on the Pond's west side. Out: the trail east from the Spring to the Woods' Clearing.
    At home the six plots were a column and each kept its own stretch of the trail (two squares at its x 4..5); on the One World four of them
    stand side by side, so those stretches are four dead-end lanes.
@@ -81,6 +82,30 @@ function room(k) {
     /* the moth glade and the mossy stair: moths over the walk's west turn, stepping stones and caps on its east turn */
     A('luna_moth', 4, 26.6, { floor: true, y: 1.5 }); A('hawk_moth', 8.4, 29.4, { floor: true, y: 1.2 }); A('moth_frames', 6.4, 31.6, { floor: true, y: 1.3 }); A('fern', 6.6, 27.4); A('fae_toadstool', 9.6, 27.5, { noLight: true });
     A('psxg_stepping_stone_1', 39.4, 26.4); A('psxg_stepping_stone_2', 40.6, 27.4); A('psxg_stepping_stone_1', 39.6, 30.4); A('woods_glowcap', 42.6, 29.4, { noLight: true }); A('fern', 37.6, 31.6); A('fae_toadstool', 42.4, 25.6, { noLight: true });
+
+    /* ── THE FLOWER MEADOW (2026-11-25, mondo: "how is there not like a flowery garden or field or something in the fairy forest?"; flora.md G10) ──
+       A clearing of 72 squares cut from the mass between the walk's west turn, the Wishing Pool and the south loop: open from all three, a soft
+       path through it, the field's mass grown by the flora field (`floraField`, the fairy climate's `field` drifts, fading 4 m into the wood),
+       only the big accents placed here: five giant heal flowers, two drifts of the small ones, two rock clusters, butterflies. */
+    { const ROWS = { 32: [8, 13], 33: [7, 14], 34: [7, 15], 35: [6, 15], 36: [6, 15], 37: [7, 15], 38: [7, 14], 39: [8, 15], 40: [8, 14], 41: [9, 13], 42: [10, 12] };
+      const ys = Object.keys(ROWS).map(Number).sort((a, b) => a - b);
+      ys.forEach(y => glade(ROWS[y][0], y, ROWS[y][1], y));
+      k.noTrees(mx(6), mz(32), mx(16), mz(43));
+      /* the outline in metres: down the west side, back up the east, a little wobble so it never reads as squares */
+      const W = ys.map((y, i) => [r2(mx(ROWS[y][0]) + (i % 3 - 1) * 0.6), r2(mz(y + 0.5))]), E = ys.slice().reverse().map((y, i) => [r2(mx(ROWS[y][1] + 1) + ((i + 1) % 3 - 1) * 0.6), r2(mz(y + 0.5))]);
+      k.floraField({ pts: [[r2(mx(10.5)), r2(mz(31.6))]].concat(W, [[r2(mx(11.5)), r2(mz(43.2))]], E), cls: 'field', fade: 4 });
+      /* the path: from the walk down through the meadow to the south loop, a spur west to the pool */
+      way([[10, 32], [11, 35], [10, 39], [11, 42]], 2, 'p', GRASS); way([[9, 39], [7, 39]], 1, 'p', GRASS);
+      /* the giant flowers (accents, on whole squares off the path) */
+      P('fae_bloom_pink', 13, 34, { face: 30 }); P('fae_flower_violet', 7, 35, { face: 140 }); P('fae_flower_blue', 14, 38, { face: 250 }); P('fae_bloom_violet', 8, 37, { face: 80 }); P('fae_flower_gold', 12, 40, { face: 200 });
+      /* two drifts of the small ones, one colour each */
+      [[6.8, 33.6], [7.4, 34.2], [6.6, 34.8], [8.0, 33.9]].forEach((q, i) => A('fae_flower_small_blue', q[0], q[1], { face: i * 90 }));
+      [[13.4, 36.2], [14.1, 36.8], [13.2, 37.0], [14.6, 35.9], [12.9, 36.5]].forEach((q, i) => A('fae_flower_small_pink', q[0], q[1], { face: i * 70 }));
+      /* rocks in clusters, half sunk, mixed sizes (G6) */
+      A('lake_rock', 9.3, 34.0, { face: 40 }); A('ocean_rock_6', 9.9, 34.6, { face: 160, noBlock: true, h: 0.55 }); A('ocean_rock_7', 8.8, 34.7, { face: 300, noBlock: true, h: 0.35 });
+      A('lake_rock', 12.6, 41.5, { face: 210 }); A('ocean_rock_9', 13.3, 41.1, { face: 20, noBlock: true, h: 0.7 }); A('ocean_rock_7', 12.1, 42.1, { face: 110, noBlock: true, h: 0.3 }); A('ocean_rock_6', 13.6, 41.9, { face: 250, noBlock: true, h: 0.4 });
+      /* life */
+      A('butterfly', 9, 36, { floor: true, y: 1.1 }); A('blue_morpho', 13, 38.5, { floor: true, y: 1.4 }); A('monarch', 8.4, 40.2, { floor: true, y: 1.2 }); A('butterfly', 12, 33.4, { floor: true, y: 1.3 }); }
 
     /* the air: fireflies in the hollow and the lantern glade, violet motes over the south loop, sea-green motes at the pool */
     k.air({ x0: mx(25), z0: mz(26), x1: mx(35), z1: mz(36), kind: 'fireflies', n: 46 });
