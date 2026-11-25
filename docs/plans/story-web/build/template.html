@@ -514,6 +514,19 @@ dl.facts dt { color: var(--ink3); font-size: 12px; } dl.facts dd { margin: 0; mi
 #story .kmlegend { display: flex; flex-wrap: wrap; gap: 6px 16px; font: 12px var(--font-mono); margin-top: 8px; } #story .kmlegend .a { color: #ffd66b; } #story .kmlegend .g { color: #4fd36a; } #story .kmlegend .r { color: #ff5a5a; } #story .kmlegend .p { color: #ff7fbf; }
 #story .kstep { border: 1px solid #555; padding: 5px; margin-bottom: 5px; }
 #storyAt.on { box-shadow: 0 0 0 2px #c79a12; font-weight: 600; }
+#st_world, #st_flow { position: absolute; inset: 8px; overflow: auto; padding: 12px 14px 30px; } #st_world[hidden], #st_flow[hidden] { display: none; }
+#story .kworld th small { display: block; font-size: 10px; color: #888; text-transform: none; letter-spacing: 0; font-weight: 400; }
+#story .kworld td { vertical-align: top; min-width: 96px; font-size: 11.5px; } #story .kworld td.kwp { min-width: 190px; font-weight: 600; font-size: 12.5px; white-space: nowrap; } #story .kworld td.kwp.sub { padding-left: 18px; font-weight: 400; }
+#story .kworld td.kwp.zh { color: #aaa; text-transform: uppercase; letter-spacing: .05em; font-size: 11px; padding-top: 10px; } #story .kworld td.kwp.none { color: #888; font-weight: 400; white-space: normal; }
+#story .kworld td.shut { color: #444; background: repeating-linear-gradient(45deg, #0b0b0b 0 4px, #151515 4px 8px); } #story .kworld td.on { background: #121212; } #story .kworld td.bad { box-shadow: inset 0 0 0 2px #ff5a5a; }
+#story .kwq { display: block; border: 1px solid #fff; padding: 1px 4px; margin: 0 0 3px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; } #story .kwq.side { border-style: dashed; border-color: #ff7fbf; color: #ff7fbf; } #story .kwq:hover { background: #fff; color: #000; }
+#story .kwdead { color: #ff5a5a; font-weight: 600; } #story .kmlegend .p { color: #ff7fbf; }
+#story .kflow { overflow: auto; } #story .kfsvg { display: block; }
+#story .kfsvg .kfb rect { fill: #000; stroke: #fff; stroke-width: 2; } #story .kfsvg .kfb[data-kgo], #story .kfsvg .kfb[data-kflq] { cursor: pointer; } #story .kfsvg .kfb[data-kgo]:hover rect, #story .kfsvg .kfb[data-kflq]:hover rect { fill: #1a1a1a; }
+#story .kfsvg .kfb.side rect { stroke: #ff7fbf; stroke-dasharray: 5 3; } #story .kfsvg .kfb.cond rect { stroke: #888; stroke-dasharray: 3 3; } #story .kfsvg .kfb.me rect { stroke-width: 3; }
+#story .kfsvg .kfb.end.t-good rect { stroke: #4fd36a; } #story .kfsvg .kfb.end.t-mid rect { stroke: #ffb84d; } #story .kfsvg .kfb.end.t-bad rect { stroke: #ff5a5a; } #story .kfsvg .kfb.shut rect { stroke: #ff5a5a; stroke-dasharray: 5 3; } #story .kfsvg .kfb.out rect { stroke: #5fe0d0; }
+#story .kfsvg text.kt { fill: #fff; font: 600 12px var(--font-body); } #story .kfsvg text.ks { fill: #aaa; font: 10.5px var(--font-mono); } #story .kfsvg text.kh { fill: #ccc; font: 12px var(--font-mono); text-transform: uppercase; }
+#story .kfsvg .kfa { fill: none; stroke: #9fc2ff; stroke-width: 1.6; } #story .kfsvg .kfa.shut { stroke: #ff5a5a; stroke-dasharray: 5 4; } #story .kfsvg .kfa.back { stroke: #ffb84d; }
 @media (max-width: 860px) { #st_facts { grid-template-columns: 1fr; grid-auto-rows: minmax(320px, auto); overflow-y: auto; } }
 @media (max-width: 860px) { #st_map, #st_beat { grid-template-columns: 1fr; grid-auto-rows: minmax(320px, auto); overflow-y: auto; } #story .stbar { overflow-x: auto; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
@@ -626,7 +639,7 @@ dl.facts dt { color: var(--ink3); font-size: 12px; } dl.facts dd { margin: 0; mi
   <div class="stbar">
     <span class="t">ENTROPY WARS · STORY</span>
     <button class="stbtn back" data-act="back">◂ Relationship Web</button>
-    <button class="sttab" data-sttab="map">Map</button><button class="sttab" data-sttab="beat">Beat chart</button><button class="sttab" data-sttab="spine">Spine</button><button class="sttab" data-sttab="chars">Character sheets</button><button class="sttab" data-sttab="facts">Facts</button><button class="sttab" data-sttab="myst">Mysteries</button><button class="sttab" data-sttab="checks">Checks</button>
+    <button class="sttab" data-sttab="map">Map</button><button class="sttab" data-sttab="beat">Beat chart</button><button class="sttab" data-sttab="spine">Spine</button><button class="sttab" data-sttab="chars">Character sheets</button><button class="sttab" data-sttab="facts">Facts</button><button class="sttab" data-sttab="myst">Mysteries</button><button class="sttab" data-sttab="world">World</button><button class="sttab" data-sttab="flow">Flow</button><button class="sttab" data-sttab="checks">Checks</button>
     <span class="sp"></span>
     <button class="stbtn" data-act="import" title="Add chapters and quests from a file">Add from a file</button>
     <button class="stbtn" data-act="export">Export the plan</button>
@@ -646,6 +659,8 @@ dl.facts dt { color: var(--ink3); font-size: 12px; } dl.facts dd { margin: 0; mi
     <div id="st_spine" class="stpanel" hidden></div>
     <div id="st_facts" hidden><div id="kfMain" class="stpanel"></div><div id="kfSide" class="stpanel"></div></div>
     <div id="st_checks" class="stpanel" hidden></div>
+    <div id="st_world" class="stpanel" hidden></div>
+    <div id="st_flow" class="stpanel" hidden></div>
     <div id="st_myst" hidden><div id="kmMain" class="stpanel"></div><div id="kmSide" class="stpanel"></div></div>
     <div id="st_chars" hidden><div id="scLeft" class="stpanel"></div><div id="scMain" class="stpanel"></div><div id="scRight" class="stpanel"></div></div>
   </div>
