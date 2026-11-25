@@ -8,6 +8,90 @@ future changes to the map preserve their foliage from your decisions in this thr
 
 **Read this before planting anything in a zone, changing a zone's ground sheets, or moving a room on the One World map.**
 
+## 0. THE GROUND RULES (2026-11-25, the second foliage pass; READ FIRST)
+
+mondo, 11-25: "make the grass/foliage look better and more realistic. Research how video games do this. But basically you have to
+break up the monotony and add different rocks and flowers and stuff ... little shrubs or ferns all over the ground in the woods that
+look terrible ... how is there not like a flowery garden or field ... in the fairy forest? Make sure the right types of trees are in
+the right environment. The palm trees in disaster city that are on one sand tile need like a border/holder ... Need to be rules for
+the grass so it looks better and is not so samey." Sections 1-8 below are the climate rule of 11-20 and still stand; this section is
+the LOOK every zone's ground must meet. Every thread that plants, paints ground or tunes the grass / flora field follows it.
+
+### 0a. What shipped games do (the research, with sources)
+
+| Game / source | What they do | What we take |
+|---|---|---|
+| **Ghost of Tsushima** (Sucker Punch, GDC 2021 "Procedural Grass in Ghost of Tsushima", E. Wohllaib; [GDC Vault](https://gdcvault.com/play/1027214/), [SIGGRAPH 2021 course notes](https://www.advances.realtimerendering.com/s2021/jpatry_advances2021.pdf), re-implementations [Unity-Grass](https://cainrademan.github.io/Unity-Grass/), [GodotGrass](https://github.com/2Retr0/GodotGrass)) | Blades are gathered into **CLUMPS** (Voronoi cells a few metres wide). Each clump has its own height, colour, lean direction and pull toward its centre, so a field reads as many plants, not one carpet. Taller clumps are justified as richer soil. A base-to-tip colour ramp on every blade. | Grass is never an even sheet: clumps of 1.5-4 m, each with its own height, tint and lean. |
+| **Horizon Zero Dawn** (Guerrilla, GDC 2017 "GPU-Based Run-Time Procedural Placement", J. van Muijden; [slides](https://www.guerrilla-games.com/media/News/Files/GDC2017_VanMuijden_GPUBasedProceduralPlacementInHorizonZeroDawn.pdf), [article](https://www.guerrilla-games.com/read/gpu-based-procedural-placement-in-horizon-zero-dawn)) | Placement is driven by **density maps** (world data: height, slope, wetness, distance to water / road / tree, painted masks), one LAYER per asset type, layers dithered against each other so a fern and a rock never claim the same spot. Deterministic and locally stable. | Each plant layer has a reason to be where it is (near trees, near water, on rough ground, at path edges), not one random density. Deterministic by place (our seeded hash, RULE #2). |
+| **Far Cry 5** (Ubisoft, GDC 2018 "Procedural World Generation of Far Cry 5", É. Carrier; [GDC Vault](https://gdcvault.com/play/1025557/Procedural-World-Generation-of-Far), [PlayStation Blog](https://blog.playstation.com/2018/03/22/the-procedural-world-generation-of-far-cry-5/), [80.lv](https://80.lv/articles/houdini-procedural-world-generation-of-far-cry-5/)) | **Biome recipes** react to the land: every species has its own reason to grow in a spot (slope, water, altitude, sun). The map is handcrafted; the natural scatter (foliage, boulders) is procedural. | Our ZONE_FLORA climates are the recipes; this pass adds the per-spot reasons (shade, wet, rough, trampled, wall foot). |
+| **The Witcher 3** (CD Projekt; [SpeedTree interview](https://gamingbolt.com/speedtree-interview-admiring-the-forest-for-the-virtual-trees)) | Only a base grass layer is generated from the ground texture; trees, bushes and flowers are hand-placed. | The rule makes the base; set-piece places (the Fairy Forest's flower field, a garden) are DESIGNED by the zone's thread. |
+| Environment-art practice ([Game Developer, art tips for building forests](https://www.gamedeveloper.com/art/art-tips-for-building-forests), [80.lv, tips on creating a perfect forest](https://80.lv/articles/tips-on-creating-a-perfect-forest/), [BeamNG ground cover docs](https://documentation.beamng.com/modding/levels/level_classes/groundcover/), [StraySpark forest biome](https://www.strayspark.studio/blog/build-forest-biome-ue57-without-pcg-graph), [80.lv, making a modular scene less repetitive](https://80.lv/articles/concrete-evergreen-making-a-modular-scene-less-repetitive)) | Forest in LAYERS (canopy, understory, ground clutter). Shrubs and saplings grow at tree bases and hide the trunk seam. Rocks of every size; pebbles where nothing grows. Gaps and denser clusters, never even cover. 3-4 variants of a clump go a long way. Denser at a path's edge, fading outward; hard exclusion on the path. Per-instance colour shifts and decals (leaves, dirt, moss) break tiling. | All of it, as rules 0b. |
+| Street trees ([Wikipedia, tree grate](https://en.wikipedia.org/wiki/Tree_grate), [ASLA, urban tree planting spaces](https://www.asla.org/2016/01/05/urban-design-and-tree-planting-spaces/), [NYC Design Commission, planters](https://www.nyc.gov/site/designcommission/design-review/design-guidelines/planters.page), [NACTO stormwater tree](https://nacto.org/publication/urban-street-stormwater-guide/stormwater-elements/green-stormwater-elements/stormwater-tree)) | A tree in pavement always stands in a PIT with an edge: a kerb (raised 15-45 cm), a flush cast grate, or a raised planter box. A typical pit is about 1.5 x 3 m; the soil inside is mulch, gravel or low planting, never bare sand. | Rule G9 (city trees). |
+
+### 0b. The rules
+
+**G1 · CLUMPS, NOT A CARPET.** Grass grows in clumps 1.5-4 m across. Each clump gets its own height (x0.6 to x1.5 of the base),
+its own tint (a hue / brightness step) and its own lean. Between clumps the cover thins. A field never shows the jittered grid.
+
+**G2 · THREE SCALES OF COLOUR.** (a) per blade: dark foot to light tip, about one blade in ten dry straw; (b) per clump: a tint
+step; (c) per patch (15-40 m): the whole ground drifts between lush green, yellow-green and olive / dry, and the dry share rises
+to a third in the dry patches. A sheet's own colour stays the anchor (never repaint his sheets); the tint rides on top.
+
+**G3 · BARE AND THIN PATCHES.** 8-15 % of open grass is thin or bare (the sheet shows through), in soft-edged blobs a few
+metres across. Grass is shortest and thinnest on and beside paths (trampled), on rough / rocky ground and under a dense canopy.
+
+**G4 · THE EDGES ARE TALL.** Grass and weeds stand TALLER where nothing walks or mows: the foot of a wall, fence, rock, building
+or trunk, the field's rim, the bank of water. A tall fringe (x1.3-1.8) a metre or so wide, with a weed or a flower in it.
+
+**G5 · PLANTS HAVE A REASON TO BE THERE.** Every layer reads the spot (the Horizon / Far Cry rule):
+- ferns, saplings and low bushes: at tree bases, by logs and rocks, in shade; groups of 3-7; never sprinkled over open lawn;
+- flowers: in DRIFTS of one or two species (2-6 m), with grass between drifts; never an even confetti of mixed colours;
+- reeds and rushes: only within 2-3 m of fresh water;
+- dry weeds, sage, pebbles: on rough, rocky and dry ground;
+- leaf litter and twigs: under deciduous trees; needles under firs.
+
+**G6 · BREAK IT WITH STONE.** Every green zone gets ground SCATTER that is not a plant: pebbles and small stones (walk-through,
+ankle-high), a few larger rocks half-sunk in the ground (the existing `rf_rock_*` / rock models, placed by a holder: they block),
+in clusters of 2-5 of mixed sizes, more on rough ground and slopes, near paths and at a rock's foot. Never a lone, evenly spaced rock.
+
+**G7 · A GROUND PLANT MUST READ AS A PLANT.** No single flat card that shows as a sheet from the walker's camera or from above;
+no plant floating, sunk to its leaves or at a wrong scale (a fern is knee-high, 0.4-0.9 m; a flower 0.15-0.5 m). If a plant model
+looks bad from the game camera, replace it with a better existing one or drop it from the list. Never let one plant model carpet
+a whole room: no single model above about 40 % of a layer.
+
+**G8 · THE RIGHT TREES.** A zone plants only its climate's trees (section 5): no palm outside the tropics, the coast and the
+city's sea front; no snow tree off snow; no birch in the desert. Mixed ages: saplings and old trees, not one size. Trees in
+groves with clearings, not a lattice. Trees still only on grass, dirt or sand (owner-rules).
+
+**G9 · A TREE IN PAVEMENT STANDS IN A PIT.** A tree on a city street, plaza or forecourt never stands on one bare sand square that
+fades into the concrete. It gets a holder: a raised kerb ring or a square planter (15-45 cm, stone or concrete, reusing the game's
+planter / kerb models first), or a flush grate, with soil, mulch or gravel inside (a palm may keep sand, edged). Pit at least
+one full square. The same for every zone with paved squares (the Vatican, Katana's town, Camelot's plaza).
+
+**G10 · A SET PIECE IS DESIGNED.** A flower field, a garden, a meadow clearing is a place a zone's thread lays out on purpose: a
+shape with soft edges fading over 3-5 m into the surrounding cover, drifts inside it, a path or two through it, a few rocks
+breaking it. The rule's base cover never replaces that.
+
+**G11 · PERFORMANCE (RULE #1e).** All of it is decided per cell when a cell is built, from the cell's own lists (the noise, the
+room's paths, boxes and fluid read once): never a per-frame scan. Same seeded hash for both players. Every mesh made is disposed
+when its cell drops.
+
+### 0c. What each part of the game does about it (who owns what, 11-25)
+
+| Rule | Where it lives | Thread |
+|---|---|---|
+| G1-G4 grass clumps, colour, bare patches, tall edges | three-renderer.js THE GRASS FIELD (`_hqGrassCell`, board + walked rooms) and THE FLORA FIELD tufts (`_hqFloraCell`) | this lead thread |
+| G5 per-spot reasons for flora field layers | data.js `ZONE_FLORA` layers (new layer keys `near: 'tree' / 'rock' / 'edge' / 'wet'`, `shade`) + `_hqFloraCell` | this lead thread |
+| G6 pebbles and stones | flora field (walk-through pebbles); larger rocks by the zone holders | lead (pebbles) + zone threads |
+| G7 the Woods' ferns / shrubs | `M.fern`, `M.bush`, `size`, the Woods rooms | "Fix ugly ground ferns in the Woods" |
+| G10 the Fairy Forest flower field | `docs/areas/camelot/districts/F-room.js` + a flora field `field` class | "Add a flower field to the Fairy Forest" |
+| G9 Disaster City palm pits | the city's district files | "Give Disaster City palms planters" |
+
+**A designed flower field (G10) in the flora field:** a room may carry `terrain.floraFields: [{ pts: [[x, z], ...], cls: 'field', fade: 4 }]`
+(metres, room frame). Inside the outline the spot's ground class is `field` (the climate's `field` layers: dense drifts), fading to the
+sheet's own class over `fade` m. A climate with no `field` row grows its `lawn` row there at double weight. Hand-placed `fae_*` /
+`hp_*` / `rf_flower_*` props are for the few big accents only (they are heavier), not for the field's mass.
+
 ## 1. The one idea: a RULE, not rows
 
 Nothing of this pass is written into a room. A room's foliage is WORKED OUT each time the room is built, from three things
