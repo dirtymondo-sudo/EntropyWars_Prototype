@@ -108079,8 +108079,137 @@ ZONE_FLORA.anchorKeys = {
     /* the Woods' field ferns and flowers grow most by standing things (the lead's `near`); in the grass in drifts, on bare dirt hardly at all */
     ['horror', 'redwood'].forEach(c => { const K = ZONE_FLORA.climates[c]; if (!K) return; ['lawn', 'floor', 'rough', 'dirt'].forEach(g => (K[g] || []).forEach(L => { if (!L.g) { L.near = true; L.far = (g === 'lawn' || g === 'floor') ? 0.55 : 0.05; } })); });   // in the grass: drifts (the clump), and more by every standing thing
 })();
+/* ══ THE SCENIC PASS, GROUP 4 · THE COUNTRYSIDE (2026-11-25, flora.md 00d: the Estate, Leylines, Stonehenge, the green routes). mondo: "is this just the
+   woods or are you gonna do something similar for the rest of the game or any where there's nature". The Woods' groups kit, plus what the pilot had not
+   done yet: S9 VIGNETTES (a small composed scene beside the path every 20-40 m, read off the room's own path sheet once at build), S1/S2/S10 THE FOCAL
+   SPOTS (hand rows: a grove framing the way in, a hero tree by the landmark) and G19's ground litter (low leaves, pebbles) inside every scene.
+   The rows are keyed BY ROOM (`ZONE_FLORA.composeRooms`), so the meadow / forest / wood climates other zones share are not touched.
+   A scene recipe: [key, x along the path, z away from it, scale, face] (metres; face: null = a seeded turn, 'par' = along the path, 'path' = toward it);
+   key 'TREE:<kind>' stands a tree (the climate turns its kind, it blocks). Thinner plant rows pay for the scenes: no triangles added overall. */
+ZONE_FLORA.scenes = {
+    /* the woods' edge and the routes */
+    log_ferns:   [['fallen_log', 0, 1.2, 1, 'par'], ['moss_clump', -1.1, 1.0], ['rf_plant_10', 0.9, 1.5], ['rf_plant_5', -1.6, 1.9, 0.9], ['rf_plant_6', 1.7, 0.8, 0.8], ['mushroom2', 0.4, 1.9, 0.18], ['mushroom2', 0.7, 2.0, 0.13],
+                  ['rf_grass_5_dark', -0.4, 2.3], ['rf_plant_2', 1.0, 0.4], ['psxg_rock_4', -1.9, 0.6, 0.8]],
+    rock_moss:   [['psxg_rock_1', 0, 1.5, 2.0], ['psxg_rock_3', 1.1, 0.8, 0.9], ['psxg_rock_4', -0.8, 0.5], ['moss_clump', -0.7, 1.4], ['rf_grass_6_dark', 0.6, 2.2], ['rf_grass_5_dark', -1.3, 2.0],
+                  ['hp_bluebell', 1.6, 1.8, 0.9], ['hp_bluebell', 2.1, 1.3, 0.7], ['rf_plant_8', 0.2, 0.5], ['rf_plant_10', -1.5, 0.9]],
+    stump_caps:  [['stump', 0, 1.1, 1], ['mushroom2', 0.5, 1.5, 0.22], ['mushroom2', 0.8, 1.2, 0.15], ['rf_plant_6', -0.4, 1.6, 0.6], ['moss_clump', -0.6, 1.0], ['rf_plant_6', 1.2, 1.9, 0.8], ['rf_plant_2', -1.1, 0.5], ['rf_plant_3', 0.6, 0.4]],
+    bench_glade: [['park_bench', 0, 0.9, 1, 'path'], ['TREE:tree_3', 0.4, 3.6], ['hp_bluebell', -1.4, 1.7], ['hp_daisy_bunch', -2.0, 2.4, 0.8], ['hp_bluebell', 1.6, 2.0, 0.9], ['rf_plant_11', 2.3, 3.1, 0.8],
+                  ['rf_grass_5', -0.6, 2.6], ['rf_plant_2', 1.0, 0.3], ['rf_plant_10', -1.0, 0.4]],
+    cairn_drift: [['cairn', 0, 1.3, 1.0], ['hp_violet', -2.6, 1.2, 0.8], ['hp_violet', 1.8, 2.0, 0.8], ['hp_violet', -1.0, 1.0], ['hp_violet', -1.6, 1.7, 0.9], ['hp_bluebell', -2.2, 2.3, 0.8], ['psxg_rock_3', 0.9, 1.0, 0.8], ['rf_grass_4', 0.6, 2.1], ['rf_plant_8', 1.4, 0.5]],
+    /* the Estate: harvest */
+    pumpkins:    [['hw_pumpkin', 0, 1.0], ['hw_pumpkin_3', 0.8, 1.4], ['hw_pumpkin_4', -0.6, 1.6], ['hw_pumpkin_2', 0.3, 2.2, 0.9], ['hw_crop_2', -1.3, 1.0], ['hw_crop_2', 1.5, 2.0], ['hw_crop', 1.2, 0.6],
+                  ['rf_grass_3_dry', -1.0, 2.4], ['rf_grass_5_dry', 1.8, 2.8], ['hp_orange_flower', -1.8, 1.8, 0.9], ['rf_plant_2', 0.4, 0.4]],
+    hay_corner:  [['hay_bale', 0, 1.3, 1, 'par'], ['hw_straw', 1.2, 1.5, 1, 'par'], ['pitchfork', -0.9, 1.4], ['hw_straw_2', 0.4, 2.6, 1, 'par'], ['rf_grass_5_dry', -1.5, 2.2], ['rf_grass_3_dry', 1.9, 0.9], ['hp_flameflower', -1.6, 1.0, 0.8], ['rf_plant_2', 0.5, 0.4]],
+    scarecrow:   [['hw_scarecrow_2', 0, 2.2, 1, 'path'], ['hw_crop_2', -1.2, 1.4], ['hw_crop_2', 1.1, 1.6], ['hw_crop', -0.5, 3.0], ['hw_crop_3', 0.9, 3.1], ['hw_pumpkin_4', 1.6, 0.9], ['rf_grass_5_dry', -1.9, 2.6], ['rf_grass_3_dry', 0.3, 1.0]],
+    barrow:      [['wheelbarrow', 0, 1.2, 1, 'par'], ['hw_pumpkin_2', 1.2, 1.0], ['hw_pumpkin', 1.5, 1.6, 0.8], ['psxg_rock_3', -1.3, 1.3, 0.9], ['rf_grass_5_dry', -1.7, 2.1], ['hp_orange_flower', 0.4, 2.3, 0.9], ['hp_flameflower', -0.6, 2.4, 0.8], ['rf_plant_2', 0.6, 0.4]],
+    leaf_log:    [['fallen_log', 0, 1.3, 1, 'par'], ['hp_flameflower', -1.4, 1.0, 0.8], ['hp_orange_flower', 1.5, 1.9, 0.8], ['mushroom2', 0.2, 2.0, 0.16], ['rf_plant_2', 0.8, 0.5], ['rf_plant_2', -0.7, 2.2], ['rf_grass_5_dry', -1.8, 2.3], ['psxg_rock_4', 1.9, 0.7]],
+    /* Leylines: dry farmland of the Fertile Crescent */
+    outcrop:     [['rf_rock_1', 0, 1.7, 1.0], ['rf_rock_3', 1.4, 1.0, 0.7], ['hp_orange_flower', 2.2, 1.8, 0.7], ['psxg_rock_4', -1.1, 0.8], ['psxg_rock_4', 1.9, 2.2, 0.7], ['rf_plant_9', -1.2, 1.9], ['rf_plant_8', 0.8, 2.6], ['rf_grass_5_dry', -0.3, 2.9], ['rf_grass_3_dry', 1.7, 0.5], ['hp_orange_flower', -1.8, 1.2, 0.7]],
+    plough:      [['plough', 0, 1.4, 1, 'par'], ['psxg_rock_3', 1.6, 1.0, 0.8], ['rf_grass_5_dry', -1.5, 1.9], ['rf_grass_3_dry', 0.6, 2.4], ['fl_wheat_clump', -0.4, 2.7, 0.9], ['rf_grass_5_dry', 0.9, 2.9, 0.8], ['rf_plant_8', 1.8, 2.1]],
+    urns:        [['stone_urn', 0, 1.2, 0.8], ['greek_amphora', 0.8, 1.5, 0.7], ['woven_baskets', -0.8, 1.3, 1, 'par'], ['psxg_rock_3', 1.5, 0.9, 0.8], ['rf_plant_9', -1.5, 1.9], ['rf_grass_3_dry', 0.4, 2.3], ['rf_plant_8', -0.3, 0.5]],
+    /* Stonehenge: an English meadow */
+    meadow_rock: [['psxg_rock_1', 0, 1.7, 2.1], ['psxg_rock_3', 1.2, 1.0, 1.3], ['hp_daisy_bunch', -0.9, 0.7], ['hp_daisy_bunch', 2.0, 1.6, 0.8], ['hp_bluebell', -2.0, 1.4, 0.8], ['rf_plant_4', -1.4, 2.3, 0.8], ['hp_daisy_bunch', 0.9, 2.2], ['hp_daisy_bunch', 1.5, 2.6, 0.8], ['hp_daisy', -0.4, 0.8], ['rf_grass_5', -1.0, 1.3], ['moss_clump', 0.4, 1.9]],
+    daisy_cairn: [['cairn', 0, 1.3, 1.0], ['hp_daisy_bunch', -0.3, 0.6, 0.9], ['hp_daisy', 2.0, 2.2], ['hp_daisy_bunch', -1.0, 1.0], ['hp_daisy_bunch', -1.6, 1.7, 0.9], ['hp_bluebell', 1.1, 1.8, 0.9], ['hp_bluebell', 1.5, 1.2, 0.8], ['rf_grass_5', 0.5, 2.3], ['psxg_rock_4', 1.0, 0.6], ['rf_plant_10', -0.5, 0.5]],
+    /* THE FOCAL GROVE (S2 / S10): two trees, a bush and a fringe of flowers, on the side of a way in; stood by hand, a pair frames the view */
+    frame_grove: [['TREE:tree_3', 0, 2.8], ['TREE:tree', 2.6, 4.4], ['rf_plant_11', -1.3, 1.6, 0.9], ['rf_plant_4', 1.6, 2.0], ['hp_daisy_bunch', -0.4, 0.9], ['hp_bluebell', 0.8, 1.0, 0.9], ['hp_daisy', -1.9, 0.8, 0.8], ['hp_daisy_bunch', -2.4, 1.4, 0.8], ['rf_grass_5', 0.2, 1.7], ['rf_plant_2', 1.2, 0.4]],
+    hero_oak:    [['TREE:tree_3', 0, 0], ['rf_grass_5', 1.1, 0.4], ['rf_grass_6', -0.8, 1.0], ['hp_daisy_bunch', 0.6, -1.2], ['hp_bluebell', -1.2, -0.6, 0.8], ['psxg_rock_3', 1.4, -0.9, 0.9], ['moss_clump', -0.4, 1.3]],
+};
+ZONE_FLORA.composeRooms = {
+    site_prebuilt_skinwalker_ow_lake: 'estate', site_prebuilt_skinwalker_ow_house: 'estate', site_prebuilt_skinwalker_ow_trail: 'estate',
+    site_prebuilt_gobekli_ow_line: 'ley', site_prebuilt_gobekli_ow_babel: 'ley', site_prebuilt_gobekli_ow_bugs: 'ley',
+    site_prebuilt_gobekli_ow_henge: 'henge',
+    site_ow_r1: 'route', site_ow_r6: 'route', site_ow_r4: 'route', site_ow_r12: 'route',
+};
+(function () {
+    const C = ZONE_FLORA.compose || (ZONE_FLORA.compose = {});
+    const hero = (on, per, size, low) => ({ per: per || [1, 1], size: size || [3, 5], on: on || ['tree', 'edge', 'rock'], low });
+    const drift = (low) => ({ per: [3, 4], size: [5, 7], on: ['edge', 'tree', 'rock'], low });
+    const DRY = [['rf_grass_5_dry', 3], ['rf_grass_3_dry', 3], ['rf_grass_4_dry', 2], ['rf_plant_2', 1]], GREEN = [['rf_grass_5', 3], ['rf_grass_6', 3], ['rf_grass_4', 2], ['moss_clump', 1]];
+    /* THE ESTATE (autumn): the field flowers and bushes gather at the trees, the rocks and the farm's corners; pumpkins, sunflowers and the crops keep their rows */
+    C.estate = { thin: 0.5, loose: 2.5, low: DRY, keys: {
+        wild_flowers: drift([['rf_grass_3_dry', 1], ['hp_orange_flower', 1]]), leafy_bush: hero(['tree', 'edge', 'wall', 'rock'], [1, 2], [3, 5]),
+        psxg_dead_bush_1: hero(['edge', 'log', 'rock', 'wall'], [1, 1], [3]), psxg_dead_bush_2: hero(['edge', 'log', 'rock', 'wall'], [1, 1], [3]),
+        moss_clump: { per: [2, 3], size: [3], on: ['log', 'rock', 'stump'] }, mushroom2: { per: [3, 4], size: [3, 5], on: ['log', 'stump', 'tree'], low: [['moss_clump', 1], ['rf_plant_2', 1]] } },
+        islands: { every: 520, apart: 14, max: 30, on: { lawn: 1 }, rocks: [['psxg_rock_1', 2], ['psxg_rock_2', 2], ['psxg_rock_3', 2], ['rf_rock_1', 1]],
+                   with: [['rf_grass_5_dry', 3], ['rf_grass_3_dry', 3], ['hp_orange_flower', 2], ['hp_flameflower', 1], ['rf_plant_2', 2]], size: [3, 5] },
+        scenes: { every: 30, off: [1.2, 2.6], max: 26, list: [['pumpkins', 3], ['hay_corner', 2], ['scarecrow', 1], ['barrow', 2], ['leaf_log', 3], ['rock_moss', 1]] } };
+    /* LEYLINES (dry farmland): bushes and cacti at the rocks, wheat and stone at the paths */
+    C.ley = { thin: 0.5, loose: 2.5, low: DRY, keys: {
+        leafy_bush: hero(['rock', 'wall', 'tree', 'edge'], [1, 2], [3, 5]), wild_flowers: drift([['rf_grass_3_dry', 1], ['rf_plant_8', 1]]),
+        psxg_dead_bush_1: hero(['rock', 'wall', 'edge'], [1, 2], [3]), psxg_dead_bush_2: hero(['rock', 'wall', 'edge'], [1, 2], [3]),
+        fl_barrel_cactus: { per: [2, 3], size: [3, 5], on: ['rock', 'wall'], low: [['rf_plant_9', 1], ['rf_plant_8', 1], ['psxg_rock_4', 1]] } },
+        islands: { every: 600, apart: 16, max: 24, on: { lawn: 1, sand: 1, dry: 1 }, rocks: [['rf_rock_1', 2], ['rf_rock_3', 2], ['psxg_rock_1', 2], ['psxg_rock_3', 1]],
+                   with: [['rf_plant_9', 3], ['rf_plant_8', 3], ['rf_grass_5_dry', 3], ['rf_grass_3_dry', 2], ['hp_orange_flower', 1]], size: [3, 5] },
+        scenes: { every: 32, off: [1.2, 2.6], max: 22, on: { lawn: 1, floor: 1, rough: 1, dry: 1, sand: 1 }, list: [['outcrop', 3], ['plough', 1], ['urns', 1], ['cairn_drift', 1]] } };
+    /* STONEHENGE (an English meadow): the open plain round the stones stays open; daisies and bluebells drift at its rim, rocks break the grass */
+    C.henge = { thin: 0.6, loose: 2.5, low: GREEN, open: [[0, -2, 27]], keys: {   // `open`: discs nothing composed stands in (S7: the plain round the stones)
+        leafy_bush: hero(['tree', 'rock', 'edge'], [1, 2], [3, 5]), psxg_dead_bush_1: hero(['rock', 'tree'], [1, 1], [3]),
+        fae_flower_small_pink: drift([['hp_daisy', 1], ['rf_grass_5', 1]]), fae_flower_small_violet: drift([['hp_bluebell', 1], ['rf_grass_5', 1]]), fae_flower_small_blue: drift([['hp_bluebell', 1]]),
+        woods_healflower: hero(['rock', 'tree'], [1, 1], [3, 5], [['hp_daisy_bunch', 1], ['rf_grass_5', 1]]) },
+        islands: { every: 420, apart: 12, max: 14, on: { lawn: 1 }, rocks: [['psxg_rock_1', 2], ['psxg_rock_2', 2], ['psxg_rock_3', 2], ['lake_rock', 1]],
+                   with: [['hp_daisy_bunch', 3], ['hp_daisy', 2], ['hp_bluebell', 2], ['rf_grass_5', 3], ['moss_clump', 1]], size: [3, 5] },
+        scenes: { every: 26, off: [1.2, 2.4], max: 10, list: [['meadow_rock', 2], ['daisy_cairn', 2], ['rock_moss', 1]] } };
+    /* THE GREEN ROUTES (R1, R6, R4, R12): open woodland roads; the flowers and bushes gather at trunks, logs and rocks, the verges get their scenes */
+    C.route = { thin: 0.45, loose: 2.5, low: GREEN, keys: {
+        wild_flowers: drift(), leafy_bush: hero(['tree', 'edge', 'rock', 'log'], [1, 2], [3, 5]), moss_clump: { per: [2, 3], size: [3], on: ['log', 'rock', 'stump'], low: [['rf_grass_6', 1]] },
+        psxg_dead_bush_1: hero(['log', 'rock', 'edge'], [1, 1], [3]) },
+        islands: { every: 700, apart: 16, max: 30, on: { lawn: 1, rough: 1 }, rocks: [['psxg_rock_1', 2], ['psxg_rock_2', 2], ['psxg_rock_3', 2], ['lake_rock', 1]],
+                   with: [['wild_flowers', 2], ['moss_clump', 2], ['rf_grass_5', 3], ['rf_grass_6', 3]], size: [3, 5] },
+        scenes: { every: 34, off: [1.3, 2.8], max: 34, list: [['log_ferns', 3], ['rock_moss', 3], ['stump_caps', 2], ['bench_glade', 1], ['cairn_drift', 1]] } };
+    /* THE FOCAL SPOTS (S1, S2, S10), by hand from the walker's own views: { at: [x, z], a: the way the scene's +z faces (deg, 0 = +x), scene } */
+    ZONE_FLORA.focal = {
+        /* Stonehenge: the walker comes up the avenue from the south gate; two groves frame the stones, a hero oak stands back on the plain */
+        site_prebuilt_gobekli_ow_henge: [{ at: [3, 36], a: 180, scene: 'frame_grove' }, { at: [29, 35], a: 0, scene: 'frame_grove' }, { at: [-40, -8], scene: 'hero_oak' }],
+        /* the Haunted House: the drive from the north gate; groves either side of its last stretch open on the house */
+        site_prebuilt_skinwalker_ow_house: [{ at: [-10, 2], a: 180, scene: 'frame_grove' }, { at: [10, 2], a: 0, scene: 'frame_grove' }],
+    };
+})();
+/* THE VIGNETTES + THE FOCAL SPOTS of a compose row (`scenes`, ZONE_FLORA.focal[room]); run by zoneFloraCompose at room build, never a frame.
+   The way = the room's path sheet or any paved sheet (no flora class); a vignette stands on grass just off it, its +z away from the way, at least
+   `every` m from the last, never at a door's lane, the spawn or a keep-clear square. Seeded by the room (RULE #2). Off: EW_NO_FLORA_SCENES. */
+function zoneFloraScenes(roomId, info, room, C, K, X) {
+    if (typeof window !== 'undefined' && window.EW_NO_FLORA_SCENES) return null;
+    const SC = ZONE_FLORA.scenes, out = { scenes: 0, focal: 0, trees: 0, pieces: 0, at: [] }, D2R = Math.PI / 180;
+    const grassy = (C.scenes && C.scenes.on) || { lawn: 1, floor: 1, rough: 1 };   // a scene stands in growth (ley: dry ground too)
+    const isWay = (x, z) => { const ni = Math.round((x - info.x0) / info.res), nj = Math.round((z - info.z0) / info.res); if (ni < 0 || nj < 0 || ni >= info.nx || nj >= info.nz) return false;
+        const PT = info.paint, v = PT ? PT.P[nj * info.nx + ni] : 0, sh = v ? PT.pal[v - 1] : info.floor; if (sh === info.path) return true; return !zoneFloraSheet(sh) && sh !== 'gold' && !/water|lava/.test(String(sh)); };
+    const sp = room.spawn || null;
+    const place = (name, cx, cz, th) => {   // th = the angle of the scene's +z (away from the way)
+        const R = SC[name]; if (!R) return 0; const nx = Math.cos(th), nz = Math.sin(th), tx = -nz, tz = nx; let got = 0;
+        R.forEach(q => { const key = q[0], lx = q[1], lz = q[2], s = q[3] || 1, f = q[4]; const x = cx + lx * tx + lz * nx, z = cz + lx * tz + lz * nz;
+            if (/^TREE:/.test(key)) { if (!X.free(x, z, 1.2) || !grassy[zoneFloraGround(info, x, z)]) return; K.placed.push({ x, z, r: 0.8 }); info.trees.push({ x, z, kind: key.slice(5), h: null, r: 0.8, y: K.hAt(x, z), composed: true }); out.trees++; got++; return; }
+            const c = DOOR_HQ.catalogue[key]; if (!c) return; const rad = Math.max(0.2, c.foot || 0.25);
+            if (!X.free(x, z, c.block ? rad : 0.15)) return;
+            const face = f === 'par' ? Math.round(-Math.atan2(tz, tx) / D2R) : f === 'path' ? Math.round(-Math.atan2(-nz, -nx) / D2R + 90) : null;
+            X.stand(key, x, z, s, face); got++; out.pieces++; });
+        return got;
+    };
+    /* 1. the focal spots, by hand */
+    (ZONE_FLORA.focal[roomId] || []).forEach(F => { if (place(F.scene, F.at[0], F.at[1], (F.a != null ? F.a : X.rnd() * 360) * D2R)) out.focal++; });
+    /* 2. the vignettes beside the way */
+    const V = C.scenes; if (!V || !V.list) return out;
+    const step = 1.75, hw = info.S.w / 2 - 3, hd = info.S.d / 2 - 3, edge = [];
+    for (let x = -hw; x <= hw; x += step) for (let z = -hd; z <= hd; z += step) {
+        if (!isWay(x, z)) continue;
+        for (let a = 0; a < 4; a++) { const dx = [1, -1, 0, 0][a], dz = [0, 0, 1, -1][a]; if (!isWay(x + dx * step, z + dz * step) && grassy[zoneFloraGround(info, x + dx * step, z + dz * step)]) { edge.push([x, z, Math.atan2(dz, dx)]); break; } }
+    }
+    for (let i = edge.length - 1; i > 0; i--) { const j = Math.floor(X.rnd() * (i + 1)), t = edge[i]; edge[i] = edge[j]; edge[j] = t; }
+    const mine = (ZONE_FLORA.focal[roomId] || []).map(F => [F.at[0], F.at[1]]);
+    for (const e of edge) {
+        if (out.scenes >= (V.max || 30)) break;
+        if (mine.some(m => Math.hypot(m[0] - e[0], m[1] - e[1]) < V.every)) continue;
+        if (sp && Math.hypot((sp.x || 0) - e[0], (sp.z || 0) - e[1]) < 10) continue;
+        const off = V.off[0] + X.rnd() * (V.off[1] - V.off[0]), cx = e[0] + Math.cos(e[2]) * off, cz = e[1] + Math.sin(e[2]) * off;
+        if (!grassy[zoneFloraGround(info, cx, cz)] || !X.free(cx, cz, 1.0)) continue;
+        if (!grassy[zoneFloraGround(info, cx + Math.cos(e[2]) * 2.5, cz + Math.sin(e[2]) * 2.5)]) continue;   // room behind it: not a one-square verge
+        const name = X.pick(V.list);
+        if (place(name, cx, cz, e[2]) >= 3) { mine.push([e[0], e[1]]); out.scenes++; out.at.push([name, Math.round(cx), Math.round(cz), Math.round(e[2] * 180 / Math.PI)]); }
+    }
+    return out;
+}
 function zoneFloraComposeOf(roomId) {
     if (typeof window !== 'undefined' && (window.EW_NO_FLORA || window.EW_NO_FLORA_COMPOSE)) return null;
+    const own = ZONE_FLORA.composeRooms && ZONE_FLORA.composeRooms[roomId]; if (own && ZONE_FLORA.compose && ZONE_FLORA.compose[own]) return ZONE_FLORA.compose[own];   // a room's own row (the countryside, group 4)
     const Z = zoneFloraRule(roomId); return (Z && Z.c && ZONE_FLORA.compose && ZONE_FLORA.compose[Z.c]) || null;
 }
 function zoneFloraCompose(roomId, info, room, C, rows, K) {
@@ -108109,9 +108238,9 @@ function zoneFloraCompose(roomId, info, room, C, rows, K) {
     /* 3. the groups */
     const pick = (list) => { let t = 0; list.forEach(q => { t += q[1]; }); let r = rnd() * t; for (const q of list) { r -= q[1]; if (r <= 0) return q[0]; } return list[list.length - 1][0]; };
     const order = A.map((a, i) => i); for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)), t = order[i]; order[i] = order[j]; order[j] = t; }
-    const free = (x, z, r) => !(Math.abs(x) > hw || Math.abs(z) > hd || (K.keepClear && K.keepClear(x, z)) || (K.gate && K.gate(x, z, r)) || !K.freeFor(x, z, r, { slope: 0.35, apart: 0.3 }));
-    const stand = (key, x, z, scale) => { const c = cat[key]; if (!c) return; const rad = Math.max(0.25, (c.foot || 0.3));
-        K.placed.push({ x, z, r: rad }); const row = { key, x: Math.round(x * 100) / 100, z: Math.round(z * 100) / 100, y: K.hAt(x, z), face: Math.round(rnd() * 360), r: rad, composed: true };
+    const free = (x, z, r) => !(Math.abs(x) > hw || Math.abs(z) > hd || (C.open && C.open.some(o => Math.hypot(x - o[0], z - o[1]) < o[2] + r)) || (K.keepClear && K.keepClear(x, z)) || (K.gate && K.gate(x, z, r)) || !K.freeFor(x, z, r, { slope: 0.35, apart: 0.3 }));
+    const stand = (key, x, z, scale, face) => { const c = cat[key]; if (!c) return; const rad = Math.max(0.25, (c.foot || 0.3));
+        K.placed.push({ x, z, r: rad }); const row = { key, x: Math.round(x * 100) / 100, z: Math.round(z * 100) / 100, y: K.hAt(x, z), face: (face != null ? face : Math.round(rnd() * 360)), r: rad, composed: true };
         if (c.h) row.h = Math.round(c.h * scale * 100) / 100; if (c.foot != null) row.foot = c.foot; info.scatter.push(row); };
     let groups = 0, pieces = 0, oi = 0;
     Object.keys(want).sort().forEach(key => {
@@ -108158,8 +108287,10 @@ function zoneFloraCompose(roomId, info, room, C, rows, K) {
                 if (free(x3, z3, Math.max(0.2, c2.foot || 0.25))) { stand(key2, x3, z3, 0.55 + rnd() * 0.45); pieces++; } }
         }
     }
+    /* 5. the vignettes beside the way + the focal spots (group 4, the countryside: zoneFloraScenes) */
+    let scenes = null; if ((C.scenes || (ZONE_FLORA.focal && ZONE_FLORA.focal[roomId])) && typeof zoneFloraScenes === 'function') { try { scenes = zoneFloraScenes(roomId, info, room, C, K, { rnd, pick, free, stand }); } catch (e) { if (typeof console !== 'undefined') console.warn('[FLORA] the scenes', e); } }
     info.composeDrop = drop;
-    return { groups, pieces, dropped: drop.size, anchors: A.length, islands };
+    return { groups, pieces, dropped: drop.size, anchors: A.length, islands, scenes };
 }
 if (typeof window !== 'undefined') Object.assign(window, { ZONE_FLORA, zoneFloraRule, zoneFloraAt, zoneFloraGround, zoneFloraSheet, zoneFloraTrees, zoneFloraProps, zoneFloraClimateOf, zoneFloraSwap, zoneFloraRoomId });
 /* ══ THE ZONE LOOKS (2026-11-18, mondo: "I added an SBS horror texture pack in the inbox. Its basically just more textured and weathered
