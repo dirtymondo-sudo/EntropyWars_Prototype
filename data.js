@@ -107752,6 +107752,7 @@ var ZONE_FLORA = (function () {
            a climate's `stones` multiplies it (0 = none: the city's mown lawns). Off: window.EW_NO_FLORA_STONES, all of it: EW_NO_GROUND_RULES */
         near: { m: 2.6, k: 2.6, far: 0.3 },
         stones: { files: [1, 2, 3, 4].map(i => 'asset:world/packs/afgameassets_retro_foliage/rf_rock_' + i + '.glb'), blobM: 9, size: [0.10, 0.30], big: [0.35, 0.70], bigShare: 0.12, sink: 0.25,
+                  clump: 0.62, pow: 1.6, gain: 6.5, spread: 0.8, off: 3.2, pathM: 1.2,   // G6b (11-25): fewer, tighter heaps (a blob's top, not half the ground) and never on a painted road or its shoulder (`off` m of one sheet all round)
                   on: { lawn: 0.012, rough: 0.06, floor: 0.025, dirt: 0.045, dry: 0.05, sand: 0.01, rock: 0.07, snow: 0.006 } },
         /* ── THE CLIMATES: per ground class, the layers that grow there · `trees` = the tree lists · `like` = the rest as that climate ── */
         climates: {

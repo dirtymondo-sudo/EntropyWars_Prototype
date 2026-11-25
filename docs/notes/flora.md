@@ -195,6 +195,13 @@ or trunk, the field's rim, the bank of water. A tall fringe (x1.3-1.8) a metre o
 ankle-high), a few larger rocks half-sunk in the ground (the existing `rf_rock_*` / rock models, placed by a holder: they block),
 in clusters of 2-5 of mixed sizes, more on rough ground and slopes, near paths and at a rock's foot. Never a lone, evenly spaced rock.
 
+**G6b · THE PEBBLES CLUSTER AND KEEP OFF ROADS (built 11-25, the dry + cold scenic thread saw rocks on the desert and snow roads at even
+spacing).** The flora field's pebbles now take only a blob's top (`ZONE_FLORA.stones.clump` 0.62, `pow` 1.6, `gain` 6.5: about the same count
+on 31 % of the ground instead of 58 %, in heaps `spread` 0.8 m across). A road on a route or a mountain is PAINT (`dirt_4`, `dirt_2`, `ice_1`
+on its own floor), not a path row, so a pebble spot must sit inside ONE painted sheet: the same sheet `off` 3.2 m to all four sides and
+corners (a road, its shoulder, any band under 6.4 m = no pebbles), and `pathM` 1.2 m clear of a path row. Three-renderer.js `_hqStoneOpen`.
+A pebble is sized by its rock's width OR 1.6 x its height, whichever is more: a tall kit rock had stood up as a knee-high grey slab.
+
 **G7 · A GROUND PLANT MUST READ AS A PLANT.** No single flat card that shows as a sheet from the walker's camera or from above;
 no plant floating, sunk to its leaves or at a wrong scale (a fern is knee-high, 0.4-0.9 m; a flower 0.15-0.5 m). If a plant model
 looks bad from the game camera, replace it with a better existing one or drop it from the list. Never let one plant model carpet

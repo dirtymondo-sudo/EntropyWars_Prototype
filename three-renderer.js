@@ -9811,6 +9811,22 @@ const ThreeRenderer = (function () {
         }
         return 0;
     }
+    /* G6b THE STONES KEEP OFF THE ROADS (11-25, the desert / cold scenic thread: "angular rocks on the dry and snow roads at even spacing"): a road on a
+       route or a mountain is PAINT (dirt_4, dirt_2, ice_1 on its own floor), not a path row, so a stone spot must stand inside one painted ground:
+       the same sheet `off` metres to all four sides and the four corners (a road, its shoulder, a band under 2 x off wide = no stones), and clear of a
+       path row by `pathM`. Only asked for a spot whose dice already said "stones" (a few in a hundred) */
+    function _hqStoneOpen(S, info, PT, near, x, z, nk) {
+        var FS = ZONE_FLORA.stones, R = FS.off || 0, q;
+        for (q = 0; q < near.length; q++) if (_hqTPolyDist(x, z, near[q].pts).d < near[q].w / 2 + (FS.pathM || 1.2)) return false;
+        if (!PT || !R) return true;
+        var me = PT.P[nk], d = R * 0.72, O = [[R, 0], [-R, 0], [0, R], [0, -R], [d, d], [-d, d], [d, -d], [-d, -d]];
+        for (q = 0; q < 8; q++) {
+            var i = Math.round((x + O[q][0] - info.x0) / info.res), j = Math.round((z + O[q][1] - info.z0) / info.res);
+            if (i < 0 || j < 0 || i >= info.nx || j >= info.nz) continue;
+            if (PT.P[j * info.nx + i] !== me) return false;
+        }
+        return true;
+    }
     /* G19 THE LITTER: the one mask (a ragged blob, made once in code: the sheet itself is never touched) and the one material on the litter sheet */
     var _grLitMat = null;
     function _grLitterMat() {
@@ -9896,12 +9912,13 @@ const ThreeRenderer = (function () {
             }
             /* THE STONES (G6): a pebble cluster here? (a spot of a cluster blob, more on rough / dry ground) */
             if (S.stones && SS && F.stones.on[cls] && C.stones !== 0) {
-                var sw = _ewSmoothNoise(xm / F.stones.blobM + 71.3, zm / F.stones.blobM + 23.9), sp = F.stones.on[cls] * (C.stones || 1) * step * step * Math.max(0, (sw - 0.45) / 0.55) * 2.2 * S.thin;
+                var FSt = F.stones, sc0 = FSt.clump != null ? FSt.clump : 0.45, sw = _ewSmoothNoise(xm / FSt.blobM + 71.3, zm / FSt.blobM + 23.9), sw1 = Math.max(0, (sw - sc0) / (1 - sc0));
+                var sp = FSt.on[cls] * (C.stones || 1) * step * step * Math.pow(sw1, FSt.pow || 1) * (FSt.gain || 2.2) * S.thin;
                 if (gO && gO.keep < 0.5) sp *= 1.8;   // the bare blobs show their stones
-                if (rnd() < sp) for (var sn = 1 + Math.floor(rnd() * 3), si0 = 0; si0 < sn; si0++) {
-                    var RK = S.stones[Math.floor(rnd() * S.stones.length)], big = rnd() < F.stones.bigShare, sz0 = big ? F.stones.big : F.stones.size, ss = (sz0[0] + (sz0[1] - sz0[0]) * rnd()) / RK.span, sa = rnd() * Math.PI * 2, sco = Math.cos(sa) * ss, ssi = Math.sin(sa) * ss;
+                if (sp > 0 && rnd() < sp && _hqStoneOpen(S, info, PT, near, xm, zm, nk)) for (var sn = 1 + Math.floor(rnd() * 3), si0 = 0; si0 < sn; si0++) {
+                    var RK = S.stones[Math.floor(rnd() * S.stones.length)], big = rnd() < F.stones.bigShare, sz0 = big ? F.stones.big : F.stones.size, ss = (sz0[0] + (sz0[1] - sz0[0]) * rnd()) / Math.max(RK.span, RK.h * 1.6), sa = rnd() * Math.PI * 2, sco = Math.cos(sa) * ss, ssi = Math.sin(sa) * ss;
                     if (SS.v + RK.nv > SS.maxV || SS.i + RK.ix.length > SS.maxI) break;
-                    var sx = xm + (rnd() - 0.5) * 1.1, sz = zm + (rnd() - 0.5) * 1.1, sgy = hqTerrainHeight(info, sx, sz) - RK.h * ss * F.stones.sink, ka, sv3;
+                    var sx = xm + (rnd() - 0.5) * (FSt.spread || 1.1), sz = zm + (rnd() - 0.5) * (FSt.spread || 1.1), sgy = hqTerrainHeight(info, sx, sz) - RK.h * ss * F.stones.sink, ka, sv3;
                     for (ka = 0; ka < RK.nv; ka++) { var k3a = ka * 3; sv3 = (SS.v + ka) * 3; var px0 = RK.p[k3a], pz0 = RK.p[k3a + 2], nx0 = RK.n[k3a], nz0 = RK.n[k3a + 2];
                         SS.pos[sv3] = (sx + px0 * sco + pz0 * ssi) * U; SS.pos[sv3 + 1] = (sgy + RK.p[k3a + 1] * ss) * U; SS.pos[sv3 + 2] = (sz - px0 * ssi + pz0 * sco) * U;
                         SS.nor[sv3] = nx0 * Math.cos(sa) + nz0 * Math.sin(sa); SS.nor[sv3 + 1] = RK.n[k3a + 1]; SS.nor[sv3 + 2] = -nx0 * Math.sin(sa) + nz0 * Math.cos(sa);
