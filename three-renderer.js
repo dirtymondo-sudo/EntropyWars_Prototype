@@ -9739,7 +9739,7 @@ const ThreeRenderer = (function () {
                 if (gO) p *= L.g ? gO.keep : (0.35 + 0.65 * gO.keep);   // G1 / G3: the clumps' seams and the bare blobs thin the cover (a flower keeps more)
                 if (L.near && S.gr) {   // G5: grows by standing things (a trunk, a rock, a prop): within nearM it is nearK times as likely, out in the open farK
                     if (nd < 0) nd = _grNearD(S.gr.near, xm, zm, F.near.m);
-                    p *= (nd < F.near.m) ? F.near.k : F.near.far;
+                    p *= (nd < F.near.m) ? F.near.k : (L.far != null ? L.far : F.near.far);   // a layer's own open-ground share (`far: 0` = never out in the open: S7)
                 }
                 if (L.clump > 0) { var c0 = 0.62 * L.clump, w = _ewSmoothNoise(xm / 6 + 17.3 * (li + 1), zm / 6 + 5.1 * (li + 1)); p *= Math.max(0, (w - c0) / (1 - c0)) * 2; }
                 if (r0 >= p) continue;
