@@ -31607,7 +31607,7 @@ STORY_CUTSCENES.orientation_intro = {
           act: [{ at: 0, do: 'place', who: 'sedaniel', x: -6, z: -41, face: 0 }, { at: 0, do: 'place', who: 'player', x: -3.4, z: -41, face: 270 }, { at: 0, do: 'show', who: 'player' },
                 /* the tip (mondo 11-25): the arm out (MAL6 Checkout_Gesture, sprites.js _CAST_POSES.hqTip) with real bills from the PSX pack */
                 { at: 0.25, do: 'place', who: 'player', clip: 'hqTip', ms: 3300 },
-                { at: 0.25, do: 'hold', who: 'player', key: 'psx_cash_2', bone: 'LeftHand', pos: [0, 0.08, -0.018], rot: [90, 0, 0], h: 0.14 }] },
+                { at: 0.25, do: 'hold', who: 'player', key: 'psx_cash_2', bone: 'LeftHand', pos: [-0.017, 0.085, 0.009], rot: [-90, 0, 119], h: 0.14 }] },
         /* A7 · he drives off; the recruit is left small in the frame */
         { dur: 4.6, shot: { cam: [-0.6, 1.3, -33.5, 28, 0, 45], to: { cam: [-0.6, 1.3, -33.5, 16, 0, 45] } },
           act: [{ at: 0.9, do: 'hold', who: 'player' }, { at: 0.2, do: 'walk', who: 'sedaniel', x: -6, z: -140, ms: 6500, face: 0 }, { at: 0.9, do: 'place', who: 'player', face: 0, turn: 1100 }] },   // (the tip back in the pocket)   // (mondo 11-15: a smooth turn, never a snap)

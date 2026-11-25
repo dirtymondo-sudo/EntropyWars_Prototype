@@ -59816,7 +59816,8 @@ const ThreeRenderer = (function () {
             leafRoot.add(ph);
         }
         if (cat && cat.file && typeof _hqModelUrl === 'function' && typeof THREE.GLTFLoader === 'function') {
-            var targetH = (mo.mode === 'none') ? (oh + lh) : (oh - 0.03 * ts);
+            /* the leaf's top tucks into the lintel (mondo 2026-11-25: "there's a gap b/w the top of the door and the frame"; it stood 0.03 tile short) */
+            var targetH = (mo.mode === 'none') ? (oh + lh) : (oh + 0.012 * ts);
             var targetW = (mo.mode === 'none') ? (ow + jw * 2) : ow * 0.96;
             var yawDeg = cat.yaw || 0;
             var lg = _miscModelInstance(_hqModelUrl(cat), true, targetH, {
