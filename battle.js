@@ -27652,11 +27652,11 @@
                                             (cr.rows || []).forEach((r, i) => {
                                                 const c = caps[i] || {};
                                                 Object.assign(r, { name: c.name || '', gender: c.gender || null, lvl: c.lvl | 0, tier: c.tier | 0, unitId: c.unitId || null });
-                                                if (r.to !== 'skip' && !r.owned && r.to !== 'bounty' && PS && typeof PS.localCaptureUnit === 'function') { try { PS.localCaptureUnit(r.race, p); } catch (e) {} }
+                                                if (r.to !== 'skip' && !r.owned && r.to !== 'bounty' && r.to !== 'captive' && PS && typeof PS.localCaptureUnit === 'function') { try { PS.localCaptureUnit(r.race, p); } catch (e) {} }
                                             });
                                             try { const _su = state.sealedUnits || []; cr.rows.forEach(r => { const u = _su.find(x => x && x.id === r.unitId); if (u) r.portrait = _vicPortrait(u); }); } catch (e) {}
                                             if (partyRes && typeof partyRes === 'object') partyRes.captures = cr; else partyRes = { captures: cr };
-                                            (cr.rows || []).forEach(r => addLog(r.to === 'party' ? `🚪 ${String(r.race).toUpperCase()} joins THE PARTY.` : r.to === 'roster' ? `🚪 ${String(r.race).toUpperCase()} is on your roster — captured, never bought.` : r.to === 'bounty' ? `🚪 ${String(r.race).toUpperCase()} is already yours — a bounty of 💰 ${r.gold}.` : `🚪 The capture of ${r.race} did not file.`));
+                                            (cr.rows || []).forEach(r => addLog(r.to === 'captive' ? `🚪 ${String(r.race).toUpperCase()} is your captive — keep it, or let it buy its freedom with a family (pause menu, THE PARTY).` : r.to === 'party' ? `🚪 ${String(r.race).toUpperCase()} joins THE PARTY.` : r.to === 'roster' ? `🚪 ${String(r.race).toUpperCase()} is on your roster — captured, never bought.` : r.to === 'bounty' ? `🚪 ${String(r.race).toUpperCase()} is already yours — a bounty of 💰 ${r.gold}.` : `🚪 The capture of ${r.race} did not file.`));
                                             try { if (typeof PS.scheduleProgressSync === 'function') PS.scheduleProgressSync(); } catch (e) {}
                                         }
                                     } catch (e) { console.warn('[HQ] the captures failed', e); }
@@ -58837,7 +58837,8 @@
                 const race = String(r.race || '').toUpperCase();
                 const name = String(r.name || '').trim();
                 const lvl = (r.to === 'party' && r.member && r.member.lvl) ? r.member.lvl : (r.lvl | 0);
-                const dest = r.to === 'party' ? `JOINS THE PARTY${lvl ? ' · LV ' + lvl : ''}`
+                const dest = r.to === 'captive' ? `CAPTIVE · LV ${lvl || '?'} · KEEP IT OR TAKE A FAMILY (PAUSE MENU › THE PARTY)`   // STORY SPELL LEARNING step 4 (2026-11-25)
+                    : r.to === 'party' ? `JOINS THE PARTY${lvl ? ' · LV ' + lvl : ''}`
                     : r.to === 'roster' ? 'ON YOUR ROSTER · OWNED, NEVER BOUGHT'
                     : (r.gold | 0) > 0 ? `ALREADY YOURS · BOUNTY +${(r.gold | 0).toLocaleString()} 💰` : 'ALREADY YOURS · NO BOUNTY TODAY';
                 let port = r.portrait || '';
@@ -58849,8 +58850,8 @@
                     <span class="vic-cap-tier">DOOR ${T[Math.max(1, Math.min(3, r.tier | 0 || 1))]}</span>
                 </div>`;
             }).join('');
-            const joined = rows.filter(r => r.to === 'party').length, roster = rows.filter(r => r.to === 'roster').length;
-            const sum = [joined ? `${joined} JOINED` : '', roster ? `${roster} ON THE ROSTER` : '', (cr.gold | 0) > 0 ? `+${(cr.gold | 0).toLocaleString()} 💰` : ''].filter(Boolean).join(' · ');
+            const joined = rows.filter(r => r.to === 'party').length, roster = rows.filter(r => r.to === 'roster').length, held = rows.filter(r => r.to === 'captive').length;
+            const sum = [held ? `${held} CAPTIVE${held === 1 ? '' : 'S'}` : '', joined ? `${joined} JOINED` : '', roster ? `${roster} ON THE ROSTER` : '', (cr.gold | 0) > 0 ? `+${(cr.gold | 0).toLocaleString()} 💰` : ''].filter(Boolean).join(' · ');
             return `<div class="vic-card vic-cap-card"><div class="vic-card-cap">🚪 THE CAPTURES${sum ? ` · <em class="vic-cap-total">${escapeHtml(sum)}</em>` : ''}</div><div class="vic-cap-rows">${body}</div></div>`;
         }
         function _vicBuildExperience(party) {

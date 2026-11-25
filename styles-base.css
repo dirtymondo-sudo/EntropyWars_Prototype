@@ -7961,3 +7961,20 @@ html.ew-mobile .pause-card { max-height: calc(100dvh - 16px); }
 #hqPage .hq-learn-rung.st-locked { border-style: dashed; opacity: 0.6; }
 #hqPage .hq-learn-due { color: #5ee0c8; font-style: normal; }
 #hqPage .hq-pp-lv.hq-learn-due { border-color: #5ee0c8; }
+/* STORY SPELL LEARNING step 4 — THE CAPTIVES on the party sheet (map.js _hqPauseCaptivesHtml) */
+#hqPage .hq-cap-list { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 10px; }
+#hqPage .hq-cap { padding: 8px 10px; border: 1px solid rgba(255,255,255,0.55); background: rgba(0,0,0,0.72); }
+#hqPage .hq-cap-hd { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-bottom: 6px; }
+#hqPage .hq-cap-hd b { font-family: 'Cormorant SC', serif; font-size: 15px; letter-spacing: 0.1em; color: #ece7d8; }
+#hqPage .hq-cap-hd span { font-size: 9px; letter-spacing: 0.14em; color: #b8a060; }
+#hqPage .hq-cap-opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+#hqPage .hq-cap-keep, #hqPage .hq-cap-fams { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+#hqPage .hq-cap-keep > b, #hqPage .hq-cap-fams > b { font-size: 10px; letter-spacing: 0.14em; color: #ece7d8; }
+#hqPage .hq-cap-keep > span, #hqPage .hq-cap-fams > span { font-size: 11px; color: #c9c2b0; line-height: 1.35; }
+#hqPage .hq-cap-keep .hq-btn { align-self: flex-start; }
+#hqPage .hq-cap-fam { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 8px; width: 100%; padding: 6px 8px; text-align: left; font-family: inherit; color: #ece7d8; border: 1px solid rgba(255,255,255,0.25); border-left: 3px solid var(--fam, #8a8270); background: rgba(255,255,255,0.03); cursor: pointer; }
+#hqPage .hq-cap-fam b { font-size: 11px; letter-spacing: 0.08em; white-space: normal; overflow-wrap: anywhere; }
+#hqPage .hq-cap-fam em { font-style: normal; font-size: 9px; letter-spacing: 0.12em; color: #5ee0c8; }
+#hqPage .hq-cap-fam.st-ok:hover { background: rgba(94,224,200,0.18); border-color: #5ee0c8; }
+#hqPage .hq-cap-fam[disabled] { cursor: default; border-style: dashed; opacity: 0.55; }
+#hqPage .hq-cap-fam[disabled] em { color: #8a8270; }

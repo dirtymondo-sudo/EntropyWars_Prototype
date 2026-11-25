@@ -103575,7 +103575,81 @@ function hqCaptureOwned(profile, race) {
       owned — Phase 4);
    3. else → THE BOUNTY (CAPTURE_RULES.bounty[tier] gold; the commit credits it — Phase 4).
    Every sealed race is written to the captured ledger. Returns { ok, rows: [{ race, to, member?, gold?, reason? }], gold }. */
+/* STORY SPELL LEARNING, THE CAPTIVES (mondo 2026-11-25, step 4): with learning on, a sealed native does not enlist at the
+   commit. It waits as a CAPTIVE (door.hq.captives, local like the party) until the player decides on the party sheet: KEEP (the
+   old enlist: the party, else the roster, else a bounty; only then is the race marked captured) or TAKE A FAMILY AND SET IT FREE
+   (one of its SHARED families goes to the officer: its first spell known at once, the rest climbed with level-up picks; the race is
+   never marked, it walks free). mondo: "they negotiate their freedom by offering to teach you one of their skills"; a family, not
+   a spell; only the shared ones, never a signature family. The words the captive says are mondo's to write (none here). */
 function hqCaptureEnlist(profile, captures, opts) {
+    if (!(spellLearnOn() && SPELL_LEARN_RULES.captives !== false)) return _hqCaptureEnlistNow(profile, captures, opts);
+    if (!profile || !Array.isArray(captures)) return { ok: false, rows: [], gold: 0 };
+    const H = hqPartyEnsureRoot(profile);
+    if (!Array.isArray(H.captives)) H.captives = [];
+    const rows = [];
+    captures.forEach(c => {
+        const race = c && c.race ? String(c.race) : '';
+        if (!race || (typeof AVAILABLE_RACES !== 'undefined' && AVAILABLE_RACES.indexOf(race) < 0)) { rows.push({ race, to: 'skip', reason: 'race' }); return; }
+        H.captiveSeq = (H.captiveSeq | 0) + 1;
+        const cap = { id: 'c' + H.captiveSeq, race, gender: c.gender || null, name: c.name || '', lvl: Math.max(1, c.lvl | 0 || 1), tier: Math.max(1, Math.min(3, (c.tier | 0) || 1)), at: Date.now() };
+        H.captives.push(cap);
+        rows.push({ race, to: 'captive', captive: cap.id, owned: hqCaptureOwned(profile, race) });
+    });
+    return { ok: true, rows, gold: 0 };
+}
+function hqCaptives(profile) {
+    const H = profile && profile.door && profile.door.hq;
+    return (H && Array.isArray(H.captives)) ? H.captives.filter(c => c && c.id && c.race) : [];
+}
+/* the families a captive can teach the officer: [{ fam, name, glyph, color, ids, first, st: ok | signature | known }] */
+function hqCaptiveFamilies(profile, capId) {
+    const c = hqCaptives(profile).find(x => x.id === capId); if (!c) return [];
+    const r = hqPartyRecord(profile); const you = r ? r.members.find(m => m.you) : null;
+    const L = you ? hqLearnLedger(you) : null;
+    const have = new Set((you ? raceFamilyIds(you.meta.race || 'door agent') : []).concat(L ? L.taught.map(t => t.fam) : []));
+    const out = [];
+    for (const f of raceFamilyIds(c.race)) {
+        const F = SPELL_FAMILIES[f]; if (!F || F.universal) continue;
+        const ids = spellLearnFamilies(c.race, c.gender, null).find(x => x.fam === f);
+        if (!ids || !ids.ids.length) continue;
+        const st = spellFamilyIsUnique(f) ? 'signature' : have.has(f) ? 'known' : 'ok';
+        out.push({ fam: f, name: F.name || f, glyph: F.glyph || '◇', color: F.color || '#8a8270', ids: ids.ids.slice(), first: ids.ids[0], firstName: (SPELL_BY_ID[ids.ids[0]] && SPELL_BY_ID[ids.ids[0]].name) || ids.ids[0], st });
+    }
+    return out;
+}
+function _hqCaptiveTake(profile, capId) {
+    const H = profile && profile.door && profile.door.hq;
+    if (!H || !Array.isArray(H.captives)) return null;
+    const i = H.captives.findIndex(x => x && x.id === capId);
+    return i < 0 ? null : H.captives.splice(i, 1)[0];
+}
+/* KEEP: the captive goes where a capture always went (the party, the roster, a bounty) */
+function hqCaptiveKeep(profile, capId) {
+    const c = hqCaptives(profile).find(x => x.id === capId); if (!c) return { ok: false, reason: 'who', note: 'NO SUCH CAPTIVE' };
+    _hqCaptiveTake(profile, capId);
+    const cr = _hqCaptureEnlistNow(profile, [{ race: c.race, gender: c.gender, name: c.name, lvl: c.lvl, tier: c.tier }]);
+    const row = (cr.rows || [])[0] || {};
+    return { ok: true, kind: 'keep', row, gold: cr.gold | 0, race: c.race, note: row.to === 'party' ? 'JOINS THE PARTY' : row.to === 'roster' ? 'ON YOUR ROSTER' : (cr.gold | 0) > 0 ? 'ALREADY YOURS · BOUNTY +' + (cr.gold | 0) : 'ALREADY YOURS · NO BOUNTY TODAY' };
+}
+/* THE DEAL: one shared family to the officer, the captive walks free */
+function hqCaptiveTeach(profile, capId, fam) {
+    const c = hqCaptives(profile).find(x => x.id === capId); if (!c) return { ok: false, reason: 'who', note: 'NO SUCH CAPTIVE' };
+    const r = hqPartyRecord(profile); const you = r ? r.members.find(m => m.you) : null;
+    if (!you) return { ok: false, reason: 'you', note: 'NO AGENT ON FILE' };
+    const F = hqCaptiveFamilies(profile, capId).find(x => x.fam === fam);
+    if (!F) return { ok: false, reason: 'fam', note: 'IT DOES NOT KNOW THAT FAMILY' };
+    if (F.st === 'signature') return { ok: false, reason: 'signature', note: 'ONLY ITS OWN KIND CAN USE THAT FAMILY' };
+    if (F.st === 'known') return { ok: false, reason: 'known', note: 'YOU ALREADY HAVE THAT FAMILY' };
+    const L = hqLearnLedger(you);
+    L.taught.push({ fam: F.fam, from: c.race, ids: F.ids.slice() });
+    if (!L.known.includes(F.first)) L.known.push(F.first);
+    if (!(L.taughtAt > 0)) { const lv = hqPartyXp(you).lvl; L.taughtAt = lv; L.used = Math.min(L.used, spellLearnPicksAt(you.meta.race || 'door agent', you.meta.gender, lv, lv)); }
+    _hqCaptiveTake(profile, capId);
+    r.at = Date.now();
+    const sp = SPELL_BY_ID[F.first];
+    return { ok: true, kind: 'teach', fam: F.fam, race: c.race, first: F.first, note: String(F.name).toUpperCase() + ' · ' + String((sp && sp.name) || F.first).toUpperCase() + ' LEARNED · ' + String(c.race).toUpperCase() + ' WALKS FREE' };
+}
+function _hqCaptureEnlistNow(profile, captures, opts) {
     if (!profile || !Array.isArray(captures)) return { ok: false, rows: [], gold: 0 };
     const date = opts && opts.date;
     const rows = []; let gold = 0;
