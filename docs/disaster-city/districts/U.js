@@ -683,5 +683,25 @@ module.exports.build = function (api) {
       features.forEach(f => { if (f.k !== 'tree' || !(f.x >= -252 && f.x < -84 && f.z >= -84 && f.z < 84)) return; const on = g && Math.floor((f.x + HALF) / (N * CC)) === g.x && Math.floor((f.z + HALF) / (N * CC)) === g.y; f.h = r3((f.h || 3.6) * (on ? 1.7 : 1.3)); elms++; });
       count.elms = elms;
       if (g) { const x = r3(api.gx(g.x * 12 + 4.9)), z = r3(api.gx(g.y * 12 + 8.5)); features.push({ k: 'arch', id: 'dcu:shell', x, z, rot: 0, parts: [-1, 1].map(s => Object.assign({ s: 'box', p: [0, 0, s * 0.9], size: [1.1, 0.72, 0.12] }, look(WOOD))) }); props.push({ key: 'meshy_rowboat', x, z, face: 0, y: 0.74 }); count.arch++; } }
+    /* THE CAMPUS GREEN, COMPOSED (2026-11-25, the Disaster City scenic pass; flora.md S1-S9). Was: eight elms dotted over the four lawns on a diagonal
+       lattice, two benches alone in the open grass. Now the green reads as one place: the BANDSTAND is its focal (south-west lawn, seen from the north and south
+       gates down the long walk and from the east walk), its foot planted on the two sides away from the walks (chaparral, a rose bed, a drift of wild flowers;
+       the stage side stays open grass); the north lawns' lone elms join the edge rows as corner GROVES, so the lawns' middles stay open (S7); each grove's foot
+       has its group (one bush, a drift of flowers, S4/S5); the SE bench
+       under its elm gets a drift at the trunk (the vignettes, S9). Elms moved, none added, no bench moved; 12 plant pieces added (the Hills lost 64 in the same pass). */
+    { const g = PLAN.plots.find(q => q.name === 'Campus green');
+      if (g) { const X = n => r3(api.gx(g.x * 12 + n)), Z = n => r3(api.gx(g.y * 12 + n)), at = (i, j) => [X(i + 0.5), Z(j + 0.5)];
+        const move = (i, j, ni, nj) => { const [x, z] = at(i, j), f = features.find(q => q.k === 'tree' && Math.abs(q.x - x) < 0.6 && Math.abs(q.z - z) < 0.6); if (f) { f.x = X(ni); f.z = Z(nj); count.greenMoved = (count.greenMoved || 0) + 1; } };
+        move(3, 3, 1.75, 2.9);    // NW: the lone elm joins the corner grove (with (1,1) and the west row)
+        move(8, 1, 9.85, 1.6);    // NE: the lone elm joins (10,3) and the east row
+        const P2 = (key, i, j, face, h) => { const row = { key, x: X(i), z: Z(j), face: face == null ? Math.round((i * 97 + j * 53) % 360) : face }; if (h) row.h = h; props.push(row); count.greenPlants = (count.greenPlants || 0) + 1; };
+        /* the bandstand's foot (it stands on squares 2-3 x 8-9): west and south, away from the walk */
+        P2('leafy_bush', 1.45, 9.6, null, 1.45); P2('leafy_bush', 2.3, 10.25, null, 1.0); P2('rose_bed', 3.6, 10.2, 0); P2('wild_flowers', 1.0, 7.4); P2('wild_flowers', 2.9, 10.7);
+        /* the NW grove's foot, toward the lawn */
+        P2('leafy_bush', 2.6, 2.4, null, 1.2); P2('wild_flowers', 3.1, 3.2); P2('wild_flowers', 2.2, 3.55);
+        /* the NE grove: a bush and a drift at the trunks (its iron bench is the props pass's, docs/disaster-city/props.js) */
+        P2('leafy_bush', 10.6, 2.35, null, 1.3); P2('wild_flowers', 9.4, 2.6); P2('wild_flowers', 10.2, 3.9);
+        /* the SE bench's elm (8,8): a drift at its foot */
+        P2('wild_flowers', 8.9, 9.2); } }
     console.log('university:', JSON.stringify(count));
 };
