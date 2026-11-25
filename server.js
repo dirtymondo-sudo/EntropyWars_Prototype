@@ -131,7 +131,7 @@ if (process.env.EW_DEV_STATIC === '1') {
 // (Settings > Developer > Relationship Web), its boards saved in D1 table story_web_docs (migration 005) so every
 // computer that opens it sees the same boards. No account; the page merges by each board's own time stamp.
 const STORY_WEB_HTML = path.join(__dirname, 'docs', 'plans', 'story-web', 'relationship-web.html');
-const STORY_WEB_PATH = /^(web\/index|boards\/[A-Za-z0-9_-]{1,64}|story\/plan)$/;   // story/plan = THE STORY PLANNER (2026-11-22)
+const STORY_WEB_PATH = /^(web\/index|boards\/[A-Za-z0-9_-]{1,64}|story\/plan|story\/cast)$/;   // story/plan = THE STORY PLANNER (2026-11-22), story/cast = THE CHARACTER SHEETS (2026-11-25)
 const limitStoryWeb = httpRateLimit('story-web', 90, 30);
 // The file is an artifact page (no <html>/<head>; claude.ai wraps it), so it gets the same skeleton here.
 /* THE ROSTER STAYS FRESH (2026-11-19): races added to the game after the page was built join its roster here (story-web/build/fresh.js,

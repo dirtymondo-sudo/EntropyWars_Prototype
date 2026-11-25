@@ -149,6 +149,7 @@ function sanitizeState(x) {
   if (!o.order.length) { const m = { id: 'main', name: 'Main board', t: 0, nodes: {}, links: {}, view: null }; o.boards.main = m; o.order.push('main'); }
   o.active = o.boards[x.active] ? x.active : o.order[0];
   o.story = x.story ? sanitizePlan(x.story) : null;   // THE STORY PLANNER's plan (one for every board)
+  o.cast = x.cast ? sanitizeCast(x.cast) : null;   // THE CHARACTER SHEETS (2026-11-25, one set for every board)
   return o;
 }
 function loadLocal() {
@@ -160,10 +161,10 @@ function saveLocal() { try { localStorage.setItem(KEY, JSON.stringify(S)); local
 function saveLocalSoon() { clearTimeout(localTimer); localTimer = setTimeout(saveLocal, 350); }
 
 /* ───────── cloud (the artifact's db capability, when the page has it) ───────── */
-const cloud = { db: null, state: 'off', dirty: new Set(), dels: new Set(), idx: false, story: false, busy: false, timer: 0 };
+const cloud = { db: null, state: 'off', dirty: new Set(), dels: new Set(), idx: false, story: false, cast: false, busy: false, timer: 0 };
 function setSave() {
   const el = $('saveState'); let cls = 'local', txt = 'Saved on this device', tip = 'Boards are kept in this browser. Use Export, then Save a backup, to keep a copy elsewhere.';
-  const pend = cloud.dirty.size || cloud.dels.size || cloud.idx || cloud.story;
+  const pend = cloud.dirty.size || cloud.dels.size || cloud.idx || cloud.story || cloud.cast;
   if (cloud.state === 'loading') { cls = 'busy'; txt = 'Loading saved boards'; tip = ''; }
   else if (cloud.state === 'ok') { if (cloud.busy || pend) { cls = 'busy'; txt = 'Saving'; } else { cls = ''; txt = 'Saved'; } tip = cloud.db && cloud.db.server ? 'Saved on the game server: every computer that opens it from the game sees it.' : 'Saved with this page, and in this browser.'; }
   else if (cloud.state === 'ro') { txt = 'View only: changes stay on this device'; tip = 'You can change this board here, but only the owner can save it to the page.'; }
@@ -202,17 +203,17 @@ async function serverPull(asked) {
   }
   if (!r.ok) throw new Error('load ' + r.status);
   const d = (await r.json()).docs || {};
-  return [d['web/index'] || null, Object.keys(d).filter(k => k.startsWith('boards/')).map(k => d[k]), d['story/plan'] || null];
+  return [d['web/index'] || null, Object.keys(d).filter(k => k.startsWith('boards/')).map(k => d[k]), d['story/plan'] || null, d['story/cast'] || null];
 }
 async function serverInit() {
   if (!/^https?:$/.test(location.protocol) || !/\/dev\/relationship-web/.test(location.pathname)) return false;
   cloud.db = serverDb(); cloud.state = 'loading'; setSave();
-  try { const r = await serverPull(); mergeRemote(r[0], r[1]); mergeStory(r[2]); cloud.state = 'ok'; } catch (e) { cloud.state = 'err'; }
+  try { const r = await serverPull(); mergeRemote(r[0], r[1]); mergeStory(r[2]); mergeCast(r[3]); cloud.state = 'ok'; } catch (e) { cloud.state = 'err'; }
   setSave(); if (cloud.state === 'ok') flushSoon(50);
   /* the other computer's changes: look again every 10 s and when this tab comes back */
   const again = async () => {
-    const ae = document.activeElement; if (document.hidden || editing || (ae && /INPUT|TEXTAREA|SELECT/.test(ae.tagName)) || cloud.busy || drag || pinch || cloud.dirty.size || cloud.dels.size || cloud.idx || cloud.story || MV.drag) return;
-    try { if (!webKey.get()) return; const r = await serverPull(true); if (cloud.busy || drag || pinch || cloud.dirty.size || cloud.story) return; mergeRemote(r[0], r[1]); mergeStory(r[2]); if (cloud.state === 'err') { cloud.state = 'ok'; setSave(); } } catch (e) {}
+    const ae = document.activeElement; if (document.hidden || editing || (ae && /INPUT|TEXTAREA|SELECT/.test(ae.tagName)) || cloud.busy || drag || pinch || cloud.dirty.size || cloud.dels.size || cloud.idx || cloud.story || cloud.cast || MV.drag) return;
+    try { if (!webKey.get()) return; const r = await serverPull(true); if (cloud.busy || drag || pinch || cloud.dirty.size || cloud.story || cloud.cast) return; mergeRemote(r[0], r[1]); mergeStory(r[2]); mergeCast(r[3]); if (cloud.state === 'err') { cloud.state = 'ok'; setSave(); } } catch (e) {}
   };
   setInterval(again, 10000); window.addEventListener('focus', again); document.addEventListener('visibilitychange', again);
   return true;
@@ -224,9 +225,10 @@ async function cloudInit() {
   if (!db) return;
   cloud.db = db; cloud.state = 'loading'; setSave();
   try {
-    const res = await withTimeout(Promise.all([db.doc('web/index').get(), db.collection('boards').limit(500).get(), db.doc('story/plan').get().catch(() => null)]), 12000);
+    const res = await withTimeout(Promise.all([db.doc('web/index').get(), db.collection('boards').limit(500).get(), db.doc('story/plan').get().catch(() => null), db.doc('story/cast').get().catch(() => null)]), 12000);
     mergeRemote(res[0] && res[0].exists ? res[0].data() : null, (res[1].docs || []).map(d => d.data()).filter(Boolean));
     mergeStory(res[2] && res[2].exists ? res[2].data() : null);
+    mergeCast(res[3] && res[3].exists ? res[3].data() : null);
     cloud.state = 'ok';
   } catch (e) { cloud.state = 'err'; }
   setSave(); if (cloud.state === 'ok') flushSoon(50);
@@ -256,7 +258,8 @@ async function flush() {
   if (!cloud.db || cloud.busy) return; cloud.busy = true; setSave();
   let cur = null;
   try {
-    while (cloud.dirty.size || cloud.dels.size || cloud.idx || cloud.story) {
+    while (cloud.dirty.size || cloud.dels.size || cloud.idx || cloud.story || cloud.cast) {
+      if (cloud.cast) { cur = null; cloud.cast = false; if (S.cast) { try { await cloud.db.doc('story/cast').set(JSON.parse(JSON.stringify(S.cast))); } catch (e) { cloud.cast = true; throw e; } } }
       if (cloud.story) { cur = null; cloud.story = false; if (S.story) { try { await cloud.db.doc('story/plan').set(JSON.parse(JSON.stringify(S.story))); } catch (e) { cloud.story = true; throw e; } } }
       for (const id of [...cloud.dirty]) { cur = id; cloud.dirty.delete(id); if (S.boards[id]) await cloud.db.doc('boards/' + id).set(JSON.parse(JSON.stringify(S.boards[id]))); }
       cur = null;
@@ -610,6 +613,7 @@ function renderInspector() {
     const n = B.nodes[sel.id], o = info(n), r = o.race, cst = o.cast, d = defence(B, n.id), name = esc(o.name);
     h += '<div class="idh">' + picHTML(o) + '<div class="meta"><h2>' + name + '</h2>' + (r ? '<span class="key">race key: ' + esc(r.k) + (r.v.length > 1 ? ' \u00b7 gender: ' + o.v.g : '') + '</span>' : cst ? '<span class="key">' + (cst.grp === 'cast' ? 'DOOR_CAST.' : cst.grp === 'boss' ? 'BOSS_DEFS: ' : 'tutorial tape: ') + esc(cst.grp === 'tape' ? cst.raw : cst.id) + '</span>' : '<span class="key">custom ' + esc(n.shape || 'character') + '</span>') + '<div class="badges">' + (o.t.length ? o.t.map(t => '<span class="badge" style="--c:var(--f-' + t + ')">' + FNAME[t] + '</span>').join('') : '<span class="badge">no type</span>') + (r && r.role ? '<span class="badge">' + esc(r.role) + '</span>' : '') + (cst ? '<span class="badge">' + GRP_NAME[cst.grp] + '</span>' : '') + '</div>' + (r && r.cs ? '<span class="stamp">' + esc(r.cs) + '</span>' : '') + '</div></div>';
     if (r || cst) h += '<label class="field"><span>Name</span><input class="inp" id="cNick" maxlength="60" value="' + esc(n.nick || '') + '" placeholder="' + esc(o.gname) + '"></label>';
+    if (r || cst || (n.kind === 'custom' && n.shape !== 'org' && n.shape !== 'place')) h += '<div class="prow"><button class="btn sm" data-sheet="' + esc(n.id) + '">Open the full character sheet</button></div>';
     if (r) {
       h += '<dl class="facts"><dt>Home site</dt><dd>' + esc(r.home || 'none on file') + (r.also.length ? ', also ' + esc(r.also.join(', ')) : '') + '</dd><dt>Biomes</dt><dd>' + (r.bio.length ? esc(r.bio.map(pretty).join(', ')) : 'none on file') + '</dd>' + (r.walks.length ? '<dt>Walks</dt><dd>' + esc(r.walks.join(', ')) + ' (encounter tables)</dd>' : '') + '<dt>Families</dt><dd>' + esc(r.fam.join(', ')) + '</dd>' + (r.fin ? '<dt>Finisher</dt><dd>' + esc(r.fin[0]) + '</dd>' : '') + '</dl>';
       const lore = r.dos || (r.cn ? 'Customs: ' + r.cn + '.' : ''), qs = o.v.q || r.q;
@@ -1316,6 +1320,7 @@ $('addShown').addEventListener('click', () => { addEntries(shown.slice()); });
 /* ───────── inspector + popover events ───────── */
 function panelClick(e) {
   const b = e.target.closest('button, li'); if (!b) return;
+  if (b.dataset.sheet) { sheetOpen(b.dataset.sheet); return; }
   if (e.target.closest('[data-gsecret]')) { const l = B.links[e.target.closest('[data-gsecret]').dataset.gsecret]; if (l) { if (l.secret) delete l.secret; else l.secret = true; } return commit(); }
   if (e.target.closest('[data-unlink]')) { delete B.links[e.target.closest('[data-unlink]').dataset.unlink]; return commit(); }
   if (b.dataset.ltype) return setLink({ type: b.dataset.ltype });
@@ -1639,7 +1644,7 @@ document.addEventListener('keydown', e => {
 });
 window.addEventListener('resize', () => { positionPop(); });
 window.addEventListener('pagehide', saveLocal);
-document.addEventListener('visibilitychange', () => { if (document.hidden) { saveLocal(); if (cloud.db && (cloud.dirty.size || cloud.idx || cloud.story)) { clearTimeout(cloud.timer); flush(); } } });
+document.addEventListener('visibilitychange', () => { if (document.hidden) { saveLocal(); if (cloud.db && (cloud.dirty.size || cloud.idx || cloud.story || cloud.cast)) { clearTimeout(cloud.timer); flush(); } } });
 
 /* ═════════ THE STORY PLANNER (2026-11-22) ═════════
    mondo: "add a Chapter/Quest planner, where I can add chapters with multiple quests, and the game map on the screen so I can plan
@@ -1951,11 +1956,12 @@ function renderSpine() {
   SPINE_Q.forEach(g => { h += '<h3 style="margin-top:20px">' + esc(g.h.toUpperCase()) + '</h3>'; g.q.forEach(q => { h += '<div class="stqa"><div>' + (q[2] ? '<b class="stfirst">FIRST</b> ' : '') + esc(q[1]) + '</div><textarea class="stinp" data-ans="' + q[0] + '" rows="2" placeholder="Type here…">' + esc(P.ans[q[0]] || '') + '</textarea></div>'; }); });
   const el = $('st_spine'), sc = el.scrollTop; el.innerHTML = h; el.scrollTop = sc;
 }
-function storyLight() { if (!ST.open) return; if (ST.tab === 'map') { renderLeft(); renderTray(); storyDrawMap(); } }
+function storyLight() { if (!ST.open || ST.tab === 'chars') return; if (ST.tab === 'map') { renderLeft(); renderTray(); storyDrawMap(); } }
 function storyRender() {
   if (!ST.open) return;
   $('story').querySelectorAll('[data-sttab]').forEach(b => b.classList.toggle('on', b.dataset.sttab === ST.tab));
-  ['map', 'beat', 'spine'].forEach(t => { $('st_' + t).hidden = ST.tab !== t; });
+  ['map', 'beat', 'spine', 'chars'].forEach(t => { $('st_' + t).hidden = ST.tab !== t; });
+  if (ST.tab === 'chars') { sheetsRender(); return; }
   const atSel = $('stAt'); atSel.innerHTML = '<option value="0">All chapters</option>' + plan().chapters.map((c, i) => '<option value="' + (i + 1) + '"' + (ST.at === i + 1 ? ' selected' : '') + '>World at Ch ' + (i + 1) + '</option>').join('');
   $('stLayer').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === ST.mapLayer));
   if (ST.tab === 'map') { renderLeft(); renderTray(); renderRight(); requestAnimationFrame(storyDrawMap); }
@@ -1982,6 +1988,7 @@ function pickShow(inp) {
 }
 function pickTakeSt(inp, v) {
   const kind = inp.dataset.pick, q = curQ(), c = curC(); inp.value = ''; inp.nextElementSibling.hidden = true;
+  if (kind === 'famwho') { const s = SC.id && scTouch(SC.id), r = s && s.fam.find(x => x.id === inp.dataset.row); if (r) { r.who = v; r.name = ''; castSave(true); } return; }
   if (kind === 'zone' && c) { c.zone = v; }
   else if (kind === 'where' && q) { q.q.where = v; q.q.at = null; }
   else if (kind === 'enemy' && c) { if (!c.enemies.includes(v)) c.enemies.push(v); }
@@ -2142,8 +2149,314 @@ function storyExport() {
   modal('<h2>Export the story plan</h2><textarea class="inp code" readonly>' + esc(txt) + '</textarea><div class="acts"><button class="btn" data-x="copy">Copy</button><button class="btn" data-x="save">Save file</button><button class="btn pri" data-x="cancel">Done</button></div>', d => d.addEventListener('click', e => { const x = e.target.dataset.x; if (x === 'copy') copyText(d.querySelector('textarea')); else if (x === 'save') saveFile('Entropy_Wars_Story_Plan_' + new Date().toISOString().slice(0, 10) + '.json', txt); else if (x === 'cancel') closeModal(); }));
 }
 bindStory();
-$('btnStory').addEventListener('click', () => storyOpen(true));
-window.__ewStory = { ST, MV, plan, storyOpen, storyRender, noticed };
+$('btnStory').addEventListener('click', () => { if (ST.tab === 'chars') ST.tab = 'map'; storyOpen(true); });
+/* ═════════ THE CHARACTER SHEETS (2026-11-25) ═════════
+   mondo: "some sort of Character Sheet tool alongside the relationship web and story planner ... I want a full one that goes more in
+   depth and has more structured and useful info", then "add a family section ... add the sheets for pretty much every character
+   mentioned in the story ... ill go back in and give them specific names or delete them if its a group".
+   A tab of the Story planner screen (and the web's toolbar button). ONE set of sheets for every board, saved as doc `story/cast`
+   beside the boards and the plan (server /api/story-web, the same password, the same 10 s pull); each sheet keeps its own time
+   stamp, so two computers editing two different sheets both keep their work.
+   THE STORY CAST is worked out, not stored: every story character, every unit the plan or a timeline event names, every unit with
+   a note or a story name on a board, every unit whose name appears in the board's notes, events or the plan's text, and every
+   sheet he has typed in. Delete only hides a sheet (`del[id]` = time; a restore stores minus the time); its text is kept.
+   The board's own facts are read live: the backstory IS the board note (the same field the side panel edits), the ties, groups and
+   timeline events come from the board, the arc rows from the plan's chapters, the "in the game" block from data.js. */
+const SC = { id: null, list: 'story', sort: 'az', q: '', hideEmpty: false };
+const SC_SECS = [
+  { k: 'overview', h: 'Overview', f: [['role', 'Role in the story'], ['status', 'Status (alive, dead, missing…)'], ['age', 'Age / born'], ['look', 'Look'], ['job', 'Job / title'], ['where', 'Where to find them']] },
+  { k: 'inside', h: 'Inside', sub: 'want · need · fear · flaw', f: [['want', 'Wants (what they chase)'], ['need', 'Needs (what they don’t see)'], ['fear', 'Fears'], ['flaw', 'Flaw'], ['lie', 'Believes (the lie they live by)'], ['morals', 'Lines they won’t cross']] },
+  { k: 'family', h: 'Family', sub: 'family + made-by ties from the board, and your own rows' },
+  { k: 'secrets', h: 'Secrets', sub: 'who knows · when the player learns it' },
+  { k: 'history', h: 'History', sub: 'backstory = the board’s note · events = the timeline' },
+  { k: 'arc', h: 'Arc', sub: 'chapters come from the Story planner' },
+  { k: 'ties', h: 'Ties', sub: 'from the board', f: [['you', 'What they think of you (the player)']] },
+  { k: 'voice', h: 'Voice', sub: 'how they talk', f: [['speech', 'Way of speaking'], ['catch', 'Catchphrase']] },
+  { k: 'game', h: 'In the game', sub: 'read from the game · not edited here' },
+  { k: 'questions', h: 'Questions', sub: 'what the sheet noticed + your own', f: [['qs', 'Your open questions']] },
+];
+const SC_FKEYS = new Set(['pitch'].concat(...SC_SECS.map(s => (s.f || []).map(f => f[0]))));
+const SC_CORE = ['pitch', 'role', 'status', 'look', 'want', 'need', 'fear', 'flaw', 'speech'];
+const SC_REL = ['Mother', 'Father', 'Parent', 'Child', 'Son', 'Daughter', 'Brother', 'Sister', 'Sibling', 'Spouse', 'Partner', 'Grandparent', 'Uncle', 'Aunt', 'Cousin', 'Creator', 'Creation', 'Adopted', 'Ancestor', 'Descendant'];
+const SC_MOODS = ['Calm', 'Angry', 'To the player'];
+
+/* ── the store ── */
+function sanitizeSheet(s) {
+  if (!s || typeof s !== 'object') return null;
+  const o = { t: num(s.t, 0), name: sStr(s.name, 60), f: {}, extra: [], fam: [], sec: [], arc: {}, voice: [] };
+  Object.keys(s.f || {}).forEach(k => { if (SC_FKEYS.has(k) && s.f[k]) o.f[k] = sStr(s.f[k], 6000); });
+  if (s.back) o.back = sStr(s.back, 12000);
+  const secK = new Set(SC_SECS.map(x => x.k)), row = (a, n, fn) => (Array.isArray(a) ? a : []).slice(0, n).map(fn).filter(Boolean);
+  o.extra = row(s.extra, 60, x => x && secK.has(x.sec) ? { id: sStr(x.id || uid('x'), 40), sec: x.sec, label: sStr(x.label, 80), text: sStr(x.text, 6000) } : null);
+  o.fam = row(s.fam, 60, x => x ? { id: sStr(x.id || uid('f'), 40), rel: sStr(x.rel, 40), who: sStr(x.who, 80), name: sStr(x.name, 80), note: sStr(x.note, 600) } : null);
+  o.sec = row(s.sec, 60, x => x ? { id: sStr(x.id || uid('k'), 40), text: sStr(x.text, 1000), who: sStr(x.who, 300), plant: sStr(x.plant, 60), reveal: sStr(x.reveal, 60) } : null);
+  Object.keys(s.arc || {}).slice(0, 80).forEach(k => { const a = s.arc[k]; if (a && (a.s || a.c)) o.arc[sStr(k, 40)] = { s: sStr(a.s, 1000), c: sStr(a.c, 1000) }; });
+  o.voice = row(s.voice, 40, x => x ? { id: sStr(x.id || uid('v'), 40), mood: sStr(x.mood, 40), line: sStr(x.line, 600) } : null);
+  return o;
+}
+function sanitizeCast(x) {
+  if (!x || typeof x !== 'object') return null;
+  const o = { v: 1, t: num(x.t, 0), sheets: {}, del: {} };
+  Object.keys(x.sheets || {}).slice(0, 2000).forEach(id => { const s = sanitizeSheet(x.sheets[id]); if (s) o.sheets[sStr(id, 80)] = s; });
+  Object.keys(x.del || {}).slice(0, 4000).forEach(id => { const v = num(x.del[id], 0); if (v) o.del[sStr(id, 80)] = v; });
+  return o;
+}
+const castDoc = () => { if (!S.cast) S.cast = { v: 1, t: 0, sheets: {}, del: {} }; return S.cast; };
+function castSave(rerender) { const C = castDoc(); C.t = Date.now(); cloud.cast = true; saveLocalSoon(); flushSoon(); if (rerender) sheetsRender(); }
+/* the newest copy of each sheet wins; a delete or a restore wins by its time */
+function mergeCast(rp) {
+  if (!rp) { if (S.cast && S.cast.t > 0) cloud.cast = true; return; }
+  const R = sanitizeCast(rp); if (!R) return;
+  const L = castDoc(); let mine = false, theirs = false;
+  new Set(Object.keys(L.sheets).concat(Object.keys(R.sheets))).forEach(id => { const a = L.sheets[id], b = R.sheets[id];
+    if (b && (!a || b.t > a.t)) { L.sheets[id] = b; theirs = true; } else if (a && (!b || a.t > b.t)) mine = true; });
+  new Set(Object.keys(L.del).concat(Object.keys(R.del))).forEach(id => { const a = L.del[id] || 0, b = R.del[id] || 0;
+    if (Math.abs(b) > Math.abs(a)) { L.del[id] = b; theirs = true; } else if (Math.abs(a) > Math.abs(b)) mine = true; });
+  L.t = Math.max(L.t || 0, R.t || 0);
+  if (mine) cloud.cast = true;
+  if (theirs) { saveLocal(); if (ST.open && ST.tab === 'chars') sheetsRender(); }
+}
+const scCustom = id => { if (!id || !S) return null; for (const k of S.order) { const n = S.boards[k] && S.boards[k].nodes[id]; if (n && n.kind === 'custom' && !isGrp(n) && n.shape !== 'org' && n.shape !== 'place') return n; } return null; };
+const scSheet = id => castDoc().sheets[id] || null;
+function scEnsure(id) { const C = castDoc(); if (!C.sheets[id]) C.sheets[id] = { t: 0, name: '', f: {}, extra: [], fam: [], sec: [], arc: {}, voice: [] }; return C.sheets[id]; }
+const scTouch = id => { const s = scEnsure(id); s.t = Date.now(); return s; };
+const scDeleted = id => (castDoc().del[id] || 0) > 0;
+/* the board node of a sheet, on the open board (B) first */
+const scNode = id => B.nodes[id] || null;
+function scNick(id) { const n = B.nodes[id]; if (n && n.nick) return n.nick; for (const k of S.order) { const m = S.boards[k] && S.boards[k].nodes[id]; if (m && m.nick) return m.nick; } return ''; }
+function scGame(id) { const e = ENT[id]; if (e) return e.kind === 'cast' ? e.c.n : e.n; const c = scCustom(id); return c ? c.name : id; }
+const scName = id => { const s = scSheet(id); return (s && s.name) || scNick(id) || scGame(id); };
+function scImg(id) { const e = ENT[id]; if (e) return { img: e.img, ip: e.ip, t: e.t || [] }; const c = scCustom(id); return c ? { img: c.race && RACE[c.race] ? RACE[c.race].img : '', t: c.faction ? [c.faction] : [] } : { img: '', t: [] }; }
+function scPic(id, cls) { const o = scImg(id), c1 = 'var(--f-' + (o.t[0] || 'none') + ')'; return '<span class="scpic' + (cls ? ' ' + cls : '') + '" style="--c1:' + c1 + (o.img ? ';background-image:url(' + o.img + ')' : '') + (o.ip ? ';background-size:240%;background-position:50% 4%' : '') + '">' + (o.img ? '' : esc(initials(scName(id)))) + '</span>'; }
+
+/* ── who is in the story ── */
+function scTexts() {
+  const out = [];
+  S.order.forEach(k => { const b = S.boards[k]; if (!b || b.sample) return; Object.values(b.nodes).forEach(n => { if (n.note) out.push(n.note); }); Object.values(b.events || {}).forEach(ev => out.push(ev.title, ev.text)); Object.values(b.links).forEach(l => { if (l.label) out.push(l.label); }); });
+  plan().chapters.forEach(c => { out.push(c.name, c.notes, c.reward, c.bossText, c.lie, c.trust); c.quests.forEach(q => { out.push(q.name, q.summary, q.notes, q.reward); q.steps.forEach(s => out.push(s.text)); q.scenes.forEach(s => out.push(s.n)); }); });
+  plan().clues.forEach(k => out.push(k.text));
+  return ' ' + out.filter(Boolean).join(' \n ').toLowerCase().replace(/[^a-z0-9']+/g, ' ') + ' ';
+}
+function storyCastIds() {
+  const ids = new Set(), add = id => { if (id && (ENT[id] || scCustom(id))) ids.add(id); };
+  (D.cast || []).forEach(c => add('s:' + c.id));
+  plan().chapters.forEach(c => { c.enemies.forEach(add); add(c.boss); c.quests.forEach(q => q.cast.forEach(add)); });
+  S.order.forEach(k => { const b = S.boards[k]; if (!b || b.sample) return;
+    Object.values(b.events || {}).forEach(ev => (ev.refs || []).forEach(r => { const n = b.nodes[r]; if (n && !isGrp(n)) add(r); }));
+    Object.values(b.nodes).forEach(n => { if (n.kind === 'note' || isGrp(n)) return; if (n.kind === 'custom' && (n.shape === 'org' || n.shape === 'place')) return; if (n.kind === 'custom' || (n.note && n.note.trim()) || n.nick) add(n.id); }); });
+  /* a unit named in the story's text (the board's notes, events and the plan): its race, by the game name or a story name */
+  const T = scTexts(), has = w => { w = String(w).toLowerCase().replace(/[^a-z0-9']+/g, ' ').trim(); return w.length > 1 && (T.includes(' ' + w + ' ') || T.includes(' ' + w + 's ')); };
+  D.races.forEach(r => { const vs = r.v.map(v => raceId(r.k, v.g)); if (vs.some(id => ids.has(id))) return; if (has(r.n) || has(r.k)) ids.add(raceId(r.k, r.dg)); });
+  S.order.forEach(k => { const b = S.boards[k]; if (!b || b.sample) return; Object.values(b.nodes).forEach(n => { if (n.nick && has(n.nick)) add(n.id); }); });
+  Object.keys(castDoc().sheets).forEach(id => { const s = castDoc().sheets[id]; if (s.t > 0) add(id); });
+  return [...ids];
+}
+
+/* ── what the plan, the board and the game say about a character ── */
+function scChapters(id) { return plan().chapters.map((c, i) => ({ c, i, qs: c.quests.filter(q => q.cast.includes(id)), foe: c.enemies.includes(id), boss: c.boss === id })).filter(x => x.qs.length || x.foe || x.boss); }
+function scTies(id) { return Object.values(B.links).filter(l => (l.a === id || l.b === id) && l.type !== 'member'); }
+function scFamTies(id) { return scTies(id).filter(l => l.type === 'family' || l.type === 'created'); }
+function scBack(id) { const n = scNode(id); return n ? n.note || '' : (scSheet(id) || {}).back || ''; }
+function scDone(id) {
+  const s = scSheet(id), f = (s && s.f) || {}; let have = SC_CORE.filter(k => (f[k] || '').trim()).length + (scBack(id).trim() ? 1 : 0), all = SC_CORE.length + 1;
+  const ch = scChapters(id); if (ch.length) { all += 1; if (ch.every(x => { const a = s && s.arc[x.c.id]; return a && (a.s || a.c); })) have += 1; }
+  return Math.round(100 * have / all);
+}
+function scNoticed(id) {
+  const s = scSheet(id) || { f: {}, sec: [], arc: {} }, out = [], nm0 = scName(id);
+  const empty = [['want', 'Wants'], ['need', 'Needs'], ['fear', 'Fears'], ['flaw', 'Flaw']].filter(k => !(s.f[k[0]] || '').trim()).map(k => k[1]);
+  if (empty.length) out.push(empty.join(', ') + (empty.length === 1 ? ' is' : ' are') + ' empty.');
+  if (!scBack(id).trim()) out.push('No backstory yet.');
+  const ch = scChapters(id), bare = ch.filter(x => { const a = s.arc[x.c.id]; return !a || !(a.s || a.c); });
+  if (bare.length) out.push('In ' + bare.length + (bare.length === 1 ? ' chapter' : ' chapters') + ' with nothing on the arc row: ' + bare.map(x => 'Ch ' + (x.i + 1) + (x.c.name ? ' ' + x.c.name : '')).join(', ') + '.');
+  if (!ch.length) out.push(nm0 + ' is in no chapter of the Story planner yet.');
+  s.sec.filter(k => k.text.trim() && !k.reveal.trim()).forEach(k => out.push('A secret with no reveal: “' + k.text.trim().slice(0, 80) + '”.'));
+  scTies(id).filter(l => l.secret).forEach(l => { if (!s.sec.some(k => k.text.toLowerCase().includes(scNameOnBoard(l.a === id ? l.b : l.a).toLowerCase()))) out.push('A secret tie on the board is not in Secrets: ' + sentence(l, scNameOnBoard, true) + '.'); });
+  if (!scNode(id) && !ENT[id]) out.push('Not on this board.');
+  return out;
+}
+const scNameOnBoard = id => B.nodes[id] ? (ENT[id] || scCustom(id) ? scName(id) : nm(id)) : scGame(id);
+
+/* ── drawing ── */
+const scF = (s, k) => (s && s.f && s.f[k]) || '';
+function scField(id, s, k, label, big) {
+  const v = scF(s, k); if (SC.hideEmpty && !v.trim()) return '';
+  return '<label class="scf"><span>' + esc(label) + '</span><textarea class="stinp' + (big ? ' big' : '') + '" rows="' + (big ? 4 : 1) + '" data-scf="' + k + '">' + esc(v) + '</textarea></label>';
+}
+function scExtra(s, sec) {
+  return (s ? s.extra.filter(x => x.sec === sec) : []).map(x => '<div class="scf scx"><div class="strow"><input class="stinp scxl" data-scxl="' + esc(x.id) + '" value="' + esc(x.label) + '" placeholder="Field name"><button class="stx" data-scxdel="' + esc(x.id) + '" aria-label="Remove this field">×</button></div><textarea class="stinp" rows="1" data-scxt="' + esc(x.id) + '">' + esc(x.text) + '</textarea></div>').join('')
+    + '<button class="stadd" data-scxadd="' + sec + '">+ Add a field</button>';
+}
+function scGameBlock(id) {
+  const e = ENT[id], rows = [], q = [];
+  if (e && e.kind === 'race') { const r = e.r, v = e.v;
+    rows.push(['Game name', v.n], ['Race key', r.k + (r.v.length > 1 ? ' · ' + v.g : '')], ['Kind', (r.t || []).map(x => FNAME[x] || x).join(', ')], ['Role', r.role || ''], ['Families', (r.fam || []).join(', ')], ['Biomes', (r.bio || []).map(pretty).join(', ')], ['Home', (r.home || '') + (r.also && r.also.length ? ', also ' + r.also.join(', ') : '')], ['Temper', r.tmp || '']);
+    if (v.sp) rows.push(['Own spells', v.sp.join(', ')]);
+    if (r.dos) q.push(r.dos); else if (r.cn) q.push('Customs: ' + r.cn + '.');
+    (v.q || r.q || []).forEach(x => q.push(x)); if (r.fin) q.push('Finisher · ' + r.fin[0] + ': ' + r.fin[1]);
+  } else if (e && e.kind === 'cast') { const c = e.c;
+    rows.push(['Game name', c.n], ['Cast id', c.id], ['Title', c.title || ''], ['Department', c.dept || ''], ['Race', c.race && RACE[c.race] ? RACE[c.race].n : c.tmpl ? c.tmpl + ' (template)' : ''], ['In the HQ', c.hidden ? 'hidden' : (c.rooms || []).join(', ')]);
+    if (c.desc) q.push(c.desc); (c.doing || []).forEach(x => q.push(x)); c.lines.concat((c.says || []).map(x => '“' + x + '”')).slice(0, 12).forEach(x => q.push(x));
+  } else { const n = scCustom(id); if (n) rows.push(['On the board', 'a character you made (' + (n.shape === 'boss' ? 'boss' : 'character') + ')'], ['Role or title', n.sub || '']); }
+  const ch = scChapters(id); rows.push(['Story planner', ch.length ? ch.length + (ch.length === 1 ? ' chapter' : ' chapters') + ', ' + ch.reduce((t, x) => t + x.qs.length, 0) + ' quests' : 'in no chapter']);
+  return '<dl class="scdl">' + rows.filter(r => r[1]).map(r => '<div><dt>' + esc(r[0]) + '</dt><dd>' + esc(r[1]) + '</dd></div>').join('') + '</dl>' + (q.length ? '<div class="scquotes">' + q.map(x => '<p>' + esc(x) + '</p>').join('') + '</div>' : '');
+}
+function scList() {
+  const C = castDoc(), story = storyCastIds(), all = ENTS.map(e => e.id).concat(...S.order.map(k => S.boards[k] && !S.boards[k].sample ? Object.values(S.boards[k].nodes).filter(n => scCustom(n.id) === n).map(n => n.id) : []));
+  let ids = SC.list === 'del' ? Object.keys(C.del).filter(id => C.del[id] > 0 && (ENT[id] || scCustom(id))) : (SC.list === 'all' ? [...new Set(all)] : story).filter(id => !scDeleted(id));
+  const q = pnorm(SC.q); if (q) { const ws = q.split(' '); ids = ids.filter(id => { const t = pnorm(scName(id) + ' ' + scGame(id) + ' ' + id); return ws.every(w => t.includes(w)); }); }
+  const done = {}; ids.forEach(id => { done[id] = scDone(id); });
+  ids.sort(SC.sort === 'least' ? (a, b) => done[a] - done[b] || scName(a).localeCompare(scName(b)) : (a, b) => scName(a).replace(/^the /i, '').localeCompare(scName(b).replace(/^the /i, '')));
+  return { ids, done, story: story.filter(id => !scDeleted(id)).length, del: Object.keys(C.del).filter(id => C.del[id] > 0).length };
+}
+function scHomeLine(id) { const gs = groupsOf(id).map(g => B.nodes[g]).filter(isGrp); return gs.slice(0, 3).map(g => g.name).join(' · '); }
+function sheetsLeft() {
+  const L = scList();
+  let h = '<input class="stinp" id="scFind" placeholder="Find a character: Dorian, Pope, Santa…" value="' + esc(SC.q) + '">'
+    + '<div class="stseg scseg" data-scseg="list"><button data-v="story"' + (SC.list === 'story' ? ' class="on"' : '') + '>Story · ' + L.story + '</button><button data-v="all"' + (SC.list === 'all' ? ' class="on"' : '') + '>All units</button><button data-v="del"' + (SC.list === 'del' ? ' class="on"' : '') + '>Deleted · ' + L.del + '</button></div>'
+    + '<div class="stseg scseg sm" data-scseg="sort"><button data-v="az"' + (SC.sort === 'az' ? ' class="on"' : '') + '>A–Z</button><button data-v="least"' + (SC.sort === 'least' ? ' class="on"' : '') + '>Least done</button></div>';
+  h += '<div class="sclist">' + L.ids.map(id => '<div class="scli' + (id === SC.id ? ' on' : '') + '" data-scid="' + esc(id) + '">' + scPic(id) + '<span class="nm"><b>' + esc(scName(id)) + '</b><small>' + esc(scName(id) !== scGame(id) ? scGame(id) : scHomeLine(id)) + '</small></span><span class="scmeter"><i style="width:' + L.done[id] + '%"></i></span></div>').join('') + (L.ids.length ? '' : '<div class="stmuted">Nobody here.</div>') + '</div>';
+  const el = $('scLeft'), list = el.querySelector('.sclist'), sc = list ? list.scrollTop : 0; el.innerHTML = h; const nl = el.querySelector('.sclist'); if (nl) nl.scrollTop = sc;
+  return L;
+}
+function sheetsMain() {
+  const el = $('scMain'), id = SC.id;
+  if (!id) { el.innerHTML = '<div class="stmuted" style="padding:20px">Pick a character on the left.</div>'; $('scRight').innerHTML = ''; return; }
+  const s = scSheet(id), n = scNode(id), e = ENT[id], nm0 = scName(id), gn = scGame(id), del = scDeleted(id);
+  const gs = groupsOf(id).map(g => B.nodes[g]).filter(isGrp), gsec = new Set(Object.values(B.links).filter(l => l.type === 'member' && l.a === id && l.secret).map(l => l.b));
+  let h = '<div class="schead" id="sc_top">' + scPic(id, 'big') + '<div class="schm"><div class="sckey">' + esc(e ? (e.kind === 'cast' ? 'DOOR_CAST.' + e.c.id + (e.c.title ? ' · ' + e.c.title : '') : 'race · ' + e.r.k + (e.r.v.length > 1 ? ' · ' + e.v.g : '')) : 'your character') + '</div>'
+    + '<input class="stinp scname" data-scname="1" maxlength="60" value="' + esc(s && s.name || scNick(id)) + '" placeholder="' + esc(gn) + '">'
+    + (nm0 !== gn ? '<div class="stmuted">In the game: ' + esc(gn) + '</div>' : '')
+    + '<div class="scchips">' + (scF(s, 'status') ? '<span class="scchip">' + esc(scF(s, 'status')) + '</span>' : '') + gs.map(g => '<span class="scchip' + (gkOf(g) === 'faction' ? ' fac' : ' pl') + '" style="--gc:' + gcol(g) + '">' + (gsec.has(g.id) ? '<i>secretly</i> ' : '') + esc(g.name) + '</span>').join('') + ((e && e.t) || []).map(t => '<span class="scchip">' + esc(FNAME[t] || t) + '</span>').join('') + (n ? '' : '<span class="scchip warn">not on this board</span>') + '</div>'
+    + '<textarea class="stinp scpitch" rows="1" data-scf="pitch" placeholder="One-line pitch">' + esc(scF(s, 'pitch')) + '</textarea></div>'
+    + '<div class="schbtn">' + (n ? '<button class="stbtn sm" data-scact="board">Open on the board</button>' : '') + (del ? '<button class="stbtn sm g" data-scact="restore">Bring back</button>' : '<button class="stbtn sm r" data-scact="del">Delete sheet</button>') + '</div></div>';
+  h += '<div class="scjump">' + SC_SECS.map(x => '<button class="stbtn sm" data-scjump="' + x.k + '">' + x.h + '</button>').join('') + '</div>';
+  SC_SECS.forEach(sec => {
+    h += '<section class="scsec" id="sc_' + sec.k + '"><h3>' + esc(sec.h) + (sec.sub ? ' <small>' + esc(sec.sub) + '</small>' : '') + '</h3>';
+    if (sec.k === 'family') {
+      const ft = scFamTies(id);
+      if (ft.length) h += '<div class="stlbl">On the board</div><div class="scrows">' + ft.map(l => { const o = l.a === id ? l.b : l.a; return '<div class="scrow">' + (B.nodes[o] && !isGrp(B.nodes[o]) && (ENT[o] || scCustom(o)) ? '<button class="stlink" data-scid="' + esc(o) + '">' + esc(scName(o)) + '</button>' : '<b>' + esc(nm(o)) + '</b>') + ' <span class="stmuted">' + esc(sentence(l, scNameOnBoard, true)) + '</span></div>'; }).join('') + '</div>';
+      const fam = s ? s.fam : [];
+      h += (fam.length ? '<table class="sctbl"><tr><th style="width:130px">Relation</th><th>Who</th><th>Notes</th><th></th></tr>' + fam.map(r => '<tr><td><input class="stinp" list="scRelList" data-scfam="' + esc(r.id) + '" data-k="rel" value="' + esc(r.rel) + '" placeholder="Mother, brother…"></td><td>'
+        + (r.who && (ENT[r.who] || scCustom(r.who)) ? '<span class="stchip">' + scPic(r.who, 'sm') + '<button class="stlink" data-scid="' + esc(r.who) + '">' + esc(scName(r.who)) + '</button><b data-scfamun="' + esc(r.id) + '" title="Not this one">×</b></span>'
+          : '<div class="stpick"><input class="stinp" data-pick="famwho" data-row="' + esc(r.id) + '" autocomplete="off" placeholder="Pick a unit, or type a name" value="' + esc(r.name) + '"><div class="stpl" hidden></div></div>')
+        + '</td><td><textarea class="stinp" rows="1" data-scfam="' + esc(r.id) + '" data-k="note">' + esc(r.note) + '</textarea></td><td><button class="stx" data-scfamdel="' + esc(r.id) + '" aria-label="Remove">×</button></td></tr>').join('') + '</table>' : (ft.length ? '' : '<div class="stmuted">No family on the board or here yet.</div>'))
+        + '<button class="stadd" data-scact="famAdd">+ Add a family member</button>';
+    } else if (sec.k === 'secrets') {
+      const ks = s ? s.sec : [], chs = plan().chapters.map((c, i) => 'Ch ' + (i + 1) + (c.name ? ' ' + c.name : ''));
+      h += ks.length ? '<table class="sctbl"><tr><th>Secret</th><th style="width:150px">Who knows</th><th style="width:150px">Planted</th><th style="width:150px">Revealed</th><th></th></tr>' + ks.map(k => '<tr><td><textarea class="stinp" rows="1" data-scsec="' + esc(k.id) + '" data-k="text">' + esc(k.text) + '</textarea></td><td><input class="stinp" data-scsec="' + esc(k.id) + '" data-k="who" value="' + esc(k.who) + '"></td>'
+        + ['plant', 'reveal'].map(f => '<td><input class="stinp' + (f === 'reveal' && k.text.trim() && !k.reveal.trim() ? ' miss' : '') + '" list="scChList" data-scsec="' + esc(k.id) + '" data-k="' + f + '" value="' + esc(k[f]) + '" placeholder="' + (f === 'reveal' ? 'never set' : '') + '"></td>').join('') + '<td><button class="stx" data-scsecdel="' + esc(k.id) + '" aria-label="Remove">×</button></td></tr>').join('') + '</table>' : '<div class="stmuted">No secrets yet.</div>';
+      h += '<datalist id="scChList">' + chs.map(c => '<option value="' + esc(c) + '">').join('') + '</datalist><button class="stadd" data-scact="secAdd">+ Add a secret</button>';
+    } else if (sec.k === 'history') {
+      h += '<label class="scf"><span>Backstory' + (n ? ' · the note on ' + esc(B.name) : '') + '</span><textarea class="stinp big" rows="6" data-scback="1">' + esc(scBack(id)) + '</textarea></label>';
+      const es = n ? eventsOf(id) : [];
+      h += '<div class="stlbl">On the timeline · ' + es.length + '</div>' + (es.length ? '<div class="scrows">' + es.map(ev => '<div class="scev"><b>' + esc(ev.when || '—') + '</b><span><i class="dot" style="background:' + GCOL[ev.col || 0] + '"></i> ' + esc(ev.title || 'Untitled') + (ev.text ? '<span class="stmuted"> · ' + esc(ev.text.slice(0, 160)) + (ev.text.length > 160 ? '…' : '') + '</span>' : '') + '</span></div>').join('') + '</div>' : '')
+        + (n ? '<button class="stadd" data-scact="evNew">+ Event with ' + esc(nm0) + '</button>' : '');
+    } else if (sec.k === 'arc') {
+      const ch = scChapters(id), ar = (s && s.arc) || {};
+      h += '<table class="sctbl"><tr><th style="width:170px">Chapter</th><th style="width:170px">In it as</th><th>Where they stand</th><th>What changes</th></tr>'
+        + [{ k: '_start', n: 'Start', as: '' }].concat(ch.map(x => ({ k: x.c.id, n: 'Ch ' + (x.i + 1) + (x.c.name ? ' · ' + x.c.name : ''), col: CHCOL[x.c.col], as: x.qs.map(q => q.name || 'Untitled quest').concat(x.boss ? ['the boss'] : [], x.foe ? ['an enemy'] : []).join(', ') })), [{ k: '_end', n: 'End', as: '' }])
+          .map(r => { const a = ar[r.k] || {}; return '<tr><td class="ch">' + (r.col ? '<i class="dot" style="background:' + r.col + '"></i> ' : '') + esc(r.n) + '</td><td>' + esc(r.as) + '</td><td><textarea class="stinp' + (r.col && !a.s && !a.c ? ' miss' : '') + '" rows="1" data-scarc="' + esc(r.k) + '" data-k="s">' + esc(a.s || '') + '</textarea></td><td><textarea class="stinp" rows="1" data-scarc="' + esc(r.k) + '" data-k="c">' + esc(a.c || '') + '</textarea></td></tr>'; }).join('') + '</table>'
+        + (ch.length ? '' : '<div class="stmuted" style="margin-top:6px">Add ' + esc(nm0) + ' to a quest’s characters, a chapter’s enemies or its boss in the planner, and the chapter shows here.</div>');
+    } else if (sec.k === 'ties') {
+      const ts = scTies(id);
+      h += ts.length ? '<div class="scrows">' + ts.map(l => { const o = l.a === id ? l.b : l.a, on = B.nodes[o]; return '<div class="scrow"><span class="sctie" style="--c:var(--t-' + (TYPE[l.type] ? l.type : 'other') + ')">' + esc((TYPE[l.type] || TYPE.other).n) + '</span>' + (l.secret ? '<span class="scsecret">secret</span>' : '') + ' ' + esc(sentence(l, scNameOnBoard, true)) + (on && !isGrp(on) && (ENT[o] || scCustom(o)) ? ' <button class="stlink" data-scid="' + esc(o) + '">sheet</button>' : '') + '</div>'; }).join('') + '</div>' : '<div class="stmuted">' + (n ? 'No ties on this board yet.' : 'Not on this board.') + '</div>';
+      h += scField(id, s, 'you', 'What they think of you (the player)');
+    } else if (sec.k === 'voice') {
+      h += '<div class="scg2">' + scField(id, s, 'speech', 'Way of speaking') + scField(id, s, 'catch', 'Catchphrase') + '</div>';
+      const vs = s && s.voice.length ? s.voice : SC_MOODS.map((m, i) => ({ id: 'd' + i, mood: m, line: '' }));
+      h += '<table class="sctbl"><tr><th style="width:150px">Mood</th><th>Sample line</th><th></th></tr>' + vs.map(v => '<tr><td><input class="stinp" data-scv="' + esc(v.id) + '" data-k="mood" value="' + esc(v.mood) + '"></td><td><textarea class="stinp" rows="1" data-scv="' + esc(v.id) + '" data-k="line">' + esc(v.line) + '</textarea></td><td>' + (/^d\d$/.test(v.id) ? '' : '<button class="stx" data-scvdel="' + esc(v.id) + '" aria-label="Remove">×</button>') + '</td></tr>').join('') + '</table><button class="stadd" data-scact="vAdd">+ Add a line</button>';
+    } else if (sec.k === 'game') {
+      h += scGameBlock(id);
+    } else if (sec.k === 'questions') {
+      const nq = scNoticed(id); if (nq.length) h += '<div class="stflags"><b>THE SHEET NOTICED</b>' + nq.map(x => '<div>' + esc(x) + '</div>').join('') + '</div>';
+      h += scField(id, s, 'qs', 'Your open questions', true);
+    }
+    if (sec.f && sec.k !== 'ties' && sec.k !== 'voice' && sec.k !== 'questions') h += '<div class="scg' + (sec.k === 'inside' ? '2' : '3') + '">' + sec.f.map(f => scField(id, s, f[0], f[1])).join('') + '</div>';
+    if (sec.k !== 'game') h += '<div class="scg2">' + scExtra(s, sec.k) + '</div>';
+    h += '</section>';
+  });
+  h += '<datalist id="scRelList">' + SC_REL.map(r => '<option value="' + r + '">').join('') + '</datalist>';
+  const sc = el.scrollTop, same = el.dataset.id === id; el.innerHTML = h; el.dataset.id = id; el.scrollTop = same ? sc : 0;
+  el.querySelectorAll('textarea.stinp').forEach(scGrow);
+  const pc = scDone(id);
+  $('scRight').innerHTML = '<div class="stlbl" style="margin-top:0">This sheet · ' + pc + '%</div><div class="scmeter big"><i style="width:' + pc + '%"></i></div>'
+    + SC_SECS.map(x => '<button class="sctoc" data-scjump="' + x.k + '">' + esc(x.h) + '</button>').join('')
+    + '<div class="stlbl">Sheets</div><button class="sctoc" data-scact="hide">' + (SC.hideEmpty ? 'Show empty fields' : 'Hide empty fields') + '</button><button class="sctoc" data-scact="export">Export sheets</button><button class="sctoc" data-scact="print">Print this sheet</button>';
+}
+const scGrow = t => { if (t.classList.contains('big') && t.rows > 1) { t.style.height = 'auto'; t.style.height = Math.max(110, t.scrollHeight + 4) + 'px'; return; } t.style.height = 'auto'; t.style.height = (t.scrollHeight + 4) + 'px'; };
+function sheetsRender() {
+  if (!ST.open || ST.tab !== 'chars') return;
+  const L = sheetsLeft();
+  if (!SC.id || (!ENT[SC.id] && !scCustom(SC.id))) { SC.id = L.ids[0] || null; if (SC.id) sheetsLeft(); }
+  sheetsMain();
+}
+function sheetOpen(id) { SC.id = id; if (scDeleted(id)) SC.list = 'del'; else if (SC.list === 'del') SC.list = 'story'; ST.tab = 'chars'; S.ui.storyTab = 'chars'; if (!ST.open) storyOpen(true); else storyRender(); }
+function sheetsExport() {
+  const ids = storyCastIds().filter(id => !scDeleted(id)).concat(Object.keys(castDoc().sheets).filter(id => castDoc().sheets[id].t > 0)).filter((v, i, a) => a.indexOf(v) === i);
+  const out = { kind: 'entropy-wars-character-sheets', v: 1, at: new Date().toISOString(), board: B.name, characters: ids.map(id => { const s = scSheet(id) || {}; return { id, name: scName(id), gameName: scGame(id), deleted: scDeleted(id) || undefined, fields: s.f || {}, backstory: scBack(id), extra: (s.extra || []).map(x => ({ section: x.sec, label: x.label, text: x.text })), family: scFamTies(id).map(l => sentence(l, scNameOnBoard, true)).concat((s.fam || []).map(r => (r.rel || 'Family') + ': ' + (r.who ? scName(r.who) : r.name) + (r.note ? ' (' + r.note + ')' : ''))), secrets: s.sec || [], arc: s.arc || {}, voice: s.voice || [], ties: scTies(id).map(l => sentence(l, scNameOnBoard, true)), chapters: scChapters(id).map(x => x.i + 1) }; }) };
+  const txt = JSON.stringify(out, null, 2);
+  modal('<h2>Export the character sheets</h2><textarea class="inp code" readonly>' + esc(txt) + '</textarea><div class="acts"><button class="btn" data-x="copy">Copy</button><button class="btn" data-x="save">Save file</button><button class="btn pri" data-x="close">Done</button></div>', d => d.addEventListener('click', e => { const x = e.target.dataset.x;
+    if (x === 'close') closeModal(); else if (x === 'copy') { try { navigator.clipboard.writeText(txt); toast('Copied'); } catch (er) {} } else if (x === 'save') { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([txt], { type: 'application/json' })); a.download = 'Entropy_Wars_Character_Sheets_' + new Date().toISOString().slice(0, 10) + '.json'; a.click(); } }));
+}
+function bindSheets() {
+  const root = $('st_chars');
+  root.addEventListener('click', e => {
+    const t = e.target, b = t.closest('button, [data-scid], .po[data-pv]'); if (!b) return;
+    if (b.matches('.po[data-pv]')) return;   // the planner's picker handler takes it
+    if (b.dataset.scid && !b.dataset.scfamun) { SC.id = b.dataset.scid; sheetsRender(); return; }
+    const sg = b.closest('[data-scseg]'); if (sg && b.dataset.v) { SC[sg.dataset.scseg] = b.dataset.v; sheetsRender(); return; }
+    if (b.dataset.scjump) { const s = $('sc_' + b.dataset.scjump); if (s) $('scMain').scrollTop = s.offsetTop - 8; return; }
+    const id = SC.id; if (!id) return;
+    if (b.dataset.scxadd) { scTouch(id).extra.push({ id: uid('x'), sec: b.dataset.scxadd, label: '', text: '' }); castSave(true); const l = [...root.querySelectorAll('[data-scxl]')].pop(); if (l) l.focus(); return; }
+    if (b.dataset.scxdel) { const s = scTouch(id); s.extra = s.extra.filter(x => x.id !== b.dataset.scxdel); castSave(true); return; }
+    if (b.dataset.scfamdel) { const s = scTouch(id); s.fam = s.fam.filter(x => x.id !== b.dataset.scfamdel); castSave(true); return; }
+    if (b.dataset.scfamun) { const s = scTouch(id), r = s.fam.find(x => x.id === b.dataset.scfamun); if (r) { r.who = ''; } castSave(true); return; }
+    if (b.dataset.scsecdel) { const s = scTouch(id); s.sec = s.sec.filter(x => x.id !== b.dataset.scsecdel); castSave(true); return; }
+    if (b.dataset.scvdel) { const s = scTouch(id); s.voice = s.voice.filter(x => x.id !== b.dataset.scvdel); castSave(true); return; }
+    switch (b.dataset.scact) {
+      case 'famAdd': scTouch(id).fam.push({ id: uid('f'), rel: '', who: '', name: '', note: '' }); castSave(true); break;
+      case 'secAdd': scTouch(id).sec.push({ id: uid('k'), text: '', who: '', plant: '', reveal: '' }); castSave(true); { const l = [...root.querySelectorAll('[data-scsec][data-k="text"]')].pop(); if (l) l.focus(); } break;
+      case 'vAdd': { const s = scTouch(id); if (!s.voice.length) s.voice = SC_MOODS.map(m => ({ id: uid('v'), mood: m, line: '' })); s.voice.push({ id: uid('v'), mood: '', line: '' }); castSave(true); } break;
+      case 'board': storyOpen(false); select({ kind: 'node', id }); if (!offK(B.nodes[id])) centreOn(id); break;
+      case 'evNew': storyOpen(false); select({ kind: 'node', id }); newEvent([id]); break;
+      case 'del': confirmBox('Delete the sheet for ' + scName(id) + '? It leaves the list; its text is kept under Deleted, and nothing on the board changes.', 'Delete sheet', () => { castDoc().del[id] = Date.now(); castSave(); const L = scList(); SC.id = L.ids[0] || null; sheetsRender(); }); break;
+      case 'restore': castDoc().del[id] = -Date.now(); SC.list = 'story'; castSave(true); break;
+      case 'hide': SC.hideEmpty = !SC.hideEmpty; sheetsRender(); break;
+      case 'export': sheetsExport(); break;
+      case 'print': { const w = window.open('', '_blank'); if (!w) break; w.document.write('<!doctype html><meta charset="utf-8"><title>' + esc(scName(id)) + '</title><style>body{font:13px system-ui;margin:24px;color:#000}textarea,input{border:0;font:inherit;width:100%;resize:none}button,.scjump{display:none}table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:4px;text-align:left;vertical-align:top}h3{margin:18px 0 6px}.scpic{display:none}dt{font-weight:600}</style>' + $('scMain').innerHTML); w.document.querySelectorAll('textarea').forEach(x => { const d = w.document.createElement('div'); d.textContent = x.value; d.style.whiteSpace = 'pre-wrap'; x.replaceWith(d); }); w.document.close(); w.print(); } break;
+    }
+  });
+  root.addEventListener('input', e => {
+    const t = e.target, id = SC.id;
+    if (t.id === 'scFind') { SC.q = t.value; sheetsLeft(); return; }
+    if (t.dataset.pick === 'famwho' && id) { const r = scTouch(id).fam.find(q => q.id === t.dataset.row); if (r) { r.name = t.value; castSave(); } return; }
+    if (t.dataset.pick || !id) return;
+    if (t.tagName === 'TEXTAREA') scGrow(t);
+    if (t.dataset.scback) { const n = scNode(id); if (n) { n.note = t.value; touch(); saveLocalSoon(); flushSoon(); } else { scTouch(id).back = t.value; castSave(); } return; }
+    const s = scTouch(id);
+    if (t.dataset.scf) { if (t.value) s.f[t.dataset.scf] = t.value; else delete s.f[t.dataset.scf]; }
+    else if (t.dataset.scname) { s.name = t.value.trim(); }
+    else if (t.dataset.scxl) { const x = s.extra.find(q => q.id === t.dataset.scxl); if (x) x.label = t.value; }
+    else if (t.dataset.scxt) { const x = s.extra.find(q => q.id === t.dataset.scxt); if (x) x.text = t.value; }
+    else if (t.dataset.scfam) { const r = s.fam.find(q => q.id === t.dataset.scfam); if (r) r[t.dataset.k] = t.value; }
+    else if (t.dataset.scsec) { const r = s.sec.find(q => q.id === t.dataset.scsec); if (r) r[t.dataset.k] = t.value; }
+    else if (t.dataset.scarc) { const a = s.arc[t.dataset.scarc] = s.arc[t.dataset.scarc] || { s: '', c: '' }; a[t.dataset.k] = t.value; }
+    else if (t.dataset.scv) { if (/^d\d$/.test(t.dataset.scv) && !s.voice.length) { s.voice = SC_MOODS.map((m, i) => ({ id: uid('v'), mood: m, line: '' })); root.querySelectorAll('[data-scv]').forEach(o => { const i = +o.dataset.scv.slice(1); if (/^d\d$/.test(o.dataset.scv)) o.dataset.scv = s.voice[i].id; }); }
+      const r = s.voice.find(q => q.id === t.dataset.scv); if (r) r[t.dataset.k] = t.value; }
+    else return;
+    castSave();
+  });
+  root.addEventListener('change', e => {
+    const t = e.target, id = SC.id; if (!id || t.dataset.pick) return;
+    if (t.dataset.scback) { if (scNode(id)) commit({ light: true }); return; }
+    if (t.dataset.scname) { const n = scNode(id), v = t.value.trim(); if (n && n.kind !== 'custom') { if (v && v !== scGame(id)) n.nick = v; else delete n.nick; commit({ light: true }); } else if (n && v) { n.name = v; commit({ light: true }); } sheetsLeft(); return; }
+    if (t.dataset.scf === 'status' || t.dataset.scf === 'pitch' || t.dataset.scsec || t.dataset.scarc) { sheetsLeft(); if (t.dataset.scf === 'status') sheetsMain(); }
+  });
+}
+bindSheets();
+$('btnSheets').addEventListener('click', () => { ST.tab = 'chars'; S.ui.storyTab = 'chars'; storyOpen(true); });
+window.__ewStory = { ST, MV, plan, storyOpen, storyRender, noticed, SC, sheetOpen, storyCastIds, scNoticed, castDoc, mergeCast };
 
 /* ───────── boot ───────── */
 S = loadLocal(); B = S.boards[S.active];
@@ -2151,7 +2464,7 @@ initWhere();
 $('legend').open = S.ui.legend === true && !window.matchMedia('(max-width: 860px)').matches;
 ensureView(); fit(true); pushHist(); renderAll(); setSave();
 requestAnimationFrame(() => { if (!drag) fit(); });
-if (S.ui.story) { ST.tab = /^(map|beat|spine)$/.test(S.ui.storyTab) ? S.ui.storyTab : 'map'; storyOpen(true); }
+if (S.ui.story) { ST.tab = /^(map|beat|spine|chars)$/.test(S.ui.storyTab) ? S.ui.storyTab : 'map'; storyOpen(true); }
 cloudInit();
 window.__ewWeb = { get state() { return S; }, gameExport, defence, hooks, cloud };
 })();
