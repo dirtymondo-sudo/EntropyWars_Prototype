@@ -1217,3 +1217,12 @@ Proof pictures: project files `desert-dropoff-polish/`.
   like `sky.lock`, but lit by the clock (low warm sun, dusk haze), where `lock` keeps the authored day light. `intro_desert` holds
   18.85 h with a warm mood + orange fog. Not 18.95: at <1 deg sun the A1 `skyFit` shot falls back to its 58 deg tilt and opens on
   empty sky.
+
+## THE STORY LEVEL PLATE — the battle panel shows the level, mastery is PvP only (mondo 2026-11-25)
+mondo: "In story mode, can we make the battle panel display the levels instead of the mastery? Mastery is PvP only."
+data.js `ewStoryBattle()` = a story fight (state.storyLevel > 0, or a unit built at its story level: `u._storyLevel`), never
+online. In one, hud.js `_mlChipEl` (every battle-panel spot the mastery plate stood: the acting unit's card, the deck's unit
+card, the quick menu header, the quick panel) draws the same plate as "LV n" (`ml-chip lv-chip`, white edge; data.js
+`unitLevelChipHtml` for HTML screens), battle.js `_mlStampUnit` stamps no `ulv` (so the pause menu's party cards and the
+result list lose the M plate; they already print the level), and the result screen's "Unit Mastery" block is skipped (THE
+EXPERIENCE rows cover it). Online, Practice and VS-CPU keep the mastery plate as before. Mastery XP still accrues (unchanged).

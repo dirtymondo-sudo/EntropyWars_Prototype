@@ -4159,6 +4159,12 @@ function _hrlgMpPreviewChip(u, cls) {
    and rides the host's snapshots; a unit without one (a CPU's) draws nothing. An <em>, so the UI Maker's type-badge
    part (`> span`) leaves it alone. */
 function _mlChipEl(u) {
+  /* THE STORY LEVEL PLATE (mondo 2026-11-25): a story fight shows the unit's level here, mastery is PvP only */
+  if (u && typeof ewStoryBattle === 'function' && ewStoryBattle()) {
+    const sl = (typeof getUnitLevel === 'function') ? getUnitLevel(u) : 0;
+    if (!(sl >= 1)) return null;
+    return h('em', { key: 'ml', className: 'ml-chip lv-chip', title: 'Level ' + sl }, h('i', null, 'LV'), String(sl));
+  }
   const lv = (u && typeof unitMasteryClean === 'function') ? unitMasteryClean(u.ulv) : 0;
   if (!lv) return null;
   const band = unitMasteryBand(lv);
