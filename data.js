@@ -108001,7 +108001,7 @@ function zoneFloraProps(roomId, info, freeFor) {
    No room, tool or district file is edited: a rebaked room comes out the same. A climate not named takes `'*'`; a room in no zone keeps its rows. */
 ZONE_FLORA.tint = { rf_plant_7: [0.4, 0.55, 0.33], rf_plant_1: [0.4, 0.54, 0.34], rf_plant_10: [0.45, 0.6, 0.37] };   // (the sage bush keeps its own grey-green: it is the desert's too)
 ZONE_FLORA.swap = {
-    fern: { '*': null, tropical: '=', japan: '=', hollow: '=' },                     // the Meshy rosette stays only where it reads as a tropical plant
+    fern: { '*': null, tropical: '=', japan: '=', hollow: '=', none: null },          // the Meshy rosette stays only where it reads as a tropical plant (`none` = a room in no zone: the old handmade sites, the plot dungeons)
     psxg_dead_bush_1: { '*': { key: 'psxg_dead_bush_2', h: 0.62, foot: 0.3 } },     // three sticks -> the pack's thorn bush (its footprint kept)
 };
 var _zfRoomIds = null;
@@ -108014,12 +108014,14 @@ function zoneFloraRoomId(room) {
 /* rows in, rows out (the room's own rows are never changed: a swapped row is a copy) */
 function zoneFloraSwap(room, rows, fallbackId) {
     if (!rows || !rows.length || (typeof window !== 'undefined' && (window.EW_NO_FLORA || window.EW_NO_FLORA_SWAP))) return rows;
-    const S = ZONE_FLORA.swap, id = zoneFloraRoomId(room) || fallbackId || null; if (!S || !id || !zoneFloraRule(id)) return rows;
+    const S = ZONE_FLORA.swap, id = zoneFloraRoomId(room) || fallbackId || null; if (!S || !id) return rows;
+    const ruled = !!zoneFloraRule(id);   // a room in no zone takes only a key's `none` (11-25: the rosette left the old sites and plot dungeons too)
     let out = null, n = 0;
     for (let i = 0; i < rows.length; i++) {
         const p = rows[i], W = p && S[p.key];
         if (!W) { if (out) out.push(p); continue; }
-        const C = zoneFloraAt(id, p.x || 0, p.z || 0), to = (C && W[C.id] !== undefined) ? W[C.id] : W['*'];
+        if (!ruled && !('none' in W)) { if (out) out.push(p); continue; }
+        const C = ruled ? zoneFloraAt(id, p.x || 0, p.z || 0) : null, to = !ruled ? W.none : (C && W[C.id] !== undefined) ? W[C.id] : W['*'];
         if (to === '=' || to === undefined) { if (out) out.push(p); continue; }
         if (!out) out = rows.slice(0, i);
         n++;
