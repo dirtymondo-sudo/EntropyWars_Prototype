@@ -81,6 +81,16 @@ with the shared kit below. Even scatter rows of single plants (the old "throw N 
 5. Before / after pictures of the same views from the walker's camera; post them.
 6. `node find-softlocks.js <room>` and the door finder if anything solid moved; nothing blocks a path or a door.
 
+**THE GROUPS KIT (11-25, the Woods pilot; use it in every zone).** data.js `ZONE_FLORA.compose[<climate>]` + `zoneFloraCompose`, run by
+hqTerrainCompile right after the scatter loop (room build, never a frame). A climate's row names its plant keys: `{ thin, loose, low, keys: { <key>:
+{ per: [min, max], size: [3, 5, 7], on: ['tree', 'edge', 'log', 'stump', 'rock', 'wall'], low } } }`. Those keys' scatter rows stop sprinkling, and the
+room's hand rows of those keys standing more than `loose` m from any anchor are dropped where they stood (`info.composeDrop`, read by zoneFloraSwap).
+The same plants (times `thin`) then stand as GROUPS: a hero by an anchor on its open side, the rest of the key and the `low` layer round it on a loose
+triangle, mixed sizes. Anchors: `info.trees`, the thicket's front rows (`edge`), and scatter / prop rows matched by `ZONE_FLORA.anchorKeys` (logs,
+stumps, rocks), building corners (`wall`). Seeded by the room (both players see the same). Off: `EW_NO_FLORA_COMPOSE`. Readout: `hqTerrainInfo(room).composed`.
+S7 in the flora field: set `near: true, far: 0..0.05` on a climate's flower / fern layers (the Woods do it from their own block) and the open middle
+stays grass. A new zone = one `compose` row + the layer flags; no room file edited.
+
 ### 00d. The zone groups (sibling threads, 11-25)
 
 | Group | Rooms | Notes |

@@ -98274,7 +98274,11 @@ function hqTerrainCompile(room, roomId) {
     }
     let keepClearG = null; try { if (T.keepClear && T.keepClear.d && typeof atob === 'function') { const b = atob(T.keepClear.d); keepClearG = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) keepClearG[i] = b.charCodeAt(i); } } catch (e) { keepClearG = null; }
     const gateLanes = (room.doors || []).filter(d => d && /^[nsew]$/.test(d.wall || '') && /^(open|trail|road)$/.test(d.way || '') && isFinite((d.wall === 'n' || d.wall === 's') ? +d.x : +d.z)).map(d => { const ns = d.wall === 'n' || d.wall === 's'; return { ns, at: ns ? +d.x : +d.z, edge: d.wall === 'n' ? -S.d / 2 : d.wall === 's' ? S.d / 2 : d.wall === 'w' ? -S.w / 2 : S.w / 2, hw: ((d.passage && +d.passage.w) || 3) / 2 }; });
+    /* THE SCENIC PASS (2026-11-25, flora.md S4/S5/S8): a climate with a ZONE_FLORA.compose row takes its plant scatter rows out of the sprinkle;
+       zoneFloraCompose stands the same plants after the loop, in groups of 3/5/7 at trunks, the wood's edge, logs, stumps, rocks and walls */
+    const CMP = (typeof zoneFloraComposeOf === 'function') ? zoneFloraComposeOf(roomId) : null, cmpTake = [];
     scatterRows.forEach((f, fi) => {
+        if (CMP && f.k === 'scatter' && f.key && CMP.keys[f.key]) { cmpTake.push(f); return; }
         const n = f.n || 6, isTree = f.k === 'grove', rad = isTree ? R.treeR : (f.r0 || 0.45);
         const kinds = f.kinds || ['tree', 'tree', 'tree_2', 'tree_3'];
         let s = (typeof hqHash === 'function') ? hqHash((roomId || '') + '|' + f.k + '|' + (f.key || '') + '|' + fi + '|' + (f.seed || 0)) : fi * 7919;
@@ -98332,6 +98336,7 @@ function hqTerrainCompile(room, roomId) {
     /* THE SHAPES (E1): a prefab's props stand like the scatter (the renderer places info.scatter with the room's props), its paint
        joins the room's marks, and every textured building is handed to the renderer with the ground it stands on */
     X.props.forEach(p => { if (p && p.key) info.scatter.push(Object.assign({}, p)); });
+    if (CMP) { try { info.composed = zoneFloraCompose(roomId, info, room, CMP, cmpTake, { freeFor, placed, hAt, keepClear: (keepClearG ? (x, z) => { const KC = T.keepClear, ki = Math.floor((x - KC.x0) / KC.res), kj = Math.floor((z - KC.z0) / KC.res); return ki >= 0 && kj >= 0 && ki < KC.nx && kj < KC.nz && !!keepClearG[kj * KC.nx + ki]; } : null), gate: (x, z, r) => gateLanes.some(g => Math.abs((g.ns ? x : z) - g.at) < g.hw + r && (g.ns ? Math.abs(z - g.edge) : Math.abs(x - g.edge)) < 14) }); } catch (e) { if (typeof console !== 'undefined') console.warn('[FLORA] the compose', e); } }
     /* THE FLORA (2026-11-20): the room's trees take their climate's kinds (ZONE_FLORA: the zone, the map's ground, the sheet under the trunk) */
     try { if (typeof zoneFloraTrees === 'function') info.floraTrees = zoneFloraTrees(roomId, info); } catch (e) { if (typeof console !== 'undefined') console.warn('[FLORA] the trees', e); }
     try { if (typeof zoneFloraProps === 'function') info.floraProps = zoneFloraProps(roomId, info, freeFor); } catch (e) { if (typeof console !== 'undefined') console.warn('[FLORA] the accents', e); }
@@ -107999,7 +108004,7 @@ function zoneFloraProps(roomId, info, freeFor) {
    THE SWAP: a room's prop or scatter row of a key here is worked out by the climate of its spot when the room's props stand (zoneFloraSwap, once a room
    build, never a frame): `'='` keeps it, `null` drops it (the field's tree-hugging ferns grow there instead), `{ key, h, foot }` stands another piece.
    No room, tool or district file is edited: a rebaked room comes out the same. A climate not named takes `'*'`; a room in no zone keeps its rows. */
-ZONE_FLORA.tint = { rf_plant_7: [0.4, 0.55, 0.33], rf_plant_1: [0.4, 0.54, 0.34], rf_plant_10: [0.45, 0.6, 0.37] };   // (the sage bush keeps its own grey-green: it is the desert's too)
+ZONE_FLORA.tint = { rf_plant_7: [0.4, 0.55, 0.33], rf_plant_1: [0.4, 0.54, 0.34], rf_plant_10: [0.45, 0.6, 0.37], rf_plant_6: [0.42, 0.46, 0.38] };   // (11-25 scenic pass: the Woods' dark stalks read pale grey)   // (the sage bush keeps its own grey-green: it is the desert's too)
 ZONE_FLORA.swap = {
     fern: { '*': null, tropical: '=', japan: '=', hollow: '=', none: null },          // the Meshy rosette stays only where it reads as a tropical plant (`none` = a room in no zone: the old handmade sites, the plot dungeons)
     psxg_dead_bush_1: { '*': { key: 'psxg_dead_bush_2', h: 0.62, foot: 0.3 } },     // three sticks -> the pack's thorn bush (its footprint kept)
@@ -108015,10 +108020,12 @@ function zoneFloraRoomId(room) {
 function zoneFloraSwap(room, rows, fallbackId) {
     if (!rows || !rows.length || (typeof window !== 'undefined' && (window.EW_NO_FLORA || window.EW_NO_FLORA_SWAP))) return rows;
     const S = ZONE_FLORA.swap, id = zoneFloraRoomId(room) || fallbackId || null; if (!S || !id) return rows;
+    let CD = null; try { const ti = (typeof hqTerrainInfo === 'function' && room && room.terrain) ? hqTerrainInfo(id) : null; CD = (ti && ti.composeDrop && ti.composeDrop.size) ? ti.composeDrop : null; } catch (e) { CD = null; }
     const ruled = !!zoneFloraRule(id);   // a room in no zone takes only a key's `none` (11-25: the rosette left the old sites and plot dungeons too)
     let out = null, n = 0;
     for (let i = 0; i < rows.length; i++) {
         const p = rows[i], W = p && S[p.key];
+        if (CD && CD.has(p)) { if (!out) out = rows.slice(0, i); n++; continue; }   // THE SCENIC PASS: a hand row the compose stood again in a group
         if (!W) { if (out) out.push(p); continue; }
         if (!ruled && !('none' in W)) { if (out) out.push(p); continue; }
         const C = ruled ? zoneFloraAt(id, p.x || 0, p.z || 0) : null, to = !ruled ? W.none : (C && W[C.id] !== undefined) ? W[C.id] : W['*'];
@@ -108029,6 +108036,103 @@ function zoneFloraSwap(room, rows, fallbackId) {
     }
     if (n && typeof window !== 'undefined') { try { window._ewHqFloraSwap = { room: id, swapped: n }; } catch (e) {} }
     return out || rows;
+}
+/* ══ THE SCENIC PASS, THE GROUPS KIT (2026-11-25, mondo on the Woods: "all of these plants are just randomly placed and it looks ugly as hell. you need to
+   do a beauty/scenic pass on all the zones"; rules flora.md section 00, S4 groups of 3/5/7, S5 every group anchored, S7 the open stays open, S8 no hero alone).
+   A climate's `compose` row names the plant keys it composes. At room build (hqTerrainCompile, never a frame) its scatter rows of those keys stop
+   sprinkling, and the room's hand-placed rows of those keys that stand out in the open (no anchor within `loose` m) join them; the same plants then stand
+   AS GROUPS, each grown from an ANCHOR: a tree's trunk, the wood's front edge (the thicket's first rows), a log, a stump, a rock, a building's corner.
+   A group = 1-2 of its key (the hero, largest, nearest the anchor) + the climate's low layer at its foot, on a loose triangle to one side, mixed sizes.
+   `thin` = the share of the old count kept (the sprinkle was too many). Seeded by the room: the same for both players (RULE #2). Off: EW_NO_FLORA_COMPOSE.
+   A row:   keys: { <key>: { per: [min, max] of the key a group, size: [group sizes], on: [anchor kinds], low: [[key, w]] (else the climate's) } }
+   Anchors: tree, edge, log, stump, rock, wall (ANCHOR_KEYS below lists the scatter / prop keys of each). Other zones: add a row here, nothing else. */
+ZONE_FLORA.anchorKeys = {
+    log: /^(fallen_log|fallen_redwood|rf_oak_fallen_\d|rf_pine_fallen_\d|rf_birch_dead_\d|rf_willow_dead_\d|log_pile|firewood_stack)$/,
+    stump: /^(stump|rf_stump|rf_oak_stump|rf_pine_stump|dead_snag|hollow_tree|hollow_dead_tree|burnt_tree)$/,
+    rock: /^(psxg_rock_\d|cave_stone|rf_rock_\d|hw_stone(_\d)?|boulder.*|rock_.*|menhir|sarsen|cairn)$/,
+};
+(function () {
+    const LOWW = [['rf_grass_5_dark', 3], ['rf_grass_6_dark', 3], ['rf_grass_4_dark', 2], ['moss_clump', 1]];
+    const hero = (on, per, size) => ({ per: per || [1, 1], size: size || [3, 5], on: on || ['tree', 'edge', 'rock'] });
+    const caps = (low) => ({ per: [3, 4], size: [3, 5], on: ['log', 'stump', 'tree'], low: low || [['moss_clump', 1], ['rf_grass_6_dark', 1]] });
+    const woods = { thin: 0.45, loose: 2.5, low: LOWW, keys: {
+        woods_healflower: hero(['tree', 'edge', 'rock'], [1, 2], [3, 5]),
+        woods_gasplant: hero(['tree', 'rock', 'wall'], [1, 1], [3]),
+        woods_thornvine: hero(['edge', 'tree', 'log'], [1, 1], [3]),
+        psxg_dead_bush_1: hero(['edge', 'log', 'rock'], [1, 2], [3]),
+        psxg_dead_bush_2: hero(['edge', 'log', 'rock'], [1, 1], [3]),
+        mushroom2: caps(), zl_hz_Brick_07__mushroom: caps(), woods_glowcap: caps(), fae_toadstool: caps(), fae_mushroom: caps(),
+        wild_flowers: { per: [3, 4], size: [5, 7], on: ['edge', 'tree', 'rock'], low: [['rf_grass_5_dark', 1]] },
+        moss_clump: { per: [2, 3], size: [3], on: ['log', 'rock', 'stump'], low: [['rf_grass_6_dark', 1]] },
+    } };
+    ZONE_FLORA.compose = { horror: woods, redwood: woods };
+    /* S7: the Woods' field ferns and flowers grow only by standing things (the lead's `near`); out in a clearing's open middle, nothing (`far` 0) */
+    ['horror', 'redwood'].forEach(c => { const K = ZONE_FLORA.climates[c]; if (!K) return; ['lawn', 'floor', 'rough', 'dirt'].forEach(g => (K[g] || []).forEach(L => { if (!L.g) { L.near = true; L.far = 0.05; } })); });
+})();
+function zoneFloraComposeOf(roomId) {
+    if (typeof window !== 'undefined' && (window.EW_NO_FLORA || window.EW_NO_FLORA_COMPOSE)) return null;
+    const Z = zoneFloraRule(roomId); return (Z && Z.c && ZONE_FLORA.compose && ZONE_FLORA.compose[Z.c]) || null;
+}
+function zoneFloraCompose(roomId, info, room, C, rows, K) {
+    const cat = DOOR_HQ.catalogue, AK = ZONE_FLORA.anchorKeys, TAU = Math.PI * 2;
+    let s = ((typeof hqHash === 'function') ? hqHash('compose|' + roomId) : 99) >>> 0;
+    const rnd = () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; };
+    const hw = info.S.w / 2 - 1.5, hd = info.S.d / 2 - 1.5;
+    /* 1. the anchors (read once) */
+    const A = [], addA = (kind, x, z, ra) => { if (isFinite(x) && isFinite(z) && Math.abs(x) < hw && Math.abs(z) < hd) A.push({ kind, x, z, ra, used: false }); };
+    (info.trees || []).forEach(t => addA('tree', t.x, t.z, Math.max(0.5, t.r || 0.6)));
+    (info.thicket || []).forEach(t => { if (t.d == null || t.d > -3.5) addA('edge', t.x, t.z, Math.max(0.45, t.r || 0.5)); });
+    const kindOf = (k) => AK.log.test(k) ? 'log' : AK.stump.test(k) ? 'stump' : AK.rock.test(k) ? 'rock' : null;
+    (info.scatter || []).concat(room.props || []).forEach(p => { if (!p || !p.key || p.level || p.wall) return; const k = kindOf(p.key); if (k) addA(k, p.x, p.z, k === 'log' ? 1.1 : k === 'rock' ? 0.8 : 0.5); });
+    ((room.terrain && room.terrain.features) || []).forEach(f => { if (f && f.k === 'texbuilding' && f.w && f.d) { const a = (f.rot || 0) * Math.PI / 180, c = Math.cos(a), si = Math.sin(a);
+        [[1, 1], [1, -1], [-1, 1], [-1, -1]].forEach(([sx, sz]) => { const lx = sx * (f.w / 2 + 0.8), lz = sz * (f.d / 2 + 0.8); addA('wall', f.x + lx * c - lz * si, f.z + lx * si + lz * c, 0.4); }); } });
+    if (!A.length) return null;
+    const G = new Map(), cell = 6, gk = (x, z) => Math.floor(x / cell) + ',' + Math.floor(z / cell);
+    A.forEach((a, i) => { const k = gk(a.x, a.z); if (!G.has(k)) G.set(k, []); G.get(k).push(i); });
+    const nearest = (x, z, R) => { let best = null, bd = R; const cx = Math.floor(x / cell), cz = Math.floor(z / cell), m = Math.ceil(R / cell);
+        for (let i = -m; i <= m; i++) for (let j = -m; j <= m; j++) (G.get((cx + i) + ',' + (cz + j)) || []).forEach(ai => { const a = A[ai], d = Math.hypot(a.x - x, a.z - z) - a.ra; if (d < bd) { bd = d; best = a; } }); return best; };
+    /* 2. the budget: the taken scatter rows + the hand rows standing loose in the open (those are dropped where they stood: info.composeDrop) */
+    const want = {}, disc = {};
+    rows.forEach(f => { want[f.key] = (want[f.key] || 0) + (f.n || 6); if (f.x != null && f.r) (disc[f.key] = disc[f.key] || []).push({ x: f.x, z: f.z, r: f.r }); });
+    const drop = new Set();
+    (room.props || []).forEach(p => { if (!p || !C.keys[p.key] || p.level || p.wall || p.y || p.pd || p.lift) return; if (nearest(p.x || 0, p.z || 0, C.loose || 3.5)) return; drop.add(p); want[p.key] = (want[p.key] || 0) + 1; });
+    /* 3. the groups */
+    const pick = (list) => { let t = 0; list.forEach(q => { t += q[1]; }); let r = rnd() * t; for (const q of list) { r -= q[1]; if (r <= 0) return q[0]; } return list[list.length - 1][0]; };
+    const order = A.map((a, i) => i); for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)), t = order[i]; order[i] = order[j]; order[j] = t; }
+    const free = (x, z, r) => !(Math.abs(x) > hw || Math.abs(z) > hd || (K.keepClear && K.keepClear(x, z)) || (K.gate && K.gate(x, z, r)) || !K.freeFor(x, z, r, { slope: 0.35, apart: 0.3 }));
+    const stand = (key, x, z, scale) => { const c = cat[key]; if (!c) return; const rad = Math.max(0.25, (c.foot || 0.3));
+        K.placed.push({ x, z, r: rad }); const row = { key, x: Math.round(x * 100) / 100, z: Math.round(z * 100) / 100, y: K.hAt(x, z), face: Math.round(rnd() * 360), r: rad, composed: true };
+        if (c.h) row.h = Math.round(c.h * scale * 100) / 100; if (c.foot != null) row.foot = c.foot; info.scatter.push(row); };
+    let groups = 0, pieces = 0, oi = 0;
+    Object.keys(want).sort().forEach(key => {
+        const R = C.keys[key]; if (!R || !cat[key]) return;
+        let left = Math.max(1, Math.round(want[key] * (C.thin != null ? C.thin : 0.5)));
+        const D = disc[key] && disc[key].length === rows.filter(f => f.key === key).length ? disc[key] : null;   // every row of the key had its own area: the groups stay in it
+        for (let tries = 0; left > 0 && tries < A.length * 2; tries++) {
+            const a = A[order[(oi++) % order.length]]; if (a.used || R.on.indexOf(a.kind) < 0) continue;
+            if (D && !D.some(d => Math.hypot(a.x - d.x, a.z - d.z) < d.r + 3)) continue;
+            const size = R.size[Math.floor(rnd() * R.size.length)], nk = Math.min(left, R.per[0] + Math.floor(rnd() * (R.per[1] - R.per[0] + 1)));
+            const low = R.low || C.low; let got = 0, th0 = 0;
+            /* the hero first, on the anchor's open side (six turns tried): no hero, no group */
+            const hc = cat[key], hr = Math.max(0.25, hc.foot || 0.3); let hx = 0, hz = 0, ok = false;
+            for (let t = 0, a0 = rnd() * TAU; t < 6 && !ok; t++) { th0 = a0 + t * TAU / 6; const d = a.ra + hr + 0.3 + rnd() * 0.5; hx = a.x + Math.cos(th0) * d; hz = a.z + Math.sin(th0) * d; ok = free(hx, hz, hr); }
+            if (!ok) continue;
+            stand(key, hx, hz, 1.0 + rnd() * 0.15); got++; pieces++; left--;
+            for (let k = 1; k < size; k++) {
+                const isKey = k < nk, key2 = isKey ? key : pick(low), c2 = cat[key2]; if (!c2) continue;
+                const r2 = Math.max(0.2, c2.foot || 0.25);
+                for (let t = 0; t < 3; t++) {   // round the hero, toward the anchor's sides: a loose triangle, never a line
+                    const th = th0 + (k % 2 ? 1 : -1) * (0.5 + rnd() * 0.9), d = a.ra + 0.4 + rnd() * (isKey ? 1.4 : 2.2);
+                    const x = a.x + Math.cos(th) * d + (hx - a.x) * 0.25 * rnd(), z = a.z + Math.sin(th) * d + (hz - a.z) * 0.25 * rnd();
+                    if (!free(x, z, r2)) continue;
+                    stand(key2, x, z, isKey ? 0.7 + rnd() * 0.2 : 0.55 + rnd() * 0.45); got++; pieces++; if (isKey) left--; break;
+                }
+            }
+            if (got) { a.used = true; groups++; }
+        }
+    });
+    info.composeDrop = drop;
+    return { groups, pieces, dropped: drop.size, anchors: A.length };
 }
 if (typeof window !== 'undefined') Object.assign(window, { ZONE_FLORA, zoneFloraRule, zoneFloraAt, zoneFloraGround, zoneFloraSheet, zoneFloraTrees, zoneFloraProps, zoneFloraClimateOf, zoneFloraSwap, zoneFloraRoomId });
 /* ══ THE ZONE LOOKS (2026-11-18, mondo: "I added an SBS horror texture pack in the inbox. Its basically just more textured and weathered
