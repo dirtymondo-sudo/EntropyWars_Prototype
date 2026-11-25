@@ -331,11 +331,11 @@ dl.facts dt { color: var(--ink3); font-size: 12px; } dl.facts dd { margin: 0; mi
 /* ═════ THE STORY PLANNER (2026-11-22): its own page over the web; black panels, white outline (mondo's UI rule) ═════ */
 #story { position: fixed; inset: 0; background: #000; color: #fff; font: 13px var(--font-body); display: flex; flex-direction: column; z-index: 5; }
 #story[hidden] { display: none; }
-#story .stbar { height: 48px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-bottom: 2px solid #fff; }
+#story .stbar { min-height: 48px; flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 6px 12px; border-bottom: 2px solid #fff; }
 #story .stbar .t { font: 20px var(--font-display); margin-right: 10px; white-space: nowrap; }
 #story .sp { flex: 1; }
 #story button { font: inherit; color: inherit; cursor: pointer; }
-#story .sttab, #story .stbtn { background: #000; border: 2px solid #fff; padding: 5px 12px; font-weight: 600; white-space: nowrap; }
+#story .sttab, #story .stbtn { background: #000; border: 2px solid #fff; padding: 5px 10px; font-weight: 600; white-space: nowrap; }
 #story .sttab.on, #story .stbtn.on { background: #fff; color: #000; }
 #story .stbtn.sm { padding: 2px 8px; font-size: 12px; }
 #story .stbtn.g { border-color: #4fd36a; color: #4fd36a; } #story .stbtn.r { border-color: #ff5a5a; color: #ff5a5a; }
@@ -514,7 +514,7 @@ dl.facts dt { color: var(--ink3); font-size: 12px; } dl.facts dd { margin: 0; mi
 #story .kmlegend { display: flex; flex-wrap: wrap; gap: 6px 16px; font: 12px var(--font-mono); margin-top: 8px; } #story .kmlegend .a { color: #ffd66b; } #story .kmlegend .g { color: #4fd36a; } #story .kmlegend .r { color: #ff5a5a; } #story .kmlegend .p { color: #ff7fbf; }
 #story .kstep { border: 1px solid #555; padding: 5px; margin-bottom: 5px; }
 #storyAt.on { box-shadow: 0 0 0 2px #c79a12; font-weight: 600; }
-#st_world, #st_flow { position: absolute; inset: 8px; overflow: auto; padding: 12px 14px 30px; } #st_world[hidden], #st_flow[hidden] { display: none; }
+#st_world, #st_flow, #st_pitch { position: absolute; inset: 8px; overflow: auto; padding: 12px 14px 30px; } #st_world[hidden], #st_flow[hidden], #st_pitch[hidden] { display: none; }
 #story .kworld th small { display: block; font-size: 10px; color: #888; text-transform: none; letter-spacing: 0; font-weight: 400; }
 #story .kworld td { vertical-align: top; min-width: 96px; font-size: 11.5px; } #story .kworld td.kwp { min-width: 190px; font-weight: 600; font-size: 12.5px; white-space: nowrap; } #story .kworld td.kwp.sub { padding-left: 18px; font-weight: 400; }
 #story .kworld td.kwp.zh { color: #aaa; text-transform: uppercase; letter-spacing: .05em; font-size: 11px; padding-top: 10px; } #story .kworld td.kwp.none { color: #888; font-weight: 400; white-space: normal; }
@@ -527,6 +527,22 @@ dl.facts dt { color: var(--ink3); font-size: 12px; } dl.facts dd { margin: 0; mi
 #story .kfsvg .kfb.end.t-good rect { stroke: #4fd36a; } #story .kfsvg .kfb.end.t-mid rect { stroke: #ffb84d; } #story .kfsvg .kfb.end.t-bad rect { stroke: #ff5a5a; } #story .kfsvg .kfb.shut rect { stroke: #ff5a5a; stroke-dasharray: 5 3; } #story .kfsvg .kfb.out rect { stroke: #5fe0d0; }
 #story .kfsvg text.kt { fill: #fff; font: 600 12px var(--font-body); } #story .kfsvg text.ks { fill: #aaa; font: 10.5px var(--font-mono); } #story .kfsvg text.kh { fill: #ccc; font: 12px var(--font-mono); text-transform: uppercase; }
 #story .kfsvg .kfa { fill: none; stroke: #9fc2ff; stroke-width: 1.6; } #story .kfsvg .kfa.shut { stroke: #ff5a5a; stroke-dasharray: 5 4; } #story .kfsvg .kfa.back { stroke: #ffb84d; }
+#st_play, #st_lore { position: absolute; inset: 8px; display: grid; grid-template-columns: 1fr 400px; gap: 8px; } #st_play[hidden], #st_lore[hidden] { display: none; }
+#kplMain, #kplSide, #klMain, #klSide { overflow-y: auto; padding: 12px 14px 30px; min-width: 0; }
+#story .kplch { font: 12px var(--font-mono); text-transform: uppercase; letter-spacing: .05em; color: #aaa; margin: 14px 0 4px; border-bottom: 1px solid #333; padding-bottom: 3px; }
+#story .kplrow { display: flex; align-items: center; gap: 8px; padding: 3px 0; } #story .kplrow .stinp { width: 240px; flex: none; } #story .kplrow.off .kplq { color: #888; }
+#story .kplno { font: 12px var(--font-mono); width: 34px; flex: none; color: #aaa; } #story .kplrow.side .kplno { color: #ff7fbf; }
+#story .kplq { cursor: pointer; flex: 1; min-width: 0; } #story .kplq:hover { text-decoration: underline; }
+#story .kplwhy { font: 11.5px var(--font-mono); color: #9ab; margin: 0 0 4px 42px; } #story .kplwhy.r { color: #ff8a8a; }
+#story .kplrand { border: 1px solid #fff; padding: 8px 10px; margin: 6px 0 10px; display: grid; gap: 4px; } #story .kok { color: #4fd36a; }
+#story .kstand td, #story .kstand th { text-align: center; padding: 3px 4px; white-space: nowrap; font: 12px var(--font-mono); } #story .kstand td:first-child { text-align: left; white-space: nowrap; }
+#story .kstand td.pos { color: #4fd36a; } #story .kstand td.neg { color: #ff5a5a; } #story .kstand td.ch { font-weight: 700; background: #1a1a1a; }
+#story .kplfact { display: flex; gap: 8px; justify-content: space-between; font-size: 12.5px; padding: 2px 0; border-bottom: 1px dotted #333; } #story .kplfact b { font: 12px var(--font-mono); } #story .kplfact.ch b { color: #ffd66b; }
+#story .stchip.r { border-color: #ff5a5a; color: #ff8a8a; } #story .kuse.a { color: #ffd66b; }
+#story .klore tr[data-klsel] { cursor: pointer; } #story .klore tr.on td { background: #1a1a1a; } #story .klore td:first-child { min-width: 160px; }
+#story .kpitches { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; } #story .kpitch { border: 1px dashed #ff7fbf; padding: 8px; display: grid; gap: 6px; } #story .kpitch.made { border-style: solid; border-color: #4fd36a; }
+#story .kpitch .strow .stinp { flex: 1; min-width: 0; }
+@media (max-width: 860px) { #st_play, #st_lore { grid-template-columns: 1fr; grid-auto-rows: minmax(320px, auto); overflow-y: auto; } }
 @media (max-width: 860px) { #st_facts { grid-template-columns: 1fr; grid-auto-rows: minmax(320px, auto); overflow-y: auto; } }
 @media (max-width: 860px) { #st_map, #st_beat { grid-template-columns: 1fr; grid-auto-rows: minmax(320px, auto); overflow-y: auto; } #story .stbar { overflow-x: auto; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
@@ -639,7 +655,7 @@ dl.facts dt { color: var(--ink3); font-size: 12px; } dl.facts dd { margin: 0; mi
   <div class="stbar">
     <span class="t">ENTROPY WARS · STORY</span>
     <button class="stbtn back" data-act="back">◂ Relationship Web</button>
-    <button class="sttab" data-sttab="map">Map</button><button class="sttab" data-sttab="beat">Beat chart</button><button class="sttab" data-sttab="spine">Spine</button><button class="sttab" data-sttab="chars">Character sheets</button><button class="sttab" data-sttab="facts">Facts</button><button class="sttab" data-sttab="myst">Mysteries</button><button class="sttab" data-sttab="world">World</button><button class="sttab" data-sttab="flow">Flow</button><button class="sttab" data-sttab="checks">Checks</button>
+    <button class="sttab" data-sttab="map">Map</button><button class="sttab" data-sttab="beat">Beat chart</button><button class="sttab" data-sttab="spine">Spine</button><button class="sttab" data-sttab="chars">Character sheets</button><button class="sttab" data-sttab="facts">Facts</button><button class="sttab" data-sttab="myst">Mysteries</button><button class="sttab" data-sttab="world">World</button><button class="sttab" data-sttab="flow">Flow</button><button class="sttab" data-sttab="play">Play it</button><button class="sttab" data-sttab="lore">Lore</button><button class="sttab" data-sttab="pitch">Pitches</button><button class="sttab" data-sttab="checks">Checks</button>
     <span class="sp"></span>
     <button class="stbtn" data-act="import" title="Add chapters and quests from a file">Add from a file</button>
     <button class="stbtn" data-act="export">Export the plan</button>
@@ -661,6 +677,9 @@ dl.facts dt { color: var(--ink3); font-size: 12px; } dl.facts dd { margin: 0; mi
     <div id="st_checks" class="stpanel" hidden></div>
     <div id="st_world" class="stpanel" hidden></div>
     <div id="st_flow" class="stpanel" hidden></div>
+    <div id="st_play" hidden><div id="kplMain" class="stpanel"></div><div id="kplSide" class="stpanel"></div></div>
+    <div id="st_lore" hidden><div id="klMain" class="stpanel"></div><div id="klSide" class="stpanel"></div></div>
+    <div id="st_pitch" class="stpanel" hidden></div>
     <div id="st_myst" hidden><div id="kmMain" class="stpanel"></div><div id="kmSide" class="stpanel"></div></div>
     <div id="st_chars" hidden><div id="scLeft" class="stpanel"></div><div id="scMain" class="stpanel"></div><div id="scRight" class="stpanel"></div></div>
   </div>
@@ -2333,7 +2352,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) { sav
    SPINE (the one-sheet, the six bands, every chapter's questions). Units are roster ids (r:<race>, s:<cast>), places are map refs
    ('hq', 'z:<zone>', 'd:<zone>:<district>'), so a plan does not hang on any one board. Nothing in the game reads it yet. */
 const SD = D.story || { rooms: [], quests: [] };
-const STORY_TABS = ['map', 'beat', 'spine', 'chars', 'facts', 'myst', 'world', 'flow', 'checks'];
+const STORY_TABS = ['map', 'beat', 'spine', 'chars', 'facts', 'myst', 'world', 'flow', 'play', 'lore', 'pitch', 'checks'];
 const KIT_RENDER = {};   // THE STORY TOOLKIT's tabs (filled below)
 const ST = { open: false, tab: 'map', sel: null, pick: null, at: 0, mapLayer: 'surface' };
 const STEPS9 = ['1 · The hero wants something', '2 · Something disrupts their life', '3 · The hero tries to fix it', '4 · The attempt fails', '5 · A reversal makes it worse', '6 · A bigger problem', '7 · The final problem, the most at risk', '8 · The hero faces it and wins', '9 · The hero gets what they wanted'];
@@ -3195,7 +3214,7 @@ function kitSanitize(p, o) {
     k.knows = (Array.isArray(r.knows) ? r.knows : []).slice(0, 60).map(x => x && ENT[x.e] ? { e: x.e, ch: chIds.has(x.ch) ? x.ch : '' } : null).filter(Boolean);
   });
   o.lore = (Array.isArray(p.lore) ? p.lore : []).slice(0, 1000).map(l => l && l.id ? { id: sId(l.id), name: sStr(l.name, 100), kind: LORE_K.some(k => k[0] === l.kind) ? l.kind : 'object', aka: sStr(l.aka, 200), canon: sStr(l.canon, 6000), open: sStr(l.open, 3000), clue: sId(l.clue) } : null).filter(Boolean);
-  o.pitches = (Array.isArray(p.pitches) ? p.pitches : []).slice(0, 1000).map(x => x && x.id ? { id: sId(x.id), text: sStr(x.text, 600), where: sRef(x.where), fac: sStr(x.fac, 80), lvl: Number.isFinite(+x.lvl) && +x.lvl > 0 ? Math.round(+x.lvl) : 0, mood: sStr(x.mood, 40) } : null).filter(Boolean);
+  o.pitches = (Array.isArray(p.pitches) ? p.pitches : []).slice(0, 1000).map(x => x && x.id ? { id: sId(x.id), text: sStr(x.text, 600), where: sRef(x.where), fac: sStr(x.fac, 80), lvl: Number.isFinite(+x.lvl) && +x.lvl > 0 ? Math.round(+x.lvl) : 0, mood: sStr(x.mood, 40), q: sId(x.q) } : null).filter(Boolean);
 }
 /* old rows made before the toolkit (a new chapter, a new quest) get the toolkit's fields on first touch */
 function kq(q) { if (!q) return q; ['open', 'close', 'ends'].forEach(k => { if (!Array.isArray(q[k])) q[k] = []; }); if (q.lvl == null) q.lvl = 0; if (q.giver == null) q.giver = ''; if (q.giverAt == null) q.giverAt = ''; if (q.status == null) q.status = ''; q.scenes.forEach(s => { if (!Array.isArray(s.when)) s.when = []; if (!Array.isArray(s.sets)) s.sets = []; if (s.id == null) s.id = ''; }); return q; }
@@ -3421,6 +3440,7 @@ function kitGo(kind, id) {
   else if (kind === 'fact') { KF.sel = id; ST.tab = 'facts'; }
   else if (kind === 'clue') { KM.sel = id; ST.tab = 'myst'; }
   else if (kind === 'myst') { ST.tab = 'myst'; }
+  else if (kind === 'lore') { KL.sel = id; ST.tab = 'lore'; }
   else if (kind === 'event') { storyOpen(false); selectEvent(id); return; }
   S.ui.storyTab = ST.tab; storyRender();
 }
@@ -3433,9 +3453,10 @@ function bindKit() {
   const setList = (l) => { const q = cq(); if (!q) return null; let m = /^end:(\d+)$/.exec(l); if (m) return q.ends[+m[1]] ? q.ends[+m[1]].sets : null; m = /^scene:(\d+)$/.exec(l); return m && q.scenes[+m[1]] ? q.scenes[+m[1]].sets : null; };
   root.addEventListener('click', e => {
     if (e.target.closest('#st_flow') && kitClickC(e)) { e.stopImmediatePropagation(); return; }
+    if (e.target.closest('#st_play, #st_lore, #st_pitch') && kitClickD(e)) { e.stopImmediatePropagation(); return; }
     if (e.target.closest('#st_myst')) { if (kitMystClick(e, e.target.closest('button'))) { e.stopImmediatePropagation(); return; } }
     { const g = e.target.closest('[data-kmgo]'); if (g) { e.stopImmediatePropagation(); kitGo('clue', g.dataset.kmgo); return; } }
-    const b = e.target.closest('button, [data-kfsel], [data-kgo]'); if (!b) return;
+    const b = e.target.closest('button, [data-kfsel], [data-kgo], [data-kgoto]'); if (!b) return;
     const P = kp(), q = cq();
     if (b.dataset.kgoto) { e.stopImmediatePropagation(); kitGo(b.dataset.kgoto, b.dataset.id); return; }
     if (b.dataset.kgo) { e.stopImmediatePropagation(); kitGo('quest', b.dataset.kgo); return; }
@@ -3720,7 +3741,170 @@ function kitClickC(e) {
 function kitSegMoreC(f, v) { if (f === 'kwmode') { KW.mode = v; renderWorld(); return true; } if (typeof kitSegMoreD === 'function') return kitSegMoreD(f, v); return false; }
 function kitChangeMoreC(e) { if (e.target.id === 'kflQ') { KFL.q = e.target.value; renderFlow(); return true; } if (typeof kitChangeMoreD === 'function') return kitChangeMoreD(e); return false; }
 
-Object.assign(KIT_RENDER, { facts: renderFacts, checks: renderChecks, myst: renderMyst, world: renderWorld, flow: renderFlow });
+/* ── PLAY IT THROUGH (step D): run the story on one path. Each quest that opens takes the ending picked for it (the first by default,
+   or "skip it"); the side panel is the world at the end of the chosen chapter: who joined, who died, the facts, the faction
+   standings chapter by chapter (a number fact with `fac`), what the player knows, the places reached. "Try every path" plays a few
+   hundred random paths and reports quests no path opens and main quests some paths lock. The picks are not saved in the plan. ── */
+const KPL = { upto: 0, picks: {}, rand: null };
+const kplPick = (q) => { const v = KPL.picks[q.id]; if (v === 'skip') return 'skip'; return (v && q.ends.find(e => e.id === v)) || q.ends[0] || null; };
+function lockWhy(q, st) {
+  const why = q.open.filter(cd => !condOk(cd, st, q)).map(condText);
+  if (q.lvl && st.lvl && st.lvl < q.lvl) why.push('party level ' + q.lvl + ' (the chapter expects ' + st.lvl + ')');
+  q.close.filter(cd => condOk(cd, st, q)).forEach(cd => why.push('closed: ' + condText(cd)));
+  return why;
+}
+function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function randomPaths(n, seed) {
+  const FQ = flatQuests(), r = mulberry(seed || 7), opened = {}, locked = {}, ends = new Set();
+  for (let i = 0; i < n; i++) {
+    const st = simRun(null, q => q.ends.length ? q.ends[Math.floor(r() * q.ends.length)] : null);
+    FQ.forEach(f => { if (st.opened.has(f.q.id)) opened[f.q.id] = (opened[f.q.id] || 0) + 1; else locked[f.q.id] = (locked[f.q.id] || 0) + 1; });
+    ends.add(JSON.stringify([st.facts, [...st.dead].sort(), [...st.joined].sort()]));
+  }
+  return { n, opened, locked, worlds: ends.size };
+}
+let _kplCache = null;
+function pathReport() { const P = kp(); if (_kplCache && _kplCache.t === P.t) return _kplCache.r; const r = randomPaths(120, 11); _kplCache = { t: P.t, r }; return r; }
+function standings(upto, pick) {
+  const P = kp(), facs = P.facts.filter(f => f.kind === 'num' && f.fac);
+  const cols = []; for (let i = 1; i <= upto; i++) { const st = simRun(i, pick); cols.push(facs.map(f => st.facts[f.id])); }
+  return { facs, cols };
+}
+function renderPlay() {
+  const P = kp(), C = P.chapters; if (!KPL.upto || KPL.upto > C.length) KPL.upto = C.length;
+  const st = simRun(KPL.upto, (q) => kplPick(q));
+  /* trace: run again chapter by chapter to see each quest at its own moment */
+  const why = {};
+  { C.slice(0, KPL.upto).forEach((c, ci) => { const pre = simRun(ci, q => kplPick(q)); pre.ch = ci + 1; if (c.lv) pre.lvl = Math.max(pre.lvl, c.lv); c.quests.forEach(q => { if (!st.opened.has(q.id)) { const w = lockWhy(kq(q), pre); why[q.id] = w.length ? w : ['a quest earlier in this chapter closes it']; } }); }); }
+  let h = '<div class="sthd"><h3>PLAY IT THROUGH</h3><span class="stmuted">one path through the story, by the endings you pick</span><span class="sp"></span><span class="stmuted">stop after</span><select class="stinp" id="kplUpto" style="width:220px">' + C.map((c, i) => '<option value="' + (i + 1) + '"' + (KPL.upto === i + 1 ? ' selected' : '') + '>Ch ' + (i + 1) + ' · ' + esc(c.name || 'Untitled') + '</option>').join('') + '</select><button class="stbtn sm" data-act="kplReset">First endings</button><button class="stbtn g sm" data-act="kplRand">Try every path</button></div>';
+  if (KPL.rand) { const R = KPL.rand, FQ = flatQuests(), never = FQ.filter(f => !R.opened[f.q.id]), some = FQ.filter(f => f.q.kind !== 'side' && R.opened[f.q.id] && R.locked[f.q.id]);
+    h += '<div class="kplrand"><div><b>' + R.n + ' random paths</b> · ' + R.worlds + ' different ends of the world</div>' + (never.length ? '<div class="stmiss">No path opens: ' + never.map(f => '<span class="kplq" data-kgo="' + esc(f.q.id) + '">' + esc(f.no + ' ' + (f.q.name || 'Untitled')) + '</span>').join(', ') + '</div>' : '<div class="kok">Every quest opens on some path.</div>') + (some.length ? '<div class="stwarn">Main quests some paths lock (a dead end): ' + some.map(f => '<span class="kplq" data-kgo="' + esc(f.q.id) + '">' + esc(f.no + ' ' + (f.q.name || 'Untitled')) + '</span> (' + R.locked[f.q.id] + ' of ' + R.n + ')').join(', ') + '</div>' : '<div class="kok">No path locks a main quest.</div>') + '</div>'; }
+  flatQuests().filter(f => f.ci < KPL.upto).forEach((f, i, a) => {
+    if (!i || a[i - 1].ci !== f.ci) h += '<div class="kplch">Ch ' + (f.ci + 1) + ' · ' + esc(f.c.name || 'Untitled') + (f.c.lv ? ' <span class="stmuted">· level ' + f.c.lv + '</span>' : '') + '</div>';
+    const q = f.q, on = st.opened.has(q.id), sk = st.skipped.has(q.id), e = on && !sk ? q.ends.find(x => x.id === st.done[q.id]) : null;
+    h += '<div class="kplrow' + (on ? '' : ' off') + (q.kind === 'side' ? ' side' : '') + '"><span class="kplno">' + esc(f.no) + '</span><span class="kplq" data-kgo="' + esc(q.id) + '">' + esc(q.name || 'Untitled') + '</span>'
+      + (on ? '<select class="stinp sm" data-kplpick="' + esc(q.id) + '">' + q.ends.map(x => '<option value="' + esc(x.id) + '"' + (e === x ? ' selected' : '') + '>' + esc(x.name || 'an ending') + '</option>').join('') + (q.ends.length ? '' : '<option value="">done (no endings yet)</option>') + '<option value="skip"' + (sk ? ' selected' : '') + '>Skip it</option></select>' : '<span class="kpill p">LOCKED</span>')
+      + '</div>' + (on ? (e ? '<div class="kplwhy">' + esc([e.sets.map(setText).join(', '), e.kills.length ? 'dies: ' + e.kills.map(entName).join(', ') : '', e.joins.length ? 'joins: ' + e.joins.map(entName).join(', ') : ''].filter(Boolean).join(' · ')) + '</div>' : '') : '<div class="kplwhy r">' + esc((why[q.id] || []).join(' · ')) + '</div>');
+  });
+  $('kplMain').innerHTML = h;
+  /* the side: the world at the end */
+  const S2 = standings(KPL.upto, q => kplPick(q));
+  let r = '<h3>THE WORLD AFTER CH ' + KPL.upto + '</h3>';
+  r += fld('With you', st.joined.size ? [...st.joined].map(id => '<span class="stchip">' + esc(entName(id)) + '</span>').join('') : '<span class="stmuted">Nobody has joined.</span>');
+  r += fld('Dead', st.dead.size ? [...st.dead].map(id => '<span class="stchip r">✝ ' + esc(entName(id)) + '</span>').join('') : '<span class="stmuted">Nobody.</span>');
+  r += fld('Faction standing <span class="stmuted">(number facts marked as a standing)</span>', S2.facs.length ? '<div class="sttbl"><table class="kstand"><tr><th>Faction</th>' + S2.cols.map((c, i) => '<th>' + (i + 1) + '</th>').join('') + '</tr>' + S2.facs.map((f, j) => '<tr><td title="' + esc(f.text) + '">' + esc(f.fac) + '</td>' + S2.cols.map((c, i) => { const v = c[j], p = i ? S2.cols[i - 1][j] : (+f.start || 0); return '<td class="' + (v > 0 ? 'pos' : v < 0 ? 'neg' : '') + (v !== p ? ' ch' : '') + '">' + v + '</td>'; }).join('') + '</tr>').join('') + '</table></div>' : '<span class="stmuted">No standing yet: make a number fact on the Facts tab and pick its faction.</span>');
+  r += fld('Facts now', P.facts.length ? P.facts.map(f => { const v = st.facts[f.id], s0 = f.kind === 'flag' ? f.start === 'yes' : f.kind === 'num' ? (+f.start || 0) : (f.start || ''); return '<div class="kplfact' + (v !== s0 ? ' ch' : '') + '"><span>' + esc(f.text || 'unnamed') + '</span><b>' + esc(f.kind === 'flag' ? (v ? 'true' : 'false') : String(v === '' ? '—' : v)) + '</b></div>'; }).join('') : '<span class="stmuted">No facts yet.</span>');
+  const known = P.clues.filter(k => chNo(k.pay) && chNo(k.pay) <= KPL.upto), hinted = P.clues.filter(k => !known.includes(k) && ((chNo(k.plant) && chNo(k.plant) <= KPL.upto) || k.steps.some(s => chNo(s.ch) && chNo(s.ch) <= KPL.upto)));
+  r += fld('The player knows', (known.length ? known.map(k => '<div class="kuse" data-kmgo="' + esc(k.id) + '">✓ ' + esc(k.text || 'a secret') + '</div>').join('') : '') + (hinted.length ? hinted.map(k => '<div class="kuse a" data-kmgo="' + esc(k.id) + '">? ' + esc(k.text || 'a secret') + ' <span class="stmuted">(hinted)</span></div>').join('') : '') + (!known.length && !hinted.length ? '<span class="stmuted">Nothing yet.</span>' : ''));
+  r += fld('Places reached', [...st.seen].map(ref => '<span class="stchip">' + esc(ref === 'hq' ? 'DOOR HQ' : placeName(ref)) + '</span>').join(''));
+  const el = $('kplSide'), sc = el.scrollTop; el.innerHTML = r; el.scrollTop = sc;
+}
+
+/* ── THE LORE GLOSSARY (step D): the world's things, ideas, groups, events and words (`P.lore`): what is canon, what is still open,
+   other names, the secret it belongs to. "Mentioned in" is found by itself: the name and its other names in the chapters, quests,
+   secrets and the open board's timeline. ── */
+const KL = { sel: null, q: '' };
+function loreCorpus() {
+  const P = kp(), out = [];
+  P.chapters.forEach((c, i) => out.push({ label: 'Ch ' + (i + 1) + ' “' + (c.name || 'Untitled') + '”', go: { kind: 'chapter', id: c.id }, text: [c.name, c.notes, c.lie, c.trust, c.bossText, c.reward].join('\n') }));
+  flatQuests().forEach(f => { const q = kq(f.q); out.push({ label: qLabel(q.id), go: { kind: 'quest', id: q.id }, text: [q.name, q.summary, q.notes, q.reward].concat(q.steps.map(s => s.text), q.scenes.map(s => s.n), q.ends.map(e => e.name + ' ' + e.note + ' ' + e.reward)).join('\n') }); });
+  P.clues.forEach(k => out.push({ label: 'secret “' + (k.text || 'a secret') + '”', go: { kind: 'clue', id: k.id }, text: [k.text, k.truth].join('\n') }));
+  Object.values(B.events || {}).forEach(ev => out.push({ label: 'event “' + (ev.title || 'untitled') + '”', go: { kind: 'event', id: ev.id }, text: [ev.title, ev.text].join('\n') }));
+  return out;
+}
+const loreNames = l => [l.name].concat(String(l.aka || '').split(',')).map(s => s.trim()).filter(s => s.length > 1);
+function loreMentions(l, corpus) {
+  const names = loreNames(l); if (!names.length) return [];
+  const re = new RegExp('(^|[^A-Za-z0-9])(' + names.map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')(?![A-Za-z0-9])', 'i');
+  return (corpus || loreCorpus()).filter(x => re.test(x.text));
+}
+function renderLore() {
+  const P = kp(), corpus = loreCorpus(), qq = KL.q.trim().toLowerCase();
+  const rows = P.lore.filter(l => !qq || (l.name + ' ' + l.aka + ' ' + l.canon).toLowerCase().includes(qq)).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  let h = '<div class="sthd"><h3>THE LORE</h3><span class="stmuted">' + P.lore.length + ' · the world’s things, ideas, groups, events and words</span><span class="sp"></span><input class="stinp" id="klQ" placeholder="Search" style="width:180px" value="' + esc(KL.q) + '"><button class="stbtn g sm" data-act="addLore">+ Entry</button></div>';
+  h += '<div class="sttbl"><table class="kfacts klore"><tr><th>Name</th><th>Kind</th><th>Also called</th><th>Canon</th><th>Mentioned</th><th>Open</th></tr>';
+  rows.forEach(l => { const m = loreMentions(l, corpus).length;
+    h += '<tr data-klsel="' + esc(l.id) + '"' + (KL.sel === l.id ? ' class="on"' : '') + '><td><b>' + esc(l.name || 'Unnamed') + '</b></td><td>' + esc((LORE_K.find(k => k[0] === l.kind) || [])[1] || '') + '</td><td>' + esc(l.aka) + '</td><td>' + (l.canon ? esc(l.canon.slice(0, 70)) + (l.canon.length > 70 ? '…' : '') : '<span class="stwarn">not written</span>') + '</td><td>' + (m || '<span class="stmuted">0</span>') + '</td><td>' + (l.open ? '<span class="stwarn">yes</span>' : '') + '</td></tr>'; });
+  if (!rows.length) h += '<tr><td colspan="6" class="stmuted">' + (P.lore.length ? 'Nothing matches.' : 'No entries yet. A glossary keeps the world’s names straight: the DOOR Gun, the Chronocult, Entropy… Add one with + Entry.') + '</td></tr>';
+  h += '</table></div>';
+  const mm = $('klMain'), ms = mm.scrollTop; mm.innerHTML = h; mm.scrollTop = ms;
+  const l = P.lore.find(x => x.id === KL.sel); let r = '';
+  if (l) { const m = loreMentions(l, corpus);
+    r += '<h3>THE ENTRY</h3>' + fld('Name', '<input class="stinp" data-klf="name" value="' + esc(l.name) + '" placeholder="The DOOR Gun">') + fld('Kind', seg('klkind', LORE_K, l.kind));
+    r += fld('Also called <span class="stmuted">(commas)</span>', '<input class="stinp" data-klf="aka" value="' + esc(l.aka) + '">');
+    r += fld('Canon <span class="stmuted">(what is true and settled)</span>', '<textarea class="stinp" rows="6" data-klf="canon">' + esc(l.canon) + '</textarea>');
+    r += fld('Still open <span class="stmuted">(questions not decided yet)</span>', '<textarea class="stinp" rows="3" data-klf="open">' + esc(l.open) + '</textarea>');
+    r += fld('Part of a secret', '<select class="stinp" data-klf="clue">' + opts(P.clues.map(k => [k.id, k.text || 'a secret']), l.clue, 'No') + '</select>' + (l.clue ? '<div class="kuse" data-kmgo="' + esc(l.clue) + '">▸ open it in the ledger</div>' : ''));
+    r += fld('Mentioned in <span class="stmuted">(found by its names)</span>', m.length ? m.map(x => '<div class="kuse" data-kgoto="' + esc(x.go.kind) + '" data-id="' + esc(x.go.id) + '">▸ ' + esc(x.label) + '</div>').join('') : '<div class="stmuted">Nowhere yet.</div>');
+    r += '<div class="strow" style="margin-top:14px"><span class="sp"></span><button class="stbtn r" data-act="delLore">Delete entry</button></div>';
+  } else r = '<h3>THE ENTRY</h3><div class="stmuted">Pick an entry to see and edit it.</div>';
+  const el = $('klSide'), sc = el.scrollTop; el.innerHTML = r; el.scrollTop = sc;
+}
+
+/* ── SIDE QUEST PITCHES (step D): ideas before they are quests (`P.pitches`): the idea, where, which faction, level, mood.
+   "Make it a quest" puts it in a chapter as a side quest (the idea becomes its summary) and the pitch keeps a link to it. ── */
+const KPI = { show: 'open' };
+function renderPitches() {
+  const P = kp(), facs = [...new Set(Object.values(B.nodes).filter(n => isGrp(n) && gkOf(n) === 'faction').map(n => n.name))].sort();
+  const rows = P.pitches.filter(x => KPI.show === 'all' || (KPI.show === 'open') === !(x.q && findQ(x.q)));
+  let h = '<div class="sthd"><h3>SIDE QUEST PITCHES</h3><span class="stmuted">' + P.pitches.length + ' ideas · ' + P.pitches.filter(x => x.q && findQ(x.q)).length + ' made into quests</span><span class="sp"></span>' + seg('kpishow', [['open', 'Ideas'], ['made', 'Made'], ['all', 'All']], KPI.show) + '<button class="stbtn g sm" data-act="addPitch">+ Pitch</button></div>';
+  h += '<div class="kpitches">' + rows.map(x => { const made = x.q && findQ(x.q);
+    return '<div class="kpitch' + (made ? ' made' : '') + '" data-kpi="' + esc(x.id) + '"><textarea class="stinp" rows="3" data-kpif="text" placeholder="The idea in a sentence or two">' + esc(x.text) + '</textarea>'
+      + '<div class="strow kmini"><select class="stinp sm" data-kpif="where">' + opts(PLACES.map(p => [p.ref, p.n]), x.where, 'Where?') + '</select><select class="stinp sm" data-kpif="fac">' + opts(facs.map(n => [n, n]), x.fac, 'Faction?') + '</select></div>'
+      + '<div class="strow kmini"><span class="stmuted">Level</span><input class="stinp sm" type="number" min="0" style="width:64px" data-kpif="lvl" value="' + (x.lvl || '') + '"><input class="stinp sm" data-kpif="mood" placeholder="Mood: funny, dark, weird…" value="' + esc(x.mood) + '"></div>'
+      + '<div class="strow kmini">' + (made ? '<span class="kok">Quest ' + esc(qNo(x.q)) + '</span><button class="stbtn sm" data-kgo="' + esc(x.q) + '">Open it</button>' : '<select class="stinp sm" data-kpimake="' + esc(x.id) + '">' + opts(P.chapters.map((c, i) => [c.id, 'Make it a side quest in Ch ' + (i + 1) + (c.lv ? ' (level ' + c.lv + ')' : '')]), '', 'Make it a quest in…') + '</select>') + '<button class="stbtn r sm" data-kpidel="' + esc(x.id) + '">×</button></div></div>'; }).join('') + '</div>';
+  if (!rows.length) h += '<div class="stmuted" style="margin-top:8px">' + (P.pitches.length ? 'Nothing here.' : 'No pitches yet. Jot side quest ideas here before they have a chapter.') + '</div>';
+  const el = $('st_pitch'), sc = el.scrollTop; el.innerHTML = h; el.scrollTop = sc;
+}
+
+/* checks from step D */
+function kitChecksMoreC(out, add) {
+  const P = kp(), corpus = loreCorpus();
+  P.lore.forEach(l => { const m = loreMentions(l, corpus).length;
+    if (!l.canon && m) add('q', 'Lore: “' + (l.name || 'unnamed') + '” is mentioned ' + m + ' time' + (m > 1 ? 's' : '') + ' but has no canon written.', { kind: 'lore', id: l.id });
+    if (l.open) add('q', 'Lore: “' + (l.name || 'unnamed') + '” still has open questions.', { kind: 'lore', id: l.id }); });
+  if (flatQuests().length && flatQuests().length <= 400) { const R = pathReport();
+    flatQuests().forEach(f => { if (!R.opened[f.q.id]) add('p', 'No path through the story opens ' + f.no + ' “' + (f.q.name || 'Untitled') + '” (' + R.n + ' random paths tried).', { kind: 'quest', id: f.q.id });
+      else if (f.q.kind !== 'side' && R.locked[f.q.id]) add('p', 'Main quest ' + f.no + ' “' + (f.q.name || 'Untitled') + '” is locked on ' + R.locked[f.q.id] + ' of ' + R.n + ' random paths: a dead end.', { kind: 'quest', id: f.q.id }); }); }
+}
+function kitClickD(e) {
+  const t = e.target, b = t.closest('button, [data-klsel]'), P = kp(); if (!b) return false;
+  if (b.dataset.klsel) { KL.sel = b.dataset.klsel; renderLore(); return true; }
+  if (b.dataset.kpidel) { const x = P.pitches.find(p => p.id === b.dataset.kpidel); if (x) confirmBox('Delete this pitch?', 'Delete pitch', () => { P.pitches = P.pitches.filter(p => p !== x); storySave(); }); return true; }
+  switch (b.dataset.act) {
+    case 'kplReset': KPL.picks = {}; renderPlay(); return true;
+    case 'kplRand': KPL.rand = randomPaths(400, Date.now() & 0xffff); renderPlay(); return true;
+    case 'addLore': { const l = { id: uid('l'), name: '', kind: 'object', aka: '', canon: '', open: '', clue: '' }; P.lore.push(l); KL.sel = l.id; storySave(); setTimeout(() => { const i = $('klSide').querySelector('[data-klf="name"]'); if (i) i.focus(); }, 0); return true; }
+    case 'delLore': { const l = P.lore.find(x => x.id === KL.sel); if (l) confirmBox('Delete the lore entry “' + (l.name || 'unnamed') + '”?', 'Delete entry', () => { P.lore = P.lore.filter(x => x !== l); KL.sel = null; storySave(); }); return true; }
+    case 'addPitch': { P.pitches.unshift({ id: uid('p'), text: '', where: '', fac: '', lvl: 0, mood: '', q: '' }); KPI.show = 'open'; storySave(); setTimeout(() => { const i = $('st_pitch').querySelector('[data-kpif="text"]'); if (i) i.focus(); }, 0); return true; }
+  }
+  return false;
+}
+function kitSegMoreD(f, v) {
+  if (f === 'klkind') { const l = kp().lore.find(x => x.id === KL.sel); if (l) { l.kind = v; storySave(); } return true; }
+  if (f === 'kpishow') { KPI.show = v; renderPitches(); return true; }
+  return false;
+}
+function kitChangeMoreD(e) {
+  const t = e.target, P = kp();
+  if (t.id === 'kplUpto') { KPL.upto = +t.value; renderPlay(); return true; }
+  if (t.dataset.kplpick) { KPL.picks[t.dataset.kplpick] = t.value; renderPlay(); return true; }
+  if (t.dataset.klf === 'clue') { const l = P.lore.find(x => x.id === KL.sel); if (l) { l.clue = t.value; storySave(); } return true; }
+  if (t.dataset.kpimake && t.value) { const x = P.pitches.find(p => p.id === t.dataset.kpimake), c = findC(t.value); if (!x || !c) return true;
+    const q = { id: uid('q'), name: (x.text.split(/[.!?\n]/)[0] || 'A side quest').slice(0, 60), kind: 'side', where: x.where || '', at: null, ug: false, summary: x.text + (x.fac ? '\nFaction: ' + x.fac : '') + (x.mood ? '\nMood: ' + x.mood : ''), game: '', steps: [], cast: [], scenes: [], reward: '', notes: '', open: [], close: [], ends: [], lvl: x.lvl || 0, giver: '', giverAt: '', status: 'idea' };
+    c.quests.push(q); x.q = q.id; storySave(); return true; }
+  if (t.closest && t.closest('[data-kpi]') && t.dataset.kpif && t.tagName === 'SELECT') { const x = P.pitches.find(p => p.id === t.closest('[data-kpi]').dataset.kpi); if (x) { x[t.dataset.kpif] = t.value; storySave(true); } return true; }
+  return false;
+}
+function kitInputMoreC(e) {
+  const t = e.target, P = kp();
+  if (t.id === 'klQ') { KL.q = t.value; const pos = t.selectionStart; renderLore(); const n = $('klQ'); if (n) { n.focus(); n.setSelectionRange(pos, pos); } return true; }
+  if (t.dataset.klf && t.dataset.klf !== 'clue') { const l = P.lore.find(x => x.id === KL.sel); if (l) { l[t.dataset.klf] = t.value; storySave(true); const row = $('klMain').querySelector('tr.on'); if (row && t.dataset.klf === 'name') row.cells[0].innerHTML = '<b>' + esc(l.name || 'Unnamed') + '</b>'; if (row && t.dataset.klf === 'aka') row.cells[2].textContent = l.aka; } return true; }
+  if (t.dataset.kpif && t.tagName !== 'SELECT') { const x = P.pitches.find(p => p.id === t.closest('[data-kpi]').dataset.kpi); if (x) { x[t.dataset.kpif] = t.dataset.kpif === 'lvl' ? Math.max(0, Math.round(+t.value || 0)) : t.value; storySave(true); } return true; }
+  return false;
+}
+
+Object.assign(KIT_RENDER, { facts: renderFacts, checks: renderChecks, myst: renderMyst, world: renderWorld, flow: renderFlow, play: renderPlay, lore: renderLore, pitch: renderPitches });
 bindKit();
 
 /* ───────── boot ───────── */
