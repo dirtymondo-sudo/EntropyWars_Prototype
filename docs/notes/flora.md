@@ -175,6 +175,35 @@ breaking it. The rule's base cover never replaces that.
 room's paths, boxes and fluid read once): never a per-frame scan. Same seeded hash for both players. Every mesh made is disposed
 when its cell drops.
 
+### 0b2. THE FOREST FLOOR rules (2026-11-25 later, mondo's critique of the Woods round 2, PR #2558: "the foliage is too uniform
+... one continuous carpet of grass ... I wouldn't increase the density any further, I'd remove some"). Thread "Make the forest
+floor read naturally" owns the blade grass shape, distribution and colour from here (the lead thread handed it over). Code:
+three-renderer.js GROUND_RULES `cover` / `canopy` / `path` / `mark` / `hue` / `forms` / `sink` / `base` / `walker`.
+
+**G12 · THE COVER SPLIT.** The ground is ranked by one big, ragged, domain-warped noise (11 m patches, edges pushed about 6 m), so
+the split holds in every room: about a QUARTER thin (42 % of tufts kept, under half height: on a grass sheet a bare patch reads as
+short lawn, never a flat floor), a QUARTER short sward (0.7 height), HALF dense. Large irregular patches, never even clumps.
+Replaces G3's bare blobs (EW_NO_COVER = G3 back). On a dirt sheet the bare quarter shows the dirt, its pebbles and its litter.
+
+**G13 · THE ECOLOGY.** The rank is pushed: UP at a trunk's foot (6.5 m), at the wood's rim (the thicket's mass within 3.5 m) and at
+a stump, log or rock (2 m); DOWN within 2.6 m of a path's edge and round a landmark (a grand stair's foot and the 7 m approach in
+front of it, 8 m; the room's spawn, 3.5 m). So clearings open round where you walk and arrive, and the cover gathers where nobody does.
+
+**G14 · SIX SILHOUETTES, NO NEW TRIANGLES.** Each tuft is one of six shapes cut from the same fan: fine, arched (tips droop),
+leaning (the whole tuft to one side), sparse (half its blades), mat (low and splayed), tuft. Blades are thinner (0.56-0.85 of the
+old width), each blade its own height (0.4-1.1), a dropped blade folds to its root. The short sward picks the low shapes.
+
+**G15 · LIGHT IN THE COLOUR.** Per tuft (no new material): cooler and darker under a crown and at the rim, warm yellow-green out in
+the open, duller brown-green beside a path, and each clump its own hue step toward yellow-green or blue-green.
+
+**G16 · GROUNDING.** A blade's root sinks 7 % of its height into the ground; its lower half darkens to 0.66 of the root colour.
+
+**G17 · THE WALKER.** The grass bows down and away round the walker's feet (0.7-2 m, shader, WebGL + the WebGPU twin), so he
+reads in dense cover. No scan: the walker's spot is one uniform.
+
+Not done yet (asked, waiting): G18 lighting and depth (dappled light, contact shadows; a distance desaturation without fog needs
+mondo's OK, bloom + fog stay off); G19 the leaf litter, moss, twigs and roots layer (ground cards / sheets, no tall meshes).
+
 ### 0c. What each part of the game does about it (who owns what, 11-25)
 
 | Rule | Where it lives | Thread |

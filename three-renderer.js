@@ -9018,18 +9018,22 @@ const ThreeRenderer = (function () {
         var U = { uGgT: _grassWindTime, uGgPress: { value: G.press }, uGgB: { value: new THREE.Vector4(G.inv[0], G.inv[1], GGRASS.wind, GGRASS.sheen) }, uGgR: G.right || _ggRightU, uGgW: { value: new THREE.Vector2(GGRASS.gust, GGRASS.flutter) },
                   /* THE RINGS (2026-11-20, the walked room's field): a tuft's size by its root's distance from uGgF.xy. uGgF = centre x, z (aGg units), the
                      field's rise (0-1), aGg -> the mesh's own units; uGgD = grows in over x..y, shrinks out over z..w. The board's field: no fade (1 everywhere). */
-                  uGgF: (G.fade && G.fade.f) || { value: new THREE.Vector4(0, 0, 1, 1) }, uGgD: (G.fade && G.fade.d) || { value: new THREE.Vector4(-2, -1, 1e20, 2e20) } };
+                  uGgF: (G.fade && G.fade.f) || { value: new THREE.Vector4(0, 0, 1, 1) }, uGgD: (G.fade && G.fade.d) || { value: new THREE.Vector4(-2, -1, 1e20, 2e20) },
+                  uGgP: (G.fade && G.fade.p) || { value: new THREE.Vector4(-2, -1, 0, 0) } };   // G17 THE WALKER: the grass bows down and away within x..y of uGgF.xy, z = how far
         m.onBeforeCompile = function (shader) {
             shader.uniforms.uGgM = _ggMaskU;
-            shader.uniforms.uGgT = U.uGgT; shader.uniforms.uGgPress = U.uGgPress; shader.uniforms.uGgB = U.uGgB; shader.uniforms.uGgR = U.uGgR; shader.uniforms.uGgW = U.uGgW; shader.uniforms.uGgF = U.uGgF; shader.uniforms.uGgD = U.uGgD;
+            shader.uniforms.uGgT = U.uGgT; shader.uniforms.uGgPress = U.uGgPress; shader.uniforms.uGgB = U.uGgB; shader.uniforms.uGgR = U.uGgR; shader.uniforms.uGgW = U.uGgW; shader.uniforms.uGgF = U.uGgF; shader.uniforms.uGgD = U.uGgD; shader.uniforms.uGgP = U.uGgP;
             shader.vertexShader = shader.vertexShader
-                .replace('#include <common>', '#include <common>\nattribute vec4 aGg;\nattribute float aGgS;\nuniform float uGgT;\nuniform sampler2D uGgPress;\nuniform vec4 uGgB;\nuniform vec2 uGgR;\nuniform vec2 uGgW;\nuniform vec4 uGgF;\nuniform vec4 uGgD;\nvarying float vGgZ;')
+                .replace('#include <common>', '#include <common>\nattribute vec4 aGg;\nattribute float aGgS;\nuniform float uGgT;\nuniform sampler2D uGgPress;\nuniform vec4 uGgB;\nuniform vec2 uGgR;\nuniform vec2 uGgW;\nuniform vec4 uGgF;\nuniform vec4 uGgD;\nuniform vec4 uGgP;\nvarying float vGgZ;')
                 .replace('#include <project_vertex>', '#include <project_vertex>\nvGgZ = -mvPosition.z;')
                 .replace('#include <begin_vertex>', '#include <begin_vertex>\n' +
                     'float ggD = distance( aGg.xy, uGgF.xy );\n' +
                     'float ggS = smoothstep( uGgD.x, uGgD.y, ggD ) * ( 1.0 - smoothstep( uGgD.z, uGgD.w, ggD ) ) * uGgF.z;\n' +   // THE RINGS: 0 = the tuft is a point at its root, 1 = it stands whole
                     'transformed.xz = mix( aGg.xy * uGgF.w, transformed.xz, ggS );\n' +
                     'transformed.y -= aGg.z * ( 1.0 - 0.10 * aGg.w * aGg.w ) * ( 1.0 - ggS );\n' +
+                    'float ggWk = ( 1.0 - smoothstep( uGgP.x, uGgP.y, ggD ) ) * uGgP.z * ggS;\n' +   // G17 THE WALKER: bow down and away from his feet
+                    'transformed.xz += ( aGg.xy - uGgF.xy ) / max( ggD, 1e-3 ) * aGg.z * aGg.w * ggWk * 0.7;\n' +
+                    'transformed.y -= aGg.z * ( 1.0 - 0.10 * aGg.w * aGg.w ) * ggWk;\n' +
                     'float ggPr = texture2D( uGgPress, aGg.xy * uGgB.xy ).r;\n' +
                     'float ggG = sin( dot( aGg.xy, vec2( 0.0105, 0.0062 ) ) - uGgT * uGgW.x + sin( dot( aGg.xy, vec2( -0.0040, 0.0070 ) ) + uGgT * 0.31 ) * 1.4 ) * 0.5 + 0.5;\n' +
                     'ggG *= ggG;\n' +
@@ -9043,7 +9047,7 @@ const ThreeRenderer = (function () {
                 .replace('#include <normal_fragment_begin>', '#include <normal_fragment_begin>\nnormal = normalize( ( viewMatrix * vec4( 0.0, 1.0, 0.0, 0.0 ) ).xyz );')
                 .replace('#include <dithering_fragment>', '#include <dithering_fragment>\nif ( uGgM.x > 0.5 ) { float ggZ = clamp( log2( 1.0 + max( vGgZ, 0.0 ) ) / 20.0, 0.0, 1.0 ) * 255.0; gl_FragColor = vec4( 0.0, floor( ggZ ) / 255.0, fract( ggZ ), 1.0 ); }');   // THE GRASS TAKES NO INK: the style mask's draw
         };
-        m.customProgramCacheKey = function () { return 'ew_ggrass4'; };
+        m.customProgramCacheKey = function () { return 'ew_ggrass5'; };
         _ewNodeTag(m, { k: 'ggrass', press: G.press, inv: G.inv, right: G.right || _ggRightU, fade: G.fade || null });   // the WebGPU twin: _ewNodeGGrass
         return m;
     }
@@ -9397,7 +9401,34 @@ const ThreeRenderer = (function () {
         trod: [0.68, 0.70], // its height ×, its keep share
         wetM: 1.6, wetTall: 1.4,
         massKeep: 0.55,     // on a flat MASS (the thicket's floor nobody walks) the cover is this much thinner: the triangles go where the walker is
-        bucketM: 4
+        bucketM: 4,
+        /* THE FOREST FLOOR (2026-11-25, mondo's critique of the Woods round 2: "the foliage is too uniform ... one continuous carpet of grass";
+           flora.md section 0, G12-G17). G12 THE COVER SPLIT: big irregular patches (domain-warped noise, ranked so the split holds in every
+           room): the lowest `q[0]` of the ground is bare (the sheet, its stones and litter show), up to `q[1]` short sward, the rest dense.
+           It replaces G3's bare blobs. `band` = how soft a patch's edge is (in rank). Off: EW_NO_COVER (G3 as before). */
+        cover: { m: 11, warpM: 26, warp: 6, q: [0.24, 0.48], band: 0.05, bareKeep: 0.42, bareH: 0.46, shortKeep: 0.92, shortH: 0.70 },
+        /* G13 THE ECOLOGY: the cover rank is pushed up at a trunk's foot (canopy.m), down beside a path (path.m past its edge) and round the
+           landmarks (a grand stair's foot and its approach, the room's spawn): the rank bias at the thing, fading out over its radius */
+        canopy: { m: 6.5, bias: 0.45, edgeM: 3.5, edgeBias: 0.40, nearBias: 0.18, shade: [0.80, 0.90, 0.99], openM: 8, sun: [1.09, 1.05, 0.84] },   // G15: under a crown cooler and darker, in the open warmer
+        path: { m: 2.6, bias: -0.18, dull: 0.22 },   // beside a path: shorter, and duller brown-green (trodden)
+        mark: { bias: -0.75, stairR: 8, stairRun: 7, spawnR: 3.5 },
+        hue: 0.09,          // G15: a clump's own hue step (± toward yellow-green or blue-green)
+        /* G14 THE SHAPES: six tuft silhouettes from the one fan (no new triangles): sp = how far the blades splay, th = how thick each blade
+           (× the fan's), droop = the tips bend down (an arch), side = the whole tuft leans to one side, hk = height ×, drop = the share of blades
+           left out, bh = each blade's own height range. w = how often (dense ground); ws = how often on the short sward */
+        forms: [
+            { n: 'fine',    sp: 0.78, th: 0.60, droop: 0.12, side: 0.00, hk: 1.00, drop: 0.15, bh: [0.55, 1.05], w: 3, ws: 3 },
+            { n: 'arched',  sp: 1.15, th: 0.70, droop: 0.38, side: 0.00, hk: 0.92, drop: 0.00, bh: [0.60, 1.00], w: 2, ws: 1 },
+            { n: 'leaning', sp: 0.90, th: 0.66, droop: 0.20, side: 0.55, hk: 0.95, drop: 0.20, bh: [0.50, 1.00], w: 2, ws: 1 },
+            { n: 'sparse',  sp: 0.62, th: 0.56, droop: 0.06, side: 0.10, hk: 1.15, drop: 0.45, bh: [0.40, 1.10], w: 1, ws: 0 },
+            { n: 'mat',     sp: 1.40, th: 0.76, droop: 0.45, side: 0.00, hk: 0.72, drop: 0.10, bh: [0.70, 1.00], w: 1, ws: 2 },
+            { n: 'tuft',    sp: 1.00, th: 0.85, droop: 0.16, side: 0.00, hk: 1.00, drop: 0.00, bh: [0.65, 1.00], w: 2, ws: 2 }
+        ],
+        /* G16 THE GROUNDING: a blade's root sinks this share of its height into the ground, and the foot is darker (root colour ×, over the
+           lowest share of the blade) */
+        sink: 0.07, base: [0.66, 0.50],
+        /* G17 THE WALKER: the grass bows down and away round the walker's feet (shader; r0..r1 m, down = how far it lies), so he reads */
+        walker: { r0: 0.7, r1: 2.0, down: 0.55 }
     };
     try { window.EW_GROUND_RULES = GROUND_RULES; } catch (e) {}
     function _grOn() { try { return !window.EW_NO_GROUND_RULES; } catch (e) { return true; } }
@@ -9421,10 +9452,28 @@ const ThreeRenderer = (function () {
             }); } catch (e) {}
         return B;
     }
+    /* G13: the room's trunks alone, in 8 m buckets (the canopy reads further than the edges), and its landmarks as clear circles [x, z, r] */
+    function _grTreeBucket(info) {
+        var B = new Map(), bm = 8; B._bm = bm;
+        try { (info.trees || []).forEach(function (t) { if (!t || !isFinite(t.x) || !isFinite(t.z)) return; var k = Math.floor(t.x / bm) + ',' + Math.floor(t.z / bm), a = B.get(k); if (!a) B.set(k, a = []); a.push(t.x, t.z, Math.min(1.5, t.r || 0.35)); }); } catch (e) {}
+        return B;
+    }
+    function _grMarks(room) {
+        var M = GROUND_RULES.mark, out = [];
+        try { ((room && room.terrain && room.terrain.features) || []).forEach(function (f) {
+            if (!f || f.k !== 'ramp' || !f.stairs || f.x0 == null || f.x1 == null) return;
+            var lo0 = (f.h0 || 0) <= (f.h1 || 0), fx = lo0 ? f.x0 : f.x1, fz = lo0 ? f.z0 : f.z1, ox = lo0 ? f.x1 : f.x0, oz = lo0 ? f.z1 : f.z0, L = Math.hypot(fx - ox, fz - oz) || 1;
+            if (L < 6 && Math.abs((f.h1 || 0) - (f.h0 || 0)) < 4) return;   // a few steps, not a landmark
+            var dx = (fx - ox) / L, dz = (fz - oz) / L;
+            out.push([fx, fz, M.stairR], [fx + dx * M.stairRun, fz + dz * M.stairRun, M.stairR * 0.85]);   // the foot, and the approach in front of it
+        }); } catch (e) {}
+        try { var sp = room && room.spawn; if (sp && isFinite(sp.x) && isFinite(sp.z)) out.push([sp.x, sp.z, M.spawnR]); } catch (e) {}
+        return out;
+    }
     /* how near (m, past the thing's own radius) the nearest standing thing is, up to `max` */
     function _grNearD(B, x, z, max) {
         if (!B || !B.size) return Infinity;
-        var bm = GROUND_RULES.bucketM, gx = Math.floor(x / bm), gz = Math.floor(z / bm), best = Infinity;
+        var bm = B._bm || GROUND_RULES.bucketM, gx = Math.floor(x / bm), gz = Math.floor(z / bm), best = Infinity;
         for (var dz = -1; dz <= 1; dz++) for (var dx = -1; dx <= 1; dx++) {
             var a = B.get((gx + dx) + ',' + (gz + dz)); if (!a) continue;
             for (var i = 0; i < a.length; i += 3) { var d = Math.hypot(a[i] - x, a[i + 1] - z) - a[i + 2]; if (d < best) best = d; }
@@ -9432,7 +9481,7 @@ const ThreeRenderer = (function () {
         return best > max ? Infinity : best;
     }
     /* G1-G3 at a spot: { keep 0..1, h ×, t brightness ×, lean angle (or -1), lush 0..1, dry 0..1 } (o is reused: no garbage per tuft) */
-    function _grAt(x, z, o) {
+    function _grAt(x, z, o, bias) {
         var G = GROUND_RULES, C = G.clumpM, gx = Math.floor(x / C), gz = Math.floor(z / C), f1 = Infinity, f2 = Infinity, hid = 0;
         for (var dz = -1; dz <= 1; dz++) for (var dx = -1; dx <= 1; dx++) {
             var cx = gx + dx, cz = gz + dz, px = (cx + _ewValHash(cx * 1.13 + 5.1, cz * 0.97 + 2.3)) * C, pz = (cz + _ewValHash(cx * 0.91 + 8.7, cz * 1.07 + 6.9)) * C;
@@ -9447,10 +9496,36 @@ const ThreeRenderer = (function () {
         o.keep = G.gapKeep + (1 - G.gapKeep) * seam;
         var p = _ewSmoothNoise(x / G.patchM + 41.3, z / G.patchM + 17.9) * 0.7 + _ewSmoothNoise(x / (G.patchM * 0.37) + 9.1, z / (G.patchM * 0.37) + 3.3) * 0.3;
         o.lush = Math.max(0, Math.min(1, (0.42 - p) / 0.14)); o.dry = Math.max(0, Math.min(1, (p - 0.56) / 0.14));
+        o.hue = ((hid * 29.3) % 1) * 2 - 1;   // G15: the clump's hue step
+        var CV = G.cover, cvOn = true; try { cvOn = !!CV && !window.EW_NO_COVER; } catch (e) {}
+        if (cvOn) {   // G12 THE COVER SPLIT (+ G13's bias): bare / short sward / dense
+            var cv = _grCoverRank(x, z) + (bias || 0), bd = CV.band;
+            var tb = Math.max(0, Math.min(1, (cv - CV.q[0] + bd) / (2 * bd))), tsd = Math.max(0, Math.min(1, (cv - CV.q[1] + bd) / (2 * bd)));
+            tb = tb * tb * (3 - 2 * tb); tsd = tsd * tsd * (3 - 2 * tsd);
+            o.keep *= CV.bareKeep + (CV.shortKeep + (1 - CV.shortKeep) * tsd - CV.bareKeep) * tb;
+            o.h *= CV.bareH + (CV.shortH + (1 - CV.shortH) * tsd - CV.bareH) * tb;
+            o.cover = cv; o.short = 1 - tsd; o.bare = 1 - tb;
+            return o;
+        }
+        o.cover = 1; o.short = 0;
         var b = _ewSmoothNoise(x / G.bareM + 3.7, z / G.bareM + 29.1) * 0.75 + _ewSmoothNoise(x / (G.bareM * 0.4) + 13.3, z / (G.bareM * 0.4) + 1.7) * 0.25;
         var bt = Math.max(0, Math.min(1, (b - G.bare[0]) / (G.bare[1] - G.bare[0])));
         o.keep *= 1 - bt; o.h *= 1 - 0.45 * bt;
         return o;
+    }
+    /* G12: the cover noise (big patches with ragged, warped edges) as a RANK 0..1: its value's share of a sample of itself, so q[0] = 0.25
+       really is a quarter of the ground in every room (a smooth noise is bunched round its middle). The sample is drawn once. */
+    var _grCvTab = null;
+    function _grCoverRaw(x, z) {
+        var CV = GROUND_RULES.cover, wm = CV.warpM, wa = CV.warp;
+        var wx = x + (_ewSmoothNoise(x / wm + 5.3, z / wm + 1.1) - 0.5) * 2 * wa, wz = z + (_ewSmoothNoise(x / wm + 19.7, z / wm + 8.3) - 0.5) * 2 * wa;
+        return _ewSmoothNoise(wx / CV.m + 61.1, wz / CV.m + 37.7) * 0.78 + _ewSmoothNoise(wx / (CV.m * 0.42) + 2.9, wz / (CV.m * 0.42) + 44.1) * 0.22;
+    }
+    function _grCoverRank(x, z) {
+        if (!_grCvTab) { var a = new Float32Array(4096), sd = 99991; for (var i = 0; i < a.length; i++) { sd = (sd * 1103515245 + 12345) & 0x7FFFFFFF; var u = ((sd >> 8) & 0xFFFF) / 0xFFFF; sd = (sd * 1103515245 + 12345) & 0x7FFFFFFF; var w = ((sd >> 8) & 0xFFFF) / 0xFFFF; a[i] = _grCoverRaw(u * 900 - 450, w * 900 - 450); } a.sort(); _grCvTab = a; }
+        var v = _grCoverRaw(x, z), T = _grCvTab, lo = 0, hi = T.length;
+        while (lo < hi) { var mid = (lo + hi) >> 1; if (T[mid] < v) lo = mid + 1; else hi = mid; }
+        return lo / T.length;
     }
     /* a far ring's tuft, cut from the fan: the blades it keeps, the corners a blade keeps, each blade splayed and thickened about its own middle line */
     function _hqGrassShape(d) {
@@ -9464,6 +9539,13 @@ const ThreeRenderer = (function () {
             T.push(o + np - 3, o + np - 2, o + np - 1);
         });
         return { P: P, T: T };
+    }
+    /* G14: each corner's blade middle line (the x its pair shares), so a tuft can thin and splay its blades; a shape with no blades gets none */
+    function _grShapeMeta(sh) {
+        if (!sh || sh.C !== undefined) return sh;
+        var P = sh.P, C = null;
+        if (P.length && P[0].length > 2) { C = new Float32Array(P.length); for (var k = 0; k < P.length; k++) { var c = P[k][0]; for (var j = 0; j < P.length; j++) if (j !== k && P[j][2] === P[k][2] && Math.abs(P[j][1] - P[k][1]) < 1e-6) { c = (P[j][0] + P[k][0]) / 2; break; } C[k] = c; } }
+        sh.C = C; return sh;
     }
     function _hqGrassCell(S, R, cx, cz) {
         var info = S.info, U = S.U, C = GGRASS, cm = R.cellM, ts = 3.5 * U, n = S.n, x0 = cx * cm, z0 = cz * cm, none = { mesh: null, cx: cx, cz: cz };
@@ -9490,14 +9572,27 @@ const ThreeRenderer = (function () {
             if (inB) continue;
             if (hqTerrainFluidAt(info, xm, zm)) continue;
             if (hqTerrainSlope(info, xm, zm) > HQ_GRASS.steep) continue;
-            if (S.paths.length) { var onP = false; for (var pq = 0; pq < S.paths.length; pq++) { var PP = S.paths[pq]; if (xm > PP.x0 && xm < PP.x1 && zm > PP.z0 && zm < PP.z1 && _hqTPolyDist(xm, zm, PP.pts).d < PP.w / 2 + 0.15) { onP = true; break; } } if (onP) continue; }   // never on a path (the flora field's rule)
+            var pathE = Infinity;   // G13: how far past the nearest path's edge (m)
+            if (S.paths.length) { var onP = false; for (var pq = 0; pq < S.paths.length; pq++) { var PP = S.paths[pq]; if (xm > PP.x0 - 3 && xm < PP.x1 + 3 && zm > PP.z0 - 3 && zm < PP.z1 + 3) { var pe = _hqTPolyDist(xm, zm, PP.pts).d - PP.w / 2; if (pe < 0.15) { onP = true; break; } if (pe < pathE) pathE = pe; } } if (onP) continue; }   // never on a path (the flora field's rule)
             var cK = 1, cD = 0;
             if (S.rid && typeof zoneFloraAt === 'function') {   // the climate's grass: its height (a mown city lawn, the fairy wood's low sward) and its dry share (ZONE_FLORA climates grassH / grassDry)
                 var ck7 = Math.floor(xm / 7) + ',' + Math.floor(zm / 7), CL = S.clim[ck7]; if (CL === undefined) { try { CL = S.clim[ck7] = zoneFloraAt(S.rid, xm, zm) || null; } catch (e7) { CL = S.clim[ck7] = null; } }
                 if (CL) { cK = CL.grassH || 1; cD = CL.grassDry || 0; }
             }
+            var shadeK = 0, sunK = 0, pathK = 0;
             if (GRo) {   // THE GROUND RULES (G1-G4): the clump, the patch, the bare blobs, the edges
-                gO = _grAt(xm, zm, GRo.o);
+                /* G13 THE ECOLOGY: denser at a trunk's foot, thinner beside a path and round a landmark */
+                var bias = 0, CA = GR.canopy, dT = GRo.trees ? _grNearD(GRo.trees, xm, zm, CA.openM) : Infinity;
+                if (dT < CA.m) { shadeK = 1 - dT / CA.m; bias += CA.bias * Math.sqrt(shadeK); } else if (dT === Infinity) sunK = 1; else sunK = (dT - CA.m) / (CA.openM - CA.m);
+                if (info.mask && !onMass) {   // the wood's edge: the thicket's MASS within edgeM (four looks at the lattice) = the clearing's rim, dense and shaded
+                    var em = CA.edgeM, eHit = 0; for (var e5 = 0; e5 < 4; e5++) { var exm = xm + (e5 === 0 ? em : e5 === 1 ? -em : 0), ezm = zm + (e5 === 2 ? em : e5 === 3 ? -em : 0), ei5 = Math.round((exm - info.x0) / info.res), ej5 = Math.round((ezm - info.z0) / info.res); if (ei5 >= 0 && ej5 >= 0 && ei5 < info.nx && ej5 < info.nz && !info.mask[ej5 * info.nx + ei5]) eHit++; }
+                    if (eHit) { bias += CA.edgeBias * Math.min(1, eHit / 2); shadeK = Math.max(shadeK, 0.5 * Math.min(1, eHit / 2)); sunK = 0; }
+                }
+                if (onMass) { bias += CA.edgeBias; shadeK = Math.max(shadeK, 0.7); sunK = 0; }
+                var ndB = _grNearD(GRo.near, xm, zm, 2); if (ndB < 2) bias += CA.nearBias * (1 - Math.max(0, ndB) / 2);   // a stump, a log, a rock: the grass gathers at its foot
+                if (pathE < GR.path.m) { pathK = 1 - Math.max(0, pathE) / GR.path.m; bias += GR.path.bias * pathK; }
+                if (GRo.marks) for (var mq = 0; mq < GRo.marks.length; mq++) { var MK = GRo.marks[mq], md = Math.hypot(xm - MK[0], zm - MK[1]); if (md < MK[2]) { var mk = 1 - md / MK[2]; bias += GR.mark.bias * Math.min(1, mk * 1.6); } }
+                gO = _grAt(xm, zm, GRo.o, bias);
                 if (r0 > gO.keep) continue;
                 var trod = false, tr = GR.trodM;
                 if (PT) for (var e4 = 0; e4 < 4 && !trod; e4++) { var ex = xm + (e4 === 0 ? tr : e4 === 1 ? -tr : 0), ez = zm + (e4 === 2 ? tr : e4 === 3 ? -tr : 0), ei = Math.round((ex - info.x0) / info.res), ej = Math.round((ez - info.z0) / info.res);
@@ -9519,18 +9614,35 @@ const ThreeRenderer = (function () {
             var laz = r4 * Math.PI * 2; if (gO) { var dl = Math.atan2(Math.sin(gO.lean - laz), Math.cos(gO.lean - laz)); laz += dl * GR.clumpLean; }   // G1: a clump leans one way
             var lm = h * C.lean * (0.35 + 0.65 * r5), lx = Math.cos(laz) * lm, lz = Math.sin(laz) * lm, jit = 0.97 + 0.06 * r0;
             var tipR = (pal.cool[0] + (pal.warm[0] - pal.cool[0]) * pt) * jit, tipG = (pal.cool[1] + (pal.warm[1] - pal.cool[1]) * pt) * jit, tipB = (pal.cool[2] + (pal.warm[2] - pal.cool[2]) * pt) * jit, RT = pal.root, MD = pal.mid;
+            var FM = null, bR = 1, bG = 1, bB = 1, r3 = (r2 * 13.7 + r5 * 5.31) % 1;
             if (gO) {   // G2: the clump's step, the lush and the dry patches (the sheet's own colour stays the anchor)
-                var Lu = GR.lush, lu = gO.lush * (1 - cD), dm = Math.min(0.85, gO.dry * GR.dryMix + cD), gt = gO.t;
+                var Lu = GR.lush, lu = gO.lush * (1 - cD), dm = Math.min(0.85, gO.dry * GR.dryMix + cD + pathK * GR.path.dull), gt = gO.t;
                 tipR = (tipR * (1 + (Lu[0] - 1) * lu) * (1 - dm) + GGRASS.dry[0] * 1.25 * dm) * gt; tipG = (tipG * (1 + (Lu[1] - 1) * lu) * (1 - dm) + GGRASS.dry[1] * 1.25 * dm) * gt; tipB = (tipB * (1 + (Lu[2] - 1) * lu) * (1 - dm) + GGRASS.dry[2] * 1.25 * dm) * gt;
+                /* G15 THE LIGHT IN THE COLOUR: cool and dark under a crown, warm yellow-green out in the open, each clump its own hue step (per tuft, no new material) */
+                var CA2 = GR.canopy, hu = gO.hue * GR.hue;
+                bR = (1 + (CA2.shade[0] - 1) * shadeK) * (1 + (CA2.sun[0] - 1) * sunK) * (1 + hu * 0.9);
+                bG = (1 + (CA2.shade[1] - 1) * shadeK) * (1 + (CA2.sun[1] - 1) * sunK);
+                bB = (1 + (CA2.shade[2] - 1) * shadeK) * (1 + (CA2.sun[2] - 1) * sunK) * (1 - hu * 1.2);
+                tipR *= bR; tipG *= bG; tipB *= bB;
+                /* G14 THE SHAPES: which of the six silhouettes this tuft is (the short sward picks the low ones) */
+                if (R.shape.C && GR.forms) { var FS = GR.forms, sh = gO.short > 0.5, tw = 0, fr = r3; for (var fq = 0; fq < FS.length; fq++) tw += sh ? FS[fq].ws : FS[fq].w; fr *= tw; for (fq = 0; fq < FS.length; fq++) { fr -= sh ? FS[fq].ws : FS[fq].w; if (fr < 0) { FM = FS[fq]; break; } } if (!FM) FM = FS[FS.length - 1]; }
             }
+            if (FM) h *= FM.hk;
+            var sinkY = GRo ? h * GR.sink : 0, baseK = GRo ? GR.base[0] : 1, baseF = GRo ? GR.base[1] : 0.42, rtR = RT[0] * baseK * bR, rtG = RT[1] * baseK * bG, rtB = RT[2] * baseK * bB, side = FM && FM.side ? FM.side * (r1 < 0.5 ? -1 : 1) : 0;
             for (var k = 0; k < PL; k++, v++) {
-                var f = P[k][1], bf = f * f, cr, cg, cb, v3 = v * 3, v4 = v * 4;
-                pos[v3] = wx + lx * bf; pos[v3 + 1] = gy + h * f * (1 - 0.10 * bf); pos[v3 + 2] = wz + lz * bf;
-                if (f < 0.42) { var a0 = f / 0.42; cr = RT[0] + (MD[0] - RT[0]) * a0; cg = RT[1] + (MD[1] - RT[1]) * a0; cb = RT[2] + (MD[2] - RT[2]) * a0; }
-                else { var a1 = (f - 0.42) / 0.58; a1 = a1 * a1 * (3 - 2 * a1); cr = MD[0] + (tipR - MD[0]) * a1; cg = MD[1] + (tipG - MD[1]) * a1; cb = MD[2] + (tipB - MD[2]) * a1; }
+                var f = P[k][1], px = P[k][0], cr, cg, cb, v3 = v * 3, v4 = v * 4;
+                if (FM) {   // G14: this tuft's own silhouette: the blade's splay and thickness, its own height, an arch, a lean to one side; a left-out blade is a point at the root
+                    var bi = P[k][2] || 0, bhh = (Math.sin((r1 * 57.3 + bi * 7.77 + r3 * 3.1) * 37.9) * 43758.5453) % 1; bhh = bhh < 0 ? bhh + 1 : bhh;
+                    if (FM.drop && ((bhh * 11.3) % 1) < FM.drop && bi !== 3) { f = 0; px = R.shape.C[k] * FM.sp * 0.2; }
+                    else { var cx0 = R.shape.C[k]; f *= FM.bh[0] + (FM.bh[1] - FM.bh[0]) * bhh; px = (cx0 * FM.sp + (px - cx0) * FM.th) * (1 + FM.droop * f) + side * 2 * f * f; }
+                }
+                var bf = f * f, dy = h * f * (1 - (FM ? FM.droop : 0) * f) * (1 - 0.10 * bf);
+                pos[v3] = wx + lx * bf; pos[v3 + 1] = gy - sinkY + dy; pos[v3 + 2] = wz + lz * bf;
+                if (f < baseF) { var a0 = f / baseF; cr = rtR + (MD[0] - rtR) * a0; cg = rtG + (MD[1] - rtG) * a0; cb = rtB + (MD[2] - rtB) * a0; }
+                else { var a1 = (f - baseF) / (1 - baseF); a1 = a1 * a1 * (3 - 2 * a1); cr = MD[0] + (tipR - MD[0]) * a1; cg = MD[1] + (tipG - MD[1]) * a1; cb = MD[2] + (tipB - MD[2]) * a1; }
                 if (P[k].length > 2) { var bl = _ggBlade(r1, P[k][2], f); cr = cr * bl[0] + bl[3] * GGRASS.dry[0]; cg = cg * bl[1] + bl[3] * GGRASS.dry[1]; cb = cb * bl[2] + bl[3] * GGRASS.dry[2]; }
                 col[v3] = cr; col[v3 + 1] = cg; col[v3 + 2] = cb;
-                gg[v4] = wx * kw; gg[v4 + 1] = wz * kw; gg[v4 + 2] = h * f; gg[v4 + 3] = f; gs[v] = P[k][0] * hw;
+                gg[v4] = wx * kw; gg[v4 + 1] = wz * kw; gg[v4 + 2] = dy / (1 - 0.10 * bf); gg[v4 + 3] = f; gs[v] = px * hw;
             }
             if (gy < yLo) yLo = gy; if (gy > yHi) yHi = gy;
             nB++;
@@ -9584,15 +9696,16 @@ const ThreeRenderer = (function () {
             S = _hqGG = { H: H, level: _ggLevel, noRings: noRings, info: H.terrain, U: U, N: autoG ? (LOW ? G0.autoN.low : G0.autoN.high) : (GL.perSquare || G0.perSquare), paths: gPaths, clim: {}, rid: H.terrain.roomId,
                 width: (LOW ? GGRASS.low.width : GGRASS.width) * (LOW ? 1 : GGRASS.perTile / G0.perSquare), windK: (CONFIG.tileSize || BASE_TILE) / (3.5 * U),
                 rings: [], pals: {}, boxes: boxes, press: pr.tex, at: 0, born: performance.now(), t0: 0, busy: true, parent: (H.propGroup && H.propGroup.parent) || scene,
-                gr: _grOn() ? { near: _grNearBucket(H.terrain, H.room), o: {} } : null,   // THE GROUND RULES: the standing things, read once
+                gr: _grOn() ? { near: _grNearBucket(H.terrain, H.room), trees: _grTreeBucket(H.terrain), marks: _grMarks(H.room), o: {} } : null,   // THE GROUND RULES: the standing things, the trunks, the landmarks, read once
                 massOk: !!(H.terrain.gen && H.terrain.gen.solidMass && ['city', 'halls', 'cave'].indexOf(H.terrain.gen.kind) < 0 && !window.EW_NO_GRASS_MASS) };
             S.n = Math.max(2, Math.round(S.N * G0.cellM / 3.5));
             S.right = { value: new THREE.Vector2(1, 0) };   // THE CAMERA THAT DRAWS IT: the room's own (2026-11-18: the board's camera stands still while you walk, and a front-side tuft turned to it was culled from behind)
             var kU0 = U * S.windK, maxPL = 0;
             defs.forEach(function (d, i) {
                 var prev = i ? defs[i - 1] : null, in1 = prev ? prev.to - prev.band : -1, in0 = prev ? in1 - (d.lead || prev.band) : -2;
-                var R = { i: i, cellM: G0.cellM * (d.cell || 1), to: d.to, reach: d.to + (d.pad || 3), in0: Math.max(0, in0), tall: d.tall || 1, spread: d.spread || 1, shape: _hqGrassShape(d), cells: new Map(),
-                          fade: { f: { value: new THREE.Vector4(0, 0, 0, 1 / S.windK) }, d: { value: new THREE.Vector4(prev ? in0 * kU0 : -2, prev ? in1 * kU0 : -1, (d.to - d.band) * kU0, d.to * kU0) } } };
+                var R = { i: i, cellM: G0.cellM * (d.cell || 1), to: d.to, reach: d.to + (d.pad || 3), in0: Math.max(0, in0), tall: d.tall || 1, spread: d.spread || 1, shape: _grShapeMeta(_hqGrassShape(d)), cells: new Map(),
+                          fade: { f: { value: new THREE.Vector4(0, 0, 0, 1 / S.windK) }, d: { value: new THREE.Vector4(prev ? in0 * kU0 : -2, prev ? in1 * kU0 : -1, (d.to - d.band) * kU0, d.to * kU0) },
+                                  p: { value: (S.gr && GROUND_RULES.walker) ? new THREE.Vector4(GROUND_RULES.walker.r0 * kU0, GROUND_RULES.walker.r1 * kU0, GROUND_RULES.walker.down, 0) : new THREE.Vector4(-2, -1, 0, 0) } } };
                 R.mat = _ggMat({ press: pr.tex, inv: [0, 0], right: S.right, fade: R.fade });
                 /* THE DEPTH (seen in the browser, 11-15: dark lines of tuft feet along every cell's edge): the board's field writes no depth and sorts ALL its tufts far to
                    near in one mesh; a cell could sort only its own, so two cells side by side overlapped wrongly at their shared edge. A walked room's tufts write depth:
@@ -51108,7 +51221,7 @@ const ThreeRenderer = (function () {
         };
         var press = function () { return T.texture(D.press, A.xy.mul(T.vec2(D.inv[0], D.inv[1]))).level(0).r; };
         /* THE RINGS (the walked room's field; the GLSL is ggS in _ggMat): a tuft's size by its root's distance from the walker. The board's field has no D.fade and keeps its nodes */
-        var FD = D.fade ? { f: _ewNodeRef(D.fade.f), d: _ewNodeRef(D.fade.d) } : null;
+        var FD = D.fade ? { f: _ewNodeRef(D.fade.f), d: _ewNodeRef(D.fade.d), p: D.fade.p ? _ewNodeRef(D.fade.p) : null } : null;
         nm.positionNode = T.Fn(function () {
             var pr = press().toVar(), g = gust().toVar();
             var f = T.sin(t.mul(4.3).add(A.x.mul(0.31)).add(A.y.mul(0.47))).mul(C.flutter);
@@ -51116,7 +51229,12 @@ const ThreeRenderer = (function () {
                 var dd = T.length(A.xy.sub(FD.f.xy)).toVar();
                 var s = T.smoothstep(FD.d.x, FD.d.y, dd).mul(T.smoothstep(FD.d.z, FD.d.w, dd).oneMinus()).mul(FD.f.z).toVar();
                 var bs = g.mul(0.85).add(0.15).add(f).mul(C.wind).mul(A.z).mul(A.w).mul(pr.oneMinus()).mul(s).toVar();
-                var root = T.vec3(T.mix(A.x.mul(FD.f.w), P.x, s), P.y.sub(A.z.mul(A.w.mul(A.w).mul(0.10).oneMinus()).mul(s.oneMinus())), T.mix(A.y.mul(FD.f.w), P.z, s));
+                var root = T.vec3(T.mix(A.x.mul(FD.f.w), P.x, s), P.y.sub(A.z.mul(A.w.mul(A.w).mul(0.10).oneMinus()).mul(s.oneMinus())), T.mix(A.y.mul(FD.f.w), P.z, s)).toVar();
+                if (FD.p) {   // G17 THE WALKER (the GLSL is ggWk in _ggMat)
+                    var wk = T.smoothstep(FD.p.x, FD.p.y, dd).oneMinus().mul(FD.p.z).mul(s).toVar();
+                    var wd = A.xy.sub(FD.f.xy).div(T.max(dd, 1e-3)), wp = A.z.mul(A.w).mul(wk).mul(0.7);
+                    root.assign(root.add(T.vec3(wd.x.mul(wp), A.z.mul(A.w.mul(A.w).mul(0.10).oneMinus()).mul(wk).negate(), wd.y.mul(wp))));
+                }
                 return root.add(T.vec3(bs.mul(0.86).add(Rt.x.mul(S).mul(s)), A.z.mul(pr).mul(0.86).mul(s).add(bs.mul(0.30).mul(A.w)).negate(), bs.mul(0.50).add(Rt.y.mul(S).mul(s))));
             }
             var b = g.mul(0.85).add(0.15).add(f).mul(C.wind).mul(A.z).mul(A.w).mul(pr.oneMinus()).toVar();
