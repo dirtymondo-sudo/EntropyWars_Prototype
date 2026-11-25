@@ -524,7 +524,7 @@ function crossK(oA, A, sd, oB, B, ks, chA, chB) { const o2 = OPP[sd]; apron(oA, 
    kit: R (the mover's room), N, C, PL, cols, rows, ch(x, y), open(x, y), plot(x, y), carve(x0, y0, x1, y1, letter, sheet) (squares, x1 / y1 not included: opens
         them, `i` the trodden road, `s` open snow; `sheet` = another ground sheet than the letter's), close(x0, y0, x1, y1) (back to the wood, unless a piece stands there), gx / gz (a square's edge, m),
         gcx / gcz (its middle), paint(x0, y0, x1, y1, sheet, ok(x, y)) (a ground sheet on squares), feat(row) (a terrain row, room metres), at(key, x, z, o) (a catalogue prop, metres), native(race, x, z, face),
-        drop(test(row)) (takes rows the home frame stood here out of the room), noTrees(x0, z0, x1, z1) (metres: the tree mass plants nothing), air(zone), stood(x, y), r2 */
+        drop(test(row)) (takes rows the home frame stood here out of the room), noTrees(x0, z0, x1, z1) (metres: the tree mass plants nothing), air(zone), floraField({ pts, cls, fade }) (metres: a designed flower field, flora.md G10), stood(x, y), r2 */
 const DESIGNS = { [R_PINES]: require(path.join(REPO, 'docs/areas/camelot/districts/N-room.js')), [R_FOREST]: require(path.join(REPO, 'docs/areas/camelot/districts/W-room.js')), [R_FAIRY]: require(path.join(REPO, 'docs/areas/camelot/districts/F-room.js')) };
 const SNOWK = ['xmas_snow_pine', 'xmas_snow_pine_2', 'xmas_snow_pine_3'];
 ROOMS_OUT.forEach(o => { const Dz = DESIGNS[o.S.id]; if (!Dz) return; const R = o.R; o.design = Dz; o.zonesX = []; o.zonesNew = []; o.airX = []; o.newRoad = new Set(); const home = new Set(R.props);
@@ -539,7 +539,8 @@ ROOMS_OUT.forEach(o => { const Dz = DESIGNS[o.S.id]; if (!Dz) return; const R = 
         paint(x0, y0, x1, y1, sheet, ok) { let i = PAL.indexOf(sheet); if (i < 0) { PAL.push(sheet); i = PAL.length - 1; } for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) if (R.plotOfSq(x, y) && (!ok || ok(x, y))) o.pnt[y * R.W + x] = i + 1; },
         vista: (side, at) => (o.vistas || (o.vistas = [])).push({ side, at: r2(at) }),   // the land past that side stays low and open there (the edge land's `ways`): a view out, no door
         drop(test) { const n = R.features.length; R.features = R.features.filter(f => !test(f)); return n - R.features.length; },
-        noTrees: (x0, z0, x1, z1) => o.zonesX.push({ x0: r2(x0), z0: r2(z0), x1: r2(x1), z1: r2(z1), none: true }), air: z => o.airX.push(z) };
+        noTrees: (x0, z0, x1, z1) => o.zonesX.push({ x0: r2(x0), z0: r2(z0), x1: r2(x1), z1: r2(z1), none: true }), air: z => o.airX.push(z),
+        floraField: f => (o.floraFields || (o.floraFields = [])).push(f) };   // a designed flower field (flora.md G10): terrain.floraFields, room metres
     /* a new plot of the Pines: its trees are snow pines, its air is snow (the old plots carry theirs from home, cut to them) */
     R.order.forEach(e => { if (e.home || (e.district !== 'N' && e.district !== 'F')) return; const x0 = R.gx(e.col * N), z0 = R.gz(e.row * N);
         if (e.district === 'F') { o.zonesNew.push({ x0, z0, x1: r2(x0 + PL), z1: r2(z0 + PL), kinds: FAE }); return; }   // a new plot of the Fairy Forest: the glowing wood's own trees
@@ -693,6 +694,7 @@ ROOMS_OUT.forEach(o => { const { S, R } = o, w = 2 * R.HX, d = 2 * R.HZ;
     M2.push("                /* THE HORIZON READS THE MAP: the land past every line is the world's own ground there, plot by plot (three-renderer.js _hqEdgeLandFn `world`) */");
     M2.push("                backdrop: false, edges: { world: true, reach: 440, " + (S.snowTrees ? "snowTrees: " + S.snowTrees + ", " : "") + "ways: " + J(o.ways.concat(o.vistas || [])) + " },");
     M2.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + R.gcx(0) + ", z0: " + R.gcz(0) + ", nx: " + R.W + ", nz: " + R.D + ", d: '" + Buffer.from(o.pnt).toString('base64') + "' },");
+    if (o.floraFields) M2.push("                floraFields: " + J(o.floraFields) + ",   // the designed flower fields (docs/notes/flora.md G10: the flora field grows the climate's field layers inside, fading over `fade` m)");
     M2.push("                gen: { kind: 'plan', look: 'trees', seed: 64, rim: 0, forceGrow: 0, treeGap: 2.6, treeIn: 0.9, spacing: 3.5, depth: " + GEN.depth + ", maxTrees: " + GEN.maxTrees + ", treeH: [5.5, 8.5], kinds: ['tree', 'tree_2', 'tree_3', 'tree', 'tree_5', 'tree_2'], zones: " + J(zones) + " },");
     M2.push("                features: [");
     rows.forEach(f => M2.push("                    " + rowText(f)));
