@@ -66109,15 +66109,25 @@ const DOOR_HQ = {
                 {key:'snow_sled',x:-39.9,z:-41.3,face:300}, {key:'snow_heap',x:-33.25,z:-56}, {key:'snow_heap',x:-15.4,z:-47.25}, {key:'snow_heap',x:-37.1,z:-22.75},
                 {key:'snow_heap',x:-12.6,z:-12.6}, {key:'snow_heap',x:-33.6,z:-96.6}, {key:'snow_heap',x:-8.4,z:-96.25}, {key:'brazier',x:-26.25,z:-127.75},
                 {key:'firewood_stack',x:-19.25,z:-131.25,face:90}, {key:'cairn',x:-30.1,z:-123.9}, {key:'mountain_goat',x:-22.75,z:-124.25,face:160}, {key:'crow',x:-15.75,z:-114.1},
-                {key:'canvas_tent',x:57.75,z:-82.25,face:180}, {key:'campfire',x:61.25,z:-75.6}, {key:'kettle',x:63.7,z:-74.9}, {key:'wooden_barrel',x:71.75,z:-82.25},
-                {key:'snow_sled',x:67.9,z:-72.8,face:20}, {key:'ice_fishing_hole',x:61.25,z:-61.6}, {key:'fishing_rod',x:63,z:-62.3}, {key:'snowshoes',x:56.7,z:-78.75},
-                {key:'ice_block',x:50.4,z:-40.25}, {key:'xmas_snowman_2',x:73.5,z:-32.9,face:250}, {key:'stone_altar',x:68.25,z:-134.75,face:180}, {key:'hw_candles',x:68.25,z:-134.75,y:0.9},
-                {key:'votive_stand',x:75.25,z:-134.75}, {key:'sea_chest',x:57.75,z:-134.75,face:180}, {key:'campfire',x:61.25,z:-123.9}, {key:'fur_rug',x:68.6,z:-123.55,face:20},
-                {key:'owl_perched',x:75.6,z:-121.1}, {key:'cairn',x:64.4,z:8.4}, {key:'firewood_stack',x:50.75,z:19.6}, {key:'psxg_dead_tree_2',x:66.5,z:15.75},
-                {key:'meshy_stump',x:-75.95,z:-5.25,face:0}, {key:'snow_heap',x:-50.05,z:-9.1,face:67}, {key:'psxg_dead_bush_1',x:-68.6,z:-16.45,face:134}, {key:'meshy_stump',x:-33.95,z:-85.75,face:201},
-                {key:'snow_heap',x:-8.05,z:-81.9,face:268}, {key:'psxg_dead_bush_1',x:-22.75,z:-71.05,face:335}, {key:'meshy_stump',x:11.55,z:36.75,face:42}, {key:'snow_heap',x:37.45,z:32.9,face:109},
-                {key:'psxg_dead_bush_1',x:22.4,z:25.55,face:176}, {key:'meshy_stump',x:26.25,z:51.45,face:243}, {key:'psxg_dead_bush_2',x:-26.6,z:-92.4}, {key:'psxg_dead_bush_1',x:-15.4,z:-86.1},
-                {key:'psxg_rock_1',x:-29.75,z:-79.1}, {key:'meshy_fallen_log',x:-16.45,z:-75.6,face:110}, {key:'psxg_rock_2',x:-12.25,z:-89.6}, {key:'psxg_dead_tree_1',x:-32.9,z:-72.1},
+                {key:'fallen_log',x:-33.25,z:106.75,face:85,hand:true}, {key:'snow_heap',x:-32.55,z:107.97,face:87,hand:true,h:0.5}, {key:'rf_grass_5_frost',x:-34.82,z:105.88,face:154,hand:true}, {key:'rf_grass_6_frost',x:-31.32,z:105.7,face:221,hand:true},
+                {key:'psxg_dead_bush_2',x:-35.35,z:107.97,face:288,hand:true}, {key:'psxg_rock_1',x:-5.6,z:63,face:20,hand:true}, {key:'psxg_rock_2',x:-6.83,z:64.4,face:87,hand:true}, {key:'psxg_rock_4',x:-4.73,z:61.6,face:154,hand:true},
+                {key:'psxg_dead_bush_1',x:-7.17,z:61.95,face:221,hand:true}, {key:'rf_grass_5_frost',x:-4.55,z:64.58,face:288,hand:true}, {key:'rf_grass_4_frost',x:-5.95,z:65.63,face:355,hand:true}, {key:'meshy_stump',x:-5.6,z:24.5,face:20,hand:true},
+                {key:'axe_chopping_block',x:-5.08,z:26.42,face:87,hand:true}, {key:'psx_hand_saw_1',x:-3.85,z:25.2,face:154,hand:true}, {key:'rf_grass_6_frost',x:-7,z:25.2,face:221,hand:true}, {key:'psxg_dead_bush_2',x:-6.83,z:23.1,face:288,hand:true},
+                {key:'meshy_fallen_log',x:12.25,z:-21,face:0,hand:true}, {key:'snow_heap',x:11.73,z:-23.1,face:87,hand:true,h:0.6}, {key:'psxg_dead_bush_1',x:13.3,z:-18.9,face:154,hand:true}, {key:'rf_grass_5_frost',x:11.2,z:-19.25,face:221,hand:true},
+                {key:'rf_grass_6_frost',x:13.48,z:-22.75,face:288,hand:true}, {key:'cairn',x:32.9,z:-91,face:20,hand:true}, {key:'psxg_rock_2',x:34.3,z:-89.95,face:87,hand:true}, {key:'psxg_rock_3',x:31.67,z:-89.77,face:154,hand:true},
+                {key:'rf_grass_4_frost',x:33.25,z:-92.57,face:221,hand:true}, {key:'psxg_dead_bush_2',x:31.32,z:-92.05,face:288,hand:true}, {key:'psxg_dead_tree_1',x:27.3,z:-135.1,face:20,hand:true}, {key:'psxg_rock_1',x:28.88,z:-134.05,face:87,hand:true},
+                {key:'psxg_rock_4',x:26.25,z:-133.52,face:154,hand:true}, {key:'rf_grass_5_frost',x:28.52,z:-136.32,face:221,hand:true}, {key:'crow',x:27.65,z:-134.93,face:288,hand:true,y:3.2}, {key:'psxg_dead_bush_1',x:-36.4,z:-71.75,face:20,hand:true},
+                {key:'psxg_dead_bush_2',x:-35,z:-70.7,face:87,hand:true}, {key:'rf_grass_5_frost',x:-37.62,z:-71.05,face:154,hand:true}, {key:'psxg_rock_3',x:-35.87,z:-73.15,face:221,hand:true}, {key:'psxg_rock_1',x:46.9,z:-43.75,face:120,hand:true},
+                {key:'psxg_dead_bush_2',x:48.3,z:-44.8,face:87,hand:true}, {key:'rf_grass_6_frost',x:45.67,z:-42.7,face:154,hand:true}, {key:'rf_grass_4_frost',x:47.95,z:-42.17,face:221,hand:true}, {key:'canvas_tent',x:57.75,z:-82.25,face:180},
+                {key:'campfire',x:61.25,z:-75.6}, {key:'kettle',x:63.7,z:-74.9}, {key:'wooden_barrel',x:71.75,z:-82.25}, {key:'snow_sled',x:67.9,z:-72.8,face:20},
+                {key:'ice_fishing_hole',x:61.25,z:-61.6}, {key:'fishing_rod',x:63,z:-62.3}, {key:'snowshoes',x:56.7,z:-78.75}, {key:'ice_block',x:50.4,z:-40.25},
+                {key:'xmas_snowman_2',x:73.5,z:-32.9,face:250}, {key:'stone_altar',x:68.25,z:-134.75,face:180}, {key:'hw_candles',x:68.25,z:-134.75,y:0.9}, {key:'votive_stand',x:75.25,z:-134.75},
+                {key:'sea_chest',x:57.75,z:-134.75,face:180}, {key:'campfire',x:61.25,z:-123.9}, {key:'fur_rug',x:68.6,z:-123.55,face:20}, {key:'owl_perched',x:75.6,z:-121.1},
+                {key:'cairn',x:64.4,z:8.4}, {key:'firewood_stack',x:50.75,z:19.6}, {key:'psxg_dead_tree_2',x:66.5,z:15.75}, {key:'meshy_stump',x:-75.95,z:-5.25,face:0},
+                {key:'snow_heap',x:-50.05,z:-9.1,face:67}, {key:'psxg_dead_bush_1',x:-68.6,z:-16.45,face:134}, {key:'meshy_stump',x:-33.95,z:-85.75,face:201}, {key:'snow_heap',x:-8.05,z:-81.9,face:268},
+                {key:'psxg_dead_bush_1',x:-22.75,z:-71.05,face:335}, {key:'meshy_stump',x:11.55,z:36.75,face:42}, {key:'snow_heap',x:37.45,z:32.9,face:109}, {key:'psxg_dead_bush_1',x:22.4,z:25.55,face:176},
+                {key:'meshy_stump',x:26.25,z:51.45,face:243}, {key:'psxg_dead_bush_2',x:-26.6,z:-92.4}, {key:'psxg_dead_bush_1',x:-15.4,z:-86.1}, {key:'psxg_rock_1',x:-29.75,z:-79.1},
+                {key:'meshy_fallen_log',x:-16.45,z:-75.6,face:110}, {key:'psxg_rock_2',x:-12.25,z:-89.6}, {key:'psxg_dead_tree_1',x:-32.9,z:-72.1},
             ],
             agents: [],
             npcSpots: [{x:19.25,z:-117.25,face:0,race:'ice queen'},{x:-19.25,z:8.75,face:180,race:'bigfoot'},{x:-61.25,z:-5.25,face:90,race:'wendigo'},{x:29.75,z:40.25,face:270,race:'yeti'},{x:64.75,z:-127.75,face:180,race:'monk'}],
@@ -66531,7 +66541,17 @@ const DOOR_HQ = {
                 {key:'fae_flower_small_pink',x:-34.65,z:44.8,face:70}, {key:'fae_flower_small_pink',x:-37.8,z:45.5,face:140}, {key:'fae_flower_small_pink',x:-32.9,z:41.65,face:210}, {key:'fae_flower_small_pink',x:-38.85,z:43.75,face:280},
                 {key:'lake_rock',x:-51.45,z:35,face:40}, {key:'ocean_rock_6',x:-49.35,z:37.1,face:160,noBlock:true,h:0.55}, {key:'ocean_rock_7',x:-53.2,z:37.45,face:300,noBlock:true,h:0.35}, {key:'lake_rock',x:-39.9,z:61.25,face:210},
                 {key:'ocean_rock_9',x:-37.45,z:59.85,face:20,noBlock:true,h:0.7}, {key:'ocean_rock_7',x:-41.65,z:63.35,face:110,noBlock:true,h:0.3}, {key:'ocean_rock_6',x:-36.4,z:62.65,face:250,noBlock:true,h:0.4}, {key:'butterfly',x:-52.5,z:42,floor:true,y:1.1},
-                {key:'blue_morpho',x:-38.5,z:50.75,floor:true,y:1.4}, {key:'monarch',x:-54.6,z:56.7,floor:true,y:1.2}, {key:'butterfly',x:-42,z:32.9,floor:true,y:1.3},
+                {key:'blue_morpho',x:-38.5,z:50.75,floor:true,y:1.4}, {key:'monarch',x:-54.6,z:56.7,floor:true,y:1.2}, {key:'butterfly',x:-42,z:32.9,floor:true,y:1.3}, {key:'fallen_log',x:-61.6,z:-17.5,face:5,hand:true},
+                {key:'woods_glowcap',x:-60.55,z:-16.45,face:87,hand:true,noLight:true}, {key:'woods_glowcap',x:-60.02,z:-17.85,face:154,hand:true,noLight:true}, {key:'moss_clump',x:-62.3,z:-18.73,face:221,hand:true}, {key:'fae_flower_small_violet',x:-63.17,z:-16.1,face:288,hand:true},
+                {key:'fae_flower_small_violet',x:-62.3,z:-15.23,face:355,hand:true}, {key:'stump',x:-19.6,z:-24.5,face:20,hand:true}, {key:'fae_toadstool',x:-18.37,z:-23.8,face:87,hand:true,noLight:true,h:0.8}, {key:'fae_toadstool',x:-19.25,z:-22.93,face:154,hand:true,noLight:true,h:0.55},
+                {key:'woods_glowcap',x:-20.65,z:-23.45,face:221,hand:true,noLight:true}, {key:'moss_clump',x:-18.2,z:-25.55,face:288,hand:true}, {key:'rf_grass_6',x:-21,z:-25.55,face:355,hand:true}, {key:'lake_rock',x:-14,z:11.55,face:30,hand:true},
+                {key:'ocean_rock_7',x:-12.6,z:12.08,face:87,hand:true,noBlock:true,h:0.35}, {key:'fae_flower_small_blue',x:-15.4,z:11.2,face:154,hand:true}, {key:'fae_flower_small_blue',x:-14.87,z:12.6,face:221,hand:true}, {key:'fae_flower_small_blue',x:-16.1,z:12.42,face:288,hand:true},
+                {key:'rf_grass_5',x:-12.08,z:10.67,face:355,hand:true}, {key:'woods_healflower',x:38.5,z:11.2,face:20,hand:true}, {key:'woods_healflower',x:39.9,z:10.15,face:87,hand:true}, {key:'leafy_bush',x:36.92,z:9.97,face:154,hand:true},
+                {key:'fae_flower_small_pink',x:39.55,z:12.42,face:221,hand:true}, {key:'fae_flower_small_pink',x:37.98,z:12.6,face:288,hand:true}, {key:'moss_clump',x:40.6,z:11.55,face:355,hand:true}, {key:'meshy_fallen_log',x:64.4,z:-21,face:0,hand:true},
+                {key:'woods_glowcap',x:65.63,z:-19.6,face:87,hand:true,noLight:true}, {key:'woods_glowcap',x:65.1,z:-22.57,face:154,hand:true,noLight:true}, {key:'moss_clump',x:63.35,z:-20.65,face:221,hand:true}, {key:'fae_flower_small_pink',x:66.32,z:-20.82,face:288,hand:true},
+                {key:'meshy_stump',x:-5.25,z:64.05,face:20,hand:true}, {key:'fae_toadstool',x:-4.2,z:63.17,face:87,hand:true,noLight:true,h:0.7}, {key:'woods_glowcap',x:-6.3,z:63.35,face:154,hand:true,noLight:true}, {key:'moss_clump',x:-4.9,z:65.28,face:221,hand:true},
+                {key:'fae_flower_small_violet',x:-7.17,z:64.75,face:288,hand:true}, {key:'fae_flower_small_violet',x:-3.33,z:64.92,face:355,hand:true}, {key:'psxg_rock_1',x:40.6,z:60.55,face:20,hand:true}, {key:'psxg_rock_3',x:42,z:61.25,face:87,hand:true},
+                {key:'fae_flower_small_violet',x:39.38,z:60.03,face:154,hand:true}, {key:'fae_flower_small_violet',x:39.9,z:61.6,face:221,hand:true}, {key:'woods_glowcap',x:41.83,z:59.5,face:288,hand:true,noLight:true}, {key:'rf_grass_6',x:38.68,z:61.6,face:355,hand:true},
             ],
             agents: [],
             npcSpots: [{x:-12.25,z:-15.75,face:220,race:'fairy',gender:'female'},{x:22.75,z:-1.75,face:135,race:'unicorn'},{x:29.75,z:-12.25,face:250,race:'mushroom girl'},{x:-54.25,z:-50.75,face:230,race:'gnome',gender:'male'}],
@@ -66755,7 +66775,23 @@ const DOOR_HQ = {
                 {key:'fern',x:-1.75,z:39.9}, {key:'psxg_rock_1',x:-7,z:74.9}, {key:'fern',x:9.1,z:75.6}, {key:'psxg_rock_1',x:-8.4,z:88.9},
                 {key:'fern',x:10.5,z:89.25}, {key:'hw_candles',x:5.6,z:78.4}, {key:'owl_perched',x:-3.5,z:89.6}, {key:'chimney_smoke',x:28,z:29.4,y:1.84,rise:5},
                 {key:'chimney_smoke',x:35.7,z:42.7,y:1.6,rise:5}, {key:'firewood_stack',x:22.75,z:22.75}, {key:'firewood_stack',x:22.75,z:50.75,face:90}, {key:'hand_cart',x:36.4,z:23.1,face:30},
-                {key:'axe_chopping_block',x:25.9,z:40.25}, {key:'canvas_tent',x:29.75,z:49.7,face:0}, {key:'wooden_barrel',x:39.9,z:36.4}, {key:'canvas_tent',x:82.25,z:40.25,face:200},
+                {key:'axe_chopping_block',x:25.9,z:40.25}, {key:'canvas_tent',x:29.75,z:49.7,face:0}, {key:'wooden_barrel',x:39.9,z:36.4}, {key:'fallen_log',x:-47.25,z:-49,face:2,hand:true},
+                {key:'moss_clump',x:-47.77,z:-50.22,face:87,hand:true}, {key:'moss_clump',x:-46.9,z:-47.6,face:154,hand:true}, {key:'mushroom2',x:-46.02,z:-49.7,face:221,hand:true,h:0.55}, {key:'mushroom2',x:-45.67,z:-48.82,face:288,hand:true,h:0.38},
+                {key:'rf_grass_6',x:-48.3,z:-46.9,face:355,hand:true}, {key:'rf_grass_5',x:-46.02,z:-46.55,face:62,hand:true}, {key:'psxg_rock_1',x:-25.9,z:-32.9,face:20,hand:true}, {key:'psxg_rock_3',x:-24.33,z:-31.85,face:87,hand:true},
+                {key:'psxg_rock_4',x:-26.95,z:-31.5,face:154,hand:true}, {key:'moss_clump',x:-25.37,z:-33.95,face:221,hand:true}, {key:'wild_flowers',x:-27.3,z:-33.77,face:288,hand:true}, {key:'wild_flowers',x:-24.15,z:-34.3,face:355,hand:true},
+                {key:'rf_grass_5',x:-23.62,z:-32.55,face:62,hand:true}, {key:'meshy_stump',x:-7,z:-23.45,face:20,hand:true}, {key:'mushroom2',x:-5.95,z:-22.75,face:87,hand:true,h:0.5}, {key:'mushroom2',x:-7.87,z:-22.4,face:154,hand:true,h:0.34},
+                {key:'moss_clump',x:-6.83,z:-22.22,face:221,hand:true}, {key:'leafy_bush',x:-9.1,z:-24.5,face:288,hand:true}, {key:'rf_grass_6',x:-5.25,z:-24.15,face:355,hand:true}, {key:'hw_stone_2',x:5.25,z:-2.1,face:20,hand:true},
+                {key:'psxg_rock_2',x:6.65,z:-1.58,face:87,hand:true}, {key:'wild_flowers',x:3.85,z:-1.75,face:154,hand:true}, {key:'wild_flowers',x:4.55,z:-0.53,face:221,hand:true}, {key:'wild_flowers',x:6.13,z:-0.35,face:288,hand:true},
+                {key:'rf_flower_1',x:7.17,z:-0.53,face:355,hand:true}, {key:'rf_grass_5',x:3.15,z:-0.7,face:62,hand:true}, {key:'meshy_fallen_log',x:26.25,z:-25.55,face:90,hand:true}, {key:'wild_flowers',x:24.5,z:-24.67,face:87,hand:true},
+                {key:'wild_flowers',x:28.35,z:-24.5,face:154,hand:true}, {key:'moss_clump',x:26.6,z:-26.6,face:221,hand:true}, {key:'woods_healflower',x:23.63,z:-26.25,face:288,hand:true}, {key:'rf_grass_5',x:29.22,z:-25.9,face:355,hand:true},
+                {key:'psxg_rock_1',x:60.9,z:1.75,face:200,hand:true}, {key:'psxg_rock_3',x:62.13,z:0.52,face:87,hand:true}, {key:'moss_clump',x:60.2,z:0.7,face:154,hand:true}, {key:'leafy_bush',x:62.47,z:3.67,face:221,hand:true},
+                {key:'woods_healflower',x:59.85,z:3.33,face:288,hand:true}, {key:'rf_grass_6',x:63.35,z:2.1,face:355,hand:true}, {key:'leafy_bush',x:40.25,z:15.75,face:20,hand:true}, {key:'leafy_bush',x:41.47,z:18.2,face:87,hand:true},
+                {key:'wild_flowers',x:39.2,z:17.15,face:154,hand:true}, {key:'wild_flowers',x:39.55,z:14.17,face:221,hand:true}, {key:'rf_flower_3',x:41.3,z:14.35,face:288,hand:true}, {key:'psxg_rock_4',x:38.67,z:18.73,face:355,hand:true},
+                {key:'moss_clump',x:-89.95,z:-71.4,face:20,hand:true}, {key:'mushroom2',x:-87.68,z:-71.05,face:87,hand:true,h:0.45}, {key:'mushroom2',x:-87.15,z:-71.75,face:154,hand:true,h:0.3}, {key:'rf_grass_6',x:-90.3,z:-73.32,face:221,hand:true},
+                {key:'moss_clump',x:-54.95,z:3.85,face:20,hand:true}, {key:'mushroom2',x:-53.55,z:4.02,face:87,hand:true,h:0.5}, {key:'rf_grass_5',x:-56,z:6.65,face:154,hand:true}, {key:'wild_flowers',x:-57.4,z:-1.4,face:20,hand:true},
+                {key:'wild_flowers',x:-56,z:-0.52,face:87,hand:true}, {key:'wild_flowers',x:-58.1,z:0.35,face:154,hand:true}, {key:'rf_flower_1',x:-55.3,z:0.7,face:221,hand:true}, {key:'rf_grass_5',x:-58.8,z:-1.05,face:288,hand:true},
+                {key:'woods_healflower',x:-0.35,z:75.6,face:20,hand:true}, {key:'woods_healflower',x:4.2,z:75.25,face:87,hand:true}, {key:'wild_flowers',x:1.05,z:74.55,face:154,hand:true}, {key:'wild_flowers',x:2.63,z:74.38,face:221,hand:true},
+                {key:'moss_clump',x:1.75,z:76.83,face:288,hand:true}, {key:'rf_grass_5',x:-1.75,z:74.55,face:355,hand:true}, {key:'rf_grass_6',x:5.6,z:74.38,face:62,hand:true}, {key:'canvas_tent',x:82.25,z:40.25,face:200},
                 {key:'meshy_campfire_ring',x:87.15,z:44.8}, {key:'firewood_stack',x:78.75,z:43.75,face:90}, {key:'wooden_bucket',x:85.4,z:42}, {key:'stump',x:89.25,z:43.75},
             ],
             agents: [],
@@ -108079,9 +108115,55 @@ ZONE_FLORA.anchorKeys = {
     /* the Woods' field ferns and flowers grow most by standing things (the lead's `near`); in the grass in drifts, on bare dirt hardly at all */
     ['horror', 'redwood'].forEach(c => { const K = ZONE_FLORA.climates[c]; if (!K) return; ['lawn', 'floor', 'rough', 'dirt'].forEach(g => (K[g] || []).forEach(L => { if (!L.g) { L.near = true; L.far = (g === 'lawn' || g === 'floor') ? 0.55 : 0.05; } })); });   // in the grass: drifts (the clump), and more by every standing thing
 })();
+/* ══ CAME A LOT, THE SCENIC PASS (2026-11-25, zone group 2, flora.md 00d): the Forest, the village, the Snowy Pines and the Fairy Forest compose BY ZONE ROW
+   (`compose` on the zone row wins over the climate's row: `forest`, `meadow` and `snow` are shared with the routes, Stonehenge, the Mountains and the North Pole,
+   whose own threads write those climates' rows). `keepGroups` (m): a hand row with 2+ composed plants that near is ALREADY a group (a fairy ring, a drift, a
+   bed): it stays where it stood; only the lone ones dotted over open ground are taken and stood again at anchors. The Looking-Glass Garden is a formal garden
+   (its beds and hedge-foot flowers are the design): its own zone row, nothing composed. ══ */
+(function () {
+    const Zs = ZONE_FLORA.zones; if (!Zs || !Zs.fairy) return;
+    Zs.fairy.rooms = (Zs.fairy.rooms || []).filter(r => r !== 'site_prebuilt_camelot_ow_garden');
+    Zs.garden = { rooms: ['site_prebuilt_camelot_ow_garden'], c: 'fairy', compose: null };
+    const hero = (on, per, size, low) => { const o = { per: per || [1, 1], size: size || [3, 5], on: on || ['tree', 'edge', 'rock'] }; if (low) o.low = low; return o; };
+    const caps = (low) => ({ per: [2, 4], size: [3, 5], on: ['log', 'stump', 'tree'], low: low || [['moss_clump', 1], ['rf_grass_6', 1]] });
+    const ROCKS = [['psxg_rock_1', 2], ['psxg_rock_2', 2], ['psxg_rock_3', 2], ['psxg_rock_4', 2], ['rf_rock_1', 1], ['rf_rock_2', 1]];
+    /* THE FOREST (temperate, green): oak and birch shade, ferns at the trunks (the field's), flowers in drifts at the rim, thorn and brush on the edge */
+    Zs.camelot.compose = { thin: 0.6, loose: 2.5, keepGroups: 2.6, low: [['rf_grass_5', 3], ['rf_grass_6', 3], ['rf_grass_4', 2], ['moss_clump', 1]], keys: {
+        woods_healflower: hero(['tree', 'edge', 'rock'], [1, 2], [3, 5]),
+        woods_thornvine: hero(['edge', 'tree', 'log'], [1, 1], [3]),
+        psxg_dead_bush_1: hero(['edge', 'log', 'rock'], [1, 2], [3]), psxg_dead_bush_2: hero(['edge', 'log', 'rock'], [1, 1], [3]),
+        leafy_bush: hero(['edge', 'tree', 'rock', 'wall'], [1, 2], [3, 5]),
+        wild_flowers: { per: [3, 4], size: [5, 7], on: ['edge', 'tree', 'rock'], low: [['rf_grass_5', 1], ['rf_flower_1', 1]] },
+        moss_clump: { per: [2, 3], size: [3], on: ['log', 'rock', 'stump'], low: [['rf_grass_6', 1]] },
+        mushroom2: caps() },
+      islands: { every: 340, apart: 11, max: 50, on: { lawn: 1, floor: 1 }, rocks: ROCKS,
+                 with: [['wild_flowers', 2], ['moss_clump', 2], ['rf_grass_5', 3], ['rf_grass_6', 3], ['woods_healflower', 0.6], ['mushroom2', 0.5]], size: [3, 5] } };
+    /* THE SNOWY PINES (winter): frosted brush and dead bushes at the pines' feet and by the stones; a few frost-rimmed rocks out in the snow */
+    Zs.pines.compose = { thin: 0.7, loose: 2.5, keepGroups: 2.6, low: [['rf_grass_5_frost', 3], ['rf_grass_6_frost', 3], ['rf_grass_4_frost', 2]], keys: {
+        psxg_dead_bush_1: hero(['tree', 'edge', 'rock', 'log'], [1, 2], [3, 5]), psxg_dead_bush_2: hero(['tree', 'edge', 'rock', 'log'], [1, 1], [3]) },
+      islands: { every: 520, apart: 14, max: 26, on: { lawn: 1, floor: 1, snow: 1, rough: 1 }, rocks: ROCKS.concat([['cairn', 0.4]]),
+                 with: [['rf_grass_5_frost', 3], ['rf_grass_6_frost', 3], ['psxg_dead_bush_2', 1]], size: [3] } };
+    /* THE FAIRY FOREST (always in bloom): glowcaps and toadstools at stumps, logs and trunks; the small fae flowers in drifts at the rim; the giant heal flower
+       never alone. Its rings, the meadow's drifts and the pool's edge are groups already (keepGroups) */
+    Zs.fairy.compose = { thin: 0.75, loose: 2.5, keepGroups: 2.6, low: [['rf_grass_5', 2], ['rf_grass_6', 2], ['fae_flower_small_blue', 1], ['fae_flower_small_pink', 1], ['moss_clump', 1]], keys: {
+        woods_glowcap: caps([['moss_clump', 1], ['rf_grass_6', 1], ['fae_flower_small_violet', 1]]), fae_toadstool: caps([['moss_clump', 1], ['woods_glowcap', 1]]),
+        fae_flower_small_pink: { per: [3, 4], size: [5, 7], on: ['edge', 'tree', 'rock'], low: [['rf_grass_5', 1]] },
+        fae_flower_small_blue: { per: [3, 4], size: [5, 7], on: ['edge', 'tree', 'rock'], low: [['rf_grass_5', 1]] },
+        fae_flower_small_violet: { per: [3, 4], size: [5, 7], on: ['edge', 'tree', 'rock'], low: [['rf_grass_5', 1]] },
+        woods_healflower: hero(['tree', 'edge', 'rock'], [1, 2], [3, 5]), leafy_bush: hero(['edge', 'tree', 'rock'], [1, 2], [3, 5]),
+        wild_flowers: { per: [3, 4], size: [5, 7], on: ['edge', 'tree', 'rock'] }, moss_clump: { per: [2, 3], size: [3], on: ['log', 'rock', 'stump'] }, mushroom2: caps() },
+      islands: { every: 380, apart: 11, max: 30, on: { lawn: 1, floor: 1 }, rocks: [['lake_rock', 2], ['psxg_rock_1', 2], ['psxg_rock_2', 2], ['psxg_rock_3', 1]],
+                 with: [['fae_flower_small_blue', 2], ['fae_flower_small_pink', 2], ['fae_flower_small_violet', 1], ['woods_glowcap', 2], ['moss_clump', 2], ['rf_grass_5', 2]], size: [3, 5] } };
+    /* THE VILLAGE (meadow round the town): its plants are kept as the district files stood them (beds, planters, reeds by the moat); out on the lawns a few
+       half-sunk rocks with meadow flowers at their foot break the grass (G6) */
+    Zs.village.compose = { thin: 1, loose: 2.5, keepGroups: 2.6, low: [['rf_grass_5', 2], ['rf_grass_6', 2], ['rf_flower_1', 1], ['rf_flower_3', 1]], keys: {},
+      islands: { every: 700, apart: 16, max: 24, on: { lawn: 1 }, rocks: ROCKS, with: [['wild_flowers', 3], ['rf_grass_5', 3], ['rf_grass_6', 2], ['rf_flower_1', 1], ['rf_flower_3', 1]], size: [3, 5] } };
+})();
 function zoneFloraComposeOf(roomId) {
     if (typeof window !== 'undefined' && (window.EW_NO_FLORA || window.EW_NO_FLORA_COMPOSE)) return null;
-    const Z = zoneFloraRule(roomId); return (Z && Z.c && ZONE_FLORA.compose && ZONE_FLORA.compose[Z.c]) || null;
+    const Z = zoneFloraRule(roomId); if (!Z) return null;
+    if (Z.compose !== undefined) return Z.compose || null;   // a zone's own row (Came A Lot, 11-25); null = a zone that composes nothing
+    return (Z.c && ZONE_FLORA.compose && ZONE_FLORA.compose[Z.c]) || null;
 }
 function zoneFloraCompose(roomId, info, room, C, rows, K) {
     const cat = DOOR_HQ.catalogue, AK = ZONE_FLORA.anchorKeys, TAU = Math.PI * 2;
@@ -108105,7 +108187,10 @@ function zoneFloraCompose(roomId, info, room, C, rows, K) {
     const want = {}, disc = {};
     rows.forEach(f => { want[f.key] = (want[f.key] || 0) + (f.n || 6); if (f.x != null && f.r) (disc[f.key] = disc[f.key] || []).push({ x: f.x, z: f.z, r: f.r }); });
     const drop = new Set();
-    (room.props || []).forEach(p => { if (!p || !C.keys[p.key] || p.level || p.wall || p.y || p.pd || p.lift) return; if (nearest(p.x || 0, p.z || 0, C.loose || 3.5)) return; drop.add(p); want[p.key] = (want[p.key] || 0) + 1; });
+    const KG = C.keepGroups ? (room.props || []).filter(q => q && C.keys[q.key] && !q.level && !q.wall) : null;   // (11-25, Came A Lot) a hand row with 2+ of its kind this near is a group already: it stays
+    (room.props || []).forEach(p => { if (!p || !C.keys[p.key] || p.level || p.wall || p.y || p.pd || p.lift || p.hand) return; if (nearest(p.x || 0, p.z || 0, C.loose || 3.5)) return;   // `hand`: a zone thread composed it by hand (a vignette): it stays
+        if (KG) { let n = 0; for (const q of KG) { if (q !== p && Math.abs((q.x || 0) - (p.x || 0)) < C.keepGroups && Math.abs((q.z || 0) - (p.z || 0)) < C.keepGroups && Math.hypot((q.x || 0) - (p.x || 0), (q.z || 0) - (p.z || 0)) < C.keepGroups && ++n >= 2) break; } if (n >= 2) return; }
+        drop.add(p); want[p.key] = (want[p.key] || 0) + 1; });
     /* 3. the groups */
     const pick = (list) => { let t = 0; list.forEach(q => { t += q[1]; }); let r = rnd() * t; for (const q of list) { r -= q[1]; if (r <= 0) return q[0]; } return list[list.length - 1][0]; };
     const order = A.map((a, i) => i); for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)), t = order[i]; order[i] = order[j]; order[j] = t; }

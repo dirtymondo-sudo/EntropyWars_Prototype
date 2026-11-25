@@ -114,6 +114,26 @@ function room(k) {
       k.feat({ k: 'arch', id: 'cam:w:kilns', x: 0, z: 0, rot: 0, y: 0, parts: P2 }); }
     P('firewood_stack', 36, 36); P('firewood_stack', 36, 44, { face: 90 }); A('hand_cart', 40.4, 36.6, { face: 30 }); A('axe_chopping_block', 37.4, 41.5); A('canvas_tent', 38.5, 44.2, { face: 0 }); A('wooden_barrel', 41.4, 40.4);
 
+    /* ── THE SCENIC PASS (2026-11-25, zone group 2, flora.md 00b S9: "every 20-40 m of path, a small composed scene that tells something") ──
+       A vignette = an anchor (a log, a stump, a rock, a dead tree) + its supporting layer on a loose triangle, mixed sizes, on a way's verge where the
+       walker sees it, never on the trodden middle. The flora field and the zone's compose row (data.js ZONE_FLORA.zones.<zone>.compose) do the rest. */
+    const VG = (list) => list.forEach(([key, dx, dy, o], i) => A(key, VX + dx, VY + dy, Object.assign({ face: (i * 67 + 20) % 360, hand: true }, o || {})));
+    let VX = 0, VY = 0; const at0 = (x, y) => { VX = x; VY = y; };
+    /* THE CROWN'S ROAD, drawbridge to the camp (~190 m): seven scenes on its verges, then the Glade's and the Old Oak's own */
+    at0(16.5, 16); VG([['fallen_log', 0, 0, { face: 2 }], ['moss_clump', -0.15, -0.35], ['moss_clump', 0.1, 0.4], ['mushroom2', 0.35, -0.2, { h: 0.55 }], ['mushroom2', 0.45, 0.05, { h: 0.38 }], ['rf_grass_6', -0.3, 0.6], ['rf_grass_5', 0.35, 0.7]]);   // a log the woodmen left, gone to moss
+    at0(22.6, 20.6); VG([['psxg_rock_1', 0, 0], ['psxg_rock_3', 0.45, 0.3], ['psxg_rock_4', -0.3, 0.4], ['moss_clump', 0.15, -0.3], ['wild_flowers', -0.4, -0.25], ['wild_flowers', 0.5, -0.4], ['rf_grass_5', 0.65, 0.1]]);   // rocks at the bend, flowers in their lee
+    at0(28, 23.3); VG([['meshy_stump', 0, 0], ['mushroom2', 0.3, 0.2, { h: 0.5 }], ['mushroom2', -0.25, 0.3, { h: 0.34 }], ['moss_clump', 0.05, 0.35], ['leafy_bush', -0.6, -0.3], ['rf_grass_6', 0.5, -0.2]]);   // a stump going back to the wood
+    at0(31.5, 29.4); VG([['hw_stone_2', 0, 0], ['psxg_rock_2', 0.4, 0.15], ['wild_flowers', -0.4, 0.1], ['wild_flowers', -0.2, 0.45], ['wild_flowers', 0.25, 0.5], ['rf_flower_1', 0.55, 0.45], ['rf_grass_5', -0.6, 0.4]]);   // an old boundary stone in a drift of flowers
+    at0(37.5, 22.7); VG([['meshy_fallen_log', 0, 0, { face: 90 }], ['wild_flowers', -0.5, 0.25], ['wild_flowers', 0.6, 0.3], ['moss_clump', 0.1, -0.3], ['woods_healflower', -0.75, -0.2], ['rf_grass_5', 0.85, -0.1]]);   // a log seat under the Bluff, the road seen both ways
+    at0(47.4, 30.5); VG([['psxg_rock_1', 0, 0, { face: 200 }], ['psxg_rock_3', 0.35, -0.35], ['moss_clump', -0.2, -0.3], ['leafy_bush', 0.45, 0.55], ['woods_healflower', -0.3, 0.45], ['rf_grass_6', 0.7, 0.1]]);   // a mossy rock with a heal flower in its shade
+    at0(41.5, 34.5); VG([['leafy_bush', 0, 0], ['leafy_bush', 0.35, 0.7], ['wild_flowers', -0.3, 0.4], ['wild_flowers', -0.2, -0.45], ['rf_flower_3', 0.3, -0.4], ['psxg_rock_4', -0.45, 0.85]]);   // brush and flowers at the charcoal burners' corner
+    /* the poachers' log and the Glade's log: moss and caps on them; the Glade's rim gets a drift */
+    at0(4.6, 9.4); VG([['moss_clump', -0.3, 0.2], ['mushroom2', 0.35, 0.3, { h: 0.45 }], ['mushroom2', 0.5, 0.1, { h: 0.3 }], ['rf_grass_6', -0.4, -0.35]]);
+    at0(14.4, 31.5); VG([['moss_clump', -0.1, -0.4], ['mushroom2', 0.3, -0.35, { h: 0.5 }], ['rf_grass_5', -0.4, 0.4]]);
+    at0(13.6, 29.6); VG([['wild_flowers', 0, 0], ['wild_flowers', 0.4, 0.25], ['wild_flowers', -0.2, 0.5], ['rf_flower_1', 0.6, 0.6], ['rf_grass_5', -0.4, 0.1]]);
+    /* THE OLD OAK (the south's focal, S1/S8): heal flowers and a drift at its foot on the side the Ford's trail arrives */
+    at0(30.5, 51.6); VG([['woods_healflower', -0.6, 0], ['woods_healflower', 0.7, -0.1], ['wild_flowers', -0.2, -0.3], ['wild_flowers', 0.25, -0.35], ['moss_clump', 0, 0.35], ['rf_grass_5', -1, -0.3], ['rf_grass_6', 1.1, -0.35]]);
+
     /* ── WHO LIVES HERE (races; no invented lines) ── */
     k.native('mushroom girl', gcx(7), gcz(31), 90);
     k.native('tree person', gcx(31), gcz(55), 0);
