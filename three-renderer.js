@@ -78009,6 +78009,7 @@ const ThreeRenderer = (function () {
         if (_hqSliceDue()) yield;
         if (info.signals && info.signals.length) { try { _hqBuildSignals(room, info, G); } catch (e) { console.warn('[HQ] the signals failed', e); } }   // THE CITY TRAFFIC (2026-11-13): before the cars, which read them
         if (info.busStops && info.busStops.length) { try { _hqBuildBusStops(room, info, G); } catch (e) { console.warn('[HQ] the bus stops failed', e); } }
+        if (room.terrain && room.terrain.beds && room.terrain.beds.length) { try { _hqBuildTreePits(room, info, G); } catch (e) { console.warn('[HQ] the tree pits failed', e); } }   // THE TREE PITS (2026-11-25): the kerb round a street tree's bed
         try { _hqBuildCityMarks(room, info, G); } catch (e) { console.warn('[HQ] the city marks failed', e); }   // THE CITY MARKS ON THE STREET
         if (info.traffic && info.traffic.length) { try { _hqBuildTraffic(room, info, G, TM, rng); } catch (e) { console.warn('[HQ] the traffic failed', e); } }
         if (info.bridges && info.bridges.length) { try { _hqBuildMovers(room, info, G); } catch (e) { console.warn('[HQ] the movers failed', e); } }   // THE MAIL (2026-11-17)
@@ -80821,6 +80822,48 @@ const ThreeRenderer = (function () {
             pl.position.set((px + nx * (w.t / 2 + 0.02)) * U, (w.base + 0.3 + Math.min(hM - 0.5, 1.15 + rng() * 0.25)) * U + 0.3, (pz + nz * (w.t / 2 + 0.02)) * U);
             pl.rotation.y = Math.atan2(nx, nz); G.add(pl);
         }
+    }
+    /* THE TREE PITS (2026-11-25, mondo: "The palm trees in disaster city that are on one sand tile need like a border/holder around it ... not
+       just blend in to the concrete"; docs/notes/flora.md rule G9): a street tree's small bed in paving gets a raised kerb in the streets' own
+       kerb stone (_hqRoadTexKey('kerb'), the same concrete as the sidewalks' kerbs). `room.terrain.beds` rows = [x0, z0, x1, z1, nx, nz]: one side
+       of the bed that meets paving (metres) + the normal into the bed (bake-disaster-city.js THE TREE PITS writes them; any room may carry them).
+       The kerb stands inside the bed's edge, HQ_PIT.h tall, HQ_PIT.w wide, cut every 1.75 m so it rides the ground. One merged mesh, built once
+       with the room: nothing runs per frame. */
+    var HQ_PIT = { h: 0.24, w: 0.22, step: 1.75 };
+    function _hqBuildTreePits(room, info, G) {
+        var rows = room.terrain.beds, U = _hqUnits(), P = HQ_PIT, pos = [], uv = [], idx = [], n = 0;
+        var hAt = function (x, z) { var y = hqTerrainHeight(info, x, z); return (y == null || y !== y) ? 0 : y; };
+        var face = function (a, b, c, d, uw, vh) {   // four [x, y, z] in metres, ccw from the side it faces
+            [a, b, c, d].forEach(function (p) { pos.push(p[0] * U, p[1] * U + 0.3, p[2] * U); });
+            uv.push(0, 0, uw, 0, uw, vh, 0, vh); idx.push(n, n + 1, n + 2, n, n + 2, n + 3); n += 4;
+        };
+        for (var r = 0; r < rows.length; r++) {
+            var q = rows[r], x0 = q[0], z0 = q[1], x1 = q[2], z1 = q[3], nx = q[4], nz = q[5];
+            var L = Math.hypot(x1 - x0, z1 - z0); if (!(L > 0)) continue;
+            var ux = (x1 - x0) / L, uz = (z1 - z0) / L, k = Math.max(1, Math.round(L / P.step));
+            for (var i = 0; i < k; i++) {
+                var sa = L * i / k, sb = L * (i + 1) / k, pa = [x0 + ux * sa, z0 + uz * sa], pb = [x0 + ux * sb, z0 + uz * sb];
+                /* the outer line (on the side) and the inner line (W into the bed); the ground under each end, the kerb's top over the higher */
+                var oa = pa, ob = pb, ia = [pa[0] + nx * P.w, pa[1] + nz * P.w], ib = [pb[0] + nx * P.w, pb[1] + nz * P.w];
+                var goa = hAt(oa[0] - nx * 0.05, oa[1] - nz * 0.05), gob = hAt(ob[0] - nx * 0.05, ob[1] - nz * 0.05), gia = hAt(ia[0], ia[1]), gib = hAt(ib[0], ib[1]);
+                var ta = Math.max(goa, gia) + P.h, tb = Math.max(gob, gib) + P.h, uw = (sb - sa) / 1.75;
+                var OA0 = [oa[0], goa - 0.05, oa[1]], OB0 = [ob[0], gob - 0.05, ob[1]], OA1 = [oa[0], ta, oa[1]], OB1 = [ob[0], tb, ob[1]];
+                var IA0 = [ia[0], gia - 0.05, ia[1]], IB0 = [ib[0], gib - 0.05, ib[1]], IA1 = [ia[0], ta, ia[1]], IB1 = [ib[0], tb, ib[1]];
+                /* which winding faces out depends on the side: the normal into the bed crossed with the run */
+                var flip = (ux * nz - uz * nx) > 0;
+                var F = function (a, b, c, d, w, h) { if (flip) face(b, a, d, c, w, h); else face(a, b, c, d, w, h); };
+                F(OA0, OB0, OB1, OA1, uw, P.h / 1.75 + 0.03);     // the face to the paving
+                F(IB0, IA0, IA1, IB1, uw, P.h / 1.75 + 0.03);     // the face to the soil
+                F(OA1, OB1, IB1, IA1, uw, P.w / 1.75);            // the top
+                if (i === 0) F(IA0, OA0, OA1, IA1, P.w / 1.75, P.h / 1.75);              // the end caps (a corner meets another run's cap)
+                if (i === k - 1) F(OB0, IB0, IB1, OB1, P.w / 1.75, P.h / 1.75);
+            }
+        }
+        if (!n) return;
+        var g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
+        var tex = _hzTex(_hqRoadTexKey('kerb')), mat = new THREE.MeshPhongMaterial({ map: tex || null, color: 0xc8c6c0, shininess: 4, side: THREE.DoubleSide }); mat.emissive = new THREE.Color(0x1a1a1a);
+        var m = new THREE.Mesh(g, mat); m.castShadow = false; m.receiveShadow = true; m._ew_hqTreePits = true; G.add(m);
     }
     function _hqBuildRoadMarkings(room, info, G, TM) {
         var plan = info.genPlan; if (!plan || !plan.streets || !plan.streets.length) return;
