@@ -82,7 +82,7 @@ const ThreeRenderer = (function () {
         }
     })();
     /* THE BUILD LINE (the perf lens): bump the stamp in every PR that changes this file's walk / fight drawing */
-    var _EW_TR_STAMP = '11-22 soft-canvas';
+    var _EW_TR_STAMP = '11-25 warm-real';
     function _ewBuildTok() {
         var sc = document.querySelectorAll('script[src*="three-renderer.js"]'), t = '';
         for (var i = 0; i < sc.length; i++) { var m = /[?&]v=([^&#]+)/.exec(sc[i].src || ''); if (m) { t = m[1]; break; } }
@@ -49745,7 +49745,7 @@ const ThreeRenderer = (function () {
        SHADERS holds them). It starts at 1 ambient, 1 hemisphere, 1 shadow sun, 2 plain suns and 8 points; a kind only grows.
        A spare is dark (a spare shadow sun never renders its map). A shadowed sun's camera, map size, bias and pulse are
        copied onto the rig's own. Spot lights and shadow-casting point lights stay real. */
-    var HQ_RIG_PREGROW_P = 20;   // THE RIG GROWN AT THE DOOR (_ewRigTick)
+    var HQ_RIG_PREGROW_P = 32;   // THE RIG GROWN AT THE DOOR (_ewRigTick); 32 = the Main Hall + the foyer lit whole (HQ_STAGE_RULES.lampsRound), every walk room since 11-25
     var _EW_RIG_STEP = 4, _EW_RIG_MAX = 64, _ewRigV = null, _ewRigV2 = null, _ewRigM = null, _ewRigG = null;
     var _EW_RIG_KINDS = ['a', 'h', 'ds', 'd', 'p'], _EW_RIG_SEED = { a: 1, h: 1, ds: 1, d: 2, p: 8 }, _EW_RIG_KMAX = { a: 4, h: 4, ds: 4, d: 8, p: _EW_RIG_MAX };
     function _ewRigOff() {
@@ -49766,7 +49766,7 @@ const ThreeRenderer = (function () {
             if (c.visible === false || c === R.group) continue;
             if (c.isLight) {
                 var k = _ewRigKind(c);
-                if (!k) { if (c._ew_rigMask != null) { c.layers.mask = c._ew_rigMask; c._ew_rigMask = null; } }   // a light the rig does not carry (a caster point, a spot) stays real
+                if (!k) { if (c._ew_rigMask != null) { c.layers.mask = c._ew_rigMask; c._ew_rigMask = null; } if ((c.layers.mask & mask) !== 0) R.real.push(c); }   // a light the rig does not carry (a caster point, a spot) stays real
                 else {
                     if (c.layers.mask !== 0 || c._ew_rigMask == null) { c._ew_rigMask = c.layers.mask; c.layers.mask = 0; }   // a mask the game set since is the new original
                     var S = R.src[k];
@@ -49829,7 +49829,7 @@ const ThreeRenderer = (function () {
             while (up && up !== sc && up.visible !== false) { if (up === fwNest) { up = sc; break; } up = up.parent; }   // THE FIGHT IN THE WALKED ROOM: the fight's scene is drawn inside the walk's
             if (up !== sc) continue;   // hidden, under a hidden parent, or no longer in this scene: the walk never reached it
             var k = _ewRigKind(c);
-            if (!k) { if (c._ew_rigMask != null) { c.layers.mask = c._ew_rigMask; c._ew_rigMask = null; } }
+            if (!k) { if (c._ew_rigMask != null) { c.layers.mask = c._ew_rigMask; c._ew_rigMask = null; } if (c.isLight && (c.layers.mask & mask) !== 0) R.real.push(c); }   // THE WARM'S WHOLE LIGHT LIST: a real light the frame draws with
             else {
                 if (c.layers.mask !== 0 || c._ew_rigMask == null) { c._ew_rigMask = c.layers.mask; c.layers.mask = 0; }
                 var S = R.src[k];
@@ -49859,7 +49859,7 @@ const ThreeRenderer = (function () {
     }
     function _ewRigMake() {
         var g = new THREE.Group(); g.name = 'ew light rig'; g._ew_rig = true;
-        var R = { group: g, k: {}, src: {}, grows: 0, n: 0, moves: 0 };
+        var R = { group: g, k: {}, src: {}, grows: 0, n: 0, moves: 0, real: [], sig: '' };
         _EW_RIG_KINDS.forEach(function (k) { R.k[k] = []; R.src[k] = []; });
         _EW_RIG_KINDS.forEach(function (k) { for (var i = 0; i < _EW_RIG_SEED[k]; i++) _ewRigLamp(R, k); });
         return R;
@@ -49897,6 +49897,7 @@ const ThreeRenderer = (function () {
         sc.userData.ewRigOn = true;
         var k, i;
         for (i = 0; i < _EW_RIG_KINDS.length; i++) R.src[_EW_RIG_KINDS[i]].length = 0;
+        R.real.length = 0;
         _ewRigRead(sc, R, cam.layers.mask);   // THE KEPT LIGHT LIST (was a walk of the whole scene every frame)
         /* the point lamps grow in steps of 4, the rest one at a time — never shrink (a scene's shaders build once) */
         var grew = false;
@@ -49908,7 +49909,7 @@ const ThreeRenderer = (function () {
                is a new light list, every shader of the scene again and every recorded group re-recorded on that frame. In a big
                chunked room the point rig takes HQ_RIG_PREGROW_P slots on its first frame (behind the card), so the walk never grows it
                up to there; the spare slots are dark (THE LAMP'S REACH skips a dark lamp). Off: window.EW_RIG_NO_PREGROW */
-            if (k === 'p' && n < HQ_RIG_PREGROW_P && _hq && sc === _hq.scene && !(typeof window !== 'undefined' && window.EW_RIG_NO_PREGROW)) { var bigR = false; try { bigR = _hqChunkBig(_hq); } catch (eB) {} if (bigR) n = HQ_RIG_PREGROW_P; }
+            if (k === 'p' && n < HQ_RIG_PREGROW_P && _hq && sc === _hq.scene && !(typeof window !== 'undefined' && window.EW_RIG_NO_PREGROW)) { var bigR = !!(typeof window !== 'undefined' && window.EW_RIG_PREGROW_BIG_ONLY) ? false : true; if (!bigR) { try { bigR = _hqChunkBig(_hq); } catch (eB) {} } if (bigR) n = HQ_RIG_PREGROW_P; }   // THE WARM THAT MISSED (11-25): every walk room, not only the big ones
             if (n > L.length) {
                 var want = (k === 'p') ? Math.min(_EW_RIG_MAX, Math.ceil(n / _EW_RIG_STEP) * _EW_RIG_STEP) : n;
                 while (L.length < want) _ewRigLamp(R, k);
@@ -49940,6 +49941,89 @@ const ThreeRenderer = (function () {
             }
         }
         R.n = R.src.p.length;
+        /* THE WARM THAT MISSED (11-25): the real lights in the order three's own walk meets them (its light key reads them in that
+           order), and where they fall against the rig's group; the signature says when every look's light key changed */
+        if (R.real.length) {
+            var hostK = sc._ew_lentKids || sc.children, path = function (o) { var a = []; for (var q = o; q && q.parent && q !== sc; q = q.parent) { var pk = (q.parent === sc) ? hostK : q.parent.children; a.unshift(pk.indexOf(q)); } return a; };
+            var gi = hostK.indexOf(R.group), keyed = R.real.map(function (L) { return { L: L, p: path(L) }; });
+            keyed.sort(function (a, b) { for (var j = 0; j < Math.min(a.p.length, b.p.length); j++) if (a.p[j] !== b.p[j]) return a.p[j] - b.p[j]; return a.p.length - b.p.length; });
+            R.real.length = 0; R.pre = 0;
+            for (i = 0; i < keyed.length; i++) { R.real.push(keyed[i].L); if (keyed[i].p[0] < gi) R.pre++; }
+        } else R.pre = 0;
+        var sg = R.k.a.length + '.' + R.k.h.length + '.' + R.k.ds.length + '.' + R.k.d.length + '.' + R.k.p.length;
+        for (i = 0; i < R.real.length; i++) sg += (i === R.pre ? '|' : ',') + R.real[i].id + (R.real[i].castShadow ? 's' : '');
+        R.sig = sg;
+    }
+    /* THE WARM THAT MISSED (11-25, mondo's F3 in the Main Hall on Firefox / WebGPU: 2 FPS dips, "built: 10x MeshPhong on hq_part ..."
+       while he walked). A warm-up compiled each piece in the room's scene holding only the piece and THE ONE RIG's group, so its
+       light list was the rig's lamps alone; the frame draws with the rig AND the lights the rig never carries (the hero torch, a
+       shadow-casting point lamp; a spot). Every look three keys on that list (its ids, in the order its walk meets them), so not
+       one look built under the card was the one the frame wanted (cloud probe of the hall: 34 builds under the card, 142 after,
+       every one of them new). The scene's children for one warm call: the real lights before the rig, the piece, the rig, the rest. */
+    function _ewRigWarmKids(o) {
+        var R = _ewRigG; if (!R) return null;
+        var out = R.real.slice(0, R.pre); out.push(o, R.group); for (var i = R.pre; i < R.real.length; i++) out.push(R.real[i]);
+        return out;
+    }
+    function _ewRigSig() { return _ewRigG ? _ewRigG.sig : ''; }
+    /* the walk's scene-pass draw as a real build of it was made (THE SHADER CACHE's note): its render context, for the warm-up */
+    function _ewWarmCtx(H) {
+        if (typeof window !== 'undefined' && window.EW_WARM_OWN_CTX) return null;
+        var r = renderer, RC = r && r.isWebGPURenderer ? r._renderContexts : null;
+        if (!RC || !H || !H.scene || !H.camera || !r._renderLists) return null;
+        if (!RC._ew_by) {   // every context a real render asked for, by its target (a clear's, call depth -1, is not a draw's)
+            var g0 = RC.get; RC._ew_by = new Map();
+            RC.get = function (rt, mrt, cd) { var c = g0.apply(this, arguments); if (cd != null && cd >= 0 && rt) this._ew_by.set(rt, c); return c; };
+            return null;   // known from the next real frame on
+        }
+        var wt = (ThreePost && ThreePost.warmTarget) ? ThreePost.warmTarget() : null;
+        var ctx = wt ? RC._ew_by.get(wt) : null;
+        if (!ctx || !ctx.clippingContext) return null;
+        var L = r._renderLists.get(H.scene, H.camera, r.lighting);
+        if (!L || !L.lightsNode) return null;
+        return { context: ctx, lightsNode: L.lightsNode, clip: ctx.clippingContext, passId: null };
+    }
+    /* the light list a frame of this scene hands three (its own walk's order): the real lights before the rig, the rig's lamps, the rest */
+    function _ewRigFrameLights() {
+        var R = _ewRigG; if (!R) return null;
+        var out = R.real.slice(0, R.pre), ch = R.group.children;
+        for (var i = 0; i < ch.length; i++) if (ch[i].isLight && ch[i].visible !== false) out.push(ch[i]);
+        for (var j = R.pre; j < R.real.length; j++) out.push(R.real[j]);
+        return out;
+    }
+    /* THE WARM ON THE REAL PIECE (11-25): renderer.compile on the node renderer (compileAsync) notes the pieces now but BUILDS them
+       later, one per macrotask, reading whatever state the frames in between left (the lights node's list, the target, the MRT),
+       and asks for the context of call depth 0 while the walk's scene pass draws one call deep in the post chain: in the cloud
+       probe of the Main Hall it warmed 5,568 materials under the card and not one look a frame then used. This does a real draw's
+       own steps for the piece, now, in its own scene, camera, lights node, render context and clipping (the ones a real build of
+       this room's scene pass used): the render object made is the very one the frame's draw fetches, its build and pipeline
+       made. Returns false when it could not (the old compile then runs). */
+    function _ewWarmReal(H, o, ref, pp) {
+        var r = renderer, N = r && r._nodes, O = r && r._objects;
+        if (!N || !O || !r._pipelines || !r._bindings || !r._geometries || typeof N.getForRender !== 'function') return false;
+        if (!(o.isMesh || o.isSprite || o.isLine) || o.isPoints || !o.geometry) return false;
+        var lights = _ewRigFrameLights(); if (!lights) return false;
+        var mats = Array.isArray(o.material) ? o.material : [o.material], groups = Array.isArray(o.material) ? (o.geometry.groups || []) : [null];
+        var pin = null, did = false, wasIn = (typeof _ewSC !== 'undefined') ? _ewSC.inCheck : false;
+        try {
+            pin = _ewScPin(r, { lightsNode: ref.lightsNode, lights: lights, context: ref.context });
+            for (var gi = 0; gi < groups.length; gi++) {
+                var G = groups[gi], m = G ? mats[G.materialIndex] : mats[0];
+                if (!m || m.visible === false) continue;
+                if (!m.isNodeMaterial && (m.isShaderMaterial || !_EW_GPU_NODE_TYPES[m.type])) m = _ewGpuStandIn(m, o);   // what the frame's draw hands three (ewDraw)
+                if (!m || m._ewSprite) continue;
+                var ro = O.get(o, m, H.scene, H.camera, ref.lightsNode, ref.context, ref.clip, ref.passId);
+                ro.drawRange = o.geometry.drawRange; ro.group = G;
+                N.getForRender(ro);
+                r._isPreCompiling = true;
+                N.updateBefore(ro); r._geometries.updateForRender(ro); N.updateForRender(ro); r._bindings.updateForRender(ro);
+                r._isPreCompiling = false;
+                r._pipelines.getForRender(ro, pp);
+                r._isPreCompiling = true; N.updateAfter(ro); r._isPreCompiling = false;
+                did = true;
+            }
+        } finally { r._isPreCompiling = false; if (pin) _ewScUnpin(r, pin); }
+        return did;
     }
     /* the lamps a warm-up compiles against (THE STAGE warm, _hqWarmNew): the rig's, when the rig draws */
     function _ewRigLamps() {
@@ -101051,6 +101135,7 @@ const ThreeRenderer = (function () {
         else if (!_hqInstOff() && !H._instTried) why = 'props';
         else if (!walk && !_hqBatchesLive(H)) why = 'props';   // a walk through a door keeps its blink: the batch follows in the room
         else {
+            if (S.warm && S.warm.done && S.warm.sig != null && S.warm.sig !== _ewRigSig() && S.warms < 8) { S.mats += S.warm.mats; S.texN += S.warm.texN; S.warm = null; }   // THE WARM THAT MISSED: the light list moved after the warm (a part beside it lit its lamps): warm the room again for it
             if (!S.warm) { S.warm = _hqWarmWholeNew(H); S.warms++; }
             if (!_hqWarmRun(H, S.warm)) why = 'warm';
             else if (_hqShadersBusy(S.warm)) why = 'shaders';
@@ -101120,7 +101205,7 @@ const ThreeRenderer = (function () {
         _hqRebuildAt = performance.now();   // the room's arrival (2026-09-25): a lock the browser drops as the room settles is never the walker's ESC
         if (capped && G && !G.idle()) { try { console.warn('[HQ] the load card gave up after ' + Math.round(still / 1000) + ' s without progress (' + Math.round((now - H.t0) / 1000) + ' s in all) — still in flight:', G.list().map(function (r) { return r.url; })); } catch (e) {} }
         if (G) { var failed = G.failed(); if (failed.length) { try { console.warn('[HQ] ' + failed.length + ' file(s) of this room never landed (missing from the bucket? a frozen 404? — window._ewAssetFailures):', failed); } catch (e) {} } try { _hqBookWrite(H.opts && H.opts.room, G); } catch (e) {} G.close(); }
-        try { var S1 = H.settle; if (S1) console.log('[HQ] ' + (H.opts && H.opts.room) + ' landed in ' + Math.round((H.landedAt || now) - H.t0) + ' ms and settled in ' + Math.round(now - (H.landedAt || now)) + ' ms more (warmed ' + (S1.mats + (S1.warm ? S1.warm.mats : 0)) + ' material(s) + ' + (S1.texN + (S1.warm ? S1.warm.texN : 0)) + ' sheet(s) under the card; ' + S1.steps.join(', ') + ')'); } catch (e) {}
+        try { var S1 = H.settle; if (S1) console.log('[HQ] ' + (H.opts && H.opts.room) + ' landed in ' + Math.round((H.landedAt || now) - H.t0) + ' ms and settled in ' + Math.round(now - (H.landedAt || now)) + ' ms more (warmed ' + (S1.mats + (S1.warm ? S1.warm.mats : 0)) + ' material(s) + ' + (S1.texN + (S1.warm ? S1.warm.texN : 0)) + ' sheet(s) under the card' + (S1.warm && S1.warm.real ? ', ' + S1.warm.real + ' drawn the real way' + (S1.warm.realFail ? ' (' + S1.warm.realFail + ' failed)' : '') + (S1.warm.restarts ? ', ' + S1.warm.restarts + ' restart(s) for a new light list' : '') : '') + '; ' + S1.steps.join(', ') + ')'); } catch (e) {}
         if (H.opts.onReady) { try { H.opts.onReady(); } catch (e) {} }
     }
 
@@ -105209,12 +105294,24 @@ const ThreeRenderer = (function () {
         if (_ewGpu && !_ewRigOff() && !(typeof window !== 'undefined' && window.EW_WARM_RAW_LAMPS)) {
             try { if (H.scene && H.camera) _ewRigTick(H.scene, H.camera); } catch (eR) {}   // the rig as the room's next frame will stand it (made by the first drawn frame otherwise, often after the card)
             var rigW = _ewRigLamps();
-            if (rigW && rigW.length) W.lights = rigW;
+            if (rigW && rigW.length) W.lights = rigW.concat(_ewRigG ? _ewRigG.real : []);   // THE WARM THAT MISSED: the real lights too
+            /* the light list moved since this warm began (the rig grew, the hero torch came on): what it built is keyed on a list no
+               frame draws with any more, so it starts over for the new one (the card waits; a part's attach waits) */
+            var sgW = _ewRigSig(), ctxW = _ewWarmCtx(H);
+            sgW += '/' + (ctxW ? ctxW.context.id : '-');
+            /* under the card, before any frame has drawn the room's scene pass, its context is not known yet: wait for one (a few s at most) */
+            if (!ctxW && !H.ready && renderer.isWebGPURenderer && ThreePost && ThreePost.warmTarget && ThreePost.warmTarget()) {
+                if (!W.ctxWait) W.ctxWait = t0;
+                if (t0 - W.ctxWait < 4000) { W.ms += _alNow() - t0; return false; }
+            }
+            if (W.sig != null && W.sig !== sgW && !(typeof window !== 'undefined' && window.EW_WARM_NO_RESTART)) { W.i = 0; W.ti = 0; W.seen = {}; W.restarts = (W.restarts || 0) + 1; }
+            W.sig = sgW;
         }
         try {
             while (W.i < W.objs.length) {
                 var o = W.objs[W.i++], ms = Array.isArray(o.material) ? o.material : [o.material];
                 var tag = (o.isInstancedMesh ? 'i' : '') + (o.isSkinnedMesh ? 's' : '') + (o.morphTargetInfluences ? 'm' : '') + (o.isPoints ? 'p' : o.isLine ? 'l' : o.isSprite ? 'S' : '') + (o.receiveShadow ? 'r' : '');
+                if (_ewGpu && o.geometry && o.geometry.attributes) tag += '|' + Object.keys(o.geometry.attributes).join(',') + (o.isInstancedMesh ? '|' + o.uuid : '') + (o.skeleton ? '|' + o.skeleton.bones.length : '');   // THE WARM ON THE REAL PIECE: three keys a look on the geometry's layout too
                 var fresh = false;
                 for (var k = 0; k < ms.length; k++) { var m = ms[k]; if (!m) continue; var key = m.uuid + tag; if (W.seen[key]) continue; W.seen[key] = 1; fresh = true; W.mats++; var tl = []; _hqWarmTexOf(m, tl); tl.forEach(function (t) { if (!W.tseen[t.uuid]) { W.tseen[t.uuid] = 1; W.texs.push(t); } }); }
                 if (!fresh) continue;
@@ -105222,14 +105319,36 @@ const ThreeRenderer = (function () {
                 /* WEBGPU_PLAN W3: on the node chain the frame draws into the scene pass's target, so compile for that one */
                 var _wt = (ThreePost && ThreePost.warmTarget) ? ThreePost.warmTarget() : null, _wp = _wt ? renderer.getRenderTarget() : null;
                 if (_wt) renderer.setRenderTarget(_wt);
+                if (ctxW && !(typeof window !== 'undefined' && window.EW_WARM_COMPILE)) {
+                    var _wpp = [], _wok = false;
+                    try { _wok = _ewWarmReal(H, o, ctxW, _wpp); } catch (eWR) { _wok = false; W.realFail = (W.realFail || 0) + 1; }
+                    if (_wok) {
+                        W.real = (W.real || 0) + 1;
+                        if (_wpp.length) { W.flying = (W.flying || 0) + 1; var _wl2 = function () { W.flying--; }; Promise.all(_wpp).then(_wl2, _wl2); }
+                        if (_wt) renderer.setRenderTarget(_wp);
+                        n++; if (_alNow() >= end) break;
+                        continue;
+                    }
+                }
                 /* THE WARM-UP IN THE ROOM'S OWN SCENE (2026-11-23, same F3): on the node renderer what a look is built for is keyed on the
                    SCENE it is drawn in (its fog, its lamps' list node, its clipping), and the stand-in scene was a different one, so its
                    builds never matched a frame's. Now the piece is compiled in the room's own scene, which for that one call holds only
                    the piece and the rig's lamps (its child list lent, put back before the call returns: three's compile reads the scene
                    synchronously and only waits on the pipelines). Off: window.EW_WARM_FAKE (the stand-in, as before). */
                 var _wHS = (renderer.isWebGPURenderer && !(typeof window !== 'undefined' && window.EW_WARM_FAKE) && W.lights.length && W.lights[0].parent && W.lights[0].parent.parent === H.scene) ? H.scene : null, _wKids = null;
-                if (_wHS) { _wKids = _wHS.children; _wHS.children = [o, W.lights[0].parent]; }
-                try { var _wpr = renderer.compile(_wHS || W.fake, H.camera); if (_wpr && typeof _wpr.then === 'function') { W.flying = (W.flying || 0) + 1; var _wland = function () { W.flying--; }; _wpr.then(_wland, _wland); } } finally { if (_wKids) _wHS.children = _wKids; if (_wt) renderer.setRenderTarget(_wp); }   // the node renderer's compile is a promise: a failure never goes uncaught
+                if (_wHS) { _wKids = _wHS.children; _wHS.children = _ewRigWarmKids(o) || [o, W.lights[0].parent]; }
+                /* THE WARM THAT MISSED: three's compile drops a piece outside the camera's view or switched off (its own walk's
+                   tests), so the walk's camera at the card built only what it faced and the rest built the first time it was turned
+                   to. For the one call the piece counts as shown and inside the view. */
+                var _wVis = o.visible, _wFc = o.frustumCulled; o.visible = true; o.frustumCulled = false;
+                /* THE WARM'S OWN DRAW CONTEXT (same day, same probe, after the lights matched: still 0 of the warmed looks found by a frame).
+                   three keys every look on the RENDER CONTEXT it is drawn in (its id is part of the material key), and compileAsync asks
+                   for the context of call depth 0, while the walk's scene pass draws one call deep inside the post chain (and through the
+                   pass's MRT): a different context, so every warmed build was a twin no frame looks up. The warm now borrows the context
+                   (and its MRT) a real scene-pass draw of this room used (the shader cache's note of it). */
+                var _wRC = (ctxW && renderer._renderContexts) ? renderer._renderContexts : null, _wRCg = null, _wMrt0 = null, _wMrtSet = false;
+                if (_wRC) { _wRCg = _wRC.get; _wRC.get = function () { return ctxW.context; }; if (renderer.setMRT && renderer.getMRT && (ctxW.context.mrt || null) !== renderer.getMRT()) { _wMrt0 = renderer.getMRT(); renderer.setMRT(ctxW.context.mrt || null); _wMrtSet = true; } }
+                try { var _wpr = renderer.compile(_wHS || W.fake, H.camera); if (_wpr && typeof _wpr.then === 'function') { W.flying = (W.flying || 0) + 1; var _wland = function () { W.flying--; }; _wpr.then(_wland, _wland); } } finally { o.visible = _wVis; o.frustumCulled = _wFc; if (_wRC) _wRC.get = _wRCg; if (_wMrtSet) renderer.setMRT(_wMrt0); if (_wKids) _wHS.children = _wKids; if (_wt) renderer.setRenderTarget(_wp); }   // the node renderer's compile is a promise: a failure never goes uncaught
                 n++;
                 if (_alNow() >= end) break;
             }
