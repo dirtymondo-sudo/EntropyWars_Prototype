@@ -90,6 +90,11 @@ triangle, mixed sizes. Anchors: `info.trees`, the thicket's front rows (`edge`),
 stumps, rocks), building corners (`wall`). Seeded by the room (both players see the same). Off: `EW_NO_FLORA_COMPOSE`. Readout: `hqTerrainInfo(room).composed`.
 S7 in the flora field: set `near: true, far: 0..0.05` on a climate's flower / fern layers (the Woods do it from their own block) and the open middle
 stays grass. A new zone = one `compose` row + the layer flags; no room file edited.
+**Round 2 (11-25, mondo: "the whole point ... was to break up the grass ... with rocks and plants and flowers ... the plants ... dont have any grassblades and
+are just on a flat field").** So S7 is softened in the Woods: (1) a row's `islands` puts a half-sunk rock or two with plants at its foot out in the open grass,
+one per `every` m2 (the Clearing 24, the Ritual Ground 27); (2) the flower / fern layers keep `far` 0.55 on grass (drifts in the grass), 0.05 on bare dirt;
+(3) the forest's bare dirt (dirt_2, no blades) gets the dark kit tufts as a non-grass layer, so a group stands IN growth; (4) `grassH` 0.6 for the Woods.
+Probe lesson: the blade grass streams in over a few seconds; a view needs `"settle": 9000` or the picture shows bare sheet where the game has grass.
 
 ### 00d. The zone groups (sibling threads, 11-25)
 

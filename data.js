@@ -108064,10 +108064,20 @@ ZONE_FLORA.anchorKeys = {
         mushroom2: caps(), zl_hz_Brick_07__mushroom: caps(), woods_glowcap: caps(), fae_toadstool: caps(), fae_mushroom: caps(),
         wild_flowers: { per: [3, 4], size: [5, 7], on: ['edge', 'tree', 'rock'], low: [['rf_grass_5_dark', 1]] },
         moss_clump: { per: [2, 3], size: [3], on: ['log', 'rock', 'stump'], low: [['rf_grass_6_dark', 1]] },
-    } };
+    },
+    /* THE ISLANDS (11-25, mondo: "the whole point ... was to break up the grass ... with rocks and plants and flowers. It still just looks like a bunch of
+       grass blades"): out in the open grass, a rock or two half sunk with plants at its foot, one every `every` m2 of grass, never two within `apart` m.
+       The field's ferns and flowers then grow round the rock too (it is a standing thing to the `near` rule) */
+    islands: { every: 260, apart: 9, max: 60, on: { lawn: 1, floor: 1 }, rocks: [['psxg_rock_1', 2], ['psxg_rock_2', 2], ['psxg_rock_3', 2], ['psxg_rock_4', 2], ['rf_rock_1', 1], ['rf_rock_2', 1]],
+               with: [['wild_flowers', 2], ['moss_clump', 2], ['rf_grass_5_dark', 3], ['rf_grass_6_dark', 3], ['woods_healflower', 1], ['mushroom2', 0.6]], size: [3, 5] } };
     ZONE_FLORA.compose = { horror: woods, redwood: woods };
-    /* S7: the Woods' field ferns and flowers grow only by standing things (the lead's `near`); out in a clearing's open middle, nothing (`far` 0) */
-    ['horror', 'redwood'].forEach(c => { const K = ZONE_FLORA.climates[c]; if (!K) return; ['lawn', 'floor', 'rough', 'dirt'].forEach(g => (K[g] || []).forEach(L => { if (!L.g) { L.near = true; L.far = 0.05; } })); });
+    /* the forest's bare dirt grows no blade grass: give it the kit's dark tufts in loose clumps, so a plant group there stands IN low growth, not on a flat
+       floor (a non-grass layer: it stays when the room grows blades) */
+    ['horror', 'redwood'].forEach(c => { const K = ZONE_FLORA.climates[c]; if (!K || !K.lawn || !K.lawn[0]) return; const dark = K.lawn[0].mix;
+        K.grassH = 0.6;   // a forest floor's grass is short (it was knee-deep and hid every rock and plant)
+        K.dirt = (K.dirt || []).concat([{ mix: dark, n: 0.09, clump: 0.35, g: false, near: true, far: 0.6 }]); K.rough = (K.rough || []).filter(L => !L.g).concat([{ mix: dark, n: 0.06, clump: 0.4, g: false, near: true, far: 0.6 }]); });
+    /* the Woods' field ferns and flowers grow most by standing things (the lead's `near`); in the grass in drifts, on bare dirt hardly at all */
+    ['horror', 'redwood'].forEach(c => { const K = ZONE_FLORA.climates[c]; if (!K) return; ['lawn', 'floor', 'rough', 'dirt'].forEach(g => (K[g] || []).forEach(L => { if (!L.g) { L.near = true; L.far = (g === 'lawn' || g === 'floor') ? 0.55 : 0.05; } })); });   // in the grass: drifts (the clump), and more by every standing thing
 })();
 function zoneFloraComposeOf(roomId) {
     if (typeof window !== 'undefined' && (window.EW_NO_FLORA || window.EW_NO_FLORA_COMPOSE)) return null;
@@ -108131,8 +108141,25 @@ function zoneFloraCompose(roomId, info, room, C, rows, K) {
             if (got) { a.used = true; groups++; }
         }
     });
+    /* 4. the islands in the open grass */
+    let islands = 0; const I = C.islands;
+    if (I && typeof zoneFloraGround === 'function') {
+        let grassN = 0; const PT = info.paint, step = 4;
+        for (let x = -hw; x < hw; x += step) for (let z = -hd; z < hd; z += step) { const g = zoneFloraGround(info, x, z); if (g && I.on[g]) grassN++; }
+        const want2 = Math.min(I.max, Math.round(grassN * step * step / I.every)), mine = [];
+        for (let t = 0; t < want2 * 30 && islands < want2; t++) {
+            const x = (rnd() * 2 - 1) * hw, z = (rnd() * 2 - 1) * hd, g = zoneFloraGround(info, x, z);
+            if (!g || !I.on[g] || mine.some(q => Math.hypot(q[0] - x, q[1] - z) < I.apart) || !free(x, z, 1.4)) continue;
+            const rk = pick(I.rocks); if (!cat[rk]) continue;
+            mine.push([x, z]); islands++; stand(rk, x, z, 0.35 + rnd() * 0.45);
+            if (rnd() < 0.45) { const a2 = rnd() * TAU, x2 = x + Math.cos(a2) * 1.3, z2 = z + Math.sin(a2) * 1.3, r2k = pick(I.rocks); if (cat[r2k] && free(x2, z2, 0.6)) stand(r2k, x2, z2, 0.2 + rnd() * 0.2); }
+            const n = I.size[Math.floor(rnd() * I.size.length)], a0 = rnd() * TAU;
+            for (let k = 0; k < n; k++) { const key2 = pick(I.with), c2 = cat[key2]; if (!c2) continue; const th = a0 + (k - n / 2) * (0.5 + rnd() * 0.4), d = 0.9 + rnd() * 1.6, x3 = x + Math.cos(th) * d, z3 = z + Math.sin(th) * d;
+                if (free(x3, z3, Math.max(0.2, c2.foot || 0.25))) { stand(key2, x3, z3, 0.55 + rnd() * 0.45); pieces++; } }
+        }
+    }
     info.composeDrop = drop;
-    return { groups, pieces, dropped: drop.size, anchors: A.length };
+    return { groups, pieces, dropped: drop.size, anchors: A.length, islands };
 }
 if (typeof window !== 'undefined') Object.assign(window, { ZONE_FLORA, zoneFloraRule, zoneFloraAt, zoneFloraGround, zoneFloraSheet, zoneFloraTrees, zoneFloraProps, zoneFloraClimateOf, zoneFloraSwap, zoneFloraRoomId });
 /* ══ THE ZONE LOOKS (2026-11-18, mondo: "I added an SBS horror texture pack in the inbox. Its basically just more textured and weathered
