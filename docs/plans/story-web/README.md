@@ -247,3 +247,11 @@ new fields), so it saves and syncs like the chapters.
   chapter, hinted secrets never revealed, tell-tale words said early, sheet secrets not in the ledger.
 - **Ties over time** (step B): a tie's panel has **In the story** from Ch N / ends in Ch N (`from`, `until`); the web's toolbar
   **Story at** select draws only the ties that stand at that chapter (`S.ui.storyAt`, app.js `tieOn`).
+- **World** tab (step C): THE WORLD BY CHAPTER. Places mode = every place a quest happens (by zone) x the chapters, the quests in
+  each square (side quests pink dashed), ░ = a zone no chapter has opened yet, and a line of the zones no chapter uses. Characters
+  mode = everyone in a quest's cast or giving one x the chapters, where they are; ✝ once an earlier ending kills them (✝? = only some
+  endings do), red when a dead character still turns up. Click a quest to open it.
+- **Flow** tab (step C): THE FLOW CHART. The whole story: chapters as columns, an arrow from a quest to every quest whose gate it
+  feeds (its ending, or a fact one of its endings changes; red dashed = it closes it), and how many different runs the endings make.
+  Pick a quest (or click one): what opens it, its steps, its endings (coloured by tone, what each changes, who dies or joins) and the
+  quests each ending opens or closes. app.js `feeds()`, `flowQuest`, `flowAll`.

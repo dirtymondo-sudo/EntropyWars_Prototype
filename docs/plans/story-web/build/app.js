@@ -1661,7 +1661,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) { sav
    SPINE (the one-sheet, the six bands, every chapter's questions). Units are roster ids (r:<race>, s:<cast>), places are map refs
    ('hq', 'z:<zone>', 'd:<zone>:<district>'), so a plan does not hang on any one board. Nothing in the game reads it yet. */
 const SD = D.story || { rooms: [], quests: [] };
-const STORY_TABS = ['map', 'beat', 'spine', 'chars', 'facts', 'myst', 'checks'];
+const STORY_TABS = ['map', 'beat', 'spine', 'chars', 'facts', 'myst', 'world', 'flow', 'checks'];
 const KIT_RENDER = {};   // THE STORY TOOLKIT's tabs (filled below)
 const ST = { open: false, tab: 'map', sel: null, pick: null, at: 0, mapLayer: 'surface' };
 const STEPS9 = ['1 · The hero wants something', '2 · Something disrupts their life', '3 · The hero tries to fix it', '4 · The attempt fails', '5 · A reversal makes it worse', '6 · A bigger problem', '7 · The final problem, the most at risk', '8 · The hero faces it and wins', '9 · The hero gets what they wanted'];
@@ -2760,6 +2760,7 @@ function bindKit() {
   const condList = (l) => { const q = cq(); if (!q) return null; if (l === 'open' || l === 'close') return q[l]; const m = /^scene:(\d+)$/.exec(l); return m && q.scenes[+m[1]] ? q.scenes[+m[1]].when : null; };
   const setList = (l) => { const q = cq(); if (!q) return null; let m = /^end:(\d+)$/.exec(l); if (m) return q.ends[+m[1]] ? q.ends[+m[1]].sets : null; m = /^scene:(\d+)$/.exec(l); return m && q.scenes[+m[1]] ? q.scenes[+m[1]].sets : null; };
   root.addEventListener('click', e => {
+    if (e.target.closest('#st_flow') && kitClickC(e)) { e.stopImmediatePropagation(); return; }
     if (e.target.closest('#st_myst')) { if (kitMystClick(e, e.target.closest('button'))) { e.stopImmediatePropagation(); return; } }
     { const g = e.target.closest('[data-kmgo]'); if (g) { e.stopImmediatePropagation(); kitGo('clue', g.dataset.kmgo); return; } }
     const b = e.target.closest('button, [data-kfsel], [data-kgo]'); if (!b) return;
@@ -2953,7 +2954,101 @@ function kitSegMore(f, v) { const k = kp().clues.find(x => x.id === KM.sel); if 
 function kitChangeMore(e) { if (kitMystChange(e)) return true; if (typeof kitChangeMoreC === 'function') return kitChangeMoreC(e); return false; }
 function kitInputMore(e) { if (kitMystInput(e)) return true; if (typeof kitInputMoreC === 'function') return kitInputMoreC(e); return false; }
 
-Object.assign(KIT_RENDER, { facts: renderFacts, checks: renderChecks, myst: renderMyst });
+
+/* ── THE WORLD GRID (step C): places down the side, chapters across. Places mode: each square = the quests there (main white, side
+   pink), shaded while no chapter has gone to that zone yet; zones nothing uses stay at the bottom, greyed. Characters mode: one row
+   a character (quest cast + givers), each square = where they are in that chapter; ✝ once an earlier ending kills them (✝? = only
+   some endings do). ── */
+const KW = { mode: 'places' };
+function renderWorld() {
+  const P = kp(), C = P.chapters, FQ = flatQuests();
+  let h = '<div class="sthd"><h3>THE WORLD BY CHAPTER</h3><span class="stmuted">where the story is, chapter by chapter</span><span class="sp"></span>' + seg('kwmode', [['places', 'Places'], ['chars', 'Characters']], KW.mode) + '</div>';
+  h += '<div class="sttbl"><table class="kworld"><tr><th>' + (KW.mode === 'places' ? 'Place' : 'Character') + '</th>' + C.map((c, i) => '<th>Ch ' + (i + 1) + '<small>' + esc((c.name || '').slice(0, 14)) + '</small></th>').join('') + '</tr>';
+  const pill = f => '<span class="kwq' + (f.q.kind === 'side' ? ' side' : '') + '" data-kgo="' + esc(f.q.id) + '" title="' + esc(f.q.name) + '">' + f.no + ' ' + esc((f.q.name || 'Untitled').slice(0, 22)) + '</span>';
+  if (KW.mode === 'places') {
+    const zoneOrder = [], used = {};
+    FQ.forEach(f => { const r = f.q.where || ''; if (!r) return; const z = zoneOfRef(r) || r; if (!used[z]) { used[z] = new Set(); zoneOrder.push(z); } used[z].add(r); });
+    C.forEach(c => { const z = zoneOfRef(c.zone); if (z && !used[z]) { used[z] = new Set(); zoneOrder.push(z); } });
+    const row = (ref, label, sub) => { h += '<tr><td class="kwp' + (sub ? ' sub' : '') + '">' + esc(label) + '</td>'; C.forEach((c, i) => { const here = FQ.filter(f => f.ci === i && f.q.where === ref); const z = ref === 'hq' ? 'hq' : zoneOfRef(ref) || ref, open = openZones(i + 1).has(z); h += '<td class="' + (here.length ? 'on' : open ? '' : 'shut') + '">' + (here.length ? here.map(pill).join('') : open ? '' : '░') + '</td>'; }); h += '</tr>'; };
+    zoneOrder.forEach(z => { const zref = z === 'hq' ? 'hq' : 'z:' + z, refs = [...used[z]]; const zname = z === 'hq' ? 'DOOR HQ' : placeName(zref);
+      if (refs.length <= 1 && (refs[0] === zref || !refs.length)) row(zref, zname, false); else { if (refs.includes(zref)) row(zref, zname, false); else h += '<tr><td class="kwp zh" colspan="' + (C.length + 1) + '">' + esc(zname) + '</td></tr>'; refs.filter(r => r !== zref).forEach(r => { const p = placeOf(r); row(r, p ? (p.short || p.n) : r, true); }); } });
+    const unused = (PL.zones || []).filter(z => !used[z.k]); if (unused.length) h += '<tr><td class="kwp none" colspan="' + (C.length + 1) + '">Not in any chapter yet: ' + esc(unused.map(z => z.n).join(', ')) + '</td></tr>';
+  } else {
+    const ids = new Set(); FQ.forEach(f => { f.q.cast.forEach(id => ids.add(id)); if (kq(f.q).giver) ids.add(f.q.giver); });
+    [...ids].sort((a, b) => entName(a).localeCompare(entName(b))).forEach(id => {
+      h += '<tr><td class="kwp">' + esc(entName(id)) + '</td>';
+      let dead = '';
+      C.forEach((c, i) => { const here = FQ.filter(f => f.ci === i && (f.q.cast.includes(id) || f.q.giver === id));
+        h += '<td class="' + (here.length ? 'on' : '') + (dead === 'p' && here.length ? ' bad' : '') + '">' + (dead && !here.length ? '<span class="kwdead">✝' + (dead === 'q' ? '?' : '') + '</span>' : '') + here.map(f => '<span class="kwq' + (f.q.kind === 'side' ? ' side' : '') + '" data-kgo="' + esc(f.q.id) + '" title="' + esc(f.no + ' ' + f.q.name) + '">' + esc(f.q.where ? (placeOf(f.q.where) || {}).short || placeName(f.q.where) : 'no place') + '</span>').join('') + '</td>';
+        here.forEach(f => { const k = f.q.ends.filter(e => e.kills.includes(id)); if (k.length) dead = k.length === f.q.ends.length ? 'p' : (dead || 'q'); }); });
+      h += '</tr>';
+    });
+    if (!ids.size) h += '<tr><td class="stmuted" colspan="' + (C.length + 1) + '">No quest names a character yet.</td></tr>';
+  }
+  h += '</table></div><div class="kmlegend"><span>▮ main quest</span><span class="p">▮ side quest</span><span class="stmuted">░ no chapter has gone there yet</span>' + (KW.mode === 'chars' ? '<span class="r">✝ killed by an earlier ending · ✝? only by some endings</span>' : '') + '</div>';
+  $('st_world').innerHTML = h;
+}
+
+/* ── THE FLOW CHART (step C): one quest as boxes and arrows (what opens it, its steps, its endings, what each ending changes and
+   which quests that opens or closes), or the whole story: chapters as columns, an arrow from a quest to every quest whose gate it
+   feeds (its ending, or a fact one of its endings changes); red dashed = it closes that quest. ── */
+const KFL = { q: '' };
+function feeds() {
+  const FQ = flatQuests(), out = [];
+  FQ.forEach(a => { kq(a.q); const sets = new Set(), ends = a.q.ends; ends.forEach(e => e.sets.forEach(s => sets.add(s.f)));
+    FQ.forEach(b => { if (a === b) return; kq(b.q);
+      const why = [], shut = [];
+      b.q.open.forEach(cd => { if (cd.t === 'quest' && cd.a === a.q.id) why.push(cd.v ? 'ending ' + endName(a.q.id, cd.v) : 'finished'); if (cd.t === 'fact' && sets.has(cd.a)) why.push(factText(cd.a)); });
+      b.q.close.forEach(cd => { if ((cd.t === 'quest' && cd.a === a.q.id) || (cd.t === 'fact' && sets.has(cd.a))) shut.push(cd.t === 'fact' ? factText(cd.a) : 'finished'); });
+      if (why.length) out.push({ a, b, why, shut: false }); if (shut.length) out.push({ a, b, why: shut, shut: true }); }); });
+  return out;
+}
+function renderFlow() {
+  const FQ = flatQuests();
+  let h = '<div class="sthd"><h3>THE FLOW CHART</h3><select class="stinp" id="kflQ" style="width:320px"><option value="">The whole story</option>' + FQ.map(f => '<option value="' + esc(f.q.id) + '"' + (KFL.q === f.q.id ? ' selected' : '') + '>' + esc(f.no + ' ' + (f.q.name || 'Untitled')) + '</option>').join('') + '</select><span class="sp"></span><span class="stmuted">click a box to open it</span></div>';
+  h += '<div class="kflow">' + (KFL.q && findQ(KFL.q) ? flowQuest(findQ(KFL.q).q) : flowAll()) + '</div>';
+  $('st_flow').innerHTML = h;
+}
+const svgT = (x, y, t, cls, max, nl) => { const s = String(t || ''), w = max || 30, n = nl || 2, lines = []; let cur = ''; s.split(/\s+/).forEach(word => { if (word.length > w) word = word.slice(0, w - 1) + '…'; if ((cur + ' ' + word).trim().length > w && cur) { lines.push(cur); cur = word; } else cur = (cur + ' ' + word).trim(); }); if (cur) lines.push(cur); return lines.slice(0, n).map((l, i) => { if (i === n - 1 && lines.length > n) l = (l.length > w - 1 ? l.slice(0, w - 1) : l) + '…'; return '<text x="' + x + '" y="' + (y + i * 14) + '" class="' + (cls || '') + '">' + esc(l) + '<title>' + esc(s) + '</title></text>'; }).join(''); };
+function flowQuest(q) {
+  kq(q); const W = 190, H = 66, gx = 40, F = feeds();
+  const cols = []; let x = 10;
+  const boxes = [], arrows = [];
+  const box = (x, y, t, sub, cls, go) => { boxes.push('<g class="kfb ' + (cls || '') + '"' + (go ? ' data-kgo="' + esc(go) + '"' : '') + '><rect x="' + x + '" y="' + y + '" width="' + W + '" height="' + H + '"/>' + svgT(x + 8, y + 18, t, 'kt', 27, 2) + (sub ? svgT(x + 8, y + H - 9, sub, 'ks', 27, 1) : '') + '</g>'); return { x, y }; };
+  const arrow = (a, b, cls) => arrows.push('<path class="kfa ' + (cls || '') + '" d="M' + (a.x + W) + ' ' + (a.y + H / 2) + ' C' + (a.x + W + gx / 2) + ' ' + (a.y + H / 2) + ' ' + (b.x - gx / 2) + ' ' + (b.y + H / 2) + ' ' + b.x + ' ' + (b.y + H / 2) + '"/>');
+  /* column 0: what opens it */
+  const ins = F.filter(f => f.b.q === q && !f.shut); let y = 10, col0 = [];
+  if (q.open.length || ins.length) { ins.forEach(f => { col0.push(box(x, y, f.a.no + ' ' + f.a.q.name, f.why.join(', '), 'in', f.a.q.id)); y += H + 14; }); q.open.filter(cd => !(cd.t === 'quest' && ins.some(f => f.a.q.id === cd.a))).forEach(cd => { col0.push(box(x, y, condText(cd), 'opens it', 'cond')); y += H + 14; }); if (q.lvl) { col0.push(box(x, y, 'Party level ' + q.lvl + '+', 'opens it', 'cond')); y += H + 14; } x += W + gx; }
+  const top = box(x, 10, qNo(q.id) + ' ' + (q.name || 'Untitled'), (q.kind === 'side' ? 'side quest' : 'main quest') + (q.where ? ' · ' + placeName(q.where) : ''), 'me'); col0.forEach(c => arrow(c, top)); let prev = top; x += W + gx;
+  q.steps.forEach((s, i) => { const b = box(x, 10, (i + 1) + '. ' + (s.text || 'a step'), '', 'step'); arrow(prev, b); prev = b; x += W + gx; });
+  const ends = q.ends.length ? q.ends : [null]; const ex = x; let ey = 10; const out = [];
+  ends.forEach((e, i) => { const b = box(ex, ey, e ? String.fromCharCode(65 + i) + ' · ' + (e.name || 'an ending') : 'No endings yet', e ? [e.sets.map(setText).join(', '), e.kills.length ? 'dies: ' + e.kills.map(entName).join(', ') : '', e.joins.length ? 'joins: ' + e.joins.map(entName).join(', ') : ''].filter(Boolean).join(' · ') : 'add them on the quest card', 'end t-' + ((e && e.tone) || 'x')); arrow(prev, b); out.push({ e, b }); ey += H + 14; });
+  /* what each ending feeds */
+  let fy = 10; const fx = ex + W + gx; const seen = {};
+  F.filter(f => f.a.q === q).forEach(f => { const k = f.b.q.id + (f.shut ? 'x' : ''); if (seen[k]) return; seen[k] = 1; const b = box(fx, fy, f.b.no + ' ' + f.b.q.name, (f.shut ? 'closes: ' : 'opens: ') + f.why.join(', '), f.shut ? 'shut' : 'out', f.b.q.id); fy += H + 14;
+    out.forEach(o => { if (!o.e) return; const sets = new Set(o.e.sets.map(s => s.f)); if (f.b.q.open.concat(f.b.q.close).some(cd => (cd.t === 'quest' && cd.a === q.id && (!cd.v || cd.v === o.e.id)) || (cd.t === 'fact' && sets.has(cd.a)))) arrow(o.b, b, f.shut ? 'shut' : ''); }); });
+  const Wd = (fy > 10 ? fx + W : ex + W) + 20, Hd = Math.max(ey, fy, y, H + 20) + 10;
+  return '<svg class="kfsvg" viewBox="0 0 ' + Wd + ' ' + Hd + '" width="' + Wd + '" height="' + Hd + '">' + arrows.join('') + boxes.join('') + '</svg>';
+}
+function flowAll() {
+  const C = kp().chapters, FQ = flatQuests(), W = 170, H = 54, gx = 70, pos = {};
+  let maxY = 0; const boxes = [], heads = [];
+  C.forEach((c, i) => { const x = 10 + i * (W + gx); heads.push('<text x="' + x + '" y="16" class="kh">Ch ' + (i + 1) + (c.name ? ' · ' + esc(c.name.slice(0, 18)) : '') + '</text>');
+    FQ.filter(f => f.ci === i).forEach((f, j) => { const y = 28 + j * (H + 12); pos[f.q.id] = { x, y }; maxY = Math.max(maxY, y + H); const n = kq(f.q).ends.length;
+      boxes.push('<g class="kfb ' + (f.q.kind === 'side' ? 'side' : 'me') + '" data-kflq="' + esc(f.q.id) + '"><rect x="' + x + '" y="' + y + '" width="' + W + '" height="' + H + '"/>' + svgT(x + 7, y + 17, f.no + ' ' + (f.q.name || 'Untitled'), 'kt', 24, 2) + '<text x="' + (x + 7) + '" y="' + (y + H - 7) + '" class="ks">' + (n ? n + (n === 1 ? ' ending' : ' endings') : 'no endings') + (f.q.open.length ? ' · ' + f.q.open.length + ' gate' + (f.q.open.length > 1 ? 's' : '') : '') + '</text></g>'); }); });
+  const arrows = feeds().map(f => { const a = pos[f.a.q.id], b = pos[f.b.q.id]; if (!a || !b) return ''; const back = b.x <= a.x; const x1 = a.x + W, y1 = a.y + H / 2, x2 = back ? b.x + W : b.x, y2 = b.y + H / 2; return '<path class="kfa' + (f.shut ? ' shut' : '') + (back ? ' back' : '') + '" d="M' + x1 + ' ' + y1 + ' C' + (x1 + 40) + ' ' + y1 + ' ' + (back ? x2 + 40 : x2 - 40) + ' ' + y2 + ' ' + x2 + ' ' + y2 + '"><title>' + esc(f.a.no + ' → ' + f.b.no + ': ' + f.why.join(', ')) + '</title></path>'; }).join('');
+  const Wd = 20 + C.length * (W + gx), Hd = maxY + 20;
+  const nEnd = FQ.reduce((m, f) => m * Math.max(1, kq(f.q).ends.length), 1);
+  return '<div class="stmuted" style="margin:4px 0 8px">' + FQ.length + ' quests · ' + feeds().length + ' links between them · up to ' + (nEnd > 1e6 ? 'over a million' : nEnd.toLocaleString()) + ' different runs through the story by their endings. Arrows: a quest opens another (red dashed: closes it). Click a quest to see its own chart.</div><svg class="kfsvg" viewBox="0 0 ' + Wd + ' ' + Hd + '" width="' + Wd + '" height="' + Hd + '">' + heads.join('') + arrows + boxes.join('') + '</svg>';
+}
+function kitClickC(e) {
+  const g = e.target.closest('[data-kflq]'); if (g) { KFL.q = g.dataset.kflq; renderFlow(); return true; }
+  return false;
+}
+function kitSegMoreC(f, v) { if (f === 'kwmode') { KW.mode = v; renderWorld(); return true; } if (typeof kitSegMoreD === 'function') return kitSegMoreD(f, v); return false; }
+function kitChangeMoreC(e) { if (e.target.id === 'kflQ') { KFL.q = e.target.value; renderFlow(); return true; } if (typeof kitChangeMoreD === 'function') return kitChangeMoreD(e); return false; }
+
+Object.assign(KIT_RENDER, { facts: renderFacts, checks: renderChecks, myst: renderMyst, world: renderWorld, flow: renderFlow });
 bindKit();
 
 /* ───────── boot ───────── */
