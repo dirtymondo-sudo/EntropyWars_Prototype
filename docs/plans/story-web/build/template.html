@@ -343,7 +343,7 @@ dl.facts dt { color: var(--ink3); font-size: 12px; } dl.facts dd { margin: 0; mi
 #story h3 { margin: 0 0 8px; font: 16px var(--font-display); letter-spacing: .03em; }
 #story .stpanel { background: #000; border: 2px solid #fff; }
 #story .stbody { flex: 1; min-height: 0; position: relative; }
-#st_map { position: absolute; inset: 8px; display: grid; grid-template-columns: 300px 1fr 340px; gap: 8px; }
+#st_map { position: absolute; inset: 8px; display: grid; grid-template-columns: 300px 1fr 400px; gap: 8px; }
 #st_map[hidden], #st_beat[hidden], #st_spine[hidden], #st_chars[hidden] { display: none; }
 /* THE CHARACTER SHEETS (2026-11-25) */
 #st_chars { position: absolute; inset: 8px; display: grid; grid-template-columns: 290px 1fr 190px; gap: 8px; }
@@ -483,6 +483,26 @@ dl.facts dt { color: var(--ink3); font-size: 12px; } dl.facts dd { margin: 0; mi
 #story .stfirst { font: 600 10px var(--font-mono); background: #ffd66b; color: #000; padding: 0 4px; border-radius: 3px; }
 #st_spine td textarea { min-height: 48px; }
 @media (max-width: 1100px) { #st_map { grid-template-columns: 240px 1fr 290px; } }
+/* THE STORY TOOLKIT (2026-11-25): facts, gates, endings, checks */
+#st_facts { position: absolute; inset: 8px; display: grid; grid-template-columns: 1fr 360px; gap: 8px; }
+#st_checks { position: absolute; inset: 8px; overflow-y: auto; padding: 14px 18px 40px; }
+#st_facts[hidden], #st_checks[hidden] { display: none; }
+#kfMain, #kfSide { overflow-y: auto; padding: 12px 14px 30px; min-width: 0; }
+#story .sthd .stseg button { padding: 2px 9px; font-size: 12px; }
+#story .kfacts td { vertical-align: middle; } #story .kfacts tr[data-kfsel] { cursor: pointer; } #story .kfacts tr.on td { background: #1a1a1a; } #story .kfacts tr.on td:first-child { box-shadow: inset 3px 0 0 #fff; }
+#story .kfacts td:first-child { min-width: 320px; } #story .kstand { color: #5fe0d0; font-size: 11px; margin-top: 3px; }
+#story .stwarn { color: #ffb84d; font-weight: 600; }
+#story .kuse { font-size: 12.5px; padding: 3px 0; border-bottom: 1px solid #333; cursor: pointer; } #story .kuse:hover { color: #9fc2ff; }
+#story .kcond { display: flex; gap: 4px; align-items: center; margin-bottom: 4px; flex-wrap: wrap; }
+#story .kcond select.stinp { flex: 1 1 110px; width: auto; min-width: 0; } #story .kcond .stinp.sm, #story .stinp.sm { flex: 0 0 auto; width: 92px; }
+#story .kend { border: 1px solid #777; border-left: 4px solid #777; padding: 6px 7px; margin-bottom: 6px; display: flex; flex-direction: column; gap: 4px; }
+#story .kend.t-good { border-left-color: #4fd36a; } #story .kend.t-mid { border-left-color: #ffb84d; } #story .kend.t-bad { border-left-color: #ff5a5a; }
+#story .kend > .strow > b { font: 16px var(--font-display); } #story .kend > .strow > .stinp { flex: 1; min-width: 120px; }
+#story .kend .stseg button { padding: 1px 7px; font-size: 11.5px; }
+#story .kmini { font-size: 12px; } #story .kmini .stinp.sm { width: 130px; } #story .stchip b { cursor: pointer; color: #ff8a8a; }
+#story .kchk { display: flex; gap: 10px; align-items: baseline; padding: 7px 0; border-bottom: 1px solid #333; max-width: 1100px; } #story .kct { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+#story .kpill { font: 600 10.5px var(--font-mono); border: 1px solid; padding: 0 6px; flex: none; } #story .kpill.p { color: #ff5a5a; } #story .kpill.q { color: #ffb84d; }
+@media (max-width: 860px) { #st_facts { grid-template-columns: 1fr; grid-auto-rows: minmax(320px, auto); overflow-y: auto; } }
 @media (max-width: 860px) { #st_map, #st_beat { grid-template-columns: 1fr; grid-auto-rows: minmax(320px, auto); overflow-y: auto; } #story .stbar { overflow-x: auto; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
@@ -593,7 +613,7 @@ dl.facts dt { color: var(--ink3); font-size: 12px; } dl.facts dd { margin: 0; mi
   <div class="stbar">
     <span class="t">ENTROPY WARS · STORY</span>
     <button class="stbtn back" data-act="back">◂ Relationship Web</button>
-    <button class="sttab" data-sttab="map">Map</button><button class="sttab" data-sttab="beat">Beat chart</button><button class="sttab" data-sttab="spine">Spine</button><button class="sttab" data-sttab="chars">Character sheets</button>
+    <button class="sttab" data-sttab="map">Map</button><button class="sttab" data-sttab="beat">Beat chart</button><button class="sttab" data-sttab="spine">Spine</button><button class="sttab" data-sttab="chars">Character sheets</button><button class="sttab" data-sttab="facts">Facts</button><button class="sttab" data-sttab="checks">Checks</button>
     <span class="sp"></span>
     <button class="stbtn" data-act="import" title="Add chapters and quests from a file">Add from a file</button>
     <button class="stbtn" data-act="export">Export the plan</button>
@@ -611,6 +631,8 @@ dl.facts dt { color: var(--ink3); font-size: 12px; } dl.facts dd { margin: 0; mi
     </div>
     <div id="st_beat" hidden><div id="stBeatMain" class="stpanel"></div><div id="stBeatSide" class="stpanel"></div></div>
     <div id="st_spine" class="stpanel" hidden></div>
+    <div id="st_facts" hidden><div id="kfMain" class="stpanel"></div><div id="kfSide" class="stpanel"></div></div>
+    <div id="st_checks" class="stpanel" hidden></div>
     <div id="st_chars" hidden><div id="scLeft" class="stpanel"></div><div id="scMain" class="stpanel"></div><div id="scRight" class="stpanel"></div></div>
   </div>
 </div>
