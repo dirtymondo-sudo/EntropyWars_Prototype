@@ -1167,5 +1167,18 @@ Adaptable leaves story mode.
   the reason; `learn:<member>:<spell>` spends a pick, `learnview` shows the grid when no pick is due); the card's `✦ n NEW SPELLS`
   chip (`_hqPauseLvChip`); the ABILITIES line `KNOWS n OF N · m TO LEARN`. The debrief: `hqPartyGrantXp` marks a level that brings a
   pick (`b.learn`, the milestone line NEW SPELL TO LEARN). CSS "STORY SPELL LEARNING" at the end of styles-base.css.
-- NOT YET: step 4 (captives + the family deal: a sealed native waits as a captive, KEEP or TAKE A FAMILY; `taught` / `taughtAt`
-  are already read everywhere), step 5 (the first quest's tapes against the agent's level-5 spells).
+- **THE CAPTIVES (step 4)** data.js: with learning on, `hqCaptureEnlist` no longer enlists; every sealed native becomes a captive in
+  `door.hq.captives` (row `to: 'captive'`, `captive: 'c<n>'`, ids from `H.captiveSeq`); the old enlist body is `_hqCaptureEnlistNow`.
+  `hqCaptives(profile)`, `hqCaptiveFamilies(profile, id)` (its non-universal families, `st` ok | signature | known; a signature =
+  `spellFamilyIsUnique`, never taught, mondo 11-25), `hqCaptiveKeep` (the old enlist for that one unit: party / bench / bounty, returns
+  `gold`), `hqCaptiveTeach(profile, id, fam)` (pushes `{fam, from, ids}` on the agent's `meta.learn.taught`, its lowest-tier spell known
+  at once, `taughtAt` = his level, the captive walks free; no limit on families). map.js `_hqPauseCaptivesHtml` on THE PARTY sheet
+  (KEEP · `capkeep:<id>`, the families · `capteach:<id>:<fam>`); the bounty gold + `localCaptureUnit` run inside the `_hqPartyTx`
+  callback. battle.js: the debrief dest CAPTIVE, the capture toast "X CAPTIVE · SEE THE PARTY". CSS `.hq-cap*` (styles-base.css).
+- **STEP 5, THE FIRST QUEST RE-CHECK (11-25):** Tapes 1 + 2 build their own fixed units (ui.js lesson board, no `storyLevel`), so the
+  learning never touches them; no TUTORIAL_MECHANICS `watch` function changed. ORIENTATION's fight: the officer brings his 3 known
+  spells (Swing Door, Elbow Grease, Air Mail, 4 of 5 SP); Agent Locke (level 25) and the Catgirl guest are natives built by
+  `spellLearnNativeCtx` at their level; no scene or coach line names a spell. Adaptable's desc + the borrow note no longer say
+  "in story mode" (it is Online / Practice only now).
+- LATER (mondo 11-25, undecided): Gear sold in the DOOR HQ shop; Training passives from a teacher at DOOR. Until then both stay
+  open to every story unit as before.

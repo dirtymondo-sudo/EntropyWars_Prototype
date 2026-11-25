@@ -2979,7 +2979,8 @@
                                 const cr = encRes.won && pr && pr.captures; const rows = (cr && Array.isArray(cr.rows)) ? cr.rows : [];
                                 const up = r => _hqEsc(String(r.race || '').toUpperCase());
                                 const j = rows.filter(r => r.to === 'party'), ro = rows.filter(r => r.to === 'roster');
-                                return (j.length ? ` · ${j.map(up).join(', ')} JOINED THE PARTY` : '') + (ro.length ? ` · ${ro.map(up).join(', ')} ON YOUR ROSTER` : '') + ((cr && cr.gold > 0) ? ` · CAPTURE BOUNTY 💰 +${cr.gold | 0}` : '');
+                                const cv = rows.filter(r => r.to === 'captive');   // STORY SPELL LEARNING step 4: a capture waits as a captive
+                                return (cv.length ? ` · ${cv.map(up).join(', ')} CAPTIVE · SEE THE PARTY` : '') + (j.length ? ` · ${j.map(up).join(', ')} JOINED THE PARTY` : '') + (ro.length ? ` · ${ro.map(up).join(', ')} ON YOUR ROSTER` : '') + ((cr && cr.gold > 0) ? ` · CAPTURE BOUNTY 💰 +${cr.gold | 0}` : '');
                             })();
                         if (encRes.retreat) { _hqToast(`<b>RETREATED</b><span>${partyLine.replace(/^ · /, '')}</span>`, 4200); return; }
                         if (encRes.escLoss) { _hqToast(`<b>THE PARTY IS DOWN</b><span>${_hqEsc((encRes.escaped || []).join(', ').toUpperCase())} GOT OUT${lostLine}</span>`, 4600); return; }
@@ -3403,6 +3404,7 @@
                 }
                 return h + '</div>';
             };
+            html += _hqPauseCaptivesHtml();   // STORY SPELL LEARNING step 4 (2026-11-25): the captives wait for a decision, on top
             html += shiftHtml(R.labels.first, S.first, 0, 'SENT OUT FIRST · THE BOARD');
             html += shiftHtml(R.labels.second, S.second, R.shift, 'THE BENCH · ⇄ SWITCH IN AND OUT DURING THE FIGHT');
             /* ON CALL: every unlocked vessel not on the party */
@@ -3418,6 +3420,30 @@
             }
             html += `<p class="hq-panel-note">Click a member for the sheet — SWAP a slot (slot 1 is THE LEAD: whoever stands there is the one you walk the building as), RELIEVE them, or USE a heal spell or a potion on the party (FIELD MEDICINE: the caster's own MP, no board). Health carries between encounters; a member at 0 stays DOWN until a revive or THE COT in Medical (Room 1111), which rests the whole party for free. An EXIT (a loss) wakes the party treated.</p>`;
             return html;
+        }
+        /* ══ STORY SPELL LEARNING, THE CAPTIVES (mondo 2026-11-25 — the plan's mock-up 2): each captive is KEEP IN THE PARTY (the old
+           enlist) or TAKE A FAMILY AND SET IT FREE (one of its shared families to the agent: data.js hqCaptiveTeach). A signature
+           family shows, closed; a family the agent already has shows, closed. No dialogue: the captive's words are mondo's to write. ══ */
+        function _hqPauseCaptivesHtml() {
+            const pr = _hqProfile();
+            const caps = (typeof window.hqCaptives === 'function') ? window.hqCaptives(pr) : [];
+            if (!caps.length) return '';
+            let html = `<div class="hq-pp-sec"><b>CAPTIVES</b><span>${caps.length} WAITING · KEEP ONE, OR TAKE A FAMILY AND LET IT GO</span></div><div class="hq-cap-list">`;
+            caps.forEach(c => {
+                let label = c.race; try { label = (typeof getRaceLabel === 'function') ? getRaceLabel(c.race, c.gender || 'male') : c.race; } catch (e) {}
+                const fams = (typeof window.hqCaptiveFamilies === 'function') ? window.hqCaptiveFamilies(pr, c.id) : [];
+                html += `<div class="hq-cap"><div class="hq-cap-hd"><b>${_hqEsc(String(c.name || label).toUpperCase())}</b><span>${_hqEsc(String(label).toUpperCase())} · LV ${c.lvl | 0}</span></div>`
+                    + `<div class="hq-cap-opts"><div class="hq-cap-keep"><b>KEEP IN THE PARTY</b><span>Joins at level ${c.lvl | 0} with the spells its level gives it. The agent learns nothing from it.</span>`
+                    + `<button class="hq-btn hq-btn-sm ok" data-party-act="capkeep:${_hqEsc(c.id)}">KEEP</button></div>`
+                    + `<div class="hq-cap-fams"><b>TAKE A FAMILY AND SET IT FREE</b>`;
+                if (!fams.length) html += `<span>It has no family it can teach.</span>`;
+                fams.forEach(F => {
+                    const why = F.st === 'signature' ? 'ONLY ITS OWN KIND' : F.st === 'known' ? 'YOU HAVE IT' : `${F.ids.length} SPELLS · ${String(F.firstName || F.first).toUpperCase()} NOW`;
+                    html += `<button type="button" class="hq-cap-fam st-${F.st}" style="--fam:${_hqEsc(F.color)}" data-party-act="capteach:${_hqEsc(c.id)}:${_hqEsc(F.fam)}"${F.st === 'ok' ? '' : ' disabled'}><b>${_hqEsc(F.glyph)} ${_hqEsc(String(F.name).toUpperCase())}</b><em>${_hqEsc(why)}</em></button>`;
+                });
+                html += `</div></div></div>`;
+            });
+            return html + `</div>`;
         }
         function _hqPauseMemberHtml(i) {
             const rec = _hqParty(); const m = rec && rec.members.find(x => x.id === i);
@@ -3728,7 +3754,7 @@
                 const q = String(P.sockQ || '').trim().toLowerCase();
                 const rows = q ? pool.filter(x => ((x.sp.name || '') + ' ' + (x.sp.desc || '') + ' ' + (x.sp.school || '') + ' ' + (x.sp.type || '') + ' ' + (x.sp.spellType || '') + ' ' + (x.famName || '')).toLowerCase().includes(q)) : pool;
                 html += `<div class="hq-circ-picker"><div class="hq-circ-bar"><b>BORROW · ${t ? 'TIER ' + _hqEsc(numeral) + ' · ANY OTHER RACE' : 'BY FAMILY · ANY OTHER RACE\'S FAMILY'}</b><span class="hq-circ-count">${t ? t + ' SP' : '1–4 SP'} · ${rows.length} / ${pool.length}</span><input type="search" class="hq-circ-search" data-circ-search="1" placeholder="SEARCH THE POOL" value="${_hqEsc(P.sockQ || '')}" autocomplete="off"><span class="hq-circ-tools"><button class="hq-btn hq-btn-sm" data-party-act="sockclose">✕ CLOSE</button></span></div>`;
-                if (!pool.length) html += `<p class="hq-panel-note">Nothing to borrow at this tier — in story mode Adaptable borrows only from the vessels you own.</p>`;
+                if (!pool.length) html += `<p class="hq-panel-note">Nothing to borrow at this tier.</p>`;
                 else if (!rows.length) html += `<p class="hq-panel-note">Nothing matches.</p>`;
                 else {
                     html += `<div class="hq-circ-pool">`;
@@ -3789,6 +3815,21 @@
             const say = (h, bad) => _hqPauseSay(h, bad);
             if (verb === 'circuit' || verb === 'node' || verb === 'fold' || verb === 'sock' || verb === 'sockclose' || verb === 'spelldef' || verb === 'spellrnd' || verb === 'spellclr' || verb === 'upg' || verb === 'learn' || verb === 'learnview') { _hqPartyCircuitAct(verb, a, b, String(act).split(':')[3] || null); }   // THE CIRCUIT IN THE FIELD (2026-09-21)
             else if (verb === 'cancel') { P.arm = null; }
+            else if (verb === 'capkeep' || verb === 'capteach') {   // STORY SPELL LEARNING step 4 (2026-11-25): THE CAPTIVES
+                const r = _hqPartyTx(p => {
+                    if (verb !== 'capkeep') return window.hqCaptiveTeach(p, a, b);
+                    const k = window.hqCaptiveKeep(p, a);
+                    /* as the battle commit did for a capture: the bounty's local mirror, a new race on the local roster (the sync pays / unions) */
+                    if (k && k.ok && k.gold > 0) { if (!p.account) p.account = { gold: 0, unlockedUnits: [], freeTokens: 0 }; p.account.gold = (p.account.gold | 0) + k.gold; }
+                    if (k && k.ok && k.row && k.row.to !== 'bounty' && k.row.to !== 'skip' && !k.row.owned) { try { const PS = window.ProfileSystem; if (PS && typeof PS.localCaptureUnit === 'function') PS.localCaptureUnit(k.race, p); } catch (e) {} }
+                    return k;
+                });
+                if (r && r.ok) {
+                    try { const PS = window.ProfileSystem; if (PS && typeof PS.scheduleProgressSync === 'function') PS.scheduleProgressSync(); } catch (e) {}
+                    say(`<b>${r.kind === 'keep' ? 'KEPT' : 'A DEAL'}</b> ${_hqEsc(r.note || '')}`);
+                    try { playSfx(r.kind === 'teach' ? 'levelUp' : 'uiButtonConfirm'); } catch (e) {}
+                } else { say(`<b>NO</b> ${_hqEsc((r && r.note) || 'THE BUILDING SAID NO')}`, true); try { playSfx('uiError'); } catch (e) {} }
+            }
             else if (verb === 'rename' || verb === 'unname') {   // THE NAME (2026-09-30)
                 const inp = document.querySelector(`#hqPause [data-party-rename="${a}"]`);
                 const was = rec.members.find(x => x.id === a);
@@ -3906,7 +3947,9 @@
             }
             if (H.act === 'case') {
                 const r = _hqPartyTx(p => (typeof window.mdCaseClose === 'function') ? window.mdCaseClose(p, _hqCurRoom) : null);
-                if (r && r.ok) { try { playSfx('uiButtonConfirm'); playDoorSfx('doorBuzz', { volume: 0.6 }); } catch (e) {}
+                if (r && r.ok && r.failed) { try { playSfx('uiError'); playDoorSfx('doorBuzz', { volume: 0.6 }); } catch (e) {}   // ALIVE ONLY, and it went down: the door shuts, no pay
+                    _hqToast(`<b>CASE CLOSED · NO PAY</b><span>IT WAS WANTED ALIVE</span>`, 4200); }
+                else if (r && r.ok) { try { playSfx('uiButtonConfirm'); playDoorSfx('doorBuzz', { volume: 0.6 }); } catch (e) {}
                     _hqToast(`<b>${r.arrested ? 'ARRESTED · ' : ''}CASE CLOSED</b><span>${(r.reward || []).map(x => _hqEsc(String(x.name).toUpperCase())).join(' · ') || 'THE DOOR IS SHUT'}</span>`, 4200); }
                 else { _hqToast(`<b>AN UNAUTHORIZED DOOR</b><span>${r && r.reason === 'anomaly' ? 'DEAL WITH WHAT CAME THROUGH FIRST' : 'IT IS SHUT'}</span>`, 2600); try { playSfx('uiError'); } catch (e) {} }
                 return;

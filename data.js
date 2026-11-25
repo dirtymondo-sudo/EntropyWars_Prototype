@@ -13199,7 +13199,7 @@ const TRAINING_PASSIVES = [
       desc: 'Buffs this unit applies last +1 turn.' },
     { id: 'passiveAdaptable', tier: 2, name: 'Adaptable', icon: '🃏',
       hooks: { borrowFamilies: true },
-      desc: 'Borrow spells from the families other races carry (in story mode: only the vessels you own). Unequip it and the borrowed spells come off too.' },
+      desc: 'Borrow spells from the families other races carry (Online and Practice only: in story mode a captive teaches you a family instead). Unequip it and the borrowed spells come off too.' },
     { id: 'passiveBruteForce', tier: 1, name: 'Brute Force', icon: '👊',
       hooks: { basicDmgMult: 1.2, swim: true },
       desc: 'Basic attacks deal +20% damage, and the unit can swim.' },
@@ -103575,7 +103575,81 @@ function hqCaptureOwned(profile, race) {
       owned — Phase 4);
    3. else → THE BOUNTY (CAPTURE_RULES.bounty[tier] gold; the commit credits it — Phase 4).
    Every sealed race is written to the captured ledger. Returns { ok, rows: [{ race, to, member?, gold?, reason? }], gold }. */
+/* STORY SPELL LEARNING, THE CAPTIVES (mondo 2026-11-25, step 4): with learning on, a sealed native does not enlist at the
+   commit. It waits as a CAPTIVE (door.hq.captives, local like the party) until the player decides on the party sheet: KEEP (the
+   old enlist: the party, else the roster, else a bounty; only then is the race marked captured) or TAKE A FAMILY AND SET IT FREE
+   (one of its SHARED families goes to the officer: its first spell known at once, the rest climbed with level-up picks; the race is
+   never marked, it walks free). mondo: "they negotiate their freedom by offering to teach you one of their skills"; a family, not
+   a spell; only the shared ones, never a signature family. The words the captive says are mondo's to write (none here). */
 function hqCaptureEnlist(profile, captures, opts) {
+    if (!(spellLearnOn() && SPELL_LEARN_RULES.captives !== false)) return _hqCaptureEnlistNow(profile, captures, opts);
+    if (!profile || !Array.isArray(captures)) return { ok: false, rows: [], gold: 0 };
+    const H = hqPartyEnsureRoot(profile);
+    if (!Array.isArray(H.captives)) H.captives = [];
+    const rows = [];
+    captures.forEach(c => {
+        const race = c && c.race ? String(c.race) : '';
+        if (!race || (typeof AVAILABLE_RACES !== 'undefined' && AVAILABLE_RACES.indexOf(race) < 0)) { rows.push({ race, to: 'skip', reason: 'race' }); return; }
+        H.captiveSeq = (H.captiveSeq | 0) + 1;
+        const cap = { id: 'c' + H.captiveSeq, race, gender: c.gender || null, name: c.name || '', lvl: Math.max(1, c.lvl | 0 || 1), tier: Math.max(1, Math.min(3, (c.tier | 0) || 1)), at: Date.now() };
+        H.captives.push(cap);
+        rows.push({ race, to: 'captive', captive: cap.id, owned: hqCaptureOwned(profile, race) });
+    });
+    return { ok: true, rows, gold: 0 };
+}
+function hqCaptives(profile) {
+    const H = profile && profile.door && profile.door.hq;
+    return (H && Array.isArray(H.captives)) ? H.captives.filter(c => c && c.id && c.race) : [];
+}
+/* the families a captive can teach the officer: [{ fam, name, glyph, color, ids, first, st: ok | signature | known }] */
+function hqCaptiveFamilies(profile, capId) {
+    const c = hqCaptives(profile).find(x => x.id === capId); if (!c) return [];
+    const r = hqPartyRecord(profile); const you = r ? r.members.find(m => m.you) : null;
+    const L = you ? hqLearnLedger(you) : null;
+    const have = new Set((you ? raceFamilyIds(you.meta.race || 'door agent') : []).concat(L ? L.taught.map(t => t.fam) : []));
+    const out = [];
+    for (const f of raceFamilyIds(c.race)) {
+        const F = SPELL_FAMILIES[f]; if (!F || F.universal) continue;
+        const ids = spellLearnFamilies(c.race, c.gender, null).find(x => x.fam === f);
+        if (!ids || !ids.ids.length) continue;
+        const st = spellFamilyIsUnique(f) ? 'signature' : have.has(f) ? 'known' : 'ok';
+        out.push({ fam: f, name: F.name || f, glyph: F.glyph || '◇', color: F.color || '#8a8270', ids: ids.ids.slice(), first: ids.ids[0], firstName: (SPELL_BY_ID[ids.ids[0]] && SPELL_BY_ID[ids.ids[0]].name) || ids.ids[0], st });
+    }
+    return out;
+}
+function _hqCaptiveTake(profile, capId) {
+    const H = profile && profile.door && profile.door.hq;
+    if (!H || !Array.isArray(H.captives)) return null;
+    const i = H.captives.findIndex(x => x && x.id === capId);
+    return i < 0 ? null : H.captives.splice(i, 1)[0];
+}
+/* KEEP: the captive goes where a capture always went (the party, the roster, a bounty) */
+function hqCaptiveKeep(profile, capId) {
+    const c = hqCaptives(profile).find(x => x.id === capId); if (!c) return { ok: false, reason: 'who', note: 'NO SUCH CAPTIVE' };
+    _hqCaptiveTake(profile, capId);
+    const cr = _hqCaptureEnlistNow(profile, [{ race: c.race, gender: c.gender, name: c.name, lvl: c.lvl, tier: c.tier }]);
+    const row = (cr.rows || [])[0] || {};
+    return { ok: true, kind: 'keep', row, gold: cr.gold | 0, race: c.race, note: row.to === 'party' ? 'JOINS THE PARTY' : row.to === 'roster' ? 'ON YOUR ROSTER' : (cr.gold | 0) > 0 ? 'ALREADY YOURS · BOUNTY +' + (cr.gold | 0) : 'ALREADY YOURS · NO BOUNTY TODAY' };
+}
+/* THE DEAL: one shared family to the officer, the captive walks free */
+function hqCaptiveTeach(profile, capId, fam) {
+    const c = hqCaptives(profile).find(x => x.id === capId); if (!c) return { ok: false, reason: 'who', note: 'NO SUCH CAPTIVE' };
+    const r = hqPartyRecord(profile); const you = r ? r.members.find(m => m.you) : null;
+    if (!you) return { ok: false, reason: 'you', note: 'NO AGENT ON FILE' };
+    const F = hqCaptiveFamilies(profile, capId).find(x => x.fam === fam);
+    if (!F) return { ok: false, reason: 'fam', note: 'IT DOES NOT KNOW THAT FAMILY' };
+    if (F.st === 'signature') return { ok: false, reason: 'signature', note: 'ONLY ITS OWN KIND CAN USE THAT FAMILY' };
+    if (F.st === 'known') return { ok: false, reason: 'known', note: 'YOU ALREADY HAVE THAT FAMILY' };
+    const L = hqLearnLedger(you);
+    L.taught.push({ fam: F.fam, from: c.race, ids: F.ids.slice() });
+    if (!L.known.includes(F.first)) L.known.push(F.first);
+    if (!(L.taughtAt > 0)) { const lv = hqPartyXp(you).lvl; L.taughtAt = lv; L.used = Math.min(L.used, spellLearnPicksAt(you.meta.race || 'door agent', you.meta.gender, lv, lv)); }
+    _hqCaptiveTake(profile, capId);
+    r.at = Date.now();
+    const sp = SPELL_BY_ID[F.first];
+    return { ok: true, kind: 'teach', fam: F.fam, race: c.race, first: F.first, note: String(F.name).toUpperCase() + ' · ' + String((sp && sp.name) || F.first).toUpperCase() + ' LEARNED · ' + String(c.race).toUpperCase() + ' WALKS FREE' };
+}
+function _hqCaptureEnlistNow(profile, captures, opts) {
     if (!profile || !Array.isArray(captures)) return { ok: false, rows: [], gold: 0 };
     const date = opts && opts.date;
     const rows = []; let gold = 0;
@@ -104401,7 +104475,7 @@ function hqPartyUnlocked(profile) {
 function hqPartyDefaultJob(race) { return UNIT_CLASS; }
 /* THE DEFAULT KIT (THE JOBS REMOVAL, 2026-09-27): `lead` ids first, then the race's four curated rungs, then the rest of
    its families cheapest first — trimmed to the 7 slots / 16 SP by treeLegalSubset. The forge's DEFAULTS and THE OFFICER's
-   starting kit (lead = the Adaptable row: the story rule "only learn spells of units you have unlocked" rides on it). */
+   starting kit (lead = the Adaptable row, for Online / Practice; in story mode STORY SPELL LEARNING drops it: hqLearnFitKit). */
 /* THE KIT EXTRAS (2026-11-24): a race's own spell past its four tree rungs that its default kit should carry anyway (the tree
    is four rungs by schema, and the family fill sorts by tier, so a tier III extra never made it in). Point Guard: Slam Dunk
    (mondo 11-24: "you gotta give him a slam dunk ability too"). */
@@ -113460,7 +113534,7 @@ const MD_BUILDINGS = {
         lamp: null, liftButtons: false,
         natives: null,
         guests: f => f <= 10 ? ['influencer', 'streamer', 'vtuber', 'glitch', 'virus', 'ai'] : f <= 20 ? ['hacker', 'virus', 'glitch', 'conspiracy theorist', 'ghost', 'streamer'] : ['ghost', 'glitch', 'ai', 'hacker', 'virus'],
-        boss: null, bossName: 'THE OLDEST BACKUP',   // the bottom's title, not a boss: floor 30 is story, left open (the doc): the bottom page stands empty and its way out is open
+        boss: 'demon', bossGender: 'male',   // THE BOTTOM (mondo 11-25, on "floor 30 is story, left open": "it can be a demon perhaps"): a demon alone under the oldest page
         floorBoss: { 10: { race: 'influencer', gender: 'female' }, 20: { race: 'virus', gender: 'male' } },
         words: { floor: f => String(2026 - f), roomNo: (f, i) => 'PAGE ' + (2026 - f) + '/' + String(i + 1).padStart(3, '0'), out: 'THE ARCHIVE', top: 'THE OLDEST BACKUP', loot: 'SAVED FILES', rest: 'A CACHED PAGE', cleared: 'THE ARCHIVES ARE READ' } },
 };
@@ -114173,7 +114247,11 @@ const MD_CASES = {
         ['site_prebuilt_bermuda_beach', 'THE HARBOUR'], ['site_prebuilt_skinwalker_ow_corn', 'THE ESTATE'], ['site_prebuilt_atlantis_deep', 'THE DEEP'],
         ['site_prebuilt_moon_plots', 'THE MOON'], ['site_prebuilt_hollow_earth_cavern', 'THE CAVERN'], ['site_prebuilt_lookingglass_realm', 'THE ASTRAL REALM'],
         ['site_prebuilt_hell_plots', 'HELL'], ['site_prebuilt_heaven_plots', 'HEAVEN'], ['site_prebuilt_antarctica_plots', 'ANTARCTICA'], ['site_prebuilt_bermuda_katana', 'KATANA ISLAND']],
-    jobs: [['arrest', 'ARREST IT AND BRING IT BACK'], ['escort', 'ESCORT IT HOME'], ['rescue', 'RESCUE WHO IT TOOK'], ['close', 'CLOSE THE DOOR FROM THE FAR SIDE']],
+    /* THE BOUNTIES (mondo 11-25: "it should be dead or alive (kill or capture), or alive only (just capture), but alive only would pay more"):
+       'arrest' = DEAD OR ALIVE, a knock-out or a capture both close it; 'alive' = ALIVE ONLY, only an arrest or a capture door pays (`rolls`),
+       a knock-out closes the door for nothing */
+    jobs: [['arrest', 'WANTED DEAD OR ALIVE: KILL OR CAPTURE IT'], ['alive', 'WANTED ALIVE ONLY: CAPTURE IT · PAYS DOUBLE'], ['escort', 'ESCORT IT HOME'], ['rescue', 'RESCUE WHO IT TOOK'], ['close', 'CLOSE THE DOOR FROM THE FAR SIDE']],
+    jobRolls: { alive: 4 },   // ALIVE ONLY pays more: twice the floor-table rolls
     twists: [['child', 'IT IS A CHILD LOOKING FOR ITS PARENT'], ['rent', 'SOMEONE IN THE BUILDING IS CHARGING IT RENT'], ['knox', 'KNOX GOT THERE FIRST'], ['notalone', 'IT IS NOT ALONE']],
     rolls: 2,   // the reward: this many rolls of the floor table
 };
@@ -114210,13 +114288,14 @@ function mdCaseClose(profile, roomId) {
     if (mdCaseClosed(mc.id)) return { ok: false, reason: 'closed' };
     const run = _hotelRunOn(r.mdB || 'hotel'); if (!mc.ids.every(x => run.caseDown && run.caseDown[x])) return { ok: false, reason: 'anomaly' };
     try { const o = JSON.parse(localStorage.getItem('ew_md_cases_closed') || '{}'); o[mc.id] = Date.now(); localStorage.setItem('ew_md_cases_closed', JSON.stringify(o)); } catch (e) {}
-    const got = [];
-    for (let i = 0; i < MD_CASES.rolls; i++) { const item = hotelLootRoll(roomId, 'case' + i, mc.id), a = (typeof hqBagAdd === 'function' && profile) ? hqBagAdd(profile, item, 1) : { ok: false };
+    const cs = mdCaseToday(), arrested = !!(run.caseArrested && mc.ids.every(x => run.caseArrested[x])), job = cs && cs.id === mc.id ? cs.job.k : null;
+    /* ALIVE ONLY and it went down instead: the door closes, the case closes, nothing is paid */
+    if (job === 'alive' && !arrested) return { ok: true, reward: [], arrested: false, job, failed: true };
+    const got = [], rolls = (MD_CASES.jobRolls || {})[job] || MD_CASES.rolls;
+    for (let i = 0; i < rolls; i++) { const item = hotelLootRoll(roomId, 'case' + i, mc.id), a = (typeof hqBagAdd === 'function' && profile) ? hqBagAdd(profile, item, 1) : { ok: false };
         if (a && a.ok) got.push({ item, n: 1, name: (typeof ITEM_RULES !== 'undefined' && ITEM_RULES[item] && ITEM_RULES[item].name) || item }); }
-    /* an ARREST case (MD_CASES.jobs 'arrest'): says ARRESTED when what came through was taken in (the give-up panel's ARREST, or a capture
-       door); it closes either way, the reward is the same (no rule beyond the board's words: mondo decides if an arrest case needs the arrest) */
-    const cs = mdCaseToday(), arrested = !!(run.caseArrested && mc.ids.every(x => run.caseArrested[x]));
-    return { ok: true, reward: got, arrested, job: cs && cs.id === mc.id ? cs.job.k : null };
+    /* `arrested`: what came through was taken in (the give-up panel's ARREST, or a capture door): the toast says ARRESTED */
+    return { ok: true, reward: got, arrested, job };
 }
 /* the case board's words (a building's way in): today's case, whichever building it is in */
 function mdCaseBoard(b) {
