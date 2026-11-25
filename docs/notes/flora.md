@@ -185,6 +185,10 @@ the split holds in every room: about a QUARTER thin (42 % of tufts kept, under h
 short lawn, never a flat floor), a QUARTER short sward (0.7 height), HALF dense. Large irregular patches, never even clumps.
 Replaces G3's bare blobs (EW_NO_COVER = G3 back). On a dirt sheet the bare quarter shows the dirt, its pebbles and its litter.
 
+**G12b · A CLIMATE'S OWN SHARE OF THE SPLIT.** ZONE_FLORA climates take `cover` (0..1, default 1): how strongly the G12 split and the
+G13 bias apply there. A mown city lawn is `cover: 0.3` (nearly even, a few short patches); a wild wood, meadow or scrub keeps 1. A zone's
+thread tunes its own climate's `cover` here; never a per-room number in the code.
+
 **G13 · THE ECOLOGY.** The rank is pushed: UP at a trunk's foot (6.5 m), at the wood's rim (the thicket's mass within 3.5 m) and at
 a stump, log or rock (2 m); DOWN within 2.6 m of a path's edge and round a landmark (a grand stair's foot and the 7 m approach in
 front of it, 8 m; the room's spawn, 3.5 m). So clearings open round where you walk and arrive, and the cover gathers where nobody does.
@@ -201,7 +205,16 @@ the open, duller brown-green beside a path, and each clump its own hue step towa
 **G17 · THE WALKER.** The grass bows down and away round the walker's feet (0.7-2 m, shader, WebGL + the WebGPU twin), so he
 reads in dense cover. No scan: the walker's spot is one uniform.
 
-Not done yet (asked, waiting): G18 lighting and depth (dappled light, contact shadows; a distance desaturation without fog needs
+**G19 · THE LITTER (built 11-25).** The intermediate layer: soft, ragged ground patches (1.6-3.4 m) of the game's own leaf-litter sheet
+`leaves_5` (leaves + twigs; one mask made in code cuts the blob, the sheet is never touched), lying on the ground on 3 x 3 corners,
+tinted per patch (brown, olive, dark). Where: the thin (bare) cover share, a little on the short sward, more within 3 m of a trunk or
+the wood's rim, and a dark contact patch at a trunk's foot. Only in woody climates (GROUND_RULES.litter.k: forest, wood, redwood,
+horror, autumn 1-1.4; fairy, japan, hollow 0.6-0.7; meadow 0.45; city, desert, snow, shore none). One mesh a flora cell, dropped with
+the cell. Off: EW_NO_LITTER. Readout `_ewHqFlora.litter`.
+
+THE FAR COLOUR (built 11-25, his OK): rendering-loading-perf.md. Fog back ON by default (11-25).
+
+Not done yet: G18 lighting and depth (dappled light, contact shadows; a distance desaturation without fog needs
 mondo's OK, bloom + fog stay off); G19 the leaf litter, moss, twigs and roots layer (ground cards / sheets, no tall meshes).
 
 ### 0c. What each part of the game does about it (who owns what, 11-25)
