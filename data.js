@@ -107982,7 +107982,7 @@ function zoneFloraProps(roomId, info, freeFor) {
    THE SWAP: a room's prop or scatter row of a key here is worked out by the climate of its spot when the room's props stand (zoneFloraSwap, once a room
    build, never a frame): `'='` keeps it, `null` drops it (the field's tree-hugging ferns grow there instead), `{ key, h, foot }` stands another piece.
    No room, tool or district file is edited: a rebaked room comes out the same. A climate not named takes `'*'`; a room in no zone keeps its rows. */
-ZONE_FLORA.tint = { rf_plant_7: [0.5, 0.66, 0.42], rf_plant_1: [0.48, 0.64, 0.42], rf_plant_10: [0.55, 0.7, 0.45] };   // (the sage bush keeps its own grey-green: it is the desert's too)
+ZONE_FLORA.tint = { rf_plant_7: [0.4, 0.55, 0.33], rf_plant_1: [0.4, 0.54, 0.34], rf_plant_10: [0.45, 0.6, 0.37] };   // (the sage bush keeps its own grey-green: it is the desert's too)
 ZONE_FLORA.swap = {
     fern: { '*': null, tropical: '=', japan: '=', hollow: '=' },                     // the Meshy rosette stays only where it reads as a tropical plant
     psxg_dead_bush_1: { '*': { key: 'psxg_dead_bush_2', h: 0.62, foot: 0.3 } },     // three sticks -> the pack's thorn bush (its footprint kept)
