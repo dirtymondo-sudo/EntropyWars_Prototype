@@ -502,6 +502,18 @@ dl.facts dt { color: var(--ink3); font-size: 12px; } dl.facts dd { margin: 0; mi
 #story .kmini { font-size: 12px; } #story .kmini .stinp.sm { width: 130px; } #story .stchip b { cursor: pointer; color: #ff8a8a; }
 #story .kchk { display: flex; gap: 10px; align-items: baseline; padding: 7px 0; border-bottom: 1px solid #333; max-width: 1100px; } #story .kct { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 #story .kpill { font: 600 10.5px var(--font-mono); border: 1px solid; padding: 0 6px; flex: none; } #story .kpill.p { color: #ff5a5a; } #story .kpill.q { color: #ffb84d; }
+#st_myst { position: absolute; inset: 8px; display: grid; grid-template-columns: 1fr 380px; gap: 8px; } #st_myst[hidden] { display: none; }
+#kmMain, #kmSide { overflow-y: auto; padding: 12px 14px 30px; min-width: 0; }
+#story .kmyst th small { display: block; font-size: 10px; color: #888; text-transform: none; letter-spacing: 0; font-weight: 400; }
+#story .kmyst td { font: 12px var(--font-mono); white-space: nowrap; } #story .kmyst td.kmname { font: 12.5px var(--font-body); white-space: normal; min-width: 260px; cursor: pointer; } #story .kmyst td.kmname small { display: block; color: #8a8a8a; }
+#story .kmyst tr.on td.kmname { box-shadow: inset 3px 0 0 #fff; background: #1a1a1a; }
+#story .kmyst td.kmc { cursor: pointer; } #story .kmyst td.kmc:hover { background: #1a1a1a; }
+#story .kmyst td.kmc.a { color: #ffd66b; } #story .kmyst td.kmc.g { color: #4fd36a; } #story .kmyst td.kmc.r { color: #ff5a5a; font-weight: 600; } #story .kmyst td.kmc.p { color: #ff7fbf; } #story .kmyst td.kmc { color: #888; }
+#story .kmyst tr.kmsum td { color: #ccc; font-weight: 600; border-top: 1px solid #555; } #story .kmyst tr.kmsum td.r { color: #ff5a5a; }
+#story .kherr { font: 600 10px var(--font-mono); border: 1px solid #ff7fbf; color: #ff7fbf; padding: 0 4px; }
+#story .kmlegend { display: flex; flex-wrap: wrap; gap: 6px 16px; font: 12px var(--font-mono); margin-top: 8px; } #story .kmlegend .a { color: #ffd66b; } #story .kmlegend .g { color: #4fd36a; } #story .kmlegend .r { color: #ff5a5a; } #story .kmlegend .p { color: #ff7fbf; }
+#story .kstep { border: 1px solid #555; padding: 5px; margin-bottom: 5px; }
+#storyAt.on { box-shadow: 0 0 0 2px #c79a12; font-weight: 600; }
 @media (max-width: 860px) { #st_facts { grid-template-columns: 1fr; grid-auto-rows: minmax(320px, auto); overflow-y: auto; } }
 @media (max-width: 860px) { #st_map, #st_beat { grid-template-columns: 1fr; grid-auto-rows: minmax(320px, auto); overflow-y: auto; } #story .stbar { overflow-x: auto; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
@@ -535,6 +547,7 @@ dl.facts dt { color: var(--ink3); font-size: 12px; } dl.facts dd { margin: 0; mi
       <button class="btn" id="btnMap" title="Places from the game's map">Map</button>
       <button class="btn" id="btnCustom" title="Add a named character, organisation, boss or place"><span class="hide-phone">+</span><span>Character</span></button>
       <button class="btn" id="btnTl" title="Timeline of events (T)">Timeline</button>
+      <select class="sel" id="storyAt" title="Show the ties as they stand at one chapter of the story" aria-label="Story at a chapter"></select>
       <button class="btn" id="btnStory" title="Plan the chapters and quests on the game's map">Story planner</button>
       <button class="btn" id="btnSheets" title="A full sheet for every character in the story">Character sheets</button>
     </div>
@@ -613,7 +626,7 @@ dl.facts dt { color: var(--ink3); font-size: 12px; } dl.facts dd { margin: 0; mi
   <div class="stbar">
     <span class="t">ENTROPY WARS · STORY</span>
     <button class="stbtn back" data-act="back">◂ Relationship Web</button>
-    <button class="sttab" data-sttab="map">Map</button><button class="sttab" data-sttab="beat">Beat chart</button><button class="sttab" data-sttab="spine">Spine</button><button class="sttab" data-sttab="chars">Character sheets</button><button class="sttab" data-sttab="facts">Facts</button><button class="sttab" data-sttab="checks">Checks</button>
+    <button class="sttab" data-sttab="map">Map</button><button class="sttab" data-sttab="beat">Beat chart</button><button class="sttab" data-sttab="spine">Spine</button><button class="sttab" data-sttab="chars">Character sheets</button><button class="sttab" data-sttab="facts">Facts</button><button class="sttab" data-sttab="myst">Mysteries</button><button class="sttab" data-sttab="checks">Checks</button>
     <span class="sp"></span>
     <button class="stbtn" data-act="import" title="Add chapters and quests from a file">Add from a file</button>
     <button class="stbtn" data-act="export">Export the plan</button>
@@ -633,6 +646,7 @@ dl.facts dt { color: var(--ink3); font-size: 12px; } dl.facts dd { margin: 0; mi
     <div id="st_spine" class="stpanel" hidden></div>
     <div id="st_facts" hidden><div id="kfMain" class="stpanel"></div><div id="kfSide" class="stpanel"></div></div>
     <div id="st_checks" class="stpanel" hidden></div>
+    <div id="st_myst" hidden><div id="kmMain" class="stpanel"></div><div id="kmSide" class="stpanel"></div></div>
     <div id="st_chars" hidden><div id="scLeft" class="stpanel"></div><div id="scMain" class="stpanel"></div><div id="scRight" class="stpanel"></div></div>
   </div>
 </div>
