@@ -3754,7 +3754,7 @@
                 const q = String(P.sockQ || '').trim().toLowerCase();
                 const rows = q ? pool.filter(x => ((x.sp.name || '') + ' ' + (x.sp.desc || '') + ' ' + (x.sp.school || '') + ' ' + (x.sp.type || '') + ' ' + (x.sp.spellType || '') + ' ' + (x.famName || '')).toLowerCase().includes(q)) : pool;
                 html += `<div class="hq-circ-picker"><div class="hq-circ-bar"><b>BORROW · ${t ? 'TIER ' + _hqEsc(numeral) + ' · ANY OTHER RACE' : 'BY FAMILY · ANY OTHER RACE\'S FAMILY'}</b><span class="hq-circ-count">${t ? t + ' SP' : '1–4 SP'} · ${rows.length} / ${pool.length}</span><input type="search" class="hq-circ-search" data-circ-search="1" placeholder="SEARCH THE POOL" value="${_hqEsc(P.sockQ || '')}" autocomplete="off"><span class="hq-circ-tools"><button class="hq-btn hq-btn-sm" data-party-act="sockclose">✕ CLOSE</button></span></div>`;
-                if (!pool.length) html += `<p class="hq-panel-note">Nothing to borrow at this tier — in story mode Adaptable borrows only from the vessels you own.</p>`;
+                if (!pool.length) html += `<p class="hq-panel-note">Nothing to borrow at this tier.</p>`;
                 else if (!rows.length) html += `<p class="hq-panel-note">Nothing matches.</p>`;
                 else {
                     html += `<div class="hq-circ-pool">`;
