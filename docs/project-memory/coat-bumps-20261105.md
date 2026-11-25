@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-05T11:24:17.243Z
 ---
-mondo 11-05: "all of the coats still have these 2 weird bumbs on the side" + asked if the MPFB classic fit caused it. NO: with EW_DISABLE_SWAY the baked coats are clean A-lines; everything came from THE COAT HANG (three-renderer.js COAT_HANG runtime chains). Thread (thread in the owner project).
+mondo 11-05: "all of the coats still have these 2 weird bumbs on the side" + asked if the MPFB classic fit caused it. NO: with EW_DISABLE_SWAY the baked coats are clean A-lines; everything came from THE COAT HANG (three-renderer.js COAT_HANG runtime chains). Thread (owner-project id).
 
 Pass 1, PR #921: limT + poseA. Upright improved, but he was furious that the after shots "look the exact same": the wide stance still had pointy hips and horizontal bands, and the heavy cassock had a seat hole.
 

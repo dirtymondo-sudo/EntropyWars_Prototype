@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-12T05:00:45.722Z
 ---
-mondo 11-12 linked github.com/fromtheghost/ghibli-grass: "try implementing some more stylistic grass. AAA game like genshin impact". Thread (thread in the owner project). This overrides the 09-29 "no grass blades" rule for this ask only (old sparse tufts `GRASS.enabled:false` stay off). Related [[visual-rules]] [[calm-rollout-20261111]].
+mondo 11-12 linked github.com/fromtheghost/ghibli-grass: "try implementing some more stylistic grass. AAA game like genshin impact". Thread (owner-project id). This overrides the 09-29 "no grass blades" rule for this ask only (old sparse tufts `GRASS.enabled:false` stay off). Related [[visual-rules]] [[calm-rollout-20261111]].
 
 - The repo has NO LICENCE (all rights reserved): nothing copied, technique rebuilt.
 - MOCK-UP on branch claude/project-thread-4m0cq0 (commit bead7a3, NOT merged, no ?v= bump): three-renderer.js THE GRASS FIELD (`GGRASS`, `_ggBuild`, `_ggMat`, `_ggTick`, node twin `_ewNodeGGrass`), off unless `?grassfield=1` / `window.EW_GRASS_FIELD`. Live retune: `EW_GGRASS` + `EW_GGRASS_REBUILD()`.

@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-15T15:57:38.522Z
 ---
-Continues [[perf-city-60fps-20261115]] (same (thread in the owner project). Notes: docs/notes/rendering-loading-perf.md "THE ONE PAINT", "THE SHELL CELLS".
+Continues [[perf-city-60fps-20261115]] (same (thread in the owner project)). Notes: docs/notes/rendering-loading-perf.md "THE ONE PAINT", "THE SHELL CELLS".
 
 - THE PRICE (his Mac, Firefox WebGPU): frame ~ 12.5 ms + 4.8 µs x "bundles ... meshes" on the F3 (6,712 = 44.7 ms; 5,601 = 39.4 ms; 139-mesh lobby = 12.5 ms). 60 FPS needs under ~900 meshes in view. Pixels and JS are not the limit (ratio 1 changed nothing; CPU 20 ms).
 - #1444 shell cells (96 m squares cull): 20 -> 22-25 FPS only; 23-28 of 38 squares are in view.

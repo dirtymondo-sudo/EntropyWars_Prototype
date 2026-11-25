@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-13T16:19:07.043Z
 ---
-Thread (thread in the owner project). mondo 11-13 13:25Z asked for a first pass on ALL units ("combination of stuff we already have and new stuff with meshy"; creator pieces first, e.g. the creator quarterback helmet beat the Meshy one); he does a visual review after. Split = repo docs/notes/meshy-remake-batches.md (PR #1255). Plan [[meshy-remake-plan-20261112]].
+Thread (owner-project id). mondo 11-13 13:25Z asked for a first pass on ALL units ("combination of stuff we already have and new stuff with meshy"; creator pieces first, e.g. the creator quarterback helmet beat the Meshy one); he does a visual review after. Split = repo docs/notes/meshy-remake-batches.md (PR #1255). Plan [[meshy-remake-plan-20261112]].
 
 - SHIPPED PR #1261 (~16:15Z), live on R2: 25 `RACE_REMADE_LOOKS` rows, 27 `ewm_t2*` wear GLBs, 23 unit faces (`<key>Face` + `ew_face_<key>`), mpfb_shapes.glb a9270d98, sprites.js 0fdd926c; file list uploaded_files.txt in the proof folder. Meshy models stay defaults; saved looks untouched.
 - Creator pieces used: ewm_icecrown, ewm_overlordhelm, ewm_mushroomcap, ewm_beret, ewm_tricorn (pirate M), ewb_luchador, ewm_policebadge, mhw_mindfront_fishing_hat_01 (hippie M), Feathered wings (nephilim), mhw_elvs_lara_tank1 (marksman F). Saved-look units (halfdemon M/F, mad scientist M/F, men in black): no Meshy, saved clothes + unit face. No own face: overlord, glitch.

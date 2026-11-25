@@ -1,6 +1,6 @@
 ---
 name: city-sign-fonts-20261115
-description: Disaster City sign FONT PASS + MUNICIPAL MARKS (thread in the owner project): all LIVE 11-15 (PR #1419, #1420, #1453, #1462); only Financial's box letters wait his answer
+description: Disaster City sign FONT PASS + MUNICIPAL MARKS ((thread in the owner project)): all LIVE 11-15 (PR #1419, #1420, #1453, #1462); only Financial's box letters wait his answer
 metadata:
   type: project
   modified: 2026-11-15T12:25:15.692Z

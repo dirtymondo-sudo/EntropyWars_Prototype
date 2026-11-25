@@ -4,7 +4,7 @@ description: 11-12 seats removed from Camelot + Training Room (PR #1158) and Tra
 metadata:
   type: project
 ---
-mondo 2026-11-12: "get rid of the seats on the camelot map and the training room ... make the training room look more like the old one, or just a newer design that is retro scifi secret psychic testing sleek and futuristic". Thread (thread in the owner project).
+mondo 2026-11-12: "get rid of the seats on the camelot map and the training room ... make the training room look more like the old one, or just a newer design that is retro scifi secret psychic testing sleek and futuristic". Thread (owner-project id).
 
 - SHIPPED PR #1158 (token 20261112-noseats-01-cors, data.js 4c62641a live): Camelot's two stands beside the tilt removed (boards rebaked 12/11/10/9, same windows); Training Room bleachers + their walk, end walls, rail, yellow foot line removed. Nothing else touched.
 - REDESIGN SHIPPED PR #1160 (token 20261112-testchamber-01-cors): he picked the mock-up on the card 11-12. Not yet seen by him in game; lessons not replayed on it. Mock-up = `training_hall` room as a white test pad (cyan seams, A-H / 1-8 labels and the old "ORTHOGONAL GEOMETRY EXPOSURE AREA" sign as floor paint, four emitter pylons with floating_orb, iso_tank row + eeg_rack west, dream_screen wall + retro_console + egg_chair north, operators' deck east, aluminium walls). Shots + the data.js diff: /mnt/project-files/training-room-20261112/ (mockup_test_chamber.diff applies on PR #1158's main).

@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-14T12:48:50.296Z
 ---
-Thread (thread in the owner project) "optimize Disaster City" (mondo 11-14, Mac Firefox WebGPU, started 6.8 FPS / 3748 draws; 12:05 "still really slow ... go harder").
+Thread (owner-project id) "optimize Disaster City" (mondo 11-14, Mac Firefox WebGPU, started 6.8 FPS / 3748 draws; 12:05 "still really slow ... go harder").
 - #1381 seat grid rays (lens tell "Pick ~950 ms/s").
 - #1382 prop chunks, #1386 lamp's reach. #1383 went BLACK (a `var ro` clash in `_ewBunSetup`) -> grep hook names there AND load the city in the sandbox before shipping.
 - #1389: hero lava-lamp cube shadow held while off camera (it was the 776 "shadow" draws: point-light sides draw bundles classic); whole-scene scans (LOD, chunk spheres, CSS2D, hero list) only on change.

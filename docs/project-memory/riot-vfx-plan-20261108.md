@@ -6,7 +6,7 @@ metadata:
   modified: 2026-11-08T14:30:42.766Z
 ---
 mondo 11-08 sent Riot's League VFX style guide PDF and asked to improve VFX clarity, plan first, no Blender. Thread
-"Improve VFX clarity with Riot style guide" (thread in the owner project) (it first reverted all
+"Improve VFX clarity with Riot style guide" (owner-project id) (it first reverted all
 Blender fire+smoke, PR #1051 [[blender-vfx-research-20261103]]). Plan doc https://claude.ai/artifact/Y9TyT9NUqMHnyjXYcbmZGQ.
 Details of each phase: docs/notes/spells-vfx.md "THE RIOT PASS, phase A/B/C". Proof /mnt/project-files/riot-vfx/phase-*/.
 

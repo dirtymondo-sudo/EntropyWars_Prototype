@@ -4,7 +4,7 @@ description: 11-13 PR #1320: Settings > Developer > Remade Race Looks switch (lo
 metadata:
   type: project
 ---
-Thread (thread in the owner project). mondo 11-13 20:22Z: "a dev option in the settings to use all of these new race looks, saves to where i dont have to retoggle it on reloading the page, but off by default for now".
+Thread (owner-project id). mondo 11-13 20:22Z: "a dev option in the settings to use all of these new race looks, saves to where i dont have to retoggle it on reloading the page, but off by default for now".
 
 - LIVE PR #1320: Settings > Developer > Remade Race Looks ON/OFF. sprites.js `remadeLooksOn()` / `setRemadeLooksOn()`, hooked in `getCharacterAppearanceModel` (the one resolver for every drawn unit). Slot's own saved look + USE ORIGINAL MODEL still win; races with no remade look keep Meshy; cast members (cutscene cast) untouched. Viewer-local, not relayed online.
 - `?likeness=1` is NOT this: it is the face-likeness picks switch in the creator (ew_likeness).

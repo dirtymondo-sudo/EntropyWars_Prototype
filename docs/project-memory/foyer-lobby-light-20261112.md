@@ -4,7 +4,7 @@ description: Foyer too bright / lobby dark by comparison (mondo 11-12) fixed PR 
 metadata:
   type: project
 ---
-mondo 11-12: "the foyer is too bright and then stepping into the lobby is dark by comparison". Thread (thread in the owner project).
+mondo 11-12: "the foyer is too bright and then stepping into the lobby is dark by comparison". Thread (owner-project id).
 
 - Cause: hemisphere/key/fill are scene-wide. In the foyer the hall through the doorway wore the foyer's box rig (hemi 0.44 vs hall 0.78) and looked dark; foyer white plaster blown by pendants + Key Light (hall gets no Key Light).
 - Fix PR #1217: three-renderer.js `_hqJoinedHall` (a box in HQ_STAGE_RULES.round wears the hall rig; off = HQ_LIGHT_RULES.joinRig false), `shell.lampK` (room's own lamps share, any room), foyer `lampK 0.5, keyLamp 0.3`. Token 20261112-foyerlight-02-cors. Proof /mnt/project-files/foyer-lobby-light/.

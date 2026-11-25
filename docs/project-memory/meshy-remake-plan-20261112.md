@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-12T04:03:01.072Z
 ---
-mondo 11-12 04:00Z (thread in the owner project): "make a plan doc for future sessions to continue this process for the rest of the roster that needs it ... make the models more realistic and iron out the kinks of the meshy models and improve them, and each one will probably need visual verification like these 3 did. Also I want to get the faces a little more accurate, don't know if you can make custom face/body textures".
+mondo 11-12 04:00Z ((thread in the owner project)): "make a plan doc for future sessions to continue this process for the rest of the roster that needs it ... make the models more realistic and iron out the kinks of the meshy models and improve them, and each one will probably need visual verification like these 3 did. Also I want to get the faces a little more accurate, don't know if you can make custom face/body textures".
 
 Plan = repo `docs/notes/meshy-remake-plan.md` (copy /mnt/project-files/meshy-parts-20261112/MESHY_REMAKE_PLAN.md), tracker row 21e. Holds: per-unit recipe, THE LOOK CHECK (4 sides + walk, WebGL2), kinks solved + open (K1 softer textures, K2 no sway, K3 wizard elbows unconfirmed, K4 no battle check, K5 robe triangle, K6 other genders), FACE pilot (custom head shape + custom skin per unit from its own Meshy head = the PR #1134 Morgan mechanism; automatic version UNPROVEN, cowboy first), roster groups (A ~80 people-in-clothes models, B 17 creatures wait on row 18, C keep own), batches of 3-4 with his look between, 15 credits/model.
 

@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-12T07:55:40.370Z
 ---
-mondo 11-12: "Scatter shot wasnt moveing+casting for me". Thread (thread in the owner project). PR #1188 merged + uploaded (?v=20261112-walkincast-01-cors).
+mondo 11-12: "Scatter shot wasnt moveing+casting for me". Thread (owner-project id). PR #1188 merged + uploaded (?v=20261112-walkincast-01-cors).
 
 Cause: self-casts were skipped by every approach path, yet the Abilities row lit MOVE→CAST (hasReachableTarget asks the pool). Pick only offered CONFIRM on the caster, cast refused "no enemy in range and in sight to hit".
 

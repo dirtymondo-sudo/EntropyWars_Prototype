@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-13T22:50:39.697Z
 ---
-Thread (thread in the owner project) "Polish University interiors atmosphere" (mondo 11-13 22:33: after a district's first interior pass, do a second pass; list models wanted but missing, make Meshy versions, add to model list; focus on vibe/atmosphere). First pass = [[dc-university-buildings-20261113]] PR #1340.
+Thread (owner-project id) "Polish University interiors atmosphere" (mondo 11-13 22:33: after a district's first interior pass, do a second pass; list models wanted but missing, make Meshy versions, add to model list; focus on vibe/atmosphere). First pass = [[dc-university-buildings-20261113]] PR #1340.
 
 - Code: docs/disaster-city/districts/U.js `ATMOS[kind]` at the end of `inside()` (liner = wall coat + dado + skirting + rail + crown + LIT ceiling; drawn glow lights panelL / strip / pendant / window_; dressing off square centres). Notes: areas-complexes.md "THE UNIVERSITY INSIDES" -> "THE SECOND PASS".
 - 18 Meshy models (text-to-image nano-banana-pro concept -> image-to-3d meshy-6, ~10 min for all, pipeline script in project files university-interiors-2/meshy): optimize-assets.js .opt.glb uploaded AS `Assets/world/props/meshy/<key>.glb` via `node sync-zip.js --put`; ASSET_MANIFEST via `node manifest-assets.js <mirror> --merge`; data.js HQ_CATALOGUE_ALL rows (base 'asset'); list-models.js SOURCES row + rerun.

@@ -7,7 +7,7 @@ metadata:
 mondo 2026-11-12 asked for a PLAN ONLY: unify astral projection. Body stays on the cast square, a white see-through astral body
 floats and moves, immune to physical like the Ghost passive, real body takes damage as normal; psychic / telepathic / dream /
 nightmare spells deal bonus damage to a projecting unit; a projecting unit can see + interact with the Shadow Realm.
-Thread (thread in the owner project). Doc (Claude Doc): https://claude.ai/artifact/4Yup3jQwxJkTYjf1qh1jVx
+Thread (owner-project id). Doc (Claude Doc): https://claude.ai/artifact/4Yup3jQwxJkTYjf1qh1jVx
 Pointer: /mnt/project-files/astral-projection-20261112/README.md. NO GAME CODE until he OKs; then mock-up first (VFX design rule).
 
 Facts read from code (main at PR #1214):
@@ -56,6 +56,6 @@ BUILD 4a SHIPPED 11-12 PR #1227 (live): raceAstralProjection (T3, cord 6, return
 battle.js astralProjectAlly), raceCutTheCord (T2 Dream Predation, stun ifTargetHas projecting), ai.js rules (_aiHasMagicToFight).
 WAITING ON HIM: early return needs a menu command (UI design, his OK) and Silver Cord passive depends on it; names his to rename.
 Not checked: CPU casting in a real match, online guest view of builds 3-4, body slump pose.
-Decision card (thread in the owner project) (11-12): how a spirit returns early (RETURN menu row [my pick, mock-up first] / re-cast the spell / none).
+Decision card (owner-project id) (11-12): how a spirit returns early (RETURN menu row [my pick, mock-up first] / re-cast the spell / none).
 11-12 16:55 he picked RETURN row. BUILT + pushed UNMERGED on branch claude/project-thread-smzqis (battle.js doAstralReturn/canAstralReturn free action, hud.js row replaces ATTACK for a spirit, online.js wrapper, data.js passiveSilverCord cord +2 + Protect on early return). Mock-up mock_return_to_body_row.jpg posted; on his OK: notes, SPELL_CATALOGUE (Silver Cord I), token bump, merge, upload.
 BUILD 4b SHIPPED 11-12 PR #1230 (live) after his 'ok': Return to body row + Silver Cord. PLAN COMPLETE. Leftovers offered: body slump pose, CPU guarding its own body, online guest check of builds 3-4, CPU seen casting in a real match.

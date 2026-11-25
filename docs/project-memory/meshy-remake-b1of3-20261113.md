@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-13T16:02:40.414Z
 ---
-Thread (thread in the owner project) ("Remake unit models, batch 1 of 3"). mondo 11-13 13:25Z: new models for ALL units like cowboy / robin hood, CREATOR CLOTHES FIRST ("the helmet already in the creator was way better than the one you made with meshy"), Meshy only for missing pieces; he does a visual review pass after. Split of the 61 remaining group A units over three threads = repo docs/notes/meshy-remake-batches.md (PR #1255). Follows [[meshy-remake-plan-20261112]].
+Thread (owner-project id) ("Remake unit models, batch 1 of 3"). mondo 11-13 13:25Z: new models for ALL units like cowboy / robin hood, CREATOR CLOTHES FIRST ("the helmet already in the creator was way better than the one you made with meshy"), Meshy only for missing pieces; he does a visual review pass after. Split of the 61 remaining group A units over three threads = repo docs/notes/meshy-remake-batches.md (PR #1255). Follows [[meshy-remake-plan-20261112]].
 
 - SHIPPED PR #1260 (11-13 ~17:30Z), live on R2: 19 remade looks: annunaki, astronaut, barbarella, bunny girl, chef, clown, conspiracy theorist, cowboy F, cult leader, demon F, demon princess, fairy, fallen angel, firefighter, fortune teller F, gangster, general, ghost F, giant. Meshy stay defaults. 17 unit faces.
 - HELD BACK (old head / body stays inside the T2 clothes): antihero, atlantean, fortune teller M. Ghost M = pack model, left.

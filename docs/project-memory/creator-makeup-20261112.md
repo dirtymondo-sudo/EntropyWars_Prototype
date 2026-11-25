@@ -4,7 +4,7 @@ description: 11-12 PR #1179: creator MAKE-UP (eye liner, eye shadow, blush on MP
 metadata:
   type: project
 ---
-mondo 11-12 06:48Z (thread in the owner project): "paint liner and eye shadow, and make a way in the creator to add makeup too. Also there are literally anime eyes available in the creator" (a correction: I had told him the knight's anime eyes could not carry over).
+mondo 11-12 06:48Z ((thread in the owner project)): "paint liner and eye shadow, and make a way in the creator to add makeup too. Also there are literally anime eyes available in the creator" (a correction: I had told him the knight's anime eyes could not carry over).
 
 Shipped PR #1179, token 20261112-makeup-02-cors, uploaded to R2.
 - FACE > EYES: Eye liner, Eye shadow; FACE > CHEEKS: Blush. None / Pick a colour + swatches. Keys linerTint/shadowTint/blushTint ('own'|'pick') + linerColor/shadowColor/blushColor.

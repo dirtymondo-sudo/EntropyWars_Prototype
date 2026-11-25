@@ -4,7 +4,7 @@ description: Financial (Disaster City) interiors SECOND PASS 11-14: F-atmos.js (
 metadata:
   type: project
 ---
-Thread (thread in the owner project) "Deepen Financial interiors, second pass" (mondo 11-13 22:33 brief, same as other districts). First pass = [[dc-financial-district-20261113]] PR #1358 (F-inside.js). Shared Meshy claims: /mnt/project-files/meshy/interior-claims.md.
+Thread (owner-project id) "Deepen Financial interiors, second pass" (mondo 11-13 22:33 brief, same as other districts). First pass = [[dc-financial-district-20261113]] PR #1358 (F-inside.js). Shared Meshy claims: /mnt/project-files/meshy/interior-claims.md.
 
 - LIVE 11-14: PR #1363 merged, data.js e4804de0 + ASSET_MANIFEST 0ae0f3db on R2, token 20261114-fin2-02-cors. Waits mondo's Mac look (headless never draws most Meshy GLBs). Shots: project files disaster-city-financial/interiors2/.
 - Code: docs/disaster-city/districts/F-atmos.js `SECOND[id](T, A)`, hooked by one line in F-inside.js (`atmos(T, g, I, n0)` before `I.done()`). Kit: liner (coat at 0.27 m in), coffers, panel/strip/pend/sconce, window_, pilaster, rug, P(key,x,z,hd: 0 = front to back wall, 180 = to door), onWall (mount 0). `LOW[id]` = a hall's ceiling height override. Notes: areas-complexes.md "THE INSIDES, SECOND PASS".

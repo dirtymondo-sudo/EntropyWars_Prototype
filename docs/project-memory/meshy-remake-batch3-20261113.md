@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-13T15:21:53.581Z
 ---
-Thread (thread in the owner project) ("Remake unit models, batch 3 of 3"). mondo 11-13 13:25Z: remake ALL units like cowboy/robinhood, creator clothes FIRST (creator quarterback helmet beat the Meshy one), Meshy for what is missing; he reviews after. Split of 61 units into 3 threads: repo docs/notes/meshy-remake-batches.md (PR #1255). Follows [[meshy-remake-plan-20261112]] [[meshy-remake-batch2-round2-20261112]].
+Thread (owner-project id) ("Remake unit models, batch 3 of 3"). mondo 11-13 13:25Z: remake ALL units like cowboy/robinhood, creator clothes FIRST (creator quarterback helmet beat the Meshy one), Meshy for what is missing; he reviews after. Split of 61 units into 3 threads: repo docs/notes/meshy-remake-batches.md (PR #1255). Follows [[meshy-remake-plan-20261112]] [[meshy-remake-batch2-round2-20261112]].
 
 - SHIPPED PR #1257 (~15:20Z), live (sprites.js f978df59, 44 assets --put): remade looks for politician, popstar, priest M + nun, professor, ringmaster, santa clause, scarecrow, shaman, sheriff, sidekick, spy, succubus, superhero M + F, swordfighter, symbiote, telepath M + F, time cop, valkraye, vampire, wizard F (pieces `ewm_t2witch_*`). 21 faces from the old heads (bake-face.py runs unattended: wrapper tries head heights top-0.15..0.42; women get the SOFT params). Meshy stays default. 27 T2 runs.
 - CREATOR IN PLACE OF MESHY: popstar whole outfit (crop top, mini skirt, booties tinted white), telepath F gown (evening gown), sheriff hat, witch hat, valkraye wings, succubus horns + tail, katana, sidekick hero mask, glasses.

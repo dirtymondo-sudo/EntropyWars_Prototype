@@ -1,0 +1,19 @@
+---
+name: perf-city-spikes-20261118
+description: Disaster City frame-drop spikes thread 11-18: shell re-records from cars hidden/shown past carFarM; PR #2107 + #2109; waiting his Shift+F3
+metadata:
+  type: project
+---
+Thread (owner-project id) (spikes only; steady state = [[perf-city-glows-20261118]] thread).
+His 06:33 F3: 23.4 FPS worst 99 ms, bundle check 15.2, shell re-recorded 96x "movers 70".
+- #2107 movers-stay-out: not the cause.
+- REAL CAUSE: _hqTickTraffic hides cars past carFarM; bundle walks checked visible before _ew_bunOut, so out list + tree hash changed -> whole-shell re-record. PR #2109 THE OUTS SHOWN OR HIDDEN (token 20261118-outshide-01-cors, three-renderer 0f572278): out check first. Off EW_BUN_OUT_HIDE_HASH. CONFIRMED his 06:55 F3: 42.8 FPS, worst 38 ms (was 99), movers 0. Thread resolved.
+- REOPENED 07:07: his F3 during drops 26 FPS worst 102, "tick: walker 7.2", static batch "watch", 400 draws held. PR #2115 (token slowframes-01, three-renderer e04dcb2b): lens "Slow frames" (50 ms+ gaps with prev frame's top parts) + "Inside the ticks" (_lensSub; walker: stuck watch/portal sweep/step/...); _hqStuckFree near-blocker list (off EW_HQ_STUCK_FULL_LIST). Waiting his F3 right after a drop.
+- His 07:18/07:19 F3 (Slow frames line works): ladder 12.3/frame, awareness 25, memory budget 91/36, prop chunk sweep 96, mask setup 73 + bundle check 81 (60 FPS thread's). PR #2117 (token spikes4-01, three-renderer 0ba3b5c9): ladder->_hqNavStatics grid, _hqLosClear near-line list, prop chunk sweep 3 ms/frame, _mmTick drops queued 2/frame. Waiting his F3.
+- 07:44: PR #2122 one worn walk.
+- PR #2132 rider's grid (wgrid for walker/ride).
+- 12:05 PR #2135 (landgrid-01): _hqBlockerFloor on wgrid; non-prop chunks add-count rule. His 12:18 F3: residents 48-50 (spawn burst), batch scan step 24, chunks 23 -> PR #2137 (onebody-02, three-renderer fdee3d21): one resident body a frame, sliced _hqBatchScan, chunk measures 2 ms budget, wgrid on its list + _hqBlkListStamp. Waiting his F3.
+- His 12:30 F3: 37.5 FPS, my spikes gone; _mmLive alarm -> PR #2139 (mmrare-01, three-renderer b9a0a513): whole read waits 20 s after a dropping sweep. 176 ms stalls = browser (JS 20). Inst pass = 60 FPS thread (pre-#2136 page). Waiting his F3.
+- 11-19 12:16 F3: 10.6 FPS, frames 94-283 ms with JS 18-24, shader warm '67 to go' -> PR #2151 (nowarm-01, three-renderer ee8db07e): no shader-cache warm in play on Firefox (_ewScGeckoHold; off EW_SC_WARM_IN_PLAY). Hypothesis: Firefox pipeline creation stalls GPU process. CONFIRMED his 12:31 F3: 40.8 FPS steady. Then PR #2153 (wornslice-01, three-renderer 7f2b025d): _mmLiveSliced (2 ms/frame + desk arrivals, off EW_MM_WALK_WHOLE) + batch sub-marks 'sheet stack watch'/'hold check' (a 70 ms static batch frame unnamed; suspect _hqStackFill refill). Left to 60 FPS thread: bundle check 62-99, classic draws 25-68; 0.5-1 s gaps = Firefox first draws. Waiting his F3.
+- 12:52 F3 (via 60 FPS thread): PR #2156 (deskscan-01, three-renderer 78f8c795): batch live rescans read desk arrivals (full every 30 s, B.fullAt); rig bakes kept per slot-count key (_libBakedMap; resident hqSleep slot made rebakes). Confirmed 13:36 F3 (32.5 FPS, no slow frame in my code). PR #2158 (slowdog-01, adaf4723): batch watchdog round gap 4 s in chunked rooms. Remaining spikes = 60 FPS thread (bundle check/replays) + browser.
+- 11-19 afternoon: PR #2161 piece cap 160/slice on batch watchdog (Firefox perf.now coarse: 'stop after 0.35 ms' overshoots ~1 ms; give every ms-sliced loop a count cap). PR #2167 lens sub-marks 'new body: game unit / model + rig / clip bake (first of a model)' — next: slice first bake or pool bodies per which is big. PR #2169 prop chunk sweep skips not-landed props 0.5 s (they starved the 3 ms share; ~160 props loose for a minute). 60 FPS thread then let rig-kind 'p' lamps into chunks (#2170). 15:24 F3: 43.9 FPS, nothing of mine.

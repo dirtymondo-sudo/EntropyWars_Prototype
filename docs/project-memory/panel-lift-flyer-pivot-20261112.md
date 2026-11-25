@@ -4,7 +4,7 @@ description: PR #1194 (11-12) active unit framed above the one battle panel + fl
 metadata:
   type: project
 ---
-mondo 11-12 (Seraphim, Vatican City, Action Cam on, low hand orbit): "he sits too low in the frame and he's covered by the battle panel and the camera orbits around him so it just looks and feel bad". Thread (thread in the owner project). PR #1194 merged + uploaded (battle.js 68f4b5db, three-camera.js c7fe8b23, token 20261112-panellift-01-cors). Notes: docs/notes/champions-combat.md "THE PANEL LIFT + THE FLYER'S PIVOT".
+mondo 11-12 (Seraphim, Vatican City, Action Cam on, low hand orbit): "he sits too low in the frame and he's covered by the battle panel and the camera orbits around him so it just looks and feel bad". Thread (owner-project id). PR #1194 merged + uploaded (battle.js 68f4b5db, three-camera.js c7fe8b23, token 20261112-panellift-01-cors). Notes: docs/notes/champions-combat.md "THE PANEL LIFT + THE FLYER'S PIVOT".
 
 - Cause 1: battle.js `_camFocalZAt` gave an airborne flyer its RULE z; body is drawn up to 0.65 level lower (unitElevationZ hover sink). Focal now = drawn hover. Kill switch `EW_NO_FLYER_PIVOT`.
 - Cause 2: THE SUB MENU RULE gave the root action menu no slide, but the one battle panel (deck) lies under screen centre. `_menuFreeArea` root area now carries `lift` (PANEL_LIFT_SHARE 0.5 of the way to the free band middle since PR #1195 (he asked "a little lower, somewhere in between"), max PANEL_LIFT_MAX 0.3 NDC, cx stays 0); `_ewMenuSlide` returns it. three-camera.js: eye floored by the lens floor no longer lifts the aim too (that cancelled any upward slide at low tilt). Kill switch `EW_NO_PANEL_LIFT`.

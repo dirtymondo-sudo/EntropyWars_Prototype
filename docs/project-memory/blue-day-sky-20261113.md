@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-13T05:10:22.000Z
 ---
-Thread (thread in the owner project) ("Fix washed-out daytime sky").
+Thread (owner-project id) ("Fix washed-out daytime sky").
 
 - Cause: board camera only sees the LOW sky = the dome's pale horizon colour + a soft fbm haze sheet (half the sky at clouds 0.3) + 25-40% wash to the row's pale tint. Scene Fog off, so not the fog band.
 - SHIPPED PR #1250 11-13 07:40 after his "ok looks good" (token 20261113-bluesky-01-cors, three-renderer.js 75851522 live): three-renderer.js `_envDomeFS` "THE BLUE DAY" + TSL twin; deeper blue down to the horizon, cumulus on a flat layer (rd.xz / (h + 0.14)), sun-side lit, tint wash cut by day. No data rows changed; night / dusk / events / painted skies untouched. Note in docs/notes/maps-terrain-battle.md "THE BLUE DAY".

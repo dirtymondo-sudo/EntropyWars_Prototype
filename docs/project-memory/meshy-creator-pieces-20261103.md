@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-03T06:57:49.513Z
 ---
-2026-11-03, PR #829 (thread in the owner project): mondo asked how the Meshy pieces get into the
+2026-11-03, PR #829 ((thread in the owner project)): mondo asked how the Meshy pieces get into the
 creator and into spells; this thread did the creator half (the spell half is PR #827, row 24).
 - `bake-meshy.py` (repo root, cloud Blender + MPFB, imports bake-clothes.py) -> charactercreation/wear/ewm_<key>.glb, solid,
   71 pieces (whip #49 left to spells, #58 dropped). One `piece(...)` spec line per piece; modes documented in models-assets.md

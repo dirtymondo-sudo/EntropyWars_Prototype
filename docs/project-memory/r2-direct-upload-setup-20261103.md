@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-03T14:17:17.030Z
 ---
-mondo 11-03 (thread "Get direct upload access to R2", (thread in the owner project): threads now upload to R2 directly; no more zips for him.
+mondo 11-03 (thread "Get direct upload access to R2", (owner-project id)): threads now upload to R2 directly; no more zips for him.
 
 How it works:
 - Cloud env **Network secret**: host api.cloudflare.com, header Authorization = `Bearer <token>`. Token = R2 **Account API token, Admin Read & Write** (he made "claude-upload-2"). Injection reached the running session mid-turn, no new thread needed. Token never in files/chat/memory.

@@ -7,7 +7,7 @@ metadata:
 ---
 mondo 11-12 03:27Z: redesign the Last Stand aura "more like a dbz / one piece / demon slayer" aura around the unit's
 perimeter, starting from the red/blue team outlines. Thread "Redesign Last Stand aura as anime outline"
- (thread in the owner project).
+(owner-project id).
 
 STATE (11-12 03:50Z): mock-up built on branch claude/project-thread-w4m1rf (commit 671a33d, pushed, NOT merged, no PR,
 no ?v= bump). Decision card posted: A (tight, recommended) / B (taller flames = EW_LS_AURA_TUNE {width:1.15, lift:1.7})

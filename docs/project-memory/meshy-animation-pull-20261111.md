@@ -6,7 +6,7 @@ metadata:
   modified: 2026-11-11T09:08:08.595Z
 ---
 
-mondo 11-11 (thread in the owner project): asked for more Meshy animations than his 20-at-a-time hand downloads.
+mondo 11-11 ((thread in the owner project)): asked for more Meshy animations than his 20-at-a-time hand downloads.
 
 - MESHY ACCESS WORKS WITHOUT A KEY: api.meshy.ai is a connected service in the cloud environment (the proxy injects the key; send any
   dummy Bearer). The old "waiting on env secret MESHY_API_KEY" note is obsolete. Never ask him for the key.

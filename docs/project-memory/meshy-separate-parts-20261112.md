@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-12T00:37:04.732Z
 ---
-mondo 11-12 (thread in the owner project): asked if Meshy's new models make separate parts/clothes and if old Meshy units
+mondo 11-12 ((thread in the owner project)): asked if Meshy's new models make separate parts/clothes and if old Meshy units
 can be remade to get clothes + heads wired to the MPFB mouth/eye shapes. Tested live on the cowboy (85 credits; balance after 15,292).
 
 - Existing unit GLBs = one fused mesh (cowboy: 1 island).

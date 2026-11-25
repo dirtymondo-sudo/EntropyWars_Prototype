@@ -6,7 +6,7 @@ metadata:
   modified: 2026-11-04T22:56:49.591Z
 ---
 mondo 11-04 asked for a senior-dev plan to reorganize R2 (thread "Plan an R2 asset folder reorganization"), then said
-"sounds like a good plan, go ahead" (thread in the owner project). Plan + log: repo docs/notes/r2-layout-plan.md
+"sounds like a good plan, go ahead" ((owner-project id)). Plan + log: repo docs/notes/r2-layout-plan.md
 (§9 THE LOG), per-key inventory docs/notes/r2-inventory.tsv.
 
 DONE 11-04 (main 8e85ec6, token 20261104-r2w5-01-cors):
@@ -19,7 +19,7 @@ DONE 11-04 (main 8e85ec6, token 20261104-r2w5-01-cors):
 - EW_ASSET_MOVES rows are PERMANENT aliases (_S, _R2_MISC, _CAR_PACK_BASE, three-vfx _R2 still build old paths). Never remove them.
 - Repo folder charactercreation/ = R2 Assets/characters/creator/.
 
-ARCHIVED 11-05 (mondo: "yeah everything seems to be working", (thread in the owner project): PR #899 widened the
+ARCHIVED 11-05 (mondo: "yeah everything seems to be working", (owner-project id)): PR #899 widened the
 safety net (innerHTML/outerHTML/insertAdjacentHTML, <style> textContent, new Audio(url)), token 20261105-r2arc-01-cors; then
 `node r2-layout.js --archive-moved <wave>` moved 4,708 old W2-W5 keys (8.2 GB) to dirtymondo:archive/2026-11/<old key>. Use --jobs 2 (6 hits rate limits).
 A 404 later = a code path missing ewAsset; the file is in the archive and at its new key.

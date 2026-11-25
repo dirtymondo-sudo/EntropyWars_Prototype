@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-13T17:55:50.637Z
 ---
-Thread (thread in the owner project) "Plan city traffic and bus routes". mondo 11-13 17:20 asked; plan + mock-up posted; he tapped "Build it as drawn" 17:33. SHIPPED PR #1280 (merged 11-13 ~18:15, data.js + three-renderer.js live). Mock-ups + GLB copies: /mnt/project-files/city-traffic-plan/. Notes: docs/notes/areas-complexes.md "DISASTER CITY, THE TRAFFIC".
+Thread (owner-project id) "Plan city traffic and bus routes". mondo 11-13 17:20 asked; plan + mock-up posted; he tapped "Build it as drawn" 17:33. SHIPPED PR #1280 (merged 11-13 ~18:15, data.js + three-renderer.js live). Mock-ups + GLB copies: /mnt/project-files/city-traffic-plan/. Notes: docs/notes/areas-complexes.md "DISASTER CITY, THE TRAFFIC".
 
 FACTS:
 - Roads (plot coords): west avenue x=3, east avenue x=8 (x=11 south of y=7), north street y=1, cross street y=7, south street y=11. Names = my labels, not canon. NO road leaves the city: west avenue dead-ends at Boxing gym P03-00, cross street at Campus gate P00-07 (I had drawn "gates" on the mock-up; wrong, told him). Police streets (no moving cars): x=8 y8-11, y=11 x8-11, x=11 y8-11.

@@ -1,0 +1,16 @@
+---
+name: unit-concepts-20261124
+description: 11-24 Meshy CONCEPT images only (13): Weatherman, News Anchor/Journalist F, Skinwalker (not a werewolf), Nordic M/F remakes; folder, keys, waits mondo's picks
+metadata:
+  type: project
+  modified: 2026-11-24T12:11:05.990Z
+---
+Thread (owner-project id) (mondo 11-24 12:06Z). Concepts only; models + abilities later, after his picks.
+Folder /mnt/project-files/unit-concepts-20261124/: items.py, gen.py (copied from [[char-concepts-20261123]]; `cd /tmp; ITEMS=items.py python3 -I <abs>/gen.py <keys|all> _1`), sheet.py, concepts/<key>_1.png, sheet_1_weather_news.jpg, sheet_2_skinwalker.jpg, sheet_3_nordic.jpg, current/ (old paper-doll sprites).
+Keys: weatherman_a (studio teal suit) / _b (storm chaser yellow raincoat); anchor_f_a (red dress + blazer) / _b (blue skirt suit); journalist_f_a (trench coat) / _b (utility jacket, conspiracy chaser); skinwalker_a (ranch hand in a too-stretched human skin, Skinwalker Ranch) / _b (shedding human skin, grey under) / _c (blank grey face, stolen face masks on a cord: loose cord = animation risk); nordic_m_a/_b, nordic_f_a/_b.
+LORE CHECKED: Nordic = Nordic ALIENS (Tall Blondes, Pleiades), not Norse (data.js comment). Skinwalker = 'anomaly', wears your face, Familiar Voice / Wear Your Skin spells; avoid wolf/fur/antlers (wendigo exists).
+NSFW 403 trigger: "naked-looking" + "human skins"/"no genitals" wording.
+Meshy balance 1665 -> 1548 (13 images x 9).
+ROUND 2 (his 11-24 12:26Z): PICKS weatherman_b, nordic_f_a -> models/weatherman|nordic_f.glb + _rigged/_walking/_running (models.py, models_sheet_1.jpg). Anchor A liked but draped blazer bad for anims -> anchor_f_a2 (worn blazer); nordic M A needs longer hair -> nordic_m_a2; skinwalker C liked, masks must be separate -> skinwalker_c2 (no masks) + skinwalker_face prop. sheet_4_round2.jpg; those four wait his OK (already in models.py PICK as news_anchor_f, nordic_m, skinwalker, skinwalker_face). Not in game.
+ROUND 3 (his 11-24 12:30Z OK): models + rig news_anchor_f (anchor_f_a2), nordic_m (nordic_m_a2), skinwalker (c2) + 4 face props skinwalker_face/_b/_c/_d (unrigged; to hang on him in game). models_sheet_2.jpg. WEATHERMAN STRAND FIX: Meshy left long stretched triangles hair->chest; scratchpad fix.py (bpy, `pip install bpy`) deletes faces with an edge >12% of height on the biggest mesh; fixed files replace models/weatherman*.glb, originals in models/old/. Proof weatherman_strand_fix.png. Other 4 chars checked: no such faces. Balance 1325. Not in game; next = wiring + kits in separate work.
+SHIPPED 11-24 PR #2517 (sprites.js af4d94eb, ?v=20261124-nordicskin-01-cors): nordic M/F new models (nordic/<g>/Meshy_AI_nordic_<m|f>_v2_Running.glb) + _v2_px sprites; skinwalker first 3D model (skinwalker/male/Meshy_AI_skinwalker_Running.glb, now playable) + skinwalker_px; faces on R2 skinwalker/male/faces/skinwalker_face_a..d.glb. Notes champions-combat.md "THE NEW NORDICS + THE SKINWALKER MODEL". Weatherman + News Anchor = (thread in the owner project). FACE MOVES SHIPPED PR #2531 (his OK 12:58Z): Familiar Voice / Wear Your Skin (worn 2 rounds) / Borrowed Claw / Skin Swap / Mimicry, three-vfx-effects.js THE SKINWALKER'S FACES; notes champions-combat.md. Proof proof/skinwalker_faces_proof.jpg. Probe lesson: shot timing must follow the game clock when slowing performance.now. Waits his look.

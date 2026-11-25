@@ -5,9 +5,9 @@ metadata:
   type: project
   modified: 2026-11-15T11:41:04.530Z
 ---
-Thread (thread in the owner project) "Get Disaster City to a stable 60 FPS" (mondo 11-15 09:51: "22 fps with lag and frame drops is a joke ... aiming for stable 60"). Follows [[perf-city-propchunks-20261114]]. Notes: docs/notes/rendering-loading-perf.md "THE ROLLING WATCH + THE UNIT MASK + THE MOVING SIDES".
+Thread (owner-project id) "Get Disaster City to a stable 60 FPS" (mondo 11-15 09:51: "22 fps with lag and frame drops is a joke ... aiming for stable 60"). Follows [[perf-city-propchunks-20261114]]. Notes: docs/notes/rendering-loading-perf.md "THE ROLLING WATCH + THE UNIT MASK + THE MOVING SIDES".
 
-- His Mac F3 (Firefox, WebGPU, 3456x1812 at ratio 2): frame 45-48 ms, CPU 31-35 ms. Frame minus CPU ~14 ms is not our JS: Firefox on macOS presents a WebGPU canvas by CPU readback (Mozilla bug 1708023, open). ASKED HIM (10:35) for three F3s at the same spot: Chrome; Firefox Render Scale 67%; Firefox `?ew_gpu=webgl`. Decide the pixel side (auto render scale / renderer pick on Firefox+Mac) from those.
+- His Mac F3 (Firefox, WebGPU, 3456x1812 at ratio 2): frame 45-48 ms, CPU 31-35 ms. Frame minus CPU ~14 ms is not our JS: Firefox on macOS presents a WebGPU canvas by CPU readback (Mozilla bug 1708023 — WRONG: it was RESOLVED FIXED ~2025, mondo showed 11-23). ASKED HIM (10:35) for three F3s at the same spot: Chrome; Firefox Render Scale 67%; Firefox `?ew_gpu=webgl`. Decide the pixel side (auto render scale / renderer pick on Firefox+Mac) from those.
 - His post chain is "20 passes A[smaa|off|BDSF]": B = bloom ON in his Firefox profile (11 passes; shipped default 0). Told him.
 - Written on branch claude/project-thread-xac5la (commit 7ad4dc3, NOT merged at 11:40 UTC: coordinator asked to hold renderer merges until (thread in the owner project) fixes "trees and props move when the camera turns", a regression not from this thread):
   1. THE ROLLING WATCH: static-batch watchdog spread over frames (was ~45 ms in one frame twice a second); rescan on change.

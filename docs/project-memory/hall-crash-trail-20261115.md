@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-15T14:33:58.374Z
 ---
-mondo 11-15: "Crashed inside the door main hall/lobby", console log with no error. Thread (thread in the owner project). Cause NOT found, not reproduced (no browser run: repo rule).
+mondo 11-15: "Crashed inside the door main hall/lobby", console log with no error. Thread (owner-project id). Cause NOT found, not reproduced (no browser run: repo rule).
 
 - PR #1438-#1441: crash trail, [MEM] holders block (`hq.memTop()`), undrawn PBR sheets dropped (`_hqPropDropPbr`, hall 2047 -> 1212 MB). Measure a room offline: Node load-data.js -> DOOR_HQ.rooms[r].props -> catalogue -> hqCatalogueFilePath -> GLB image dims.
 - Asked him for ONE thing: after the next crash, reload and paste the console (the block is at the top). On any crash/freeze report, look for that block first. Related [[continue-black-screen-20261112]].

@@ -4,7 +4,7 @@ description: Disaster City prop pass (all districts) LIVE PR #1315 + #1316 (11-1
 metadata:
   type: project
 ---
-Thread (thread in the owner project) "Clean up and dress city props" (mondo 11-13 19:30: cars on stuff, benches on fences, signs in buildings, add the green subway bin; he chose "Build all of it" 20:03).
+Thread (owner-project id) "Clean up and dress city props" (mondo 11-13 19:30: cars on stuff, benches on fences, signs in buildings, add the green subway bin; he chose "Build all of it" 20:03).
 
 - LIVE: PR #1315 (prop check, real road signs, green metro_bin, district wall dressing, sandbags, manholes) + PR #1316 (second wave cut from packs: public_phone, power_pole, garbage_bags, garbage_bag, metal_trash_can, play_slide, play_swing, play_sandbox). Thread open for his review on his Mac.
 - Code: `docs/disaster-city/props.js` (kerbSign / dress / check), run at the end of `node bake-disaster-city.js`. Every rebake re-checks every prop against buildings, arch parts, doorways, fences, stairs; shared props move or are left out, district-own props are only listed in `docs/disaster-city/prop-check.txt`. A district thread that adds buildings just rebakes. New prop = add its real footprint to SIZE in props.js.

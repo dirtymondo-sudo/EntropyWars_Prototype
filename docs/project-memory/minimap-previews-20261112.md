@@ -6,7 +6,7 @@ metadata:
   modified: 2026-11-12T11:36:12.802Z
 ---
 
-mondo 11-12: "make the minimap not disappear while im navigating the combat menu. I also want the minimap to kind of mirror the spell previews and have arrows and tile highlights and damage aoes etc, like a simplified mini version of the board". Thread (thread in the owner project).
+mondo 11-12: "make the minimap not disappear while im navigating the combat menu. I also want the minimap to kind of mirror the spell previews and have arrows and tile highlights and damage aoes etc, like a simplified mini version of the board". Thread (owner-project id).
 
 PART 1 SHIPPED PR #1196 (token 20261112-mmapmenu-02-cors, styles-hud.css + three-renderer.js uploaded): cause = the menu's own camera glides set body.ew-board-busy/ew-board-cam and the minimap (Hide while = game has the board) faded each time. Fix = body.ew-deciding (three-renderer.js `_playerDeciding`: own unit's turn, nothing playing out); .ew-mmap stays up under it. Combat log untouched. Unchecked: his Mac, online guest.
 

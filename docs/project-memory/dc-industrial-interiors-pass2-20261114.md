@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-14T00:35:08.320Z
 ---
-Thread (thread in the owner project) "Deepen Industrial interiors, second pass" (mondo 11-13 22:33 brief, same as other districts). First pass = [[disaster-city-industrial-20261113]] PR #1354.
+Thread (owner-project id) "Deepen Industrial interiors, second pass" (mondo 11-13 22:33 brief, same as other districts). First pass = [[disaster-city-industrial-20261113]] PR #1354.
 
 - Code: docs/disaster-city/districts/I.js `SECOND[id](Q)` after each room's first pass; `kit2()` helpers paint/ceil/sky/hb/strip/pend/beacon/sign/onWall/pipe/lines/exit + `Q.block(i,j,w,d,h,fn)` = new blocker on whole squares, refused on the doorway square or if a flood fill shows a walk square cut off. K.P now takes a 6th `more` arg (e.g. { span }). Notes: areas-complexes.md "THE INDUSTRIAL INSIDES, SECOND PASS".
 - 20 Meshy models LIVE on R2 Assets/world/props/meshy/ (11-14 ~00:40): steam_turbine, centrifugal_pump, gate_valve, high_bay_lamp, gauge_board, metal_lathe, drill_press, tool_pegboard, gas_cylinder_rack, air_compressor, jet_engine_stand, aircraft_tug, maintenance_stairs, rocket_engine, signal_lever_frame, railway_lantern, platform_scale, chain_hoist, ship_model, cable_drum. data.js "THE INDUSTRIAL INTERIOR PIECES". Originals/concepts/opt copies: /mnt/project-files/disaster-city-industrial/meshy/ (run.py + items.json pipeline).

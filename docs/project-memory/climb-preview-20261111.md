@@ -4,7 +4,7 @@ description: PR #1121 (11-11) move hover / Climb verb / tile menu rows preview t
 metadata:
   type: project
 ---
-PR #1121 merged 2026-11-11 (battle 97ef5a45, three-renderer 1f09aa3f, hud 9546c96f, live on R2). Thread (thread in the owner project).
+PR #1121 merged 2026-11-11 (battle 97ef5a45, three-renderer 1f09aa3f, hud 9546c96f, live on R2). Thread (owner-project id).
 - mondo: hovering a climb ledge in MOVE showed a plain walk arrow, the click climbed and ended his turn.
 - Now: walk to foot blue, face sandstone arrow, hologram climbs (2 AP on top, 1 AP hangs on wall), ghost chips CLIMB / CLIMB DOWN / HANG + ENDS TURN. Same preview in CLIMB mode and on tile menu Move here / Jump here / Climb rows (window.previewMovePlan). Move-then-act arrows follow findMovePath (moveRouteWps).
 - No rule changed. Notes: docs/notes/champions-combat.md "THE CLIMB PREVIEW". Proof /mnt/project-files/climb-preview-20261111/.

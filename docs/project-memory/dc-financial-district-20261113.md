@@ -1,6 +1,6 @@
 ---
 name: dc-financial-district-20261113
-description: Disaster City FINANCIAL district: F.js buildings, F-detail/F-inside/F-london files, London look, shot method
+description: Disaster City FINANCIAL district (thread cmsg_...68GKy4enZ5pFdfAzXixte9): F.js buildings, F-detail/F-inside/F-london files, London look, shot method
 metadata:
   type: project
   modified: 2026-11-15T12:57:48.884Z

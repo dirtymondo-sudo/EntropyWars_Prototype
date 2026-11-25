@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-13T17:06:09.309Z
 ---
-Thread (thread in the owner project) "Build shared city doors and shop scale" (spawned by mistake as a tenth "D.O.O.R. Headquarters district": the city has only nine districts; that label is the hub name in the HUD strip). It serves the nine district threads of mondo's 11-13 16:41 ask (architect every building; working swing doors; shop blocks too small; pizza + gas station packs).
+Thread (owner-project id) "Build shared city doors and shop scale" (spawned by mistake as a tenth "D.O.O.R. Headquarters district": the city has only nine districts; that label is the hub name in the HUD strip). It serves the nine district threads of mondo's 11-13 16:41 ask (architect every building; working swing doors; shop blocks too small; pizza + gas station packs).
 
 - PR #1264 (live): three-renderer.js `_hqBuildTexDoors` / `_hqTickCityDoors`: every `texbuilding` with `hollow: true` hangs a swinging catalogue leaf (row `leaf`, `leafDouble`, `leaf:'none'`; default `leaf_lobby_glass_double`); kill switch `EW_NO_CITY_DOORS`. bake-disaster-city.js: a row's `w` runs along its FRONT (east/west buildings stood a quarter turn off), `packFit()` keeps pack shop blocks at 0.9 to 1.15 of true size (a block's row `w` IS its scale).
 - PR #1266 (live): twelve catalogue props `city_*` (pizzeria, diner, burgerpiz, 6twelve, laundry, vhs_shop, house, quequis_house, gas_store, gas_canopy, gas_sign, taco_stand), real size, entrance +Z, R2 `Assets/world/packs/elbolilloduro/ebd_<scene>_city_*.glb`, cut by bake-pack-pieces.py `city_*` jobs (pip bpy + apt unrar work in the cloud; packs in /mnt/project-files/asset-packs/elbolilloduro/).

@@ -20,7 +20,7 @@ unused (never delete R2 objects); bake-vfx.py + docs/BLENDER_VFX_GUIDE.md marked
 **Why:** mondo judged the sim look noisy and wrong for the game's style (Riot guide: hand-painted, concise shapes).
 **How to apply:** NEVER bake spell fire/smoke/explosions in Blender again; VFX improvements are done in code with the
 existing painted sprites (three-vfx.js _shapedHiResDefs canvas shapes). The Riot-guide VFX plan lives in thread
- (thread in the owner project) (awaiting his OK as of 11-08).
+(owner-project id) (awaiting his OK as of 11-08).
 
 Still useful facts: in-game proof harness /mnt/project-files/spell-vfx-audit/harness (skip its setup.sh git checkout; use
 ?nohq + _goToVsCpu() + applyPartyBuild(false); teamLockedIn=true; startMatch() for a real match; set __ph.draw.mode="always";

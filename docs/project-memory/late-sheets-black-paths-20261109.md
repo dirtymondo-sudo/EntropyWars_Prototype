@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-09T03:14:16.644Z
 ---
-mondo 11-09 (Firefox, ?ew_gpu=webgpu): "what are these black squares on heaven?" Thread (thread in the owner project).
+mondo 11-09 (Firefox, ?ew_gpu=webgpu): "what are these black squares on heaven?" Thread (owner-project id).
 
 - The squares were Heaven Arena's cloud PATH squares. The terrain field keeps its cliff/path/paint sheets in its node graph (_ewNodeTag D), and three r186 only re-binds a render object when its material observer sees a slot change. So a sheet that landed after the first draw stayed on three's black placeholder. Only on WebGPU / the node renderer; classic WebGL was fine.
 - The bug comes and goes with load timing. Reliable repro: `?ew_gpu=webgl2` (the node renderer on WebGL2, which screenshots fine headless) + probe `ThreeRenderer.hq.dev.renderer()._textures.get(tex).isDefaultTexture`.

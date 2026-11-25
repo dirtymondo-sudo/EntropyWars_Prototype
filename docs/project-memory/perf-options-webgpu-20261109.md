@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-10T02:27:11.751Z
 ---
-mondo 11-09 asked for frame rate options (battle + exploration, WebGPU); 11-10 "proceed with plan 1". Thread (thread in the owner project). Doc: https://claude.ai/artifact/EZN4WmV1dJCm6uFB3sn3GA . Raw profiles + tools: /mnt/project-files/perf-webgpu-20261109/ . Notes: docs/notes/rendering-loading-perf.md "THE FRAME RATE PLAN 1".
+mondo 11-09 asked for frame rate options (battle + exploration, WebGPU); 11-10 "proceed with plan 1". Thread (owner-project id). Doc: https://claude.ai/artifact/EZN4WmV1dJCm6uFB3sn3GA . Raw profiles + tools: /mnt/project-files/perf-webgpu-20261109/ . Notes: docs/notes/rendering-loading-perf.md "THE FRAME RATE PLAN 1".
 
 PLAN 1 SHIPPED PR #1079 (11-10), all viewer-local, each with a live kill switch:
 - AO passes skipped at strength 0 (node chain only; classic N8AO floors intensity at 0.5 so 0 is not identity there). 9 passes -> 8. `EW_AO_AT_ZERO`.

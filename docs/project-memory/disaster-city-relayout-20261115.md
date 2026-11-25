@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-15T19:01:32.433Z
 ---
-Thread (thread in the owner project) "Rearrange Disaster City districts and heights". mondo 11-15 17:33 + 18:17: coast = Entertainment, Bayside, Industrial; Financial off the coast; Southside in the real south; Civic toward the Vatican; heights redone. He tapped "Build it as drawn" 18:25. Follows [[world-zones-plan-20261115]] layout 3.
+Thread (owner-project id) "Rearrange Disaster City districts and heights". mondo 11-15 17:33 + 18:17: coast = Entertainment, Bayside, Industrial; Financial off the coast; Southside in the real south; Civic toward the Vatican; heights redone. He tapped "Build it as drawn" 18:25. Follows [[world-zones-plan-20261115]] layout 3.
 
 - LIVE PR #1482 (token 20261115-citymove-01-cors, data.js 810c5568). Blocks (4x4, moved whole, nothing turned, no building removed): built R C F / U H E / I S B, now C F E / U H B / R S I (R Southside, S Sports + Culture). U, H, S did not move. Room id site_prebuilt_downtown_streets kept; PvP Downtown untouched.
 - A PLOT ID IS A NAME, NOT A PLACE (P08-04 is still the Casino, it stands at column 8 row 0). `docs/disaster-city/move.js` = where districts stand (`to`), `seams`, `ways`, `frame`. Old notes saying "plot P<x>-<y> covers x -252+42x" hold for the BUILT place only.

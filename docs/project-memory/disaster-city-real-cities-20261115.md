@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-15T12:34:32.967Z
 ---
-mondo 2026-11-15 12:19 (thread in the owner project): each Disaster City district based on a major real city, parody / ultimate version.
+mondo 2026-11-15 12:19 ((thread in the owner project)): each Disaster City district based on a major real city, parody / ultimate version.
 
 - HIS picks: Civic = Washington DC, Hero Plaza = NYC, Bayside = Miami, Entertainment = LA, University = "whichever has Skull and Bones" = Yale. His either/ors: Financial London or Dallas, Southside Dallas or Detroit. Tokyo = for the Cyberpunk reskin.
 - PROPOSED by Claude (plan sent 11-15, WAITS HIS OK, nothing built): Financial = London, Southside = Detroit, Industrial = Houston, Sports + Culture = Chicago (second choice Mexico City); Tokyo waits, except one Little Tokyo lane in Entertainment (Night market + Arcade); University banner maroon -> college blue.

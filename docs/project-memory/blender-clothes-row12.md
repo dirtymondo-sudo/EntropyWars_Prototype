@@ -6,7 +6,7 @@ metadata:
   modified: 2026-11-01T12:18:14.431Z
 ---
 
-Row 12 (character-models-plan 4d) soft clothes built in cloud Blender, thread "Build soft clothes in Blender" (thread in the owner project).
+Row 12 (character-models-plan 4d) soft clothes built in cloud Blender, thread "Build soft clothes in Blender" ((owner-project id)).
 - Pilot: trench coat, bake-garment.py, PR #753 (nearSet reshape for outer coats).
 - Batch 1 DONE 2026-11-01 PR #754: 8 capes (ewb_cape_*.glb) via bake-clothes.py (imports bake-garment.py), new creator Cape layer (appearance.cape, MPFB bodies only), sway chains, fitSmooth reshape for capes on classic MPFB bodies. Zip ENTROPY_WARS_SYNC_20261101-1217.
 - Batch 2 DONE PR #756 (zip 20261101-1248): long coats as Outer picks b<key> -> ewb_<key>.glb, sprites.js EW_BLENDER_COATS with `look`): duster, pirate, leather, longcoat, greatcoat, overcoat, frock, tailcoat (tails sway), labcoat.

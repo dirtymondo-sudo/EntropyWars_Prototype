@@ -8,7 +8,7 @@ metadata:
 mondo 2026-11-12 asked for a PLAN ONLY: seeds must be watered to sprout (rain, water spells); Leech Seed -> thorny-vine plant
 turret; Poison Seed -> poison-gas AoE plant; Healing Seed -> healing flower or apple tree (zone heal or drops apples/potions);
 Bee Queen collects the flower's pollen; Bumper Crop maybe too strong; tree chopping stays; new 3D models replace the 2D seed sprites.
-Thread (thread in the owner project). Doc (Claude Doc): https://claude.ai/artifact/2hDVKXrT82a2FfypmiKwdV
+Thread (owner-project id). Doc (Claude Doc): https://claude.ai/artifact/2hDVKXrT82a2FfypmiKwdV
 Pointer file: /mnt/project-files/seed-farming-20261112/README.md. He OK'd the build 11-12.
 
 Facts read from code (main at PR #1213):

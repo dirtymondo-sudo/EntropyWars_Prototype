@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-12T12:42:23.862Z
 ---
-Thread (thread in the owner project), follows [[meshy-remake-batch2-20261112]]. mondo 11-12 11:43Z: "go ahead and fix those issues. Using the creator angel wings is fine. But the mummy bandages and the angel neckline definitely need work".
+Thread (owner-project id), follows [[meshy-remake-batch2-20261112]]. mondo 11-12 11:43Z: "go ahead and fix those issues. Using the creator angel wings is fine. But the mummy bandages and the angel neckline definitely need work".
 
 - SHIPPED PR #1206 (~12:45Z), live: ewm_t2mummy_outfit.glb 16a7e2ce, ewm_t2angel_outfit.glb 8493eedb. Other seven remade units rebaked, unchanged.
 - MUMMY causes: floating bits = tips of hanging bandage strips whose middle tore (top weighted to arm, tip to hips). Fix: a small shell under `--bodysuit` is rigid on the one bone its top is on; bits cut off by torn faces go; tan flecks on hair = suit lumps through the creator hair (suit back laid on the body under `--longhair`).

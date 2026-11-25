@@ -4,7 +4,7 @@ description: PvP demo item 6 (PR #1099, 11-11): result/forfeit/rematch screens +
 metadata:
   type: project
 ---
-PR #1099 merged 2026-11-11 00:2xZ, token 20261111-endscreens-02-cors, 5 files uploaded. Thread (thread in the owner project). Proof /mnt/project-files/end-screens-20261110/ (2 Chromium seats; 1280x720, 1280x540, 800x500).
+PR #1099 merged 2026-11-11 00:2xZ, token 20261111-endscreens-02-cors, 5 files uploaded. Thread (owner-project id). Proof /mnt/project-files/end-screens-20261110/ (2 Chromium seats; 1280x720, 1280x540, 800x500).
 - Result text on dark windows; debrief sheets dark backing under theme plate (his glass theme = transparent panel, rows unreadable on bright boards).
 - state._forfeit {by, how: quit|disconnect|timer} via battle.js _forfeitMark; cleared with _winCondition. NEVER key match data on state.startTime (per seat).
 - Rematch status line: battle.js _vicRematchNote(text, tone); online.js _ewSetRematchBtn(text, disabled, note, tone).

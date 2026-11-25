@@ -6,9 +6,10 @@ socket.io) is only matchmaking/relay; ALL gameplay logic is client-side in
 `cdn.entropywars.net`, brotli + long-cache edge) and CDNs.
 
 ## NEW HERE? (a second developer / another Claude account, 2026-11-15)
-Read `docs/notes/onboarding.md` (access you need, how to work beside the owner's threads, what does not travel to
+**A FRESH ACCOUNT TAKING OVER (11-25): start with `docs/plans/PROJECT_HANDOFF.md`** (the one-file handoff: game, rules,
+shipping, access to set up, open work, the owner project's instructions verbatim). Then read `docs/notes/onboarding.md` (access you need, how to work beside the owner's threads, what does not travel to
 another account) and `docs/notes/owner-rules.md` (mondo's standing rules: what he wants and never wants; they bind
-every account). The owner project's memory as of 11-15 is frozen in `docs/project-memory/` (`INDEX.md` first). New
+every account). The owner project's memory as of 11-25 is frozen in `docs/project-memory/` (`INDEX.md` first). New
 lasting facts go in the matching docs/notes file in the same PR, never only in one account's memory.
 **THE MODEL LIST FIRST (mondo 11-16):** before building or dressing any room, district or zone, search `MODEL_LIST.md` for your theme and look
 inside the pack files themselves; the prop catalogue is not the whole list (owner-rules.md section 1).

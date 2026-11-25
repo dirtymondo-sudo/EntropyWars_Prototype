@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-15T08:56:32.946Z
 ---
-Thread (thread in the owner project) "Fix ladder platforms reaching rooftops". mondo 11-15 08:35: platforms stop short of the roof, "I should just be able to walk off the platform and on to the roof/floor", and walking off he fell and clipped into the building. Follows [[ladder-wedges-20261113]].
+Thread (owner-project id) "Fix ladder platforms reaching rooftops". mondo 11-15 08:35: platforms stop short of the roof, "I should just be able to walk off the platform and on to the roof/floor", and walking off he fell and clipped into the building. Follows [[ladder-wedges-20261113]].
 
 - LIVE PR #1405 (token 20261115-flushladder-01-cors; data.js 94810cce). Thread left open for his look.
 - Causes: the platform was a HALFWAY landing (3.5 m, second ladder to the 7 m roof); the hidden slab ended at the wall (a strip to fall through); a yard hedge at a building's foot pulled a roof-edge walker down inside the building.

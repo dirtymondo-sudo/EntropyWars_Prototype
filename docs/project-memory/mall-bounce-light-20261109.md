@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-09T06:00:10.278Z
 ---
-mondo 11-09 (Firefox, ?ew_gpu=webgpu): "the inside of the mall is all black". Thread (thread in the owner project).
+mondo 11-09 (Firefox, ?ew_gpu=webgpu): "the inside of the mall is all black". Thread (owner-project id).
 
 - Cause 1: closed box rooms' HemisphereLight ground colour was fixed 0x1c1a1e, so ceilings and anything facing down got light only from lamps close by. The mall is 96x64x12 m, so it read black overhead. Fix: three-renderer.js `_hqBoxHemiG` = floorColor mixed HQ_LIGHT_RULES.bounce.amount (0.6) over the old black. Applies to EVERY closed box room (walk, door blend, field fight).
 - Cause 2: HQ_PROP_LIGHT_MAX 10 went to the first rows (lava lamps + 6 slot machines), so the 9 saucer/sputnik ceiling lamps had no light. Fix: `_hqPlaceProps` gives ceiling lamps the budget first, then row order. Only the mall was affected.

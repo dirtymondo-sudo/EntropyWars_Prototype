@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-13T23:00:09.561Z
 ---
-Thread (thread in the owner project) "Polish Hero Plaza interiors atmosphere" (mondo 22:33: after a district's first interior pass, another pass on Opus high; list models wanted but missing, make Meshy versions, add to the model list; focus aesthetic, vibe, atmosphere). Follows [[hero-plaza-interiors-20261113]].
+Thread (owner-project id) "Polish Hero Plaza interiors atmosphere" (mondo 22:33: after a district's first interior pass, another pass on Opus high; list models wanted but missing, make Meshy versions, add to the model list; focus aesthetic, vibe, atmosphere). Follows [[hero-plaza-interiors-20261113]].
 
 - Code: docs/disaster-city/districts/H.js `IN2[bid]` runs after `IN[bid]`; kit helpers put/wall/liner/lamp/pendant/sconce/rug, K.H, K.dlx. Light is drawn + glowing only (HQ_PROP_LIGHT_MAX = 10 real lamps for the whole city room).
 - SHARED MESHY CLAIMS FILE: /mnt/project-files/meshy/interior-claims.md (all district threads). Convention: R2 Assets/world/props/meshy/<key>.glb + .opt.glb, ASSET_MANIFEST rows, data.js HQ_CATALOGUE_ALL row of the same key, group 'Meshy city interiors'.

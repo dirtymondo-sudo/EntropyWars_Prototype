@@ -1,0 +1,14 @@
+---
+name: shader-polish-20261122
+description: Shader polish (11-22): of the mock-ups mondo picked ONLY the VHS Tape palette; shipped PR #2370 as Settings > Video > Palette; other ideas not picked
+metadata:
+  type: project
+  modified: 2026-11-22T04:36:47.352Z
+---
+mondo 11-22: "is there anyway we can polish these two [Entropy Style grade + ink]? Or more options for the first one? Or a third shader on top?" Thread (owner-project id). Related [[shader-style-20261112]] [[grass-ink-20261112]].
+
+- POSTED 11-22: 4 labelled sheets in /mnt/project-files/shader-polish-20261122/ (Came A Lot gate + DOOR HQ foyer): six palettes (Conspiracy Teal, Dusk Plum, VHS Tape, Case File, Cold Steel, Toybox), ink polish (line takes a dark shade of the surface colour + thinner in light; crease lines from depth-made normals), third pass ideas (Texture Calm = edge-keeping smooth of noisy textures; Palette Lock = hues pulled to 16 shared colours; Shadow Hatching). My pick: ink polish + creases + Texture Calm + light lock; hatching not recommended (busy, would crawl). NOTHING BUILT, nothing committed. WAITING on his picks + answers (palette as a setting vs per zone; grade darkens outdoors: lift it?).
+- FOUND: with the style on, an outdoor scene (Came A Lot cobbles) is clearly darker than Off in the cloud renderer; his Mac renders brighter, so ask before changing.
+- HOW MADE: local-only patch of three-post.js `_StyleShader` (extra uniforms read from `window.__mk` in `_styleSync`), then `node playtest_city.js <room> '<views>' --post --flags=EW_HQ_NO_SURVEY` with one view per variant (`"keep": true` + `"eval"` sets `ThreePost.setStyle` and `window.__mk`). `--post` is needed (the probe turns post off by default); headless runs the pmndrs chain so the GLSL patch shows. Patch reverted after; a real build must also write the TSL twin `_ngStyle` (WebGPU default) and the stage `styleDraw`.
+- Views that work: `site_prebuilt_camelot_kingdom` spawn x -15.75 z 117.25 face 0 third person dist 5 (gate, banners, lions, trees); `foyer` x 0 z 4 face 270 fp (Rhonda, bench, wet floor sign). Disaster City spawn is in deep shadow and loaded only 653 / 927 files in 240 s: a poor scene to judge colour.
+- HE PICKED 11-21 10:46 PM his time: "let's just add the vhs tape as an option". SHIPPED PR #2370 (?v=20261122-vhspalette-01-cors; three-post.js 0dbcfc32, ui.js fa1cd514 live): Settings > Video > Palette Entropy (default) / VHS Tape; `_STYLE_PALETTES`, `_style.palette`, GLSL `uPalSh/uPalHi` + TSL `P.st.palSh/palHi`. Supersedes "NOTHING BUILT". The other ideas (ink polish, creases, Texture Calm, Palette Lock, hatching, 5 more palettes, outdoor darkness) were not picked: do not build them unless he asks. Seen: Came A Lot pmndrs chain, foyer node WebGL 2. NOT seen: real WebGPU / his Mac, the Settings row, party builder stage. On the node WebGL 2 backend the Came A Lot probe drew a teal void (ground + castle missing) with either palette: not looked into.

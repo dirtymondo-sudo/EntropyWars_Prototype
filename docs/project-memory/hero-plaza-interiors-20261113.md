@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-13T21:11:24.496Z
 ---
-Thread (thread in the owner project). Follows [[hero-plaza-buildings-20261113]].
+Thread (owner-project id). Follows [[hero-plaza-buildings-20261113]].
 
 - Sign lettering LIVE PR #1333 (data.js 91234aad): `txt:WORDS|fg|bg|aspect` keys in docs/disaster-city/districts/H.js. Shot polish_4_signs.jpg. Seen in game: HERO WORKSHOP, PRESS COURT, TRANSIT COURT, DELIVERIES. Not seen in frame: COFFEE, TRAINING HALL, DISPATCH, NEWS, SNACKS.
 - INTERIORS: mondo 21:04 "after the exterior polish, do the interiors"; rule = plan + mock-up first, wait for his explicit OK. Plan posted with /mnt/project-files/disaster-city-hero-plaza/interiors_1..4_*.jpg (script: plans.py in session scratch, redraw if lost).

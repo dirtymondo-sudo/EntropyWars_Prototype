@@ -4,7 +4,7 @@ description: Portraits cut from a unit's own model (PR #1218), straight on (PR #
 metadata:
   type: project
 ---
-Thread (thread in the owner project) (mondo 11-12: portrait "angle and framing is all messed up", cut a Locke portrait from her model, then live idle/blinking portraits "like harry potter picture frames" for the player + Agent Locke).
+Thread (owner-project id) (mondo 11-12: portrait "angle and framing is all messed up", cut a Locke portrait from her model, then live idle/blinking portraits "like harry potter picture frames" for the player + Agent Locke).
 
 SHIPPED PR #1218 (token 20261112-portraits-01-cors, R2 uploaded): three-renderer.js THE PORTRAIT STUDIO (`window.EWPortraits.url(unit[, 'bust'])`), a 128 px second renderer that photographs a unit's own body off its Head bone. Units in a creator look and `appearance.cast` units (Locke) now show their own face in turn order, YOUR TURN panel, plates, HQ party card, team menus; ID photo re-aimed. Notes: docs/notes/ui-menus-audio.md "THE PORTRAIT STUDIO". Proof /mnt/project-files/portraits-20261112/.
 Found: before this there was NO model portrait in battle at all (generic Door Agent sprite face); the "screenshot" was only the mirror's ID photo.

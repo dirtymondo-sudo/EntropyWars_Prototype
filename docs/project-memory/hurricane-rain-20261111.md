@@ -6,7 +6,7 @@ metadata:
   modified: 2026-11-11T08:09:34.348Z
 ---
 mondo 11-11: "During a hurricane, there is rain on the screen, but I saw some grass tiles on fire ... Rain should always put out fire."
-Thread (thread in the owner project), PR #1108 (main d98ea2d, token 20261111-hurricanerain-01-cors, uploaded state/three-renderer/ui).
+Thread (owner-project id), PR #1108 (main d98ea2d, token 20261111-hurricanerain-01-cors, uploaded state/three-renderer/ui).
 
 Cause: Hurricane is homing, w.tiles = the eye square only, so `soaks` reached one square. Fix: state.js WEATHER_REGISTRY.hurricane
 `rainWide: true` + `weatherRainIsWide(w)` (global OR rainWide), read by weatherRainsOnTile + the round-start soak. NOT `global`

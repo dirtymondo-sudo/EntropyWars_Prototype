@@ -1,6 +1,6 @@
 ---
 name: meshy-decor-concepts-20261103
-description: Decor D01-D92 + S01-S04 Meshy concepts 11-03 (thread in the owner project), 71 modelled on Meshy, not wired in
+description: Decor D01-D92 + S01-S04 Meshy concepts 11-03 ((thread in the owner project)), 71 modelled on Meshy, not wired in
 metadata:
   type: project
   modified: 2026-11-03T07:09:07.930Z

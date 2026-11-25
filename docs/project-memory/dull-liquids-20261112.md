@@ -4,7 +4,7 @@ description: Spell liquid glare fix (11-12, PR #1202): the six calm liquids' own
 metadata:
   type: project
 ---
-mondo 11-12 (Hollow Earth screenshot, white sparkly pool = the black goo `swamp`): "fix how bright and reflective these liquids are ... Water and lava are fine". Thread (thread in the owner project). Related [[calm-rollout-20261111]] [[noise-packs-20261112]].
+mondo 11-12 (Hollow Earth screenshot, white sparkly pool = the black goo `swamp`): "fix how bright and reflective these liquids are ... Water and lava are fine". Thread (owner-project id). Related [[calm-rollout-20261111]] [[noise-packs-20261112]].
 
 - Cause: poison, poison_bog, purple_bog, swamp, oil, blood shared the calm water's Phong highlight (0xb4c4c8, shininess 140, ripple 0.05); every board light glinted white off every ripple. Entropy Style was NOT the cause (same with it off).
 - SHIPPED PR #1202 (?v=20261112-dullliquids-01-cors, three-renderer.js 402ac514 live): `_CALM.liquids` rows = [colour, opacity, glow, highlight colour, shininess, ripple depth, sky sheen]. Tune there (console `EW_CALM.liquids.<key>`, shows at next board build). Notes maps-terrain-battle.md "THE DULL LIQUIDS".

@@ -8,7 +8,7 @@ metadata:
 
 PR #928 was merged and uploaded to R2 on 2026-11-05. three-renderer.js three-renderer.js 173c90c1, token 20261105-santacoat-01-cors.
 
-What it fixed (thread in the owner project):
+What it fixed ((thread in the owner project)):
 - mondo's Santa: the coat was wrecked, the neck hole too wide, red showed through the belt, and tucked trousers showed through the medieval boots.
 - The fix is wearCoatFit, which runs on every Blender coat (outer) on MPFB bodies. It does four things:
   1. skin floor;

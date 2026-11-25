@@ -13,4 +13,4 @@ mondo 2026-11-11: "I think we are good to get rid of all the voxel maps", then a
 - Still listed with ARENA MAPS off: Fairy Forest 20x20 (a room cut, not voxel) and Custom Map 20x20 (the voxel editor's board). Voxel editor untouched. His call if those two go.
 - GAUNTLET played only the big boards. It now takes the same maps as the other modes (deploy 4 fits the 12x12 4v4 maps); no rule changed. Checked: a Gauntlet on Stonehenge 12x12 reaches battle with 4 deployed + 4 reserves a side. Not played through.
 
-**How to apply:** never re-add voxel or big site boards to a list. Headless (swiftshader) screenshots of an arena battle right after launch show the camera under the board for both Arena and Gauntlet, so they are no proof of the board view. Proof shots: /mnt/project-files/voxel-maps-out-20261111/. Thread (thread in the owner project).
+**How to apply:** never re-add voxel or big site boards to a list. Headless (swiftshader) screenshots of an arena battle right after launch show the camera under the board for both Arena and Gauntlet, so they are no proof of the board view. Proof shots: /mnt/project-files/voxel-maps-out-20261111/. Thread (owner-project id).

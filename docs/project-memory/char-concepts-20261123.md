@@ -1,0 +1,16 @@
+---
+name: char-concepts-20261123
+description: 11-23 Meshy CONCEPT images only (30) for vampire F, werewolves, cyclops, demon prince, bears, rat, Hollywood set, horrors, Monarch + extras; folder, keys, NSFW + one-eye prompt lessons
+metadata:
+  type: project
+  modified: 2026-11-23T10:05:57.815Z
+---
+Thread (owner-project id) (mondo 11-23 09:59Z). Concepts only; models wait his picks.
+Folder /mnt/project-files/char-concepts-20261123/: items.py (+items2-4.py retries; `ITEMS=itemsN.py python3 -I gen.py <keys|all> _1`), gen.py (nano-banana-pro 3:4, 9 credits; kind 'beast' = creature tail), sheet.py, concepts/<key>_1.png, sheet_1..4 jpgs, cyclops_faces_closeup.jpg.
+Keys: vampire_f_a/b, werewolf_m_a/b, werewolf_f_a/b, demon_prince_a/b, cyclops_a-d, polar_bear, grizzly_bear, rat_m, pimp_m, stripper_f, actor_m, actress_f (came out Marilyn-like), horror_a/b, monarch_a/b (surprise F: MK-Ultra "Monarch" sleeper agent, D.U.M.B.), nun_f, saloon_girl_f, sleep_paralysis_demon, plague_doctor_m, ghost_hunter_m, pilot_m (Flight 19), plastic_surgeon_m.
+ONE EYE WORKS: the EYE clause in items.py ("exactly ONE single huge eye ... NO other eyes ... smooth bare skin, no eye sockets") gave 4/4 true cyclopes.
+NSFW 403 triggers: "stripper", "pole dancer", "latex", "stockings"/"fishnet", "Las Vegas club"; "stage dancer, sequinned crop top + shorts" passed.
+Meshy balance 2646 -> 2376 (270 credits).
+ROUND 2 (his 11-23 10:35Z): APPROVED -> models/<key>.glb + _rigged/_walking/_running (models.py, meshy-t2.5 a-pose): cyclops (C), polar_bear, grizzly_bear, monarch (A), plastic_surgeon; models_sheet.jpg. Retry concepts (sheet_5): vampire_f_c/d, demon_prince_c/d, werewolf_m_a2 (no chain) / _c, rat_m_c / rat_king d. NEW Butterfly Girl a/b + surprises made of moving parts: mannequin_f (Bayside Mall), kessler_swarm (Outer Space) (sheet_6). HORRORS: he wants BOTH, built from SEPARATE parts like virus/cursed tv (animations = separate thread): parts concepts sheet_7 + models horrorA_core/head/arm/tentacle/cage, horrorB_maw/mask/limb/fingers/shard (.glb, unrigged; models_sheet_horror_parts.jpg; B2 mask came out a whole head). Balance after: 1928.
+ROUND 3 (his 11-23 10:50Z): SKIP cyclops (model came out with 2 eyes), demon prince, kessler. GOOD: polar_bear, grizzly_bear, monarch. Models + rig done: vampire_f (D), werewolf_m (A no chain), rat_m (C), rat_king (D; his idea: rat -> rat king TRANSFORMATION), butterfly_girl (A), mannequin_f (one mesh, gaps only painted; split into floating parts later), plastic_surgeon_v2 (v1 too dark/"burnt"; v2 from lighter concept plastic_surgeon_m_b). models_sheet_round3.jpg. Balance 1779. Not in game.
+MANNEQUIN CUT by mondo 11-23 (PR #2462 unwired it; R2 files kept). WIRED 11-23 PR #2460 (merged + uploaded, ?v=20261123-comingraces2-01-cors): EW_COMING_RACES = bear (grizzly; polar = BEAR_POLAR_3D via appearance.form 'polar'), rat (RAT_KING_3D via form 'king'), monarch, butterfly girl, mannequin, plastic surgeon; werewolf M model replaced (v2). Vampire F = Vampire thread's PR (file on R2 vampire/female/Meshy_AI_vampire_f_v2_Running.glb). Horror parts on R2 horror_a|b/parts/, unwired (Horrors thread). Sprites sprites/out/*_px.png on R2. Notes champions-combat.md "THE COMING RACES 2". Spell threads per unit started by coordinator 11-23.

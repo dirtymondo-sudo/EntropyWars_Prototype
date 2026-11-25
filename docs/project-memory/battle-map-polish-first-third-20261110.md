@@ -4,10 +4,10 @@ description: Battle map polish 11-10 (mondo "improve all 12x12 battle maps"): fi
 metadata:
   type: project
 ---
-mondo 11-10: "start some threads to make improvements to all of the battle maps (12x12) ... texture, layout, more realistic, better props, removing props ... AAA presentation and polish". Three threads split by site id. FIRST (thread in the owner project): agartha, antarctica, area51, atlantis, babel, bermuda, bohemian_grove, camelot, cern, cyberpunk, derelict, downtown.
+mondo 11-10: "start some threads to make improvements to all of the battle maps (12x12) ... texture, layout, more realistic, better props, removing props ... AAA presentation and polish". Three threads split by site id. FIRST ((thread in the owner project)): agartha, antarctica, area51, atlantis, babel, bermuda, bohemian_grove, camelot, cern, cyberpunk, derelict, downtown.
 
 ALL 12 SHIPPED: Agartha PR #1084; Atlantis #1091; Antarctica, Spaceship (derelict), CERN, Babel #1092; Camelot, Bermuda, Bohemian Grove, Area 51, Cyberpunk, Downtown #1095 (token 20261110-mappolish-05-cors, data.js 35d244f5 live). Awaiting mondo's review of the looks. What each got: docs/notes/maps-terrain-battle.md "THE BATTLE MAP POLISH, first third". Before/after composites + tools: /mnt/project-files/battle-map-polish/first-third/.
-- levelM 3.5 (full ledges) set on all but Camelot, Cyberpunk, Downtown (castle generators / generated cities: left to the ledges (thread in the owner project).
+- levelM 3.5 (full ledges) set on all but Camelot, Cyberpunk, Downtown (castle generators / generated cities: left to the ledges (thread in the owner project)).
 - Known leftovers: Cyberpunk's Skyway deck is high ground on P2's corner only; the loop's traffic drives over the south spawn row; car_cyber model did not land in headless shots (glow only).
 
 LESSONS:

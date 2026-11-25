@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-13T17:51:40.391Z
 ---
-Thread (thread in the owner project) "Design Industrial district buildings" (mondo 11-13 16:41 district-architecture ask).
+Thread (owner-project id) "Design Industrial district buildings" (mondo 11-13 16:41 district-architecture ask).
 
 - STATUS 11-13 17:55: LIVE, PR #1279 merged, data.js 34d5314b uploaded. Waits mondo's Mac look. Shots /mnt/project-files/disaster-city-industrial/ (mockup_*, game_*.jpg).
 - Code: `docs/disaster-city/districts/I.js` (DESIGN map per building id, parametric on the baked footprint); rerun `node bake-disaster-city.js`. Notes: areas-complexes.md "DISASTER CITY, THE INDUSTRIAL DISTRICT".
@@ -21,5 +21,5 @@ Related [[disaster-city-144-20261113]]
 - 21:21 mondo "make hangar deeper so it fits": DONE PR #1338 (hangar 31.5 x 14 m via `fit` in build, 7 m walls, fighter_jet inside on 5 x 3 squares). LESSON: never change the plan in `tailor` for this: it re-rolls the whole city's random dressing (2800 data.js lines); grow a building with `fit` in `build`. `ctx.lamps` now reaches build. He has NOT yet said OK to the other ten interiors.
 - 11-14 00:20 INTERIORS LIVE PR #1354 (his "all okay" 11-13 22:25): all 11 walk-ins, I.js `IN[id]` + `KIT` + `inside()`; data.js a9499e24. Shot /mnt/project-files/disaster-city-industrial/interiors_game.jpg. UNSEEN: model-file props (lockers, crates, containers, chairs, vehicles) and prop facings. Pump court has an older mirrored shop-front sheet by the sewers door (not from this work, flagged to mondo).
 - HEADLESS LESSON: a free-camera render (own THREE camera) does NOT draw the game's batched props: instanced ones (`_ew_instHidden`) and merged proc ones (`_ew_mcKeep`) are hidden originals; the window flags did not help. For a placement look, force `visible` true on meshes under `userData.ewRow` groups in the view's eval. Also pass `--wait=430000` (default 22 s) or nothing has loaded.
-- 11-15 HOUSTON LIVE PR #1425 (real-cities plan d-i, mondo "Build it as drawn"; brief relayed from (thread in the owner project): I.js `HOU_LOOK` + the LANDMARKS block (`claim`/`land`); data.js 52858d3c. Shots /mnt/project-files/disaster-city-industrial/houston_1/2.jpg. Pump jacks static parts (a nodding Meshy one would need his concept OK). Tanker sits in dry berth (Industrial edges are forest/desert, no water).
+- 11-15 HOUSTON LIVE PR #1425 (real-cities plan d-i, mondo "Build it as drawn"; brief relayed from (thread in the owner project)): I.js `HOU_LOOK` + the LANDMARKS block (`claim`/`land`); data.js 52858d3c. Shots /mnt/project-files/disaster-city-industrial/houston_1/2.jpg. Pump jacks static parts (a nodding Meshy one would need his concept OK). Tanker sits in dry berth (Industrial edges are forest/desert, no water).
 - 11-15 19:00 DISTRICT MOVE PR #1482: Industrial is now the city's SOUTH-EAST block (cols 8-11, rows 8-11), sea east + south; a harbour quay (districts/Q.js, cx 144-146) runs down its east side. I.js needs no edits: plot ids stay names, the bake shifts the city while I.js runs. Merge main + rebake as usual; never convert coordinates by hand. Levels 0-2 now (flat).

@@ -5,7 +5,7 @@ metadata:
   type: project
   modified: 2026-11-12T11:49:48.333Z
 ---
-PR #1198 (2026-11-12, (thread in the owner project): baked Entropy_Wars_Setup_2026-11-12_0544.json. Default theme = "My Theme 3" (c_mw5p8wvy2q54); the old default "Entropy Wars Theme" (c_mvc8nxl9fo9g) stays a pick in Settings > HUD Theme. hud.js UIM_SHIPPED = his whole store (3 themes). Token 20261112-theme3-01-cors, hud.js e90ee4bb live.
+PR #1198 (2026-11-12, (thread in the owner project)): baked Entropy_Wars_Setup_2026-11-12_0544.json. Default theme = "My Theme 3" (c_mw5p8wvy2q54); the old default "Entropy Wars Theme" (c_mvc8nxl9fo9g) stays a pick in Settings > HUD Theme. hud.js UIM_SHIPPED = his whole store (3 themes). Token 20261112-theme3-01-cors, hud.js e90ee4bb live.
 
 **Why:** mondo: "bake this theme into the game. Make this the new default theme and the other one as another option".
 
