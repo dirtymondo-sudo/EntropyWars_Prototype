@@ -246,7 +246,7 @@ What changed (all in data.js, nothing in a room, tool or district file):
 - **`ZONE_FLORA.swap`** + `zoneFloraSwap` (run by `_hqPlaceProps` once a room build): a prop / scatter row of a listed key stands as the climate
   of its spot says: `'='` keep, `null` drop, `{ key, h, foot }` another piece. Today: the Meshy `fern` is dropped everywhere but `tropical`,
   `japan`, `hollow` (Katana, the Volcano Island, the Cove keep it: there it reads as a tropical plant); `psxg_dead_bush_1` stands as
-  `psxg_dead_bush_2` (the pack's thorn bush, footprint kept). Rooms in no zone (the old handmade sites, plot dungeons) keep their rows.
+  `psxg_dead_bush_2` (the pack's thorn bush, footprint kept). A room in no zone takes a key's `none` only: since 11-25 the rosette is off the old handmade sites and the plot dungeons too (mondo's fix-everywhere rule); their stick bushes are untouched.
   Off: `EW_NO_FLORA_SWAP`. Readout: `window._ewHqFloraSwap`. The editor still shows and saves the room's own rows.
 - **To retire another bad model game-wide: a row in `swap`, not an edit in 50 rooms.**
 
