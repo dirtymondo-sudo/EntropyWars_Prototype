@@ -1138,3 +1138,34 @@ silent to keep his cover, August escapes with jellyfish oil to the future Baysid
 a Mini Black Cube manifests, DOOR uses it to finish the door-gun prototype Locke hands the player; Dorian takes August out
 through a mall closet into the future and gets the finished future door gun. Claude's suggestions + open points: the doc
 "Story arcs in detail" https://claude.ai/artifact/MGAzmypWQUqxdAPhBq1btX (thread cmsg_01XWpxyTn3nnw98znVzKdFjsHE2iMd4AQqW2Vqh9Nw8cdt).
+
+## STORY SPELL LEARNING (2026-11-25, mondo; plan https://claude.ai/artifact/HvDgiBR7Q6A71zLtMjBrUJ)
+mondo: "Learn spells by leveling up ... choose from any family but you have to climb up each tier in order ... Units should never
+forget spells/abilities and the player should never have to choose to delete them." His answers: all learned by level 64; 3
+spells at level 1, 4 at level 5; the SP budget climbs with level; a captive teaches a SHARED family (not a signature one) for its
+freedom; Gear in the DOOR HQ shop and Training from someone at DOOR (later; both stay open until then); no cap on taught families;
+Adaptable leaves story mode.
+- **THE RULES** data.js `SPELL_LEARN_RULES` (start 3 · maxGap 4 · finish 64 · floors III 16 / IV 32 · taughtGap 2 · sp 5 + 1 per 5
+  levels, max 16). A unit's learnable spells = its families' members (`spellLearnFamilies`, the same pool as `raceFamilyPoolIds`).
+  `spellLearnStart` = the level-1 three (lowest tier first, one family after another); `spellLearnPickLevels(N)` spreads N − 3
+  picks to 64, never more than 4 apart (12 spells → 5, 9 … 37); `spellLearnOptions` = THE LADDER (a spell opens when a spell of the
+  family's next-lower tier is known; the floors hold unless nothing else is open); `spellLearnAutoKnown` = a native's known list
+  (seeded draw).
+- **THE LEDGER** `member.meta.learn = { known, used, taught: [{ fam, from, ids }], taughtAt }` (`hqLearnLedger` makes / repairs it
+  on every record read; no old-save migration: an old member starts with the three and every earned pick to spend). `known` only
+  grows. Recruits, captures and rewards (`hqPartyEnlist`) arrive knowing what their level gives them (`hqLearnSeedMember`, picks
+  spent); the officer starts with the three + his earned pick. `hqPartyLearnSpell` = THE PICK, the only write of `known`.
+- **THE GATE = ONE SCOPED CONTEXT.** `_ewLearnCtx` (beside SPELL_SP_MAX) is set by `withSpellLearnCtx(ctx, fn)` around a synchronous
+  call: `unitSpellPoolParts` then returns only the known (and taught) spells, no borrow window, no Adaptable; `spBudgetNow()`
+  replaces SPELL_SP_MAX in every verdict / legality / repair / random-kit / upgrade check. The party's spell functions
+  (`hqPartySpellTree`, `hqPartyTreeCircuit`, `hqPartySetSpells`, `hqPartyTreeClick`, `hqPartySpellsDefault` / `Random`,
+  `hqPartyUpgradeClick`) are thin wrappers over `_…Raw` that run inside the member's context; `hqLearnFitKit` trims a kit on every
+  read; `hqPartyForLaunch` fills an empty kit from what is known. map.js createUnit's STORY branch builds a story native / quest
+  ally / guest (no partyId) under `spellLearnNativeCtx`. Online, Practice, the forge, the Balance Lab and the online host never set
+  the context: whole pool, 16 SP, exactly as before.
+- **THE SCREENS** map.js `_hqPauseLearnHtml` (the member sheet's ABILITIES › EDIT: families side by side, KNOWN / OPEN / LOCKED with
+  the reason; `learn:<member>:<spell>` spends a pick, `learnview` shows the grid when no pick is due); the card's `✦ n NEW SPELLS`
+  chip (`_hqPauseLvChip`); the ABILITIES line `KNOWS n OF N · m TO LEARN`. The debrief: `hqPartyGrantXp` marks a level that brings a
+  pick (`b.learn`, the milestone line NEW SPELL TO LEARN). CSS "STORY SPELL LEARNING" at the end of styles-base.css.
+- NOT YET: step 4 (captives + the family deal: a sealed native waits as a captive, KEEP or TAKE A FAMILY; `taught` / `taughtAt`
+  are already read everywhere), step 5 (the first quest's tapes against the agent's level-5 spells).
