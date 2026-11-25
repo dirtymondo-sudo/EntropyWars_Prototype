@@ -4243,3 +4243,9 @@ the vertex stage`.
   side and the frame's own submit queues behind them. Reasoned, not measured here (no Firefox in the cloud). Off:
   `window.EW_WARM_FLY_ALL`. The memory line at 858-1000 of 700 MB was the Drop-off's cutscene files (sedan, Locke outfit,
   Bigfoot, spear) right after it ended: the budget drops them once 30 s idle, two a frame (146 dropped so far in that session).
+- **The main hall's dips at 68 FPS (11-25 21:08 F3, after the stalls were gone)**: "lamp 6 side renders, 1.22M tris", "replay: the
+  refreshes 8.3 ms" (the lamp map drawn inside the first lit piece's updateBefore). The hall's shadow lamp is a LAVA LAMP, and its
+  four wax blobs (rigid movers, centimetres from the light, inside the glass) touched all six cube sides, so THE SLOW PIECES rule
+  redrew the whole room's lamp map ten times a second. **THE WAX CASTS NO SHADOW** (`_hqLavaLampBuild`): the blobs neither cast nor
+  take a shadow (re-set each tick). Cloud probe (hall, webgl2 node renderer, 30 s): the lamp's drift went 55 of 55 frames -> 1,
+  the map now redraws only on its 3 s refresh.
