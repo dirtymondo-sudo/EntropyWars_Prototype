@@ -3478,6 +3478,14 @@ his 19:35 F3 (41.7 FPS, frame 24.0 ms, CPU 18.2 ms). 1 % of that profile = 0.27 
   SHADOW KEY KEPT). What glitches is what the shell draws OUTSIDE its recording (cars `_ew_hqCar`, signals, road marks). The
   address-bar switch `?ew_weakmaps=1` loads with three's own WeakMaps (the maps off) to split "the maps" from the rest.
 
+## THE FAR COLOUR (2026-11-25, mondo: "turn fog back on by default. bloom should stay off. and yes you can do the distance thing")
+- Atmospheric perspective: a fogged material's colour drains toward its own grey with distance BEFORE the fog mixes in, with Scene Fog on
+  or off. One row: `EW_AIR.desat` (how much a very far thing loses, 0.45) and `desatM` (the e-fold distance, 60 m); `_ewAirHold` writes
+  the shared `_EW_DSAT` (uniform `uEwDsat` in the patched fog chunk; the WebGPU twin builds its fog node from `output` with the same sum).
+  0 = off. `window.EW_AIR` is exposed for live retuning.
+- Fog back ON by default: SHIPPED-KEYS ew_retro fogDensity 0.00008 -> 0.00044 (the factory 55 %, Fog Density scale 1); fogEnabled was
+  already true. A player who set the slider or the toggle himself keeps his own value (Settings > Video).
+
 ## THE ONE AIR (2026-11-20, mondo: "it's just a hard cutoff from the horizon to the sky" + "one consistent fog system for the entire game, all rooms, exploration and battle and the main menu ... not per room")
 - **Why the line was there:** the sky dome's fog band was written to END at the horizon (`uFogTop`), the ground fogged by camera
   distance in a colour the sky above it did not wear, and the far land past a room's edge had its haze painted in at the build.
