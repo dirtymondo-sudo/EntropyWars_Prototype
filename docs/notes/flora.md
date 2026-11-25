@@ -107,6 +107,25 @@ Probe lesson: the blade grass streams in over a few seconds; a view needs `"sett
 | 5 · Dry and cold | the Desert (Western Town, Giza, Area 51, the circus), dry routes, the Mountains + Olympus, the North Pole | desert composition = rock outcrops, cactus groups, dry washes |
 | 6 · Islands and the rest | Katana Island, the Harbour + islands, the Vatican's gardens, Hollow Earth | |
 
+### 00e. GROUP 5, DRY AND COLD (built 11-25): the Desert, its highway, the dry routes, the Mountains + Olympus, the mountain roads, the North Pole
+
+What the census found: the bake tools and district files had sprinkled every rock, dead bush, tumbleweed and snow heap ONE BY ONE over the whole ground
+(R5 alone: 265 heaps, 241 rocks; R8: 134 dead bushes, 300 rocks), plus the rule's 26 barrel cacti a room at even spacing. data.js has two zone rows
+`ZONE_FLORA.compose.dry` (zone `desert`) and `ZONE_FLORA.compose.cold` (zones `mountains`, `northpole`); a zone row's `compose` names its row (it wins
+over the climate's, so the Snowy Pines and Leylines, which share the `snow` / `scrub` climates, are untouched). What they do at room build:
+- **THE OUTCROPS (`gather`, new in the kit):** a rock (`psxg_rock_*`, `cave_stone`, `lake_rock`, `ocean_rock_*`; never a cairn, a menhir or Giza's
+  `hw_stone_*`) standing alone or as one of a pair (fewer than two other rocks within `loose` 4.5 m) and with no trunk or building that near leaves its spot; `thin` 0.5 of them stand again as OUTCROPS of 3-5 (one big
+  1.0-1.6 m, never the lake rock: it reads as a white blob, two middle, the rest small, on a crescent) centred on old spots at least `apart` 11 m apart, with dry tufts / sage / a thorn bush (cold: frost
+  tufts, a small drift) at the foot. Rocks that already stood together (a district's rock garden) stay. The outcrops are anchors for the groups.
+- **THE GROUPS:** barrel cactus 2-3 under a nurse rock or a saguaro / Joshua tree; agave, yucca, dead bushes at rocks, trees, walls; TUMBLEWEEDS piled
+  against walls, rocks, logs (the wind's work); SNOW HEAPS banked as drifts against a rock, a trunk, a wall, a log; alpine flowers + bushes in drifts at
+  rocks and logs. The rule's barrel cacti (ZONE_FLORA.props) join the groups (zoneFloraProps skips a composed key).
+- The desert climate's sage / grey weed / bloom layers take `near` (far 0.45): they gather round the standing things.
+- `freeDropped: true` on a row: a dropped row no longer blocks the spots round it (freeFor `skip`), so an outcrop can stand where its rocks stood.
+Counts (headless, every room fewer pieces than before; the heavy ones roughly halve): R5 heaps 265 -> 129, rocks 241 -> 154; R8 dead bushes 134 -> 76,
+rocks 339 -> 270, cacti 26 -> 12; DH4 tumbleweeds 90 -> 47. The Woods' result is byte-for-byte the same. find-softlocks: no new trap in the 15 rooms.
+Readout: `hqTerrainInfo(room).composed` (`outcrops`, `gathered`). Not done: dry washes (terrain, the zone tools'), vignettes by hand (S9), the landmark reveal.
+
 ## 0. THE GROUND RULES (2026-11-25, the second foliage pass; READ FIRST)
 
 mondo, 11-25: "make the grass/foliage look better and more realistic. Research how video games do this. But basically you have to
