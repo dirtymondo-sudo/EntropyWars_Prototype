@@ -8939,7 +8939,7 @@ const ThreeRenderer = (function () {
            and takes the same light as the ground beside it; lit = a trim on that. A tuft's foot is rootK of it, its belly the
            ground's own, its top coolK / warmK (the two tones the slow patches drift between) */
         sheets: { calm_grass: [0.252, 0.313, 0.163], calm_rockygrass: [0.270, 0.315, 0.200], calm_purplegrass: [0.324, 0.195, 0.513], calm_darkgrass: [0.213, 0.240, 0.162],
-                  grass: [0.302, 0.307, 0.197], grass_dark_fantasy: [0.302, 0.307, 0.197], grass_2: [0.261, 0.519, 0.163], grass_3: [0.352, 0.673, 0.061], grass_4: [0.303, 0.276, 0.163], grass_rocky: [0.434, 0.533, 0.234], purple_grass: [0.462, 0.286, 0.557] },
+                  grass: [0.302, 0.307, 0.197], grass_dark_fantasy: [0.302, 0.307, 0.197], grass_2: [0.261, 0.519, 0.163], grass_3: [0.352, 0.673, 0.061], grass_4: [0.303, 0.276, 0.163], grass_rocky: [0.434, 0.533, 0.234], ew_floor_grass: [0.215, 0.262, 0.140], purple_grass: [0.462, 0.286, 0.557] },
         lit: 1.0, rootK: 0.40, coolK: [1.08, 1.34, 1.28], warmK: [1.42, 1.44, 1.04],
         patchM: 1.8,        // patch size, squares
         pressR: 0.42,       // a unit lays the grass down this far round its feet (× tile)
@@ -9388,15 +9388,21 @@ const ThreeRenderer = (function () {
         gapKeep: 0.40,      // the share of tufts kept on the seam between two clumps
         patchM: 26,         // G2: the big patches (m)
         lush: [0.90, 1.07, 0.92],  // the lush patch's tint (r g b ×)
-        dryMix: 0.34,       // how far a dry patch's tips go toward straw
+        dryMix: 0.42,       // how far a dry patch's tips go toward straw
         bareM: 7,           // G3: the bare blobs (m)
-        bare: [0.66, 0.77], // the blob noise from which the cover thins (first) to nothing (second)
+        bare: [0.62, 0.72], // the blob noise from which the cover thins (first) to nothing (second)
         edgeM: 1.3,         // G4: within this of a standing thing, the grass is taller
         edgeTall: 1.5,
         trodM: 1.1,         // within this of a path / paving / any non-grass ground, shorter and thinner
         trod: [0.68, 0.70], // its height ×, its keep share
         wetM: 1.6, wetTall: 1.4,
-        massKeep: 0.55,     // on a flat MASS (the thicket's floor nobody walks) the cover is this much thinner: the triangles go where the walker is
+        massKeep: 0.55,
+        /* ROUND 2 (11-25, mondo on the Woods: "still just looks like a bunch of grass blades and not much breaking it up"): a share of clumps are TALL
+           seed grass (taller, paler, strawy), every clump has its own hue (cool blue-green .. warm yellow-green), and the forest floor's dirt grows a
+           sparse dark sward where its climate says `dirtGrass` (the woods were 60 % dirt sheet with no blade on it) */
+        tallShare: 0.11, tallH: 1.85, tallDry: 0.38,
+        clumpHue: 0.10,
+        dirtSheets: { dirt: 1, dirt_2: 1, dirt_3: 1, calm_dirt: 1, leaves_3: 1 }, dirtH: 0.72,     // on a flat MASS (the thicket's floor nobody walks) the cover is this much thinner: the triangles go where the walker is
         bucketM: 4
     };
     try { window.EW_GROUND_RULES = GROUND_RULES; } catch (e) {}
@@ -9444,9 +9450,13 @@ const ThreeRenderer = (function () {
         o.h = G.clumpH[0] + (G.clumpH[1] - G.clumpH[0]) * hid;
         o.t = 1 + (h2 * 2 - 1) * G.clumpTint;
         o.lean = h3 * Math.PI * 2;
+        var h4 = (hid * 29.31) % 1, h5 = (hid * 53.7) % 1;
+        o.hue = (h4 * 2 - 1) * G.clumpHue;
+        o.tall = (h5 > 1 - G.tallShare) ? 1 : 0;
+        if (o.tall) o.h = Math.max(o.h, 1) * G.tallH;
         o.keep = G.gapKeep + (1 - G.gapKeep) * seam;
         var p = _ewSmoothNoise(x / G.patchM + 41.3, z / G.patchM + 17.9) * 0.7 + _ewSmoothNoise(x / (G.patchM * 0.37) + 9.1, z / (G.patchM * 0.37) + 3.3) * 0.3;
-        o.lush = Math.max(0, Math.min(1, (0.42 - p) / 0.14)); o.dry = Math.max(0, Math.min(1, (p - 0.56) / 0.14));
+        o.lush = Math.max(0, Math.min(1, (0.44 - p) / 0.10)); o.dry = Math.max(0, Math.min(1, (p - 0.54) / 0.10));
         var b = _ewSmoothNoise(x / G.bareM + 3.7, z / G.bareM + 29.1) * 0.75 + _ewSmoothNoise(x / (G.bareM * 0.4) + 13.3, z / (G.bareM * 0.4) + 1.7) * 0.25;
         var bt = Math.max(0, Math.min(1, (b - G.bare[0]) / (G.bare[1] - G.bare[0])));
         o.keep *= 1 - bt; o.h *= 1 - 0.45 * bt;
@@ -9482,26 +9492,29 @@ const ThreeRenderer = (function () {
             /* THE LAST ROW WEARS ITS NEIGHBOUR (2026-11-22): the lattice's outer ring is never painted, so a road that reaches the room's line wore the room's
                bare floor on its last 0.9 m and a band of grass grew across it at every route end: an unpainted ring node reads the node one row in */
             var pk0 = (PT && !PT.P[nk] && (ni < 2 || nj < 2 || ni >= info.nx - 2 || nj >= info.nz - 2) && info.nx > 5 && info.nz > 5) ? Math.min(info.nz - 3, Math.max(2, nj)) * info.nx + Math.min(info.nx - 3, Math.max(2, ni)) : nk;
-            var sheet = (PT && PT.P[pk0]) ? PT.pal[PT.P[pk0] - 1] : info.floor, pal = S.pals[sheet];
+            var sheet = (PT && PT.P[pk0]) ? PT.pal[PT.P[pk0] - 1] : info.floor, pal = S.pals[sheet], GR = GROUND_RULES, onDirt = false, CL = null;
             if (pal === undefined) pal = S.pals[sheet] = _ggPalette(sheet) || null;
+            if (S.rid && typeof zoneFloraAt === 'function') { var ck7 = Math.floor(xm / 7) + ',' + Math.floor(zm / 7); CL = S.clim[ck7]; if (CL === undefined) { try { CL = S.clim[ck7] = zoneFloraAt(S.rid, xm, zm) || null; } catch (e7) { CL = S.clim[ck7] = null; } } }
+            if (!pal && CL && CL.dirtGrass && GR.dirtSheets[sheet] && S.gr) {   // ROUND 2: the forest floor's sparse sward
+                if (((r0 * 91.7 + r2 * 13.3) % 1) > CL.dirtGrass) continue;
+                pal = S.pals.ew_floor_grass; if (pal === undefined) pal = S.pals.ew_floor_grass = _ggPalette('ew_floor_grass') || null; onDirt = true;
+            }
             if (!pal) continue;
-            var GRo = S.gr, GR = GROUND_RULES, edgeK = 1, gO = null;
+            var GRo = S.gr, edgeK = 1, gO = null;
             var inB = false, nearB = false; for (var b = 0; b < S.boxes.length; b++) { var B = S.boxes[b], dx = xm - B[0], dz = zm - B[1], lx0 = Math.abs(dx * B[4] + dz * B[5]), lz0 = Math.abs(-dx * B[5] + dz * B[4]); if (lx0 < B[2] && lz0 < B[3]) { inB = true; break; } if (GRo && lx0 < B[2] + GR.edgeM && lz0 < B[3] + GR.edgeM) nearB = true; }
             if (inB) continue;
             if (hqTerrainFluidAt(info, xm, zm)) continue;
             if (hqTerrainSlope(info, xm, zm) > HQ_GRASS.steep) continue;
             if (S.paths.length) { var onP = false; for (var pq = 0; pq < S.paths.length; pq++) { var PP = S.paths[pq]; if (xm > PP.x0 && xm < PP.x1 && zm > PP.z0 && zm < PP.z1 && _hqTPolyDist(xm, zm, PP.pts).d < PP.w / 2 + 0.15) { onP = true; break; } } if (onP) continue; }   // never on a path (the flora field's rule)
             var cK = 1, cD = 0;
-            if (S.rid && typeof zoneFloraAt === 'function') {   // the climate's grass: its height (a mown city lawn, the fairy wood's low sward) and its dry share (ZONE_FLORA climates grassH / grassDry)
-                var ck7 = Math.floor(xm / 7) + ',' + Math.floor(zm / 7), CL = S.clim[ck7]; if (CL === undefined) { try { CL = S.clim[ck7] = zoneFloraAt(S.rid, xm, zm) || null; } catch (e7) { CL = S.clim[ck7] = null; } }
-                if (CL) { cK = CL.grassH || 1; cD = CL.grassDry || 0; }
-            }
+            if (CL) { cK = CL.grassH || 1; cD = CL.grassDry || 0; }   // the climate's grass: its height (a mown city lawn, the fairy wood's low sward) and its dry share (ZONE_FLORA climates grassH / grassDry)
+            if (onDirt) cK *= GR.dirtH;
             if (GRo) {   // THE GROUND RULES (G1-G4): the clump, the patch, the bare blobs, the edges
                 gO = _grAt(xm, zm, GRo.o);
                 if (r0 > gO.keep) continue;
                 var trod = false, tr = GR.trodM;
                 if (PT) for (var e4 = 0; e4 < 4 && !trod; e4++) { var ex = xm + (e4 === 0 ? tr : e4 === 1 ? -tr : 0), ez = zm + (e4 === 2 ? tr : e4 === 3 ? -tr : 0), ei = Math.round((ex - info.x0) / info.res), ej = Math.round((ez - info.z0) / info.res);
-                    if (ei < 1 || ej < 1 || ei >= info.nx - 1 || ej >= info.nz - 1) continue; var es = PT.P[ej * info.nx + ei] ? PT.pal[PT.P[ej * info.nx + ei] - 1] : info.floor, ep = S.pals[es]; if (ep === undefined) ep = S.pals[es] = _ggPalette(es) || null; if (!ep) trod = true; }
+                    if (ei < 1 || ej < 1 || ei >= info.nx - 1 || ej >= info.nz - 1) continue; var es = PT.P[ej * info.nx + ei] ? PT.pal[PT.P[ej * info.nx + ei] - 1] : info.floor, ep = S.pals[es]; if (ep === undefined) ep = S.pals[es] = _ggPalette(es) || null; if (!ep && !(CL && CL.dirtGrass && GR.dirtSheets[es])) trod = true; }
                 if (trod) { if (r5 > GR.trod[1]) continue; edgeK = GR.trod[0]; }
                 var ndG = _grNearD(GRo.near, xm, zm, GR.edgeM);
                 if (ndG < -0.1) continue;   // inside a standing thing's own footprint (a trunk, a rock, a boardwalk prop): no blade through it
@@ -9520,7 +9533,8 @@ const ThreeRenderer = (function () {
             var lm = h * C.lean * (0.35 + 0.65 * r5), lx = Math.cos(laz) * lm, lz = Math.sin(laz) * lm, jit = 0.97 + 0.06 * r0;
             var tipR = (pal.cool[0] + (pal.warm[0] - pal.cool[0]) * pt) * jit, tipG = (pal.cool[1] + (pal.warm[1] - pal.cool[1]) * pt) * jit, tipB = (pal.cool[2] + (pal.warm[2] - pal.cool[2]) * pt) * jit, RT = pal.root, MD = pal.mid;
             if (gO) {   // G2: the clump's step, the lush and the dry patches (the sheet's own colour stays the anchor)
-                var Lu = GR.lush, lu = gO.lush * (1 - cD), dm = Math.min(0.85, gO.dry * GR.dryMix + cD), gt = gO.t;
+                var Lu = GR.lush, lu = gO.lush * (1 - cD), dm = Math.min(0.85, gO.dry * GR.dryMix + cD + (gO.tall ? GR.tallDry : 0)), gt = gO.t * (gO.tall ? 1.12 : 1);
+                tipR *= 1 + gO.hue; tipB *= 1 - gO.hue;   // ROUND 2: the clump's own hue (cool blue-green .. warm yellow-green)
                 tipR = (tipR * (1 + (Lu[0] - 1) * lu) * (1 - dm) + GGRASS.dry[0] * 1.25 * dm) * gt; tipG = (tipG * (1 + (Lu[1] - 1) * lu) * (1 - dm) + GGRASS.dry[1] * 1.25 * dm) * gt; tipB = (tipB * (1 + (Lu[2] - 1) * lu) * (1 - dm) + GGRASS.dry[2] * 1.25 * dm) * gt;
             }
             for (var k = 0; k < PL; k++, v++) {
