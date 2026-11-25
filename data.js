@@ -13199,7 +13199,7 @@ const TRAINING_PASSIVES = [
       desc: 'Buffs this unit applies last +1 turn.' },
     { id: 'passiveAdaptable', tier: 2, name: 'Adaptable', icon: '🃏',
       hooks: { borrowFamilies: true },
-      desc: 'Borrow spells from the families other races carry (in story mode: only the vessels you own). Unequip it and the borrowed spells come off too.' },
+      desc: 'Borrow spells from the families other races carry (Online and Practice only: in story mode a captive teaches you a family instead). Unequip it and the borrowed spells come off too.' },
     { id: 'passiveBruteForce', tier: 1, name: 'Brute Force', icon: '👊',
       hooks: { basicDmgMult: 1.2, swim: true },
       desc: 'Basic attacks deal +20% damage, and the unit can swim.' },
@@ -104475,7 +104475,7 @@ function hqPartyUnlocked(profile) {
 function hqPartyDefaultJob(race) { return UNIT_CLASS; }
 /* THE DEFAULT KIT (THE JOBS REMOVAL, 2026-09-27): `lead` ids first, then the race's four curated rungs, then the rest of
    its families cheapest first — trimmed to the 7 slots / 16 SP by treeLegalSubset. The forge's DEFAULTS and THE OFFICER's
-   starting kit (lead = the Adaptable row: the story rule "only learn spells of units you have unlocked" rides on it). */
+   starting kit (lead = the Adaptable row, for Online / Practice; in story mode STORY SPELL LEARNING drops it: hqLearnFitKit). */
 /* THE KIT EXTRAS (2026-11-24): a race's own spell past its four tree rungs that its default kit should carry anyway (the tree
    is four rungs by schema, and the family fill sorts by tier, so a tier III extra never made it in). Point Guard: Slam Dunk
    (mondo 11-24: "you gotta give him a slam dunk ability too"). */
