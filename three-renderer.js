@@ -92092,6 +92092,7 @@ const ThreeRenderer = (function () {
         H.clearAt = { x: pl.x, z: pl.z, t: now };
         H.chars.forEach(function (ch) {
             if (!ch || ch === pl || ch.kind === 'player' || ch.kind === 'cast' || ch.cast || ch.away) return;
+            if (ch.spot && ch.spot.friend) return;   // a friend waiting by the way in (the Archives' Glitch, 2026-11-25) is there to meet you
             if (Math.abs((ch.y || 0) - (pl.y || 0)) > C.dy) return;
             var dx = ch.x - pl.x, dz = ch.z - pl.z, d = Math.hypot(dx, dz), f = dx * fx + dz * fz, lat = Math.abs(dx * fz - dz * fx);
             var hit = d < C.radius || (f > 0 && f < C.ahead && lat < C.aheadHalfW) || (f <= 0 && f > -C.behind && lat < C.behindHalfW);
