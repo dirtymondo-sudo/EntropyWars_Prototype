@@ -4990,7 +4990,10 @@
                 if (window._ewSceneEdPlay || window.EW_NO_CUTSCENES || window.EW_NO_INTRO || !_hqRoomExists(_INTRO_ROOM) || typeof window.storyCutscene !== 'function' || !window.storyCutscene(_INTRO_SCENE)) return false;
                 const p = _hqProfile(); if (!p) return false;
                 const t = (typeof window.questTracker === 'function') ? window.questTracker(p) : null;
-                if (!t || t.quest !== 'orientation' || t.stage !== 'walk') return false;
+                /* a BRAND NEW profile (mondo 11-25, a new account skipped the desert + the ride): ORIENTATION has no record yet (it
+                   starts with the first room event, filed AFTER this check), so "no quest on file at all" is due too */
+                const fresh = !t && typeof window.questProgress === 'function' && !window.questProgress(p, 'orientation');
+                if (!fresh && (!t || t.quest !== 'orientation' || t.stage !== 'walk')) return false;
                 return !((typeof hqStoryFlags === 'function') ? hqStoryFlags(p) : {}).intro_seen;
             } catch (e) { return false; }
         }
@@ -5076,7 +5079,18 @@
             return _questHqScene(t, rp, () => {
                 try { window._questEvent({ type: 'room', room }, { delay: then ? 0 : 600 }); } catch (e) { console.warn('[QUEST] room', e); }
                 /* the stage's `then`: what the scene leads straight into (B: the TV is on, Tape 1 starts) */
-                if (then && then.lesson && typeof window._tutorialStartFromHq === 'function') setTimeout(() => { try { window._tutorialStartFromHq(then.lesson); } catch (e) { console.warn('[SCENE] then', e); } }, 250);
+                /* (mondo 11-25: "the tutorial battle starts but the screen is completely black, only the hud shows"): the lesson
+                   was launched with the building still up, so the walk's black stage covered the board. Leave the building first,
+                   as the Range Console's own tape row does; the match returns to the console in this room. */
+                if (then && then.lesson && typeof window._tutorialStartFromHq === 'function') setTimeout(() => { try {
+                    if (state.gameState === GS.HQ) {
+                        try { window._hqClosePanel({ keepPaused: true }); } catch (e) {}
+                        _hqLastDoor = 'range'; _hqLastRoom = _hqCurRoom; _hqRecordVisit('range');
+                        window._hqLeave();
+                        state.gameState = GS.MAIN_MENU;
+                    }
+                    window._tutorialStartFromHq(then.lesson);
+                } catch (e) { console.warn('[SCENE] then', e); } }, 250);
             });
         }
         function _questTalkScene(who, rp) {
