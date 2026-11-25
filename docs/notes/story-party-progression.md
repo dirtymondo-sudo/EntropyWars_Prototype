@@ -1182,3 +1182,17 @@ Adaptable leaves story mode.
   "in story mode" (it is Online / Practice only now).
 - LATER (mondo 11-25, undecided): Gear sold in the DOOR HQ shop; Training passives from a teacher at DOOR. Until then both stay
   open to every story unit as before.
+
+## THE FIRST QUEST ON A NEW ACCOUNT (2026-11-25, mondo on a new account, Mac / Firefox / WebGPU)
+Two bugs, both proved on a fresh profile in the cloud browser (before + after pictures: project files `first-quest-fix/`).
+- **The desert + the ride were skipped.** map.js `_introDue` asked `questTracker` for ORIENTATION on stage `walk`, but a brand new
+  profile has NO quest record yet: the quest starts with the first room event, which `_hqEnter` files AFTER the opening check. So a
+  new account never saw the opening; every older test profile already had the quest on file. Now "no ORIENTATION record at all" is
+  due too (`questProgress(p, 'orientation')` null).
+- **Tape 1 after Locke's TV scene was black with only the HUD.** `_questRoomScene`'s `then: { lesson }` launched the tutorial with
+  the building still up (gameState HQ, the walk's stage over the board). The Range Console's tape row always did `_hqLeave()` +
+  MAIN_MENU first; the scene's `then` now does the same (and sets `_hqLastDoor = 'range'` so the match returns to the console).
+  Not WebGPU-only: it reproduced on WebGL too. Neither bug came from the spell learning or mystery dungeon PRs.
+- Harness used: a scratch fresh-profile probe (probe-fast.js; `_hqIntakeEnlist(null)` then `_goToPlayHub({ afterDoor: true, enlisted: true })`;
+  `EW_NO_INTRO` + `_hqEnter({ room: 'training', from: 'walk' })` for the tape). Desert -> shaft -> foyer takes ~3 min, the TV scene
+  to the board ~2 min.
