@@ -27568,7 +27568,14 @@
                                     if (n && n.id && _encAway.indexOf(n.id) < 0) _encAway.push(n.id);
                                 }));
                             } catch (e) {}
-                            hqEncounterRecord(p, { site: erun.site, room: erun.room, race: erun.race, id: erun.id || null, won, retreat: !won && _encRetreatOn, beaten: _encBeaten, away: _encAway, date: erun.date || ((typeof hqToday === 'function') ? hqToday() : null) });
+                            /* THE DOOR CASES' ARREST (2026-11-25, data.js mdCaseClose): the NPC ids taken in, arrested (the give-up panel's door) or sealed by a capture door */
+                            const _encArrested = [];
+                            try {
+                                const _np = Array.isArray(erun.npcs) ? erun.npcs : [], _sv = getViewerPlayer(), idOf = uid => { const m = /^(\d+)-(\d+)$/.exec(String(uid)), n = m ? _np[+m[2]] : null; return n && n.id ? n.id : null; };
+                                _npcDealt.forEach(d => { if (d && d.how === 'arrest' && d.unit) { const i = idOf(d.unit.id); if (i && _encArrested.indexOf(i) < 0) _encArrested.push(i); } });
+                                if (won) (state.captures || []).forEach(c => { if (c && c.player === _sv && c.unitId) { const i = idOf(c.unitId); if (i && _encArrested.indexOf(i) < 0) _encArrested.push(i); } });
+                            } catch (e) {}
+                            hqEncounterRecord(p, { site: erun.site, room: erun.room, race: erun.race, id: erun.id || null, won, retreat: !won && _encRetreatOn, beaten: _encBeaten, away: _encAway, arrested: _encArrested, date: erun.date || ((typeof hqToday === 'function') ? hqToday() : null) });
                             /* THE CARRY-OVER (DOOR_GUN_PLAN §5.3, Phase 4): the room's doors go home with the hits the board left them (a
                                broken door is gone); a capture door that went onto the board is spent */
                             try {

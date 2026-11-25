@@ -14902,13 +14902,13 @@ like a mystery dungeon ... with more floors too (10 isnt enough)"; then "30 is g
 them except hero tower"; "I want the internet to have its own quest giver, not in DOOR, and it can have a mystery dungeon that is called the
 archives or something that is full of old internet pages and archives". The Hotel's generator (data.js block HOTEL-MD, above) now lays FIVE
 buildings, THIRTY floors each, from one table `MD_BUILDINGS` (a building leaves out what it shares with the Hotel; `mdDef(b)` fills it in):
-| key | building | way in | floors are called | the top | bosses 10 / 20 (drafts) / top |
+| key | building | way in | floors are called | the top | bosses 10 / 20 / top (by race: no made-up names, see THE FINISH below) |
 |---|---|---|---|---|---|
-| hotel | THE HOTEL (`dc:P08-00-B1`) | the lobby's left lift (`hotel_lift`) | FLOOR n, ROOM n01 | the roof | Councilman in 1010 (politician) / Night Manager (gangster) / the Banker |
-| office | ACT OF GOD INSURANCE (`dc:P09-00-B1`, the skyline tower lobby) | its left lift (`md_office_lift`) | FLOOR n, SUITE n01 | the roof | Claims Adjuster (banker F) / Regional Manager (reptilian) / the Tech CEO |
-| haunted | THE HAUNTED HOUSE, down from its cellar | `md_haunted_down`, the cellar's south wall | CELLAR n, VAULT n01 | a hall: THE BOTTOM | the Doll in the Wall / the Set That Stays On (cursed TV) / the One in the Box (vampire) |
-| dumb | THE D.U.M.B. under Sub-Level 7 | `md_dumb_down`, the hub's south wall | SUB-LEVEL 7+n, LAB | a hall | the Containment Failure (juggernaut) / the Head of Research / Subject Zero (abomination) |
-| archives | THE ARCHIVES (the Internet, tile P07-08 The Archive) | `md_archives_down`, the tile's south side; THE HACKER stands by it (the giver, outside DOOR; mondo 11-25 picked him over the Glitch); his scout THE GLITCH stands by the way in on floors 1-20, a friend (`scout`, spot `friend: true`: hqEncounterCharOk never fights it) | the year (2026 - n), PAGE | a hall: THE OLDEST BACKUP, nobody in it (the doc: floor 30 is story, left open), its page dated 1953 | the Deleted Account (influencer F) / the First Draft (virus) / none |
+| hotel | THE HOTEL (`dc:P08-00-B1`) | the lobby's left lift (`hotel_lift`) | FLOOR n, ROOM n01 | the roof | the Politician / the Gangster / the Banker |
+| office | ACT OF GOD INSURANCE (`dc:P09-00-B1`, the skyline tower lobby) | its left lift (`md_office_lift`) | FLOOR n, SUITE n01 | the roof | the Banker (F) / the Reptilian / the Tech CEO |
+| haunted | THE HAUNTED HOUSE, down from its cellar | `md_haunted_down`, the cellar's south wall | CELLAR n, VAULT n01 | a hall: THE BOTTOM | the Haunted Doll / the Cursed TV / the Vampire |
+| dumb | THE D.U.M.B. under Sub-Level 7 | `md_dumb_down`, the hub's south wall | SUB-LEVEL 7+n, LAB | a hall | the Juggernaut / the Mad Scientist / the Abomination |
+| archives | THE ARCHIVES (the Internet, tile P07-08 The Archive) | `md_archives_down`, the tile's south side; THE HACKER stands by it (the giver, outside DOOR; mondo 11-25 picked him over the Glitch); his scout THE GLITCH stands by the way in on floors 1-20, a friend (`scout`, spot `friend: true`: hqEncounterCharOk never fights it) | the year (2026 - n), PAGE | a hall: THE OLDEST BACKUP, nobody in it (the doc: floor 30 is story, left open), its page dated 1953 | the Influencer (F) / the Virus / none |
 - **Room ids:** the Hotel keeps `site_prebuilt_hotel_f<n>` + `site_prebuilt_hotel_roof`; the rest are `site_prebuilt_md_<key>_f<n>` + `..._roof` / `..._bottom`.
 - **THE MEMORY RULE:** only floor 1 of each building is laid at load (~1 ms each; the Hotel used to lay all ten). Going in from outside (map.js
   `_hqGoRoom` -> `hotelBeforeGo`, now called BEFORE the room is looked up, so a floor not laid yet is laid there) lays the whole building from a
@@ -14935,6 +14935,28 @@ buildings, THIRTY floors each, from one table `MD_BUILDINGS` (a building leaves 
   in the bag, the case is kept closed in localStorage `ew_md_cases_closed`. THE CASE BOARD at every way in reads today's case (`mdCaseBoard`).
   Not done (the side-quests thread's side): Locke's board in HQ, the givers' quest lines, the Act II / III twist cards, the arrest via the capture door,
   the Chapter 5 gate on the D.U.M.B. and the Chapter 7 gate on the First Draft (the game keeps no chapter flag yet).
+
+### THE MYSTERY DUNGEONS, THE FINISH (2026-11-25, thread "Finish the mystery dungeons", the new account)
+- **NO MADE-UP BOSS NAMES** (mondo 11-25: "Don't make names for the bosses, the units already have names. It's name is the unit/race it is."):
+  `floorBoss` rows carry only `race` + `gender`; `_mdBossNames` (data.js, run once after MD_BUILDINGS) writes every `name`, `bossName`,
+  `bossLabel` as THE <RACE_PROFILES label> (· BOSS). Never add a `name:` to a boss row. The Archives' `bossName` THE OLDEST BACKUP is the
+  bottom's title (no boss there), not a boss.
+- **THE BOSS SUITE** (plan step 3): on floors 10 and 20 `hotelMaze(..., { suite: true })` lays one 3 x 3 room in the far corner (north-east)
+  before the other rooms: `rooms[0].suite`, ONE shut door in (never a second way or a hole), the stairs (UP) in its north-east square on the
+  outer wall, the boss (still npc 0 = `hq-native-0`) on its middle square facing the door. The door's plate reads the boss's name. Furnished
+  by the building's kit as a fight room. Checked headless: 5 buildings x 4 seeds x floors 9 / 10 / 20, every square reached, UP in the suite.
+- **THE GUEST BOOK** (plan step 3, "a guest book of the deepest floor"): `mdBest(b)` / `mdBestSet`, localStorage `ew_md_deepest` { b: floor },
+  floors + 1 = the top, written by `hotelBeforeGo`. A way in's board adds DEEPEST SO FAR: <floor>; Locke's board lists every building's.
+- **LOCKE'S CASE BOARD** in DOOR HQ: the Main Hall's drum at 151 degrees (a `notice_board` wall prop + counter `md_board_hq`, act `board`, no
+  building = every building's deepest). Behind her briefing table (20 degrees) the east stair hid it, so it stands between the Office and the
+  Building Directory.
+- **THE ARREST**: battle.js passes `arrested` (NPC ids taken by the give-up panel's ARREST or by a capture door) to `hqEncounterRecord`; a case
+  closed after an arrest says ARRESTED · CASE CLOSED. The reward and the rule are unchanged (an arrest case still closes after a knock-down:
+  whether it must be an arrest is mondo's call). FIX: `hqEncounterRecord` now calls `hotelBossBeaten` for EVERY NPC down in a won fight
+  (`ev.beaten`), not only the one struck: an IT IS NOT ALONE case fought as one group never let its door close, a boss downed in a group fight
+  did not open its stairs.
+- **STILL OPEN, waits mondo:** story notes in the rest rooms, floor kinds (flooded, on fire), Archives floor 30, the chapter gates (the game
+  keeps no chapter flag), the givers' quest lines and the Act II / III twist cards.
 
 ## THE INTERIOR KITS + THE CHAIN INSIDES + THE DOOR FINDER + THE PARKED CITY (2026-11-23, building-interiors plan step 1)
 mondo 11-23: "I want every building to have an interior. If there is a door the player should be able to walk inside of it (very important
