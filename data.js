@@ -113045,66 +113045,165 @@ function pdBesideRooms(roomId) {
 }
 pdInstall();
 /* PD-END */
-/* HOTEL-MD-BEGIN — THE HOTEL, A MYSTERY DUNGEON (2026-11-23, mondo: "Maybe one of could even be like a mystery dungeon, where each
+/* HOTEL-MD-BEGIN — THE MYSTERY DUNGEONS (the Hotel 2026-11-23, mondo: "Maybe one of could even be like a mystery dungeon, where each
    floor is a maze and you have to find the stairs to the next floor"; he picked the Hotel; plan https://claude.ai/artifact/RVPh8wvd9u6uAPj6QubPnd,
-   picture 3). The Financial district's luxury hotel (`dc:P08-00-B1`, 28 x 28 m): the left lift in its lobby goes up to TEN maze floors.
-   Every floor is a room built here at load (the way pdInstall builds the plot dungeons: no bake, no rows in the room block) and BUILT
-   AGAIN, from a new seed, each time you step into the lift from the lobby: a new layout every visit.
-   THE RULES are the Mystery Dungeon mode's (MD_DUNGEONS / generateMdFloor; the old mode is untouched): ten floors, find the stairs on
-   every floor, the last floor holds the boss, the fallen do not return until the run ends (a guest room's bed rests the standing, never
-   the down; the lift down to the lobby ends the run), and floor loot rolls the mode's own floor-item table (HOTEL_MD.loot).
+   picture 3). THE FIVE BUILDINGS (2026-11-25, mondo on the side-quests doc https://claude.ai/artifact/KUDvsuDxPB5KtncRaSajFb: "There could be
+   more buildings like the hotel where its like a mystery dungeon ... with more floors too (10 isnt enough)"; then "30 is good ... all of them
+   except hero tower"; "I want the internet to have its own quest giver, not in DOOR, and it can have a mystery dungeon that is called the
+   archives"): MD_BUILDINGS below, one generator for all of them, THIRTY floors each:
+     hotel    THE HOTEL (Financial, `dc:P08-00-B1`): up from the lobby's left lift; the Banker alone on the roof
+     office   ACT OF GOD INSURANCE (Financial, `dc:P09-00-B1`, the skyline tower lobby): up from its left lift; cubicle floors, the anomalies on
+              the payroll; the Tech CEO on the roof (the doc: "branding name to be picked"; the tower already wears Act of God's name)
+     haunted  THE HAUNTED HOUSE'S CELLAR: down from a door in the cellar's south wall ("the cellar goes down further than the house is tall")
+     dumb     THE D.U.M.B. UNDER SUB-LEVEL 7: down from a door off Sub-Level 7's hub; "a dungeon of labs under the labs"
+     archives THE ARCHIVES (the Internet, The Archive tile P07-08): down from a door under its sign; every floor a year further back
+   Every floor is a room built here (the way pdInstall builds the plot dungeons: no bake, no rows in the room block) and BUILT AGAIN, from a
+   new seed, each time you go in from outside: a new layout every visit. Only the building you are in stands: going into another drops the
+   last one's floors (THE MEMORY RULE: the leak history; floor 1 of each stays so its door has somewhere to go).
+   THE RULES are the Mystery Dungeon mode's (MD_DUNGEONS / generateMdFloor; the old mode is untouched): find the stairs on every floor, the
+   top room holds the building's boss, the fallen do not return until the run ends (a rest rests the standing, never the down; the way out
+   ends the run), and floor loot rolls the mode's own floor-item table (HOTEL_MD.loot). A BOSS FLOOR EVERY TENTH FLOOR (the doc's rule):
+   floors 10 and 20 hold a boss of the building's own list at the stairs, and the stairs stay shut until it is down (mdGate).
    THE SQUARES: one maze cell = one 3.5 m battle square. Corridors are one whole square wide and walls stand on the square lines.
-   Floors 1-4 are 8 x 8 (the true 28 m footprint), 5-9 are 12 x 12 and 10 is 16 x 16 (bigger on the inside, the plan's draft).
-   ROUND 2 (2026-11-23, mondo after his first run: "The enemies need to be aggro ... The walls do not block movement or respect vision/line of
-   sight in battle ... Rooms should require you to open them first, not automatically open them, so its like a little gamble. If someone is
-   inside then they automatically attack you. Needs Bigger rooms with actual hotel furnishing like a bed and nightstand and lamp and phone etc
-   that might have another door to another hallway or a hole in the wall that leads out to another hallway. The mini map needs to be more like
-   a mystery dungeon map where it reveals as you explore it"):
-   · THE GUEST ROOMS are 2 x 2 squares (2 x 3, 3 x 3 on the big floors), furnished (bed, two nightstands, a phone, a lamp, a wardrobe, a TV,
-     an armchair, a rug), set in the maze before the corridors are dug. Each has a SHUT door (`shut` wall rows, HQ_SHUT_OPEN): E opens it;
-     about half have a second way out, another shut door or a HOLE IN THE WALL onto a different corridor.
-   · WHAT IS INSIDE is the gamble: a guest (it comes for you the moment the door opens), the room safe, or a made bed; its plate shows only
-     once a way in is open.
+   THE SIZES (small floors low, wide floors high): 8 squares a side on floors 1-4, 10 on 5-9, 12 on 10-19, 14 on 20-29, 16 on 30.
+   THE LEVELS (mondo 11-23: "the levels of the enemies need to increase as you go up each floor"): the party's level when the run starts is
+   floor 1; every floor adds `lv.perFloor`; a boss stands `lv.boss` over its floor.
+   ROUND 2 OF THE HOTEL (2026-11-23, mondo after his first run: "The enemies need to be aggro ... The walls do not block movement or respect
+   vision/line of sight in battle ... Rooms should require you to open them first ... Needs Bigger rooms with actual hotel furnishing ... The
+   mini map needs to be more like a mystery dungeon map where it reveals as you explore it"):
+   · THE ROOMS are 2 x 2 squares (2 x 3, 3 x 3 on the big floors), furnished by the building's own kit (MD_KITS: hotel guest rooms, offices,
+     cellar vaults, labs, archived pages), set in the maze before the corridors are dug. Each has a SHUT door (`shut` wall rows,
+     HQ_SHUT_OPEN): E opens it; about half have a second way out, another shut door or a HOLE IN THE WALL onto a different corridor.
+   · WHAT IS INSIDE is the gamble: a guest (it comes for you the moment the door opens), the loot, or a rest; its plate shows only once a way
+     in is open.
    · EVERY GUEST IS A BRUTE (HQ_NPC_TEMPERS.rooms[floor].all, no level gap): it comes when it sees you and follows the maze to you
-     (hotelStepDir); a few stand in the corridors too. Sight stops at the walls on the walk (`losWalls`) and in battle (`fieldSolid`: the
-     battle reads the walls on the lines as the engine's edge walls).
+     (hotelStepDir); a few stand in the corridors too. Sight stops at the walls on the walk (`losWalls`) and in battle (`fieldSolid`).
    · THE MAP (three-renderer.js _hqMmHotel): the whole floor, drawn as you see it (hotelSeen).
-   Single player: nothing is on `state` or relayed (RULE #2: the walk is offline). Console: hotelBuild(seed) lays every floor again.
-   Notes: docs/notes/areas-complexes.md "THE HOTEL, A MYSTERY DUNGEON". */
+   THE DOOR CASES (the doc's "Door Cases: endless generated quests"): mdCaseToday draws one case a day for the save (building, floor, what came
+   through, the job, the twist card); its floor gets an UNAUTHORIZED DOOR and the anomaly beside it. Beat it, then E on the door closes it
+   (the case closes, its reward goes in the bag). Each building's way in has a CASE BOARD that reads today's case.
+   Single player: nothing is on `state` or relayed (RULE #2: the walk is offline). Console: hotelBuild(seed, level, building) lays a building
+   again. Notes: docs/notes/areas-complexes.md "THE HOTEL, A MYSTERY DUNGEON" + "THE MYSTERY DUNGEONS, FIVE BUILDINGS". */
 const HOTEL_MD = {
+    key: 'hotel', name: 'THE HOTEL', kit: 'hotel', up: true,
     building: 'dc:P08-00-B1', city: 'site_prebuilt_downtown_streets', site: 'prebuilt_downtown',
-    floors: 10, room: n => 'site_prebuilt_hotel_f' + n,
-    size: f => f >= 10 ? 16 : f >= 5 ? 12 : 8,          // squares a side (picture 3: 8, 12 from floor 5, 16 at the top)
+    entry: { room: 'site_prebuilt_downtown_streets', door: 'hotel_lift', row: 'dc:P08-00-B1' },   // the way in: a door the install puts on the building's left lift
+    floors: 30, room: n => 'site_prebuilt_hotel_f' + n,
+    size: f => f >= 30 ? 16 : f >= 20 ? 14 : f >= 10 ? 12 : f >= 5 ? 10 : 8,   // squares a side (picture 3 grown to thirty floors)
     sq: 3.5, h: 3.5, wallT: 0.3, doorW: 1.75, doorH: 2.2,
-    /* the guest rooms a floor holds (what fits, up to these) and the guests who stand in its corridors */
-    rooms: { 8: { loot: 1, fight: 2, rest: 1 }, 12: { loot: 3, fight: 4, rest: 2 }, 16: { loot: 4, fight: 6, rest: 3 } },
-    hall: { 8: 1, 12: 2, 16: 3 },
+    /* the rooms a floor holds (what fits, up to these) and the guests who stand in its corridors, by the floor's size */
+    rooms: { 8: { loot: 1, fight: 2, rest: 1 }, 10: { loot: 2, fight: 3, rest: 1 }, 12: { loot: 3, fight: 4, rest: 2 }, 14: { loot: 3, fight: 5, rest: 2 }, 16: { loot: 4, fight: 6, rest: 3 } },
+    hall: { 8: 1, 10: 1, 12: 2, 14: 2, 16: 3 },
     second: 0.5, hole: 0.5,                              // a room's chance of a second way out; of those, the share that is a hole in the wall
     braid: 0.04,                                         // a share of the floor's squares: walls taken out so the corridors loop
     lamps: 12,                                           // point lights a floor (the stage lights 12 at most): the corridors first (6 at most), then the rooms
     /* the look: the lobby's cream plaster, a carpet runner, dark wood skirting */
     floorKey: 'urban:CarpetPattern1a', wallKey: 'urban:PlasterWallPainted1d', wallTint: 0xf2e6d2, skirt: 0x4a2a20, frame: 0x3a2418,
     ceiling: 'urban:FibreCeilingTile1a', leaf: 'leaf_hotel', stairLeaf: 'leaf_exit',
+    shell: { dado: 'urban:WoodPanelling1a', trim: 'wood', floorColor: 0xb87a6a, dadoColor: 0x7a4a30, ceilColor: 0xf0eadc, mood: { light: 0xffe8c8, lamp: 0xffd890, ambient: 0.9 } },
+    lamp: 'psx_ceiling_lamp_1_on', liftButtons: true,
     /* the Mystery Dungeon's floor-item table (generateMdFloor rollFloorItem), as weights */
     loot: [['healPotion', 30], ['manaPotion', 20], ['entropyGrenade', 12], ['panacea', 10], ['adrenalStim', 8], ['unholyBane', 5], ['alienBane', 5], ['anomalyBane', 5], ['humanBane', 5]],
-    /* the guests: the city's own encounter races (hqRoomNatives of the city at the run's start); these when it has none */
+    /* the guests: the city's own encounter races (hqRoomNatives of `natives` at the run's start); these when it has none */
+    natives: 'site_prebuilt_downtown_streets',
     guests: ['zombie', 'vampire', 'ghost', 'werewolf', 'demon'],
     /* THE BOSS (mondo 11-23: "how the fuck am i supposed to know a random zombie is the boss? ... It should be the banker or the tech CEO";
-       then: "he needs to be by himself on the roof, normal sized"): floor 10's far end is the stairs up to THE ROOF (hotelRoofRoom), where the
+       then: "he needs to be by himself on the roof, normal sized"): the top floor's far end is the stairs up to THE TOP (the roof), where the
        hotel's owner stands alone, his own size, named, higher. THE EXIT (the roof's lift down to the lobby) is shut until he is down; beating
        him opens it and his safe (bossLoot, once a run). He is never one of the guests. */
-    boss: 'banker', bossGender: 'male', bossLabel: 'THE BANKER · BOSS', roof: 'site_prebuilt_hotel_roof',
+    boss: 'banker', bossGender: 'male', bossLabel: 'THE BANKER · BOSS', bossName: 'THE BANKER', top: 'roof', roof: 'site_prebuilt_hotel_roof',
     bossLoot: [['panacea', 2], ['entropyGrenade', 2], ['adrenalStim', 2], ['healPotion', 3], ['manaPotion', 3]],
-    /* THE LEVELS (mondo 11-23: "the levels of the enemies need to increase as you go up each floor so it is an actual challenge"): the party's
-       level when the run starts is floor 1; every floor up adds perFloor; the boss stands `boss` levels over floor 10's guests */
+    /* THE TENTH FLOORS: a boss at the stairs of floors 10 and 20 (drafts from the building's own people; mondo names them) */
+    floorBoss: { 10: { race: 'politician', gender: 'male', name: 'THE COUNCILMAN IN 1010' }, 20: { race: 'gangster', gender: 'male', name: 'THE NIGHT MANAGER' } },
     lv: { perFloor: 1, boss: 3 },
     bed: 'couples_bed', bedTurn: 0,                     // the guest rooms' bed (the pack's double bed) and its turn so the headboard is on the wall
     hunt: 14,                                            // a guest that came for you keeps coming while you are this many squares away through the maze
+    words: { floor: f => 'FLOOR ' + f, roomNo: (f, i) => 'ROOM ' + (f * 100 + i + 1), out: 'THE LOBBY', top: 'THE ROOF', loot: 'THE ROOM SAFE', rest: 'A MADE BED', cleared: 'THE HOTEL IS CLEARED' },
 };
-let _hotelSeed = 0, _hotelRun = null, _hotelBase = 1;   // { seed, at, loot: {roomId|cell → true}, slept: {}, seen: {roomId → Uint8Array}, deepest }
-/* the maze: N x N cells, open sides as a bitmask (1 n, 2 e, 4 s, 8 w). The guest rooms are laid first (rectangles a square apart), the
-   corridors dug round them by a recursive backtracker from IN, a few walls taken out (braid), then each room gets its ways in. */
-function hotelMaze(N, seed, want) {
+const _MD_U = n => 'urban:' + n;
+/* THE OTHER FOUR (2026-11-25): every field they leave out is the Hotel's */
+const MD_BUILDINGS = {
+    hotel: HOTEL_MD,
+    /* ACT OF GOD INSURANCE: "cubicle mazes; the anomalies are on the payroll" (the doc). Carpet tiles, pale partition walls, strip lights. */
+    office: { key: 'office', name: 'ACT OF GOD INSURANCE', kit: 'office', up: true,
+        building: 'dc:P09-00-B1', city: 'site_prebuilt_downtown_streets', site: 'prebuilt_downtown',
+        entry: { room: 'site_prebuilt_downtown_streets', door: 'md_office_lift', row: 'dc:P09-00-B1' },
+        room: n => 'site_prebuilt_md_office_f' + n, roof: 'site_prebuilt_md_office_roof',
+        floorKey: _MD_U('CarpetPlain1c'), wallKey: _MD_U('PlasterBoard1a'), wallTint: 0xe4e6e2, skirt: 0x3a3c40, frame: 0x50545a,
+        ceiling: _MD_U('FibreCeilingTile2a'), leaf: 'leaf_office', stairLeaf: 'leaf_exit',
+        shell: { dado: _MD_U('PlasterBoard1a'), trim: 'aluminium', floorColor: 0x8a929a, dadoColor: 0xc8ccc8, ceilColor: 0xeef0ee, mood: { light: 0xf0f6ff, lamp: 0xe8f2ff, ambient: 0.95 } },
+        lamp: 'psx_ceiling_lamp_4_on', liftButtons: true,
+        natives: null, guests: ['reptilian', 'grey', 'zombie', 'android', 'goblin', 'men in black', 'ghost', 'robot', 'vampire', 'politician'],
+        boss: 'tech ceo', bossGender: 'male', bossLabel: 'THE TECH CEO · BOSS', bossName: 'THE TECH CEO',
+        floorBoss: { 10: { race: 'banker', gender: 'female', name: 'THE CLAIMS ADJUSTER' }, 20: { race: 'reptilian', gender: 'male', name: 'THE REGIONAL MANAGER' } },
+        words: { floor: f => 'FLOOR ' + f, roomNo: (f, i) => 'SUITE ' + (f * 100 + i + 1), out: 'THE LOBBY', top: 'THE ROOF', loot: 'THE PETTY CASH', rest: 'THE BREAK ROOM', cleared: 'ACT OF GOD IS CLEARED' } },
+    /* THE HAUNTED HOUSE'S CELLAR: "the cellar keeps going down ... ghosts as guests" (the doc). The cellar's own brick and cobbles. */
+    haunted: { key: 'haunted', name: 'THE HAUNTED HOUSE', kit: 'cellar', up: false,
+        city: 'site_prebuilt_haunted_cellar', site: 'prebuilt_haunted',
+        entry: { room: 'site_prebuilt_haunted_cellar', door: 'md_haunted_down', wall: 's', x: 10.5 },
+        room: n => 'site_prebuilt_md_haunted_f' + n, roof: 'site_prebuilt_md_haunted_bottom', top: 'hall',
+        h: 3.0, floorKey: 'cobblestone_2', wallKey: 'bricks_2', wallTint: 0x7a6a62, skirt: 0x2a221e, frame: 0x3a2a1c,
+        ceiling: 'wood_planks', leaf: 'leaf_coffee', stairLeaf: 'leaf_coffee',
+        shell: { dado: 'bricks_2', trim: 'wood', floorColor: 0x5a5650, dadoColor: 0x5a4a44, ceilColor: 0x4a3a2c, mood: { light: 0xffb070, lamp: 0xffa860, ambient: 0.5 } },
+        lamp: 'bare_bulb', liftButtons: false,
+        natives: null, guests: ['ghost', 'zombie', 'skeleton', 'undead', 'ghoul', 'vampire', 'haunted doll', 'cursed tv', 'jack o lantern'],
+        boss: 'vampire', bossGender: 'male', bossLabel: 'THE ONE IN THE BOX · BOSS', bossName: 'THE ONE IN THE BOX',
+        floorBoss: { 10: { race: 'haunted doll', gender: 'female', name: 'THE DOLL IN THE WALL' }, 20: { race: 'cursed tv', gender: 'male', name: 'THE SET THAT STAYS ON' } },
+        words: { floor: f => 'CELLAR ' + f, roomNo: (f, i) => 'VAULT ' + (f * 100 + i + 1), out: 'THE CELLAR STAIRS', top: 'THE BOTTOM', loot: 'A LOCKED CHEST', rest: 'A COT', cleared: 'THE CELLAR IS QUIET' } },
+    /* THE D.U.M.B. UNDER SUB-LEVEL 7: "a dungeon of labs under the labs; only once Ch 5 has been played" (the doc; the chapter gate waits for
+       the story's chapter flag, which the game does not keep yet). White tile, rubber floors, hazard paint. */
+    dumb: { key: 'dumb', name: 'THE D.U.M.B.', kit: 'lab', up: false,
+        city: 'site_prebuilt_dumb_base', site: null,
+        entry: { room: 'site_prebuilt_dumb_base', door: 'md_dumb_down', x: -9.6, z: 17.15, face: 0 },   // the hub's south wall, between the gauge board and the extinguisher
+        room: n => 'site_prebuilt_md_dumb_f' + n, roof: 'site_prebuilt_md_dumb_bottom', top: 'hall',
+        h: 3.5, floorKey: _MD_U('RubberNonSlip1a'), wallKey: _MD_U('TileSubway1a'), wallTint: 0xe8eef0, skirt: 0x2a2c30, frame: 0xe0b020,
+        ceiling: _MD_U('FibreCeilingTile2a'), leaf: 'leaf_security', stairLeaf: 'leaf_security',
+        shell: { dado: _MD_U('MetalCorrugatedPainted3a'), trim: 'zl_hz_Metal_02__gunmetal', floorColor: 0xb4b8bc, dadoColor: 0x8c9098, ceilColor: 0xa4a8ac, mood: { light: 0xdff0ff, lamp: 0xf0f8ff, ambient: 0.75 } },
+        lamp: 'psx_ceiling_lamp_4_on', liftButtons: true,
+        natives: null, guests: ['grey', 'mad scientist', 'symbiote', 'telepath', 'shadow entity', 'machine elves', 'android', 'cyborg', 'black goo', 'flesheater'],
+        boss: 'abomination', bossGender: 'male', bossLabel: 'SUBJECT ZERO · BOSS', bossName: 'SUBJECT ZERO',
+        floorBoss: { 10: { race: 'juggernaut', gender: 'male', name: 'THE CONTAINMENT FAILURE' }, 20: { race: 'mad scientist', gender: 'male', name: 'THE HEAD OF RESEARCH' } },
+        words: { floor: f => 'SUB-LEVEL ' + (7 + f), roomNo: (f, i) => 'LAB ' + (7 + f) + '-' + String(i + 1).padStart(2, '0'), out: 'SUB-LEVEL 7', top: 'THE BOTTOM', loot: 'A SPECIMEN LOCKER', rest: 'THE INFIRMARY', cleared: 'THE LABS ARE QUIET' } },
+    /* THE ARCHIVES: "each floor is one year further back. Floors 1-10 are dead apps and influencer pages, 11-20 are forums, flash games and
+       blogs, 21-30 are guestbooks, hit counters and chat rooms. Rest rooms are cached pages and loot is saved files. Bosses on floors 10, 20
+       and 30 (the Influencer's deleted account; the Virus's first draft, only after Chapter 7; floor 30 is story, left open)" (the doc,
+       mondo's point 2). The Internet's own look (holo floors, gunmetal) and its giver, the Glitch, at the door, outside DOOR. */
+    archives: { key: 'archives', name: 'THE ARCHIVES', kit: 'archive', up: false,
+        city: 'site_prebuilt_internet_web', site: null,
+        entry: { room: 'site_prebuilt_internet_web', door: 'md_archives_down', plot: 'P07-08', lx: 6, ly: 10.6, face: 0, giver: 'glitch' },
+        room: n => 'site_prebuilt_md_archives_f' + n, roof: 'site_prebuilt_md_archives_bottom', top: 'hall',
+        h: 3.5, floorKey: 'holo', wallKey: 'zl_hz_Metal_02__gunmetal', wallTint: 0x9ab4c8, skirt: 0x40e0ff, frame: 0x7fffd0,
+        ceiling: 'holo', leaf: 'leaf_glass', stairLeaf: 'leaf_glass', skirtGlow: 1,
+        shell: { dado: 'zl_hz_Metal_02__gunmetal', trim: 'gold', floorColor: 0xd8f4f0, dadoColor: 0x6aa8a8, ceilColor: 0x203040, mood: { light: 0xd0f0f0, lamp: 0x7fffd0, ambient: 0.6 }, lookFrom: 'site_prebuilt_internet_web' },
+        lamp: null, liftButtons: false,
+        natives: null,
+        guests: f => f <= 10 ? ['influencer', 'streamer', 'vtuber', 'glitch', 'virus', 'ai'] : f <= 20 ? ['hacker', 'virus', 'glitch', 'conspiracy theorist', 'ghost', 'streamer'] : ['ghost', 'glitch', 'ai', 'hacker', 'virus'],
+        boss: null, bossName: 'THE OLDEST BACKUP',   // floor 30 is story, left open (the doc): the bottom page stands empty and its way out is open
+        floorBoss: { 10: { race: 'influencer', gender: 'female', name: 'THE DELETED ACCOUNT' }, 20: { race: 'virus', gender: 'male', name: 'THE FIRST DRAFT' } },
+        words: { floor: f => String(2026 - f), roomNo: (f, i) => 'PAGE ' + (2026 - f) + '/' + String(i + 1).padStart(3, '0'), out: 'THE ARCHIVE', top: 'THE OLDEST BACKUP', loot: 'SAVED FILES', rest: 'A CACHED PAGE', cleared: 'THE ARCHIVES ARE READ' } },
+};
+/* a building's def with the Hotel's fields filled in (cached) */
+const _mdDefs = {};
+function mdDef(b) {
+    if (!b) return null; if (_mdDefs[b]) return _mdDefs[b];
+    const o = MD_BUILDINGS[b]; if (!o) return null;
+    const d = (o === HOTEL_MD) ? HOTEL_MD : Object.assign({}, HOTEL_MD, o, { words: Object.assign({}, HOTEL_MD.words, o.words || {}), shell: Object.assign({}, HOTEL_MD.shell, o.shell || {}) });
+    return (_mdDefs[b] = d);
+}
+/* which building a room is a floor of: its `mdB`, else read from its id (a floor not built yet) */
+function mdOfRoom(roomId) {
+    if (!roomId) return null; const r = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.rooms) ? DOOR_HQ.rooms[roomId] : null;
+    if (r && r.mdB) return r.mdB;
+    for (const b of Object.keys(MD_BUILDINGS)) { const H = mdDef(b); if (roomId === H.roof) return b; for (let f = 1; f <= H.floors; f++) if (roomId === H.room(f)) return b; }
+    return null;
+}
+/* the runs, one a building: { b, seed, base, at, loot: {roomId|cell → true}, slept: {}, seen: {roomId → Uint8Array}, deepest, down: {roomId → true}, rewarded: {}, lastDown } */
+const _mdRuns = {}, _mdSeed = {}, _mdBase = {};
+let _hotelSeed = 0, _hotelRun = null, _hotelBase = 1, _mdCur = 'hotel';   // the Hotel's names stay: _hotelRun = the run of the building you are in
+/* the maze: N x N cells, open sides as a bitmask (1 n, 2 e, 4 s, 8 w). The rooms are laid first (rectangles a square apart), the corridors
+   dug round them by a recursive backtracker from IN, a few walls taken out (braid), then each room gets its ways in. */
+function hotelMaze(N, seed, want, H) {
+    H = H || HOTEL_MD;
     const rng = _mfRng(seed), ri = n => Math.floor(rng() * n);
     const D = [[0, -1, 1, 4, 'n'], [1, 0, 2, 8, 'e'], [0, 1, 4, 1, 's'], [-1, 0, 8, 2, 'w']];
     const IN = [0, N - 1], inB = (x, y) => x >= 0 && y >= 0 && x < N && y < N;
@@ -113143,9 +113242,8 @@ function hotelMaze(N, seed, want) {
         const d = nb[ri(nb.length)], x = c[0] + d[0], y = c[1] + d[1];
         O[c[1]][c[0]] |= d[2]; O[y][x] |= d[3]; seen[y][x] = true; st.push([x, y]);
     }
-    const key = (x, y) => x + ',' + y;
     /* THE BRAID: a few walls out between two corridor squares (never the lift's) */
-    let wantB = Math.round(N * N * HOTEL_MD.braid);
+    let wantB = Math.round(N * N * H.braid);
     for (let tries = 0; wantB > 0 && tries < 400; tries++) {
         const x = ri(N), y = ri(N), d = D[ri(2) + 1], x2 = x + d[0], y2 = y + d[1];
         if (!inB(x2, y2) || RM[y][x] >= 0 || RM[y2][x2] >= 0 || (x === IN[0] && y === IN[1]) || (O[y][x] & d[2])) continue;
@@ -113168,10 +113266,10 @@ function hotelMaze(N, seed, want) {
         if (!cand.length) return;
         const add = (w, kind) => { O[w.c[1]][w.c[0]] |= w.d[2]; O[w.n[1]][w.n[0]] |= w.d[3]; const wy = { room: r.id, c: w.c, n: w.n, side: w.d[4], kind }; ways.push(wy); r.ways.push(wy); return wy; };
         const first = add(cand[0], 'door');
-        if (rng() < HOTEL_MD.second) {
+        if (rng() < H.second) {
             const Lf = corrDist(first.n);
             const far = cand.slice(1).filter(w => (w.c[0] !== first.c[0] || w.c[1] !== first.c[1]) && Lf[w.n[1]][w.n[0]] >= 5);
-            if (far.length) add(far[ri(far.length)], rng() < HOTEL_MD.hole ? 'hole' : 'door');
+            if (far.length) add(far[ri(far.length)], rng() < H.hole ? 'hole' : 'door');
         }
     });
     /* UP: the farthest corridor dead end on the outer wall (its stair door is a door of the box); the farthest outer corridor square if none */
@@ -113185,19 +113283,107 @@ function hotelMaze(N, seed, want) {
     const UP = (outer.length ? outer : outerAll).reduce((b, c) => (!b || L[c[1]][c[0]] > L[b[1]][b[0]]) ? c : b, null) || [N - 1, 0];
     return { N, O, IN, UP, rooms, ways, RM, L, D };
 }
-/* one floor's room: the maze drawn on whole squares (walls on the lines, doors and holes into the guest rooms), its doors, lamps, furniture, guests */
-function hotelFloorRoom(f, seed, guests, base) {
-    const H = HOTEL_MD, N = H.size(f), SQ = H.sq, W = N * SQ, T = H.wallT, DW = H.doorW, DH = H.doorH, hh = H.h, top = f >= H.floors, roomId = H.room(f);
+/* THE KITS (2026-11-25): what each building puts in its rooms. A kit gets the room's helpers: take() a free wall slot (far from the first
+   door first), at(slot, in, along) a point that far in from the slot's wall, put(key, in, extra) a prop on the next slot, P (arch parts),
+   props, kind (fight / loot / rest / empty), and returns { anchor: {x, z, face} for the rest's plate, safe: {x, z, face} for the loot's }.
+   Pack props only (MODEL_LIST.md first, mondo 11-16); every key is in DOOR_HQ.catalogue. */
+const MD_KITS = {
+    /* a hotel guest room: the double bed and its two nightstands (a phone, a lamp), the TV, the wardrobe, an armchair, a fridge, a picture */
+    hotel(K) {
+        const o = {}, bedS = K.take();
+        if (bedS) { K.own(bedS); const b = K.at(bedS, 1.15, 0); K.props.push({ key: K.H.bed, x: b.x, z: b.z, face: (b.face + K.H.bedTurn) % 360 }); o.anchor = b;
+            const n1 = K.at(bedS, 0.3, -1.12), n2 = K.at(bedS, 0.3, 1.12);
+            K.props.push({ key: 'psx_bedside_table_1', x: n1.x, z: n1.z, face: n1.face }, { key: 'rotary_phone', x: n1.x, z: n1.z, y: 0.64, face: n1.face },
+                         { key: 'psx_bedside_table_1', x: n2.x, z: n2.z, face: n2.face }, { key: 'table_lamp', x: n2.x, z: n2.z, y: 0.64, face: n2.face }); }
+        if (K.kind === 'loot') o.safe = K.put('floor_safe', 0.5);
+        const tv = K.put('psx_tv_table_1', 0.45); if (tv) K.props.push({ key: 'psx_tv_mp_1', x: tv.x, z: tv.z, y: 0.74, face: tv.face });
+        K.put('psx_wardrobe_mp_1', 0.4); K.put('psx_armchair_1', 0.6);
+        if (K.cells >= 6) K.put('mini_fridge', 0.35);
+        if (K.rng() < 0.6) K.put('psx_painting_1', 0.06, { y: 1.45 });
+        K.props.push({ key: 'psx_carpet_mp_1', x: K.mid.x, z: K.mid.z, face: K.wide ? 90 : 0 });
+        return o;
+    },
+    /* an office suite: the desk with its chair and screen against the far wall, filing cabinets, a water cooler, a plant, a copier on the big
+       ones, a cubicle in the middle of the biggest; the break room's couch is the rest */
+    office(K) {
+        const o = {}, dS = K.take();
+        if (dS) { K.own(dS); const d = K.at(dS, 0.9, 0);
+            if (K.kind === 'rest') { K.props.push({ key: 'curved_office_couch', x: d.x, z: d.z, face: d.face }); o.anchor = d; const t = K.at(dS, 0.35, 1.25); K.props.push({ key: 'coffee_maker', x: t.x, z: t.z, y: 0.02, face: t.face }); }
+            else { K.props.push({ key: 'exec_desk', x: d.x, z: d.z, face: d.face }); const ch = K.at(dS, 1.9, 0); K.props.push({ key: K.pick(['office_chair', 'computer_chair_grey']), x: ch.x, z: ch.z, face: (d.face + 180) % 360 });
+                K.props.push({ key: 'psx_pc_monitor_mp_1', x: d.x, z: d.z, y: 0.76, face: (d.face + 180) % 360 }); o.anchor = d; } }
+        if (K.kind === 'loot') o.safe = K.put('floor_safe', 0.5);
+        K.put(K.pick(['filing_cabinet', 'meshy_filing_cabinet']), 0.35); K.put('water_cooler', 0.35); K.put(K.pick(['office_plant', 'potted_plant']), 0.4);
+        if (K.cells >= 6) K.put('photocopier', 0.45);
+        if (K.cells >= 9 && K.kind !== 'fight') K.props.push({ key: 'square_cubicle', x: K.mid.x, z: K.mid.z, face: 0 });
+        else K.props.push({ key: 'rug_office', x: K.mid.x, z: K.mid.z, face: K.wide ? 90 : 0 });
+        if (K.rng() < 0.5) K.put('wall_clock', 0.05, { y: 2.2 });
+        return o;
+    },
+    /* a cellar vault: the box on trestles (or a coffin), shelves of what nobody drinks, barrels and crates, chains on the wall, candles */
+    cellar(K) {
+        const o = {}, bS = K.take();
+        if (bS) { K.own(bS); const b = K.at(bS, 1.0, 0);
+            K.props.push({ key: K.kind === 'rest' ? 'cot' : K.pick(['hw_coffin', 'hw_coffin_2', 'cot']), x: b.x, z: b.z, face: (b.face + 90) % 360 }); o.anchor = b;
+            const c1 = K.at(bS, 0.3, -1.25); K.props.push({ key: K.pick(['hw_candles', 'hw_candles_2']), x: c1.x, z: c1.z, face: c1.face }); }
+        if (K.kind === 'loot') o.safe = K.put('sea_chest', 0.5);
+        K.put('metal_shelving', 0.45); K.put(K.pick(['wooden_barrel', 'psx_wooden_crate_2', 'psx_wooden_crate_3']), 0.6);
+        K.put(K.pick(['cardboard_boxes', 'psx_wooden_crate_4']), 0.6);
+        if (K.rng() < 0.6) K.put('wall_chains', 0.05, { y: 1.2 });
+        if (K.cells >= 6) K.put(K.pick(['skull_pile', 'psx_wooden_crate_5']), 0.6);
+        if (K.rng() < 0.7) K.props.push({ key: K.pick(['psx_cobweb_1', 'psx_cobweb_2', 'hw_web']), x: K.corner.x, z: K.corner.z, y: K.H.h - 0.9, face: K.corner.face });
+        K.props.push({ key: 'floor_stain', x: K.mid.x, z: K.mid.z, face: K.ri(360) });
+        return o;
+    },
+    /* a lab: a steel table with glassware and a microscope, a cryo tube, monitors, a locker; the infirmary's bed is the rest */
+    lab(K) {
+        const o = {}, tS = K.take();
+        if (tS) { K.own(tS); const t = K.at(tS, 0.7, 0);
+            if (K.kind === 'rest') { K.props.push({ key: 'hospital_bed', x: t.x, z: t.z, face: t.face }); const iv = K.at(tS, 0.4, 1.2); K.props.push({ key: 'iv_stand', x: iv.x, z: iv.z, face: iv.face }); o.anchor = t; }
+            else { K.props.push({ key: 'steel_table', x: t.x, z: t.z, face: t.face }, { key: 'lab_glassware', x: t.x, z: t.z, y: 0.92, face: t.face }); const m = K.at(tS, 0.6, 0.8); K.props.push({ key: 'microscope', x: m.x, z: m.z, y: 0.92, face: m.face }); o.anchor = t; } }
+        if (K.kind === 'loot') o.safe = K.put('office_locker', 0.4);
+        K.put(K.pick(['meshy_molten_cryo_tube', 'iso_tank']), 0.7); K.put('monitor_stack', 0.45); K.put(K.pick(['hazmat_suit', 'office_locker', 'psx_metal_barrel_mp_1']), 0.4);
+        if (K.cells >= 6) K.put(K.pick(['radiation_drum', 'eeg_rack']), 0.5);
+        if (K.rng() < 0.5) K.put(K.pick(['radiation_sign', 'notice_board']), 0.05, { y: 1.6 });
+        K.props.push({ key: 'floor_drain', x: K.mid.x, z: K.mid.z });
+        return o;
+    },
+    /* an archived page: the page itself lit on the far wall (its title, its lines, a hit counter or a guestbook), a CRT on a desk, a server
+       rack, tape shelves; saved files are a filing cabinet; a cached page (the rest) loads instantly on a bench */
+    archive(K) {
+        const o = {}, pS = K.take();
+        if (pS) { K.own(pS); const p = K.at(pS, 0.08, 0); K.page(p, K.ri(1 << 20)); const d = K.at(pS, 1.3, 0);
+            if (K.kind === 'rest') { K.props.push({ key: 'park_bench', x: d.x, z: d.z, face: d.face }); o.anchor = d; }
+            else { K.props.push({ key: 'school_desk', x: d.x, z: d.z, face: d.face }, { key: 'crt_terminal', x: d.x, z: d.z, y: 0.75, face: d.face }); o.anchor = d; } }
+        if (K.kind === 'loot') o.safe = K.put('filing_cabinet', 0.4);
+        K.put('server_rack', 0.45); K.put(K.pick(['tape_shelf', 'psx_shelf_mp_4_1', 'monitor_stack']), 0.45);
+        if (K.cells >= 6) K.put(K.pick(['server_rack', 'tube_tv']), 0.45);
+        return o;
+    },
+};
+/* THE PAGES (the Archives' far walls): what a page of each era says (the doc's three eras; plain words, mine) */
+const MD_PAGES = {
+    1: [['MY BRAND JOURNEY', 'LINK IN BIO', '0 LIKES'], ['THIS APP IS SHUTTING DOWN', 'THANK YOU FOR 2 GREAT YEARS', 'EXPORT YOUR DATA BY ...'], ['GALLERY', 'NO ONE OWNS THESE', 'MINT YOURS NOW'], ['DAY 412 OF POSTING', 'UNTIL SOMEONE NOTICES', 'COMMENTS OFF'], ['ACCOUNT DELETED', 'THIS USER NO LONGER', 'EXISTS'], ['SUBSCRIBE FOR MORE', 'SMASH THAT BUTTON', '3 VIEWS']],
+    2: [['UNDER CONSTRUCTION', 'COME BACK SOON', 'LAST UPDATED 2009'], ['PLAY THE GAME', 'FLASH PLAYER REQUIRED', 'INSTALL?'], ['MY BLOG', 'TODAY I WANTED TO SAY', 'THAT I'], ['FORUM RULES', '1. NO DOUBLE POSTING', 'THREAD LOCKED'], ['FIRST!!!', 'RE: FIRST!!!', 'RE: RE: FIRST!!!'], ['DOWNLOAD NOW', 'FREE_MUSIC.EXE', '99% COMPLETE']],
+    3: [['SIGN MY GUESTBOOK', '1 ENTRY', 'COOL SITE!!'], ['YOU ARE VISITOR', 'NUMBER 000451', 'BEST VIEWED AT 800X600'], ['CHAT ROOM 7', '1 USER ONLINE', 'ASL?'], ['WELCOME TO MY HOMEPAGE', 'UNDER CONSTRUCTION', 'EMAIL ME'], ['WEBRING', 'PREV · RANDOM · NEXT', 'JOIN THE RING'], ['THIS PAGE IS DATED', '1971', 'NOBODY KNOWS WHY']],
+};
+/* one floor's room: the maze drawn on whole squares (walls on the lines, doors and holes into the rooms), its doors, lamps, furniture, guests */
+function hotelFloorRoom(f, seed, guests, base, H, cs) {
+    H = H || HOTEL_MD;
+    const N = H.size(f), SQ = H.sq, W = N * SQ, T = H.wallT, DW = H.doorW, DH = H.doorH, hh = H.h, top = f >= H.floors, roomId = H.room(f), Wd = H.words;
     const r2 = v => Math.round(v * 100) / 100, X = i => r2(-W / 2 + i * SQ), C = i => r2(-W / 2 + (i + 0.5) * SQ);
     const R0 = H.rooms[N] || H.rooms[8], order = [];
     ['fight', 'loot', 'rest'].forEach(k => { for (let i = 0; i < (R0[k] | 0); i++) order.push(k); });
-    const M = hotelMaze(N, ((seed | 0) * 31 + f * 7919) | 0, order.length), rng = _mfRng(((seed | 0) * 131 + f * 104729) | 0), ri = n => Math.floor(rng() * n);
+    const bS = H.key === 'hotel' ? 0 : Array.from(H.key).reduce((h, c) => (h * 33 + c.charCodeAt(0)) | 0, 5381);   // each building its own mazes from one seed (the Hotel keeps its old ones)
+    const M = hotelMaze(N, ((seed | 0) * 31 + f * 7919 + bS) | 0, order.length, H), rng = _mfRng(((seed | 0) * 131 + f * 104729 + bS) | 0), ri = n => Math.floor(rng() * n);
     const F = [], P = [], props = [], counters = [], inner = [], npc = [], lights = [];
     const LVC = (typeof LEVEL_CAP !== 'undefined') ? LEVEL_CAP : 100, b0 = Math.max(1, (base | 0) || ((typeof HQ_LEVEL_RULES !== 'undefined' && HQ_LEVEL_RULES.start) | 0) || 1);
     const gLv = Math.max(1, Math.min(LVC, b0 + Math.round((f - 1) * H.lv.perFloor)));   // THE LEVELS: this floor's guests
     const FACE = { n: 0, e: 90, s: 180, w: 270 }, OPP = { n: 's', s: 'n', e: 'w', w: 'e' }, OFF = { n: [0, -1], s: [0, 1], e: [1, 0], w: [-1, 0] };
     const wallPart = (x, z, sx, sz, y0, h) => { P.push({ s: 'box', p: [x, y0, z], size: [sx, h, sz], key: H.wallKey, tint: H.wallTint, uv: [3.5, 1.75] }); };
-    const skirt = (x, z, sx, sz) => P.push({ s: 'box', p: [x, 0, z], size: [sx + 0.04, 0.14, sz + 0.04], tint: H.skirt });
+    const skirt = (x, z, sx, sz) => P.push(Object.assign({ s: 'box', p: [x, 0, z], size: [sx + 0.04, 0.14, sz + 0.04], tint: H.skirt }, H.skirtGlow ? { glow: H.skirtGlow } : {}));
+    /* THE BOSS AT THE STAIRS (every tenth floor below the top): the first spot, so it is `hq-native-0` (hotelBossBeaten) */
+    const fb = (!top && H.floorBoss && H.floorBoss[f]) || null;
+    if (fb) npc.push({ x: C(M.UP[0]), z: C(M.UP[1]), face: 0, race: fb.race, gender: fb.gender || 'male', label: fb.name + ' · BOSS', stay: true, boss: true, lvl: Math.min(LVC, gLv + (H.lv.boss | 0)) });
     /* the ways in, by the line they stand on: 'u' lines run west-east (v = the line's row), 'v' lines north-south */
     const wayAt = {};
     M.ways.forEach((w, i) => {
@@ -113223,15 +113409,14 @@ function hotelFloorRoom(f, seed, guests, base) {
         inner.push({ x: px, z: pz, rot: axis === 'u' ? 0 : 90, w: DW - 0.2, leaf: H.leaf, shut: w.key });
         const hd = DW / 2 - 0.02;
         F.push(Object.assign({ k: 'wall' }, axis === 'u' ? { x0: r2(px - hd), z0: pz, x1: r2(px + hd), z1: pz } : { x0: px, z0: r2(pz - hd), x1: px, z1: r2(pz + hd) }, { t: 0.12, ghost: true, rail: false, h: DH, y: DH, shut: w.key }));
-        const no = f * 100 + w.room + 1;
-        counters.push({ id: 'hotel_door_' + w.idx, x: px, z: pz, face: 0, radius: 2.0, plateY: 2.5, label: 'ROOM ' + no, verb: 'OPEN', proc: 'hotel_act', shutHide: w.key, hotel: { act: 'open', key: w.key, room: w.room } });
+        counters.push({ id: 'hotel_door_' + w.idx, x: px, z: pz, face: 0, radius: 2.0, plateY: 2.5, label: Wd.roomNo(f, w.room), verb: 'OPEN', proc: 'hotel_act', shutHide: w.key, hotel: { act: 'open', key: w.key, room: w.room } });
     };
-    /* a HOLE in the line at square s: no frame, a ragged edge, broken bricks on the carpet either side */
+    /* a HOLE in the line at square s: no frame, a ragged edge, broken bricks on the floor either side */
     const hole = (axis, at, s) => {
         const m = s + 0.5, hw = 1.9 / 2 / SQ; seg(axis, at, s, m - hw); seg(axis, at, m + hw, s + 1);
         const q = at2(axis, at, s), px = q[0], pz = q[1], top0 = 2.05;
         wallPart(px, pz, axis === 'u' ? 1.9 : T, axis === 'u' ? T : 1.9, top0, r2(hh - top0));
-        for (let i = 0; i < 6; i++) {   // the ragged lip: plaster chunks hanging off the top and the sides
+        for (let i = 0; i < 6; i++) {   // the ragged lip: chunks hanging off the top and the sides
             const sdw = (i >= 3) ? (i === 3 ? -1 : i === 4 ? 1 : (rng() < 0.5 ? -1 : 1)) : 0;
             const along = (i < 3) ? (-0.6 + i * 0.6 + (rng() - 0.5) * 0.2) : sdw * 0.85;
             const sz = (i < 3) ? [r2(0.3 + rng() * 0.35), r2(0.15 + rng() * 0.3)] : [r2(0.14 + rng() * 0.12), r2(0.35 + rng() * 0.5)];
@@ -113264,13 +113449,25 @@ function hotelFloorRoom(f, seed, guests, base) {
         }
     }
     /* the box's own skirting (the shell draws its walls) */
-    [['u', 0], ['u', N], ['v', 0], ['v', N]].forEach(q => { const al = q[0] === 'u', at = X(q[1]) + (q[1] ? -0.07 : 0.07); P.push({ s: 'box', p: al ? [0, 0, at] : [at, 0, 0], size: al ? [W, 0.14, 0.12] : [0.12, 0.14, W], tint: H.skirt }); });
-    /* THE GUEST ROOMS: what is inside (the gamble), the furniture against the walls of the squares no way in touches */
+    [['u', 0], ['u', N], ['v', 0], ['v', N]].forEach(q => { const al = q[0] === 'u', at = X(q[1]) + (q[1] ? -0.07 : 0.07); P.push(Object.assign({ s: 'box', p: al ? [0, 0, at] : [at, 0, 0], size: al ? [W, 0.14, 0.12] : [0.12, 0.14, W], tint: H.skirt }, H.skirtGlow ? { glow: H.skirtGlow } : {})); });
+    /* a lit page on a wall (the Archives' kit): the white body, a title bar, three lines, ry facing into the room */
+    const era = f <= 10 ? 1 : f <= 20 ? 2 : 3, txt = (s, fg, bg, w, h) => 'txt:' + s + '|' + fg + '|' + (bg || '') + '|' + r2(w / h) + '||dot';
+    const page = (p, n) => {
+        const ry = (540 - p.face) % 360, t = p.face * Math.PI / 180, nx = Math.sin(t), nz = -Math.cos(t), pw = 2.6, ph = 1.9, y0 = 0.9;
+        const L = MD_PAGES[era][n % MD_PAGES[era].length], bar = era === 1 ? '#3a3a3a' : era === 2 ? '#1a3a8a' : '#00007a', body = era === 3 ? '#c0c0c0' : '#f4f4f0';
+        P.push({ s: 'box', p: [r2(p.x + nx * 0.12), y0, r2(p.z + nz * 0.12)], size: Math.abs(nx) > 0.5 ? [0.06, ph, pw] : [pw, ph, 0.06], tint: parseInt(body.slice(1), 16), glow: 0.8 });
+        const q = (s, y, h, fg, bg) => P.push({ s: 'quad', p: [r2(p.x + nx * 0.17), r2(y), r2(p.z + nz * 0.17)], size: [pw - 0.2, h], ry, key: txt(s, fg, bg, pw - 0.2, h), uv: 'fit', kind: 'wall' });
+        q(L[0], y0 + ph - 0.42, 0.36, '#ffffff', bar);
+        q(L[1], y0 + ph - 0.95, 0.32, era === 3 ? '#0000ee' : '#202020');
+        q(L[2], y0 + 0.25, 0.3, era === 3 ? '#a00000' : '#606060');
+    };
+    /* THE ROOMS: what is inside (the gamble), the furniture of the building's kit against the walls of the squares no way in touches */
     const kinds = order.slice(); for (let i = kinds.length - 1; i > 0; i--) { const j = ri(i + 1); const t = kinds[i]; kinds[i] = kinds[j]; kinds[j] = t; }
-    const roomInfo = [];
+    const roomInfo = [], kit = MD_KITS[H.kit] || MD_KITS.hotel;
     let fights = 0;
+    const pickG = () => guests[(fights++ + ri(guests.length)) % guests.length];
     M.rooms.forEach((r, ix) => {
-        const kind = kinds[ix] || 'empty', no = f * 100 + ix + 1;
+        const kind = kinds[ix] || 'empty', no = Wd.roomNo(f, ix);
         const doorCells = new Set(r.ways.map(w => w.c[0] + ',' + w.c[1]));
         const gate = r.ways.some(w => w.kind === 'hole') ? null : r.ways.filter(w => w.kind === 'door').map(w => w.key);
         /* the wall slots: a room square's side on the room's edge, in a square no way in touches */
@@ -113280,75 +113477,106 @@ function hotelFloorRoom(f, seed, guests, base) {
         const s0 = r.ways[0] ? r.ways[0].side : null, score = sl => (Math.abs(sl.c[0] - d0[0]) + Math.abs(sl.c[1] - d0[1])) * 2 + (OPP[sl.s] === s0 ? 1 : 0);   // far from the first door, facing it
         slots.sort((a, b) => score(b) - score(a));
         const usedCell = {};
-        const take = (pref) => { for (let i = 0; i < slots.length; i++) { const sl = slots[i]; if (sl.used) continue; if (pref && pref(sl) === false) continue; sl.used = true; return sl; } return null; };
+        const take = () => { for (let i = 0; i < slots.length; i++) { const sl = slots[i]; if (sl.used) continue; sl.used = true; return sl; } return null; };
         /* a point `inw` m in from the slot's wall, `along` m along it; face = looking into the room */
         const at = (sl, inw, along) => { const o = OFF[sl.s], cx = C(sl.c[0]), cz = C(sl.c[1]), wx = cx + o[0] * SQ / 2, wz = cz + o[1] * SQ / 2; return { x: r2(wx - o[0] * inw + (o[1] ? along : 0)), z: r2(wz - o[1] * inw + (o[0] ? along : 0)), face: FACE[OPP[sl.s]] }; };
-        const bedS = take(), info = { no, kind, gate, cells: r.cells, bed: null, safe: null };
-        if (bedS) {
-            usedCell[bedS.c[0] + ',' + bedS.c[1]] = 1;
-            slots.forEach(sl => { if (sl.c === bedS.c) sl.used = true; });   // the bed's square holds the bed and its nightstands only
-            const b = at(bedS, 1.15, 0); props.push({ key: HOTEL_MD.bed, x: b.x, z: b.z, face: (b.face + HOTEL_MD.bedTurn) % 360 }); info.bed = b;
-            const n1 = at(bedS, 0.3, -1.12), n2 = at(bedS, 0.3, 1.12);
-            props.push({ key: 'psx_bedside_table_1', x: n1.x, z: n1.z, face: n1.face }, { key: 'rotary_phone', x: n1.x, z: n1.z, y: 0.64, face: n1.face },
-                       { key: 'psx_bedside_table_1', x: n2.x, z: n2.z, face: n2.face }, { key: 'table_lamp', x: n2.x, z: n2.z, y: 0.64, face: n2.face });
-        }
         const put = (key, inw, extra) => { const sl = take(); if (!sl) return null; const p = at(sl, inw, 0); props.push(Object.assign({ key, x: p.x, z: p.z, face: p.face }, extra || {})); return p; };
-        if (kind === 'loot') { const sp = put('floor_safe', 0.5); if (sp) { info.safe = sp; counters.push({ id: 'hotel_loot_' + ix, x: sp.x, z: sp.z, face: sp.face, radius: 2.4, plateY: 1.5, label: 'THE ROOM SAFE', verb: 'OPEN', proc: 'hotel_act', shutGate: gate, hotel: { act: 'loot', cell: 'r' + ix } }); } }
-        const tv = put('psx_tv_table_1', 0.45); if (tv) props.push({ key: 'psx_tv_mp_1', x: tv.x, z: tv.z, y: 0.74, face: tv.face });
-        put('psx_wardrobe_mp_1', 0.4);
-        put('psx_armchair_1', 0.6);
-        if (r.cells.length >= 6) put('mini_fridge', 0.35);
-        if (rng() < 0.6) put('psx_painting_1', 0.06, { y: 1.45 });
-        /* the rug in the middle; the ceiling lamp over it */
         const mx = r2(-W / 2 + (r.x + r.w / 2) * SQ), mz = r2(-W / 2 + (r.y + r.h / 2) * SQ);
-        props.push({ key: 'psx_carpet_mp_1', x: mx, z: mz, face: (r.w >= r.h) ? 90 : 0 }, { key: 'psx_ceiling_lamp_1_on', x: mx, z: mz, ceil: true });
-        info.mid = { x: mx, z: mz };
-        if (kind === 'rest' && info.bed) counters.push({ id: 'hotel_rest_' + ix, x: info.bed.x, z: info.bed.z, face: info.bed.face, radius: 2.3, plateY: 1.6, label: 'A MADE BED', verb: 'REST', proc: 'hotel_act', shutGate: gate, hotel: { act: 'rest', cell: 'r' + ix } });
+        /* a corner of the room far from its first door (cobwebs) */
+        const fc = r.cells.slice().sort((a, b) => (Math.abs(b[0] - d0[0]) + Math.abs(b[1] - d0[1])) - (Math.abs(a[0] - d0[0]) + Math.abs(a[1] - d0[1])))[0];
+        const K = { H, kind, rng, ri, props, P, cells: r.cells.length, wide: r.w >= r.h, mid: { x: mx, z: mz }, take, at, put,
+            own: sl => { usedCell[sl.c[0] + ',' + sl.c[1]] = 1; slots.forEach(q => { if (q.c === sl.c) q.used = true; }); },   // a square that holds the kit's big piece holds nothing else
+            pick: a => a[ri(a.length)], page,
+            corner: { x: r2(C(fc[0]) + (fc[0] > r.x ? 1 : -1) * (SQ / 2 - 0.45)), z: r2(C(fc[1]) + (fc[1] > r.y ? 1 : -1) * (SQ / 2 - 0.45)), face: 0 } };
+        const got = kit(K) || {}, info = { no, kind, gate, cells: r.cells, bed: got.anchor || null, safe: got.safe || null, mid: { x: mx, z: mz } };
+        if (H.lamp) props.push({ key: H.lamp, x: mx, z: mz, ceil: true });   // the ceiling lamp over the room's middle
+        if (kind === 'loot' && info.safe) counters.push({ id: 'hotel_loot_' + ix, x: info.safe.x, z: info.safe.z, face: info.safe.face, radius: 2.4, plateY: 1.5, label: Wd.loot, verb: 'OPEN', proc: 'hotel_act', shutGate: gate, hotel: { act: 'loot', cell: 'r' + ix } });
+        if (kind === 'rest' && info.bed) counters.push({ id: 'hotel_rest_' + ix, x: info.bed.x, z: info.bed.z, face: info.bed.face, radius: 2.3, plateY: 1.6, label: Wd.rest, verb: 'REST', proc: 'hotel_act', shutGate: gate, hotel: { act: 'rest', cell: 'r' + ix } });
         if (kind === 'fight') {
-            /* the guest: in the square farthest from the first door that the bed does not hold */
-            const cs = r.cells.filter(c => !usedCell[c[0] + ',' + c[1]]).sort((a, b) => (Math.abs(b[0] - d0[0]) + Math.abs(b[1] - d0[1])) - (Math.abs(a[0] - d0[0]) + Math.abs(a[1] - d0[1])));
-            const c = cs[0] || r.cells[0], race = guests[(fights++ + ri(guests.length)) % guests.length];
-            const fc = r.ways[0] ? FACE[r.ways[0].side] : 0;
-            npc.push({ x: C(c[0]), z: C(c[1]), face: fc, race, stay: true, hotelRoom: ix, lvl: gLv, fixed: true });
+            /* the guest: in the square farthest from the first door that the big piece does not hold */
+            const cs2 = r.cells.filter(c => !usedCell[c[0] + ',' + c[1]]).sort((a, b) => (Math.abs(b[0] - d0[0]) + Math.abs(b[1] - d0[1])) - (Math.abs(a[0] - d0[0]) + Math.abs(a[1] - d0[1])));
+            const c = cs2[0] || r.cells[0], race = pickG();
+            const fcx = r.ways[0] ? FACE[r.ways[0].side] : 0;
+            npc.push({ x: C(c[0]), z: C(c[1]), face: fcx, race, stay: true, hotelRoom: ix, lvl: gLv, fixed: true });
             info.guest = { x: C(c[0]), z: C(c[1]), race };
         }
         roomInfo.push(info);
     });
-    /* the doors: the lift at IN (its outer wall), the stairs at UP (an outer wall of that square) */
+    /* the doors: the way out at IN (its outer wall), the stairs at UP (an outer wall of that square) */
     const outerSide = (x, y) => (y === N - 1 ? 's' : x === 0 ? 'w' : y === 0 ? 'n' : 'e');
     const boxDoor = (side, x, y) => (side === 'n' || side === 's') ? { wall: side, x: C(x) } : { wall: side, z: C(y) };
-    const doors = [Object.assign({ id: 'lift', leaf: null, label: 'THE LOBBY', sub: '', action: { room: H.city, at: 'hotel_lift' } }, boxDoor('s', M.IN[0], M.IN[1]))];
-    { const lx = C(M.IN[0]), lz = r2(W / 2 - 0.35); props.push({ key: 'psx_elevator_buttons_1', x: r2(lx + 1.55), z: lz, y: 1.1, face: 0 }); }   // the lift's call buttons beside its doors
-    /* the stairs at UP: the next floor, and from the top floor THE ROOF, where the boss waits alone (hotelRoofRoom) */
-    doors.push(Object.assign({ id: 'up', leaf: H.stairLeaf, label: top ? 'THE ROOF' : 'FLOOR ' + (f + 1), sub: '', action: { room: top ? H.roof : H.room(f + 1), at: top ? 'stairs' : 'lift' } }, boxDoor(outerSide(M.UP[0], M.UP[1]), M.UP[0], M.UP[1])));
+    const ent = H.entry || {};
+    const doors = [Object.assign({ id: 'lift', leaf: H.liftButtons ? null : H.stairLeaf, label: Wd.out, sub: '', action: { room: ent.room || H.city, at: ent.door || 'hotel_lift' } }, boxDoor('s', M.IN[0], M.IN[1]))];
+    if (H.liftButtons) { const lx = C(M.IN[0]), lz = r2(W / 2 - 0.35); props.push({ key: 'psx_elevator_buttons_1', x: r2(lx + 1.55), z: lz, y: 1.1, face: 0 }); }   // the lift's call buttons beside its doors
+    /* the stairs at UP: the next floor, and from the top floor THE TOP, where the boss waits alone (hotelRoofRoom); a boss floor's stairs
+       stay shut until its boss is down (mdGate: map.js asks hotelTopGate) */
+    const upAct = { room: top ? H.roof : H.room(f + 1), at: top ? 'stairs' : 'lift' }; if (fb) upAct.mdGate = roomId;
+    doors.push(Object.assign({ id: 'up', leaf: H.stairLeaf, label: top ? Wd.top : Wd.floor(f + 1), sub: '', action: upAct }, boxDoor(outerSide(M.UP[0], M.UP[1]), M.UP[0], M.UP[1])));
     /* THE HALL GUESTS: a few stand in the corridors, never near the lift */
     const corr = []; for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (M.RM[y][x] < 0) corr.push([x, y]);
     const hallC = corr.filter(c => M.L[c[1]][c[0]] >= 4 && !(c[0] === M.UP[0] && c[1] === M.UP[1]));
     for (let i = 0, n = H.hall[N] | 0; i < n && hallC.length; i++) {
         const c = hallC.splice(ri(hallC.length), 1)[0];
-        npc.push({ x: C(c[0]), z: C(c[1]), face: ri(4) * 90, race: guests[(fights++ + ri(guests.length)) % guests.length], stay: true, lvl: gLv, fixed: true });
+        npc.push({ x: C(c[0]), z: C(c[1]), face: ri(4) * 90, race: pickG(), stay: true, lvl: gLv, fixed: true });
     }
-    /* the lamps: the corridors first (spread evenly), then the rooms over their rugs */
+    /* THE DOOR CASE (mdCaseToday): today's case on this floor = the unauthorized door at a corridor dead end, the anomaly in front of it */
+    let caseInfo = null;
+    if (cs && cs.b === H.key && cs.floor === f && !mdCaseClosed(cs.id)) {
+        const de = hallC.filter(c => { const o = M.O[c[1]][c[0]]; let n = 0; [1, 2, 4, 8].forEach(bt => { if (o & bt) n++; }); return n === 1; });
+        const c = (de.length ? de : hallC)[0];
+        if (c) {
+            const o = M.O[c[1]][c[0]], open = ['n', 'e', 's', 'w'].filter((s2, j) => o & [1, 2, 4, 8][j]), shut = ['n', 'e', 's', 'w'].filter((s2, j) => !(o & [1, 2, 4, 8][j]));
+            const s = (open.length === 1 && shut.indexOf(OPP[open[0]]) >= 0) ? OPP[open[0]] : (shut[0] || 'n');   // the wall across from the way in
+            const q = OFF[s], dx = r2(C(c[0]) + q[0] * (SQ / 2 - 0.25)), dz = r2(C(c[1]) + q[1] * (SQ / 2 - 0.25)), al = s === 'n' || s === 's';
+            /* the door that should not be here: a frame standing proud of the wall, the far side's light inside it */
+            const fr = 0x1a1a1a, glowT = 0x40e0ff;
+            [-1, 1].forEach(sd => P.push({ s: 'box', p: al ? [r2(dx + sd * 0.95), 0, dz] : [dx, 0, r2(dz + sd * 0.95)], size: al ? [0.16, 2.4, 0.22] : [0.22, 2.4, 0.16], key: H.wallKey, tint: fr }));
+            P.push({ s: 'box', p: [dx, 2.4, dz], size: al ? [2.06, 0.18, 0.22] : [0.22, 0.18, 2.06], key: H.wallKey, tint: fr });
+            P.push({ s: 'box', p: al ? [dx, 0.02, r2(dz - q[1] * 0.02)] : [r2(dx - q[0] * 0.02), 0.02, dz], size: al ? [1.74, 2.36, 0.04] : [0.04, 2.36, 1.74], tint: glowT, glow: 1 });
+            lights.push({ x: r2(dx - q[0] * 0.8), z: r2(dz - q[1] * 0.8) });
+            counters.push({ id: 'md_case_door', x: r2(dx - q[0] * 0.3), z: r2(dz - q[1] * 0.3), face: FACE[OPP[s]], radius: 2.2, plateY: 2.8, label: 'AN UNAUTHORIZED DOOR', verb: 'CLOSE', proc: 'hotel_act', hotel: { act: 'case', id: cs.id } });
+            const ax = C(c[0]) - q[0] * 0.6, az = C(c[1]) - q[1] * 0.6, alv = Math.min(LVC, gLv + 2);
+            const twin = cs.twist && cs.twist.k === 'notalone';
+            caseInfo = { id: cs.id, ids: [], x: dx, z: dz };
+            caseInfo.ids.push('hq-native-' + npc.length);
+            npc.push({ x: r2(ax), z: r2(az), face: FACE[OPP[s]], race: cs.race, label: 'THE ANOMALY · CASE ' + cs.no, stay: true, lvl: alv, fixed: true, scale: (cs.twist && cs.twist.k === 'child') ? 0.7 : undefined });
+            if (twin) { caseInfo.ids.push('hq-native-' + npc.length); npc.push({ x: r2(ax + (al ? 1.2 : 0)), z: r2(az + (al ? 0 : 1.2)), face: FACE[OPP[s]], race: cs.race2 || cs.race, label: 'IT IS NOT ALONE', stay: true, lvl: alv, fixed: true }); }
+        }
+    }
+    /* the lamps: the corridors first (spread evenly), then the rooms over their middles */
     const nCorr = Math.min(6, H.lamps), step = Math.max(1, Math.floor(corr.length / nCorr));
-    for (let i = Math.floor(step / 2); i < corr.length && lights.length < nCorr; i += step) { const c = corr[i]; lights.push({ x: C(c[0]), z: C(c[1]) }); props.push({ key: 'psx_ceiling_lamp_1_on', x: C(c[0]), z: C(c[1]), ceil: true }); }
+    for (let i = Math.floor(step / 2); i < corr.length && lights.length < nCorr; i += step) { const c = corr[i]; lights.push({ x: C(c[0]), z: C(c[1]) }); if (H.lamp) props.push({ key: H.lamp, x: C(c[0]), z: C(c[1]), ceil: true }); }
     roomInfo.forEach(ri0 => { if (lights.length < H.lamps) lights.push({ x: ri0.mid.x, z: ri0.mid.z }); });
+    /* the corridors' walls: the building's own (pictures in the hotel, clocks and notices in the offices, chains in the cellar, signs in the labs,
+       glowing strips in the archives) */
+    const hallDecor = { hotel: ['painting_landscape', 'painting_portrait', 'painting_seascape'], office: ['wall_clock', 'notice_board', 'psx_painting_1'], cellar: ['wall_chains', 'psx_cobweb_1', 'psx_cobweb_4'],
+        lab: ['radiation_sign', 'exit_sign', 'notice_board'], archive: null }[H.kit];
     corr.forEach(c => { if (rng() > 0.1) return; const o = M.O[c[1]][c[0]], sides = ['n', 'e', 's', 'w'].filter((s, j) => !(o & [1, 2, 4, 8][j])); if (!sides.length) return;
         const s = sides[ri(sides.length)], q = OFF[s], inn = (c[0] === M.IN[0] && c[1] === M.IN[1]) || (c[0] === M.UP[0] && c[1] === M.UP[1]); if (inn) return;
-        props.push({ key: ['painting_landscape', 'painting_portrait', 'painting_seascape'][ri(3)], x: r2(C(c[0]) + q[0] * (SQ / 2 - 0.2)), z: r2(C(c[1]) + q[1] * (SQ / 2 - 0.2)), y: 1.3, face: FACE[OPP[s]] }); });
-    const F2 = F.concat([{ k: 'arch', id: 'hotel:f' + f + ':maze', x: 0, z: 0, y: 0, rot: 0, parts: P }]);
-    if (inner.length) F2.push({ k: 'texbuilding', id: 'hotel:f' + f + ':doors', x: 0, z: 0, y: 0, w: 2, d: 2, rot: 0, storeys: 1, skin: false, doorsOnly: true, leaf: H.leaf, inner });
+        if (caseInfo && Math.abs(C(c[0]) - caseInfo.x) < SQ && Math.abs(C(c[1]) - caseInfo.z) < SQ) return;
+        const wx = r2(C(c[0]) + q[0] * (SQ / 2 - 0.2)), wz = r2(C(c[1]) + q[1] * (SQ / 2 - 0.2));
+        if (hallDecor) { props.push({ key: hallDecor[ri(hallDecor.length)], x: wx, z: wz, y: 1.3, face: FACE[OPP[s]] }); return; }
+        const ry = (FACE[OPP[s]] + 180) % 360, al = s === 'n' || s === 's';   // the archives: a lit strip of the grid's light along the wall
+        P.push({ s: 'box', p: [r2(C(c[0]) + q[0] * (SQ / 2 - 0.17)), 1.2, r2(C(c[1]) + q[1] * (SQ / 2 - 0.17))], size: al ? [2.4, 0.08, 0.04] : [0.04, 0.08, 2.4], tint: 0x7fffd0, glow: 1 }); void ry; });
+    const tag = H.key === 'hotel' ? 'hotel' : 'md:' + H.key;
+    const F2 = F.concat([{ k: 'arch', id: tag + ':f' + f + ':maze', x: 0, z: 0, y: 0, rot: 0, parts: P }]);
+    if (inner.length) F2.push({ k: 'texbuilding', id: tag + ':f' + f + ':doors', x: 0, z: 0, y: 0, w: 2, d: 2, rot: 0, storeys: 1, skin: false, doorsOnly: true, leaf: H.leaf, inner });
+    const sh = H.shell, look = sh.lookFrom && DOOR_HQ.rooms[sh.lookFrom] && DOOR_HQ.rooms[sh.lookFrom].shell ? DOOR_HQ.rooms[sh.lookFrom].shell.look : null;
+    const hostShell = (DOOR_HQ.rooms[ent.room || H.city] || {}).shell || {};
     return {
-        label: 'THE HOTEL · FLOOR ' + f,
+        label: H.name + ' · ' + Wd.floor(f),
         sub: '',
-        kind: 'box', site: H.site, hotel: f, fieldSolid: true, losWalls: true, crowdAll: true, hotelLv: gLv,
-        shell: {
+        kind: 'box', site: H.site || (DOOR_HQ.rooms[ent.room || H.city] || {}).site || null, hotel: f, mdB: H.key, hotelTopFloor: top, fieldSolid: true, losWalls: true, crowdAll: true, hotelLv: gLv,
+        hotelBossId: fb ? 'hq-native-0' : null, mdCase: caseInfo,
+        shell: Object.assign({
             w: W, d: W, h: hh, wallH: hh, dadoH: 1.0,
-            floor: H.floorKey, wall: H.wallKey, dado: 'urban:WoodPanelling1a', trim: 'wood', ceiling: H.ceiling,
-            floorColor: 0xb87a6a, wallColor: H.wallTint, dadoColor: 0x7a4a30, ceilColor: 0xf0eadc, ceilTile: 1.75,
+            floor: H.floorKey, wall: H.wallKey, dado: sh.dado, trim: sh.trim, ceiling: H.ceiling,
+            floorColor: sh.floorColor, wallColor: H.wallTint, dadoColor: sh.dadoColor, ceilColor: sh.ceilColor, ceilTile: 1.75,
             pipes: false, strips: false, lights, lampK: 0.7, matte: true,   // matte: plaster and carpet never shine (mondo 11-23: "the walls and floors look shiny"; three-renderer.js THE MATTE ROOM)
-            mood: { light: 0xffe8c8, lamp: 0xffd890, ambient: 0.9 },
-        },
-        parti: 'A hotel floor laid as a maze on whole squares: one-square corridors, walls on the lines, furnished guest rooms behind shut doors, the lift in one corner and the stairs at the farthest dead end.',
+            mood: sh.mood,
+            atmos: H.key === 'archives' ? { kind: 'motes', color: 0x7fe8ff } : H.key === 'haunted' ? { kind: 'dust', color: 0xc8d0c0, speed: 0.4 } : { kind: 'dust' },   // indoors: never the host site's rain
+        }, (look || hostShell.look) && H.key !== 'hotel' && H.key !== 'office' ? { look: look || hostShell.look } : {}, hostShell.fog && H.key === 'dumb' ? { fog: hostShell.fog } : {}),
+        parti: 'A floor laid as a maze on whole squares: one-square corridors, walls on the lines, furnished rooms behind shut doors, the way in in one corner and the stairs at the farthest dead end.',
         terrain: { res: 0.4375, floor: H.floorKey, cliff: H.wallKey, path: H.floorKey, noise: { amp: 0, scale: 5 }, crag: false, features: F2 },
         doors, counters, props, agents: [], npcSpots: npc, onlineSpots: [],
         encounters: { list: guests.map(r => ({ race: r, w: 1 })) },
@@ -113356,13 +113584,48 @@ function hotelFloorRoom(f, seed, guests, base) {
         hotelMaze: { N, O: M.O, RM: M.RM, IN: M.IN, UP: M.UP, ways: M.ways.map(w => ({ c: w.c, n: w.n, side: w.side, kind: w.kind, key: w.key, room: w.room })), rooms: roomInfo },
     };
 }
-/* THE ROOF (mondo 11-23: "he needs to be by himself on the roof, normal sized"): the hotel's true 28 m footprint under the city's sky, a
-   parapet round it, the stair hut you come up by (south-west) and the lift's machine hut (north-east) whose doors are THE EXIT (shut until the
-   boss is down: map.js _hqDoAction asks hotelTopGate). Nobody else is up here. Whole squares: the huts each fill one square. */
-function hotelRoofRoom(seed, base) {
-    const H = HOTEL_MD, N = 8, SQ = H.sq, W = N * SQ, r2 = v => Math.round(v * 100) / 100, C = i => r2(-W / 2 + (i + 0.5) * SQ);
+/* THE TOP (mondo 11-23 on the Hotel: "he needs to be by himself on the roof, normal sized"). A city tower's top is its ROOF: the true
+   28 m footprint under the city's sky, a parapet round it, the stair hut you come up by (south-west) and the lift's machine hut (north-east)
+   whose doors are THE EXIT (shut until the boss is down: map.js _hqDoAction asks hotelTopGate). A building that goes down ends in a HALL
+   (top 'hall'): 8 x 8 squares under its own ceiling, the stairs in by the south-west, THE EXIT on the north wall. Nobody but the boss. */
+function hotelRoofRoom(seed, base, H) {
+    H = H || HOTEL_MD;
+    const N = 8, SQ = H.sq, W = N * SQ, r2 = v => Math.round(v * 100) / 100, C = i => r2(-W / 2 + (i + 0.5) * SQ), Wd = H.words, ent = H.entry || {};
     const LVC = (typeof LEVEL_CAP !== 'undefined') ? LEVEL_CAP : 100, b0 = Math.max(1, base | 0 || 1);
     const bossLv = Math.max(1, Math.min(LVC, b0 + Math.round((H.floors - 1) * H.lv.perFloor) + (H.lv.boss | 0)));
+    const npc = H.boss ? [{ x: C(4), z: C(3), face: 225, race: H.boss, gender: H.bossGender, label: H.bossLabel, stay: true, boss: true, lvl: bossLv }] : [];
+    const tag = H.key === 'hotel' ? 'hotel' : 'md:' + H.key, outRoom = ent.room || H.city, outAt = ent.door || 'hotel_lift';
+    const base0 = { label: H.name + ' · ' + Wd.top, sub: '', kind: 'box', site: H.site || (DOOR_HQ.rooms[outRoom] || {}).site || null, hotel: H.floors + 1, mdB: H.key, hotelRoof: true, hotelTopFloor: true,
+        fieldSolid: true, losWalls: true, crowdAll: true, hotelLv: bossLv, hotelBossId: H.boss ? 'hq-native-0' : null, agents: [], npcSpots: npc, onlineSpots: [],
+        encounters: { list: [{ race: H.boss || 'glitch', w: 1 }] } };
+    if (H.top === 'hall') {
+        const sh = H.shell, hostShell = (DOOR_HQ.rooms[outRoom] || {}).shell || {}, look = sh.lookFrom && DOOR_HQ.rooms[sh.lookFrom] ? (DOOR_HQ.rooms[sh.lookFrom].shell || {}).look : hostShell.look;
+        const props = [], P = [];
+        const kitProps = { cellar: [['hw_coffin_2', 4, 1.2], ['candelabra', 2, 0.8], ['candelabra', 6, 0.8], ['skull_pile', 1, 6.5], ['wall_chains', 7, 6.6]],
+            lab: [['meshy_molten_cryo_tube', 4, 0.8], ['monitor_stack', 2, 0.6], ['monitor_stack', 6, 0.6], ['steel_table', 1, 6.4], ['radiation_drum', 7, 6.4]],
+            archive: [['server_rack', 1, 0.6], ['server_rack', 2, 0.6], ['server_rack', 6, 0.6], ['tape_shelf', 7, 0.6], ['crt_terminal', 4, 0.8]] }[H.kit] || [];
+        kitProps.forEach(q => props.push({ key: q[0], x: C(q[1]), z: r2(-W / 2 + q[2]), face: 180 }));
+        if (H.lamp) [[2, 2], [5, 2], [2, 5], [5, 5]].forEach(q => props.push({ key: H.lamp, x: C(q[0]), z: C(q[1]), ceil: true }));
+        if (H.kit === 'archive') {   // the oldest page: dated before the internet existed (the doc: "Nobody explains them")
+            P.push({ s: 'box', p: [0, 1.0, r2(-W / 2 + 0.06)], size: [6.4, 2.4, 0.06], tint: 0xc0c0c0, glow: 0.8 });
+            P.push({ s: 'quad', p: [0, 2.85, r2(-W / 2 + 0.1)], size: [6.0, 0.4], ry: 0, key: 'txt:WELCOME|#ffffff|#00007a|15||dot', uv: 'fit', kind: 'wall' });
+            P.push({ s: 'quad', p: [0, 2.0, r2(-W / 2 + 0.1)], size: [6.0, 0.5], ry: 0, key: 'txt:LAST UPDATED 1953|#0000ee||12||dot', uv: 'fit', kind: 'wall' });
+            P.push({ s: 'quad', p: [0, 1.25, r2(-W / 2 + 0.1)], size: [6.0, 0.4], ry: 0, key: 'txt:YOU ARE VISITOR NUMBER 000001|#a00000||15||dot', uv: 'fit', kind: 'wall' });
+        }
+        const lights = [[2, 2], [5, 2], [2, 5], [5, 5]].map(q => ({ x: C(q[0]), z: C(q[1]) }));
+        const doors = [
+            { id: 'stairs', wall: 's', x: C(1), leaf: H.stairLeaf, label: Wd.floor(H.floors), sub: '', action: { room: H.room(H.floors), at: 'up' } },
+            { id: 'exit', wall: 'n', x: C(6), leaf: H.stairLeaf, label: 'THE EXIT · ' + Wd.out, sub: '', action: { room: outRoom, at: outAt, hotelTop: true } },
+        ];
+        return Object.assign(base0, {
+            shell: Object.assign({ w: W, d: W, h: H.h + 1, wallH: H.h + 1, dadoH: 1.0, floor: H.floorKey, wall: H.wallKey, dado: sh.dado, trim: sh.trim, ceiling: H.ceiling,
+                floorColor: sh.floorColor, wallColor: H.wallTint, dadoColor: sh.dadoColor, ceilColor: sh.ceilColor, ceilTile: 1.75, pipes: false, strips: false, lights, lampK: 0.8, matte: true, mood: sh.mood, atmos: H.key === 'archives' ? { kind: 'motes', color: 0x7fe8ff } : { kind: 'dust' } }, look ? { look } : {}),
+            parti: 'The bottom of the building: one hall, the stairs you came down by, the way out behind whoever waits there.',
+            terrain: { res: 0.4375, floor: H.floorKey, cliff: H.wallKey, path: H.floorKey, noise: { amp: 0, scale: 5 }, crag: false, features: P.length ? [{ k: 'arch', id: tag + ':bottom', x: 0, z: 0, y: 0, rot: 0, parts: P }] : [] },
+            doors, counters: [], props,
+            spawn: { x: C(1), z: r2(W / 2 - 2.4), face: 0 },
+        });
+    }
     const city = (DOOR_HQ.rooms || {})[H.city] || {}, sky = Object.assign({}, ((city.shell || {}).sky) || {}, { landmarks: [] });
     const P = [], wallKey = 'urban:ConcreteGeneric3a', tint = 0xc8c2b8, roofKey = 'urban:ConcretePanels1a';
     const box = (x, y0, z, sx, h, sz) => P.push({ s: 'box', p: [r2(x), r2(y0), r2(z)], size: [r2(sx), r2(h), r2(sz)], key: wallKey, tint, uv: [3.5, 1.75] });
@@ -113380,8 +113643,8 @@ function hotelRoofRoom(seed, base) {
     };
     const st = hut(1, 6, 'n'), lf = hut(6, 1, 's');
     const doors = [
-        { id: 'stairs', wall: 'free', x: st.x, z: st.z, face: st.face, noEntrance: true, leaf: H.stairLeaf, label: 'FLOOR 10', sub: '', action: { room: H.room(H.floors), at: 'up' } },
-        { id: 'exit', wall: 'free', x: lf.x, z: lf.z, face: lf.face, noEntrance: true, leaf: null, label: 'THE EXIT · THE LOBBY', sub: '', action: { room: H.city, at: 'hotel_lift', hotelTop: true } },
+        { id: 'stairs', wall: 'free', x: st.x, z: st.z, face: st.face, noEntrance: true, leaf: H.stairLeaf, label: Wd.floor(H.floors), sub: '', action: { room: H.room(H.floors), at: 'up' } },
+        { id: 'exit', wall: 'free', x: lf.x, z: lf.z, face: lf.face, noEntrance: true, leaf: null, label: 'THE EXIT · ' + Wd.out, sub: '', action: { room: outRoom, at: outAt, hotelTop: true } },
     ];
     const props = [
         { key: 'psx_elevator_buttons_1', x: r2(lf.x + 1.45), z: r2(lf.z + 0.2), y: 1.1, face: 180 },
@@ -113389,78 +113652,99 @@ function hotelRoofRoom(seed, base) {
         { key: 'psx_vent_mp_1', x: C(6), z: C(5) }, { key: 'psx_vent_mp_1', x: C(6), z: C(6) },
         { key: 'dish', x: C(5), z: C(7), face: 200 },
     ];
-    const npc = [{ x: C(4), z: C(3), face: 225, race: H.boss, gender: H.bossGender, label: H.bossLabel, stay: true, boss: true, lvl: bossLv }];
-    const F = [{ k: 'arch', id: 'hotel:roof:huts', x: 0, z: 0, y: 0, rot: 0, parts: P }];
-    return {
-        label: 'THE HOTEL · THE ROOF', sub: '',
-        kind: 'box', site: H.site, hotel: H.floors + 1, hotelRoof: true, fieldSolid: true, losWalls: true, crowdAll: true, hotelLv: bossLv, hotelBossId: 'hq-native-0',
+    const F = [{ k: 'arch', id: tag + ':roof:huts', x: 0, z: 0, y: 0, rot: 0, parts: P }];
+    return Object.assign(base0, {
         shell: {
             w: W, d: W, h: 1.2, wallH: 1.2, dadoH: 0.3, open: true,
             floor: roofKey, wall: wallKey, dado: wallKey, trim: 'concrete', ceiling: wallKey, apron: roofKey, skirt: wallKey,
             floorColor: 0x9a968e, wallColor: tint, dadoColor: 0x8a847a, pipes: false, strips: false, lights: [], matte: true,
             mood: { light: 0xfff0dc, ambient: 1.0 }, sky,
         },
-        parti: 'The hotel roof under the city sky: a parapet, the stair hut you come up by, the lift hut behind the boss.',
+        parti: 'The roof under the city sky: a parapet, the stair hut you come up by, the lift hut behind the boss.',
         terrain: { res: 0.4375, floor: roofKey, cliff: wallKey, path: roofKey, noise: { amp: 0, scale: 5 }, crag: false, outer: false, features: F },   // outer: no ground past the parapet (a roof is high up)
-        doors, counters: [], props, agents: [], npcSpots: npc, onlineSpots: [],
-        encounters: { list: [{ race: H.boss, w: 1 }] },
+        doors, counters: [], props,
         spawn: { x: st.x, z: r2(st.z - 1.6), face: 0 },
-    };
+    });
 }
-/* the guests of a run: the city's own encounter races, else the fallback list */
-function hotelGuests() {
+/* the guests of a run: the building's own list (per floor for the Archives), the natives of its home room, else the fallback list */
+function hotelGuests(H, f) {
+    H = H || HOTEL_MD;
+    const okR = r => typeof AVAILABLE_RACES === 'undefined' || AVAILABLE_RACES.indexOf(r) >= 0;
     let g = [];
-    try { g = (typeof hqRoomNatives === 'function') ? (hqRoomNatives(HOTEL_MD.city) || []).slice() : []; } catch (e) { g = []; }
-    if (typeof AVAILABLE_RACES !== 'undefined') g = g.filter(r => AVAILABLE_RACES.indexOf(r) >= 0);
-    if (!g.length) g = HOTEL_MD.guests.filter(r => typeof AVAILABLE_RACES === 'undefined' || AVAILABLE_RACES.indexOf(r) >= 0);
-    g = g.filter(r => r !== HOTEL_MD.boss);
+    if (typeof H.guests === 'function') g = H.guests(f || 1).slice();
+    else if (H.natives) { try { g = (typeof hqRoomNatives === 'function') ? (hqRoomNatives(H.natives) || []).slice() : []; } catch (e) { g = []; }
+        if (H !== HOTEL_MD) H.guests.forEach(r => { if (g.indexOf(r) < 0) g.push(r); }); }
+    if (!g.length && Array.isArray(H.guests)) g = H.guests.slice();
+    g = g.filter(r => okR(r) && r !== H.boss);
+    if (!g.length && Array.isArray(H.guests)) g = H.guests.filter(okR);
     return g.length ? g : ['zombie'];
 }
-/* build (or build again) every floor from a seed. The room objects are replaced, so the compiled floor plan goes with them;
-   the room's version is bumped so a survey already under way is thrown away. Every door shuts again. */
-function hotelBuild(seed, base) {
+function _mdNoteRoom(id) {
+    try { if (typeof HQ_ROOM_EDITS !== 'undefined' && HQ_ROOM_EDITS.rev) HQ_ROOM_EDITS.rev[id] = (HQ_ROOM_EDITS.rev[id] | 0) + 1; } catch (e) {}
+    try { if (typeof _hqStageNearbyCache !== 'undefined') delete _hqStageNearbyCache[id]; } catch (e) {}
+    try { if (typeof HQ_NPC_TEMPERS !== 'undefined') HQ_NPC_TEMPERS.rooms[id] = { all: 'brute', noGap: true, districts: {}, residents: {} }; } catch (e) {}   // EVERY GUEST COMES FOR YOU (mondo: "The enemies need to be aggro")
+}
+/* build (or build again) a building's floors from a seed. The room objects are replaced, so the compiled floor plan goes with them;
+   the room's version is bumped so a survey already under way is thrown away. Every door shuts again. `upTo` = 1 lays only floor 1
+   (the install: the way in needs somewhere to go; the rest is laid when a run starts). */
+function hotelBuild(seed, base, b, upTo) {
     if (typeof DOOR_HQ === 'undefined' || !DOOR_HQ.rooms) return false;
-    _hotelSeed = (seed | 0) || 1;
-    _hotelBase = Math.max(1, (base | 0) || _hotelBase || 1);
-    const guests = hotelGuests();
-    Object.keys(HQ_SHUT_OPEN).forEach(k => { if (k.indexOf('site_prebuilt_hotel_f') === 0) delete HQ_SHUT_OPEN[k]; });
-    for (let f = 1; f <= HOTEL_MD.floors; f++) {
-        const id = HOTEL_MD.room(f);
-        try { DOOR_HQ.rooms[id] = hotelFloorRoom(f, _hotelSeed, guests, _hotelBase); } catch (e) { console.error('[HOTEL] floor ' + f, e); }
-        try { if (typeof HQ_ROOM_EDITS !== 'undefined' && HQ_ROOM_EDITS.rev) HQ_ROOM_EDITS.rev[id] = (HQ_ROOM_EDITS.rev[id] | 0) + 1; } catch (e) {}
-        try { if (typeof _hqStageNearbyCache !== 'undefined') delete _hqStageNearbyCache[id]; } catch (e) {}
-        try { if (typeof HQ_NPC_TEMPERS !== 'undefined') HQ_NPC_TEMPERS.rooms[id] = { all: 'brute', noGap: true, districts: {}, residents: {} }; } catch (e) {}   // EVERY GUEST COMES FOR YOU (mondo: "The enemies need to be aggro")
+    b = b || 'hotel'; const H = mdDef(b); if (!H) return false;
+    _mdSeed[b] = (seed | 0) || 1; _mdBase[b] = Math.max(1, (base | 0) || _mdBase[b] || 1);
+    if (b === 'hotel') { _hotelSeed = _mdSeed[b]; _hotelBase = _mdBase[b]; }
+    const pre = H.room(1).replace(/1$/, ''), cs = (upTo | 0) === 1 ? null : mdCaseToday();
+    Object.keys(HQ_SHUT_OPEN).forEach(k => { if (k.indexOf(pre) === 0) delete HQ_SHUT_OPEN[k]; });
+    const last = Math.min(H.floors, (upTo | 0) || H.floors);
+    for (let f = 1; f <= last; f++) {
+        const id = H.room(f);
+        try { DOOR_HQ.rooms[id] = hotelFloorRoom(f, _mdSeed[b], hotelGuests(H, f), _mdBase[b], H, cs); } catch (e) { console.error('[MD] ' + b + ' floor ' + f, e); }
+        _mdNoteRoom(id);
     }
-    /* THE ROOF: the boss alone */
-    { const id = HOTEL_MD.roof;
-        try { DOOR_HQ.rooms[id] = hotelRoofRoom(_hotelSeed, _hotelBase); } catch (e) { console.error('[HOTEL] the roof', e); }
-        try { if (typeof HQ_ROOM_EDITS !== 'undefined' && HQ_ROOM_EDITS.rev) HQ_ROOM_EDITS.rev[id] = (HQ_ROOM_EDITS.rev[id] | 0) + 1; } catch (e) {}
-        try { if (typeof _hqStageNearbyCache !== 'undefined') delete _hqStageNearbyCache[id]; } catch (e) {}
-        try { if (typeof HQ_NPC_TEMPERS !== 'undefined') HQ_NPC_TEMPERS.rooms[id] = { all: 'brute', noGap: true, districts: {}, residents: {} }; } catch (e) {} }
+    /* THE TOP: the boss alone */
+    if (last >= H.floors) { const id = H.roof;
+        try { DOOR_HQ.rooms[id] = hotelRoofRoom(_mdSeed[b], _mdBase[b], H); } catch (e) { console.error('[MD] ' + b + ' the top', e); }
+        _mdNoteRoom(id); }
     try { if (typeof _hqWorldIdx !== 'undefined') _hqWorldIdx = null; } catch (e) {}
     return true;
 }
+/* THE MEMORY RULE: the floors of every building but `keep` go (floor 1 stays, rebuilt small, so its way in still opens) */
+function _mdDropOthers(keep) {
+    Object.keys(MD_BUILDINGS).forEach(b => { if (b === keep) return; const H = mdDef(b);
+        let had = false; for (let f = 2; f <= H.floors; f++) { const id = H.room(f); if (DOOR_HQ.rooms[id]) { delete DOOR_HQ.rooms[id]; had = true; try { if (typeof HQ_NPC_TEMPERS !== 'undefined') delete HQ_NPC_TEMPERS.rooms[id]; } catch (e) {} } }
+        if (DOOR_HQ.rooms[H.roof]) { delete DOOR_HQ.rooms[H.roof]; had = true; }
+        if (had) { delete _mdRuns[b]; try { hotelBuild(_mdSeed[b] || 3, _mdBase[b], b, 1); } catch (e) {} } });
+}
 function hotelIsFloor(roomId) { const r = roomId && (DOOR_HQ.rooms || {})[roomId]; return !!(r && r.hotel); }
-/* a run starts when the lift is taken from the lobby: a new seed, a new hotel */
-function hotelNewRun(seed, partyLevel) {
+const _mdNewRunObj = b => ({ b, seed: _mdSeed[b], at: Date.now(), loot: {}, slept: {}, seen: {}, deepest: 1, down: {}, rewarded: {}, lastDown: null });
+/* a run starts when you go in from outside: a new seed, a new building */
+function hotelNewRun(seed, partyLevel, b) {
+    b = b || 'hotel';
     const s = (seed | 0) || ((Date.now() ^ Math.floor(Math.random() * 0x7fffffff)) | 0) || 7;
-    hotelBuild(s, partyLevel);
-    _hotelRun = { seed: _hotelSeed, at: Date.now(), loot: {}, slept: {}, seen: {}, deepest: 1 };
+    _mdDropOthers(b);
+    hotelBuild(s, partyLevel, b);
+    _mdRuns[b] = _mdNewRunObj(b); _mdCur = b; _hotelRun = _mdRuns[b];
+    if (!mdDef(b).boss) _hotelRun.down[mdDef(b).roof] = true;   // a top with nobody in it (the Archives' bottom: story, left open) is open
     return _hotelRun;
 }
-function hotelRunState() { return _hotelRun; }
-function _hotelRunOn() { if (!_hotelRun) _hotelRun = { seed: _hotelSeed, at: Date.now(), loot: {}, slept: {}, seen: {}, deepest: 1 }; return _hotelRun; }
-/* the walk's hook (map.js _hqGoRoom): into floor 1 from outside the hotel = a new run; any floor = the deepest so far */
+function hotelRunState(b) { const k = b || _mdCur; return _mdRuns[k] || null; }
+function _hotelRunOn(b) { const k = b || _mdCur; if (!_mdRuns[k]) { _mdRuns[k] = _mdNewRunObj(k); if (!mdDef(k).boss) _mdRuns[k].down[mdDef(k).roof] = true; } if (k === _mdCur) _hotelRun = _mdRuns[k]; return _mdRuns[k]; }
+/* the walk's hook (map.js _hqGoRoom, before it looks the room up): into a building's floor from outside it = a new run (a floor not laid
+   yet is laid then too); any floor = the deepest so far */
 function hotelBeforeGo(roomId, fromId, partyLevel) {
-    if (!hotelIsFloor(roomId)) return null;
-    if (roomId === HOTEL_MD.room(1) && !hotelIsFloor(fromId)) hotelNewRun(0, partyLevel);
-    _hotelRunOn().deepest = Math.max(_hotelRun.deepest, DOOR_HQ.rooms[roomId].hotel | 0);
+    const b = mdOfRoom(roomId); if (!b) return null;
+    const missing = !(DOOR_HQ.rooms || {})[roomId], fromB = mdOfRoom(fromId);
+    if (missing || fromB !== b) {
+        if (missing || roomId === mdDef(b).room(1)) hotelNewRun(0, partyLevel, b);
+    }
+    _mdCur = b; _hotelRunOn(b);
+    const r = DOOR_HQ.rooms[roomId];
+    if (r) _hotelRun.deepest = Math.max(_hotelRun.deepest, r.hotel | 0);
     return _hotelRun;
 }
 /* THE MAP: the squares of a floor seen this run (1 = seen), for three-renderer.js _hqMmHotel */
 function hotelSeen(roomId) {
     const r = (DOOR_HQ.rooms || {})[roomId], hm = r && r.hotelMaze; if (!hm) return null;
-    const run = _hotelRunOn(); let s = run.seen[roomId];
+    const run = _hotelRunOn(r.mdB || 'hotel'); let s = run.seen[roomId];
     if (!s || s.length !== hm.N * hm.N) s = run.seen[roomId] = new Uint8Array(hm.N * hm.N);
     return s;
 }
@@ -113509,24 +113793,24 @@ function hotelOpen(roomId, key) {
 }
 /* is a counter's gate open? (`shutGate` = the room's door keys; null = a hole: always) */
 function hotelGateOpen(gate) { return !gate || !gate.length || gate.some(k => !!HQ_SHUT_OPEN[k]); }
-/* a guest room's safe: one roll of the Mystery Dungeon's floor table, once a run */
-function hotelLootRoll(roomId, cell) {
-    const T = HOTEL_MD.loot, tot = T.reduce((s, r) => s + r[1], 0);
-    let h = 2166136261; String(_hotelSeed + '|' + roomId + '|' + cell).split('').forEach(ch => { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); });
+/* a room's loot: one roll of the Mystery Dungeon's floor table, once a run */
+function hotelLootRoll(roomId, cell, salt) {
+    const T = HOTEL_MD.loot, tot = T.reduce((s, r) => s + r[1], 0), b = mdOfRoom(roomId) || 'hotel';
+    let h = 2166136261; String((_mdSeed[b] | 0) + '|' + roomId + '|' + cell + (salt || '')).split('').forEach(ch => { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); });
     let v = ((h >>> 0) % 10000) / 10000 * tot;
     for (const r of T) { if ((v -= r[1]) < 0) return r[0]; }
     return T[0][0];
 }
 function hotelLootTake(profile, roomId, cell) {
-    _hotelRunOn();
-    const k = roomId + '|' + cell; if (_hotelRun.loot[k]) return { ok: false, reason: 'empty' };
+    const run = _hotelRunOn(mdOfRoom(roomId) || _mdCur);
+    const k = roomId + '|' + cell; if (run.loot[k]) return { ok: false, reason: 'empty' };
     const item = hotelLootRoll(roomId, cell), a = (typeof hqBagAdd === 'function') ? hqBagAdd(profile, item, 1) : { ok: false, reason: 'bag' };
-    if (a.ok) _hotelRun.loot[k] = true;
+    if (a.ok) run.loot[k] = true;
     return Object.assign({ item, name: (typeof ITEM_RULES !== 'undefined' && ITEM_RULES[item] && ITEM_RULES[item].name) || item }, a);
 }
-/* a guest room's bed: the standing get their HP and MP back; the fallen stay down until the run ends (the Mystery Dungeon's rule). Once a bed a run. */
+/* a room's rest: the standing get their HP and MP back; the fallen stay down until the run ends (the Mystery Dungeon's rule). Once a rest a run. */
 function hotelRest(profile, roomId, cell) {
-    const run = _hotelRunOn(), k = (roomId || '') + '|' + (cell || '');
+    const run = _hotelRunOn(mdOfRoom(roomId) || _mdCur), k = (roomId || '') + '|' + (cell || '');
     if (roomId && run.slept[k]) return { ok: false, reason: 'slept' };
     const r = (typeof hqPartyRecord === 'function') ? hqPartyRecord(profile) : null; if (!r) return { ok: false, n: 0, down: 0 };
     let n = 0, down = 0;
@@ -113535,44 +113819,140 @@ function hotelRest(profile, roomId, cell) {
     if (roomId) run.slept[k] = true;
     return { ok: true, n, down };
 }
-/* THE BOSS DOWN (data.js hqEncounterRecord, a won fight): the top floor's boss beaten = the exit opens. true when it was him. */
+/* THE BOSS DOWN (data.js hqEncounterRecord, a won fight): a boss beaten = its stairs / the exit open; a case's anomaly beaten = its door
+   can be closed. true when it was one of them. `run.lastDown` = what map.js says once the fight is over. */
 function hotelBossBeaten(roomId, id) {
-    const r = roomId && (DOOR_HQ.rooms || {})[roomId]; if (!r || !r.hotel || !r.hotelBossId || String(id) !== r.hotelBossId) return false;
-    _hotelRunOn().bossDown = true; return true;
+    const r = roomId && (DOOR_HQ.rooms || {})[roomId]; if (!r || !r.hotel) return false;
+    const run = _hotelRunOn(r.mdB || 'hotel'), H = mdDef(r.mdB || 'hotel');
+    if (r.mdCase && r.mdCase.ids.indexOf(String(id)) >= 0) { run.caseDown = run.caseDown || {}; run.caseDown[String(id)] = true;
+        if (r.mdCase.ids.every(x => run.caseDown[x])) run.lastDown = { who: 'THE ANOMALY IS DOWN', what: 'CLOSE THE DOOR' }; return true; }
+    if (!r.hotelBossId || String(id) !== r.hotelBossId) return false;
+    run.down[roomId] = true;
+    if (r.hotelRoof) { run.bossDown = true; run.lastDown = { who: H.bossName + ' IS DOWN', what: 'THE EXIT IS OPEN' }; }
+    else { const fb = H.floorBoss && H.floorBoss[r.hotel]; run.lastDown = { who: (fb ? fb.name : 'THE BOSS') + ' IS DOWN', what: 'THE STAIRS ARE OPEN' }; }
+    return true;
 }
-/* THE EXIT (map.js _hqDoAction, the top floor's `hotelTop` door): shut while the boss stands; the first time through, his safe goes in the bag.
-   { ok, reward: [{ item, name, n }] | null } */
-function hotelTopGate(profile) {
-    const run = _hotelRunOn(); if (!run.bossDown) return { ok: false, reason: 'boss' };
-    if (run.rewarded) return { ok: true, reward: null };
-    run.rewarded = true;
+/* THE GATES (map.js _hqDoAction): the top's EXIT (`hotelTop`) and a boss floor's stairs (`mdGate`: that floor's room id) stay shut while the
+   boss stands; the first time through, the boss's safe goes in the bag (the whole bossLoot at the top, two pieces of it at a tenth floor).
+   { ok, reason, who, title, reward: [{ item, name, n }] | null } */
+function hotelTopGate(profile, act) {
+    const b = (act && act.mdGate) ? mdOfRoom(act.mdGate) : _mdCur, H = mdDef(b || 'hotel'), run = _hotelRunOn(b || _mdCur);
+    const gateRoom = (act && act.mdGate) || H.roof, fb = act && act.mdGate ? (H.floorBoss || {})[((DOOR_HQ.rooms[act.mdGate] || {}).hotel) | 0] : null;
+    const who = fb ? fb.name : H.bossName;
+    if (!run.down[gateRoom] && !(gateRoom === H.roof && run.bossDown)) return { ok: false, reason: 'boss', who };
+    if (run.rewarded[gateRoom]) return { ok: true, reward: null };
+    run.rewarded[gateRoom] = true; if (gateRoom === H.roof) run.rewarded = Object.assign(run.rewarded, { _top: true });
+    const got = [], list = fb ? H.bossLoot.slice(0, 2).map(q => [q[0], 1]) : H.bossLoot;
+    if (!H.boss && gateRoom === H.roof) return { ok: true, reward: null, title: H.words.cleared };
+    list.forEach(([item, n]) => { const a = (typeof hqBagAdd === 'function' && profile) ? hqBagAdd(profile, item, n) : { ok: false }; if (a && a.ok) got.push({ item, n, name: (typeof ITEM_RULES !== 'undefined' && ITEM_RULES[item] && ITEM_RULES[item].name) || item }); });
+    return { ok: true, reward: got, title: fb ? fb.name + "'S SAFE" : H.words.cleared };
+}
+/* a floor's beaten guests are beaten for THIS run only (hqEncounterCleared / hqEncounterRecord): a new run, a new building, new guests */
+function hotelRunKey(roomId) { const b = (roomId && hotelIsFloor(roomId)) ? mdOfRoom(roomId) : null; return b ? (_mdSeed[b] | 0) : null; }
+/* ══ THE DOOR CASES (the doc's "Door Cases: endless generated quests", 11-25): "Unauthorized door on floor N of a building. Go in, deal with
+   what came through, close it." One case a game day for the save, drawn from five lists with the day and the save as the seed:
+   the building and floor (deeper = higher level), what came through (a race of the encounter table of the reality on the other side),
+   the job, the twist card ("every case draws one, so none is quite what the board says"; the Act II / III cards wait for the story's act
+   flag) and the reward (loot rolls). The quest side (Locke's board, the givers) is the side-quests thread's; this is the generator. ══ */
+const MD_CASES = {
+    /* the realities a door opens onto: [the room whose encounter table it draws from, what the board calls it] */
+    sources: [['site_prebuilt_fairy_forest_ow_clearing', 'THE WOODS'], ['site_prebuilt_camelot_kingdom', 'CAME A LOT'], ['site_prebuilt_area51_desert', 'THE DESERT'],
+        ['site_prebuilt_bermuda_beach', 'THE HARBOUR'], ['site_prebuilt_skinwalker_ow_corn', 'THE ESTATE'], ['site_prebuilt_atlantis_deep', 'THE DEEP'],
+        ['site_prebuilt_moon_plots', 'THE MOON'], ['site_prebuilt_hollow_earth_cavern', 'THE CAVERN'], ['site_prebuilt_lookingglass_realm', 'THE ASTRAL REALM'],
+        ['site_prebuilt_hell_plots', 'HELL'], ['site_prebuilt_heaven_plots', 'HEAVEN'], ['site_prebuilt_antarctica_plots', 'ANTARCTICA'], ['site_prebuilt_bermuda_katana', 'KATANA ISLAND']],
+    jobs: [['arrest', 'ARREST IT AND BRING IT BACK'], ['escort', 'ESCORT IT HOME'], ['rescue', 'RESCUE WHO IT TOOK'], ['close', 'CLOSE THE DOOR FROM THE FAR SIDE']],
+    twists: [['child', 'IT IS A CHILD LOOKING FOR ITS PARENT'], ['rent', 'SOMEONE IN THE BUILDING IS CHARGING IT RENT'], ['knox', 'KNOX GOT THERE FIRST'], ['notalone', 'IT IS NOT ALONE']],
+    rolls: 2,   // the reward: this many rolls of the floor table
+};
+let _mdSvMem = 0;
+function _mdSaveSeed() {
+    if (_mdSvMem) return _mdSvMem;
+    let s = 0; try { s = parseInt(localStorage.getItem('ew_md_case_seed') || '0', 10) | 0; if (!s) { s = (Math.floor(Math.random() * 0x7ffffffe) + 1) | 0; localStorage.setItem('ew_md_case_seed', String(s)); } } catch (e) { s = 0; }
+    if (!s) s = (Math.floor(Math.random() * 0x7ffffffe) + 1) | 0;
+    return (_mdSvMem = s);   // kept for the session (a blocked storage still gets one case a day)
+}
+let _mdCaseCache = null;
+function mdCaseToday(day) {
+    const d = (day != null) ? (day | 0) : ((typeof hqGameDay === 'function') ? (hqGameDay() | 0) : Math.floor(Date.now() / 86400000)), sv = _mdSaveSeed();
+    if (_mdCaseCache && _mdCaseCache.day === d && _mdCaseCache.sv === sv) return _mdCaseCache.c;
+    const rng = _mfRng((sv ^ Math.imul(d + 1, 0x9e3779b1)) | 0), pick = a => a[Math.floor(rng() * a.length)];
+    const bs = Object.keys(MD_BUILDINGS), b = pick(bs), H = mdDef(b), floor = 2 + Math.floor(rng() * (H.floors - 2));
+    let src = null, race = null, race2 = null;
+    for (let t = 0; t < 8 && !race; t++) { const s = pick(MD_CASES.sources); if (!DOOR_HQ.rooms[s[0]]) continue;
+        let n = []; try { n = (typeof hqRoomNatives === 'function') ? (hqRoomNatives(s[0]) || []) : []; } catch (e) { n = []; }
+        n = n.filter(r => typeof AVAILABLE_RACES === 'undefined' || AVAILABLE_RACES.indexOf(r) >= 0); if (!n.length) continue;
+        src = s; race = pick(n); race2 = pick(n); }
+    if (!race) { src = ['', 'SOMEWHERE']; race = 'shadow entity'; race2 = race; }
+    const job = pick(MD_CASES.jobs), tw = pick(MD_CASES.twists), no = String(((sv >>> 0) % 900) + 100) + '-' + String(d % 1000).padStart(3, '0');
+    const c = { id: 'case:' + sv + ':' + d, no, day: d, b, name: H.name, floor, floorWord: H.words.floor(floor), src: src[0], from: src[1], race, race2,
+        job: { k: job[0], text: job[1] }, twist: { k: tw[0], text: tw[1] }, reward: MD_CASES.rolls };
+    _mdCaseCache = { day: d, sv, c };
+    return c;
+}
+function mdCaseClosed(id) { try { const o = JSON.parse(localStorage.getItem('ew_md_cases_closed') || '{}'); return !!o[id]; } catch (e) { return false; } }
+/* E on the unauthorized door (map.js _hotelAct 'case'): shut while its anomaly stands; then it closes, the case closes, the reward goes in
+   the bag. { ok, reason, reward: [{ item, name, n }] } */
+function mdCaseClose(profile, roomId) {
+    const r = (DOOR_HQ.rooms || {})[roomId], mc = r && r.mdCase; if (!mc) return { ok: false, reason: 'none' };
+    if (mdCaseClosed(mc.id)) return { ok: false, reason: 'closed' };
+    const run = _hotelRunOn(r.mdB || 'hotel'); if (!mc.ids.every(x => run.caseDown && run.caseDown[x])) return { ok: false, reason: 'anomaly' };
+    try { const o = JSON.parse(localStorage.getItem('ew_md_cases_closed') || '{}'); o[mc.id] = Date.now(); localStorage.setItem('ew_md_cases_closed', JSON.stringify(o)); } catch (e) {}
     const got = [];
-    HOTEL_MD.bossLoot.forEach(([item, n]) => { const a = (typeof hqBagAdd === 'function' && profile) ? hqBagAdd(profile, item, n) : { ok: false }; if (a && a.ok) got.push({ item, n, name: (typeof ITEM_RULES !== 'undefined' && ITEM_RULES[item] && ITEM_RULES[item].name) || item }); });
+    for (let i = 0; i < MD_CASES.rolls; i++) { const item = hotelLootRoll(roomId, 'case' + i, mc.id), a = (typeof hqBagAdd === 'function' && profile) ? hqBagAdd(profile, item, 1) : { ok: false };
+        if (a && a.ok) got.push({ item, n: 1, name: (typeof ITEM_RULES !== 'undefined' && ITEM_RULES[item] && ITEM_RULES[item].name) || item }); }
     return { ok: true, reward: got };
 }
-/* a hotel floor's beaten guests are beaten for THIS run only (hqEncounterCleared / hqEncounterRecord): a new run, a new hotel, new guests */
-function hotelRunKey(roomId) { return (roomId && hotelIsFloor(roomId)) ? (_hotelSeed | 0) : null; }
-/* the lobby's lift: a door of the city room on the left lift of the hotel's back wall (F-inside.js draws it), found from the
-   building's own row so it follows the building */
+/* the case board's words (a building's way in): today's case, whichever building it is in */
+function mdCaseBoard() {
+    const c = mdCaseToday(); if (!c) return null;
+    return { title: 'CASE ' + c.no + (mdCaseClosed(c.id) ? ' · CLOSED' : ''), lines: ['AN UNAUTHORIZED DOOR · ' + c.name + ' · ' + c.floorWord, 'WHAT CAME THROUGH: ' + String(c.race).toUpperCase() + ' FROM ' + c.from, c.job.text] };
+}
+/* THE WAYS IN: a door into floor 1 in each building's home room (+ its case board), found from the building's own row when it stands in
+   the city, so it follows the building. The Hotel's lift and Act of God's: the first square from the left on the back wall (F-inside.js
+   draws the lift doors there). */
 function hotelInstall() {
     if (typeof DOOR_HQ === 'undefined' || !DOOR_HQ.rooms) return false;
-    hotelBuild(((Date.now() ^ 0x5bd1e995) | 0) || 3);
-    const city = DOOR_HQ.rooms[HOTEL_MD.city]; if (!city || !city.terrain) return false;
-    const row = (city.terrain.features || []).find(f => f && f.k === 'texbuilding' && f.id === HOTEL_MD.building); if (!row) return false;
-    if ((city.doors || []).some(d => d && d.id === 'hotel_lift')) return true;
-    const q = (row.rot || 0) * Math.PI / 180, c = Math.cos(q), s = Math.sin(q), W = row.w || 28, Dd = row.d || 28;
-    const lx = -W / 2 + 1.75, lz = -Dd / 2 + 0.33, r2 = v => Math.round(v * 100) / 100;   // the left lift: the first square from the left, on the back wall
-    const x = r2(row.x + lx * c - lz * s), z = r2(row.z + lx * s + lz * c), face = Math.round(((Math.atan2(-s, -c) * 180 / Math.PI) % 360 + 360) % 360);
-    (city.doors = city.doors || []).push({ id: 'hotel_lift', wall: 'free', x, z, face, noEntrance: true, bare: true, leaf: null,
-        label: 'THE HOTEL', sub: '', action: { room: HOTEL_MD.room(1), at: 'lift' } });
-    return true;
+    let n = 0;
+    Object.keys(MD_BUILDINGS).forEach(b => { try {
+        const H = mdDef(b), ent = H.entry || {}, home = DOOR_HQ.rooms[ent.room]; if (!home) return;
+        hotelBuild(((Date.now() ^ 0x5bd1e995 ^ (n + 1) * 7919) | 0) || 3, 0, b, 1); n++;
+        if ((home.doors || []).some(d => d && d.id === ent.door)) return;
+        const r2 = v => Math.round(v * 100) / 100, act = { room: H.room(1), at: 'lift' };
+        let door = null, board = null;
+        if (ent.row) {
+            const row = ((home.terrain || {}).features || []).find(f => f && f.k === 'texbuilding' && f.id === ent.row); if (!row) return;
+            const q = (row.rot || 0) * Math.PI / 180, c = Math.cos(q), s = Math.sin(q), W = row.w || 28, Dd = row.d || 28;
+            const lx = -W / 2 + 1.75, lz = -Dd / 2 + 0.33;   // the left lift: the first square from the left, on the back wall
+            const x = r2(row.x + lx * c - lz * s), z = r2(row.z + lx * s + lz * c), face = Math.round(((Math.atan2(-s, -c) * 180 / Math.PI) % 360 + 360) % 360);
+            door = { id: ent.door, wall: 'free', x, z, face, noEntrance: true, bare: true, leaf: null, label: H.name, sub: '', action: act };
+            const bx = -W / 2 + 5.25 + 1.2, bz = -Dd / 2 + 0.2;   // the case board on the back wall beside the lifts
+            board = { x: r2(row.x + bx * c - bz * s), z: r2(row.z + bx * s + bz * c), face };
+        } else if (ent.wall) {
+            door = { id: ent.door, wall: ent.wall, x: ent.x, z: ent.z, leaf: H.stairLeaf, label: H.name + ' · ' + H.words.floor(1), sub: '', action: act };
+            const sw = (home.shell || {}), hz = ent.wall === 's' ? (sw.d || 20) / 2 - 0.6 : -(sw.d || 20) / 2 + 0.6;
+            board = { x: r2((ent.x || 0) - 2.4), z: r2(hz), face: ent.wall === 's' ? 0 : 180 };
+        } else {
+            let x = ent.x, z = ent.z;
+            if (ent.plot) { const m = /^P(\d+)-(\d+)$/.exec(ent.plot), sw = home.shell || {}, n0 = Math.round((sw.w || 0) / 42);   // a plot square (12 x 12 squares of 3.5 m) of a plot-built room
+                if (m) { x = r2(-(sw.w || 0) / 2 + (+m[1]) * 42 + ent.lx * 3.5); z = r2(-(sw.d || 0) / 2 + (+m[2]) * 42 + ent.ly * 3.5); } void n0; }
+            door = { id: ent.door, wall: 'free', x, z, face: ent.face || 0, noEntrance: true, leaf: H.stairLeaf, label: H.name, sub: '', action: act };
+            board = { x: r2(x + 2.6), z: r2(z + 0.1), face: ent.face || 0 };
+            if (ent.giver) (home.npcSpots = home.npcSpots || []).push({ x: r2(x - 2.4), z: r2(z - 1.2), face: ent.face || 0, race: ent.giver, label: 'THE GLITCH', stay: true, talk: { name: 'THE GLITCH' },
+                line: ['ThE ArchIves. Every flOor is a year further back. I cAn\'t go deeper than the forums. You can.', 'Old pages, dead links. Bring back what you find. I\'m looking for an olDer versIon of something.'] });
+        }
+        (home.doors = home.doors || []).push(door);
+        if (board) (home.props = home.props || []).push({ key: 'notice_board', x: board.x, z: board.z, y: 1.15, face: board.face, noBlock: true });   // the board itself (a pack notice board)
+        if (board) (home.counters = home.counters || []).push({ id: 'md_board_' + b, x: board.x, z: board.z, face: board.face, radius: 2.2, plateY: 2.1, label: 'THE CASE BOARD', verb: 'READ', proc: 'hotel_act', hotel: { act: 'board', b } });
+    } catch (e) { console.error('[MD] install ' + b, e); } });
+    return n > 0;
 }
 hotelInstall();
 if (typeof window !== 'undefined') {
-    window.HOTEL_MD = HOTEL_MD; window.hotelMaze = hotelMaze; window.hotelFloorRoom = hotelFloorRoom; window.hotelBuild = hotelBuild; window.hotelNewRun = hotelNewRun;
+    window.HOTEL_MD = HOTEL_MD; window.MD_BUILDINGS = MD_BUILDINGS; window.mdDef = mdDef; window.mdOfRoom = mdOfRoom; window.hotelMaze = hotelMaze; window.hotelFloorRoom = hotelFloorRoom; window.hotelBuild = hotelBuild; window.hotelNewRun = hotelNewRun;
     window.hotelIsFloor = hotelIsFloor; window.hotelBeforeGo = hotelBeforeGo; window.hotelRunState = hotelRunState; window.hotelLootTake = hotelLootTake; window.hotelRest = hotelRest;
     window.hotelSeen = hotelSeen; window.hotelStepDir = hotelStepDir; window.hotelOpen = hotelOpen; window.hotelGateOpen = hotelGateOpen; window.hotelWayOpen = hotelWayOpen;
     window.HQ_SHUT_OPEN = HQ_SHUT_OPEN; window.hotelTopGate = hotelTopGate; window.hotelBossBeaten = hotelBossBeaten;
+    window.MD_CASES = MD_CASES; window.mdCaseToday = mdCaseToday; window.mdCaseClose = mdCaseClose; window.mdCaseBoard = mdCaseBoard; window.mdCaseClosed = mdCaseClosed;
 }
 /* HOTEL-MD-END */
 if (typeof window !== 'undefined') {

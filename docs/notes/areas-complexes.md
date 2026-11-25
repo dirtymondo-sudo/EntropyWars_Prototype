@@ -14871,7 +14871,7 @@ floor" · he picked THE HOTEL (the Financial district's luxury hotel, `dc:P08-00
 - **The way in:** the LEFT LIFT on the lobby's back wall (F-inside.js draws both lifts). data.js `hotelInstall` adds the city room's
   door `hotel_lift` (wall `free`, bare, no leaf) at load, worked out from the building's own texbuilding row, so it follows the building.
   No district file and no bake tool was touched; rerunning `bake-disaster-city.js` does not lose it.
-- **The floors:** `site_prebuilt_hotel_f1` .. `f10`, box rooms BUILT AT LOAD (data.js block HOTEL-MD, the way pdInstall builds the plot
+- **The floors:** `site_prebuilt_hotel_f1` .. `f10` (THIRTY since 11-25: see THE MYSTERY DUNGEONS, FIVE BUILDINGS below), box rooms BUILT AT LOAD (data.js block HOTEL-MD, the way pdInstall builds the plot
   dungeons) and BUILT AGAIN from a new seed every time the lift is taken from the lobby (map.js `_hqGoRoom` -> `hotelBeforeGo`): a new
   layout every visit. Sizes: floors 1-4 8 x 8 squares (the true footprint), 5-9 12 x 12, 10 16 x 16 (`HOTEL_MD.size`).
 - **On the squares:** one maze cell = one 3.5 m square; corridors one square wide; walls on the square lines (arch boxes + ghost wall
@@ -14895,6 +14895,46 @@ THE MATTE ROOM (11-23, mondo: "the walls and floors look shiny, please fix, it l
 true gets every opaque Phong material zeroed (specular 0, shininess 0) once at room landing (three-renderer.js, before
 `H.landed = true`; a one-time read at build, not per frame). The hotel floors set it, plus fewer, softer lamps
 (`HOTEL_MD.lamps` 6, `shell.lampK` 0.7). Off switch: `window.EW_HQ_NO_MATTE = true`. Any other room that looks shiny: add `matte: true` to its shell.
+
+## THE MYSTERY DUNGEONS, FIVE BUILDINGS (2026-11-25, thread "Build more mystery-dungeon buildings")
+mondo 11-25 (side-quests thread, doc https://claude.ai/artifact/KUDvsuDxPB5KtncRaSajFb): "There could be more buildings like the hotel where its
+like a mystery dungeon ... with more floors too (10 isnt enough)"; then "30 is good and yes a separate build thread for those buildings. all of
+them except hero tower"; "I want the internet to have its own quest giver, not in DOOR, and it can have a mystery dungeon that is called the
+archives or something that is full of old internet pages and archives". The Hotel's generator (data.js block HOTEL-MD, above) now lays FIVE
+buildings, THIRTY floors each, from one table `MD_BUILDINGS` (a building leaves out what it shares with the Hotel; `mdDef(b)` fills it in):
+| key | building | way in | floors are called | the top | bosses 10 / 20 (drafts) / top |
+|---|---|---|---|---|---|
+| hotel | THE HOTEL (`dc:P08-00-B1`) | the lobby's left lift (`hotel_lift`) | FLOOR n, ROOM n01 | the roof | Councilman in 1010 (politician) / Night Manager (gangster) / the Banker |
+| office | ACT OF GOD INSURANCE (`dc:P09-00-B1`, the skyline tower lobby) | its left lift (`md_office_lift`) | FLOOR n, SUITE n01 | the roof | Claims Adjuster (banker F) / Regional Manager (reptilian) / the Tech CEO |
+| haunted | THE HAUNTED HOUSE, down from its cellar | `md_haunted_down`, the cellar's south wall | CELLAR n, VAULT n01 | a hall: THE BOTTOM | the Doll in the Wall / the Set That Stays On (cursed TV) / the One in the Box (vampire) |
+| dumb | THE D.U.M.B. under Sub-Level 7 | `md_dumb_down`, the hub's south wall | SUB-LEVEL 7+n, LAB | a hall | the Containment Failure (juggernaut) / the Head of Research / Subject Zero (abomination) |
+| archives | THE ARCHIVES (the Internet, tile P07-08 The Archive) | `md_archives_down`, the tile's south side; THE GLITCH stands by it (the giver, outside DOOR) | the year (2026 - n), PAGE | a hall: THE OLDEST BACKUP, nobody in it (the doc: floor 30 is story, left open), its page dated 1953 | the Deleted Account (influencer F) / the First Draft (virus) / none |
+- **Room ids:** the Hotel keeps `site_prebuilt_hotel_f<n>` + `site_prebuilt_hotel_roof`; the rest are `site_prebuilt_md_<key>_f<n>` + `..._roof` / `..._bottom`.
+- **THE MEMORY RULE:** only floor 1 of each building is laid at load (~1 ms each; the Hotel used to lay all ten). Going in from outside (map.js
+  `_hqGoRoom` -> `hotelBeforeGo`, now called BEFORE the room is looked up, so a floor not laid yet is laid there) lays the whole building from a
+  new seed and DROPS every other building's floors 2-30 + top (`_mdDropOthers`): one building in memory at a time (~30 x 20-80 KB).
+- **Sizes** (`size(f)`): 8 squares a side on floors 1-4, 10 on 5-9, 12 on 10-19, 14 on 20-29, 16 on 30. Rooms and hall guests per size: `rooms`, `hall`.
+- **A BOSS FLOOR EVERY TENTH FLOOR** (the doc's rule): floors 10 and 20 put a named boss (`floorBoss`, its level = the floor's + `lv.boss`) on the stair
+  square; the stairs (`action.mdGate` = that floor's room) stay shut until it is down (map.js asks `hotelTopGate(profile, act)`; the first way through
+  gives two pieces of the boss loot). The top's exit (`hotelTop`) works as before for every building. Run state is per building (`_mdRuns[b]`:
+  `down[room]`, `rewarded[room]`, `lastDown` = the toast after the fight).
+- **THE KITS** (`MD_KITS`, data.js): what a building puts in its rooms, pack props only: hotel (bed, nightstands, phone, lamp, TV, wardrobe, armchair,
+  safe), office (exec desk + chair + PC, filing cabinets, water cooler, plants, copier, a cubicle in the biggest, the break room couch = rest, petty cash
+  = the floor safe), cellar (coffins / the box on trestles, candles, shelving, barrels, crates, chains, cobwebs; a sea chest = loot, a cot = rest), lab
+  (steel table + glassware + microscope, cryo tube, monitors, hazmat, radiation drum; locker = loot, hospital bed + drip = rest), archive (a LIT PAGE on
+  the far wall drawn as `txt:` quads in three eras, `MD_PAGES`; CRT on a school desk, server racks, tape shelves; filing cabinet = saved files, a bench
+  = a cached page). Corridor walls: paintings / clocks + notices / chains + cobwebs / hazard signs / lit grid strips.
+- **Looks:** office = carpet tiles, plasterboard, ceiling tiles, white light; cellar = the cellar's own `cobblestone_2` / `bricks_2` / `wood_planks`,
+  bulbs, amber; labs = TileSubway walls, rubber floor, hazard-yellow door frames, the D.U.M.B.'s fog + look; archives = `holo` floor + gunmetal walls +
+  the Internet's look, glowing skirting.
+- **THE DOOR CASES** (`MD_CASES`, `mdCaseToday`): one case a game day for the save (seed = `hqGameDay()` x a per-browser seed in localStorage
+  `ew_md_case_seed`): building + floor 2-29, what came through (a race from the natives of one of 13 zone rooms, `MD_CASES.sources`), the job (arrest /
+  escort home / rescue / close from the far side), the twist (child looking for its parent = the anomaly drawn small; charging it rent; Knox got there
+  first; it is not alone = two of them). The case's floor gets AN UNAUTHORIZED DOOR (a frame proud of a corridor dead end's wall, the far side's light
+  in it) and the anomaly in front of it (level + 2). Beat it (`hotelBossBeaten` knows the case's npc ids), E on the door = CASE CLOSED, two loot rolls
+  in the bag, the case is kept closed in localStorage `ew_md_cases_closed`. THE CASE BOARD at every way in reads today's case (`mdCaseBoard`).
+  Not done (the side-quests thread's side): Locke's board in HQ, the givers' quest lines, the Act II / III twist cards, the arrest via the capture door,
+  the Chapter 5 gate on the D.U.M.B. and the Chapter 7 gate on the First Draft (the game keeps no chapter flag yet).
 
 ## THE INTERIOR KITS + THE CHAIN INSIDES + THE DOOR FINDER + THE PARKED CITY (2026-11-23, building-interiors plan step 1)
 mondo 11-23: "I want every building to have an interior. If there is a door the player should be able to walk inside of it (very important
