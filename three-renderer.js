@@ -8984,6 +8984,8 @@ const ThreeRenderer = (function () {
     }
     /* the four colours a tuft on this sheet wears, or null (a key with no measured sheet grows none) */
     var _ggPalCache = {};
+    /* THE GROUND ZONES SEEN (2026-11-25): the sheet the eye sees at a spot of a room with `terrain.zones` (data.js zoneFloraZoneSheet; cell build only) */
+    function _hqZoneSheet(info, x, z, sheet) { return (typeof zoneFloraZoneSheet === 'function') ? zoneFloraZoneSheet(info, x, z, sheet) : sheet; }
     function _ggPalette(key) {
         var ck = (typeof _calmKeyOf === 'function' && _calmKeyOf(key)) || key, hit = _ggPalCache[ck];
         if (hit !== undefined) return hit;
@@ -9569,7 +9571,7 @@ const ThreeRenderer = (function () {
             /* THE LAST ROW WEARS ITS NEIGHBOUR (2026-11-22): the lattice's outer ring is never painted, so a road that reaches the room's line wore the room's
                bare floor on its last 0.9 m and a band of grass grew across it at every route end: an unpainted ring node reads the node one row in */
             var pk0 = (PT && !PT.P[nk] && (ni < 2 || nj < 2 || ni >= info.nx - 2 || nj >= info.nz - 2) && info.nx > 5 && info.nz > 5) ? Math.min(info.nz - 3, Math.max(2, nj)) * info.nx + Math.min(info.nx - 3, Math.max(2, ni)) : nk;
-            var sheet = (PT && PT.P[pk0]) ? PT.pal[PT.P[pk0] - 1] : info.floor, pal = S.pals[sheet];
+            var sheet = _hqZoneSheet(info, xm, zm, (PT && PT.P[pk0]) ? PT.pal[PT.P[pk0] - 1] : info.floor), pal = S.pals[sheet];   // THE GROUND ZONES SEEN (data.js zoneFloraZoneSheet: the Hills' grass_rocky)
             if (pal === undefined) pal = S.pals[sheet] = _ggPalette(sheet) || null;
             if (!pal) continue;
             var GRo = S.gr, GR = GROUND_RULES, edgeK = 1, gO = null;
@@ -9818,7 +9820,7 @@ const ThreeRenderer = (function () {
             var nk = nj * info.nx + ni;
             if (info.mask && !info.mask[nk]) continue;
             var pk0 = (PT && !PT.P[nk] && (ni < 2 || nj < 2 || ni >= info.nx - 2 || nj >= info.nz - 2) && info.nx > 5 && info.nz > 5) ? Math.min(info.nz - 3, Math.max(2, nj)) * info.nx + Math.min(info.nx - 3, Math.max(2, ni)) : nk;   // THE LAST ROW WEARS ITS NEIGHBOUR (_hqGrassCell)
-            var cls = zoneFloraSheet((PT && PT.P[pk0]) ? PT.pal[PT.P[pk0] - 1] : info.floor), fw = (S.fields && cls) ? _hqFloraInField(S, xm, zm) : 0, fieldK = 1;
+            var cls = zoneFloraSheet(_hqZoneSheet(info, xm, zm, (PT && PT.P[pk0]) ? PT.pal[PT.P[pk0] - 1] : info.floor)), fw = (S.fields && cls) ? _hqFloraInField(S, xm, zm) : 0, fieldK = 1;
             if (!cls) continue;
             var pk = Math.floor(xm / 7) + ',' + Math.floor(zm / 7), C = S.clim[pk];   // 7 m blocks from the room's middle: every plot line (the map's, a district's) falls on one
             if (C === undefined) C = S.clim[pk] = zoneFloraAt(S.rid, xm, zm) || null;

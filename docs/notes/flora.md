@@ -102,10 +102,31 @@ Probe lesson: the blade grass streams in over a few seconds; a view needs `"sett
 |---|---|---|
 | 1 · The Woods (PILOT) | the Clearing, the Redwood Trail, the Ritual Ground, Dead Man's Cave's mouth | the "Fix ugly ground ferns" thread; proves the rules and the kit first |
 | 2 · Camelot | the village, the Forest, the Fairy Forest (beside its new meadow), the Snowy Pines, the Looking-Glass Garden | |
-| 3 · Disaster City outdoors | parks, yards, the Hollywood Hills, the coast / beach front, street trees | the palm-pit thread's rules (G9) still stand |
+| 3 · Disaster City outdoors | parks, yards, the Hollywood Hills, the coast / beach front, street trees | the palm-pit thread's rules (G9) still stand. Pass 1 built 11-25: section 00e |
 | 4 · Countryside | the Estate (corn, lake, haunted house, ranch), Leylines (the Line, Babel, Bug Colony), Stonehenge, the green routes | |
 | 5 · Dry and cold | the Desert (Western Town, Giza, Area 51, the circus), dry routes, the Mountains + Olympus, the North Pole | desert composition = rock outcrops, cactus groups, dry washes |
 | 6 · Islands and the rest | Katana Island, the Harbour + islands, the Vatican's gardens, Hollow Earth | |
+
+### 00e. Group 3, Disaster City's green spaces (built 11-25, the "Scenic pass for Disaster City green spaces" thread)
+
+What the survey found (the city room `site_prebuilt_downtown_streets`, main 50d39b8): the city proper has very few loose plants out of doors (its green is
+lawns, 554 trees, 274 planters and pots); the real "dotted" ground was the HOLLYWOOD HILLS (district N): ~380 bushes, rocks and cacti, one die a free
+grass square, even over the open slopes. And the Hills grew NO field grass or flowers at all: their ground is a `terrain.zones` box (floor `grass_rocky`)
+but the flora field and the blade grass read the room's own street sheet under it (null class: nothing grows).
+- **THE GROUND ZONES SEEN** (data.js `zoneFloraZoneSheet`, three-renderer.js `_hqZoneSheet`, read in `zoneFloraGround`, `_hqFloraCell`, `_hqGrassCell`;
+  cell build only): a spot in a ground zone reads the sheet the eye sees (a painted sheet the zone has a slot for, else the zone's floor; `out` boxes stay the
+  room's). The Hills now grow the `hills` climate: dry gold blade grass, poppy and sage drifts on `rough`. Off: `EW_HQ_NO_GROUND_ZONES` (both halves).
+- **No compose row for the city** (on purpose): the kit regroups a key's loose rows at anchors ANYWHERE in the room, and the city room holds lobbies, yards
+  and the Hills at once. Its pass is by hand:
+  - `districts/N.js` THE CHAPARRAL IN DRIFTS: pass 1 throws the old dice (trees stand exactly where they stood; they are the anchors) and only counts;
+    pass 2 spends 80 % of the brush and 85 % of the rocks in big ragged patches (smooth noise, 6 squares), most at a tree's foot, a road's edge and round
+    rocks; rocks in clusters of 1 big + 0-2 small; cacti in twos at a rock's foot; one species a patch, one or two a square, mixed sizes.
+    `HILLS_OLD_SCATTER=1` = the old dice.
+  - `districts/U.js` THE CAMPUS GREEN, COMPOSED: the bandstand is the focal, its foot planted on the two sides away from the walks; the two lone north
+    elms join the edge rows as corner groves (lawn middles open); a group at each grove's foot; a drift at the SE bench's elm.
+  - data.js, the city's field: lawn daisies and beach dune grass grow by standing things (`near`, `far` 0.22 / 0.4): mown lawns, flowers at the feet.
+- Not done (other holders, or waits): the Records garden (Civic Center), the Private garden (F), the beach front's palms (the ONE BEACH rows; the dune
+  grass rule reaches them without editing B.js), the street trees' pits (PR #2549 stands).
 
 ## 0. THE GROUND RULES (2026-11-25, the second foliage pass; READ FIRST)
 

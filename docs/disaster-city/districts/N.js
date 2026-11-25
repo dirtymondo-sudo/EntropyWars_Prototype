@@ -367,16 +367,63 @@ function hillsDressing(ctx) {
     const BRUSH = ['leafy_bush', 'leafy_bush', 'psxg_dead_bush_1', 'psxg_dead_bush_2', 'fern', 'leafy_bush'], ROCKS = ['ocean_rock_2', 'ocean_rock_5', 'hw_stone_1', 'hw_stone_3', 'ocean_rock_7', 'ocean_rock_2'], CACT = ['prickly_pear', 'agave', 'yucca', 'agave', 'saguaro_cactus', 'yucca'];
     const near = (sx, sy) => { for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const x = sx + dx, y = sy + dy; if (!R.inR(x, y)) continue; const ch = cell[y][x]; if (ch === 'B' || ch === 'm' || ch === 's') return true; if ((dx || dy) && R.taken.has(x + ':' + y) && ch !== 'g') return true; } return false; };
     const count = { brush: 0, rocks: 0, cactus: 0, trees: 0 };
+    /* THE CHAPARRAL IN DRIFTS (2026-11-25, the scenic pass of Disaster City's green spaces; flora.md S3-S8, G5, G6). Was: every free grass square threw one
+       die (brush / rock / cactus), so the Hills wore one bush every few squares at even spacing over the open slopes, nothing touching anything. Now: PASS 1
+       throws the same dice in the same order (the trees stand exactly where they stood, and they are the anchors), but only COUNTS what it would have dropped;
+       PASS 2 (its own random stream) spends that count, a fifth fewer, where a dry hillside grows it: in big ragged patches (a smooth noise, 6 squares a
+       cell), most at a tree's foot, along a road's edge and round the rocks, little out in the open grass (which the field's dry grass, poppies and sage now
+       cover). Rocks come in clusters (one big, smaller ones beside it; the graveyard pack's grey stones, as the Woods' islands: the ocean rocks read black on the dry grass), cactus at a rock's foot, bushes one or two to a square in mixed sizes, one species to
+       a patch (leafy chaparral, the thorn bush in the burn). No new kind; fewer pieces than before. HILLS_OLD_SCATTER = the old dice. */
+    const cand = [], old = { brush: 0, rocks: 0, cactus: 0 }, treeSq = [];
     R.plots.forEach(p => { if (process.env.HILLS_NO_SCATTER) return; const m = MIX[KIND[p.id] || (p.ly === 0 ? 'ridge' : p.ly === 1 ? 'slope' : 'foot')];
         for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) { const sx = p.lx * N + lx, sy = p.ly * N + ly, u = rnd(), w = rnd();
             if (cell[sy][sx] !== 'g' || R.taken.has(sx + ':' + sy) || near(sx, sy)) continue;
             const roadside = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(d => R.inR(sx + d[0], sy + d[1]) && 'Yp'.indexOf(cell[sy + d[1]][sx + d[0]]) >= 0);
             if (m.t && !roadside && u < m.t && process.env.HILLS_NO_TREES) continue;
-            if (m.t && !roadside && u < m.t) { R.taken.add(sx + ':' + sy); feat({ k: 'tree', x: r2(mx(sx) + (w - 0.5) * 1.2), z: r2(mz(sy) + (rnd() - 0.5) * 1.2), kind: pick(m.kinds), h: r2(m.h[0] + rnd() * (m.h[1] - m.h[0])), r: 0.8, keep: true }); count.trees++; continue; }
+            if (m.t && !roadside && u < m.t) { R.taken.add(sx + ':' + sy); feat({ k: 'tree', x: r2(mx(sx) + (w - 0.5) * 1.2), z: r2(mz(sy) + (rnd() - 0.5) * 1.2), kind: pick(m.kinds), h: r2(m.h[0] + rnd() * (m.h[1] - m.h[0])), r: 0.8, keep: true }); count.trees++; treeSq.push([sx, sy]); continue; }
             const q = { x: r2(mx(sx) + (w - 0.5) * 2.4), z: r2(mz(sy) + (rnd() - 0.5) * 2.4), face: Math.round(rnd() * 360) }, t = m.t || 0;
-            if (u < t + m.b) { props.push(Object.assign({ key: pick(m.bush || BRUSH) }, process.env.HILLS_SIZED ? { h: r2(1.0 + rnd() * 1.3) } : (rnd(), {}), q)); count.brush++; }   // (chaparral stands chest to head high: the pack's bushes are knee high)
-            else if (u < t + m.b + m.r) { props.push(Object.assign({ key: pick(ROCKS) }, process.env.HILLS_SIZED ? { h: r2(0.7 + rnd() * 1.4) } : (rnd(), {}), q)); count.rocks++; }
-            else if (u < t + m.b + m.r + m.c && !roadside) { props.push(Object.assign({ key: pick(CACT) }, q)); count.cactus++; } } });
+            let was = null;
+            if (u < t + m.b) { const key = pick(m.bush || BRUSH); rnd(); was = 'brush'; if (process.env.HILLS_OLD_SCATTER) props.push(Object.assign({ key }, q)); }
+            else if (u < t + m.b + m.r) { const key = pick(ROCKS); rnd(); was = 'rocks'; if (process.env.HILLS_OLD_SCATTER) props.push(Object.assign({ key }, q)); }
+            else if (u < t + m.b + m.r + m.c && !roadside) { const key = pick(CACT); was = 'cactus'; if (process.env.HILLS_OLD_SCATTER) props.push(Object.assign({ key }, q)); }
+            if (was) old[was]++;
+            cand.push({ sx, sy, m, roadside, burn: !!m.bush }); } });
+    if (!process.env.HILLS_OLD_SCATTER && cand.length) {
+        let v2 = 25111; const rn = () => { v2 = (v2 * 1664525 + 1013904223) >>> 0; return v2 / 4294967296; }, pk = a => a[Math.floor(rn() * a.length)];
+        const noise = (x, y, cs, sd) => { const fx = x / cs, fy = y / cs, ix = Math.floor(fx), iy = Math.floor(fy), tx = smooth(fx - ix), ty = smooth(fy - iy);
+            const a = hash(ix, iy, sd), b = hash(ix + 1, iy, sd), c = hash(ix, iy + 1, sd), d = hash(ix + 1, iy + 1, sd); return a + (b - a) * tx + (c - a) * ty + (a - b - c + d) * tx * ty; };
+        const AG = new Map(), mark = (sx, sy, kind) => AG.set(sx + ':' + sy, kind);
+        treeSq.forEach(([sx, sy]) => mark(sx, sy, 'tree'));
+        const nearK = (sx, sy, kind, r) => { for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { const k = AG.get((sx + dx) + ':' + (sy + dy)); if (k && (!kind || k === kind)) return [sx + dx, sy + dy]; } return null; };
+        const used = new Set(), CAT = { leafy_bush: 1.3, psxg_dead_bush_2: 0.62, psxg_dead_bush_1: 0.62, psxg_rock_1: 0.74, psxg_rock_2: 0.49, psxg_rock_3: 0.43, psxg_rock_4: 0.23 };
+        const put = (c, key, scale, toward) => {   // a piece on its square, pulled toward its anchor (a tree's foot, the rock it leans on), the rest jitter
+            let x = mx(c.sx) + (rn() - 0.5) * 1.6, z = mz(c.sy) + (rn() - 0.5) * 1.6;
+            if (toward) { x += Math.sign(toward[0] - c.sx) * (0.5 + rn() * 0.5); z += Math.sign(toward[1] - c.sy) * (0.5 + rn() * 0.5); }
+            const row = { key, x: r2(x), z: r2(z), face: Math.round(rn() * 360) }; if (CAT[key] && scale !== 1) row.h = r2(CAT[key] * scale); props.push(row); return row; };
+        /* 1 · THE ROCKS: clusters where the rocky noise is high (the ridge throws most), never on the road's edge */
+        const rockS = cand.filter(c => !c.roadside).map(c => ({ c, s: noise(c.sx, c.sy, 7, 51) * (0.6 + c.m.r * 8) + rn() * 0.12 })).sort((a, b) => b.s - a.s);
+        let rb = Math.round(old.rocks * 0.85);
+        for (const { c } of rockS) { if (rb <= 0) break; if (used.has(c.sx + ':' + c.sy) || nearK(c.sx, c.sy, 'rock', 1)) continue;
+            used.add(c.sx + ':' + c.sy); mark(c.sx, c.sy, 'rock'); const big = pk(['psxg_rock_1', 'psxg_rock_1', 'psxg_rock_2']); put(c, big, big === 'psxg_rock_1' ? 1.1 + rn() * 0.7 : 1.4 + rn() * 0.6); rb--; count.rocks++;
+            const n2 = rn() < 0.6 ? 1 + (rn() < 0.35 ? 1 : 0) : 0;
+            for (let k = 0; k < n2 && rb > 0; k++) { const a = rn() * Math.PI * 2, d = 1.0 + rn() * 0.7, key = pk(['psxg_rock_3', 'psxg_rock_2', 'psxg_rock_4']);
+                const row = { key, x: r2(mx(c.sx) + Math.cos(a) * d), z: r2(mz(c.sy) + Math.sin(a) * d), face: Math.round(rn() * 360) }; if (CAT[key]) row.h = r2(CAT[key] * (0.8 + rn() * 0.6)); props.push(row); rb--; count.rocks++; } }
+        /* 2 · THE CACTUS: at a rock's foot (the scrub between the stones), in twos */
+        let cb = old.cactus;
+        for (const c of cand) { if (cb <= 0) break; if (c.roadside || c.burn || used.has(c.sx + ':' + c.sy)) continue; const r = nearK(c.sx, c.sy, 'rock', 1); if (!r || hash(c.sx, c.sy, 77) > 0.5) continue;
+            used.add(c.sx + ':' + c.sy); mark(c.sx, c.sy, 'cactus'); const key = pk(CACT); put(c, key, 1, r); cb--; count.cactus++;
+            if (cb > 0 && rn() < 0.5) { put(c, key === 'saguaro_cactus' ? 'agave' : key, 1, r); cb--; count.cactus++; } }
+        /* 3 · THE BRUSH: big ragged patches, gathered at a tree's foot, a road's edge and round the rocks; one species a patch, one or two a square */
+        const brushS = cand.map(c => { const tr = nearK(c.sx, c.sy, 'tree', 1), rk = nearK(c.sx, c.sy, 'rock', 1), pat = noise(c.sx, c.sy, 6, 19);
+            const s = smooth((pat - 0.32) / 0.5) * (c.m.b / 0.12) * (1 + (tr ? 2.2 : 0) + (rk ? 1.3 : 0) + (c.roadside ? 1.0 : 0)) + rn() * 0.08;
+            return { c, s, to: tr || rk || null }; }).sort((a, b) => b.s - a.s);
+        let bb = Math.round(old.brush * 0.8);
+        for (const { c, to } of brushS) { if (bb <= 0) break; if (used.has(c.sx + ':' + c.sy)) continue; used.add(c.sx + ':' + c.sy);
+            const pool = c.burn ? ['psxg_dead_bush_2'] : (hash(Math.floor(c.sx / 6), Math.floor(c.sy / 6), 5) < 0.78 ? ['leafy_bush'] : ['psxg_dead_bush_2', 'leafy_bush']);
+            const key = pool[0]; put(c, key, 0.9 + rn() * 0.45, to); bb--; count.brush++;
+            if (bb > 0 && rn() < 0.4) { put(c, pk(pool), 0.55 + rn() * 0.25, to); bb--; count.brush++; } }
+        count.was = old;
+    }
     console.warn('[the Hills] dressing ' + JSON.stringify(count) + (skip.length ? ' LEFT OUT ' + skip.join(' ') : ''));
 }
 
