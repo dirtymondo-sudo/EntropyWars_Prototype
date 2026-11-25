@@ -543,6 +543,8 @@ dl.facts dt { color: var(--ink3); font-size: 12px; } dl.facts dd { margin: 0; mi
 #story .kpitches { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; } #story .kpitch { border: 1px dashed #ff7fbf; padding: 8px; display: grid; gap: 6px; } #story .kpitch.made { border-style: solid; border-color: #4fd36a; }
 #story .kpitch .strow .stinp { flex: 1; min-width: 0; }
 @media (max-width: 860px) { #st_play, #st_lore { grid-template-columns: 1fr; grid-auto-rows: minmax(320px, auto); overflow-y: auto; } }
+#story .kscene { margin: -2px 0 8px 14px; padding: 4px 0 4px 10px; border-left: 2px solid #444; display: grid; gap: 4px; } #story .kscene .stinp.sm { flex: 1; min-width: 0; } #story .kscene .strow { flex-wrap: wrap; } #story .kscene .strow > .kok, #story .kscene .strow > .stmiss { flex-basis: 100%; font-size: 12px; }
+#story .klines summary { cursor: pointer; color: #aaa; font-size: 12px; } #story .klines div { font-size: 12px; padding: 2px 0; } #story .klines div b { font: 11px var(--font-mono); color: #ffd66b; } #story .klines div.ed { color: #5fe0d0; }
 @media (max-width: 860px) { #st_facts { grid-template-columns: 1fr; grid-auto-rows: minmax(320px, auto); overflow-y: auto; } }
 @media (max-width: 860px) { #st_map, #st_beat { grid-template-columns: 1fr; grid-auto-rows: minmax(320px, auto); overflow-y: auto; } #story .stbar { overflow-x: auto; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }

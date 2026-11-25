@@ -266,3 +266,10 @@ new fields), so it saves and syncs like the chapters.
   Checks: mentioned but no canon, open questions.
 - **Pitches** tab (step D): SIDE QUEST PITCHES, `P.pitches`: the idea, where, faction, level, mood. "Make it a quest in…" adds a side
   quest (status Idea, the idea as its summary) to that chapter and the pitch keeps the link (`q`).
+- **The cutscene links** (2026-11-25; mondo asked where the cutscene editor fits: it stays its own tool, linked by scene). build.js
+  exports every game cutscene with its spoken lines (`SD.cuts`, from data.js STORY_CUTSCENES). A quest's scene row picks the game
+  scene it is (`id`; a scene named like a game scene links by itself), **Plays when** (conditions) and **Changes a fact**; "Read its
+  lines" shows the words, with mondo's cutscene-editor edits (localStorage `ew_scene_editor_v1`, same site) on top in teal. The
+  checks read the lines: a character an earlier ending kills who still speaks, a secret's tell-tale word said before its first hint,
+  a game cutscene in no quest, a link to a scene that is gone; the lore search reads them too. Dialogue with choices, later, is a
+  choice inside the cutscene editor, not here.
