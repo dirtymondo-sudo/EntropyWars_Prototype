@@ -1927,7 +1927,7 @@ function questForm(c, q) {
   h += fld('Summary', '<textarea class="stinp" data-qf="summary" rows="3">' + esc(q.summary) + '</textarea>');
   h += fld('Steps <span class="stmuted">(each can have its own pin)</span>', q.steps.map((s, i) => '<div class="ststep"><b>' + (i + 1) + '</b><input class="stinp" data-step="' + esc(s.id) + '" value="' + esc(s.text) + '"><button class="stbtn sm' + (s.at ? ' on' : '') + '" data-pickstep="' + esc(s.id) + '" title="Place this step on the map">⌖</button><button class="stx" data-delstep="' + esc(s.id) + '">×</button></div>').join('') + '<button class="stadd" data-act="addStep">+ Step</button>');
   h += fld('Characters', '<div class="stchips">' + q.cast.map(face).join('') + '</div>' + pickBox('cast', 'Add a character or unit…'));
-  h += fld('Cutscenes <span class="stmuted">(a cutscene, or played through)</span>', q.scenes.map((s, i) => '<div class="ststep"><input class="stinp" data-scene="' + i + '" value="' + esc(s.n) + '"><div class="stseg sm" data-scenehow="' + i + '"><button data-v="cut"' + (s.how === 'cut' ? ' class="on"' : '') + '>Cutscene</button><button data-v="played"' + (s.how === 'played' ? ' class="on"' : '') + '>Played</button></div><button class="stx" data-delscene="' + i + '">×</button></div>').join('') + '<button class="stadd" data-act="addScene">+ Scene</button>');
+  h += fld('Cutscenes <span class="stmuted">(a cutscene, or played through)</span>', q.scenes.map((s, i) => '<div class="ststep"><input class="stinp" data-scene="' + i + '" value="' + esc(s.n) + '"><div class="stseg sm" data-scenehow="' + i + '"><button data-v="cut"' + (s.how === 'cut' ? ' class="on"' : '') + '>Cutscene</button><button data-v="played"' + (s.how === 'played' ? ' class="on"' : '') + '>Played</button></div><button class="stx" data-delscene="' + i + '">×</button></div>' + sceneKit(kq(q), i)).join('') + '<button class="stadd" data-act="addScene">+ Scene</button>');
   h += fld('Reward', '<input class="stinp" data-qf="reward" value="' + esc(q.reward) + '">');
   h += fld('Notes', '<textarea class="stinp" data-qf="notes" rows="4">' + esc(q.notes) + '</textarea>');
   h += '<div class="strow" style="margin-top:14px"><button class="stbtn" data-act="selCh">Open chapter</button><span class="sp"></span><button class="stbtn r" data-act="delQ">Delete quest</button></div>';
@@ -3116,7 +3116,7 @@ const KL = { sel: null, q: '' };
 function loreCorpus() {
   const P = kp(), out = [];
   P.chapters.forEach((c, i) => out.push({ label: 'Ch ' + (i + 1) + ' “' + (c.name || 'Untitled') + '”', go: { kind: 'chapter', id: c.id }, text: [c.name, c.notes, c.lie, c.trust, c.bossText, c.reward].join('\n') }));
-  flatQuests().forEach(f => { const q = kq(f.q); out.push({ label: qLabel(q.id), go: { kind: 'quest', id: q.id }, text: [q.name, q.summary, q.notes, q.reward].concat(q.steps.map(s => s.text), q.scenes.map(s => s.n), q.ends.map(e => e.name + ' ' + e.note + ' ' + e.reward)).join('\n') }); });
+  flatQuests().forEach(f => { const q = kq(f.q); out.push({ label: qLabel(q.id), go: { kind: 'quest', id: q.id }, text: [q.name, q.summary, q.notes, q.reward].concat(q.steps.map(s => s.text), q.scenes.map(s => s.n), q.ends.map(e => e.name + ' ' + e.note + ' ' + e.reward), ...q.scenes.map(s => cutLines(s.id).map(l => l.text))).join('\n') }); });
   P.clues.forEach(k => out.push({ label: 'secret “' + (k.text || 'a secret') + '”', go: { kind: 'clue', id: k.id }, text: [k.text, k.truth].join('\n') }));
   Object.values(B.events || {}).forEach(ev => out.push({ label: 'event “' + (ev.title || 'untitled') + '”', go: { kind: 'event', id: ev.id }, text: [ev.title, ev.text].join('\n') }));
   return out;
@@ -3175,6 +3175,7 @@ function kitChecksMoreC(out, add) {
   if (flatQuests().length && flatQuests().length <= 400) { const R = pathReport();
     flatQuests().forEach(f => { if (!R.opened[f.q.id]) add('p', 'No path through the story opens ' + f.no + ' “' + (f.q.name || 'Untitled') + '” (' + R.n + ' random paths tried).', { kind: 'quest', id: f.q.id });
       else if (f.q.kind !== 'side' && R.locked[f.q.id]) add('p', 'Main quest ' + f.no + ' “' + (f.q.name || 'Untitled') + '” is locked on ' + R.locked[f.q.id] + ' of ' + R.n + ' random paths: a dead end.', { kind: 'quest', id: f.q.id }); }); }
+  kitChecksMoreE(out, add);
 }
 function kitClickD(e) {
   const t = e.target, b = t.closest('button, [data-klsel]'), P = kp(); if (!b) return false;
@@ -3203,6 +3204,7 @@ function kitChangeMoreD(e) {
     const q = { id: uid('q'), name: (x.text.split(/[.!?\n]/)[0] || 'A side quest').slice(0, 60), kind: 'side', where: x.where || '', at: null, ug: false, summary: x.text + (x.fac ? '\nFaction: ' + x.fac : '') + (x.mood ? '\nMood: ' + x.mood : ''), game: '', steps: [], cast: [], scenes: [], reward: '', notes: '', open: [], close: [], ends: [], lvl: x.lvl || 0, giver: '', giverAt: '', status: 'idea' };
     c.quests.push(q); x.q = q.id; storySave(); return true; }
   if (t.closest && t.closest('[data-kpi]') && t.dataset.kpif && t.tagName === 'SELECT') { const x = P.pitches.find(p => p.id === t.closest('[data-kpi]').dataset.kpi); if (x) { x[t.dataset.kpif] = t.value; storySave(true); } return true; }
+  if (kitChangeMoreE(e)) return true;
   return false;
 }
 function kitInputMoreC(e) {
@@ -3211,6 +3213,50 @@ function kitInputMoreC(e) {
   if (t.dataset.klf && t.dataset.klf !== 'clue') { const l = P.lore.find(x => x.id === KL.sel); if (l) { l[t.dataset.klf] = t.value; storySave(true); const row = $('klMain').querySelector('tr.on'); if (row && t.dataset.klf === 'name') row.cells[0].innerHTML = '<b>' + esc(l.name || 'Unnamed') + '</b>'; if (row && t.dataset.klf === 'aka') row.cells[2].textContent = l.aka; } return true; }
   if (t.dataset.kpif && t.tagName !== 'SELECT') { const x = P.pitches.find(p => p.id === t.closest('[data-kpi]').dataset.kpi); if (x) { x[t.dataset.kpif] = t.dataset.kpif === 'lvl' ? Math.max(0, Math.round(+t.value || 0)) : t.value; storySave(true); } return true; }
   return false;
+}
+
+/* ── THE CUTSCENE LINKS (2026-11-25): the in-game cutscene editor stays its own tool; the planner links to it by scene. build.js
+   exports every game cutscene (`SD.cuts`: id, title, its spoken lines). A quest's scene row picks the game scene it is (`id`),
+   when it plays (`when`, conditions) and the facts it changes (`sets`). mondo's edits from the cutscene editor (localStorage
+   `ew_scene_editor_v1`, same site) are read on top: changed, cut and added lines. The checks read the lines: a dead character who
+   still speaks, a tell-tale word said before a secret's first hint, a game scene no quest uses, a link to a scene that is gone. ── */
+const CUTS = Object.fromEntries((SD.cuts || []).map(c => [c.id, c]));
+function sceneEdits() { try { const o = JSON.parse(localStorage.getItem('ew_scene_editor_v1') || 'null'); return o && o.scenes && typeof o.scenes === 'object' ? o.scenes : {}; } catch (e) { return {}; } }
+function cutLines(id, E) {
+  const c = CUTS[id]; if (!c) return [];
+  const ed = (E || sceneEdits())[id] || {}, L = ed.lines || {}, A = ed.adds || {}, out = [];
+  c.lines.forEach(l => { const e = L[l.i]; if (e && e.was === l.text) { if (!e.cut) out.push({ who: l.who, text: e.text, ed: true }); } else out.push({ who: l.who, text: l.text }); const a = A[l.i]; if (a && Array.isArray(a.list)) a.list.forEach(x => out.push({ who: x.who || l.who, text: x.text || '', ed: true })); });
+  return out;
+}
+const cutEdited = (id, E) => { const ed = (E || sceneEdits())[id]; return ed ? Object.keys(ed.lines || {}).length + Object.keys(ed.adds || {}).length : 0; };
+/* the old rows: a scene named like a game scene is that scene */
+function kitSceneAuto(q) { q.scenes.forEach(s => { if (!s.id && s.n) { const c = (SD.cuts || []).find(x => (x.title || '').toLowerCase() === s.n.toLowerCase()); if (c) s.id = c.id; } }); }
+function sceneKit(q, i) {
+  if (!i) kitSceneAuto(q);
+  const s = q.scenes[i], c = s.id && CUTS[s.id], E = sceneEdits(), n = c ? cutLines(s.id, E).length : 0, ed = c ? cutEdited(s.id, E) : 0;
+  return '<div class="kscene"><div class="strow"><select class="stinp sm" data-ksc="' + i + '">' + opts((SD.cuts || []).map(x => [x.id, x.title + ' (' + x.lines.length + ' lines)']), s.id, 'Not in the game yet') + '</select>'
+    + (s.id && !c ? '<span class="stmiss">gone from the game</span>' : c ? '<span class="kok">in the game · ' + (n ? n + ' lines' : 'no spoken lines') + (ed ? ' · ' + ed + ' edited in the cutscene editor' : '') + '</span>' : '') + '</div>'
+    + (c && n ? '<details class="klines"><summary>Read its lines</summary>' + cutLines(s.id, E).map(l => '<div' + (l.ed ? ' class="ed"' : '') + '><b>' + esc(l.who) + '</b> ' + esc(l.text) + '</div>').join('') + '</details>' : '')
+    + s.when.map((cd, j) => condRow('scene:' + i, j, cd)).join('') + s.sets.map((x, j) => setRow('scene:' + i, j, x)).join('')
+    + '<div class="strow kmini"><button class="stadd" data-cadd="scene:' + i + '">+ Plays when</button><button class="stadd" data-sadd="scene:' + i + '">+ Changes a fact</button></div></div>';
+}
+const whoIs = (who, id) => { const a = String(who || '').toLowerCase().replace(/[^a-z ]/g, '').trim(), b = entName(id).toLowerCase().replace(/[^a-z ]/g, '').trim(); return !!a && !!b && (a === b || a.split(' ').pop() === b.split(' ').pop() && b.split(' ').pop().length > 2); };
+function kitChecksMoreE(out, add) {
+  const P = kp(), FQ = flatQuests(), E = sceneEdits(), used = new Set();
+  FQ.forEach(f => { const q = kq(f.q); kitSceneAuto(q); q.scenes.forEach(s => { if (!s.id) return; used.add(s.id); if (!CUTS[s.id]) add('p', f.no + ' “' + (q.name || 'Untitled') + '”: the scene “' + (s.n || s.id) + '” links to a game cutscene that is gone.', { kind: 'quest', id: q.id }); }); });
+  /* a dead character still speaks (on the first-endings path) */
+  FQ.forEach(f => { const q = f.q, lines = [].concat(...q.scenes.filter(s => CUTS[s.id]).map(s => cutLines(s.id, E))); if (!lines.length) return;
+    const st = simRun(f.ci, null); st.dead.forEach(id => { const l = lines.find(x => whoIs(x.who, id)); if (l) add('p', entName(id) + ' is dead by Ch ' + (f.ci + 1) + ' (an earlier ending kills them) but speaks in ' + f.no + ' “' + (q.name || 'Untitled') + '”: “' + l.text.slice(0, 60) + '”', { kind: 'quest', id: q.id }); }); });
+  /* tell-tale words in the spoken lines before a secret's first hint */
+  P.clues.forEach(k => { const words = (k.words || '').split(',').map(w => w.trim().toLowerCase()).filter(w => w.length > 2), first = firstCh(k); if (!words.length || !first) return;
+    FQ.filter(f => f.ci < first - 1).forEach(f => f.q.scenes.filter(s => CUTS[s.id]).forEach(s => { const t = cutLines(s.id, E).map(l => l.text).join(' ').toLowerCase(), hit = words.find(w => t.includes(w)); if (hit) add('p', 'The scene “' + (CUTS[s.id].title) + '” in ' + f.no + ' says “' + hit + '”, a tell-tale word of “' + (k.text || 'a secret') + '”, before its first hint in Ch ' + first + '.', { kind: 'clue', id: k.id }); })); });
+  const loose = (SD.cuts || []).filter(c => !used.has(c.id));
+  if (loose.length) add('q', loose.length + ' game cutscene' + (loose.length > 1 ? 's are' : ' is') + ' in no quest of the plan: ' + loose.map(c => c.title).join(', ') + '.', null);
+}
+function kitChangeMoreE(e) {
+  const t = e.target; if (t.dataset.ksc == null) return false;
+  const f = curQ(); if (!f) return false; const s = kq(f.q).scenes[+t.dataset.ksc]; if (!s) return true;
+  s.id = t.value; if (s.id && !s.n && CUTS[s.id]) s.n = CUTS[s.id].title; storySave(); return true;
 }
 
 Object.assign(KIT_RENDER, { facts: renderFacts, checks: renderChecks, myst: renderMyst, world: renderWorld, flow: renderFlow, play: renderPlay, lore: renderLore, pitch: renderPitches });

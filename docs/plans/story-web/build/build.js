@@ -70,7 +70,9 @@ function storyData() {
   const quests = Q.map(q => ({ id: q.id, title: q.title, summary: q.summary || '', start: q.start || '',
     scenes: [q.intro].concat(q.introThen || [], q.stages.map(s => s.scene)).map(sc).filter(Boolean),
     steps: q.stages.map(s => s.objective), reward: q.reward && q.reward.unit ? q.reward : null }));
-  return { rooms, quests, sq: M.sq, plot: M.plot };
+  /* every game cutscene and its spoken lines (the planner links its quest scenes to these; 2026-11-25) */
+  const cuts = Object.values(C).filter(c => c && c.id).map(c => ({ id: c.id, title: c.title || c.id, lines: (c.beats || []).map((b, i) => b && b.say && b.say.text ? { i, who: b.say.who || '', text: b.say.text } : null).filter(Boolean) }));
+  return { rooms, quests, cuts, sq: M.sq, plot: M.plot };
 }
 let rosterObj = JSON.parse(fs.readFileSync(d + '/roster.json', 'utf8')); rosterObj.places = places(); const freshAdded = require('./fresh.js')(rosterObj); if (freshAdded.length) console.log('new from the game:', freshAdded.join(', ')); rosterObj.spawns = require('./spawns.js')(rosterObj); rosterObj.story = storyData();
 /* THE HOMES AS THEY STAND NOW (2026-11-23): a unit's printed home is the place that replaced its old site (data.js DOOR_TEXT.POINT_OF_ENTRY_NOW) */
