@@ -119,9 +119,11 @@ Probe lesson: the blade grass streams in over a few seconds; a view needs `"sett
   `stone_lantern`, `kt_komainu`. A row's `treeR: { <kind>: m }` widens a broad tree's anchor (the jungle tree's buttress roots, 2.8 m, hid the groups;
   the one small addition to `zoneFloraCompose`). The field's own ferns and blooms in these climates grow `near` standing things, `far` 0.3 in the
   open (they were an even sprinkle over the Volcano Island's lawn).
-- **Readout at build** (`hqTerrainInfo(room).composed`, headless): Katana 28 groups, 70 loose hand plants restood, 24 islands; the Volcano Island 38
-  groups, 93 restood, 27 islands; the Cove 2; the Triangle 2; the Harbour none (no loose plants); Hollow Earth 0 (every cap already grows by a
-  rock or log: nothing to move). Triangles of these plants: Katana ~430 k -> ~260 k, the Volcano Island ~640 k -> ~330 k.
+- **Readout at build** (`hqTerrainInfo(room).composed`, headless, thin 0.75): Katana 33 groups, 57 loose hand plants restood, 24 islands; the
+  Volcano Island 52 groups, 93 restood, 27 islands; the Cove 3; the Triangle 3; the Harbour none (no loose plants); Hollow Earth 0 (every cap already
+  grows by a rock or log: nothing to move). Triangles of these plants: Katana ~432 k -> ~380 k, the Volcano Island ~640 k -> ~541 k. At thin 0.5 the
+  islands read EMPTIER than before in the probe (the lone plants gone, too few groups to see): keep the heavy plants near their old count and grow the
+  groups with the cheap low layer.
 - **The Vatican's gardens** (`docs/areas/afterlife/districts/G.js` dress, by hand, then `node bake-afterlife.js`): the pine on 16 % of the lawn
   squares at random is out. Focal = the Campanile's stump; a cypress avenue either side of the long walk leads to it from the south cross walk;
   two pine clumps of three frame the west gate; a grove of five in the north-east corner; the east lawn's middle stays open; rose beds by the
