@@ -1654,14 +1654,14 @@ the old 8 x 8 m Incinerator and the third floor's small Ritual and Sacrifice Roo
   landing's front edge) toward the Incinerator, seen through the 7 m opening at its foot (door `incinerator`, `open` 7 x 7).
 - **THE INCINERATOR** (`incinerator`, 31.5 m box, 24.5 m high): THE DRUM (hqRingWalls r 14, floor to ceiling, old brick blackened, open
   at the four doors, jamb walls out to the box wall); THE PIT (a terrain `plateau` r 8.5 `sink` -10.5); THE PARAPET round it
-  (hqRingWalls r 8.85, **1.45 m**: the walker jumps 1.3 m, a 1.1 m wall was jumped into the pit); the floor round it is grating
+  (hqRingWalls r 8.85, **1.35 m**, `glass: true` so the fire shows from the catwalk (a solid parapet read as a black wall), a pipe handrail outside it; the walker jumps 1.3 m, a 1.1 m wall was jumped into the pit); the floor round it is grating
   (the catwalk). Doors: `stair` (n, open 7 x 7), `ritual` (w), `sacrifice` (e), `antechamber` (s, open 3.5 x 5).
   **`terrain.noRescue: true`** (new, data.js hqTerrainCompile): a room with no plan always got THE RETURN GUARANTEE's rescue ramps out
   of a pit; for a pit walled all round they carved ramps up through the catwalk (dips 1.5-8 m deep at r 9-14). The flag skips them;
   `node find-softlocks.js incinerator` reads 0 traps with it.
 - **THE FURNACE** (catalogue + proc `incinerator_furnace`, three-renderer.js, beside `flue`): the row stands at `y: 1` with `lift: 1`
   (a terrain room's prop over a sunk pit lands at max(ground, y); `lift` takes the drawing back to the floor). It draws the pit's iron
-  rim and hot lip, the blackened brick shaft, the fire bed (an orange floor, a white-hot heart, 14 flame sprites), two girders across,
+  rim and hot lip, the blackened brick shaft, the fire bed (an orange floor, a white-hot heart, 14 flame sprites, a column of nine big flames up the pit whose top ones lick over the parapet, a point light down in the pit), two girders across,
   THE FLUE hung from the ceiling to 9 m (r 3.2, soot bands, a flared mouth with a hot rim), a point of daylight up inside it with a
   faint shaft, four door leaves (`_hqWorksLeaf`) falling out of the mouth into the fire on a 6.5 s cycle, embers rising. One ticker,
   no scene walk. Its catalogue light is the room's key light (`lights: []`, `keyLamp: 0`). Params: `pitR`, `pitD`, `roomH`, `flueR`, `flueBot`.

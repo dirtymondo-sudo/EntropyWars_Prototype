@@ -97651,6 +97651,9 @@ const ThreeRenderer = (function () {
             var shaft = new THREE.Mesh(new THREE.CylinderGeometry((PR - 0.35) * U, (PR - 0.35) * U, PD * U, 64, 1, true), wallM); shaft.position.y = (-PD / 2) * U; base.add(shaft);
             var scorch = new THREE.MeshBasicMaterial({ color: 0xff6a20, transparent: true, opacity: 0.45, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.BackSide });
             var hotBand = new THREE.Mesh(new THREE.CylinderGeometry((PR - 0.4) * U, (PR - 0.4) * U, (PD * 0.45) * U, 64, 1, true), scorch); hotBand.position.y = (-PD + PD * 0.225) * U; base.add(hotBand);
+            /* the whole shaft lit by the fire from below (the terrain's own cliff face behind it reads black from the catwalk otherwise) */
+            var glowAll = new THREE.MeshBasicMaterial({ color: 0xff7a30, transparent: true, opacity: 0.32, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.BackSide });
+            var shaftGlow = new THREE.Mesh(new THREE.CylinderGeometry((PR - 0.45) * U, (PR - 0.45) * U, (PD - 0.1) * U, 64, 1, true), glowAll); shaftGlow.position.y = (-PD / 2 - 0.05) * U; base.add(shaftGlow);
             /* the fire bed: an orange floor, a white-hot heart, flames standing on it */
             var bed = new THREE.Mesh(new THREE.CircleGeometry((PR - 0.3) * U, 64), _hqBasic(0xff6418)); bed.rotation.x = -Math.PI / 2; bed.position.y = (-PD + 0.25) * U; base.add(bed);
             var heart = new THREE.Mesh(new THREE.CircleGeometry((PR * 0.5) * U, 48), _hqBasic(0xffe9b0)); heart.rotation.x = -Math.PI / 2; heart.position.y = (-PD + 0.3) * U; base.add(heart);
@@ -97662,6 +97665,14 @@ const ThreeRenderer = (function () {
                 flames.push({ s: fl, ph: fi * 1.7, sz: (2.6 + (fi % 4) * 0.7), y: -PD + 1.4 });
             }
             var bloom = _hzGlowSprite((PR * 2.6) * U, 0xff7020, 0.55); bloom.position.y = (-PD * 0.45) * U; base.add(bloom);
+            /* THE COLUMN OF FIRE: tall flames stacked up the pit, the top ones licking over the parapet, so the fire reads from anywhere on the catwalk */
+            for (var ci = 0; ci < 9; ci++) {
+                var ct = ci / 8, cy = -PD + 2 + ct * (PD + 1.5), cs = (PR * 1.5) * (1 - ct * 0.55);
+                var cf = _hzGlowSprite(cs * U, ct < 0.5 ? 0xff7a20 : 0xff5a10, 0.62 - ct * 0.2);
+                cf.position.set(Math.sin(ci * 2.1) * 1.2 * U, cy * U, Math.cos(ci * 2.1) * 1.2 * U); base.add(cf);
+                flames.push({ s: cf, ph: ci * 0.9, sz: cs, y: cy });
+            }
+            var pl = new THREE.PointLight(0xff6a20, 1.4, 26 * U, 2); pl.position.y = (-PD + 3) * U; base.add(pl);
             /* two girders across the pit, below the rim: the scale of the drop */
             [0, 90].forEach(function (deg) {
                 var gd = _hqBox(0.5, 0.8, PR * 2 - 0.4, iron); gd.position.y = -2.4 * U; gd.rotation.y = deg * D2R; base.add(gd);

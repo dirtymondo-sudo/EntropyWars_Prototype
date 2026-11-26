@@ -33611,7 +33611,7 @@ const DOOR_HQ = {
         exec_desk:         { proc: 'exec_desk',      span: 2.4,  foot: 1.2, depth: 1.05, rect: { hw: 1.2, hd: 0.525 }, block: true },   // 4C: the executive desk (top at 0.76 — desk props sit at y: 0.76). A FLOOR prop since 2026-09-16: centred, the drawers on the sitter's side (−z), the modesty panel to the room (+z)
         arc_wall:          { proc: 'arc_wall',       h: 3.5,  foot: 0 },   // DOOR HQ 2.0 wave 3 (2026-11-26, the Works' factory): a curved partition in a box room (r, a0, a1 in compass degrees, holes by angle); collides by its own bands (three-renderer.js arc_wall)
         works_flue:        { proc: 'works_flue',     h: 8.75, foot: 0 },   // DOOR HQ 2.0 wave 3: the Incinerator's flue as the factory sees it, the Chute's hot mouth on its face (three-renderer.js works_flue)
-        incinerator_furnace: { proc: 'incinerator_furnace', h: 24.5, foot: 0, light: { color: 0xff7a2a, intensity: 2.4, dist: 42, y: 1.5 } },   // DOOR HQ 2.0 wave 4 (2026-11-26): THE INCINERATOR's pit, fire, hanging flue, falling doors and daylight up the chimney (three-renderer.js incinerator_furnace; the row at y 1 with lift 1 over the sunk pit)
+        incinerator_furnace: { proc: 'incinerator_furnace', h: 24.5, foot: 0, light: { color: 0xff7a2a, intensity: 3.0, dist: 46, y: 4 } },   // DOOR HQ 2.0 wave 4 (2026-11-26): THE INCINERATOR's pit, fire, hanging flue, falling doors and daylight up the chimney (three-renderer.js incinerator_furnace; the row at y 1 with lift 1 over the sunk pit)
         flue:              { proc: 'flue',           h: 10.5, foot: 2.3, block: true, glow: { y: 0.2, size: 7, color: 0xff7a2a }, light: { color: 0xff8a3a, intensity: 1.3, dist: 18, y: 0.5 } },   // DOOR HQ 2.0 (2026-11-26, the Works' middle level): the Incinerator's chimney through a level of the Works; the grating round its foot glows from the furnace below (three-renderer.js flue; the row's `h` = the room's height)
         room_wall:         { proc: 'room_wall',      h: 3.5,  foot: 0 },   // DOOR HQ 2.0 (2026-11-26): a partition inside a box room (the Kitchen behind the Cafeteria), or with `floor` a floor patch; sized by its row (`len`, `wallH`, `t`, `holes`), collides by its own slabs (three-renderer.js room_wall)
         serving_line:      { proc: 'serving_line',   span: 3.0,  foot: 1.5, wall: true, depth: 1.15, rect: { hw: 1.5, hd: 0.575 }, block: true },   // Room 86 (2026-09-16): a 3 m cafeteria counter — the hot wells + sneeze guard on the wall side, THE TRAY SLIDE (0.85 m) along the front; trays at z = wall + 0.95
@@ -39849,7 +39849,7 @@ const DOOR_HQ = {
                 strips: false,
                 keyLamp: 0,
                 lights: [],
-                mood: { light: 0xff9a50, ambient: 0.25 },
+                mood: { light: 0xff9a50, ambient: 0.34 },
                 plate: { x: 0, z: 13.6, y: 6.2 },
             },
             terrain: {
@@ -39867,9 +39867,10 @@ const DOOR_HQ = {
                     { k: 'wall', x0: -13.88, z0: 1.827, x1: -15.75, z1: 1.827, h: 24.5, t: 0.5, key: 'zl_hz_Brick_11__bricks_1', rail: false },
                     { k: 'wall', x0: -1.827, z0: 13.88, x1: -1.827, z1: 15.75, h: 24.5, t: 0.5, key: 'zl_hz_Brick_11__bricks_1', rail: false },
                     { k: 'wall', x0: 1.827, z0: 13.88, x1: 1.827, z1: 15.75, h: 24.5, t: 0.5, key: 'zl_hz_Brick_11__bricks_1', rail: false },
-                    /* THE PIT: the ground cut down 10.5 m (the fire is drawn in it); THE PARAPET round its edge, a solid wall 1.45 m high (over the walker's 1.3 m jump: nobody goes in) */
+                    /* THE PIT: the ground cut down 10.5 m (the fire is drawn in it); THE PARAPET round its edge, a heat-glass screen 1.35 m high (over the walker's 1.3 m jump: nobody goes in; glass, so the fire shows from the catwalk) and a pipe handrail outside it */
                     { k: 'plateau', x: 0, z: 0, r: 8.5, h: -10.5, sink: true, edge: 0.3, id: 'pit' },
-                    ...hqRingWalls({ id: 'parapet', r: 8.85, h: 1.45, t: 0.3, n: 64, key: 'gunmetal' }).map(w => Object.assign(w, { quad: hqRingQuad(w, 8.85, 0.3) })),
+                    ...hqRingWalls({ id: 'parapet', r: 8.85, h: 1.35, t: 0.12, n: 64 }).map(w => Object.assign(w, { glass: true })),
+                    { k: 'rail', arc: { x: 0, z: 0, r: 9.0, a0: 0, a1: 180 }, model: 'pipe', block: false }, { k: 'rail', arc: { x: 0, z: 0, r: 9.0, a0: 180, a1: 360 }, model: 'pipe', block: false },
                 ],
             },
             doors: [
