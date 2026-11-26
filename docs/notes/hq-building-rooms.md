@@ -1641,3 +1641,23 @@ THE WORKS, one box room 77 x 77 m, 8.75 m to a truss ceiling, WRITTEN BY `docs/p
 - Lights: 15 shell lamps in sodium (`mood.light 0xffb070`, ambient 0.42), high-bay lamps under the truss, a `light_glow` at the Chute,
   the grow lamps' purple. `node find-doorways.js factory`: clear.
 - **The join (merge with the Garage):** the factory is a part of HQ_WORLD.zones.garage at (64.95, -300, y -9), its west roller door `garage` (leaf_wired_double, wide) joined to the Garage's east `works`, no card. The ramp to the labs is still a card (the labs zone is 21 m lower). Proc fields: `arc_wall` reads `arcR` + `sheet`/`sheetColor` (never `r` / `wall`: a box room places a row with a string `wall` ON that box wall), `works_flue` reads `flueR` / `flueH`.
+
+## DOOR HQ 2.0, WAVE 4: THE PENTHOUSE (2026-11-26)
+Built from the right side of `docs/plans/door-hq-2/plans/2_lobby_upper_level_penthouse.png` and LOOK_BOOK.md "Penthouse". A clean sheet:
+the old executive lobby (the assistant, the guard, the floor panel), Room 4C and Room 8 are gone. Room id kept: `executive` (the car's
+PH stop lands at its `elevator` door and keeps its gate, minClearance 4 + 12 Keys: locked until late). Label PENTHOUSE, nothing else.
+- **ONE LONG ROOM**, 31.5 x 63 m, 7 m high, reached only by the lift (its one door, north wall at x -5.25). The north half (z -31.5 .. 3.5)
+  is roofed: the lounge (two Chesterfields under a chandelier, a wingback, the Greek couch, the bust, the piano in the north-east corner),
+  and THE CORNER OFFICE, a glass box on the east side (x 5.25 .. 15.75, z -24.5 .. -7; five `office_glass` bays, the door bay in the middle
+  with CORNER OFFICE over it, `room_wall` sides 4.9 m): the desk with its back to THE WINDOW (`false_window` at h 4, on the room's east
+  wall, the building's outside, which a round building with no outside should not have). The "impossible doors" thread may make it a portal.
+  The south half is under the night sky: THE INFINITY POOL (24.5 x 10.5 m, lit from below), its weir ON the room's south line, and past it
+  nothing: no wall, no ground, only the sky under the edge. Loungers, two umbrellas, palms in planters, globe lamps.
+- **Three shell fields (three-renderer.js, box shell; any box room):** `canopy: [{ x0, x1, z0, z1 }]` = a ceiling over part of an OPEN
+  room (a sky of its own); `sides: { n|s|e|w: 'open' | 'low' | 'walls' }` = one side's own edge (the pool's south side is `open`);
+  `apron: false` = no ground strip or skirt round an open room (nothing below the edge). The walker stops at the room's bound.
+- **`infinity_pool` reads its row:** `poolW`, `poolD` (metres; the catalogue row's `rect` must match: `penthouse_pool` = 24.5 x 10.5),
+  `fall` (how far the water drops past the weir), `glow` (the basin lit from below). Old rows unchanged (6 x 3.6).
+- **RETIRED:** `corner` and `pool` -> `executive` (DOOR_HQ.retired); the PH zone in HQ_WORLD and its HQ_STAGE_RULES entry are gone (one
+  room, nothing to join). `links.weir_bermuda` end a stands beside the weir now (x -14, z 27).
+- `node find-doorways.js executive`: clear.
