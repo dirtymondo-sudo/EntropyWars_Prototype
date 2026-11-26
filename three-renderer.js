@@ -83912,6 +83912,8 @@ const ThreeRenderer = (function () {
             var slat = _hqMat(null, 1, 1, { color: 0xe8e2d2, shininess: 20 });
             for (var i = 0, nS = Math.max(9, Math.round(9 * H / 1.6)); i < nS; i++) { var s = _hqBox(W - 0.14, 0.03, 0.02, slat); s.position.set(0, (H - 0.12 - i * 0.065) * U, 0.05 * U); s.rotation.x = 0.55; g.add(s); }
             var cord = _hqBox(0.006, 0.7, 0.006, _hqBasic(0xd8d0c0)); cord.position.set((W / 2 - 0.1) * U, (H - 0.45) * U, 0.06 * U); g.add(cord);
+            g._ew_fwPaint = [pane, horizon, sun];   // THE IMPOSSIBLE DOORS: a window row hides the painted view while the real one shows (_hqImpArm)
+            if (_hq) (_hq.falseWins || (_hq.falseWins = [])).push(g);
             return g;
         },
         /* THE INFINITY POOL (Room 8): a raised basin 6 × 3.6 on the floor —
@@ -107484,7 +107486,7 @@ const ThreeRenderer = (function () {
         var I = H.imp = { id: st.id, recs: [], hid: false, was: true, crossed: 0 };
         var U = _hqUnits(), dep = +HQ_STAGE_RULES.impDepthM || 0.6;
         nbs.forEach(function (nb) { nb.altI = 0; (nb.alts && nb.alts.length ? nb.alts : [{ rel: nb.rel, rect: nb.rect, imp: nb.imp }]).forEach(function (alt, ai) {
-            var F = alt.imp, mat = _hqImpMat(), dp = F.window ? 0.04 : dep, off = F.window ? -0.05 : dep / 2;   // THE WINDOW: a thin pane on the wall's face, in the room
+            var F = alt.imp, mat = _hqImpMat(), dp = F.window ? 0.02 : dep, off = F.window ? -(F.inset || 0.05) : dep / 2;   // THE WINDOW: a thin pane on the wall's face, in the room
             var g = new THREE.BoxGeometry(F.ow * U, F.oh * U, dp * U);
             var m = new THREE.Mesh(g, mat);
             m.position.set((F.x + F.ox * off) * U, (F.y + F.oh / 2) * U, (F.z + F.oz * off) * U);
@@ -107495,6 +107497,14 @@ const ThreeRenderer = (function () {
             var box = g.boundingBox.clone().applyMatrix4(m.matrixWorld);
             I.recs.push({ id: nb.id, key: nb.id + '#' + ai, ai: ai, alt: alt, rel: alt.rel, nb: nb, F: F, see: !!(F.see || F.look), look: !!F.look, mesh: m, mat: mat, box: box, rt: null, cam: null, cg: null, plane: new THREE.Plane(), prevD: null, drawn: 0, shown: false });
         }); });
+        /* THE WINDOW's painted view (a false_window prop on that spot): hidden while the real view is drawn */
+        var fw = (H.falseWins || []).filter(function (g) { return !!g.parent; }); H.falseWins = fw;
+        I.recs.forEach(function (r) {
+            if (!r.F.window) return;
+            var v = new THREE.Vector3();
+            r.paint = [];
+            fw.forEach(function (g) { g.getWorldPosition(v); if (Math.hypot(v.x / U - r.F.x, v.z / U - r.F.z) < 0.8 + r.F.ow / 2) r.paint = r.paint.concat(g._ew_fwPaint); });
+        });
         _hqImpAlts(H, true);
     }
     /* TWO DOORS TO ONE ROOM (data.js hqStageImpNeighbours `alts`): the part stands behind the doorway nearest the walker (2 m of
@@ -107623,9 +107633,10 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < I.recs.length; i++) {
             var r = I.recs[i], F = r.F, E = st.parts[r.id];
             var on = !!(E && E.attached && E.P.partRoot.parent && E.P.partRoot.visible !== false);
-            var show = _hqImpD(F, ex, ez) < (F.window ? -0.1 : 0.05) && Math.hypot(ex - F.x, ez - F.z) < seeM + 10;   // from the front only (dark until the room beyond stands)
+            var show = _hqImpD(F, ex, ez) < (F.window ? -0.1 : 0.05) && Math.hypot(ex - F.x, ez - F.z) < seeM + (F.window ? 0 : 10) && (on || !F.window);   // from the front only (dark until the room beyond stands; a window keeps its painted pane)
             r.shown = show;
             if (r.mesh.visible !== show) r.mesh.visible = show;
+            if (r.paint) { for (var pi = 0; pi < r.paint.length; pi++) if (r.paint[pi].visible === show) r.paint[pi].visible = !show; }   // the painted view gives way to the real one
             if (!show) continue;
             if (st.impIn === r.key) hide = true;
             var u = r.mat.uniforms;
@@ -107649,8 +107660,26 @@ const ThreeRenderer = (function () {
         var n = new THREE.Vector3(F.ox, 0, F.oz), p0 = new THREE.Vector3((F.x + F.ox * ck) * U, F.y * U + dyU, (F.z + F.oz * ck) * U);
         var cpl = r.plane.setFromNormalAndCoplanarPoint(n, p0);
         var sky = H.sky ? [H.sky.dome, H.sky.group, H.sky.landmarks].filter(function (o) { return !!o; }) : [];
-        var skyOff = !!(H.sky && H.sky.air && H.sky.air.id !== r.id), skyVis = sky.map(function (o) { return o.visible; });   // another open room's sky is not this one's
+        var skyOff = !!(F.day || (H.sky && H.sky.air && H.sky.air.id !== r.id)), skyVis = sky.map(function (o) { return o.visible; });   // another open room's sky is not this one's
         if (skyOff) sky.forEach(function (o) { o.visible = false; });
+        /* THE DAY THROUGH A WINDOW (a row's `day`): the far room drawn under its own daylight while this room keeps its night. No light is added
+           (a light added changes every program): this room's sky light and key are lent the day's colours for the pass, the clear is the sky */
+        var DY = F.day, dSave = null;
+        /* the height fog is read at the world's height: the far room stands `impDrop` under this one, so its fog floor goes down with it (a day: none) */
+        var hfS = (typeof _EW_HFOG !== 'undefined' && _EW_HFOG) ? { x: _EW_HFOG.x, z: _EW_HFOG.z } : null;
+        if (hfS) { _EW_HFOG.x += dyU; if (DY) _EW_HFOG.z = 0; }
+        if (DY) {
+            var hL = H.hemiLight, kL = H.keyLight, scF = H.scene.fog;
+            dSave = { bg: H.scene.background, fogC: scF && scF.color ? scF.color.getHex() : null, fogD: scF ? scF.density : null, fogN: scF ? scF.near : null, fogF: scF ? scF.far : null,
+                      h: hL ? [hL.color.getHex(), hL.groundColor.getHex(), hL.intensity] : null, k: kL ? [kL.color.getHex(), kL.intensity] : null };
+            H.scene.background = r.dayBg || (r.dayBg = new THREE.Color(DY.sky != null ? DY.sky : 0xa9cbe8));
+            if (scF && scF.color && DY.fog != null) scF.color.setHex(DY.fog);
+            var fk = DY.fogK != null ? +DY.fogK : 0.12;   // a clear day: this room's night haze would bury a city 40 m off
+            if (scF && scF.density != null) scF.density *= fk;
+            if (scF && scF.far != null) { scF.near /= fk; scF.far /= fk; }
+            if (hL) { hL.color.setHex(DY.hemi != null ? DY.hemi : 0xe6f0ff); hL.groundColor.setHex(DY.ground != null ? DY.ground : 0x8a8274); hL.intensity = DY.hemiI != null ? DY.hemiI : 1.1; }
+            if (kL) { kL.color.setHex(DY.key != null ? DY.key : 0xfff1d6); kL.intensity = DY.keyI != null ? DY.keyI : 1.2; }
+        }
         var prevT = renderer.getRenderTarget(), prevClip = renderer.clippingPlanes, prevShadow = renderer.shadowMap ? renderer.shadowMap.needsUpdate : false, prevAuto = renderer.autoClear;
         var CG = (renderer.isWebGPURenderer && typeof window !== 'undefined' && window.THREE_GPU && window.THREE_GPU.ClippingGroup) ? (r.cg || (r.cg = new window.THREE_GPU.ClippingGroup())) : null, kids = null;
         var gy = G ? G.position.y : 0, ok = false;
@@ -107675,6 +107704,14 @@ const ThreeRenderer = (function () {
             if (renderer.shadowMap) renderer.shadowMap.needsUpdate = prevShadow;
             if (G) { G.position.y = gy; G.updateMatrixWorld(true); }
             sky.forEach(function (o, si) { o.position.y -= dyU; o.updateMatrixWorld(true); if (skyOff) o.visible = skyVis[si]; });
+            if (hfS) { _EW_HFOG.x = hfS.x; _EW_HFOG.z = hfS.z; }
+            if (dSave) {
+                H.scene.background = dSave.bg;
+                if (dSave.fogC != null && H.scene.fog) H.scene.fog.color.setHex(dSave.fogC);
+                if (H.scene.fog) { if (dSave.fogD != null) H.scene.fog.density = dSave.fogD; if (dSave.fogF != null) { H.scene.fog.near = dSave.fogN; H.scene.fog.far = dSave.fogF; } }
+                if (dSave.h && H.hemiLight) { H.hemiLight.color.setHex(dSave.h[0]); H.hemiLight.groundColor.setHex(dSave.h[1]); H.hemiLight.intensity = dSave.h[2]; }
+                if (dSave.k && H.keyLight) { H.keyLight.color.setHex(dSave.k[0]); H.keyLight.intensity = dSave.k[1]; }
+            }
             H.imp.recs.forEach(function (q) { q.mesh.visible = q.shown; });
         }
         return ok;

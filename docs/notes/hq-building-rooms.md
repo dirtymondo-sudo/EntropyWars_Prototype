@@ -1802,10 +1802,18 @@ card, no load, and the two rooms never have to fit next to each other.
   its doorway is black and walking in is the plain door (the card).
 - **THE THRESHOLD:** through the far wall's thickness and a body past it the floor is the doorway's own (asked alone, the far room reads
   its own wall there and the walker stalled on the plane).
-- **Not yet:** the Corner Office window (the Penthouse `executive`, false window on the east wall of the Corner Office): one row
-  `{ a: 'executive', window: { wall: 'e', z: <its z>, y: 4, w, h }, b: <the room to show>, bDoor: <a door of it>, look: true }` once
-  mondo says what it shows. The far room's fog is this room's in the picture; an open-air room's sky shows only through the doors of the
-  first open-air room the stage built (another vignette's doorway shows no sky until you are in its hall).
+- **THE CORNER OFFICE WINDOW** (11-26, mondo: "probably the city"): the Penthouse's `false_window` (east wall, z -15.75) looks down from
+  34 m onto `penthouse_city`, a room that is only ever SEEN (168 m square, open, no doors, no people): a boulevard of the city's own pack
+  shop blocks (`ebd_buildings_bld_00`..`09`, the ones Disaster City wears), lamps, palms, traffic. In DAYLIGHT while the Penthouse stays in
+  its night. The row: `{ a: 'executive', window: { wall, z, y, w, h, inset }, b, at: { x, z, y, face }, look: true, day: {...} }`.
+  New row fields: `at` = a point of b to look from in place of `bDoor` (face = the heading back toward a); `inset` = how far into the room
+  the window's picture stands (in front of the wall trim, behind the blinds); `day: { sky, fog, hemi, ground, hemiI, key, keyI, fogK }` =
+  the far room drawn by day: for the pass this room's sky light and key light wear the day's colours (no light is added: a light added
+  changes every program), the clear is the sky colour, the night sky is hidden, the fog thinned by `fogK`. A `false_window` prop on the
+  window's spot hides its painted view while the real one shows (`g._ew_fwPaint`, `_hq.falseWins`). Every see-through pass also moves the
+  height fog's floor down with the far room (it read the drop as deep under the floor: a grey haze).
+- **Not yet:** the far room's sky in a see-through door is the first open-air room's (another vignette's doorway shows no sky until you are
+  in its hall).
 - Off: `window.EW_HQ_NO_IMPOSSIBLE = true` (re-enter). Console: `ThreeRenderer.hq.impossible()` -> `{ id, in, crossed, recs: [{ id, door,
   see, look, on, shown, drawn, d }] }`. RULE #2: viewer-local, nothing on `state`, nothing relayed. RULE #1e: the frame reads only this
   room's doorways.
