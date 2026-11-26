@@ -1822,6 +1822,24 @@ card, no load, and the two rooms never have to fit next to each other.
   see, look, on, shown, drawn, d }] }`. RULE #2: viewer-local, nothing on `state`, nothing relayed. RULE #1e: the frame reads only this
   room's doorways.
 
+## DOOR HQ 2.0: RHONDA AT A REAL DESK (2026-11-26)
+mondo: "rhonda's desk needs to be an actual desk like there is space underneath the counter to place her legs under, like scoot her in
+because she just seems so far away when i try to talk to her, she should fit comfortable up against the desk and have her arms on the
+counter top if you can".
+- THE KNEE SPACE: the Lobby's `desk` row takes `knee: <slab m>` (three-renderer.js `_hqBuildDesk`, the `arc` branch): the top is a 5 cm
+  marble slab with a wood underside and a short apron, the front panel stays (its inside face wood), NO back panel to the floor, so the
+  sitter's legs go under it. Without `knee` a desk builds as before. The walk is unchanged (the counter's band is still solid to walk).
+- THE HEIGHT: 1.05 -> 0.80 m (a desk, not a standing counter); the five things on it (`crt_terminal`, `desk_lamp`, `papers_b`,
+  `coffee_mug`, `laminator`) moved down with it (`y: 0.8`).
+- SCOOTED IN: her chair (`office_chair`) and DOOR_CAST.rhonda's spot r 3.1 -> 3.98 (the counter's inside edge is 4.0): hips at the
+  edge, knees under the slab at r 4.3, her front about 0.1 m off the edge. Measured with the probe's bone read-out.
+- HER ARMS ON THE TOP: a new cast pose `hqSitDesk` (sprites.js _CAST_POSES: UAL1 Driving_Loop at ts 0.35: seated, forearms out level,
+  elbows at the edge, hands 5 cm over the top) + THE DESK HANDS (three-renderer.js `_hqDeskHands`): after the mixer each forearm is
+  turned 75 degrees on its length so the palms lie flat (the clip holds them palms-in round a wheel). Console: `EW_DESK_TWIST = 0`
+  shows the raw clip. The seat pin (`_hqSeatPin`) treats `hqSitDesk` like `hqSit`.
+- Scene E's shots (RHONDA LETS HER STAY) were left as they were: she is 0.9 m nearer the camera, so E4's medium is a little closer.
+- Checked: `node find-doorways.js central_egress` clear; probe pictures (playtest_city.js with `--pre=window.EW_DISABLE_CAST=false`).
+
 ### THE NEAREST FIRST (2026-11-26, fix after the level join)
 mondo: "Having trouble walking and skating into the training room, like there is an invisible wall". The stage built its parts in list
 order, one a frame, and the Training Room is last on the Ring's list of 21. If you walked or skated from the Lobby, you reached its doorway
