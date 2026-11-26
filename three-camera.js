@@ -215,9 +215,10 @@ const ThreeCamera = (function () {
     }
     /* THE TALL SCENERY (Wipeout vs Cube matchup 2026-10-23): a room's skyscraper prop (three-renderer tallSceneryTopAt)
        stands far above the grid column under it — the lens treats it as solid to its drawn roof */
+    let _tallNoTrees = false;   // THE CLOSE VIEW: a tree is no tower for a close lens (its box is its whole crown; the tree fade opens it)
     function _tallTopWorld(wx, wz) {
         if (typeof ThreeRenderer === 'undefined' || typeof ThreeRenderer.tallSceneryTopAt !== 'function') return -Infinity;
-        try { return ThreeRenderer.tallSceneryTopAt(wx, wz); } catch (e) { return -Infinity; }
+        try { return ThreeRenderer.tallSceneryTopAt(wx, wz, _tallNoTrees); } catch (e) { return -Infinity; }
     }
     /* THE ROOM'S GROUND (2026-11-07, mondo on Mount Shasta Arena: "grass is completely covering the screen"): past the board's
        edge the grid has no column (the lookups stretch the edge square out), but an arena cut from a terrain room stands in that
@@ -355,6 +356,82 @@ const ThreeCamera = (function () {
         }
         return Math.min(need, ey + tileSize * BOARD_MAX_LIFT_TILES);
     }
+
+    /* ══ THE CLOSE VIEW (2026-11-26) ══
+       mondo: "i cant zoom in close behind my player like for a normal third person view without the camera getting forced
+       to an over the top view ... getting snapped to a bird's eye view". Measured on Mount Shasta, Bigfoot beside a pine,
+       wheel to 4.5x and a right-drag down to pitch 80: the lens should stand 0.4 squares over the unit's waist, 2.4 back;
+       it stood 3 to 6 squares up, looking down on its head, at every heading. THE CLEAR BOARD answers anything on the line
+       to the focal by craning UP until the line clears, and the lift it needs is the blocker's height divided by how far
+       along the boom it stands: with a boom two squares long, or a lens near level, one step, wall, tree or body beside
+       the unit asks for the whole cap (BOARD_MAX_LIFT_TILES). And a tree counts as a tower as wide as its crown (THE TALL
+       SCENERY), so a unit under a pine was "inside a wall" from every side.
+       A close or low board view (the boom at most CLOSE_VIEW_DIST_TILES long, or the lens within CLOSE_VIEW_PITCH_DEG of
+       level) now answers a blocker the way a third-person camera does: it cranes only a little (the look at most about 15
+       degrees steeper), and past that it DOLLIES IN along its own line and stops in clear air in front of the blocker, the
+       angle the player set kept. A tree is no blocker for it (the renderer's tree fade opens it); a building is.
+       The wide tactical view keeps the crane. Camera only, each viewer's own (host and guest run the same rig).
+       Kill switch: window.EW_NO_CLOSE_VIEW = true. Probe: ThreeCamera.closeViewState(). */
+    const CLOSE_VIEW_DIST_TILES = 4.5;
+    const CLOSE_VIEW_PITCH_DEG = 25;     // the lens this near level counts as low, whatever its distance
+    const CLOSE_VIEW_CRANE = 0.27;       // the crane a close view may take, as a share of the boom's length over the ground
+    const CLOSE_VIEW_MIN_TILES = 0.9;    // the lens never nearer the focal than this
+    let _cvLast = null;                  // probe
+    function _closeViewOn() { return !(typeof window !== 'undefined' && window.EW_NO_CLOSE_VIEW); }
+    function _closeViewIs(cam, dist, dirY) {
+        if (!_closeViewOn() || cam._menuShot || cam._clearFit) return false;
+        return dist <= tileSize * CLOSE_VIEW_DIST_TILES || dirY > -Math.sin(CLOSE_VIEW_PITCH_DEG * DEG2RAD);
+    }
+    /* the eye a close view takes for focal (sx, sy, sz) and the eye the orbit asked for; null = that eye stands clear */
+    function _closeViewEye(sx, sy, sz, ex, ey, ez, clear) {
+        _tallNoTrees = true;
+        try {
+            const hx = ex - sx, hz = ez - sz, horiz = Math.hypot(hx, hz);
+            let moved = false, crane = 0, f = 1;
+            /* 1. the little crane: the ground half of THE CLEAR BOARD, capped */
+            const lift = _boardSightFloor(sx, sy, sz, ex, ey, ez, clear, 1) - ey;
+            if (lift > 0.5) { crane = Math.min(lift, Math.max(clear, horiz * CLOSE_VIEW_CRANE)); ey += crane; moved = true; }
+            /* 2. the boom: out from the focal, the first point inside the ground, a tall prop or a body stops it */
+            const hy = ey - sy, len = Math.hypot(hx, hy, hz);
+            if (len > tileSize * 0.2) {
+                const n = Math.min(64, Math.max(6, Math.ceil(len / (tileSize / 5))));
+                const skip = tileSize * 0.7, m = tileSize * 0.2;
+                const W = (typeof bw === 'function') ? bw() : 0, H = (typeof bh === 'function') ? bh() : 0;
+                for (let i = 1; i <= n; i++) {
+                    const t = i / n;
+                    if (t * horiz < skip) continue;
+                    const px = sx + hx * t, pz = sz + hz * t, py = sy + hy * t;
+                    let g = _solidGroundYWorld(px, pz) + m;
+                    if (W > 0 && H > 0 && px >= 0 && pz >= 0 && px < W * tileSize && pz < H * tileSize) g = Math.max(g, _bodyTopNearLens(px, pz, sx, sz) + m);
+                    if (py < g) { f = (i - 1) / n; break; }
+                }
+                const fMin = Math.min(1, tileSize * CLOSE_VIEW_MIN_TILES / len);
+                if (f < fMin) f = fMin;
+                /* 3. the footprint: a lens that would stand on a raised square, a rock or a fence (THE LENS FOOTPRINT lifts
+                   it on top) comes in along the boom to where the ground under it asks for no more than the little crane;
+                   where no place on the boom does, the place that tips the look least */
+                const budget = Math.max(0, horiz * CLOSE_VIEW_CRANE - crane), tol = clear * 0.3;
+                let bestF = f, bestR = Infinity, bestFl = 0;
+                for (let k = 0; k < 10; k++) {
+                    const ff = f - (f - fMin) * k / 9;
+                    const fl = _eyeFloorWorld(sx + hx * ff, sz + hz * ff) + clear;
+                    const extra = Math.max(0, fl - (sy + hy * ff));
+                    const ratio = extra / Math.max(1, horiz * ff);
+                    if (ratio < bestR - 1e-6) { bestR = ratio; bestF = ff; bestFl = fl; }
+                    if (extra <= budget * ff + tol || f - fMin < 1e-4) break;
+                }
+                f = bestF;
+                if (f < 1) { ex = sx + hx * f; ey = sy + hy * f; ez = sz + hz * f; moved = true; }
+                if (ey < bestFl) { ey = bestFl; moved = true; }
+            } else {
+                const fl = _eyeFloorWorld(ex, ez) + clear;
+                if (ey < fl) { ey = fl; moved = true; }
+            }
+            _cvLast = { crane: Math.round(crane), boom: +f.toFixed(2) };
+            return moved ? [ex, ey, ez] : null;
+        } finally { _tallNoTrees = false; }
+    }
+    function closeViewState() { return _cvLast; }
 
     /* ══ THE STEADY BOARD (2026-11-08) ══
        mondo: "enemy used stasis beam on one of my units. The camera did this random motion where it lifted upwards and
@@ -1240,7 +1317,11 @@ const ThreeCamera = (function () {
             && (focalY - focalGroundY) > ts * 0.85;
         /* Cinematic sky crane (see SKY-GAZE LIFT below): programmatic board
            shots that pitch at the sky get lifted well above the battlefield. */
-        const skyCrane = !isTps && !cam._cineKeepSubject && !handHeld && !subjectLook;
+        /* THE CLOSE VIEW (2026-11-26): never the player's own pitch. A right-drag down to a third-person angle (pitch 70 and
+           up) was "hand held" only while the button was down: on release this crane took it for a sky shot and lifted the
+           lens a square or more (nine past the horizon). cam._handTilt = the pitch was set by hand (battle.js snap). */
+        const skyCrane = !isTps && !cam._cineKeepSubject && !handHeld && !subjectLook
+            && !(cam._handTilt && !(typeof window !== 'undefined' && window.EW_NO_CLOSE_VIEW));
 
         /* ══ HEAD TURN PAST THE HORIZON (2026-09-02) ══
            Orbiting is only meaningful while the gaze points at or below the
@@ -1424,6 +1505,14 @@ const ThreeCamera = (function () {
         if (!isTps && !headTurn && dirY < -0.02 && cam._cineShotId == null
             && !(typeof window !== 'undefined' && window.EW_NO_CLEAR_BOARD)) {
             const steady = _steadyOn();
+            if (_closeViewIs(cam, dist, dirY)) {
+                /* THE CLOSE VIEW (see _closeViewEye): a close or low view dollies in front of a blocker; it is never craned
+                   to a bird's eye */
+                const cv = _closeViewEye(focalX, focalY, focalZ, eyeX, eyeY, eyeZ, clear);
+                if (cv) { eyeX = cv[0]; eyeY = cv[1]; eyeZ = cv[2]; }
+                if (_sb) _sbReset();
+            } else {
+            _cvLast = null;
             const need = _boardSightFloor(focalX, focalY, focalZ, eyeX, eyeY, eyeZ, clear, steady ? 1 : 3);
             if (need > eyeY + 0.5) eyeY = need;
             /* THE STEADY BOARD: the body half, decided per camera move and held while the camera rests */
@@ -1431,7 +1520,8 @@ const ThreeCamera = (function () {
                 const lift = _steadyBodyLift(cam, handHeld, focalX, focalY, focalZ, eyeX, eyeY, eyeZ, clear);
                 if (lift > 0.5) eyeY += lift;
             } else if (_sb) _sbReset();
-        } else if (_sb) _sbReset();
+            }
+        } else { _cvLast = null; if (_sb) _sbReset(); }
         /* ── SKY-GAZE LIFT (cinematic board shots only) ──
            The flat floor parks a sky-gazing eye a mere ⅓ tile over the
            ground, so a programmatic look UP at the sky (the zodiac/celestial
@@ -1444,8 +1534,12 @@ const ThreeCamera = (function () {
            up/down, intro beat 6) glides through the transition instead of
            dipping to the dirt at 90° and popping back up. Hand-held free
            look never takes this (it head-turns instead, above). */
-        if (skyCrane && dirY > -0.35) {
-            const t01 = Math.min(1, (dirY + 0.35) / 0.8);
+        /* THE CLOSE VIEW: the ramp starts no lower than the resting pitch (battle.js _restTilt, the player's own view every
+           turn start and return lands on), so a low resting view is not lifted either; the default views start it where
+           they always did */
+        const skyD0 = (_closeViewOn() && Number.isFinite(cam._restTilt)) ? Math.min(-0.02, Math.max(-0.35, -Math.cos(cam._restTilt * DEG2RAD) + 0.02)) : -0.35;
+        if (skyCrane && dirY > skyD0) {
+            const t01 = Math.min(1, (dirY - skyD0) / (0.45 - skyD0));
             const skyF = t01 * t01 * (3 - 2 * t01);
             const skyBase = Math.max(_groundYWorld(eyeX, eyeZ), focalY);
             const skyFloor = skyBase + clear + ts * 9 * skyF;
@@ -1704,7 +1798,9 @@ const ThreeCamera = (function () {
         if (!cam._fpEye && !cam._tpsCollide && typeof state !== 'undefined' && state && state.phase === 'battle'
             && !(typeof window !== 'undefined' && window.EW_NO_LENS_FLOOR)) {
             const hard = cam._cineTps && !handHeld && _steadyCraneOn();   // THE STEADY CRANE: the shot's ring is the crane's
+            _tallNoTrees = _cvLast != null;   // THE CLOSE VIEW: its lens stands under a crown, not on top of it
             const lf = _eyeFloorWorld(_smoothPosX, _smoothPosZ, hard ? LENS_HARD_FOOT_TILES : undefined) + tileSize * LENS_FLOOR_CLEAR_TILES;
+            _tallNoTrees = false;
             if (Number.isFinite(lf) && _smoothPosY < lf) { _smoothPosY = lf; _lensFloorHits++; }
         }
         threeCamera.position.set(_smoothPosX, _smoothPosY, _smoothPosZ);
@@ -2038,6 +2134,7 @@ const ThreeCamera = (function () {
         guardCarryState,
         guardCutState,
         steadyBoardState,
+        closeViewState,
         steadyCraneState,
         boardLiftAt,
         FOV,

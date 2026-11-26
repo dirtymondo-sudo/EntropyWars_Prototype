@@ -30964,7 +30964,11 @@
         // fire. Returns clamp to this instead: a deliberate low angle within
         // the ceiling is honored exactly; anything above it settles to a view
         // where the board is actually readable.
-        const REST_TILT_MAX = 62;
+        // THE CLOSE VIEW (2026-11-26, mondo: "i cant zoom in close behind my player like for a normal third person
+        // view"): was 62, which lifted a hand-set third-person pitch back up on every turn start and every return.
+        // 80 is still ten degrees over level, the board in frame; three-camera.js THE CLOSE VIEW keeps that lens clear.
+        const REST_TILT_MAX = 80;
+        const OWN_VIEW_TILT = 62;   // THE CLOSE VIEW: a resting pitch past the old ceiling (lower than any preset) is the player's own view
         /* In the follow/cinematic camera modes the "resting" pitch is a
            third-person shot, not the tactical overhead — let the remembered
            rest tilt ride much closer to the horizon there (90 = dead level). */
@@ -31835,6 +31839,7 @@
                 // only the remembered RESTING pitch is clamped — see REST_TILT_MAX.
                 if (opts.tilt !== undefined) {
                     this.tilt = opts.tilt;
+                    this._handTilt = true;   // THE CLOSE VIEW (three-camera.js): the player's own pitch is never sky-craned
                     const _rtMax = (typeof isFollowCamMode === 'function' && isFollowCamMode())
                         ? FOLLOW_REST_TILT_MAX : REST_TILT_MAX;
                     this._restTilt = Math.min(opts.tilt, _rtMax);
@@ -31943,6 +31948,7 @@
                     this._tz = opts._bypassCap ? rawZoom : clampAutoZoom(rawZoom);
                 }
                 this._tt   = _cineTiltCap(opts.tilt) ?? this._tt;   // THE LEVEL LENS
+                if (opts.tilt !== undefined) this._handTilt = false;   // THE CLOSE VIEW: a move that names a pitch owns it
                 this._tyaw = opts.yaw  ?? this._tyaw;
                 this._tcz  = opts.camZ ?? this._tcz;
                 // Focal height: an explicit elevZ tweens to that value. No elevZ
@@ -33322,7 +33328,10 @@
            focal (the menu two-shot's own floor, MENU_CAM_MIN_DIST) and far enough that the unit's drawn body — feet to the top
            of a kaiju — fills at most TURN_FRAME_FIT_V of the frame's height. A capped hand zoom is written back, so the next
            wheel step goes on from what the screen shows. Zooming in by hand while you look around is untouched. */
-        const TURN_FRAME_MIN_DIST = 3.0;   // squares from the lens to the focal, at least
+        /* THE CLOSE VIEW (2026-11-26): was 3.0, which pulled a hand zoom back out on every turn start and wrote the wider
+           zoom over the player's own. The body rule below still holds (the whole unit in frame), and the lens that sat in
+           the grass is kept out of the ground by three-camera.js THE CLOSE VIEW. */
+        const TURN_FRAME_MIN_DIST = 1.5;   // squares from the lens to the focal, at least
         const TURN_FRAME_FIT_V = 0.6;      // the body's half (round the focal) fills at most this share of the half-frame
         function getTurnFrameZoomCap(unit) {
             if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive || !ThreeRenderer.isActive()) return Infinity;
@@ -61948,7 +61957,7 @@
                    formation rows read like a classic JRPG battle screen. Every
                    turn-start framing and action-cam return honors _restTilt,
                    so the whole match keeps this pose without further gating
-                   (62 = REST_TILT_MAX, the lowest the rest pitch may sit). */
+                   (REST_TILT_MAX = the lowest the rest pitch may sit). */
                 if (typeof _isClashMode === 'function' && _isClashMode()) {
                     const _clashTilt = Math.min(58, REST_TILT_MAX);
                     camera.tilt = _clashTilt;
@@ -76820,9 +76829,32 @@
            moment it ends) — online.js sets state._walkAnimActive the same
            way for remote walks. */
         function _setWalkAnimActive(on) {
+            const _was = _walkAnimActive;
             _walkAnimActive = on;
             state._walkAnimActive = on;
             try { window.dispatchEvent(new Event('ew-state-change')); } catch (_) {}
+            if (_was && !on) { try { _ownViewReturn(); } catch (_) {} }
+        }
+        /* THE CLOSE VIEW (2026-11-26, mondo: "getting snapped to a bird's eye view"): the Move pick's overhead read
+           (TILE_PICK_TILT, the range fit) used to stay for the rest of the unit's turn: nothing brought the camera back
+           before the next unit's turn start. A player who set a view of their own (a wheel zoom, or a pitch lower than
+           the presets go) gets it back the moment their unit's walk ends: the pitch and zoom every turn start lands on.
+           The default views keep the old behaviour. Camera only, the viewer's own (a guest's walk ends through the
+           same flag on its own screen). Kill switch: window.EW_NO_CLOSE_VIEW = true. */
+        function _ownViewReturn() {
+            if (typeof window !== 'undefined' && window.EW_NO_CLOSE_VIEW) return;
+            if (state.phase !== 'battle' || state.cameraDisabled || state.winner || state._fullMapOverview) return;
+            if (state.actionMode || state._userPanning || state._userOrbiting) return;
+            if (camera._cineShotId != null || camera._tpsHold || camera._menuShot || camera._cineTps) return;
+            const rest = Math.min(camera._restTilt ?? DEFAULT_BOARD_TILT, REST_TILT_MAX);
+            if (!(isUserZoomEngaged() || rest > OWN_VIEW_TILT)) return;
+            const u = state.units.find(x => x.id === _walkAnimUnitId && !x.dead);
+            if (!u || u.id !== state._blitzActiveUnitId || _cameraActingSideIsAuto()) return;
+            if (state.controllers?.[u.player] !== CTRL.LOCAL || u.player !== getViewerPlayer() || !_fogCamAllSeen(u)) return;
+            const zoom = capTurnFrameZoom(u, getRestZoom());
+            if (Math.abs((camera._tt ?? camera.tilt) - rest) < 2 && Math.abs((camera._tz ?? camera.zoom) - zoom) < 0.05) return;
+            camera.moveTo({ x: u.x, y: u.y, zoom, tilt: rest, duration: 450, easing: 'easeInOut',
+                _allowZoomChange: true, _bypassCap: true, _fogAllowed: true });
         }
 
         function _dioGhostTransform(tiltDeg, yawDeg, elevPx) {
