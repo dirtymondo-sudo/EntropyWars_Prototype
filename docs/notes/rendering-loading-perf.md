@@ -4308,3 +4308,13 @@ Not reproduced in the cloud: SwiftShader WebGPU loses its device in the Lobby, a
 Lobby with no rebuild at all ("first 164 · material: side 4"). Check on his machine: F3 "Why looks were built (session)" should show
 few or no "same key" rows after a walk round the Lobby. If walls still flash black with "same key" near 0, read the other tags
 (lights / scene key / pass): those are genuinely new looks and the next fix is to keep drawing the old look while the new one compiles.
+
+### THE HUB'S OTHER OPEN FRONTS (2026-11-26, build `20261126-openfronts-01`; the real cause of the Lobby's black rooms)
+His F3 after THE KEPT LOOKS (Door Store, WebGPU): 0 shader builds a second, so no rebuild was making things black. The cause was the
+stage: from a box room joined to the Lobby (Door Store, Medical, Cafeteria, a gallery office) `hqStageRoundNeighbours` built only the
+Lobby and the Ring, so every OTHER open-fronted room round the Lobby was an unbuilt hole (black) in the Lobby's wall. The HUD still
+named the Door Store while he stood just past its front, and the holes filled once the feet crossed into the Lobby (the Lobby builds
+all its rooms), then went black again on the way back. Fix (data.js `hqStageRoundNeighbours`, box branch): the hub's other rooms with
+an open front (`door.open.w`) stand beside as `beside, portal, wait` neighbours, their frame = the hub's frame here composed with theirs
+in the hub (checked: a point round-trips to 1e-14). Cloud probe (node renderer, WebGL 2): from the Door Store the gallery offices and
+the Cafeteria are drawn through the Lobby where the picture showed black before.
