@@ -88494,6 +88494,14 @@ const ThreeRenderer = (function () {
         if (spec.y == null && spec.x != null && _hqHasGround()) { var chy = _hqCaveTop(spec.x, spec.z || 0); if (chy != null) y += chy; }   // THE CAVE (rev 11): a native / the walker stands on its cell
         /* box rooms place by (x, z) metres; polar rooms by (deg, r) */
         var p = (spec.x != null && spec.deg == null) ? new THREE.Vector3(spec.x * _hqUnits(), y * _hqUnits(), (spec.z || 0) * _hqUnits()) : _hqPolarW(spec.deg, spec.r, y);
+        /* THE CLEAR DOORWAY (2026-11-26): a person placed inside a door's clear square (an agent, a native, an operative, a story
+           character standing) stands just past it; a seated or posed one stays with its chair. Cutscenes place bodies their own way. */
+        if (spec.kind !== 'player' && !spec.pose && !spec.doorOk && _hq.doors && _hq.doors.length) {
+            try {
+                var _dcl = _hqOutOfDoorway(p.x / U, p.z / U, y, HQ_DOOR_CLEAR.pad, function (x, z) { var yy = _hqNavQuery(x, z, y); return yy !== null && yy !== undefined && Math.abs(yy - y) < 0.5; });
+                if (_dcl && _dcl.moved) { p.x = _dcl.x * U; p.z = _dcl.z * U; }
+            } catch (_dce) {}
+        }
         entry.group.position.copy(p);
         _hq.charGroup.add(entry.group);
         var ch = {
@@ -92205,6 +92213,7 @@ const ThreeRenderer = (function () {
         var h = function (idx) { var i = idx % nx, j = (idx - i) / nx; var di = Math.abs(i - t.i), dj = Math.abs(j - t.j); return Math.max(di, dj) + 0.4142 * Math.min(di, dj); };
         g.set(si, 0); push(h(si), si);
         var closed = new Set(), expanded = 0, found = false;
+        var DM = _hqDoorwaysOff() ? null : _hqNavDoorMask(), dmS = DM ? DM[si] : 0, dmT = DM ? DM[ti] : 0;   // THE CLEAR DOORWAY: a door square costs more to cross unless the walk starts or ends in it
         var DIRS = [[1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1], [1, 1, 1.4142], [1, -1, 1.4142], [-1, 1, 1.4142], [-1, -1, 1.4142]];
         while (open.length) {
             var cur = pop()[1];
@@ -92219,6 +92228,7 @@ const ThreeRenderer = (function () {
                 if (DIRS[d][0] && DIRS[d][1]) { if (!_hqNavStep(cy, _hqNavY(ci + DIRS[d][0], cj)) || !_hqNavStep(cy, _hqNavY(ci, cj + DIRS[d][1]))) continue; }   // no corner cutting
                 var nidx = nj * nx + ni; if (closed.has(nidx)) continue;
                 var ng = gc + DIRS[d][2] + Math.abs(ny - cy) * 0.6;
+                if (DM && DM[nidx] && DM[nidx] !== dmT && DM[nidx] !== dmS) ng += DIRS[d][2] * HQ_DOOR_CLEAR.cost;
                 if (g.has(nidx) && g.get(nidx) <= ng) continue;
                 g.set(nidx, ng); came.set(nidx, cur); push(ng + h(nidx), nidx);
             }
@@ -92252,7 +92262,7 @@ const ThreeRenderer = (function () {
     /* a random walkable cell (its centre), or null */
     function _hqNavRandom(rng) {
         var N = _hq.nav; if (!N || !N.done || !N.walk) return null;
-        for (var k = 0; k < 40; k++) { var idx = Math.floor(rng() * N.nx * N.nz); if (isFinite(N.y[idx])) { var i = idx % N.nx, j = (idx - i) / N.nx; return { x: N.x0 + i * N.cell, z: N.z0 + j * N.cell, y: N.y[idx] }; } }
+        for (var k = 0; k < 40; k++) { var idx = Math.floor(rng() * N.nx * N.nz); if (isFinite(N.y[idx])) { var i = idx % N.nx, j = (idx - i) / N.nx, cx = N.x0 + i * N.cell, cz = N.z0 + j * N.cell; if (_hqInDoorSquare(cx, cz, N.y[idx], HQ_DOOR_CLEAR.pad)) continue; return { x: cx, z: cz, y: N.y[idx] }; } }   // THE CLEAR DOORWAY: never a free cell in a door square
         return null;
     }
     /* ── THE STOPS ── */
@@ -92270,6 +92280,95 @@ const ThreeRenderer = (function () {
         else { var p = _hqPolarW(d.door.deg, d.inward ? (d.Rw + 2.2) : (d.Rw - 2.2), d.y0 || 0); pt = { x: p.x / U, z: p.z / U, y: d.y0 || 0, face: d.inward ? d.door.deg + 180 : d.door.deg }; }
         return pt;
     }
+    /* ── THE CLEAR DOORWAY (DOOR HQ 2.0, 2026-11-26; mondo: "I am always walking through a door and then someone is standing right
+       there in the entrance blocking me from moving") ──
+       Every door keeps ONE BATTLE SQUARE clear on its room side: 3.5 m x 3.5 m, centred on the opening, from the wall in (the rule
+       find-doorways.js checks). Nobody stops in it: a door stop is walked THROUGH (an exit) or stood past the square (a door that leads
+       nowhere), no other stop is made inside one (a counter's front, a spot, the spawn, a free cell: each is pushed out past the
+       square), an arrival inside one never pauses, a walker coming back in by a door walks straight on, the walkers' paths go round the
+       squares unless a door is where they are going (THE NAV's door cost), and a person PLACED inside one (an agent, a native, an
+       operative, a story character standing, never a seated or posed one: their chair is where they are) is stood just past it.
+       A walker that is inside a square anyway (crossing it on its way out) never blocks the officer: its body is folded while it is
+       in there (_hqDoorwayFold). The squares are read once per room from its door records (_hqDoorSquares; never a scene walk).
+       Bisect: window.EW_HQ_OLD_DOORWAYS. */
+    var HQ_DOOR_CLEAR = { sq: 3.5, pad: 0.45, dy: 1.5, cost: 2.5, cell: 8 };
+    function _hqDoorwaysOff() { return !!(typeof window !== 'undefined' && window.EW_HQ_OLD_DOORWAYS); }
+    function _hqDoorSquares() {
+        var c = _hq.doorSquares, ds = _hq.doors || [];
+        if (c && c.src === ds && c.n === ds.length) return c.list;
+        var list = [], U = _hqUnits();
+        ds.forEach(function (d) {
+            if (!d || !d.door || d.door.hidden) return;
+            var y0 = d.y0 || 0, half = Math.max(0.5, (d.ow || 1.2) / 2);
+            var add = function (x, z, nx, nz) { var L = Math.hypot(nx, nz) || 1; nx /= L; nz /= L; list.push({ x: x, z: z, nx: nx, nz: nz, tx: -nz, tz: nx, y: y0, half: half, doorId: d.door.id }); };
+            if (d.box) {
+                if (!isFinite(d.box.wx) || !isFinite(d.box.nx)) return;
+                add(d.box.wx, d.box.wz, d.box.nx, d.box.nz);
+                if (d.box.free) add(d.box.wx, d.box.wz, -d.box.nx, -d.box.nz);   // a free-standing door: both its squares stand in this room
+            } else if (d.door.deg != null && isFinite(d.Rw)) {
+                var p = _hqPolarW(d.door.deg, d.Rw, 0), q = _hqPolarW(d.door.deg, d.inward ? d.Rw + 1 : d.Rw - 1, 0);
+                add(p.x / U, p.z / U, (q.x - p.x) / U, (q.z - p.z) / U);
+            }
+        });
+        /* a bucket grid (HQ_DOOR_CLEAR.cell m) so a look-up reads the few squares near a point, never every door of a city */
+        var grid = new Map(), C = HQ_DOOR_CLEAR.cell, r = HQ_DOOR_CLEAR.sq + 1;
+        list.forEach(function (s) { var i0 = Math.floor((s.x - r) / C), i1 = Math.floor((s.x + r) / C), j0 = Math.floor((s.z - r) / C), j1 = Math.floor((s.z + r) / C);
+            for (var i = i0; i <= i1; i++) for (var j = j0; j <= j1; j++) { var k = i + ',' + j, b = grid.get(k); if (!b) grid.set(k, b = []); b.push(s); } });
+        _hq.doorSquares = { src: ds, n: ds.length, list: list, grid: grid };
+        return list;
+    }
+    /* the door square (x, z) stands in (a body of radius `pad` touching it counts), or null */
+    function _hqInDoorSquare(x, z, y, pad) {
+        if (_hqDoorwaysOff()) return null;
+        _hqDoorSquares(); var C = HQ_DOOR_CLEAR.cell, L = _hq.doorSquares.grid.get(Math.floor(x / C) + ',' + Math.floor(z / C)); if (!L) return null;
+        var hs = HQ_DOOR_CLEAR.sq / 2, p = pad || 0;
+        for (var i = 0; i < L.length; i++) {
+            var s = L[i]; if (y != null && Math.abs(y - s.y) > HQ_DOOR_CLEAR.dy) continue;
+            var dx = x - s.x, dz = z - s.z, b = dx * s.nx + dz * s.nz; if (b < -0.3 || b > HQ_DOOR_CLEAR.sq + p) continue;
+            var a = dx * s.tx + dz * s.tz; if (Math.abs(a) > hs + p) continue;
+            return s;
+        }
+        return null;
+    }
+    /* (x, z) stood out of every door square: past the square straight in, else beside it; `ok(x, z)` says a place is fine (a floor). null = no place */
+    function _hqOutOfDoorway(x, z, y, pad, ok) {
+        var p = (pad != null) ? pad : HQ_DOOR_CLEAR.pad, s = _hqInDoorSquare(x, z, y, p); if (!s) return { x: x, z: z, moved: false };
+        var hs = HQ_DOOR_CLEAR.sq / 2, a = (x - s.x) * s.tx + (z - s.z) * s.tz, b = (x - s.x) * s.nx + (z - s.z) * s.nz;
+        var deep = HQ_DOOR_CLEAR.sq + p + 0.1, side = hs + p + 0.1, sg = (a >= 0) ? 1 : -1;
+        var tries = [[a, deep], [sg * side, Math.max(b, 0.6)], [-sg * side, Math.max(b, 0.6)], [a, deep + 1.2], [sg * side, deep], [-sg * side, deep]];
+        for (var k = 0; k < tries.length; k++) {
+            var nx = s.x + s.tx * tries[k][0] + s.nx * tries[k][1], nz = s.z + s.tz * tries[k][0] + s.nz * tries[k][1];
+            if (_hqInDoorSquare(nx, nz, y, p)) continue;
+            if (ok && !ok(nx, nz)) continue;
+            return { x: nx, z: nz, moved: true };
+        }
+        return null;
+    }
+    /* THE NAV's door cost: the lattice cells inside a door square (its index + 1), marked once per built map (a walk that starts or ends in a square crosses that one at the plain cost) */
+    function _hqNavDoorMask() {
+        var N = _hq.nav; if (!N || !N.done) return null;
+        var L = _hqDoorSquares();
+        if (N.doorMask && N.doorMaskN === L.length) return N.doorMask;
+        var M = new Uint16Array(N.nx * N.nz), hs = HQ_DOOR_CLEAR.sq / 2;
+        L.forEach(function (s, si) {
+            var r = HQ_DOOR_CLEAR.sq + 0.6, c0 = _hqNavCellOf(s.x - r, s.z - r), c1 = _hqNavCellOf(s.x + r, s.z + r);
+            for (var j = c0.j; j <= c1.j; j++) for (var i = c0.i; i <= c1.i; i++) {
+                var x = N.x0 + i * N.cell, z = N.z0 + j * N.cell, dx = x - s.x, dz = z - s.z, b = dx * s.nx + dz * s.nz, a = dx * s.tx + dz * s.tz;
+                if (b > -0.3 && b < HQ_DOOR_CLEAR.sq && Math.abs(a) < hs) { var y = N.y[j * N.nx + i]; if (isFinite(y) && Math.abs(y - s.y) <= HQ_DOOR_CLEAR.dy) M[j * N.nx + i] = si + 1; }
+            }
+        });
+        N.doorMask = M; N.doorMaskN = L.length;
+        return M;
+    }
+    /* a walker crossing a door square folds its body there (the officer walks through it, never into it), unfolds once out */
+    function _hqDoorwayFold(ch) {
+        var blk = ch._blk;
+        if (blk === undefined) { blk = null; for (var i = _hq.blockers.length - 1; i >= 0; i--) if (_hq.blockers[i].obj === (ch.entry && ch.entry.group)) { blk = _hq.blockers[i]; break; } ch._blk = blk; }   // once per walker
+        if (!blk || ch.away) return;
+        var inSq = !!_hqInDoorSquare(ch.x, ch.z, ch.y, 0.2);
+        if (inSq) { if (!ch._doorFold && blk.rad0 == null) blk.rad0 = blk.rad; blk.rad = 0; ch._doorFold = true; }
+        else if (!inSq && ch._doorFold) { if (blk.rad0 != null) blk.rad = blk.rad0; ch._doorFold = false; }
+    }
     function _hqRoundsStops() {
         if (_hq.roundsStops) return _hq.roundsStops;
         var out = [], U = _hqUnits(), S = _hq.room.shell, room = _hq.room, exits = _hqRoundsExits();
@@ -92277,8 +92376,10 @@ const ThreeRenderer = (function () {
         _hq.doors.forEach(function (d) {
             if (!d || !d.door || d.portal || d.wayOpen || d.door.secret) return;
             var pt = _hqRoundsDoorLanding(d); if (!okY(pt)) return;
-            var ex = exits[d.door.id] || null;
-            out.push({ kind: 'door', x: pt.x, z: pt.z, y: pt.y, face: pt.face, doorId: d.door.id, rec: d, exit: (ex && !HQ_DOOR_LOCKED[d.state]) ? ex : null });
+            var ex = exits[d.door.id] || null, exit = (ex && !HQ_DOOR_LOCKED[d.state]) ? ex : null;
+            /* THE CLEAR DOORWAY: an exit is walked THROUGH (the walker is gone at the landing); a door that leads nowhere is a look at it from past its square */
+            if (!exit && !_hqDoorwaysOff()) { var cl = _hqOutOfDoorway(pt.x, pt.z, pt.y, HQ_DOOR_CLEAR.pad, function (x, z) { return okY({ x: x, z: z, y: pt.y }); }); if (!cl) return; pt.x = cl.x; pt.z = cl.z; okY(pt); }
+            out.push({ kind: 'door', x: pt.x, z: pt.z, y: pt.y, face: pt.face, doorId: d.door.id, rec: d, exit: exit });
         });
         _hq.counters.forEach(function (c) {
             var cc = c.counter, pt;
@@ -92296,6 +92397,14 @@ const ThreeRenderer = (function () {
         });
         var spw = room.spawn;
         if (spw) { var sp2 = (spw.x != null && spw.deg == null) ? { x: spw.x, z: spw.z || 0, y: _hqLevelY(S, spw.level || 0), face: spw.face || 0 } : (function () { var p = _hqPolarW(spw.deg, spw.r, _hqLevelY(S, spw.level || 0)); return { x: p.x / U, z: p.z / U, y: _hqLevelY(S, spw.level || 0), face: spw.face || 0 }; })(); if (_hqHasGround()) { var gy2 = _hqCaveTop(sp2.x, sp2.z); if (gy2 != null) sp2.y = gy2; } if (okY(sp2)) out.push({ kind: 'spawn', x: sp2.x, z: sp2.z, y: sp2.y, face: sp2.face }); }
+        /* THE CLEAR DOORWAY: no stop but an exit inside a door square; a counter's front, a spot, the spawn stand just past it (dropped when no floor is there) */
+        if (!_hqDoorwaysOff()) out = out.filter(function (st) {
+            if (st.kind === 'door' && st.exit) return true;
+            var cl = _hqOutOfDoorway(st.x, st.z, st.y, HQ_DOOR_CLEAR.pad, function (x, z) { return okY({ x: x, z: z, y: st.y }); });
+            if (!cl) return false;
+            if (cl.moved) { st.x = cl.x; st.z = cl.z; okY(st); }
+            return true;
+        });
         _hq.roundsStops = out;
         return out;
     }
@@ -92309,7 +92418,7 @@ const ThreeRenderer = (function () {
         if (o.home) loop.push(o.home);
         /* THE NPC PLACES (2026-11-20): a row's ROUTE (data.js hqPlacesExpand: points in the districts it walks between) is its whole loop */
         if (o.route && o.route.length) {
-            o.route.forEach(function (q) { var s = _hqPlaceSnap(q[0], q[1]); if (!s) return; var y = _hqNavQuery(s.x, s.z, null); loop.push({ kind: 'cell', x: s.x, z: s.z, y: y, face: Math.floor(rng() * 360) }); });
+            o.route.forEach(function (q) { var s = _hqPlaceSnap(q[0], q[1]); if (!s) return; var y = _hqNavQuery(s.x, s.z, null); var cl = _hqOutOfDoorway(s.x, s.z, y, HQ_DOOR_CLEAR.pad, function (x, z) { var yy = _hqNavQuery(x, z, null); return yy !== null && yy !== undefined && isFinite(yy); }); if (!cl) return; if (cl.moved) { s = cl; y = _hqNavQuery(s.x, s.z, null); } loop.push({ kind: 'cell', x: s.x, z: s.z, y: y, face: Math.floor(rng() * 360) }); });
             if (loop.length >= 2) pool = [], k = 0;
         }
         var doors = pool.filter(function (s) { return s.kind === 'door'; }), others = pool.filter(function (s) { return s.kind !== 'door'; });
@@ -92334,6 +92443,9 @@ const ThreeRenderer = (function () {
             if (path && path.length) { rd.path = path; rd.pi = 0; rd.state = 'walk'; rd.stuck = 0; rd.hold = 0; rd.repathed = false; return true; }
         }
         rd.state = 'pause'; rd.until = performance.now() + 4000 + rd.rng() * 3000;
+        /* THE CLEAR DOORWAY: nowhere to go is never a wait in a doorway: out of the square first */
+        var cl = _hqOutOfDoorway(ch.x, ch.z, ch.y, HQ_DOOR_CLEAR.pad, function (x, z) { var yy = _hqNavQuery(x, z, ch.y); return yy !== null && yy !== undefined; });
+        if (cl && cl.moved) { var pOut = _hqNavPath(ch.x, ch.z, cl.x, cl.z); if (pOut && pOut.length) { rd.stops.splice(rd.i + 1, 0, { kind: 'cell', x: cl.x, z: cl.z, y: ch.y, face: Math.floor(rd.rng() * 360), once: true }); rd.i++; rd.path = pOut; rd.pi = 0; rd.state = 'walk'; rd.stuck = 0; rd.hold = 0; rd.repathed = false; return true; } }
         return false;
     }
     function _hqRoundsSetVisible(ch, on) {
@@ -92360,6 +92472,8 @@ const ThreeRenderer = (function () {
         }
         rd.state = 'pause'; rd.until = now + _hqRoundsRange(rd.rng, R.pauseMs);
         rd.faceYaw = (st.face != null) ? _hqHeadingYaw(st.face) : ch.yaw;
+        if (st.once) { rd.stops.splice(rd.i, 1); rd.i = (rd.i - 1 + rd.stops.length) % rd.stops.length; rd.until = now + 400; }   // the step out of a doorway: not a stop of the loop
+        else if (_hqInDoorSquare(ch.x, ch.z, ch.y, 0)) rd.until = now;   // THE CLEAR DOORWAY: an arrival in a door square (a door that locked on the way) walks straight on
     }
     /* THE CLEAR ARRIVAL (2026-10-01, mondo: "there are always npcs right when I enter a new room/area and it blocks my
        screen"): a door a walker comes in by is one AWAY from the officer when the room has one (6 m), never the door the
@@ -92405,11 +92519,12 @@ const ThreeRenderer = (function () {
         if (by) { ch.x = by.x; ch.z = by.z; ch.y = by.y; ch.visY = by.y; ch.yaw = ch.targetYaw = _hqHeadingYaw(by.face); _hqRoundsSwing(by.rec, 1600); }
         _hqRoundsSetVisible(ch, true);
         var U = _hqUnits(); ch.entry.group.position.set(ch.x * U, ch.visY * U, ch.z * U);
-        rd.state = 'pause'; rd.until = now + 600 + rd.rng() * 900;
+        rd.state = 'pause'; rd.until = (by && !_hqDoorwaysOff()) ? now : now + 600 + rd.rng() * 900;   // THE CLEAR DOORWAY: in by a door = straight on in, never a stand in the doorway
     }
     function _hqTickRoamer(ch, dt, now, R) {
         var rd = ch.rounds, e = ch.entry, U = _hqUnits(), H = _hq;
         ch.moving = false;
+        if (!_hqDoorwaysOff()) _hqDoorwayFold(ch);   // THE CLEAR DOORWAY: a body crossing a door square never blocks the officer
         if (rd.state === 'away') { if (now >= rd.until) _hqRoundsReturn(ch, R, now); return; }
         if (rd.state === 'pause') {
             if (now < rd.until) { var dy0 = rd.faceYaw - ch.yaw; while (dy0 > Math.PI) dy0 -= Math.PI * 2; while (dy0 < -Math.PI) dy0 += Math.PI * 2; ch.yaw += dy0 * Math.min(1, dt * 6); return; }
@@ -108660,6 +108775,10 @@ const ThreeRenderer = (function () {
         polish: function () { var H = _hq; if (!H) return null; return { shadows: H.shadows ? { size: H.shadows.light.shadow.mapSize.width, Rf: +(H.shadows.Rf / _hqUnits()).toFixed(1), everyN: H.shadows.everyN, sunStep: H.shadows.sunStep, sunSteps: H.shadows.steps || 0 } : null, ao: H.ao, heightFog: H.heightFog, atmos: H.atmos ? { kind: H.atmos.kind, n: H.atmos.n } : null, shafts: H.shafts || 0, sways: H.sways.length, kicks: H.kicks.length, seats: H.seats.length, key: H.keyDir ? { x: +H.keyDir.x.toFixed(3), y: +H.keyDir.y.toFixed(3), z: +H.keyDir.z.toFixed(3) } : null }; },
         /* THE ROUNDS (2026-09-19): the walkers on their loops, the nav lattice, the traveller ledger (probes) */
         roamers: function () { return (_hq && _hq.rounds) ? _hq.rounds.map(function (c) { var rd = c.rounds || {}; return { id: c.id, race: c.race, x: +c.x.toFixed(2), z: +c.z.toFixed(2), y: +c.y.toFixed(2), state: rd.state || null, stop: rd.i, stops: (rd.stops || []).map(function (s) { return s.kind + (s.doorId ? ':' + s.doorId : ''); }), moving: !!c.moving, away: !!c.away }; }) : []; },
+        /* THE CLEAR DOORWAY (2026-11-26): the room's door squares, and who stands in one now (probes) */
+        doorways: function () { if (!_hq) return null; var sq = _hqDoorSquares().map(function (s) { return { door: s.doorId, x: +s.x.toFixed(2), z: +s.z.toFixed(2), nx: +s.nx.toFixed(2), nz: +s.nz.toFixed(2) }; });
+            var inside = (_hq.chars || []).filter(function (c) { return c && c.kind !== 'player' && !c.away && _hqInDoorSquare(c.x, c.z, c.y, 0); }).map(function (c) { return { id: c.id, kind: c.kind, x: +c.x.toFixed(2), z: +c.z.toFixed(2), pose: c.pose || null, state: (c.rounds && c.rounds.state) || null, moving: !!c.moving }; });
+            return { squares: sq, inside: inside }; },
         nav: function () { var N = _hq && _hq.nav; return N ? { cell: N.cell, nx: N.nx, nz: N.nz, done: N.done, walk: N.walk, ms: N.ms || null } : null; },
         travellers: function () { return _hqTravellers.slice(); },
         isFirstPerson: function () { return !!(_hq && _hq.fp); },

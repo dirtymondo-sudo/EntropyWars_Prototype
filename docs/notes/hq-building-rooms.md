@@ -1291,6 +1291,27 @@ and it's hard to target her with the mouse to talk to her". Plan of record: http
   another person still wins, and looking away gives the plate back. map.js wraps the renderer's onPrompt / onInteract and re-reads the
   prompt 5 times a second while such a post is in the room. Online: HQ only, no relay needed.
 
+## THE CLEAR DOORWAY (2026-11-26, DOOR HQ 2.0 wave 1, the walkers)
+The ROUTE fix the doorway check asked for, in three-renderer.js (one rule, every room, DOOR HQ and the zones alike; bisect
+`window.EW_HQ_OLD_DOORWAYS`). The door squares (`_hqDoorSquares`: 3.5 m x 3.5 m on the room side of every built door, both sides of a
+free-standing one) are read once per room from the door records and bucketed in an 8 m grid, so a look-up never walks every door (RULE #1e).
+- **Nobody stops in a square:** a door stop that is an EXIT is walked through (the walker is gone at the landing, as before); a door that
+  leads nowhere is a stop just past its square; a counter's front, a spot, the spawn, a route point and a free cell inside a square are
+  pushed just past it (`_hqOutOfDoorway`: straight in first, then beside it, only onto floor) or dropped; an arrival in a square (a door that
+  locked on the way) walks straight on; a walker back in by a door walks straight on (was a 0.6-1.5 s stand in the doorway); "nowhere to go"
+  steps out of a square before it waits.
+- **Paths go round:** THE NAV's A* costs a door square's cells x3.5 unless the walk starts or ends in that square (`_hqNavDoorMask`, built
+  once per finished lattice).
+- **Never blocking:** a walker inside a square (crossing it on its way out) has its body folded (`_hqDoorwayFold`, its blocker found once per
+  walker), so the officer walks through it, never into it.
+- **Placed people:** `_hqSpawnCharacter` stands any non-player placed in a square (an agent, a native, an operative, a story character)
+  just past it, onto floor within 0.5 m of its height. A posed / seated body (`pose`) stays with its chair: those are room work.
+- **Probe:** `ThreeRenderer.hq.doorways()` = the squares + who stands in one now.
+- **find-doorways.js** copies the person move and drops ROUTE (`--old-route` shows the old rows, `--as-placed` the data's places,
+  `--people-only`). Today's building: people / walker rows in 72 rooms before, 28 after; every one left is a posed or seated agent /
+  cast member, or a post in a room with no floor past the square (closets, the 4 m bays). Rooms failing at all: 85 before, 70 after; the
+  rest are PROP rows (236), the rebuilt rooms' work in waves 2-4.
+
 ## DOOR HQ 2.0, WAVE 1: THE CLEAN-OUT AND ONE NAME (2026-11-26)
 mondo's DOOR HQ 2.0 list (11-26; plan doc https://claude.ai/artifact/69S69c6y5uBALhoQmiYsCY, thread 1 "Clean-out and names"), done in
 today's building before any rebuild:
@@ -1337,3 +1358,7 @@ today's building before any rebuild:
 - The seat's heading is read off its whole turn (`Euler YXZ` of the quaternion), not `rotation.y` (same answer today; safe for a
   flipped prop).
 - Proof: the 16 seat kinds in DOOR HQ + Rhonda, `/mnt/project-files/sitting-fix/`.
+## DOOR HQ 2.0, THE FLOOR PLANS (2026-11-26, thread 2)
+The layout of the redesigned building is `docs/plans/door-hq-2/FLOOR_PLANS.md` + five pictures in `docs/plans/door-hq-2/plans/` (mondo OK'd
+all five 11-25; he cut the Dream Lab from DOOR HQ: the way to the Astral Realm is the D.U.M.B.'s). Read it before building or moving any
+DOOR HQ room: it says where each room sits, what it touches, and the rules every room thread keeps.
