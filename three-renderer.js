@@ -97509,6 +97509,77 @@ const ThreeRenderer = (function () {
             });
             return g;
         },
+        /* THE ARC WALL (DOOR HQ 2.0 wave 3, 2026-11-26, the Works' factory): a curved partition inside a box room, the round building's
+           drum and its rings. Row at the circle's centre (x, z; face 180): `r` (m, the wall's middle), `a0` / `a1` (compass degrees:
+           0 north, 90 east), `wallH`, `t`, `dadoH`, `wall` / `wallColor` / `dado` / `dadoColor` (sheet keys, `urban:` too), `holes` =
+           [{ a0, a1, h }] (a doorway from the floor to h, a lintel over it). Keep an arc under ~60 degrees a row (the collider's grid).
+           No catalogue footprint: THE REAL COLLISION reads its bands. */
+        arc_wall: function (U, p) {
+            p = p || {};
+            var g = new THREE.Group(), R = +p.r || 10, T = +p.t || 0.3, H = +p.wallH || 3.5, dH = (p.dadoH != null) ? +p.dadoH : 1.2, TILE = +p.tile || 2.4;
+            var A0 = Math.min(+p.a0 || 0, +p.a1 || 0), A1 = Math.max(+p.a0 || 0, +p.a1 || 0), D2R = Math.PI / 180;
+            var holes = (p.holes || []).map(function (h) { return { a0: Math.max(A0, +h.a0), a1: Math.min(A1, +h.a1), h: Math.min(H, +h.h || 3) }; }).filter(function (h) { return h.a1 > h.a0; });
+            var cuts = [A0, A1]; holes.forEach(function (h) { cuts.push(h.a0, h.a1); });
+            cuts = cuts.sort(function (a, b) { return a - b; }).filter(function (v, i, L) { return i === 0 || v - L[i - 1] > 0.001; });
+            var mat = function (tex, col, len, hh, side) { return _hqMat(tex || null, Math.max(0.25, len / TILE), Math.max(0.25, hh / TILE), { color: (col != null) ? col : 0xffffff, shininess: 12, specular: 0x202020, side: side }); };
+            var edge = _hqMat(null, 1, 1, { color: (p.edgeColor != null) ? p.edgeColor : 0x4a4e52, shininess: 20 });
+            /* one band of both faces + its top over [a, b] x [y0, y1] */
+            var band = function (a, b, y0, y1) {
+                var len = (b - a) * D2R * R, segs = Math.max(2, Math.round((b - a) / 2)), th0 = Math.PI - b * D2R, thL = (b - a) * D2R;
+                var parts = [[y0, Math.min(y1, Math.max(y0, dH)), true], [Math.max(y0, dH), y1, false]];
+                parts.forEach(function (pt) {
+                    var lo = pt[0], hi = pt[1]; if (hi - lo < 0.01) return;
+                    var tex = pt[2] ? (p.dado || p.wall) : p.wall, col = pt[2] ? (p.dadoColor != null ? p.dadoColor : p.wallColor) : p.wallColor;
+                    [[R + T / 2, THREE.FrontSide], [R - T / 2, THREE.BackSide]].forEach(function (f) {
+                        var m = new THREE.Mesh(new THREE.CylinderGeometry(f[0] * U, f[0] * U, (hi - lo) * U, segs, 1, true, th0, thL), mat(tex, col, len, hi - lo, f[1]));
+                        m.position.y = ((lo + hi) / 2) * U; g.add(m);
+                    });
+                });
+                var top = new THREE.Mesh(new THREE.RingGeometry((R - T / 2) * U, (R + T / 2) * U, segs, 1, Math.PI / 2 - b * D2R, thL), edge);
+                top.rotation.x = -Math.PI / 2; top.position.y = y1 * U; g.add(top);
+                [a, b].forEach(function (ang) {   // the end faces (a doorway's jambs, the arc's ends)
+                    var c = new THREE.Mesh(new THREE.BoxGeometry(0.02 * U, (y1 - y0) * U, T * U), edge), ar = ang * D2R;
+                    c.position.set(Math.sin(ar) * R * U, ((y0 + y1) / 2) * U, -Math.cos(ar) * R * U); c.rotation.y = Math.PI - ar; g.add(c);
+                });
+            };
+            for (var i = 0; i + 1 < cuts.length; i++) {
+                var a = cuts[i], b = cuts[i + 1], mid = (a + b) / 2;
+                var hole = holes.filter(function (h) { return h.a0 <= mid && h.a1 >= mid; })[0];
+                if (!hole) band(a, b, 0, H);
+                else if (hole.h < H - 0.01) band(a, b, hole.h, H);
+            }
+            return g;
+        },
+        /* THE FLUE, DOWN IN THE WORKS (DOOR HQ 2.0 wave 3): the Incinerator's column as the factory sees it, riveted steel with soot
+           bands, floor to ceiling (`r`, `h`); `mouths` = [{ deg, w, h }] = the Chute's hot mouth on its face (a lit opening, a steel
+           trough sloping into it from `len` m out, the lip at `y`). Solid by THE REAL COLLISION (its own skin). */
+        works_flue: function (U, p) {
+            p = p || {};
+            var g = new THREE.Group(), R = +p.r || 4.5, H = +p.h || 8.75, D2R = Math.PI / 180, circ = 2 * Math.PI * R;
+            var skin = _hqMat(p.tex || 'urban:MetalPanel1a', circ / 3, H / 3, { color: (p.color != null) ? p.color : 0x8a6a58, shininess: 30, specular: 0x403028 });
+            var body = new THREE.Mesh(new THREE.CylinderGeometry(R * U, R * U, H * U, 48, 1, true), skin); body.position.y = (H / 2) * U; g.add(body);
+            var soot = _hqMat(null, 1, 1, { color: 0x1e1a18, shininess: 40, specular: 0x302820 });
+            for (var y = 1.2; y < H; y += 2.4) { var bd = new THREE.Mesh(new THREE.CylinderGeometry((R + 0.06) * U, (R + 0.06) * U, 0.22 * U, 48, 1, true), soot); bd.position.y = y * U; g.add(bd); }
+            var hot = _hqMat(null, 1, 1, { color: 0xffb060, emissive: 0xff6a18, emissiveIntensity: 1.6 });
+            var steel = _hqMat('urban:MetalDiamondPlate1a', 1, 2, { color: 0x9aa0a6, shininess: 70, specular: 0x8890a0 });
+            (p.mouths || []).forEach(function (m) {
+                var a = (+m.deg || 0) * D2R, w = +m.w || 2.2, mh = +m.h || 1.6, lip = +m.y || 0.55, L = +m.len || 3.2;
+                var hole = new THREE.Group(); hole.rotation.y = Math.PI - a; g.add(hole);   // local +z = out from the flue toward `deg`
+                var glow = new THREE.Mesh(new THREE.PlaneGeometry(w * U, mh * U), hot); glow.position.set(0, (lip + mh / 2) * U, (R + 0.02) * U); hole.add(glow);
+                var frame = _hqMat(null, 1, 1, { color: 0x2a2624, shininess: 30 });
+                [[-w / 2 - 0.1, 0.2, mh + 0.2], [w / 2 + 0.1, 0.2, mh + 0.2]].forEach(function (f) { var fb = _hqBox(f[1], f[2], 0.3, frame); fb.position.set(f[0] * U, (lip + mh / 2) * U, (R + 0.1) * U); hole.add(fb); });
+                var lint = _hqBox(w + 0.4, 0.3, 0.4, frame); lint.position.set(0, (lip + mh + 0.15) * U, (R + 0.12) * U); hole.add(lint);
+                /* the trough: a steel floor and two sides, sloping down into the mouth (doors slide off the belt into it) */
+                var drop = Math.max(0, (+m.top || 0.95) - lip), slope = Math.atan2(drop, L);
+                var tr = new THREE.Group(); tr.position.set(0, (lip + drop / 2) * U, (R + L / 2) * U); tr.rotation.x = -slope; hole.add(tr);
+                var fl = _hqBox(w * 0.9, 0.06, L, steel); tr.add(fl);
+                [-1, 1].forEach(function (sd) { var sw = _hqBox(0.06, 0.5, L, steel); sw.position.set(sd * w * 0.45 * U, 0.25 * U, 0); tr.add(sw); });
+                var leaf = _hqBox(0.9, 0.05, 1.9, _hqMat(null, 1, 1, { color: 0x7a5a3a, shininess: 10 })); leaf.position.set(0.1 * U, 0.09 * U, (-L / 2 + 1.2) * U); leaf.rotation.y = 0.12; tr.add(leaf);   // a rejected door on its way in
+                var legs = _hqMat(null, 1, 1, { color: 0x3a3e42 });
+                [-1, 1].forEach(function (sd) { var lg = _hqBox(0.1, lip + drop, 0.1, legs); lg.position.set(sd * w * 0.4 * U, ((lip + drop) / 2) * U, (R + L - 0.2) * U); hole.add(lg); });
+            });
+            return g;
+        },
         saucer_pendant: function (U, p) {
             var g = new THREE.Group();
             var cream = _hqMat(null, 1, 1, { color: (p && p.color != null) ? p.color : 0xf1ece0, shininess: 30, specular: 0x333333 });
