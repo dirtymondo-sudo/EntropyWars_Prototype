@@ -74040,6 +74040,9 @@ const ThreeRenderer = (function () {
                 rf._ew_hqPart = 'ceil'; rf._ew_hqRoof = true;
                 G.add(rf);
             }
+        } else if (S.apron === false) {
+            /* THE PENTHOUSE (DOOR HQ 2.0 wave 4, 2026-11-26): `apron: false` = nothing below. No ground strip, no skirt: past an open
+               side there is only the sky (the Infinity Pool's edge). */
         } else if (room.terrain && room.terrain.outer !== false) {
             /* THE TERRAIN ROOM (2026-09-17): the field's own outer ground runs to the fog (_hqBuildOuterGround) — no flat apron, no skirt */
         } else if (room.terrain && !room.terrain.apron) {
@@ -74057,6 +74060,22 @@ const ThreeRenderer = (function () {
             sk._ew_hqGround = true; sk._ew_hqPart = 'floor';
             G.add(sk);
         }
+        /* THE CANOPY (DOOR HQ 2.0 wave 4, 2026-11-26, the Penthouse): an OPEN room (a sky of its own) may still be roofed over part of
+           it. `shell.canopy` = [{ x0, x1, z0, z1 }] in room metres: a ceiling at the room's height over each rect (the ceiling's sheet and
+           colour), tagged like a ceiling; the rest stands under the sky. */
+        if (open && Array.isArray(S.canopy)) S.canopy.forEach(function (cr) {
+            var cx0 = Math.max(-W / 2, +cr.x0), cx1 = Math.min(W / 2, +cr.x1), cz0 = Math.max(-Dp / 2, +cr.z0), cz1 = Math.min(Dp / 2, +cr.z1);
+            if (!(cx1 - cx0 > 0.05 && cz1 - cz0 > 0.05)) return;
+            var cw = cx1 - cx0, cd = cz1 - cz0;
+            var cp = new THREE.Mesh(new THREE.PlaneGeometry(cw * U, cd * U), _hqMat(texCeil, cw / (S.ceilTile || 1.4), cd / (S.ceilTile || 1.4), Object.assign({ shininess: 2, color: (S.ceilColor != null) ? S.ceilColor : 0xffffff }, (S.canopyGlow != null) ? { emissive: +S.canopyGlow } : {})));   // `canopyGlow`: the roof's underside lit by the room's lamps (an open room's ambient is the night's)
+            cp.rotation.x = Math.PI / 2; cp.position.set((cx0 + cx1) / 2 * U, H * U, (cz0 + cz1) / 2 * U);
+            cp._ew_hqPart = 'ceil';
+            G.add(cp);
+            var cl = _hqBox(cw, 0.35, 0.12, _hqMat(texTrim, cw / 1.5, 1, { shininess: 40, specular: 0x555555 }));   // the roof's lip over the open part
+            cl.position.set((cx0 + cx1) / 2 * U, (H - 0.175) * U, (cz1 < Dp / 2 - 0.05 ? cz1 : cz0) * U);
+            cl._ew_hqPart = 'ceil';
+            G.add(cl);
+        });
         /* THE EDGE (2026-09-11, shell.edge): the four
            walls stand only on a 'walls' room. An 'open' room has NOTHING at
            its bound but a flush paving edge in the trim texture (the ground
@@ -74065,8 +74084,12 @@ const ThreeRenderer = (function () {
            wall texture, broken at the way in (the door's panel is proud of
            it) — the wall's height is HQ_EDGE_LOW_H, a wall to the walker. */
         var edge = (S.edge === 'open' || S.edge === 'low') ? S.edge : 'walls';
-        var edgeGaps = (edge === 'walls') ? [] : (room.doors || []).map(function (d) { return { wall: d.wall, at: (d.wall === 'e' || d.wall === 'w') ? (d.z || 0) : (d.x || 0), half: (d.wide ? 3.3 : 2.5) / 2 + 0.02 }; });
+        var edgeGaps = (room.doors || []).map(function (d) { return { wall: d.wall, at: (d.wall === 'e' || d.wall === 'w') ? (d.z || 0) : (d.x || 0), half: (d.wide ? 3.3 : 2.5) / 2 + 0.02 }; });
+        var edgeAll = edge;
         [['n', W], ['s', W], ['e', Dp], ['w', Dp]].forEach(function (ws) {
+            /* THE SIDES (DOOR HQ 2.0 wave 4, 2026-11-26, the Penthouse): `shell.sides` = { n|s|e|w: 'open' | 'low' | 'walls' } gives one
+               side its own edge (the Infinity Pool's south side is 'open': nothing there but the kerb and the drop) */
+            var edge = (S.sides && (S.sides[ws[0]] === 'open' || S.sides[ws[0]] === 'low' || S.sides[ws[0]] === 'walls')) ? S.sides[ws[0]] : edgeAll;
             var B = _hqBoxWall(room, ws[0]), len = ws[1];
             /* a slab along the wall: local x runs along it, local z is the inward normal */
             function slab(y0, y1, inset, thick, mat, run) {
@@ -83847,9 +83870,9 @@ const ThreeRenderer = (function () {
            (a pale sky with a horizon line — the building is round; this is
            the view anyway) and venetian blinds half drawn. Wall proc,
            1.2 × 1.6, front +z. */
-        false_window: function (U) {
+        false_window: function (U, p) {
             var g = new THREE.Group();
-            var W = 1.2, H = 1.6, D = 0.08;
+            var W = (p && +p.winW) || 1.2, H = (p && +p.winH) || 1.6, D = 0.08;   // THE PENTHOUSE (2026-11-26): a row may size the window (`winW`, `winH`, m)
             var walnut = _hqMat('wood', 2, 2, { color: 0x5a3a26, shininess: 45, specular: 0x554433 });
             var frameMat = walnut;
             [[0, H - 0.04, W, 0.08], [0, 0.04, W, 0.08], [-(W / 2 - 0.04), H / 2, 0.08, H], [(W / 2 - 0.04), H / 2, 0.08, H], [0, H / 2, 0.04, H]].forEach(function (f) {
@@ -83858,10 +83881,11 @@ const ThreeRenderer = (function () {
             var tex = (typeof _hzTextTex === 'function') ? _hzTextTex('hq_false_window', [' '], { w: 64, h: 128, bg: '#cfe0f2', color: '#cfe0f2', pad: 0 }) : null;
             var pane = new THREE.Mesh(new THREE.PlaneGeometry((W - 0.12) * U, (H - 0.12) * U), tex ? new THREE.MeshBasicMaterial({ map: tex }) : _hqBasic(0xcfe0f2));
             pane.position.set(0, (H / 2) * U, 0.02 * U); g.add(pane);
-            var horizon = _hqBox(W - 0.12, 0.42, 0.002, _hqBasic(0xb9c9a8)); horizon.position.set(0, 0.27 * U, 0.024 * U); g.add(horizon);   // a plain, the far side of nothing
-            var sun = new THREE.Mesh(new THREE.CircleGeometry(0.08 * U, 18), _hqBasic(0xfff4d0)); sun.position.set(0.3 * U, (H - 0.45) * U, 0.025 * U); g.add(sun);
+            var hzH = 0.42 * H / 1.6;
+            var horizon = _hqBox(W - 0.12, hzH, 0.002, _hqBasic(0xb9c9a8)); horizon.position.set(0, (0.06 + hzH / 2) * U, 0.024 * U); g.add(horizon);   // a plain, the far side of nothing
+            var sun = new THREE.Mesh(new THREE.CircleGeometry(0.08 * Math.min(W / 1.2, H / 1.6) * U, 18), _hqBasic(0xfff4d0)); sun.position.set(0.25 * W * U, (H - 0.45 * H / 1.6) * U, 0.025 * U); g.add(sun);
             var slat = _hqMat(null, 1, 1, { color: 0xe8e2d2, shininess: 20 });
-            for (var i = 0; i < 9; i++) { var s = _hqBox(W - 0.14, 0.03, 0.02, slat); s.position.set(0, (H - 0.12 - i * 0.065) * U, 0.05 * U); s.rotation.x = 0.55; g.add(s); }
+            for (var i = 0, nS = Math.max(9, Math.round(9 * H / 1.6)); i < nS; i++) { var s = _hqBox(W - 0.14, 0.03, 0.02, slat); s.position.set(0, (H - 0.12 - i * 0.065) * U, 0.05 * U); s.rotation.x = 0.55; g.add(s); }
             var cord = _hqBox(0.006, 0.7, 0.006, _hqBasic(0xd8d0c0)); cord.position.set((W / 2 - 0.1) * U, (H - 0.45) * U, 0.06 * U); g.add(cord);
             return g;
         },
@@ -83870,11 +83894,14 @@ const ThreeRenderer = (function () {
            water reaches over, the basin lined in pool tile, the water a
            translucent Phong sheet a hand under the coping, a lit rim line.
            Floor proc; the catalogue's `rect` blocker is its footprint. */
-        infinity_pool: function (U) {
+        infinity_pool: function (U, p) {
             var g = new THREE.Group();
-            var W = 6.0, D = 3.6, H = 0.48, C = 0.28, WATER = H - 0.1;
+            /* THE PENTHOUSE (DOOR HQ 2.0 wave 4, 2026-11-26): a row may size the basin (`poolW`, `poolD`, metres; its catalogue row's
+               `rect` must match), drop the fall over the weir further (`fall`, m) and light the water from below (`glow`: a colour) */
+            p = p || {};
+            var W = +p.poolW || 6.0, D = +p.poolD || 3.6, H = 0.48, C = 0.28, WATER = H - 0.1, FALL = +p.fall || 0.5;
             var marble = _hqMat('marble_light', 6, 1, { shininess: 60, specular: 0x666666, color: 0xf0ede4 });
-            var tile = _hqMat('tilefloor_2', 6, 3.6, { shininess: 30, specular: 0x334455, color: 0x9fd0e6 });
+            var tile = _hqMat('tilefloor_2', W, D, Object.assign({ shininess: 30, specular: 0x334455, color: 0x9fd0e6 }, p.glow != null ? { emissive: +p.glow, emissiveIntensity: 0.55 } : {}));
             var water = new THREE.MeshPhongMaterial({ color: 0x3fa7d6, transparent: true, opacity: 0.78, shininess: 140, specular: 0xffffff, side: THREE.DoubleSide, depthWrite: false });
             /* the basin: the tile floor of it and its four inner walls, on a marble plinth */
             var plinth = _hqBox(W, 0.06, D, marble); plinth.position.set(0, 0.03 * U, 0); g.add(plinth);
@@ -83888,15 +83915,16 @@ const ThreeRenderer = (function () {
             [-1, 1].forEach(function (s) { var wE = _hqBox(0.02, H - 0.06, D - 2 * C, tile); wE.position.set(s * ((W - C) / 2 - C / 2 - 0.01) * U, ((H - 0.06) / 2 + 0.06) * U, 0); g.add(wE); });
             /* the water: the sheet, and the fall over the weir */
             var sheet = new THREE.Mesh(new THREE.PlaneGeometry((W - 2 * C) * U, (D - C) * U), water); sheet.rotation.x = -Math.PI / 2; sheet.position.set(0, WATER * U, (C / 2) * U); sheet.renderOrder = 2; g.add(sheet);
-            var fall = new THREE.Mesh(new THREE.PlaneGeometry((W - 2 * C) * U, (WATER + 0.5) * U), water); fall.position.set(0, ((WATER - 0.5) / 2) * U, -(D / 2 + 0.01) * U); fall.renderOrder = 2; g.add(fall);
+            var fall = new THREE.Mesh(new THREE.PlaneGeometry((W - 2 * C) * U, (WATER + FALL) * U), water); fall.position.set(0, ((WATER - FALL) / 2) * U, -(D / 2 + 0.01) * U); fall.renderOrder = 2; g.add(fall);
             var glint = new THREE.Mesh(new THREE.PlaneGeometry((W - 2 * C - 0.1) * U, 0.02 * U), _hqBasic(0xe8f6ff, { transparent: true, opacity: 0.8 })); glint.rotation.x = -Math.PI / 2; glint.position.set(0, (WATER + 0.004) * U, -((D - C) / 2 - 0.02) * U); g.add(glint);
             /* two lamps in the coping on the near side */
             var lamp = _hqBasic(0xd8f0ff);
-            [-1, 1].forEach(function (s) { var l = new THREE.Mesh(new THREE.SphereGeometry(0.03 * U, 8, 6), lamp); l.position.set(s * 1.8 * U, (H + 0.01) * U, ((D - C) / 2) * U); g.add(l); });
+            [-1, 1].forEach(function (s) { var l = new THREE.Mesh(new THREE.SphereGeometry(0.03 * U, 8, 6), lamp); l.position.set(s * W * 0.3 * U, (H + 0.01) * U, ((D - C) / 2) * U); g.add(l); });
             /* the ladder, on the near side */
             var chrome = _hqMat(null, 1, 1, { color: 0xb9bec4, shininess: 90, specular: 0xaaaaaa });
-            [-1, 1].forEach(function (s) { var rail = new THREE.Mesh(new THREE.CylinderGeometry(0.02 * U, 0.02 * U, 0.9 * U, 8), chrome); rail.position.set((2.4 + s * 0.2) * U, (H + 0.1) * U, ((D - C) / 2 - 0.2) * U); g.add(rail); });
-            var bar = new THREE.Mesh(new THREE.CylinderGeometry(0.02 * U, 0.02 * U, 0.4 * U, 8), chrome); bar.rotation.z = Math.PI / 2; bar.position.set(2.4 * U, (H + 0.55) * U, ((D - C) / 2 - 0.2) * U); g.add(bar);
+            var LX = W * 0.4;
+            [-1, 1].forEach(function (s) { var rail = new THREE.Mesh(new THREE.CylinderGeometry(0.02 * U, 0.02 * U, 0.9 * U, 8), chrome); rail.position.set((LX + s * 0.2) * U, (H + 0.1) * U, ((D - C) / 2 - 0.2) * U); g.add(rail); });
+            var bar = new THREE.Mesh(new THREE.CylinderGeometry(0.02 * U, 0.02 * U, 0.4 * U, 8), chrome); bar.rotation.z = Math.PI / 2; bar.position.set(LX * U, (H + 0.55) * U, ((D - C) / 2 - 0.2) * U); g.add(bar);
             return g;
         },
         /* THE LOUNGER (Room 8): a slatted deck chair with a raised back on

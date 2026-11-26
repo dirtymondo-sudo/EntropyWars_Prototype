@@ -33646,7 +33646,8 @@ const DOOR_HQ = {
         shag_rug:          { proc: 'shag_rug',        h: 0.03, foot: 0 },                                                                                                                          // a thick disc (`r`, `color`, `color2` the inner ring)
         space_divider:     { proc: 'space_divider',   h: 2.1,  foot: 1.1,  rect: { hw: 1.12, hd: 0.1 }, block: true },                                                                            // a screen of white rings you see through
         pod_bed:           { proc: 'pod_bed',         h: 1.0,  foot: 0.9,  rect: { hw: 0.52, hd: 1.12 }, block: true, glow: { y: 0.6, size: 1.6, color: 0x9fe8ff }, light: { color: 0x8fdcff, intensity: 0.4, dist: 4, y: 0.7 } },   // the cryo capsule under a glass dome (the head is −Z)
-        infinity_pool:     { proc: 'infinity_pool',  h: 0.48,    foot: 3.0, rect: { hw: 3.1, hd: 1.85 }, block: true },   // Room 8: the raised basin, a RECT blocker (room axes: place it at face 0 / 180)
+        infinity_pool:     { proc: 'infinity_pool',  h: 0.48,    foot: 3.0, rect: { hw: 3.1, hd: 1.85 }, block: true },
+        penthouse_pool:    { proc: 'infinity_pool',  h: 0.48,    foot: 3.0, rect: { hw: 12.35, hd: 5.3 }, block: true },   // DOOR HQ 2.0 wave 4 (2026-11-26): the Penthouse's pool, 24.5 x 10.5 (its row's poolW / poolD)   // Room 8: the raised basin, a RECT blocker (room axes: place it at face 0 / 180)
         pool_lounger:      { proc: 'pool_lounger',   h: 0.8,     foot: 0.5, block: true, seat: 0.10, lie: true },   // Room 8: a lounger (a seat for hqSit at its own x/z)
         pool_umbrella:     { proc: 'pool_umbrella',  h: 2.4,     foot: 0.12, block: true },  // Room 8: the pole; the canopy is overhead
         /* ══ THE EXPLORATION FLOORS (HQ plan Phase 8, 2026-09-14) — the
@@ -34373,6 +34374,7 @@ const DOOR_HQ = {
     retired: { ring_m: 'central_egress',   /* THE EIGHT DOORS (2026-11-18): the mezzanine ring held only bay doors; its four doors in the Main Hall are closed */
                kitchen: 'cafeteria', coldroom: 'cafeteria',   /* DOOR HQ 2.0 WAVE 2 (2026-11-26, the Cafeteria thread): the Kitchen is the strip behind the Cafeteria's serving hatch, the Cold Room folded into it (LOOK_BOOK.md); the basement pair is gone */
                dreamlab: 'labs', medwing: 'medical',   /* DOOR HQ 2.0 WAVE 3 (2026-11-26): no Dream Lab in DOOR HQ (mondo 11-25; the Astral way is the D.U.M.B.'s); the old medical wing's Hold and Interrogation Room are on the Works' middle level */
+               corner: 'executive', pool: 'executive',   /* DOOR HQ 2.0 WAVE 4 (2026-11-26): the Corner Office and the Infinity Pool are parts of the one long Penthouse room */
                execwing: 'continuity', trophycase: 'central_egress',   /* DOOR HQ 2.0 WAVE 3 (2026-11-26): the Bureau of Continuity is on the Lobby's gallery; the Trophy Case is a cabinet on the Lobby's wall */
                dispensary: 'doorstore',   /* DOOR HQ 2.0 WAVE 2 (2026-11-26, mondo: "The Hatch/The Dispensary/Shop needs to be renamed to Door Store and only door store"): Room 911 off the Medical Wing is the Door Store off the Lobby; the wing's door to it is cut */
                works: 'factory', warehouse: 'factory', autopsy: 'factory', doorgarden: 'factory', control: 'factory', dock: 'factory', laundry: 'factory', boiler: 'factory',   /* DOOR HQ 2.0 WAVE 3 (2026-11-26, the Works' factory): the old second floor's lobby, Room 1000, Room Y, Room ½ and Room 24/7, and the basement's dock, laundry and boiler room are areas of ONE round room round the flue now (docs/plans/door-hq-2/factory.js); the Incinerator stays its own room (the labs' stair) */
@@ -34984,7 +34986,7 @@ const DOOR_HQ = {
            A `pool` way at BOTH ends: on the parapet's west corner in Room 8, free on the Triangle's
            north strip (its lanes carry the sea links' doors; a `way` hangs anywhere on the strip). */
         { id: 'weir_bermuda', route: 'deep', way: 'pool',
-          a: { room: 'pool', wall: 'free', x: -4.2, z: -3.4, face: 180, sub: 'THE WEIR · OVER THE EDGE' },
+          a: { room: 'executive', wall: 'free', x: -14.0, z: 27.0, face: 180 },   // DOOR HQ 2.0 wave 4 (2026-11-26): beside the Penthouse pool's weir, at the edge
           /* THE DEEP (2026-09-18): RE-POINTED off the bypassed board onto THE OPEN SEA's cay — the tide pool on the beach west of the jetty */
           b: { site: 'prebuilt_bermuda', part: 'ow_triangle', wall: 'free', x: 71.75, z: 68.25, face: 0, sub: 'THE TIDE POOL · SURFACE IN ROOM 8' },   // THE BEACH ON PLOTS (2026-11-15): the tide pool on the sand by the Lagoon (bake-beach.js checks this row)
           why: 'the water goes over the weir and nobody said where; the lifeguard is not certified for the edge and the Triangle is where the water was going',
@@ -36747,303 +36749,112 @@ const DOOR_HQ = {
             spawn: { x: -3.2, z: 0, face: 90 },
         },
         /* execwing (THE EXECUTIVE SUITE) — RETIRED 2026-11-26 (DOOR HQ 2.0 wave 3): the Bureau of Continuity stands on the Lobby's gallery itself; DOOR_HQ.retired sends it there */
-        /* ── THE EXECUTIVE FLOOR (HQ plan 5.4 stage 1 + 7.4 ROOMS 4C + 8,
-           2026-09-14) — the elevator on the mezzanine at 0° (KEYHOLDER
-           rank + 12 Keys; the gate is the elevator door's, unchanged) rides
-           to THE PENTHOUSE: the executive lobby, a box room off the top of
-           the car with the FLOOR PANEL by the doors (a counter with no
-           action: the sixteen buttons, two of them lit — M is the way down,
-           PH is where you stand; there is no 13), the assistant's desk, and
-           two doors: the corner office (4C) on the east wall and the pool
-           (8) on the north. The lobby wears no number — it is a floor.
-           The plan's "rings as further rotunda instances" (5.4) is NOT
-           this: one floor, one lobby, two rooms; the rings stay open. ── */
+        /* ── PENTHOUSE (DOOR HQ 2.0 wave 4, 2026-11-26; plan docs/plans/door-hq-2/plans/2_lobby_upper_level_penthouse.png, look
+           LOOK_BOOK.md "Penthouse"). ONE long room, reached only by the lift (the car's PH button keeps its gate: locked until late).
+           31.5 x 63 m, 7 m high. North: the lift. The roofed half (z -31.5 .. 3.5) is the lounge, with the CORNER OFFICE in a glass box
+           on its east side (x 5.25 .. 15.75, z -24.5 .. -7): the desk with its back to THE WINDOW on the building's outside wall, the
+           window that should not exist (a building with no outside). The south half is open to the night sky: the INFINITY POOL,
+           24.5 x 10.5 m, its weir on the room's south line, and past it nothing (`sides.s: 'open'`, `apron: false`: no wall, no
+           ground, only the sky under the edge). Retired into it: `corner` (Room 4C) and `pool` (Room 8). One name: PENTHOUSE.
+           The "impossible doors" thread may make the window a portal. ── */
         executive: {
-            label: 'THE PENTHOUSE',
-            sub: 'EXECUTIVE FLOOR · KEYHOLDER RANK',
+            label: 'PENTHOUSE',
             kind: 'box',
             shell: {
-                w: 11, d: 8, h: 3.4,
-                wallH: 3.4, dadoH: 1.05,
-                /* THE RETRO-FUTURIST PASS (2026-09-21): the lobby grew 9 × 6 → 11 × 8, filleted and coved — the claret carpet under white
-                   plaster, a sputnik either side, egg chairs, a lava lamp on the coffee table */
-                round: 1.6, cove: 0.55,
-                floor: 'carpet', wall: 'drywall', dado: 'oxblood', trim: 'metal', ceiling: 'ceiling',
-                floorColor: 0x5b2a2c, wallColor: 0xf2eee4, dadoColor: 0x4a2a24, ceilColor: 0xf6f4ee,
-                pipes: false, strips: false, lights: [],
-                mood: { light: 0xfff0d6, ambient: 0.6 },          // warm, dimmable; nobody has found the dimmer
-                plate: { x: 0, z: -3.95, y: 2.9 },
-                look: HQ_ROOM_LOOKS.retro,
-            },
-            doors: [
-                /* the car: the way down — the egress's elevator from the other side (proc leaf, both halves pocket) */
-                { id: 'elevator', wall: 's', x: 0, leaf: null, proc: 'elevator',
-                  label: 'ELEVATOR', sub: 'THE CAR · DOWN',
-                  action: { room: 'car', at: 'out' },
-                  desc: 'The car. Five of its buttons work now. The other eleven light up when pressed and the car does not move; the office calls this a feature.' },
-                { id: 'corner', wall: 'e', z: -0.6, leaf: 'leaf_glass_exec',
-                  label: 'THE CORNER OFFICE', sub: 'YOUR OFFICE · STORY',
-                  action: { room: 'corner', at: 'lobby' },
-                  desc: 'Your office, once the ladder passed L3. A corner office in a round building. The closet downstairs is still yours; nobody has said which one you should be in.' },
-                { id: 'pool', wall: 'n', x: 2.2, leaf: 'leaf_glass',
-                  label: 'THE INFINITY POOL', sub: 'ON BREAK · THE EDGE',
-                  action: { room: 'pool', at: 'lobby' },
-                  desc: 'The pool. The edge is over the void. The top of the leaderboard takes its break here and does not talk about the edge.' },
-            ],
-            counters: [
-                /* THE FLOOR PANEL → nothing; the panel is the whole interaction (the way down is a button on it) */
-                { id: 'floorpanel', x: 1.55, z: 3.5, face: 0, plateY: 1.75, radius: 1.5, verb: 'PRESS',
-                  label: 'THE FLOOR PANEL', sub: 'SIXTEEN BUTTONS · TWO WORK', action: {},
-                  desc: 'B · G · M · 2 through 12 · 14 · PH. Two of them are lit. The car stops at M and at PH; the other floors are on the panel because the panel came with them.' },
-            ],
-            props: [
-                /* ── the south wall (z 4): the car, the panel beside it, the exit sign over it ── */
-                { key: 'floor_panel',    wall: 's', x: 1.55, mount: 1.0 },
-                { key: 'exit_sign',      wall: 's', x: 0, mount: 2.9 },
-                { key: 'potted_plant',   x: -1.7,  z: 3.5,  face: 20 },
-                { key: 'potted_plant',   x: 3.9,   z: 3.5,  face: 200 },
-                { key: 'security_camera',wall: 's', x: -3.0, mount: 2.6 },
-                { key: 'hook_rail',      wall: 's', x: -2.0 },
-                /* ── the north wall (z −4): the assistant's desk between the pool door and the corner ── */
-                { key: 'tanker_desk',    wall: 'n', x: -1.6 },
-                { key: 'crt_terminal',   x: -1.95, z: -3.55, y: 0.76, face: 180 },
-                { key: 'rotary_phone',   x: -1.15, z: -3.6,  y: 0.76, face: 200 },
-                { key: 'desk_lamp',      x: -2.25, z: -3.75, y: 0.76, face: 210 },
-                { key: 'papers_a',       x: -1.4,  z: -3.4,  y: 0.76, face: 15 },
-                { key: 'manila_folders', x: -0.9,  z: -3.45, y: 0.76, face: 340 },
-                { key: 'coffee_mug',     x: -0.75, z: -3.3,  y: 0.76, face: 140 },
-                { key: 'computer_chair_grey', x: -1.6, z: -2.95, face: 0 },        // the assistant's, facing the desk
-                { key: 'wall_clock',     wall: 'n', x: -3.2, mount: 2.6 },
-                { key: 'picture_round_a',wall: 'n', x: 0.3, mount: 1.7 },
-                /* ── the west wall (x −5.5): the seats you wait on ── */
-                { key: 'shag_rug',       x: -4.3,  z: -0.3, r: 1.3, color: 0x8a3a30, color2: 0xe8b33a },
-                { key: 'teal_chair',     x: -4.6,  z: -0.9, face: 90 },
-                { key: 'teal_chair',     x: -4.6,  z: 0.3,  face: 90 },
-                { key: 'coffee_table',   x: -4.0,  z: -0.3 },
-                { key: 'papers_a',       x: -4.15, z: -0.15, y: 0.46, face: 25 },     // the annual report; the year is not printed
-                { key: 'lava_lamp',      x: -3.85, z: -0.45, y: 0.46, face: 30 },     // THE RETRO-FUTURIST PASS: on the coffee table
-                { key: 'water_cooler',   wall: 'w', z: 1.7 },
-                { key: 'vent_grille',    wall: 'w', z: -1.5, mount: 2.6 },
-                { key: 'nameplate',      wall: 'w', z: -1.6, mount: 1.55 },
-                /* ── the east wall (x 5.5): the corner office door at −0.6, the files by it, the egg chair ── */
-                { key: 'filing_cabinet', wall: 'e', z: 1.0 },
-                { key: 'filing_cabinet', wall: 'e', z: 1.6 },
-                { key: 'egg_chair',      x: 3.6,   z: 1.4, face: 270, color: 0x8a3a30 },
-                /* ── the floor, the ceiling ── */
-                { key: 'rug_office',     x: 0.4,   z: 0.2 },
-                { key: 'fluorescent',    x: 0,     z: 0, ceil: true, face: 0 },
-                { key: 'sputnik_lamp',   x: -2.6,  z: 0, ceil: true },
-                { key: 'sputnik_lamp',   x: 2.6,   z: 0, ceil: true },
-            ],
-            agents: [
-                { x: -1.6, z: -2.95, face: 0, pose: 'hqSit', gender: 'female', label: 'THE EXECUTIVE ASSISTANT', reach: 1.9,
-                  line: '“The Director is in a meeting. The meeting is in the corner office. The corner office is yours. I have not resolved this either.”' },
-                { x: 4.2, z: -2.4, face: 300, pose: 'hqArms', gender: 'male', label: 'THE DIRECTOR’S GUARD', reach: 1.6,
-                  line: '“Keys were checked at the elevator. They are checked again here. The Keys have not changed; the policy has.”' },
-            ],
-            npcSpots: [
-                { x: -4.6, z: 0.3, face: 90 },      // waiting for a meeting that is not on the panel
-            ],
-            onlineSpots: [],
-            lines: [
-                '“Which floor?” “PH.” “That is the top.” “It is the only other one.”',
-                '“Sixteen buttons.” “Two work.” “Which two?” “The two that matter, and one of them is down.”',
-                '“Is it a corner office?” “The building is round.” “So?” “So it is a corner, and we do not ask of what.”',
-                '“The pool is over the void.” “Is that safe?” “The edge is. The void has not filed a complaint.”',
-            ],
-            spawn: { x: 0, z: 2.4, face: 180 },
-        },
-        /* ── ROOM 4C · THE CORNER OFFICE (HQ plan 7.4, 2026-09-14) — your
-           office once the ladder passes L3 (MASTER A5: Support at L1–L3,
-           Executive at L4+). The closet's counter is here at the desk (THE
-           IN-TRAY → the same case file, overlay 'intray'), the achievements
-           hang as WALL PLAQUES (a counter → the profile on its Achievements
-           tab, like Room 111's cabinet), and THE WINDOW is a counter with no
-           action: a corner office has two outside walls; the building is
-           round and has no outside; the panel is what the window looks out
-           on — the seven bays, with the count on file for each. Viewer-local
-           (RULE #2). The closet (101) stays yours; the door downstairs is
-           still the rank door. ── */
-        corner: {
-            label: 'THE CORNER OFFICE',
-            sub: 'YOUR OFFICE · STORY',
-            roomNo: '4C', why: 'a corner office in a round building — one dimension short of Room 4D, and a Form 90 problem',
-            kind: 'box',
-            shell: {
-                w: 6.4, d: 5.2, h: 3.4,
-                wallH: 3.4, dadoH: 1.05,
-                /* THE RETRO-FUTURIST PASS (2026-09-21): a cove (the doors sit too near the corners for a fillet), white plaster over walnut, a saucer over the desk */
-                cove: 0.5,
-                floor: 'carpet', wall: 'drywall', dado: 'wood', trim: 'metal', ceiling: 'ceiling',
-                floorColor: 0x4f3a2e, wallColor: 0xf2eee4, dadoColor: 0x5a3a2c, ceilColor: 0xf6f4ee,
+                w: 31.5, d: 63, h: 7,
+                wallH: 7, dadoH: 1.2,
+                open: true, sides: { s: 'open' }, apron: false,
+                canopy: [{ x0: -15.75, x1: 15.75, z0: -31.5, z1: 3.5 }], canopyGlow: 0x4a4234,
+                floor: 'marble_light', wall: 'urban:WoodPanelling1a', dado: 'urban:WoodPanelling1a', trim: 'brass', ceiling: 'ceiling',
+                floorColor: 0xeee8dc, wallColor: 0x9a8670, dadoColor: 0x5a4632, ceilColor: 0xb8ad94,
                 pipes: false, strips: false,
-                light: { x: 0, z: 0.4 },
-                mood: { light: 0xfff0d6, ambient: 0.6 },
-                plate: { x: -1.2, z: -2.55, y: 2.9 },
-                look: HQ_ROOM_LOOKS.retro,
+                lights: [{ x: -5.25, z: -21.0 }, { x: -5.25, z: -7.0 }, { x: 10.5, z: -15.75 }, { x: 10.5, z: -28.0 }, { x: 0, z: 12.0 }, { x: -8.75, z: 26.0 }, { x: 8.75, z: 26.0 }],
+                mood: { light: 0x9fb4d9, ambient: 0.42 },
+                sky: { night: 1, lock: 23, tint: 0x101a2e, tintAmt: 0.6, stars: 1.4, nebula: 0.35, clouds: 0.25, fog: { color: 0x141d33, amount: 0.45, top: 0.05, band: 0.5 }, scenery: 'none', density: 0.5 },
+                plate: { x: -5.25, z: -31.3, y: 5.9 },
             },
             doors: [
-                { id: 'lobby', wall: 'w', z: 0.6, leaf: 'leaf_glass_exec',
-                  label: 'THE PENTHOUSE', sub: 'BACK TO THE LOBBY',
-                  action: { room: 'executive', at: 'corner' },
-                  desc: 'The way back to the lobby. The glass is frosted from the lobby side and clear from this one; that is what the rank buys.' },
+                /* the lift: the only way in or out */
+                { id: 'elevator', wall: 'n', x: -5.25, leaf: null, proc: 'elevator', label: 'ELEVATOR', action: { room: 'car', at: 'out' } },
             ],
-            counters: [
-                /* ONE HOME PER FUNCTION (Phase 8, 2026-09-14): the in-tray counter went back
-                   to Room 101 (the desk stays; the fax still arrives downstairs) and THE
-                   PLAQUES are a PANEL (the count, and where the cabinet is) — the
-                   achievements open in Room 111 only. */
-                { id: 'plaques', x: 0.2, z: 2.0, face: 0, plateY: 1.9, radius: 1.7, verb: 'READ',
-                  label: 'THE PLAQUES', sub: 'ENGRAVED · SEE ROOM 111', action: {},
-                  desc: 'Your achievements on the wall, engraved. The blanks are hung too; the office engraves on the day. The cabinet they are copied from is in Room 111.' },
-                /* THE WINDOW → nothing; the panel is the view */
-                { id: 'view', x: 2.825, z: -1, face: 90, plateY: 1.9, radius: 1.6, verb: 'LOOK OUT',
-                  label: 'THE WINDOW', sub: 'IT SHOULD NOT EXIST', action: {},
-                  desc: 'A corner office has two outside walls. The building is round and has no outside. The window looks out on the seven bays anyway.' },
-            ],
+            counters: [],
             props: [
-                /* ── the north wall: the desk, the chair behind it, the second window ── */
-                { key: 'exec_desk',      x: 0.875,   z: -1.5, face: 180 },              // a floor prop (2026-09-16): centred on z −1.5, the drawers to the north (the Director's knees), the modesty panel to the room
-                { key: 'exec_chair',     x: 0.875,   z: -2.2, face: 180 },              // behind the desk, facing the room
-                { key: 'crt_terminal',   x: 0.175,  z: -1.75, y: 0.76, face: 0 },
-                { key: 'rotary_phone',   x: 1.625,  z: -1.7,  y: 0.76, face: 340 },
-                { key: 'desk_lamp',      x: -0.125,  z: -1.55, y: 0.76, face: 30 },
-                { key: 'papers_a',       x: 1.075,   z: -1.55, y: 0.76, face: 15 },      // the in-tray: the case file, face down
-                { key: 'clipboard_flat', x: 1.425,  z: -1.5,  y: 0.76, face: -20 },
-                { key: 'pen',            x: 0.725,  z: -1.45, y: 0.76, face: 75 },
-                { key: 'coffee_mug',     x: -0.075, z: -1.9,  y: 0.76, face: 20 },
-                { key: 'manila_folders', x: 1.875,   z: -1.9,  y: 0.76, face: 10 },
-                { key: 'false_window',   wall: 'n', x: -2.1, mount: 1.0 },
-                { key: 'vent_grille',    wall: 'n', x: 2.6, mount: 2.55 },
-                /* ── the east wall: THE WINDOW (the corner’s second outside wall), the files ── */
-                { key: 'false_window',   wall: 'e', z: -1.0, mount: 1.0 },
-                { key: 'filing_cabinet', wall: 'e', z: 1.2 },
-                { key: 'filing_cabinet', wall: 'e', z: 1.85 },
-                { key: 'lava_lamp',      x: 1.675,   z: -1.15, y: 0.76, face: 280 },            // on the desk's front corner
-                { key: 'potted_plant',   x: 2.75,  z: 2.35, face: 200 },
-                /* ── the south wall: THE PLAQUES, either side of the centre ── */
-                { key: 'wall_plaques',   wall: 's', x: -0.9, mount: 1.3 },
-                { key: 'wall_plaques',   wall: 's', x: 1.3,  mount: 1.3 },
-                { key: 'wall_clock',     wall: 's', x: 2.6, mount: 2.55 },
-                /* ── the west wall: the way out at 0.6, the plate, the hooks, the fridge you requisitioned in the closet ── */
-                { key: 'exit_sign',      wall: 'w', z: 0.6, mount: 2.9 },
-                { key: 'nameplate',      wall: 'w', z: -1.4, mount: 1.55 },
-                { key: 'hook_rail',      wall: 'w', z: 2.1 },
-                { key: 'mini_fridge',    x: -2.75, z: -2.1, face: 90 },               // requisitioned; nobody has asked for it back
-                { key: 'trash_bin',      x: -2.0,  z: -2.2, face: 10 },
-                /* ── the floor, the ceiling ── */
-                { key: 'rug_office',     x: 0.2,   z: 0.4 },
-                { key: 'teal_chair',     x: -0.125,  z: -0.5, face: 0 },                 // for whoever the Director is meeting — facing the Director
-                { key: 'teal_chair',     x: 1.775,   z: -0.5, face: 0 },
-                { key: 'egg_chair',      x: 1.9,   z: 1.7,  face: 315, color: 0xc9622c },      // THE RETRO-FUTURIST PASS: the ball chair in the corner, facing the desk
-                { key: 'fluorescent',    x: 0,     z: 0.4, ceil: true, face: 0 },
-                { key: 'saucer_pendant', x: -1.6,  z: 1.8, ceil: true },                       // THE RETRO-FUTURIST PASS: over the globe's corner
+                /* ── the lounge: two Chesterfields across a coffee table under the first chandelier, a wingback either side ── */
+                { key: 'shag_rug',          x: -5.25, z: -17.5, r: 3.2, color: 0x101a2e, color2: 0xd9c79e },
+                { key: 'chesterfield_sofa', x: -5.25, z: -19.6, face: 180 },
+                { key: 'chesterfield_sofa', x: -5.25, z: -15.4, face: 0 },
+                { key: 'coffee_table',      x: -5.25, z: -17.5 },
+                { key: 'wingback_chair',    x: -8.6,  z: -17.5, face: 90 },
+                { key: 'psx_armchair_1',    x: -1.9,  z: -17.5, face: 270 },
+                { key: 'crystal_chandelier', x: -5.25, z: -17.5, y: 5.4 },
+                { key: 'crystal_chandelier', x: -5.25, z: -5.25, y: 5.4 },
+                /* the west wall: the couch, the bust, the plants, the lamps */
+                { key: 'greek_couch',       x: -14.6, z: -8.75, face: 90 },
+                { key: 'marble_bust',       x: -14.7, z: -24.5, face: 90 },
+                { key: 'globe_lamp',        x: -14.6, z: -12.5 },
+                { key: 'globe_lamp',        x: -14.6, z: -28.6 },
+                { key: 'potted_plant',      x: -14.6, z: -4.5 },
+                { key: 'potted_plant',      x: -10.5, z: -30.5 },
+                { key: 'potted_plant',      x: 0.0,   z: -30.5 },
+                /* the piano in the north-east corner, by the office */
+                { key: 'decor_piano',       x: 10.5,  z: -28.6, face: 180 },
+                { key: 'globe_lamp',        x: 14.6,  z: -30.4 },
+                /* ── THE CORNER OFFICE: a glass box, its door in the middle bay, the name over it ── */
+                { key: 'office_glass',      x: 5.25, z: -22.75, face: 270, frame: 0xb8a172 },
+                { key: 'office_glass',      x: 5.25, z: -19.25, face: 270, frame: 0xb8a172 },
+                { key: 'office_glass_door', x: 5.25, z: -15.75, face: 270, text: ['CORNER OFFICE'], frame: 0xb8a172 },
+                { key: 'office_glass',      x: 5.25, z: -12.25, face: 270, frame: 0xb8a172 },
+                { key: 'office_glass',      x: 5.25, z: -8.75,  face: 270, frame: 0xb8a172 },
+                { key: 'room_wall', x: 10.5, z: -24.5, face: 180, len: 10.8, wallH: 4.9, t: 0.3, dadoH: 1.2, trimColor: 0xb8a172,
+                  front: { wall: 'urban:WoodPanelling1a', dado: 'urban:WoodPanelling1a', wallColor: 0x9a8670, dadoColor: 0x5a4632 },
+                  back:  { wall: 'urban:WoodPanelling1a', dado: 'urban:WoodPanelling1a', wallColor: 0x9a8670, dadoColor: 0x5a4632 } },
+                { key: 'room_wall', x: 10.5, z: -7.0, face: 180, len: 10.8, wallH: 4.9, t: 0.3, dadoH: 1.2, trimColor: 0xb8a172,
+                  front: { wall: 'urban:WoodPanelling1a', dado: 'urban:WoodPanelling1a', wallColor: 0x9a8670, dadoColor: 0x5a4632 },
+                  back:  { wall: 'urban:WoodPanelling1a', dado: 'urban:WoodPanelling1a', wallColor: 0x9a8670, dadoColor: 0x5a4632 } },
+                /* THE WINDOW: on the building's outside wall, behind the desk */
+                { key: 'false_window',      wall: 'e', z: -15.75, mount: 0.4, winW: 4.2, winH: 4.2 },
+                { key: 'brass_telescope',   x: 14.4, z: -20.6, face: 90 },
+                { key: 'rug_office',        x: 11.4, z: -15.75, span: 4.2 },
+                { key: 'exec_desk',         x: 11.6, z: -15.75, face: 270 },
+                { key: 'exec_chair',        x: 12.4, z: -15.75, face: 270 },
+                { key: 'desk_lamp',         x: 11.35, z: -16.75, y: 0.76, face: 250 },
+                { key: 'rotary_phone',      x: 11.4, z: -14.9, y: 0.76, face: 300 },
+                { key: 'papers_a',          x: 11.4, z: -15.6, y: 0.76, face: 15 },
+                { key: 'globe_lamp',        x: 14.6, z: -10.0 },
+                { key: 'potted_plant',      x: 14.6, z: -23.2 },
+                /* ── the pool deck, under the sky ── */
+                { key: 'penthouse_pool',    x: 0, z: 26.2, face: 180, poolW: 24.5, poolD: 10.5, fall: 40, glow: 0x1a6f86 },
+                { key: 'pool_lounger',      x: -10.5, z: 17.2, face: 0 },
+                { key: 'pool_lounger',      x: -8.4,  z: 17.2, face: 0 },
+                { key: 'patio_umbrella',    x: -5.6,  z: 16.6 },
+                { key: 'pool_lounger',      x: -2.8,  z: 17.2, face: 0 },
+                { key: 'pool_lounger',      x: 2.8,   z: 17.2, face: 0 },
+                { key: 'patio_umbrella',    x: 5.6,   z: 16.6 },
+                { key: 'pool_lounger',      x: 8.4,   z: 17.2, face: 0 },
+                { key: 'pool_lounger',      x: 10.5,  z: 17.2, face: 0 },
+                /* palms in planters, at the deck's corners */
+                { key: 'planter',           x: -13.5, z: 6.5, face: 0 },
+                { key: 'palm_tree',         x: -13.5, z: 6.5, y: 0.5, face: 20 },
+                { key: 'planter',           x: 13.5,  z: 6.5, face: 0 },
+                { key: 'palm_tree',         x: 13.5,  z: 6.5, y: 0.5, face: 200 },
+                { key: 'planter',           x: -14.0, z: 14.0, face: 90 },
+                { key: 'palm_tree',         x: -14.0, z: 14.0, y: 0.5, face: 110 },
+                { key: 'planter',           x: 14.0,  z: 14.0, face: 90 },
+                { key: 'palm_tree',         x: 14.0,  z: 14.0, y: 0.5, face: 290 },
+                { key: 'globe_lamp',        x: -14.6, z: 22.0 },
+                { key: 'globe_lamp',        x: 14.6,  z: 22.0 },
+                { key: 'globe_lamp',        x: -14.6, z: 29.5 },
+                { key: 'globe_lamp',        x: 14.6,  z: 29.5 },
             ],
             agents: [],
             npcSpots: [],
             onlineSpots: [],
-            lines: [
-                '“Two windows.” “The building has none.” “Then what are they?” “Two.”',
-                '“Is the closet still mine?” “Yes.” “And this?” “Also. The office does not take a room back; it adds one.”',
-                '“Who is the Director?” “The nameplate is blank.” “Whose office is this?” “The nameplate is blank on purpose.”',
-            ],
-            spawn: { x: -1.9, z: 0.6, face: 90 },
+            lines: [],
+            spawn: { x: -5.25, z: -27.5, face: 180 },
+            noWalkers: true,
         },
-        /* ── ROOM 8 · THE INFINITY POOL (HQ plan 7.4, 2026-09-14) — an
-           amenity on the Executive floor: an OPEN room (no ceiling, the
-           7.2-stage-3 shell) under Heaven's own sky, walled knee-high (a
-           parapet, `edge: 'low'`) with the cloud plain running out past it
-           over the void; the pool is a raised basin against the north
-           parapet (`infinity_pool` proc: the water at the coping, a weir
-           on the far side that looks over the edge), loungers, umbrellas,
-           the lamps. THE EDGE is a counter with no action (a panel: the
-           view, and who is on break — the top of the leaderboard); THE
-           RANKING is the board on the south parapet (→ the leaderboard).
-           Online silhouettes take the loungers (`onlineSpots`, as in Room
-           86). Optional later (plan 7.4): its own board. The shell reads
-           TERRAIN keys (tilefloor_2 / marble_light / cloud_2), like every
-           outdoor room. Viewer-local (RULE #2). ── */
-        pool: {
-            label: 'THE INFINITY POOL',
-            sub: 'ON BREAK · THE EDGE',
-            roomNo: '8', why: '∞ on its side — the user’s',
-            kind: 'box',
-            shell: {
-                w: 12, d: 9, h: 3.4,
-                wallH: 3.4, dadoH: 0.4,
-                open: true, edge: 'low',
-                floor: 'tilefloor_2', wall: 'marble_light', dado: 'marble_light', trim: 'teal', ceiling: 'ceiling',
-                apron: 'cloud_2', skirt: 'cloud_2', apronColor: 0xf4f0e2,
-                floorColor: 0xe9eef2,
-                pipes: false,
-                lights: [{ x: -4.5, z: -3.0 }, { x: 4.5, z: -3.0 }, { x: -4.5, z: 3.0 }, { x: 4.5, z: 3.0 }],
-                mood: { light: 0xfff0d0 },
-                /* Heaven's sky (EW_MAP_META prebuilt_heaven env): the tint, the fog, the divine roster, daylight */
-                sky: { night: 0, tint: 0xfff3d0, tintAmt: 0.38, stars: 0.15, nebula: 0.35, day: 1, clouds: 0.6, fog: { color: 0xfdf2d8, amount: 0.55, top: 0.05, band: 0.5 }, scenery: 'divine', density: 0.8 },
-                plate: { x: 0, z: -4.4, y: 2.2 },
-            },
-            doors: [
-                { id: 'lobby', wall: 's', x: 0, leaf: 'leaf_glass',
-                  label: 'THE PENTHOUSE', sub: 'BACK TO THE LOBBY',
-                  action: { room: 'executive', at: 'pool' },
-                  desc: 'The way back to the lobby. Towels are to be returned; the towels are not counted.' },
-            ],
-            counters: [
-                /* THE EDGE → nothing; the panel is the view and who is on break */
-                { id: 'edge', x: 0.75, z: -1.9, face: 0, plateY: 1.75, radius: 2.0, verb: 'LOOK',
-                  label: 'THE EDGE', sub: 'OVER THE VOID', action: {},
-                  desc: 'The far side of the pool is a weir. The water goes over it. Nobody has said where the water goes; the void has not said either.' },
-            ],
-            props: [
-                /* ── the pool: a raised basin against the north parapet, the weir looking over the edge ── */
-                { key: 'infinity_pool',  x: 0.75,     z: -2.5, face: 0 },
-                { key: 'wet_floor_sign', x: -2.2,  z: 2.2,  face: 140 },   // moved from (−3.6, −1.2): THE WEIR's landing (7.7 wave 2, 2026-09-16)
-                /* ── loungers along the west and east, an umbrella and a table between each pair ── */
-                /* the west pair moved 0.8 m south for THE WEIR's landing (7.7 wave 2, 2026-09-16) */
-                { key: 'pool_lounger',   x: -4.6,  z: 0.2,  face: 90 },
-                { key: 'pool_lounger',   x: -4.6,  z: 1.6,  face: 90 },
-                { key: 'pool_umbrella',  x: -4.9,  z: 0.9 },
-                { key: 'coffee_table',   x: -3.6,  z: 0.9 },
-                { key: 'solo_cup',       x: -3.6,  z: 0.9,  y: 0.46, face: 20 },
-                { key: 'pool_lounger',   x: 4.6,   z: -0.6, face: 270 },
-                { key: 'pool_lounger',   x: 4.6,   z: 0.8,  face: 270 },
-                { key: 'pool_umbrella',  x: 4.9,   z: 0.1 },
-                { key: 'coffee_table',   x: 3.6,   z: 0.1 },
-                { key: 'coffee_mug',     x: 3.6,   z: 0.1,  y: 0.46, face: 140 },
-                { key: 'pool_lounger',   x: -1.4,  z: 2.4,  face: 0 },
-                { key: 'pool_lounger',   x: 1.4,   z: 2.4,  face: 0 },
-                /* ── the palms and the lamps at the corners (the lights are the shell's point lights) ── */
-                { key: 'palm_tree',      x: -5.3,  z: -3.6, face: 20 },
-                { key: 'palm_tree',      x: 5.3,   z: -3.6, face: 200 },
-                { key: 'palm_tree',      x: 5.3,   z: 3.6,  face: 110 },
-                { key: 'potted_plant',   x: -2.0,  z: 3.9,  face: 30 },
-                /* ── the south side: the way in at 0, the ranking board by the towels ── */
-                { key: 'notice_board',   wall: 's', x: -3.2, mount: 0.0 },            // the board stands on the parapet (the low wall is 0.95 m; the board's own frame from the ground)
-                { key: 'trash_bin',      x: 2.6,   z: 3.9,  face: 250 },
-                { key: 'hook_rail',      wall: 's', x: 2.0, mount: 1.2 },            // the towels
-            ],
-            agents: [
-                { x: -1.4, z: 2.4, face: 0, pose: 'hqSit', gender: 'male', label: 'THE TOP OF THE BOARD', reach: 1.8,
-                  line: '“I am on break. The board says so. If the board changes while I am on break, the break is over and I was never here.”' },
-                { x: 2.95, z: -0.35, face: 0, pose: 'hqArms', gender: 'female', label: 'THE LIFEGUARD', reach: 1.8,
-                  line: '“Nobody swims. The water goes over the edge and I am not certified for the edge.”' },
-            ],
-            npcSpots: [
-                { x: 1.4, z: 2.4, face: 0 },        // on break, on the south lounger
-            ],
-            onlineSpots: [
-                { x: -4.6, z: 0.2,  face: 90 },
-                { x: 4.6,  z: 0.8,  face: 270 },
-                { x: 4.6,  z: -0.6, face: 270 },
-            ],
-            lines: [
-                '“Where does the water go?” “Over.” “Over what?” “The edge. After that it is the void’s water.”',
-                '“Is it heated?” “The void is not.” “And the pool?” “The pool is trying.”',
-                '“Top of the board.” “On break.” “For how long?” “Until the board disagrees.”',
-                '“Towels?” “By the ranking.” “How many?” “The office does not count towels. It counts Keys.”',
-            ],
-            spawn: { x: 0, z: 3.0, face: 0 },
-        },
+        /* corner (ROOM 4C · THE CORNER OFFICE) and pool (ROOM 8 · THE INFINITY POOL) — RETIRED 2026-11-26 (DOOR HQ 2.0 wave 4): both stand in the
+           PENTHOUSE (`executive`) now; DOOR_HQ.retired sends them there */
         /* ── INTERROGATION ROOM (DOOR HQ 2.0, the Gantry's west wall; mondo: no CPU training, no table at the door, the mirror is a window):
            14 x 17.5 m. The observation booth inside the door, the window in the wall across the room, the table in the middle of the room
            behind it, three squares from its doorway. ── */
@@ -87614,7 +87425,7 @@ const HQ_STAGE_RULES = {
        rebuild). A zone not listed keeps today's rooms and doors exactly; a later phase adds its zone here when its
        joins are built. `buildDelayMs` = the beat after the room's card drops before the first neighbour builds (the
        arrival stays smooth); `lampPickMs` = how often the lamp budget re-picks the nearest `lampsLive` point lights. */
-    zones: ['medwing', 'garage', 'basement', 'dumb', 'works', 'annex', 'labs', 'executive', 'derelict', 'hwing'], buildDelayMs: 600, lampPickMs: 500,   // Phase 4: THE BASEMENT; Phase 5 (2026-09-27): THE D.U.M.B. (door joins); THE LAND cut (ZONES_PLAN Z0): the stage is DOOR HQ's only; ZONES_PLAN Z2 (2026-09-30): the floors
+    zones: ['medwing', 'garage', 'basement', 'dumb', 'works', 'annex', 'labs', 'derelict', 'hwing'], buildDelayMs: 600, lampPickMs: 500,   // Phase 4: THE BASEMENT; Phase 5 (2026-09-27): THE D.U.M.B. (door joins); THE LAND cut (ZONES_PLAN Z0): the stage is DOOR HQ's only; ZONES_PLAN Z2 (2026-09-30): the floors
     /* a neighbour's PEOPLE (Phase 2): 'interior' = a closed room's cast (the nurse at her desk, the patient on his cot) is
        spawned with the room when it is built beside you, so the ward is not empty through its open door; an outdoor part's
        crowd still comes out when you cross (Phase 1's rule — a city block is dozens of rigs). 'none' = Phase 1's rule
@@ -88178,17 +87989,7 @@ const HQ_WORLD = {
                 { a: 'labs', b: 'interrogation', kind: 'door', door: 'interrogation', bDoor: 'labs' },
                 { a: 'labs', b: 'padded',        kind: 'door', door: 'padded',        bDoor: 'labs' },
             ] },
-        /* Z2 — PH (THE PENTHOUSE): the lobby, the corner office, the pool deck. */
-        executive: { label: 'THE PENTHOUSE', ground: 'hq', hub: 'executive', sky: null, clock: false,
-            parts: {
-                executive: { x: 0, z: 0, y: 34, rot: 0 },
-                corner:    { x: 8.9, z: -1.2, y: 34, rot: 0 },
-                pool:      { x: 2.2, z: -8.7, y: 34, rot: 0 },
-            },
-            joins: [
-                { a: 'executive', b: 'corner', kind: 'door', door: 'corner', bDoor: 'lobby' },
-                { a: 'executive', b: 'pool', kind: 'door', door: 'pool', bDoor: 'lobby' },
-            ] },
+        /* (Z2 — PH, THE PENTHOUSE zone: retired 2026-11-26, DOOR HQ 2.0 wave 4: the Penthouse is one room, the Corner Office and the Infinity Pool inside it) */
         /* (the records wing zone: retired 2026-11-26, DOOR HQ 2.0 wave 3: Records and the Clock Room are rooms on the Ring) */
         /* (the executive wing, Z2 floor M: RETIRED 2026-11-26, DOOR HQ 2.0 wave 3: the Bureau of Continuity is on the Lobby's gallery, the Trophy Case a cabinet on the Lobby's wall) */
         /* THE SPACESHIP (LEVEL_DESIGN_PLAN §6, 2026-09-30 — mondo: "the spaceship to have no load screens going between the rooms"):
