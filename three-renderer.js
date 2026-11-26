@@ -82,7 +82,7 @@ const ThreeRenderer = (function () {
         }
     })();
     /* THE BUILD LINE (the perf lens): bump the stamp in every PR that changes this file's walk / fight drawing */
-    var _EW_TR_STAMP = '11-26 nearest-first kept-looks';
+    var _EW_TR_STAMP = '11-26 no invisible wall';
     function _ewBuildTok() {
         var sc = document.querySelectorAll('script[src*="three-renderer.js"]'), t = '';
         for (var i = 0; i < sc.length; i++) { var m = /[?&]v=([^&#]+)/.exec(sc[i].src || ''); if (m) { t = m[1]; break; } }

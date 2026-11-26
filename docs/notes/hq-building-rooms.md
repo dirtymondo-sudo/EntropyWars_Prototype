@@ -1883,3 +1883,20 @@ Every DOOR HQ door into H-Wing carries `locked: true` (data.js `doorSiteState` r
 `_hqOpenPanel` shows only "Locked." in THE DIALOGUE BOX): the Ring, the Lobby's upper gallery, the Garage, the Works top (factory.js
 writes it) and the Gantry. The one way in is the Antechamber's door at the Works' bottom, by the Incinerator. H-Wing's own doors back
 out stay open (leaving by one is a shortcut, not a way in). Any door row can take `locked: true`.
+
+### NO INVISIBLE WALL + THE BOARD CROSSES (2026-11-26, second fix)
+mondo: "Still getting invisible walls, was riding into the lobby and it blocked me and the characters werent animated ... then they finally
+started animating and it let me go through." The nearest-first build order (above) wasn't the whole story. There were two causes:
+- **The board never crossed.** `_hqStageCross` returned at once while you were on the board, everywhere except the plot dungeons. A rider
+  rolled on in the old room's frame into the next room's own wall at the doorway. The people stood still because only the current room's
+  people animate. Now a rider crosses like a walker; only a grind waits, because its rail belongs to the old part. `_hqStageSwap` also
+  moves the ride's heights (lastY, airY0, launchY, airApex) by the step between the frames.
+- **An unbuilt room was a wall.** `_hqStageRoundSurface` and the level join's passages (`_hqPassJSurface` / `_hqPassJAir`) treated a
+  neighbour that wasn't on the stage yet as a wall. It is now a flat floor at its own height, so the walker goes through the doorway and
+  the crossing loads that room the old way (`_hqStageLoad`). It is rare now that the nearest part builds first, and never a wall.
+- A probe hook, `window.EW_HQ_STAGE_HOLD = ['<room id>']`, keeps those parts from being built, so a probe can walk at a room that isn't
+  there yet.
+Checked in the browser (probe-fast, llvmpipe):
+- With the Training Room held back, walking from the Ring reached it and it loaded.
+- With the Lobby held back, riding the board from the Ring reached it and it loaded.
+- Riding the board Lobby → Ring and Ring → Lobby crossed with no card. Walking Ring → Lobby crossed too. ERRORS [].
