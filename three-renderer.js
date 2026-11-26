@@ -97627,6 +97627,92 @@ const ThreeRenderer = (function () {
             var kerb = new THREE.Mesh(new THREE.TorusGeometry(ring * U, 0.07 * U, 4, 64), _hqMat(null, 1, 1, { color: 0xc9a227, shininess: 40 })); kerb.rotation.x = Math.PI / 2; kerb.position.y = 0.05 * U; g.add(kerb);
             return g;
         },
+        /* THE INCINERATOR (DOOR HQ 2.0 wave 4, 2026-11-26, the Works' bottom): the set piece in the middle of the room, centred on the pit.
+           The row stands at `y: lift` (1: a terrain room's prop over a sunk pit lands at max(ground, y)); everything here is drawn from the
+           room's floor (local y = -lift). `pitR` / `pitD` = the pit the terrain cuts (radius, depth), `roomH` = the room's height, `flueR` /
+           `flueBot` = THE FLUE hanging down the middle from the ceiling to that height. Drawn: the iron rim round the pit, the blackened
+           brick down to the fire, the fire bed and its flames, two girders across, the flue with soot bands and a flared mouth, a point of
+           daylight far up inside it (the Lobby's skylight, down the chimney), and the doors the Chute drops falling out of the mouth into
+           the fire, tumbling (a ticker, no scene walk). No footprint: the terrain's parapet ring is the wall round it. */
+        incinerator_furnace: function (U, p) {
+            p = p || {};
+            var g = new THREE.Group(), lift = +p.lift || 0, PR = +p.pitR || 8.5, PD = +p.pitD || 10.5, RH = +p.roomH || 24.5;
+            var FR = +p.flueR || 3.2, FB = +p.flueBot || 9, D2R = Math.PI / 180, base = new THREE.Group(); base.position.y = -lift * U; g.add(base);
+            var iron = _hqMat(null, 1, 1, { color: 0x2a2522, shininess: 36, specular: 0x4a3e34 });
+            /* the rim: an iron flange over the pit's edge, a ring of rivets, the hot lip inside it */
+            var rim = new THREE.Mesh(new THREE.RingGeometry((PR - 0.45) * U, (PR + 0.55) * U, 96, 1), iron); rim.rotation.x = -Math.PI / 2; rim.position.y = 0.03 * U; base.add(rim);
+            var rivet = _hqMat(null, 1, 1, { color: 0x4a423c, shininess: 60 });
+            for (var ri = 0; ri < 72; ri++) { var ra = ri * Math.PI * 2 / 72, rv = new THREE.Mesh(new THREE.SphereGeometry(0.05 * U, 5, 4), rivet); rv.position.set(Math.sin(ra) * (PR + 0.3) * U, 0.05 * U, Math.cos(ra) * (PR + 0.3) * U); base.add(rv); }
+            var lipMat = _hqMat(null, 1, 1, { color: 0xff7a2a, emissive: 0xff5a10, emissiveIntensity: 1.2, noAo: true });
+            var lip = new THREE.Mesh(new THREE.CylinderGeometry((PR - 0.42) * U, (PR - 0.42) * U, 0.12 * U, 96, 1, true), lipMat); lip.position.y = -0.1 * U; base.add(lip);
+            /* the shaft of the pit: old brick blackened toward the fire (seen from inside) */
+            var circ = 2 * Math.PI * PR;
+            var wallM = _hqMat('zl_hz_Brick_11__bricks_1', circ / 3, PD / 3, { color: 0x5a4034, shininess: 6, side: THREE.BackSide });
+            var shaft = new THREE.Mesh(new THREE.CylinderGeometry((PR - 0.35) * U, (PR - 0.35) * U, PD * U, 64, 1, true), wallM); shaft.position.y = (-PD / 2) * U; base.add(shaft);
+            var scorch = new THREE.MeshBasicMaterial({ color: 0xff6a20, transparent: true, opacity: 0.45, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.BackSide });
+            var hotBand = new THREE.Mesh(new THREE.CylinderGeometry((PR - 0.4) * U, (PR - 0.4) * U, (PD * 0.45) * U, 64, 1, true), scorch); hotBand.position.y = (-PD + PD * 0.225) * U; base.add(hotBand);
+            /* the fire bed: an orange floor, a white-hot heart, flames standing on it */
+            var bed = new THREE.Mesh(new THREE.CircleGeometry((PR - 0.3) * U, 64), _hqBasic(0xff6418)); bed.rotation.x = -Math.PI / 2; bed.position.y = (-PD + 0.25) * U; base.add(bed);
+            var heart = new THREE.Mesh(new THREE.CircleGeometry((PR * 0.5) * U, 48), _hqBasic(0xffe9b0)); heart.rotation.x = -Math.PI / 2; heart.position.y = (-PD + 0.3) * U; base.add(heart);
+            var flames = [];
+            for (var fi = 0; fi < 14; fi++) {
+                var fa = fi * 2.399, fr = (fi % 3 === 0) ? 1.2 : (PR * 0.35 + (fi * 0.37 % 1) * PR * 0.5);
+                var fl = _hzGlowSprite((2.6 + (fi % 4) * 0.7) * U, fi % 2 ? 0xff8a2a : 0xffc060, 0.75);
+                fl.position.set(Math.sin(fa) * fr * U, (-PD + 1.4) * U, Math.cos(fa) * fr * U); base.add(fl);
+                flames.push({ s: fl, ph: fi * 1.7, sz: (2.6 + (fi % 4) * 0.7), y: -PD + 1.4 });
+            }
+            var bloom = _hzGlowSprite((PR * 2.6) * U, 0xff7020, 0.55); bloom.position.y = (-PD * 0.45) * U; base.add(bloom);
+            /* two girders across the pit, below the rim: the scale of the drop */
+            [0, 90].forEach(function (deg) {
+                var gd = _hqBox(0.5, 0.8, PR * 2 - 0.4, iron); gd.position.y = -2.4 * U; gd.rotation.y = deg * D2R; base.add(gd);
+            });
+            /* THE FLUE: hung from the ceiling, its mouth flared over the fire; soot bands, rivets up the seams */
+            var fH = RH - FB, fCirc = 2 * Math.PI * FR;
+            var skin = _hqMat('urban:MetalPanel1a', fCirc / 3, fH / 3, { color: 0x5e4a40, shininess: 26, specular: 0x302820 });
+            var flue = new THREE.Mesh(new THREE.CylinderGeometry(FR * U, FR * U, fH * U, 48, 1, true), skin); flue.position.y = (FB + fH / 2) * U; base.add(flue);
+            var inner = new THREE.Mesh(new THREE.CylinderGeometry((FR - 0.05) * U, (FR - 0.05) * U, fH * U, 48, 1, true), _hqMat(null, 1, 1, { color: 0x140f0c, side: THREE.BackSide })); inner.position.y = flue.position.y; base.add(inner);
+            var soot = _hqMat(null, 1, 1, { color: 0x1a1512, shininess: 40, specular: 0x302820 });
+            for (var by = FB + 1.0; by < RH; by += 2.8) { var bd = new THREE.Mesh(new THREE.CylinderGeometry((FR + 0.07) * U, (FR + 0.07) * U, 0.26 * U, 48, 1, true), soot); bd.position.y = by * U; base.add(bd); }
+            var mouth = new THREE.Mesh(new THREE.CylinderGeometry(FR * U, (FR + 1.3) * U, 1.6 * U, 48, 1, true), _hqMat(null, 1, 1, { color: 0x2c2420, shininess: 20, side: THREE.DoubleSide })); mouth.position.y = (FB - 0.8) * U; base.add(mouth);
+            var mouthGlow = new THREE.Mesh(new THREE.CylinderGeometry((FR + 1.28) * U, (FR + 1.28) * U, 0.1 * U, 48, 1, true), lipMat); mouthGlow.position.y = (FB - 1.58) * U; base.add(mouthGlow);
+            /* the point of daylight: far up the chimney, the only light in the building that is not fire */
+            var day = new THREE.Mesh(new THREE.CircleGeometry((FR * 0.55) * U, 32), _hqBasic(0xfff6e2)); day.rotation.x = Math.PI / 2; day.position.y = (RH - 0.2) * U; base.add(day);
+            var dayGlow = _hzGlowSprite((FR * 2.2) * U, 0xfff0d0, 0.5); dayGlow.position.y = (RH - 1.0) * U; base.add(dayGlow);
+            var beamM = new THREE.MeshBasicMaterial({ color: 0xfff0d0, transparent: true, opacity: 0.06, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
+            var beam = new THREE.Mesh(new THREE.CylinderGeometry((FR * 0.5) * U, (FR * 0.9) * U, (RH - FB) * U, 24, 1, true), beamM); beam.position.y = ((RH + FB) / 2) * U; base.add(beam);
+            /* the doors coming down the flue: out of the mouth, tumbling, into the fire, flaring */
+            var falls = [];
+            for (var di = 0; di < 4; di++) {
+                var piv = new THREE.Group(), lf = _hqWorksLeaf(U, 0.9, 2.0, _hqProcSeed++, di % 2 ? 1 : -1);
+                lf.position.set(-0.45 * U, -1.0 * U, 0); piv.add(lf); base.add(piv);
+                falls.push({ g: piv, ph: di / 4, ax: (di * 1.3) % 2 - 1, az: ((di * 0.7) % 2) - 1, spin: 0.8 + di * 0.35 });
+            }
+            var embers = [];
+            for (var ei = 0; ei < 10; ei++) { var em = _hzGlowSprite(0.45 * U, 0xffb050, 0.9); base.add(em); embers.push({ s: em, ph: ei * 0.37, a: ei * 2.1, r: 1 + (ei % 5) * 1.3 }); }
+            var seed = (_hqProcSeed++) * 0.7, PERIOD = 6.5;
+            if (_hq) _hq.tickers.push(function (dt, now) {
+                var t = now * 0.001 + seed, k, f;
+                for (k = 0; k < flames.length; k++) {
+                    f = flames[k]; var fl2 = 0.8 + 0.2 * Math.sin(t * 7 + f.ph) + 0.12 * Math.sin(t * 17 + f.ph * 2);
+                    f.s.scale.set(f.sz * fl2 * U, f.sz * (1.1 + 0.4 * fl2) * U, 1); f.s.position.y = (f.y + 0.3 * Math.sin(t * 5 + f.ph)) * U;
+                }
+                bloom.material.opacity = 0.45 + 0.12 * Math.sin(t * 3.1);
+                for (k = 0; k < falls.length; k++) {
+                    var F = falls[k], c = ((t / PERIOD) + F.ph) % 1, top = FB + 1.5, drop = top + PD - 0.5;
+                    var y = top - drop * c * c;
+                    F.g.position.set(F.ax * 2.2 * c * U, y * U, F.az * 2.2 * c * U);
+                    F.g.rotation.set(c * F.spin * 5, c * F.spin * 2, c * F.spin * 3);
+                    var s = c > 0.93 ? Math.max(0.05, 1 - (c - 0.93) / 0.07) : 1; F.g.scale.set(s, s, s);
+                    F.g.visible = y < FB - 0.2 && c < 0.995;
+                }
+                for (k = 0; k < embers.length; k++) {
+                    var E = embers[k], ce = ((t * 0.18) + E.ph) % 1;
+                    E.s.position.set(Math.sin(E.a + ce * 2) * E.r * U, (-PD + 1 + ce * (PD + 9)) * U, Math.cos(E.a + ce * 2) * E.r * U);
+                    E.s.material.opacity = 0.9 * (1 - ce);
+                }
+            });
+            return g;
+        },
         saucer_pendant: function (U, p) {
             var g = new THREE.Group();
             var cream = _hqMat(null, 1, 1, { color: (p && p.color != null) ? p.color : 0xf1ece0, shininess: 30, specular: 0x333333 });
