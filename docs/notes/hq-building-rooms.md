@@ -1764,3 +1764,48 @@ PH stop lands at its `elevator` door and keeps its gate, minClearance 4 + 12 Key
 - **RETIRED:** `corner` and `pool` -> `executive` (DOOR_HQ.retired); the PH zone in HQ_WORLD and its HQ_STAGE_RULES entry are gone (one
   room, nothing to join). `links.weir_bermuda` end a stands beside the weir now (x -14, z 27).
 - `node find-doorways.js executive`: clear.
+
+## DOOR HQ 2.0, WAVE 4: THE IMPOSSIBLE DOORS (2026-11-26)
+mondo: "wonder if you could make some doors work like the portal gun to allow this (disorienting architecture or non Euclidean
+geometry)"; H-Wing: "open a door and it leads to an outside room with a lone door standing across the other side, walk to it and open it
+and I'm back in h-wing"; "way less loading screens". A door of one room and a door of a room that stands anywhere are ONE doorway: no
+card, no load, and the two rooms never have to fit next to each other.
+- **The rows** (data.js `HQ_STAGE_RULES.impossible`, each thread adds its own): `{ a, door, b, bDoor }` = THE DARK DOORWAY (the opening
+  is black; you walk into it, the camera follows you into the dark, and you are in `b`). `see: true` = THE SEE-THROUGH DOOR (you see `b`
+  through the open frame before you step in, the walker who went through is seen in it). `look: true` = a window onto `b`, never walked
+  through. `window: { wall, x | z, y, w, h }` in place of `door` = a picture on a box room's wall with nothing cut (a prop or painted
+  window's glass; always `look`); `below: <m>` stands `b` lower than the doorway (a window looking down onto it). Either end may be a
+  box room's wall door, a box room's FREE-STANDING door (`wall: 'free'`, `x`, `z`, `face` = the heading its front faces: the lone door
+  in a vignette; it works from its front only, from behind it is a door in a field) or a door of a round hub (the Ring, the Lobby, its
+  gallery); never two hubs. Any room may have any number. `HQ_STAGE_RULES.impDropM` / `impScale` / `impSeeM` / `impDepthM` tune it.
+- **How it works** (data.js `hqStageImpJoins` / `hqImpDoorFrame` / `hqStageImpGeom` / `hqStageImpNeighbours` / `hqStageImpDoorJoin`;
+  three-renderer.js THE IMPOSSIBLE DOORS, `_hqImp*`): THE STAGE builds `b` as a neighbour of `a` (its builders, gate, warm-up, lamps,
+  people), placed for the walk as if it stood right behind the door (THE DOOR JOIN's geometry: `b`'s door `wallM` past `a`'s, its way
+  out pointing back in) but DRAWN `impDropM` (3,000 m) under it, so it never shows through a wall and its lamps never light the wrong
+  room (the lamp budget and the LOD levels read it where it is walked). The doorway is cut, lined and swung like a joined door's. Once
+  the walker's middle passes the doorway's plane inside its frame, the floor, air and boom past the plane are `b`'s; when the camera
+  passes it too (or the walker is 4.5 m in, or in first person) the stage swaps: you stand in `b`. The doorway is a box from the plane
+  into the far side: black, or (`see`) the far room drawn from the camera moved by the drop into a render target (the mirrors' rule:
+  each pixel reads what the eye sees there; everything on this side of the plane clipped off), only while it is on screen, within
+  `impSeeM`, and from the front. The far room is drawn by this room's light until you cross (then THE BLEND eases to its own).
+- **The rows today:** THE WORKS STAIR (`labs.stair` -> `downstair.labs`, dark: the Gantry's stair door opens onto the Stair's landing,
+  7 m up, with no card, and the Stair is staged with the Incinerator, so the Gantry to the pit is one walk) and ALL FOURTEEN of H-Wing's
+  free-standing plain doors, see-through: the four vignettes (`desert`/`desert_out`, `pines`/`pines_out`, `moon`/`moon_out`,
+  `corn`/`corn_out` -> each vignette's `hall` / `lone`) and the six uncanny rooms (`mandela`, `upsidedown`, `home`, `thirteenth`,
+  `pool`, `garden`). Walked in the probe: H-Wing -> the Desert at Dusk -> its lone door -> back in H-Wing at `desert_out`, then the
+  Gantry -> the Stair, no card either time.
+- **Two doors to one room** (a vignette's hall door and lone door): data.js gives the room ONE neighbour with an `alts` row per doorway;
+  the renderer (`_hqImpAlts`) stands the part behind the doorway nearest the walker (2 m of hysteresis, never while you are in one; the
+  move happens 3,000 m under the floor). The other doorway is dark until you come nearer to it.
+- **THE BUILD REACH** (`impBuildM` 30, `impKeepM` 60): a room behind impossible doors is built only while you are within 30 m of one of
+  its doorways, and taken down once you are 60 m from all of them (H-Wing has ten such rooms; it never holds them all). Until it stands
+  its doorway is black and walking in is the plain door (the card).
+- **THE THRESHOLD:** through the far wall's thickness and a body past it the floor is the doorway's own (asked alone, the far room reads
+  its own wall there and the walker stalled on the plane).
+- **Not yet:** the Corner Office window (the Penthouse `executive`, false window on the east wall of the Corner Office): one row
+  `{ a: 'executive', window: { wall: 'e', z: <its z>, y: 4, w, h }, b: <the room to show>, bDoor: <a door of it>, look: true }` once
+  mondo says what it shows. The far room's fog is this room's in the picture; an open-air room's sky shows only through the doors of the
+  first open-air room the stage built (another vignette's doorway shows no sky until you are in its hall).
+- Off: `window.EW_HQ_NO_IMPOSSIBLE = true` (re-enter). Console: `ThreeRenderer.hq.impossible()` -> `{ id, in, crossed, recs: [{ id, door,
+  see, look, on, shown, drawn, d }] }`. RULE #2: viewer-local, nothing on `state`, nothing relayed. RULE #1e: the frame reads only this
+  room's doorways.
