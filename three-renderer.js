@@ -1586,6 +1586,35 @@ const ThreeRenderer = (function () {
         if (!I || I.length !== mp.length) { var keep = this.geometry; this.geometry = g; this.updateMorphTargets(); this.geometry = keep; }
     }
 
+    /* THE MORPH LIST IS NEVER MISSING (2026-11-26, mondo's DOOR HQ F3: "skipped draws 56 (first: SkinnedMesh / ew_node_prog:ShaderMaterial:
+       can't access property "element", influences is null)" and "238x MeshBasicNode on skinned EWCreator_eyes [same key, same moment]").
+       three's node renderer reads a mesh's morphTargetInfluences ONCE, the first time it builds that mesh with face shapes, and keeps
+       what it found for good (MorphNode's per-mesh data): a mesh built with shapes on its geometry but no list (a clone made before the
+       face shapes landed, a twin, a warm-up build that runs no onBeforeRender, the eyes rebuilt with `undefined`) kept a null list, so
+       every build of it threw, the draw was skipped and the build was tried again (the 238). The guards before the draw
+       (_morphListGuard / _twinFollowParent) came too late for that. Now the list is never missing: reading morphTargetInfluences off any
+       mesh whose geometry has shapes and no list makes a list of zeros (the rest face) for it on the spot. A list the game sets is kept as
+       it is. Classic WebGL and WebGPU alike (three.core's Mesh). Off: window.EW_NO_MORPH_KEEP (before the first map). */
+    function _ewMorphListKeep() {
+        try {
+            if (typeof window !== 'undefined' && window.EW_NO_MORPH_KEEP) return;
+            var P = THREE && THREE.Mesh && THREE.Mesh.prototype; if (!P || P._ew_morphKeep) return;
+            var own = Object.getOwnPropertyDescriptor(P, 'morphTargetInfluences'); if (own) return;   // someone else owns it
+            Object.defineProperty(P, '_ew_morphKeep', { value: true });
+            Object.defineProperty(P, 'morphTargetInfluences', {
+                configurable: true, enumerable: true,
+                get: function () {
+                    var v = this._ew_mti;
+                    if (v == null) {
+                        var g = this.geometry, ma = g && g.morphAttributes, a = ma && (ma.position || ma.normal || ma.color);
+                        if (a && a.length) { v = []; for (var i = 0; i < a.length; i++) v.push(0); Object.defineProperty(this, '_ew_mti', { value: v, writable: true, configurable: true, enumerable: false }); }
+                    }
+                    return v;
+                },
+                set: function (v) { Object.defineProperty(this, '_ew_mti', { value: v, writable: true, configurable: true, enumerable: false }); }
+            });
+        } catch (e) { console.warn('[ThreeRenderer] the morph list keep could not be set up', e); }
+    }
     function _makeModelSilhouetteMaterial(color, skinned) {
         var mat = new THREE.ShaderMaterial({
             uniforms: {
@@ -54428,7 +54457,7 @@ const ThreeRenderer = (function () {
                model mask) is drawn before the frame and is not it either */
             var quad = !!(sc && sc.isQuadMesh), side = !!this._ew_sideRender;
             var outer = !depth && !shadowPass && !quad && !side;
-            if (outer) { this._ew_shadowFrame = true; var _fsp = _lensIn('render: gpu frees'); try { _ewGpuFreeLater(this); } finally { _lensOut(_fsp); } var _nsp = _lensIn('render: node + rig ticks'); try { _ewNodeTick(); _ewRigTick(sc, cam); } finally { _lensOut(_nsp); } var _bsp = _lensIn('bundle check'); try { _ewBunTick(this, sc, cam); } finally { _lensOut(_bsp); } }
+            if (outer) { this._ew_shadowFrame = true; var _fsp = _lensIn('render: gpu frees'); try { _ewGpuFreeLater(this); } finally { _lensOut(_fsp); } var _nsp = _lensIn('render: node + rig ticks'); try { _ewNodeTick(); _ewRigTick(sc, cam); } finally { _lensOut(_nsp); } if (!this._ew_noBunTick) { var _bsp = _lensIn('bundle check'); try { _ewBunTick(this, sc, cam); } finally { _lensOut(_bsp); } } }   // THE IMPOSSIBLE DOORS' picture: the real camera's check only (_hqImpDraw)
             /* THE RENDER BUNDLES (W6): a point light's six cube faces share one camera — they draw the groups the classic
                way, frustum-culled per face, instead of replaying a bundle recorded unculled */
             var unb = shadowPass && cam && cam.isPerspectiveCamera && _ewBun.marked.length ? _ewBun.marked : null;
@@ -54689,6 +54718,7 @@ const ThreeRenderer = (function () {
     function init() {
         if (initialized) return;
         _ewSpriteGeoKeep();   // THE SPRITES' ONE SHAPE IS KEPT
+        _ewMorphListKeep();   // THE MORPH LIST IS NEVER MISSING
         _parentEl = document.querySelector('.map-center');
         if (!_parentEl) { console.warn('[ThreeRenderer] .map-center not found'); return; }
 
@@ -107559,7 +107589,7 @@ const ThreeRenderer = (function () {
         fs: ['uniform sampler2D tPortal; uniform float uOn; uniform vec3 uDark; varying vec4 vImp;',
             'void main() { vec4 r = texture2DProj(tPortal, vImp); gl_FragColor = vec4(mix(uDark, r.rgb, uOn), 1.0); }'].join('\n')
     };
-    var _hqImpBias = null, _hqImpFr = null, _hqImpPM = null;
+    var _hqImpBias = null, _hqImpFr = null, _hqImpPM = null, _hqImpCamOne = null;
     function _hqImpMat() {
         var m = new THREE.ShaderMaterial({ uniforms: { tPortal: { value: null }, uOn: { value: 0 }, uDark: { value: new THREE.Color(0x000000) }, uTexMat: { value: new THREE.Matrix4() } },
             vertexShader: _HQ_IMP_SHADER.vs, fragmentShader: _HQ_IMP_SHADER.fs, side: THREE.DoubleSide, depthWrite: true, transparent: false, fog: false });
@@ -107719,7 +107749,7 @@ const ThreeRenderer = (function () {
         var I = H.imp, st = H.stage; if (!I || !st || !renderer || !H.camera) return;
         var pl = H.player, G = pl && pl.entry && pl.entry.group;
         if (I.hid && G) { G.visible = I.was; I.hid = false; }
-        var U = _hqUnits(), cam = H.camera, cp = cam.position, ex = cp.x / U, ez = cp.z / U, seeM = +HQ_STAGE_RULES.impSeeM || 45, hide = false;
+        var U = _hqUnits(), cam = H.camera, cp = cam.position, ex = cp.x / U, ez = cp.z / U, seeM = +HQ_STAGE_RULES.impSeeM || 45, hide = false, cands = null;
         cam.updateMatrixWorld();
         if (!_hqImpFr) { _hqImpFr = new THREE.Frustum(); _hqImpPM = new THREE.Matrix4(); _hqImpBias = new THREE.Matrix4().set(0.5, 0, 0, 0.5, 0, 0.5, 0, 0.5, 0, 0, 0.5, 0.5, 0, 0, 0, 1); }
         _hqImpPM.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse); _hqImpFr.setFromProjectionMatrix(_hqImpPM);
@@ -107735,8 +107765,35 @@ const ThreeRenderer = (function () {
             var u = r.mat.uniforms;
             if (!on || !_hqImpAltOn(r) || !r.see || Math.hypot(ex - F.x, ez - F.z) > seeM) { u.uOn.value = 0; continue; }
             if (!_hqImpFr.intersectsBox(r.box)) continue;
-            if (_hqImpDraw(H, r, E, G)) { u.uOn.value = 1; u.tPortal.value = r.rt.texture; u.uTexMat.value.copy(_hqImpBias).multiply(_hqImpPM); }
-            else u.uOn.value = 0;
+            /* THE PORTAL BUDGET (2026-11-26, mondo's H-Wing F3: 5.6 FPS, "mirror/extra: classic draws 17.3" ms a frame, one dip 1635 ms):
+               every see-through doorway on screen drew the whole scene again, every frame. Now at most HQ_STAGE_RULES.impPerFrame of them
+               draw a frame: the nearest every impEveryN frames, the others every impFarEveryN, the most overdue first. A doorway not drawn
+               this frame keeps its last picture and the view it was drawn from (its own uTexMat), so it never goes dark between turns.
+               The old rule (each one every frame): window.EW_HQ_IMP_EVERY_FRAME. */
+            var dd = Math.hypot(ex - F.x, ez - F.z);
+            if (!cands) cands = [];
+            cands.push({ r: r, E: E, d: dd });
+        }
+        if (cands && cands.length) {
+            var allF = typeof window !== 'undefined' && !!window.EW_HQ_IMP_EVERY_FRAME;
+            var fN = I.frame = (I.frame | 0) + 1, per = allF ? 99 : Math.max(1, +HQ_STAGE_RULES.impPerFrame || 1);
+            var nEv = Math.max(1, +HQ_STAGE_RULES.impEveryN || 2), fEv = Math.max(nEv, +HQ_STAGE_RULES.impFarEveryN || 6);
+            cands.sort(function (a, b) { return a.d - b.d; });
+            cands.forEach(function (c, ci) {
+                var rr = c.r, fresh = !rr.rtOk || rr.rtAlt !== rr.ai || rr.rtE !== c.E;   // never drawn (or the room beyond was rebuilt): first in line
+                c.due = fresh ? 1e6 - c.d : (fN - (rr.lastF | 0)) - (ci === 0 ? nEv : fEv);
+            });
+            cands.sort(function (a, b) { return b.due - a.due; });
+            var drawnN = 0;
+            for (var ci2 = 0; ci2 < cands.length; ci2++) {
+                var c2 = cands[ci2], r2 = c2.r, u2 = r2.mat.uniforms;
+                if (drawnN < per && (allF || c2.due >= 0)) {
+                    drawnN++;
+                    if (_hqImpDraw(H, r2, c2.E, G)) { r2.rtOk = true; r2.rtAlt = r2.ai; r2.rtE = c2.E; r2.lastF = fN; u2.uOn.value = 1; u2.tPortal.value = r2.rt.texture; u2.uTexMat.value.copy(_hqImpBias).multiply(_hqImpPM); }
+                    else { r2.rtOk = false; u2.uOn.value = 0; }
+                } else if (r2.rtOk && r2.rtAlt === r2.ai && r2.rtE === c2.E) { u2.uOn.value = 1; u2.tPortal.value = r2.rt.texture; }   // its last picture
+                else u2.uOn.value = 0;
+            }
         }
         if (hide && G) { I.was = G.visible; G.visible = false; I.hid = true; }   // gone through: drawn only in the room beyond (the see-through picture)
     }
@@ -107746,7 +107803,7 @@ const ThreeRenderer = (function () {
         var w = Math.max(64, Math.round((H.w || 960) * sc)), h = Math.max(64, Math.round((H.h || 540) * sc));
         if (!r.rt) r.rt = new THREE.WebGLRenderTarget(w, h, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat, stencilBuffer: false });
         else if (r.rt.width !== w || r.rt.height !== h) r.rt.setSize(w, h);
-        var mc = r.cam || (r.cam = new THREE.PerspectiveCamera());
+        var mc = _hqImpCamOne || (_hqImpCamOne = new THREE.PerspectiveCamera()); r.cam = mc;   // one camera for every doorway: one set of recordings, not one per door
         mc.copy(cam, false); mc.position.y += dyU; mc.updateMatrixWorld(true);
         /* the far side of the plane only (a hair short of it: the far room's own doorway frame stays) */
         var ck = F.window ? (F.gap || 0) + 0.45 : -0.02;   // THE WINDOW: past the far room's own wall too (nothing is cut there: its wall would fill the pane)
@@ -107777,6 +107834,21 @@ const ThreeRenderer = (function () {
         var CG = (renderer.isWebGPURenderer && typeof window !== 'undefined' && window.THREE_GPU && window.THREE_GPU.ClippingGroup) ? (r.cg || (r.cg = new window.THREE_GPU.ClippingGroup())) : null, kids = null;
         var gy = G ? G.position.y : 0, ok = false;
         H.imp.recs.forEach(function (q) { q.mesh.visible = false; });
+        /* ONLY THE ROOM BEYOND (2026-11-26, mondo's H-Wing F3: "replay: a group, all of it 41 ms", 49.6 re-records/s): the picture drew
+           the WHOLE scene from a second camera, the room you stand in and every other built room too. Their recordings were
+           replayed for that camera (a recording is drawn whole, never culled) and every one of their pieces had its values written
+           again for it, then again for the real camera, every frame; the bundle check also ran for that camera and saw other
+           lamps. Now, for this one render, the other parts are hidden (their lights stay: THE LIGHT RIG keeps every shader's light
+           list), the part you stand in shows only its walker (once through the doorway), and the render skips the bundle check
+           (`_ew_noBunTick`): the real camera's check is the only one. WebGPU with the rig only (classic WebGL keys its programs on the
+           light count, so there the whole scene draws as before). Old rule: window.EW_HQ_IMP_WHOLE_SCENE. */
+        var hidL = [], wholeS = (typeof window !== 'undefined' && !!window.EW_HQ_IMP_WHOLE_SCENE) || !renderer.isWebGPURenderer || _ewRigOff(), inThis = H.stage && H.stage.impIn === r.key;
+        if (!wholeS) {
+            var farR = E.P.partRoot, hideO = function (o) { if (o && o !== farR && o.visible !== false && !o.isLight) { o.visible = false; hidL.push(o); } };
+            var stp = H.stage && H.stage.parts;
+            if (stp) for (var pid in stp) { var PE = stp[pid]; if (PE && PE !== E && PE.attached && PE.P && PE.P.partRoot) hideO(PE.P.partRoot); }
+            if (H.partRoot && H.partRoot !== farR) { var hk = H.partRoot.children; for (var hi = 0; hi < hk.length; hi++) { var hc = hk[hi]; if (hc === farR || (inThis && hc === H.charGroup)) continue; if (hc.isLight || hc.name === 'hq_part_scene') { if (hc.name === 'hq_part_scene') { for (var hj = 0; hj < hc.children.length; hj++) hideO(hc.children[hj]); } continue; } hideO(hc); } }
+        }
         try {
             if (G) { G.position.y = gy + dyU; G.updateMatrixWorld(true); }   // the walker who has gone through stands in it
             sky.forEach(function (o) { o.position.y += dyU; o.updateMatrixWorld(true); });   // the open sky round the far room
@@ -107784,9 +107856,12 @@ const ThreeRenderer = (function () {
             else renderer.clippingPlanes = [cpl];
             if (renderer.shadowMap) renderer.shadowMap.needsUpdate = false;
             renderer.setRenderTarget(r.rt); renderer.autoClear = true; renderer.clear();
+            if (!wholeS) renderer._ew_noBunTick = true;
             renderer.render(H.scene, mc); r.drawn++; ok = true;
         } catch (e) { if (!r.warned) { r.warned = true; console.warn('[HQ impossible] the picture through ' + r.id + ' failed', e); } }
         finally {
+            renderer._ew_noBunTick = false;
+            for (var hx = 0; hx < hidL.length; hx++) hidL[hx].visible = true;
             if (kids) {
                 var lent = H.scene.children;
                 for (var li = 0; li < lent.length; li++) { if (lent[li] !== CG && kids.indexOf(lent[li]) < 0) kids.push(lent[li]); }
