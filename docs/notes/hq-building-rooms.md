@@ -1387,3 +1387,25 @@ Challenge button and HQ_PARTY_RULES.restCounter all read it).
   the wing's east door. `medical` left the medwing zone (a card between them). When the Works rebuild moves the Hold and the
   Interrogation Room down, take out the staff door and retire `medwing`.
 - `node find-doorways.js medical`: clear.
+
+## DOOR HQ 2.0, WAVE 2: THE DOOR STORE (2026-11-26)
+mondo: "The Hatch/The Dispensary/Shop needs to be renamed to Door Store and only door store and no subtitles. Needs to be a physical
+store/shop that sells door. No buying races in story mode. No need for the party builder to be there either. Potions should be sold from
+the vending machines". Plan: `docs/plans/door-hq-2/FLOOR_PLANS.md` (lobby level, north-east of Rhonda), `LOOK_BOOK.md` "Door Store".
+- THE ROOM: data.js `DOOR_HQ.rooms.doorstore` (label DOOR STORE, nothing else), a box 21 x 17.5 m, 7 m high, charcoal walls, oak floor.
+  Its front is OPEN onto the Lobby: the `lobby` row `{ wall: 's', x: 0, open: { w: 14, h: 4.5 } }` (no leaf) meets the Lobby's
+  `doorstore` row through HQ_STAGE_RULES.round (`{ a: 'central_egress', door: 'doorstore', b: 'doorstore', bDoor: 'lobby' }`, no card).
+  The `open` opening is the Lobby thread's (hqDoorOpening); the join row is inert until the Lobby's door is on main.
+- THE STOCK: catalogue `store_door` (proc, three-renderer.js `_hqProcBuilders.store_door`): a plinth in the tier's colour, the teal
+  D.O.O.R. frame, the leaf shut in it (T1 `leaf_wooden`, T2 `leaf_security`, T3 `leaf_vault`), jamb lamps (a pair a tier; the Tuned Door
+  the six type colours), a halo, its own light, and a tag reading ITEM_RULES name + shopPrice LIVE. A row's `item` = a capture door;
+  `leaf` with no item = a display door (the window display, the futuristic one). Face 180 = the front toward the Lobby (+z).
+- THE TILL: counter `till` (overlay `pharmacy`, `shelf: 'doors'`). ONE shop panel, two shelves: data.js `HQ_DISPENSARY.shelves`
+  (`doors` = hqBagCategoryOf 'doors', `potions` = the rest), `hqShopStock(shelf)`; map.js `_hqPharmacyHtml(shelf, title)` heads the panel
+  with the counter's own name and the wallet, no subtitle, no blurb. HQ_DISPENSARY.room/counter = doorstore/till.
+- THE VENDING MACHINES: data.js `hqVendingApply()` (end of data.js, after hqOneNameApply) makes EVERY `vending_machine` prop in a DOOR HQ
+  room a VENDING MACHINE counter on the `potions` shelf (round room: its deg, 1 m in; box room: 1 m in from its wall, or its x, z).
+  A room thread only places the machine. Bisect: `window.EW_HQ_NO_VENDING`.
+- RETIRED: `DOOR_HQ.retired.dispensary = 'doorstore'`; the Medical Wing's `dispensary` door is cut (`DOOR_HQ.cut.doors.medwing`); the
+  medwing stage zone no longer holds it. The Quartermaster (races, party builder) was cut in wave 1; nothing in story sells races.
+- OPEN for mondo: nobody staffs the till (DOOR HQ holds story characters only; who runs the Door Store is his call).

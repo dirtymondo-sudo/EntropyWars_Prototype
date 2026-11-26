@@ -36632,7 +36632,7 @@ const DOOR_HQ = {
                 { key: 'store_door', leaf: 'leaf_glass_exec', x: -8.6, z: 6.6, face: 215 },
                 { key: 'store_door', leaf: 'leaf_hotel',      x: 8.6,  z: 6.6, face: 145 },
                 /* ── the till at the back ── */
-                { key: 'booking_desk',  x: 0, z: -6.6, face: 180 },
+                { key: 'booking_desk',  x: 0, z: -6.6, face: 0 },     // the screens to the back wall, where a clerk would stand
                 { key: 'wall_clock',    wall: 'n', x: -5.5, mount: 4.0 },
                 { key: 'potted_plant',  x: -3.2, z: -7.8 },
                 { key: 'potted_plant',  x: 3.2,  z: -7.8 },
