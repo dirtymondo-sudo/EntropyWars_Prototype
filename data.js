@@ -33018,11 +33018,11 @@ const DOOR_HQ = {
            backrest is the tallest band's centroid, the front is the other way) and
            the model is turned so that front is +Z, the placer's contract. Nobody sits
            with the chair's back between them and the desk again. */
-        teal_chair:        { file: 'Meshy_AI_a_teal_office_chair_0903105124_texture.glb',             h: 0.96, foot: 0.32, front: 'back', seat: 0.46 },
-        office_chair:      { file: 'Meshy_AI_an_office_chair_0903105134_texture.glb',                 h: 0.96, foot: 0.32, front: 'back', seat: 0.46 },
-        folding_chair:     { file: 'Meshy_AI_a_folding_chair_0903105155_texture.glb',                 h: 0.84, foot: 0.28, front: 'back', seat: 0.44 },
-        curved_couch:      { file: 'Meshy_AI_a_curved_couch_0903105529_texture.glb',                  span: 2.6, foot: 1.0, front: 'back', seat: 0.42 },
-        curved_office_couch:{ file: 'Meshy_AI_a_curved_office_couch_0903105539_texture.glb',          span: 2.6, foot: 1.0, front: 'back', seat: 0.42 },
+        teal_chair:        { file: 'Meshy_AI_a_teal_office_chair_0903105124_texture.glb',             h: 0.96, foot: 0.32, front: 'back', seat: 0.42, seatZ: 0.02 },
+        office_chair:      { file: 'Meshy_AI_an_office_chair_0903105134_texture.glb',                 h: 0.96, foot: 0.32, front: 'back', seat: 0.44, seatZ: 0.02 },
+        folding_chair:     { file: 'Meshy_AI_a_folding_chair_0903105155_texture.glb',                 h: 0.84, foot: 0.28, front: 'back', seat: 0.43, seatZ: 0.02 },
+        curved_couch:      { file: 'Meshy_AI_a_curved_couch_0903105529_texture.glb',                  span: 2.6, foot: 1.0, front: 'back', seat: 0.30, seatZ: -0.08 },
+        curved_office_couch:{ file: 'Meshy_AI_a_curved_office_couch_0903105539_texture.glb',          span: 2.6, foot: 1.0, front: 'back', seat: 0.58, seatZ: -0.18 },
         filing_cabinet:    { file: 'ebd_laundry_filing_cabinet.glb', base: 'misc',                h: 1.32, foot: 0.40, wall: true },
         round_cabinet:     { file: 'Meshy_AI_a_round_filing_cabinet_0903105248_texture.glb',          h: 1.10, foot: 0.45 },
         office_locker:     { file: 'Meshy_AI_an_office_locker_0903110307_texture.glb',                h: 1.85, foot: 0.40, wall: true },
@@ -33112,9 +33112,9 @@ const DOOR_HQ = {
         brazier:            { file: 'Meshy_AI_brazier_0917035429_texture.glb',                        base: 'misc', h: 1.3, foot: 0.4, block: true, glow: { y: 1.25, size: 1.6, color: 0xff9a40 }, light: { color: 0xff9040, intensity: 0.85, dist: 9, y: 1.4 } },
         catacomb_wall:      { file: 'Meshy_AI_catacomb_wall_0917035320_texture.glb',                  base: 'misc', span: 3.2, foot: 0, wall: true, mount: 0 },
         church_building:    { file: 'Meshy_AI_catholic_church_building_0917035753_texture.glb',       base: 'misc', span: 20, foot: 6, rect: { hw: 10, hd: 3 }, block: true },
-        catholic_pew:       { file: 'Meshy_AI_catholic_church_pew_0917035928_texture.glb',            base: 'misc', span: 2.6, foot: 0.8, rect: { hw: 1.3, hd: 0.45 }, block: true, seat: 0.45 },   // second pass (2026-09-18): a pew is 2.6 m long — three seats, not a bus
+        catholic_pew:       { file: 'Meshy_AI_catholic_church_pew_0917035928_texture.glb',            base: 'misc', span: 2.6, foot: 0.8, rect: { hw: 1.3, hd: 0.45 }, block: true, seat: 0.97 },   // second pass (2026-09-18): a pew is 2.6 m long — three seats, not a bus
         church_wall:        { file: 'Meshy_AI_catholic_church_wall_0917035726_texture.glb',           base: 'misc', span: 4.0, foot: 0, wall: true, mount: 0 },
-        church_pew:         { file: 'Meshy_AI_church_pew_0917035915_texture.glb',                     base: 'misc', span: 2.6, foot: 0.8, rect: { hw: 1.3, hd: 0.45 }, block: true, seat: 0.45 },
+        church_pew:         { file: 'Meshy_AI_church_pew_0917035915_texture.glb',                     base: 'misc', span: 2.6, foot: 0.8, rect: { hw: 1.3, hd: 0.45 }, block: true, seat: 0.79 },
         /* second pass (2026-09-18): the carpet GLB stands UPRIGHT (its face along z — it read as a tapestry in the nave), so it IS a tapestry: the same file as a wall row (the same-thing rule: one file, two rows, like the leaves); the aisle is the terrain's carpet path */
         holy_tapestry:      { file: 'Meshy_AI_ornate_holy_carpet_0917035624_texture.glb',             base: 'misc', h: 5.0, foot: 0, wall: true, mount: 3.2 },
         church_podium:      { file: 'Meshy_AI_church_podium_0917035658_texture.glb',                  base: 'misc', h: 1.3, foot: 0.45, block: true },
@@ -33131,7 +33131,7 @@ const DOOR_HQ = {
         castle_gate:        { file: 'Castles_and_Forts.glb', base: 'misc', node: 'Gate_2x4',    h: 2.05, foot: 0 },
         castle_wall:        { file: 'Castles_and_Forts.glb', base: 'misc', node: 'Wall_2x4',    h: 2.0,  foot: 0 },
         pearly_gate:        { file: 'Meshy_AI_pearly_gate_0917035350_texture.glb',                    base: 'misc', span: 4.2, foot: 0, glow: { y: 2.2, size: 3.2, color: 0xfff0c0 } },
-        royal_throne:       { file: 'Meshy_AI_royal_throne_0917035803_texture.glb',                   base: 'misc', h: 1.9, foot: 0.5, block: true, front: 'back', seat: 0.55 },
+        royal_throne:       { file: 'Meshy_AI_royal_throne_0917035803_texture.glb',                   base: 'misc', h: 1.9, foot: 0.5, block: true, front: 'back', seat: 0.62, seatZ: -0.08 },
         skull_pile:         { file: 'Meshy_AI_skull_pile_0917035243_texture.glb',                     base: 'misc', span: 1.3, foot: 0.5, block: true },
         stained_glass:      { file: 'Meshy_AI_stained_glass_window_0917035453_texture.glb',           base: 'misc', h: 3.2, foot: 0, wall: true, mount: 5.5, glow: { y: 1.6, size: 3.0, color: 0xffd090 } },
         sarcophagus:        { file: 'Meshy_AI_stone_sarcophagus_0917035255_texture.glb',              base: 'misc', span: 2.3, foot: 0.8, block: true },
@@ -33144,15 +33144,15 @@ const DOOR_HQ = {
            Support spell's own file) comes in nose −Z and wears `turn: 180` so its nose is the placer's +Z front. ═══ */
         ancient_well:       { file: 'Meshy_AI_an_ancient_well_0922010024_texture.glb',            base: 'misc', h: 1.15, foot: 0.42, block: true },   // 2026-09-22: halved (the user: the wells are too big)                                  // EVERY WELL: the `well` way's head (_hqWayBuilders.well)
         wooden_bucket:      { file: 'Meshy_AI_wooden_bucket_0922011434_texture.glb',              base: 'misc', h: 0.16, foot: 0.08 },   // 2026-09-22: halved with the well                                               // the well's bucket on its rope (the way rig lowers it); kickable on a floor
-        city_bench:         { file: 'Meshy_AI_a_city_bench_0922010124_texture.glb',                base: 'misc', span: 1.7, foot: 0.8, rect: { hw: 0.85, hd: 0.3 }, block: true, seat: 0.45, front: 'back' },   // EVERY BENCH: park_bench + locker_bench wear it; a row of its own too
+        city_bench:         { file: 'Meshy_AI_a_city_bench_0922010124_texture.glb',                base: 'misc', span: 1.7, foot: 0.8, rect: { hw: 0.85, hd: 0.3 }, block: true, seat: 0.47, seatZ: 0.02, front: 'back' },   // EVERY BENCH: park_bench + locker_bench wear it; a row of its own too
         hot_dog_stand:      { file: 'Meshy_AI_a_hot_dog_stand_0922010432_texture.glb',             base: 'misc', span: 1.9, foot: 0.9, rect: { hw: 0.95, hd: 0.55 }, block: true, turn: 90 },                 // the street cities' kerbs (a scatter row, the kerb rule)
         military_tank:      { file: 'Meshy_AI_a_military_tank_0922010101_texture.glb',             base: 'misc', span: 7.0, foot: 2.4, rect: { hw: 1.8, hd: 3.5 }, block: true, turn: 90 },                   // AREA 51's pens
         fighter_jet:        { file: 'Meshy_AI_f22_fighter_jett_0713025555_texture.glb',            base: 'weapons', span: 15.5, foot: 4.5, rect: { hw: 6.8, hd: 7.8 }, block: true, turn: 180 },              // the F22 on RUNWAY 33 (the same file the Air Support spell flies — MODEL_INDEX §5, the same-thing rule)
         yellow_pole:        { file: 'Meshy_AI_a_yellow_pole_0922010159_texture.glb',               base: 'misc', h: 3.3,  foot: 0.12, block: true },                                  // the traffic light's pole on the board (_buildTrafficLight3D, GLB-first); a bollard of its own in a room
-        hospital_bed:       { file: 'Meshy_AI_a_hospital_bed_0922010451_texture.glb',              base: 'misc', span: 2.1, foot: 0.75, rect: { hw: 0.5, hd: 1.05 }, block: true, seat: 0.6 },                // Room 1111's ward (the cots elsewhere stay cots)
-        dorm_bed:           { file: 'furniture/bed_5.glb',                  base: 'psxmp', span: 2.0, foot: 0.7, rect: { hw: 0.5, hd: 1.0 }, block: true, seat: 0.5, turn: 90 },   // THE PSX MEGA PACK (2026-11-08): was Meshy_AI_a_dorm_bed_0922010217_texture.glb (wooden single bed; head +X -> turn 90)                  // the keep's guardroom
-        couples_bed:        { file: 'furniture/bed_4.glb',               base: 'psxmp', span: 2.1, foot: 1.0, rect: { hw: 0.85, hd: 1.05 }, block: true, seat: 0.5, turn: 90 },   // THE PSX MEGA PACK (2026-11-08): was Meshy_AI_a_couples_bed_0922010443_texture.glb; the pack bed's head is +X, turn 90 puts it at -Z like the Meshy bed                // the bunker's loft
-        royal_bed:          { file: 'Meshy_AI_a_royal_bed_0922010438_texture.glb',                 base: 'misc', span: 2.4, foot: 1.1, rect: { hw: 1.0, hd: 1.2 }, block: true, seat: 0.6 },                  // THE SOLAR in the keep
+        hospital_bed:       { file: 'Meshy_AI_a_hospital_bed_0922010451_texture.glb',              base: 'misc', span: 2.1, foot: 0.75, rect: { hw: 0.5, hd: 1.05 }, block: true, seat: 0.60 },                // Room 1111's ward (the cots elsewhere stay cots)
+        dorm_bed:           { file: 'furniture/bed_5.glb',                  base: 'psxmp', span: 2.0, foot: 0.7, rect: { hw: 0.5, hd: 1.0 }, block: true, seat: 0.45, turn: 90 },   // THE PSX MEGA PACK (2026-11-08): was Meshy_AI_a_dorm_bed_0922010217_texture.glb (wooden single bed; head +X -> turn 90)                  // the keep's guardroom
+        couples_bed:        { file: 'furniture/bed_4.glb',               base: 'psxmp', span: 2.1, foot: 1.0, rect: { hw: 0.85, hd: 1.05 }, block: true, seat: 0.47, turn: 90 },   // THE PSX MEGA PACK (2026-11-08): was Meshy_AI_a_couples_bed_0922010443_texture.glb; the pack bed's head is +X, turn 90 puts it at -Z like the Meshy bed                // the bunker's loft
+        royal_bed:          { file: 'Meshy_AI_a_royal_bed_0922010438_texture.glb',                 base: 'misc', span: 2.4, foot: 1.1, rect: { hw: 1.0, hd: 1.2 }, block: true, seat: 0.82 },                  // THE SOLAR in the keep
         camping_tent:       { file: 'ebd_survival_camping_tent.glb',              base: 'misc', span: 3.2, foot: 1.5, rect: { hw: 1.6, hd: 1.4 }, block: true },                             // the grove's camp
         carnival_tent:      { file: 'Meshy_AI_a_carnival_tent_0922010243_texture.glb',             base: 'misc', span: 6.0, foot: 2.8, rect: { hw: 3.0, hd: 3.0 }, block: true },                             // the grove's lawn (the carnival room's own canvas is the bigtop ceiling)
         fortune_teller_tent:{ file: 'Meshy_AI_a_fortune_teller_tent_0922010255_texture.glb',       base: 'misc', span: 3.2, foot: 1.6, block: true },                                                         // the `fortune_tent` proc's model (GLB-first; the proc keeps its key, its glow and its sign)
@@ -33576,7 +33576,7 @@ const DOOR_HQ = {
            floor proc the walker cannot enter), the mirror with its vanity
            bulbs (the glow is the bulbs), the pole — inside by the door and
            out in the hall beside it (a polar room hangs it on the drum) */
-        barber_chair:      { proc: 'barber_chair',   h: 1.2,     foot: 0.48, block: true, seat: 0.52 },
+        barber_chair:      { proc: 'barber_chair',   h: 1.2,     foot: 0.48, block: true, seat: 0.51, seatZ: -0.08 },
         barber_mirror:     { proc: 'barber_mirror',  h: 1.35,    foot: 0, wall: true, mount: 1.05, depth: 0.08, glow: { y: 1.28, size: 1.5, color: 0xfff1d6 } },
         barber_pole:       { proc: 'barber_pole',    h: 0.9,     foot: 0, wall: true, mount: 1.35, depth: 0.2 },
         /* THE OBSERVATORIUM (Room 360, 2026-09-11 — plan 7.4): the planetarium
@@ -33604,7 +33604,7 @@ const DOOR_HQ = {
         exec_desk:         { proc: 'exec_desk',      span: 2.4,  foot: 1.2, depth: 1.05, rect: { hw: 1.2, hd: 0.525 }, block: true },   // 4C: the executive desk (top at 0.76 — desk props sit at y: 0.76). A FLOOR prop since 2026-09-16: centred, the drawers on the sitter's side (−z), the modesty panel to the room (+z)
         room_wall:         { proc: 'room_wall',      h: 3.5,  foot: 0 },   // DOOR HQ 2.0 (2026-11-26): a partition inside a box room (the Kitchen behind the Cafeteria), or with `floor` a floor patch; sized by its row (`len`, `wallH`, `t`, `holes`), collides by its own slabs (three-renderer.js room_wall)
         serving_line:      { proc: 'serving_line',   span: 3.0,  foot: 1.5, wall: true, depth: 1.15, rect: { hw: 1.5, hd: 0.575 }, block: true },   // Room 86 (2026-09-16): a 3 m cafeteria counter — the hot wells + sneeze guard on the wall side, THE TRAY SLIDE (0.85 m) along the front; trays at z = wall + 0.95
-        exec_chair:        { file: 'Meshy_AI_an_office_chair_0903105134_texture.glb', h: 1.1, foot: 0.36, block: true, front: 'back', seat: 0.48 },   // 4C: the chair behind the desk — 2026-11-03: office_chair's file (was proc 'exec_chair')
+        exec_chair:        { file: 'Meshy_AI_an_office_chair_0903105134_texture.glb', h: 1.1, foot: 0.36, block: true, front: 'back', seat: 0.50, seatZ: 0.02 },   // 4C: the chair behind the desk — 2026-11-03: office_chair's file (was proc 'exec_chair')
         wall_plaques:      { proc: 'wall_plaques',   h: 1.2,     foot: 0, wall: true, mount: 1.3,  depth: 0.05 },   // 4C: the achievements engraved (gold per hqTrophyCount, read at build)
         motto_plaque:      { proc: 'motto_plaque',   h: 0.6,     foot: 0, wall: true, mount: 1.5,  depth: 0.05 },
         /* THE MAP REMEMBERS (PHASE9_QUALITY_PLAN §6 D8, 2026-09-16): the door gun's
@@ -33626,10 +33626,10 @@ const DOOR_HQ = {
         saucer_pendant:    { proc: 'saucer_pendant',  h: 0.8,  foot: 0,    ceil: true, glow: { y: 0.05, size: 1.9, color: 0xffeacc }, light: { color: 0xffe8c8, intensity: 0.8, dist: 9, y: 0.0 } },   // TWA's fluted saucer, lit from under
         disc_cluster:      { proc: 'disc_cluster',    h: 0.9,  foot: 0,    ceil: true, glow: { y: 0.4, size: 1.4, color: 0xfff6e2 }, light: { color: 0xfff4dc, intensity: 0.6, dist: 7, y: 0.4 } },   // the Futuro's three white discs on threads
         mushroom_lamp:     { proc: 'mushroom_lamp',   h: 0.52, foot: 0.2,  glow: { y: 0.34, size: 1.0, color: 0xffb070 }, light: { color: 0xffa860, intensity: 0.45, dist: 5, y: 0.34 } },       // Panton's mushroom, orange from under the cap (a floor lamp or a tabletop)
-        egg_chair:         { proc: 'egg_chair',       h: 1.32, foot: 0.58, block: true, seat: 0.5 },                                                                                              // Aarnio's ball chair on its pedestal — the opening is the front (+Z)
-        tulip_chair:       { proc: 'tulip_chair',     h: 0.8,  foot: 0.3,  seat: 0.5 },                                                                                                           // Saarinen's tulip: one stem, a shell, a cushion
+        egg_chair:         { proc: 'egg_chair',       h: 1.32, foot: 0.58, block: true, seat: 0.54, seatZ: -0.1 },                                                                                              // Aarnio's ball chair on its pedestal — the opening is the front (+Z)
+        tulip_chair:       { proc: 'tulip_chair',     h: 0.8,  foot: 0.3,  seat: 0.32 },                                                                                                           // Saarinen's tulip: one stem, a shell, a cushion
         tulip_table:       { proc: 'tulip_table',     h: 0.74, foot: 0.5,  block: true },                                                                                                          // one stem, a white top (`r` the top's radius) — tabletop props seat on it
-        curved_sofa:       { proc: 'curved_sofa',     h: 0.9,  foot: 1.05, block: true, seat: 0.46 },                                                                                             // a 60° arc of tufted bench about a centre `r` in FRONT of it — six rows make a ring
+        curved_sofa:       { proc: 'curved_sofa',     h: 0.9,  foot: 1.05, block: true, seat: 0.46, seatZ: 0.02 },                                                                                             // a 60° arc of tufted bench about a centre `r` in FRONT of it — six rows make a ring
         porthole:          { proc: 'porthole',        h: 0.9,  foot: 0,    wall: true, mount: 1.3, depth: 0.1, glow: { y: 0.45, size: 1.6, color: 0xbfe0ff } },                                    // an oval pane onto a sky that drifts (`size`, `round`, `view`: sky · mountains · stars · space)
         pod_window:        { proc: 'pod_window',      h: 2.4,  foot: 0,    wall: true, mount: 0.5, depth: 0.1, glow: { y: 1.2, size: 3.2, color: 0xbfe0ff } },                                     // the 2.4 m round window with the mountains in it
         retro_console:     { proc: 'retro_console',   h: 1.2,  foot: 0.7,  rect: { hw: 0.8, hd: 0.38 }, block: true, glow: { y: 1.0, size: 1.6, color: 0xffc070 }, light: { color: 0xffb860, intensity: 0.35, dist: 4, y: 1.0 } },   // 2001's console: a bank of lamps that blink (a ticker), two screens; the operator stands at +Z
@@ -33637,7 +33637,7 @@ const DOOR_HQ = {
         space_divider:     { proc: 'space_divider',   h: 2.1,  foot: 1.1,  rect: { hw: 1.12, hd: 0.1 }, block: true },                                                                            // a screen of white rings you see through
         pod_bed:           { proc: 'pod_bed',         h: 1.0,  foot: 0.9,  rect: { hw: 0.52, hd: 1.12 }, block: true, glow: { y: 0.6, size: 1.6, color: 0x9fe8ff }, light: { color: 0x8fdcff, intensity: 0.4, dist: 4, y: 0.7 } },   // the cryo capsule under a glass dome (the head is −Z)
         infinity_pool:     { proc: 'infinity_pool',  h: 0.48,    foot: 3.0, rect: { hw: 3.1, hd: 1.85 }, block: true },   // Room 8: the raised basin, a RECT blocker (room axes: place it at face 0 / 180)
-        pool_lounger:      { proc: 'pool_lounger',   h: 0.8,     foot: 0.5, block: true, seat: 0.42 },   // Room 8: a lounger (a seat for hqSit at its own x/z)
+        pool_lounger:      { proc: 'pool_lounger',   h: 0.8,     foot: 0.5, block: true, seat: 0.10, lie: true },   // Room 8: a lounger (a seat for hqSit at its own x/z)
         pool_umbrella:     { proc: 'pool_umbrella',  h: 2.4,     foot: 0.12, block: true },  // Room 8: the pole; the canopy is overhead
         /* ══ THE EXPLORATION FLOORS (HQ plan Phase 8, 2026-09-14) — the
            procs the new floors stand on. Every row is procedural; a user
@@ -33721,13 +33721,13 @@ const DOOR_HQ = {
         urinal:          { file: 'ebd_burgerpiz_urinal.glb', base: 'misc', h: 0.85, foot: 0, wall: true, mount: 0.5 },   // the BurgerPiz pack urinal
         sink_row:        { file: 'ebd_diner_sink_row.glb', base: 'misc', span: 2.4, foot: 1.0, wall: true, mount: 0, rect: { hw: 1.2, hd: 0.38 }, block: true },  // the Diner pack counter of three basins; on a n / s wall
         hand_dryer:      { file: 'ebd_diner_hand_dryer.glb', base: 'misc', h: 0.3, foot: 0, wall: true, mount: 1.2 },   // the Diner pack dryer
-        locker_bench:    { proc: 'locker_bench',    h: 0.45, foot: 1.0, rect: { hw: 1.0, hd: 0.2 }, block: true, seat: 0.42 },
+        locker_bench:    { proc: 'locker_bench',    h: 0.45, foot: 1.0, rect: { hw: 1.0, hd: 0.2 }, block: true, seat: 0.55, seatZ: 0.02 },
         shower_stall:    { file: 'ebd_house_shower_stall.glb', base: 'misc', h: 2.1, foot: 0.6, wall: true, mount: 0, rect: { hw: 0.58, hd: 0.48 }, block: true },   // the House pack shower (tiles + the glass door)
         lap_pool:        { proc: 'lap_pool',        h: 0.35, foot: 5.0, rect: { hw: 6.2, hd: 2.9 }, block: true },           // Room 50M: six lanes, starting blocks, a rect the walker never enters
         lifeguard_chair: { proc: 'lifeguard_chair', h: 2.2,  foot: 0.4, block: true },
         garden_ring:     { proc: 'garden_ring',     h: 0.7,  foot: 0 },                                                       // Room 1618: the gravel ring + the hedge (the proc registers its own blockers)
         fountain:        { proc: 'fountain',        h: 2.0,  foot: 1.6, block: true, glow: { y: 1.4, size: 2.0, color: 0xbfe9ff }, light: { color: 0xcfefff, intensity: 0.6, dist: 9, y: 1.5 } },
-        park_bench:      { proc: 'park_bench',      h: 0.85, foot: 0.8, rect: { hw: 0.8, hd: 0.3 }, block: true, seat: 0.45 },
+        park_bench:      { proc: 'park_bench',      h: 0.85, foot: 0.8, rect: { hw: 0.8, hd: 0.3 }, block: true, seat: 0.47, seatZ: 0.02 },
         garden_tree:     { proc: 'garden_tree',     h: 4.5,  foot: 0.35, block: true },
         /* CAMELOT CASTLE (2026-09-18 — THE COMPLEX CANDIDATES #2): the castle's own kit — THE ROUND TABLE (an oak disc with no head and twelve high-backed
            chairs), a heraldic BANNER on a rod (a wall proc; the cloth's colour turns per instance), an ARMOUR STAND (a knight's plate on a post with
@@ -33773,6 +33773,11 @@ const DOOR_HQ = {
         /* THE URBAN BLOCK (9.2 stage 4, 2026-09-16): the casino floor's machines and the platform's gates — procs until the user's GLBs land (plan 9.6 #5) */
         slot_machine:    { proc: 'slot_machine',    h: 1.8,  foot: 0.35, rect: { hw: 0.33, hd: 0.32 }, block: true, glow: { y: 1.3, size: 1.1, color: 0xffd040 }, light: { color: 0xffc040, intensity: 0.45, dist: 4, y: 1.4 } },   // THE CASINO FLOOR: a cabinet, three reels that spin (ticker), a lever, the top light
         turnstile:       { proc: 'turnstile',       h: 1.0,  foot: 0.4,  block: true },                                        // THE PLATFORM: a tripod gate that turns as you come up (ticker)
+        /* MEDICAL (DOOR HQ 2.0, 2026-11-26): the look book's missing healing machine, the ward's glass wall, the hospital's cross (three-renderer.js, drawn in code) */
+        heal_machine:    { proc: 'heal_machine',    h: 2.2,  foot: 1.0, rect: { hw: 1.0, hd: 0.5 }, block: true, light: { color: 0x9fffe8, intensity: 0.6, dist: 6, y: 1.6 } },
+        nurse_counter:   { proc: 'nurse_counter',   h: 1.15, foot: 0,   rect: { hw: 3.65, hd: 0.42 }, block: true },
+        glass_partition: { proc: 'glass_partition', h: 2.7,  foot: 0,   rect: { hw: 1.75, hd: 0.08 }, block: true },
+        med_cross:       { proc: 'med_cross',       h: 1.6,  foot: 0,   wall: true, mount: 4.6, depth: 0.12, glow: { y: 0.8, size: 2.4, color: 0xff8a80 } },
         eeg_rack:        { proc: 'eeg_rack',        h: 1.4,  foot: 0.35, block: true, glow: { y: 1.0, size: 0.9, color: 0x80ffb0 }, light: { color: 0x60ff90, intensity: 0.5, dist: 4, y: 1.0 } },   // Room REM: the trace beside a cot (ticker)
         dream_screen:    { proc: 'dream_screen',    h: 1.2,  foot: 0,    wall: true, mount: 1.1, depth: 0.1, glow: { y: 0.6, size: 2.2, color: 0xc0a0ff } },   // Room REM: what the sleepers see (ticker: the drawing drifts)
         iso_tank:        { file: 'molten_sleeper_casket.glb', base: 'misc', h: 1.3, foot: 0.6, rect: { hw: 0.35, hd: 0.55 }, block: true, glow: { y: 0.8, size: 1.6, color: 0x60a0ff } },   /* h stays the old pod's 1.3 m: the boards stand it on 1.3 m ghost blocks (Antarctica) */   // Room 0dB: the pod (THE CODED SHAPES OUT 2026-11-03: the Molten Maps sci-fi pack sleeper casket, CC0)
@@ -33802,8 +33807,8 @@ const DOOR_HQ = {
         rotary_phone:      { file: 'ebd_vhsshop_rotary_phone.glb', base: 'misc',                  span: 0.24, foot: 0 },
         /* ── the cafeteria kit (Room 86, HQ plan 7.4 / 5.6 — the serving
            counter is the `reception_wedge`, as the plan's fallback says) ── */
-        cafeteria_chair:   { file: 'Meshy_AI_cafeteria_chair_0910054640_texture.glb',               h: 0.86, foot: 0.28, front: 'back', seat: 0.44 },
-        molded_chair:      { file: 'Meshy_AI_a_molded_cafeteria_ch_0910054600_texture.glb',         h: 0.82, foot: 0.28, front: 'back', seat: 0.44 },
+        cafeteria_chair:   { file: 'Meshy_AI_cafeteria_chair_0910054640_texture.glb',               h: 0.86, foot: 0.28, front: 'back', seat: 0.44, seatZ: 0.02 },
+        molded_chair:      { file: 'Meshy_AI_a_molded_cafeteria_ch_0910054600_texture.glb',         h: 0.82, foot: 0.28, front: 'back', seat: 0.40, seatZ: 0.02 },
         meal_tray:         { file: 'Meshy_AI_cafeteria_meal_tray_w_0910054631_texture.glb',         span: 0.45, foot: 0 },
         meal_tray_empty:   { file: 'Meshy_AI_cafeteria_meal_tray_w_0910054659_texture.glb',         span: 0.42, foot: 0 },
         microwave:         { file: 'ebd_psx3_microwave.glb', base: 'misc',         span: 0.50, foot: 0 },
@@ -33850,8 +33855,8 @@ const DOOR_HQ = {
            site rooms' skies draw the same roster). Sizes are targets: none
            of the four GLBs is in the repo, so the renderer's bbox fit is
            the only scale — if one lands wrong, its `h` / `span` is the edit. */
-        computer_chair_blue:{ file: 'computer_chair_blue.glb',                                    h: 0.98, foot: 0.32, front: 'back', seat: 0.46 },
-        computer_chair_grey:{ file: 'computer_chair_grey.glb',                                    h: 0.98, foot: 0.32, front: 'back', seat: 0.46 },
+        computer_chair_blue:{ file: 'computer_chair_blue.glb',                                    h: 0.98, foot: 0.32, front: 'back', seat: 0.45, seatZ: 0.02 },
+        computer_chair_grey:{ file: 'computer_chair_grey.glb',                                    h: 0.98, foot: 0.32, front: 'back', seat: 0.45, seatZ: 0.02 },
         security_camera:   { file: 'camera_01_cc0_clip_ready_v1.glb',                             span: 0.34, foot: 0, wall: true, mount: 2.55 },
         utility_box:       { file: 'utility_box_01_cc0_clip_ready_v1.glb',                        h: 1.35, foot: 0.45 },
         asteroid_a:        { file: 'asteroid_1.glb',                                              span: 4.0, foot: 0 },
@@ -36295,21 +36300,6 @@ const DOOR_HQ = {
             spawn: { x: -3.1, z: 0, face: 90 },
         },
 
-        /* ── ROOM 1111 · MEDICAL (HQ plan 7.4, 2026-09-13 rev 3) — the ward
-           behind the hospital door at 210° on the ground ring, a `kind:
-           'box'` room now (it was a door straight to Challenge mode).
-           "Where EXITED operatives are processed." THE SERVICES DESK on
-           the south wall is Challenge mode (`_goToCampaign` — revives,
-           retries, the services desk); THE CHART on the east wall between
-           the two beds is your record (`overlay: 'chart'` → map.js
-           _hqChartHtml, read through data.js hqMedicalRecord: matches,
-           wins, EXITS (the losses), what the ward counted, and the
-           CONDITION line — INTAKE / FIT FOR DUTY / UNDER OBSERVATION /
-           ADMINISTRATIVE LEAVE); the cell door on the north wall (`padded`)
-           is Room 5150. The nurse sits at the desk, the orderly stands by
-           the cell door, a patient sits on the far cot. Lines are Claude's
-           stage dressing (the room's overheard pool), not cast lines (A15).
-           Viewer-local, nothing relayed (RULE #2). ── */
         /* ── ROOM 1 · RECEPTION (HQ plan 7.4, 2026-09-14) — the intake office
            behind the ground ring's window door at 120° (between the Barbershop
            at 105° and Your Office at 150°). It was a door straight to the
@@ -36515,114 +36505,122 @@ const DOOR_HQ = {
             ],
             spawn: { x: -2.2, z: 1.6, face: 0 },
         },
+        /* ── MEDICAL (DOOR HQ 2.0, 2026-11-26, mondo: "look more like a hospital, think Pokémon center") — a clean-sheet rebuild.
+           The brightest room in the building, open to the Lobby with no door (the `lobby` row: a 14 m by 4.5 m opening, the Lobby
+           thread's `open` door + THE ROUND JOIN in HQ_STAGE_RULES.round). Plan: docs/plans/door-hq-2/plans/1_lobby_level_plan.png
+           (east of Rhonda, "counter, then beds"); look: LOOK_BOOK.md "Medical". 21 x 17.5 m (6 x 5 squares), 7 m ceiling.
+           South: the opening and the waiting benches. Middle: the counter (a `nurse_counter` proc), THE HEALING MACHINE
+           behind it (a proc: six slots, a small door in each, they light in turn), the cross over everything on the back wall.
+           North: the ward behind a glass wall, four beds with screens and drips; its way in is the open bay at the west end.
+           West: supplies, the x-ray, the sinks. East: the staff door (to the old wing: the Hold and the Interrogation Room stay
+           reachable until the Works rebuild moves them), the vending machine (potions, data.js hqVendingApply).
+           THE COT is the healing machine now (counter `cot`: HQ_PARTY_RULES.restCounter, map.js's rest panel). The chart and the
+           Challenge desk keep their ids. Viewer-local, nothing relayed (RULE #2). ── */
         medical: {
             label: 'MEDICAL',
-            sub: 'CHALLENGE MODE',
             roomNo: '1111', why: 'the number you dial',
             kind: 'box',
             shell: {
-                w: 8, d: 6, h: 3.2,
-                wallH: 3.2, dadoH: 1.1,
-                floor: 'terrazzo', wall: 'drywall', dado: 'teal', trim: 'teal', ceiling: 'ceiling',
-                floorColor: 0xd9dad2, wallColor: 0xdde6dc, dadoColor: 0x7fa89a,   // painted down: hospital green over pale terrazzo
-                pipes: false,                       // an acoustic ceiling; the ward is the one clean room
-                light: { x: 0, z: 0 },
-                mood: { light: 0xeef4ee },          // cold white, and it never goes off
-                plate: { x: -1.5, z: -2.95, y: 2.75 },
+                w: 21, d: 17.5, h: 7.0,
+                wallH: 7.0, dadoH: 1.2,
+                floor: 'urban:TileLinoleum1a', wall: 'drywall', dado: 'drywall', trim: 'metal', ceiling: 'ceiling',   // the look book's plaster and fibre tiles read grey and grimy on screen: clean drywall, the cream ceiling
+                floorColor: 0xf4f8f6, wallColor: 0xf4f6f5, dadoColor: 0x9fd8c8, ceilColor: 0xf6f8f8,
+                pipes: false, keyLamp: 0,
+                lights: [{ x: -5.25, z: -1.75 }, { x: 5.25, z: -1.75 }, { x: -5.25, z: 4.5 }, { x: 5.25, z: 4.5 }, { x: 0, z: -6.6 }, { x: -7.0, z: -6.6 }, { x: 7.0, z: -6.6 }],
+                mood: { light: 0xf2faff, ambient: 0.7 },
+                plate: { x: 0, z: -8.7, y: 3.6 },
             },
             doors: [
-                { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_hospital',
-                  label: 'THE MEDICAL WING', sub: 'BACK TO THE WING',
-                  action: { room: 'medwing', at: 'ward' },
-                  desc: 'The way back to the hall. Discharged operatives sign the clipboard on the way out; the clipboard is the chart.' },
-                /* THE CELL DOOR → Room 5150, the Padded Room */
-                { id: 'padded', wall: 'n', x: 2.6, leaf: 'leaf_cell',
-                  label: 'THE HOLD',
-                  action: { room: 'padded', at: 'egress' },
-                  desc: 'A cell door with a slot, at the back of the ward. Administrative leave is served on the other side of it. It is not locked. It has never needed to be.' },
+                /* THE OPEN FRONT: no leaf, no plate; the Lobby thread's `open` opening (until it lands, a plain doorway) */
+                { id: 'lobby', wall: 's', x: 0, open: { w: 14, h: 4.5 },
+                  label: 'LOBBY',
+                  action: { room: 'central_egress', at: 'medical' } },
+                /* THE STAFF DOOR → the old wing (the Hold, the Interrogation Room) until the Works rebuild re-homes them */
+                { id: 'staff', wall: 'e', z: 1.75, leaf: 'leaf_hospital',
+                  label: 'STAFF ONLY',
+                  action: { room: 'medwing', at: 'egress' },
+                  desc: 'Staff only. Nobody has ever asked who counts as staff.' },
             ],
             counters: [
-                /* THE SERVICES DESK → Challenge mode: revives, retries */
-                { id: 'desk', x: -1.5, z: 2.2, face: 0, plateY: 1.85, radius: 1.9, verb: 'CHECK IN',
-                  label: 'THE SERVICES DESK', sub: 'CHALLENGE MODE', action: { fn: '_goToCampaign' },
-                  desc: 'Challenge services. Revives, retries, the ladder — the nurse files the attempt and the ward keeps the count.' },
-                /* THE CHART → your record: matches, wins, exits, the condition line */
-                { id: 'chart', x: 3.2, z: -0.1, face: 270, plateY: 1.9, radius: 1.7, verb: 'READ',
-                  label: 'THE CHART', sub: 'YOUR RECORD', action: { overlay: 'chart' },
-                  desc: 'The clipboard at the foot of the bed. Every crossing the ward counted, every exit it processed, and the line at the bottom that says whether you are fit for duty.' },
-                /* THE COT (THE PARTY, 2026-09-19) → REST: the party's HP / MP restored, the down back on their feet — free, the JRPG inn */
-                { id: 'cot', x: 2.7, z: 1.375, face: 90, plateY: 1.5, radius: 1.6, verb: 'REST',
-                  label: 'THE COT', sub: 'REST THE PARTY', action: {},
-                  desc: 'The second cot, made up. The ward takes the whole party in, no questions, no chart — an hour on the cots and everyone walks out at full. The nurse calls it triage. It is not triage.' },
+                /* THE HEALING MACHINE → REST (id `cot`: the party's HP / MP back to full, the down on their feet; free) */
+                { id: 'cot', x: 0, z: 0.75, face: 0, plateY: 1.9, radius: 2.0, verb: 'HEAL',
+                  label: 'HEALING MACHINE', action: {},
+                  desc: 'Put your doors on the tray. It takes a second.' },
+                /* THE CHART → your record (overlay `chart`) */
+                { id: 'chart', x: -3.5, z: -5.6, face: 0, plateY: 1.6, radius: 1.5, verb: 'READ',
+                  label: 'CHART', action: { overlay: 'chart' },
+                  desc: 'Every crossing, every exit, and one line at the bottom: fit for duty or not.' },
+                /* CHALLENGE → Challenge mode (revives, retries, the ladder) */
+                { id: 'desk', x: -4.2, z: 0.75, face: 0, plateY: 1.9, radius: 1.4, verb: 'CHECK IN',
+                  label: 'CHALLENGE', action: { fn: '_goToCampaign' },
+                  desc: 'Revives and retries. The nurse keeps count.' },
             ],
             props: [
-                /* ── the north wall: the sink, the shelves, the breaker, the supplies, the cell door ── */
-                { key: 'sink',           wall: 'n', x: -3.0 },
-                { key: 'wall_shelf',     wall: 'n', x: -3.0, mount: 1.55 },
-                { key: 'wall_shelf',     wall: 'n', x: -3.0, mount: 2.0 },
-                { key: 'toilet_paper',   x: -3.15, z: -2.85, y: 2.0, face: 180 },
-                { key: 'coffee_mug',     x: -2.8,  z: -2.85, y: 1.55, face: 160 },
-                { key: 'vent_grille',    wall: 'n', x: -2.2, mount: 2.4 },
-                { key: 'breaker_panel',  wall: 'n', x: -1.5 },
-                { key: 'hook_rail',      wall: 'n', x: -0.7 },
-                { key: 'metal_shelving', wall: 'n', x: 0.4 },
-                { key: 'manila_folders', x: 0.4,  z: -2.85, y: 0.9,  face: 5 },      // the supplies: the files, the boxes
-                { key: 'cardboard_box',  x: 0.55, z: -2.85, y: 1.3,  face: 20 },
-                { key: 'exit_sign',      wall: 'n', x: 2.6, mount: 2.75 },           // over the cell door — it says EXIT; it is not one
-                /* ── the east wall: THE WARD — two cots, the chart between them, the visitor's chair ── */
-                { key: 'hospital_bed',   x: 3.5, z: -0.375, face: 90 },                   // THE 2026-09-22 BATCH: the ward's two cots are the user's hospital beds
-                { key: 'hospital_bed',   x: 3.5, z: 1.375,  face: 90 },
-                { key: 'meal_tray_empty', x: 3.45, z: 1.675, y: 0.46, face: 100 },   // lunch came; it went untouched
-                { key: 'clipboard',      wall: 'e', z: -0.1, mount: 1.4, rot: 2 },   // THE CHART
-                { key: 'folding_chair',  x: 2.6, z: -0.375, face: 90 },                // the visitor's, nobody visits
-                { key: 'potted_plant',   x: 3.5, z: -2.5, face: 200 },
-                { key: 'locker',         wall: 'e', z: 2.6 },
-                /* ── the south wall: THE SERVICES DESK, the notice board, the clock, the extinguisher ── */
-                { key: 'tanker_desk',    wall: 's', x: -1.5 },
-                { key: 'crt_terminal',   x: -1.85, z: 2.55, y: 0.76, face: 0 },
-                { key: 'desk_lamp',      x: -0.95, z: 2.6,  y: 0.76, face: 330 },
-                { key: 'clipboard_flat', x: -1.3,  z: 2.35, y: 0.76, face: 10 },
-                { key: 'rotary_phone',   x: -0.85, z: 2.3,  y: 0.76, face: 20 },
-                { key: 'pen',            x: -1.55, z: 2.25, y: 0.76, face: 70 },
-                { key: 'manila_folders', x: -2.1,  z: 2.35, y: 0.76, face: 355 },
-                { key: 'computer_chair_grey', x: -1.5,  z: 2.35, face: 180 },        // the nurse's, facing the desk (the 2026-09-13 chair)
-                { key: 'notice_board',   wall: 's', x: 1.6 },
-                { key: 'wall_clock',     wall: 's', x: 3.2, mount: 2.5 },
-                { key: 'fire_extinguisher', wall: 's', x: 3.0 },
-                { key: 'trash_bin',      x: 0.4, z: 2.6, face: 250 },
-                /* ── the west wall: the way in, the plate, the cooler, the waiting chairs ── */
-                { key: 'exit_sign',      wall: 'w', z: 0, mount: 2.75 },
-                { key: 'nameplate',      wall: 'w', z: -1.6, mount: 1.55 },
-                { key: 'filing_cabinet', wall: 'w', z: -2.3 },
-                { key: 'water_cooler',   wall: 'w', z: 2.5 },
-                { key: 'folding_chair',  x: -3.2, z: 1.1,  face: 90 },               // the waiting room, such as it is
-                { key: 'folding_chair',  x: -3.2, z: 1.75, face: 90 },
-                { key: 'papers_a',       x: -3.3, z: 2.05, y: 0.42, face: 20 },      // a magazine from 1987, on the second chair
-                /* ── the floor, the ceiling ── */
-                { key: 'wet_floor_sign', x: 0.4, z: 1.5, face: 140 },
-                { key: 'floor_drain',    x: 0.6, z: -0.6 },
-                { key: 'fluorescent',    x: -2.0, z: 0, ceil: true, face: 0 },
-                { key: 'fluorescent',    x: 2.0,  z: 0, ceil: true, face: 0 },
+                /* ── the counter: three desks in a row, the nurse behind; the healing machine behind her ── */
+                { key: 'nurse_counter',  x: 0, z: -0.6, face: 180 },
+                { key: 'psx_pills_bottle_1', x: -1.1, z: -0.35, y: 1.13, face: 20 },
+                { key: 'psx_bandage_mp_1',   x: -0.8, z: -0.4,  y: 1.12, face: 70 },
+                { key: 'clipboard_flat',     x: 1.2,  z: -0.45, y: 1.12, face: 10 },
+                { key: 'pen',                x: 1.45, z: -0.4,  y: 1.12, face: 80 },
+                { key: 'heal_machine',   x: 0,    z: -2.4, face: 180 },
+                { key: 'number_dispenser', x: -4.6, z: 0.3, face: 0 },
+                /* ── the back wall: the cross, the clock ── */
+                { key: 'med_cross',      wall: 'n', x: 0, mount: 4.4 },
+                { key: 'wall_clock',     wall: 'n', x: -7.0, mount: 4.6 },
+                /* ── the ward: a glass wall (the open bay at the west end is its way in), four beds, screens, drips ── */
+                { key: 'glass_partition', x: -5.25, z: -4.375, face: 0 },
+                { key: 'glass_partition', x: -1.75, z: -4.375, face: 0 },
+                { key: 'glass_partition', x: 1.75,  z: -4.375, face: 0 },
+                { key: 'glass_partition', x: 5.25,  z: -4.375, face: 0 },
+                { key: 'glass_partition', x: 8.75,  z: -4.375, face: 0 },
+                { key: 'hospital_bed',   x: -3.5, z: -7.45, face: 180 },
+                { key: 'hospital_bed',   x: 0,    z: -7.45, face: 180 },
+                { key: 'hospital_bed',   x: 3.5,  z: -7.45, face: 180 },
+                { key: 'hospital_bed',   x: 7.0,  z: -7.45, face: 180 },
+                { key: 'privacy_screen', x: -1.75, z: -7.6, face: 90 },
+                { key: 'privacy_screen', x: 5.25,  z: -7.6, face: 90 },
+                { key: 'iv_stand',       x: -4.45, z: -8.1 },
+                { key: 'iv_stand',       x: -0.95, z: -8.1 },
+                { key: 'iv_stand',       x: 2.55,  z: -8.1 },
+                { key: 'iv_stand',       x: 6.05,  z: -8.1 },
+                { key: 'eeg_rack',       x: 1.0,   z: -8.1, face: 180 },
+                { key: 'stretcher',      x: 9.4,   z: -6.6, face: 0 },
+                { key: 'door_xray',      wall: 'w', z: -6.6, mount: 1.4 },
+                /* ── the west wall: the sinks, the supplies, the potions behind glass ── */
+                { key: 'sink_row',       wall: 'w', z: -1.75 },
+                { key: 'specimen_shelf', x: -9.95, z: 1.75, face: 90 },
+                { key: 'psx_display_cabinet_mp_1', x: -10.05, z: 4.4, face: 90 },
+                { key: 'psx_healing_potion_mp_1', x: -10.0, z: 4.2, y: 1.05, face: 90 },
+                { key: 'psx_healing_potion_mp_2', x: -10.0, z: 4.6, y: 1.05, face: 90 },
+                { key: 'water_cooler',   wall: 'w', z: 6.7 },
+                /* ── the east wall: the vending machine (potions), the wheelchairs by the front ── */
+                { key: 'vending_machine', wall: 'e', z: -2.0 },
+                { key: 'wheelchair',     x: 9.5,  z: 5.6, face: 270 },
+                { key: 'wheelchair',     x: 9.5,  z: 7.3, face: 270 },
+                /* ── the front: the waiting benches facing the counter, the plants at the corners ── */
+                { key: 'metro_bench',    x: -4.4, z: 3.5, face: 0 },
+                { key: 'metro_bench',    x: 4.4,  z: 3.5, face: 0 },
+                { key: 'potted_plant',   x: -9.6, z: 7.9, face: 30 },
+                { key: 'potted_plant',   x: 9.6,  z: -3.4, face: 200 },
+                /* ── the ceiling: the light panels ── */
+                { key: 'psx_ceiling_lamp_2_on', x: -7.0, z: -6.6, ceil: true },
+                { key: 'psx_ceiling_lamp_2_on', x: 0,    z: -6.6, ceil: true },
+                { key: 'psx_ceiling_lamp_2_on', x: 7.0,  z: -6.6, ceil: true },
+                { key: 'psx_ceiling_lamp_2_on', x: -5.25, z: -1.75, ceil: true },
+                { key: 'psx_ceiling_lamp_2_on', x: 5.25,  z: -1.75, ceil: true },
+                { key: 'psx_ceiling_lamp_2_on', x: -5.25, z: 4.5, ceil: true },
+                { key: 'psx_ceiling_lamp_2_on', x: 5.25,  z: 4.5, ceil: true },
+                { key: 'psx_ceiling_lamp_2_on', x: 0,     z: 4.5, ceil: true },
             ],
             agents: [
-                { x: -1.5, z: 2.35, face: 180, pose: 'hqSit', gender: 'female', label: 'THE NURSE', reach: 1.9,
-                  line: '“Name, employee number, and how many times. Do not round down.”' },
-                { x: 2, z: -1.075, face: 180, pose: 'hqArms', gender: 'male', label: 'THE ORDERLY', reach: 1.6,
-                  line: '“The door at the back is not locked. Everyone asks. Nobody has tried it.”' },
-                { x: 3.5, z: 1.375, face: 270, pose: 'hqSit', gender: 'male', label: 'THE PATIENT', reach: 1.6,
-                  line: '“I was EXITED on the Moon. They processed me. I feel processed.”' },
             ],
-            npcSpots: [
-                { x: -3.2, z: 1.1, face: 90 },      // waiting, on the first chair
-            ],
+            npcSpots: [],
             onlineSpots: [],
             lines: [
-                '“Fit for duty?” “The chart says so.” “Is the chart ever wrong?” “The chart is never asked.”',
+                '“Fit for duty?” “The chart says so.”',
                 '“EXITED is not dead.” “What is it?” “Processed.”',
-                '“Retries are filed at the desk. Revives are filed at the desk. Complaints are filed at the desk, under retries.”',
-                '“The door at the back?” “Room 5150.” “What is it for?” “Leave.” “Whose?” “Yours, eventually.”',
             ],
-            spawn: { x: -2.6, z: 0, face: 90 },
+            spawn: { x: 0, z: 4.2, face: 0 },
         },
         /* ── ROOM 5150 · THE PADDED ROOM (HQ plan 7.4, 2026-09-13 rev 3) —
            the one-cell box room behind the cell door at the back of the
@@ -36651,8 +36649,8 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'egress', wall: 's', x: 0, leaf: 'leaf_cell',
-                  label: 'MEDICAL', sub: 'BACK TO THE WARD',
-                  action: { room: 'medical', at: 'padded' },
+                  label: 'THE MEDICAL WING',
+                  action: { room: 'medwing', at: 'ward' },
                   desc: 'The way back to the ward. The slot is at eye height from the other side.' },
             ],
             counters: [
@@ -36712,14 +36710,14 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_hospital',
-                  label: 'THE LOBBY',
-                  action: { room: 'central_egress', at: 'medical' },
+                  label: 'MEDICAL',
+                  action: { room: 'medical', at: 'staff' },   // DOOR HQ 2.0 (2026-11-26): Medical opens on the Lobby now; the wing is behind its staff door
                   desc: 'The way back to the hall, through the same hospital door. The wing is quieter than the hall and everyone says so on the way out.' },
-                /* ROOM 1111 · the ward (the services desk, the chart, Room 5150 behind it) */
-                { id: 'ward', wall: 'n', x: -2.2, leaf: 'leaf_hospital',
-                  label: 'MEDICAL', sub: 'CHALLENGE MODE',
-                  action: { room: 'medical', at: 'egress' },
-                  desc: 'Room 1111. Where EXITED operatives are processed. The services desk files your retries, the chart at the foot of the bed is your record, and the door at the back of the ward is Room 5150. Nobody comments on the door at the back of the ward.' },
+                /* THE HOLD (DOOR HQ 2.0, 2026-11-26): the ward moved to the Lobby; its old door is the Hold's until the Works rebuild re-homes it */
+                { id: 'ward', wall: 'n', x: -2.2, leaf: 'leaf_cell',
+                  label: 'THE HOLD',
+                  action: { room: 'padded', at: 'egress' },
+                  desc: 'A cell door with a slot. It is not locked. It has never needed to be.' },
                 /* ROOM 1984 · Internal Affairs, at the far end of the corridor */
                 /* ROOM 911 · THE DISPENSARY (THE BAG, 2026-09-20): the potion shop, beside the ward */
                 { id: 'dispensary', wall: 'n', x: 2.2, leaf: 'leaf_hospital',
@@ -88314,16 +88312,14 @@ const HQ_WORLD = {
         medwing: { label: 'THE MEDICAL WING', ground: 'hq', hub: 'medwing', sky: null, clock: false,
             parts: {
                 medwing:       { x: 0,    z: 0,     y: 0, rot: 0 },
-                medical:       { x: -2.2, z: -8.2,  y: 0, rot: 1 },    // the ward's west door (its way out) faces the wing's north door at x −2.2
                 dispensary:    { x: 4.4,  z: -6.9,  y: 0, rot: 0 },    // its south door at x −2.2 faces the wing's north door at x 2.2
                 interrogation: { x: 9.7,  z: 0,     y: 0, rot: 0 },    // its west door faces the wing's east door
-                padded:        { x: -7.2, z: -10.8, y: 0, rot: 1 },    // behind the ward's cell door (the ward's north wall is the ground's west)
+                padded:        { x: -2.2, z: -6.0,  y: 0, rot: 0 },    // DOOR HQ 2.0 (2026-11-26): behind the wing's north door at x −2.2 (the old ward's), its south door facing it
             },
             joins: [
-                { a: 'medwing', b: 'medical',       kind: 'door', door: 'ward',          bDoor: 'egress' },
+                { a: 'medwing', b: 'padded',        kind: 'door', door: 'ward',          bDoor: 'egress' },
                 { a: 'medwing', b: 'dispensary',    kind: 'door', door: 'dispensary',    bDoor: 'egress' },
                 { a: 'medwing', b: 'interrogation', kind: 'door', door: 'interrogation', bDoor: 'egress' },
-                { a: 'medical', b: 'padded',        kind: 'door', door: 'padded',        bDoor: 'egress' },
             ] },
         /* Z11 — THE BASEMENT (Phase 4, 2026-09-27, §8.4's basement merge built as the medical wing was: DOOR JOINS, the
            rooms kept whole). The service lobby at the foot of the lift, the kitchen and its cold room north, the laundry and
