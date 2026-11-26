@@ -8924,6 +8924,7 @@
             L.codeRedRun = (cr && gm === 'arena') ? { date: cr.date, site: cr.site, race: cr.race, label: cr.label, bonus: cr.bonus } : null;
             return _hqEncounterStart(L, null, null);
         };
+        function _hqHealDlg(t) { const c = t && t.kind === 'counter' && t.counter; return !!(c && (c.id === 'cot' || c.id === 'healzone')); }
         function _hqCounterPanelHtml(t) {
             const c = t.counter || {};
             const act = c.action || {};
@@ -8943,6 +8944,11 @@
             if (act.overlay === 'nav') return _hqNavHtml();   // THE SHIP'S ONE DOOR: the bridge's nav console
             if (act.overlay === 'training') return _hqTrainingHtml();
             if (act.overlay === 'crossing' && c.proc === 'battle_marker') return _hqMarkerHtml(t);   // THE MARKER (2026-09-20): the party's fight, no terminal
+            /* THE COT / THE HEALING MACHINE / THE HEALING ZONES: REST, the party's HP / MP back to full, free. mondo 2026-11-26: "All it
+               needs to say is 'Heal your party?' with a yes or no button" + "use the dialogue box at the bottom of the screen": THE
+               DIALOGUE BOX, the line and YES / NO, nothing else (_hqOpenPanel shows it as a person's box, _hqHealDlg) */
+            if (_hqHealDlg(t)) return window.EWDlg.html({ who: String(c.label || '').toUpperCase(), line: 'Heal your party?',
+                opts: [{ label: 'YES', attrs: 'data-party-rest="1"' }, { label: 'NO', attrs: 'data-close="1"' }], you: { face: _hqDlgYouFace() } });
             let html = `<div class="hq-panel-hd"><b>${_hqEsc(c.label)}</b><span>${_hqEsc(c.sub || '')}</span></div>`;
             /* THE PROJECTOR (Room 360): the tape library's projection — the last tape on file */
             if (c.id === 'projector') html += '<p class="hq-panel-desc">The last crossing on file, projected on the dome. Records sent the tapes up with a note: DO NOT REWIND. The projector rewinds them anyway.</p>';
@@ -9018,20 +9024,6 @@
                 return html;
             }
             /* THE COT (Room 1111, THE PARTY 2026-09-19): REST — the party's HP / MP back to full, the down on their feet; free */
-            if (c.id === 'cot' || c.id === 'healzone') {   // THE HEALING ZONES (2026-09-20): one per hub, the cot's panel
-                const pf = (typeof window.hqPartyFit === 'function') ? window.hqPartyFit(_hqProfile()) : null;
-                const S = (typeof window.hqPartyShifts === 'function') ? window.hqPartyShifts(_hqProfile()) : { members: [] };
-                html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || 'A cot, made up.') + '</p>';
-                if (pf && pf.total) {
-                    html += '<div class="hq-rows">';
-                    S.members.forEach((m, i) => { const v = window.hqPartyVitals(m, null); const hp = v.hpMax ? `${v.hp} / ${v.hpMax}` : 'FULL'; html += `<div class="hq-row hq-row-tray"><b>${i < HQ_PARTY_RULES.shift ? '1ST' : '2ND'} · ${_hqEsc(_hqMemberName(m))}</b><span>${_hqEsc(String((m.meta && m.meta.race) || '').toUpperCase())}${m.you ? ' · YOU' : ''}</span><i class="hq-lamp-chip st-${v.down ? 'codered' : (v.hpMax && v.hp < v.hpMax) ? 'unstable' : 'open'}">${v.down ? 'DOWN' : 'HP ' + hp}</i></div>`; });
-                    html += '</div>';
-                    html += `<div class="hq-rows"><div class="hq-row hq-row-tray"><b>THE PARTY</b><span>${_hqEsc(pf.note)}</span><i class="hq-lamp-chip st-${pf.fit === pf.total && !pf.hurt ? 'open' : pf.ready ? 'unstable' : 'codered'}">${pf.fit} / ${pf.total} FIT</i></div></div>`;
-                }
-                html += '<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-party-rest="1">' + (c.id === 'healzone' ? 'REST HERE' : 'REST THE PARTY') + '</button><button class="hq-btn" data-close="1">NOT NOW</button></div>';
-                html += '<p class="hq-panel-note">Everyone walks out at full. Health carries between encounters, so this is where a battered party comes before the next room. The pause menu (ESC) heals with the party\'s own spells and potions; this cot does it for nothing.</p>';
-                return html;
-            }
             /* THE HOLD (Room 5150): a panel and the condition line off the chart; nothing else */
             if (c.id === 'hold') {
                 const mr = (typeof window.hqMedicalRecord === 'function') ? window.hqMedicalRecord(_hqProfile()) : null;
@@ -10003,7 +9995,7 @@
             else if (t.kind === 'counter') html = _hqCounterPanelHtml(t);
             else if (t.kind === 'notice') html = _hqNoticePanelHtml(t);
             else html = _hqNpcPanelHtml(t);
-            const say = !(t.kind === 'door' || t.kind === 'counter' || t.kind === 'notice');
+            const say = !(t.kind === 'door' || t.kind === 'counter' || t.kind === 'notice') || _hqHealDlg(t);   // the healing machine asks in THE DIALOGUE BOX
             /* THE DIALOGUE BOX (mondo 11-18: "delete all of that bullshit"): a person's box has no hint line under it */
             body.innerHTML = say ? html : html + '<p class="hq-panel-foot">ESC · RIGHT CLICK · CLOSE</p>';
             _hqPanelAt = performance.now();
