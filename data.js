@@ -35482,14 +35482,14 @@ const DOOR_HQ = {
                 { key: 'field_radio',    x: 0.8, z: -2.8, y: 0.76, face: 160 },
                 { key: 'item_binoculars', x: 0.2, z: -2.4, y: 0.76, face: 120 },
                 { key: 'exec_chair',     x: 2.1, z: -4.0, face: 210 },
-                { key: 'antler_trophy',  x: 0, z: -6.7, y: 3.2, face: 180 },
+                { key: 'antler_trophy',  x: 0, z: -6.65, y: 2.9, h: 1.5, face: 180 },
                 { key: 'psx_shelf_mp_4_1', x: -3.2, z: -6.55, face: 180 },
                 { key: 'psx_shelf_mp_4_1', x: 3.2,  z: -6.55, face: 180 },
                 { key: 'owl_perched',    x: -3.2, z: -6.55, y: 2.2, face: 170 },
                 /* the evidence: the cast on its plinth, the board, the map table */
-                { key: 'meshy_giant_foot', x: 6.2, z: -4.4, face: 220 },
+                { key: 'meshy_giant_foot', x: 6.4, z: -4.9, face: 215 },
                 { key: 'evidence_board', x: 8.45, z: -0.4, face: 270 },
-                { key: 'map_table',      x: 4.2, z: 1.0, face: 0 },
+                { key: 'map_table',      x: 3.6, z: 1.6, face: 0 },
                 { key: 'rifle_rack',     x: 8.45, z: 3.2, face: 270 },
                 /* the lodge corner: the bear, the sofa on the rug */
                 { key: 'bear',           x: -6.8, z: -5.3, face: 140 },
@@ -35499,7 +35499,7 @@ const DOOR_HQ = {
                 { key: 'cattle_skull',   x: -8.55, z: -1.0, y: 2.7, face: 90 },
                 { key: 'psx_ceiling_lamp_4_on', x: 0, z: -2.6, ceil: true },
                 { key: 'psx_ceiling_lamp_4_on', x: -5.0, z: 0.5, ceil: true },
-                { key: 'psx_ceiling_lamp_4_on', x: 4.2, z: 1.0, ceil: true },
+                { key: 'psx_ceiling_lamp_4_on', x: 3.6, z: 1.6, ceil: true },
             ],
             agents: [],
             npcSpots: [],
@@ -111432,9 +111432,7 @@ const DOOR_CAST = {
         lines: [],
         spots: [
             /* DOOR HQ 2.0 wave 3 (2026-11-26, mondo: Glass leads Extraterrestrial): at his desk behind the glass */
-            { room: 'extraterrestrial', x: 0, z: -3.75, face: 180, pose: 'hqArms', reach: 2.6, p: 0.7 },
-            { room: 'central_egress', deg: 199.5, r: 19.35, level: 0, face: 20, pose: 'hqArms', reach: 1.9, p: 0.3,
-              doing: 'By the water cooler, arms folded. He has already decided about you.' },
+            { room: 'extraterrestrial', x: 0, z: -3.75, face: 180, pose: 'hqArms', reach: 2.6 },
         ],
     },
     knox: {
@@ -111452,8 +111450,8 @@ const DOOR_CAST = {
         lines: [],
         spots: [
             /* DOOR HQ 2.0 wave 3 (2026-11-26, mondo: Ringer leads Spirit Realm): at his desk behind the glass */
-            { room: 'spirit', x: -2.5, z: -4.15, face: 180, pose: 'hqArms', reach: 2.6, p: 0.7 },
-            { room: 'training', x: 23.4, z: -4.6, face: 250, pose: 'hqArms', reach: 2.0, p: 0.3,
+            { room: 'spirit', x: -2.5, z: -4.15, face: 180, pose: 'hqArms', reach: 2.6, p: 0.8 },
+            { room: 'training', x: 23.4, z: -4.6, face: 250, pose: 'hqArms', reach: 2.0, p: 0.2,
               doing: 'Belle’s father. He watches the grid the way other people watch a stove.' },
         ],
     },

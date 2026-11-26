@@ -1488,3 +1488,33 @@ the vending machines". Plan: `docs/plans/door-hq-2/FLOOR_PLANS.md` (lobby level,
   `{ a: 'central_egress', door: 'cafeteria', b: 'cafeteria', bDoor: 'lobby' }` is in HQ_STAGE_RULES.round. Seen on screen from the Lobby floor.
 - **CHEF (same day, mondo: "Chef in the kitchen/cafteria"):** DOOR_CAST `chef` (the chef race's model, `race: 'chef'`, name CHEF, no title):
   half the visits at the Kitchen's ranges, half at the head of the serving line. Out of every doorway square.
+
+## DOOR HQ 2.0, WAVE 3: THE DIVISION OFFICES ON THE GALLERY (2026-11-26)
+mondo: "Offices for each division and their leader (Spirit realm, extraterrestrial, cryptid, etc)". Built from
+`docs/plans/door-hq-2/plans/2_lobby_upper_level_penthouse.png` and LOOK_BOOK.md "The Lobby's upper level". mondo 11-26: Ringer leads
+Spirit Realm, Glass leads Extraterrestrial (Forrest leads Cryptid).
+- **THE GALLERY JOIN** (data.js `hqStageRoundJoins` / `hqStageRoundGeom` / `hqStageWhereRound`, three-renderer.js `_hqStageRoundLvl`,
+  `_hqStageRoundAt`, `_hqStageRoundSurface`, `_hqStageRoundCam`, `_hqStageCross`): a round join row may name a LEVEL-1 door of the hall
+  (the gallery). Its box stands on the gallery's floor (`rel.y` = the hall's `wallH`, `back.y` = minus it), its front `G.R` = `mezz.outer`.
+  The walker on the gallery reads only the gallery's rooms, the walker on the floor only the floor's (a gallery room stands over a
+  floor room in plan: the Cryptid office is over Medical). The upper drum is cut for a level-1 `open` door (`_hqDrumCuts(room, 1)`,
+  the cut's `top` is absolute) and `_hqOpenFrontFill` takes the level's floor and wall radius. Walked in from the gallery with no card
+  (probe 11-26: gallery -> CRYPTID DIVISION, `where` says cryptid).
+- **THE LOBBY'S GALLERY IS 7.1 m HIGH** (was 5.25): `central_egress.shell.wallH` 7.1, so a gallery room's floor stands over the 7 m
+  front rooms (Medical, Door Store, Cafeteria) with no overlap. The dome is 15.85 m, the Cube at 11.4 m, the twin stairs 38 steps.
+- **THE FIVE ROOMS** (box rooms, front = the `lobby` row on wall `s`, `open: { w, h: 4.9 }`, joined by HQ_STAGE_RULES.round):
+  OBSERVATORY (`observatorium`, 0 deg, 17.5 x 17.5 x 7 m, its counters chart / projector / shelf and the Singularity screen kept),
+  CRYPTID DIVISION (`cryptid`, 72, 17.5 x 14, the hunting lodge, Forrest), BUREAU OF CONTINUITY (`continuity`, 140, 14 x 14, the motto
+  plaque + canon notices counters; the `bureau_vatican` painting moved to its north wall x -2.6 and keeps its own gate), SPIRIT REALM
+  DIVISION (`spirit`, 220, the seance parlour, Ringer), EXTRATERRESTRIAL DIVISION (`extraterrestrial`, 288, space age, Glass).
+- **THE GLASS FRONT** (catalogue `office_glass` / `office_glass_door`, proc `office_glass`): 3.5 m bays floor to 4.9 m; the door bay has
+  no pane under its 3 m transom and the brass plate over it reads the row's `text` (room name, leader). `frame` = the mullions' colour.
+- **`walk: [t0, t1]`** on a box door row = the bay you walk in by; find-doorways.js checks that bay's clear square only (the panes
+  beside it are the front). `node find-doorways.js central_egress cryptid spirit extraterrestrial continuity observatorium`: clear.
+- **DOOR_CAST:** Forrest -> `cryptid` (his old gallery post is gone), Glass -> `extraterrestrial` (only), Ringer -> `spirit` 0.8 /
+  the Training Room 0.2. From the Lobby floor the glass fronts and plates read; a leader is seen from the gallery (7 m up, the floor's
+  eye line only reaches the offices' upper walls).
+- **RETIRED:** `execwing` (THE EXECUTIVE SUITE) -> `continuity`, `trophycase` (Room 111) -> `central_egress`: THE TROPHY CASE is a
+  cabinet on the Lobby's wall at 238 deg (`trophy_case` prop + counter `trophies` -> `_mountReactTrophies`). The `execwing` HQ_WORLD
+  zone and its stage entry are gone. The Bureau's old GATEKEEPER + 24 Keys gate on its door is gone with the door (the front is
+  open glass); the painting to the Vatican keeps its gate.
