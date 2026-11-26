@@ -52964,6 +52964,7 @@ const ThreeRenderer = (function () {
             LWc[camK] = lwNow;
         }
         var G = _ewBunMix(LG, _ewBun.epoch);
+        if (walk && _ewBun.fwSeenEp !== _fwEp) { _ewBun.fwSeenEp = _fwEp; _ewBun.fwSeenFr = FR; }
         var objs = 0, quietN = 0, addNB = _ewAddCount(), addMovedB = addNB !== _ewBun.addN, bunEvery = typeof window !== 'undefined' && !!window.EW_BUN_CHECK_EVERY, addAll = typeof window !== 'undefined' && !!window.EW_BUN_ADD_ALL;
         var BUN_QUIET = 8, BUN_QUIET_LONG = 90;
         /* THE QUIET GROUPS IN A FIGHT (2026-11-15, mondo: "make sure all of these fixes apply everywhere ... battles, all of it"): the battle's
@@ -52989,7 +52990,15 @@ const ThreeRenderer = (function () {
                the frames where they were not): quiet after BUN_QUIET still checks (was 40: every re-record anywhere bought the
                group two seconds of full checks); an add wakes only the group it lands under (`_ew_bunDirty`, set by the add
                hook; window.EW_BUN_ADD_ALL = the old rule); a group quiet for BUN_QUIET_LONG checks takes every fourth frame. */
-            if ((walk || (field && !fieldEvery)) && g.isBundleGroup && st.quiet >= BUN_QUIET && (!addMovedB || !addAll) && !g._ew_bunMiss && !g._ew_bunFree && !g._ew_bunDirty && st.G === G && ((FR + i) % (st.quiet >= BUN_QUIET_LONG ? 4 : 3)) !== 0 && !bunEvery) { objs += st.n | 0; quietN++; continue; }
+            /* THE MOVED ROOM IS NEVER QUIET (2026-11-26, mondo on WebGPU: "Im seeing the wallpaper of the room im exiting when the screen
+               gltiches, which doesnt make sense because its behind me"; his crossing capture: "moved 6" on the swap frame, "moved 1" the
+               frame after). The swap woke the groups of a list it took in the middle of itself: the room being left was on neither side
+               of the books at that moment, so its groups were not woken and waited for their quiet turn (one frame in three or four).
+               Until then the left room's shell replayed where it stood in the OLD frame under the NEW camera: its wallpaper across the
+               screen for one to three frames. The rule is here now, where no list can miss a group: a group that has not been checked
+               since the rooms last moved as a whole (`_fwEp`) is checked this frame. Old rule: window.EW_BUN_FW_BY_TURN. */
+            var fwStale = walk && _fwEp !== 0 && st.fwE !== _fwEp && !(typeof window !== 'undefined' && window.EW_BUN_FW_BY_TURN);
+            if ((walk || (field && !fieldEvery)) && g.isBundleGroup && st.quiet >= BUN_QUIET && (!addMovedB || !addAll) && !g._ew_bunMiss && !g._ew_bunFree && !g._ew_bunDirty && !fwStale && st.G === G && ((FR + i) % (st.quiet >= BUN_QUIET_LONG ? 4 : 3)) !== 0 && !bunEvery) { objs += st.n | 0; quietN++; continue; }
             /* a demoted group is tried as a still recording again (30 s, then twice as long each time, 8 min at most): what made
                it churn may be out of it by now (THE CHANGERS OUT finds the pieces only while the values are hashed) */
             var gW = walk;   // this group is one of the walk's
@@ -53021,6 +53030,7 @@ const ThreeRenderer = (function () {
                 /* THE FIGHT IN THE WALKED ROOM: the room was laid on the board (or back) as a whole. The group holds the pieces it held:
                    its recording stays, and every piece's place is written once into each recording's buffers (the replay, below) */
                 st.fwE = _fwEp; st.hv = S.hv; g._ew_fwFull = (g._ew_fwFull | 0) + 1; _ewBun.fwKept = (_ewBun.fwKept | 0) + 1;
+                if (_ewBun.fwSeenEp === _fwEp && _ewBun.fwSeenFr !== FR) _ewBun.fwLate = (_ewBun.fwLate | 0) + 1;   // moved on a later frame than the move itself (the crossing capture prints it)
             } else if (st.hs !== S.hs || (stat && st.hv !== S.hv)) {
                 st.why[st.hs !== S.hs ? 'tree' : 'values']++; W[st.hs !== S.hs ? 'tree' : 'values']++;
                 if (st.hs !== S.hs) {   // THE TREE'S WHY (lens): what changed the list of pieces — the merge taking or handing back pieces, a mover going out or coming back, a piece shown or hidden, a piece added or removed
@@ -53060,6 +53070,7 @@ const ThreeRenderer = (function () {
                 g.version++; st.hf = S.hf; st.softAt = now; _ewBun.recs++;
             }
             g._ew_bunFree = false; gcm[camK] = st.G;
+            if (gW) st.fwE = _fwEp;   // THE MOVED ROOM IS NEVER QUIET: checked since the last whole move
             st.cB = cB0; st.cH = cH0; st.cO = cO0; st.cN = cN0;
             st.quiet = (_ewBun.recs === recs0 && !miss) ? (st.quiet | 0) + 1 : 0;
             if (miss && g.isBundleGroup) { st.why.cold = (st.why.cold || 0) + 1; W.cold++; g.version++; _ewBun.recs++; }   // a pipeline was still compiling at the last recording
@@ -108064,14 +108075,14 @@ const ThreeRenderer = (function () {
         if (st) for (var id in st.parts) { var E = st.parts[id]; if (E && E.attached && E.P && E.P.partRoot) { partsN++; if (E.P.partRoot.visible !== false && E.P.partRoot.parent) drawn++; } }
         return { t: performance.now(), room: (st && st.id) || '', cam: c ? [c.position.x / U, c.position.y / U, c.position.z / U, Math.atan2(w.x, w.z) * 180 / Math.PI] : null,
                  pl: pl ? [pl.x, pl.y, pl.z, (pl.entry && pl.entry.model) ? pl.entry.model.rotation.y * 180 / Math.PI : null] : null,
-                 b: _ewKeep.builds | 0, p: _ewKeep.pipes | 0, held: lt ? lt.held | 0 : 0, recs: _ewBun.recs | 0, moved: _ewBun.fwKept | 0, sigs: _ewWhy.sigs | 0,
+                 b: _ewKeep.builds | 0, p: _ewKeep.pipes | 0, held: lt ? lt.held | 0 : 0, recs: _ewBun.recs | 0, moved: _ewBun.fwKept | 0, late: _ewBun.fwLate | 0, sigs: _ewWhy.sigs | 0,
                  rig: _ewRigG ? (_ewRigG.grows | 0) + '/' + (_ewRigG.moves | 0) : '-', sig: (function () { try { return _ewRigSig(); } catch (e) { return ''; } })(),
                  nb: drawn + '/' + partsN, imp: (H && H.imp) ? H.imp.recs.filter(function (r) { return r.shown; }).length : 0 };
     }
     function _hqXcFrame(H, t0) {
         var X = _hqXc, k = _hqXcCounts(), p = X.prev; X.prev = k;
         if (!p) return;
-        var row = { gap: k.t - p.t, js: performance.now() - t0, k: k, d: { b: k.b - p.b, p: k.p - p.p, held: k.held - p.held, recs: k.recs - p.recs, moved: k.moved - p.moved, sigs: k.sigs - p.sigs, rigSig: k.sig !== p.sig } };
+        var row = { gap: k.t - p.t, js: performance.now() - t0, k: k, d: { b: k.b - p.b, p: k.p - p.p, held: k.held - p.held, recs: k.recs - p.recs, moved: k.moved - p.moved, late: k.late - p.late, sigs: k.sigs - p.sigs, rigSig: k.sig !== p.sig } };
         if (X.cur) { X.cur.rows.push(row); if (X.cur.rows.length >= 6) { X.last = X.cur; X.cur = null; } return; }
         X.ring.push(row); if (X.ring.length > 2) X.ring.shift();
     }
@@ -108085,7 +108096,7 @@ const ThreeRenderer = (function () {
             var k = r.k, d = r.d, n = i - X.swapAt;
             return '[' + n + '] gap ' + Math.round(r.gap) + ' ms' + (k.cam ? ' · cam ' + f(k.cam[0]) + ',' + f(k.cam[1]) + ',' + f(k.cam[2]) + ' look ' + Math.round(k.cam[3]) : '') + (k.pl ? ' · you ' + f(k.pl[0]) + ',' + f(k.pl[2]) + ' body ' + (k.pl[3] == null ? '-' : Math.round(k.pl[3])) : '') +
                 ' · ' + k.room + ' parts ' + k.nb + (k.imp ? ' doorways ' + k.imp : '') + (d.b ? ' · builds ' + d.b : '') + (d.p ? ' · pipelines ' + d.p : '') + (d.held ? ' · HELD ' + d.held : '') + (d.recs ? ' · recorded ' + d.recs : '') +
-                (d.moved ? ' · moved ' + d.moved : '') + (d.sigs ? ' · LIGHT LIST x' + d.sigs : '') + (d.rigSig ? ' · rig changed (' + k.rig + ')' : '');
+                (d.moved ? ' · moved ' + d.moved + (d.late ? ' (' + d.late + ' LATE)' : '') : '') + (d.sigs ? ' · LIGHT LIST x' + d.sigs : '') + (d.rigSig ? ' · rig changed (' + k.rig + ')' : '');
         }).join(' | ');
     }
     function _hqStageSwap(H, to) {
@@ -110906,6 +110917,7 @@ const ThreeRenderer = (function () {
                 var w0 = []; out.here = _hqCarHits(V, R, b.x, b.z, b.yaw, b.y, w0); out.hereWhy = w0.slice(0, 4);
                 return out;
             },
+            crossing: function () { try { return _hqXcText(); } catch (e) { return null; } },   /* a probe's read: THE CROSSING CAPTURE's line */
             press: function (key, on) { if (!_hq) return false; _hq.keys[key] = !!on; return true; },   /* a probe's write: hold a walker key (a headless window blurs on every evaluate and drops real key events) */
             walk: function () { var H = _hq, pl = H && H.player; return pl ? { paused: !!H.paused, keys: Object.assign({}, H.keys), fp: !!H.fp, x: pl.x, y: pl.y, z: pl.z, air: !!pl.air, vy: pl.vy || 0, fitFail: H.portal && H.portal.fitFail, mvx: pl.mvx || 0, mvz: pl.mvz || 0, velX: pl.velX || 0, velZ: pl.velZ || 0, drawn: !!(H.portal && H.portal.drawn), slot: H.portal && H.portal.slot, camYaw: H.cam.yaw } : null; },   /* a probe's read: the walker's frame (THE CARRY, the keys, the pause) */   /* a probe's read: the walker's group (turn it to photograph the held gun from the front) */
             chars: function () {

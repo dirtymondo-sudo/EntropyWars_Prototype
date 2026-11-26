@@ -4393,3 +4393,19 @@ moved, light-list changes, rig changes). `_hqXcFrame` after the main render, `_h
 Also (H-Wing / any see-through doorway): after a doorway crossing the new room arms its doorway back while the camera stands a few
 cm on the room's side of it; its two-sided 0.6 m box was cut by the near plane and filled the screen with the room just left.
 `_hqImpRender` no longer shows a doorway the camera stands at while looking away from it. Old rule: `window.EW_HQ_IMP_BACK_SHOW`.
+
+## THE MOVED ROOM IS NEVER QUIET (2026-11-26, the Lobby crossing glitch, found)
+mondo on hqxc-01 (WebGPU): "Im seeing the wallpaper of the room im exiting when the screen gltiches, which doesnt make sense because
+its behind me"; his Last crossing line (Lobby > Door Store): "moved 6" on the swap frame, "moved 1" the frame after.
+Cause: THE MOVED RECORDINGS woke the groups of `_ewBunTargets(H)` taken in the MIDDLE of `_hqStageSwap`. The swap had just added a
+group (`Q.extra`), so the kept list was refilled right there, with H already holding the new room's keys and the room being left
+not yet back in `st.parts`: the left room's shell / props / doors were on neither side of the books and were not woken. They waited
+for their quiet turn (one frame in three or four) and until then replayed where the room stood in the OLD frame under the NEW
+camera. From the Lobby that is its round shell turned 35 degrees and shifted 25 m: wallpaper across the whole screen for 1 to 3 frames.
+Fix (`_ewBunTick`): the rule sits in the check itself, where no list can miss a group: a walk group not checked since the rooms last
+moved as a whole (`st.fwE !== _fwEp`) is never skipped as quiet; every checked group takes the epoch. Old rule: `window.EW_BUN_FW_BY_TURN`.
+The capture prints `moved N (k LATE)` when a group is re-placed on a later frame than the move (`_ewBun.fwLate`).
+Checked in the cloud (node renderer on WebGL 2 with `EW_BUN_DRY`, the check without the recordings; walker stepped by
+`dev.teleport` across the Door Store's front, `ThreeRenderer.hq.dev.crossing()` read after): old rule "moved 6" then "moved 1 (1 LATE)"
+two frames on, his pattern; new rule "moved 8" on the swap frame, none late. Real WebGPU in the cloud (`EW_PROBE_GL=webgpu`) does
+cross with the teleport steps, but its groups re-record every frame there, so nothing is ever quiet and the bug cannot show.
