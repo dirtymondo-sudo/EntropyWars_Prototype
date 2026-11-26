@@ -1873,3 +1873,7 @@ Sep 3, 2026 at 02_08_16 AM (1).png` and `(5).png` (the pit fenced by low oxblood
   Knox (19.6, 3.5, the east walkway's folding chairs), Ringer (18.2, -8.75); `rooms.training` counter / sparring spots / spawn (0, 21).
 - Checked: find-doorways.js + find-softlocks.js clear; probes: the room, the cutscene's first shots, the Ring's north passage (joined, no
   card), the battle board.
+- **THE HEAL BOX (11-26, mondo: "All it needs to say is 'Heal your party?' with a yes or no button" + "use the dialogue box at the bottom
+  of the screen not a big ass panel"):** the `cot` / `healzone` counters (the healing machine, every hub's healing zone) open THE DIALOGUE
+  BOX, not the centre panel: the counter's name, "Heal your party?", YES (`data-party-rest`) / NO. No party list, no notes. map.js
+  `_hqHealDlg(t)` picks it in `_hqCounterPanelHtml` and makes `_hqOpenPanel` treat it as a person's box; keys 1 / 2 answer too.
