@@ -1387,3 +1387,29 @@ Challenge button and HQ_PARTY_RULES.restCounter all read it).
   the wing's east door. `medical` left the medwing zone (a card between them). When the Works rebuild moves the Hold and the
   Interrogation Room down, take out the staff door and retire `medwing`.
 - `node find-doorways.js medical`: clear.
+
+## DOOR HQ 2.0, THE CAFETERIA + THE KITCHEN (2026-11-26, wave 2)
+mondo: "Bigger cafeteria". Built from FLOOR_PLANS.md picture 1 and LOOK_BOOK.md "Cafeteria" / "Kitchen". Room id `cafeteria` (kept), label
+CAFETERIA, no sub, no room number.
+- **The box:** 35 x 24.5 m (10 x 7 squares), 7 m high, on the Lobby's west side (the hall's door at deg 270). Its south wall's middle 17.5 m
+  is the Lobby opening: door row `{ id: 'lobby', wall: 's', x: 0, open: { w: 17.5, h: 4.5 } }`, no leaf. The Lobby thread adds `open`
+  (hqDoorOpening) and the hall's row; the join row `{ a: 'central_egress', door: 'cafeteria', b: 'cafeteria', bDoor: 'lobby' }` in
+  HQ_STAGE_RULES.round lands when the Lobby shell is on main. Until then the hall's old `cafeteria` row (the Ring door) leads in at `lobby`.
+- **The Kitchen is in the same room:** a 21 x 7 m strip behind the canteen (z −12.25 … −5.25, x ±10.5), walled by THE ROOM WALL
+  (`room_wall`, a new proc, three-renderer.js; any box room can use it): a partition built in metres from its row (`len`, `wallH`, `t`,
+  `dadoH`, `front` / `back` sheets, `holes` = openings, `sill` = a steel shelf through a hatch). It has no catalogue footprint: THE REAL
+  COLLISION reads its slabs, so a doorway in it is walked through and a hatch is a wall to the waist. With `floor: '<sheet>'` it lays a
+  1.5 cm floor patch instead (the kitchen's linoleum on the canteen's checkerboard). The front wall has a 12 m serving hatch (sill
+  1.05 m) over the serving line and a 2.1 x 2.9 m staff doorway at its east end; a 4 cm lining tiles the room's north wall inside.
+- **Retired:** the basement `kitchen` and `coldroom` (DOOR_HQ.retired -> `cafeteria`; out of HQ_WORLD basement's parts and joins;
+  services' `kitchen` door and corridor_b's secret `coldroom` door cut). The Cold Room is folded into the Kitchen's west end. The old
+  room's MOBIUS STRIP CLUB night variant is gone with it (one name a room).
+- **Dressing:** four rows of four `psx_dinner_table_1` on the hero line with `cafeteria_chair` / `molded_chair` both sides (a few signed
+  out), saucer pendants over them; booths down both side walls (two `psx_sofa_3` over a `psx_dinner_table_1`, the look book's stand-in
+  until a diner booth model exists) under `false_window`s and sputnik lamps; the serving line (four `serving_line`), the till
+  (`reception_wedge`), a big `wall_clock` over the hatch; the coffee corner in the east nook; the Kitchen's ranges, hoods, deck oven,
+  sinks, shelving, fridges, two `steam_table`s at the pass and the prep island.
+- **Decals:** a prop row may say `decal: false` to refuse its key's mark (three-renderer.js _hqBuildDecals): the kitchen's steel tables
+  carried the Autopsy Room's blood (HQ_DECAL_RULES.byKey).
+- **Kept clear:** the opening's lane (z > 8.75 across x ±9.1) and 3.5 m both sides of the kitchen doorway. `node find-doorways.js
+  cafeteria`: 0 rows.
