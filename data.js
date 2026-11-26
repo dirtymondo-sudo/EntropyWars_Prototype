@@ -33783,6 +33783,11 @@ const DOOR_HQ = {
         heal_machine:    { proc: 'heal_machine',    h: 2.2,  foot: 1.0, rect: { hw: 1.0, hd: 0.5 }, block: true, light: { color: 0x9fffe8, intensity: 0.6, dist: 6, y: 1.6 } },
         nurse_counter:   { proc: 'nurse_counter',   h: 1.15, foot: 0,   rect: { hw: 3.65, hd: 0.42 }, block: true },
         glass_partition: { proc: 'glass_partition', h: 2.7,  foot: 0,   rect: { hw: 1.75, hd: 0.08 }, block: true },
+        /* THE GLASS FRONT (DOOR HQ 2.0 wave 3, 2026-11-26): one 3.5 m bay of an office's glass front on the Lobby's gallery, floor to `h`
+           (the row's, 4.9 m default), seen through from the Lobby floor. `office_glass` is a pane (a blocker); `office_glass_door` is the
+           bay you walk in by: no pane below the transom (3 m), glass over it, the name plate on it (the row's `text`, one line a row) */
+        office_glass:      { proc: 'office_glass', h: 4.9, foot: 0, rect: { hw: 1.75, hd: 0.08 }, block: true, mesh: false },
+        office_glass_door: { proc: 'office_glass', h: 4.9, foot: 0, mesh: false, door: true },
         med_cross:       { proc: 'med_cross',       h: 1.6,  foot: 0,   wall: true, mount: 4.6, depth: 0.12, glow: { y: 0.8, size: 2.4, color: 0xff8a80 } },
         eeg_rack:        { proc: 'eeg_rack',        h: 1.4,  foot: 0.35, block: true, glow: { y: 1.0, size: 0.9, color: 0x80ffb0 }, light: { color: 0x60ff90, intensity: 0.5, dist: 4, y: 1.0 } },   // Room REM: the trace beside a cot (ticker)
         dream_screen:    { proc: 'dream_screen',    h: 1.2,  foot: 0,    wall: true, mount: 1.1, depth: 0.1, glow: { y: 0.6, size: 2.2, color: 0xc0a0ff } },   // Room REM: what the sleepers see (ticker: the drawing drifts)
@@ -34363,6 +34368,7 @@ const DOOR_HQ = {
        Woods are three rooms at their v13 places (the Clearing + Dead Man's Cave, the Redwood Trail, Bohemian Grove) + the route rooms of the links L3 and L4. */
     retired: { ring_m: 'central_egress',   /* THE EIGHT DOORS (2026-11-18): the mezzanine ring held only bay doors; its four doors in the Main Hall are closed */
                kitchen: 'cafeteria', coldroom: 'cafeteria',   /* DOOR HQ 2.0 WAVE 2 (2026-11-26, the Cafeteria thread): the Kitchen is the strip behind the Cafeteria's serving hatch, the Cold Room folded into it (LOOK_BOOK.md); the basement pair is gone */
+               execwing: 'continuity', trophycase: 'central_egress',   /* DOOR HQ 2.0 WAVE 3 (2026-11-26): the Bureau of Continuity is on the Lobby's gallery; the Trophy Case is a cabinet on the Lobby's wall */
                dispensary: 'doorstore',   /* DOOR HQ 2.0 WAVE 2 (2026-11-26, mondo: "The Hatch/The Dispensary/Shop needs to be renamed to Door Store and only door store"): Room 911 off the Medical Wing is the Door Store off the Lobby; the wing's door to it is cut */
                reception: 'central_egress',   /* DOOR HQ 2.0 WAVE 1 (2026-11-26, mondo: "Rhonda's desk is the reception, she is the receptionist"): its door is cut, its two counters stand at her desk */
                site_prebuilt_downtown_mall: 'site_prebuilt_bayside_mall',   /* THE BAYSIDE MALL (2026-11-20): the old hall, 96 x 64 m behind a 28 m building, is this one building now (bake-mall.js) */
@@ -35034,7 +35040,7 @@ const DOOR_HQ = {
           why: 'the painting over the mantel in the sanctum is of a mountain with a city on it; the city has lights on at night, which the painting should not know',
           note: 'the frame is warm', draft: true },
         { id: 'bureau_vatican', route: 'seams', way: 'painting', gate: { minClearance: 5, requiresKeys: 24 },
-          a: { room: 'continuity', wall: 'n', x: -1.7 },
+          a: { room: 'continuity', wall: 'n', x: -2.6 },   // (wave 3: the Bureau's new north wall, between the cabinets and the plaque)
           /* THE DIVINE STAIR, second pass (2026-09-18): RE-POINTED off the bypassed board onto THE CORTILE's east wall — the square in the painting is the courtyard */
           b: { site: 'prebuilt_vatican', part: 'plots', wall: 'free', x: 85.75, z: -8.75, face: 180, sub: 'THE PAINTING · THE BUREAU BEHIND IT' },   // THE VATICAN ON PLOTS (2026-11-16): under the Square's north colonnade (the painting is of a colonnade and a square); bake-afterlife.js checks this row
           why: 'the Bureau keeps one painting for reference: a colonnade and a square, in case the record and the square ever disagree; the square is on the other side of it',
@@ -35194,10 +35200,11 @@ const DOOR_HQ = {
             kind: 'rotunda',
             shell: {
                 radius: 24.5,          // the floor's drum (49 m across)
-                wallH: 5.25,           // the gallery's height
+                wallH: 7.1,            // the gallery's height (DOOR HQ 2.0 wave 3, 2026-11-26: 5.25 -> 7.1, so the division offices on it stand
+                                       // over the 7 m rooms on the floor, Medical, the Door Store and the Cafeteria, and the floor's ceiling is higher)
                 mezz: { inner: 17.5, outer: 24.5, thick: 0.45 },   // THE GALLERY: 7 m wide, over the floor's outer band (the floor goes on under it)
                 upperWallH: 5.75,
-                domeH: 3.0,            // to the dome's top: 14 m
+                domeH: 3.0,            // to the dome's top: 15.85 m
                 dadoH: 1.05,
                 floor: 'terrazzo', wall: 'damask_3', dado: 'urban:WoodPanelling1a', trim: 'brass', ceiling: 'ceiling', stair: 'marble',
                 bands: [               // inlaid floor rings [rIn, rOut, tex]: marble round the flue, brass lines, the gallery's edge
@@ -35205,15 +35212,15 @@ const DOOR_HQ = {
                 ],
                 spokes: { n: 8, r0: 6.6, r1: 11.6, w: 0.16, tex: 'brass' },
                 flue: { r: 2.2, tex: 'marble', band: 'brass' },   // THE FLUE: the column behind Rhonda, floor to dome
-                cube: { size: 3.6, y: 9.8, rodR: 0.09, deg: 180, r: 10 },   // the Cube hangs in the void over the main line, south of the flue
+                cube: { size: 3.6, y: 11.4, rodR: 0.09, deg: 180, r: 10 },   // the Cube hangs in the void over the main line, south of the flue
             },
             /* THE SLIM DESK (mondo: "too wide/thick and it's hard to target her"): a 0.85 m curved counter over 100 degrees facing the
                Foyer, open behind; Rhonda's chair in the well between it and the flue */
             desk: { mode: 'procedural', arc: [130, 230], rOuter: 4.85, rInner: 4.0, h: 1.05, top: 'marble', front: 'urban:WoodPanelling1a' },
             /* the twin stairs: free flights in the void along the gallery's edge, from beside the Foyer up to the gallery (30 steps) */
             stairs: [
-                { id: 'stair_e', from: 166, to: 132, rIn: 15.1, rOut: 17.5, steps: 30, free: true },
-                { id: 'stair_w', from: 194, to: 228, rIn: 15.1, rOut: 17.5, steps: 30, free: true },
+                { id: 'stair_e', from: 166, to: 132, rIn: 15.1, rOut: 17.5, steps: 38, free: true },   // 38 steps up the 7.1 m gallery (wave 3)
+                { id: 'stair_w', from: 194, to: 228, rIn: 15.1, rOut: 17.5, steps: 38, free: true },
             ],
             /* `onRing: { level, deg }` = a room's door on the Ring's outer wall (hqRingMoveDoors moves it there at load) */
             doors: [
@@ -35233,8 +35240,13 @@ const DOOR_HQ = {
                 { id: 'barbershop', deg: 0, level: 0, onRing: { level: 0, deg: 215 }, ringProps: [{ key: 'barber_pole', ddeg: 2 }], leaf: 'leaf_birch_glass', label: 'BARBERSHOP', action: { room: 'barbershop', at: 'egress' } },
                 { id: 'subway',    deg: 0, level: 0, onRing: { level: 0, deg: 350 }, leaf: 'leaf_white_wood', label: 'THE SUBWAY', action: { room: 'tunnel', at: 'ring' } },   // until the Garage holds the platform's way down
                 /* ── the gallery (level 1) ── */
-                { id: 'observatorium', deg: 0, level: 1, leaf: 'leaf_holographic', label: 'THE OBSERVATORY', action: { room: 'observatorium', at: 'egress' } },
-                { id: 'executive', deg: 125, level: 1, leaf: 'leaf_suburban_house', label: 'BUREAU OF CONTINUITY', action: { room: 'execwing', at: 'egress' } },
+                /* THE DIVISION OFFICES (wave 3, plans/2_lobby_upper_level_penthouse.png): glass fronts, no door, joined with no card
+                   (THE GALLERY JOIN, HQ_STAGE_RULES.round); each box's `lobby` row writes the same opening */
+                { id: 'observatorium', deg: 0,   level: 1, open: { w: 17.5, h: 4.9 }, label: 'THE OBSERVATORY', action: { room: 'observatorium', at: 'lobby' } },
+                { id: 'cryptid',       deg: 72,  level: 1, open: { w: 14, h: 4.9 }, label: 'CRYPTID DIVISION', action: { room: 'cryptid', at: 'lobby' } },
+                { id: 'continuity',    deg: 140, level: 1, open: { w: 14, h: 4.9 }, label: 'BUREAU OF CONTINUITY', action: { room: 'continuity', at: 'lobby' } },
+                { id: 'spirit',        deg: 220, level: 1, open: { w: 14, h: 4.9 }, label: 'SPIRIT REALM DIVISION', action: { room: 'spirit', at: 'lobby' } },
+                { id: 'extraterrestrial', deg: 288, level: 1, open: { w: 14, h: 4.9 }, label: 'EXTRATERRESTRIAL DIVISION', action: { room: 'extraterrestrial', at: 'lobby' } },
                 { id: 'elevator',  deg: 330, level: 1, leaf: null, proc: 'elevator', label: 'ELEVATOR', action: { room: 'car', at: 'out' }, floors: ['B', 'G', 'M', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '14', 'PH'] },
             ],
             counters: [
@@ -35245,6 +35257,7 @@ const DOOR_HQ = {
                 { id: 'directory', deg: 215, r: 22.6, level: 0, label: 'BUILDING DIRECTORY', action: { overlay: 'directory' }, radius: 1.8, proc: 'directory' },
                 { id: 'board',     deg: 325, r: 23.6, level: 0, label: 'EMPLOYEE OF THE MONTH', action: { fn: '_mountLeaderboard' }, radius: 2.2, proc: 'board' },
                 { id: 'md_board_hq', deg: 145, r: 23.9, level: 0, label: 'LOCKE’S CASE BOARD', action: {}, radius: 2.0, plateY: 2.3, verb: 'READ', proc: 'hotel_act', hotel: { act: 'board' } },   // its board is the notice board in `props`
+                { id: 'trophies', deg: 238, r: 23.6, level: 0, label: 'TROPHY CASE', verb: 'OPEN', action: { fn: '_mountReactTrophies' }, radius: 1.9, plateY: 2.4 },   // (wave 3: Room 111 retired into this cabinet, LOOK_BOOK.md)
             ],
             /* the bare shell's furniture: Rhonda's chair and desk top, the potion machines (data.js hqVendingApply makes each a counter), the case board */
             props: [
@@ -35261,6 +35274,7 @@ const DOOR_HQ = {
                 { key: 'vending_machine', deg: 204, level: 0, wall: true },
                 { key: 'vending_machine', deg: 318, level: 0, wall: true },
                 { key: 'notice_board',   deg: 145, level: 0, wall: true, mount: 1.3 },        // LOCKE'S CASE BOARD (the counter md_board_hq)
+                { key: 'trophy_case',    deg: 238, level: 0, wall: true },                     // THE TROPHY CASE (the counter trophies)
             ],
             agents: [],
             npcSpots: [],
@@ -35364,98 +35378,245 @@ const DOOR_HQ = {
            (deg cw from north) their front points; `rot` is extra yaw. The
            way out wears the rank leaf like the door in the egress does
            (`rankDoor`) — it is the same door from both sides. */
-        /* ── THE BUREAU OF CONTINUITY (HQ plan 4.4, 2026-09-15): the Canon
-           Office — a box room behind the mezzanine door at 315° (the
-           suburban-house leaf; GATEKEEPER + 24 Keys, the gate is the door's
-           and stays there; the door carries the number "№ — CONTESTED", the
-           room wears none). THE MOTTO PLAQUE on the north wall is the
-           reality barometer (MASTER A7): the `motto_plaque` proc reads
-           hqMottoBarometer at build and the counter's panel says which of
-           the three forms it reads, why, and what you remember it reading;
-           CANON NOTICES on the east wall is every retcon the building has
-           made (hqCanonNotices). The only department that suspects the
-           schedule; the only clock in the building that is right. */
+        /* ── THE BUREAU OF CONTINUITY (DOOR HQ 2.0 wave 3, 2026-11-26): on the Lobby's gallery behind glass (the upper-level plan), no
+           longer behind the Executive Suite (retired). THE MOTTO PLAQUE on the north wall is the reality barometer (the `motto_plaque`
+           proc reads hqMottoBarometer; the counter's panel, map.js); CANON NOTICES on the east wall (hqCanonNotices). The painting
+           on the north wall is the seam to the Vatican (`links.bureau_vatican`, its own gate). Beige and file green, two desks facing
+           the glass, the sealed records on the west wall. ── */
         continuity: {
             label: 'BUREAU OF CONTINUITY',
-            sub: 'STORY CANON · THE CANON OFFICE',
             kind: 'box',
             shell: {
-                w: 8, d: 5.5, h: 3.2,
-                wallH: 3.2, dadoH: 1.05,
-                floor: 'carpet', wall: 'drywall', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling',
-                wallColor: 0xcfc6b4,          // a room that has been repainted more than once, to the same colour
+                w: 14, d: 14, h: 5.6,
+                wallH: 5.6, dadoH: 1.2,
+                floor: 'carpet_3', wall: 'drywall', dado: 'drywall', trim: 'brass', ceiling: 'ceiling',
+                wallColor: 0xd8cbb0, dadoColor: 0x4e6b4a, ceilColor: 0xeee6d4,
                 pipes: false,
-                light: { x: 0, z: 0 },
-                mood: { light: 0xf2ead8 },
-                plate: { x: -2.4, z: -2.5, y: 2.85 },
+                lights: [{ x: -3.5, z: -2.0 }, { x: 3.5, z: -2.0 }, { x: 0, z: 3.0 }],
+                mood: { light: 0xf2ead8, ambient: 0.55 },
+                plate: { x: 0, z: -6.8, y: 4.6 },
             },
             doors: [
-                { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_suburban_house',
-                  label: 'THE EXECUTIVE SUITE', sub: 'BACK TO THE SUITE',
-                  action: { room: 'execwing', at: 'continuity' },
-                  desc: 'The way back to the mezzanine. A house door on an office. It has always been a house door; the file that says otherwise has been corrected.' },
+                { id: 'lobby', wall: 's', x: 0, open: { w: 14, h: 4.9 }, walk: [0, 3.5], label: 'THE LOBBY', action: { room: 'central_egress', at: 'continuity' } },
             ],
             counters: [
-                /* THE MOTTO PLAQUE → the by-id panel (map.js): the reality barometer — which form the plaque reads today, and what you remember */
-                { id: 'plaque', x: 0, z: -2.35, face: 0, plateY: 2.3, radius: 1.9, verb: 'READ',
-                  label: 'THE MOTTO PLAQUE', sub: 'THE REALITY BAROMETER · READ IT', action: {},
-                  desc: 'The official motto of the Department, engraved in brass. There is one motto. Its wording has never changed. The Bureau keeps the plaque polished and the record of its wording, which also has never changed, in the cabinet.' },
-                /* CANON NOTICES → the by-id panel (map.js): every retcon the building has made, dated, stamped */
-                { id: 'notices', x: 3.4, z: 0, face: 270, plateY: 2.2, radius: 1.9, verb: 'READ',
-                  label: 'CANON NOTICES', sub: 'WHAT HAS ALWAYS BEEN SO · READ THEM', action: {},
-                  desc: 'The board where the Bureau posts what has always been the case. Notices are dated the day they were always true. Take one down and there is another under it, saying the same thing in different words.' },
+                { id: 'plaque', x: 0, z: -6.4, face: 0, plateY: 2.3, radius: 1.9, verb: 'READ', label: 'THE MOTTO PLAQUE', action: {} },
+                { id: 'notices', x: 6.4, z: 0, face: 270, plateY: 2.2, radius: 1.9, verb: 'READ', label: 'CANON NOTICES', action: {} },
             ],
             props: [
-                /* ── the north wall: the plaque, the plate, the record of its wording ── */
+                { key: 'office_glass', x: -5.25, z: 6.88, face: 180, frame: 0x4e6b4a },
+                { key: 'office_glass', x: -1.75, z: 6.88, face: 180, frame: 0x4e6b4a },
+                { key: 'office_glass_door', x: 1.75, z: 6.88, face: 180, text: ['BUREAU OF CONTINUITY'], frame: 0x4e6b4a },
+                { key: 'office_glass', x: 5.25,  z: 6.88, face: 180, frame: 0x4e6b4a },
+                /* the north wall: the plaque, the cabinets of its wording */
                 { key: 'motto_plaque',   wall: 'n', x: 0 },
-                { key: 'nameplate',      wall: 'n', x: -3.0, mount: 1.55 },   // rev 22: moved west — THE PAINTING (the seam to the Vatican, the Bureau's own gate on it) hangs at x −1.7
-                { key: 'filing_cabinet', wall: 'n', x: 2.5 },
-                { key: 'filing_cabinet', wall: 'n', x: 3.2 },
-                { key: 'cardboard_boxes', x: -3.2, z: -2.0, face: 20 },              // PREVIOUS WORDINGS — the label has been crossed out
-                { key: 'vent_grille',    wall: 'n', x: -3.4, mount: 2.65 },
-                /* ── the east wall: the notices, two boards deep, under the camera ── */
+                { key: 'filing_cabinet', wall: 'n', x: -6.0 },
+                { key: 'filing_cabinet', wall: 'n', x: -5.3 },
+                { key: 'filing_cabinet', wall: 'n', x: 3.6 },
+                { key: 'filing_cabinet', wall: 'n', x: 4.3 },
+                { key: 'filing_cabinet', wall: 'n', x: 5.0 },
+                { key: 'filing_cabinet', wall: 'n', x: 5.7 },
+                /* the east wall: the notices */
                 { key: 'notice_board',   wall: 'e', z: -1.1 },
                 { key: 'notice_board',   wall: 'e', z: 1.1 },
-                { key: 'security_camera', wall: 'e', z: 2.4, mount: 2.7 },
-                { key: 'trash_bin',      x: 3.5, z: 2.3, face: 300 },                 // the notices that were taken down, which is none of them
-                /* ── the south wall: the Canon Officer's desk, facing the plaque ── */
-                { key: 'tanker_desk',    wall: 's', x: 0.6 },
-                { key: 'crt_terminal',   x: 1.15, z: 2.3, y: 0.76, face: 0 },
-                { key: 'manila_folders', x: 0.2,  z: 2.35, y: 0.76, face: 10 },
-                { key: 'stapler',        x: -0.25, z: 2.2, y: 0.76, face: 340 },
-                { key: 'rotary_phone',   x: 1.2, z: 2.4, y: 0.76, face: 20 },
-                { key: 'desk_lamp',      x: -0.05, z: 2.45, y: 0.76, face: 30 },
-                { key: 'pen',            x: 0.5,  z: 2.15, y: 0.76, face: 80 },
-                { key: 'computer_chair_grey', x: 0.6, z: 1.55, face: 180 },          // the officer's, at the desk, back to the plaque
-                { key: 'wall_clock',     wall: 's', x: -2.8, mount: 2.4 },            // the one clock in the building that is right; nobody has checked
-                { key: 'picture_round_a', wall: 's', x: 2.9 },
-                { key: 'fire_extinguisher', wall: 's', x: -3.5 },
-                /* ── the west wall: the way out, the lamp, the locker of things that never happened ── */
-                { key: 'exit_sign',      wall: 'w', z: 0, mount: 2.65 },
-                { key: 'office_locker',  wall: 'w', z: -2.0 },
-                { key: 'potted_plant',   x: -3.45, z: -1.0, face: 40 },
-                { key: 'rug_office',     x: 0, z: 0 },
-                /* ── the ceiling ── */
-                { key: 'fluorescent',    x: -1.9, z: 0, ceil: true, face: 90 },
-                { key: 'fluorescent',    x: 1.9,  z: 0, ceil: true, face: 90 },
+                { key: 'clipboard',      wall: 'e', z: 2.6 },
+                /* the west wall: the sealed records, the clock, the cooler */
+                { key: 'deposit_box_wall', x: -6.75, z: -1.5, face: 90 },
+                { key: 'wall_clock',     wall: 'w', z: -4.2, mount: 3.0 },
+                { key: 'water_cooler',   wall: 'w', z: 2.4 },
+                /* two desks facing the glass */
+                { key: 'tanker_desk',    x: -2.5, z: -1.6, face: 0 },
+                { key: 'tanker_desk',    x: 2.5,  z: -1.6, face: 0 },
+                { key: 'computer_chair_grey', x: -2.5, z: -2.45, face: 180 },
+                { key: 'computer_chair_grey', x: 2.5,  z: -2.45, face: 180 },
+                { key: 'rotary_phone',   x: -2.0, z: -1.5, y: 0.76, face: 20 },
+                { key: 'desk_lamp',      x: -3.05, z: -1.4, y: 0.76, face: 200 },
+                { key: 'manila_folders', x: -2.45, z: -1.5, y: 0.76, face: 10 },
+                { key: 'laminator',      x: 2.0, z: -1.5, y: 0.76, face: 0 },
+                { key: 'crt_terminal',   x: 2.95, z: -1.45, y: 0.76, face: 0 },
+                { key: 'potted_plant',   x: -6.2, z: 4.6 },
+                { key: 'fluorescent',    x: -3.5, z: -2.0, ceil: true, face: 90 },
+                { key: 'fluorescent',    x: 3.5,  z: -2.0, ceil: true, face: 90 },
+                { key: 'fluorescent',    x: 0,    z: 3.0,  ceil: true, face: 90 },
             ],
-            agents: [
-                { x: 0.6, z: 1.55, face: 180, pose: 'hqSit', gender: 'male', label: 'THE CANON OFFICER', reach: 1.9,
-                  line: '“The motto has never changed. I have the memo that says so. I have several, and they do not agree, and that is the point of the memo.”' },
-                { x: 2.6, z: -1.6, face: 0, pose: 'hqReach', gender: 'female', label: 'THE CONTINUITY CLERK', reach: 1.8,
-                  line: '“Retcon is a verb. It is also a noun. It has always been both. Please do not use it as an adjective in this office.”' },
+            agents: [],
+            npcSpots: [],
+            lines: [],
+            spawn: { x: 1.75, z: 4.2, face: 0 },
+            noWalkers: true,
+        },
+        /* ── THE LOBBY'S UPPER LEVEL · THE DIVISION OFFICES (DOOR HQ 2.0 wave 3, 2026-11-26; mondo: "Offices for each division and their
+           leader (Spirit realm, extraterrestrial, cryptid, etc)"; plan docs/plans/door-hq-2/plans/2_lobby_upper_level_penthouse.png, look
+           LOOK_BOOK.md "The Lobby's upper level"). Five glass-fronted rooms on the gallery, each joined to the Lobby with no card (THE
+           GALLERY JOIN, HQ_STAGE_RULES.round + the `lobby` row's `open`): the box stands on the gallery's floor, so its leader is seen
+           through the glass from the Lobby floor. The front is four 3.5 m bays (`office_glass`); `walk` on the `lobby` row = the bay you
+           walk in by (`office_glass_door`, the name plate over it), the stretch find-doorways.js keeps clear. One name a room. ── */
+        /* CRYPTID DIVISION (Agent Forrest): a hunting lodge. Forrest at the desk under the antlers, facing the glass. */
+        cryptid: {
+            label: 'CRYPTID DIVISION',
+            kind: 'box',
+            shell: {
+                w: 17.5, d: 14, h: 5.6,
+                wallH: 5.6, dadoH: 1.2,
+                floor: 'wood', wall: 'urban:WoodCladding2a', dado: 'urban:WoodPanelling1a', trim: 'brass', ceiling: 'ceiling',
+                dadoColor: 0x5f7a5c, ceilColor: 0xb59a6a,
+                pipes: false,
+                lights: [{ x: 0, z: -2.6 }, { x: -5.0, z: 0.5 }, { x: 4.2, z: 1.0 }],
+                mood: { light: 0xffd9a0, ambient: 0.45 },
+                plate: { x: 0, z: -6.8, y: 4.6 },
+            },
+            doors: [
+                { id: 'lobby', wall: 's', x: 0, open: { w: 14, h: 4.9 }, walk: [-7, -3.5], label: 'THE LOBBY', action: { room: 'central_egress', at: 'cryptid' } },
             ],
-            npcSpots: [
-                { x: 2.7, z: 0.2, face: 90 },     // reading the notices, again
+            counters: [],
+            props: [
+                /* the glass front, the way in at the west bay */
+                { key: 'office_glass_door', x: -5.25, z: 6.88, face: 180, text: ['CRYPTID DIVISION', 'AGENT FORREST'] },
+                { key: 'office_glass', x: -1.75, z: 6.88, face: 180 },
+                { key: 'office_glass', x: 1.75,  z: 6.88, face: 180 },
+                { key: 'office_glass', x: 5.25,  z: 6.88, face: 180 },
+                /* the desk on the room's axis, under the head on the wall */
+                { key: 'psx_carpet_mp_1', x: 0, z: -2.2 },
+                { key: 'exec_desk',      x: 0, z: -2.6, face: 180 },
+                { key: 'banker_lamp',    x: -0.75, z: -2.75, y: 0.76, face: 180 },
+                { key: 'field_radio',    x: 0.8, z: -2.8, y: 0.76, face: 160 },
+                { key: 'item_binoculars', x: 0.2, z: -2.4, y: 0.76, face: 120 },
+                { key: 'exec_chair',     x: 2.1, z: -4.0, face: 210 },
+                { key: 'antler_trophy',  x: 0, z: -6.7, y: 3.2, face: 180 },
+                { key: 'psx_shelf_mp_4_1', x: -3.2, z: -6.55, face: 180 },
+                { key: 'psx_shelf_mp_4_1', x: 3.2,  z: -6.55, face: 180 },
+                { key: 'owl_perched',    x: -3.2, z: -6.55, y: 2.2, face: 170 },
+                /* the evidence: the cast on its plinth, the board, the map table */
+                { key: 'meshy_giant_foot', x: 6.2, z: -4.4, face: 220 },
+                { key: 'evidence_board', x: 8.45, z: -0.4, face: 270 },
+                { key: 'map_table',      x: 4.2, z: 1.0, face: 0 },
+                { key: 'rifle_rack',     x: 8.45, z: 3.2, face: 270 },
+                /* the lodge corner: the bear, the sofa on the rug */
+                { key: 'bear',           x: -6.8, z: -5.3, face: 140 },
+                { key: 'fur_rug',        x: -5.2, z: -1.0, face: 90 },
+                { key: 'chesterfield_sofa', x: -7.9, z: -1.0, face: 90 },
+                { key: 'wingback_chair', x: -4.4, z: 1.2, face: 300 },
+                { key: 'cattle_skull',   x: -8.55, z: -1.0, y: 2.7, face: 90 },
+                { key: 'psx_ceiling_lamp_4_on', x: 0, z: -2.6, ceil: true },
+                { key: 'psx_ceiling_lamp_4_on', x: -5.0, z: 0.5, ceil: true },
+                { key: 'psx_ceiling_lamp_4_on', x: 4.2, z: 1.0, ceil: true },
             ],
-            onlineSpots: [],
-            lines: [
-                '“Which side of the door are you asking from?” “This one.” “Then it has always read that.”',
-                '“I remember it saying DON’T.” “You remember orientation. Orientation was wrong. Orientation has been corrected.” “When?” “Always.”',
-                '“Is that clock right?” “It is the only one.” “How do you know?” “We set the others by it.”',
-                '“There is no thirteenth floor.” “I know.” “Then why did you press it?” “I didn’t. It has always been pressed.”',
+            agents: [],
+            npcSpots: [],
+            lines: [],
+            spawn: { x: -5.25, z: 4.2, face: 0 },
+            noWalkers: true,
+        },
+        /* SPIRIT REALM DIVISION (Agent Ringer): a séance parlour, candlelit; the way in at the east bay. */
+        spirit: {
+            label: 'SPIRIT REALM DIVISION',
+            kind: 'box',
+            shell: {
+                w: 17.5, d: 14, h: 5.6,
+                wallH: 5.6, dadoH: 1.2,
+                floor: 'carpet_4', wall: 'damask_4', dado: 'urban:WoodPanelling1a', trim: 'brass', ceiling: 'ceiling',
+                dadoColor: 0x6a4a6f, ceilColor: 0x6a4a6f,
+                pipes: false,
+                lights: [{ x: -2.5, z: -3.0 }, { x: 3.5, z: 0 }, { x: -6.5, z: 0.5 }],
+                mood: { light: 0xe9b44c, ambient: 0.45 },
+                plate: { x: 0, z: -6.8, y: 4.6 },
+            },
+            doors: [
+                { id: 'lobby', wall: 's', x: 0, open: { w: 14, h: 4.9 }, walk: [3.5, 7], label: 'THE LOBBY', action: { room: 'central_egress', at: 'spirit' } },
             ],
-            spawn: { x: -3.2, z: 0, face: 90 },     // just inside the house door, facing the plaque's wall
+            counters: [],
+            props: [
+                { key: 'office_glass', x: -5.25, z: 6.88, face: 180 },
+                { key: 'office_glass', x: -1.75, z: 6.88, face: 180 },
+                { key: 'office_glass', x: 1.75,  z: 6.88, face: 180 },
+                { key: 'office_glass_door', x: 5.25, z: 6.88, face: 180, text: ['SPIRIT REALM DIVISION', 'AGENT RINGER'] },
+                /* Ringer's desk, between two candelabra */
+                { key: 'exec_desk',      x: -2.5, z: -3.0, face: 180 },
+                { key: 'lit_candle',     x: -3.15, z: -3.1, y: 0.76 },
+                { key: 'lit_candle',     x: -1.85, z: -2.85, y: 0.76 },
+                { key: 'music_box',      x: -1.5, z: -3.25, y: 0.76, face: 160 },
+                { key: 'candelabra',     x: -5.0, z: -4.8 },
+                { key: 'candelabra',     x: 0.0,  z: -4.8 },
+                { key: 'painting_portrait', x: -2.5, z: -6.9, y: 2.5, face: 180 },
+                { key: 'psx_curtain_rod_mp_1', x: -6.2, z: -6.85, y: 3.9, face: 180 },
+                { key: 'psx_curtain_rod_mp_1', x: 6.2,  z: -6.85, y: 3.9, face: 180 },
+                /* the séance table */
+                { key: 'psx_carpet_mp_1', x: 3.5, z: 0 },
+                { key: 'psx_dinner_table_1', x: 3.5, z: 0 },
+                { key: 'psx_chair_mp_3', x: 3.5, z: -1.25, face: 180 },
+                { key: 'psx_chair_mp_3', x: 3.5, z: 1.25,  face: 0 },
+                { key: 'psx_chair_mp_3', x: 4.75, z: 0,    face: 270 },
+                { key: 'psx_chair_mp_3', x: 2.25, z: 0,    face: 90 },
+                { key: 'crystalBall',    x: 3.5, z: 0, y: 0.86 },
+                { key: 'tarot',          x: 3.15, z: 0.3, y: 0.86, face: 30 },
+                { key: 'tarot2',         x: 3.85, z: -0.25, y: 0.86, face: 300 },
+                { key: 'lit_candle',     x: 3.95, z: 0.35, y: 0.86 },
+                /* the corners: the mirror, the rocking chair, the statue, the recordings */
+                { key: 'cheval_mirror',  x: -8.3, z: -4.2, face: 90 },
+                { key: 'rocking_chair',  x: -6.8, z: 0.8, face: 120 },
+                { key: 'hooded_statue',  x: 7.4, z: -5.6, face: 225 },
+                { key: 'lit_candle',     x: 6.4, z: -4.6 },
+                { key: 'lit_candle',     x: 6.75, z: -4.95 },
+                { key: 'reel_to_reel',   x: 8.3, z: -1.5, face: 270 },
+            ],
+            agents: [],
+            npcSpots: [],
+            lines: [],
+            spawn: { x: 5.25, z: 4.2, face: 0 },
+            noWalkers: true,
+        },
+        /* EXTRATERRESTRIAL DIVISION (Agent Glass): space age, white and chrome with a signal-orange band; the way in at the west bay. */
+        extraterrestrial: {
+            label: 'EXTRATERRESTRIAL DIVISION',
+            kind: 'box',
+            shell: {
+                w: 17.5, d: 14, h: 5.6,
+                wallH: 5.6, dadoH: 1.2,
+                floor: 'urban:TileGeneric4a', wall: 'urban:MetalPanelPainted1a', dado: 'urban:MetalPanelPainted1a', trim: 'zl_hz_Metal_02__metal', ceiling: 'ceiling',
+                wallColor: 0xf2f2ee, dadoColor: 0xe36a1e, ceilColor: 0xf4f4f0,
+                pipes: false,
+                lights: [{ x: 0, z: -2.6 }, { x: 3.5, z: 1.0 }, { x: -6.0, z: 0 }],
+                mood: { light: 0xfff0e0, ambient: 0.5 },
+                plate: { x: 0, z: -6.8, y: 4.6 },
+            },
+            doors: [
+                { id: 'lobby', wall: 's', x: 0, open: { w: 14, h: 4.9 }, walk: [-7, -3.5], label: 'THE LOBBY', action: { room: 'central_egress', at: 'extraterrestrial' } },
+            ],
+            counters: [],
+            props: [
+                { key: 'office_glass_door', x: -5.25, z: 6.88, face: 180, text: ['EXTRATERRESTRIAL DIVISION', 'AGENT GLASS'], frame: 0xb9c0c6 },
+                { key: 'office_glass', x: -1.75, z: 6.88, face: 180, frame: 0xb9c0c6 },
+                { key: 'office_glass', x: 1.75,  z: 6.88, face: 180, frame: 0xb9c0c6 },
+                { key: 'office_glass', x: 5.25,  z: 6.88, face: 180, frame: 0xb9c0c6 },
+                /* Glass's desk under the star chart */
+                { key: 'exec_desk',      x: 0, z: -2.6, face: 180 },
+                { key: 'ship_grey',      x: -0.7, z: -2.7, y: 0.76, span: 0.7, face: 150 },
+                { key: 'psx_monitoring_screen_mp_1', x: 0.75, z: -2.85, y: 0.76, face: 180 },
+                { key: 'egg_chair',      x: 2.1, z: -4.0, face: 200 },
+                { key: 'star_chart',     wall: 'n', x: 0 },
+                { key: 'sputnik_lamp',   x: 0, z: -2.6, ceil: true },
+                /* the display: the craft on its stand, the meteorite */
+                { key: 'ufo',            x: 6.0, z: -4.8, y: 1.9, span: 1.8, face: 30 },
+                { key: 'meteorite_plinth', x: 6.0, z: -4.8, face: 210 },
+                { key: 'retro_control_panel', x: 8.3, z: -1.2, face: 270 },
+                /* the lounge: the tulip table and its chairs, the orrery on it, an egg chair by the globe lamp */
+                { key: 'tulip_table',    x: 3.5, z: 1.0 },
+                { key: 'tulip_chair',    x: 3.5, z: -0.1, face: 0 },
+                { key: 'tulip_chair',    x: 3.5, z: 2.1, face: 180 },
+                { key: 'tulip_chair',    x: 4.6, z: 1.0, face: 90 },
+                { key: 'tulip_chair',    x: 2.4, z: 1.0, face: 270 },
+                { key: 'brass_orrery',   x: 3.5, z: 1.0, y: 0.74 },
+                { key: 'sputnik_lamp',   x: 3.5, z: 1.0, ceil: true },
+                { key: 'egg_chair',      x: -6.0, z: -0.5, face: 120 },
+                { key: 'globe_lamp',     x: -7.9, z: -2.2 },
+                { key: 'lava_lamp_floor', x: -8.0, z: -6.2 },
+                { key: 'lava_lamp_floor', x: 8.0,  z: -6.2 },
+            ],
+            agents: [],
+            npcSpots: [],
+            lines: [],
+            spawn: { x: -5.25, z: 4.2, face: 0 },
+            noWalkers: true,
         },
 
         office: {
@@ -35910,91 +36071,7 @@ const DOOR_HQ = {
         },
 
 
-        /* ── ROOM 111 · THE TROPHY CASE (HQ plan 7.4, 2026-09-13) — a box room
-           off the MEZZANINE at 290°, over EMPLOYEE OF THE MONTH (the board at
-           288° on the floor below), between Bay 6 and the Bureau of
-           Continuity. The user's 111: first place, three times over. THE
-           CABINET is the counter →
-           profile.js _mountReactTrophies (the profile opened on its
-           Achievements tab — ACHIEVEMENTS_PLAN's trophy case, in a room). The
-           cabinets are the trophy_case proc (three-renderer.js): a lit glass
-           case, three shelves, three rows of plaques — gold for the engraved ones
-           (hqTrophyCount reads the ledger), blank for the rest — the cups on
-           the top shelf. The curator's line and the overheard lines are
-           Claude placeholders (A15 — rewrite at will). Viewer-local, nothing
-           relayed (RULE #2). ── */
-        trophycase: {
-            label: 'THE TROPHY CASE',
-            sub: 'ACHIEVEMENTS',
-            roomNo: '111', why: 'first place, three times over — the user’s',
-            kind: 'box',
-            shell: {
-                w: 8, d: 5.5, h: 3.2,
-                wallH: 3.2, dadoH: 1.05,
-                floor: 'carpet', wall: 'drywall', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling',
-                wallColor: 0xd8d2c2,          // a lighter room than the hall: the cases are the light
-                pipes: false,
-                light: { x: 0, z: 0.6 },
-                plate: { x: 0, z: -2.5, y: 2.75 },
-            },
-            doors: [
-                { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_glass_exec',
-                  label: 'THE EXECUTIVE SUITE', sub: 'BACK TO THE SUITE',
-                  action: { room: 'execwing', at: 'trophycase' },
-                  desc: 'The way back to the mezzanine. The board below is Employee of the Month; this room is everyone else.' },
-            ],
-            counters: [
-                /* THE CABINET → the profile on its Achievements tab */
-                { id: 'cabinet', x: -1.7, z: -1.75, face: 0, plateY: 2.3, radius: 1.7, verb: 'OPEN',
-                  label: 'THE CABINET', sub: 'ACHIEVEMENTS', action: { fn: '_mountReactTrophies' },
-                  desc: 'Every commendation the Department has engraved for you. Open it and the whole record comes out.' },
-            ],
-            props: [
-                /* ── the north wall: the two cases, the nameplate between ── */
-                { key: 'trophy_case',    wall: 'n', x: -1.7 },
-                { key: 'trophy_case',    wall: 'n', x: 1.7 },
-                { key: 'nameplate',      wall: 'n', x: 0, mount: 1.55 },
-                { key: 'vent_grille',    wall: 'n', x: 3.4, mount: 2.6 },
-                /* ── the east wall: the file on the cases, a clock, a plant ── */
-                { key: 'filing_cabinet', wall: 'e', z: -1.6 },
-                { key: 'picture_round_a', wall: 'e', z: 0.2 },
-                { key: 'wall_clock',     wall: 'e', z: 1.5, mount: 2.4 },
-                { key: 'potted_plant',   x: 3.5, z: 2.2 },
-                /* ── the south wall: the couch that faces the cases, the table, the reading ── */
-                { key: 'curved_couch',   x: -0.075, z: 1.625, face: 180 },
-                { key: 'coffee_table',   x: -0.075, z: 0.275 },
-                { key: 'papers_b',       x: 0.25, z: 0.55, y: 0.47, face: 15 },
-                { key: 'coffee_mug',     x: 0.75, z: 0.5, y: 0.47, face: 0 },
-                { key: 'picture_round_b', wall: 's', x: -2.6 },
-                { key: 'picture_round_c', wall: 's', x: 2.6 },
-                { key: 'fire_extinguisher', wall: 's', x: 3.5 },
-                /* ── the west wall: the way out, the lamp by it ── */
-                { key: 'exit_sign',      wall: 'w', z: 0, mount: 2.65 },
-                { key: 'trash_bin',      x: -3.5, z: 2.1, face: 60 },
-                { key: 'rug_round',      x: 0.4, z: 0.4 },
-                /* ── the ceiling ── */
-                { key: 'fluorescent',    x: -1.9, z: 0.4, ceil: true, face: 90 },
-                { key: 'fluorescent',    x: 1.9,  z: 0.4, ceil: true, face: 90 },
-            ],
-            agents: [
-                { x: 2.6, z: -1.2, face: 250, pose: 'hqArms', gender: 'female', label: 'THE CURATOR', reach: 1.8,
-                  line: '“Nothing in here was given. It was filed.”' },
-            ],
-            npcSpots: [
-                { x: -0.875, z: 1.425, face: 0 },      // on the couch, reading the plaques
-                { x: 1.0,  z: -1.3, face: 0 },     // in front of the right case
-            ],
-            onlineSpots: [
-                { x: -2.7, z: 0.9, face: 40 },
-            ],
-            lines: [
-                '“Which one is yours?” “The blank ones.”',
-                '“Why 111?” “First place. Three times.” “Whose?” “Not yours yet.”',
-                '“Employee of the Month is downstairs. This is everyone else.”',
-                '“The cups are for the ones they could not fit on a plaque.”',
-            ],
-            spawn: { x: -3.1, z: 0, face: 90 },
-        },
+        /* trophycase (ROOM 111) — RETIRED 2026-11-26 (DOOR HQ 2.0 wave 3): THE TROPHY CASE is a cabinet on the Lobby's wall (LOOK_BOOK.md, counter 'trophies'); DOOR_HQ.retired sends it there */
 
         /* ── ROOM 1 · RECEPTION (HQ plan 7.4, 2026-09-14) — the intake office
            behind the ground ring's window door at 120° (between the Barbershop
@@ -36621,88 +36698,7 @@ const DOOR_HQ = {
             ],
             spawn: { x: -3.2, z: 0, face: 90 },
         },
-        execwing: {
-            label: 'THE EXECUTIVE SUITE',
-            sub: 'TROPHY CASE · BUREAU OF CONTINUITY',
-            kind: 'box',
-            shell: {
-                w: 11, d: 8, h: 3.2,
-                wallH: 3.2, dadoH: 1.1,
-                /* THE RETRO-FUTURIST PASS (2026-09-21): the executive claret under white plaster, filleted, coved — 8 × 5 grew to 11 × 8; a lava lamp, a porthole, the couch where it was */
-                round: 1.6, cove: 0.5,
-                floor: 'carpet', wall: 'drywall', dado: 'oxblood', trim: 'metal', ceiling: 'ceiling',
-                floorColor: 0x7a3a30, wallColor: 0xf0ece2, dadoColor: 0x4a2a24, ceilColor: 0xf6f4ee,
-                pipes: false, strips: false, lights: [],
-                mood: { light: 0xfff0d6, ambient: 0.62 },
-                plate: { x: 0, z: -3.95, y: 2.7 },
-                look: HQ_ROOM_LOOKS.retro,
-            },
-            doors: [
-                { id: 'egress', wall: 's', x: 0, leaf: 'leaf_suburban_house',
-                  label: 'THE LOBBY',
-                  action: { room: 'central_egress', at: 'executive' },
-                  desc: 'The way back to the mezzanine. A house door on an office suite. It has always been a house door; the file that says otherwise has been corrected.' },
-                /* ROOM 111 · the case */
-                { id: 'trophycase', wall: 'w', z: 0, leaf: 'leaf_glass_exec',
-                  label: 'THE TROPHY CASE', sub: 'ACHIEVEMENTS',
-                  action: { room: 'trophycase', at: 'egress' },
-                  desc: 'Room 111. The glass cabinet over Employee of the Month: every commendation the Department has engraved for you. Open the cabinet and the whole record comes out. The blank plaques are not a comment.' },
-                /* THE BUREAU · the gate and the number are THIS door's, exactly as
-                   they were the mezzanine's (plan 4.4) — a recruit walks the suite,
-                   reads the notices and does not go in. The second house door in
-                   one room is the joke the Bureau has already corrected once. */
-                { id: 'continuity', wall: 'n', x: 1.4, leaf: 'leaf_suburban_house',
-                  label: 'BUREAU OF CONTINUITY', sub: 'STORY CANON · GATEKEEPER RANK',
-                  action: { room: 'continuity', at: 'egress' },
-                  minClearance: 5, requiresKeys: 24, roomNo: '№ — CONTESTED', why: 'a joke, and a policy',
-                  desc: 'Canon notices. The motto plaque. The only department that suspects the schedule. GATEKEEPER clearance and two dozen Keys.' },
-            ],
-            counters: [],
-            props: [
-                /* the north wall (z −4): the frame that is not a window, the plate by the Bureau's door, the vent */
-                { key: 'picture_round_a', wall: 'n', x: -2.4 },
-                { key: 'nameplate',       wall: 'n', x: 3.3 },
-                { key: 'vent_grille',     wall: 'n', x: -3.4, mount: 2.8 },
-                /* the south wall (z 4): the way out, the clock, the coats, the camera */
-                { key: 'wall_clock',      wall: 's', x: 2.4, mount: 2.5 },
-                { key: 'hook_rail',       wall: 's', x: -2.4 },
-                { key: 'security_camera', wall: 's', x: 3.4, mount: 2.55 },
-                /* the two ends */
-                { key: 'nameplate',       wall: 'w', z: 1.9 },
-                { key: 'exit_sign',       wall: 'w', z: -1.4, mount: 2.75 },
-                { key: 'notice_board',    wall: 'e', z: 1.2 },
-                { key: 'porthole',        wall: 'e', z: -0.2, mount: 1.5, size: 1.2 },
-                { key: 'filing_cabinet',  wall: 'e', z: -1.6 },
-                /* the floor: the waiting-for-the-suite furniture, off the door lane (the way out is the SOUTH wall at x 0 — nothing stands in it), the rail (THE PARK RULE) */
-                { key: 'shag_rug',        x: 2.375,  z: 0.875, r: 1.6, color: 0xa63a2e, color2: 0xe8b33a },
-                { key: 'curved_couch',    x: 2.375,  z: 1.675, face: 180 },
-                { key: 'coffee_table',    x: 2.375,  z: 0.475, face: 0 },
-                { key: 'lava_lamp',       x: 3.2,  z: 1.4, y: 0.46, face: 20 },
-                { key: 'egg_chair',       x: -2.4, z: 2.7, face: 0, color: 0xa63a2e },
-                { key: 'potted_plant',    x: -4.0, z: -2.4 },
-                { key: 'trash_bin',       x: 4.0,  z: -2.4 },
-                { key: 'railing_1m',      x: -1.2, z: -1.6, face: 0 },
-                { key: 'railing_1m',      x: -0.2, z: -1.6, face: 0 },
-                { key: 'saucer_pendant',  x: -2.2, z: 0, ceil: true },
-                { key: 'saucer_pendant',  x: 2.2,  z: 0, ceil: true },
-            ],
-            agents: [
-                { x: -2.6, z: -1.2, face: 120, pose: 'hqTalk', gender: 'female', label: 'THE FLOOR ASSISTANT', reach: 1.9,
-                  line: '“The case is open to everyone. The house door is not. I am told this is not a hierarchy, it is a filing decision.”' },
-                { x: 2.4, z: -1.0, face: 220, pose: 'hqArms', gender: 'male', label: 'THE DUTY OFFICER', reach: 1.8,
-                  line: '“You can stand here as long as you like. People do. They read the door and then they read it again.”' },
-            ],
-            npcSpots: [
-                { x: -0.6, z: 1.1, face: 0, say: ['“The Bureau’s door is gated. The notices on it are not. Read them; that is what they are for.”', '“The trophies are through there. Most of them are yours. The rest are the Department’s, which is also yours, on paper.”', '“Nobody on this floor says the motto out loud. Somebody would have to check the plaque first.”'] },
-            ],
-            onlineSpots: [],
-            lines: [
-                '“Two house doors in one suite?” “There is one house door.” “There are two.” “There is one. The other has been corrected.”',
-                '“What is in the Bureau?” “Notices.” “About what?” “About what was in the Bureau.”',
-                '“Whose plaques are the blank ones?” “Nobody’s yet.” “That is worse.”',
-            ],
-            spawn: { x: 0, z: 1.8, face: 0 },
-        },
+        /* execwing (THE EXECUTIVE SUITE) — RETIRED 2026-11-26 (DOOR HQ 2.0 wave 3): the Bureau of Continuity stands on the Lobby's gallery itself; DOOR_HQ.retired sends it there */
         /* ── THE EXECUTIVE FLOOR (HQ plan 5.4 stage 1 + 7.4 ROOMS 4C + 8,
            2026-09-14) — the elevator on the mezzanine at 0° (KEYHOLDER
            rank + 12 Keys; the gate is the elevator door's, unchanged) rides
@@ -37309,118 +37305,60 @@ const DOOR_HQ = {
             ],
             spawn: { x: -2.8, z: 0, face: 90 },
         },
-        /* ── ROOM 360 · THE OBSERVATORIUM (HQ plan 7.4, 2026-09-11) — a box
-           room off the MEZZANINE at 240°, directly above Records. The user's
-           "360°": a planetarium. The PROJECTOR in the middle is the tape
-           library's projection (the counter → Replay, moved up from
-           Records' door panel); the PROJECTED SKY on the ceiling
-           (`star_dome`, three-renderer.js) is every threshold in the
-           building as a star — seven constellations, one per bay, laid out
-           by `hqStarChart` — and THE STAR CHART on the north wall is the
-           counter that opens the star-map panel (map.js `_hqStarmapHtml`):
-           point at a star and its threshold's door panel opens from here,
-           CROSS / DEEP / WALK IN and all. A fast route to any site — the
-           real function the plan asked for. The room is dark on purpose:
-           the shell's one strip is blue and over the way in, the projector
-           and two globe lamps light the rest; `floorColor` / `wallColor` /
-           `dadoColor` paint the kit's textures down, the ceiling is the
-           `void` terrain sheet (a nebula). The telescope is pointed at the
-           ceiling, which is painted. Overheard lines and the two agents'
-           lines are Claude placeholders (A15 — rewrite at will). Viewer-
-           local, nothing relayed (RULE #2). */
+        /* ── THE OBSERVATORY (DOOR HQ 2.0 wave 3, 2026-11-26): on the Lobby's gallery at the head of the main line, behind glass, under
+           its own dome. Night blue, the projected sky on the `void` ceiling (`star_dome`), THE PROJECTOR in the middle (Replay), THE
+           STAR CHART on the north wall (the star-map), THE SHELF of tapes on the east wall, the screen to the Singularity on the west
+           wall (`wayProps`). Kept dark: the strip over the way in, the projector and two globe lamps light it. ── */
         observatorium: {
             label: 'THE OBSERVATORY',
-            sub: 'MAP SELECT · REPLAY',
-            roomNo: '360', why: '360° — the whole sky from one chair',
             kind: 'box',
             shell: {
-                w: 13, d: 13, h: 5.6,
-                wallH: 5.6, dadoH: 1.05,
-                floor: 'carpet', wall: 'drywall', dado: 'oxblood', trim: 'teal', ceiling: 'void',
-                floorColor: 0x5c5862, wallColor: 0x3b3e4a, dadoColor: 0x4c2e33,   // painted down: a dark room
-                pipes: false,                 // nothing crosses the sky
-                light: { x: -5.4, z: 0 },     // one strip, over the way in
-                mood: { light: 0x3a4a80 },    // and it is blue
-                plate: { x: 0, z: -6.25, y: 5.1 },
+                w: 17.5, d: 17.5, h: 7.0,
+                wallH: 7.0, dadoH: 1.2,
+                floor: 'carpet_4', wall: 'drywall', dado: 'drywall', trim: 'brass', ceiling: 'void',
+                floorColor: 0x4a5070, wallColor: 0x1e2846, dadoColor: 0x141c33,
+                pipes: false,
+                lights: [{ x: 0, z: 5.5 }, { x: 0, z: -1.0 }],
+                mood: { light: 0x3a4a80, ambient: 0.35 },
+                plate: { x: 0, z: -8.55, y: 5.6 },
             },
             doors: [
-                { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_holographic',
-                  label: 'THE LOBBY',
-                  action: { room: 'central_egress', at: 'observatorium' },
-                  desc: 'The way back to the mezzanine. The door hums; Facilities says that is the paint drying.' },
+                { id: 'lobby', wall: 's', x: 0, open: { w: 17.5, h: 4.9 }, walk: [-1.75, 1.75], label: 'THE LOBBY', action: { room: 'central_egress', at: 'observatorium' } },
             ],
             counters: [
-                /* THE STAR CHART → the star-map: every threshold a star; point at one and its door opens */
-                { id: 'chart', x: 0, z: -5.9, face: 0, plateY: 2.75, radius: 2.3, verb: 'READ',
-                  label: 'THE STAR CHART', sub: 'MAP SELECT', action: { overlay: 'starmap' } },
-                /* THE PROJECTOR → the tape library's projection (Replay) */
-                { id: 'projector', x: -0.375, z: -0.375, face: 180, plateY: 2.3, radius: 2.1, verb: 'USE',
-                  label: 'THE PROJECTOR', sub: 'REPLAY LAST BATTLE', action: { fn: '_ewReplayLastMatch' } },
-                /* THE SHELF (9.1, 2026-09-15): the hundred tapes, the found ones playable in the panel's CRT (map.js _hqTapesHtml) */
-                { id: 'shelf', x: 5.7, z: -3.6, face: 270, plateY: 2.2, radius: 2.0, verb: 'BROWSE',
-                  label: 'THE SHELF', sub: 'THE TAPES · 100 ON THE REGISTER', action: { overlay: 'tapes' },
-                  desc: 'A hundred cassettes on the register, most of them missing. Found ones play on the set. Records asked for them back; the Observatorium has not answered.' },
+                { id: 'chart', x: 0, z: -8.1, face: 0, plateY: 2.75, radius: 2.3, verb: 'READ', label: 'THE STAR CHART', action: { overlay: 'starmap' } },
+                { id: 'projector', x: 0, z: -1.0, face: 180, plateY: 2.3, radius: 2.1, verb: 'USE', label: 'THE PROJECTOR', action: { fn: '_ewReplayLastMatch' } },
+                { id: 'shelf', x: 8.1, z: -4.0, face: 270, plateY: 2.2, radius: 2.0, verb: 'BROWSE', label: 'THE SHELF', action: { overlay: 'tapes' } },
             ],
             props: [
-                /* ── the middle: the projector under the projected sky, three seats round it ── */
-                { key: 'star_projector', x: -0.375, z: -0.375, face: 0 },
-                { key: 'star_dome',      x: 0, z: 0, ceil: true },
-                { key: 'curved_couch',   x: -0.375,    z: 3.125,  face: 0 },      // the seats face the projector
-                { key: 'curved_couch',   x: 3.125,  z: -2.125, face: 240 },
-                { key: 'curved_couch',   x: -3.875, z: -2.125, face: 120 },
-                { key: 'telescope',      x: 4.6,  z: 4.4,  face: 315 },    // pointed at the ceiling, which is painted
-                /* ── the north wall: the chart, two photographs of the sky (Records has the negatives) ── */
+                { key: 'office_glass', x: -7.0, z: 8.63, face: 180, frame: 0x141c33 },
+                { key: 'office_glass', x: -3.5, z: 8.63, face: 180, frame: 0x141c33 },
+                { key: 'office_glass_door', x: 0, z: 8.63, face: 180, text: ['THE OBSERVATORY'], frame: 0x141c33 },
+                { key: 'office_glass', x: 3.5,  z: 8.63, face: 180, frame: 0x141c33 },
+                { key: 'office_glass', x: 7.0,  z: 8.63, face: 180, frame: 0x141c33 },
+                /* the middle: the projector under the sky, three couches round it */
+                { key: 'star_projector', x: 0, z: -1.0, face: 0 },
+                { key: 'star_dome',      x: 0, z: -1.0, ceil: true },
+                { key: 'curved_couch',   x: 0,    z: 2.6,  face: 0 },
+                { key: 'curved_couch',   x: 3.4,  z: -3.0, face: 240 },
+                { key: 'curved_couch',   x: -3.4, z: -3.0, face: 120 },
+                /* the telescopes, pointed at the painted sky */
+                { key: 'brass_telescope', x: -6.6, z: -6.6, face: 45 },
+                { key: 'telescope',      x: 6.6, z: 5.6, face: 315 },
+                { key: 'globe_lamp',     x: -7.9, z: 3.2 },
+                { key: 'globe_lamp',     x: 7.9,  z: 0.8 },
+                /* the walls: the chart, the tapes */
                 { key: 'star_chart',     wall: 'n', x: 0 },
-                { key: 'picture_round_a', wall: 'n', x: -3.4 },
-                { key: 'picture_round_b', wall: 'n', x: 3.4 },
-                { key: 'vent_grille',    wall: 'n', x: 5.4, mount: 4.8 },
-                /* ── the east wall: the astronomer's desk, the tape library on the shelves ── */
-                { key: 'tanker_desk',    x: 4.875,  z: 1.375,  face: 270 },
-                { key: 'crt_terminal',   x: 4.975,  z: 0.925, y: 0.76, face: 270 },
-                { key: 'papers_b',       x: 4.825, z: 1.825, y: 0.76, face: 300 },
-                { key: 'coffee_mug',     x: 5.225, z: 1.875,  y: 0.76, face: 20 },
-                { key: 'desk_lamp',      x: 5.225, z: 0.725, y: 0.76, face: 250 },
-                { key: 'office_chair',   x: 5.475,  z: 1.375,  face: 270 },
-                { key: 'tape_shelf',     wall: 'e', z: -3.6 },   // THE SHELF (9.1): the tape library, the cassettes' spines
-                { key: 'metal_shelving', wall: 'e', z: 3.8 },
-                { key: 'filing_cabinet', wall: 'e', z: -2.1 },
-                { key: 'tube_tv',        x: 6.15, z: -2.1, y: 1.33, face: 270 },   // the viewing set, on the cabinet
-                { key: 'cardboard_boxes', x: 5.6, z: -5.1, face: 20 },             // the tapes that did not fit
-                { key: 'wall_clock',     wall: 'e', z: 2.4, mount: 3.4 },          // sidereal: four minutes fast a day
-                /* ── the south wall: the porthole, the panel, the extinguisher, a plant that has never seen the sun ── */
-                { key: 'observation_window', wall: 's', x: 0, mount: 3.4 },
-                { key: 'breaker_panel',  wall: 's', x: -4.6 },
-                { key: 'fire_extinguisher', wall: 's', x: 4.8 },
-                { key: 'potted_plant',   x: 5.6,  z: 5.7 },
-                /* ── the west wall: the way out, the coats, a frame ── */
-                { key: 'exit_sign',      wall: 'w', z: 0, mount: 2.75 },
-                { key: 'hook_rail',      wall: 'w', z: -2.4 },              // rev 22: the coats moved south → north; the projection SCREEN (the seam to the Singularity) hangs on the west wall at z 3.4
-                { key: 'picture_round_c', wall: 'n', x: -5.6 },
-                /* ── the ceiling: ONE fixture, over the way in, at the shell's strip (blue) — the sky has the rest ── */
-                { key: 'fluorescent',    x: -5.4, z: 0, ceil: true, face: 90 },
+                { key: 'tape_shelf',     wall: 'e', z: -4.0 },
+                { key: 'filing_cabinet', wall: 'e', z: -6.2 },
+                { key: 'potted_plant',   x: -7.6, z: 7.2 },
             ],
-            agents: [
-                { x: 5.475, z: 1.375, face: 270, pose: 'hqSit', gender: 'female', label: 'THE ASTRONOMER', reach: 2.0,
-                  line: '“I chart them. I don’t open them. Point at one and take it up with the door.”' },
-                { x: -5.475, z: -2.725, face: 110, pose: 'hqTalk', gender: 'male', label: 'THE USHER', reach: 1.7,
-                  line: '“Mind the step. There isn’t one. People mind it anyway.”' },
-            ],
-            npcSpots: [
-                { x: 2.2,  z: 3.3,  face: 300 },   // looking up
-                { x: -2.7, z: 3.0,  face: 40 },
-                { x: 2.6,  z: -4.9, face: 200 },   // at the chart
-            ],
-            onlineSpots: [
-                { x: -2.1, z: -4.7, face: 0 },
-                { x: 3.9,  z: 2.9,  face: 315 },
-            ],
-            lines: [
-                '“Which one is ours?” “The one that keeps moving.”',
-                '“The dome is painted.” “Painted from what?”',
-                '“Every star is a door.” “Every door is a star. Records disagrees about the direction.”',
-                '“Do not touch the projector. It is the only thing in the building pointed at the ceiling on purpose.”',
-            ],
-            spawn: { x: -5.7, z: 0, face: 90 },
+            agents: [],
+            npcSpots: [],
+            lines: [],
+            spawn: { x: 0, z: 5.6, face: 0 },
+            wayProps: [{ id: 'cut_observatorium_singularity', way: 'screen', wall: 'w', inert: true, z: 3.4 }],
+            noWalkers: true,
         },
 
         /* ── THE TRAINING ROOM (HQ plan 6.1a, 2026-09-04) — the walkable
@@ -87655,7 +87593,7 @@ const HQ_STAGE_RULES = {
        rebuild). A zone not listed keeps today's rooms and doors exactly; a later phase adds its zone here when its
        joins are built. `buildDelayMs` = the beat after the room's card drops before the first neighbour builds (the
        arrival stays smooth); `lampPickMs` = how often the lamp budget re-picks the nearest `lampsLive` point lights. */
-    zones: ['medwing', 'basement', 'dumb', 'works', 'annex', 'labs', 'executive', 'recwing', 'execwing', 'derelict', 'hwing'], buildDelayMs: 600, lampPickMs: 500,   // Phase 4: THE BASEMENT; Phase 5 (2026-09-27): THE D.U.M.B. (door joins); THE LAND cut (ZONES_PLAN Z0): the stage is DOOR HQ's only; ZONES_PLAN Z2 (2026-09-30): the floors
+    zones: ['medwing', 'basement', 'dumb', 'works', 'annex', 'labs', 'executive', 'recwing', 'derelict', 'hwing'], buildDelayMs: 600, lampPickMs: 500,   // Phase 4: THE BASEMENT; Phase 5 (2026-09-27): THE D.U.M.B. (door joins); THE LAND cut (ZONES_PLAN Z0): the stage is DOOR HQ's only; ZONES_PLAN Z2 (2026-09-30): the floors
     /* a neighbour's PEOPLE (Phase 2): 'interior' = a closed room's cast (the nurse at her desk, the patient on his cot) is
        spawned with the room when it is built beside you, so the ward is not empty through its open door; an outdoor part's
        crowd still comes out when you cross (Phase 1's rule — a city block is dozens of rigs). 'none' = Phase 1's rule
@@ -87685,7 +87623,14 @@ const HQ_STAGE_RULES = {
         { a: 'central_egress', door: 'medical', b: 'medical', bDoor: 'lobby' },   // MEDICAL, the open front at 100 degrees (14 x 4.5 m)
         /* DOOR STORE (DOOR HQ 2.0 wave 2, 2026-11-26): the Lobby's open front (its `doorstore` row, no leaf) ⇄ the store's `lobby` opening */
         { a: 'central_egress', door: 'doorstore', b: 'doorstore', bDoor: 'lobby' },
-        { a: 'central_egress', door: 'cafeteria', b: 'cafeteria', bDoor: 'lobby' },   // THE CAFETERIA (DOOR HQ 2.0 wave 2, 2026-11-26): the open front at 270 degrees (17.5 x 4.5 m), the Kitchen inside the same box
+        { a: 'central_egress', door: 'cafeteria', b: 'cafeteria', bDoor: 'lobby' },
+        /* THE GALLERY JOIN (DOOR HQ 2.0 wave 3, 2026-11-26): the Lobby's upper level and its five glass-fronted rooms, no card; each box
+           stands on the gallery's floor (hqStageRoundGeom `level` 1: rel.y = the hall's wallH) */
+        { a: 'central_egress', door: 'observatorium', b: 'observatorium', bDoor: 'lobby' },
+        { a: 'central_egress', door: 'cryptid', b: 'cryptid', bDoor: 'lobby' },
+        { a: 'central_egress', door: 'continuity', b: 'continuity', bDoor: 'lobby' },
+        { a: 'central_egress', door: 'spirit', b: 'spirit', bDoor: 'lobby' },
+        { a: 'central_egress', door: 'extraterrestrial', b: 'extraterrestrial', bDoor: 'lobby' },   // THE CAFETERIA (DOOR HQ 2.0 wave 2, 2026-11-26): the open front at 270 degrees (17.5 x 4.5 m), the Kitchen inside the same box
     ],
 };
 /* THE EXPLORATION DAY (§4.4 — Phase 3, 2026-09-26). One clock for every outdoor room (2026-10-17: hqRoomClock; was every zone with `clock: true`): a day of `dayMin` real
@@ -88215,17 +88160,7 @@ const HQ_WORLD = {
                 { a: 'recwing', b: 'records', kind: 'door', door: 'records', bDoor: 'egress' },
                 { a: 'recwing', b: 'clockroom', kind: 'door', door: 'clockroom', bDoor: 'egress' },
             ] },
-        /* Z2 — floor M, the executive wing (off the rotunda's upper ring at 315°): the wing, the trophy case, continuity. */
-        execwing: { label: 'THE EXECUTIVE WING', ground: 'hq', hub: 'execwing', sky: null, clock: false,
-            parts: {
-                execwing:   { x: 60, z: 0, y: 0, rot: 0 },
-                trophycase: { x: 50.3, z: 0, y: 0, rot: 2 },
-                continuity: { x: 61.4, z: -8.2, y: 0, rot: 1 },
-            },
-            joins: [
-                { a: 'execwing', b: 'trophycase', kind: 'door', door: 'trophycase', bDoor: 'egress' },
-                { a: 'execwing', b: 'continuity', kind: 'door', door: 'continuity', bDoor: 'egress' },
-            ] },
+        /* (the executive wing, Z2 floor M: RETIRED 2026-11-26, DOOR HQ 2.0 wave 3: the Bureau of Continuity is on the Lobby's gallery, the Trophy Case a cabinet on the Lobby's wall) */
         /* THE SPACESHIP (LEVEL_DESIGN_PLAN §6, 2026-09-30 — mondo: "the spaceship to have no load screens going between the rooms"):
            the airlock, the hold, the bridge and the deck staged door to door (each pair 0.2 m apart and facing). The deck lies
            3.2 m under the airlock (its door is up the airlock tower); the collar (the one door off the ship), the bay and the
@@ -88445,8 +88380,11 @@ function hqStageRoundJoins(roomId, otherId) {
         if (!A || !B || A.kind === 'box' || A.kind === 'bay' || !(A.shell && A.shell.radius > 0)) continue;
         if (B.kind !== 'box' || !(B.shell && B.shell.w > 0 && B.shell.d > 0)) continue;
         const da = (A.doors || []).find(d => d && d.id === j.door), db = (B.doors || []).find(d => d && d.id === j.bDoor);
-        if (!da || !db || (da.level || 0) !== 0 || !isFinite(+da.deg) || !_hqDoorOnWall(B, db)) continue;
-        out.push({ a: j.a, b: j.b, door: da, bDoor: db });
+        /* THE GALLERY JOIN (DOOR HQ 2.0 wave 3, 2026-11-26): a level-1 door of the hall (the gallery) joins too; its room stands
+           on the gallery's floor (rel.y = the hall's wallH), so the division offices are seen through their glass from below */
+        const lv = da && (da.level || 0);
+        if (!da || !db || (lv !== 0 && lv !== 1) || (lv === 1 && !A.shell.mezz) || !isFinite(+da.deg) || !_hqDoorOnWall(B, db)) continue;
+        out.push({ a: j.a, b: j.b, door: da, bDoor: db, level: lv });
     }
     return out;
 }
@@ -88454,17 +88392,18 @@ function hqStageRoundJoins(roomId, otherId) {
    door's angle, `gap` the wall between, `ow` / `oh` the doorway (the narrower leaf's), `pb` the box door on its wall */
 function hqStageRoundGeom(j) {
     if (!j) return null;
-    const A = DOOR_HQ.rooms[j.a], B = DOOR_HQ.rooms[j.b], a = +j.door.deg * Math.PI / 180, R = A.shell.radius;
+    const A = DOOR_HQ.rooms[j.a], B = DOOR_HQ.rooms[j.b], a = +j.door.deg * Math.PI / 180, lv = (j.door.level || 0) === 1 ? 1 : 0;
+    const R = lv ? (A.shell.mezz.outer || A.shell.radius) : A.shell.radius, ly = lv ? (+A.shell.wallH || 0) : 0;   // THE GALLERY JOIN: the upper drum, its floor
     const gap = HQ_WORLD_RULES.wallM, pb = _hqDoorOnWall(B, j.bDoor);
     const nOut = ({ n: [0, -1], s: [0, 1], e: [1, 0], w: [-1, 0] })[pb.wall];
     let th = Math.atan2(-Math.sin(a), Math.cos(a)) - Math.atan2(nOut[0], nOut[1]);   // the box's outward normal onto the way in to the hall's centre
     th = Math.atan2(Math.sin(th), Math.cos(th));
-    const rel = { x: 0, z: 0, y: 0, rot: th / (Math.PI / 2) };
+    const rel = { x: 0, z: 0, y: ly, rot: th / (Math.PI / 2) };
     const q = hqStageToRoom(rel, pb.x, pb.z), Rf = R + gap;
     rel.x = Rf * Math.sin(a) - q.x; rel.z = -Rf * Math.cos(a) - q.z;
-    const o = hqStageFromRoom(rel, 0, 0), back = { x: o.x, z: o.z, y: 0, rot: -rel.rot };
+    const o = hqStageFromRoom(rel, 0, 0), back = { x: o.x, z: o.z, y: -ly, rot: -rel.rot };
     const oa = hqDoorOpening(j.door), ob = hqDoorOpening(j.bDoor);
-    return { rel, back, R, deg: +j.door.deg, gap, ow: Math.min(oa.ow, ob.ow), oh: Math.min(oa.oh, ob.oh), pb };
+    return { rel, back, R, deg: +j.door.deg, gap, ow: Math.min(oa.ow, ob.ow), oh: Math.min(oa.oh, ob.oh), pb, level: lv, y: ly };
 }
 /* the stage's neighbour row for a room of a round join (hqStageNeighbours' shape; the hall's span is `side: 'round'` at the
    door's angle, `t0` / `t1` across the doorway) — null for any other room */
@@ -88476,9 +88415,9 @@ function hqStageRoundNeighbours(roomId) {
             const G = hqStageRoundGeom(j); if (!G) return;
             const S = DOOR_HQ.rooms[j.b].shell, hw = S.w / 2, hd = S.d / 2;
             const cs = [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]].map(p => hqStageToRoom(G.rel, p[0], p[1]));
-            out.push({ id: j.b, rel: G.rel, round: true, links: [],
+            out.push({ id: j.b, rel: G.rel, round: true, level: G.level, links: [],
                        rect: { x0: Math.min(...cs.map(p => p.x)), z0: Math.min(...cs.map(p => p.z)), x1: Math.max(...cs.map(p => p.x)), z1: Math.max(...cs.map(p => p.z)) },
-                       spans: [{ side: 'round', deg: G.deg, R: G.R, t0: -G.ow / 2, t1: G.ow / 2, kind: 'door', door: j.door.id, pad: 0.3, depth: G.gap + 0.5 }] });
+                       spans: [{ side: 'round', deg: G.deg, R: G.R, level: G.level, y: G.y, t0: -G.ow / 2, t1: G.ow / 2, kind: 'door', door: j.door.id, pad: 0.3, depth: G.gap + 0.5 }] });
         });
         return out.length ? out : null;
     }
@@ -88489,11 +88428,12 @@ function hqStageRoundNeighbours(roomId) {
               spans: [{ side: G.pb.wall, t0: G.pb.t - G.ow / 2, t1: G.pb.t + G.ow / 2, kind: 'door', door: j.bDoor.id, pad: 0.3, depth: G.gap + 0.5 }] }];
 }
 /* THE CROSSING's rule from the round hall: past its wall and `hys` metres inside the box beyond (no flip-flop) */
-function hqStageWhereRound(R, nbs, x, z, hys) {
+function hqStageWhereRound(R, nbs, x, z, hys, lvl) {
     const hy = (hys == null ? HQ_WORLD_RULES.crossHys : hys);
     if (!(Math.hypot(x, z) > R)) return null;
     for (let i = 0; i < nbs.length; i++) {
         if (!(nbs[i].spans && nbs[i].spans.length)) continue;
+        if (lvl != null && (nbs[i].level || 0) !== lvl) continue;   // THE GALLERY JOIN: a room on the gallery over a room on the floor
         const S = ((DOOR_HQ.rooms || {})[nbs[i].id] || {}).shell; if (!S || !(S.w > 0)) continue;
         const q = hqStageFromRoom(nbs[i].rel, x, z);
         if (Math.max(Math.abs(q.x) - S.w / 2, Math.abs(q.z) - S.d / 2) < -hy) return nbs[i].id;
@@ -111490,7 +111430,9 @@ const DOOR_CAST = {
         name: 'AGENT GLASS', title: 'FIELD AGENT · DECORATED', dept: 'Operations', model: 'glass', gender: 'male',
         lines: [],
         spots: [
-            { room: 'central_egress', deg: 199.5, r: 19.35, level: 0, face: 20, pose: 'hqArms', reach: 1.9,
+            /* DOOR HQ 2.0 wave 3 (2026-11-26, mondo: Glass leads Extraterrestrial): at his desk behind the glass */
+            { room: 'extraterrestrial', x: 0, z: -3.75, face: 180, pose: 'hqArms', reach: 2.6, p: 0.7 },
+            { room: 'central_egress', deg: 199.5, r: 19.35, level: 0, face: 20, pose: 'hqArms', reach: 1.9, p: 0.3,
               doing: 'By the water cooler, arms folded. He has already decided about you.' },
         ],
     },
@@ -111508,7 +111450,9 @@ const DOOR_CAST = {
         name: 'AGENT RINGER', title: 'SENIOR FIELD AGENT · VETERAN', dept: 'Operations', model: 'ringer', gender: 'male',
         lines: [],
         spots: [
-            { room: 'training', x: 23.4, z: -4.6, face: 250, pose: 'hqArms', reach: 2.0,
+            /* DOOR HQ 2.0 wave 3 (2026-11-26, mondo: Ringer leads Spirit Realm): at his desk behind the glass */
+            { room: 'spirit', x: -2.5, z: -4.15, face: 180, pose: 'hqArms', reach: 2.6, p: 0.7 },
+            { room: 'training', x: 23.4, z: -4.6, face: 250, pose: 'hqArms', reach: 2.0, p: 0.3,
               doing: 'Belle’s father. He watches the grid the way other people watch a stove.' },
         ],
     },
@@ -111606,8 +111550,9 @@ const DOOR_CAST = {
         name: 'AGENT FORREST', title: 'FIELD AGENT · NO PHOTOGRAPHS', dept: 'Operations', race: 'bigfoot', gender: 'male', base: 'bigfoot',
         lines: [],
         spots: [
-            { room: 'central_egress', deg: 200.5, r: 22.35, level: 1, face: 200, reach: 2.4, p: 0.8,
-              doing: 'Facing the wall. Woody Forrest values his privacy. Please do not photograph Agent Forrest.' },
+            /* DOOR HQ 2.0 wave 3 (2026-11-26): the head of the Cryptid Division, behind his desk, facing the glass */
+            { room: 'cryptid', x: 0, z: -3.75, face: 180, reach: 2.6,
+              doing: 'Woody Forrest values his privacy. Please do not photograph Agent Forrest.' },
         ],
     },
     sedaniel: {
