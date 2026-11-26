@@ -82,7 +82,7 @@ const ThreeRenderer = (function () {
         }
     })();
     /* THE BUILD LINE (the perf lens): bump the stamp in every PR that changes this file's walk / fight drawing */
-    var _EW_TR_STAMP = '11-26 async-pipes';
+    var _EW_TR_STAMP = '11-26 build-why';
     function _ewBuildTok() {
         var sc = document.querySelectorAll('script[src*="three-renderer.js"]'), t = '';
         for (var i = 0; i < sc.length; i++) { var m = /[?&]v=([^&#]+)/.exec(sc[i].src || ''); if (m) { t = m[1]; break; } }
@@ -50030,6 +50030,7 @@ const ThreeRenderer = (function () {
         } else R.pre = 0;
         var sg = R.k.a.length + '.' + R.k.h.length + '.' + R.k.ds.length + '.' + R.k.d.length + '.' + R.k.p.length;
         for (i = 0; i < R.real.length; i++) sg += (i === R.pre ? '|' : ',') + R.real[i].id + (R.real[i].castShadow ? 's' : '');
+        if (sg !== R.sig) { for (i = 0; i < R.real.length; i++) _ewWhy.names[R.real[i].id] = String(R.real[i].name || R.real[i].type).slice(0, 24); if (R.sig) { try { _ewWhyLights(R.sig, sg, R.real); } catch (eW) {} } }   // THE BUILDS' REASONS
         R.sig = sg;
     }
     /* THE WARM THAT MISSED (11-25, mondo's F3 in the Main Hall on Firefox / WebGPU: 2 FPS dips, "built: 10x MeshPhong on hq_part ..."
@@ -50213,6 +50214,58 @@ const ThreeRenderer = (function () {
             return (tx.name ? '"' + String(tx.name).slice(0, 28) + '" ' : '') + (src ? src.slice(-44) + ' ' : '') + (im && im.width ? im.width + '×' + im.height + ' ' : '') + kindI + (tx.isCompressedTexture ? ' compressed' : '') + (tx.generateMipmaps ? ' +mips' : '');
         } catch (e) { return '?'; }
     }
+    /* THE BUILDS' REASONS (2026-11-26, mondo's F3 walking the Main Hall on Firefox / WebGPU: a 2 s dip at 12 FPS, 29 shader builds,
+       the walker's own hair, clothes and body built AGAIN 36 s after they were first built, with the hall's walls and props in the
+       same second). three builds a look again only when its key is new: the light list (the ids and shadows of every light the frame
+       draws with), the pass's target, the material's settings, the piece's receiving shadows. Each build now says which of those
+       moved since that piece was last built ("[lights]", "[pass]", "[material: transparent]", "[first]" ...), the lens counts them for
+       the session, and names the last change of the light list (which light came or went) so the next F3 shows the cause. */
+    var _ewWhy = { by: new Map(), n: {}, sigs: 0, sigDiff: '', names: {} };
+    var _EW_WHY_FLAGS = ['transparent', 'depthWrite', 'depthTest', 'side', 'alphaTest', 'map', 'vertexColors', 'fog', 'colorWrite', 'blending', 'flatShading', 'wireframe', 'alphaToCoverage', 'normalMap', 'emissiveMap', 'envMap', 'aoMap', 'lightMap'];
+    function _ewWhyMat(m) {
+        var out = [];
+        for (var i = 0; i < _EW_WHY_FLAGS.length; i++) { var v = m[_EW_WHY_FLAGS[i]]; out.push(v == null ? '' : (typeof v === 'object') ? (v.isTexture ? 't' + v.id : 'o') : (typeof v === 'number' && _EW_WHY_FLAGS[i] !== 'side' && _EW_WHY_FLAGS[i] !== 'blending') ? (v ? 1 : 0) : String(v)); }
+        return out;
+    }
+    function _ewWhyOf(ro) {
+        var o = ro && ro.object, m = ro && ro.material; if (!o || !m) return '';
+        var mk = 0, dk = 0; try { mk = ro.getMaterialCacheKey(); dk = ro.getDynamicCacheKey(); } catch (e) {}
+        var now = { mu: m.uuid, mt: m.type, mf: _ewWhyMat(m), mk: mk, dk: dk, ctx: ro.context ? ro.context.id : -1, ln: ro.lightsNode ? ro.lightsNode.id : -1, sig: _ewRigSig(), rs: !!o.receiveShadow, geo: o.geometry ? o.geometry.id : -1 };
+        var C = ro.context, cs = '';   // the piece in this KIND of pass (its target's formats, samples, faces): a pass whose target was made again is "pass"
+        if (C) { var tx = C.textures || []; for (var ti = 0; ti < tx.length; ti++) cs += (tx[ti] && tx[ti].format) + '.'; cs += '/' + (C.sampleCount | 0) + (C.depth ? 'd' : '') + (C.stencil ? 's' : '') + (C.activeCubeFace | 0) + (ro.scene && ro.scene.overrideMaterial ? 'o' : ''); }
+        var k = o.id + (m.isShadowPassMaterial ? 's' : '') + '|' + cs, was = _ewWhy.by.get(k), why;
+        if (!was) why = 'first';
+        else {
+            var w = [];
+            if (was.sig !== now.sig) w.push('lights');
+            else if (was.ln !== now.ln) w.push('light node');
+            if (was.ctx !== now.ctx) w.push('pass');
+            if (was.rs !== now.rs) w.push('receive shadow');
+            if (was.geo !== now.geo) w.push('geometry');
+            if (was.mu !== now.mu) w.push('material swapped' + (was.mt !== now.mt ? ' ' + was.mt.replace('Material', '') + '>' + now.mt.replace('Material', '') : ''));
+            else { var fl = []; for (var i = 0; i < _EW_WHY_FLAGS.length; i++) if (was.mf[i] !== now.mf[i]) fl.push(_EW_WHY_FLAGS[i]); if (fl.length) w.push('material: ' + fl.join(',')); else if (was.mk !== now.mk) w.push('material key'); }
+            if (!w.length) w.push(was.dk !== now.dk ? 'scene key' : 'same key');
+            why = w.join('+');
+        }
+        _ewWhy.by.set(k, now);
+        if (_ewWhy.by.size > 6000) { var it = _ewWhy.by.keys(); for (var d = 0; d < 1000; d++) _ewWhy.by.delete(it.next().value); }
+        _ewWhy.n[why] = (_ewWhy.n[why] | 0) + 1;
+        return why;
+    }
+    /* the light list changed (THE ONE RIG's signature): which light came, went or turned its shadow */
+    function _ewWhyLights(a, b, real) {
+        _ewWhy.sigs++;
+        for (var r0 = 0; r0 < real.length; r0++) _ewWhy.names[real[r0].id] = String(real[r0].name || real[r0].type).slice(0, 24);
+        var pa = a.split(/[|,]/), pb = b.split(/[|,]/), out = [];
+        if (pa[0] !== pb[0]) out.push('rig ' + pa[0] + ' > ' + pb[0]);
+        var nm = function (t) { var id = parseInt(t, 10); return (_ewWhy.names[id] || '?') + '#' + t; };
+        var sa = pa.slice(1), sb = pb.slice(1);
+        for (var i = 0; i < sb.length; i++) if (sa.indexOf(sb[i]) < 0) out.push('+' + nm(sb[i]));
+        for (var j = 0; j < sa.length; j++) if (sb.indexOf(sa[j]) < 0) out.push('-' + nm(sa[j]));
+        if (!out.length) out.push('the same lights, another order');
+        var t = ''; try { t = new Date().toISOString().slice(11, 19); } catch (e) {}
+        _ewWhy.sigDiff = out.join(' ').slice(0, 200) + ' (' + t + 'Z)';
+    }
     var _ewKeep = { builds: 0, pipes: 0, reused: 0, inst: 0, kept: { b: [], p: [], g: [] }, at: 0, b0: 0, p0: 0, rateB: 0, rateP: 0 };
     /* (11-20, mondo's battle F3s: "kept 640/384/768", all three lists at their cap in a city fight, with 7 shader builds a second: a
        build put aside was thrown out and made again. His 2nd and 3rd fights of a session ran smooth, the 1st did not: the looks are
@@ -50252,8 +50305,9 @@ const ThreeRenderer = (function () {
                     var bo = ro && ro.object, bm = ro && ro.material, bq = bo, bn = '';
                     for (var bd = 0; bq && bd < 5 && !bn; bd++, bq = bq.parent) bn = bq.name || '';
                     var bl = _ewKeep.last || (_ewKeep.last = []);
+                    var bw = ''; try { bw = _ewWhyOf(ro); } catch (eW) {}
                     bl.push((bm ? (bm.type + (bm.name ? ' "' + String(bm.name).slice(0, 16) + '"' : '') + (bm._ewNode ? ' node:' + bm._ewNode.k : '') + (bm._ew_occClone ? ' fade-clone' : '') + (bm.isShadowPassMaterial ? ' shadow' : '') + (bm.transparent ? ' see-through' : '')) : '?') +
-                        ' on ' + (bo ? (bo.isSkinnedMesh ? 'skinned ' : bo.isInstancedMesh ? 'batch ' : bo.isSprite ? 'sprite ' : bo.isPoints ? 'points ' : '') + (bn ? String(bn).slice(0, 22) : bo.type) : '?') + (r._ew_paneRender ? ' (pane)' : r._ew_sideRender ? ' (side)' : ''));
+                        ' on ' + (bo ? (bo.isSkinnedMesh ? 'skinned ' : bo.isInstancedMesh ? 'batch ' : bo.isSprite ? 'sprite ' : bo.isPoints ? 'points ' : '') + (bn ? String(bn).slice(0, 22) : bo.type) : '?') + (r._ew_paneRender ? ' (pane)' : r._ew_sideRender ? ' (side)' : '') + (bw ? ' [' + bw + ']' : ''));
                     if (_dip.t0) (_dip.fb || (_dip.fb = [])).push(bl[bl.length - 1].replace('NodeMaterial "ShadowMaterial" shadow', 'shadow of').replace('Material', ''));   // THE DIP NAMES ITS BUILDS
                     if (bl.length > 12) bl.shift();
                     if (typeof window !== 'undefined' && window.EW_BUILD_COUNT) { var bc = (window.EW_BUILD_COUNT === true) ? (window.EW_BUILD_COUNT = {}) : window.EW_BUILD_COUNT, bk = bl[bl.length - 1]; bc[bk] = (bc[bk] | 0) + 1; if (bc[bk] === 6 && window.EW_BUILD_STACKS) window.EW_BUILD_STACKS.push(bk + ' :: ' + String(new Error().stack).split('\n').slice(2, 16).map(function (x) { return x.trim().replace(/\(http[^)]*\/([^\/)]+)\)/, '($1)'); }).join(' < ')); }   // a probe's tally of what was built, by name
@@ -58261,6 +58315,7 @@ const ThreeRenderer = (function () {
         L.push('Soft canvases ' + (_ewSoftCvOn() ? 'on' : 'off (not Firefox)') + ' · ' + _ewSoftCv.made + ' made · ' + _ewSoftCv.n + ' sent as bytes (' + (_ewSoftCv.n ? (_ewSoftCv.ms / _ewSoftCv.n).toFixed(2) : '0') + ' ms each, worst ' + _ewSoftCv.worst.toFixed(1) + ') · ' + _ewSoftCv.fb + ' fell back');
         if (_ewKeep.last && _ewKeep.last.length) L.push('Last shader builds (newest last): ' + _ewKeep.last.join(' | '));
         if (S.keep) L.push('Shader builds ' + S.keep.rateB.toFixed(1) + '/s · new pipelines ' + S.keep.rateP.toFixed(1) + '/s (session ' + S.keep.builds + ' / ' + S.keep.pipes + ') · kept ' + S.keep.kept + (S.keep.off ? ' (keep off)' : '') + (S.keep.inst ? ' · shared instancing ' + S.keep.inst : '') + (S.keep.rig ? ' · one rig: ' + S.keep.rig.moves + ' scene moves, ' + S.keep.rig.grows + ' grows' : '') + ' · sheets warmed ' + _ewSheet.n);
+        try { var wn = Object.keys(_ewWhy.n).sort(function (x, y) { return _ewWhy.n[y] - _ewWhy.n[x]; }).slice(0, 8); if (wn.length || _ewWhy.sigs) L.push('Why looks were built (session): ' + (wn.map(function (x) { return x + ' ' + _ewWhy.n[x]; }).join(' · ') || 'none') + ' · light list changed ' + _ewWhy.sigs + ' times' + (_ewWhy.sigDiff ? ', last: ' + _ewWhy.sigDiff : '')); } catch (eW) {}
         if (S.keep && renderer && renderer._ew_sc) { var SC = _ewScStats(); L.push('Shader cache ' + SC.recipes + ' recipes · warmed ' + SC.warmed + (SC.left ? ' (' + SC.left + ' to go)' : '') + ' in ' + SC.warmMs + ' ms' + (SC.failed ? ' · ' + SC.failed + ' failed' : '') + ' · new this session ' + SC.proven + ' proven' + (SC.refused ? ' · not kept: ' + SC.refused : '')); }
         if (renderer && renderer._ew_late) { var LT = _ewLateStats(); L.push('Late look ' + LT.lateBuilds + ' builds spread (' + LT.buildMs + ' ms) · ' + LT.asyncPipelines + ' pipelines made off the frame' + (LT.compiling ? ' (' + LT.compiling + ' compiling)' : '') + ' · ' + LT.held + ' draws held'); }
         if (renderer && renderer._ew_glLate) { var GL = _glLateStats(), GS = _glScStats(); L.push('Late look ' + (GL.on ? 'on' : (GL.parallel ? 'off' : 'off (no parallel compile)')) + ' · ' + GL.late + ' looks compiled off the frame (' + GL.lateMs + ' ms) · ' + GL.held + ' draws held · ' + GL.inFrame + ' linked in a frame (' + GL.inFrameMs + ' ms)');
