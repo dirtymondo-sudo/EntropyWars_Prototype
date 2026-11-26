@@ -86183,7 +86183,16 @@ const ThreeRenderer = (function () {
             var trimA = _hqMat(S.trim || 'teal', 10, 1, { shininess: 50, specular: 0x666666 });
             G.add(_hqSectorMesh(D.rInner, D.rOuter + 0.04, A0, A1, D.h, top));
             G.add(_hqArcBand(D.rOuter, 0, D.h, A0, A1, _hqMat(D.front || 'oxblood', 8 * (A1 - A0) / 360, 1, { shininess: 12, side: THREE.DoubleSide })));
-            G.add(_hqArcBand(D.rInner, 0, D.h, A0, A1, _hqMat(D.back || D.front || 'oxblood', 4 * (A1 - A0) / 360, 1, { shininess: 12, side: THREE.DoubleSide })));
+            /* THE KNEE SPACE (2026-11-26, mondo: "an actual desk ... space underneath the counter to place her legs under, scoot her in"):
+               `knee: t` = the top is a slab `t` m thick over open space: no back panel down to the floor, only the slab's edge, its
+               underside and a short apron, so the sitter's legs go under it and she sits snug against the counter */
+            if (D.knee) {
+                var kt = +D.knee > 0 && +D.knee < 0.3 ? +D.knee : 0.05, backM = _hqMat(D.back || D.front || 'oxblood', 4 * (A1 - A0) / 360, 1, { shininess: 12, side: THREE.DoubleSide });
+                G.add(_hqSectorMesh(D.rInner, D.rOuter, A0, A1, D.h - kt, backM, true));   // the underside in the panels' wood: the knee hole reads dark under the marble
+                G.add(_hqArcBand(D.rInner, D.h - kt, D.h, A0, A1, _hqMat(D.top || 'terrazzo', 8, 1, { shininess: 30, specular: 0x444444, side: THREE.DoubleSide })));
+                G.add(_hqArcBand(D.rInner + 0.03, D.h - kt - 0.07, D.h - kt, A0, A1, backM));   // the apron under the slab's edge
+                G.add(_hqArcBand(D.rOuter - 0.025, 0, D.h - kt, A0, A1, backM));   // the modesty panel's inside face, wood
+            } else G.add(_hqArcBand(D.rInner, 0, D.h, A0, A1, _hqMat(D.back || D.front || 'oxblood', 4 * (A1 - A0) / 360, 1, { shininess: 12, side: THREE.DoubleSide })));
             G.add(_hqArcBand(D.rOuter + 0.012, D.h - 0.07, D.h, A0, A1, trimA));
             G.add(_hqArcBand(D.rOuter + 0.012, 0, 0.08, A0, A1, trimA));
             [A0, A1].forEach(function (ea) {   // the two end panels
@@ -98748,7 +98757,7 @@ const ThreeRenderer = (function () {
             e.mixer.update(mdt);
             /* THE SEAT HEIGHT (2026-11-26): the sitter's thighs on the cushion (the walker on a seat; a seated cast member on the seat at its spot) */
             if (ch.kind === 'player') { if (ch.sit && ch.sit.seat && (e._ew_curAnim === 'hqSit' || (ch.sit.lie && e._ew_curAnim === 'hqSleep'))) _hqSeatPin(ch, ch.sit.seat.y, mdt, ch.x, ch.z); /* (lying too: the bed clip's hips sat ~0.6 m toward the foot, the legs off the lounger) */ else if (e.model && e.model._ew_seatOff != null && !(H.ride && H.ride.on)) _hqSeatUnpin(e); }
-            else if (ch.pose && (ch.pose === 'hqSit' || ch.pose === 'hqSitTalk') && e._ew_curAnim === ch.pose) { if (!ch._seatChecked) _hqSeatFind(ch); if (ch._seatTop != null) _hqSeatPin(ch, ch._seatTop, mdt, ch.x, ch.z); }
+            else if (ch.pose && (ch.pose === 'hqSit' || ch.pose === 'hqSitTalk' || ch.pose === 'hqSitDesk') && e._ew_curAnim === ch.pose) { if (!ch._seatChecked) _hqSeatFind(ch); if (ch._seatTop != null) _hqSeatPin(ch, ch._seatTop, mdt, ch.x, ch.z); if (ch.pose === 'hqSitDesk') _hqDeskHands(e); }
             else if (e.model && e.model._ew_seatOff != null) _hqSeatUnpin(e);
             _swayAuto(e.model, mdt);   // THE SWAY: a caped cast member's cape swings in the building too
             if (e.appearanceRig) { e.model.updateMatrixWorld(true); e.appearanceRig.tick(); }   // rev 9: the skirt against the legs
@@ -99368,6 +99377,24 @@ const ThreeRenderer = (function () {
         legs.sort(function (a, b) { return a.d - b.d; });   // the two thigh bones nearest the hips (a rig with two segments a thigh: the top ones, one a side)
         e._ew_seatBones = (legs.length >= 2 && legs[0].d === legs[1].d) ? { legs: [legs[0].b, legs[1].b] } : (hips ? { hips: hips } : null);
         return e._ew_seatBones;
+    }
+    /* THE DESK HANDS (2026-11-26, mondo: Rhonda "should fit comfortable up against the desk and have her arms on the counter top"): the
+       `hqSitDesk` pose (the library's driving loop: seated, forearms out level) holds its hands palms-in round a wheel; after the mixer
+       has posed her, each forearm is turned on its own length so the palms lie flat on the counter. Two bones a sitter a frame, kept. */
+    var HQ_DESK_TWIST = 75;
+    function _hqDeskHands(e) {
+        var m = e && e.model; if (!m) return;
+        if (e._ew_deskArms === undefined) {
+            var L = null, R = null;
+            try { m.traverse(function (n) { if (!n.isBone) return; var nm = n.name || ''; if (!/(fore_?arm|lower_?arm)/i.test(nm) || /twist|roll|end/i.test(nm)) return; if (!L && /left|_l\b|\.l\b/i.test(nm)) L = n; else if (!R && /right|_r\b|\.r\b/i.test(nm)) R = n; }); } catch (err) {}
+            e._ew_deskArms = (L && R) ? { L: L, R: R } : null;
+        }
+        var A = e._ew_deskArms; if (!A) return;
+        var W = (typeof window !== 'undefined') ? window : {}, tw = _hqRad(W.EW_DESK_TWIST != null ? +W.EW_DESK_TWIST : HQ_DESK_TWIST);
+        if (!tw) return;
+        if (A.lq && A.L.quaternion.equals(A.lq)) return;   // the mixer skipped this frame (a far body's slow tick): already turned, never twice
+        A.L.rotateY(tw); A.R.rotateY(-tw);
+        A.lq = (A.lq || new THREE.Quaternion()).copy(A.L.quaternion);
     }
     function _hqSeatPin(ch, top, dt, sx, sz) {
         var e = ch.entry, m = e && e.model; if (!m) return;

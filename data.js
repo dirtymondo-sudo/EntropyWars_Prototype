@@ -31559,7 +31559,7 @@ STORY_CUTSCENES.orientation_desk = {
        frames the face whatever the body's height is and the mouth stays over the subtitle bar (mondo 2026-11-13) */
     beats: [
         /* E1 · the two arrive at the counter: wide across the desk, Rhonda's back in the foreground (DOOR HQ 2.0, 11-26: the camera stands
-           between her chair and the flue now, she sits at z 3.1, the slim desk's front is at 4.85) */
+           between her chair and the flue now, she sits at z 3.98 (11-26: snug at the desk, her knees under it), the slim desk's front is at 4.85) */
         { dur: 2.8, shot: { cam: [-0.6, 1.55, 2.45, 176, -4, 50], to: { cam: [-0.45, 1.55, 2.55, 176, -4, 50] } } },
         /* E2 · Rhonda looks at the paperwork: over the recruit's shoulder, long lens */
         { shot: { cam: [1.7, 1.68, 7.7, 16, -5, 28] }, say: { who: 'RHONDA', text: 'Name. Species. Reality of origin.' } },
@@ -35239,8 +35239,10 @@ const DOOR_HQ = {
                 cube: { size: 3.6, y: 11.4, rodR: 0.09, deg: 180, r: 10 },   // the Cube hangs in the void over the main line, south of the flue
             },
             /* THE SLIM DESK (mondo: "too wide/thick and it's hard to target her"): a 0.85 m curved counter over 100 degrees facing the
-               Foyer, open behind; Rhonda's chair in the well between it and the flue */
-            desk: { mode: 'procedural', arc: [130, 230], rOuter: 4.85, rInner: 4.0, h: 1.05, top: 'marble', front: 'urban:WoodPanelling1a' },
+               Foyer, open behind; Rhonda's chair in the well between it and the flue. A REAL DESK (2026-11-26, mondo: "space underneath
+               the counter to place her legs under ... scoot her in ... her arms on the counter top"): `knee` = a 5 cm slab at desk height
+               (0.80 m) over open knee space, her chair pulled in to r 3.98 so her knees go under it, her pose `hqSitDesk` (forearms on the top) */
+            desk: { mode: 'procedural', arc: [130, 230], rOuter: 4.85, rInner: 4.0, h: 0.8, knee: 0.05, top: 'marble', front: 'urban:WoodPanelling1a' },
             /* the twin stairs: free flights in the void along the gallery's edge, from beside the Foyer up to the gallery (30 steps) */
             stairs: [
                 { id: 'stair_e', from: 166, to: 132, rIn: 15.1, rOut: 17.5, steps: 38, free: true },   // 38 steps up the 7.1 m gallery (wave 3)
@@ -35302,12 +35304,12 @@ const DOOR_HQ = {
             ],
             /* the bare shell's furniture: Rhonda's chair and desk top, the potion machines (data.js hqVendingApply makes each a counter), the case board */
             props: [
-                { key: 'office_chair',   deg: 180, r: 3.1, level: 0, rot: 180 },            // Rhonda's (DOOR_CAST rhonda)
-                { key: 'crt_terminal',   deg: 168, r: 4.42, level: 0, y: 1.05 },
-                { key: 'desk_lamp',      deg: 150, r: 4.45, level: 0, y: 1.05, rot: 20 },
-                { key: 'papers_b',       deg: 186, r: 4.45, level: 0, y: 1.05, rot: -20 },
-                { key: 'coffee_mug',     deg: 175, r: 4.5,  level: 0, y: 1.05, rot: 40 },
-                { key: 'laminator',      deg: 205, r: 4.45, level: 0, y: 1.05, rot: 180 },   // the INTAKE SHEET's
+                { key: 'office_chair',   deg: 180, r: 3.98, level: 0, rot: 180 },            // Rhonda's (DOOR_CAST rhonda)
+                { key: 'crt_terminal',   deg: 168, r: 4.42, level: 0, y: 0.8 },
+                { key: 'desk_lamp',      deg: 150, r: 4.45, level: 0, y: 0.8, rot: 20 },
+                { key: 'papers_b',       deg: 186, r: 4.45, level: 0, y: 0.8, rot: -20 },
+                { key: 'coffee_mug',     deg: 175, r: 4.5,  level: 0, y: 0.8, rot: 40 },
+                { key: 'laminator',      deg: 205, r: 4.45, level: 0, y: 0.8, rot: 180 },   // the INTAKE SHEET's
                 { key: 'vending_machine', deg: 347, level: 0, wall: true },   // THE LEVEL JOIN: off the north passage's 7 m mouth (was 352)
                 { key: 'vending_machine', deg: 13,  level: 0, wall: true },   // (was 8)
                 { key: 'vending_machine', deg: 80,  level: 0, wall: true },   // (was 76: the east passage is at 67.5 now)
@@ -111936,7 +111938,7 @@ const DOOR_CAST = {
                outer edge (the console itself wins the prompt when you stand at it) */
             /* `across` (2026-11-26, mondo: "it's hard to target her with the mouse to talk to her"): talked to from anywhere within
                `reach` while the camera aims at her, over the DISPATCH plate and Kit's chair in front of the desk (map.js THE DESK TALK) */
-            { room: 'central_egress', deg: 180, r: 3.1, level: 0, face: 180, pose: 'hqSit', reach: 5.0, across: true,   /* DOOR HQ 2.0: her chair in the well between the slim desk and the flue */
+            { room: 'central_egress', deg: 180, r: 3.98, level: 0, face: 180, pose: 'hqSitDesk', reach: 5.0, across: true,   /* DOOR HQ 2.0: her chair in the well between the slim desk and the flue */
               doing: 'Behind the round counter. Intake for interdimensional species, processed like the mail. A stamp comes down. Something is misfiled, conveniently.' },
         ],
     },
