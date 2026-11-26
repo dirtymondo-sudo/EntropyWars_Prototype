@@ -82,7 +82,7 @@ const ThreeRenderer = (function () {
         }
     })();
     /* THE BUILD LINE (the perf lens): bump the stamp in every PR that changes this file's walk / fight drawing */
-    var _EW_TR_STAMP = '11-26 level-join';
+    var _EW_TR_STAMP = '11-26 level-join nearest-first';
     function _ewBuildTok() {
         var sc = document.querySelectorAll('script[src*="three-renderer.js"]'), t = '';
         for (var i = 0; i < sc.length; i++) { var m = /[?&]v=([^&#]+)/.exec(sc[i].src || ''); if (m) { t = m[1]; break; } }
@@ -86184,7 +86184,16 @@ const ThreeRenderer = (function () {
             var trimA = _hqMat(S.trim || 'teal', 10, 1, { shininess: 50, specular: 0x666666 });
             G.add(_hqSectorMesh(D.rInner, D.rOuter + 0.04, A0, A1, D.h, top));
             G.add(_hqArcBand(D.rOuter, 0, D.h, A0, A1, _hqMat(D.front || 'oxblood', 8 * (A1 - A0) / 360, 1, { shininess: 12, side: THREE.DoubleSide })));
-            G.add(_hqArcBand(D.rInner, 0, D.h, A0, A1, _hqMat(D.back || D.front || 'oxblood', 4 * (A1 - A0) / 360, 1, { shininess: 12, side: THREE.DoubleSide })));
+            /* THE KNEE SPACE (2026-11-26, mondo: "an actual desk ... space underneath the counter to place her legs under, scoot her in"):
+               `knee: t` = the top is a slab `t` m thick over open space: no back panel down to the floor, only the slab's edge, its
+               underside and a short apron, so the sitter's legs go under it and she sits snug against the counter */
+            if (D.knee) {
+                var kt = +D.knee > 0 && +D.knee < 0.3 ? +D.knee : 0.05, backM = _hqMat(D.back || D.front || 'oxblood', 4 * (A1 - A0) / 360, 1, { shininess: 12, side: THREE.DoubleSide });
+                G.add(_hqSectorMesh(D.rInner, D.rOuter, A0, A1, D.h - kt, backM, true));   // the underside in the panels' wood: the knee hole reads dark under the marble
+                G.add(_hqArcBand(D.rInner, D.h - kt, D.h, A0, A1, _hqMat(D.top || 'terrazzo', 8, 1, { shininess: 30, specular: 0x444444, side: THREE.DoubleSide })));
+                G.add(_hqArcBand(D.rInner + 0.03, D.h - kt - 0.07, D.h - kt, A0, A1, backM));   // the apron under the slab's edge
+                G.add(_hqArcBand(D.rOuter - 0.025, 0, D.h - kt, A0, A1, backM));   // the modesty panel's inside face, wood
+            } else G.add(_hqArcBand(D.rInner, 0, D.h, A0, A1, _hqMat(D.back || D.front || 'oxblood', 4 * (A1 - A0) / 360, 1, { shininess: 12, side: THREE.DoubleSide })));
             G.add(_hqArcBand(D.rOuter + 0.012, D.h - 0.07, D.h, A0, A1, trimA));
             G.add(_hqArcBand(D.rOuter + 0.012, 0, 0.08, A0, A1, trimA));
             [A0, A1].forEach(function (ea) {   // the two end panels
@@ -97424,6 +97433,23 @@ const ThreeRenderer = (function () {
             for (var cx = -1; cx <= 1; cx += 2) { var c = new THREE.Mesh(new THREE.CylinderGeometry(0.004 * U, 0.004 * U, 0.16 * U, 4), cord); c.position.set(cx * (W / 2 - 0.02) * U, (H + 0.06) * U, 0.03 * U); c.rotation.z = cx * 0.35; g.add(c); }
             return g;
         },
+        /* THE SHOP COUNTER (DOOR HQ 2.0, the Door Store, mondo 11-26: "Just a normal counter"): one long plain counter, front +z.
+           Walnut body, a dark kick at the floor, a brass rail under a walnut top at 1.05 m, a lower work shelf on the clerk's side
+           (-z). 9.6 m long (the catalogue rect is the blocker). */
+        shop_counter: function (U) {
+            var g = new THREE.Group(), L = 9.6, D = 0.8, H = 1.05;
+            var wood = _hqMat('wood', 6, 1, { color: 0x7a5a3a, shininess: 30, specular: 0x2a2018 });
+            var top = _hqMat('wood', 8, 1, { color: 0x8a6a48, shininess: 55, specular: 0x3a2a1c });
+            var kick = _hqMat(null, 1, 1, { color: 0x1e1a16, shininess: 10 });
+            var brass = _hqMat(null, 1, 1, { color: 0xb8893a, shininess: 80, specular: 0x8a6a30 });
+            var k = _hqBox(L - 0.1, 0.12, D - 0.12, kick); k.position.set(0, 0.06 * U, 0.02 * U); g.add(k);
+            var body = _hqBox(L, H - 0.17, D - 0.08, wood); body.position.set(0, (0.12 + (H - 0.17) / 2) * U, 0); g.add(body);
+            var t = _hqBox(L + 0.08, 0.05, D + 0.06, top); t.position.set(0, (H - 0.025) * U, 0.02 * U); g.add(t);
+            var rail = _hqBox(L + 0.02, 0.035, 0.03, brass); rail.position.set(0, (H - 0.08) * U, (D / 2) * U); g.add(rail);
+            for (var i = -3; i <= 3; i++) { var pnl = _hqBox(L / 7 - 0.12, H - 0.45, 0.02, top); pnl.position.set(i * (L / 7) * U, (0.12 + (H - 0.3) / 2) * U, (D / 2 - 0.03) * U); g.add(pnl); }
+            var shelf = _hqBox(L - 0.2, 0.03, 0.3, top); shelf.position.set(0, 0.8 * U, -(D / 2 + 0.12) * U); g.add(shelf);
+            return g;
+        },
         /* DOOR STORE (DOOR HQ 2.0, 2026-11-26; LOOK_BOOK.md "Door Store": "doors standing in rows like cars in a showroom, each in its own
            spotlight"). A capture door on its plinth (front +z): the plinth in the tier's colour (T1 steel, T2 brass, T3 vault black, the
            tuned door dark with the six type colours), the D.O.O.R. frame in teal metal, the catalogue leaf shut in it (T3 the vault leaf,
@@ -98732,7 +98758,7 @@ const ThreeRenderer = (function () {
             e.mixer.update(mdt);
             /* THE SEAT HEIGHT (2026-11-26): the sitter's thighs on the cushion (the walker on a seat; a seated cast member on the seat at its spot) */
             if (ch.kind === 'player') { if (ch.sit && ch.sit.seat && (e._ew_curAnim === 'hqSit' || (ch.sit.lie && e._ew_curAnim === 'hqSleep'))) _hqSeatPin(ch, ch.sit.seat.y, mdt, ch.x, ch.z); /* (lying too: the bed clip's hips sat ~0.6 m toward the foot, the legs off the lounger) */ else if (e.model && e.model._ew_seatOff != null && !(H.ride && H.ride.on)) _hqSeatUnpin(e); }
-            else if (ch.pose && (ch.pose === 'hqSit' || ch.pose === 'hqSitTalk') && e._ew_curAnim === ch.pose) { if (!ch._seatChecked) _hqSeatFind(ch); if (ch._seatTop != null) _hqSeatPin(ch, ch._seatTop, mdt, ch.x, ch.z); }
+            else if (ch.pose && (ch.pose === 'hqSit' || ch.pose === 'hqSitTalk' || ch.pose === 'hqSitDesk') && e._ew_curAnim === ch.pose) { if (!ch._seatChecked) _hqSeatFind(ch); if (ch._seatTop != null) _hqSeatPin(ch, ch._seatTop, mdt, ch.x, ch.z); if (ch.pose === 'hqSitDesk') _hqDeskHands(e); }
             else if (e.model && e.model._ew_seatOff != null) _hqSeatUnpin(e);
             _swayAuto(e.model, mdt);   // THE SWAY: a caped cast member's cape swings in the building too
             if (e.appearanceRig) { e.model.updateMatrixWorld(true); e.appearanceRig.tick(); }   // rev 9: the skirt against the legs
@@ -99352,6 +99378,24 @@ const ThreeRenderer = (function () {
         legs.sort(function (a, b) { return a.d - b.d; });   // the two thigh bones nearest the hips (a rig with two segments a thigh: the top ones, one a side)
         e._ew_seatBones = (legs.length >= 2 && legs[0].d === legs[1].d) ? { legs: [legs[0].b, legs[1].b] } : (hips ? { hips: hips } : null);
         return e._ew_seatBones;
+    }
+    /* THE DESK HANDS (2026-11-26, mondo: Rhonda "should fit comfortable up against the desk and have her arms on the counter top"): the
+       `hqSitDesk` pose (the library's driving loop: seated, forearms out level) holds its hands palms-in round a wheel; after the mixer
+       has posed her, each forearm is turned on its own length so the palms lie flat on the counter. Two bones a sitter a frame, kept. */
+    var HQ_DESK_TWIST = 75;
+    function _hqDeskHands(e) {
+        var m = e && e.model; if (!m) return;
+        if (e._ew_deskArms === undefined) {
+            var L = null, R = null;
+            try { m.traverse(function (n) { if (!n.isBone) return; var nm = n.name || ''; if (!/(fore_?arm|lower_?arm)/i.test(nm) || /twist|roll|end/i.test(nm)) return; if (!L && /left|_l\b|\.l\b/i.test(nm)) L = n; else if (!R && /right|_r\b|\.r\b/i.test(nm)) R = n; }); } catch (err) {}
+            e._ew_deskArms = (L && R) ? { L: L, R: R } : null;
+        }
+        var A = e._ew_deskArms; if (!A) return;
+        var W = (typeof window !== 'undefined') ? window : {}, tw = _hqRad(W.EW_DESK_TWIST != null ? +W.EW_DESK_TWIST : HQ_DESK_TWIST);
+        if (!tw) return;
+        if (A.lq && A.L.quaternion.equals(A.lq)) return;   // the mixer skipped this frame (a far body's slow tick): already turned, never twice
+        A.L.rotateY(tw); A.R.rotateY(-tw);
+        A.lq = (A.lq || new THREE.Quaternion()).copy(A.L.quaternion);
     }
     function _hqSeatPin(ch, top, dt, sx, sz) {
         var e = ch.entry, m = e && e.model; if (!m) return;
@@ -105924,10 +105968,29 @@ const ThreeRenderer = (function () {
         if (_hqImpTick(H, now)) return;   // THE IMPOSSIBLE DOORS: a crossing through one this frame
         _hqStageCross(H, now);
     }
+    /* THE NEAREST FIRST (DOOR HQ 2.0 wave 4 fix, 2026-11-26, mondo: "trouble walking and skating into the training room, like there is
+       an invisible wall"): the parts were built in list order, one a frame, so on a level of 20+ parts the room you were walking toward
+       (the Training Room, last on the Ring's list) could still be unbuilt when you reached its doorway, and an unbuilt part is a wall.
+       The parts now build and attach nearest the walker first: the list is sorted by how far the walker stands from each part's
+       rectangle, again every half second (a sort of the stage's own short list, never the scene: RULE #1e). */
+    function _hqStageBuildOrder(H, now) {
+        var st = H.stage, p = H.player, o = st._bo;
+        if (o && o.nbs === st.nbs && now - o.t < 500) return o.list;
+        var px = p ? p.x : 0, pz = p ? p.z : 0;
+        var list = st.nbs.map(function (nb, i) {
+            var r = nb.rect, d = 0;
+            if (r) { var dx = Math.max(r.x0 - px, 0, px - r.x1), dz = Math.max(r.z0 - pz, 0, pz - r.z1); d = Math.hypot(dx, dz); }
+            return { nb: nb, d: d, i: i };
+        });
+        list.sort(function (a, b) { return (a.d - b.d) || (a.i - b.i); });
+        list = list.map(function (e) { return e.nb; });
+        st._bo = { nbs: st.nbs, t: now, list: list };
+        return list;
+    }
     function _hqStageBuildTick(H, now) {
-        var st = H.stage;
-        for (var i = 0; i < st.nbs.length; i++) {
-            var nb = st.nbs[i], E = st.parts[nb.id];
+        var st = H.stage, nbsO = _hqStageBuildOrder(H, now);
+        for (var i = 0; i < nbsO.length; i++) {
+            var nb = nbsO[i], E = st.parts[nb.id];
             if (E && E.built) {
                 if (!H.sky && H === _hq && _hqStageOpenBox(_hqData().rooms[nb.id])) _hqStageSkyUp(H, _hqData().rooms[nb.id], nb.id);   // THE OPEN-AIR ROOM INDOORS
                 if (!E.attached && E.rel && _hqStageReady(H, E, now)) {

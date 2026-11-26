@@ -1468,7 +1468,7 @@ the vending machines". Plan: `docs/plans/door-hq-2/FLOOR_PLANS.md` (lobby level,
 - OTTO RUNS THE TILL (mondo 11-26: "Otto can be at the door store"): DOOR_CAST.otto's one spot is behind the till (x 0, z -7.7, hqArms); his old upper-level door posts are gone. The till is a low `exec_desk` (the booking desk's screens hid him). Probes: playtest_city.js sets EW_DISABLE_CAST, so pass `--pre=window.EW_DISABLE_CAST=false` to see the cast.
 - THE PAWN SHOP LAYOUT (mondo 11-26: "the doors against the back wall behind a long counter, they are in front of the counter and otto so he
   is completely hidden. Think more pawn shop or ammo store"): all seven doors on plinths along the north wall (z -7.9, every 2.8 m, the vault
-  in the middle), one long counter of seven `jewelry_case`s at z -4.6 (x -4.8..4.8), Otto between them (z -6.0), the till counter in front
+  in the middle), one long plain counter (proc `shop_counter`, 9.6 m, walnut + brass; mondo: "Just a normal counter", not glass cases) at z -4.6, Otto between them (z -6.0), the till counter in front
   (z -3.4). The shop floor south of the counter is open.
 ## DOOR HQ 2.0, WAVE 2: THE TRAINING ROOM (2026-11-26)
 - One definition still: data.js `rooms.training_hall` (the look + the `prebuilt_training` board's room); `rooms.training` (the walk's
@@ -1822,6 +1822,30 @@ card, no load, and the two rooms never have to fit next to each other.
   see, look, on, shown, drawn, d }] }`. RULE #2: viewer-local, nothing on `state`, nothing relayed. RULE #1e: the frame reads only this
   room's doorways.
 
+## DOOR HQ 2.0: RHONDA AT A REAL DESK (2026-11-26)
+mondo: "rhonda's desk needs to be an actual desk like there is space underneath the counter to place her legs under, like scoot her in
+because she just seems so far away when i try to talk to her, she should fit comfortable up against the desk and have her arms on the
+counter top if you can".
+- THE KNEE SPACE: the Lobby's `desk` row takes `knee: <slab m>` (three-renderer.js `_hqBuildDesk`, the `arc` branch): the top is a 5 cm
+  marble slab with a wood underside and a short apron, the front panel stays (its inside face wood), NO back panel to the floor, so the
+  sitter's legs go under it. Without `knee` a desk builds as before. The walk is unchanged (the counter's band is still solid to walk).
+- THE HEIGHT: 1.05 -> 0.80 m (a desk, not a standing counter); the five things on it (`crt_terminal`, `desk_lamp`, `papers_b`,
+  `coffee_mug`, `laminator`) moved down with it (`y: 0.8`).
+- SCOOTED IN: her chair (`office_chair`) and DOOR_CAST.rhonda's spot r 3.1 -> 3.98 (the counter's inside edge is 4.0): hips at the
+  edge, knees under the slab at r 4.3, her front about 0.1 m off the edge. Measured with the probe's bone read-out.
+- HER ARMS ON THE TOP: a new cast pose `hqSitDesk` (sprites.js _CAST_POSES: UAL1 Driving_Loop at ts 0.35: seated, forearms out level,
+  elbows at the edge, hands 5 cm over the top) + THE DESK HANDS (three-renderer.js `_hqDeskHands`): after the mixer each forearm is
+  turned 75 degrees on its length so the palms lie flat (the clip holds them palms-in round a wheel). Console: `EW_DESK_TWIST = 0`
+  shows the raw clip. The seat pin (`_hqSeatPin`) treats `hqSitDesk` like `hqSit`.
+- Scene E's shots (RHONDA LETS HER STAY) were left as they were: she is 0.9 m nearer the camera, so E4's medium is a little closer.
+- Checked: `node find-doorways.js central_egress` clear; probe pictures (playtest_city.js with `--pre=window.EW_DISABLE_CAST=false`).
+
+### THE NEAREST FIRST (2026-11-26, fix after the level join)
+mondo: "Having trouble walking and skating into the training room, like there is an invisible wall". The stage built its parts in list
+order, one a frame, and the Training Room is last on the Ring's list of 21. If you walked or skated from the Lobby, you reached its doorway
+before it was built, and a part that isn't built yet is a wall. three-renderer.js `_hqStageBuildOrder` now builds and attaches parts
+nearest the walker first. It sorts the stage's own neighbour list by the walker's distance to each part's rectangle, again every
+500 ms, and never walks the scene (RULE 1e).
 ## THE SIXTIES REFIT (2026-11-26, mondo: no red damask; "vintage 1960s office retro campy scifi, like 2001 a space odyssey spaceship meets the headquarters in the TV show Danger 5")
 Six new sheets drawn in code by `bake-hq60.py` (repo root; `python3 -I bake-hq60.py <out>` then `node sync-zip.js --put <file> Assets/world/hq/textures/<file>`),
 worn by DOOR_HQ.textures keys `panel60` (white moulded panels), `teak60` (teak slats), `light60` (lit ceiling grid; self-lit through
