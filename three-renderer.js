@@ -97510,13 +97510,13 @@ const ThreeRenderer = (function () {
             return g;
         },
         /* THE ARC WALL (DOOR HQ 2.0 wave 3, 2026-11-26, the Works' factory): a curved partition inside a box room, the round building's
-           drum and its rings. Row at the circle's centre (x, z; face 180): `r` (m, the wall's middle), `a0` / `a1` (compass degrees:
-           0 north, 90 east), `wallH`, `t`, `dadoH`, `wall` / `wallColor` / `dado` / `dadoColor` (sheet keys, `urban:` too), `holes` =
-           [{ a0, a1, h }] (a doorway from the floor to h, a lintel over it). Keep an arc under ~60 degrees a row (the collider's grid).
+           drum and its rings. Row at the circle's centre (x, z; face 180): `arcR` (m, the wall's middle; never `r`, a box prop's `r` moves it), `a0` / `a1` (compass degrees:
+           0 north, 90 east), `wallH`, `t`, `dadoH`, `sheet` / `sheetColor` / `dado` / `dadoColor` (sheet keys, `urban:` too; never `wall`: a box
+           prop's `wall` hangs it on that box wall), `holes` = [{ a0, a1, h }] (a doorway from the floor to h, a lintel over it). Keep an arc under ~60 degrees a row (the collider's grid).
            No catalogue footprint: THE REAL COLLISION reads its bands. */
         arc_wall: function (U, p) {
             p = p || {};
-            var g = new THREE.Group(), R = +p.r || 10, T = +p.t || 0.3, H = +p.wallH || 3.5, dH = (p.dadoH != null) ? +p.dadoH : 1.2, TILE = +p.tile || 2.4;
+            var g = new THREE.Group(), R = +p.arcR || 10, T = +p.t || 0.3, H = +p.wallH || 3.5, dH = (p.dadoH != null) ? +p.dadoH : 1.2, TILE = +p.tile || 2.4;
             var A0 = Math.min(+p.a0 || 0, +p.a1 || 0), A1 = Math.max(+p.a0 || 0, +p.a1 || 0), D2R = Math.PI / 180;
             var holes = (p.holes || []).map(function (h) { return { a0: Math.max(A0, +h.a0), a1: Math.min(A1, +h.a1), h: Math.min(H, +h.h || 3) }; }).filter(function (h) { return h.a1 > h.a0; });
             var cuts = [A0, A1]; holes.forEach(function (h) { cuts.push(h.a0, h.a1); });
@@ -97529,7 +97529,7 @@ const ThreeRenderer = (function () {
                 var parts = [[y0, Math.min(y1, Math.max(y0, dH)), true], [Math.max(y0, dH), y1, false]];
                 parts.forEach(function (pt) {
                     var lo = pt[0], hi = pt[1]; if (hi - lo < 0.01) return;
-                    var tex = pt[2] ? (p.dado || p.wall) : p.wall, col = pt[2] ? (p.dadoColor != null ? p.dadoColor : p.wallColor) : p.wallColor;
+                    var tex = pt[2] ? (p.dado || p.sheet) : p.sheet, col = pt[2] ? (p.dadoColor != null ? p.dadoColor : p.sheetColor) : p.sheetColor;
                     [[R + T / 2, THREE.FrontSide], [R - T / 2, THREE.BackSide]].forEach(function (f) {
                         var m = new THREE.Mesh(new THREE.CylinderGeometry(f[0] * U, f[0] * U, (hi - lo) * U, segs, 1, true, th0, thL), mat(tex, col, len, hi - lo, f[1]));
                         m.position.y = ((lo + hi) / 2) * U; g.add(m);
@@ -97551,11 +97551,11 @@ const ThreeRenderer = (function () {
             return g;
         },
         /* THE FLUE, DOWN IN THE WORKS (DOOR HQ 2.0 wave 3): the Incinerator's column as the factory sees it, riveted steel with soot
-           bands, floor to ceiling (`r`, `h`); `mouths` = [{ deg, w, h }] = the Chute's hot mouth on its face (a lit opening, a steel
+           bands, floor to ceiling (`flueR`, `flueH`); `mouths` = [{ deg, w, h }] = the Chute's hot mouth on its face (a lit opening, a steel
            trough sloping into it from `len` m out, the lip at `y`). Solid by THE REAL COLLISION (its own skin). */
         works_flue: function (U, p) {
             p = p || {};
-            var g = new THREE.Group(), R = +p.r || 4.5, H = +p.h || 8.75, D2R = Math.PI / 180, circ = 2 * Math.PI * R;
+            var g = new THREE.Group(), R = +p.flueR || 4.5, H = +p.flueH || 8.75, D2R = Math.PI / 180, circ = 2 * Math.PI * R;
             var skin = _hqMat(p.tex || 'urban:MetalPanel1a', circ / 3, H / 3, { color: (p.color != null) ? p.color : 0x8a6a58, shininess: 30, specular: 0x403028 });
             var body = new THREE.Mesh(new THREE.CylinderGeometry(R * U, R * U, H * U, 48, 1, true), skin); body.position.y = (H / 2) * U; g.add(body);
             var soot = _hqMat(null, 1, 1, { color: 0x1e1a18, shininess: 40, specular: 0x302820 });

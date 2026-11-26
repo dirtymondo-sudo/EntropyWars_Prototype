@@ -27,8 +27,8 @@ const R_VOID = 14;         // the back rooms' inner wall (the narrow points of t
 const A = { dock: [252, 292], ware: [292, 400], line: [40, 105], garden: [105, 150], autopsy: [150, 182], control: [182, 208], boiler: [208, 230], laundry: [230, 252], bay: [172, 188] };
 
 /* ── THE SHEETS (LOOK_BOOK.md "The Works, top: the factory") ── */
-const WALL = { wall: 'urban:MetalCorrugatedPainted2a', wallColor: 0x8e969c, dado: 'urban:ConcreteWoodFormed1a', dadoColor: 0xb0aaa0, dadoH: 2.4 };
-const COR = { wall: 'urban:ConcretePrecast1c', wallColor: 0xa8a49a, dado: 'urban:MetalWarningStripe1', dadoColor: 0xffffff, dadoH: 0.5 };
+const WALL = { sheet: 'urban:MetalCorrugatedPainted2a', sheetColor: 0x8e969c, dado: 'urban:ConcreteWoodFormed1a', dadoColor: 0xb0aaa0, dadoH: 2.4 };
+const COR = { sheet: 'urban:ConcretePrecast1c', sheetColor: 0xa8a49a, dado: 'urban:MetalWarningStripe1', dadoColor: 0xffffff, dadoH: 0.5 };
 const DOORH = 4.2;         // a doorway's height inside the factory
 
 const props = [], counters = [];
@@ -41,15 +41,15 @@ function arc(r, a0, a1, sheet, holes, extra) {
     for (let i = 0; i < n; i++) {
         const b0 = a0 + i * step, b1 = b0 + step;
         const hs = (holes || []).filter(h => h.a1 > b0 && h.a0 < b1).map(h => ({ a0: r2(Math.max(b0, h.a0)), a1: r2(Math.min(b1, h.a1)), h: h.h }));
-        add(Object.assign({ key: 'arc_wall', x: 0, z: 0, face: 180, r, a0: r2(b0), a1: r2(b1), wallH: H, t: 0.3 }, sheet, hs.length ? { holes: hs } : {}, extra || {}));
+        add(Object.assign({ key: 'arc_wall', x: 0, z: 0, face: 180, arcR: r, a0: r2(b0), a1: r2(b1), wallH: H, t: 0.3 }, sheet, hs.length ? { holes: hs } : {}, extra || {}));
     }
 }
 /* a straight wall along the radius `deg` from r0 to r1, holes = [[ra, rb, h]] along the radius */
 function radial(deg, r0, r1, sheet, holes) {
     const [x0, z0] = P(deg, r0), [x1, z1] = P(deg, r1), mid = (r0 + r1) / 2, len = r1 - r0;
     const o = Object.assign({ key: 'room_wall', x: r2((x0 + x1) / 2), z: r2((z0 + z1) / 2), face: r2(deg + 90), len: r2(len), wallH: H, t: 0.3, dadoH: sheet.dadoH,
-        front: { wall: sheet.wall, wallColor: sheet.wallColor, dado: sheet.dado, dadoColor: sheet.dadoColor },
-        back: { wall: sheet.wall, wallColor: sheet.wallColor, dado: sheet.dado, dadoColor: sheet.dadoColor }, trimColor: 0xe8c13a, edgeColor: 0x4a4e52 });
+        front: { wall: sheet.sheet, wallColor: sheet.sheetColor, dado: sheet.dado, dadoColor: sheet.dadoColor },
+        back: { wall: sheet.sheet, wallColor: sheet.sheetColor, dado: sheet.dado, dadoColor: sheet.dadoColor }, trimColor: 0xe8c13a, edgeColor: 0x4a4e52 });
     if (holes && holes.length) o.holes = holes.map(([a, b, h]) => ({ x0: r2(a - mid), x1: r2(b - mid), y0: 0, y1: h || DOORH }));
     add(o);
 }
@@ -62,7 +62,7 @@ function at(key, deg, r, more) {
 
 /* ══ THE SHELL'S WALLS ══ */
 /* the flue */
-add({ key: 'works_flue', x: 0, z: 0, face: 180, r: R_FLUE, h: H, mouths: [{ deg: 72, w: 2.4, h: 1.7, y: 0.5, top: 0.95, len: 2.9 }] });
+add({ key: 'works_flue', x: 0, z: 0, face: 180, flueR: R_FLUE, flueH: H, mouths: [{ deg: 72, w: 2.4, h: 1.7, y: 0.5, top: 0.95, len: 2.9 }] });
 /* the drum, with the roller door (270) and the ramp (180) cut out */
 arc(R_OUT, 0, 360, WALL, [{ a0: 264.5, a1: 275.5, h: 5.4 }, { a0: 174.5, a1: 185.5, h: 5.4 }]);
 /* the service corridor's inner wall (the back rooms' doors) and the ramp bay */
@@ -96,7 +96,13 @@ at('fire_extinguisher', 253, 30, { y: 0.95, toward: 'cw' }); at('breaker_panel',
 
 /* ══ THE WAREHOUSE (292-40): two long racks you weave round, in from the Dock by the flue, out to the Line by the drum ══ */
 /* rack A at r 18.5 (open at its east end), rack B at r 26 (open at its west end) */
-const rack = (r, d0, d1) => { const step = 1.65 / r / D2R; for (let d = d0; d <= d1 + 0.01; d += step) at('metal_shelving', d, r, { toward: 'out', h: 2.6 }); };
+/* a rack: a 4.4 m steel spine (an arc_wall of grating) with shelving down both faces */
+const RACK = { sheet: 'urban:MetalPanel1a', sheetColor: 0x7a8088, dado: 'urban:MetalPanel1a', dadoColor: 0x7a8088, dadoH: 0 };
+const rack = (r, d0, d1) => {
+    const n = Math.ceil((d1 - d0) / 45), st = (d1 - d0) / n;
+    for (let i = 0; i < n; i++) add(Object.assign({ key: 'arc_wall', x: 0, z: 0, face: 180, arcR: r, a0: r2(d0 + i * st), a1: r2(d0 + (i + 1) * st), wallH: 4.4, t: 0.35, edgeColor: 0xe8c13a }, RACK));
+    const step = 1.65 / r / D2R; for (let d = d0 + step / 2; d <= d1 - step / 2 + 0.01; d += step) { at('metal_shelving', d, r - 0.45, { toward: 'in' }); at('metal_shelving', d, r + 0.45, { toward: 'out' }); }
+};
 rack(18.5, 296, 382); rack(26, 312, 396);
 /* crates on top of the racks' ends and doors stacked against them */
 [[300, 16.8], [330, 16.8], [360, 16.8], [318, 20.3], [350, 20.3], [378, 20.3]].forEach(([d, r], i) => at('door_stack', d, r, { toward: i % 2 ? 'cw' : 'ccw' }));
@@ -121,6 +127,7 @@ at('notice_board', 103.5, 12.5, { y: 1.3, toward: 'ccw' });
 /* ══ DOOR GARDEN (105-150): beds of doors on stems under purple lamps, in from the Chute, out by the middle ══ */
 [[112, 12], [124, 12], [136, 12], [112, 18], [124, 18], [136, 18], [117, 27], [131, 27], [117, 33], [131, 33]].forEach(([d, r]) => at('planter', d, r, { toward: 'cw' }));
 [[112, 12], [136, 18], [124, 18], [117, 33], [131, 27]].forEach(([d, r]) => at('grow_lamp', d, r, { ceil: true }));
+[[112, 12], [124, 12], [136, 12], [112, 18], [124, 18], [136, 18], [117, 27], [131, 27], [117, 33], [131, 33]].forEach(([d, r], i) => at('door_vine', d + (i % 2 ? 1.2 : -1.2), r, { y: 0.5, toward: i % 3 ? 'in' : 'out' }));   // a door growing in every bed
 at('garden_tree', 143, 31); at('garden_tree', 109, 34);
 [[106, 15, 'ccw'], [106, 28, 'ccw'], [149, 12, 'cw'], [149, 32, 'cw']].forEach(([d, r, t]) => at('door_vine', d, r, { toward: t }));
 counters.push({ id: 'bed', ...(() => { const [x, z] = P(124, 14.6); return { x, z }; })(), face: 34, plateY: 1.4, radius: 2.0, verb: 'READ', label: 'THE BEDS', action: {} });
@@ -185,7 +192,7 @@ const room = `        /* ── THE WORKS, TOP: THE FACTORY (DOOR HQ 2.0 wave 3,
                 floorColor: 0x9a968e, wallColor: 0x8e969c, dadoColor: 0xb0aaa0, ceilColor: 0x5a5650,
                 pipes: true, strips: false, keyLamp: 0,
                 lights: [${lights.map(l => '{ x: ' + l.x + ', z: ' + l.z + ' }').join(', ')}],
-                mood: { light: 0xffb070, ambient: 0.42 },
+                mood: { light: 0xffb070, ambient: 0.55 },
                 plate: { x: -33.5, z: -4.2, y: 4.6 },
             },
             doors: [

@@ -1488,3 +1488,29 @@ the vending machines". Plan: `docs/plans/door-hq-2/FLOOR_PLANS.md` (lobby level,
   `{ a: 'central_egress', door: 'cafeteria', b: 'cafeteria', bDoor: 'lobby' }` is in HQ_STAGE_RULES.round. Seen on screen from the Lobby floor.
 - **CHEF (same day, mondo: "Chef in the kitchen/cafteria"):** DOOR_CAST `chef` (the chef race's model, `race: 'chef'`, name CHEF, no title):
   half the visits at the Kitchen's ranges, half at the head of the serving line. Out of every doorway square.
+
+## DOOR HQ 2.0, WAVE 3: THE WORKS' FACTORY (2026-11-26)
+mondo 11-26: "DOOR Works needs to be fleshed out more ... should be more dungeon like in terms of layout and navigating". Built from
+`docs/plans/door-hq-2/plans/3_garage_works_top.png` (the right-hand drum) and LOOK_BOOK.md "The Works, top". Room id `factory`, label
+THE WORKS, one box room 77 x 77 m, 8.75 m to a truss ceiling, WRITTEN BY `docs/plans/door-hq-2/factory.js` (edit the tool, then
+`node docs/plans/door-hq-2/factory.js --write`; it replaces the block between the FACTORY markers in data.js).
+- **The shape:** the drum (r 38.5, touching the box's four walls) round the Incinerator's flue (r 4.5, the `works_flue` proc), the rooms
+  as wedges between straight `room_wall`s. Two new procs (three-renderer.js, after `room_wall`, catalogue rows beside it): `arc_wall`
+  (a curved partition in a box room: `r`, `a0`/`a1` in compass degrees, `holes` by angle with a lintel; collided by its own bands;
+  keep a row under ~60 degrees) and `works_flue` (riveted steel, soot bands, `mouths` = the Chute's lit opening + the trough).
+- **ONE WAY THROUGH** (compass degrees, metres from the flue): the roller door (box door `garage`, west wall, open 7 x 5.2 m) >
+  LOADING DOCK (252-292, out to in) > the freight opening by the flue > WAREHOUSE (292-40: two long racks at r 18.5 and r 26, open at
+  alternate ends, so you weave out) > THE LINE (40-105: in at the drum, two belts at 62 and 82 degrees to the Chute, the hero shot
+  between them) > a door by the Chute > DOOR GARDEN (105-150, in to out) > AUTOPSY ROOM (150-182) > the ramp bay (172-188, 7 m deep)
+  > FREIGHT RAMP (box door `ramp`, south wall, open 7 x 5.2 m, to `labs` at `factory`). Off the service corridor (r 35-38.5,
+  188-252, a dead end at the Dock's wall): CONTROL ROOM, BOILER ROOM, LAUNDRY. Their wedges stop at r 14 (the narrow points are shut).
+- **Changed from the picture:** the inner service ring and the corridor behind the Warehouse, the Line and the Garden are not built:
+  a ring corridor joins every room to every other and there would be no one way through. The rooms run to the flue and the drum
+  there; the corridor stands where the back rooms open off it.
+- **Counters (one name each, by-id panels in map.js):** `line` THE LINE (by the Chute), `bed` THE BEDS, `parts` THE PARTS, `feeds` THE FEEDS.
+- **Retired into `factory`:** `works`, `warehouse`, `autopsy`, `doorgarden`, `control` (the old second floor), `dock`, `laundry`,
+  `boiler` (the basement's). The SECOND FLOOR zone is gone from HQ_WORLD; the basement zone lost the three parts and their joins
+  (doors cut: `services.laundry`, `corridor_a.boiler`). The car's stop 2 is THE WORKS, landing at the roller door. The Incinerator
+  stays its own room, down the labs' stair (the labs thread). The Garage's roller door is its door `works` -> `factory` at `garage`.
+- Lights: 15 shell lamps in sodium (`mood.light 0xffb070`, ambient 0.42), high-bay lamps under the truss, a `light_glow` at the Chute,
+  the grow lamps' purple. `node find-doorways.js factory`: clear.
