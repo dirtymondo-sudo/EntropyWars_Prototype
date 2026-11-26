@@ -1821,3 +1821,10 @@ card, no load, and the two rooms never have to fit next to each other.
 - Off: `window.EW_HQ_NO_IMPOSSIBLE = true` (re-enter). Console: `ThreeRenderer.hq.impossible()` -> `{ id, in, crossed, recs: [{ id, door,
   see, look, on, shown, drawn, d }] }`. RULE #2: viewer-local, nothing on `state`, nothing relayed. RULE #1e: the frame reads only this
   room's doorways.
+
+### THE NEAREST FIRST (2026-11-26, fix after the level join)
+mondo: "Having trouble walking and skating into the training room, like there is an invisible wall". The stage built its parts in list
+order, one a frame, and the Training Room is last on the Ring's list of 21. If you walked or skated from the Lobby, you reached its doorway
+before it was built, and a part that isn't built yet is a wall. three-renderer.js `_hqStageBuildOrder` now builds and attaches parts
+nearest the walker first. It sorts the stage's own neighbour list by the walker's distance to each part's rectangle, again every
+500 ms, and never walks the scene (RULE 1e).
