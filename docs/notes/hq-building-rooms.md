@@ -1641,3 +1641,33 @@ THE WORKS, one box room 77 x 77 m, 8.75 m to a truss ceiling, WRITTEN BY `docs/p
 - Lights: 15 shell lamps in sodium (`mood.light 0xffb070`, ambient 0.42), high-bay lamps under the truss, a `light_glow` at the Chute,
   the grow lamps' purple. `node find-doorways.js factory`: clear.
 - **The join (merge with the Garage):** the factory is a part of HQ_WORLD.zones.garage at (64.95, -300, y -9), its west roller door `garage` (leaf_wired_double, wide) joined to the Garage's east `works`, no card. The ramp to the labs is still a card (the labs zone is 21 m lower). Proc fields: `arc_wall` reads `arcR` + `sheet`/`sheetColor` (never `r` / `wall`: a box room places a row with a string `wall` ON that box wall), `works_flue` reads `flueR` / `flueH`.
+
+## DOOR HQ 2.0, WAVE 4: THE LEVEL JOIN, THE LOBBY LEVEL AS ONE PIECE (2026-11-26)
+mondo: "Ideally you can redesign it to be more connected and way less loading screens". The Lobby, the Ring, every room round them and
+the Training Room are one stage now: you walk from the Foyer to the Training Room, into any office, shop or Ring room and back with no card.
+- **THE RING MOVED OUT TWO SQUARES** (`bayShell.corridor.rings[0]` r 52.5-59.5, was 45.5-52.5): the Cafeteria's back corners stood at r 52.2,
+  inside the old Ring. The Ring's rooms stand behind its outer wall by angle (hqStageRoundGeom), so they moved out with it; no box overlaps
+  another or the Ring (checked by projecting every box).
+- **THE LEVEL JOIN** (data.js `HQ_STAGE_RULES.concentric: [{ a: 'central_egress', b: 'ring_g' }]`, `hqStageConc`): two round hubs that share
+  a centre stand on one stage at the same frame. Each open door of the Lobby whose action leads to the Ring, paired with the Ring's open
+  inner-wall door leading back, is a PASSAGE: 7 x 4 m, the Ring's carpet, plaster, panelling and strips (three-renderer.js `_hqConcFill`, a
+  lamp half-way, `_hqBayRoomLamps`), its inner wall cut (`_hqDrumCutsIn`). Three passages: NORTH (0, the main line, Lobby door `north` with
+  `ringIn: 'egress_main'`), EAST (67.5, `bay_celestial`, was 62) and WEST (315, `bay_terrestrial`, was 300); all three were leaves before.
+  The crossing (`hqStageWhereConc`): into the Ring 1 m past its inner wall, into the Lobby 1 m inside its drum. Feet, air and boom in a
+  passage: `_hqPassJSurface` / `_hqPassJAir` / `_hqPassJCam` (both hubs answer for them with or without the stage; past the far end they ask
+  the other hub). Four vending machines moved off the passage mouths (347, 13, 80, 327).
+- **THE PASSAGE JOIN** (`len` on a `HQ_STAGE_RULES.round` row): the box stands `len` m further out and the hub's open door's fill
+  (`_hqOpenFrontFill`, now on a Ring's outer wall too) is a corridor with strips. THE TRAINING ROOM: the Ring's door `training` (0, an
+  `onRing` row of the Lobby), `len` 10.5, the Training Room's south door an open front 7 x 4 (was the grand double doors). Its way back
+  lands on the Ring (hqRingMoveDoors).
+- **WHAT YOU SEE ONE HOP ON** (`beside` + `portal` rows): from the Ring the Lobby and its open-fronted rooms (Medical, Door Store,
+  Cafeteria, the five gallery rooms), from the Lobby the Ring and the Training Room, from a Ring room or the Training Room the Lobby. A
+  portal room is drawn only while a doorway to it is on screen (THE PORTALS now run in a DOOR HQ hub too: a Ring room behind its shut door
+  is not drawn). The load card waits for these rooms too (`wait`), so the walk itself never shows one building.
+- **KEPT BUILT:** on a joined level the stage keeps up to `HQ_STAGE_RULES.levelKeep` (26) rooms built when you walk away (detached, not
+  drawn), so the way back attaches them with no rebuild.
+- **STILL A CARD (11-26), and why:** the lift (a ride between floors, the car is its own room); the Ring's stair down to the Garage (the
+  Garage is 9 m under the Lobby in another frame; it needs a stair passage that drops, THE PASSAGE JOIN with a fall, not built); the Works'
+  freight ramp to the Gantry and the Gantry's stair to the Incinerator (two HQ_WORLD zones 21 m apart; same missing piece); the Foyer's
+  street door; H-Wing's plain doors (the impossible-doors thread's); the Training Room's service stair and the Condemned Crossing (a
+  dungeon). Off: `window.EW_HQ_NO_STAGE` (every passage is a dark opening you press, a card to the Ring).
