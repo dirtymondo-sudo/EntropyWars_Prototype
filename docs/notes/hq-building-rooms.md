@@ -1524,3 +1524,61 @@ fourth floor, the old medical wing's back rooms and the basement's server room. 
   basement, `orb` and `dungeon` the annex (their doors there are doors).
 - Moved with the rooms: the Interrogation Room's blood decal (under the table), the supply closet's stash (the left shelf's end).
 - `node find-doorways.js labs cells tank disposal orb server closet4b supply interrogation padded`: all clear.
+## DOOR HQ 2.0, WAVE 3: THE GARAGE, THE LIFT, THE SUBWAY (2026-11-26)
+Built from the left side of `docs/plans/door-hq-2/plans/3_garage_works_top.png` and LOOK_BOOK.md "Garage". A clean sheet: the old drum's
+plaza, quarter pipes, dock office, booth, attendant, lines and subtitles are gone. Room ids kept (`garage`, `tunnel`): the elevator's G
+stop, the taxi and train links and the climb lesson all read them.
+- **THE GARAGE** (`rooms.garage`, label GARAGE): a 49 m drum (r 24.5, 9 m to the roof) in a 52.5 m box. Angles clockwise from north.
+  THE LIFT in the middle: a 7 x 7 m core, floor to roof, the elevator doors on its south face (door `elevator`, `wall: 'free'`, proc
+  elevator, wide), a grind kerb round it (r 6, open at the doors), a yellow ring and the lane's dashed ring (r 12.25) painted round it.
+  THE RAMP climbs the west side (spiral 290 -> 350 degrees, r 18-24.7, 0 -> 3.5 m, a pipe guard rail on its inner edge) to THE DECK over
+  the north (bridge 350 -> 65, inner rail, open 6-14 where THE LADDER lands: HQ_WALK_LESSONS.climb, the plaque on the column at 355).
+  At the deck's end the street gate: the `garage_ramp` up to daylight, the boom gate down, a ticket machine, the exit sign. Bays round
+  the drum (yellow lines, 7.5 degrees each), ten cars on the ground and two on the deck, cones, barrels, tyres, a vending machine
+  (potions, hqVendingApply) by the Subway opening, fluorescents in two rings (two flicker).
+- **THE DOORS:** east (90) `works` = the Loading Dock's roller door (`leaf_wired_double`, wide, a closed `roller_shutter` either side,
+  the cage lamp over it) in a 10.5 m alcove; it points at the old `dock` (`at: 'garage'`, the dock's door now lands `at: 'works'`)
+  until the Works' factory room lands, then `{ room: 'factory', at: 'garage' }` (the factory thread switches it). South (180)
+  `subway` = an `open` 7 x 4.2 m opening onto the platform. West (270) `ring` = the stair up to the Ring (the Ring's `subway` row
+  at 350 now reads GARAGE and lands `at: 'ring'`). The taxi (`links.garage_taxi` a) stands in the south-west bays (x -12.73,
+  z 18.19, face 35). The old secret `tunnel` hatch is gone (the platform is walked into now). H-Wing's plain door (the plan's
+  north-west) is the H-Wing thread's.
+- **THE SUBWAY** (`rooms.tunnel`, label SUBWAY): 14 x 35 m, 5.25 m up, the Metro pack, the track down the west side (`track_bed`
+  x -5.6, `platform_edge` x -4.0; the train's free end `links.tunnel_downtown` a at x -4.3 z 6), columns scaled 1.3 to the roof,
+  benches facing the track, the machines on the east wall. Doors: `garage` (north, `open` 7 x 4.2 at x 3.5), `stairwell` (south),
+  the storm drain to the Woods (`links.woods_sewer`, east, secret) and the climb down to the Sewers (`links.tunnels_works`, west)
+  unchanged. Its `ring` door is gone (the Ring leads to the Garage).
+- **ONE STAGE:** `HQ_WORLD.zones.garage` (parts garage + tunnel, y -9, under the Lobby; HQ_STAGE_RULES.zones) with ONE door join
+  `{ a: 'garage', b: 'tunnel', door: 'subway', bDoor: 'garage' }`: you walk from the car park down to the train, no card. A factory
+  join can be added to the same zone (the Garage box's east wall is x 26.25 in the zone frame, z -300).
+- Checked: `node find-doorways.js garage tunnel` 0 rows; `node find-softlocks.js garage` 0 traps (3 slots, harmless gaps under
+  the deck); `hqWorldValidate()` no new errors.
+## DOOR HQ 2.0, WAVE 3: THE DIVISION OFFICES ON THE GALLERY (2026-11-26)
+mondo: "Offices for each division and their leader (Spirit realm, extraterrestrial, cryptid, etc)". Built from
+`docs/plans/door-hq-2/plans/2_lobby_upper_level_penthouse.png` and LOOK_BOOK.md "The Lobby's upper level". mondo 11-26: Ringer leads
+Spirit Realm, Glass leads Extraterrestrial (Forrest leads Cryptid).
+- **THE GALLERY JOIN** (data.js `hqStageRoundJoins` / `hqStageRoundGeom` / `hqStageWhereRound`, three-renderer.js `_hqStageRoundLvl`,
+  `_hqStageRoundAt`, `_hqStageRoundSurface`, `_hqStageRoundCam`, `_hqStageCross`): a round join row may name a LEVEL-1 door of the hall
+  (the gallery). Its box stands on the gallery's floor (`rel.y` = the hall's `wallH`, `back.y` = minus it), its front `G.R` = `mezz.outer`.
+  The walker on the gallery reads only the gallery's rooms, the walker on the floor only the floor's (a gallery room stands over a
+  floor room in plan: the Cryptid office is over Medical). The upper drum is cut for a level-1 `open` door (`_hqDrumCuts(room, 1)`,
+  the cut's `top` is absolute) and `_hqOpenFrontFill` takes the level's floor and wall radius. Walked in from the gallery with no card
+  (probe 11-26: gallery -> CRYPTID DIVISION, `where` says cryptid).
+- **THE LOBBY'S GALLERY IS 7.1 m HIGH** (was 5.25): `central_egress.shell.wallH` 7.1, so a gallery room's floor stands over the 7 m
+  front rooms (Medical, Door Store, Cafeteria) with no overlap. The dome is 15.85 m, the Cube at 11.4 m, the twin stairs 38 steps.
+- **THE FIVE ROOMS** (box rooms, front = the `lobby` row on wall `s`, `open: { w, h: 4.9 }`, joined by HQ_STAGE_RULES.round):
+  OBSERVATORY (`observatorium`, 0 deg, 17.5 x 17.5 x 7 m, its counters chart / projector / shelf and the Singularity screen kept),
+  CRYPTID DIVISION (`cryptid`, 72, 17.5 x 14, the hunting lodge, Forrest), BUREAU OF CONTINUITY (`continuity`, 140, 14 x 14, the motto
+  plaque + canon notices counters; the `bureau_vatican` painting moved to its north wall x -2.6 and keeps its own gate), SPIRIT REALM
+  DIVISION (`spirit`, 220, the seance parlour, Ringer), EXTRATERRESTRIAL DIVISION (`extraterrestrial`, 288, space age, Glass).
+- **THE GLASS FRONT** (catalogue `office_glass` / `office_glass_door`, proc `office_glass`): 3.5 m bays floor to 4.9 m; the door bay has
+  no pane under its 3 m transom and the brass plate over it reads the row's `text` (room name, leader). `frame` = the mullions' colour.
+- **`walk: [t0, t1]`** on a box door row = the bay you walk in by; find-doorways.js checks that bay's clear square only (the panes
+  beside it are the front). `node find-doorways.js central_egress cryptid spirit extraterrestrial continuity observatorium`: clear.
+- **DOOR_CAST:** Forrest -> `cryptid` (his old gallery post is gone), Glass -> `extraterrestrial` (only), Ringer -> `spirit` 0.8 /
+  the Training Room 0.2. From the Lobby floor the glass fronts and plates read; a leader is seen from the gallery (7 m up, the floor's
+  eye line only reaches the offices' upper walls).
+- **RETIRED:** `execwing` (THE EXECUTIVE SUITE) -> `continuity`, `trophycase` (Room 111) -> `central_egress`: THE TROPHY CASE is a
+  cabinet on the Lobby's wall at 238 deg (`trophy_case` prop + counter `trophies` -> `_mountReactTrophies`). The `execwing` HQ_WORLD
+  zone and its stage entry are gone. The Bureau's old GATEKEEPER + 24 Keys gate on its door is gone with the door (the front is
+  open glass); the painting to the Vatican keeps its gate.

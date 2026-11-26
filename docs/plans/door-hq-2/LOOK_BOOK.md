@@ -41,7 +41,7 @@ The idea: a 1960s grand hotel that a government office took over and never redec
 | Walls | `urban:WoodPanelling1a` dado to 1.05 m, `damask_3` above |
 | Ceiling | dome, `ceiling` sheet in cream; coffers on the gallery underside |
 | Trim | brass in the better gold (never the old flat gold) |
-| Height | Lobby open three storeys, about 14 m to the dome; the upper level's gallery at 5.25 m; the front rooms 7 m |
+| Height | Lobby open three storeys, about 15.85 m to the dome; the upper level's gallery at 7.1 m (wave 3: over the 7 m front rooms); the front rooms 7 m |
 | Camera | wide, low, symmetrical on the main line (the first shot); slow push in to Rhonda |
 
 Front rooms keep their own look inside (below) but share the Lobby's brass and walnut on their fronts, so the three read
