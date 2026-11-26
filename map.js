@@ -1283,7 +1283,7 @@
             try {
                 const no = (typeof window.hqRoomNo === 'function') ? (window.hqRoomNo(roomId) || '') : '';
                 const label = String((roomDef && roomDef.label) || roomId || '').toUpperCase();
-                if (roomDef && roomDef.desc) out.push({ t: (no ? 'ROOM ' + no + ' · ' : '') + label, q: String(roomDef.desc), s: roomDef.sub ? String(roomDef.sub) : 'D.O.O.R. Headquarters' });
+                if (roomDef && roomDef.desc) out.push({ t: (no ? 'ROOM ' + no + ' · ' : '') + label, q: String(roomDef.desc), s: (roomDef.sub && roomDef.site) ? String(roomDef.sub) : 'D.O.O.R. Headquarters' });   // ONE NAME (DOOR HQ 2.0 wave 1): an HQ room's card never shows its old second name
                 const site = (roomDef && roomDef.site) || ((typeof window.hqRoomSite === 'function') ? window.hqRoomSite(roomId) : null);
                 if (site && typeof window.doorSiteFile === 'function') {
                     const sf = window.doorSiteFile(site);
@@ -1946,7 +1946,8 @@
         /* THE CORNER'S SUB-LINE (mondo 11-19): "D.O.O.R. HEADQUARTERS" only inside HQ; out in a zone the line is the DISTRICT you
            stand in (live, as you walk), never the zone's counts ("NINE DISTRICTS · 144 PLOTS" was a builder's note, not the player's) */
         function _hqStripSub(room) {
-            if (!room.site) return 'D.O.O.R. HEADQUARTERS · ' + ((room.roomNo != null) ? 'ROOM ' + room.roomNo + ' · ' : '') + String(room.sub || '').toUpperCase();
+            /* ONE NAME (DOOR HQ 2.0 wave 1, mondo 11-26: "No sub text/titles"): inside DOOR HQ the room's name is the whole corner */
+            if (!room.site) return '';
             if (_hqDistrictGrid(_hqCurRoom)) return '';   // a plot-built room: the district tag is the whole line
             const sub = String(room.sub || '').toUpperCase();
             return /\bDISTRICTS?\b|\bPLOTS?\b/.test(sub) ? '' : sub;
@@ -3420,7 +3421,7 @@
             /* ON CALL: every unlocked vessel not on the party */
             const oc = window.hqPartyOnCall(_hqProfile());
             html += `<div class="hq-pp-sec"><b>${R.labels.onCall}</b><span>${oc.length} OFF DUTY · DECLASSIFIED VESSELS NOT ON THE PARTY</span></div>`;
-            if (!oc.length) html += `<p class="hq-panel-note">Everyone you have is on the books. The Quartermaster declassifies more.</p>`;
+            if (!oc.length) html += `<p class="hq-panel-note">Everyone you have is on the books. The Shop declassifies more.</p>`;
             else {
                 const full = rec.members.length >= R.roster;
                 html += `<div class="hq-pp-oncall">` + oc.map(o => {
@@ -4786,8 +4787,8 @@
         function _hqIntakeHtml() {
             const profile = _hqProfile();
             const ic = (typeof window.hqIntakeCard === 'function') ? window.hqIntakeCard(profile) : null;
-            let html = '<div class="hq-panel-hd"><b>THE LAMINATOR</b><span>RECEPTION · YOUR INTAKE SHEET · ROOM 1</span></div>';
-            if (!profile || !ic || !ic.onFile) return html + '<p class="hq-panel-desc">Nothing in the tray. Sign in at the window first — the sheet is printed from the card.</p><div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-fn="_mountReactProfile">SIGN IN AT THE WINDOW ▸ PROFILE · ID CARD</button><button class="hq-btn" data-close="1">NOTED</button></div>';
+            let html = '<div class="hq-panel-hd"><b>INTAKE SHEET</b></div>';   // ONE NAME (DOOR HQ 2.0 wave 1): the counter at Rhonda's desk
+            if (!profile || !ic || !ic.onFile) return html + '<p class="hq-panel-desc">Nothing in the tray. Sign in at the ID card first — the sheet is printed from the card.</p><div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-fn="_mountReactProfile">SIGN IN AT THE WINDOW ▸ PROFILE · ID CARD</button><button class="hq-btn" data-close="1">NOTED</button></div>';
             const deskChip = ic.desk ? `<i class="hq-lamp-chip st-open" style="border-color:${_hqEsc(ic.desk.color)};color:${_hqEsc(ic.desk.color)}">${_hqEsc(ic.desk.label)}</i>` : '<i class="hq-lamp-chip st-off">NONE</i>';
             html += '<div class="hq-rows">';
             html += `<div class="hq-row hq-row-tray"><b>STATUS</b><span>${_hqEsc(ic.note)}</span><i class="hq-lamp-chip st-${_hqEsc(ic.tone)}">${_hqEsc(ic.status)}</i></div>`;
@@ -5838,7 +5839,7 @@
             } catch (e) { console.warn('[HQ] capture door settle', e); return null; }
         }
         const _HQ_GUN_REFUSALS = {
-            bag: ['NO ONE-WAY DOOR IN THE BAG', 'THE QUARTERMASTER SELLS THEM · THE SHOP IN THE BUILDING'],
+            bag: ['NO ONE-WAY DOOR IN THE BAG', 'THE SHOP SELLS THEM'],
             type: ['TUNE THE DOOR FIRST', 'RIGHT CLICK PICKS THE TYPE'],
             upright: ['A STANDING DOOR NEEDS A FLOOR', 'AIM AT THE GROUND · IT STANDS UP ON ITS OWN'],
             near: ['TOO CLOSE', 'STEP BACK · NOT ON YOUR OWN FEET'],
@@ -7344,22 +7345,20 @@
                 return html + '</div>';
             }
             const kv = [];
-            kv.push(_hqMapWhere(n) + (n.bayNo && !/BAY/.test(n.where || '') ? ' · BAY ' + n.bayNo : ''));
+            /* ONE NAME (DOOR HQ 2.0 wave 1): the card is the room's name and what you know of it; no second name, no "where" alias */
             if (n.hub) kv.push('THE HUB OF ' + _hqEsc(String(n.hubLabel || '').toUpperCase()));
             else if (n.hubOf) kv.push('IN ' + _hqEsc(String(n.hubLabel || '').toUpperCase()));
             if (n.part) kv.push('PART OF ' + _hqEsc(String(_hqMapLabel(n.site)).toUpperCase()));
             if (n.first) kv.push('FIRST SEEN ' + n.first);
             kv.push(`DOORS ${n.known} OF ${n.doors} CHARTED`);
-            html += `<div class="hq-map-card-hd"><b>${_hqNoTag(n.no)}${_hqEsc(String(n.label).toUpperCase())}</b><span>${n.sub ? _hqEsc(n.sub) + ' · ' : ''}${kv.join(' · ')}</span></div>`;
+            html += `<div class="hq-map-card-hd"><b>${_hqNoTag(n.no)}${_hqEsc(String(n.label).toUpperCase())}</b><span>${kv.join(' · ')}</span></div>`;
             if (here) {
                 /* THIS ROOM: the old directory's top — every door and counter here, WALK to it */
                 const room = _hqRoom() || {}, profile = _hqProfile();
                 const isBox = room.kind === 'box', isBay = room.kind === 'bay';
-                const where = d => isBox ? ('WALL ' + String(d.wall || '').toUpperCase() + ' · ') : isBay ? ((d.cap ? 'END CAP · ' : (d.side === 'in') ? 'INNER WALL · ' : 'THRESHOLD · ') + (d.bay ? d.bay + ' · ' : '')) : (d.level >= 2 ? 'THE GALLERY · ' : d.level ? 'MEZZANINE · ' : 'FLOOR · ');
-                const noPre = e => { const no = _hqNo(e); return no ? 'ROOM ' + no + ' · ' : ''; };
                 const rows = [];
-                (room.doors || []).forEach(d => rows.push({ id: d.id, label: d.label, sub: noPre(d) + where(d) + (d.sub || ''), st: (typeof window.doorSiteState === 'function') ? window.doorSiteState(d, profile) : 'open' }));
-                (room.counters || []).forEach(c => rows.push({ id: c.id, label: c.label, sub: noPre(c) + (c.level >= 2 ? 'THE GALLERY · ' : c.level ? 'MEZZANINE · ' : 'FLOOR · ') + (c.sub || ''), st: 'open' }));
+                (room.doors || []).forEach(d => rows.push({ id: d.id, label: d.label, sub: '', st: (typeof window.doorSiteState === 'function') ? window.doorSiteState(d, profile) : 'open' }));
+                (room.counters || []).forEach(c => rows.push({ id: c.id, label: c.label, sub: '', st: 'open' }));   // ONE NAME: a row is its name
                 if (rows.length) {
                     html += `<details class="hq-map-det" open><summary>THIS ROOM · ${rows.length} DOORS AND COUNTERS · WALK</summary><div class="hq-rows hq-rows-scroll">`;
                     rows.forEach(r => { html += `<div class="hq-row"><b>${_hqEsc(r.label)}</b><span>${_hqEsc(r.sub)}</span>${_hqStateChip(r.st)}<button class="hq-btn hq-btn-sm" data-goto="${_hqEsc(r.id)}">WALK</button></div>`; });
@@ -7416,7 +7415,7 @@
         function _hqMapSearchHtml(M) {
             const nodes = M.nodes.filter(n => n.st !== 'q').sort((a, b) => String(a.label).localeCompare(String(b.label)));
             return '<div class="hq-map-search"><label for="hqMapSearch">FIND A ROOM</label><input id="hqMapSearch" type="search" placeholder="Room name, number or area…" autocomplete="off"><div class="hq-map-results" hidden>' + nodes.map(n =>
-                `<button class="hq-map-result" data-mapnode="${_hqEsc(n.id)}" data-mapmatch="${_hqEsc([n.label, n.no || '', _hqMapWhere(n), n.part ? _hqMapLabel(n.site) : '', n.hubLabel || ''].join(' ').toLowerCase())}"><b>${_hqEsc(n.label)}</b><span>${_hqEsc((n.no ? 'ROOM ' + n.no + ' · ' : '') + _hqMapWhere(n))}${n.st === 'here' ? ' · YOU ARE HERE' : ' · GO →'}</span></button>`).join('') + '<p class="hq-map-empty" hidden>No charted rooms match.</p></div></div>';
+                `<button class="hq-map-result" data-mapnode="${_hqEsc(n.id)}" data-mapmatch="${_hqEsc([n.label, n.no || '', _hqMapWhere(n), n.part ? _hqMapLabel(n.site) : '', n.hubLabel || ''].join(' ').toLowerCase())}"><b>${_hqEsc(n.label)}</b><span>${_hqEsc(n.wild ? (n.no ? 'ROOM ' + n.no + ' · ' : '') + _hqMapWhere(n) + ' · ' : '')}${n.st === 'here' ? 'YOU ARE HERE' : 'GO →'}</span></button>`).join('') + '<p class="hq-map-empty" hidden>No charted rooms match.</p></div></div>';
         }
         /* Pixel-sized labels, sorted by importance; reserve space before adding
            smaller names. No undiscovered names enter this presentation layer. */
@@ -8688,7 +8687,7 @@
         window._hqMapDev = function () { return { model: _hqMap.model, shown: _hqMapShown(), view: _hqMap.view, fit: _hqMap.fit, mode: _hqMap.mode, area: _hqMap.area, wsel: _hqMap.wsel, ptr: !!_hqMap.ptr, zm: { layer: _zm.layer, sel: _zm.sel } }; };
         function _hqDirectoryHtml() {
             const room = _hqRoom(), profile = _hqProfile();
-            let html = `<div class="hq-panel-hd"><b>THE MAP</b><span>${_hqMap.mode === 'world' ? 'THE WORLD · EVERY PLACE THE DOORS REACH' : 'BUILDING DIRECTORY'} · ${_hqEsc(room.label || 'THE MAIN HALL')} · YOU ARE HERE · M CLOSES</span></div>`;
+            let html = `<div class="hq-panel-hd"><b>THE MAP</b><span>${_hqMap.mode === 'world' ? 'THE WORLD · EVERY PLACE THE DOORS REACH' : 'BUILDING DIRECTORY'} · ${_hqEsc(room.label || 'THE LOBBY')} · YOU ARE HERE · M CLOSES</span></div>`;
             const mapHtml = _hqMapHtml();
             /* THE WORLD OVERVIEW (2026-09-19): the LOCATIONS column on the left, the stage in the middle, the card on the right */
             if (mapHtml && _hqMap.world) html += _hqMapLocsHtml(_hqMap.world);
@@ -8701,11 +8700,9 @@
             if (!mapHtml) {
                 /* no map (data.js without it): the old top — this room's doors, WALK */
                 const isBay = room.kind === 'bay', isBox = room.kind === 'box';
-                const where = d => isBox ? ('WALL ' + String(d.wall || '').toUpperCase() + ' · ') : isBay ? ((d.cap ? 'END CAP · ' : (d.side === 'in') ? 'INNER WALL · ' : 'THRESHOLD · ') + (d.bay ? d.bay + ' · ' : '')) : (d.level >= 2 ? 'THE GALLERY · ' : d.level ? 'MEZZANINE · ' : 'FLOOR · ');
-                const noPre = e => { const n = _hqNo(e); return n ? 'ROOM ' + n + ' · ' : ''; };
                 html += '<div class="hq-rows">';
-                (room.doors || []).forEach(d => { html += `<div class="hq-row"><b>${_hqEsc(d.label)}</b><span>${_hqEsc(noPre(d) + where(d) + (d.sub || ''))}</span><button class="hq-btn hq-btn-sm" data-goto="${_hqEsc(d.id)}">WALK</button></div>`; });
-                (room.counters || []).forEach(c => { html += `<div class="hq-row"><b>${_hqEsc(c.label)}</b><span>${_hqEsc(noPre(c) + (c.sub || ''))}</span><button class="hq-btn hq-btn-sm" data-goto="${_hqEsc(c.id)}">WALK</button></div>`; });
+                (room.doors || []).forEach(d => { html += `<div class="hq-row"><b>${_hqEsc(d.label)}</b><span></span><button class="hq-btn hq-btn-sm" data-goto="${_hqEsc(d.id)}">WALK</button></div>`; });
+                (room.counters || []).forEach(c => { html += `<div class="hq-row"><b>${_hqEsc(c.label)}</b><span></span><button class="hq-btn hq-btn-sm" data-goto="${_hqEsc(c.id)}">WALK</button></div>`; });
                 html += '</div>';
             }
             /* THE ROOM REGISTER (HQ plan 7.1): every numbered place — the ones
@@ -8725,7 +8722,7 @@
                     else if (r.kind === 'room' && _hqRoomExists(r.id)) go = (r.id === _hqCurRoom) ? '<span>YOU ARE HERE</span>' : `<button class="hq-btn hq-btn-sm" data-room="${_hqEsc(r.id)}">GO</button>`;
                     else if (r.kind === 'facility' && _hqRoomExists('training')) go = `<button class="hq-btn hq-btn-sm" data-room="training" data-at="range">GO</button>`;
                     else if (r.room && _hqRoomExists(r.room)) go = `<button class="hq-btn hq-btn-sm" data-room="${_hqEsc(r.room)}" data-at="${_hqEsc(r.id)}">GO</button>`;
-                    const where = r.kind === 'site' ? `BAY ${r.bayNo || '?'} · ${_hqEsc(r.sub)}` : _hqEsc(r.sub);
+                    const where = r.kind === 'site' ? `BAY ${r.bayNo || '?'} · ${_hqEsc(r.sub)}` : '';   // ONE NAME (DOOR HQ 2.0 wave 1): a room's row is its number and its name
                     html += `<div class="hq-row hq-row-tray" title="${_hqEsc(r.why || '')}"><b>${_hqNoTag(r.no)}${_hqEsc(r.label)}</b><span>${where}</span>${go}</div>`;
                 });
                 html += '</div></details>';
@@ -9153,7 +9150,7 @@
                 } else html += '<p class="hq-panel-note">Form 365 is pinned in the Clock Room (Room 247). Nothing on the board today but the notices.</p>';
                 html += '<div class="hq-rows">'
                     + '<div class="hq-row hq-row-tray"><b>NOTICE</b><span>THE STANDINGS ARE ON THE BOARD IN THE HALL · EMPLOYEE OF THE MONTH</span><i class="hq-lamp-chip st-off">HALL</i></div>'
-                    + '<div class="hq-row hq-row-tray"><b>NOTICE</b><span>THE TILL IS CLOSED · HAZARD PAY IS TAKEN BY THE QUARTERMASTER (90°)</span><i class="hq-lamp-chip st-off">SHOP</i></div>'
+                    + '<div class="hq-row hq-row-tray"><b>NOTICE</b><span>THE TILL IS CLOSED · HAZARD PAY IS TAKEN AT THE SHOP</span><i class="hq-lamp-chip st-off">SHOP</i></div>'
                     + '<div class="hq-row hq-row-tray"><b>NOTICE</b><span>THE KITCHEN IS DOWN THE SERVICE STAIR AT THE END OF THE LINE · STAFF ONLY · EVERYONE IS STAFF</span><i class="hq-lamp-chip st-open">350</i></div>'
                     + '</div>';
                 html += '<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-close="1">NOTED</button></div>';
@@ -12099,6 +12096,11 @@
                         <div class="pm-set-row" style="margin-bottom:14px">
                             <button class="pm-set-btn" onclick="window._launchAITraining()">Launch AI Training</button>
                         </div>
+                        <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">CPU Training Transcript — what the CPU learned from watching you in Training matches: the decisions it scored, the ones it disagreed with, the weights it moved (was the Interrogation Room's table in DOOR HQ).</div>
+                        <div class="pm-set-row" style="margin-bottom:14px">
+                            <button class="pm-set-btn" onclick="window._mmShowTranscript()">Open CPU Training Transcript</button>
+                        </div>
+                        <div id="mmTranscript" style="margin-bottom:14px"></div>
                         <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Balance Lab runs AI vs AI with EQUAL weights and random, non-mirror, tree-legal teams — job / race / spell / tree-shape win rates measure game balance, not AI skill. Uses the Mode / Map above ("Rotate modes" cycles Arena → TDM → Clash → Gauntlet per match). Live dashboard + JSON/CSV/tree export.</div>
                         <div class="pm-set-row" style="margin-bottom:14px">
                             <button class="pm-set-btn" onclick="window._launchBalanceSim()">Launch Balance Lab</button>
@@ -12333,6 +12335,19 @@
             }
         }
 
+        /* THE CPU TRAINING TRANSCRIPT ON THE MAIN MENU (DOOR HQ 2.0 wave 1, 2026-11-26): the Interrogation Room's table left the building
+           (mondo: "No CPU training in the interrogation room, that is a dev tool"); Settings > Developer shows the same sheet */
+        window._mmShowTranscript = function() {
+            const el = document.getElementById('mmTranscript');
+            if (!el) return;
+            if (el.innerHTML) { el.innerHTML = ''; return; }
+            try { el.innerHTML = _hqTranscriptHtml(); } catch (e) { console.warn('[menu] transcript', e); return; }
+            el.onclick = (e) => {
+                if (e.target.closest('[data-close]')) { el.innerHTML = ''; return; }
+                const tr = e.target.closest('[data-transcript]');
+                if (tr && !tr.disabled && typeof window._ewImitationReport === 'function') { try { window._ewImitationReport(); } catch (err) { console.warn('[menu] transcript report', err); } }
+            };
+        };
         window._launchAITraining = function() {
             _trainModeSetting = document.getElementById('mmTrainMode')?.value || 'arena';
             _trainMapSetting = _trainMapReadSetting();
