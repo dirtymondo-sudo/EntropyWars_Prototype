@@ -111830,7 +111830,9 @@ const DOOR_CAST = {
                clerk's chair in the well, facing the BELL console — head and
                shoulders over the 1.05 m counter; reachable from the counter's
                outer edge (the console itself wins the prompt when you stand at it) */
-            { room: 'central_egress', deg: 180, r: 2.05, y: 0.05, level: 0, face: 180, pose: 'hqSit', reach: 5.0,
+            /* `across` (2026-11-26, mondo: "it's hard to target her with the mouse to talk to her"): talked to from anywhere within
+               `reach` while the camera aims at her, over the DISPATCH plate and Kit's chair in front of the desk (map.js THE DESK TALK) */
+            { room: 'central_egress', deg: 180, r: 2.05, y: 0.05, level: 0, face: 180, pose: 'hqSit', reach: 5.0, across: true,
               doing: 'Behind the round counter. Intake for interdimensional species, processed like the mail. A stamp comes down. Something is misfiled, conveniently.' },
         ],
     },
