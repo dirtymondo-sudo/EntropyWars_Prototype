@@ -97461,7 +97461,7 @@ const ThreeRenderer = (function () {
                 return g;
             }
             var H = +p.wallH || 3.5, dH = (p.dadoH != null) ? +p.dadoH : 1.2, F = p.front || {}, B = p.back || {};
-            var holes = (p.holes || []).map(function (h) { return { x0: Math.max(-L / 2, +h.x0), x1: Math.min(L / 2, +h.x1), y0: Math.max(0, +h.y0 || 0), y1: Math.min(H, +h.y1), sill: !!h.sill }; }).filter(function (h) { return h.x1 > h.x0 && h.y1 > h.y0; });
+            var holes = (p.holes || []).map(function (h) { return { x0: Math.max(-L / 2, +h.x0), x1: Math.min(L / 2, +h.x1), y0: Math.max(0, +h.y0 || 0), y1: Math.min(H, +h.y1), sill: !!h.sill, glass: (h.glass != null && h.glass !== false) ? (h.glass === true ? 0x141618 : +h.glass) : null }; }).filter(function (h) { return h.x1 > h.x0 && h.y1 > h.y0; });
             var xs = [-L / 2, L / 2];
             holes.forEach(function (h) { xs.push(h.x0, h.x1); });
             xs = xs.sort(function (a, b) { return a - b; }).filter(function (v, i, A) { return i === 0 || v - A[i - 1] > 0.001; });
@@ -97505,9 +97505,42 @@ const ThreeRenderer = (function () {
             holes.forEach(function (h) {
                 var w = h.x1 - h.x0;
                 if (h.sill) { var sl = _hqBox(w + 0.1, 0.05, T + 0.5, steel); sl.position.set(((h.x0 + h.x1) / 2) * U, (h.y0 + 0.025) * U, 0); g.add(sl); }
+                /* THE WINDOW (DOOR HQ 2.0, 2026-11-26, the Interrogation Room: "the mirror is a window"): `glass: <colour>` on a hole
+                   fills it with a pane of dark glass (see-through, and a slab like the wall's, so THE REAL COLLISION shuts it) */
+                if (h.glass != null) {
+                    var gm = _hqMat(null, 1, 1, { color: h.glass, transparent: true, opacity: 0.42, shininess: 120, specular: 0x8a9298, noAo: true });
+                    gm.depthWrite = false;
+                    var pane = _hqBox(w, h.y1 - h.y0, 0.03, gm); pane.position.set(((h.x0 + h.x1) / 2) * U, ((h.y0 + h.y1) / 2) * U, 0); pane.renderOrder = 2; g.add(pane);
+                }
                 var hd = _hqBox(w + 0.16, 0.08, 0.04, brass); hd.position.set(((h.x0 + h.x1) / 2) * U, (h.y1 + 0.04) * U, (T / 2 + 0.02) * U); g.add(hd);
                 [h.x0 - 0.04, h.x1 + 0.04].forEach(function (jx) { var jb = _hqBox(0.08, h.y1 - h.y0, 0.04, brass); jb.position.set(jx * U, ((h.y0 + h.y1) / 2) * U, (T / 2 + 0.02) * U); g.add(jb); });
             });
+            return g;
+        },
+        /* THE FLUE (DOOR HQ 2.0, 2026-11-26, the Works' middle level): the Incinerator's chimney where it passes through a level
+           of the Works, bare riveted steel floor to ceiling (the row's `h`, default 10.5 m), a band every 2.1 m, and round its foot
+           a ring of grating over the furnace's glow (the heat from the level below). Radius `r` (2.2, the Lobby's flue). */
+        flue: function (U, p) {
+            p = p || {};
+            var g = new THREE.Group(), R = +p.r || 2.2, Hh = +p.h || 10.5, ring = +p.ring || 4.4;
+            var steel = _hqMat(null, 1, 1, { color: 0x4a4440, shininess: 34, specular: 0x5a5048 });
+            var col = new THREE.Mesh(new THREE.CylinderGeometry(R * U, R * U, Hh * U, 40, 1, true), steel); col.position.y = (Hh / 2) * U; g.add(col);
+            var band = _hqMat(null, 1, 1, { color: 0x2e2a28, shininess: 50, specular: 0x6a5e52 });
+            for (var by = 0.35; by < Hh; by += 2.1) { var b = new THREE.Mesh(new THREE.CylinderGeometry((R + 0.06) * U, (R + 0.06) * U, 0.22 * U, 40, 1, true), band); b.position.y = by * U; g.add(b); }
+            /* the rivets up the seams */
+            var rivet = _hqMat(null, 1, 1, { color: 0x5c544c, shininess: 60 });
+            for (var sI = 0; sI < 8; sI++) { var sa = sI * Math.PI / 4; for (var ry = 0.8; ry < Hh - 0.3; ry += 0.7) { var rv = new THREE.Mesh(new THREE.SphereGeometry(0.035 * U, 5, 4), rivet); rv.position.set(Math.sin(sa) * (R + 0.01) * U, ry * U, Math.cos(sa) * (R + 0.01) * U); g.add(rv); } }
+            /* the heat: a glowing seam at the floor and the furnace's light through the grating */
+            var hot = _hqMat(null, 1, 1, { color: 0xff6a1a, emissive: 0xff5a10, emissiveIntensity: 1.1, noAo: true });
+            var seam = new THREE.Mesh(new THREE.CylinderGeometry((R + 0.02) * U, (R + 0.02) * U, 0.1 * U, 40, 1, true), hot); seam.position.y = 0.12 * U; g.add(seam);
+            var glow = new THREE.Mesh(new THREE.RingGeometry(R * U, ring * U, 48, 1), _hqBasic(0xff7a24));
+            glow.rotation.x = -Math.PI / 2; glow.position.y = 0.004 * U; g.add(glow);
+            var grate = _hqMat(null, 1, 1, { color: 0x24201e, shininess: 30, specular: 0x403830 });
+            var n = 32;
+            for (var i = 0; i < n; i++) { var a = (i / n) * Math.PI * 2, mid = (R + ring) / 2, sl = _hqBox(0.05, 0.05, ring - R, grate); sl.position.set(Math.sin(a) * mid * U, 0.03 * U, Math.cos(a) * mid * U); sl.rotation.y = a; g.add(sl); }
+            [R + 0.05, (R + ring) / 2, ring - 0.05].forEach(function (rr) { var t = new THREE.Mesh(new THREE.TorusGeometry(rr * U, 0.04 * U, 4, 64), grate); t.rotation.x = Math.PI / 2; t.position.y = 0.05 * U; g.add(t); });
+            /* a steel kerb round the grating's edge */
+            var kerb = new THREE.Mesh(new THREE.TorusGeometry(ring * U, 0.07 * U, 4, 64), _hqMat(null, 1, 1, { color: 0xc9a227, shininess: 40 })); kerb.rotation.x = Math.PI / 2; kerb.position.y = 0.05 * U; g.add(kerb);
             return g;
         },
         saucer_pendant: function (U, p) {

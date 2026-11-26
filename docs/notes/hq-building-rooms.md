@@ -1489,6 +1489,41 @@ the vending machines". Plan: `docs/plans/door-hq-2/FLOOR_PLANS.md` (lobby level,
 - **CHEF (same day, mondo: "Chef in the kitchen/cafteria"):** DOOR_CAST `chef` (the chef race's model, `race: 'chef'`, name CHEF, no title):
   half the visits at the Kitchen's ranges, half at the head of the serving line. Out of every doorway square.
 
+## DOOR HQ 2.0, WAVE 3: THE WORKS, MIDDLE (the labs + the holding block) (2026-11-26)
+Built from `docs/plans/door-hq-2/plans/4_works_middle_bottom.png` (left) and LOOK_BOOK.md "The Works, middle". A clean sheet of the old
+fourth floor, the old medical wing's back rooms and the basement's server room. One stage, no card between the rooms.
+- **THE GANTRY** (room id `labs` kept: the lift's floor 4 and H-Wing's two doors read it; label THE GANTRY, the lift stop too): a 38.5 m
+  square hall (11 x 11 squares), 10.5 m to an open truss, round THE FLUE (catalogue `flue`, a new proc in three-renderer.js: the
+  Incinerator's chimney as riveted steel, r 2.2 like the Lobby's, floor to ceiling, a ring of grating round its foot lit orange from the
+  furnace below; foot 2.3, a blocker, its own light). Every wall = corner square, a 14 m room, a 3.5 m centre square, a 14 m room,
+  corner square. North: the Cells, FREIGHT RAMP (x 0, a door: `{ room: 'factory', at: 'ramp' }`, the factory thread's), the Tank, and
+  in the corners H-Wing's two plain doors (`mandela`, `upsidedown`, doors until the H-Wing thread moves them). East: Clone Disposal, the
+  lift, ROOM X. South: the Server Room, THE STAIR (x 0, down to the `incinerator` room's `works` door, which now leads back up here),
+  Supply Closet 4B. West: the Interrogation Room, the Hold.
+- **HQ_WORLD zone `labs`** (y −30): every room's Gantry door is on its own SOUTH wall; north rooms rot 0, east rot 3, south rot 2, west
+  rot 1; each stands HQ_WORLD_RULES.wallM behind the Gantry's wall. Supply Closet 4B's blast door into `supply` is joined as before.
+  NOT on the stage: ROOM X (`orb`, sealed: its vault door wants L5, a joined door would swing open), the stair, the ramp, the lift, H-Wing.
+  `hqWorldValidate()` reads clean (outside the plot dungeons' own rows).
+- **The rooms** (one name each, no sub, no agents, no npcSpots except Clone Disposal's `clone`, which is YOU):
+  the Tank 14 x 14 x 6 (the iso tank under one bulb, two cryo tubes), Clone Disposal 14 x 14 x 6 (the chute, the table, the gun, a
+  body on a stretcher, your clone at the table), Room X 14 x 14 x 7 (the Object in a ring of rail; the dungeon's portcullis and the
+  garden's L5 gate are doors on its back wall), the Server Room 14 x 14 x 6 (eight racks; its stair to IT is gone, IT has one door;
+  its back door to Service Corridor B stays a door), Supply Closet 4B + the supply closet 10.5 x 10.5 x 4.5 each, the Interrogation
+  Room 14 x 17.5 x 4.5, the Hold 14 x 17.5 x 4.5 (was 3.6 x 3.6), THE CELLS (new) 14 x 24.5 x 4.5.
+- **THE INTERROGATION ROOM** (mondo: no CPU training, no table at the door, the mirror is a window): the door opens into the
+  observation booth; 5.25 m in, a `room_wall` across the room with a 7.2 x 1.4 m WINDOW of dark glass and a doorway at its east end; the
+  steel table stands in the middle of the room behind it, ~9.6 m from that doorway, under one swinging bulb. ROOM WALL GLASS
+  (three-renderer.js `room_wall`): a hole may say `glass: <colour>` (or `true`): a see-through pane fills it, and its slab shuts the
+  hole to the walker. Any room can use it.
+- **THE CELLS**: a booking strip inside the door (height board, mugshot wall), then five cells a side down a 3.5 m aisle (`room_wall`
+  between them, `psx_bars_metal_1` on the aisle: its catalogue row now has `rect: { hw: 1.25, hd: 0.06 }, block: true`, was a 1.25 m
+  circle), a chain bunk in each, toilets, chains; a clear square at the far wall, where the link `cells_dungeon` (moved here from the
+  old Dungeon's south wall) goes down to the Sewers' seventh cell.
+- **Retired / cut:** `DOOR_HQ.retired.dreamlab = 'labs'` (no Dream Lab in DOOR HQ; link `rem_astral` cut), `retired.medwing =
+  'medical'` and Medical's STAFF ONLY door cut (`cut.doors.medical`). Zones: `medwing` holds only the retired wing; `server` left the
+  basement, `orb` and `dungeon` the annex (their doors there are doors).
+- Moved with the rooms: the Interrogation Room's blood decal (under the table), the supply closet's stash (the left shelf's end).
+- `node find-doorways.js labs cells tank disposal orb server closet4b supply interrogation padded`: all clear.
 ## DOOR HQ 2.0, WAVE 3: THE GARAGE, THE LIFT, THE SUBWAY (2026-11-26)
 Built from the left side of `docs/plans/door-hq-2/plans/3_garage_works_top.png` and LOOK_BOOK.md "Garage". A clean sheet: the old drum's
 plaza, quarter pipes, dock office, booth, attendant, lines and subtitles are gone. Room ids kept (`garage`, `tunnel`): the elevator's G
