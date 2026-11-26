@@ -1821,3 +1821,11 @@ card, no load, and the two rooms never have to fit next to each other.
 - Off: `window.EW_HQ_NO_IMPOSSIBLE = true` (re-enter). Console: `ThreeRenderer.hq.impossible()` -> `{ id, in, crossed, recs: [{ id, door,
   see, look, on, shown, drawn, d }] }`. RULE #2: viewer-local, nothing on `state`, nothing relayed. RULE #1e: the frame reads only this
   room's doorways.
+
+## THE SIXTIES REFIT (2026-11-26, mondo: no red damask; "vintage 1960s office retro campy scifi, like 2001 a space odyssey spaceship meets the headquarters in the TV show Danger 5")
+Six new sheets drawn in code by `bake-hq60.py` (repo root; `python3 -I bake-hq60.py <out>` then `node sync-zip.js --put <file> Assets/world/hq/textures/<file>`),
+worn by DOOR_HQ.textures keys `panel60` (white moulded panels), `teak60` (teak slats), `light60` (lit ceiling grid; self-lit through
+three-renderer.js `_EMISSIVE_TERRAIN.light60`), `orange60` (tangerine), `orbit60` (the Ring's circles carpet), `groovy60` (the Spirit Realm's op-art paper).
+Worn by: the Lobby (walls both levels, dado, trim, dome, flue, floor rings + spokes, Rhonda's desk front), the Ring (bayShell), the Foyer,
+the Spirit Realm office, the Penthouse's wood walls, and every HQ room that named `urban:WoodPanelling1a` (that sheet was never on R2: those
+dados drew untextured). The Works and H-Wing keep their own looks. Which room wears which: LOOK_BOOK.md section 0 "THE SIXTIES REFIT".

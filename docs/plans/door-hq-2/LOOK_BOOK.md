@@ -25,6 +25,38 @@ measures (sitting); until then use the seats named here.
 
 ---
 
+## 0. THE SIXTIES REFIT (2026-11-26, mondo; this section wins over anything older below)
+
+mondo, in the Lobby: "im not a fan of this red wall paper, we are going for the vintage 1960s office retro campy scifi, like
+2001 a space oddyssey spaceship meets the headquarters in the TV show Danger 5". So the public building is no longer a
+1960s grand hotel in damask and oxblood: it is **a 1960s government spy agency that thinks it is a space station**. Clean
+white moulded panels and lit ceilings (the space station), warm teak and tangerine (the agency's office), chrome where
+there was brass, and one loud campy pattern a room at most. Original designs only: nothing copied from either film or show.
+
+**No damask, no oxblood, no red flock anywhere above the Works.** The Works and H-Wing keep their own looks (the
+dungeon and the backrooms are meant to feel wrong next to this).
+
+THE SIXTIES SHEETS, drawn in code by `bake-hq60.py` (repo root; seamless 1024 px), on R2 `Assets/world/hq/textures/`,
+worn by their DOOR_HQ.textures key:
+
+| Key | File | What it is | Where |
+| --- | --- | --- | --- |
+| `panel60` | `hq60_panel_wall.png` | off-white `#ECE7DA` moulded wall panels, rounded corners, soft seams (two a 3.2 m sheet) | Lobby walls (both levels), the flue, the Ring, the Foyer |
+| `teak60` | `hq60_teak_slats.png` | teak slat panelling `#8E4F25`, dark reveals | every dado, Rhonda's desk front, the Penthouse's wood walls, the ring rooms' dados |
+| `light60` | `hq60_light_ceiling.png` | a grid of lit white ceiling panels in a grey frame | Lobby dome + gallery underside, the Ring, the Foyer |
+| `orange60` | `hq60_tangerine.png` | gloss tangerine `#DE5F1C` | the Lobby floor's rings + spokes, the flue's band |
+| `orbit60` | `hq60_orbit_carpet.png` | circles-in-squares carpet, tangerine / mustard / chocolate / cream | the Ring's floor |
+| `groovy60` | `hq60_groovy_paper.png` | campy op-art paper, plum ground, magenta / amber / pink bubbles | the Spirit Realm office's walls |
+
+The palette, building-wide: panel white `#ECE7DA` · teak `#8E4F25` · tangerine `#DE5F1C` · mustard `#D9A03A` ·
+chocolate `#3E2517` · chrome `#B9C0C6` · DOOR teal `#2F6F68` (kept for the logo, vending machines, staff ties) · the
+terrazzo floor stays (it is already mid-century). Trim = chrome (`zl_hz_Metal_02__metal`) on the Lobby and the Ring.
+Where a row below still names `damask_*`, `oxblood`, `urban:WoodPanelling1a` (a sheet that never existed on R2) or brass
+trim for a public room, read it as the sixties sheet above. Props to look for next (not built in the refit): egg / tulip
+chairs, a sunken conversation pit, globe pendants, a wall of reel-to-reel computers, a big lit world map in the Lobby.
+
+---
+
 ## 1. THE COLOUR, LIGHT AND MATERIAL SHEET, LEVEL BY LEVEL
 
 Ceiling heights are clear heights. `mood` = the room shell's `mood.light` (hex) and `mood.ambient`.
@@ -38,8 +70,8 @@ The idea: a 1960s grand hotel that a government office took over and never redec
 | Key light | the `crystal_chandelier` hanging from the dome over Rhonda, plus a round skylight at the top of the dome throwing a pool on her desk and the column |
 | Mood | light `#FFD9A0` (3200 K), ambient 0.55; brightest at the centre, darker toward the Ring, so the eye goes to Rhonda |
 | Floor | `terrazzo` field with a `marble` ring round the column; `carpet_2` runner on the main line, front door to Training Room |
-| Walls | `urban:WoodPanelling1a` dado to 1.05 m, `damask_3` above |
-| Ceiling | dome, `ceiling` sheet in cream; coffers on the gallery underside |
+| Walls | `teak60` dado to 1.05 m, `panel60` above (THE SIXTIES REFIT; was `damask_3`) |
+| Ceiling | dome + gallery underside in `light60` (THE SIXTIES REFIT) |
 | Trim | brass in the better gold (never the old flat gold) |
 | Height | Lobby open three storeys, about 15.85 m to the dome; the upper level's gallery at 7.1 m (wave 3: over the 7 m front rooms); the front rooms 7 m |
 | Camera | wide, low, symmetrical on the main line (the first shot); slow push in to Rhonda |
@@ -80,8 +112,8 @@ The Overlook corridor: long, curved, warm, a little too quiet.
 | Palette | hex carpet in rust `#8C2F1E`, orange `#D46A2A`, brown `#3B2A20` · cream walls `#E8DCC0` · walnut doors · brass plates |
 | Key light | a wall sconce every two squares (7 m), both sides, warm pools on the carpet with dark between; no overhead tubes |
 | Mood | `#FFC98A` (2700 K), ambient 0.4 |
-| Floor | `urban:CarpetPattern1a` (the nearest to the Overlook hexagons; see the missing list) |
-| Walls | `urban:WoodPanelling1a` dado, `urban:PlasterWallPainted1b` above |
+| Floor | `orbit60` (THE SIXTIES REFIT; was `urban:CarpetPattern1a`) |
+| Walls | `teak60` dado, `panel60` above (THE SIXTIES REFIT) |
 | Ceiling | `ceiling`, 4.5 m (raised from today's 3.5 m) |
 | Width | 7 m (two squares), nothing on the walking line; props sit in alcoves between doors |
 | Camera | low tracking shot behind the walker, curve hiding what is ahead |
@@ -96,7 +128,7 @@ Each leader's office is a glass box you can see from the Lobby floor, each in it
 | Office | Palette | Key light | Floor / walls |
 | --- | --- | --- | --- |
 | Cryptid Division (Forrest) | forest green `#2F4A32`, tan `#B59A6A`, plaid red `#8A2E26` | a `banker_lamp` and a hunting-lodge `psx_ceiling_lamp_4_on` | `wood` floor, `urban:WoodCladding2a` walls: a hunting lodge |
-| Spirit Realm Division (Ringer) | plum `#4A2A4F`, candle gold `#E9B44C`, faded rose `#B07A86` | candles: `candelabra` on the desk, `lit_candle` groups | `carpet_4` floor, `damask_4` walls: a séance parlour |
+| Spirit Realm Division (Ringer) | plum `#4A2A4F`, candle gold `#E9B44C`, faded rose `#B07A86` | candles: `candelabra` on the desk, `lit_candle` groups | `carpet_4` floor, `groovy60` walls: a campy séance parlour (THE SIXTIES REFIT; was `damask_4`) |
 | Extraterrestrial Division (Glass) | white `#F2F2EE`, chrome `#B9C0C6`, signal orange `#E36A1E` | a `sputnik_lamp` and a `globe_lamp` | `urban:TileGeneric4a` floor, `urban:MetalPanelPainted1a` walls: space age |
 | Bureau of Continuity | beige `#D8CBB0`, file green `#4E6B4A` | `fluorescent` + `desk_lamp` | `carpet_3`, `drywall` |
 | Observatory | night blue `#141C33`, star white `#F3F1E7` | the `star_projector` and the `star_dome` | `carpet_4`, `void` ceiling |
