@@ -4249,3 +4249,12 @@ the vertex stage`.
   redrew the whole room's lamp map ten times a second. **THE WAX CASTS NO SHADOW** (`_hqLavaLampBuild`): the blobs neither cast nor
   take a shadow (re-set each tick). Cloud probe (hall, webgl2 node renderer, 30 s): the lamp's drift went 55 of 55 frames -> 1,
   the map now redraws only on its 3 s refresh.
+- **The big drop while walking (11-26 00:59 F3, build wax-01)**: one 515 ms frame, "scene: classic draws 491", 16 shader builds,
+  10 new pipelines, 27 groups re-recorded, walking the hall toward the foyer. THE LATE LOOK only made the scene pass's pipelines
+  async; three makes every other draw's pipeline IN the frame (`createRenderPipeline`: no compile promises outside compileAsync),
+  i.e. a bundle being re-recorded, the sun / lamp shadow passes, the model mask, and Firefox waits for each. **THE PIPELINES OFF
+  THE FRAME, EVERY PASS** (`_ewLateSetup`: `r._pipelines.updateForRender` wrapped): in the walked room after the card every
+  pipeline of the room's scene goes into THE LATE LOOK's sink (async); three skips the draw till it stands (a recording group is
+  flagged `_ew_bunMiss` and records again); each landing re-dirties the sun map and the hero lamp (`_ew_gate.sig = 0`) so a caster
+  that sat out is back. A bundle recording also keeps the frame's build budget (past 4 ms, a new look sits the recording out,
+  `L.bunHeld`). Cloud probe: the hall draws whole (screenshot). Off: `window.EW_SYNC_PIPES`.
