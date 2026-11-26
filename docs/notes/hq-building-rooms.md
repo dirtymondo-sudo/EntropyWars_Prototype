@@ -1290,3 +1290,25 @@ and it's hard to target her with the mouse to talk to her". Plan of record: http
   while you stand within its `reach` (Rhonda 5.0 m) and the camera aims within 40 degrees of her (HQ_DESK_TALK); a door, a vehicle or
   another person still wins, and looking away gives the plate back. map.js wraps the renderer's onPrompt / onInteract and re-reads the
   prompt 5 times a second while such a post is in the room. Online: HQ only, no relay needed.
+
+## DOOR HQ 2.0, WAVE 1: THE CLEAN-OUT AND ONE NAME (2026-11-26)
+mondo's DOOR HQ 2.0 list (11-26; plan doc https://claude.ai/artifact/69S69c6y5uBALhoQmiYsCY, thread 1 "Clean-out and names"), done in
+today's building before any rebuild:
+- ONE NAME: data.js `hqOneNameApply()` (end of data.js) drops `sub` from every door and counter of a DOOR HQ room (ZONE_LOOKS doorhq),
+  so plates, prompts, panels and the map read one name. map.js: the corner line inside HQ is the room's name alone (`_hqStripSub` ''),
+  the map's this-room rows / register rows / search results / card header carry no second name or "where" alias, the load card's
+  attribution is "D.O.O.R. Headquarters" (never the room's old sub). The elevator stops carry no sub. Bisect: `window.EW_HQ_OLD_NAMES`.
+- THE NAMES: the Main Hall is THE LOBBY everywhere a door, a stop or the map names it (the plan's name; its upper level is the Lobby
+  too, no name). The Padded Room is THE HOLD. (The room ids stay: `central_egress`, `padded`.) Story lines that say "main hall" are
+  story text and were not touched.
+- CUT (DOOR_HQ.cut.doors.central_egress): the Quartermaster (the Shop + Party Builder stay on the main menu), Arcane Engineering
+  (the Map Editor stays on the main menu), Reception (`DOOR_HQ.retired.reception = 'central_egress'`; its stage join row is gone).
+  The ID card (`idcard`, `_mountReactProfile`) and the intake sheet (`intake`, overlay `intake`, the laminator prop) are counters
+  at Rhonda's desk, deg 157 / 127.
+- KIT: her folding chair in front of Rhonda is gone; after the first quest's desk stage she STANDS off the desk's end (DOOR_CAST kit
+  spot 2, deg 216 r 7.4), out of the line from the front door to Rhonda.
+- NO WALKERS: every DOOR HQ room is `noWalkers` (hqRoomCrowdCap 0): no men in black, no Spy clerk, no roster walkers, no travellers,
+  no online operatives. The story cast (DOOR_CAST / hqCastInRoom) is not capped. Bisect: `window.EW_HQ_OLD_WALKERS`.
+- DEV TOOLS OUT: IT's Library (Spell Library), Bench (Balance Lab), Racks (AI Training Lab) and the Interrogation Room's table
+  (the CPU training transcript) are gone. All four are on the main menu, Settings > Developer (the transcript button is new:
+  map.js `_mmShowTranscript`, the same sheet `_hqTranscriptHtml` drew).

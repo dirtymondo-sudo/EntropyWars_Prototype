@@ -34129,13 +34129,13 @@ const DOOR_HQ = {
        back into the car. B2 · THE UNDERCROFT is on no button on purpose. ── */
     elevator: {
         stops: [
-            { id: 'PH', label: 'THE PENTHOUSE', sub: 'THE EXECUTIVE FLOOR', room: 'executive', at: 'elevator', minClearance: 4, requiresKeys: 12 },
-            { id: '4',  label: 'THE FOURTH FLOOR', sub: 'THE LABS · RESEARCH', room: 'labs', at: 'elevator' },     // Phase 8 stage 2 (2026-09-15)
-            { id: '3',  label: 'THE THIRD FLOOR', sub: 'THE ANNEX',  room: 'annex',     at: 'elevator' },
-            { id: '2',  label: 'THE SECOND FLOOR', sub: 'THE WORKS · MANUFACTURING', room: 'works', at: 'elevator' },   // Phase 8 stage 2 (2026-09-15)
-            { id: 'M',  label: 'THE MAIN HALL', sub: 'THE MEZZANINE', room: 'central_egress', at: 'elevator' },
-            { id: 'G',  label: 'THE GARAGE',    sub: 'PARKING · P1',     room: 'garage',    at: 'elevator' },
-            { id: 'B',  label: 'THE BASEMENT', sub: 'SERVICES', room: 'services', at: 'elevator' },
+            { id: 'PH', label: 'THE PENTHOUSE', room: 'executive', at: 'elevator', minClearance: 4, requiresKeys: 12 },
+            { id: '4',  label: 'THE FOURTH FLOOR', room: 'labs', at: 'elevator' },     // Phase 8 stage 2 (2026-09-15)
+            { id: '3',  label: 'THE THIRD FLOOR',  room: 'annex',     at: 'elevator' },
+            { id: '2',  label: 'THE SECOND FLOOR', room: 'works', at: 'elevator' },   // Phase 8 stage 2 (2026-09-15)
+            { id: 'M',  label: 'THE LOBBY', room: 'central_egress', at: 'elevator' },
+            { id: 'G',  label: 'THE GARAGE', room: 'garage',    at: 'elevator' },
+            { id: 'B',  label: 'THE BASEMENT', room: 'services', at: 'elevator' },
         ],
     },
     /* ── H-WING (HQ plan 5.5, shipped stage 1 2026-09-14 rev 4) ───────────
@@ -34347,6 +34347,7 @@ const DOOR_HQ = {
        but are never entered: the 36-plot room `site_prebuilt_fairy_forest_plots` stood for all four; since ONE WORLD (2026-11-17) that room is retired too and the
        Woods are three rooms at their v13 places (the Clearing + Dead Man's Cave, the Redwood Trail, Bohemian Grove) + the route rooms of the links L3 and L4. */
     retired: { ring_m: 'central_egress',   /* THE EIGHT DOORS (2026-11-18): the mezzanine ring held only bay doors; its four doors in the Main Hall are closed */
+               reception: 'central_egress',   /* DOOR HQ 2.0 WAVE 1 (2026-11-26, mondo: "Rhonda's desk is the reception, she is the receptionist"): its door is cut, its two counters stand at her desk */
                site_prebuilt_downtown_mall: 'site_prebuilt_bayside_mall',   /* THE BAYSIDE MALL (2026-11-20): the old hall, 96 x 64 m behind a 28 m building, is this one building now (bake-mall.js) */
         site_prebuilt_cyberpunk_streets: 'site_prebuilt_downtown_streets', site_prebuilt_cyberpunk_noodle: 'site_prebuilt_downtown_streets',   /* THE DOOR AUDIT (2026-11-18, mondo: the new Cyberpunk City is "a reskin/reimagining of current disaster city"): the old Cyberpunk City's two rooms are never entered (its four ways in are cut); they stand only as the fight board's source */
                site_ow_r5_0_17: 'site_ow_r5', site_ow_r5_18_35: 'site_ow_r5', site_ow_r10_0_25: 'site_ow_r10', site_ow_r10_26_37: 'site_ow_r10', site_ow_r2: 'site_ow_r1',
@@ -34480,7 +34481,11 @@ const DOOR_HQ = {
         scenery: { bureau_vatican: ['a'], mirror_lookingglass: ['a'], observatorium_singularity: ['a'], well_garden: ['a'], timemachine_cyberpunk: ['a'],
                    northpole_haunted: ['a', 'b'], attic_nightmare: ['a'] },
         doors: {
-            central_egress: ['bay_ancient', 'bay_diplomatic', 'bay_urban', 'bay_hollow'],   // THE EIGHT DOORS (2026-11-18): the four mezzanine bay doors (their ring is empty and retired)
+            central_egress: ['bay_ancient', 'bay_diplomatic', 'bay_urban', 'bay_hollow',   // THE EIGHT DOORS (2026-11-18): the four mezzanine bay doors (their ring is empty and retired)
+                             /* DOOR HQ 2.0 WAVE 1 (2026-11-26, mondo: "Get rid of the quartermaster", "Get rid of the rooms that are dev tools like the map
+                                editor (keep it in the main menu for now)", "Get rid of the reception room, Rhonda's desk is the reception"): the Shop, the
+                                Party Builder and the Map Editor stay on the main menu; the ID card and the intake sheet are counters at Rhonda's desk */
+                             'quartermaster', 'engineering', 'reception'],
             tunnel: ['carnival'], mandela: ['mirrors'], site_prebuilt_area51_ow_circus: ['tunnel', 'mirrors'],   // the two doors to the Circus that stood open from the first minute
             dungeon: ['oubliette'], site_prebuilt_hollow_earth_ug_cavern: ['dungeon'],                              // the Dungeon's moving wall to the Cavern
             site_prebuilt_fairy_forest_ow_ritual: ['lookingglass'], site_prebuilt_camelot_ow_forest: ['deadtree'],   // the dead tree: Bohemian Grove and Camelot's Forest touch by a trail
@@ -35157,8 +35162,7 @@ const DOOR_HQ = {
 
     rooms: {
         central_egress: {
-            label: 'THE MAIN HALL',
-            sub: 'THE MAIN HALL',
+            label: 'THE LOBBY',
             kind: 'rotunda',
             shell: {
                 radius: 21,            // ground-floor drum (inner face of the lower wall)
@@ -35280,8 +35284,8 @@ const DOOR_HQ = {
                    holographic one (the Observatorium wears it too — leaves are not
                    exclusive below rank) and the keypad hangs INSIDE, by the way
                    out. The round cabinet that stood at 120° moved to 113°. */
-                { id: 'it',             deg: 120, level: 2, leaf: 'leaf_holographic',              label: 'IT',                      sub: 'SPELL LIBRARY · BALANCE LAB', action: { room: 'it', at: 'egress' },
-                  desc: 'Room 1337. The fourth door. It was not there yesterday and Facilities has no ticket for it. The Spell Library, the balance lab and the racks the CPU trains on; the code is on a sticky note on the keypad, on the inside.' },
+                { id: 'it',             deg: 120, level: 2, leaf: 'leaf_holographic',              label: 'IT',                      action: { room: 'it', at: 'egress' },
+                  desc: 'Room 1337. The fourth door. It was not there yesterday and Facilities has no ticket for it. The code is on a sticky note on the keypad, on the inside.' },
                 { id: 'bay_diplomatic', deg: 150, level: 1, leaf: 'leaf_revolving',    wide: true,  label: 'BAY 5 · DIPLOMATIC',      sub: 'BATTLE MAPS',            action: { sector: 'diplomatic' } },
                 { id: 'bay_urban',      deg: 180, level: 1, leaf: 'leaf_orange_glass',                     label: 'BAY 7 · URBAN',           sub: 'BATTLE MAPS',            action: { sector: 'urban' } },
                 { id: 'bay_hollow',     deg: 210, level: 1, leaf: 'leaf_wired_double', wide: true,  label: 'BAY 3 · HOLLOW',          sub: 'BATTLE MAPS',            action: { sector: 'hollow' } },
@@ -35312,6 +35316,12 @@ const DOOR_HQ = {
                 /* LOCKE'S CASE BOARD (2026-11-25, the mystery dungeons: the side-quests doc's "Locke's board in HQ"): on the drum between the
                    Office and the Building Directory (behind her briefing table the east stair hid it); it reads today's Door Case and the
                    deepest floor of every building (data.js mdCaseBoard). Its board is the notice board in `props` at the same degree. */
+                /* RECEPTION IS RHONDA'S DESK (DOOR HQ 2.0 wave 1, 2026-11-26, mondo: "Get rid of the reception room, Rhonda's desk is the
+                   reception, she is the receptionist"): the two counters the Reception room held, on the desk's front round from her chair */
+                { id: 'idcard',    deg: 157, r: 6.4,  level: 0, label: 'ID CARD',      verb: 'SIGN IN', action: { fn: '_mountReactProfile' }, radius: 1.6, plateY: 1.6,
+                  desc: 'Your employee ID card: the callsign, the desk, the photo, the stamps on the back.' },
+                { id: 'intake',    deg: 127, r: 6.4,  level: 0, label: 'INTAKE SHEET', verb: 'READ',    action: { overlay: 'intake' },          radius: 1.6, plateY: 1.6,
+                  desc: 'The intake sheet the card was printed from.' },
                 { id: 'md_board_hq', deg: 151, r: 19.9, level: 0, label: 'LOCKE’S CASE BOARD',      sub: 'TODAY’S DOOR CASE',       action: {}, radius: 2.0, plateY: 2.3, verb: 'READ', proc: 'hotel_act', hotel: { act: 'board' } },   // Locke's (the notice board above)
             ],
             /* the dressing — catalogue key + polar spot; `rot` = extra yaw
@@ -35329,6 +35339,7 @@ const DOOR_HQ = {
                 { key: 'tube_tv',      deg: 290, r: 4.5, level: 0, y: 1.05, rot: 160 },
                 { key: 'papers_a',     deg: 60,  r: 4.7, level: 0, y: 1.05 },
                 { key: 'papers_b',     deg: 150, r: 4.6, level: 0, y: 1.05, rot: 30 },
+                { key: 'laminator',    deg: 127, r: 4.6, level: 0, y: 1.05, rot: 180 },   // the INTAKE SHEET counter (the Reception room's laminator, DOOR HQ 2.0 wave 1)
                 { key: 'notebook_paper', deg: 245, r: 4.8, level: 0, y: 1.05, rot: 12 },
                 { key: 'desk_lamp',    deg: 330, r: 4.6, level: 0, y: 1.05, rot: 200 },
                 { key: 'desk_fan',     deg: 80,  r: 4.9, level: 0, y: 1.05, rot: 90 },
@@ -35437,8 +35448,7 @@ const DOOR_HQ = {
                 { key: 'notice_board',   deg: 151, level: 0, wall: true, mount: 1.3 },   // LOCKE'S CASE BOARD (the counter md_board_hq)
                 { key: 'wet_floor_sign', deg: 156, r: 18.4, level: 0, rot: -30 },
                 { key: 'mop_bucket',     deg: 143, r: 19.4, level: 0 },
-                /* Kit's waiting chair (DOOR_CAST): a folding chair at the desk, facing Rhonda */
-                { key: 'folding_chair',  deg: 158, r: 6.7, level: 0 },
+                /* (Kit's waiting chair at the desk is gone: DOOR HQ 2.0 wave 1, mondo 11-26 "No kit sitting down in front of Rhonda") */
                 { key: 'cardboard_box',  deg: 245, r: 19.0, level: 0, rot: 20 },
                 { key: 'cardboard_box',  deg: 245, r: 19.0, level: 0, y: 0.42, rot: 60 },
                 /* mezzanine */
@@ -35560,7 +35570,7 @@ const DOOR_HQ = {
             doors: [
                 /* the double doors (2026-11-12; the revolving door until then): the same leaves the hall wears at 195°, from this side */
                 { id: 'egress', wall: 'n', x: 0, leaf: 'leaf_lobby_glass_double', wide: true,
-                  label: 'THE MAIN HALL', sub: 'INTO THE MAIN HALL',
+                  label: 'THE LOBBY',
                   action: { room: 'central_egress', at: 'foyer' },
                   desc: 'The double doors. They swing one way. Which way has not been decided, but it is the same way for everyone, and the hall is on the other side of them.' },
                 /* the front door (ZONES_PLAN Z0, 2026-09-29): SEALED. It opened onto THE LAND (G2) until the land was cut; it stays shut
@@ -35760,7 +35770,7 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'egress', wall: 'w', z: -0.5, leaf: 'leaf_closet_warped', rankDoor: true,
-                  label: 'THE MAIN HALL', sub: 'BACK TO THE MAIN HALL',
+                  label: 'THE LOBBY',
                   action: { room: 'central_egress', at: 'office' },
                   desc: 'Your door. It is the only thing in this room that is issued by rank.' },
             ],
@@ -35864,7 +35874,7 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'egress', wall: 'w', z: 1.2, leaf: 'leaf_saloon',
-                  label: 'THE MAIN HALL', sub: 'BACK TO THE MAIN HALL',
+                  label: 'THE LOBBY',
                   action: { room: 'central_egress', at: 'cafeteria' },
                   desc: 'The way back to the hall. The doors swing both ways, which Facilities calls a feature and Continuity calls a position.' },
                 /* THE SERVICE DOOR (Phase 8, 2026-09-14): the kitchen's stair, at the east end of the serving line */
@@ -36050,7 +36060,7 @@ const DOOR_HQ = {
                           desc: 'Form 365 for today, pinned over the set list.' },
                         { id: 'bar', x: 0, z: 2.1, face: 0, plateY: 1.45, radius: 2.2, verb: 'ORDER',
                           label: 'THE BAR', sub: 'THE MENU · MEMBERS', action: {},
-                          desc: 'One side, one bartender, one menu. Hazard Pay is not taken here; the Quartermaster takes it, and he is asleep.' },
+                          desc: 'One side, one bartender, one menu. Hazard Pay is not taken here.' },
                     ],
                     agents: [
                         { x: 0, z: 0.3, face: 180, gender: 'male', label: 'BARTENDER', reach: 2.6, line: '“Members only.” Everyone is a member. That is the strip.' },
@@ -36201,7 +36211,7 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_birch_glass',
-                  label: 'THE MAIN HALL', sub: 'BACK TO THE MAIN HALL',
+                  label: 'THE LOBBY',
                   action: { room: 'central_egress', at: 'barbershop' },
                   desc: 'The way back to the hall. The lettering on the glass reads OCCAM’S from the hall and, from in here, whatever you walked in as.' },
             ],
@@ -36414,7 +36424,7 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_window_large',
-                  label: 'THE MAIN HALL', sub: 'BACK TO THE MAIN HALL',
+                  label: 'THE LOBBY',
                   action: { room: 'central_egress', at: 'reception' },
                   desc: 'The way back to the hall. New hires are asked to leave the way they came in; the office has never explained where else they would leave.' },
             ],
@@ -36604,7 +36614,7 @@ const DOOR_HQ = {
                   desc: 'The way back to the hall. Discharged operatives sign the clipboard on the way out; the clipboard is the chart.' },
                 /* THE CELL DOOR → Room 5150, the Padded Room */
                 { id: 'padded', wall: 'n', x: 2.6, leaf: 'leaf_cell',
-                  label: 'THE PADDED ROOM', sub: 'ROOM 5150 · ADMINISTRATIVE LEAVE',
+                  label: 'THE HOLD',
                   action: { room: 'padded', at: 'egress' },
                   desc: 'A cell door with a slot, at the back of the ward. Administrative leave is served on the other side of it. It is not locked. It has never needed to be.' },
             ],
@@ -36702,7 +36712,7 @@ const DOOR_HQ = {
            the chart, and the sense that it is waiting for you). California's
            involuntary hold. Viewer-local, nothing relayed (RULE #2). ── */
         padded: {
-            label: 'THE PADDED ROOM',
+            label: 'THE HOLD',
             sub: 'ADMINISTRATIVE LEAVE',
             roomNo: '5150', why: 'California’s involuntary hold; leave is served here',
             kind: 'box',
@@ -36779,7 +36789,7 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_hospital',
-                  label: 'THE MAIN HALL', sub: 'BACK TO THE MAIN HALL',
+                  label: 'THE LOBBY',
                   action: { room: 'central_egress', at: 'medical' },
                   desc: 'The way back to the hall, through the same hospital door. The wing is quieter than the hall and everyone says so on the way out.' },
                 /* ROOM 1111 · the ward (the services desk, the chart, Room 5150 behind it) */
@@ -36794,9 +36804,9 @@ const DOOR_HQ = {
                   action: { room: 'dispensary', at: 'egress' },
                   desc: 'Room 911. A hatch, a shelf, a ledger. The pharmacist sells what the ward does not give away — potions for the road, tonics for the fallen, the odd elixir — and buys back what you did not need. Hazard Pay only. No credit. Nobody comments on the smell.' },
                 { id: 'interrogation', wall: 'e', z: 0, leaf: 'leaf_cell',
-                  label: 'THE INTERROGATION ROOM', sub: 'CPU TRAINING TRANSCRIPT',
+                  label: 'THE INTERROGATION ROOM',
                   action: { room: 'interrogation', at: 'egress' },
-                  desc: 'Room 1984. One table, two chairs, one lamp, one round window that is a mirror from this side. What the CPU learned from watching you play — every disagreement on file, every weight it moved. Internal Affairs sits behind the glass. Nobody comments.' },
+                  desc: 'Room 1984. One table, two chairs, one lamp, one round window that is a mirror from this side. Internal Affairs sits behind the glass. Nobody comments.' },
             ],
             counters: [],
             props: [
@@ -36866,7 +36876,7 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_wired_double', wide: true,
-                  label: 'THE MAIN HALL', sub: 'BACK TO THE MAIN HALL',
+                  label: 'THE LOBBY',
                   action: { room: 'central_egress', at: 'records' },
                   desc: 'The way back to the hall, through the same wired double door. Sign whatever you are carrying back in first.' },
                 /* ROOM 42 · the file */
@@ -36950,7 +36960,7 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'egress', wall: 's', x: 0, leaf: 'leaf_suburban_house',
-                  label: 'THE MAIN HALL', sub: 'BACK TO THE MEZZANINE',
+                  label: 'THE LOBBY',
                   action: { room: 'central_egress', at: 'executive' },
                   desc: 'The way back to the mezzanine. A house door on an office suite. It has always been a house door; the file that says otherwise has been corrected.' },
                 /* ROOM 111 · the case */
@@ -37328,7 +37338,6 @@ const DOOR_HQ = {
            the user's lines (A15). Viewer-local, nothing relayed (RULE #2). ── */
         interrogation: {
             label: 'THE INTERROGATION ROOM',
-            sub: 'CPU TRAINING TRANSCRIPT',
             roomNo: '1984', why: 'the year on the file; the mirror is a window from the other side',
             kind: 'box',
             shell: {
@@ -37348,10 +37357,8 @@ const DOOR_HQ = {
                   desc: 'The way back to the hall. It locks from the outside; it has never been locked.' },
             ],
             counters: [
-                /* THE TABLE → the transcript: what the CPU learned from you */
-                { id: 'table', x: -0.875, z: -0.375, face: 180, plateY: 1.75, radius: 1.9, verb: 'SIT',
-                  label: 'THE TABLE', sub: 'CPU TRAINING TRANSCRIPT', action: { overlay: 'transcript' },
-                  desc: 'The file is open on the table. Every decision the CPU scored while you played, every one it disagreed with, every weight it moved because of you.' },
+                /* (THE TABLE's CPU training transcript left the room: DOOR HQ 2.0 wave 1, mondo 11-26 "No CPU training in the interrogation
+                   room, that is a dev tool". It is on the main menu's Settings > Developer tab, beside AI Training) */
                 /* THE GLASS → nothing; someone is behind it */
                 { id: 'glass', x: 0, z: -2.2, face: 0, plateY: 2.45, radius: 1.5, verb: 'LOOK',
                   label: 'THE GLASS', sub: 'INTERNAL AFFAIRS', action: {},
@@ -37537,7 +37544,6 @@ const DOOR_HQ = {
            (A15). Viewer-local (RULE #2). */
         it: {
             label: 'IT',
-            sub: 'SPELL LIBRARY · BALANCE LAB',
             roomNo: '1337', why: 'the user’s Hacker Room — leet, as a door and not a map',
             kind: 'box',
             shell: {
@@ -37556,23 +37562,14 @@ const DOOR_HQ = {
                   action: { room: 'server', at: 'it' },
                   desc: 'The stair down to the racks. The keypad by the door is for coming back up.' },
                 { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_holographic',
-                  label: 'THE MAIN HALL', sub: 'BACK TO THE MEZZANINE',
+                  label: 'THE LOBBY',
                   action: { room: 'central_egress', at: 'it' },
                   desc: 'The way back to the mezzanine. The keypad is on this side; the code is on the note; the note says DO NOT SHARE.' },
             ],
             counters: [
-                /* THE LIBRARY → the Spell Library (the editor + the Spell Lab) */
-                { id: 'library', x: 3.4, z: -0.9, face: 270, plateY: 1.85, radius: 1.9, verb: 'LOG IN',
-                  label: 'THE LIBRARY', sub: 'SPELL LIBRARY', action: { fn: '_goToSpellLibrary' },
-                  desc: 'Every spell and ability the Department has on file, editable. The Spell Lab is the second screen. Export before you leave; the chair does not save.' },
-                /* THE BENCH → the balance lab (AI vs AI, equal weights) */
-                { id: 'bench', x: 3.4, z: 1.4, face: 270, plateY: 1.85, radius: 1.9, verb: 'RUN',
-                  label: 'THE BENCH', sub: 'BALANCE LAB', action: { fn: '_launchBalanceSim' },
-                  desc: 'Two CPUs, the same weights, random tree-legal teams — the win rates measure the game, not the CPU. It runs until you stop it.' },
-                /* THE RACKS → the AI training lab (the champion / challenger rig) */
-                { id: 'racks', x: -1.8, z: -2.3, face: 180, plateY: 2.2, radius: 2.0, verb: 'RUN',
-                  label: 'THE RACKS', sub: 'AI TRAINING LAB', action: { fn: '_launchAITraining' },
-                  desc: 'What the CPU trains on. Champion against challenger, the weights that win promoted. The fans come on when it thinks.' },
+                /* DOOR HQ 2.0 wave 1 (2026-11-26, mondo: "Get rid of all the dev tools in IT"): THE LIBRARY (the Spell Library), THE BENCH
+                   (the Balance Lab) and THE RACKS (the AI Training Lab) are gone from the building; all three are on the main menu's
+                   Settings > Developer tab */
             ],
             props: [
                 /* ── the north wall: THE RACKS, the breaker, the vent, the clock ── */
@@ -37669,7 +37666,7 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_holographic',
-                  label: 'THE MAIN HALL', sub: 'BACK TO THE MAIN HALL',
+                  label: 'THE LOBBY',
                   action: { room: 'central_egress', at: 'observatorium' },
                   desc: 'The way back to the mezzanine. The door hums; Facilities says that is the paint drying.' },
             ],
@@ -37785,7 +37782,7 @@ const DOOR_HQ = {
             doors: [
                 /* the way back, centred on the north wall so the barrier gap
                    lines up with it — in from the egress, straight onto the grid */
-                { id: 'egress',    wall: 'n', x: 0,   leaf: 'leaf_exit', label: 'THE MAIN HALL', sub: 'BACK TO THE MAIN HALL',
+                { id: 'egress',    wall: 'n', x: 0,   leaf: 'leaf_exit', label: 'THE LOBBY',
                   action: { room: 'central_egress', at: 'training' },
                   desc: 'The way back up. The EXIT sign over this one is accurate, which is why it was chosen.' },
                 /* ONE HOME PER FUNCTION (Phase 8, 2026-09-14): Challenge mode is MEDICAL's desk;
@@ -38001,7 +37998,7 @@ const DOOR_HQ = {
             ],
             /* the doors are part of the room's look, so the board's room wears them too (Room 64's three, moved to these walls) */
             doors: [
-                { id: 'egress',    wall: 's', x: 0,   leaf: 'leaf_exit', label: 'THE MAIN HALL', sub: 'BACK TO THE MAIN HALL',
+                { id: 'egress',    wall: 's', x: 0,   leaf: 'leaf_exit', label: 'THE LOBBY',
                   action: { room: 'central_egress', at: 'training' },
                   desc: 'The way back up. The EXIT sign over this one is accurate, which is why it was chosen.' },
                 { id: 'stairs', wall: 'w', z: -24.5, leaf: 'leaf_closet_alt', label: 'SERVICE STAIR', sub: 'DOWN TO B · SERVICES',
@@ -40703,7 +40700,7 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'egress', wall: 's', x: 0, leaf: 'leaf_bulkhead',
-                  label: 'THE MAIN HALL', sub: 'BACK TO THE MAIN HALL',
+                  label: 'THE LOBBY',
                   action: { room: 'central_egress', at: 'woods' },
                   desc: 'The way back to the main hall.' },
             ],
@@ -86523,7 +86520,7 @@ function hqBayRoom(sectorKey) {
     const label = bayDoor.label || ('BAY · ' + sec.label);
     const doors = [{
         id: 'egress', deg: 0, side: 'in', level: 0, leaf: bayDoor.leaf || 'leaf_closet_alt', wide: !!bayDoor.wide,
-        label: 'THE MAIN HALL', sub: 'BACK TO THE MAIN HALL',
+        label: 'THE LOBBY',
         action: { room: 'central_egress', at: bayDoor.id || null },
         desc: 'Back to the ring. The desk will still be there. Probably the same desk.',
     }];
@@ -86707,7 +86704,7 @@ function hqRingRoom(level) {
         /* the way back: the egress door at the very angle it wears on the egress wall */
         doors.push({
             id: 'egress_' + seg.sector, deg: norm(seg.deg), side: 'in', level: 0, leaf: bd.leaf || 'leaf_closet_alt', wide: !!bd.wide,
-            label: 'THE MAIN HALL', sub: 'BACK TO THE MAIN HALL', sector: seg.sector, bay: seg.label,
+            label: 'THE LOBBY', sector: seg.sector, bay: seg.label,
             action: { room: 'central_egress', at: bd.id || null },
             desc: 'Back to the ring. The desk will still be there. Probably the same desk.',
         });
@@ -87528,7 +87525,7 @@ function hqMapLayout(graph) {
     };
     const polar = (deg, r) => { const a = deg * Math.PI / 180; return { x: r * Math.sin(a), y: -r * Math.cos(a) }; };
     /* seeds */
-    put('central_egress', 0, 0, 'polar', 'THE MAIN HALL', { deg: 0, r: 0, hall: true });
+    put('central_egress', 0, 0, 'polar', 'THE LOBBY', { deg: 0, r: 0, hall: true });
     const ringId = level => { try { return hqRingId(level); } catch (e) { return level ? 'ring_m' : 'ring_g'; } };
     put(ringId(0), 0, 0, 'ring', 'THE GROUND RING', { ring: L.ringG, deg: 0, r: L.ringG });
     put(ringId(1), 0, 0, 'ring', 'THE MEZZANINE RING', { ring: L.ringM, deg: 0, r: L.ringM });
@@ -87997,7 +87994,6 @@ const HQ_STAGE_RULES = {
            doors (hqStageRoundJoins). In the hall every joined room stands beside it; in a joined room only the hall does (the
            hall's other joined doors are plain doors until you step into the hall). A box room has one row at most. */
         { a: 'central_egress', door: 'office', b: 'office', bDoor: 'egress' },   // YOUR OFFICE ⇄ the main hall, the closet door at 135°
-        { a: 'central_egress', door: 'reception', b: 'reception', bDoor: 'egress' },   // ROOM 1 · RECEPTION ⇄ the main hall, the glass door at 90° (2026-11-18, mondo: "okay do reception next")
     ],
 };
 /* THE EXPLORATION DAY (§4.4 — Phase 3, 2026-09-26). One clock for every outdoor room (2026-10-17: hqRoomClock; was every zone with `clock: true`): a day of `dayMin` real
@@ -111844,8 +111840,10 @@ const DOOR_CAST = {
             { room: 'central_egress', deg: 180, r: 6.5, level: 0, face: 0, pose: 'hqTalk', reach: 2.0, during: { quest: 'orientation', stage: 'desk' },
               doing: 'At the counter, waiting to be processed.' },
             /* mondo 2026-11-12: Kit is not at the counter until Rhonda lets her stay (the first quest's `desk` stage) */
-            { room: 'central_egress', deg: 158, r: 6.7, level: 0, face: 338, pose: 'hqSit', reach: 2.0, after: { quest: 'orientation', stage: 'desk' },
-              doing: 'On a folding chair at the counter, watching Rhonda not find her paperwork. Scheduled for deportation. The schedule is several centuries out.' },
+            /* DOOR HQ 2.0 wave 1 (2026-11-26, mondo: "No kit sitting down in front of Rhonda"): no folding chair; she stands off the desk's
+               end, past the gap into the well, out of the line from the front door to Rhonda */
+            { room: 'central_egress', deg: 216, r: 7.4, level: 0, face: 36, reach: 2.0, after: { quest: 'orientation', stage: 'desk' },
+              doing: 'By the end of the counter, watching Rhonda not find her paperwork. Scheduled for deportation. The schedule is several centuries out.' },
         ],
     },
     /* THE CULT MEMBERS (2026-09-21): the user's five robed rigs (R2 Races/cultmember/) — NOT a race: cast models
@@ -115097,3 +115095,27 @@ if (typeof window !== 'undefined') { window.ZONE_FLAGS = ZONE_FLAGS; window.zone
 /* THE ZONE LOOKS: every zone room wears its zone's sheets (after every room is in DOOR_HQ.rooms; see ZONE_LOOKS) */
 try { zoneLooksApply(); } catch (e) { if (typeof console !== 'undefined') console.warn('[ZONE LOOKS] failed', e); }
 try { zoneFlagsApply(); } catch (e) { if (typeof console !== 'undefined') console.warn('[ZONE FLAGS] failed', e); }
+/* ══ DOOR HQ 2.0, WAVE 1: ONE NAME, STORY PEOPLE ONLY (2026-11-26) ══ mondo: "No sub text/titles or wordy ai slop. I'm still confused as to
+   whether the main room is called the main hall or the lobby or the mezzanine because you keep making like 2 or 3 names for everything and
+   a subtitle", and "No men in black walking around" (his rule: DOOR HQ holds only story characters). For every room of DOOR HQ itself
+   (ZONE_LOOKS doorhq): a door and a counter carry their name and nothing under it (their `sub` goes: the plates, the prompts, the panels
+   and the map read one name), and the room is `noWalkers` (hqRoomCrowdCap 0: no men in black, no roster walkers, no travellers, no
+   online operatives). The story cast (DOOR_CAST, hqCastInRoom) is not counted by the cap and stands as before. Off for a bisect:
+   window.EW_HQ_OLD_NAMES (the subs stay) / window.EW_HQ_OLD_WALKERS (the walkers come back). */
+function hqOneNameApply() {
+    if (typeof DOOR_HQ === 'undefined' || !DOOR_HQ.rooms || typeof ZONE_LOOKS === 'undefined') return 0;
+    const W = (typeof window !== 'undefined') ? window : {};
+    const ids = (ZONE_LOOKS.zones && ZONE_LOOKS.zones.doorhq && ZONE_LOOKS.zones.doorhq.rooms) || [];
+    let n = 0;
+    ids.forEach(id => {
+        const R = DOOR_HQ.rooms[id]; if (!R) return;
+        if (!W.EW_HQ_OLD_NAMES) {
+            (R.doors || []).forEach(d => { if (d && d.sub != null) { delete d.sub; n++; } });
+            (R.counters || []).forEach(c => { if (c && c.sub != null) { delete c.sub; n++; } });
+        }
+        if (!W.EW_HQ_OLD_WALKERS && !R.noWalkers) { R.noWalkers = true; n++; }
+    });
+    return n;
+}
+try { hqOneNameApply(); } catch (e) { if (typeof console !== 'undefined') console.warn('[HQ ONE NAME] failed', e); }
+if (typeof window !== 'undefined') window.hqOneNameApply = hqOneNameApply;
