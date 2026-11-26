@@ -72627,8 +72627,10 @@ const ThreeRenderer = (function () {
         var out = [];
         (room.doors || []).forEach(function (d) {
             if (!d || d.hidden || (d.level || 0) !== 0 || !isFinite(+d.deg)) return;
-            var dj = _hqDoorJoinOf(d); if (!dj || !dj.round) return;
-            var half = (dj.ow / 2 + 0.03) / room.shell.radius * 180 / Math.PI;
+            var dj = _hqDoorJoinOf(d);
+            if ((!dj || !dj.round) && d.open && +d.open.w > 0) dj = { ow: +d.open.w, oh: +d.open.h || 4.5 };   // THE OPEN FRONT: cut even before its room is joined
+            if (!dj || (!dj.round && !(d.open && +d.open.w > 0))) return;
+            var half = Math.asin(Math.min(1, (dj.ow / 2 + 0.03) / room.shell.radius)) * 180 / Math.PI;   // the chord's half-angle (a wide open front is no arc)
             out.push({ a0: +d.deg - half, a1: +d.deg + half, top: dj.oh + 0.03 });
         });
         return out.sort(function (p, q) { return p.a0 - q.a0; });
@@ -73730,16 +73732,33 @@ const ThreeRenderer = (function () {
             var cs = S.cube.size, cy = S.cube.y;
             var cubeMat = new THREE.MeshPhongMaterial({ color: 0x141518, shininess: 60, specular: 0x555a66, emissive: 0x8fd3d8, emissiveIntensity: 0.55, emissiveMap: _hqGlyphTexture() });
             var cube = new THREE.Mesh(new THREE.BoxGeometry(cs * U, cs * U, cs * U), cubeMat);
-            cube.position.y = cy * U;
+            /* DOOR HQ 2.0 (2026-11-26): the flue stands in the middle, so the cube may hang off it (`deg`, `r`) */
+            var cubeAt = (S.cube.r > 0) ? _hqPolarW(S.cube.deg || 0, S.cube.r, cy) : null;
+            if (cubeAt) cube.position.copy(cubeAt); else cube.position.y = cy * U;
             cube.rotation.y = Math.PI / 4 * 0.35;
             G.add(cube);
             _hq.cube = cube;
             var rodH = topY - (cy + cs / 2);
             var rod = new THREE.Mesh(new THREE.CylinderGeometry(S.cube.rodR * U, S.cube.rodR * U, rodH * U, 10), _hqMat(null, 1, 1, { color: 0x2a2c30, shininess: 50 }));
             rod.position.y = (cy + cs / 2 + rodH / 2) * U;
+            if (cubeAt) { rod.position.x = cubeAt.x; rod.position.z = cubeAt.z; }
             G.add(rod);
             var cg = _hzGlowSprite(cs * 2.6 * U, 0x5fb4bb, 0.10, 0.05, 0.03, 0.2);
             cg.position.y = cy * U;   /* NO LIGHT BOX (mondo 2026-10-05): the glow round the HQ cube is not added */
+        }
+        /* THE FLUE (DOOR HQ 2.0, 2026-11-26): the Incinerator's chimney is the column behind Rhonda's desk, floor to dome and on
+           through the lid. `shell.flue = { r, tex, band }`: a marble drum with brass bands at the dado and every storey. Solid to the
+           walker and the boom (_hqSurface / _hqCamBlocked read S.flue). */
+        if (S.flue && S.flue.r > 0) {
+            var FR = S.flue.r, fH = topY + 0.5, fCirc = 2 * Math.PI * FR;
+            var flue = new THREE.Mesh(new THREE.CylinderGeometry(FR * U, FR * U, fH * U, 48, 1, true), _hqMat(S.flue.tex || 'marble', fCirc / 2.4, fH / 2.4, { shininess: 40, specular: 0x555555 }));
+            flue.position.y = (fH / 2) * U; flue.name = 'hq-flue';
+            G.add(flue);
+            var fbMat = _hqMat(S.flue.band || 'brass', fCirc / 1.2, 1, { shininess: 70, specular: 0x887744 });
+            [[0, 0.12], [S.dadoH, S.dadoH + 0.1], [WH - 0.25, WH], [WH + UW - 0.2, WH + UW]].forEach(function (b) {
+                var fb = new THREE.Mesh(new THREE.CylinderGeometry((FR + 0.03) * U, (FR + 0.03) * U, (b[1] - b[0]) * U, 48, 1, true), fbMat);
+                fb.position.y = ((b[0] + b[1]) / 2) * U; G.add(fb);
+            });
         }
         /* mezzanine railing: posts (instanced) + two rail arcs, gaps at the stair landings */
         var railR = MZ.inner + 0.28, railH = 1.05;
@@ -86029,7 +86048,7 @@ const ThreeRenderer = (function () {
         (room.stairs || []).forEach(function (st) {
             var n = st.steps || 24, dir = (st.to > st.from) ? 1 : -1;
             var span = Math.abs(st.to - st.from);
-            var rOutGeo = S.radius;                      // the mass runs to the wall
+            var rOutGeo = st.free ? st.rOut : S.radius;  // the mass runs to the wall (DOOR HQ 2.0: a `free` flight stands in the open, its own width)
             var rMid = (st.rIn + rOutGeo) / 2;
             var rise = S.wallH / n;
             var stepLen = _hqRad(span / n) * rMid * U + 3;
@@ -86082,6 +86101,36 @@ const ThreeRenderer = (function () {
         if (!D) return;
         var top = _hqMat(D.top || 'terrazzo', 8, 1, { shininess: 30, specular: 0x444444 });
         var front = _hqMat(D.front || 'oxblood', 8, 1, { shininess: 12 });
+        /* THE SLIM DESK (DOOR HQ 2.0, 2026-11-26, mondo: "Rhonda's desk is too wide/thick"): `arc: [a0, a1]` = a curved counter
+           over that arc only (rInner..rOuter, under 1 m deep), open behind; Rhonda sits in the well between it and the flue */
+        if (D.arc && D.arc.length === 2) {
+            var A0 = Math.min(D.arc[0], D.arc[1]), A1 = Math.max(D.arc[0], D.arc[1]);
+            var trimA = _hqMat(S.trim || 'teal', 10, 1, { shininess: 50, specular: 0x666666 });
+            G.add(_hqSectorMesh(D.rInner, D.rOuter + 0.04, A0, A1, D.h, top));
+            G.add(_hqArcBand(D.rOuter, 0, D.h, A0, A1, _hqMat(D.front || 'oxblood', 8 * (A1 - A0) / 360, 1, { shininess: 12, side: THREE.DoubleSide })));
+            G.add(_hqArcBand(D.rInner, 0, D.h, A0, A1, _hqMat(D.back || D.front || 'oxblood', 4 * (A1 - A0) / 360, 1, { shininess: 12, side: THREE.DoubleSide })));
+            G.add(_hqArcBand(D.rOuter + 0.012, D.h - 0.07, D.h, A0, A1, trimA));
+            G.add(_hqArcBand(D.rOuter + 0.012, 0, 0.08, A0, A1, trimA));
+            [A0, A1].forEach(function (ea) {   // the two end panels
+                var ep = _hqBox(0.06, D.h, D.rOuter - D.rInner, front);
+                ep.position.copy(_hqPolarW(ea, (D.rInner + D.rOuter) / 2, D.h / 2));
+                ep.rotation.y = -_hqRad(ea);
+                G.add(ep);
+            });
+            var sealA = _hqSealTexture();
+            if (sealA) {
+                var smA = new THREE.MeshBasicMaterial({ map: sealA, transparent: true, depthWrite: false, fog: false });
+                var plA = new THREE.Mesh(new THREE.PlaneGeometry(0.62 * U, 0.62 * 0.776 * U), smA);
+                var saA = (room.spawn && room.spawn.deg) || 180;
+                plA.position.copy(_hqPolarW(saA, D.rOuter + 0.03, D.h * 0.55));
+                plA.rotation.y = Math.PI - _hqRad(saA);
+                G.add(plA);
+            }
+            var plw = new THREE.PointLight(0xffe2b8, 0.55, 22 * U, 2);
+            plw.position.set(0, 3.2 * U, 0);
+            G.add(plw);
+            return;
+        }
         G.add(_hqSectorMesh(D.rInner, D.rOuter, 0, 360, D.h, top));
         G.add(_hqBand(D.rOuter, 0, D.h, front, 96));
         G.add(_hqBand(D.rInner, 0, D.h, _hqMat(D.front || 'oxblood', 4, 1, { shininess: 12, side: THREE.BackSide }), 64));
@@ -87559,7 +87608,12 @@ const ThreeRenderer = (function () {
             var oh = wide ? 2.45 : 2.25;
             var ow = wide ? 2.2 : 1.1;
             if (leafCat && leafCat.aspect > 0) ow = Math.round(Math.max(wide ? 1.9 : 0.95, Math.min(wide ? 2.5 : 1.6, leafCat.aspect * oh)) * 100) / 100;
-            var pw = wide ? 3.3 : 2.5, ph = oh + 1.25, pd = 0.55;
+            /* THE OPEN FRONT (DOOR HQ 2.0, 2026-11-26, mondo: Medical, the Door Store and the Cafeteria open on the Lobby with no door):
+               `open: { w, h }` = a doorway that size with no leaf, no frame, no lamp and no plate. On a round join the drum is cut to it and
+               the curve between the drum and the room's flat front is filled (floor, sides, soffit). Not yet joined: a dark opening. */
+            var openF = !!(door.open && +door.open.w > 0) && !secret;
+            if (openF) { ow = +door.open.w; oh = +door.open.h || 4.5; leafKey = null; leafCat = null; }
+            var pw = openF ? ow + 0.2 : (wide ? 3.3 : 2.5), ph = oh + (openF ? 0.3 : 1.25), pd = 0.55;
             /* a box room's ceiling can be lower than the 4.2 m the panel was drawn for: keep the lintel, cap and lamp under it */
             if (room.kind === 'box') ph = Math.min(ph, S.h - 0.25);
             var lampY = Math.min(oh + 0.62, ph - 0.2);
@@ -87618,6 +87672,7 @@ const ThreeRenderer = (function () {
             grp.add(housing, lens, glow);
             if (secret) { housing.visible = lens.visible = glow.visible = false; cap.visible = sill.visible = frameL.visible = frameR.visible = frameT.visible = false; }
             if (bareDoor) { housing.visible = lens.visible = glow.visible = false; }
+            if (openF) { jL.visible = jR.visible = lin.visible = dL.visible = dR.visible = cap.visible = sill.visible = frameL.visible = frameR.visible = frameT.visible = false; housing.visible = lens.visible = glow.visible = false; }
             /* the leaf: catalogue GLB fitted to the recess, or a procedural elevator */
             var leafGroup = new THREE.Group();
             leafGroup.position.set(0, 0, (-pd / 2 + 0.28) * U);
@@ -87778,6 +87833,7 @@ const ThreeRenderer = (function () {
             var pm = _hqPlateMake('hq-plate', { no: _pf.no, label: _pf.label, known: _pf.known }, { tone: 'door', chip: true, maxW: Math.max(0.6, ow * 0.92) });   // R6: the GPU plate, else CSS2D
             var el = pm.el, chip = pm.chip;
             if (secret && !found) { if (el) el.style.display = 'none'; if (pm.gpu) _hqGpuPlateShow(pm.gpu, false); }
+            if (openF) { if (el) el.style.display = 'none'; if (pm.gpu) _hqGpuPlateShow(pm.gpu, false); }   // THE OPEN FRONT: no plate (one name, the room's own sign)
             var glimmer = (secret && !found) ? _hqAngleGlimmer(grp, U, oh, pd) : null;
             var plate = pm.obj;
             plate.position.set(0, Math.min(HQ_PLATE_EYE, oh - 0.3) * U, (pd / 2 + (pm.gpu ? 0.04 : 0.03)) * U);
@@ -87787,6 +87843,7 @@ const ThreeRenderer = (function () {
             var rec = { door: door, group: grp, lens: lens, glow: glow, plate: plate, plateEl: el, plateChip: chip, plateGpu: pm.gpu, state: 'open', level: level, Rw: Rw, y0: y0, wide: wide, ow: ow, inward: inward, box: box, leaf: leafKey, motion: motion, openT: 0, angle: !!(secret && !found), glimmer: glimmer };
             var dj = (box || room.kind !== 'bay') ? _hqDoorJoinOf(door) : null;   // THE ROUND JOIN: a door of the round hall joins too
             if (dj) { rec.join = dj; rec.joinBack = back; rec.leafG = leafGroup; rec.oh = oh; rec.pd = pd; _hqDoorSleeve(grp, dj, ow, oh, pd, wallMat, capMat, U); }   // THE DOOR JOIN (Phase 2); the leaf + the recess for THE PORTALS (G1)
+            if (openF) { rec.open = true; if (!box && room.kind !== 'bay') { _hqOpenFrontFill(G, room, a, ow, oh, (dj && dj.round) ? dj : { gap: 0.6, shut: true }, wallMat); back.visible = false; } }
             if (dj && dj.round) {
                 /* THE ROUND JOIN: the doorway's point (the near test from either side), the revolving leaf that turns in it */
                 rec.wpt = box ? { x: box.wx, z: box.wz } : { x: Rw * Math.sin(_hqRad(a)), z: -Rw * Math.cos(_hqRad(a)) };
@@ -91038,6 +91095,7 @@ const ThreeRenderer = (function () {
                 var st = stairs[i];
                 if (!_hqWithinArc(deg, st.from, st.to, 0.4)) continue;
                 if (r < st.rIn - 0.25) continue;
+                if (st.free && r > st.rOut + 0.25) continue;   // DOOR HQ 2.0: past a free flight's outer side is the floor under the gallery
                 if (r < st.rIn + 0.12 || r > st.rOut - 0.12) return null;   // the railing / the wall
                 var t = _hqDegDiff(deg, st.from) / (st.to - st.from);
                 t = Math.max(0, Math.min(1, t));
@@ -91054,7 +91112,10 @@ const ThreeRenderer = (function () {
                     if (r >= L.rIn - 0.25 && r < L.rIn + 0.12 && curY != null && Math.abs(curY - S.wallH) < 0.3) return null;
                 }
             }
-            if (y === null) {
+            /* THE FLOOR UNDER THE GALLERY (DOOR HQ 2.0, 2026-11-26): a slab that overhangs the floor (mezz.inner well inside the drum)
+               has a floor under it; a walker below (curY under half the slab's height, or no height given) stands on it */
+            var underGal = r <= S.radius - 0.5 && S.radius - S.mezz.inner > 1.5 && (curY == null || curY < S.wallH * 0.5);
+            if (y === null && !underGal) {
                 if (r >= S.mezz.inner + 0.62 && r <= S.mezz.outer - 0.55) y = S.wallH;
                 else if (r >= S.mezz.inner - 0.05 && r < S.mezz.inner + 0.62) {
                     /* the railing band: only from the slab side, and only if already up there */
@@ -91065,11 +91126,14 @@ const ThreeRenderer = (function () {
             if (y === null) {
                 var inStairMass = false;
                 for (var si = 0; si < stairs.length; si++) {
-                    if (_hqWithinArc(deg, stairs[si].from, stairs[si].to, 0.4) && r >= stairs[si].rIn - 0.25) { inStairMass = true; break; }
+                    if (_hqWithinArc(deg, stairs[si].from, stairs[si].to, 0.4) && r >= stairs[si].rIn - 0.25 && !(stairs[si].free && r > stairs[si].rOut + 0.25)) { inStairMass = true; break; }
                 }
                 if (inStairMass) return null;
+                if (S.flue && r < S.flue.r + HQ_BODY_R + 0.05) return null;   // THE FLUE: solid
                 var DK = room.desk, deskR = (DK && DK.rOuter) || 0;
+                if (DK && DK.arc && !_hqWithinArc(deg, DK.arc[0], DK.arc[1], ((HQ_BODY_R + 0.1) / Math.max(1, r)) * 180 / Math.PI)) deskR = 0;   // THE SLIM DESK: open behind its arc
                 if (r <= S.radius - 0.5 && r >= deskR + HQ_BODY_R + 0.1) y = 0;
+                else if (DK && DK.arc && deskR && r <= S.radius - 0.5 && r < DK.rInner - HQ_BODY_R - 0.05) y = 0;   // the well between the counter and the flue
                 else if (DK && r < deskR + HQ_BODY_R + 0.1) {
                     /* the dispatch desk (2026-09-04, real jump): the counter top
                        is a surface a jump can land on, and the hollow centre is a
@@ -91585,6 +91649,7 @@ const ThreeRenderer = (function () {
         if (_hq.stage && !onMezz) { var rjC = _hqStageRoundCam(px, pz, py); if (rjC !== undefined) return rjC; }   // THE ROUND JOIN: the boom through the doorway / over the room beyond
         var wallR = _hqLevelR(S, lvlC);
         if (r > wallR - 0.28) return true;
+        if (S.flue && r < S.flue.r + 0.28) return true;   // THE FLUE (DOOR HQ 2.0)
         if (S.ring3 && _hqRing3Cam(px, pz, py, pl ? pl.y : 0)) return true;   // THE THIRD RING: the gallery slab / rail / flight
         if (!onMezz && py > S.wallH - 0.2 && r > S.mezz.inner - 0.3 && py < S.wallH + 0.3) return true;   // the slab
         if (py > S.wallH + S.upperWallH + S.domeH - 0.45) return true;
@@ -98714,6 +98779,38 @@ const ThreeRenderer = (function () {
         var jr = _hqBox(0.04, oh + 0.04, dep, wallMat); jr.position.set((ow / 2 + 0.02) * U, ((oh + 0.04) / 2) * U, zc);
         var hd = _hqBox(ow + 0.08, 0.04, dep, wallMat); hd.position.set(0, (oh + 0.02) * U, zc);
         [fl, jl, jr, hd].forEach(function (m) { m._ew_hqPart = 'door'; grp.add(m); });
+    }
+    /* THE OPEN FRONT'S FILL (DOOR HQ 2.0, 2026-11-26): a wide doorway cut through the round drum meets the joined room's FLAT front
+       `dj.gap` past the drum at its middle and much farther at its edges. Fill that crescent in the hall's own frame: the floor and the
+       soffit between the drum's arc and the front's line, and a side wall at each edge. */
+    function _hqOpenFrontFill(G, room, deg, ow, oh, dj, wallMat) {
+        var U = _hqUnits(), S = room.shell, R = S.radius, a = _hqRad(deg), hw = ow / 2 + 0.05, far = R + (dj.gap || 0.2) + 0.06, N = 24;
+        var ox = Math.sin(a), oz = -Math.cos(a), lx = Math.cos(a), lz = Math.sin(a);   // along (out from the centre), lateral
+        var P = function (along, lat, y) { return [(ox * along + lx * lat) * U, y * U, (oz * along + lz * lat) * U]; };
+        var strip = function (y, down) {
+            var pos = [], idx = [];
+            for (var i = 0; i <= N; i++) {
+                var lat = -hw + 2 * hw * i / N, inner = Math.sqrt(Math.max(0, R * R - lat * lat)) - 0.08;
+                pos.push.apply(pos, P(inner, lat, y)); pos.push.apply(pos, P(far, lat, y));
+                if (i < N) { var k = i * 2; if (down) idx.push(k, k + 1, k + 2, k + 1, k + 3, k + 2); else idx.push(k, k + 2, k + 1, k + 1, k + 2, k + 3); }
+            }
+            var g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+            var uv = []; for (var j = 0; j < pos.length / 3; j++) uv.push(pos[j * 3] / U / 2.4, pos[j * 3 + 2] / U / 2.4);
+            g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+            return g;
+        };
+        var fl = new THREE.Mesh(strip(0.004, false), _hqMat(S.floor || 'terrazzo', 1, 1, { shininess: 22, side: THREE.DoubleSide })); fl.name = 'hq-open-floor'; G.add(fl);
+        var so = new THREE.Mesh(strip(oh, true), _hqMat(S.ceiling || 'ceiling', 1, 1, { side: THREE.DoubleSide })); so.name = 'hq-open-soffit'; G.add(so);
+        [-1, 1].forEach(function (sd) {
+            var lat = sd * (hw + 0.05), inner = Math.sqrt(Math.max(0, R * R - lat * lat)) - 0.1, len = far - inner;
+            var w = _hqBox(0.1, oh, len, wallMat);
+            var c = P(inner + len / 2, lat, oh / 2); w.position.set(c[0], c[1], c[2]);
+            w.rotation.y = -a; w.name = 'hq-open-side'; G.add(w);
+        });
+        if (dj.shut) {   // not joined yet: the dark beyond, at the front's line
+            var bk = _hqBox(2 * hw + 0.2, oh, 0.08, _hqMat(null, 1, 1, { color: 0x15161a, shininess: 4 }));
+            var bc = P(far, 0, oh / 2); bk.position.set(bc[0], bc[1], bc[2]); bk.rotation.y = -a; bk.name = 'hq-open-dark'; G.add(bk);
+        }
     }
     /* ══════════════════════════════════════════════════════════════════════════════
        THE PREMIUM POLISH (PREMIUM_POLISH_PLAN.md, 2026-09-21) — THE LIGHT PASS + THE AIR PASS
@@ -107338,7 +107435,7 @@ const ThreeRenderer = (function () {
             var nb = st.nbs[i], sp = nb.spans && nb.spans[0]; if (!nb.round || !sp || sp.side !== 'round') continue;
             var a = _hqRad(sp.deg), along = x * Math.sin(a) - z * Math.cos(a), lat = x * Math.cos(a) + z * Math.sin(a);
             var E = st.parts[nb.id], on = !!(E && E.attached);
-            if (Math.abs(lat) <= sp.t1 - pad && along >= R - 0.5 && along <= R + (sp.depth - 0.5) + reach) return { k: 'door', nb: nb, E: E, on: on };
+            if (Math.abs(lat) <= sp.t1 - pad && along >= Math.sqrt(Math.max(0, R * R - lat * lat)) - 0.5 && along <= R + (sp.depth - 0.5) + reach) return { k: 'door', nb: nb, E: E, on: on };   // from the drum's own arc (a wide open front)
             var B = _hqData().rooms[nb.id], SB = B && B.shell; if (!SB) continue;
             var q = hqStageFromRoom(nb.rel, x, z);
             if (Math.abs(q.x) < SB.w / 2 && Math.abs(q.z) < SB.d / 2) return { k: 'nb', nb: nb, E: E, on: on, q: q };

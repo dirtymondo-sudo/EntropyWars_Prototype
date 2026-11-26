@@ -31558,16 +31558,17 @@ STORY_CUTSCENES.orientation_desk = {
     /* `eye: { who, dy }` on a shot = the camera's height is that body's HEAD + dy (three-renderer.js hq.sceneHead), so a close-up
        frames the face whatever the body's height is and the mouth stays over the subtitle bar (mondo 2026-11-13) */
     beats: [
-        /* E1 · the two arrive at the counter: wide across the desk, Rhonda's back in the foreground */
-        { dur: 2.8, shot: { cam: [-0.6, 1.4, 0.8, 176, -2, 40], to: { cam: [-0.45, 1.4, 1.0, 176, -2, 40] } } },
+        /* E1 · the two arrive at the counter: wide across the desk, Rhonda's back in the foreground (DOOR HQ 2.0, 11-26: the camera stands
+           between her chair and the flue now, she sits at z 3.1, the slim desk's front is at 4.85) */
+        { dur: 2.8, shot: { cam: [-0.6, 1.55, 2.45, 176, -4, 50], to: { cam: [-0.45, 1.55, 2.55, 176, -4, 50] } } },
         /* E2 · Rhonda looks at the paperwork: over the recruit's shoulder, long lens */
         { shot: { cam: [1.7, 1.68, 7.7, 16, -5, 28] }, say: { who: 'RHONDA', text: 'Name. Species. Reality of origin.' } },
         { shot: { cam: [0.0, 1.4, 4.9, 180, 0, 28], eye: { who: 'kit', dy: -0.04 } }, say: { who: 'KIT', text: "Kit. Catgirl. It's... gone." } },
         /* E3 · the paperwork goes on the misfiled stack: close on the desk */
-        { shot: { cam: [0.5, 1.55, 3.3, 27, -27, 30] }, say: { who: 'RHONDA', text: 'Clumsy me. I seem to have misfiled the paperwork.' } },
+        { shot: { cam: [0.5, 1.75, 5.6, 350, -32, 30] }, say: { who: 'RHONDA', text: 'Clumsy me. I seem to have misfiled the paperwork.' } },
         /* E4 · "emotional support anomaly": medium on Rhonda, a slow push in over two cards */
-        { shot: { cam: [0.0, 1.35, 4.6, 0, -4, 22], to: { cam: [0.0, 1.35, 4.4, 0, -4, 22] } }, say: { who: 'RHONDA', text: 'Here we go. Deportation hearing. Earliest opening is in four hundred years.' } },
-        { shot: { cam: [0.0, 1.35, 4.4, 0, -4, 22], to: { cam: [0.0, 1.35, 4.2, 0, -4, 22] } }, say: { who: 'RHONDA', text: 'Until then, she is your emotional support anomaly. Sign here.' } },
+        { shot: { cam: [0.0, 1.35, 5.6, 0, -4, 22], to: { cam: [0.0, 1.35, 5.4, 0, -4, 22] } }, say: { who: 'RHONDA', text: 'Here we go. Deportation hearing. Earliest opening is in four hundred years.' } },
+        { shot: { cam: [0.0, 1.35, 5.4, 0, -4, 22], to: { cam: [0.0, 1.35, 5.2, 0, -4, 22] } }, say: { who: 'RHONDA', text: 'Until then, she is your emotional support anomaly. Sign here.' } },
         /* E5 · Kit's relief: close */
         { dur: 2.4, shot: { cam: [0.0, 1.4, 4.9, 180, 0, 28], eye: { who: 'kit', dy: -0.04 }, to: { cam: [0.0, 1.4, 5.1, 180, 0, 28] } } },
         /* E6 · the office keys: on the recruit's FACE (mondo 2026-11-13: "the camera is focused on my crotch, it needs to show my
@@ -34037,11 +34038,11 @@ const DOOR_HQ = {
        mezzanine ring: 2 → 5 → 7 → 3 → 6 → 2. One bay on a floor = no caps. */
     bayShell: {
         rIn: 8.5, rOut: 12.5,      // the corridor is 4 m wide, curving around its own centre
-        wallH: 4.2, dadoH: 1.05,   // the egress ground-floor height: wide door frames are 3.76 m to the cap, plates sit above them
+        wallH: 4.5, dadoH: 1.05,   // THE RING's ceiling (DOOR HQ 2.0: 4.5 m, LOOK_BOOK.md "The Ring"); was the egress ground-floor height 4.2
         spacing: 3.9,              // metres of outer wall per threshold door (wide panels are 3.3 m)
         endPad: 9,                 // degrees of blank wall past the last door, before the end cap
         minHalf: 24,               // the shortest corridor is ±24°
-        floor: 'concrete', wall: 'stone', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling',
+        floor: 'urban:CarpetPattern1a', wall: 'urban:PlasterWallPainted1b', dado: 'urban:WoodPanelling1a', trim: 'brass', ceiling: 'ceiling',   // THE RING's sheets (LOOK_BOOK.md, the Overlook corridor)
         ring: true,                // the bays link end to end (plan 5.4a); false = dead-end caps as before
         ringLeaf: 'leaf_wired_double',   // the fire door on every linked cap (wide; the 4 m cap takes a 3.3 m panel)
         /* THE CONTAINMENT RING, stage 2 (HQ plan 5.4a, 2026-09-08): ONE
@@ -34068,10 +34069,13 @@ const DOOR_HQ = {
            restores the stage-1 bays (one room each, cap doors between). */
         corridor: {
             on: true,
-            rings: { 0: { rIn: 21.5, rOut: 25.5, id: 'ring_g', floor: 'GROUND FLOOR' }, 1: { rIn: 24.5, rOut: 28.5, id: 'ring_m', floor: 'MEZZANINE' } },
+            /* DOOR HQ 2.0 (2026-11-26, plans/1_lobby_level_plan.png): THE RING is the staff corridor round the whole Lobby level, 7 m wide
+               (two squares), outside the open-front rooms (r 45.5-52.5 in the Lobby's frame), A CLOSED LOOP (`arc[0]` a full circle). Its
+               two inner doors are the Lobby's THE RING doors (62, 300); the Ring's rooms stand on its outer wall (`onRing` rows). */
+            rings: { 0: { rIn: 45.5, rOut: 52.5, id: 'ring_g', floor: 'GROUND FLOOR' }, 1: { rIn: 24.5, rOut: 28.5, id: 'ring_m', floor: 'MEZZANINE' } },
             endPadM: 2.2,             // metres of blank outer wall past the outermost threshold, before the cap
             gapM: 2.6,                // the least outer wall between two bays' door runs (room for a cabinet)
-            arc: { 0: null, 1: null },
+            arc: { 0: [0, 360], 1: null },
             close: true,              // the caps wear a fire door to each other (a door-blink across the service side)
         },
     },
@@ -35176,369 +35180,92 @@ const DOOR_HQ = {
     },
 
     rooms: {
+        /* ── THE LOBBY · DOOR HQ 2.0 (2026-11-26, wave 2: the Lobby shell; mondo OK'd the plan, docs/plans/door-hq-2/FLOOR_PLANS.md +
+           plans/1_lobby_level_plan.png + plans/2_lobby_upper_level_penthouse.png; the look: LOOK_BOOK.md "Lobby level, public").
+           A clean sheet: 49 m across (7 x 3.5 m squares a side of the main line), three storeys to the dome (14 m), the upper level a
+           7 m gallery round the void at 5.25 m (it has no name: it is the Lobby). THE FLUE, the Incinerator's chimney, is the column in
+           the middle; Rhonda sits between it and her slim desk, facing the Foyer. THE MAIN LINE runs north: the Foyer (180), Rhonda,
+           the Training Room (0). Open on the floor with NO DOOR (`open: { w, h }`, THE OPEN FRONT): the Door Store (35), Medical (100),
+           the Cafeteria (270); each room's own thread joins its box (HQ_STAGE_RULES.round) to these rows. Two doors to THE RING (the
+           staff corridor round the building, 7 m wide, a closed loop: bayShell.corridor). Twin curved stairs either side of the Foyer
+           climb to the gallery; the glass lift stands on the gallery. No walkers, no men in black, no dev tools, nothing in a doorway. */
         central_egress: {
             label: 'THE LOBBY',
             kind: 'rotunda',
             shell: {
-                radius: 21,            // ground-floor drum (inner face of the lower wall)
-                wallH: 4.2,            // lower wall = mezzanine height
-                mezz: { inner: 20.6, outer: 24, thick: 0.4 },   // the ring slab (r, m)
-                upperWallH: 6.6,       // upper drum, r = mezz.outer, from the slab up (5.4 → 6.6 for THE GALLERY, 2026-09-16)
-                /* THE GALLERY — THE THIRD RING (HQ plan 8.4 / 9.3 "the crowding",
-                   2026-09-16): a second ring slab inside the upper drum, `h`
-                   metres above the mezzanine (same inner / outer radii — it
-                   overhangs the hall like the mezzanine does), reached by ONE
-                   curved flight off the mezzanine's walkway (`stair`: from →
-                   to in degrees, rising clockwise, its band rIn → the drum;
-                   its mass stands on the mezzanine, so nothing else may stand
-                   in that arc on level 1). Doors / props / spots with
-                   `level: 2` stand on it (three-renderer.js _hqLevelY; the key is
-                   `ring3` — `gallery` is the box room's two-floor slab). The
-                   EXPLORATION doors live here; the mezzanine keeps the bays
-                   and the elevator. */
-                ring3: { h: 3.3, inner: 20.6, outer: 24, thick: 0.35, railH: 1.05,
-                           stair: { id: 'stair_g', from: 278, to: 312, rIn: 22.6, steps: 20 } },
-                domeH: 3.2,            // conical ceiling rise above the upper wall
+                radius: 24.5,          // the floor's drum (49 m across)
+                wallH: 5.25,           // the gallery's height
+                mezz: { inner: 17.5, outer: 24.5, thick: 0.45 },   // THE GALLERY: 7 m wide, over the floor's outer band (the floor goes on under it)
+                upperWallH: 5.75,
+                domeH: 3.0,            // to the dome's top: 14 m
                 dadoH: 1.05,
-                floor: 'terrazzo', wall: 'stone', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling', stair: 'concrete',
-                bands: [               // inlaid floor rings [rIn, rOut, tex]
-                    [6.9, 7.35, 'teal'], [9.6, 10.15, 'oxblood'], [14.8, 15.2, 'teal'],
+                floor: 'terrazzo', wall: 'damask_3', dado: 'urban:WoodPanelling1a', trim: 'brass', ceiling: 'ceiling', stair: 'marble',
+                bands: [               // inlaid floor rings [rIn, rOut, tex]: marble round the flue, brass lines, the gallery's edge
+                    [2.2, 6.4, 'marble'], [6.4, 6.6, 'brass'], [11.6, 11.9, 'oxblood'], [17.2, 17.5, 'brass'],
                 ],
-                spokes: { n: 8, r0: 10.3, r1: 14.6, w: 0.18, tex: 'teal' },
-                cube: { size: 3.6, y: 7.4, rodR: 0.09 },  // the Saturnian black cube, centre height (m)
+                spokes: { n: 8, r0: 6.6, r1: 11.6, w: 0.16, tex: 'brass' },
+                flue: { r: 2.2, tex: 'marble', band: 'brass' },   // THE FLUE: the column behind Rhonda, floor to dome
+                cube: { size: 3.6, y: 9.8, rodR: 0.09, deg: 180, r: 10 },   // the Cube hangs in the void over the main line, south of the flue
             },
-            /* the round dispatch desk in the middle: two ring counters */
-            desk: { mode: 'procedural', rOuter: 5.6, rInner: 2.6, h: 1.05, top: 'terrazzo', front: 'oxblood', gapDeg: 200, gapWidth: 14 },
-            /* stairs: curved flights hugging the lower wall from `from` (floor)
-               to `to` (mezzanine). r band is the tread width. */
+            /* THE SLIM DESK (mondo: "too wide/thick and it's hard to target her"): a 0.85 m curved counter over 100 degrees facing the
+               Foyer, open behind; Rhonda's chair in the well between it and the flue */
+            desk: { mode: 'procedural', arc: [130, 230], rOuter: 4.85, rInner: 4.0, h: 1.05, top: 'marble', front: 'urban:WoodPanelling1a' },
+            /* the twin stairs: free flights in the void along the gallery's edge, from beside the Foyer up to the gallery (30 steps) */
             stairs: [
-                /* THE EIGHT DOORS (2026-11-18): each flight ran 44 degrees of wall (18-62, 342-298); the ground floor's doors stand every 45 degrees now, so
-                   a flight is 24 degrees (the same 24 steps, a 0.35 m tread) and stands between the north door and the next one on each side */
-                { id: 'stair_e', from: 10, to: 34,  rIn: 19.35, rOut: 20.6, steps: 24 },
-                { id: 'stair_w', from: 350, to: 326, rIn: 19.35, rOut: 20.6, steps: 24 },
+                { id: 'stair_e', from: 166, to: 132, rIn: 15.1, rOut: 17.5, steps: 30, free: true },
+                { id: 'stair_w', from: 194, to: 228, rIn: 15.1, rOut: 17.5, steps: 30, free: true },
             ],
-            /* doors: `leaf` = catalogue key (leaf), `wide` = 2.2 m opening.
-               `action` is exactly one of {fn}, {sector}, {room}, {overlay}.
-               `roomNo` / `why` (plan 7.1 / 7.4) number a department that has
-               no interior yet; a door INTO a room takes the room's own
-               `roomNo` (hqDoorNo), so the number lives in one place. Bays
-               wear bay numbers, not room numbers. The elevator's `floors`
-               is its floor panel — there is no 13 (Room 13 is a door in
-               Bay 1, not a floor). */
-            /* THE EIGHT DOORS (mondo 2026-11-18, the door audit: "the bottom floor is crowded with doors so move some of them into the containment ring,
-               basically redesign DOOR HQ"; on the mock-up: "there are 8 doors inside, they should all be equally spaced apart"). The ground floor had
-               twelve doors; it has EIGHT, one every 45 degrees, clockwise from the north: the Ring (0), the Quartermaster (45), Reception (90), Your
-               Office (135), the Training Room (180), the Foyer (225), the Ring's west door (270), the Stair to the Woods (315). The Cafeteria, the
-               Barbershop, the Medical Wing and the Records Wing stand on the Ring's outer wall now, with the stair down to the subway: a row with
-               `onRing: { level, deg }` is authored here and MOVED into the ring room at load (hqRingMoveDoors; the room's own way back is re-pointed
-               too). The four mezzanine bay doors are closed (DOOR_HQ.cut.doors) and the mezzanine ring is retired. */
+            /* `onRing: { level, deg }` = a room's door on the Ring's outer wall (hqRingMoveDoors moves it there at load) */
             doors: [
-                /* ── ground ring (operations) ── */
-                { id: 'bay_celestial',  deg: 0,   level: 0, leaf: 'leaf_bulkhead',     wide: true,  label: 'THE RING',      sub: 'CAFETERIA · BARBER · MEDICAL · RECORDS · SUBWAY',            action: { sector: 'celestial' } },
-                /* ROOM 86 (2026-09-11, plan 7.4): the one free stretch of the ground
-                   ring, between the east stair's top and the Quartermaster (plan 7.5
-                   measured it for a bay and gave the bay to the mezzanine instead);
-                   5.5 m of wall to the vault door, 2.9 needed. The saloon leaf swings
-                   both ways. After hours the plate reads MÖBIUS STRIP CLUB — same
-                   room, same number (DOOR_HQ.rooms.cafeteria.variants). */
-                { id: 'cafeteria',      deg: 75,  level: 0, onRing: { level: 0, deg: 18 }, leaf: 'leaf_saloon',                    label: 'THE CAFETERIA',          sub: 'ON BREAK · THE KITCHEN', action: { room: 'cafeteria', at: 'lobby' }, desc: 'Room 86. The menu is out of it. The clocks disagree, the chairs are signed out, and the vending machine that was on the other side yesterday is on this side today. Doors swing both ways; nobody has decided which.' },
-                { id: 'quartermaster',  deg: 45,  level: 0, leaf: 'leaf_vault',        wide: true,  label: 'QUARTERMASTER',           sub: 'SHOP',       action: { fn: '_goToShop' },        desc: 'Declassification and asset reassignment. The Shop, and the manifests locker.', alt: { label: 'PARTY BUILDER', fn: '_goToTeamBuilder' } },
-                /* ROOM 1287 (2026-09-11, plan 7.4): OCCAM'S BARBERSHOP between the
-                   Quartermaster and Reception — 15° each way (5.5 m of wall at
-                   r 21; 2.9 and 2.5 needed, 2 m of pier is the rule). A glass
-                   shop door; the pole hangs in the hall beside it (111°). The
-                   vending machine moved from 105° to 98° to make the doorway. */
-                { id: 'barbershop',     deg: 105, level: 0, onRing: { level: 0, deg: 346 }, ringProps: [{ key: 'barber_pole', ddeg: 5 }], leaf: 'leaf_birch_glass',                     label: 'OCCAM’S BARBERSHOP',      sub: 'CHANGE AVATAR', action: { room: 'barbershop', at: 'egress' },
-                  desc: 'Room 1287. Change your appearance: sit, and walk out as the recruit, your most-played vessel, an agent in black, or anything the Department has declassified. The mirror is Reception’s — the photo on your card follows the chair. Two explanations for how you look; he only does the shorter one.' },
-                /* ROOM 1 · RECEPTION (plan 7.4, 2026-09-14): the door is now the way
-                   INTO the intake office — the window (your ID card / profile), the
-                   laminator (the intake sheet), the ticket dispenser. The number
-                   moved onto the room (hqDoorNo reads it through). */
-                { id: 'reception',      deg: 90,  level: 0, leaf: 'leaf_window_large',                     label: 'RECEPTION',               sub: 'ID CARD · SIGN IN',       action: { room: 'reception', at: 'egress' },
-                  desc: 'Room 1. Intake. Employee ID cards, the laminator, LOST CARD FEE. Take a number; the number is being served in an order the office does not explain.' },
-                { id: 'office',         deg: 135, level: 0, leaf: 'leaf_closet_warped',             label: 'YOUR OFFICE',             sub: 'STORY · CASE FILE',          action: { room: 'office', at: 'egress' }, desc: 'A converted janitor’s closet. Cot, mop bucket, CRT, phone, drain. The in-tray is where the story arrives.', rankDoor: true },
-                { id: 'training',       deg: 180, level: 0, leaf: 'leaf_exit',                      label: 'TRAINING ROOM',           sub: 'PRACTICE · GAUNTLET · DUNGEON',   action: { room: 'training', at: 'egress' }, desc: 'Room 64. The only authorized square room in the building — an 8×8 grid, deemed totally safe, notoriously leaky. ORTHOGONAL GEOMETRY EXPOSURE AREA · MAX OCCUPANCY 45 MINUTES.' },
-                /* THE FOURIER FOYER (2026-09-15, plan 7.4's last row): the front door.
-                   The only free stretch of the lower wall — 15° from the Training Room
-                   and 15° from Medical (5.5 m of wall each way, 2.9 needed — the same
-                   pier Room 86 sits on). Behind you as you arrive at the spawn: the
-                   hall's south side is the street side. The kit's revolving door
-                   (§5.6), the same door from the foyer's side; a fresh arrival from
-                   Play stands in the foyer and walks IN through it (map.js
-                   _hqArrivalRoom — `?nofoyer` / ew_hq_foyer='off' lands in the hall). */
-                { id: 'foyer',          deg: 225, level: 0, leaf: 'leaf_lobby_glass_double', wide: true,  label: 'THE FOYER',       sub: 'THE FRONT DOOR · EXIT',   action: { room: 'foyer', at: 'egress' }, desc: 'The vestibule. The double doors, the seal in the terrazzo, the inspection desk that verifies your corners. The street is on the other side of it; the street is the main menu.' },
-                /* ROOM 1111 · MEDICAL (plan 7.4, 2026-09-13 rev 3): the door is now the
-                   way INTO the ward — the services desk (Challenge mode), the chart
-                   (your record), the cell door into Room 5150. The number moved onto
-                   the room (hqDoorNo reads it through). */
-                { id: 'medical',        deg: 210, level: 0, onRing: { level: 0, deg: 282 }, leaf: 'leaf_hospital',                  label: 'THE MEDICAL WING',        sub: 'WARD · INTERROGATION',     action: { room: 'medwing', at: 'egress' },
-                  desc: 'The wing, not the ward. One hospital door onto a corridor with three off it: Room 1111 (the ward, the services desk, the chart), Room 5150 at the back of it, and Room 1984 at the far end — Internal Affairs was moved in with Medical during a reorganisation nobody can produce the memo for.' },
-                /* THE RECORDS WING (plan 9.3 / C-27, 2026-09-15): the wired double
-                   door is now the way into the WING — Room 42 off its north wall,
-                   Room 247 off its east. The Clock Room's own door left the ring at
-                   225°; the number stays on each room (hqDoorNo reads it through). */
-                { id: 'records',        deg: 240, level: 0, onRing: { level: 0, deg: 250 }, leaf: 'leaf_wired_double', wide: true,  label: 'THE RECORDS WING',        sub: 'CODEX · DAILY TASKS', action: { room: 'recwing', at: 'egress' },
-                  desc: 'The wing. Room 42 keeps the file — dossiers on the reading desk, the unfiled sites in the card catalogue, the service stair up to Room 360. Room 247 keeps the time: three requirements a day, the punch clock, and every clock in the building that disagrees with every other one.' },
-                /* THE STAIRCASE TO THE WOODS (LEVEL_DESIGN_PLAN §4, 2026-09-30): the free stretch at 255° (Room 1984's door until 2026-09-13) */
-                { id: 'woods',          deg: 315, level: 0, leaf: 'leaf_bulkhead',                  label: 'THE STAIRCASE TO THE WOODS', sub: 'THE STAIR · UP INTO THE WOODS', action: { room: 'woodstair', at: 'egress' }, desc: 'A tall hall with one stair in it. The stair climbs into the dark and comes out in the Woods.' },
-                { id: 'bay_terrestrial',deg: 270, level: 0, leaf: 'leaf_suburban_house',            label: 'THE RING',    sub: 'RECORDS · MEDICAL · SUBWAY · BARBER · CAFETERIA',            action: { sector: 'terrestrial' } },
-                /* THE SUBWAY (2026-11-18): the plain stair down to the platform under the building (the third public way out of DOOR HQ; the platform was
-                   reached only through two hidden hatches). It stands on the Ring's outer wall; the platform's own door back is `ring` on its north wall. */
-                { id: 'subway',         deg: 300, level: 0, onRing: { level: 0, deg: 314 }, leaf: 'leaf_white_wood',  label: 'THE SUBWAY',  sub: 'THE STAIR DOWN · THE PLATFORM', action: { room: 'tunnel', at: 'ring' },
-                  desc: 'A stair down to the platform under the building. One train. It runs to Disaster City and back.' },
-                /* ── mezzanine (support / executive access) ── */
-                { id: 'elevator',       deg: 0,   level: 1, leaf: null, proc: 'elevator',          label: 'ELEVATOR',                sub: 'B · G · M · 2 · 3 · 4 · PH',     action: { room: 'car', at: 'out' }, floors: ['B', 'G', 'M', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '14', 'PH'], desc: 'The car. It stops at B, G, M, 2, 3, 4 and PH now; the PH button still wants KEYHOLDER clearance and twelve Keys (DOOR_HQ.elevator.stops).' },
-                { id: 'bay_ancient',    deg: 45,  level: 1, leaf: 'leaf_portcullis',   wide: true,  label: 'BAY 2 · ANCIENT',         sub: 'BATTLE MAPS',            action: { sector: 'ancient' } },
-                { id: 'engineering',    deg: 90,  level: 2, leaf: 'leaf_glass_exec',                label: 'ARCANE ENGINEERING',      sub: 'MAP EDITOR',     action: { fn: '_goToMapEditor' },   desc: 'Research offices. The Map Editor, and the fourth door that wasn’t there yesterday — IT, four doors down. The Spell Library moved in with them.' },
-                /* ROOM 1337 · IT (plan 7.4, 2026-09-13): the user's Hacker Room as a
-                   DOOR, not a map — inside Arcane Engineering's stretch of the
-                   mezzanine, 30° (12.6 m of the upper drum at r 24) from the
-                   research offices at 90° and from Bay 5 at 150°. The plan wanted
-                   a hollow-core door with a keypad; the hollow core is a RANK leaf
-                   (L2), so the fourth door that wasn't there yesterday is the
-                   holographic one (the Observatorium wears it too — leaves are not
-                   exclusive below rank) and the keypad hangs INSIDE, by the way
-                   out. The round cabinet that stood at 120° moved to 113°. */
-                { id: 'it',             deg: 120, level: 2, leaf: 'leaf_holographic',              label: 'IT',                      action: { room: 'it', at: 'egress' },
-                  desc: 'Room 1337. The fourth door. It was not there yesterday and Facilities has no ticket for it. The code is on a sticky note on the keypad, on the inside.' },
-                { id: 'bay_diplomatic', deg: 150, level: 1, leaf: 'leaf_revolving',    wide: true,  label: 'BAY 5 · DIPLOMATIC',      sub: 'BATTLE MAPS',            action: { sector: 'diplomatic' } },
-                { id: 'bay_urban',      deg: 180, level: 1, leaf: 'leaf_orange_glass',                     label: 'BAY 7 · URBAN',           sub: 'BATTLE MAPS',            action: { sector: 'urban' } },
-                { id: 'bay_hollow',     deg: 210, level: 1, leaf: 'leaf_wired_double', wide: true,  label: 'BAY 3 · HOLLOW',          sub: 'BATTLE MAPS',            action: { sector: 'hollow' } },
-                /* ROOM 360 (2026-09-11, plan 7.4): THE OBSERVATORIUM on the
-                   mezzanine at 240°, directly above Records — between Bay 3
-                   (210°) and Bay 6 (270°): 30° each way is 12.6 m of the upper
-                   drum at r 24 for panels needing 3.3 / 2.5. The office locker
-                   that stood at 240° moved to 232°. A holographic door (the
-                   Cyberpunk tenement wears the same; leaves are not exclusive
-                   below rank). */
-                { id: 'observatorium',  deg: 240, level: 2, leaf: 'leaf_holographic',              label: 'THE OBSERVATORY',       sub: 'MAP SELECT · REPLAY',        action: { room: 'observatorium', at: 'egress' },
-                  desc: 'Room 360. The whole sky from one chair: every threshold in the building is a star on the ceiling — point at one on the chart and its door opens from here. The tape library came upstairs with the projector. The dome is painted; the telescope is pointed at the paint.' },
-                /* THE EXECUTIVE SUITE (plan 9.3 / C-27, 2026-09-15): ONE house door
-                   on the mezzanine for both executive rooms — Room 111 off the
-                   suite's west wall, the Bureau off its north. The GATE AND THE
-                   NUMBER stay on the Bureau's OWN door (now the suite's), so a
-                   recruit walks the suite and reads the notices and still does not
-                   go in; the canon notices are on this door too (map.js). The
-                   Trophy Case's own door left the ring at 290°. */
-                { id: 'executive',      deg: 315, level: 2, leaf: 'leaf_suburban_house',            label: 'THE EXECUTIVE SUITE',     sub: 'ACHIEVEMENTS · STORY CANON',              action: { room: 'execwing', at: 'egress' },
-                  desc: 'The suite. The glass case on one side is every commendation the Department has engraved for you; the house door on the other is the Bureau of Continuity, which is the only department that suspects the schedule. The notices on this door are readable by anyone. The Bureau is not.' },
+                /* ── the floor ── */
+                { id: 'training',  deg: 0,   level: 0, leaf: 'leaf_exit', label: 'TRAINING ROOM', action: { room: 'training', at: 'egress' } },
+                { id: 'doorstore', deg: 35,  level: 0, open: { w: 14, h: 4.5 }, label: 'DOOR STORE', action: { room: 'doorstore', at: 'lobby' } },
+                { id: 'bay_celestial', deg: 62, level: 0, leaf: 'leaf_wired_double', wide: true, label: 'THE RING', action: { sector: 'celestial' } },
+                { id: 'medical',   deg: 100, level: 0, open: { w: 14, h: 4.5 }, label: 'MEDICAL', action: { room: 'medical', at: 'lobby' } },
+                { id: 'foyer',     deg: 180, level: 0, leaf: 'leaf_lobby_glass_double', wide: true, label: 'THE FOYER', action: { room: 'foyer', at: 'egress' } },
+                { id: 'cafeteria', deg: 270, level: 0, open: { w: 17.5, h: 4.5 }, label: 'CAFETERIA', action: { room: 'cafeteria', at: 'lobby' } },
+                { id: 'bay_terrestrial', deg: 300, level: 0, leaf: 'leaf_wired_double', wide: true, label: 'THE RING', action: { sector: 'terrestrial' } },
+                /* ── the Ring's rooms (plans/1_lobby_level_plan.png): their doors stand on the Ring's outer wall ── */
+                { id: 'it',        deg: 0, level: 0, onRing: { level: 0, deg: 35 },  leaf: 'leaf_holographic', label: 'IT', action: { room: 'it', at: 'egress' } },
+                { id: 'woods',     deg: 0, level: 0, onRing: { level: 0, deg: 118 }, leaf: 'leaf_bulkhead', label: 'STAIR TO THE WOODS', action: { room: 'woodstair', at: 'egress' } },
+                { id: 'office',    deg: 0, level: 0, onRing: { level: 0, deg: 140 }, leaf: 'leaf_closet_warped', label: 'YOUR OFFICE', action: { room: 'office', at: 'egress' }, rankDoor: true },
+                { id: 'records',   deg: 0, level: 0, onRing: { level: 0, deg: 162 }, leaf: 'leaf_wired_double', wide: true, label: 'RECORDS', action: { room: 'recwing', at: 'egress' } },
+                { id: 'barbershop', deg: 0, level: 0, onRing: { level: 0, deg: 215 }, ringProps: [{ key: 'barber_pole', ddeg: 2 }], leaf: 'leaf_birch_glass', label: 'BARBERSHOP', action: { room: 'barbershop', at: 'egress' } },
+                { id: 'subway',    deg: 0, level: 0, onRing: { level: 0, deg: 350 }, leaf: 'leaf_white_wood', label: 'THE SUBWAY', action: { room: 'tunnel', at: 'ring' } },   // until the Garage holds the platform's way down
+                /* ── the gallery (level 1) ── */
+                { id: 'observatorium', deg: 0, level: 1, leaf: 'leaf_holographic', label: 'THE OBSERVATORY', action: { room: 'observatorium', at: 'egress' } },
+                { id: 'executive', deg: 125, level: 1, leaf: 'leaf_suburban_house', label: 'BUREAU OF CONTINUITY', action: { room: 'execwing', at: 'egress' } },
+                { id: 'elevator',  deg: 330, level: 1, leaf: null, proc: 'elevator', label: 'ELEVATOR', action: { room: 'car', at: 'out' }, floors: ['B', 'G', 'M', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '14', 'PH'] },
             ],
-            /* walk-up interactions that are not doors */
             counters: [
-                { id: 'dispatch',  deg: 180, r: 6.9,  level: 0, label: 'DISPATCH',               sub: 'QUICK PLAY · ONLINE MATCH',          action: { overlay: 'dispatch' }, radius: 2.4 },
-                { id: 'board',     deg: 288, r: 20.1, level: 0, label: 'EMPLOYEE OF THE MONTH',  sub: 'LEADERBOARD',           action: { fn: '_mountLeaderboard' }, radius: 2.2, proc: 'board' },
-                { id: 'directory', deg: 165, r: 19.6, level: 0, label: 'BUILDING DIRECTORY',     sub: 'ROOM LIST · FAST TRAVEL',          action: { overlay: 'directory' }, radius: 1.8, proc: 'directory' },
-                /* LOCKE'S CASE BOARD (2026-11-25, the mystery dungeons: the side-quests doc's "Locke's board in HQ"): on the drum between the
-                   Office and the Building Directory (behind her briefing table the east stair hid it); it reads today's Door Case and the
-                   deepest floor of every building (data.js mdCaseBoard). Its board is the notice board in `props` at the same degree. */
-                /* RECEPTION IS RHONDA'S DESK (DOOR HQ 2.0 wave 1, 2026-11-26, mondo: "Get rid of the reception room, Rhonda's desk is the
-                   reception, she is the receptionist"): the two counters the Reception room held, on the desk's front round from her chair */
-                { id: 'idcard',    deg: 157, r: 6.4,  level: 0, label: 'ID CARD',      verb: 'SIGN IN', action: { fn: '_mountReactProfile' }, radius: 1.6, plateY: 1.6,
-                  desc: 'Your employee ID card: the callsign, the desk, the photo, the stamps on the back.' },
-                { id: 'intake',    deg: 127, r: 6.4,  level: 0, label: 'INTAKE SHEET', verb: 'READ',    action: { overlay: 'intake' },          radius: 1.6, plateY: 1.6,
-                  desc: 'The intake sheet the card was printed from.' },
-                { id: 'md_board_hq', deg: 151, r: 19.9, level: 0, label: 'LOCKE’S CASE BOARD',      sub: 'TODAY’S DOOR CASE',       action: {}, radius: 2.0, plateY: 2.3, verb: 'READ', proc: 'hotel_act', hotel: { act: 'board' } },   // Locke's (the notice board above)
+                /* at Rhonda's desk (she is the reception): her front, the ID card and the intake sheet either side */
+                { id: 'dispatch',  deg: 180, r: 6.2,  level: 0, label: 'DISPATCH', action: { overlay: 'dispatch' }, radius: 1.8 },
+                { id: 'idcard',    deg: 160, r: 5.7,  level: 0, label: 'ID CARD',      verb: 'SIGN IN', action: { fn: '_mountReactProfile' }, radius: 1.4, plateY: 1.6 },
+                { id: 'intake',    deg: 200, r: 5.7,  level: 0, label: 'INTAKE SHEET', verb: 'READ',    action: { overlay: 'intake' },          radius: 1.4, plateY: 1.6 },
+                { id: 'directory', deg: 215, r: 22.6, level: 0, label: 'BUILDING DIRECTORY', action: { overlay: 'directory' }, radius: 1.8, proc: 'directory' },
+                { id: 'board',     deg: 325, r: 23.6, level: 0, label: 'EMPLOYEE OF THE MONTH', action: { fn: '_mountLeaderboard' }, radius: 2.2, proc: 'board' },
+                { id: 'md_board_hq', deg: 145, r: 23.9, level: 0, label: 'LOCKE’S CASE BOARD', action: {}, radius: 2.0, plateY: 2.3, verb: 'READ', proc: 'hotel_act', hotel: { act: 'board' } },   // its board is the notice board in `props`
             ],
-            /* the dressing — catalogue key + polar spot; `rot` = extra yaw
-               (deg, clockwise) on top of facing the hall centre; `wall`
-               props ignore r; `on` = stack on another prop's top (key) */
+            /* the bare shell's furniture: Rhonda's chair and desk top, the potion machines (data.js hqVendingApply makes each a counter), the case board */
             props: [
-                /* desk top */
-                /* Rhonda's post (DOOR_CAST, 2026-09-06): the clerk's chair INSIDE
-                   the ring, on the well floor (0.05 m), facing the BELL console side */
-                { key: 'office_chair', deg: 180, r: 2.05, level: 0, y: 0.05, rot: 180 },
-                { key: 'papers_b',     deg: 176, r: 4.45, level: 0, y: 1.05, rot: -20 },
-                { key: 'crt_terminal', deg: 20,  r: 4.5, level: 0, y: 1.05, rot: 180 },
-                { key: 'crt_terminal', deg: 200, r: 4.5, level: 0, y: 1.05, rot: 180 },
-                { key: 'crt_terminal', deg: 110, r: 4.5, level: 0, y: 1.05, rot: 180 },
-                { key: 'tube_tv',      deg: 290, r: 4.5, level: 0, y: 1.05, rot: 160 },
-                { key: 'papers_a',     deg: 60,  r: 4.7, level: 0, y: 1.05 },
-                { key: 'papers_b',     deg: 150, r: 4.6, level: 0, y: 1.05, rot: 30 },
-                { key: 'laminator',    deg: 127, r: 4.6, level: 0, y: 1.05, rot: 180 },   // the INTAKE SHEET counter (the Reception room's laminator, DOOR HQ 2.0 wave 1)
-                { key: 'notebook_paper', deg: 245, r: 4.8, level: 0, y: 1.05, rot: 12 },
-                { key: 'desk_lamp',    deg: 330, r: 4.6, level: 0, y: 1.05, rot: 200 },
-                { key: 'desk_fan',     deg: 80,  r: 4.9, level: 0, y: 1.05, rot: 90 },
-                { key: 'pen',          deg: 175, r: 4.9, level: 0, y: 1.05, rot: 70 },
-                /* the 2026-09-10 kit on the dispatch top: the stapler, the
-                   folders that never leave, Rhonda's mug */
-                { key: 'stapler',      deg: 212, r: 4.75, level: 0, y: 1.05, rot: 30 },
-                { key: 'manila_folders', deg: 68, r: 4.6, level: 0, y: 1.05, rot: -15 },
-                { key: 'manila_folder', deg: 292, r: 4.75, level: 0, y: 1.05, rot: 25 },
-                { key: 'clipboard_flat', deg: 118, r: 4.7, level: 0, y: 1.05, rot: 10 },
-                { key: 'coffee_mug',   deg: 176, r: 4.6, level: 0, y: 1.05, rot: 40 },
-                { key: 'cardboard_box', deg: 40, r: 6.3, level: 0 },
-                { key: 'cardboard_box', deg: 46, r: 6.5, level: 0, rot: 35 },
-                { key: 'cardboard_boxes', deg: 140, r: 6.6, level: 0, rot: 20 },
-                /* RECEPTION · INTAKE counter (the reception wedge, plan 2.2):
-                   curved front to the hall, the clerk's chair on the wall
-                   side, a terminal on the 0.77 m work surface behind the ledge */
-                { key: 'reception_wedge', deg: 98, r: 17.9, level: 0, rot: 15 },
-                { key: 'office_chair',    deg: 99, r: 18.95, level: 0 },
-                { key: 'crt_terminal',    deg: 96.5, r: 18.45, level: 0, y: 0.77 },
-                { key: 'papers_a',        deg: 100.5, r: 18.3, level: 0, y: 0.77, rot: -10 },
-                { key: 'pen',             deg: 101.5, r: 18.15, level: 0, y: 0.77, rot: 30 },
-                { key: 'notebook_paper',  deg: 98.3, r: 18.05, level: 0, y: 0.77, rot: -55 },   // Rhonda's: conveniently misfiled (DOOR_CAST)
-                /* the LOST CARD FEE has a till (2026-09-10): the beige 1980s
-                   register on the transaction ledge, a clipboard beside it,
-                   the bin the forms end up in */
-                { key: 'cash_register',   deg: 94.5, r: 18.4, level: 0, y: 0.77, rot: -40 },
-                { key: 'clipboard_flat',  deg: 102.5, r: 18.35, level: 0, y: 0.77, rot: -15 },
-                { key: 'trash_bin',       deg: 101.5, r: 19.4, level: 0 },
-                /* the briefing table: four 45° table sectors as a half-ring
-                   (r 1.28 m) opening toward the hall, folding chairs on the
-                   convex side facing in — the seats are at the sectors'
-                   bisectors, 0.5 m off the outer edge */
-                { key: 'desk_wedge_b',    deg: 20, r: 14.5, level: 0, ring: { n: 4, start: -67.5 } },
-                { key: 'folding_chair',   deg: 13.8, r: 15.27, level: 0, rot: -61 },
-                { key: 'folding_chair',   deg: 17.6, r: 16.16, level: 0, rot: -20 },
-                { key: 'folding_chair',   deg: 22.4, r: 16.16, level: 0, rot: 20 },
-                { key: 'folding_chair',   deg: 26.2, r: 15.27, level: 0, rot: 61 },
-                { key: 'papers_b',        deg: 18.5, r: 15.3, level: 0, y: 0.76, rot: 35 },
-                { key: 'notebook_paper',  deg: 22, r: 15.4, level: 0, y: 0.76, rot: -15 },
-                /* seating clusters (ground) */
-                { key: 'round_desk',   deg: 250, r: 13.2, level: 0 },
-                { key: 'teal_chair',   deg: 246, r: 12.1, level: 0, rot: 180 },
-                { key: 'teal_chair',   deg: 257, r: 13.9, level: 0, rot: 0 },
-                { key: 'office_chair', deg: 243, r: 14.2, level: 0, rot: 40 },
-                { key: 'round_desk',   deg: 300, r: 14.6, level: 0 },
-                { key: 'teal_chair',   deg: 296, r: 13.5, level: 0, rot: 180 },
-                { key: 'teal_chair',   deg: 305, r: 15.6, level: 0, rot: 0 },
-                { key: 'coffee_table', deg: 60,  r: 13.8, level: 0 },
-                { key: 'curved_couch', deg: 60,  r: 15.6, level: 0 },
-                { key: 'office_plant', deg: 52,  r: 16.2, level: 0 },
-                { key: 'conference_table', deg: 110, r: 15.2, level: 0, rot: 90 },
-                { key: 'computer_chair_blue', deg: 106, r: 14.0, level: 0, rot: 180 },   // the 2026-09-13 chairs at the conference table
-                { key: 'computer_chair_grey', deg: 114, r: 14.0, level: 0, rot: 180 },
-                { key: 'computer_chair_grey', deg: 106, r: 16.4, level: 0, rot: 0 },
-                { key: 'computer_chair_blue', deg: 114, r: 16.4, level: 0, rot: 0 },
-                /* globe lamps on the inner band */
-                /* THE RETRO-FUTURIST PASS (2026-09-21): four floor lava lamps between the spokes, on the inlaid ring */
-                { key: 'lava_lamp_floor', deg: 22.5,  r: 12.5, level: 0 },
-                { key: 'lava_lamp_floor', deg: 112.5, r: 12.5, level: 0 },
-                { key: 'lava_lamp_floor', deg: 202.5, r: 12.5, level: 0 },
-                { key: 'lava_lamp_floor', deg: 292.5, r: 12.5, level: 0 },
-                /* against the lower wall, between doors */
-                { key: 'filing_cabinet', deg: 238, level: 0, wall: true },   // moved 6° for the Clock Room's door at 225° (2026-09-11)
-                { key: 'filing_cabinet', deg: 241, level: 0, wall: true },
-                { key: 'cardboard_boxes', deg: 263, r: 19.3, level: 0, rot: 15 },   // moved from 256°: Room 1984's door (2026-09-13)
-                { key: 'office_locker',  deg: 108, level: 0, wall: true },
-                { key: 'locker',         deg: 111, level: 0, wall: true },
-                { key: 'vending_machine', deg: 68,  level: 0, wall: true },     // 105° until Room 1287's door took the spot (2026-09-11)
-                /* (2026-11-18: the barber's pole left the hall with the shop: the shop's door row hangs it on the Ring, `ringProps`) */
-                /* THE BREAK NOOK (2026-09-10 → 2026-09-11): the round fridge, the
-                   microwave, the coffee maker, the mug, the cup, the rail and the
-                   bin stood in for the Cafeterium at 98–107° until Room 86 was
-                   built. They moved in (rooms.cafeteria, the hot side). What stays
-                   is the vending machine, which has always been there. */
-                { key: 'water_cooler',   deg: 204, level: 0, wall: true },   // moved from 196° for the foyer door (2026-09-15)
-                /* the two palms the terrazzo lobby has always deserved (2026-09-10) */
-                { key: 'palm_tree',      deg: 68,  r: 17.2, level: 0 },
-                { key: 'palm_tree',      deg: 292, r: 17.4, level: 0, rot: 40 },
-                /* THE CUBICLE POOL (2026-09-10): two round cubicles in the
-                   quiet arc between the stair and the leaderboard — the only
-                   right angles in the building are inside them, and they are
-                   round on the outside, so Form 90 was never filed. They carry
-                   a 1 m collision disc: ground floor only, never the slab. */
-                { key: 'round_cubicle',  deg: 325, r: 15.4, level: 0, rot: 20 },
-                { key: 'round_cubicle',  deg: 337, r: 16.2, level: 0, rot: -15 },
-                { key: 'computer_chair_blue', deg: 322, r: 14.3, level: 0, rot: 40 },   // the cubicles' chairs (2026-09-13)
-                { key: 'computer_chair_grey', deg: 340, r: 17.0, level: 0, rot: 200 },
-                /* the building's muzak, on top of the lockers */
-                { key: 'retro_speakers', deg: 105.5, r: 20.35, level: 0, y: 1.85 },
-                /* three empty round frames on the lower wall. Records has the
-                   photographs. Records is not releasing the photographs. */
-                { key: 'picture_round_a', deg: 186, level: 0, wall: true },   // moved from 188° for the foyer door (2026-09-15)
-                { key: 'picture_round_b', deg: 216, level: 0, wall: true },   // 2° west for the Clock Room's door (2026-09-11)
-                { key: 'picture_round_c', deg: 247, level: 0, wall: true },         // moved from 250°: Room 1984's door
-                { key: 'potted_plant',   deg: 78,  r: 19.2, level: 0 },   // 2026-09-11: was 76° — Room 86's door is there now
-                { key: 'potted_plant',   deg: 284, r: 19.2, level: 0 },
-                { key: 'fire_extinguisher', deg: 172, level: 0, wall: true },
-                { key: 'fire_extinguisher', deg: 262, level: 0, wall: true },       // moved from 258°: Room 1984's door
-                { key: 'wall_clock',     deg: 165, level: 0, wall: true },
-                { key: 'wall_clock',     deg: 293, level: 0, wall: true },
-                /* the cameras (2026-09-13): over Reception's counter and over the vault — the building watches the till */
-                { key: 'security_camera', deg: 113, level: 0, wall: true, mount: 3.3 },
-                { key: 'security_camera', deg: 62,  level: 0, wall: true, mount: 3.3 },
-                { key: 'exit_sign',      deg: 180, level: 0, r: 20.42, mount: 2.62 },
-                { key: 'notice_board',   deg: 151, level: 0, wall: true, mount: 1.3 },   // LOCKE'S CASE BOARD (the counter md_board_hq)
-                { key: 'wet_floor_sign', deg: 156, r: 18.4, level: 0, rot: -30 },
-                { key: 'mop_bucket',     deg: 143, r: 19.4, level: 0 },
-                /* (Kit's waiting chair at the desk is gone: DOOR HQ 2.0 wave 1, mondo 11-26 "No kit sitting down in front of Rhonda") */
-                { key: 'cardboard_box',  deg: 245, r: 19.0, level: 0, rot: 20 },
-                { key: 'cardboard_box',  deg: 245, r: 19.0, level: 0, y: 0.42, rot: 60 },
-                /* mezzanine */
-                { key: 'filing_cabinet', deg: 20,  level: 1, wall: true },
-                { key: 'filing_cabinet', deg: 23,  level: 1, wall: true },
-                { key: 'round_cabinet',  deg: 113, r: 22.9, level: 1 },   // moved from 120° for IT's door (plan 7.4, 2026-09-13)
-                { key: 'cardboard_boxes', deg: 133, r: 23.0, level: 1, rot: 40 },   // moved from 180° for Bay 7's door (plan 7.5)
-                { key: 'cardboard_box',  deg: 136, r: 22.8, level: 1 },
-                { key: 'office_locker',  deg: 232, level: 1, wall: true },   // moved from 240° for Room 360's door (plan 7.4)
-                { key: 'potted_plant',   deg: 265, r: 23.0, level: 1 },   // moved from 300°: THE GALLERY's stair (278°–312°, 2026-09-16)
-                { key: 'water_cooler',   deg: 165, level: 1, wall: true },
-                { key: 'fire_extinguisher', deg: 105, level: 1, wall: true },
-                { key: 'wall_clock',     deg: 255, level: 1, wall: true },
-                /* Otto's tool crates (DOOR_CAST): one at each door he might be working on */
-                { key: 'cardboard_box',  deg: 258,   r: 22.95, level: 1, rot: 20 },   // moved from 309°: THE GALLERY's stair
-                { key: 'cardboard_box',  deg: 84,    r: 22.95, level: 1, rot: -30 },
-                /* mezzanine clerk stations (the kidney desks, plan 2.2):
-                   against the upper wall so the 2.2 m ring stays walkable —
-                   convex side to the hall, the chair BESIDE the desk, never
-                   in front of it (doorhq.test.js checks the free band) */
-                { key: 'desk_wedge_a',   deg: 100, r: 23.05, level: 1, rot: 180 },
-                { key: 'office_chair',   deg: 97.3, r: 23.05, level: 1, rot: 60 },
-                { key: 'crt_terminal',   deg: 100, r: 23.1, level: 1, y: 0.76 },
-                { key: 'papers_b',       deg: 101.6, r: 22.95, level: 1, y: 0.76, rot: 25 },
-                { key: 'desk_wedge_a',   deg: 325, r: 23.05, level: 1, rot: 180 },
-                { key: 'teal_chair',     deg: 327.7, r: 23.05, level: 1, rot: -60 },
-                { key: 'table_lamp',     deg: 323.6, r: 23.1, level: 1, y: 0.76 },
-                { key: 'notebook_paper', deg: 325.8, r: 22.95, level: 1, y: 0.76, rot: -20 },
-                /* the 2026-09-10 kit on the slab: the clerks' coffee (the one
-                   at 100° keeps the pot; the one at 325° keeps the radio), the
-                   bin, the coat rail, two more empty frames. Everything on a
-                   desk sits above y 0.5 and is exempt from the walkable-band
-                   check — nothing NEW with a footprint goes on the slab. */
-                { key: 'coffee_maker',   deg: 98.4,  r: 23.1,  level: 1, y: 0.76, rot: 6 },
-                { key: 'coffee_mug',     deg: 102.2, r: 23.05, level: 1, y: 0.76, rot: 30 },
-                { key: 'stapler',        deg: 99.0,  r: 22.9,  level: 1, y: 0.76, rot: 60 },
-                { key: 'retro_radio',    deg: 322.6, r: 23.15, level: 1, y: 0.76, rot: 200 },
-                { key: 'manila_folders', deg: 327.4, r: 22.95, level: 1, y: 0.76, rot: 15 },
-                { key: 'trash_bin',      deg: 105.5, r: 23.3,  level: 1 },
-                { key: 'hook_rail_long', deg: 342,   level: 1, wall: true, mount: 1.8 },
-                { key: 'picture_round_a', deg: 32,   level: 1, wall: true },
-                { key: 'picture_round_c', deg: 247,  level: 1, wall: true },        // moved from 288° (2026-09-13), then from 281°: THE GALLERY's stair (2026-09-16)
-                /* THE GALLERY (level 2, 2026-09-16): lamps between the four exploration doors, a plant, the notice frames */
-                { key: 'potted_plant',   deg: 228, r: 23.0, level: 2 },
-                { key: 'potted_plant',   deg: 330, r: 23.0, level: 2 },
-                { key: 'picture_round_a', deg: 60, level: 2, wall: true },
-                { key: 'picture_round_c', deg: 205, level: 2, wall: true },
-                { key: 'fire_extinguisher', deg: 255, level: 2, wall: true },
+                { key: 'office_chair',   deg: 180, r: 3.1, level: 0, rot: 180 },            // Rhonda's (DOOR_CAST rhonda)
+                { key: 'crt_terminal',   deg: 168, r: 4.42, level: 0, y: 1.05 },
+                { key: 'desk_lamp',      deg: 150, r: 4.45, level: 0, y: 1.05, rot: 20 },
+                { key: 'papers_b',       deg: 186, r: 4.45, level: 0, y: 1.05, rot: -20 },
+                { key: 'coffee_mug',     deg: 175, r: 4.5,  level: 0, y: 1.05, rot: 40 },
+                { key: 'laminator',      deg: 205, r: 4.45, level: 0, y: 1.05, rot: 180 },   // the INTAKE SHEET's
+                { key: 'vending_machine', deg: 352, level: 0, wall: true },
+                { key: 'vending_machine', deg: 8,   level: 0, wall: true },
+                { key: 'vending_machine', deg: 76,  level: 0, wall: true },
+                { key: 'vending_machine', deg: 157, level: 0, wall: true },
+                { key: 'vending_machine', deg: 204, level: 0, wall: true },
+                { key: 'vending_machine', deg: 318, level: 0, wall: true },
+                { key: 'notice_board',   deg: 145, level: 0, wall: true, mount: 1.3 },        // LOCKE'S CASE BOARD (the counter md_board_hq)
             ],
-            /* where DOOR agents stand (fixed) and roster vessels loiter */
-            agents: [
-                { deg: 0,   r: 1.4, level: 0, face: 0,   line: 'The agent does not look up. “Take a number.”' },
-                /* the intake clerk on the reception wedge's chair (seated; Rhonda moved to the round desk 2026-09-06) */
-                { deg: 99, r: 18.95, level: 0, face: 279, gender: 'female', pose: 'hqSit', reach: 3.2, label: 'INTAKE CLERK', line: '“Forms are on the left. The left has moved.”' },
-                { deg: 288, r: 18.8, level: 0, face: 108, line: '“It’s 90 degrees.” … “Oh shit.”', patrol: true },   // THE ROUNDS (2026-09-19): the floor watch walks a loop
-                { deg: 45,  r: 22.4, level: 1, face: 225, line: '“Check your corners.” Not a greeting.', patrol: true },   // … and the mezzanine's
-                /* THE GALLERY (2026-09-16): the watch on the third ring, at the top of its stair */
-                { deg: 318, r: 22.3, level: 2, face: 138, label: 'THE GALLERY WATCH', line: '“Third ring. Nothing up here launches. Everything up here looks.” They do not say at what.' },
-            ],
-            npcSpots: [
-                { deg: 63,  r: 14.6, level: 0, face: 240 },
-                { deg: 300, r: 13.4, level: 0, face: 120 },
-                { deg: 243, r: 12.9, level: 0, face: 60 },
-                { deg: 130, r: 22.2, level: 1, face: 310 },
-                { deg: 225, r: 22.6, level: 1, face: 45 },
-            ],
-            lines: [
-                '“Parallel lines never meet. Adjacent realities meet at corners. Please do not stand in corners.”',
-                '“You’re what remains of our standards.”',
-                '“Every crossing is inspected. Every entity is filed. Your entity will be filed.”',
-                '“The vending machine was on the other side yesterday.” “It has always been there.”',
-                '“We do not fight the war. We process it.”',
-                '“If it’s round it’s ours. If it’s square, fill out Form 90.”',
-            ],
-            spawn: { deg: 180, r: 15.4, level: 0, face: 0 },
+            agents: [],
+            npcSpots: [],
+            lines: [],
+            spawn: { deg: 180, r: 14, level: 0, face: 0 },
         },
 
         /* ── THE FOURIER FOYER (HQ plan 7.4, the last row; 2026-09-15) ──
@@ -35579,7 +35306,7 @@ const DOOR_HQ = {
                    white plaster 3 m from every lamp needs far less than the hall's stone 20 m off */
                 lampK: 0.5, keyLamp: 0.3,
                 plate: { x: 6.2, z: -5.2, y: 3.4 },
-                clipBeside: { wall: 'n', above: 3.75, reach: 2.9 },   // THE CUT BESIDE (three-renderer.js): the hall's mezzanine (its slab's underside is at 3.8 m) and gallery run 2.8 m past the tangent into the 7 m atrium; `reach` = that depth, cut from this room's own top while you stand in the hall
+                /* (DOOR HQ 2.0, 2026-11-26: the Lobby's gallery no longer runs past its drum, so nothing of it stands in this room: no `clipBeside`) */
                 look: HQ_ROOM_LOOKS.retro,
             },
             doors: [
@@ -35599,64 +35326,26 @@ const DOOR_HQ = {
                   action: {},
                   desc: 'The lift you came down in. It has one button, and the button is on the other end.' },
             ],
-            counters: [
-                /* CORNER INSPECTION → the by-id panel (map.js): your corners, counted and verified */
-                { id: 'inspection', x: 7.05, z: 0, face: 270, plateY: 1.85, radius: 1.9, verb: 'PRESENT',
-                  label: 'CORNER INSPECTION', sub: 'YOUR CORNERS · VERIFIED', action: {},
-                  desc: 'The inspection desk. Every entity entering the building has its corners counted and its angles verified against the standard. The standard is ninety. It has always been ninety.' },
-            ],
+            /* DOOR HQ 2.0 (2026-11-26, LOOK_BOOK.md "Foyer"): the hero shot is from the lift doors straight down the main line to
+               Rhonda, the flue and the Cube, so the line from the lift to the double doors stays empty. No inspector, no doorman (only
+               story characters in DOOR HQ), nothing in a doorway's square. */
+            counters: [],
             props: [
-                /* ── the floor: the seal, the mat, the lane to the revolving door ── */
-                { key: 'door_seal',      x: 0, z: 0, size: 5.2 },                         // bigger in the bigger room
+                { key: 'door_seal',      x: 0, z: 0, size: 5.2 },
                 { key: 'doormat',        x: 0, z: 4.45 },
-                { key: 'railing_1m',     x: -1.25, z: -4.4, face: 0 },
-                { key: 'railing_1m',     x: 1.25,  z: -4.4, face: 0 },
-                { key: 'railing_1m',     x: -1.25, z: -3.6, face: 0 },
-                { key: 'railing_1m',     x: 1.25,  z: -3.6, face: 0 },
-                /* ── THE DOOR LOGO WALL: his lockup on a black sign band over the double doors (the panel round them is 3.7 m) ── */
-                { key: 'door_logo_wall', wall: 'n', x: 0, mount: 3.8 },
-                /* ── the east wall: CORNER INSPECTION — the desk, the screen, the log ── */
-                { key: 'tanker_desk',    wall: 'e', z: 0 },
-                { key: 'crt_terminal',   x: 8.3,  z: -0.45, y: 0.76, face: 270 },
-                { key: 'clipboard_flat', x: 8.35, z: 0.35,  y: 0.76, face: 260 },    // THE CORNER LOG: four, ninety, four, ninety
-                { key: 'pen',            x: 8.2,  z: 0.6,   y: 0.76, face: 300 },
-                { key: 'desk_lamp',      x: 8.3,  z: -0.62, y: 0.76, face: 250 },      // on the desk (it stood 0.2 m past its end)
-                { key: 'coffee_mug',     x: 8.1,  z: 0.62,  y: 0.76, face: 140 },
-                { key: 'computer_chair_grey', x: 7.8, z: 0, face: 90 },              // the inspector's, facing the desk
-                { key: 'wall_clock',     wall: 'n', x: -6.2, mount: 2.9 },              // off the fillet (THE RETRO-FUTURIST PASS): over the notices side of the revolving door
-                { key: 'security_camera', wall: 'e', z: 1.0, mount: 4.4 },
-                { key: 'lava_lamp',      x: 8.1,  z: 0.15,  y: 0.76, face: 250 },             // THE RETRO-FUTURIST PASS: on the inspector's desk, the wax counting corners
-                /* ── the south wall: the front door, the mat, the stand, the sign over it ── */
-                { key: 'exit_sign',      wall: 's', x: 0, mount: 3.0 },
-                { key: 'umbrella_stand', x: 2.2,  z: 4.6,  face: 0 },
-                { key: 'trash_bin',      x: -7.9, z: 4.5,  face: 250 },
-                { key: 'wet_floor_sign', x: -4.5, z: 3.4,  face: 140 },
-                { key: 'potted_plant',   x: 7.9,  z: 4.5,  face: 200 },
-                /* ── the west wall: the bench, the hooks, the notices ── */
-                { key: 'park_bench',     x: -7.0, z: 0, face: 90, rect: false },   // the visitors' bench, facing the seal
-                { key: 'hook_rail',      wall: 's', x: -4.5 },
-                { key: 'notice_board',   wall: 'w', z: -1.75 },
-                { key: 'lesson_plaque',  wall: 'w', z: 1.75, lesson: 'rooms' },                                 // D8 (3): a door in one room, its twin in the next — the foyer ↔ the hall, safe at both ends
-                { key: 'potted_plant',   x: -3.0, z: -4.4, face: 30 },                         // either side of the doors
+                { key: 'door_logo_wall', wall: 'n', x: 0, mount: 3.8 },                     // his lockup over the double doors (scene A's close pan)
+                { key: 'potted_plant',   x: -3.0, z: -4.4, face: 30 },                      // either side of the doors
                 { key: 'potted_plant',   x: 3.0,  z: -4.4, face: 330 },
-                /* ── the north wall: the plate, the camera over the revolving door ── */
-                { key: 'nameplate',      wall: 'n', x: 6.2, mount: 1.6 },
-                { key: 'security_camera', wall: 'n', x: -7.6, mount: 4.6 },
-                { key: 'saucer_pendant', x: -5.25, z: -1.75, ceil: true },                        // THE RETRO-FUTURIST PASS: the saucers, lit from under (four in the bigger room)
-                { key: 'saucer_pendant', x: 5.25,  z: -1.75, ceil: true },
-                { key: 'saucer_pendant', x: -5.25, z: 1.75, ceil: true },
-                { key: 'saucer_pendant', x: 5.25,  z: 1.75, ceil: true },
-                { key: 'fluorescent',    x: 0,    z: 0, ceil: true, face: 0 },                  // the lobby's own strip stays, between them
+                { key: 'concierge_podium', x: 6.6, z: -1.2, face: 270 },                    // a porter's stand nobody uses
+                { key: 'luggage_cart',   x: -7.0, z: -2.8, face: 120 },                      // abandoned
+                { key: 'umbrella_stand', x: 2.6,  z: 4.6, face: 0 },
+                { key: 'exit_sign',      wall: 's', x: 0, mount: 3.0 },
+                { key: 'lesson_plaque',  wall: 'w', z: 1.75, lesson: 'rooms' },             // D8 (3): a door in one room, its twin in the next
+                { key: 'psx_ceiling_lamp_4_on', x: -4.4, z: 0, ceil: true },
+                { key: 'psx_ceiling_lamp_4_on', x: 4.4,  z: 0, ceil: true },
             ],
-            agents: [
-                { x: 7.8, z: 0, face: 90, pose: 'hqSit', gender: 'male', label: 'THE INSPECTOR', reach: 1.9,
-                  line: '“Four corners. Ninety degrees. Proceed. — No, I don’t need to look. Everyone who has ever stood there has had four.”' },
-                { x: -2.8, z: 4.0, face: 0, pose: 'hqArms', gender: 'female', label: 'THE DOORMAN', reach: 1.7,
-                  line: '“The doors swing one way. If you come out where you went in, you turned round. It happens more than you would think.”' },
-            ],
-            npcSpots: [
-                { x: -7.0, z: 0, face: 90 },   // on the bench, waiting to be inspected
-            ],
+            agents: [],
+            npcSpots: [],
             onlineSpots: [],
             lines: [
                 '“Is this the front?” “It is a front.”',
@@ -87990,7 +87679,10 @@ const HQ_STAGE_RULES = {
            its literally a tiny office, it should fit in the same room"): a round hall may hold a row for each of its ground-floor
            doors (hqStageRoundJoins). In the hall every joined room stands beside it; in a joined room only the hall does (the
            hall's other joined doors are plain doors until you step into the hall). A box room has one row at most. */
-        { a: 'central_egress', door: 'office', b: 'office', bDoor: 'egress' },   // YOUR OFFICE ⇄ the main hall, the closet door at 135°
+        /* (DOOR HQ 2.0, 2026-11-26: Your Office's door stands on the Ring now, plans/1_lobby_level_plan.png; its row left with it.)
+           THE OPEN FRONTS: each room thread adds its own row here once its box room has the matching `lobby` door:
+           { a: 'central_egress', door: 'doorstore' | 'medical' | 'cafeteria', b: <the room>, bDoor: 'lobby' } */
+        { a: 'central_egress', door: 'medical', b: 'medical', bDoor: 'lobby' },   // MEDICAL, the open front at 100 degrees (14 x 4.5 m)
         /* DOOR STORE (DOOR HQ 2.0 wave 2, 2026-11-26): the Lobby's open front (its `doorstore` row, no leaf) ⇄ the store's `lobby` opening */
         { a: 'central_egress', door: 'doorstore', b: 'doorstore', bDoor: 'lobby' },
     ],
@@ -88986,6 +88678,9 @@ function hqStageSpanAt(hw, hd, nbs, x, z, pad) {
    cistern) is a map fact only until its place is built. */
 /* the opening a door's leaf makes (the renderer's rule, _hqBuildDoors: the leaf's measured aspect sets the width) */
 function hqDoorOpening(door) {
+    /* THE OPEN FRONT (DOOR HQ 2.0, 2026-11-26): `open: { w, h }` = a doorless opening that size (Medical, the Door Store, the
+       Cafeteria and the Foyer onto the Lobby); a round join's opening is the smaller of its two ends, so both write the same size */
+    if (door && door.open && +door.open.w > 0) return { ow: +door.open.w, oh: +door.open.h || 4.5, wide: true, open: true };
     const cat = (door && door.leaf && DOOR_HQ.catalogue) ? DOOR_HQ.catalogue[door.leaf] : null;
     const wide = cat ? !!cat.wide : !!(door && door.wide), oh = wide ? 2.45 : 2.25;
     let ow = wide ? 2.2 : 1.1;
@@ -111784,9 +111479,9 @@ const DOOR_CAST = {
         name: 'AGENT BELLE', title: 'FIELD AGENT · YOUR COLLEAGUE', dept: 'Operations', model: 'belle', gender: 'female',
         lines: [],
         spots: [
-            { room: 'central_egress', deg: 257, r: 13.9, level: 0, face: 77, pose: 'hqSit', reach: 2.0, p: 0.6,
+            { room: 'central_egress', deg: 250, r: 12.5, level: 0, face: 70, reach: 2.0, p: 0.6,   /* DOOR HQ 2.0: standing until the Lobby has its couches (sitting thread) */
               doing: 'On break, at the round desk. She sits where she can see every door.' },
-            { room: 'central_egress', deg: 58.5, r: 15.55, level: 0, face: 238, pose: 'hqSit', reach: 2.0, p: 0.4,
+            { room: 'central_egress', deg: 58, r: 13, level: 0, face: 238, reach: 2.0, p: 0.4,
               doing: 'On the couch, not reading the file in her lap. She has read it.' },
         ],
     },
@@ -111826,7 +111521,7 @@ const DOOR_CAST = {
                outer edge (the console itself wins the prompt when you stand at it) */
             /* `across` (2026-11-26, mondo: "it's hard to target her with the mouse to talk to her"): talked to from anywhere within
                `reach` while the camera aims at her, over the DISPATCH plate and Kit's chair in front of the desk (map.js THE DESK TALK) */
-            { room: 'central_egress', deg: 180, r: 2.05, y: 0.05, level: 0, face: 180, pose: 'hqSit', reach: 5.0, across: true,
+            { room: 'central_egress', deg: 180, r: 3.1, level: 0, face: 180, pose: 'hqSit', reach: 5.0, across: true,   /* DOOR HQ 2.0: her chair in the well between the slim desk and the flue */
               doing: 'Behind the round counter. Intake for interdimensional species, processed like the mail. A stamp comes down. Something is misfiled, conveniently.' },
         ],
     },
@@ -111840,7 +111535,7 @@ const DOOR_CAST = {
             /* mondo 2026-11-12: Kit is not at the counter until Rhonda lets her stay (the first quest's `desk` stage) */
             /* DOOR HQ 2.0 wave 1 (2026-11-26, mondo: "No kit sitting down in front of Rhonda"): no folding chair; she stands off the desk's
                end, past the gap into the well, out of the line from the front door to Rhonda */
-            { room: 'central_egress', deg: 216, r: 7.4, level: 0, face: 36, reach: 2.0, after: { quest: 'orientation', stage: 'desk' },
+            { room: 'central_egress', deg: 238, r: 6.2, level: 0, face: 88, reach: 2.0, after: { quest: 'orientation', stage: 'desk' },
               doing: 'By the end of the counter, watching Rhonda not find her paperwork. Scheduled for deportation. The schedule is several centuries out.' },
         ],
     },
@@ -111929,7 +111624,7 @@ const DOOR_CAST = {
         name: 'THE JANITOR', title: 'CONTRACT CLEANING · $15/HR · NO BENEFITS', dept: 'Contractor', model: 'janitor', gender: 'male',
         lines: [],
         spots: [
-            { room: 'central_egress', deg: 146.5, r: 18.55, level: 0, face: 244, pose: 'hqLean', reach: 2.0, p: 0.7,
+            { room: 'central_egress', deg: 150, r: 23.5, level: 0, face: 330, pose: 'hqLean', reach: 2.0, p: 0.7,
               /* leaning on the mop: the rail-lean clip puts his forearms at ~1.1 m in
                  front of him; the mop hangs plumb from the right hand (upright =
                  world-space pos/rot) — the GLB stands on its HEAD, so no flip; the
