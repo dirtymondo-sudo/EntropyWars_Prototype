@@ -9997,11 +9997,15 @@
             if (!panel || !body) return;
             _hqPanelTarget = t;
             let html = '';
-            if (t.kind === 'door') html = _hqDoorPanelHtml(t);
+            if (t.kind === 'door' && t.door && t.door.locked) html = '';
+            else if (t.kind === 'door') html = _hqDoorPanelHtml(t);
             else if (t.kind === 'counter') html = _hqCounterPanelHtml(t);
             else if (t.kind === 'notice') html = _hqNoticePanelHtml(t);
             else html = _hqNpcPanelHtml(t);
-            const say = !(t.kind === 'door' || t.kind === 'counter' || t.kind === 'notice') || _hqHealDlg(t);   // the healing machine asks in THE DIALOGUE BOX
+            /* THE LOCKED DOOR (2026-11-26, mondo: H-Wing is end game, its doors from DOOR HQ are locked but the bottom-most one): a door row's
+               `locked: true` reads one line in THE DIALOGUE BOX, nothing else */
+            if (t.kind === 'door' && t.door && t.door.locked) html = window.EWDlg.html({ who: '', line: 'Locked.', band: 'data-close="1"' });
+            const say = !(t.kind === 'door' || t.kind === 'counter' || t.kind === 'notice') || _hqHealDlg(t) || !!(t.kind === 'door' && t.door && t.door.locked);   // the healing machine asks in THE DIALOGUE BOX
             /* THE DIALOGUE BOX (mondo 11-18: "delete all of that bullshit"): a person's box has no hint line under it */
             body.innerHTML = say ? html : html + '<p class="hq-panel-foot">ESC · RIGHT CLICK · CLOSE</p>';
             _hqPanelAt = performance.now();
