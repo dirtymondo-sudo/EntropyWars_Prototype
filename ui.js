@@ -7397,7 +7397,7 @@
             if (_pauseLastPlace && _gamePaused) { if (_pauseLastPlace.key === placeKey) place = _pauseLastPlace.snap; _pauseLastPlace = null; }
             _pauseOverlay._ewPlaceKey = placeKey;
 
-            const nav = cmds.map((c, i) => `<button class="hq-pause-cmd${_pauseTab === c.id ? ' sel' : ''}${i === _pauseCursor ? ' cur' : ''}${c.danger ? ' danger' : ''}" data-pause-cmd="${c.id}" role="menuitem"><b>${c.label}</b><span>${c.sub}</span></button>`).join('');
+            const nav = cmds.map((c, i) => `<button class="hq-pause-cmd${_pauseTab === c.id ? ' sel' : ''}${i === _pauseCursor ? ' cur' : ''}${c.danger ? ' danger' : ''}" data-pause-cmd="${c.id}" role="menuitem"><b>${c.label}</b></button>`).join('');
             const headHtml = `<div class="hq-pause-title"><div><b>${_pauseOnline ? 'MENU' : 'PAUSED'}</b><span>${_inEditor ? 'THE MAP EDITOR' : _pauseOnline ? _pauseEsc(modeLabel) + ' · ONLINE · THE MATCH KEEPS GOING' : _pauseEsc(modeLabel)}</span></div></div>
                     ${vitals}`;
             const footHtml = `<span>↑ ↓ COMMAND</span><span>ENTER SELECT</span>${_pauseTab === 'settings' ? '<span>← → PAGE</span>' : ''}<span>ESC / P RESUME</span>`;

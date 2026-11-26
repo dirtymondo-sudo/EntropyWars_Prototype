@@ -3390,7 +3390,7 @@
         }
         function _hqPauseNavHtml() {
             const P = _hqPause;
-            return _HQ_PAUSE_CMDS.map((c, i) => `<button class="hq-pause-cmd${P.cmd === c.id ? ' sel' : ''}${i === P.cursor ? ' cur' : ''}${c.id === 'exit' ? ' danger' : ''}" data-cmd="${c.id}" role="menuitem"><b>${c.label}</b><span>${c.sub}</span></button>`).join('');
+            return _HQ_PAUSE_CMDS.map((c, i) => `<button class="hq-pause-cmd${P.cmd === c.id ? ' sel' : ''}${i === P.cursor ? ' cur' : ''}${c.id === 'exit' ? ' danger' : ''}" data-cmd="${c.id}" role="menuitem"><b>${c.label}</b></button>`).join('');
         }
         function _hqPausePartyHtml() {
             const rec = _hqParty();
