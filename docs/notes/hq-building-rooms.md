@@ -1262,6 +1262,35 @@ mondo: "can you make my office in door hq not be behind a loading screen? its li
   kitchen, IT ⇄ server room, Observatory ⇄ records, stairwell ⇄ works / tunnel, dock ⇄ garage, services ⇄ Training.
 - Seen on screen (probe, llvmpipe): hall -> office -> hall on foot, no card either way.
 
+## THE DOORWAY CHECK + THE DESK TALK (2026-11-26, DOOR HQ 2.0 wave 1, thread 5)
+mondo 11-26: "I am always walking through a door and then someone is standing right there in the entrance blocking me from moving";
+"the table is placed too close in front of the door so when I walk in I'm just automatically stuck"; "Rhonda's desk is too wide/thick
+and it's hard to target her with the mouse to talk to her". Plan of record: https://claude.ai/artifact/69S69c6y5uBALhoQmiYsCY (thread 5).
+- **THE RULE:** every door keeps ONE BATTLE SQUARE clear on each side: 3.5 m x 3.5 m, centred on the opening, from the wall into the
+  room. Nothing that stops a body stands in it: no prop with a footprint or a mesh collider, no kiosk, no flight, no agent, no native
+  post, no story character's post, and no walker stop. A door's far side is the far room's own door, so checking every room checks both.
+- **`node find-doorways.js [room id…]`** (repo root, data.js through load-data.js, ~1 s for all 89 DOOR HQ rooms; exit 1 on any row).
+  It copies three-renderer.js's own rules: the prop blocker (`cat.foot` / `cat.rect` x the row's scale, wall props pushed in by
+  their depth) and THE REAL COLLISION (`_hqMcWants`: a floor model with no footprint still collides; sized from its span, marked
+  `size est.`; anything 0.35 m tall or less is walked over). Rows: PROP, COUNTER (the hall's directory kiosk only; every other
+  counter is a plate in the air), STAIR, AGENT, POST, CAST, ROUTE. `lane` = in the line straight in through the opening (its width
+  plus a body each side), `edge` = in the square beside it. `--lane-only`, `--no-route`, `--json`, `--square <m>`.
+- **ROUTE is the renderer's, not the rooms':** THE ROUNDS (three-renderer.js `_hqRoundsStops` / `_hqRoundsDoorLanding`) make every
+  door's landing a STOP, 1.7 m in on a straight wall and 2.2 m in on the round hall, and a walker WAITS there 2-7 s
+  (`HQ_ROUNDS_DEFAULT.pauseMs`). That is the "someone standing right there" every time. The fix is one change in the renderer (walk a
+  door stop through without the pause, or stand it 3.5 m+ in), which clears the row in every room at once. Not done here: the
+  frame-drop thread holds three-renderer.js (11-26). Run `--no-route` until it lands.
+- **First run (11-26, today's building):** 89 rooms, 1 clear. Without ROUTE: 17 clear, 327 rows (PROP 238, POST 45, AGENT 40, CAST 4);
+  in the lane only: 216 rows in 65 rooms. The worst lanes: the Fourth Floor (labs) 13, Bay 3 11, the Second and Third Floors 10 each,
+  the Dream Lab 9, Medical 6, the Interrogation Room 5 (the steel table, two chairs and the Interviewer 2.6 m in front of the door, as
+  mondo said). No room was moved here: the old rooms are rebuilt in waves 2-4, and each rebuilt room must read 0 rows before its PR.
+- **THE DESK TALK (map.js `_hqAcrossDesk`, data.js DOOR_CAST spot `across: true`):** the renderer's prompt is the NEAREST thing in
+  reach (`_hqFindTarget`), and in front of Rhonda's desk that is always the DISPATCH plate (radius 2.4 m, 4.85 m in front of her) or
+  Kit's chair; Rhonda sits 3.9 m away in the well. A cast post with `across: true` now wins over a counter, a seat, a find or nothing
+  while you stand within its `reach` (Rhonda 5.0 m) and the camera aims within 40 degrees of her (HQ_DESK_TALK); a door, a vehicle or
+  another person still wins, and looking away gives the plate back. map.js wraps the renderer's onPrompt / onInteract and re-reads the
+  prompt 5 times a second while such a post is in the room. Online: HQ only, no relay needed.
+
 ## DOOR HQ 2.0, WAVE 1: THE CLEAN-OUT AND ONE NAME (2026-11-26)
 mondo's DOOR HQ 2.0 list (11-26; plan doc https://claude.ai/artifact/69S69c6y5uBALhoQmiYsCY, thread 1 "Clean-out and names"), done in
 today's building before any rebuild:

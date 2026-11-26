@@ -2261,8 +2261,8 @@
                 let ok = false;
                 try { ok = ThreeRenderer.hq.enter({
                     host, room: roomId, profile, avatar: _hqAvatar(profile),
-                    onPrompt: _hqSetPrompt,
-                    onInteract: _hqInteractTarget,
+                    onPrompt: _hqDeskPrompt,   // THE DESK TALK (2026-11-26): a person across a desk wins the prompt you aim at her
+                    onInteract: (t) => _hqInteractTarget(_hqAcrossDesk(t)),
                     onEnterDoor: _hqWalkThroughDoor,
                     /* THE DOOR GUN (HQ plan 9.5): the pair on file (cleared on a fresh arrival — the rope is for one visit),
                        the filer a click calls (LEFT = A, RIGHT = B → the slot), the beats (drawn / holstered / refused),
@@ -9865,6 +9865,63 @@
             if (act.fn && typeof window[act.fn] === 'function') return { fn: act.fn };
             if (act.pd && typeof pdLevel === 'function' && pdLevel(act.pd)) return { pd: act.pd, back: act.back || null };   // A DOOR INTO A DUNGEON
             return null;
+        }
+        /* THE DESK TALK (DOOR HQ 2.0 wave 1, 2026-11-26; mondo: "Rhonda's desk is too wide/thick and it's hard to target her with the
+           mouse to talk to her"). The renderer's prompt is the NEAREST thing in reach, and in front of Rhonda's desk the nearest thing is
+           always the DISPATCH plate on the floor (or Kit's chair): Rhonda sits 4 m away behind the counter. A cast post with `across: true`
+           (data.js DOOR_CAST spots) is talked to from anywhere within its `reach` while the camera aims at her (within HQ_DESK_TALK.cone
+           degrees of her): she replaces a counter, a seat, a find or nothing as the target. A door, a vehicle or another person still wins.
+           Look away from her and the plate under you is the target again. The prompt is re-read 5 times a second while such a post is
+           in the room (the renderer only reports a change of ITS target, not a turn of the camera). */
+        const HQ_DESK_TALK = { cone: 40, dy: 1.6, everyMs: 200 };
+        let _hqDeskKey = '', _hqDeskTimer = 0, _hqDeskRoom = null, _hqDeskPosts = null;
+        function _hqDeskPostsHere() {
+            if (_hqDeskRoom === _hqCurRoom && _hqDeskPosts) return _hqDeskPosts;
+            _hqDeskRoom = _hqCurRoom; _hqDeskPosts = [];
+            try {
+                (window.hqCastInRoom ? window.hqCastInRoom(_hqCurRoom, _hqProfile()) : (typeof hqCastInRoom === 'function' ? hqCastInRoom(_hqCurRoom, _hqProfile()) : [])).forEach(c => {
+                    const s = c && c.spot; if (!s || !s.across) return;
+                    const P = (s.deg != null && typeof hqPolar === 'function') ? hqPolar(s.deg, s.r || 0) : { x: +s.x || 0, z: +s.z || 0 };
+                    const m = c.member || {};
+                    _hqDeskPosts.push({ x: P.x, z: P.z, y: +s.y || 0, reach: +s.reach || 2,
+                        t: { kind: 'cast', id: 'hq-cast-' + c.id, label: m.name, sub: m.title || '', line: undefined, race: m.base || m.race || 'men in black', gender: m.gender || 'male', cast: c.id, doing: s.doing || null, talk: null, across: true } });
+                });
+            } catch (e) { _hqDeskPosts = []; }
+            return _hqDeskPosts;
+        }
+        function _hqAcrossDesk(t) {
+            try {
+                if (t && (t.kind === 'cast' || t.kind === 'npc' || t.kind === 'agent' || t.kind === 'door' || t.kind === 'vehicle' || t.aboard || t.sitting)) return t;
+                const TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
+                if (!TR || !TR.hq || !TR.hq.active || !TR.hq.active()) return t;
+                const posts = _hqDeskPostsHere(); if (!posts.length) return t;
+                if (TR.hq.hushed && TR.hq.hushed()) return t;   // THE HUSH: no people prompt on arrival
+                const p = TR.hq.pos(), w = (TR.hq.dev && TR.hq.dev.walk) ? TR.hq.dev.walk() : null;
+                if (!p || !w || w.paused) return t;
+                const fx = Math.sin(w.camYaw), fz = -Math.cos(w.camYaw), cosC = Math.cos(HQ_DESK_TALK.cone * Math.PI / 180);
+                let best = null, bestCos = -2;
+                posts.forEach(q => {
+                    const dx = q.x - p.x, dz = q.z - p.z, d = Math.hypot(dx, dz);
+                    if (d > q.reach || Math.abs((p.y || 0) - q.y) > HQ_DESK_TALK.dy || d < 0.01) return;
+                    const c = (dx * fx + dz * fz) / d;
+                    if (c >= cosC && c > bestCos) { bestCos = c; best = q.t; }
+                });
+                return best || t;
+            } catch (e) { return t; }
+        }
+        function _hqDeskPrompt(t) {
+            const t2 = _hqAcrossDesk(t);
+            _hqDeskKey = t2 ? (t2.kind + ':' + t2.id) : '';
+            _hqSetPrompt(t2);
+            if (!_hqDeskTimer && _hqDeskPostsHere().length) _hqDeskTimer = setInterval(() => {
+                try {
+                    const TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
+                    if (!TR || !TR.hq || !TR.hq.active || !TR.hq.active() || !_hqDeskPostsHere().length) { clearInterval(_hqDeskTimer); _hqDeskTimer = 0; return; }
+                    if (_hqPanelTarget || _questTalkBusy) return;
+                    const t3 = _hqAcrossDesk(TR.hq.target()), k = t3 ? (t3.kind + ':' + t3.id) : '';
+                    if (k !== _hqDeskKey) { _hqDeskKey = k; _hqSetPrompt(t3); }
+                } catch (e) {}
+            }, HQ_DESK_TALK.everyMs);
         }
         /* E: direct doors go through, a console lights its screen (THE
            TERMINAL), everything else opens its panel */
