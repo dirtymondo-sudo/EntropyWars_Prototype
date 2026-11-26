@@ -33611,6 +33611,7 @@ const DOOR_HQ = {
         exec_desk:         { proc: 'exec_desk',      span: 2.4,  foot: 1.2, depth: 1.05, rect: { hw: 1.2, hd: 0.525 }, block: true },   // 4C: the executive desk (top at 0.76 — desk props sit at y: 0.76). A FLOOR prop since 2026-09-16: centred, the drawers on the sitter's side (−z), the modesty panel to the room (+z)
         arc_wall:          { proc: 'arc_wall',       h: 3.5,  foot: 0 },   // DOOR HQ 2.0 wave 3 (2026-11-26, the Works' factory): a curved partition in a box room (r, a0, a1 in compass degrees, holes by angle); collides by its own bands (three-renderer.js arc_wall)
         works_flue:        { proc: 'works_flue',     h: 8.75, foot: 0 },   // DOOR HQ 2.0 wave 3: the Incinerator's flue as the factory sees it, the Chute's hot mouth on its face (three-renderer.js works_flue)
+        incinerator_furnace: { proc: 'incinerator_furnace', h: 24.5, foot: 0, light: { color: 0xff7a2a, intensity: 3.0, dist: 46, y: 4 } },   // DOOR HQ 2.0 wave 4 (2026-11-26): THE INCINERATOR's pit, fire, hanging flue, falling doors and daylight up the chimney (three-renderer.js incinerator_furnace; the row at y 1 with lift 1 over the sunk pit)
         flue:              { proc: 'flue',           h: 10.5, foot: 2.3, block: true, glow: { y: 0.2, size: 7, color: 0xff7a2a }, light: { color: 0xff8a3a, intensity: 1.3, dist: 18, y: 0.5 } },   // DOOR HQ 2.0 (2026-11-26, the Works' middle level): the Incinerator's chimney through a level of the Works; the grating round its foot glows from the furnace below (three-renderer.js flue; the row's `h` = the room's height)
         room_wall:         { proc: 'room_wall',      h: 3.5,  foot: 0 },   // DOOR HQ 2.0 (2026-11-26): a partition inside a box room (the Kitchen behind the Cafeteria), or with `floor` a floor patch; sized by its row (`len`, `wallH`, `t`, `holes`), collides by its own slabs (three-renderer.js room_wall)
         serving_line:      { proc: 'serving_line',   span: 3.0,  foot: 1.5, wall: true, depth: 1.15, rect: { hw: 1.5, hd: 0.575 }, block: true },   // Room 86 (2026-09-16): a 3 m cafeteria counter — the hot wells + sneeze guard on the wall side, THE TRAY SLIDE (0.85 m) along the front; trays at z = wall + 0.95
@@ -34192,7 +34193,7 @@ const DOOR_HQ = {
         /* DOOR HQ 2.0 WAVE 4 (2026-11-26, plans/5_h_wing.png): the halls, the four vignettes and the six uncanny rooms; one plain door on every level */
         rooms: ['hwing_floor', 'hwing_desert', 'hwing_pines', 'hwing_corn', 'hwing_moon', 'hwing_home', 'natatorium', 'garden', 'thirteenth', 'mandela', 'upsidedown'],
         entries: [{ room: 'ring_g', door: 'hwing' }, { room: 'central_egress', door: 'hwing_upper' }, { room: 'garage', door: 'hwing' },
-                  { room: 'factory', door: 'hwing' }, { room: 'labs', door: 'hwing' }],
+                  { room: 'factory', door: 'hwing' }, { room: 'labs', door: 'hwing' }, { room: 'antechamber', door: 'hwing' }],
         legM: 48, barM: 12,
     },
     facility: {
@@ -34532,7 +34533,8 @@ const DOOR_HQ = {
             /* DOOR HQ 2.0 WAVE 4 (2026-11-26, H-WING): the uncanny rooms are H-Wing's; the third floor's garden door, the crawlspace's panel to the
                Thirteenth Floor and the room at the end's draught into the wing are closed (H-Wing is reached by its plain door on every level) */
             deadend: ['hwing'],
-            dungeon: ['oubliette'], site_prebuilt_hollow_earth_ug_cavern: ['dungeon'],                              // the Dungeon's moving wall to the Cavern
+            // + DOOR HQ 2.0 WAVE 4 (2026-11-26, the Works' bottom): the Dungeon's `ritual` door is cut: the Ritual Room is off the Incinerator
+            dungeon: ['oubliette', 'ritual'], site_prebuilt_hollow_earth_ug_cavern: ['dungeon'],                              // the Dungeon's moving wall to the Cavern
             site_prebuilt_fairy_forest_ow_ritual: ['lookingglass'], site_prebuilt_camelot_ow_forest: ['deadtree'],   // the dead tree: Bohemian Grove and Camelot's Forest touch by a trail
             site_prebuilt_fairy_forest_ow_redwood: ['lemuria'], site_prebuilt_hollow_earth_ow_agartha: ['woods'],     // the second Lemuria way (Mount Shasta's hidden adit stays)
             /* Area 51 to the D.U.M.B. was five ways: the floor lift (link area51_dumb) and the hidden vent stay */
@@ -38401,117 +38403,115 @@ const DOOR_HQ = {
             ],
             spawn: { x: 0, z: 2.6, face: 0 },
         },
+        /* ── DOOR HQ 2.0 WAVE 4: THE RITUAL ROOM, west of the Incinerator (its door to it on this room's south wall; HQ_WORLD zone
+           `incinerator`, rot 1). 28 x 17.5 m, 7 m high, old stone and candle light: the circle on the obsidian in the middle, the altar
+           against the far wall between two hooded figures, four braziers, the robes in the west bay, the cauldron in the east. ── */
         ritual: {
             label: 'THE RITUAL ROOM',
-            sub: 'THE UNDERCROFT · MEMBERS',
-            roomNo: '333', why: 'half of the address in Bay 5; the other half is upstairs and claims immunity',
             kind: 'box',
             shell: {
-                w: 8, d: 8, h: 3.6,
-                wallH: 3.6, dadoH: 1.2,
-                floor: 'obsidian', wall: 'dungeon', dado: 'dungeon_3', trim: 'dungeon_4', ceiling: 'dungeon',
-                floorColor: 0x6a6670, wallColor: 0x7a7270, dadoColor: 0x5c5250, ceilColor: 0x46403e,
+                w: 28, d: 17.5, h: 7,
+                wallH: 7, dadoH: 1.2,
+                floor: 'obsidian', wall: 'zl_hz_Brick_09__dungeon', dado: 'dungeon_3', trim: 'dungeon_4', ceiling: 'dungeon',
+                floorColor: 0x6a6670, wallColor: 0x7a6a64, dadoColor: 0x5c5250, ceilColor: 0x2e2826,
                 pipes: false,
                 strips: false,
-                light: { x: 0, z: 0 },
-                mood: { light: 0xff8040, ambient: 0.35 },
-                plate: { x: 0, z: -3.75, y: 3.0 },
+                keyLamp: 0,
+                lights: [],
+                mood: { light: 0xff8040, ambient: 0.2 },
+                plate: { x: 0, z: 8.65, y: 5.6 },
             },
             doors: [
-                { id: 'dungeon', wall: 'w', z: 0, leaf: 'leaf_cell',
-                  label: 'THE DUNGEON', sub: 'BACK TO THE CELLS',
-                  action: { room: 'dungeon', at: 'ritual' },
-                  desc: 'Back to the cells and the torches.' },
-                { id: 'sacrifice', wall: 'n', x: 0, leaf: 'leaf_hell_arch',
-                  label: 'THE SACRIFICE ROOM', sub: 'ROOM 322',
-                  action: { room: 'sacrifice', at: 'ritual' },
-                  desc: 'The arch. The service is in here; whatever it is for is through there.' },
+                { id: 'incinerator', wall: 's', x: 0, leaf: 'leaf_hell_arch', label: 'THE INCINERATOR', action: { room: 'incinerator', at: 'ritual' } },
             ],
             counters: [
                 /* D5 (2026-09-21): THE ORDER OF SERVICE — the sheet on the altar reads the encounter log (hqEncounterLog): the offerings, the last one, the rooms cleared today */
-                { id: 'order', x: -0.475, z: -1.825, face: 0, plateY: 1.5, radius: 1.7, verb: 'READ',
-                  label: 'THE ORDER OF SERVICE', sub: 'MEMBERS · THE OFFERINGS', action: {},
+                { id: 'order', x: -0.4, z: -5.4, face: 0, plateY: 1.5, radius: 1.7, verb: 'READ',
+                  label: 'THE ORDER OF SERVICE', action: {},
                   desc: 'The order of service on the altar. The offerings are your encounters in the field; the last line is always the one you have not done yet.' },
             ],
             props: [
-                { key: 'ritual_circle',  x: 0, z: 0.4 },
-                { key: 'candle_ring',    x: 0, z: 0.4 },
-                { key: 'stone_altar',    x: -0.075, z: -1.825, face: 0 },
-                { key: 'clipboard_flat', x: -0.475, z: -1.825, y: 0.95, face: 15 },           // THE ORDER OF SERVICE; the last line is a cue
-                { key: 'coffee_mug',     x: 0.525, z: -1.725, y: 0.95 },                       // somebody’s
-                { key: 'folding_chair',  x: -2.4, z: 1.6, face: 60 },
-                { key: 'folding_chair',  x: 2.4, z: 1.6, face: 300 },
-                { key: 'folding_chair',  x: 0, z: 3.0, face: 0 },
-                { key: 'hook_rail_long', wall: 'e', z: 2.6, mount: 1.8 },                  // the robes hang here (the robes are on the asset list)
-                { key: 'wall_torch',     wall: 'e', z: -1.6, mount: 1.8 },
-                { key: 'wall_torch',     wall: 'e', z: 1.0, mount: 1.8 },
-                { key: 'wall_torch',     wall: 'w', z: -2.2, mount: 1.8 },
-                { key: 'wall_torch',     wall: 'w', z: 2.2, mount: 1.8 },
-                { key: 'wall_chains',    wall: 's', x: -2.6 },
-                { key: 'floor_stain',    x: -1.6, z: -1.2 },
-                { key: 'floor_stain',    x: 1.9, z: 0.2 },
-                { key: 'cardboard_box',  x: 3.3, z: -3.2, face: 25 },                     // the candles come in boxes; the boxes come from the dock
+                /* the circle and the altar on the room's long axis, the door behind you */
+                { key: 'ritual_circle',  x: 0, z: -0.6 },
+                { key: 'candle_ring',    x: 0, z: -0.6 },
+                { key: 'stone_altar',    x: 0, z: -6.2, face: 0 },
+                { key: 'clipboard_flat', x: -0.4, z: -6.2, y: 0.95, face: 15 },           // THE ORDER OF SERVICE; the last line is a cue
+                { key: 'coffee_mug',     x: 0.6, z: -6.1, y: 0.95 },                       // somebody’s
+                { key: 'hooded_statue',  x: -3.2, z: -7.6, face: 180 }, { key: 'hooded_statue', x: 3.2, z: -7.6, face: 180 },
+                { key: 'candelabra',     x: -1.9, z: -7.7 }, { key: 'candelabra', x: 1.9, z: -7.7 },
+                { key: 'brazier',        x: -5.4, z: -3.8 }, { key: 'brazier', x: 5.4, z: -3.8 },
+                { key: 'brazier',        x: -5.4, z: 2.6 }, { key: 'brazier', x: 5.4, z: 2.6 },
+                { key: 'catacomb_wall',  wall: 'n', x: -9.0 }, { key: 'catacomb_wall', wall: 'n', x: 9.0 },
+                /* the west bay: the robes */
+                { key: 'costume_rack',   x: -12.2, z: -3.0, face: 90 }, { key: 'costume_rack', x: -12.2, z: 1.0, face: 90 },
+                { key: 'hook_rail_long', wall: 'w', z: 5.0, mount: 1.8 },
+                { key: 'skull_pile',     x: -12.6, z: -7.4, face: 30 },
+                /* the east bay: the cauldron, the bones, the boxes the candles come in (the boxes come from the dock) */
+                { key: 'cauldron',       x: 11.4, z: -4.6 },
+                { key: 'skull_pile',     x: 12.6, z: -7.4, face: 330 },
+                { key: 'cardboard_box',  x: 12.6, z: 6.4, face: 25 },
+                { key: 'wall_chains',    wall: 'e', z: 2.0 },
+                /* the torches */
+                { key: 'wall_torch',     wall: 's', x: -6.5, mount: 1.9 }, { key: 'wall_torch', wall: 's', x: 6.5, mount: 1.9 },
+                { key: 'wall_torch',     wall: 's', x: -11.5, mount: 1.9 }, { key: 'wall_torch', wall: 's', x: 11.5, mount: 1.9 },
+                { key: 'wall_torch',     wall: 'w', z: -1.0, mount: 1.9 }, { key: 'wall_torch', wall: 'e', z: -1.0, mount: 1.9 },
+                { key: 'floor_stain',    x: -1.6, z: -2.2 }, { key: 'floor_stain', x: 2.4, z: 0.6 },
             ],
-            agents: [
-                { x: -0.075, z: -0.925, face: 0, pose: 'hqReach', gender: 'male', label: 'THE CELEBRANT', reach: 2.6,
-                  line: '“You are early.” “For what?” “That is the part we do not say.”' },
-            ],
-            npcSpots: [{ x: -2.2, z: 1.8, face: 60 }, { x: 2.2, z: 1.8, face: 300 }],
-            onlineSpots: [{ x: 0.2, z: 3.2, face: 0 }],
+            agents: [],
+            npcSpots: [],
+            onlineSpots: [],
             lines: [
                 '“Members only.” “I am a member.” “Of what?” “That is the part we do not say.”',
                 '“The candles are lit.” “Who lit them?” “They were lit when we got here. They are always lit when we get here.”',
             ],
-            spawn: { x: -2.4, z: 0, face: 90 },
+            spawn: { x: 0, z: 5.0, face: 0 },
         },
+        /* ── DOOR HQ 2.0 WAVE 4: THE SACRIFICE ROOM, east of the Incinerator (its door to it on this room's south wall; rot 3). 21 x 14 m,
+           7 m high, red light: the slab in the middle with its drain, chains on the walls, hooks from the ceiling, the iron maiden,
+           the stocks, the bier; the ladder up to the crawlspace in the far wall. ── */
         sacrifice: {
             label: 'THE SACRIFICE ROOM',
-            sub: 'THE UNDERCROFT · FORM 322',
-            roomNo: '322', why: 'Skull & Bones — the Lodge’s basement, filed under the Lodge’s bay; the form is the waiver',
             kind: 'box',
             shell: {
-                w: 6, d: 6, h: 3.4,
-                wallH: 3.4, dadoH: 1.2,
-                floor: 'dungeon_2', wall: 'dungeon', dado: 'dungeon_3', trim: 'dungeon_4', ceiling: 'dungeon',
-                floorColor: 0x6e6460, wallColor: 0x6e605c, dadoColor: 0x4e403c, ceilColor: 0x3a3230,
+                w: 21, d: 14, h: 7,
+                wallH: 7, dadoH: 1.2,
+                floor: 'dungeon_2', wall: 'zl_hz_Brick_09__dungeon', dado: 'dungeon_3', trim: 'dungeon_4', ceiling: 'dungeon',
+                floorColor: 0x6e6460, wallColor: 0x6e605c, dadoColor: 0x4e403c, ceilColor: 0x2a2422,
                 pipes: false,
                 strips: false,
-                light: { x: 0, z: 0 },
-                mood: { light: 0xff3030, ambient: 0.3 },
-                plate: { x: 0, z: -2.75, y: 2.9 },
+                keyLamp: 0,
+                lights: [],
+                mood: { light: 0xff3030, ambient: 0.2 },
+                plate: { x: 0, z: 6.9, y: 5.6 },
             },
             doors: [
-                { id: 'ritual', wall: 's', x: 0, leaf: 'leaf_hell_arch',
-                  label: 'THE RITUAL ROOM', sub: 'BACK TO THE SERVICE',
-                  action: { room: 'ritual', at: 'sacrifice' },
-                  desc: 'Back under the arch.' },
-                { id: 'hatch', wall: 'n', x: 0, leaf: 'leaf_frame_only',
-                  label: 'A LADDER', sub: 'UP · THE CRAWLSPACE',
-                  action: { room: 'crawlspace', at: 'hatch' },
+                { id: 'incinerator', wall: 's', x: 0, leaf: 'leaf_hell_arch', label: 'THE INCINERATOR', action: { room: 'incinerator', at: 'sacrifice' } },
+                { id: 'hatch', wall: 'n', x: 6, leaf: 'leaf_frame_only', label: 'A LADDER', action: { room: 'crawlspace', at: 'hatch' },
                   desc: 'A ladder up into a crawlspace under the third floor. It comes out in a bathroom stall, which is not on any plan.' },
             ],
             counters: [
-                { id: 'altar', x: -0.375, z: 0.525, face: 0, plateY: 1.7, radius: 2.0, verb: 'READ',
-                  label: 'THE ALTAR', sub: 'FORM 322 · THE WAIVER', action: {},
+                { id: 'altar', x: -0.3, z: -0.1, face: 0, plateY: 1.7, radius: 2.0, verb: 'READ',
+                  label: 'THE ALTAR', action: {},
                   desc: 'A slab, a drain beside it, a form on it. The form is a waiver. It has your callsign on it already.' },
             ],
             props: [
-                { key: 'stone_altar',    x: -0.375, z: -0.375, face: 0 },
-                { key: 'clipboard_flat', x: -0.075, z: -0.375, y: 0.95, face: -10 },            // FORM 322
-                { key: 'pen',            x: -0.875, z: -0.275, y: 0.95, face: 60 },
-                { key: 'floor_drain',    x: 1.3, z: 0.4 },
-                { key: 'floor_stain',    x: 0.525, z: 0.125 },
-                { key: 'floor_stain',    x: -1.2, z: -0.6 },
-                { key: 'floor_stain',    x: 0.4, z: 1.7 },
-                { key: 'wall_chains',    wall: 'e', z: -1.4 }, { key: 'wall_chains', wall: 'e', z: 1.4 },
-                { key: 'wall_chains',    wall: 'w', z: -1.4 }, { key: 'wall_chains', wall: 'w', z: 1.4 },
-                { key: 'wall_torch',     wall: 'e', z: 0, mount: 1.8 },
-                { key: 'wall_torch',     wall: 'w', z: 0, mount: 1.8 },
-                { key: 'meat_hook',      x: -1.8, z: -1.8, ceil: true },
-                { key: 'steel_table',    x: 1.586, z: -2.125, face: 270 },                     // the instruments; the instruments are a stapler
-                { key: 'stapler',        x: 1.586, z: -2.325, y: 0.76, face: 30 },
-                { key: 'manila_folder',  x: 1.486, z: -1.825, y: 0.76, face: 10 },
-                { key: 'clipboard',      wall: 'n', x: 1.6, mount: 1.5, rot: -5 },        // the waiver, blank, for the next one
+                { key: 'stone_altar',    x: 0, z: -1.0, face: 0 },
+                { key: 'clipboard_flat', x: 0.3, z: -1.0, y: 0.95, face: -10 },            // FORM 322
+                { key: 'pen',            x: -0.5, z: -0.9, y: 0.95, face: 60 },
+                { key: 'floor_drain',    x: 1.5, z: 0.2 },
+                { key: 'floor_stain',    x: 0.6, z: 0.4 }, { key: 'floor_stain', x: -1.4, z: -0.4 }, { key: 'floor_stain', x: 0.4, z: 2.0 },
+                { key: 'wall_chains',    wall: 'n', x: -8.0 }, { key: 'wall_chains', wall: 'n', x: -4.5 }, { key: 'wall_chains', wall: 'n', x: 1.5 },
+                { key: 'wall_chains',    wall: 'w', z: -2.5 }, { key: 'wall_chains', wall: 'w', z: 2.5 },
+                { key: 'meat_hook',      x: -3.5, z: -3.6, ceil: true }, { key: 'meat_hook', x: 2.4, z: -3.6, ceil: true }, { key: 'meat_hook', x: -6.2, z: -4.6, ceil: true },
+                { key: 'trap_iron_maiden_body', x: -9.0, z: -5.2, face: 135 },
+                { key: 'decor_effigy_bier', x: -7.0, z: 2.2, face: 90 },
+                { key: 'stocks',         x: 7.4, z: -0.6, face: 270 },
+                { key: 'steel_table',    x: 8.6, z: 3.6, face: 270 },                      // the instruments; the instruments are a stapler
+                { key: 'stapler',        x: 8.6, z: 3.4, y: 0.76, face: 30 },
+                { key: 'manila_folder',  x: 8.5, z: 3.9, y: 0.76, face: 10 },
+                { key: 'clipboard',      wall: 'e', z: -3.0, mount: 1.5, rot: -5 },        // the waiver, blank, for the next one
+                { key: 'wall_torch',     wall: 'w', z: 0, mount: 1.9 }, { key: 'wall_torch', wall: 'e', z: 0.8, mount: 1.9 },
+                { key: 'wall_torch',     wall: 's', x: -5.5, mount: 1.9 }, { key: 'wall_torch', wall: 's', x: 5.5, mount: 1.9 },
             ],
             agents: [],
             npcSpots: [],
@@ -38519,7 +38519,7 @@ const DOOR_HQ = {
             lines: [
                 '“Sign at the bottom.” “What am I signing?” “The bottom.”',
             ],
-            spawn: { x: 0, z: 2.3, face: 0 },
+            spawn: { x: 0, z: 4.0, face: 0 },
         },
         /* ── ROOM X (DOOR HQ 2.0, the Gantry's east wall, sealed: an L5 vault door, not on the stage): 14 x 14 m, the Object in the middle ── */
         orb: {
@@ -39649,71 +39649,189 @@ const DOOR_HQ = {
             ],
             spawn: { x: 0, z: 4.6, face: 0 },
         },
-        /* ── ROOM 000 · THE INCINERATOR — a furnace with a door-shaped mouth,
-           the belt feeding it, the manifest of every reality closed for good
-           (a by-id panel that reads the register's sealed rows). ── */
+        /* ── DOOR HQ 2.0 WAVE 4 (2026-11-26, docs/plans/door-hq-2/plans/4_works_middle_bottom.png, right): THE WORKS, BOTTOM. THE INCINERATOR,
+           the big story moment: a drum 28 m across (r 14, old brick blackened toward the fire) and 24.5 m to a ceiling nobody sees, in a
+           31.5 m box. The furnace is a pit in the middle (r 8.5, 10.5 m down to the fire), a parapet round its edge, the floor round it
+           grating: the catwalk. THE FLUE hangs down the middle from the ceiling to 9 m, the doors the Chute drops falling out of its
+           mouth into the fire, a point of daylight far up inside it (three-renderer.js `incinerator_furnace`). One key light: the fire.
+           Four ways out, one a side, joined on one stage (HQ_WORLD zone `incinerator`, no card): THE STAIR north (a 7 m opening onto
+           the flight down from the Gantry), the Ritual Room west, the Sacrifice Room east, the Antechamber south. ── */
         incinerator: {
             label: 'THE INCINERATOR',
-            sub: 'CLOSED FOR GOOD',
-            roomNo: '-1', why: 'one below nothing: the count that comes back',
             kind: 'box',
             shell: {
-                w: 8, d: 8, h: 5,
-                wallH: 5, dadoH: 1.2,
-                floor: 'concrete_floor', wall: 'bricks_1', dado: 'gunmetal', trim: 'gunmetal', ceiling: 'metal_3',
-                floorColor: 0x6e6a64, wallColor: 0x6a5048, dadoColor: 0x4a4e52, ceilColor: 0x3e4246,
+                w: 31.5, d: 31.5, h: 24.5,
+                wallH: 24.5, dadoH: 1.2,
+                floor: 'urban:MetalGratingGrid1a', wall: 'zl_hz_Brick_11__bricks_1', dado: 'gunmetal', trim: 'gunmetal', ceiling: 'metal_3',
+                floorColor: 0x7a7068, wallColor: 0x5a4438, dadoColor: 0x2a2624, ceilColor: 0x141110,
                 pipes: true,
                 strips: false,
-                light: { x: 0, z: 1 },
-                mood: { light: 0xffa050, ambient: 0.45 },
-                plate: { x: 0, z: -3.75, y: 3.0 },
+                keyLamp: 0,
+                lights: [],
+                mood: { light: 0xff9a50, ambient: 0.34 },
+                plate: { x: 0, z: 13.6, y: 6.2 },
+            },
+            terrain: {
+                res: 0.4375,
+                floor: 'urban:MetalGratingGrid1a', cliff: 'zl_hz_Brick_11__bricks_1', path: 'urban:MetalGratingGrid1a',
+                noise: { amp: 0, scale: 6 }, crag: false, stalactites: false, noRescue: true,
+                features: [
+                    /* THE DRUM: floor to ceiling, open at the four doors; short jamb walls carry each opening out to the box wall */
+                    ...hqRingWalls({ id: 'drum', r: 14, h: 24.5, t: 0.6, n: 96, key: 'zl_hz_Brick_11__bricks_1', skip: [[345, 15], [82.5, 97.5], [172.5, 187.5], [262.5, 277.5]] }),
+                    { k: 'wall', x0: -3.623, z0: -13.52, x1: -3.623, z1: -15.75, h: 24.5, t: 0.5, key: 'zl_hz_Brick_11__bricks_1', rail: false },
+                    { k: 'wall', x0: 3.623, z0: -13.52, x1: 3.623, z1: -15.75, h: 24.5, t: 0.5, key: 'zl_hz_Brick_11__bricks_1', rail: false },
+                    { k: 'wall', x0: 13.88, z0: -1.827, x1: 15.75, z1: -1.827, h: 24.5, t: 0.5, key: 'zl_hz_Brick_11__bricks_1', rail: false },
+                    { k: 'wall', x0: -13.88, z0: -1.827, x1: -15.75, z1: -1.827, h: 24.5, t: 0.5, key: 'zl_hz_Brick_11__bricks_1', rail: false },
+                    { k: 'wall', x0: 13.88, z0: 1.827, x1: 15.75, z1: 1.827, h: 24.5, t: 0.5, key: 'zl_hz_Brick_11__bricks_1', rail: false },
+                    { k: 'wall', x0: -13.88, z0: 1.827, x1: -15.75, z1: 1.827, h: 24.5, t: 0.5, key: 'zl_hz_Brick_11__bricks_1', rail: false },
+                    { k: 'wall', x0: -1.827, z0: 13.88, x1: -1.827, z1: 15.75, h: 24.5, t: 0.5, key: 'zl_hz_Brick_11__bricks_1', rail: false },
+                    { k: 'wall', x0: 1.827, z0: 13.88, x1: 1.827, z1: 15.75, h: 24.5, t: 0.5, key: 'zl_hz_Brick_11__bricks_1', rail: false },
+                    /* THE PIT: the ground cut down 10.5 m (the fire is drawn in it); THE PARAPET round its edge, a heat-glass screen 1.35 m high (over the walker's 1.3 m jump: nobody goes in; glass, so the fire shows from the catwalk) and a pipe handrail outside it */
+                    { k: 'plateau', x: 0, z: 0, r: 8.5, h: -10.5, sink: true, edge: 0.3, id: 'pit' },
+                    ...hqRingWalls({ id: 'parapet', r: 8.85, h: 1.35, t: 0.12, n: 64 }).map(w => Object.assign(w, { glass: true })),
+                    { k: 'rail', arc: { x: 0, z: 0, r: 9.0, a0: 0, a1: 180 }, model: 'pipe', block: false }, { k: 'rail', arc: { x: 0, z: 0, r: 9.0, a0: 180, a1: 360 }, model: 'pipe', block: false },
+                ],
             },
             doors: [
-                /* DOOR HQ 2.0 WAVE 3 (2026-11-26): the stair up to the Works' middle level (the Gantry's `stair`), until the Incinerator is rebuilt */
-                { id: 'works', wall: 'w', z: 1, leaf: 'leaf_bulkhead', wide: true,
-                  label: 'THE STAIR',
-                  action: { room: 'labs', at: 'stair' },
-                  desc: 'Up. Fewer flights than there were coming down.' },
+                { id: 'stair', wall: 'n', x: 0, open: { w: 7, h: 7 }, label: 'THE STAIR', action: { room: 'downstair', at: 'incinerator' } },
+                { id: 'ritual', wall: 'w', z: 0, leaf: 'leaf_hell_arch', label: 'THE RITUAL ROOM', action: { room: 'ritual', at: 'incinerator' } },
+                { id: 'sacrifice', wall: 'e', z: 0, leaf: 'leaf_hell_arch', label: 'THE SACRIFICE ROOM', action: { room: 'sacrifice', at: 'incinerator' } },
+                { id: 'antechamber', wall: 's', x: 0, open: { w: 3.5, h: 5 }, label: 'ANTECHAMBER', action: { room: 'antechamber', at: 'incinerator' } },
             ],
             counters: [
-                { id: 'manifest', x: 2.6, z: 2.4, face: 270, plateY: 1.6, radius: 1.8, verb: 'READ',
-                  label: 'THE MANIFEST', sub: 'CLOSED FOR GOOD · THE LIST', action: {},
+                { id: 'manifest', x: 8.23, z: -9.14, face: 222, plateY: 1.6, radius: 1.8, verb: 'READ',
+                  label: 'THE MANIFEST', action: {},
                   desc: 'Every reality the department has decided is never to be opened again, in the operator’s hand, and the door that went in for each. The sealed bay is on it. Some of the lines are very old.' },
             ],
             props: [
-                { key: 'door_furnace',   wall: 'n', x: 0 },
-                { key: 'conveyor_z',     x: 0, z: -0.4, face: 0 },                          // the belt into the mouth
-                { key: 'railing_1m',     x: -1.6, z: 0.2, face: 90 }, { key: 'railing_1m', x: 1.6, z: 0.2, face: 90 },   // THE PARK RULE: the rail either side of the belt
-                { key: 'riser_1',        x: 2.6, z: 2.4, face: 0, rect: false },                                          // … and the step to the operator's desk
-                { key: 'steel_table',    wall: 'e', z: 2.4, face: 270 },
-                { key: 'crt_terminal',   x: 3.2, z: 2.4, y: 0.76, face: 270 },
-                { key: 'clipboard_flat', x: 3.2, z: 1.7, y: 0.76, face: -20 },
-                { key: 'folding_chair',  x: 2.2, z: 2.4, face: 90 },
-                { key: 'radiation_sign', wall: 'n', x: -2.6, mount: 1.6 }, { key: 'radiation_sign', wall: 'n', x: 2.6, mount: 1.6 },
-                { key: 'breaker_panel',  wall: 's', x: 2.4 },
-                { key: 'pipe_run',       x: -3.2, z: -2.4, face: 90 },
-                { key: 'fire_extinguisher', wall: 's', x: -2.6 }, { key: 'fire_extinguisher', wall: 'w', z: -2.6 },
-                { key: 'floor_stain',    x: 0.6, z: 1.6 },
-                { key: 'floor_drain',    x: -1.2, z: 2.2 },
-                { key: 'cardboard_boxes', x: -3.0, z: 3.0, face: 30 },
-                { key: 'door_stack',     x: -1.825, z: -0.075, face: 90 },                      // the next batch
-                { key: 'vent_grille',    wall: 'e', z: -2.6, mount: 4.2 },
-                { key: 'security_camera', wall: 's', x: -3.4, mount: 4.3 },
-                { key: 'exit_sign',      wall: 'w', z: 1, mount: 3.1 },
-                { key: 'bare_bulb',      x: 0, z: 1.6, ceil: true },
+                /* THE FURNACE: the pit's fire, the hanging flue, the falling doors, the daylight up the chimney (the row stands at y 1 over the pit; `lift` takes it back to the floor) */
+                { key: 'incinerator_furnace', x: 0, z: 0, y: 1, lift: 1, pitR: 8.5, pitD: 10.5, roomH: 24.5, flueR: 3.2, flueBot: 9 },
+                /* the operator's desk on the catwalk, north-east: the manifest, a terminal, the bellows of the old machine */
+                { key: 'steel_table', x: 8.23, z: -9.14, face: 222 },
+                { key: 'crt_terminal', x: 8.33, z: -9.25, y: 0.76, face: 222 },
+                { key: 'clipboard_flat', x: 8.77, z: -8.62, y: 0.76, face: 200 },
+                { key: 'folding_chair', x: 7.43, z: -8.25, face: 42 },
+                { key: 'bellows', x: 11.17, z: -6.45, face: 240 },
+                { key: 'gauge_board', x: 6.77, z: -11.73, face: 210, mount: 1.6 },
+                { key: 'psx_pipe_valve_holder_large_1', x: 8.74, z: 10.42, face: 320, mount: 1.2 },
+                { key: 'psx_pipe_valve_holder_large_1', x: -8.74, z: 10.42, face: 40, mount: 1.2 },
+                /* the next batch, stood on edge on the catwalk, north-west */
+                { key: 'door_stack', x: -9.21, z: -8.3, face: 132 },
+                { key: 'door_stack', x: -6.93, z: -10.28, face: 146 },
+                { key: 'chain_hoist', x: 9.05, z: 9.05, face: 315 },
+                { key: 'chain_hoist', x: -9.05, z: 9.05, face: 45 },
+                /* the braziers either side of the stair's opening and the Antechamber's; the hooded figures either side of the Ritual Room's and the Sacrifice Room's doors */
+                { key: 'brazier', x: -4.65, z: -11.5, face: 158 },
+                { key: 'brazier', x: 4.65, z: -11.5, face: 202 },
+                { key: 'brazier', x: 4.65, z: 11.5, face: 338 },
+                { key: 'brazier', x: -4.65, z: 11.5, face: 22 },
+                { key: 'hooded_statue', x: -12.03, z: 3.0, face: 76 },
+                { key: 'hooded_statue', x: -12.03, z: -3.0, face: 104 },
+                { key: 'hooded_statue', x: 12.03, z: -3.0, face: 256 },
+                { key: 'hooded_statue', x: 12.03, z: 3.0, face: 284 },
             ],
-            agents: [
-                { x: 1.6, z: 3.0, face: 315, pose: 'hqLean', gender: 'male', label: 'THE OPERATOR', reach: 2.2,
-                  line: '“It does not burn the wood.” “What does it burn?” “The other side. The wood comes out the same. We use it again.”' },
-            ],
-            npcSpots: [{ x: -2.6, z: -2.2, face: 45, race: 'demon', say: ['“Warm. Finally a room in this building that is warm.” “It is an incinerator.” “Yes. Finally.”'] }],
+            agents: [],
+            npcSpots: [],
             onlineSpots: [],
             lines: [
                 '“How do you know a reality is closed for good?” “It stops knocking.”',
                 '“Is it hot on the other side of the door?” “There is no other side. That is the point of the room.”',
             ],
-            spawn: { x: -2.4, z: 0, face: 90 },
+            spawn: { x: 0, z: -11.4, face: 180 },
         },
+        /* ── DOOR HQ 2.0 WAVE 4: THE STAIR, the arrival from the Gantry. You come in on a landing 7 m up and go down one stone flight
+           7 m wide toward the fire, seen through the 7 m opening at its foot (THE INCINERATOR's north door, no card). ── */
+        downstair: {
+            label: 'THE STAIR',
+            kind: 'box',
+            shell: {
+                w: 14, d: 28, h: 14,
+                wallH: 14, dadoH: 1.2,
+                floor: 'dungeon_2', wall: 'zl_hz_Brick_09__dungeon', dado: 'dungeon_3', trim: 'dungeon_4', ceiling: 'dungeon',
+                floorColor: 0x6e6460, wallColor: 0x6a5e58, dadoColor: 0x4e403c, ceilColor: 0x2a2422,
+                pipes: false,
+                strips: false,
+                keyLamp: 0,
+                lights: [],
+                mood: { light: 0xff8040, ambient: 0.24 },
+                plate: { x: 0, z: 13.9, y: 8.2 },
+            },
+            terrain: {
+                res: 0.4375,
+                floor: 'dungeon_2', cliff: 'zl_hz_Brick_09__dungeon', path: 'dungeon_2',
+                noise: { amp: 0, scale: 6 }, crag: false, stalactites: false,
+                features: [
+                    /* THE LANDING the Gantry's stair lands on (7 m up, the door in the north wall), the flight down its middle, a rail either side */
+                    { k: 'plateau', x: 0, z: -11.375, w: 14, d: 5.25, h: 7, edge: 0.15, id: 'landing' },
+                    { k: 'ramp', x0: 0, z0: 7, x1: 0, z1: -8.75, w: 7, h0: 0, h1: 7, stairs: true, edge: 0.2,
+                      built: true, key: 'dungeon_2', side: 'zl_hz_Brick_09__dungeon', cheek: { h: 1.0, t: 0.4, key: 'dungeon_3' } },
+                    { k: 'rail', pts: [[-6.8, -8.9, 7], [-3.8, -8.9, 7]], model: 'pipe' },
+                    { k: 'rail', pts: [[3.8, -8.9, 7], [6.8, -8.9, 7]], model: 'pipe' },
+                ],
+            },
+            doors: [
+                { id: 'labs', wall: 'n', x: 0, y: 7, leaf: 'leaf_bulkhead', wide: true, label: 'THE GANTRY', action: { room: 'labs', at: 'stair' }, desc: 'Up. Fewer flights than there were coming down.' },
+                { id: 'incinerator', wall: 's', x: 0, open: { w: 7, h: 7 }, label: 'THE INCINERATOR', action: { room: 'incinerator', at: 'stair' } },
+            ],
+            counters: [],
+            props: [
+                /* torches up both walls with the flight, two more on the landing; braziers and the catacomb walls in the bays beside the flight's foot */
+                { key: 'wall_torch', wall: 'w', z: -11.4, mount: 8.8 }, { key: 'wall_torch', wall: 'e', z: -11.4, mount: 8.8 },
+                { key: 'wall_torch', wall: 'w', z: -5, mount: 6.6 }, { key: 'wall_torch', wall: 'e', z: -5, mount: 6.6 },
+                { key: 'wall_torch', wall: 'w', z: 1.5, mount: 3.8 }, { key: 'wall_torch', wall: 'e', z: 1.5, mount: 3.8 },
+                { key: 'catacomb_wall', wall: 'w', z: 6.0 }, { key: 'catacomb_wall', wall: 'e', z: 6.0 },
+                { key: 'catacomb_wall', wall: 'w', z: 10.5 }, { key: 'catacomb_wall', wall: 'e', z: 10.5 },
+                { key: 'brazier', x: -4.8, z: 8.6 }, { key: 'brazier', x: 4.8, z: 8.6 },
+                { key: 'skull_pile', x: -6.0, z: 12.6, face: 45 },
+                { key: 'wall_chains', wall: 'e', z: -2.0, mount: 4.0 },
+            ],
+            agents: [],
+            npcSpots: [],
+            onlineSpots: [],
+            lines: [],
+            spawn: { x: 0, z: -11.2, face: 180 },
+        },
+        /* ── DOOR HQ 2.0 WAVE 4: THE ANTECHAMBER, south of the Incinerator through a stone opening: pews down the side walls, the robes,
+           one brazier, and across from the opening a plain white door into H-Wing. ── */
+        antechamber: {
+            label: 'ANTECHAMBER',
+            kind: 'box',
+            shell: {
+                w: 14, d: 14, h: 7,
+                wallH: 7, dadoH: 1.2,
+                floor: 'dungeon_2', wall: 'zl_hz_Brick_09__dungeon', dado: 'dungeon_3', trim: 'dungeon_4', ceiling: 'dungeon',
+                floorColor: 0x6e6460, wallColor: 0x6e605c, dadoColor: 0x4e403c, ceilColor: 0x3a3230,
+                pipes: false,
+                strips: false,
+                keyLamp: 0,
+                lights: [],
+                mood: { light: 0xff8040, ambient: 0.22 },
+                plate: { x: 0, z: 6.9, y: 5.6 },
+            },
+            doors: [
+                { id: 'incinerator', wall: 's', x: 0, open: { w: 3.5, h: 5 }, label: 'THE INCINERATOR', action: { room: 'incinerator', at: 'antechamber' } },
+                /* the plain door into H-Wing (plans/4; the H-Wing thread's end lands back here, `at: 'hwing'`), straight across from the opening */
+                { id: 'hwing', wall: 'n', x: 0, leaf: 'leaf_white_wood', label: 'H-WING', action: { room: 'hwing_floor', at: 'works_bottom' } },
+            ],
+            counters: [],
+            props: [
+                { key: 'brazier', x: 0, z: -1.5 },
+                { key: 'church_pew', x: -5.4, z: -1.2, face: 90 }, { key: 'church_pew', x: -5.4, z: 2.4, face: 90 },
+                { key: 'church_pew', x: 5.4, z: -1.2, face: 270 }, { key: 'church_pew', x: 5.4, z: 2.4, face: 270 },
+                { key: 'hooded_statue', x: -3.2, z: -6.0, face: 180 }, { key: 'hooded_statue', x: 3.2, z: -6.0, face: 180 },
+                { key: 'costume_rack', x: -4.9, z: -5.4, face: 135 },
+                { key: 'hook_rail_long', wall: 'w', z: -4.6, mount: 1.8 },
+                { key: 'candelabra', x: -2.6, z: 4.4 }, { key: 'candelabra', x: 2.6, z: 4.4 },
+                { key: 'wall_torch', wall: 'w', z: 5.0, mount: 1.9 }, { key: 'wall_torch', wall: 'e', z: 5.0, mount: 1.9 },
+                { key: 'wall_torch', wall: 'n', x: -5.0, mount: 1.9 }, { key: 'wall_torch', wall: 'n', x: 5.0, mount: 1.9 },
+            ],
+            agents: [],
+            npcSpots: [],
+            onlineSpots: [],
+            lines: [],
+            spawn: { x: 0, z: 4.0, face: 0 },
+        },
+
         /* ── ROOM Y · THE AUTOPSY ROOM — a door on the slab, every part of it
            laid out and tagged (knob, handle, bell, window, boards, knocker,
            hinges, letterbox, peephole, chain), the light box with its X-ray,
@@ -40377,7 +40495,7 @@ const DOOR_HQ = {
                 { id: 'orb', wall: 'e', z: 8.75, leaf: 'leaf_vault', wide: true, minClearance: 5, label: 'ROOM X', action: { room: 'orb', at: 'labs' }, desc: 'A vault door, a keypad, no window. The plate says ROOM X and nothing else.' },
                 /* the south wall: the Server Room, the stair down to the Incinerator, Supply Closet 4B */
                 { id: 'server', wall: 's', x: 8.75, leaf: 'leaf_orange_glass', label: 'SERVER ROOM', action: { room: 'server', at: 'labs' }, desc: 'Cold air and a hum. The door is propped with a box.' },
-                { id: 'stair', wall: 's', x: 0, leaf: 'leaf_bulkhead', wide: true, label: 'THE STAIR', action: { room: 'incinerator', at: 'works' }, desc: 'Down. More flights than there are coming back up.' },
+                { id: 'stair', wall: 's', x: 0, leaf: 'leaf_bulkhead', wide: true, label: 'THE STAIR', action: { room: 'downstair', at: 'labs' }, desc: 'Down. More flights than there are coming back up.' },
                 { id: 'closet4b', wall: 's', x: -8.75, leaf: 'leaf_cell', label: 'SUPPLY CLOSET 4B', action: { room: 'closet4b', at: 'labs' }, desc: 'Radiation signs, a blast door and an evacuation button, in front of a supply closet.' },
                 /* the west wall: the Interrogation Room, the Hold */
                 { id: 'interrogation', wall: 'w', z: 8.75, leaf: 'leaf_cell', label: 'INTERROGATION ROOM', action: { room: 'interrogation', at: 'labs' }, desc: 'It locks from the outside. It has never been locked.' },
@@ -85280,7 +85398,7 @@ const DOOR_HQ = {
                 { id: 'garage', wall: 'n', x: 17.5, leaf: 'leaf_white_wood', label: 'GARAGE', action: { room: 'garage', at: 'hwing' } },
                 { id: 'works_top', wall: 'n', x: 52.5, leaf: 'leaf_white_wood', label: 'THE WORKS', action: { room: 'factory', at: 'hwing' } },
                 { id: 'works_middle', wall: 'w', z: -10.5, leaf: 'leaf_white_wood', label: 'THE GANTRY', action: { room: 'labs', at: 'hwing' } },
-                { id: 'works_bottom', wall: 'e', z: -10.5, leaf: 'leaf_white_wood', label: 'THE INCINERATOR', action: { room: 'incinerator', at: 'works' } },
+                { id: 'works_bottom', wall: 'e', z: -10.5, leaf: 'leaf_white_wood', label: 'THE INCINERATOR', action: { room: 'antechamber', at: 'hwing' } },
                 { id: 'loop', wall: 's', x: 42, leaf: 'leaf_white_wood', label: 'H-WING', action: { room: 'hwing_floor', at: 'ring' } },
                 { id: 'desert', wall: 'free', x: -24.5, z: -31.5, face: 0, leaf: 'leaf_white_wood', label: 'DESERT AT DUSK', action: { room: 'hwing_desert', at: 'hall' } },
                 { id: 'desert_out', wall: 'free', x: -45.5, z: -14, face: 180, leaf: 'leaf_white_wood', label: 'DESERT AT DUSK', action: { room: 'hwing_desert', at: 'lone' } },
@@ -87568,7 +87686,7 @@ const HQ_STAGE_RULES = {
        rebuild). A zone not listed keeps today's rooms and doors exactly; a later phase adds its zone here when its
        joins are built. `buildDelayMs` = the beat after the room's card drops before the first neighbour builds (the
        arrival stays smooth); `lampPickMs` = how often the lamp budget re-picks the nearest `lampsLive` point lights. */
-    zones: ['medwing', 'garage', 'basement', 'dumb', 'works', 'annex', 'labs', 'derelict', 'hwing'], buildDelayMs: 600, lampPickMs: 500,   // Phase 4: THE BASEMENT; Phase 5 (2026-09-27): THE D.U.M.B. (door joins); THE LAND cut (ZONES_PLAN Z0): the stage is DOOR HQ's only; ZONES_PLAN Z2 (2026-09-30): the floors
+    zones: ['medwing', 'garage', 'basement', 'dumb', 'works', 'annex', 'labs', 'incinerator', 'derelict', 'hwing'], buildDelayMs: 600, lampPickMs: 500,   // Phase 4: THE BASEMENT; Phase 5 (2026-09-27): THE D.U.M.B. (door joins); THE LAND cut (ZONES_PLAN Z0): the stage is DOOR HQ's only; ZONES_PLAN Z2 (2026-09-30): the floors
     /* a neighbour's PEOPLE (Phase 2): 'interior' = a closed room's cast (the nurse at her desk, the patient on his cot) is
        spawned with the room when it is built beside you, so the ward is not empty through its open door; an outdoor part's
        crowd still comes out when you cross (Phase 1's rule — a city block is dozens of rigs). 'none' = Phase 1's rule
@@ -88128,6 +88246,24 @@ const HQ_WORLD = {
                 { a: 'closet4b', b: 'supply',    kind: 'door', door: 'blast',         bDoor: 'blast' },
                 { a: 'labs', b: 'interrogation', kind: 'door', door: 'interrogation', bDoor: 'labs' },
                 { a: 'labs', b: 'padded',        kind: 'door', door: 'padded',        bDoor: 'labs' },
+            ] },
+        /* DOOR HQ 2.0 WAVE 4 (2026-11-26) — THE WORKS, BOTTOM (docs/plans/door-hq-2/plans/4_works_middle_bottom.png, right): THE INCINERATOR
+           (31.5 m box round a 28 m drum) is the hub; one room a side, door to door through HQ_WORLD_RULES.wallM, each room's door to it on
+           its own SOUTH wall (the labs' turns): THE STAIR north (the Gantry's stair lands on its 7 m landing; that door stays a door), the
+           Ritual Room west, the Sacrifice Room east, the Antechamber south. Under the Gantry (y -60): only the validator reads it. */
+        incinerator: { label: 'THE INCINERATOR', ground: 'hq', hub: 'incinerator', sky: null, clock: false,
+            parts: {
+                incinerator: { x: 0,      z: 0,      y: -60, rot: 0 },
+                downstair:   { x: 0,      z: -29.95, y: -60, rot: 0 },
+                ritual:      { x: -24.7,  z: 0,      y: -60, rot: 1 },
+                sacrifice:   { x: 22.95,  z: 0,      y: -60, rot: 3 },
+                antechamber: { x: 0,      z: 22.95,  y: -60, rot: 2 },
+            },
+            joins: [
+                { a: 'incinerator', b: 'downstair',   kind: 'door', door: 'stair',       bDoor: 'incinerator' },
+                { a: 'incinerator', b: 'ritual',      kind: 'door', door: 'ritual',      bDoor: 'incinerator' },
+                { a: 'incinerator', b: 'sacrifice',   kind: 'door', door: 'sacrifice',   bDoor: 'incinerator' },
+                { a: 'incinerator', b: 'antechamber', kind: 'door', door: 'antechamber', bDoor: 'incinerator' },
             ] },
         /* (Z2 — PH, THE PENTHOUSE zone: retired 2026-11-26, DOOR HQ 2.0 wave 4: the Penthouse is one room, the Corner Office and the Infinity Pool inside it) */
         /* (the records wing zone: retired 2026-11-26, DOOR HQ 2.0 wave 3: Records and the Clock Room are rooms on the Ring) */
@@ -97702,8 +97838,11 @@ function hqTerrainCompile(room, roomId) {
     }
     if (planGen) { try { _hqTGenerate(info, room, roomId, genUse, doorPads, F); } catch (e) { console.warn('[terrain] the floor plan failed', roomId, e); } }
     else {
-        /* THE RETURN GUARANTEE without a plan (2026-09-17): a room that is its own floor still gets its rescue ramps */
-        try { const pn = doorPads.map(p => [Math.round((p.x - x0) / res), Math.round((p.z - z0) / res)]); info.rescues = _hqTReturnGuarantee(info, pn, null, null, Math.ceil(HQ_TERRAIN_GEN.corridorW / 2 / res), null).rescues; }
+        /* THE RETURN GUARANTEE without a plan (2026-09-17): a room that is its own floor still gets its rescue ramps. `terrain.noRescue`
+           (DOOR HQ 2.0 wave 4, 2026-11-26, THE INCINERATOR): a pit walled all round (a parapet over the walker's jump) is never reached, so no
+           ramp is cut out of it (the ramps it cut ran up through the catwalk); find-softlocks.js still checks the room */
+        if (T.noRescue) info.rescues = [];
+        else try { const pn = doorPads.map(p => [Math.round((p.x - x0) / res), Math.round((p.z - z0) / res)]); info.rescues = _hqTReturnGuarantee(info, pn, null, null, Math.ceil(HQ_TERRAIN_GEN.corridorW / 2 / res), null).rescues; }
         catch (e) { console.warn('[terrain] the return guarantee failed', roomId, e); info.rescues = []; }
     }
     try { _hqTRoundStitch(info, room); } catch (e) { console.warn('[terrain] the round seams stitch failed', roomId, e); }   // THE ROUND WORLDS: the ground meets itself over every cut seam
@@ -108775,7 +108914,7 @@ var ZONE_LOOKS = {
            stone, office drywall and taupe carpet. Batch 6 mapped them (stone -> hz:Stone_11, a 128 px horror tile, on the hall's drum; drywall
            in 41 rooms; carpet in 13). They are out of the maps, and zoneLookRoom never swaps a shell key DOOR_HQ.textures names */
         doorhq: {
-            rooms: ['central_egress', 'foyer', 'continuity', 'office', 'cafeteria', 'clockroom', 'barbershop', 'trophycase', 'reception', 'dispensary', 'doorstore', 'medical', 'padded', 'cells', 'medwing', 'recwing', 'execwing', 'executive', 'corner', 'pool', 'interrogation', 'records', 'it', 'observatorium', 'factory', 'training_pit', 'training_hall', 'car', 'garage', 'dock', 'services', 'kitchen', 'coldroom', 'laundry', 'corridor_a', 'boiler', 'corridor_b', 'deadend', 'server', 'dungeon', 'ritual', 'sacrifice', 'orb', 'annex', 'classroom', 'cubicles', 'bathroom', 'crawlspace', 'thirteenth', 'locker', 'natatorium', 'garden', 'works', 'warehouse', 'incinerator', 'autopsy', 'intro_desert', 'intro_shaft', 'doorgarden', 'control', 'lostfound', 'stairwell', 'woodstair', 'tunnel', 'labs', 'dreamlab', 'tank', 'mandela', 'upsidedown', 'closet4b', 'supply', 'disposal', 'hwing_floor', 'hwing_desert', 'hwing_pines', 'hwing_corn', 'hwing_moon', 'hwing_home', 'training'],
+            rooms: ['central_egress', 'foyer', 'continuity', 'office', 'cafeteria', 'clockroom', 'barbershop', 'trophycase', 'reception', 'dispensary', 'doorstore', 'medical', 'padded', 'cells', 'medwing', 'recwing', 'execwing', 'executive', 'corner', 'pool', 'interrogation', 'records', 'it', 'observatorium', 'factory', 'training_pit', 'training_hall', 'car', 'garage', 'dock', 'services', 'kitchen', 'coldroom', 'laundry', 'corridor_a', 'boiler', 'corridor_b', 'deadend', 'server', 'dungeon', 'ritual', 'sacrifice', 'orb', 'annex', 'classroom', 'cubicles', 'bathroom', 'crawlspace', 'thirteenth', 'locker', 'natatorium', 'garden', 'works', 'warehouse', 'incinerator', 'downstair', 'antechamber', 'autopsy', 'intro_desert', 'intro_shaft', 'doorgarden', 'control', 'lostfound', 'stairwell', 'woodstair', 'tunnel', 'labs', 'dreamlab', 'tank', 'mandela', 'upsidedown', 'closet4b', 'supply', 'disposal', 'hwing_floor', 'hwing_desert', 'hwing_pines', 'hwing_corn', 'hwing_moon', 'hwing_home', 'training'],
             wall: { drywall_2: 'hz:Wall_03', drywall_3: 'hz:Wall_03', drywall_4: 'hz:Wall_03', rocks_5: 'hz:Stone_11',
                     bricks_2: 'hz:Brick_10', bricks_1: 'hz:Brick_11', bricks_3: 'hz:Brick_11', dungeon: 'hz:Brick_09', dungeon_3: 'hz:Brick_08', dungeon_4: 'hz:Brick_08',
                     gunmetal: 'hz:Metal_02', gunmetal_2: 'hz:Metal_02', metal: 'hz:Metal_02', aluminium: 'hz:Metal_05', metal_3: 'hz:Metal_05',
@@ -112100,7 +112239,7 @@ function hqVariantRollEach(roomId, profile, n, last) {
 /* the rooms this stage added, by floor (the tests and the directory read it) */
 function hqStage2Rooms() {
     return {
-        '2': ['factory', 'incinerator', 'lostfound', 'stairwell', 'tunnel'],
+        '2': ['factory', 'incinerator', 'downstair', 'antechamber', 'ritual', 'sacrifice', 'lostfound', 'stairwell', 'tunnel'],   // DOOR HQ 2.0 WAVE 4: the Works' bottom (the Incinerator, the Stair, the Ritual and Sacrifice Rooms, the Antechamber)
         '4': ['labs', 'tank', 'mandela', 'upsidedown', 'closet4b', 'supply', 'disposal', 'cells', 'padded', 'interrogation', 'server', 'orb'],   // DOOR HQ 2.0 WAVE 3: the Works' middle level (the lift's floor 4)
     };
 }

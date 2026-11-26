@@ -60,7 +60,7 @@ lvl('upper',        'n', 38.5,  'THE LOBBY',         { room: 'central_egress', a
 lvl('garage',       'n', 73.5,  'GARAGE',            { room: 'garage', at: 'hwing' });
 lvl('works_top',    'n', 108.5, 'THE WORKS',         { room: 'factory', at: 'hwing' });
 lvl('works_middle', 'w', 28,    'THE GANTRY',        { room: 'labs', at: 'hwing' });
-lvl('works_bottom', 'e', 28,    'THE INCINERATOR',   { room: 'incinerator', at: 'works' });   // until the Incinerator thread's Antechamber lands: then { room: 'antechamber', at: 'hwing' }
+lvl('works_bottom', 'e', 28,    'THE INCINERATOR',   { room: 'antechamber', at: 'hwing' });
 /* the back halls' last door: the corridor goes on, and comes out at the Ring's door, inside, facing in */
 lvl('loop',         's', 98,    'H-WING',            { room: 'hwing_floor', at: 'ring' });
 /* the doors on the blocks (free doors standing against the block's face; `face` = the way into the hall) */
