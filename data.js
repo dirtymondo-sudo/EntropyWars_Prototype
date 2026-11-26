@@ -32966,6 +32966,15 @@ const DOOR_HQ = {
         concrete: 'aged_cracked_concrete.png',
         drywall:  'aged_beige_office_drywall.png',
         carpet:   'muted_taupe_office_carpet.png',
+        /* THE SIXTIES SHEETS (2026-11-26, mondo: "not a fan of this red wall paper, we are going for the vintage 1960s office retro
+           campy scifi, like 2001 a space odyssey spaceship meets the headquarters in the TV show Danger 5"): drawn in code by
+           bake-hq60.py (original designs), on R2 beside his eight. LOOK_BOOK.md "THE SIXTIES REFIT" says which room wears which. */
+        panel60:   'hq60_panel_wall.png',      // the white moulded wall panels (a drum wall: 3.2 m a sheet, two panels)
+        teak60:    'hq60_teak_slats.png',      // teak slat panelling, the dado and the desks' fronts
+        light60:   'hq60_light_ceiling.png',   // the lit white ceiling grid
+        orange60:  'hq60_tangerine.png',       // the tangerine accent (floor bands, trims)
+        orbit60:   'hq60_orbit_carpet.png',    // the Ring's circles carpet, tangerine / mustard / chocolate
+        groovy60:  'hq60_groovy_paper.png',    // the Spirit Realm's op-art paper
     },
 
     /* Every authored asset once. `file` = the exact R2 filename. Sizes are
@@ -34054,7 +34063,7 @@ const DOOR_HQ = {
         spacing: 3.9,              // metres of outer wall per threshold door (wide panels are 3.3 m)
         endPad: 9,                 // degrees of blank wall past the last door, before the end cap
         minHalf: 24,               // the shortest corridor is ±24°
-        floor: 'urban:CarpetPattern1a', wall: 'urban:PlasterWallPainted1b', dado: 'urban:WoodPanelling1a', trim: 'brass', ceiling: 'ceiling',   // THE RING's sheets (LOOK_BOOK.md, the Overlook corridor)
+        floor: 'orbit60', wall: 'panel60', dado: 'teak60', trim: 'zl_hz_Metal_02__metal', ceiling: 'light60',   // THE RING's sheets (LOOK_BOOK.md "THE SIXTIES REFIT", 11-26: white panels, teak, the circles carpet, a lit ceiling)
         ring: true,                // the bays link end to end (plan 5.4a); false = dead-end caps as before
         ringLeaf: 'leaf_wired_double',   // the fire door on every linked cap (wide; the 4 m cap takes a 3.3 m panel)
         /* THE CONTAINMENT RING, stage 2 (HQ plan 5.4a, 2026-09-08): ONE
@@ -35230,19 +35239,19 @@ const DOOR_HQ = {
                 upperWallH: 5.75,
                 domeH: 3.0,            // to the dome's top: 15.85 m
                 dadoH: 1.05,
-                floor: 'terrazzo', wall: 'damask_3', dado: 'urban:WoodPanelling1a', trim: 'brass', ceiling: 'ceiling', stair: 'marble',
+                floor: 'terrazzo', wall: 'panel60', dado: 'teak60', trim: 'orange60', ceiling: 'light60', stair: 'marble',   // THE SIXTIES REFIT (11-26): no damask
                 bands: [               // inlaid floor rings [rIn, rOut, tex]: marble round the flue, brass lines, the gallery's edge
-                    [2.2, 6.4, 'marble'], [6.4, 6.6, 'brass'], [11.6, 11.9, 'oxblood'], [17.2, 17.5, 'brass'],
+                    [2.2, 6.4, 'marble'], [6.4, 6.6, 'orange60'], [11.6, 11.9, 'orange60'], [17.2, 17.5, 'orange60'],
                 ],
-                spokes: { n: 8, r0: 6.6, r1: 11.6, w: 0.16, tex: 'brass' },
-                flue: { r: 2.2, tex: 'marble', band: 'brass' },   // THE FLUE: the column behind Rhonda, floor to dome
+                spokes: { n: 8, r0: 6.6, r1: 11.6, w: 0.16, tex: 'orange60' },
+                flue: { r: 2.2, tex: 'panel60', band: 'orange60' },   // THE FLUE: the column behind Rhonda, floor to dome
                 cube: { size: 3.6, y: 11.4, rodR: 0.09, deg: 180, r: 10 },   // the Cube hangs in the void over the main line, south of the flue
             },
             /* THE SLIM DESK (mondo: "too wide/thick and it's hard to target her"): a 0.85 m curved counter over 100 degrees facing the
                Foyer, open behind; Rhonda's chair in the well between it and the flue. A REAL DESK (2026-11-26, mondo: "space underneath
                the counter to place her legs under ... scoot her in ... her arms on the counter top"): `knee` = a 5 cm slab at desk height
                (0.80 m) over open knee space, her chair pulled in to r 3.98 so her knees go under it, her pose `hqSitDesk` (forearms on the top) */
-            desk: { mode: 'procedural', arc: [130, 230], rOuter: 4.85, rInner: 4.0, h: 0.8, knee: 0.05, top: 'marble', front: 'urban:WoodPanelling1a' },
+            desk: { mode: 'procedural', arc: [130, 230], rOuter: 4.85, rInner: 4.0, h: 0.8, knee: 0.05, top: 'marble', front: 'teak60' },
             /* the twin stairs: free flights in the void along the gallery's edge, from beside the Foyer up to the gallery (30 steps) */
             stairs: [
                 { id: 'stair_e', from: 166, to: 132, rIn: 15.1, rOut: 17.5, steps: 38, free: true },   // 38 steps up the 7.1 m gallery (wave 3)
@@ -35353,8 +35362,8 @@ const DOOR_HQ = {
                 /* THE RETRO-FUTURIST PASS (2026-09-21): a 1960s terminal's vestibule — white plaster, a cream terrazzo, the corners
                    filleted (`round`), the walls meeting the ceiling in a cove, a saucer pendant either side of the seal */
                 round: 1.6, cove: 0.5,
-                floor: 'terrazzo', wall: 'drywall', dado: 'drywall', trim: 'metal', ceiling: 'ceiling',
-                floorColor: 0xeee9dc, wallColor: 0xf4f1ea, dadoColor: 0xe9e4d8, ceilColor: 0xf6f4ee,
+                floor: 'terrazzo', wall: 'panel60', dado: 'teak60', trim: 'metal', ceiling: 'light60',   // THE SIXTIES REFIT (11-26)
+                floorColor: 0xeee9dc, wallColor: 0xf4f1ea, dadoColor: 0xffffff, ceilColor: 0xf6f4ee,
                 pipes: false, strips: false,
                 light: { x: 0, z: 0 },
                 mood: { light: 0xf6efdf, ambient: 0.62 },              // the brass-and-glass warmth of a lobby that is cleaned nightly
@@ -35501,8 +35510,8 @@ const DOOR_HQ = {
             shell: {
                 w: 17.5, d: 14, h: 5.6,
                 wallH: 5.6, dadoH: 1.2,
-                floor: 'wood', wall: 'urban:WoodCladding2a', dado: 'urban:WoodPanelling1a', trim: 'brass', ceiling: 'ceiling',
-                dadoColor: 0x5f7a5c, ceilColor: 0xb59a6a,
+                floor: 'wood', wall: 'urban:WoodCladding2a', dado: 'teak60', trim: 'brass', ceiling: 'ceiling',
+                dadoColor: 0xffffff, ceilColor: 0xb59a6a,
                 pipes: false,
                 lights: [{ x: 0, z: -2.6 }, { x: -5.0, z: 0.5 }, { x: 4.2, z: 1.0 }],
                 mood: { light: 0xffd9a0, ambient: 0.45 },
@@ -35557,8 +35566,8 @@ const DOOR_HQ = {
             shell: {
                 w: 17.5, d: 14, h: 5.6,
                 wallH: 5.6, dadoH: 1.2,
-                floor: 'carpet_4', wall: 'damask_4', dado: 'urban:WoodPanelling1a', trim: 'brass', ceiling: 'ceiling',
-                dadoColor: 0x6a4a6f, ceilColor: 0x6a4a6f,
+                floor: 'carpet_4', wall: 'groovy60', dado: 'teak60', trim: 'brass', ceiling: 'ceiling',   // THE SIXTIES REFIT (11-26): op-art paper, no damask
+                dadoColor: 0xffffff, ceilColor: 0x6a4a6f,
                 pipes: false,
                 lights: [{ x: -2.5, z: -3.0 }, { x: 3.5, z: 0 }, { x: -6.5, z: 0.5 }],
                 mood: { light: 0xe9b44c, ambient: 0.45 },
@@ -35941,7 +35950,7 @@ const DOOR_HQ = {
             shell: {
                 w: 14, d: 14, h: 5.25,
                 wallH: 5.25, dadoH: 1.05,
-                floor: 'urban:TileLinoleum1c', wall: 'drywall_2', dado: 'urban:WoodPanelling1a', trim: 'brass', ceiling: 'ceiling',
+                floor: 'urban:TileLinoleum1c', wall: 'drywall_2', dado: 'teak60', trim: 'brass', ceiling: 'ceiling',
                 floorColor: 0xc8c0b0, wallColor: 0xe0d6bc, ceilColor: 0xeeeae0,
                 pipes: false, strips: false,
                 lights: [{ x: -3.5, z: -2 }, { x: 3.5, z: -2 }, { x: 0, z: 3 }],
@@ -36872,8 +36881,8 @@ const DOOR_HQ = {
                 wallH: 7, dadoH: 1.2,
                 open: true, sides: { s: 'open' }, apron: false,
                 canopy: [{ x0: -15.75, x1: 15.75, z0: -31.5, z1: 3.5 }], canopyGlow: 0x4a4234,
-                floor: 'marble_light', wall: 'urban:WoodPanelling1a', dado: 'urban:WoodPanelling1a', trim: 'brass', ceiling: 'ceiling',
-                floorColor: 0xeee8dc, wallColor: 0x9a8670, dadoColor: 0x5a4632, ceilColor: 0xb8ad94,
+                floor: 'marble_light', wall: 'teak60', dado: 'teak60', trim: 'brass', ceiling: 'ceiling',
+                floorColor: 0xeee8dc, wallColor: 0xf0e4d4, dadoColor: 0xc8b49c, ceilColor: 0xb8ad94,
                 pipes: false, strips: false,
                 lights: [{ x: -5.25, z: -21.0 }, { x: -5.25, z: -7.0 }, { x: 10.5, z: -15.75 }, { x: 10.5, z: -28.0 }, { x: 0, z: 12.0 }, { x: -8.75, z: 26.0 }, { x: 8.75, z: 26.0 }],
                 mood: { light: 0x9fb4d9, ambient: 0.42 },
@@ -36913,11 +36922,11 @@ const DOOR_HQ = {
                 { key: 'office_glass',      x: 5.25, z: -12.25, face: 270, frame: 0xb8a172 },
                 { key: 'office_glass',      x: 5.25, z: -8.75,  face: 270, frame: 0xb8a172 },
                 { key: 'room_wall', x: 10.5, z: -24.5, face: 180, len: 10.8, wallH: 4.9, t: 0.3, dadoH: 1.2, trimColor: 0xb8a172,
-                  front: { wall: 'urban:WoodPanelling1a', dado: 'urban:WoodPanelling1a', wallColor: 0x9a8670, dadoColor: 0x5a4632 },
-                  back:  { wall: 'urban:WoodPanelling1a', dado: 'urban:WoodPanelling1a', wallColor: 0x9a8670, dadoColor: 0x5a4632 } },
+                  front: { wall: 'teak60', dado: 'teak60', wallColor: 0xf0e4d4, dadoColor: 0xc8b49c },
+                  back:  { wall: 'teak60', dado: 'teak60', wallColor: 0xf0e4d4, dadoColor: 0xc8b49c } },
                 { key: 'room_wall', x: 10.5, z: -7.0, face: 180, len: 10.8, wallH: 4.9, t: 0.3, dadoH: 1.2, trimColor: 0xb8a172,
-                  front: { wall: 'urban:WoodPanelling1a', dado: 'urban:WoodPanelling1a', wallColor: 0x9a8670, dadoColor: 0x5a4632 },
-                  back:  { wall: 'urban:WoodPanelling1a', dado: 'urban:WoodPanelling1a', wallColor: 0x9a8670, dadoColor: 0x5a4632 } },
+                  front: { wall: 'teak60', dado: 'teak60', wallColor: 0xf0e4d4, dadoColor: 0xc8b49c },
+                  back:  { wall: 'teak60', dado: 'teak60', wallColor: 0xf0e4d4, dadoColor: 0xc8b49c } },
                 /* THE WINDOW: on the building's outside wall, behind the desk */
                 { key: 'false_window',      wall: 'e', z: -15.75, mount: 0.4, winW: 4.2, winH: 4.2 },
                 { key: 'brass_telescope',   x: 14.4, z: -20.6, face: 90 },
@@ -37038,7 +37047,7 @@ const DOOR_HQ = {
             shell: {
                 w: 17.5, d: 21, h: 5.25,
                 wallH: 5.25, dadoH: 1.05,
-                floor: 'carpet_4', wall: 'drywall_2', dado: 'urban:WoodPanelling1a', trim: 'brass', ceiling: 'ceiling',
+                floor: 'carpet_4', wall: 'drywall_2', dado: 'teak60', trim: 'brass', ceiling: 'ceiling',
                 wallColor: 0xd8cbb0, floorColor: 0x8c7e62, ceilColor: 0xeeeae0,
                 pipes: false, strips: false,
                 lights: [{ x: -4.5, z: -6 }, { x: 4.5, z: -6 }, { x: -4.5, z: 0 }, { x: 4.5, z: 0 }, { x: 0, z: 5.5 }],
@@ -37087,7 +37096,7 @@ const DOOR_HQ = {
             shell: {
                 w: 17.5, d: 14, h: 4.5,
                 wallH: 4.5, dadoH: 1.05,
-                floor: 'urban:TileLinoleum1c', wall: 'drywall_2', dado: 'urban:WoodPanelling1a', trim: 'brass', ceiling: 'ceiling',
+                floor: 'urban:TileLinoleum1c', wall: 'drywall_2', dado: 'teak60', trim: 'brass', ceiling: 'ceiling',
                 floorColor: 0xb8bcc0, wallColor: 0xd9d6cc, ceilColor: 0xeeeae0,
                 pipes: false, strips: false,
                 lights: [{ x: -4.5, z: -2.5 }, { x: 4.5, z: -2.5 }, { x: 0, z: 2.5 }],
@@ -38767,7 +38776,7 @@ const DOOR_HQ = {
             shell: {
                 w: 21, d: 21, h: 7,
                 wallH: 7, dadoH: 1.2,
-                floor: 'carpet_4', wall: 'drywall_2', dado: 'urban:WoodPanelling1a', trim: 'brass', ceiling: 'ceiling',
+                floor: 'carpet_4', wall: 'drywall_2', dado: 'teak60', trim: 'brass', ceiling: 'ceiling',
                 wallColor: 0xe2d8c0, floorColor: 0x7a3e36, ceilColor: 0xeeeae0,
                 pipes: false, strips: false,
                 lights: [{ x: -5, z: -5 }, { x: 5, z: -5 }, { x: -5, z: 2.5 }, { x: 5, z: 2.5 }],
@@ -38817,7 +38826,7 @@ const DOOR_HQ = {
             shell: {
                 w: 28, d: 21, h: 4.5,
                 wallH: 4.5, dadoH: 1.05,
-                floor: 'carpet_4', wall: 'drywall_2', dado: 'urban:WoodPanelling1a', trim: 'brass', ceiling: 'ceiling',
+                floor: 'carpet_4', wall: 'drywall_2', dado: 'teak60', trim: 'brass', ceiling: 'ceiling',
                 wallColor: 0xe0d8c4, floorColor: 0x737d84, ceilColor: 0xeeeae0,
                 pipes: false, strips: false,
                 lights: [{ x: -8, z: -5 }, { x: 0, z: -5 }, { x: 8, z: -5 }, { x: -8, z: 3 }, { x: 8, z: 3 }, { x: 0, z: 5 }],
@@ -40215,7 +40224,7 @@ const DOOR_HQ = {
             shell: {
                 w: 14, d: 14, h: 4.5,
                 wallH: 4.5, dadoH: 1.05,
-                floor: 'carpet_4', wall: 'drywall_2', dado: 'urban:WoodPanelling1a', trim: 'brass', ceiling: 'ceiling',
+                floor: 'carpet_4', wall: 'drywall_2', dado: 'teak60', trim: 'brass', ceiling: 'ceiling',
                 wallColor: 0xe2d8c0, floorColor: 0x8a7660, ceilColor: 0xeeeae0,
                 pipes: false, strips: false,
                 lights: [{ x: -3.5, z: -2.5 }, { x: 3.5, z: -2.5 }, { x: 0, z: 2.5 }],

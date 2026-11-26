@@ -4357,6 +4357,7 @@ const ThreeRenderer = (function () {
     var _EMISSIVE_TERRAIN = {
         holo:     { color: 0x7fe8ff, intensity: 0.95 },
         holo_red: { color: 0xff6a78, intensity: 0.95 },
+        light60:  { color: 0xfff4e2, intensity: 0.5 },   // THE SIXTIES REFIT (2026-11-26): DOOR HQ's lit ceiling panels glow (2001's ceilings)
     };
     function _emissiveTerrainMat(mat, key, tex) {
         var em = _EMISSIVE_TERRAIN[key];
