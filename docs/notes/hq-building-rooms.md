@@ -1466,6 +1466,10 @@ the vending machines". Plan: `docs/plans/door-hq-2/FLOOR_PLANS.md` (lobby level,
 - RETIRED: `DOOR_HQ.retired.dispensary = 'doorstore'`; the Medical Wing's `dispensary` door is cut (`DOOR_HQ.cut.doors.medwing`); the
   medwing stage zone no longer holds it. The Quartermaster (races, party builder) was cut in wave 1; nothing in story sells races.
 - OTTO RUNS THE TILL (mondo 11-26: "Otto can be at the door store"): DOOR_CAST.otto's one spot is behind the till (x 0, z -7.7, hqArms); his old upper-level door posts are gone. The till is a low `exec_desk` (the booking desk's screens hid him). Probes: playtest_city.js sets EW_DISABLE_CAST, so pass `--pre=window.EW_DISABLE_CAST=false` to see the cast.
+- THE PAWN SHOP LAYOUT (mondo 11-26: "the doors against the back wall behind a long counter, they are in front of the counter and otto so he
+  is completely hidden. Think more pawn shop or ammo store"): all seven doors on plinths along the north wall (z -7.9, every 2.8 m, the vault
+  in the middle), one long counter of seven `jewelry_case`s at z -4.6 (x -4.8..4.8), Otto between them (z -6.0), the till counter in front
+  (z -3.4). The shop floor south of the counter is open.
 ## DOOR HQ 2.0, WAVE 2: THE TRAINING ROOM (2026-11-26)
 - One definition still: data.js `rooms.training_hall` (the look + the `prebuilt_training` board's room); `rooms.training` (the walk's
   room, Room 64) is built from it after the table. The 8 x 8 pad, its keys, its level and HQ_ARENA_RULES.own.prebuilt_training are
@@ -1835,3 +1839,10 @@ counter top if you can".
   shows the raw clip. The seat pin (`_hqSeatPin`) treats `hqSitDesk` like `hqSit`.
 - Scene E's shots (RHONDA LETS HER STAY) were left as they were: she is 0.9 m nearer the camera, so E4's medium is a little closer.
 - Checked: `node find-doorways.js central_egress` clear; probe pictures (playtest_city.js with `--pre=window.EW_DISABLE_CAST=false`).
+
+### THE NEAREST FIRST (2026-11-26, fix after the level join)
+mondo: "Having trouble walking and skating into the training room, like there is an invisible wall". The stage built its parts in list
+order, one a frame, and the Training Room is last on the Ring's list of 21. If you walked or skated from the Lobby, you reached its doorway
+before it was built, and a part that isn't built yet is a wall. three-renderer.js `_hqStageBuildOrder` now builds and attaches parts
+nearest the walker first. It sorts the stage's own neighbour list by the walker's distance to each part's rectangle, again every
+500 ms, and never walks the scene (RULE 1e).

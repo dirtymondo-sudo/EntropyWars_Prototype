@@ -82,7 +82,7 @@ const ThreeRenderer = (function () {
         }
     })();
     /* THE BUILD LINE (the perf lens): bump the stamp in every PR that changes this file's walk / fight drawing */
-    var _EW_TR_STAMP = '11-26 level-join';
+    var _EW_TR_STAMP = '11-26 level-join nearest-first';
     function _ewBuildTok() {
         var sc = document.querySelectorAll('script[src*="three-renderer.js"]'), t = '';
         for (var i = 0; i < sc.length; i++) { var m = /[?&]v=([^&#]+)/.exec(sc[i].src || ''); if (m) { t = m[1]; break; } }
@@ -105950,10 +105950,29 @@ const ThreeRenderer = (function () {
         if (_hqImpTick(H, now)) return;   // THE IMPOSSIBLE DOORS: a crossing through one this frame
         _hqStageCross(H, now);
     }
+    /* THE NEAREST FIRST (DOOR HQ 2.0 wave 4 fix, 2026-11-26, mondo: "trouble walking and skating into the training room, like there is
+       an invisible wall"): the parts were built in list order, one a frame, so on a level of 20+ parts the room you were walking toward
+       (the Training Room, last on the Ring's list) could still be unbuilt when you reached its doorway, and an unbuilt part is a wall.
+       The parts now build and attach nearest the walker first: the list is sorted by how far the walker stands from each part's
+       rectangle, again every half second (a sort of the stage's own short list, never the scene: RULE #1e). */
+    function _hqStageBuildOrder(H, now) {
+        var st = H.stage, p = H.player, o = st._bo;
+        if (o && o.nbs === st.nbs && now - o.t < 500) return o.list;
+        var px = p ? p.x : 0, pz = p ? p.z : 0;
+        var list = st.nbs.map(function (nb, i) {
+            var r = nb.rect, d = 0;
+            if (r) { var dx = Math.max(r.x0 - px, 0, px - r.x1), dz = Math.max(r.z0 - pz, 0, pz - r.z1); d = Math.hypot(dx, dz); }
+            return { nb: nb, d: d, i: i };
+        });
+        list.sort(function (a, b) { return (a.d - b.d) || (a.i - b.i); });
+        list = list.map(function (e) { return e.nb; });
+        st._bo = { nbs: st.nbs, t: now, list: list };
+        return list;
+    }
     function _hqStageBuildTick(H, now) {
-        var st = H.stage;
-        for (var i = 0; i < st.nbs.length; i++) {
-            var nb = st.nbs[i], E = st.parts[nb.id];
+        var st = H.stage, nbsO = _hqStageBuildOrder(H, now);
+        for (var i = 0; i < nbsO.length; i++) {
+            var nb = nbsO[i], E = st.parts[nb.id];
             if (E && E.built) {
                 if (!H.sky && H === _hq && _hqStageOpenBox(_hqData().rooms[nb.id])) _hqStageSkyUp(H, _hqData().rooms[nb.id], nb.id);   // THE OPEN-AIR ROOM INDOORS
                 if (!E.attached && E.rel && _hqStageReady(H, E, now)) {

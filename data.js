@@ -36260,39 +36260,41 @@ const DOOR_HQ = {
                   action: { room: 'central_egress', at: 'doorstore' } },
             ],
             counters: [
-                { id: 'till', x: 0, z: -5.4, face: 0, plateY: 1.9, radius: 2.2, verb: 'SHOP',
+                { id: 'till', x: 0, z: -3.4, face: 0, plateY: 1.9, radius: 2.2, verb: 'SHOP',
                   label: 'DOOR STORE', action: { overlay: 'pharmacy', shelf: 'doors' } },
             ],
             props: [
-                /* ── the stock (face 180 = the front toward the Lobby, +z): an arc of plinths facing the Lobby, the vault in the middle behind its ropes ── */
-                { key: 'store_door', item: 'captureDoor',      x: -7.0, z: 0.6,  face: 198 },
-                { key: 'store_door', item: 'captureDoor2',     x: -3.6, z: -1.1, face: 189 },
-                { key: 'store_door', item: 'captureDoor3',     x: 0,    z: -2.3, face: 180 },
-                { key: 'store_door', item: 'captureDoorTuned', x: 3.6,  z: -1.1, face: 171 },
-                { key: 'store_door', leaf: 'leaf_futuristic',  x: 7.0,  z: 0.6,  face: 162 },   // the showroom's one not for sale
-                { key: 'rope_stanchion', x: -1.7, z: -0.9, face: 0 },
-                { key: 'rope_stanchion', x: 1.7,  z: -0.9, face: 0 },
-                /* ── the window display either side of the open front ── */
-                { key: 'store_door', leaf: 'leaf_glass_exec', x: -8.6, z: 6.6, face: 215 },
-                { key: 'store_door', leaf: 'leaf_hotel',      x: 8.6,  z: 6.6, face: 145 },
-                /* ── the till at the back ── */
-                { key: 'exec_desk',     x: 0, z: -6.6, face: 180 },   // the till: a low desk, so Otto behind it is seen and easy to click (the drawers to him)
-                { key: 'cash_register', x: 0.6, z: -6.55, y: 0.76, face: 180 },
-                { key: 'wall_clock',    wall: 'n', x: -5.5, mount: 4.0 },
-                { key: 'potted_plant',  x: -3.2, z: -7.8 },
-                { key: 'potted_plant',  x: 3.2,  z: -7.8 },
-                /* ── the customers' corner (west) and the key case (east) ── */
-                { key: 'psx_sofa_3',    x: -9.6, z: -4.4, face: 90 },
-                { key: 'coffee_table',  x: -8.0, z: -4.4 },
-                { key: 'brochure_rack', wall: 'w', z: -1.4, mount: 1.1 },
-                { key: 'jewelry_case',  x: 9.2, z: -4.4, face: 270 },
-                { key: 'brochure_rack', wall: 'e', z: -1.4, mount: 1.1 },
-                { key: 'potted_plant',  x: -9.8, z: 3.2 },
+                /* ── THE BACK WALL (mondo 11-26: "the doors against the back wall behind a long counter ... think more pawn shop or ammo
+                   store"): every door stands on its plinth along the north wall, the vault in the middle, the stock first (face 180 = the
+                   front toward the room) ── */
+                { key: 'store_door', leaf: 'leaf_glass_exec',  x: -8.4, z: -7.9, face: 180 },
+                { key: 'store_door', item: 'captureDoor',      x: -5.6, z: -7.9, face: 180 },
+                { key: 'store_door', item: 'captureDoor2',     x: -2.8, z: -7.9, face: 180 },
+                { key: 'store_door', item: 'captureDoor3',     x: 0,    z: -7.9, face: 180 },
+                { key: 'store_door', item: 'captureDoorTuned', x: 2.8,  z: -7.9, face: 180 },
+                { key: 'store_door', leaf: 'leaf_futuristic',  x: 5.6,  z: -7.9, face: 180 },
+                { key: 'store_door', leaf: 'leaf_hotel',       x: 8.4,  z: -7.9, face: 180 },
+                /* ── THE COUNTER: one long run of glass cases, Otto behind it, the till in the middle ── */
+                { key: 'jewelry_case',  x: -4.8, z: -4.6, face: 180 },
+                { key: 'jewelry_case',  x: -3.2, z: -4.6, face: 180 },
+                { key: 'jewelry_case',  x: -1.6, z: -4.6, face: 180 },
+                { key: 'jewelry_case',  x: 0,    z: -4.6, face: 180 },
+                { key: 'jewelry_case',  x: 1.6,  z: -4.6, face: 180 },
+                { key: 'jewelry_case',  x: 3.2,  z: -4.6, face: 180 },
+                { key: 'jewelry_case',  x: 4.8,  z: -4.6, face: 180 },
+                { key: 'wall_clock',    wall: 'n', x: -4.2, mount: 4.6 },
+                /* ── the shop floor: the customers' bench, the racks ── */
+                { key: 'psx_sofa_3',    x: -9.6, z: 0.5, face: 90 },
+                { key: 'coffee_table',  x: -8.0, z: 0.5 },
+                { key: 'brochure_rack', wall: 'w', z: 3.4, mount: 1.1 },
+                { key: 'brochure_rack', wall: 'e', z: 3.4, mount: 1.1 },
+                { key: 'potted_plant',  x: -9.8, z: -3.0 },
+                { key: 'potted_plant',  x: 9.8,  z: -3.0 },
                 { key: 'potted_plant',  x: 9.8,  z: 3.2 },
                 /* ── the ceiling ── */
-                { key: 'psx_ceiling_lamp_2_on', x: -5.25, z: 3.5, ceil: true },
-                { key: 'psx_ceiling_lamp_2_on', x: 5.25,  z: 3.5, ceil: true },
-                { key: 'psx_ceiling_lamp_2_on', x: 0,     z: -6.0, ceil: true },
+                { key: 'psx_ceiling_lamp_2_on', x: -5.25, z: 2.0, ceil: true },
+                { key: 'psx_ceiling_lamp_2_on', x: 5.25,  z: 2.0, ceil: true },
+                { key: 'psx_ceiling_lamp_2_on', x: 0,     z: -4.6, ceil: true },
             ],
             spawn: { x: 0, z: 6.0, face: 0 },
         },
@@ -112016,7 +112018,7 @@ const DOOR_CAST = {
         spots: [
             /* DOOR HQ 2.0 (mondo 2026-11-26: "Otto can be at the door store"): he stands behind the Door Store's till, facing the shop;
                the till's counter is 1.2 m in front of the desk, so he talks across it (reach) */
-            { room: 'doorstore', x: 0, z: -7.7, face: 180, pose: 'hqArms', reach: 3.2,
+            { room: 'doorstore', x: 0, z: -6.0, face: 180, pose: 'hqArms', reach: 3.2,
               doing: 'Behind the till.' },
         ],
     },
