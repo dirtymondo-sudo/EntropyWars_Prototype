@@ -4382,3 +4382,14 @@ runs one frame in three, so a group could draw where its room stood in the OLD f
 does what the fight-in-the-walked-room does when it moves the room whole: `_fwEp++` and every target `_ew_bunDirty`, so every
 group is checked that frame and keeps its recording with each piece's place written once (no re-record). Off:
 `window.EW_HQ_SWAP_NO_BUNMOVE`. The cloud's WebGPU (SwiftShader) loses its device on this walk, so this was not seen there.
+
+## THE CROSSING CAPTURE + THE DOORWAY AT YOUR BACK (2026-11-26)
+mondo on hqswap-01: still a split-second glitch at a crossing, "the lighting changes and everything", and in it the wallpaper of
+the room he is leaving. WebGL drawn frame by frame (the swap frame grabbed with readPixels in scene.onAfterRender) is clean, and
+the cloud's WebGPU (SwiftShader) loses its device on the walk. So the F3 lens now prints **Last crossing**: the two frames before
+the swap, the swap frame [0] and three after, each its gap, the camera + walker (metres, part frame, look/body degrees), the parts
+drawn, and what the renderer did in it on WebGPU (shader builds, pipelines, draws HELD for a compiling look, recordings made, recordings
+moved, light-list changes, rig changes). `_hqXcFrame` after the main render, `_hqXcSwap` at the swap's start, `_hqXcText` in `_lensText`.
+Also (H-Wing / any see-through doorway): after a doorway crossing the new room arms its doorway back while the camera stands a few
+cm on the room's side of it; its two-sided 0.6 m box was cut by the near plane and filled the screen with the room just left.
+`_hqImpRender` no longer shows a doorway the camera stands at while looking away from it. Old rule: `window.EW_HQ_IMP_BACK_SHOW`.
