@@ -36774,6 +36774,96 @@ const DOOR_HQ = {
            24.5 x 10.5 m, its weir on the room's south line, and past it nothing (`sides.s: 'open'`, `apron: false`: no wall, no
            ground, only the sky under the edge). Retired into it: `corner` (Room 4C) and `pool` (Room 8). One name: PENTHOUSE.
            The "impossible doors" thread may make the window a portal. ── */
+        /* THE CITY THROUGH THE CORNER OFFICE WINDOW (DOOR HQ 2.0 wave 4, THE IMPOSSIBLE DOORS, 2026-11-26, mondo: "probably the city"): a room that
+           is only ever SEEN, never walked: the Penthouse's east window (HQ_STAGE_RULES.impossible) looks down onto it from 34 m, in daylight
+           while the Penthouse stands in the night. A boulevard of the city's pack shop blocks (the ones Disaster City wears), lamps, palms, traffic.
+           No doors, no people. */
+        penthouse_city: {
+            label: 'THE CITY',
+            kind: 'box',
+            shell: {
+                w: 168, d: 168, h: 9, wallH: 9,
+                open: true, sides: { n: 'open', s: 'open', e: 'open', w: 'open' }, apron: false,
+                floor: 'urban:RoadGeneric1a', wall: 'concrete', trim: 'brass', ceiling: 'ceiling',
+                floorColor: 0x9a9a96, pipes: false, strips: false, lights: [], keyLamp: 0,
+                mood: { light: 0xfff1d6, ambient: 0.6 },
+                sky: { night: 0, day: 1, tint: 0x9fc4e8, tintAmt: 0.28, stars: 0.05, nebula: 0.2, clouds: 0.3, fog: { color: 0xc8d8ea, amount: 0.4, top: 0.06, band: 0.5 }, scenery: 'city', density: 0.6 },
+            },
+            doors: [],
+            counters: [],
+            props: [
+                { key: 'ebd_buildings_bld_05', x: -47.11, z: -19.55, face: 0 },
+                { key: 'ebd_buildings_bld_09', x: -22.77, z: -16.93, face: 0 },
+                { key: 'ebd_buildings_bld_01', x: 19.02, z: -19.76, face: 0 },
+                { key: 'ebd_buildings_bld_07', x: 64.44, z: -18.12, face: 0 },
+                { key: 'ebd_buildings_bld_00', x: -47.91, z: 19.71, face: 180 },
+                { key: 'ebd_buildings_bld_08', x: -25.06, z: 16.98, face: 180 },
+                { key: 'ebd_buildings_bld_00', x: 16.09, z: 19.71, face: 180 },
+                { key: 'ebd_buildings_bld_06', x: 68.72, z: 19.34, face: 180 },
+                { key: 'ebd_buildings_bld_01', x: -44.98, z: -41.24, face: 180 },
+                { key: 'ebd_buildings_bld_08', x: -19.19, z: -44.02, face: 180 },
+                { key: 'ebd_buildings_bld_06', x: 18.73, z: -41.66, face: 180 },
+                { key: 'ebd_buildings_bld_09', x: 60.45, z: -44.07, face: 180 },
+                { key: 'ebd_buildings_bld_08', x: 77.65, z: -44.02, face: 180 },
+                { key: 'ebd_buildings_bld_00', x: -47.91, z: 41.28, face: 0 },
+                { key: 'ebd_buildings_bld_09', x: -24.38, z: 44.07, face: 0 },
+                { key: 'ebd_buildings_bld_06', x: 18.73, z: 41.66, face: 0 },
+                { key: 'ebd_buildings_bld_03', x: 63.59, z: 42.42, face: 0 },
+                { key: 'ebd_buildings_bld_08', x: -54.24, z: -71.97, face: 0 },
+                { key: 'ebd_buildings_bld_05', x: -30.59, z: -74.55, face: 0 },
+                { key: 'ebd_buildings_bld_09', x: 10.45, z: -71.93, face: 0 },
+                { key: 'ebd_buildings_bld_09', x: 28.34, z: -71.93, face: 0 },
+                { key: 'ebd_buildings_bld_03', x: 63.59, z: -73.58, face: 0 },
+                { key: 'ebd_buildings_bld_09', x: -53.55, z: 71.93, face: 180 },
+                { key: 'ebd_buildings_bld_03', x: -32.52, z: 73.58, face: 180 },
+                { key: 'ebd_buildings_bld_01', x: 19.02, z: 74.75, face: 180 },
+                { key: 'ebd_buildings_bld_00', x: 66.09, z: 74.72, face: 180 },
+                { key: 'iron_lamp_post', x: -70, z: -8.6, face: 0 },
+                { key: 'iron_lamp_post', x: -70, z: 8.6, face: 180 },
+                { key: 'iron_lamp_post', x: -56, z: -8.6, face: 0 },
+                { key: 'iron_lamp_post', x: -56, z: 8.6, face: 180 },
+                { key: 'iron_lamp_post', x: -42, z: -8.6, face: 0 },
+                { key: 'iron_lamp_post', x: -42, z: 8.6, face: 180 },
+                { key: 'iron_lamp_post', x: -28, z: -8.6, face: 0 },
+                { key: 'iron_lamp_post', x: -28, z: 8.6, face: 180 },
+                { key: 'iron_lamp_post', x: -14, z: -8.6, face: 0 },
+                { key: 'iron_lamp_post', x: -14, z: 8.6, face: 180 },
+                { key: 'iron_lamp_post', x: 0, z: -8.6, face: 0 },
+                { key: 'iron_lamp_post', x: 0, z: 8.6, face: 180 },
+                { key: 'iron_lamp_post', x: 14, z: -8.6, face: 0 },
+                { key: 'iron_lamp_post', x: 14, z: 8.6, face: 180 },
+                { key: 'iron_lamp_post', x: 28, z: -8.6, face: 0 },
+                { key: 'iron_lamp_post', x: 28, z: 8.6, face: 180 },
+                { key: 'iron_lamp_post', x: 42, z: -8.6, face: 0 },
+                { key: 'iron_lamp_post', x: 42, z: 8.6, face: 180 },
+                { key: 'iron_lamp_post', x: 56, z: -8.6, face: 0 },
+                { key: 'iron_lamp_post', x: 56, z: 8.6, face: 180 },
+                { key: 'iron_lamp_post', x: 70, z: -8.6, face: 0 },
+                { key: 'iron_lamp_post', x: 70, z: 8.6, face: 180 },
+                { key: 'palm_tree', x: -63, z: 0, face: 0 },
+                { key: 'palm_tree', x: -42, z: 0, face: 0 },
+                { key: 'palm_tree', x: -21, z: 0, face: 0 },
+                { key: 'palm_tree', x: 0, z: 0, face: 0 },
+                { key: 'palm_tree', x: 21, z: 0, face: 0 },
+                { key: 'palm_tree', x: 42, z: 0, face: 0 },
+                { key: 'palm_tree', x: 63, z: 0, face: 0 },
+                { key: 'car_taxi', x: -60, z: 4.5, face: 90 },
+                { key: 'car_pack_1', x: -47, z: -4.5, face: 270 },
+                { key: 'car_pack_2', x: -34, z: 4.5, face: 90 },
+                { key: 'car_pack_3', x: -21, z: -4.5, face: 270 },
+                { key: 'car_suv', x: -8, z: 4.5, face: 90 },
+                { key: 'transit_bus', x: 5, z: -4.5, face: 270 },
+                { key: 'car_pack_5', x: 18, z: 4.5, face: 90 },
+                { key: 'car_cadillac', x: 31, z: -4.5, face: 270 },
+                { key: 'car_taxi', x: 44, z: 4.5, face: 90 },
+                { key: 'car_pack_4', x: 57, z: -4.5, face: 270 },
+                { key: 'car_taxi', x: 70, z: 4.5, face: 90 },
+                { key: 'car_pack_1', x: 83, z: -4.5, face: 270 },
+            ],
+            agents: [], npcSpots: [], lines: [],
+            spawn: { x: 0, z: 0, face: 90 },
+            noWalkers: true,
+        },
         executive: {
             label: 'PENTHOUSE',
             kind: 'box',
@@ -87796,6 +87886,9 @@ const HQ_STAGE_RULES = {
         { a: 'hwing_floor', door: 'thirteenth', b: 'thirteenth', bDoor: 'crawl', see: true },
         { a: 'hwing_floor', door: 'pool', b: 'natatorium', bDoor: 'garden', see: true },
         { a: 'hwing_floor', door: 'garden', b: 'garden', bDoor: 'annex', see: true },
+        /* THE CORNER OFFICE WINDOW (the Penthouse): the city by day, 34 m below, through the false window's blinds (mondo: "probably the city") */
+        { a: 'executive', window: { wall: 'e', z: -15.75, y: 0.46, w: 4.08, h: 4.08, inset: 0.075 }, b: 'penthouse_city', at: { x: -84, z: 0, y: 34, face: 90 }, look: true,
+          day: { sky: 0xa9cbe8, fog: 0xc8d8ea, hemi: 0xe6f0ff, ground: 0x8a8274, hemiI: 1.15, key: 0xfff1d6, keyI: 1.25 } },
     ],
     /* the drop under `a` an impossible door's room is built at (m; out of the eye's 900 m reach both ways), the see-through door's render
        target (a share of the screen), the reach it is drawn from (m), and the depth of the doorway's dark box (m) */
@@ -88963,7 +89056,10 @@ function hqStageImpJoins(roomId, otherId) {
            prop window's glass), always `look` */
         const win = (j.window && typeof j.window === 'object' && A.kind === 'box') ? j.window : null;
         const da = win ? Object.assign({ id: '~window', open: { w: +win.w || 3, h: +win.h || 2 } }, win) : (A.doors || []).find(d => d && d.id === j.door);
-        const db = (B.doors || []).find(d => d && d.id === j.bDoor);
+        /* THE VIEW: a window's row may name a point of b to look from (`at: { x, z, y, face }`, face = the heading back toward a) in place of
+           `bDoor` (a room that is only ever seen: the Corner Office's city) */
+        const db = (win && j.at && typeof j.at === 'object') ? Object.assign({ id: '~view', wall: 'free', open: { w: +win.w || 3, h: +win.h || 2 } }, j.at)
+            : (B.doors || []).find(d => d && d.id === j.bDoor);
         if (!da || !db || da.hidden || db.hidden) continue;
         const fa = hqImpDoorFrame(A, da), fb = hqImpDoorFrame(B, db);
         if (!fa || !fb || (fa.hub && fb.hub) || (win && fa.free)) continue;
@@ -89006,7 +89102,8 @@ function hqStageImpNeighbours(roomId) {
             rect = { x0: Math.min(...cs.map(p => p.x)), z0: Math.min(...cs.map(p => p.z)), x1: Math.max(...cs.map(p => p.x)), z1: Math.max(...cs.map(p => p.z)) };
         } else { const Ro = Math.max(S.radius || 0, S.rOut || 0, (S.mezz && S.mezz.outer) || 0), c = hqStageToRoom(rel, 0, 0); rect = { x0: c.x - Ro, z0: c.z - Ro, x1: c.x + Ro, z1: c.z + Ro }; }
         const imp = { x: f.x + f.ox * G.gap, z: f.z + f.oz * G.gap, ox: f.ox, oz: f.oz, y: f.y, ow: G.ow, oh: G.oh, gap: G.gap, drop: mine ? G.drop : -G.drop,
-                      see: j.see, look: j.look, door: (mine ? j.door : j.bDoor).id, otherDoor: (mine ? j.bDoor : j.door).id, free: !!f.free, hub: !!f.hub, window: !!(j.window && mine) };
+                      see: j.see, look: j.look, door: (mine ? j.door : j.bDoor).id, otherDoor: (mine ? j.bDoor : j.door).id, free: !!f.free, hub: !!f.hub, window: !!(j.window && mine),
+                      inset: (j.window && mine) ? (+j.row.window.inset || 0.05) : 0, day: (j.row.day && typeof j.row.day === 'object') ? j.row.day : null };
         if (j.window && !mine) return;   // a window is seen from its own room only (the room it shows has no way back through it)
         /* TWO DOORS TO ONE ROOM (H-Wing's vignettes: the hall door and the lone door): one part, one place at a time. Each doorway is an
            `alts` row ({ rel, rect, imp }); the renderer stands the part behind the doorway nearest the walker (_hqImpAlt) */
