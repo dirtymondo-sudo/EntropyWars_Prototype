@@ -1854,7 +1854,8 @@ worn by DOOR_HQ.textures keys `panel60` (white moulded panels), `teak60` (teak s
 three-renderer.js `_EMISSIVE_TERRAIN.light60`), `orange60` (tangerine), `orbit60` (the Ring's circles carpet), `groovy60` (the Spirit Realm's op-art paper).
 Worn by: the Lobby (walls both levels, dado, trim, dome, flue, floor rings + spokes, Rhonda's desk front), the Ring (bayShell), the Foyer,
 the Spirit Realm office, the Penthouse's wood walls, and every HQ room that named `urban:WoodPanelling1a` (that sheet was never on R2: those
-dados drew untextured). The Works and H-Wing keep their own looks. Which room wears which: LOOK_BOOK.md section 0 "THE SIXTIES REFIT".
+dados drew untextured). PASS 2 (11-26, mondo on the new Training Room: "did this not get the 1960s retro campy scifi pass"): the Training Room (`training_hall`: panel60 walls, teak dado, tangerine trim, light60 ceiling; the pit's oxblood barriers stay, they are his reference photos), the Extraterrestrial office (panel60, tangerine dado, light60), Your Office (teak dado, tangerine trim, no oxblood).
+The Works and H-Wing keep their own looks. Which room wears which: LOOK_BOOK.md section 0 "THE SIXTIES REFIT".
 
 ## THE TRAINING ROOM, TIGHT (2026-11-26, the redo)
 mondo: "too spacious and big, there is no function to the form ... The 8x8 board and the little classroom with the tv are the most

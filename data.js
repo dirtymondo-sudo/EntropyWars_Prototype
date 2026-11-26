@@ -35626,8 +35626,8 @@ const DOOR_HQ = {
             shell: {
                 w: 17.5, d: 14, h: 5.6,
                 wallH: 5.6, dadoH: 1.2,
-                floor: 'urban:TileGeneric4a', wall: 'urban:MetalPanelPainted1a', dado: 'urban:MetalPanelPainted1a', trim: 'zl_hz_Metal_02__metal', ceiling: 'ceiling',
-                wallColor: 0xf2f2ee, dadoColor: 0xe36a1e, ceilColor: 0xf4f4f0,
+                floor: 'urban:TileGeneric4a', wall: 'panel60', dado: 'orange60', trim: 'zl_hz_Metal_02__metal', ceiling: 'light60',   // THE SIXTIES REFIT (11-26): the space-age office
+                wallColor: 0xf2f2ee, dadoColor: 0xffffff, ceilColor: 0xf4f4f0,
                 pipes: false,
                 lights: [{ x: 0, z: -2.6 }, { x: 3.5, z: 1.0 }, { x: -6.0, z: 0 }],
                 mood: { light: 0xfff0e0, ambient: 0.5 },
@@ -35686,7 +35686,7 @@ const DOOR_HQ = {
             shell: {
                 w: 14, d: 10.5, h: 4.5,
                 wallH: 4.5, dadoH: 1.05,
-                floor: 'terrazzo', wall: 'stone', dado: 'oxblood', trim: 'teal', ceiling: 'concrete',
+                floor: 'terrazzo', wall: 'stone', dado: 'teak60', trim: 'orange60', ceiling: 'concrete',   // THE SIXTIES REFIT (11-26): no oxblood
                 pipes: true,                  // conduits across the ceiling (procedural)
                 lights: [{ x: -4.1, z: -3.5 }, { x: 3.0, z: -2.6 }, { x: 3.0, z: 2.6 }, { x: -3.6, z: 2.6 }],
                 plate: { x: -2.55, z: -5.25, y: 2.5 },   // the room plate over the desk (CSS2D)
@@ -37334,8 +37334,8 @@ const DOOR_HQ = {
             shell: {
                 w: 42, d: 49, h: 10.5,
                 wallH: 10.5, dadoH: 1.05,
-                floor: 'concrete', wall: 'stone', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling',
-                floorColor: 0xa09a90, wallColor: 0xb8b0a4, ceilColor: 0xc8c0b4,
+                floor: 'concrete', wall: 'panel60', dado: 'teak60', trim: 'orange60', ceiling: 'light60',   // THE SIXTIES REFIT (11-26): white panels, teak, tangerine; the pit's oxblood barriers stay (his reference photos)
+                floorColor: 0xa09a90, wallColor: 0xf2eee6, ceilColor: 0xf4f0e8,
                 pipes: true, keyLamp: 0, grassField: false,   // grassField: the pit is slab (THE GRASS FIELD grew a lawn on it in battle)
                   // THE ROOM'S OWN KEY LIGHT: a lit room takes none of the camera's Key Light (it blew the pad and a spell's water to white)
                 /* the real lights: the pit's four quarters, the classroom, the break corner, the Range Console */
