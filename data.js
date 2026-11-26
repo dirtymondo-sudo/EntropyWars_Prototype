@@ -33608,6 +33608,7 @@ const DOOR_HQ = {
         /* THE EXECUTIVE FLOOR (plan 5.4 stage 1 + 7.4 Rooms 4C + 8, 2026-09-14) — eight procs; a user GLB replaces any of them by giving the entry a `file` */
         floor_panel:       { proc: 'floor_panel',    h: 0.9,     foot: 0, wall: true, mount: 1.0,  depth: 0.05, glow: { y: 0.45, size: 0.7, color: 0xffb020 } },   // the lobby: sixteen buttons, two lit
         exec_desk:         { proc: 'exec_desk',      span: 2.4,  foot: 1.2, depth: 1.05, rect: { hw: 1.2, hd: 0.525 }, block: true },   // 4C: the executive desk (top at 0.76 — desk props sit at y: 0.76). A FLOOR prop since 2026-09-16: centred, the drawers on the sitter's side (−z), the modesty panel to the room (+z)
+        flue:              { proc: 'flue',           h: 10.5, foot: 2.3, block: true, glow: { y: 0.2, size: 7, color: 0xff7a2a }, light: { color: 0xff8a3a, intensity: 1.3, dist: 18, y: 0.5 } },   // DOOR HQ 2.0 (2026-11-26, the Works' middle level): the Incinerator's chimney through a level of the Works; the grating round its foot glows from the furnace below (three-renderer.js flue; the row's `h` = the room's height)
         room_wall:         { proc: 'room_wall',      h: 3.5,  foot: 0 },   // DOOR HQ 2.0 (2026-11-26): a partition inside a box room (the Kitchen behind the Cafeteria), or with `floor` a floor patch; sized by its row (`len`, `wallH`, `t`, `holes`), collides by its own slabs (three-renderer.js room_wall)
         serving_line:      { proc: 'serving_line',   span: 3.0,  foot: 1.5, wall: true, depth: 1.15, rect: { hw: 1.5, hd: 0.575 }, block: true },   // Room 86 (2026-09-16): a 3 m cafeteria counter — the hot wells + sneeze guard on the wall side, THE TRAY SLIDE (0.85 m) along the front; trays at z = wall + 0.95
         exec_chair:        { file: 'Meshy_AI_an_office_chair_0903105134_texture.glb', h: 1.1, foot: 0.36, block: true, front: 'back', seat: 0.50, seatZ: 0.02 },   // 4C: the chair behind the desk — 2026-11-03: office_chair's file (was proc 'exec_chair')
@@ -33783,6 +33784,11 @@ const DOOR_HQ = {
         heal_machine:    { proc: 'heal_machine',    h: 2.2,  foot: 1.0, rect: { hw: 1.0, hd: 0.5 }, block: true, light: { color: 0x9fffe8, intensity: 0.6, dist: 6, y: 1.6 } },
         nurse_counter:   { proc: 'nurse_counter',   h: 1.15, foot: 0,   rect: { hw: 3.65, hd: 0.42 }, block: true },
         glass_partition: { proc: 'glass_partition', h: 2.7,  foot: 0,   rect: { hw: 1.75, hd: 0.08 }, block: true },
+        /* THE GLASS FRONT (DOOR HQ 2.0 wave 3, 2026-11-26): one 3.5 m bay of an office's glass front on the Lobby's gallery, floor to `h`
+           (the row's, 4.9 m default), seen through from the Lobby floor. `office_glass` is a pane (a blocker); `office_glass_door` is the
+           bay you walk in by: no pane below the transom (3 m), glass over it, the name plate on it (the row's `text`, one line a row) */
+        office_glass:      { proc: 'office_glass', h: 4.9, foot: 0, rect: { hw: 1.75, hd: 0.08 }, block: true, mesh: false },
+        office_glass_door: { proc: 'office_glass', h: 4.9, foot: 0, mesh: false, door: true },
         med_cross:       { proc: 'med_cross',       h: 1.6,  foot: 0,   wall: true, mount: 4.6, depth: 0.12, glow: { y: 0.8, size: 2.4, color: 0xff8a80 } },
         eeg_rack:        { proc: 'eeg_rack',        h: 1.4,  foot: 0.35, block: true, glow: { y: 1.0, size: 0.9, color: 0x80ffb0 }, light: { color: 0x60ff90, intensity: 0.5, dist: 4, y: 1.0 } },   // Room REM: the trace beside a cot (ticker)
         dream_screen:    { proc: 'dream_screen',    h: 1.2,  foot: 0,    wall: true, mount: 1.1, depth: 0.1, glow: { y: 0.6, size: 2.2, color: 0xc0a0ff } },   // Room REM: what the sleepers see (ticker: the drawing drifts)
@@ -34145,7 +34151,7 @@ const DOOR_HQ = {
     elevator: {
         stops: [
             { id: 'PH', label: 'THE PENTHOUSE', room: 'executive', at: 'elevator', minClearance: 4, requiresKeys: 12 },
-            { id: '4',  label: 'THE FOURTH FLOOR', room: 'labs', at: 'elevator' },     // Phase 8 stage 2 (2026-09-15)
+            { id: '4',  label: 'THE GANTRY', room: 'labs', at: 'elevator' },     // Phase 8 stage 2 (2026-09-15)
             { id: '3',  label: 'THE THIRD FLOOR',  room: 'annex',     at: 'elevator' },
             { id: '2',  label: 'THE SECOND FLOOR', room: 'works', at: 'elevator' },   // Phase 8 stage 2 (2026-09-15)
             { id: 'M',  label: 'THE LOBBY', room: 'central_egress', at: 'elevator' },
@@ -34363,6 +34369,8 @@ const DOOR_HQ = {
        Woods are three rooms at their v13 places (the Clearing + Dead Man's Cave, the Redwood Trail, Bohemian Grove) + the route rooms of the links L3 and L4. */
     retired: { ring_m: 'central_egress',   /* THE EIGHT DOORS (2026-11-18): the mezzanine ring held only bay doors; its four doors in the Main Hall are closed */
                kitchen: 'cafeteria', coldroom: 'cafeteria',   /* DOOR HQ 2.0 WAVE 2 (2026-11-26, the Cafeteria thread): the Kitchen is the strip behind the Cafeteria's serving hatch, the Cold Room folded into it (LOOK_BOOK.md); the basement pair is gone */
+               dreamlab: 'labs', medwing: 'medical',   /* DOOR HQ 2.0 WAVE 3 (2026-11-26): no Dream Lab in DOOR HQ (mondo 11-25; the Astral way is the D.U.M.B.'s); the old medical wing's Hold and Interrogation Room are on the Works' middle level */
+               execwing: 'continuity', trophycase: 'central_egress',   /* DOOR HQ 2.0 WAVE 3 (2026-11-26): the Bureau of Continuity is on the Lobby's gallery; the Trophy Case is a cabinet on the Lobby's wall */
                dispensary: 'doorstore',   /* DOOR HQ 2.0 WAVE 2 (2026-11-26, mondo: "The Hatch/The Dispensary/Shop needs to be renamed to Door Store and only door store"): Room 911 off the Medical Wing is the Door Store off the Lobby; the wing's door to it is cut */
                recwing: 'ring_g',   /* DOOR HQ 2.0 WAVE 3 (2026-11-26, the Ring's rooms): Records and the Clock Room have their own doors on the Ring; the wing between is gone */
                reception: 'central_egress',   /* DOOR HQ 2.0 WAVE 1 (2026-11-26, mondo: "Rhonda's desk is the reception, she is the receptionist"): its door is cut, its two counters stand at her desk */
@@ -34481,7 +34489,7 @@ const DOOR_HQ = {
             /* out of DOOR HQ */
             bureau_vatican: 'the Bureau painting to the Vatican', mirror_lookingglass: 'the barbershop mirror to the Looking-Glass Garden',
             weir_bermuda: 'the Infinity Pool weir to the Bermuda Triangle', natatorium_dutchman: 'the plunge pool to the Dutchman\'s hold',
-            observatorium_singularity: 'the Observatory screen to Outer Space', well_garden: 'the garden well to the Sewers',
+            observatorium_singularity: 'the Observatory screen to Outer Space', rem_astral: 'the Dream Lab screen to the Astral Realm (DOOR HQ 2.0: no Dream Lab in DOOR HQ, the way is the D.U.M.B.\'s)', well_garden: 'the garden well to the Sewers',
             woods_ritual: 'Room 333\'s chalk circle to Bohemian Grove', woods_sewer: 'the Tunnel\'s storm drain to the Clearing',
             tunnel_cyberpunk: 'the platform train to old Cyberpunk City (it runs to Disaster City now: link tunnel_downtown)',
             /* jumps across the map */
@@ -34508,7 +34516,8 @@ const DOOR_HQ = {
             medwing: ['dispensary'],
             /* DOOR HQ 2.0 WAVE 3 (2026-11-26, the Ring's rooms): IT, Lost and Found, the Locker Room, the Bathroom, the Lecture Hall and the Cubicle
                Floor stand on the Ring now, each behind its one door; the old floors' doors to them and their back ways are closed */
-            annex: ['classroom', 'cubicles', 'bathroom', 'locker'], works: ['lostfound'], server: ['it'], natatorium: ['locker'], crawlspace: ['stall'],   // DOOR HQ 2.0 WAVE 2 (2026-11-26): the Dispensary is the Door Store, off the Lobby (DOOR_HQ.retired.dispensary)
+            annex: ['classroom', 'cubicles', 'bathroom', 'locker'], works: ['lostfound'], server: ['it'], natatorium: ['locker'], crawlspace: ['stall'],
+            medical: ['staff'],   // DOOR HQ 2.0 WAVE 3 (2026-11-26): Medical's STAFF ONLY door led to the old wing (retired); the Hold and the Interrogation Room are down in the Works   // DOOR HQ 2.0 WAVE 2 (2026-11-26): the Dispensary is the Door Store, off the Lobby (DOOR_HQ.retired.dispensary)
             tunnel: ['carnival'], mandela: ['mirrors'], site_prebuilt_area51_ow_circus: ['tunnel', 'mirrors'],   // the two doors to the Circus that stood open from the first minute
             dungeon: ['oubliette'], site_prebuilt_hollow_earth_ug_cavern: ['dungeon'],                              // the Dungeon's moving wall to the Cavern
             site_prebuilt_fairy_forest_ow_ritual: ['lookingglass'], site_prebuilt_camelot_ow_forest: ['deadtree'],   // the dead tree: Bohemian Grove and Camelot's Forest touch by a trail
@@ -34849,7 +34858,7 @@ const DOOR_HQ = {
            and CERN's platforms wait on a free lane (their north walls are
            full — rev 10's lane rule); the tunnel is one tunnel. */
         { id: 'tunnel_cyberpunk', route: 'subway', way: 'train',
-          a: { room: 'tunnel', wall: 'free', x: -1.5, z: 6, face: 90, sub: 'ALL LINES · MIND THE GAP' },
+          a: { room: 'tunnel', wall: 'free', x: -4.3, z: 6, face: 90, sub: 'ALL LINES · MIND THE GAP' },
           b: { site: 'prebuilt_cyberpunk', part: 'streets', wall: 'free', x: -42, z: -6, face: 90, sub: 'THE STATION · ALL LINES' },   // THE SECOND PASS (2026-09-17): the train arrives at THE STATION on the grid's siding (a free end on the part), no longer half inside the board room's wall
           why: 'the train at the platform has been there for an hour with its doors open; it goes to every line, and the first stop is under an intersection that is always raining',
           note: 'mind the gap', draft: true },
@@ -34859,11 +34868,11 @@ const DOOR_HQ = {
         /* THE SUBWAY, DOOR HQ TO DISASTER CITY (the door audit, 2026-11-18): the train at the building's platform runs to the platform under Downtown and back.
            The two trains stand where they stood (the ends are the old Cyberpunk links' own platform ends); the third public way out of DOOR HQ (HQ_EXIT_RULES.open). */
         { id: 'tunnel_downtown', route: 'subway', way: 'train',
-          a: { room: 'tunnel', wall: 'free', x: -1.5, z: 6, face: 90, sub: 'THE TRAIN · THE LOOP · DISASTER CITY' },
+          a: { room: 'tunnel', wall: 'free', x: -4.3, z: 6, face: 90, sub: 'THE TRAIN · THE LOOP · DISASTER CITY' },   // DOOR HQ 2.0 (2026-11-26): the rebuilt platform's edge
           b: { site: 'prebuilt_downtown', part: 'subway', wall: 'free', x: -1.5, z: 3, face: 90, sub: 'THE TRAIN · THE LOOP · DOOR HQ' },
           why: 'the train at the building\'s platform runs one stop, to the platform under Downtown, and back', note: 'mind the gap', draft: true },
         { id: 'garage_taxi', route: 'taxi', way: 'taxi',
-          a: { room: 'garage', wall: 'free', x: 21.3, z: 9.9, face: 295, sub: 'THE TAXI · DISASTER CITY' },
+          a: { room: 'garage', wall: 'free', x: -12.73, z: 18.19, face: 35, sub: 'THE TAXI · DISASTER CITY' },   // DOOR HQ 2.0 (2026-11-26): the rank in the rebuilt Garage's south-west bays
           b: { site: 'prebuilt_downtown', part: 'streets', wall: 'free', x: 96.25, z: -113.75, face: 270, sub: 'THE TAXI · DOOR HQ · THE GARAGE' },
           why: 'the taxi rank in the garage; the cab drives to Disaster City and waits there to drive back', note: 'the taxi', draft: true },
         /* THE URBAN BLOCK (9.2 stage 4, 2026-09-16): the subway's third station.
@@ -34938,7 +34947,7 @@ const DOOR_HQ = {
           b: { site: 'prebuilt_downtown', part: 'streets', wall: 'free', x: 203.3, z: 113.75, face: 90, sub: 'THE POWER STATION DRAIN · DOWN INTO THE SEWERS', verb: 'GO DOWN' } },
         { id: 'cells_dungeon', route: 'dungeons', leaf: 'leaf_cell',
           a: { site: 'prebuilt_downtown', part: 'underworld', wall: 'free', x: -110.25, z: 14, face: 180, y: 17.5, sub: 'THE SEVENTH CELL · INTO ROOM 24601' },
-          b: { room: 'dungeon', wall: 's', x: -2.8, sub: 'THE FOURTH WALL · INTO THE PRECINCT\'S CELLS', verb: 'WALK THROUGH' },
+          b: { room: 'cells', wall: 'n', x: 0, sub: 'THE FOURTH WALL · INTO THE PRECINCT\'S CELLS', verb: 'WALK THROUGH' },   // DOOR HQ 2.0 WAVE 3 (2026-11-26): the far wall of THE CELLS (the Works' middle level; was the old Dungeon's south wall)
           why: 'Room 24601 has three cells you can see and a fourth wall nobody counts; on the far side of it a precinct that fell down keeps six more, and the keys to all of them are on the floor',
           note: 'the seventh cell', draft: true },
         { id: 'workings_oubliette', route: 'dungeons', leaf: 'leaf_portcullis',
@@ -35038,7 +35047,7 @@ const DOOR_HQ = {
           why: 'the painting over the mantel in the sanctum is of a mountain with a city on it; the city has lights on at night, which the painting should not know',
           note: 'the frame is warm', draft: true },
         { id: 'bureau_vatican', route: 'seams', way: 'painting', gate: { minClearance: 5, requiresKeys: 24 },
-          a: { room: 'continuity', wall: 'n', x: -1.7 },
+          a: { room: 'continuity', wall: 'n', x: -2.6 },   // (wave 3: the Bureau's new north wall, between the cabinets and the plaque)
           /* THE DIVINE STAIR, second pass (2026-09-18): RE-POINTED off the bypassed board onto THE CORTILE's east wall — the square in the painting is the courtyard */
           b: { site: 'prebuilt_vatican', part: 'plots', wall: 'free', x: 85.75, z: -8.75, face: 180, sub: 'THE PAINTING · THE BUREAU BEHIND IT' },   // THE VATICAN ON PLOTS (2026-11-16): under the Square's north colonnade (the painting is of a colonnade and a square); bake-afterlife.js checks this row
           why: 'the Bureau keeps one painting for reference: a colonnade and a square, in case the record and the square ever disagree; the square is on the other side of it',
@@ -35198,10 +35207,11 @@ const DOOR_HQ = {
             kind: 'rotunda',
             shell: {
                 radius: 24.5,          // the floor's drum (49 m across)
-                wallH: 5.25,           // the gallery's height
+                wallH: 7.1,            // the gallery's height (DOOR HQ 2.0 wave 3, 2026-11-26: 5.25 -> 7.1, so the division offices on it stand
+                                       // over the 7 m rooms on the floor, Medical, the Door Store and the Cafeteria, and the floor's ceiling is higher)
                 mezz: { inner: 17.5, outer: 24.5, thick: 0.45 },   // THE GALLERY: 7 m wide, over the floor's outer band (the floor goes on under it)
                 upperWallH: 5.75,
-                domeH: 3.0,            // to the dome's top: 14 m
+                domeH: 3.0,            // to the dome's top: 15.85 m
                 dadoH: 1.05,
                 floor: 'terrazzo', wall: 'damask_3', dado: 'urban:WoodPanelling1a', trim: 'brass', ceiling: 'ceiling', stair: 'marble',
                 bands: [               // inlaid floor rings [rIn, rOut, tex]: marble round the flue, brass lines, the gallery's edge
@@ -35209,15 +35219,15 @@ const DOOR_HQ = {
                 ],
                 spokes: { n: 8, r0: 6.6, r1: 11.6, w: 0.16, tex: 'brass' },
                 flue: { r: 2.2, tex: 'marble', band: 'brass' },   // THE FLUE: the column behind Rhonda, floor to dome
-                cube: { size: 3.6, y: 9.8, rodR: 0.09, deg: 180, r: 10 },   // the Cube hangs in the void over the main line, south of the flue
+                cube: { size: 3.6, y: 11.4, rodR: 0.09, deg: 180, r: 10 },   // the Cube hangs in the void over the main line, south of the flue
             },
             /* THE SLIM DESK (mondo: "too wide/thick and it's hard to target her"): a 0.85 m curved counter over 100 degrees facing the
                Foyer, open behind; Rhonda's chair in the well between it and the flue */
             desk: { mode: 'procedural', arc: [130, 230], rOuter: 4.85, rInner: 4.0, h: 1.05, top: 'marble', front: 'urban:WoodPanelling1a' },
             /* the twin stairs: free flights in the void along the gallery's edge, from beside the Foyer up to the gallery (30 steps) */
             stairs: [
-                { id: 'stair_e', from: 166, to: 132, rIn: 15.1, rOut: 17.5, steps: 30, free: true },
-                { id: 'stair_w', from: 194, to: 228, rIn: 15.1, rOut: 17.5, steps: 30, free: true },
+                { id: 'stair_e', from: 166, to: 132, rIn: 15.1, rOut: 17.5, steps: 38, free: true },   // 38 steps up the 7.1 m gallery (wave 3)
+                { id: 'stair_w', from: 194, to: 228, rIn: 15.1, rOut: 17.5, steps: 38, free: true },
             ],
             /* `onRing: { level, deg }` = a room's door on the Ring's outer wall (hqRingMoveDoors moves it there at load) */
             doors: [
@@ -35244,10 +35254,15 @@ const DOOR_HQ = {
                 { id: 'barbershop', deg: 0, level: 0, onRing: { level: 0, deg: 211 }, ringProps: [{ key: 'barber_pole', ddeg: 2 }], leaf: 'leaf_birch_glass', label: 'BARBERSHOP', action: { room: 'barbershop', at: 'egress' } },
                 { id: 'lecture',   deg: 0, level: 0, onRing: { level: 0, deg: 250 }, leaf: 'leaf_office', label: 'LECTURE HALL', action: { room: 'classroom', at: 'egress' } },
                 { id: 'cubicles',  deg: 0, level: 0, onRing: { level: 0, deg: 290 }, leaf: 'leaf_office', label: 'CUBICLE FLOOR', action: { room: 'cubicles', at: 'egress' } },
-                { id: 'subway',    deg: 0, level: 0, onRing: { level: 0, deg: 350 }, leaf: 'leaf_white_wood', label: 'THE SUBWAY', action: { room: 'tunnel', at: 'ring' } },   // until the Garage holds the platform's way down
+                { id: 'subway',    deg: 0, level: 0, onRing: { level: 0, deg: 350 }, leaf: 'leaf_white_wood', label: 'GARAGE', action: { room: 'garage', at: 'ring' } },   // DOOR HQ 2.0 wave 3 (2026-11-26): the stair down to the Garage (the Subway is through it); the id stays
                 /* ── the gallery (level 1) ── */
-                { id: 'observatorium', deg: 0, level: 1, leaf: 'leaf_holographic', label: 'THE OBSERVATORY', action: { room: 'observatorium', at: 'egress' } },
-                { id: 'executive', deg: 125, level: 1, leaf: 'leaf_suburban_house', label: 'BUREAU OF CONTINUITY', action: { room: 'execwing', at: 'egress' } },
+                /* THE DIVISION OFFICES (wave 3, plans/2_lobby_upper_level_penthouse.png): glass fronts, no door, joined with no card
+                   (THE GALLERY JOIN, HQ_STAGE_RULES.round); each box's `lobby` row writes the same opening */
+                { id: 'observatorium', deg: 0,   level: 1, open: { w: 17.5, h: 4.9 }, label: 'THE OBSERVATORY', action: { room: 'observatorium', at: 'lobby' } },
+                { id: 'cryptid',       deg: 72,  level: 1, open: { w: 14, h: 4.9 }, label: 'CRYPTID DIVISION', action: { room: 'cryptid', at: 'lobby' } },
+                { id: 'continuity',    deg: 140, level: 1, open: { w: 14, h: 4.9 }, label: 'BUREAU OF CONTINUITY', action: { room: 'continuity', at: 'lobby' } },
+                { id: 'spirit',        deg: 220, level: 1, open: { w: 14, h: 4.9 }, label: 'SPIRIT REALM DIVISION', action: { room: 'spirit', at: 'lobby' } },
+                { id: 'extraterrestrial', deg: 288, level: 1, open: { w: 14, h: 4.9 }, label: 'EXTRATERRESTRIAL DIVISION', action: { room: 'extraterrestrial', at: 'lobby' } },
                 { id: 'elevator',  deg: 330, level: 1, leaf: null, proc: 'elevator', label: 'ELEVATOR', action: { room: 'car', at: 'out' }, floors: ['B', 'G', 'M', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '14', 'PH'] },
             ],
             counters: [
@@ -35258,6 +35273,7 @@ const DOOR_HQ = {
                 { id: 'directory', deg: 215, r: 22.6, level: 0, label: 'BUILDING DIRECTORY', action: { overlay: 'directory' }, radius: 1.8, proc: 'directory' },
                 { id: 'board',     deg: 325, r: 23.6, level: 0, label: 'EMPLOYEE OF THE MONTH', action: { fn: '_mountLeaderboard' }, radius: 2.2, proc: 'board' },
                 { id: 'md_board_hq', deg: 145, r: 23.9, level: 0, label: 'LOCKE’S CASE BOARD', action: {}, radius: 2.0, plateY: 2.3, verb: 'READ', proc: 'hotel_act', hotel: { act: 'board' } },   // its board is the notice board in `props`
+                { id: 'trophies', deg: 238, r: 23.6, level: 0, label: 'TROPHY CASE', verb: 'OPEN', action: { fn: '_mountReactTrophies' }, radius: 1.9, plateY: 2.4 },   // (wave 3: Room 111 retired into this cabinet, LOOK_BOOK.md)
             ],
             /* the bare shell's furniture: Rhonda's chair and desk top, the potion machines (data.js hqVendingApply makes each a counter), the case board */
             props: [
@@ -35274,6 +35290,7 @@ const DOOR_HQ = {
                 { key: 'vending_machine', deg: 204, level: 0, wall: true },
                 { key: 'vending_machine', deg: 318, level: 0, wall: true },
                 { key: 'notice_board',   deg: 145, level: 0, wall: true, mount: 1.3 },        // LOCKE'S CASE BOARD (the counter md_board_hq)
+                { key: 'trophy_case',    deg: 238, level: 0, wall: true },                     // THE TROPHY CASE (the counter trophies)
             ],
             agents: [],
             npcSpots: [],
@@ -35377,98 +35394,245 @@ const DOOR_HQ = {
            (deg cw from north) their front points; `rot` is extra yaw. The
            way out wears the rank leaf like the door in the egress does
            (`rankDoor`) — it is the same door from both sides. */
-        /* ── THE BUREAU OF CONTINUITY (HQ plan 4.4, 2026-09-15): the Canon
-           Office — a box room behind the mezzanine door at 315° (the
-           suburban-house leaf; GATEKEEPER + 24 Keys, the gate is the door's
-           and stays there; the door carries the number "№ — CONTESTED", the
-           room wears none). THE MOTTO PLAQUE on the north wall is the
-           reality barometer (MASTER A7): the `motto_plaque` proc reads
-           hqMottoBarometer at build and the counter's panel says which of
-           the three forms it reads, why, and what you remember it reading;
-           CANON NOTICES on the east wall is every retcon the building has
-           made (hqCanonNotices). The only department that suspects the
-           schedule; the only clock in the building that is right. */
+        /* ── THE BUREAU OF CONTINUITY (DOOR HQ 2.0 wave 3, 2026-11-26): on the Lobby's gallery behind glass (the upper-level plan), no
+           longer behind the Executive Suite (retired). THE MOTTO PLAQUE on the north wall is the reality barometer (the `motto_plaque`
+           proc reads hqMottoBarometer; the counter's panel, map.js); CANON NOTICES on the east wall (hqCanonNotices). The painting
+           on the north wall is the seam to the Vatican (`links.bureau_vatican`, its own gate). Beige and file green, two desks facing
+           the glass, the sealed records on the west wall. ── */
         continuity: {
             label: 'BUREAU OF CONTINUITY',
-            sub: 'STORY CANON · THE CANON OFFICE',
             kind: 'box',
             shell: {
-                w: 8, d: 5.5, h: 3.2,
-                wallH: 3.2, dadoH: 1.05,
-                floor: 'carpet', wall: 'drywall', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling',
-                wallColor: 0xcfc6b4,          // a room that has been repainted more than once, to the same colour
+                w: 14, d: 14, h: 5.6,
+                wallH: 5.6, dadoH: 1.2,
+                floor: 'carpet_3', wall: 'drywall', dado: 'drywall', trim: 'brass', ceiling: 'ceiling',
+                wallColor: 0xd8cbb0, dadoColor: 0x4e6b4a, ceilColor: 0xeee6d4,
                 pipes: false,
-                light: { x: 0, z: 0 },
-                mood: { light: 0xf2ead8 },
-                plate: { x: -2.4, z: -2.5, y: 2.85 },
+                lights: [{ x: -3.5, z: -2.0 }, { x: 3.5, z: -2.0 }, { x: 0, z: 3.0 }],
+                mood: { light: 0xf2ead8, ambient: 0.55 },
+                plate: { x: 0, z: -6.8, y: 4.6 },
             },
             doors: [
-                { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_suburban_house',
-                  label: 'THE EXECUTIVE SUITE', sub: 'BACK TO THE SUITE',
-                  action: { room: 'execwing', at: 'continuity' },
-                  desc: 'The way back to the mezzanine. A house door on an office. It has always been a house door; the file that says otherwise has been corrected.' },
+                { id: 'lobby', wall: 's', x: 0, open: { w: 14, h: 4.9 }, walk: [0, 3.5], label: 'THE LOBBY', action: { room: 'central_egress', at: 'continuity' } },
             ],
             counters: [
-                /* THE MOTTO PLAQUE → the by-id panel (map.js): the reality barometer — which form the plaque reads today, and what you remember */
-                { id: 'plaque', x: 0, z: -2.35, face: 0, plateY: 2.3, radius: 1.9, verb: 'READ',
-                  label: 'THE MOTTO PLAQUE', sub: 'THE REALITY BAROMETER · READ IT', action: {},
-                  desc: 'The official motto of the Department, engraved in brass. There is one motto. Its wording has never changed. The Bureau keeps the plaque polished and the record of its wording, which also has never changed, in the cabinet.' },
-                /* CANON NOTICES → the by-id panel (map.js): every retcon the building has made, dated, stamped */
-                { id: 'notices', x: 3.4, z: 0, face: 270, plateY: 2.2, radius: 1.9, verb: 'READ',
-                  label: 'CANON NOTICES', sub: 'WHAT HAS ALWAYS BEEN SO · READ THEM', action: {},
-                  desc: 'The board where the Bureau posts what has always been the case. Notices are dated the day they were always true. Take one down and there is another under it, saying the same thing in different words.' },
+                { id: 'plaque', x: 0, z: -6.4, face: 0, plateY: 2.3, radius: 1.9, verb: 'READ', label: 'THE MOTTO PLAQUE', action: {} },
+                { id: 'notices', x: 6.4, z: 0, face: 270, plateY: 2.2, radius: 1.9, verb: 'READ', label: 'CANON NOTICES', action: {} },
             ],
             props: [
-                /* ── the north wall: the plaque, the plate, the record of its wording ── */
+                { key: 'office_glass', x: -5.25, z: 6.88, face: 180, frame: 0x4e6b4a },
+                { key: 'office_glass', x: -1.75, z: 6.88, face: 180, frame: 0x4e6b4a },
+                { key: 'office_glass_door', x: 1.75, z: 6.88, face: 180, text: ['BUREAU OF CONTINUITY'], frame: 0x4e6b4a },
+                { key: 'office_glass', x: 5.25,  z: 6.88, face: 180, frame: 0x4e6b4a },
+                /* the north wall: the plaque, the cabinets of its wording */
                 { key: 'motto_plaque',   wall: 'n', x: 0 },
-                { key: 'nameplate',      wall: 'n', x: -3.0, mount: 1.55 },   // rev 22: moved west — THE PAINTING (the seam to the Vatican, the Bureau's own gate on it) hangs at x −1.7
-                { key: 'filing_cabinet', wall: 'n', x: 2.5 },
-                { key: 'filing_cabinet', wall: 'n', x: 3.2 },
-                { key: 'cardboard_boxes', x: -3.2, z: -2.0, face: 20 },              // PREVIOUS WORDINGS — the label has been crossed out
-                { key: 'vent_grille',    wall: 'n', x: -3.4, mount: 2.65 },
-                /* ── the east wall: the notices, two boards deep, under the camera ── */
+                { key: 'filing_cabinet', wall: 'n', x: -6.0 },
+                { key: 'filing_cabinet', wall: 'n', x: -5.3 },
+                { key: 'filing_cabinet', wall: 'n', x: 3.6 },
+                { key: 'filing_cabinet', wall: 'n', x: 4.3 },
+                { key: 'filing_cabinet', wall: 'n', x: 5.0 },
+                { key: 'filing_cabinet', wall: 'n', x: 5.7 },
+                /* the east wall: the notices */
                 { key: 'notice_board',   wall: 'e', z: -1.1 },
                 { key: 'notice_board',   wall: 'e', z: 1.1 },
-                { key: 'security_camera', wall: 'e', z: 2.4, mount: 2.7 },
-                { key: 'trash_bin',      x: 3.5, z: 2.3, face: 300 },                 // the notices that were taken down, which is none of them
-                /* ── the south wall: the Canon Officer's desk, facing the plaque ── */
-                { key: 'tanker_desk',    wall: 's', x: 0.6 },
-                { key: 'crt_terminal',   x: 1.15, z: 2.3, y: 0.76, face: 0 },
-                { key: 'manila_folders', x: 0.2,  z: 2.35, y: 0.76, face: 10 },
-                { key: 'stapler',        x: -0.25, z: 2.2, y: 0.76, face: 340 },
-                { key: 'rotary_phone',   x: 1.2, z: 2.4, y: 0.76, face: 20 },
-                { key: 'desk_lamp',      x: -0.05, z: 2.45, y: 0.76, face: 30 },
-                { key: 'pen',            x: 0.5,  z: 2.15, y: 0.76, face: 80 },
-                { key: 'computer_chair_grey', x: 0.6, z: 1.55, face: 180 },          // the officer's, at the desk, back to the plaque
-                { key: 'wall_clock',     wall: 's', x: -2.8, mount: 2.4 },            // the one clock in the building that is right; nobody has checked
-                { key: 'picture_round_a', wall: 's', x: 2.9 },
-                { key: 'fire_extinguisher', wall: 's', x: -3.5 },
-                /* ── the west wall: the way out, the lamp, the locker of things that never happened ── */
-                { key: 'exit_sign',      wall: 'w', z: 0, mount: 2.65 },
-                { key: 'office_locker',  wall: 'w', z: -2.0 },
-                { key: 'potted_plant',   x: -3.45, z: -1.0, face: 40 },
-                { key: 'rug_office',     x: 0, z: 0 },
-                /* ── the ceiling ── */
-                { key: 'fluorescent',    x: -1.9, z: 0, ceil: true, face: 90 },
-                { key: 'fluorescent',    x: 1.9,  z: 0, ceil: true, face: 90 },
+                { key: 'clipboard',      wall: 'e', z: 2.6 },
+                /* the west wall: the sealed records, the clock, the cooler */
+                { key: 'deposit_box_wall', x: -6.75, z: -1.5, face: 90 },
+                { key: 'wall_clock',     wall: 'w', z: -4.2, mount: 3.0 },
+                { key: 'water_cooler',   wall: 'w', z: 2.4 },
+                /* two desks facing the glass */
+                { key: 'tanker_desk',    x: -2.5, z: -1.6, face: 0 },
+                { key: 'tanker_desk',    x: 2.5,  z: -1.6, face: 0 },
+                { key: 'computer_chair_grey', x: -2.5, z: -2.45, face: 180 },
+                { key: 'computer_chair_grey', x: 2.5,  z: -2.45, face: 180 },
+                { key: 'rotary_phone',   x: -2.0, z: -1.5, y: 0.76, face: 20 },
+                { key: 'desk_lamp',      x: -3.05, z: -1.4, y: 0.76, face: 200 },
+                { key: 'manila_folders', x: -2.45, z: -1.5, y: 0.76, face: 10 },
+                { key: 'laminator',      x: 2.0, z: -1.5, y: 0.76, face: 0 },
+                { key: 'crt_terminal',   x: 2.95, z: -1.45, y: 0.76, face: 0 },
+                { key: 'potted_plant',   x: -6.2, z: 4.6 },
+                { key: 'fluorescent',    x: -3.5, z: -2.0, ceil: true, face: 90 },
+                { key: 'fluorescent',    x: 3.5,  z: -2.0, ceil: true, face: 90 },
+                { key: 'fluorescent',    x: 0,    z: 3.0,  ceil: true, face: 90 },
             ],
-            agents: [
-                { x: 0.6, z: 1.55, face: 180, pose: 'hqSit', gender: 'male', label: 'THE CANON OFFICER', reach: 1.9,
-                  line: '“The motto has never changed. I have the memo that says so. I have several, and they do not agree, and that is the point of the memo.”' },
-                { x: 2.6, z: -1.6, face: 0, pose: 'hqReach', gender: 'female', label: 'THE CONTINUITY CLERK', reach: 1.8,
-                  line: '“Retcon is a verb. It is also a noun. It has always been both. Please do not use it as an adjective in this office.”' },
+            agents: [],
+            npcSpots: [],
+            lines: [],
+            spawn: { x: 1.75, z: 4.2, face: 0 },
+            noWalkers: true,
+        },
+        /* ── THE LOBBY'S UPPER LEVEL · THE DIVISION OFFICES (DOOR HQ 2.0 wave 3, 2026-11-26; mondo: "Offices for each division and their
+           leader (Spirit realm, extraterrestrial, cryptid, etc)"; plan docs/plans/door-hq-2/plans/2_lobby_upper_level_penthouse.png, look
+           LOOK_BOOK.md "The Lobby's upper level"). Five glass-fronted rooms on the gallery, each joined to the Lobby with no card (THE
+           GALLERY JOIN, HQ_STAGE_RULES.round + the `lobby` row's `open`): the box stands on the gallery's floor, so its leader is seen
+           through the glass from the Lobby floor. The front is four 3.5 m bays (`office_glass`); `walk` on the `lobby` row = the bay you
+           walk in by (`office_glass_door`, the name plate over it), the stretch find-doorways.js keeps clear. One name a room. ── */
+        /* CRYPTID DIVISION (Agent Forrest): a hunting lodge. Forrest at the desk under the antlers, facing the glass. */
+        cryptid: {
+            label: 'CRYPTID DIVISION',
+            kind: 'box',
+            shell: {
+                w: 17.5, d: 14, h: 5.6,
+                wallH: 5.6, dadoH: 1.2,
+                floor: 'wood', wall: 'urban:WoodCladding2a', dado: 'urban:WoodPanelling1a', trim: 'brass', ceiling: 'ceiling',
+                dadoColor: 0x5f7a5c, ceilColor: 0xb59a6a,
+                pipes: false,
+                lights: [{ x: 0, z: -2.6 }, { x: -5.0, z: 0.5 }, { x: 4.2, z: 1.0 }],
+                mood: { light: 0xffd9a0, ambient: 0.45 },
+                plate: { x: 0, z: -6.8, y: 4.6 },
+            },
+            doors: [
+                { id: 'lobby', wall: 's', x: 0, open: { w: 14, h: 4.9 }, walk: [-7, -3.5], label: 'THE LOBBY', action: { room: 'central_egress', at: 'cryptid' } },
             ],
-            npcSpots: [
-                { x: 2.7, z: 0.2, face: 90 },     // reading the notices, again
+            counters: [],
+            props: [
+                /* the glass front, the way in at the west bay */
+                { key: 'office_glass_door', x: -5.25, z: 6.88, face: 180, text: ['CRYPTID DIVISION', 'AGENT FORREST'] },
+                { key: 'office_glass', x: -1.75, z: 6.88, face: 180 },
+                { key: 'office_glass', x: 1.75,  z: 6.88, face: 180 },
+                { key: 'office_glass', x: 5.25,  z: 6.88, face: 180 },
+                /* the desk on the room's axis, under the head on the wall */
+                { key: 'psx_carpet_mp_1', x: 0, z: -2.2 },
+                { key: 'exec_desk',      x: 0, z: -2.6, face: 180 },
+                { key: 'banker_lamp',    x: -0.75, z: -2.75, y: 0.76, face: 180 },
+                { key: 'field_radio',    x: 0.8, z: -2.8, y: 0.76, face: 160 },
+                { key: 'item_binoculars', x: 0.2, z: -2.4, y: 0.76, face: 120 },
+                { key: 'exec_chair',     x: 2.1, z: -4.0, face: 210 },
+                { key: 'antler_trophy',  x: 0, z: -6.65, y: 2.9, h: 1.5, face: 180 },
+                { key: 'psx_shelf_mp_4_1', x: -3.2, z: -6.55, face: 180 },
+                { key: 'psx_shelf_mp_4_1', x: 3.2,  z: -6.55, face: 180 },
+                { key: 'owl_perched',    x: -3.2, z: -6.55, y: 2.2, face: 170 },
+                /* the evidence: the cast on its plinth, the board, the map table */
+                { key: 'meshy_giant_foot', x: 6.4, z: -4.9, face: 215 },
+                { key: 'evidence_board', x: 8.45, z: -0.4, face: 270 },
+                { key: 'map_table',      x: 3.6, z: 1.6, face: 0 },
+                { key: 'rifle_rack',     x: 8.45, z: 3.2, face: 270 },
+                /* the lodge corner: the bear, the sofa on the rug */
+                { key: 'bear',           x: -6.8, z: -5.3, face: 140 },
+                { key: 'fur_rug',        x: -5.2, z: -1.0, face: 90 },
+                { key: 'chesterfield_sofa', x: -7.9, z: -1.0, face: 90 },
+                { key: 'wingback_chair', x: -4.4, z: 1.2, face: 300 },
+                { key: 'cattle_skull',   x: -8.55, z: -1.0, y: 2.7, face: 90 },
+                { key: 'psx_ceiling_lamp_4_on', x: 0, z: -2.6, ceil: true },
+                { key: 'psx_ceiling_lamp_4_on', x: -5.0, z: 0.5, ceil: true },
+                { key: 'psx_ceiling_lamp_4_on', x: 3.6, z: 1.6, ceil: true },
             ],
-            onlineSpots: [],
-            lines: [
-                '“Which side of the door are you asking from?” “This one.” “Then it has always read that.”',
-                '“I remember it saying DON’T.” “You remember orientation. Orientation was wrong. Orientation has been corrected.” “When?” “Always.”',
-                '“Is that clock right?” “It is the only one.” “How do you know?” “We set the others by it.”',
-                '“There is no thirteenth floor.” “I know.” “Then why did you press it?” “I didn’t. It has always been pressed.”',
+            agents: [],
+            npcSpots: [],
+            lines: [],
+            spawn: { x: -5.25, z: 4.2, face: 0 },
+            noWalkers: true,
+        },
+        /* SPIRIT REALM DIVISION (Agent Ringer): a séance parlour, candlelit; the way in at the east bay. */
+        spirit: {
+            label: 'SPIRIT REALM DIVISION',
+            kind: 'box',
+            shell: {
+                w: 17.5, d: 14, h: 5.6,
+                wallH: 5.6, dadoH: 1.2,
+                floor: 'carpet_4', wall: 'damask_4', dado: 'urban:WoodPanelling1a', trim: 'brass', ceiling: 'ceiling',
+                dadoColor: 0x6a4a6f, ceilColor: 0x6a4a6f,
+                pipes: false,
+                lights: [{ x: -2.5, z: -3.0 }, { x: 3.5, z: 0 }, { x: -6.5, z: 0.5 }],
+                mood: { light: 0xe9b44c, ambient: 0.45 },
+                plate: { x: 0, z: -6.8, y: 4.6 },
+            },
+            doors: [
+                { id: 'lobby', wall: 's', x: 0, open: { w: 14, h: 4.9 }, walk: [3.5, 7], label: 'THE LOBBY', action: { room: 'central_egress', at: 'spirit' } },
             ],
-            spawn: { x: -3.2, z: 0, face: 90 },     // just inside the house door, facing the plaque's wall
+            counters: [],
+            props: [
+                { key: 'office_glass', x: -5.25, z: 6.88, face: 180 },
+                { key: 'office_glass', x: -1.75, z: 6.88, face: 180 },
+                { key: 'office_glass', x: 1.75,  z: 6.88, face: 180 },
+                { key: 'office_glass_door', x: 5.25, z: 6.88, face: 180, text: ['SPIRIT REALM DIVISION', 'AGENT RINGER'] },
+                /* Ringer's desk, between two candelabra */
+                { key: 'exec_desk',      x: -2.5, z: -3.0, face: 180 },
+                { key: 'lit_candle',     x: -3.15, z: -3.1, y: 0.76 },
+                { key: 'lit_candle',     x: -1.85, z: -2.85, y: 0.76 },
+                { key: 'music_box',      x: -1.5, z: -3.25, y: 0.76, face: 160 },
+                { key: 'candelabra',     x: -5.0, z: -4.8 },
+                { key: 'candelabra',     x: 0.0,  z: -4.8 },
+                { key: 'painting_portrait', x: -2.5, z: -6.9, y: 2.5, face: 180 },
+                { key: 'psx_curtain_rod_mp_1', x: -6.2, z: -6.85, y: 3.9, face: 180 },
+                { key: 'psx_curtain_rod_mp_1', x: 6.2,  z: -6.85, y: 3.9, face: 180 },
+                /* the séance table */
+                { key: 'psx_carpet_mp_1', x: 3.5, z: 0 },
+                { key: 'psx_dinner_table_1', x: 3.5, z: 0 },
+                { key: 'psx_chair_mp_3', x: 3.5, z: -1.25, face: 180 },
+                { key: 'psx_chair_mp_3', x: 3.5, z: 1.25,  face: 0 },
+                { key: 'psx_chair_mp_3', x: 4.75, z: 0,    face: 270 },
+                { key: 'psx_chair_mp_3', x: 2.25, z: 0,    face: 90 },
+                { key: 'crystalBall',    x: 3.5, z: 0, y: 0.86 },
+                { key: 'tarot',          x: 3.15, z: 0.3, y: 0.86, face: 30 },
+                { key: 'tarot2',         x: 3.85, z: -0.25, y: 0.86, face: 300 },
+                { key: 'lit_candle',     x: 3.95, z: 0.35, y: 0.86 },
+                /* the corners: the mirror, the rocking chair, the statue, the recordings */
+                { key: 'cheval_mirror',  x: -8.3, z: -4.2, face: 90 },
+                { key: 'rocking_chair',  x: -6.8, z: 0.8, face: 120 },
+                { key: 'hooded_statue',  x: 7.4, z: -5.6, face: 225 },
+                { key: 'lit_candle',     x: 6.4, z: -4.6 },
+                { key: 'lit_candle',     x: 6.75, z: -4.95 },
+                { key: 'reel_to_reel',   x: 8.3, z: -1.5, face: 270 },
+            ],
+            agents: [],
+            npcSpots: [],
+            lines: [],
+            spawn: { x: 5.25, z: 4.2, face: 0 },
+            noWalkers: true,
+        },
+        /* EXTRATERRESTRIAL DIVISION (Agent Glass): space age, white and chrome with a signal-orange band; the way in at the west bay. */
+        extraterrestrial: {
+            label: 'EXTRATERRESTRIAL DIVISION',
+            kind: 'box',
+            shell: {
+                w: 17.5, d: 14, h: 5.6,
+                wallH: 5.6, dadoH: 1.2,
+                floor: 'urban:TileGeneric4a', wall: 'urban:MetalPanelPainted1a', dado: 'urban:MetalPanelPainted1a', trim: 'zl_hz_Metal_02__metal', ceiling: 'ceiling',
+                wallColor: 0xf2f2ee, dadoColor: 0xe36a1e, ceilColor: 0xf4f4f0,
+                pipes: false,
+                lights: [{ x: 0, z: -2.6 }, { x: 3.5, z: 1.0 }, { x: -6.0, z: 0 }],
+                mood: { light: 0xfff0e0, ambient: 0.5 },
+                plate: { x: 0, z: -6.8, y: 4.6 },
+            },
+            doors: [
+                { id: 'lobby', wall: 's', x: 0, open: { w: 14, h: 4.9 }, walk: [-7, -3.5], label: 'THE LOBBY', action: { room: 'central_egress', at: 'extraterrestrial' } },
+            ],
+            counters: [],
+            props: [
+                { key: 'office_glass_door', x: -5.25, z: 6.88, face: 180, text: ['EXTRATERRESTRIAL DIVISION', 'AGENT GLASS'], frame: 0xb9c0c6 },
+                { key: 'office_glass', x: -1.75, z: 6.88, face: 180, frame: 0xb9c0c6 },
+                { key: 'office_glass', x: 1.75,  z: 6.88, face: 180, frame: 0xb9c0c6 },
+                { key: 'office_glass', x: 5.25,  z: 6.88, face: 180, frame: 0xb9c0c6 },
+                /* Glass's desk under the star chart */
+                { key: 'exec_desk',      x: 0, z: -2.6, face: 180 },
+                { key: 'ship_grey',      x: -0.7, z: -2.7, y: 0.76, span: 0.7, face: 150 },
+                { key: 'psx_monitoring_screen_mp_1', x: 0.75, z: -2.85, y: 0.76, face: 180 },
+                { key: 'egg_chair',      x: 2.1, z: -4.0, face: 200 },
+                { key: 'star_chart',     wall: 'n', x: 0 },
+                { key: 'sputnik_lamp',   x: 0, z: -2.6, ceil: true },
+                /* the display: the craft on its stand, the meteorite */
+                { key: 'ufo',            x: 6.0, z: -4.8, y: 1.9, span: 1.8, face: 30 },
+                { key: 'meteorite_plinth', x: 6.0, z: -4.8, face: 210 },
+                { key: 'retro_control_panel', x: 8.3, z: -1.2, face: 270 },
+                /* the lounge: the tulip table and its chairs, the orrery on it, an egg chair by the globe lamp */
+                { key: 'tulip_table',    x: 3.5, z: 1.0 },
+                { key: 'tulip_chair',    x: 3.5, z: -0.1, face: 0 },
+                { key: 'tulip_chair',    x: 3.5, z: 2.1, face: 180 },
+                { key: 'tulip_chair',    x: 4.6, z: 1.0, face: 90 },
+                { key: 'tulip_chair',    x: 2.4, z: 1.0, face: 270 },
+                { key: 'brass_orrery',   x: 3.5, z: 1.0, y: 0.74 },
+                { key: 'sputnik_lamp',   x: 3.5, z: 1.0, ceil: true },
+                { key: 'egg_chair',      x: -6.0, z: -0.5, face: 120 },
+                { key: 'globe_lamp',     x: -7.9, z: -2.2 },
+                { key: 'lava_lamp_floor', x: -8.0, z: -6.2 },
+                { key: 'lava_lamp_floor', x: 8.0,  z: -6.2 },
+            ],
+            agents: [],
+            npcSpots: [],
+            lines: [],
+            spawn: { x: -5.25, z: 4.2, face: 0 },
+            noWalkers: true,
         },
 
         office: {
@@ -35812,91 +35976,7 @@ const DOOR_HQ = {
         },
 
 
-        /* ── ROOM 111 · THE TROPHY CASE (HQ plan 7.4, 2026-09-13) — a box room
-           off the MEZZANINE at 290°, over EMPLOYEE OF THE MONTH (the board at
-           288° on the floor below), between Bay 6 and the Bureau of
-           Continuity. The user's 111: first place, three times over. THE
-           CABINET is the counter →
-           profile.js _mountReactTrophies (the profile opened on its
-           Achievements tab — ACHIEVEMENTS_PLAN's trophy case, in a room). The
-           cabinets are the trophy_case proc (three-renderer.js): a lit glass
-           case, three shelves, three rows of plaques — gold for the engraved ones
-           (hqTrophyCount reads the ledger), blank for the rest — the cups on
-           the top shelf. The curator's line and the overheard lines are
-           Claude placeholders (A15 — rewrite at will). Viewer-local, nothing
-           relayed (RULE #2). ── */
-        trophycase: {
-            label: 'THE TROPHY CASE',
-            sub: 'ACHIEVEMENTS',
-            roomNo: '111', why: 'first place, three times over — the user’s',
-            kind: 'box',
-            shell: {
-                w: 8, d: 5.5, h: 3.2,
-                wallH: 3.2, dadoH: 1.05,
-                floor: 'carpet', wall: 'drywall', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling',
-                wallColor: 0xd8d2c2,          // a lighter room than the hall: the cases are the light
-                pipes: false,
-                light: { x: 0, z: 0.6 },
-                plate: { x: 0, z: -2.5, y: 2.75 },
-            },
-            doors: [
-                { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_glass_exec',
-                  label: 'THE EXECUTIVE SUITE', sub: 'BACK TO THE SUITE',
-                  action: { room: 'execwing', at: 'trophycase' },
-                  desc: 'The way back to the mezzanine. The board below is Employee of the Month; this room is everyone else.' },
-            ],
-            counters: [
-                /* THE CABINET → the profile on its Achievements tab */
-                { id: 'cabinet', x: -1.7, z: -1.75, face: 0, plateY: 2.3, radius: 1.7, verb: 'OPEN',
-                  label: 'THE CABINET', sub: 'ACHIEVEMENTS', action: { fn: '_mountReactTrophies' },
-                  desc: 'Every commendation the Department has engraved for you. Open it and the whole record comes out.' },
-            ],
-            props: [
-                /* ── the north wall: the two cases, the nameplate between ── */
-                { key: 'trophy_case',    wall: 'n', x: -1.7 },
-                { key: 'trophy_case',    wall: 'n', x: 1.7 },
-                { key: 'nameplate',      wall: 'n', x: 0, mount: 1.55 },
-                { key: 'vent_grille',    wall: 'n', x: 3.4, mount: 2.6 },
-                /* ── the east wall: the file on the cases, a clock, a plant ── */
-                { key: 'filing_cabinet', wall: 'e', z: -1.6 },
-                { key: 'picture_round_a', wall: 'e', z: 0.2 },
-                { key: 'wall_clock',     wall: 'e', z: 1.5, mount: 2.4 },
-                { key: 'potted_plant',   x: 3.5, z: 2.2 },
-                /* ── the south wall: the couch that faces the cases, the table, the reading ── */
-                { key: 'curved_couch',   x: -0.075, z: 1.625, face: 180 },
-                { key: 'coffee_table',   x: -0.075, z: 0.275 },
-                { key: 'papers_b',       x: 0.25, z: 0.55, y: 0.47, face: 15 },
-                { key: 'coffee_mug',     x: 0.75, z: 0.5, y: 0.47, face: 0 },
-                { key: 'picture_round_b', wall: 's', x: -2.6 },
-                { key: 'picture_round_c', wall: 's', x: 2.6 },
-                { key: 'fire_extinguisher', wall: 's', x: 3.5 },
-                /* ── the west wall: the way out, the lamp by it ── */
-                { key: 'exit_sign',      wall: 'w', z: 0, mount: 2.65 },
-                { key: 'trash_bin',      x: -3.5, z: 2.1, face: 60 },
-                { key: 'rug_round',      x: 0.4, z: 0.4 },
-                /* ── the ceiling ── */
-                { key: 'fluorescent',    x: -1.9, z: 0.4, ceil: true, face: 90 },
-                { key: 'fluorescent',    x: 1.9,  z: 0.4, ceil: true, face: 90 },
-            ],
-            agents: [
-                { x: 2.6, z: -1.2, face: 250, pose: 'hqArms', gender: 'female', label: 'THE CURATOR', reach: 1.8,
-                  line: '“Nothing in here was given. It was filed.”' },
-            ],
-            npcSpots: [
-                { x: -0.875, z: 1.425, face: 0 },      // on the couch, reading the plaques
-                { x: 1.0,  z: -1.3, face: 0 },     // in front of the right case
-            ],
-            onlineSpots: [
-                { x: -2.7, z: 0.9, face: 40 },
-            ],
-            lines: [
-                '“Which one is yours?” “The blank ones.”',
-                '“Why 111?” “First place. Three times.” “Whose?” “Not yours yet.”',
-                '“Employee of the Month is downstairs. This is everyone else.”',
-                '“The cups are for the ones they could not fit on a plaque.”',
-            ],
-            spawn: { x: -3.1, z: 0, face: 90 },
-        },
+        /* trophycase (ROOM 111) — RETIRED 2026-11-26 (DOOR HQ 2.0 wave 3): THE TROPHY CASE is a cabinet on the Lobby's wall (LOOK_BOOK.md, counter 'trophies'); DOOR_HQ.retired sends it there */
 
         /* ── ROOM 1 · RECEPTION (HQ plan 7.4, 2026-09-14) — the intake office
            behind the ground ring's window door at 120° (between the Barbershop
@@ -36283,60 +36363,173 @@ const DOOR_HQ = {
             ],
             spawn: { x: 0, z: 4.2, face: 0 },
         },
-        /* ── ROOM 5150 · THE PADDED ROOM (HQ plan 7.4, 2026-09-13 rev 3) —
-           the one-cell box room behind the cell door at the back of the
-           ward. Story: administrative leave (DOOR_STORY.md §4 — the party
-           placed on leave for ignoring orders) is served here; the hearing
-           is Room 1984's. Today the door is open and the room is empty:
-           three walls of tufted vinyl (`wall_padding`, a wall proc), a cot
-           bolted to the floor, one drain, one tube behind a cage, and THE
-           HOLD — a counter with no action (a panel, the condition line off
-           the chart, and the sense that it is waiting for you). California's
-           involuntary hold. Viewer-local, nothing relayed (RULE #2). ── */
+        /* ── THE HOLD (DOOR HQ 2.0, the Gantry's west wall; mondo: "needs to be bigger"): 14 x 17.5 m (4 x 5 squares, was 3.6 m) ── */
         padded: {
             label: 'THE HOLD',
-            sub: 'ADMINISTRATIVE LEAVE',
-            roomNo: '5150', why: 'California’s involuntary hold; leave is served here',
+            roomNo: '5150',
+            why: 'California’s involuntary hold; leave is served here',
             kind: 'box',
             shell: {
-                w: 3.6, d: 3.6, h: 3.2,
-                wallH: 3.2, dadoH: 0.1,
-                floor: 'carpet', wall: 'drywall', dado: 'drywall', trim: 'teal', ceiling: 'ceiling',
-                floorColor: 0xe8e4dc, wallColor: 0xf2efe6, dadoColor: 0xe6e2d8,   // painted down: cream on cream
+                w: 14,
+                d: 17.5,
+                h: 4.5,
+                wallH: 4.5,
+                dadoH: 0.1,
+                floor: 'carpet',
+                wall: 'drywall',
+                dado: 'drywall',
+                trim: 'metal',
+                ceiling: 'ceiling',
+                floorColor: 0xe4e0d4,
+                wallColor: 0xf0ece0,
+                dadoColor: 0xe6e2d6,
+                ceilColor: 0xe8e4da,
                 pipes: false,
-                light: { x: 0, z: 0 },
-                mood: { light: 0xf4f1e8 },          // one tube, behind a cage, never off
-                plate: { x: 0, z: -1.75, y: 2.7 },
+                strips: false,
+                keyLamp: 0,
+                lights: [],
+                mood: { light: 0xf4f0e0, ambient: 0.34 },
+                plate: { x: 0, z: -8.6, y: 3.6 },
             },
             doors: [
-                { id: 'egress', wall: 's', x: 0, leaf: 'leaf_cell',
-                  label: 'THE MEDICAL WING',
-                  action: { room: 'medwing', at: 'ward' },
-                  desc: 'The way back to the ward. The slot is at eye height from the other side.' },
+                { id: 'labs', wall: 's', x: 0, leaf: 'leaf_cell', label: 'THE GANTRY', action: { room: 'labs', at: 'padded' }, desc: 'The slot is at eye height from the other side.' },
             ],
             counters: [
-                /* THE HOLD → nothing; the panel is the whole interaction */
-                { id: 'hold', x: -0.57, z: 0.025, face: 180, plateY: 1.9, radius: 1.6, verb: 'SIT',
-                  label: 'THE HOLD', sub: 'ADMINISTRATIVE LEAVE', action: {},
-                  desc: 'A cot, a drain, three soft walls and a hard one. Leave is served here when it is served. The chart in the ward says whether that is today.' },
+                { id: 'hold', x: -3.2, z: -5.6, face: 270, plateY: 1.6, radius: 1.8, verb: 'SIT', label: 'THE HOLD', action: {  }, desc: 'A cot, a drain, soft walls. Leave is served here when it is served.' },
             ],
             props: [
-                { key: 'wall_padding',   wall: 'n', x: 0 },
-                { key: 'wall_padding',   wall: 'e', z: 0 },
-                { key: 'wall_padding',   wall: 'w', z: 0 },
-                { key: 'cot',            x: -0.57, z: -0.825, face: 0 },                 // bolted down; the bolts are the only metal in the room
-                { key: 'clipboard',      wall: 's', x: -1.35, mount: 1.4, rot: -3 },   // the hold order, beside the door
-                { key: 'floor_drain',    x: 0.8, z: 0.7 },
-                { key: 'fluorescent',    x: 0, z: 0, ceil: true, face: 90 },
+                /* padding on every wall, a cot, a drain, one bulb */
+                { key: 'wall_padding', wall: 'n', x: -5.1 },
+                { key: 'wall_padding', wall: 'n', x: -1.7 },
+                { key: 'wall_padding', wall: 'n', x: 1.7 },
+                { key: 'wall_padding', wall: 'n', x: 5.1 },
+                { key: 'wall_padding', wall: 's', x: -5.1 },
+                { key: 'wall_padding', wall: 's', x: 5.1 },
+                { key: 'wall_padding', wall: 'e', z: -6.8 },
+                { key: 'wall_padding', wall: 'w', z: -6.8 },
+                { key: 'wall_padding', wall: 'e', z: -3.4 },
+                { key: 'wall_padding', wall: 'w', z: -3.4 },
+                { key: 'wall_padding', wall: 'e', z: 0 },
+                { key: 'wall_padding', wall: 'w', z: 0 },
+                { key: 'wall_padding', wall: 'e', z: 3.4 },
+                { key: 'wall_padding', wall: 'w', z: 3.4 },
+                { key: 'wall_padding', wall: 'e', z: 6.8 },
+                { key: 'wall_padding', wall: 'w', z: 6.8 },
+                { key: 'cot', x: -4.6, z: -5.6, face: 90 },
+                { key: 'floor_drain', x: 0, z: -1.5 },
+                { key: 'bare_bulb', x: 0, z: -1.5, ceil: true },
             ],
             agents: [],
             npcSpots: [],
             onlineSpots: [],
-            lines: [
-                '“How long?” “Administrative.” “That is not a length.” “It is here.”',
-                '“Three soft walls.” “And the fourth?” “The fourth is the door.”',
+            lines: [],
+            spawn: { x: 0, z: 5.6, face: 0 },
+        },
+        /* ── THE CELLS (DOOR HQ 2.0, the Gantry's north wall, new): 14 x 21 m, five cells a side down an aisle; the far wall's door is the
+           way down to the Sewers (link cells_dungeon, moved here from the old Dungeon). ── */
+        cells: {
+            label: 'THE CELLS',
+            kind: 'box',
+            shell: {
+                w: 14,
+                d: 24.5,
+                h: 4.5,
+                wallH: 4.5,
+                dadoH: 1.2,
+                floor: 'concrete',
+                wall: 'urban:BrickPainted1a',
+                dado: 'concrete',
+                trim: 'metal',
+                ceiling: 'concrete',
+                floorColor: 0x8c8e86,
+                wallColor: 0x8a9070,
+                dadoColor: 0x6a705a,
+                ceilColor: 0x6c6e66,
+                pipes: true,
+                strips: false,
+                keyLamp: 0,
+                lights: [{ x: 0, z: 10.5 }, { x: 0, z: -10.5 }],
+                mood: { light: 0xc9d1b8, ambient: 0.3 },
+                plate: { x: 4.4, z: -12.15, y: 3.4 },
+            },
+            doors: [
+                { id: 'labs', wall: 's', x: 0, leaf: 'leaf_cell', label: 'THE GANTRY', action: { room: 'labs', at: 'cells' }, desc: 'Back out to the gantry.' },
+                /* the far wall's door down to the Sewers is the link cells_dungeon (DOOR_HQ.links) */
             ],
-            spawn: { x: 0, z: 1.0, face: 0 },
+            counters: [
+
+            ],
+            props: [
+                /* the booking strip inside the door: the height board, the mugshot wall, the cuffs on their rail */
+                { key: 'height_board', x: 6.3, z: 10.5, face: 270 },
+                { key: 'mugshot_wall', x: -6.6, z: 10.5, face: 90 },
+                { key: 'hook_rail_long', wall: 'e', z: 11.6, mount: 1.8 },
+                /* five cells a side down the aisle: walls between them, bars on the aisle, a bunk in each, toilets, chains */
+                { key: 'room_wall', x: -4.375, z: 8.75, face: 180, len: 5.25, wallH: 4.5, t: 0.25, dadoH: 1.2, front: { wall: 'urban:BrickPainted1a', wallColor: 0x8a9070, dado: 'concrete', dadoColor: 0x6a705a }, back: { wall: 'urban:BrickPainted1a', wallColor: 0x8a9070, dado: 'concrete', dadoColor: 0x6a705a } },
+                { key: 'room_wall', x: -4.375, z: 5.25, face: 180, len: 5.25, wallH: 4.5, t: 0.25, dadoH: 1.2, front: { wall: 'urban:BrickPainted1a', wallColor: 0x8a9070, dado: 'concrete', dadoColor: 0x6a705a }, back: { wall: 'urban:BrickPainted1a', wallColor: 0x8a9070, dado: 'concrete', dadoColor: 0x6a705a } },
+                { key: 'room_wall', x: -4.375, z: 1.75, face: 180, len: 5.25, wallH: 4.5, t: 0.25, dadoH: 1.2, front: { wall: 'urban:BrickPainted1a', wallColor: 0x8a9070, dado: 'concrete', dadoColor: 0x6a705a }, back: { wall: 'urban:BrickPainted1a', wallColor: 0x8a9070, dado: 'concrete', dadoColor: 0x6a705a } },
+                { key: 'room_wall', x: -4.375, z: -1.75, face: 180, len: 5.25, wallH: 4.5, t: 0.25, dadoH: 1.2, front: { wall: 'urban:BrickPainted1a', wallColor: 0x8a9070, dado: 'concrete', dadoColor: 0x6a705a }, back: { wall: 'urban:BrickPainted1a', wallColor: 0x8a9070, dado: 'concrete', dadoColor: 0x6a705a } },
+                { key: 'room_wall', x: -4.375, z: -5.25, face: 180, len: 5.25, wallH: 4.5, t: 0.25, dadoH: 1.2, front: { wall: 'urban:BrickPainted1a', wallColor: 0x8a9070, dado: 'concrete', dadoColor: 0x6a705a }, back: { wall: 'urban:BrickPainted1a', wallColor: 0x8a9070, dado: 'concrete', dadoColor: 0x6a705a } },
+                { key: 'room_wall', x: -4.375, z: -8.75, face: 180, len: 5.25, wallH: 4.5, t: 0.25, dadoH: 1.2, front: { wall: 'urban:BrickPainted1a', wallColor: 0x8a9070, dado: 'concrete', dadoColor: 0x6a705a }, back: { wall: 'urban:BrickPainted1a', wallColor: 0x8a9070, dado: 'concrete', dadoColor: 0x6a705a } },
+                { key: 'psx_bars_metal_1', x: -1.8, z: 6.55, face: 90 },
+                { key: 'room_wall', x: -1.8, z: 8.25, face: 90, len: 1, wallH: 4.5, t: 0.25, dadoH: 1.2, front: { wall: 'urban:BrickPainted1a', wallColor: 0x8a9070, dado: 'concrete', dadoColor: 0x6a705a }, back: { wall: 'urban:BrickPainted1a', wallColor: 0x8a9070, dado: 'concrete', dadoColor: 0x6a705a } },
+                { key: 'chain_bunk', x: -6.45, z: 7, face: 90 },
+                { key: 'steel_toilet', x: -5, z: 5.75, face: 90 },
+                { key: 'psx_bars_metal_1', x: -1.8, z: 3.05, face: 90 },
+                { key: 'room_wall', x: -1.8, z: 4.75, face: 90, len: 1, wallH: 4.5, t: 0.25, dadoH: 1.2, front: { wall: 'urban:BrickPainted1a', wallColor: 0x8a9070, dado: 'concrete', dadoColor: 0x6a705a }, back: { wall: 'urban:BrickPainted1a', wallColor: 0x8a9070, dado: 'concrete', dadoColor: 0x6a705a } },
+                { key: 'chain_bunk', x: -6.45, z: 3.5, face: 90 },
+                { key: 'wall_chains', wall: 'w', z: 4.1, mount: 1.5 },
+                { key: 'psx_bars_metal_1', x: -1.8, z: -0.45, face: 90 },
+                { key: 'room_wall', x: -1.8, z: 1.25, face: 90, len: 1, wallH: 4.5, t: 0.25, dadoH: 1.2, front: { wall: 'urban:BrickPainted1a', wallColor: 0x8a9070, dado: 'concrete', dadoColor: 0x6a705a }, back: { wall: 'urban:BrickPainted1a', wallColor: 0x8a9070, dado: 'concrete', dadoColor: 0x6a705a } },
+                { key: 'chain_bunk', x: -6.45, z: 0, face: 90 },
+                { key: 'steel_toilet', x: -5, z: -1.25, face: 90 },
+                { key: 'floor_drain', x: -4.4, z: 0 },
+                { key: 'psx_bars_metal_1', x: -1.8, z: -3.95, face: 90 },
+                { key: 'room_wall', x: -1.8, z: -2.25, face: 90, len: 1, wallH: 4.5, t: 0.25, dadoH: 1.2, front: { wall: 'urban:BrickPainted1a', wallColor: 0x8a9070, dado: 'concrete', dadoColor: 0x6a705a }, back: { wall: 'urban:BrickPainted1a', wallColor: 0x8a9070, dado: 'concrete', dadoColor: 0x6a705a } },
+                { key: 'chain_bunk', x: -6.45, z: -3.5, face: 90 },
+                { key: 'psx_bars_metal_1', x: -1.8, z: -7.45, face: 90 },
+                { key: 'room_wall', x: -1.8, z: -5.75, face: 90, len: 1, wallH: 4.5, t: 0.25, dadoH: 1.2, front: { wall: 'urban:BrickPainted1a', wallColor: 0x8a9070, dado: 'concrete', dadoColor: 0x6a705a }, back: { wall: 'urban:BrickPainted1a', wallColor: 0x8a9070, dado: 'concrete', dadoColor: 0x6a705a } },
+                { key: 'chain_bunk', x: -6.45, z: -7, face: 90 },
+                { key: 'steel_toilet', x: -5, z: -8.25, face: 90 },
+                { key: 'wall_chains', wall: 'w', z: -6.4, mount: 1.5 },
+                { key: 'room_wall', x: 4.375, z: 8.75, face: 180, len: 5.25, wallH: 4.5, t: 0.25, dadoH: 1.2, front: { wall: 'urban:BrickPainted1a', wallColor: 0x8a9070, dado: 'concrete', dadoColor: 0x6a705a }, back: { wall: 'urban:BrickPainted1a', wallColor: 0x8a9070, dado: 'concrete', dadoColor: 0x6a705a } },
+                { key: 'room_wall', x: 4.375, z: 5.25, face: 180, len: 5.25, wallH: 4.5, t: 0.25, dadoH: 1.2, front: { wall: 'urban:BrickPainted1a', wallColor: 0x8a9070, dado: 'concrete', dadoColor: 0x6a705a }, back: { wall: 'urban:BrickPainted1a', wallColor: 0x8a9070, dado: 'concrete', dadoColor: 0x6a705a } },
+                { key: 'room_wall', x: 4.375, z: 1.75, face: 180, len: 5.25, wallH: 4.5, t: 0.25, dadoH: 1.2, front: { wall: 'urban:BrickPainted1a', wallColor: 0x8a9070, dado: 'concrete', dadoColor: 0x6a705a }, back: { wall: 'urban:BrickPainted1a', wallColor: 0x8a9070, dado: 'concrete', dadoColor: 0x6a705a } },
+                { key: 'room_wall', x: 4.375, z: -1.75, face: 180, len: 5.25, wallH: 4.5, t: 0.25, dadoH: 1.2, front: { wall: 'urban:BrickPainted1a', wallColor: 0x8a9070, dado: 'concrete', dadoColor: 0x6a705a }, back: { wall: 'urban:BrickPainted1a', wallColor: 0x8a9070, dado: 'concrete', dadoColor: 0x6a705a } },
+                { key: 'room_wall', x: 4.375, z: -5.25, face: 180, len: 5.25, wallH: 4.5, t: 0.25, dadoH: 1.2, front: { wall: 'urban:BrickPainted1a', wallColor: 0x8a9070, dado: 'concrete', dadoColor: 0x6a705a }, back: { wall: 'urban:BrickPainted1a', wallColor: 0x8a9070, dado: 'concrete', dadoColor: 0x6a705a } },
+                { key: 'room_wall', x: 4.375, z: -8.75, face: 180, len: 5.25, wallH: 4.5, t: 0.25, dadoH: 1.2, front: { wall: 'urban:BrickPainted1a', wallColor: 0x8a9070, dado: 'concrete', dadoColor: 0x6a705a }, back: { wall: 'urban:BrickPainted1a', wallColor: 0x8a9070, dado: 'concrete', dadoColor: 0x6a705a } },
+                { key: 'psx_bars_metal_1', x: 1.8, z: 6.55, face: 90 },
+                { key: 'room_wall', x: 1.8, z: 8.25, face: 90, len: 1, wallH: 4.5, t: 0.25, dadoH: 1.2, front: { wall: 'urban:BrickPainted1a', wallColor: 0x8a9070, dado: 'concrete', dadoColor: 0x6a705a }, back: { wall: 'urban:BrickPainted1a', wallColor: 0x8a9070, dado: 'concrete', dadoColor: 0x6a705a } },
+                { key: 'chain_bunk', x: 6.45, z: 7, face: 270 },
+                { key: 'steel_toilet', x: 5, z: 5.75, face: 270 },
+                { key: 'psx_bars_metal_1', x: 1.8, z: 3.05, face: 90 },
+                { key: 'room_wall', x: 1.8, z: 4.75, face: 90, len: 1, wallH: 4.5, t: 0.25, dadoH: 1.2, front: { wall: 'urban:BrickPainted1a', wallColor: 0x8a9070, dado: 'concrete', dadoColor: 0x6a705a }, back: { wall: 'urban:BrickPainted1a', wallColor: 0x8a9070, dado: 'concrete', dadoColor: 0x6a705a } },
+                { key: 'chain_bunk', x: 6.45, z: 3.5, face: 270 },
+                { key: 'wall_chains', wall: 'e', z: 4.1, mount: 1.5 },
+                { key: 'psx_bars_metal_1', x: 1.8, z: -0.45, face: 90 },
+                { key: 'room_wall', x: 1.8, z: 1.25, face: 90, len: 1, wallH: 4.5, t: 0.25, dadoH: 1.2, front: { wall: 'urban:BrickPainted1a', wallColor: 0x8a9070, dado: 'concrete', dadoColor: 0x6a705a }, back: { wall: 'urban:BrickPainted1a', wallColor: 0x8a9070, dado: 'concrete', dadoColor: 0x6a705a } },
+                { key: 'chain_bunk', x: 6.45, z: 0, face: 270 },
+                { key: 'steel_toilet', x: 5, z: -1.25, face: 270 },
+                { key: 'floor_drain', x: 4.4, z: 0 },
+                { key: 'psx_bars_metal_1', x: 1.8, z: -3.95, face: 90 },
+                { key: 'room_wall', x: 1.8, z: -2.25, face: 90, len: 1, wallH: 4.5, t: 0.25, dadoH: 1.2, front: { wall: 'urban:BrickPainted1a', wallColor: 0x8a9070, dado: 'concrete', dadoColor: 0x6a705a }, back: { wall: 'urban:BrickPainted1a', wallColor: 0x8a9070, dado: 'concrete', dadoColor: 0x6a705a } },
+                { key: 'psx_bars_metal_1', x: 1.8, z: -7.45, face: 90 },
+                { key: 'room_wall', x: 1.8, z: -5.75, face: 90, len: 1, wallH: 4.5, t: 0.25, dadoH: 1.2, front: { wall: 'urban:BrickPainted1a', wallColor: 0x8a9070, dado: 'concrete', dadoColor: 0x6a705a }, back: { wall: 'urban:BrickPainted1a', wallColor: 0x8a9070, dado: 'concrete', dadoColor: 0x6a705a } },
+                { key: 'chain_bunk', x: 6.45, z: -7, face: 270 },
+                { key: 'steel_toilet', x: 5, z: -8.25, face: 270 },
+                { key: 'wall_chains', wall: 'e', z: -6.4, mount: 1.5 },
+                /* the aisle's bulbs, the camera at the end */
+                { key: 'bare_bulb', x: 0, z: 7, ceil: true },
+                { key: 'bare_bulb', x: 0, z: 0, ceil: true },
+                { key: 'bare_bulb', x: 0, z: -7, ceil: true },
+                { key: 'security_camera', wall: 'n', x: -5.6, mount: 3.6 },
+                { key: 'floor_drain', x: 0, z: -10.2 },
+            ],
+            agents: [],
+            npcSpots: [],
+            onlineSpots: [],
+            lines: [],
+            spawn: { x: 0, z: 9, face: 0 },
         },
         /* ══ THE SUITES (HQ plan 9.3 "the crowding" / C-27, 2026-09-15) ═══════
            The ground ring wore thirteen doors and the mezzanine eleven. A
@@ -36524,88 +36717,7 @@ const DOOR_HQ = {
             ],
             spawn: { x: -3.2, z: 0, face: 90 },
         },
-        execwing: {
-            label: 'THE EXECUTIVE SUITE',
-            sub: 'TROPHY CASE · BUREAU OF CONTINUITY',
-            kind: 'box',
-            shell: {
-                w: 11, d: 8, h: 3.2,
-                wallH: 3.2, dadoH: 1.1,
-                /* THE RETRO-FUTURIST PASS (2026-09-21): the executive claret under white plaster, filleted, coved — 8 × 5 grew to 11 × 8; a lava lamp, a porthole, the couch where it was */
-                round: 1.6, cove: 0.5,
-                floor: 'carpet', wall: 'drywall', dado: 'oxblood', trim: 'metal', ceiling: 'ceiling',
-                floorColor: 0x7a3a30, wallColor: 0xf0ece2, dadoColor: 0x4a2a24, ceilColor: 0xf6f4ee,
-                pipes: false, strips: false, lights: [],
-                mood: { light: 0xfff0d6, ambient: 0.62 },
-                plate: { x: 0, z: -3.95, y: 2.7 },
-                look: HQ_ROOM_LOOKS.retro,
-            },
-            doors: [
-                { id: 'egress', wall: 's', x: 0, leaf: 'leaf_suburban_house',
-                  label: 'THE LOBBY',
-                  action: { room: 'central_egress', at: 'executive' },
-                  desc: 'The way back to the mezzanine. A house door on an office suite. It has always been a house door; the file that says otherwise has been corrected.' },
-                /* ROOM 111 · the case */
-                { id: 'trophycase', wall: 'w', z: 0, leaf: 'leaf_glass_exec',
-                  label: 'THE TROPHY CASE', sub: 'ACHIEVEMENTS',
-                  action: { room: 'trophycase', at: 'egress' },
-                  desc: 'Room 111. The glass cabinet over Employee of the Month: every commendation the Department has engraved for you. Open the cabinet and the whole record comes out. The blank plaques are not a comment.' },
-                /* THE BUREAU · the gate and the number are THIS door's, exactly as
-                   they were the mezzanine's (plan 4.4) — a recruit walks the suite,
-                   reads the notices and does not go in. The second house door in
-                   one room is the joke the Bureau has already corrected once. */
-                { id: 'continuity', wall: 'n', x: 1.4, leaf: 'leaf_suburban_house',
-                  label: 'BUREAU OF CONTINUITY', sub: 'STORY CANON · GATEKEEPER RANK',
-                  action: { room: 'continuity', at: 'egress' },
-                  minClearance: 5, requiresKeys: 24, roomNo: '№ — CONTESTED', why: 'a joke, and a policy',
-                  desc: 'Canon notices. The motto plaque. The only department that suspects the schedule. GATEKEEPER clearance and two dozen Keys.' },
-            ],
-            counters: [],
-            props: [
-                /* the north wall (z −4): the frame that is not a window, the plate by the Bureau's door, the vent */
-                { key: 'picture_round_a', wall: 'n', x: -2.4 },
-                { key: 'nameplate',       wall: 'n', x: 3.3 },
-                { key: 'vent_grille',     wall: 'n', x: -3.4, mount: 2.8 },
-                /* the south wall (z 4): the way out, the clock, the coats, the camera */
-                { key: 'wall_clock',      wall: 's', x: 2.4, mount: 2.5 },
-                { key: 'hook_rail',       wall: 's', x: -2.4 },
-                { key: 'security_camera', wall: 's', x: 3.4, mount: 2.55 },
-                /* the two ends */
-                { key: 'nameplate',       wall: 'w', z: 1.9 },
-                { key: 'exit_sign',       wall: 'w', z: -1.4, mount: 2.75 },
-                { key: 'notice_board',    wall: 'e', z: 1.2 },
-                { key: 'porthole',        wall: 'e', z: -0.2, mount: 1.5, size: 1.2 },
-                { key: 'filing_cabinet',  wall: 'e', z: -1.6 },
-                /* the floor: the waiting-for-the-suite furniture, off the door lane (the way out is the SOUTH wall at x 0 — nothing stands in it), the rail (THE PARK RULE) */
-                { key: 'shag_rug',        x: 2.375,  z: 0.875, r: 1.6, color: 0xa63a2e, color2: 0xe8b33a },
-                { key: 'curved_couch',    x: 2.375,  z: 1.675, face: 180 },
-                { key: 'coffee_table',    x: 2.375,  z: 0.475, face: 0 },
-                { key: 'lava_lamp',       x: 3.2,  z: 1.4, y: 0.46, face: 20 },
-                { key: 'egg_chair',       x: -2.4, z: 2.7, face: 0, color: 0xa63a2e },
-                { key: 'potted_plant',    x: -4.0, z: -2.4 },
-                { key: 'trash_bin',       x: 4.0,  z: -2.4 },
-                { key: 'railing_1m',      x: -1.2, z: -1.6, face: 0 },
-                { key: 'railing_1m',      x: -0.2, z: -1.6, face: 0 },
-                { key: 'saucer_pendant',  x: -2.2, z: 0, ceil: true },
-                { key: 'saucer_pendant',  x: 2.2,  z: 0, ceil: true },
-            ],
-            agents: [
-                { x: -2.6, z: -1.2, face: 120, pose: 'hqTalk', gender: 'female', label: 'THE FLOOR ASSISTANT', reach: 1.9,
-                  line: '“The case is open to everyone. The house door is not. I am told this is not a hierarchy, it is a filing decision.”' },
-                { x: 2.4, z: -1.0, face: 220, pose: 'hqArms', gender: 'male', label: 'THE DUTY OFFICER', reach: 1.8,
-                  line: '“You can stand here as long as you like. People do. They read the door and then they read it again.”' },
-            ],
-            npcSpots: [
-                { x: -0.6, z: 1.1, face: 0, say: ['“The Bureau’s door is gated. The notices on it are not. Read them; that is what they are for.”', '“The trophies are through there. Most of them are yours. The rest are the Department’s, which is also yours, on paper.”', '“Nobody on this floor says the motto out loud. Somebody would have to check the plaque first.”'] },
-            ],
-            onlineSpots: [],
-            lines: [
-                '“Two house doors in one suite?” “There is one house door.” “There are two.” “There is one. The other has been corrected.”',
-                '“What is in the Bureau?” “Notices.” “About what?” “About what was in the Bureau.”',
-                '“Whose plaques are the blank ones?” “Nobody’s yet.” “That is worse.”',
-            ],
-            spawn: { x: 0, z: 1.8, face: 0 },
-        },
+        /* execwing (THE EXECUTIVE SUITE) — RETIRED 2026-11-26 (DOOR HQ 2.0 wave 3): the Bureau of Continuity stands on the Lobby's gallery itself; DOOR_HQ.retired sends it there */
         /* ── THE EXECUTIVE FLOOR (HQ plan 5.4 stage 1 + 7.4 ROOMS 4C + 8,
            2026-09-14) — the elevator on the mezzanine at 0° (KEYHOLDER
            rank + 12 Keys; the gate is the elevator door's, unchanged) rides
@@ -36903,100 +37015,72 @@ const DOOR_HQ = {
             ],
             spawn: { x: 0, z: 3.0, face: 0 },
         },
-        /* ── ROOM 1984 · THE INTERROGATION ROOM (HQ plan 7.4, 2026-09-13) — a
-           box room off the ground ring at 255°, between RECORDS (240°) and
-           BAY 1 (270°): Internal Affairs keeps its room next to the file.
-           The user's 1984: a metal table, two folding chairs, one lamp, the
-           kit's round observation window as the one-way mirror (from this
-           side it is a mirror; someone is behind it). THE TABLE is the
-           counter → overlay 'transcript' (map.js _hqTranscriptHtml): what the
-           CPU learned from watching you play — the imitation ledger from the
-           training matches (battle.js _ewImitationSnapshot: all-time
-           decisions scored, agreement, every weight moved off its default)
-           and the last match's report (_ewImitationReport) — the one
-           function in the game that had no physical home. THE GLASS is a
-           counter with no action: a panel, a line, and the sense of being
-           watched. Story (plan 4.2 micro-scenes, the leave hearing) waits on
-           the user's lines (A15). Viewer-local, nothing relayed (RULE #2). ── */
+        /* ── INTERROGATION ROOM (DOOR HQ 2.0, the Gantry's west wall; mondo: no CPU training, no table at the door, the mirror is a window):
+           14 x 17.5 m. The observation booth inside the door, the window in the wall across the room, the table in the middle of the room
+           behind it, three squares from its doorway. ── */
         interrogation: {
-            label: 'THE INTERROGATION ROOM',
-            roomNo: '1984', why: 'the year on the file; the mirror is a window from the other side',
+            label: 'INTERROGATION ROOM',
+            roomNo: '1984',
+            why: 'the year on the file; the mirror is a window from the other side',
             kind: 'box',
             shell: {
-                w: 7, d: 6, h: 3.0,
-                wallH: 3.0, dadoH: 1.2,
-                floor: 'concrete', wall: 'drywall', dado: 'teal', trim: 'teal', ceiling: 'ceiling',
-                wallColor: 0x9aa39c, dadoColor: 0x3f5a58, floorColor: 0x8a8a86,   // painted down: institutional green over grey
+                w: 14,
+                d: 17.5,
+                h: 4.5,
+                wallH: 4.5,
+                dadoH: 1.2,
+                floor: 'concrete',
+                wall: 'urban:BrickPainted1a',
+                dado: 'concrete',
+                trim: 'metal',
+                ceiling: 'concrete',
+                floorColor: 0x8c8e86,
+                wallColor: 0x8a9070,
+                dadoColor: 0x6a705a,
+                ceilColor: 0x6c6e66,
                 pipes: true,
-                light: { x: 0, z: 0 },              // one strip, over the table
-                mood: { light: 0xd9d2b8 },          // and it is tired
-                plate: { x: 0, z: -2.75, y: 2.6 },
+                strips: false,
+                keyLamp: 0,
+                lights: [{ x: -2.5, z: -3 }],
+                mood: { light: 0xc9d1b8, ambient: 0.28 },
+                plate: { x: 4.6, z: -8.65, y: 3.4 },
             },
             doors: [
-                { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_cell',
-                  label: 'THE MEDICAL WING', sub: 'BACK TO THE WING',
-                  action: { room: 'medwing', at: 'interrogation' },
-                  desc: 'The way back to the hall. It locks from the outside; it has never been locked.' },
+                { id: 'labs', wall: 's', x: 0, leaf: 'leaf_cell', label: 'THE GANTRY', action: { room: 'labs', at: 'interrogation' }, desc: 'It locks from the outside. It has never been locked.' },
             ],
             counters: [
-                /* (THE TABLE's CPU training transcript left the room: DOOR HQ 2.0 wave 1, mondo 11-26 "No CPU training in the interrogation
-                   room, that is a dev tool". It is on the main menu's Settings > Developer tab, beside AI Training) */
-                /* THE GLASS → nothing; someone is behind it */
-                { id: 'glass', x: 0, z: -2.2, face: 0, plateY: 2.45, radius: 1.5, verb: 'LOOK',
-                  label: 'THE GLASS', sub: 'INTERNAL AFFAIRS', action: {},
-                  desc: 'A round window that is a mirror from this side. You can see yourself, the table, the door. Nobody comments on the second reflection.' },
+                { id: 'glass', x: -2.5, z: 4.4, face: 0, plateY: 2, radius: 1.6, verb: 'LOOK', label: 'THE GLASS', action: {  }, desc: 'A mirror from the other side. From here it is a window: the table, the two chairs, the lamp. Nobody in there looks up.' },
             ],
             props: [
-                /* ── the table in the middle, the two chairs, the lamp, the file ── */
-                { key: 'steel_table',    x: -0.875, z: -0.375, face: 0 },
-                { key: 'folding_chair',  x: -0.875, z: -1.375, face: 180 },    // theirs
-                { key: 'folding_chair',  x: -0.875, z: 0.625,  face: 0 },      // yours
-                { key: 'desk_lamp',      x: -1.425, z: -0.425, y: 0.76, face: 150 },
-                { key: 'manila_folders', x: -0.675,  z: -0.525, y: 0.76, face: 5 },
-                { key: 'clipboard_flat', x: -0.825, z: -0.175,  y: 0.76, face: 185 },
-                { key: 'pen',            x: -0.525, z: -0.125, y: 0.76, face: 60 },
-                { key: 'coffee_mug',     x: -0.225, z: -0.275,  y: 0.76, face: 0 },
-                { key: 'rotary_phone',   x: -1.375, z: -0.075,  y: 0.76, face: 200 },
-                /* ── the north wall: the one-way mirror, the vent, the camera's clock ── */
-                { key: 'observation_window', wall: 'n', x: 0, mount: 1.45 },
-                { key: 'vent_grille',    wall: 'n', x: -2.7, mount: 2.5 },
-                { key: 'wall_clock',     wall: 'n', x: 2.5, mount: 2.4 },
-                { key: 'security_camera', wall: 'e', z: -2.6, mount: 2.55 },            // the camera (2026-09-13): it records the table
-                /* ── the east wall: the tape, the file, the rail ── */
-                { key: 'metal_shelving', wall: 'e', z: -1.7 },
-                { key: 'tube_tv',        x: 3.15, z: -1.7, y: 1.22, face: 270 },   // the recording, on the middle shelf
-                { key: 'filing_cabinet', wall: 'e', z: 0.4 },
-                { key: 'hook_rail',      wall: 'e', z: 1.9 },
-                { key: 'trash_bin',      x: 3.1, z: 2.5, face: 250 },
-                /* ── the south wall: the breaker, the extinguisher, the third chair nobody sits in ── */
-                { key: 'breaker_panel',  wall: 's', x: 2.2 },
-                { key: 'fire_extinguisher', wall: 's', x: 3.1 },
-                { key: 'folding_chair',  x: -2.6, z: 2.55, face: 0 },
-                { key: 'cardboard_box',  x: -3.0, z: 2.4, face: 20 },
-                /* ── the west wall: the way out, the plate by it ── */
-                { key: 'exit_sign',      wall: 'w', z: 0, mount: 2.7 },
-                { key: 'nameplate',      wall: 'w', z: -1.6, mount: 1.55 },
-                { key: 'floor_drain',    x: 1.6, z: 1.8 },
-                /* ── the ceiling: one tube, and it hums ── */
-                { key: 'fluorescent',    x: 0, z: 0, ceil: true, face: 0 },
+                /* THE WINDOW (the mirror from the other side): a wall across the room 5.25 m in from the door, dark glass in it at eye height, a doorway at its east end */
+                { key: 'room_wall', x: 0, z: 3.5, face: 180, len: 14, wallH: 4.5, t: 0.3, dadoH: 1.2, front: { wall: 'urban:BrickPainted1a', wallColor: 0x6e7460, dado: 'concrete', dadoColor: 0x5a604c }, back: { wall: 'urban:BrickPainted1a', wallColor: 0x8a9070, dado: 'concrete', dadoColor: 0x6a705a }, holes: [{ x0: -6.2, x1: 1, y0: 1.1, y1: 2.5, glass: 1316376 }, { x0: 3.6, x1: 5.5, y0: 0, y1: 2.6 }] },
+                /* the booth (dark): a desk under the window, the recorder, one lamp */
+                { key: 'tanker_desk', x: -3.6, z: 4.25, face: 0 },
+                { key: 'crt_terminal', x: -4.1, z: 4.1, y: 0.76, face: 180 },
+                { key: 'desk_lamp', x: -2.7, z: 4.1, y: 0.76, face: 200 },
+                { key: 'coffee_mug', x: -3.2, z: 4.3, y: 0.76, face: 40 },
+                { key: 'folding_chair', x: -3.6, z: 5.5, face: 0 },
+                { key: 'reel_to_reel', x: -6.2, z: 4.4, face: 180 },
+                { key: 'filing_cabinet', x: 6.3, z: 7.4, face: 270 },
+                /* the room behind the glass: the table in the middle (three squares from its doorway), two chairs, the bulb over it */
+                { key: 'steel_table', x: -2.5, z: -3, face: 0 },
+                { key: 'folding_chair', x: -2.5, z: -1.85, face: 0 },
+                { key: 'folding_chair', x: -2.5, z: -4.15, face: 180 },
+                { key: 'desk_lamp', x: -2, z: -3.2, y: 0.76, face: 160 },
+                { key: 'manila_folders', x: -2.8, z: -2.9, y: 0.76, face: 10 },
+                { key: 'rotary_phone', x: -3.2, z: -3.3, y: 0.76, face: 200 },
+                { key: 'bare_bulb', x: -2.5, z: -3, ceil: true },
+                { key: 'floor_drain', x: -2.5, z: -6 },
+                { key: 'security_camera', wall: 'n', x: -6.4, mount: 3.6 },
+                { key: 'wall_clock', wall: 'n', x: 2.5, mount: 2.6 },
+                { key: 'hook_rail', wall: 'w', z: -6 },
+                { key: 'metal_shelving', wall: 'e', z: -6 },
             ],
-            agents: [
-                { x: -0.875, z: -1.375, face: 180, pose: 'hqSit', gender: 'male', label: 'THE INTERVIEWER', reach: 1.9,
-                  line: '“Sit. This is not about you. It is about what it learned from you.”' },
-                { x: -2.5, z: -1.2, face: 90, pose: 'hqArms', gender: 'female', label: 'INTERNAL AFFAIRS', reach: 1.6,
-                  line: '“I am on this side of the glass today. That is not a comment.”' },
-            ],
-            npcSpots: [
-                { x: -2.6, z: 2.55, face: 0 },      // the third chair, waiting
-            ],
+            agents: [],
+            npcSpots: [],
             onlineSpots: [],
-            lines: [
-                '“Do you know why you are here?” “Training.” “That is what it says.”',
-                '“The mirror is a window.” “From which side?” “Yes.”',
-                '“It watched every move you made. It agreed with most of them. Most.”',
-                '“Nothing you say leaves this room.” “Where does it go?” “Into the weights.”',
-            ],
-            spawn: { x: -2.6, z: 0, face: 90 },
+            lines: [],
+            spawn: { x: 0, z: 6.6, face: 0 },
         },
         /* ── RECORDS (DOOR HQ 2.0 wave 3, 2026-11-26): on the Ring now, its own door (the Records Wing between is retired). 17.5 x 21 m,
            5.25 m. The stacks in three aisles either side of the middle walk, the card catalogue and the reading desk (the codex) at the
@@ -37098,118 +37182,60 @@ const DOOR_HQ = {
             agents: [], npcSpots: [], lines: [],
             spawn: { x: 0, z: 4.6, face: 0 },
         },
-        /* ── ROOM 360 · THE OBSERVATORIUM (HQ plan 7.4, 2026-09-11) — a box
-           room off the MEZZANINE at 240°, directly above Records. The user's
-           "360°": a planetarium. The PROJECTOR in the middle is the tape
-           library's projection (the counter → Replay, moved up from
-           Records' door panel); the PROJECTED SKY on the ceiling
-           (`star_dome`, three-renderer.js) is every threshold in the
-           building as a star — seven constellations, one per bay, laid out
-           by `hqStarChart` — and THE STAR CHART on the north wall is the
-           counter that opens the star-map panel (map.js `_hqStarmapHtml`):
-           point at a star and its threshold's door panel opens from here,
-           CROSS / DEEP / WALK IN and all. A fast route to any site — the
-           real function the plan asked for. The room is dark on purpose:
-           the shell's one strip is blue and over the way in, the projector
-           and two globe lamps light the rest; `floorColor` / `wallColor` /
-           `dadoColor` paint the kit's textures down, the ceiling is the
-           `void` terrain sheet (a nebula). The telescope is pointed at the
-           ceiling, which is painted. Overheard lines and the two agents'
-           lines are Claude placeholders (A15 — rewrite at will). Viewer-
-           local, nothing relayed (RULE #2). */
+        /* ── THE OBSERVATORY (DOOR HQ 2.0 wave 3, 2026-11-26): on the Lobby's gallery at the head of the main line, behind glass, under
+           its own dome. Night blue, the projected sky on the `void` ceiling (`star_dome`), THE PROJECTOR in the middle (Replay), THE
+           STAR CHART on the north wall (the star-map), THE SHELF of tapes on the east wall, the screen to the Singularity on the west
+           wall (`wayProps`). Kept dark: the strip over the way in, the projector and two globe lamps light it. ── */
         observatorium: {
             label: 'THE OBSERVATORY',
-            sub: 'MAP SELECT · REPLAY',
-            roomNo: '360', why: '360° — the whole sky from one chair',
             kind: 'box',
             shell: {
-                w: 13, d: 13, h: 5.6,
-                wallH: 5.6, dadoH: 1.05,
-                floor: 'carpet', wall: 'drywall', dado: 'oxblood', trim: 'teal', ceiling: 'void',
-                floorColor: 0x5c5862, wallColor: 0x3b3e4a, dadoColor: 0x4c2e33,   // painted down: a dark room
-                pipes: false,                 // nothing crosses the sky
-                light: { x: -5.4, z: 0 },     // one strip, over the way in
-                mood: { light: 0x3a4a80 },    // and it is blue
-                plate: { x: 0, z: -6.25, y: 5.1 },
+                w: 17.5, d: 17.5, h: 7.0,
+                wallH: 7.0, dadoH: 1.2,
+                floor: 'carpet_4', wall: 'drywall', dado: 'drywall', trim: 'brass', ceiling: 'void',
+                floorColor: 0x4a5070, wallColor: 0x1e2846, dadoColor: 0x141c33,
+                pipes: false,
+                lights: [{ x: 0, z: 5.5 }, { x: 0, z: -1.0 }],
+                mood: { light: 0x3a4a80, ambient: 0.35 },
+                plate: { x: 0, z: -8.55, y: 5.6 },
             },
             doors: [
-                { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_holographic',
-                  label: 'THE LOBBY',
-                  action: { room: 'central_egress', at: 'observatorium' },
-                  desc: 'The way back to the mezzanine. The door hums; Facilities says that is the paint drying.' },
+                { id: 'lobby', wall: 's', x: 0, open: { w: 17.5, h: 4.9 }, walk: [-1.75, 1.75], label: 'THE LOBBY', action: { room: 'central_egress', at: 'observatorium' } },
             ],
             counters: [
-                /* THE STAR CHART → the star-map: every threshold a star; point at one and its door opens */
-                { id: 'chart', x: 0, z: -5.9, face: 0, plateY: 2.75, radius: 2.3, verb: 'READ',
-                  label: 'THE STAR CHART', sub: 'MAP SELECT', action: { overlay: 'starmap' } },
-                /* THE PROJECTOR → the tape library's projection (Replay) */
-                { id: 'projector', x: -0.375, z: -0.375, face: 180, plateY: 2.3, radius: 2.1, verb: 'USE',
-                  label: 'THE PROJECTOR', sub: 'REPLAY LAST BATTLE', action: { fn: '_ewReplayLastMatch' } },
-                /* THE SHELF (9.1, 2026-09-15): the hundred tapes, the found ones playable in the panel's CRT (map.js _hqTapesHtml) */
-                { id: 'shelf', x: 5.7, z: -3.6, face: 270, plateY: 2.2, radius: 2.0, verb: 'BROWSE',
-                  label: 'THE SHELF', sub: 'THE TAPES · 100 ON THE REGISTER', action: { overlay: 'tapes' },
-                  desc: 'A hundred cassettes on the register, most of them missing. Found ones play on the set. Records asked for them back; the Observatorium has not answered.' },
+                { id: 'chart', x: 0, z: -8.1, face: 0, plateY: 2.75, radius: 2.3, verb: 'READ', label: 'THE STAR CHART', action: { overlay: 'starmap' } },
+                { id: 'projector', x: 0, z: -1.0, face: 180, plateY: 2.3, radius: 2.1, verb: 'USE', label: 'THE PROJECTOR', action: { fn: '_ewReplayLastMatch' } },
+                { id: 'shelf', x: 8.1, z: -4.0, face: 270, plateY: 2.2, radius: 2.0, verb: 'BROWSE', label: 'THE SHELF', action: { overlay: 'tapes' } },
             ],
             props: [
-                /* ── the middle: the projector under the projected sky, three seats round it ── */
-                { key: 'star_projector', x: -0.375, z: -0.375, face: 0 },
-                { key: 'star_dome',      x: 0, z: 0, ceil: true },
-                { key: 'curved_couch',   x: -0.375,    z: 3.125,  face: 0 },      // the seats face the projector
-                { key: 'curved_couch',   x: 3.125,  z: -2.125, face: 240 },
-                { key: 'curved_couch',   x: -3.875, z: -2.125, face: 120 },
-                { key: 'telescope',      x: 4.6,  z: 4.4,  face: 315 },    // pointed at the ceiling, which is painted
-                /* ── the north wall: the chart, two photographs of the sky (Records has the negatives) ── */
+                { key: 'office_glass', x: -7.0, z: 8.63, face: 180, frame: 0x141c33 },
+                { key: 'office_glass', x: -3.5, z: 8.63, face: 180, frame: 0x141c33 },
+                { key: 'office_glass_door', x: 0, z: 8.63, face: 180, text: ['THE OBSERVATORY'], frame: 0x141c33 },
+                { key: 'office_glass', x: 3.5,  z: 8.63, face: 180, frame: 0x141c33 },
+                { key: 'office_glass', x: 7.0,  z: 8.63, face: 180, frame: 0x141c33 },
+                /* the middle: the projector under the sky, three couches round it */
+                { key: 'star_projector', x: 0, z: -1.0, face: 0 },
+                { key: 'star_dome',      x: 0, z: -1.0, ceil: true },
+                { key: 'curved_couch',   x: 0,    z: 2.6,  face: 0 },
+                { key: 'curved_couch',   x: 3.4,  z: -3.0, face: 240 },
+                { key: 'curved_couch',   x: -3.4, z: -3.0, face: 120 },
+                /* the telescopes, pointed at the painted sky */
+                { key: 'brass_telescope', x: -6.6, z: -6.6, face: 45 },
+                { key: 'telescope',      x: 6.6, z: 5.6, face: 315 },
+                { key: 'globe_lamp',     x: -7.9, z: 3.2 },
+                { key: 'globe_lamp',     x: 7.9,  z: 0.8 },
+                /* the walls: the chart, the tapes */
                 { key: 'star_chart',     wall: 'n', x: 0 },
-                { key: 'picture_round_a', wall: 'n', x: -3.4 },
-                { key: 'picture_round_b', wall: 'n', x: 3.4 },
-                { key: 'vent_grille',    wall: 'n', x: 5.4, mount: 4.8 },
-                /* ── the east wall: the astronomer's desk, the tape library on the shelves ── */
-                { key: 'tanker_desk',    x: 4.875,  z: 1.375,  face: 270 },
-                { key: 'crt_terminal',   x: 4.975,  z: 0.925, y: 0.76, face: 270 },
-                { key: 'papers_b',       x: 4.825, z: 1.825, y: 0.76, face: 300 },
-                { key: 'coffee_mug',     x: 5.225, z: 1.875,  y: 0.76, face: 20 },
-                { key: 'desk_lamp',      x: 5.225, z: 0.725, y: 0.76, face: 250 },
-                { key: 'office_chair',   x: 5.475,  z: 1.375,  face: 270 },
-                { key: 'tape_shelf',     wall: 'e', z: -3.6 },   // THE SHELF (9.1): the tape library, the cassettes' spines
-                { key: 'metal_shelving', wall: 'e', z: 3.8 },
-                { key: 'filing_cabinet', wall: 'e', z: -2.1 },
-                { key: 'tube_tv',        x: 6.15, z: -2.1, y: 1.33, face: 270 },   // the viewing set, on the cabinet
-                { key: 'cardboard_boxes', x: 5.6, z: -5.1, face: 20 },             // the tapes that did not fit
-                { key: 'wall_clock',     wall: 'e', z: 2.4, mount: 3.4 },          // sidereal: four minutes fast a day
-                /* ── the south wall: the porthole, the panel, the extinguisher, a plant that has never seen the sun ── */
-                { key: 'observation_window', wall: 's', x: 0, mount: 3.4 },
-                { key: 'breaker_panel',  wall: 's', x: -4.6 },
-                { key: 'fire_extinguisher', wall: 's', x: 4.8 },
-                { key: 'potted_plant',   x: 5.6,  z: 5.7 },
-                /* ── the west wall: the way out, the coats, a frame ── */
-                { key: 'exit_sign',      wall: 'w', z: 0, mount: 2.75 },
-                { key: 'hook_rail',      wall: 'w', z: -2.4 },              // rev 22: the coats moved south → north; the projection SCREEN (the seam to the Singularity) hangs on the west wall at z 3.4
-                { key: 'picture_round_c', wall: 'n', x: -5.6 },
-                /* ── the ceiling: ONE fixture, over the way in, at the shell's strip (blue) — the sky has the rest ── */
-                { key: 'fluorescent',    x: -5.4, z: 0, ceil: true, face: 90 },
+                { key: 'tape_shelf',     wall: 'e', z: -4.0 },
+                { key: 'filing_cabinet', wall: 'e', z: -6.2 },
+                { key: 'potted_plant',   x: -7.6, z: 7.2 },
             ],
-            agents: [
-                { x: 5.475, z: 1.375, face: 270, pose: 'hqSit', gender: 'female', label: 'THE ASTRONOMER', reach: 2.0,
-                  line: '“I chart them. I don’t open them. Point at one and take it up with the door.”' },
-                { x: -5.475, z: -2.725, face: 110, pose: 'hqTalk', gender: 'male', label: 'THE USHER', reach: 1.7,
-                  line: '“Mind the step. There isn’t one. People mind it anyway.”' },
-            ],
-            npcSpots: [
-                { x: 2.2,  z: 3.3,  face: 300 },   // looking up
-                { x: -2.7, z: 3.0,  face: 40 },
-                { x: 2.6,  z: -4.9, face: 200 },   // at the chart
-            ],
-            onlineSpots: [
-                { x: -2.1, z: -4.7, face: 0 },
-                { x: 3.9,  z: 2.9,  face: 315 },
-            ],
-            lines: [
-                '“Which one is ours?” “The one that keeps moving.”',
-                '“The dome is painted.” “Painted from what?”',
-                '“Every star is a door.” “Every door is a star. Records disagrees about the direction.”',
-                '“Do not touch the projector. It is the only thing in the building pointed at the ceiling on purpose.”',
-            ],
-            spawn: { x: -5.7, z: 0, face: 90 },
+            agents: [],
+            npcSpots: [],
+            lines: [],
+            spawn: { x: 0, z: 5.6, face: 0 },
+            wayProps: [{ id: 'cut_observatorium_singularity', way: 'screen', wall: 'w', inert: true, z: 3.4 }],
+            noWalkers: true,
         },
 
         /* ── THE TRAINING ROOM (HQ plan 6.1a, 2026-09-04) — the walkable
@@ -37577,332 +37603,243 @@ const DOOR_HQ = {
            grind on top. Doors: the elevator and the tunnel hatch on the east, the loading dock north, THE RAMP DOWN (links.garage_motorpool,
            P3) west. There is NO door to H-Wing here any more — the wing is found from the room at the end (deadend) only.
            node check-terrain.js garage solves it (every door from every door, no trap). ── */
+        /* ── DOOR HQ 2.0 (2026-11-26, wave 3): THE GARAGE, rebuilt from docs/plans/door-hq-2/plans/3_garage_works_top.png. A round car
+           park (49 m drum, 9 m to the roof) round THE LIFT in the middle; the ramp climbs the west side to a deck over the north,
+           where the street gate stands shut; bays round the drum, the taxi rank south-west; the Subway platform through the
+           south opening (HQ_WORLD.zones.garage, no card); the Loading Dock's roller door east (the Works' front door); the stair up
+           to the Ring west. Generated once by hand-run numbers (the ring, the bays, the rails); one name, no subtitles. ── */
         garage: {
-            label: 'THE GARAGE',
-            sub: 'PARKING · LEVEL P1 · TWO DECKS, BOTH OF THEM P1',
-            roomNo: 'P1', why: 'the first parking level — a round drum with a deck and a ramp, and both levels signed P1; there is no P2 on the panel and the ramp does not go there either; P3 is the D.U.M.B.’s motor pool, down THE RAMP by the west wall (links.garage_motorpool, 2026-09-18)',
+            label: 'GARAGE',
             kind: 'box',
-            /* THE CLIMB (AREA_CONTENT_PLAN D1 / R9, 2026-09-19): THE TEACHING ROOM — THE DOCK OFFICE is a platform 3 m over the DECK
-               (the landing at y 7.2 on the deck at the north-east, its top 7.45 under a 10.2 m roof), reached by ONE ladder whose foot
-               stands ON the deck (`y0: 4.2` — a box climb's free query reads the ground, never a bridge); the lesson plaque stands at
-               its foot; walk off the platform's edge to come down (or S at the head) */
             climbs: [
-                { id: 'dock_office', x: 18.0, z: -15.42, y0: 4.2, y1: 7.45, face: 0, look: 'ladder' },   // the climber faces north, the platform's south edge is the mass; the head lands on the landing's top
+                { id: 'deck_ladder', x: 3.06, z: -17.38, y0: 0, y1: 3.5, face: 10, look: 'ladder' },   // THE LADDER lesson (HQ_WALK_LESSONS.climb): ground to the deck at its inner edge
             ],
             shell: {
-                w: 56, d: 56, h: 10.2,
-                wallH: 10.2, dadoH: 1.1,
-                floor: 'concrete_floor', wall: 'concrete', dado: 'concrete', trim: 'teal', ceiling: 'concrete',
-                floorColor: 0x9b9a96, wallColor: 0xa8a6a0, dadoColor: 0x6e6c66, ceilColor: 0x8e8c88,
+                w: 52.5, d: 52.5, h: 9,
+                wallH: 9, dadoH: 1.1,
+                floor: 'concrete_floor', wall: 'urban:ConcretePrecast1c', dado: 'concrete', trim: 'gunmetal', ceiling: 'concrete',
+                floorColor: 0x8a8a84, wallColor: 0x9a9a94, dadoColor: 0x6e6c66, ceilColor: 0x7e7e7a,
                 pipes: true,
-                lights: [{ x: 0, z: 0 }, { x: 7.8, z: -7.8 }, { x: 7.8, z: 7.8 }, { x: -7.8, z: 7.8 }, { x: -7.8, z: -7.8 },
-                         { x: 0, z: -23 }, { x: 21.9, z: -7.1 }, { x: 13.5, z: 18.6 }, { x: -13.5, z: 18.6 }, { x: -21.9, z: -7.1 }],
-                mood: { light: 0xffe4a8, ambient: 0.9 },       // sodium lamps; nothing in here is white
-                fog: { color: 0x2a2620, density: 0.014 },
-                look: HQ_ROOM_LOOKS.garage,   // the object, never the key (the woods' rule)
-                plate: { x: 26.4, z: 9.4, y: 2.4 },
+                lights: [{ x: 0, z: -12 }, { x: 10.39, z: -6 }, { x: 10.39, z: 6 }, { x: 0, z: 12 }, { x: -10.39, z: 6 }, { x: -10.39, z: -6 }, { x: 10.25, z: -17.75 }, { x: 20.5, z: 0 }, { x: 10.25, z: 17.75 }, { x: -10.25, z: 17.75 }, { x: -20.5, z: 0 }, { x: -10.25, z: -17.75 }],
+                mood: { light: 0xddeedd, ambient: 0.6 },   // the look book: tube green-white
+                fog: { color: 0x1e2220, density: 0.012 },
+                look: HQ_ROOM_LOOKS.garage,
+                plate: { x: 0, z: 3.4, y: 3.2 },
             },
             terrain: {
                 floor: 'concrete_floor', cliff: 'concrete', path: 'urban:ConcreteStriped2a',
                 noise: { amp: 0, scale: 5 }, crag: false, stalactites: false,
-                /* THE PAINT: the lane's dashes on both levels, the bay lines along the wall, the P1s, the UP at the ramp's foot, the ring round the island */
                 marks: [
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 232, a1: 234.5, color: 0xffd34a },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 238, a1: 240.5, color: 0xffd34a },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 244, a1: 246.5, color: 0xffd34a },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 250, a1: 252.5, color: 0xffd34a },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 256, a1: 258.5, color: 0xffd34a },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 262, a1: 264.5, color: 0xffd34a },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 268, a1: 270.5, color: 0xffd34a },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 274, a1: 276.5, color: 0xffd34a },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 280, a1: 282.5, color: 0xffd34a },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 286, a1: 288.5, color: 0xffd34a },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 292, a1: 294.5, color: 0xffd34a },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 298, a1: 300.5, color: 0xffd34a },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 304, a1: 306.5, color: 0xffd34a },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 310, a1: 312.5, color: 0xffd34a },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 316, a1: 318.5, color: 0xffd34a },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 322, a1: 324.5, color: 0xffd34a },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 328, a1: 330.5, color: 0xffd34a },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 334, a1: 336.5, color: 0xffd34a },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 340, a1: 342.5, color: 0xffd34a },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 346, a1: 348.5, color: 0xffd34a },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 352, a1: 354.5, color: 0xffd34a },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 358, a1: 360.5, color: 0xffd34a },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 364, a1: 366.5, color: 0xffd34a },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 370, a1: 372.5, color: 0xffd34a },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 376, a1: 378.5, color: 0xffd34a },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 382, a1: 384.5, color: 0xffd34a },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 388, a1: 390.5, color: 0xffd34a },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 394, a1: 396.5, color: 0xffd34a },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 400, a1: 402.5, color: 0xffd34a },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 406, a1: 408.5, color: 0xffd34a },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 412, a1: 414.5, color: 0xffd34a },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 418, a1: 420.5, color: 0xffd34a },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 424, a1: 426.5, color: 0xffd34a },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 430, a1: 432.5, color: 0xffd34a },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 436, a1: 438.5, color: 0xffd34a },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 442, a1: 444.5, color: 0xffd34a },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 448, a1: 450.5, color: 0xffd34a },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 454, a1: 456.5, color: 0xffd34a },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 460, a1: 462.5, color: 0xffd34a },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 466, a1: 468.5, color: 0xffd34a },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 472, a1: 474.5, color: 0xffd34a },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 478, a1: 480.5, color: 0xffd34a },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 484, a1: 486.5, color: 0xffd34a },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 232, a1: 234.5, color: 0xffd34a, y: 4.2 },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 238, a1: 240.5, color: 0xffd34a, y: 4.2 },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 244, a1: 246.5, color: 0xffd34a, y: 4.2 },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 250, a1: 252.5, color: 0xffd34a, y: 4.2 },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 256, a1: 258.5, color: 0xffd34a, y: 4.2 },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 262, a1: 264.5, color: 0xffd34a, y: 4.2 },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 268, a1: 270.5, color: 0xffd34a, y: 4.2 },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 274, a1: 276.5, color: 0xffd34a, y: 4.2 },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 280, a1: 282.5, color: 0xffd34a, y: 4.2 },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 286, a1: 288.5, color: 0xffd34a, y: 4.2 },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 292, a1: 294.5, color: 0xffd34a, y: 4.2 },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 298, a1: 300.5, color: 0xffd34a, y: 4.2 },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 304, a1: 306.5, color: 0xffd34a, y: 4.2 },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 310, a1: 312.5, color: 0xffd34a, y: 4.2 },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 316, a1: 318.5, color: 0xffd34a, y: 4.2 },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 322, a1: 324.5, color: 0xffd34a, y: 4.2 },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 328, a1: 330.5, color: 0xffd34a, y: 4.2 },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 334, a1: 336.5, color: 0xffd34a, y: 4.2 },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 340, a1: 342.5, color: 0xffd34a, y: 4.2 },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 346, a1: 348.5, color: 0xffd34a, y: 4.2 },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 352, a1: 354.5, color: 0xffd34a, y: 4.2 },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 358, a1: 360.5, color: 0xffd34a, y: 4.2 },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 364, a1: 366.5, color: 0xffd34a, y: 4.2 },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 370, a1: 372.5, color: 0xffd34a, y: 4.2 },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 376, a1: 378.5, color: 0xffd34a, y: 4.2 },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 382, a1: 384.5, color: 0xffd34a, y: 4.2 },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 388, a1: 390.5, color: 0xffd34a, y: 4.2 },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 394, a1: 396.5, color: 0xffd34a, y: 4.2 },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 400, a1: 402.5, color: 0xffd34a, y: 4.2 },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 406, a1: 408.5, color: 0xffd34a, y: 4.2 },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 412, a1: 414.5, color: 0xffd34a, y: 4.2 },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 418, a1: 420.5, color: 0xffd34a, y: 4.2 },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 424, a1: 426.5, color: 0xffd34a, y: 4.2 },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 430, a1: 432.5, color: 0xffd34a, y: 4.2 },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 436, a1: 438.5, color: 0xffd34a, y: 4.2 },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 442, a1: 444.5, color: 0xffd34a, y: 4.2 },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 448, a1: 450.5, color: 0xffd34a, y: 4.2 },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 454, a1: 456.5, color: 0xffd34a, y: 4.2 },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 460, a1: 462.5, color: 0xffd34a, y: 4.2 },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 466, a1: 468.5, color: 0xffd34a, y: 4.2 },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 472, a1: 474.5, color: 0xffd34a, y: 4.2 },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 478, a1: 480.5, color: 0xffd34a, y: 4.2 },
-                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 484, a1: 486.5, color: 0xffd34a, y: 4.2 },
-                    { k: 'ring', x: 0, z: 0, r: 24.6, w: 0.12, a0: 232, a1: 488, color: 0xf4f4ee },
-                    { k: 'line', x0: -20.39, z0: 13.76, x1: -22.8, z1: 15.38, w: 0.12, color: 0xf4f4ee },
-                    { k: 'line', x0: -22.97, z0: 8.82, x1: -25.67, z1: 9.86, w: 0.12, color: 0xf4f4ee },
-                    { k: 'line', x0: -23.4, z0: -7.6, x1: -26.15, z1: -8.5, w: 0.12, color: 0xf4f4ee },
-                    { k: 'line', x0: -21.09, z0: -12.67, x1: -23.57, z1: -14.16, w: 0.12, color: 0xf4f4ee },
-                    { k: 'line', x0: -17.7, z0: -17.09, x1: -19.78, z1: -19.1, w: 0.12, color: 0xf4f4ee },
-                    { k: 'line', x0: -13.4, z0: -20.63, x1: -14.98, z1: -23.06, w: 0.12, color: 0xf4f4ee },
-                    { k: 'line', x0: -8.41, z0: -23.12, x1: -9.41, z1: -25.84, w: 0.12, color: 0xf4f4ee },
-                    { k: 'line', x0: 8.01, z0: -23.26, x1: 8.95, z1: -26, w: 0.12, color: 0xf4f4ee },
-                    { k: 'line', x0: 13.04, z0: -20.86, x1: 14.57, z1: -23.32, w: 0.12, color: 0xf4f4ee },
-                    { k: 'line', x0: 17.39, z0: -17.39, x1: 19.45, z1: -19.45, w: 0.12, color: 0xf4f4ee },
-                    { k: 'line', x0: 20.86, z0: -13.04, x1: 23.32, z1: -14.57, w: 0.12, color: 0xf4f4ee },
-                    { k: 'line', x0: 23.26, z0: -8.01, x1: 26, z1: -8.95, w: 0.12, color: 0xf4f4ee },
-                    { k: 'line', x0: 23.12, z0: 8.41, x1: 25.84, z1: 9.41, w: 0.12, color: 0xf4f4ee },
-                    { k: 'line', x0: 20.63, z0: 13.4, x1: 23.06, z1: 14.98, w: 0.12, color: 0xf4f4ee },
-                    { k: 'ring', x: 0, z: 0, r: 24.6, w: 0.12, a0: 232, a1: 488, color: 0xf4f4ee, y: 4.2 },
-                    { k: 'line', x0: -20.39, z0: 13.76, x1: -22.8, z1: 15.38, w: 0.12, color: 0xf4f4ee, y: 4.2 },
-                    { k: 'line', x0: -22.97, z0: 8.82, x1: -25.67, z1: 9.86, w: 0.12, color: 0xf4f4ee, y: 4.2 },
-                    { k: 'line', x0: -24.36, z0: 3.42, x1: -27.23, z1: 3.83, w: 0.12, color: 0xf4f4ee, y: 4.2 },
-                    { k: 'line', x0: -24.51, z0: -2.14, x1: -27.4, z1: -2.4, w: 0.12, color: 0xf4f4ee, y: 4.2 },
-                    { k: 'line', x0: -23.4, z0: -7.6, x1: -26.15, z1: -8.5, w: 0.12, color: 0xf4f4ee, y: 4.2 },
-                    { k: 'line', x0: -21.09, z0: -12.67, x1: -23.57, z1: -14.16, w: 0.12, color: 0xf4f4ee, y: 4.2 },
-                    { k: 'line', x0: -17.7, z0: -17.09, x1: -19.78, z1: -19.1, w: 0.12, color: 0xf4f4ee, y: 4.2 },
-                    { k: 'line', x0: -13.4, z0: -20.63, x1: -14.98, z1: -23.06, w: 0.12, color: 0xf4f4ee, y: 4.2 },
-                    { k: 'line', x0: -8.41, z0: -23.12, x1: -9.41, z1: -25.84, w: 0.12, color: 0xf4f4ee, y: 4.2 },
-                    { k: 'line', x0: -3, z0: -24.42, x1: -3.35, z1: -27.3, w: 0.12, color: 0xf4f4ee, y: 4.2 },
-                    { k: 'line', x0: 2.57, z0: -24.47, x1: 2.87, z1: -27.35, w: 0.12, color: 0xf4f4ee, y: 4.2 },
-                    { k: 'line', x0: 8.01, z0: -23.26, x1: 8.95, z1: -26, w: 0.12, color: 0xf4f4ee, y: 4.2 },
-                    { k: 'line', x0: 13.04, z0: -20.86, x1: 14.57, z1: -23.32, w: 0.12, color: 0xf4f4ee, y: 4.2 },
-                    { k: 'line', x0: 17.39, z0: -17.39, x1: 19.45, z1: -19.45, w: 0.12, color: 0xf4f4ee, y: 4.2 },
-                    { k: 'line', x0: 20.86, z0: -13.04, x1: 23.32, z1: -14.57, w: 0.12, color: 0xf4f4ee, y: 4.2 },
-                    { k: 'line', x0: 23.26, z0: -8.01, x1: 26, z1: -8.95, w: 0.12, color: 0xf4f4ee, y: 4.2 },
-                    { k: 'line', x0: 24.47, z0: -2.57, x1: 27.35, z1: -2.87, w: 0.12, color: 0xf4f4ee, y: 4.2 },
-                    { k: 'line', x0: 24.42, z0: 3, x1: 27.3, z1: 3.35, w: 0.12, color: 0xf4f4ee, y: 4.2 },
-                    { k: 'line', x0: 23.12, z0: 8.41, x1: 25.84, z1: 9.41, w: 0.12, color: 0xf4f4ee, y: 4.2 },
-                    { k: 'line', x0: 20.63, z0: 13.4, x1: 23.06, z1: 14.98, w: 0.12, color: 0xf4f4ee, y: 4.2 },
-                    { k: 'text', x: -17.37, z: -12.16, text: 'P1', size: 2.6, rot: 125, color: 0xffd34a },
-                    { k: 'text', x: -17.37, z: -12.16, text: 'P1', size: 2.6, rot: 125, color: 0xffd34a, y: 4.2 },
-                    { k: 'text', x: 19.78, z: 10.52, text: 'UP', size: 2.4, rot: 208, color: 0xf4f4ee },
-                    { k: 'ring', x: 0, z: 0, r: 6.2, w: 0.2, color: 0xffd34a },
+                    { k: 'line', x0: -1.26, z0: -19.16, x1: -1.58, z1: -24.15, w: 0.14, color: 0xe8c13a },
+                    { k: 'line', x0: 1.26, z0: -19.16, x1: 1.58, z1: -24.15, w: 0.14, color: 0xe8c13a },
+                    { k: 'line', x0: 3.75, z0: -18.83, x1: 4.72, z1: -23.74, w: 0.14, color: 0xe8c13a },
+                    { k: 'line', x0: 6.17, z0: -18.18, x1: 7.78, z1: -22.92, w: 0.14, color: 0xe8c13a },
+                    { k: 'line', x0: 8.49, z0: -17.22, x1: 10.7, z1: -21.7, w: 0.14, color: 0xe8c13a },
+                    { k: 'line', x0: 10.67, z0: -15.96, x1: 13.44, z1: -20.12, w: 0.14, color: 0xe8c13a },
+                    { k: 'line', x0: 12.66, z0: -14.44, x1: 15.96, z1: -18.19, w: 0.14, color: 0xe8c13a },
+                    { k: 'line', x0: 14.44, z0: -12.66, x1: 18.19, z1: -15.96, w: 0.14, color: 0xe8c13a },
+                    { k: 'line', x0: 15.96, z0: -10.67, x1: 20.12, z1: -13.44, w: 0.14, color: 0xe8c13a },
+                    { k: 'line', x0: 17.22, z0: -8.49, x1: 21.7, z1: -10.7, w: 0.14, color: 0xe8c13a },
+                    { k: 'line', x0: 18.83, z0: 3.75, x1: 23.74, z1: 4.72, w: 0.14, color: 0xe8c13a },
+                    { k: 'line', x0: 18.18, z0: 6.17, x1: 22.92, z1: 7.78, w: 0.14, color: 0xe8c13a },
+                    { k: 'line', x0: 17.22, z0: 8.49, x1: 21.7, z1: 10.7, w: 0.14, color: 0xe8c13a },
+                    { k: 'line', x0: 15.96, z0: 10.67, x1: 20.12, z1: 13.44, w: 0.14, color: 0xe8c13a },
+                    { k: 'line', x0: 14.44, z0: 12.66, x1: 18.19, z1: 15.96, w: 0.14, color: 0xe8c13a },
+                    { k: 'line', x0: 12.66, z0: 14.44, x1: 15.96, z1: 18.19, w: 0.14, color: 0xe8c13a },
+                    { k: 'line', x0: 10.67, z0: 15.96, x1: 13.44, z1: 20.12, w: 0.14, color: 0xe8c13a },
+                    { k: 'line', x0: 8.49, z0: 17.22, x1: 10.7, z1: 21.7, w: 0.14, color: 0xe8c13a },
+                    { k: 'line', x0: 6.17, z0: 18.18, x1: 7.78, z1: 22.92, w: 0.14, color: 0xe8c13a },
+                    { k: 'line', x0: -15.96, z0: 10.67, x1: -20.12, z1: 13.44, w: 0.14, color: 0xe8c13a },
+                    { k: 'line', x0: -17.22, z0: 8.49, x1: -21.7, z1: 10.7, w: 0.14, color: 0xe8c13a },
+                    { k: 'line', x0: -18.18, z0: 6.17, x1: -22.92, z1: 7.78, w: 0.14, color: 0xe8c13a },
+                    { k: 'line', x0: -18.83, z0: 3.75, x1: -23.74, z1: 4.72, w: 0.14, color: 0xe8c13a },
+                    { k: 'line', x0: -1.26, z0: -19.16, x1: -1.58, z1: -24.15, w: 0.14, color: 0xe8c13a, y: 3.5 },
+                    { k: 'line', x0: 1.26, z0: -19.16, x1: 1.58, z1: -24.15, w: 0.14, color: 0xe8c13a, y: 3.5 },
+                    { k: 'line', x0: 6.17, z0: -18.18, x1: 7.78, z1: -22.92, w: 0.14, color: 0xe8c13a, y: 3.5 },
+                    { k: 'line', x0: 8.49, z0: -17.22, x1: 10.7, z1: -21.7, w: 0.14, color: 0xe8c13a, y: 3.5 },
+                    { k: 'line', x0: 10.67, z0: -15.96, x1: 13.44, z1: -20.12, w: 0.14, color: 0xe8c13a, y: 3.5 },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 0, a1: 3, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 6, a1: 9, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 12, a1: 15, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 18, a1: 21, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 24, a1: 27, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 30, a1: 33, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 36, a1: 39, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 42, a1: 45, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 48, a1: 51, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 54, a1: 57, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 60, a1: 63, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 66, a1: 69, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 72, a1: 75, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 78, a1: 81, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 84, a1: 87, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 90, a1: 93, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 96, a1: 99, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 102, a1: 105, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 108, a1: 111, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 114, a1: 117, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 120, a1: 123, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 126, a1: 129, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 132, a1: 135, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 138, a1: 141, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 144, a1: 147, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 150, a1: 153, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 156, a1: 159, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 162, a1: 165, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 168, a1: 171, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 174, a1: 177, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 180, a1: 183, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 186, a1: 189, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 192, a1: 195, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 198, a1: 201, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 204, a1: 207, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 210, a1: 213, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 216, a1: 219, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 222, a1: 225, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 228, a1: 231, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 234, a1: 237, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 240, a1: 243, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 246, a1: 249, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 252, a1: 255, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 258, a1: 261, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 264, a1: 267, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 270, a1: 273, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 276, a1: 279, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 282, a1: 285, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 288, a1: 291, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 294, a1: 297, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 300, a1: 303, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 306, a1: 309, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 312, a1: 315, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 318, a1: 321, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 324, a1: 327, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 330, a1: 333, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 336, a1: 339, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 342, a1: 345, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 348, a1: 351, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 12.25, w: 0.16, a0: 354, a1: 357, color: 0xf2f2ea },
+                    { k: 'ring', x: 0, z: 0, r: 6.6, w: 0.22, a0: 0, a1: 360, color: 0xe8c13a },
                 ],
                 features: [
-                    /* THE DRUM: one wall, floor to roof, open at the doors (the dock north, the elevator + the hatch east, THE RAMP DOWN west — the openings on the chords' own joints: 352.5–7.5°, 75–105°, 262.5–277.5°), the jambs closing the corners behind it */
-                    ...hqRingWalls({ id: 'drum', r: 27.8, h: 10.2, t: 0.5, n: 96, key: 'concrete', skip: [[352, 368], [76, 104]] })   /* (the west opening, THE RAMP DOWN, closed 2026-11-20: the link is cut) */.map(w => Object.assign(w, { rail: false, y: 10.2, tier: true, quad: hqRingQuad(w, 27.8, 0.5) })),
-                    { k: 'wall', x0: -3.63, z0: -27.56, x1: -3.69, z1: -28, h: 10.2, t: 0.5, key: 'concrete', rail: false },
-                    { k: 'wall', x0: 3.63, z0: -27.56, x1: 3.69, z1: -28, h: 10.2, t: 0.5, key: 'concrete', rail: false },
-                    { k: 'wall', x0: 26.85, z0: -7.2, x1: 28, z1: -7.5, h: 10.2, t: 0.5, key: 'concrete', rail: false },
-                    { k: 'wall', x0: 26.85, z0: 7.2, x1: 28, z1: 7.5, h: 10.2, t: 0.5, key: 'concrete', rail: false },
-                    /* THE RAMP (0 → 4.2, 130° → 230° clockwise): one smooth surface, the band from the parapet into the drum wall */
-                    { k: 'spiral', x: 0, z: 0, r0: 17.9, r1: 28.0, a0: 130, a1: 230, h0: 0, h1: 4.2, edge: 0.01, id: 'ramp' },
-                    /* the parapet along its inner edge (from where the drop passes a step), a sloped grind on top; the wall across its top end under the deck */
-                    { k: 'wall', x0: 11.249, z0: 13.406, x1: 10.653, z1: 13.884, y: 1.523, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [1.47, 1.575], slopeTop: [1.47, 1.575], tier: true, quad: [[10.992, 13.099], [10.41, 13.566], [10.897, 14.201], [11.506, 13.712]], parapet: true },
-                    { k: 'wall', x0: 10.653, z0: 13.884, x1: 10.038, z1: 14.335, y: 1.628, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [1.575, 1.68], slopeTop: [1.575, 1.68], tier: true, quad: [[10.41, 13.566], [9.808, 14.007], [10.267, 14.663], [10.897, 14.201]], parapet: true },
-                    { k: 'wall', x0: 10.038, z0: 14.335, x1: 9.403, z1: 14.759, y: 1.733, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [1.68, 1.785], slopeTop: [1.68, 1.785], tier: true, quad: [[9.808, 14.007], [9.188, 14.422], [9.618, 15.097], [10.267, 14.663]], parapet: true },
-                    { k: 'wall', x0: 9.403, z0: 14.759, x1: 8.75, z1: 15.155, y: 1.838, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [1.785, 1.89], slopeTop: [1.785, 1.89], tier: true, quad: [[9.188, 14.422], [8.55, 14.809], [8.95, 15.502], [9.618, 15.097]], parapet: true },
-                    { k: 'wall', x0: 8.75, z0: 15.155, x1: 8.081, z1: 15.523, y: 1.943, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [1.89, 1.995], slopeTop: [1.89, 1.995], tier: true, quad: [[8.55, 14.809], [7.896, 15.168], [8.265, 15.877], [8.95, 15.502]], parapet: true },
-                    { k: 'wall', x0: 8.081, z0: 15.523, x1: 7.396, z1: 15.86, y: 2.048, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [1.995, 2.1], slopeTop: [1.995, 2.1], tier: true, quad: [[7.896, 15.168], [7.227, 15.498], [7.565, 16.223], [8.265, 15.877]], parapet: true },
-                    { k: 'wall', x0: 7.396, z0: 15.86, x1: 6.697, z1: 16.168, y: 2.152, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [2.1, 2.205], slopeTop: [2.1, 2.205], tier: true, quad: [[7.227, 15.498], [6.544, 15.798], [6.85, 16.537], [7.565, 16.223]], parapet: true },
-                    { k: 'wall', x0: 6.697, z0: 16.168, x1: 5.985, z1: 16.445, y: 2.258, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [2.205, 2.31], slopeTop: [2.205, 2.31], tier: true, quad: [[6.544, 15.798], [5.849, 16.069], [6.122, 16.82], [6.85, 16.537]], parapet: true },
-                    { k: 'wall', x0: 5.985, z0: 16.445, x1: 5.262, z1: 16.69, y: 2.362, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [2.31, 2.415], slopeTop: [2.31, 2.415], tier: true, quad: [[5.849, 16.069], [5.142, 16.309], [5.383, 17.072], [6.122, 16.82]], parapet: true },
-                    { k: 'wall', x0: 5.262, z0: 16.69, x1: 4.529, z1: 16.904, y: 2.468, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [2.415, 2.52], slopeTop: [2.415, 2.52], tier: true, quad: [[5.142, 16.309], [4.426, 16.517], [4.633, 17.29], [5.383, 17.072]], parapet: true },
-                    { k: 'wall', x0: 4.529, z0: 16.904, x1: 3.788, z1: 17.085, y: 2.572, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [2.52, 2.625], slopeTop: [2.52, 2.625], tier: true, quad: [[4.426, 16.517], [3.701, 16.695], [3.874, 17.476], [4.633, 17.29]], parapet: true },
-                    { k: 'wall', x0: 3.788, z0: 17.085, x1: 3.039, z1: 17.234, y: 2.678, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [2.625, 2.73], slopeTop: [2.625, 2.73], tier: true, quad: [[3.701, 16.695], [2.969, 16.84], [3.108, 17.628], [3.874, 17.476]], parapet: true },
-                    { k: 'wall', x0: 3.039, z0: 17.234, x1: 2.284, z1: 17.35, y: 2.783, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [2.73, 2.835], slopeTop: [2.73, 2.835], tier: true, quad: [[2.969, 16.84], [2.232, 16.954], [2.336, 17.747], [3.108, 17.628]], parapet: true },
-                    { k: 'wall', x0: 2.284, z0: 17.35, x1: 1.525, z1: 17.433, y: 2.888, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [2.835, 2.94], slopeTop: [2.835, 2.94], tier: true, quad: [[2.232, 16.954], [1.49, 17.035], [1.56, 17.832], [2.336, 17.747]], parapet: true },
-                    { k: 'wall', x0: 1.525, z0: 17.433, x1: 0.763, z1: 17.483, y: 2.993, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [2.94, 3.045], slopeTop: [2.94, 3.045], tier: true, quad: [[1.49, 17.035], [0.746, 17.084], [0.781, 17.883], [1.56, 17.832]], parapet: true },
-                    { k: 'wall', x0: 0.763, z0: 17.483, x1: 0, z1: 17.5, y: 3.098, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [3.045, 3.15], slopeTop: [3.045, 3.15], tier: true, quad: [[0.746, 17.084], [0, 17.1], [0, 17.9], [0.781, 17.883]], parapet: true },
-                    { k: 'wall', x0: 0, z0: 17.5, x1: -0.763, z1: 17.483, y: 3.203, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [3.15, 3.255], slopeTop: [3.15, 3.255], tier: true, quad: [[0, 17.1], [-0.746, 17.084], [-0.781, 17.883], [0, 17.9]], parapet: true },
-                    { k: 'wall', x0: -0.763, z0: 17.483, x1: -1.525, z1: 17.433, y: 3.308, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [3.255, 3.36], slopeTop: [3.255, 3.36], tier: true, quad: [[-0.746, 17.084], [-1.49, 17.035], [-1.56, 17.832], [-0.781, 17.883]], parapet: true },
-                    { k: 'wall', x0: -1.525, z0: 17.433, x1: -2.284, z1: 17.35, y: 3.413, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [3.36, 3.465], slopeTop: [3.36, 3.465], tier: true, quad: [[-1.49, 17.035], [-2.232, 16.954], [-2.336, 17.747], [-1.56, 17.832]], parapet: true },
-                    { k: 'wall', x0: -2.284, z0: 17.35, x1: -3.039, z1: 17.234, y: 3.518, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [3.465, 3.57], slopeTop: [3.465, 3.57], tier: true, quad: [[-2.232, 16.954], [-2.969, 16.84], [-3.108, 17.628], [-2.336, 17.747]], parapet: true },
-                    { k: 'wall', x0: -3.039, z0: 17.234, x1: -3.788, z1: 17.085, y: 3.623, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [3.57, 3.675], slopeTop: [3.57, 3.675], tier: true, quad: [[-2.969, 16.84], [-3.701, 16.695], [-3.874, 17.476], [-3.108, 17.628]], parapet: true },
-                    { k: 'wall', x0: -3.788, z0: 17.085, x1: -4.529, z1: 16.904, y: 3.728, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [3.675, 3.78], slopeTop: [3.675, 3.78], tier: true, quad: [[-3.701, 16.695], [-4.426, 16.517], [-4.633, 17.29], [-3.874, 17.476]], parapet: true },
-                    { k: 'wall', x0: -4.529, z0: 16.904, x1: -5.262, z1: 16.69, y: 3.833, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [3.78, 3.885], slopeTop: [3.78, 3.885], tier: true, quad: [[-4.426, 16.517], [-5.142, 16.309], [-5.383, 17.072], [-4.633, 17.29]], parapet: true },
-                    { k: 'wall', x0: -5.262, z0: 16.69, x1: -5.985, z1: 16.445, y: 3.938, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [3.885, 3.99], slopeTop: [3.885, 3.99], tier: true, quad: [[-5.142, 16.309], [-5.849, 16.069], [-6.122, 16.82], [-5.383, 17.072]], parapet: true },
-                    { k: 'wall', x0: -5.985, z0: 16.445, x1: -6.697, z1: 16.168, y: 4.043, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [3.99, 4.095], slopeTop: [3.99, 4.095], tier: true, quad: [[-5.849, 16.069], [-6.544, 15.798], [-6.85, 16.537], [-6.122, 16.82]], parapet: true },
-                    { k: 'wall', x0: -6.697, z0: 16.168, x1: -7.396, z1: 15.86, y: 4.147, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [4.095, 4.2], slopeTop: [4.095, 4.2], tier: true, quad: [[-6.544, 15.798], [-7.227, 15.498], [-7.565, 16.223], [-6.85, 16.537]], parapet: true },
-                    { k: 'wall', x0: -7.396, z0: 15.86, x1: -8.081, z1: 15.523, y: 4.253, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [4.2, 4.305], slopeTop: [4.2, 4.305], tier: true, quad: [[-7.227, 15.498], [-7.896, 15.168], [-8.265, 15.877], [-7.565, 16.223]], parapet: true },
-                    { k: 'wall', x0: -8.081, z0: 15.523, x1: -8.75, z1: 15.155, y: 4.357, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [4.305, 4.41], slopeTop: [4.305, 4.41], tier: true, quad: [[-7.896, 15.168], [-8.55, 14.809], [-8.95, 15.502], [-8.265, 15.877]], parapet: true },
-                    { k: 'wall', x0: -8.75, z0: 15.155, x1: -9.403, z1: 14.759, y: 4.463, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [4.41, 4.515], slopeTop: [4.41, 4.515], tier: true, quad: [[-8.55, 14.809], [-9.188, 14.422], [-9.618, 15.097], [-8.95, 15.502]], parapet: true },
-                    { k: 'wall', x0: -9.403, z0: 14.759, x1: -10.038, z1: 14.335, y: 4.567, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [4.515, 4.62], slopeTop: [4.515, 4.62], tier: true, quad: [[-9.188, 14.422], [-9.808, 14.007], [-10.267, 14.663], [-9.618, 15.097]], parapet: true },
-                    { k: 'wall', x0: -10.038, z0: 14.335, x1: -10.653, z1: 13.884, y: 4.673, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [4.62, 4.725], slopeTop: [4.62, 4.725], tier: true, quad: [[-9.808, 14.007], [-10.41, 13.566], [-10.897, 14.201], [-10.267, 14.663]], parapet: true },
-                    { k: 'wall', x0: -10.653, z0: 13.884, x1: -11.249, z1: 13.406, y: 4.777, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [4.725, 4.83], slopeTop: [4.725, 4.83], tier: true, quad: [[-10.41, 13.566], [-10.992, 13.099], [-11.506, 13.712], [-10.897, 14.201]], parapet: true },
-                    { k: 'wall', x0: -11.249, z0: 13.406, x1: -11.823, z1: 12.902, y: 4.883, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [4.83, 4.935], slopeTop: [4.83, 4.935], tier: true, quad: [[-10.992, 13.099], [-11.553, 12.607], [-12.093, 13.197], [-11.506, 13.712]], parapet: true },
-                    { k: 'wall', x0: -11.823, z0: 12.902, x1: -12.374, z1: 12.374, y: 4.988, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [4.935, 5.04], slopeTop: [4.935, 5.04], tier: true, quad: [[-11.553, 12.607], [-12.092, 12.092], [-12.657, 12.657], [-12.093, 13.197]], parapet: true },
-                    { k: 'wall', x0: -12.374, z0: 12.374, x1: -12.902, z1: 11.823, y: 5.092, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [5.04, 5.145], slopeTop: [5.04, 5.145], tier: true, quad: [[-12.092, 12.092], [-12.607, 11.553], [-13.197, 12.093], [-12.657, 12.657]], parapet: true },
-                    { k: 'wall', x0: -12.902, z0: 11.823, x1: -13.406, z1: 11.249, y: 5.197, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [5.145, 5.25], slopeTop: [5.145, 5.25], tier: true, quad: [[-12.607, 11.553], [-13.099, 10.992], [-13.712, 11.506], [-13.197, 12.093]], parapet: true },
-                    { k: 'wall', x0: -13.86, z0: 11.32, x1: -21.38, z1: 17.46, y: 4.2, t: 0.6, key: 'concrete', rail: false },
-                    /* THE DECK (4.2): one round slab from the ramp's top (230°) round the north to its end over the ramp's foot (130°), out to the drum's jambs; a rail on its inner edge,
-                       open where the two stairs from the plaza land (330° and 30°) */
-                    { k: 'bridge', arc: { x: 0, z: 0, r0: 18, r1: 27.5, a0: 230, a1: 324.5 }, drawR1: 27.8, y: 4.2, thick: 0.45, rails: 'inner', key: 'concrete_floor', id: 'deck' },
-                    { k: 'bridge', arc: { x: 0, z: 0, r0: 18, r1: 27.5, a0: 324.5, a1: 335.5 }, drawR1: 27.8, y: 4.2, thick: 0.45, rails: false, key: 'concrete_floor', id: 'deck_stair_w' },
-                    { k: 'bridge', arc: { x: 0, z: 0, r0: 18, r1: 27.5, a0: 335.5, a1: 384.5 }, drawR1: 27.8, y: 4.2, thick: 0.45, rails: 'inner', key: 'concrete_floor', id: 'deck_mid' },
-                    { k: 'bridge', arc: { x: 0, z: 0, r0: 18, r1: 27.5, a0: 384.5, a1: 395.5 }, drawR1: 27.8, y: 4.2, thick: 0.45, rails: false, key: 'concrete_floor', id: 'deck_stair_e' },
-                    { k: 'bridge', arc: { x: 0, z: 0, r0: 18, r1: 27.5, a0: 395.5, a1: 490 }, drawR1: 27.8, y: 4.2, thick: 0.45, rails: 'inner', key: 'concrete_floor', id: 'deck_e2' },
-                    /* the stairs from the plaza up to the deck (people take these; the ramp is for the cars), a free-standing pipe handrail down the middle of each */
-                    { k: 'ramp', x0: -4.25, z0: -7.361, x1: -9.35, z1: -16.195, w: 3.4, h0: 0, h1: 4.2, stairs: true, model: 'concrete', edge: 0.01 },
-                    { k: 'ramp', x0: 4.25, z0: -7.361, x1: 9.35, z1: -16.195, w: 3.4, h0: 0, h1: 4.2, stairs: true, model: 'concrete', edge: 0.01 },
-                    { k: 'rail', x0: -4.5, z0: -7.794, x1: -9.2, z1: -15.935, y0: 0.21, y1: 4.08, model: 'pipe', block: false },
-                    { k: 'rail', x0: 4.5, z0: -7.794, x1: 9.2, z1: -15.935, y0: 0.21, y1: 4.08, model: 'pipe', block: false },
-                    /* …and in the drum's openings the deck runs on to the doors' wall (a walker on a bridge walks over a wall, so the deck stops INSIDE the drum everywhere else) */
-                    { k: 'bridge', arc: { x: 0, z: 0, r0: 27.2, r1: 29.2, a0: 353.8, a1: 366.2 }, drawR0: 27.5, y: 4.2, thick: 0.45, rails: false, key: 'concrete_floor', id: 'deck_n' },
-                    { k: 'bridge', arc: { x: 0, z: 0, r0: 27.2, r1: 29.2, a0: 76.3, a1: 103.7 }, drawR0: 27.5, y: 4.2, thick: 0.45, rails: false, key: 'concrete_floor', id: 'deck_e' },
-                    { k: 'bridge', arc: { x: 0, z: 0, r0: 27.2, r1: 29.2, a0: 263.8, a1: 276.2 }, drawR0: 27.5, y: 4.2, thick: 0.45, rails: false, key: 'concrete_floor', id: 'deck_w' },
-                    /* the columns under the deck's inner edge (never in the ramp's band, never in a kicker's lane) */
-                    { k: 'wall', x0: -17.97, z0: 4.81, x1: -17.98, z1: 4.77, y: 3.75, t: 0.7, key: 'urban:ConcreteStriped2c', rail: false, column: true },
-                    { k: 'wall', x0: -17.97, z0: -4.81, x1: -17.95, z1: -4.86, y: 3.75, t: 0.7, key: 'urban:ConcreteStriped2c', rail: false, column: true },
-                    { k: 'wall', x0: -13.15, z0: -13.15, x1: -13.12, z1: -13.19, y: 3.75, t: 0.7, key: 'urban:ConcreteStriped2c', rail: false, column: true },
-                    { k: 'wall', x0: -4.81, z0: -17.97, x1: -4.77, z1: -17.98, y: 3.75, t: 0.7, key: 'urban:ConcreteStriped2c', rail: false, column: true },
-                    { k: 'wall', x0: 4.81, z0: -17.97, x1: 4.86, z1: -17.95, y: 3.75, t: 0.7, key: 'urban:ConcreteStriped2c', rail: false, column: true },
-                    { k: 'wall', x0: 13.15, z0: -13.15, x1: 13.19, z1: -13.12, y: 3.75, t: 0.7, key: 'urban:ConcreteStriped2c', rail: false, column: true },
-                    { k: 'wall', x0: 17.97, z0: -4.81, x1: 17.98, z1: -4.77, y: 3.75, t: 0.7, key: 'urban:ConcreteStriped2c', rail: false, column: true },
-                    { k: 'wall', x0: 17.97, z0: 4.81, x1: 17.95, z1: 4.86, y: 3.75, t: 0.7, key: 'urban:ConcreteStriped2c', rail: false, column: true },
-                    /* THE PLAZA: THE ISLAND (a round kerb — a grind ring), the kickers (east and west, rising toward the island), the manual pad, the handrail */
-                    ...hqRingWalls({ id: 'island', r: 3.4, h: 0.45, t: 0.4, n: 32, key: 'urban:ConcreteStriped2a' }).map(w => Object.assign(w, { y: 0.45, tier: true, quad: hqRingQuad(w, 3.4, 0.4) })),
-                    { k: 'ramp', x0: -12.25, z0: 0, x1: -8.75, z1: 0, w: 3.5, h0: 0, h1: 0.9, edge: 0.01, kicker: true },                           // THE KICKER (west)
-                    { k: 'ramp', x0: 12.25, z0: 0, x1: 8.75, z1: 0, w: 3.5, h0: 0, h1: 0.9, edge: 0.01, kicker: true },                             // THE KICKER (east)
-                    { k: 'wall', x0: -11.4, z0: 7.0, x1: -6.6, z1: 10.8, y: 0.4, t: 1.6, key: 'urban:ConcreteStriped2a', rail: 'front', front: [0.621, -0.784] },   // THE MANUAL PAD (a ledge on its island side)
-                    { k: 'rail', x0: 9.5, z0: -8.5, x1: 12.5, z1: -5.0 },                                                             // THE HANDRAIL (moved off the east stair's foot)
-                    { k: 'rail', arc: { x: 0, z: 0, r: 20.4, a0: 284, a1: 316 }, model: 'pipe', block: false },                      // a curved pipe rail along the lower lane, under the deck
+                    ...hqRingWalls({ id: 'drum', r: 24.5, h: 9, t: 0.5, n: 96, key: 'urban:ConcretePrecast1c', skip: [[78.75, 101.25], [172.5, 187.5], [262.5, 277.5]] }),
+                    { k: 'wall', x0: 23.7, z0: -4.9, x1: 26.25, z1: -4.9, h: 9, t: 0.5, key: 'urban:ConcretePrecast1c', rail: false },
+                    { k: 'wall', x0: 23.7, z0: 4.9, x1: 26.25, z1: 4.9, h: 9, t: 0.5, key: 'urban:ConcretePrecast1c', rail: false },
+                    { k: 'wall', x0: -3.5, z0: 23.95, x1: -3.5, z1: 26.25, h: 9, t: 0.5, key: 'urban:ConcretePrecast1c', rail: false },
+                    { k: 'wall', x0: 3.5, z0: 23.95, x1: 3.5, z1: 26.25, h: 9, t: 0.5, key: 'urban:ConcretePrecast1c', rail: false },
+                    { k: 'wall', x0: -23.95, z0: -3.5, x1: -26.25, z1: -3.5, h: 9, t: 0.5, key: 'urban:ConcretePrecast1c', rail: false },
+                    { k: 'wall', x0: -23.95, z0: 3.5, x1: -26.25, z1: 3.5, h: 9, t: 0.5, key: 'urban:ConcretePrecast1c', rail: false },
+                    { k: 'wall', x0: -3.5, z0: -3.5, x1: 3.5, z1: -3.5, h: 9, t: 0.6, key: 'urban:ConcretePrecast1c', rail: false },
+                    { k: 'wall', x0: 3.5, z0: -3.5, x1: 3.5, z1: 3.5, h: 9, t: 0.6, key: 'urban:ConcretePrecast1c', rail: false },
+                    { k: 'wall', x0: 3.5, z0: 3.5, x1: -3.5, z1: 3.5, h: 9, t: 0.6, key: 'urban:ConcretePrecast1c', rail: false },
+                    { k: 'wall', x0: -3.5, z0: 3.5, x1: -3.5, z1: -3.5, h: 9, t: 0.6, key: 'urban:ConcretePrecast1c', rail: false },
+                    ...hqRingWalls({ id: 'kerb', r: 6.0, h: 0.4, t: 0.45, n: 40, key: 'urban:ConcreteStriped2a', skip: [[157.5, 202.5]] }).map(w => Object.assign(w, { y: 0.4, tier: true, quad: hqRingQuad(w, 6.0, 0.45) })),
+                    { k: 'spiral', x: 0, z: 0, r0: 18, r1: 24.7, a0: 290, a1: 350, h0: 0, h1: 3.5, edge: 0.01, id: 'ramp' },
+                    { k: 'rail', x0: -16.72, z0: -7.44, x1: -16.01, z1: -8.87, y0: 0.23, y1: 0.53, model: 'pipe' },
+                    { k: 'rail', x0: -16.01, z0: -8.87, x1: -15.17, z1: -10.23, y0: 0.53, y1: 0.82, model: 'pipe' },
+                    { k: 'rail', x0: -15.17, z0: -10.23, x1: -14.22, z1: -11.52, y0: 0.82, y1: 1.11, model: 'pipe' },
+                    { k: 'rail', x0: -14.22, z0: -11.52, x1: -13.16, z1: -12.71, y0: 1.11, y1: 1.4, model: 'pipe' },
+                    { k: 'rail', x0: -13.16, z0: -12.71, x1: -12.01, z1: -13.81, y0: 1.4, y1: 1.69, model: 'pipe' },
+                    { k: 'rail', x0: -12.01, z0: -13.81, x1: -10.76, z1: -14.81, y0: 1.69, y1: 1.98, model: 'pipe' },
+                    { k: 'rail', x0: -10.76, z0: -14.81, x1: -9.43, z1: -15.69, y0: 1.98, y1: 2.28, model: 'pipe' },
+                    { k: 'rail', x0: -9.43, z0: -15.69, x1: -8.02, z1: -16.45, y0: 2.28, y1: 2.57, model: 'pipe' },
+                    { k: 'rail', x0: -8.02, z0: -16.45, x1: -6.56, z1: -17.08, y0: 2.57, y1: 2.86, model: 'pipe' },
+                    { k: 'rail', x0: -6.56, z0: -17.08, x1: -5.04, z1: -17.59, y0: 2.86, y1: 3.15, model: 'pipe' },
+                    { k: 'rail', x0: -5.04, z0: -17.59, x1: -3.49, z1: -17.96, y0: 3.15, y1: 3.44, model: 'pipe' },
+                    { k: 'rail', x0: -3.49, z0: -17.96, x1: -3.18, z1: -18.02, y0: 3.44, y1: 3.5, model: 'pipe' },
+                    { k: 'bridge', arc: { x: 0, z: 0, r0: 18, r1: 24.3, a0: 350, a1: 366 }, drawR1: 24.5, y: 3.5, thick: 0.4, rails: 'inner', key: 'concrete_floor', id: 'deck_w' },
+                    { k: 'bridge', arc: { x: 0, z: 0, r0: 18, r1: 24.3, a0: 366, a1: 374 }, drawR1: 24.5, y: 3.5, thick: 0.4, rails: false, key: 'concrete_floor', id: 'deck_ladder' },
+                    { k: 'bridge', arc: { x: 0, z: 0, r0: 18, r1: 24.3, a0: 374, a1: 425 }, drawR1: 24.5, y: 3.5, thick: 0.4, rails: 'inner', key: 'concrete_floor', id: 'deck_e' },
+                    { k: 'wall', x0: -1.61, z0: -18.38, x1: -1.57, z1: -18.34, y: 3.1, t: 0.7, key: 'urban:ConcretePrecast1c', rail: false, column: true },
+                    { k: 'wall', x0: 6.91, z0: -17.11, x1: 6.95, z1: -17.07, y: 3.1, t: 0.7, key: 'urban:ConcretePrecast1c', rail: false, column: true },
+                    { k: 'wall', x0: 11.36, z0: -14.54, x1: 11.4, z1: -14.5, y: 3.1, t: 0.7, key: 'urban:ConcretePrecast1c', rail: false, column: true },
+                    { k: 'wall', x0: 14.93, z0: -10.84, x1: 14.97, z1: -10.8, y: 3.1, t: 0.7, key: 'urban:ConcretePrecast1c', rail: false, column: true },
+                    { k: 'wall', x0: 16.31, z0: -7.61, x1: 22.2, z1: -10.35, y: 4.6, t: 0.3, key: 'urban:ConcreteStriped2c', rail: false },
                 ],
             },
             doors: [
-                { id: 'elevator', wall: 'e', z: 3.5, leaf: null, proc: 'elevator',
-                  label: 'ELEVATOR', sub: 'THE CAR',
-                  action: { room: 'car', at: 'out' },
-                  desc: 'The car. It came down here; it will go anywhere on the panel.' },
-                /* Phase 8 stage 2 (2026-09-15): THE TUNNEL's service hatch — a maintenance door down to the platform (beside the elevator, under the deck) */
-                { id: 'tunnel', wall: 'e', z: -3.5, leaf: null, secret: true,   // ZONES_PLAN Z1: the platform is found later (a DRAUGHT)
-                  label: 'A DRAUGHT', sub: 'COLD, FROM THE WALL · THE PLATFORM',
-                  action: { room: 'tunnel', at: 'garage' },
-                  desc: 'A maintenance door beside the elevator, under the deck. Tiles at the bottom of the steps, a draught, a train that is always there.' },
-                { id: 'dock', wall: 'n', x: 0, leaf: 'leaf_wired_double', wide: true,
-                  label: 'THE LOADING DOCK', sub: 'DELIVERIES · UP TO THE LAUNDRY',
-                  action: { room: 'dock', at: 'garage' },
-                  desc: 'Deliveries. The dock is a step up into the service side of B; the laundry is through the far side of it.' },
+                /* THE LIFT: the doors in the core's south face, the car's G stop */
+                { id: 'elevator', wall: 'free', x: 0, z: 3.85, face: 180, leaf: null, proc: 'elevator', wide: true,
+                  label: 'ELEVATOR', action: { room: 'car', at: 'out' } },
+                /* THE ROLLER DOOR: the Loading Dock, the front door of the Works */
+                { id: 'works', wall: 'e', z: 0, leaf: 'leaf_wired_double', wide: true,
+                  label: 'LOADING DOCK', action: { room: 'dock', at: 'garage' } },   // until the Works' factory room lands: then { room: 'factory', at: 'garage' }
+                /* THE SUBWAY: the platform through the south opening (a door join, no card) */
+                { id: 'subway', wall: 's', x: 0, open: { w: 7, h: 4.2 },
+                  label: 'SUBWAY', action: { room: 'tunnel', at: 'garage' } },
+                /* THE STAIR UP to the Ring */
+                { id: 'ring', wall: 'w', z: 0, leaf: 'leaf_white_wood',
+                  label: 'THE RING', action: { room: 'ring_g', at: 'subway' } },
             ],
-            counters: [
-                { id: 'booth', x: 13.4, z: 8.2, face: 300, plateY: 1.9, radius: 2.0, verb: 'ASK',
-                  label: 'THE BOOTH', sub: 'THE ATTENDANT · LOT FULL', action: {},
-                  desc: 'The attendant’s booth at the foot of the ramp. The sign says LOT FULL. There are five cars on two decks.' },
-            ],
+            counters: [],
             props: [
-                /* ── THE RAMP OUT at the deck's end: the way out you can see and not take (a barrier arm, daylight at the top of a ramp that goes nowhere), the exit sign over it ── */
-                { key: 'garage_ramp',    x: 19.93, z: 11.05, y: 4.2, face: 209 },
-                { key: 'exit_sign',      x: 18.44, z: 13.4, y: 4.2, face: 216, mount: 2.75 },   // over the ramp: the way out that is not
-                /* ── THE BOOTH at the ramp's foot ── */
-                { key: 'steel_table',    x: 13.9, z: 8.9, face: 300 },
-                { key: 'crt_terminal',   x: 13.8, z: 8.8, y: 0.76, face: 300 },
-                { key: 'papers_b',       x: 14.2, z: 9.2, y: 0.76, face: 320 },
-                { key: 'folding_chair',  x: 14.5, z: 9.6, face: 300 },
-                { key: 'railing_1m',     x: 12.2, z: 9.6, face: 30 },
-                { key: 'railing_1m',     x: 15.2, z: 7.0, face: 30 },
-                /* SKATEBOARDING (9.8): THE HALF-PIPE — two quarter pipes facing each other across the plaza, north and south */
-                { key: 'quarter_pipe',   x: 0, z: -14.0, face: 180 },
-                { key: 'quarter_pipe',   x: 0, z: 14.0,  face: 0 },
-                /* ── the bays: five cars parked ALONG the drum wall (parallel — the lane and the plaza stay open): three on the LOWER ring, two on the DECK ── */
-                /* THE VEHICLE BATCH (2026-09-15): the building's Sedan, the agents' black SUV, the executive's Cadillac, the cop car nobody signed for, Medical's ambulance */
-                { key: 'parked_car', x: 12.95, z: -22.43, face: 120 },
-                { key: 'car_ambulance', x: 21.72, z: -14.11, face: 147 },
-                { key: 'car_cop', x: -15.95, z: -20.41, face: 52 },
-                { key: 'car_suv', x: -24.01, z: -9.7, y: 4.2, face: 22 },
-                { key: 'car_cadillac', x: -9.7, z: -24.01, y: 4.2, face: 68 },
-                { key: 'floor_stain',    x: 12.95, z: -22.43 },                               // the one that leaks (under the Sedan)
-                { key: 'floor_stain',    x: -6, z: -9 },
-                { key: 'signpost',       x: 0, z: 0 },                                        // on THE ISLAND: P1
-                /* ── the lower ring's clutter (against the drum wall, never in the lane) ── */
-                { key: 'fire_extinguisher', x: 26.1, z: -9.5, face: 290, mount: 1.0 },
-                { key: 'pipe_run',       x: -26.2, z: 9.2, face: 70 },
-                { key: 'trash_bin',      x: 25.9, z: 8.9, face: 270 },
-                { key: 'traffic_barrel', x: -25.9, z: -8.9, face: 30 },
-                { key: 'traffic_cone',   x: -20.4, z: 12.4 }, { key: 'traffic_cone', x: -19.8, z: 13.6 }, { key: 'traffic_cone', x: 21.0, z: -12.0 }, { key: 'traffic_cone', x: 5.5, z: -24.6 },
-                { key: 'wet_floor_sign', x: -24.3, z: 4.6, face: 200 },
-                { key: 'security_camera', x: -25.6, z: -10.6, face: 70, mount: 2.5 },        // under the deck, looking down the lane
-                { key: 'nameplate',      x: 26.6, z: 8.0, face: 270, mount: 1.55 },
-                /* ── THE DOCK OFFICE (THE CLIMB, 2026-09-19; on the DECK since 2026-09-26): a landing 3 m over the deck at the north-east, a desk and a chair on it, a rail on its west edge, the plaque at the ladder's foot ── */
-                { key: 'stair_landing',  x: 18.0, z: -17.0, y: 7.2 },
-                { key: 'railing_1m',     x: 15.75, z: -17.9, y: 7.45, face: 90 },
-                { key: 'railing_1m',     x: 15.75, z: -16.3, y: 7.45, face: 90 },
-                { key: 'steel_table',    x: 19.0, z: -17.4, y: 7.45, face: 270 },
-                { key: 'folding_chair',  x: 18.1, z: -17.4, y: 7.45, face: 90 },
-                { key: 'papers_b',       x: 19.0, z: -17.2, y: 8.21, face: 10 },
-                { key: 'nameplate',      x: 20.2, z: -17.0, y: 7.45, face: 250, mount: 1.55 },   // THE DOCK OFFICE — the name is on the plate, the office is a desk
-                { key: 'lesson_plaque',  x: 22.53, z: -15.77, y: 4.2, face: 235, mount: 1.35, lesson: 'climb' },   // on the drum's wall at the deck's edge by the ladder's foot
-                /* ── the bulbs: over the plaza and the lane (the strips are 10 m up; doorhq's light rule reads the props) ── */
-                { key: 'bare_bulb',      x: 0, z: -9, ceil: true }, { key: 'bare_bulb', x: 0, z: 9, ceil: true }, { key: 'bare_bulb', x: 9, z: 0, ceil: true }, { key: 'bare_bulb', x: -9, z: 0, ceil: true },
-                { key: 'bare_bulb',      x: 0, z: -23, ceil: true }, { key: 'bare_bulb', x: -21.9, z: -7.1, ceil: true }, { key: 'bare_bulb', x: 21.9, z: -7.1, ceil: true },
-                /* ── the deck's clutter ── */
-                { key: 'traffic_barrel', x: -26.0, z: 3.0, y: 4.2, face: 30 },
-                { key: 'cardboard_boxes', x: 8.4, z: -25.6, y: 4.2, face: 40 },
-                { key: 'trash_bin',      x: -19.8, z: -19.8, y: 4.2, face: 200 },
+                { key: 'car_cadillac', x: 0, z: -21.7, face: 0 },
+                { key: 'car_suv', x: 5.62, z: -20.96, face: 15 },
+                { key: 'parked_car', x: 18.79, z: 10.85, face: 120 },
+                { key: 'car_cadillac', x: -20.96, z: 5.62, face: 255 },
+                { key: 'parked_car', x: 13.21, z: -17.22, face: 38 },
+                { key: 'car_cop', x: 17.22, z: -13.21, face: 53 },
+                { key: 'car_suv', x: 20.05, z: 8.3, face: 113 },
+                { key: 'car_cadillac', x: 13.21, z: 17.22, face: 143 },
+                { key: 'parked_car', x: 8.3, z: 20.05, face: 158 },
+                { key: 'car_suv', x: -20.05, z: 8.3, face: 248 },
+                { key: 'car_cop', x: 0, z: -21.7, y: 3.5, face: 0 },
+                { key: 'car_cadillac', x: 8.3, z: -20.05, y: 3.5, face: 23 },
+                { key: 'garage_ramp', x: 16.86, z: -13.18, y: 3.5, face: 142 },
+                { key: 'boom_gate', x: 12.67, z: -17.12, y: 3.5, face: 131 },
+                { key: 'ticket_machine', x: 11.7, z: -14.71, y: 3.5, face: 129 },
+                { key: 'exit_sign', x: 17.37, z: -16.78, y: 3.5, face: 226, mount: 3.0 },
+                { key: 'traffic_cone', x: 10.65, z: -16.09, y: 3.5 },
+                { key: 'traffic_cone', x: 13.02, z: -19.45, y: 3.5 },
+                { key: 'lesson_plaque', x: -1.57, z: -17.98, face: 175, mount: 1.35, lesson: 'climb' },
+                { key: 'roller_shutter', wall: 'e', z: -3.45, scale: 1.2 },
+                { key: 'roller_shutter', wall: 'e', z: 3.45, scale: 1.2 },
+                { key: 'cage_lamp', x: 25.7, z: 0, y: 4.1 },
+                { key: 'pallet_jack', x: 20.6, z: 6.4, face: 250 },
+                { key: 'wrapped_pallet', x: 22.0, z: -5.9, face: 90 },
+                { key: 'fire_extinguisher', x: 23.33, z: -6.25, face: 255, mount: 0.95 },
+                { key: 'fire_extinguisher', x: -8.26, z: 22.69, face: 20, mount: 0.95 },
+                { key: 'fire_extinguisher', x: -20.91, z: -12.08, face: 120, mount: 0.95 },
+                { key: 'traffic_cone', x: 16.11, z: 12.36 },
+                { key: 'traffic_cone', x: 16.88, z: 13.48 },
+                { key: 'traffic_cone', x: 18.4, z: 13.47 },
+                { key: 'traffic_barrel', x: 5.85, z: 21.83 },
+                { key: 'traffic_barrel', x: 5.02, z: 22.65 },
+                { key: 'tire_stack', x: 16.55, z: 16.55 },
+                { key: 'tire_stack', x: 11.8, z: -20.44 },
+                { key: 'psx_metal_barrel_mp_1', x: 8.95, z: -21.62 },
+                { key: 'psx_metal_barrel_mp_1', x: 9.79, z: -21.48 },
+                { key: 'mop_bucket', x: -20.18, z: 11.65, face: 20 },
+                { key: 'vending_machine', x: -6.62, z: 23.07, face: 16 },
+                { key: 'trash_bin', x: 4.91, z: 18.98 },
+                { key: 'fluorescent', x: 0, z: -10, ceil: true, face: 90 },
+                { key: 'fluorescent', x: 5, z: -8.66, ceil: true, face: 120 },
+                { key: 'fluorescent', x: 8.66, z: -5, ceil: true, face: 150 },
+                { key: 'fluorescent', x: 10, z: 0, ceil: true, face: 180 },
+                { key: 'fluorescent', x: 8.66, z: 5, ceil: true, face: 210 },
+                { key: 'fluorescent', x: 5, z: 8.66, ceil: true, face: 240 },
+                { key: 'fluorescent', x: 0, z: 10, ceil: true, face: 270 },
+                { key: 'flicker_tube', x: -5, z: 8.66, ceil: true, face: 300 },
+                { key: 'fluorescent', x: -8.66, z: 5, ceil: true, face: 330 },
+                { key: 'fluorescent', x: -10, z: 0, ceil: true, face: 0 },
+                { key: 'fluorescent', x: -8.66, z: -5, ceil: true, face: 30 },
+                { key: 'fluorescent', x: -5, z: -8.66, ceil: true, face: 60 },
+                { key: 'fluorescent', x: 4.01, z: -14.97, ceil: true, face: 105 },
+                { key: 'fluorescent', x: 10.96, z: -10.96, ceil: true, face: 135 },
+                { key: 'fluorescent', x: 14.97, z: -4.01, ceil: true, face: 165 },
+                { key: 'flicker_tube', x: 14.97, z: 4.01, ceil: true, face: 195 },
+                { key: 'fluorescent', x: 10.96, z: 10.96, ceil: true, face: 225 },
+                { key: 'fluorescent', x: 4.01, z: 14.97, ceil: true, face: 255 },
+                { key: 'fluorescent', x: -4.01, z: 14.97, ceil: true, face: 285 },
+                { key: 'fluorescent', x: -10.96, z: 10.96, ceil: true, face: 315 },
+                { key: 'fluorescent', x: -14.97, z: 4.01, ceil: true, face: 345 },
+                { key: 'fluorescent', x: -14.97, z: -4.01, ceil: true, face: 15 },
+                { key: 'fluorescent', x: -10.96, z: -10.96, ceil: true, face: 45 },
+                { key: 'fluorescent', x: -4.01, z: -14.97, ceil: true, face: 75 },
             ],
-            agents: [
-                { x: 14.5, z: 9.6, face: 300, pose: 'hqSit', gender: 'male', label: 'THE ATTENDANT', reach: 2.4,
-                  line: '“Lot’s full.” “There are five cars.” “Two decks, five cars, lot’s full.”' },
-            ],
-            npcSpots: [
-                { x: -4.5, z: 10.5, face: 160 },      // by the south quarter pipe, watching the island
-                { x: 13.2, z: -9.0, face: 300 },      // by the handrail
-            ],
-            onlineSpots: [
-                { x: -12.0, z: -12.0, face: 45 },
-            ],
-            lines: [
-                '“Where does the ramp go?” “Up.” “Up to what?” “P1.” “We are on P1.” “Both decks are P1. The arm is down. Ask the arm.”',
-                '“Whose Sedan is that?” “The building’s.” “The building does not drive.” “It does not need to. It has the ramp.”',
-                '“P2?” “There is no P2.” “The sign says P1.” “The sign on every deck says P1.” “Exactly.”',
-                '“Why is it round?” “It is part of the facility.” “The facility is round.” “So is the garage.”',
-            ],
-            spawn: { x: 22.0, z: 3.5, face: 270 },
+            agents: [],
+            npcSpots: [],
+            onlineSpots: [{ x: -10.5, z: -10.5, face: 135 }],
+            spawn: { x: 0, z: 9, face: 180 },
         },
         /* ── THE LOADING DOCK — the step between the garage (G) and the
            laundry (B); a shortcut round the car. ── */
@@ -37923,7 +37860,7 @@ const DOOR_HQ = {
             doors: [
                 { id: 'garage', wall: 's', x: 0, leaf: 'leaf_wired_double', wide: true,
                   label: 'THE GARAGE', sub: 'DOWN TO P1',
-                  action: { room: 'garage', at: 'dock' },
+                  action: { room: 'garage', at: 'works' },
                   desc: 'Back down to the cars.' },
                 { id: 'laundry', wall: 'n', x: 0, leaf: 'leaf_wired_double', wide: true,
                   label: 'THE LAUNDRY', sub: 'ROOM 60 · SERVICES',
@@ -38466,77 +38403,71 @@ const DOOR_HQ = {
             ],
             spawn: { x: 0, z: 0.5, face: 0 },
         },
-        /* ── ROOM 127 · THE SERVER ROOM — under IT; the stair up is its
-           front door, the corridor its back (a loop from B up to the
-           mezzanine that skips the car and the hall). ── */
+        /* ── SERVER ROOM (DOOR HQ 2.0, the Gantry's south wall): 14 x 14 m, racks down both sides; its stair up to IT is gone (IT has one door) ── */
         server: {
-            label: 'THE SERVER ROOM',
-            sub: 'ARCANE ENGINEERING · UNDER ROOM 1337',
-            roomNo: '127', why: '127.0.0.1 — the only address in the building that is always home',
+            label: 'SERVER ROOM',
+            roomNo: '127',
+            why: '127.0.0.1, the only address in the building that is always home',
             kind: 'box',
             shell: {
-                w: 9, d: 6, h: 3.0,
-                wallH: 3.0, dadoH: 1.0,
-                floor: 'metal_3', wall: 'drywall', dado: 'teal', trim: 'teal', ceiling: 'ceiling',
-                floorColor: 0x7c8590, wallColor: 0x5e6670, dadoColor: 0x2c4446, ceilColor: 0x8a9098,
+                w: 14,
+                d: 14,
+                h: 6,
+                wallH: 6,
+                dadoH: 1.2,
+                floor: 'urban:MetalDiamondPlate1a',
+                wall: 'urban:TileSubway1a',
+                dado: 'urban:TileSubway1a',
+                trim: 'metal',
+                ceiling: 'urban:FibreCeilingTile1a',
+                floorColor: 0x8c9498,
+                wallColor: 0xe6eaea,
+                dadoColor: 0xd4dcdc,
+                ceilColor: 0xdfe4e4,
                 pipes: true,
-                lights: [{ x: -2.2, z: -1.4 }, { x: 2.2, z: 1.4 }],
-                mood: { light: 0x9fd0ff, ambient: 0.8 },
-                plate: { x: 0, z: -2.75, y: 2.55 },
+                strips: false,
+                keyLamp: 0,
+                lights: [{ x: -2.6, z: -1 }, { x: 2.6, z: -1 }],
+                mood: { light: 0x9fd0ff, ambient: 0.5 },
+                plate: { x: -4.2, z: -6.9, y: 4.4 },
             },
             doors: [
-                { id: 'it', wall: 'e', z: -1.5, leaf: 'leaf_holographic',
-                  label: 'IT', sub: 'STAIR · UP TO ROOM 1337',
-                  action: { room: 'it', at: 'server' },
-                  desc: 'The stair up into IT. The sysadmin’s way in; the keypad at the top is theirs.' },
-                { id: 'corridor', wall: 'w', z: 0, leaf: 'leaf_orange_glass',
-                  label: 'SERVICE CORRIDOR B', sub: 'THE BACK DOOR',
-                  action: { room: 'corridor_b', at: 'server' },
-                  desc: 'The back door onto the long corridor. It is propped with a box more often than the log admits.' },
+                { id: 'labs', wall: 's', x: 0, leaf: 'leaf_orange_glass', label: 'THE GANTRY', action: { room: 'labs', at: 'server' }, desc: 'Back out to the gantry.' },
+                { id: 'corridor', wall: 'w', z: 4.6, leaf: 'leaf_orange_glass', label: 'SERVICE CORRIDOR B', action: { room: 'corridor_b', at: 'server' }, desc: 'The back door onto the long corridor. It is propped with a box more often than the log admits.' },
             ],
             counters: [
-                /* D5 (2026-09-21): THE RACKS — the console on the sysadmin’s desk reads the asset store (what the building keeps on the disk) and the ledger’s faults */
-                { id: 'uptime', x: 3.475, z: 1.2, face: 90, plateY: 1.5, radius: 1.7, verb: 'READ',
-                  label: 'THE RACKS', sub: 'UPTIME · WHAT IS KEPT', action: {},
-                  desc: 'The night sysadmin’s console. It says what the building has kept on the disk, what it fetched again, and what never landed. The fourth rack is not on it.' },
+                { id: 'uptime', x: -2, z: -4.6, face: 180, plateY: 1.5, radius: 1.7, verb: 'READ', label: 'THE RACKS', action: {  }, desc: 'The night sysadmin’s console. It says what the building has kept on the disk, what it fetched again, and what never landed. The fourth rack is not on it.' },
             ],
             props: [
-                /* ── the north wall: four racks ── */
-                { key: 'server_rack',    wall: 'n', x: -3.0 }, { key: 'server_rack', wall: 'n', x: -2.1 }, { key: 'server_rack', wall: 'n', x: -1.2 }, { key: 'server_rack', wall: 'n', x: -0.3 },
-                { key: 'security_camera', wall: 'n', x: 3.6, mount: 2.5 },
-                { key: 'vent_grille',    wall: 'n', x: 2.4, mount: 2.5 },
-                /* ── the free-standing row, facing south into the cold aisle ── */
-                { key: 'server_rack',    x: -3.0, z: 0.9, face: 180 }, { key: 'server_rack', x: -2.1, z: 0.9, face: 180 }, { key: 'server_rack', x: -1.2, z: 0.9, face: 180 }, { key: 'server_rack', x: -0.3, z: 0.9, face: 180 },
-                { key: 'pipe_run',       x: -1.6, z: -0.6, face: 90 },                      // the cable tray over the aisle
-                /* ── the east side: the desk, the racks' console ── */
-                { key: 'steel_table',    x: 3.375, z: 1.2, face: 90 },
-                { key: 'crt_terminal',   x: 3.475, z: 1.2, y: 0.76, face: 270 },
-                { key: 'papers_b',       x: 3.275, z: 0.6, y: 0.76, face: 300 },
-                { key: 'coffee_mug',     x: 3.575, z: 1.8, y: 0.76 },
-                { key: 'computer_chair_blue', x: 2.675, z: 1.2, face: 90 },
-                { key: 'cardboard_boxes', x: 3.6, z: 2.4, face: 20 },
-                { key: 'keypad',         wall: 'e', z: -2.3 },
-                /* ── the south wall: the breakers, the extinguisher ── */
-                { key: 'breaker_panel',  wall: 's', x: -3.0 }, { key: 'breaker_panel', wall: 's', x: -2.2 },
-                { key: 'fire_extinguisher', wall: 's', x: 0.5 },
-                { key: 'breaker_panel',  wall: 's', x: 1.8 },
-                { key: 'vent_grille',    wall: 's', x: 3.6, mount: 2.5 },
-                { key: 'exit_sign',      wall: 'w', z: 0, mount: 2.6 },
-                { key: 'nameplate',      wall: 'w', z: -2.0, mount: 1.55 },
-                { key: 'fluorescent',    x: -2.2, z: -1.4, ceil: true, face: 90 },
-                { key: 'fluorescent',    x: 2.2, z: 1.4, ceil: true, face: 90 },
+                /* two rows of racks down the side walls, the sysadmin's desks on the back wall, breakers beside them */
+                { key: 'server_rack', wall: 'e', z: -4.2 },
+                { key: 'server_rack', wall: 'w', z: -5.2 },
+                { key: 'server_rack', wall: 'e', z: -2.1 },
+                { key: 'server_rack', wall: 'w', z: -3.1 },
+                { key: 'server_rack', wall: 'e', z: 0 },
+                { key: 'server_rack', wall: 'w', z: -1 },
+                { key: 'server_rack', wall: 'e', z: 2.1 },
+                { key: 'server_rack', wall: 'w', z: 1.1 },
+                { key: 'tanker_desk', wall: 'n', x: -2 },
+                { key: 'crt_terminal', x: -2, z: -6.55, y: 0.76, face: 180 },
+                { key: 'tanker_desk', wall: 'n', x: 0.6 },
+                { key: 'psx_pc_monitor_mp_1', x: 0.6, z: -6.55, y: 0.76, face: 180 },
+                { key: 'coffee_mug', x: 1.2, z: -6.4, y: 0.76, face: 30 },
+                { key: 'computer_chair_blue', x: -2, z: -5.4, face: 0 },
+                { key: 'breaker_panel', wall: 'n', x: 3.6, mount: 1.3 },
+                { key: 'breaker_panel', wall: 'n', x: 4.6, mount: 1.3 },
+                { key: 'breaker_panel', wall: 'n', x: 5.6, mount: 1.3 },
+                { key: 'fire_extinguisher', wall: 'n', x: 6.4 },
+                { key: 'cardboard_boxes', x: 5.6, z: 4.8, face: 0 },
+                { key: 'security_camera', wall: 'n', x: -6.2, mount: 4.4 },
+                { key: 'fluorescent', x: -2.6, z: -1, ceil: true, face: 0 },
+                { key: 'fluorescent', x: 2.6, z: -1, ceil: true, face: 0 },
             ],
-            agents: [
-                { x: 2.675, z: 1.2, face: 90, pose: 'hqSit', gender: 'female', label: 'THE NIGHT SYSADMIN', reach: 2.2,
-                  line: '“It is always night down here.” “It is 2 p.m.” “Not on the racks.”' },
-            ],
+            agents: [],
             npcSpots: [],
-            onlineSpots: [{ x: -1.6, z: 2.2, face: 0 }],
-            lines: [
-                '“Which rack is the building on?” “All of them.” “Which one is the game on?” “The one that is warm.”',
-                '“Do not unplug the fourth one.” “Why?” “Nobody knows what it does, and the last time it went quiet so did the Bureau.”',
-            ],
-            spawn: { x: 1.6, z: 0, face: 270 },
+            onlineSpots: [],
+            lines: [],
+            spawn: { x: 0, z: 4.6, face: 0 },
         },
         /* ── B2 · THE UNDERCROFT — on no button. Found through the wall at
            the end of Service Corridor B, or down the ladder under the annex
@@ -38740,68 +38671,71 @@ const DOOR_HQ = {
             ],
             spawn: { x: 0, z: 2.3, face: 0 },
         },
-        /* ── ROOM X · THE OBJECT — a small metal room, an orb that floats
-           and turns and lights the whole room blue, a rail round it, a
-           terminal reading it. The garden gate (L5) is its second door. ── */
+        /* ── ROOM X (DOOR HQ 2.0, the Gantry's east wall, sealed: an L5 vault door, not on the stage): 14 x 14 m, the Object in the middle ── */
         orb: {
             label: 'ROOM X',
-            sub: 'THE OBJECT · CONTAINMENT',
-            roomNo: 'X', why: 'the unknown; the file has a number and the number is redacted',
+            roomNo: 'X',
+            why: 'the unknown; the file has a number and the number is redacted',
             kind: 'box',
-            /* 2026-09-16: 5 × 5 → 7 × 7 and the orb ring north of centre — the
-               door landing (2.4 m in) stood inside the orb's collision disc
-               and the room SOFT-LOCKED (three-renderer.js _hqGoTo steps a
-               landing back off a blocker now, too) */
             shell: {
-                w: 7, d: 7, h: 3.4,
-                wallH: 3.4, dadoH: 1.0,
-                floor: 'aluminium', wall: 'metal_3', dado: 'gunmetal', trim: 'gunmetal_2', ceiling: 'metal_3',
-                floorColor: 0x7c8890, wallColor: 0x6e7880, dadoColor: 0x505a62, ceilColor: 0x5a646c,
+                w: 14,
+                d: 14,
+                h: 7,
+                wallH: 7,
+                dadoH: 1.2,
+                floor: 'aluminium',
+                wall: 'metal_3',
+                dado: 'gunmetal',
+                trim: 'gunmetal_2',
+                ceiling: 'metal_3',
+                floorColor: 0x7c8890,
+                wallColor: 0x6e7880,
+                dadoColor: 0x505a62,
+                ceilColor: 0x5a646c,
                 pipes: true,
                 strips: false,
-                light: { x: 0, z: 0 },
-                mood: { light: 0x8fdcff, ambient: 0.35 },
-                plate: { x: 0, z: -3.25, y: 2.9 },
+                keyLamp: 0,
+                lights: [],
+                mood: { light: 0x8fdcff, ambient: 0.3 },
+                plate: { x: 4.2, z: -6.9, y: 4.8 },
             },
             doors: [
-                { id: 'dungeon', wall: 's', x: 0, leaf: 'leaf_portcullis', wide: true,
-                  label: 'THE DUNGEON', sub: 'BACK TO THE CELLS',
-                  action: { room: 'dungeon', at: 'orb' },
-                  desc: 'Back through the portcullis.' },
-                { id: 'gate', wall: 'e', z: 1.6, leaf: 'leaf_portcullis', wide: true, minClearance: 5,
-                  label: 'THE GARDEN GATE', sub: 'ROOM 1618 · CLEARANCE L5',
-                  action: { room: 'garden', at: 'gate' },
-                  desc: 'The gate at the back of the garden, from the other side. The object was found in the garden; the gate is how it came down. An L5 opens it.' },
+                { id: 'labs', wall: 's', x: 0, leaf: 'leaf_vault', wide: true, label: 'THE GANTRY', action: { room: 'labs', at: 'orb' }, desc: 'The vault door, from the inside. There is no keypad on this side.' },
+                { id: 'dungeon', wall: 'n', x: -3.5, leaf: 'leaf_portcullis', wide: true, label: 'THE DUNGEON', action: { room: 'dungeon', at: 'orb' }, desc: 'Back through the portcullis.' },
+                { id: 'gate', wall: 'n', x: 3.5, leaf: 'leaf_portcullis', wide: true, minClearance: 5, label: 'THE GARDEN', action: { room: 'garden', at: 'gate' }, desc: 'The gate at the back of the garden, from the other side. The object was found in the garden; the gate is how it came down. An L5 opens it.' },
             ],
             counters: [
-                { id: 'object', x: 0, z: 0.95, face: 0, plateY: 1.9, radius: 2.0, verb: 'READ',
-                  label: 'THE OBJECT', sub: 'DO NOT TOUCH', action: {},
-                  desc: 'It floats. It turns. The terminal reads it and the readings do not repeat. The rail is for you, not for it.' },
+                { id: 'object', x: 0, z: 1.6, face: 0, plateY: 1.9, radius: 2, verb: 'READ', label: 'THE OBJECT', action: {  }, desc: 'It floats. It turns. The terminal reads it and the readings do not repeat. The rail is for you, not for it.' },
             ],
             props: [
-                { key: 'floating_orb',   x: -0.875, z: -0.875 },
-                { key: 'railing_1m',     x: 0, z: -1.9, face: 0 }, { key: 'railing_1m', x: 0, z: 0.7, face: 0 },
-                { key: 'railing_1m',     x: -1.3, z: -0.6, face: 90 }, { key: 'railing_1m', x: 1.3, z: -0.6, face: 90 },
-                { key: 'steel_table',    wall: 'n', x: -1.6, face: 180 },
-                { key: 'crt_terminal',   x: -1.6, z: -3.1, y: 0.76, face: 180 },
-                { key: 'clipboard_flat', x: -0.9, z: -3.05, y: 0.76, face: 20 },
-                { key: 'folding_chair',  x: -1.6, z: -2.5, face: 0 },
-                { key: 'security_camera', wall: 'n', x: 2.6, mount: 2.7 },
-                { key: 'security_camera', wall: 's', x: -2.6, mount: 2.7 },
-                { key: 'breaker_panel',  wall: 'w', z: -2.2 },
-                { key: 'cardboard_boxes', x: -2.9, z: 2.6, face: 90 },
-                { key: 'vent_grille',    wall: 'w', z: 2.2, mount: 2.6 },
-                { key: 'pipe_run',       x: 2.4, z: -2.7, face: 0 },
-                { key: 'keypad',         wall: 'e', z: -2.6 },
+                /* THE OBJECT in the middle behind a ring of rail, its own light the room's only light; the terminal that reads it on the east side */
+                { key: 'floating_orb', x: 0, z: -1.5 },
+                { key: 'railing_1m', x: 0, z: -4.2, face: 90 },
+                { key: 'railing_1m', x: 1.35, z: -3.84, face: 120 },
+                { key: 'railing_1m', x: 2.34, z: -2.85, face: 150 },
+                { key: 'railing_1m', x: 2.7, z: -1.5, face: 180 },
+                { key: 'railing_1m', x: 2.34, z: -0.15, face: 210 },
+                { key: 'railing_1m', x: 1.35, z: 0.84, face: 240 },
+                { key: 'railing_1m', x: 0, z: 1.2, face: 270 },
+                { key: 'railing_1m', x: -1.35, z: 0.84, face: 300 },
+                { key: 'railing_1m', x: -2.34, z: -0.15, face: 330 },
+                { key: 'railing_1m', x: -2.7, z: -1.5, face: 0 },
+                { key: 'railing_1m', x: -2.34, z: -2.85, face: 30 },
+                { key: 'railing_1m', x: -1.35, z: -3.84, face: 60 },
+                { key: 'steel_table', x: 5.4, z: 1.2, face: 270 },
+                { key: 'crt_terminal', x: 5.5, z: 1.2, y: 0.76, face: 270 },
+                { key: 'clipboard_flat', x: 5.3, z: 0.4, y: 0.76, face: 250 },
+                { key: 'folding_chair', x: 4.4, z: 1.2, face: 90 },
+                { key: 'security_camera', wall: 'w', z: -5.8, mount: 5 },
+                { key: 'security_camera', wall: 'e', z: -5.8, mount: 5 },
+                { key: 'breaker_panel', wall: 'w', z: 1.5, mount: 1.3 },
+                { key: 'cardboard_boxes', x: -5.6, z: 4.6, face: 90 },
             ],
             agents: [],
-            npcSpots: [{ x: -2.4, z: -0.6, face: 90, race: 'watcher', say: ['“I have watched it for a week.” “And?” “It has watched me for a week.”'] }],
+            npcSpots: [],
             onlineSpots: [],
-            lines: [
-                '“What is it?” “X.” “What does X stand for?” “It does not stand. It floats.”',
-                '“Has anyone touched it?” “One.” “And?” “And the rail.”',
-            ],
-            spawn: { x: 0, z: 2.2, face: 0 },
+            lines: [],
+            spawn: { x: 0, z: 4.6, face: 0 },
         },
         /* ── 3 · THE ANNEX — the floor above the mezzanine: a lobby with
            five doors (the garden straight ahead is the landmark — glass
@@ -39578,10 +39512,11 @@ const DOOR_HQ = {
                 plate: { x: 0, z: -3.75, y: 3.0 },
             },
             doors: [
+                /* DOOR HQ 2.0 WAVE 3 (2026-11-26): the stair up to the Works' middle level (the Gantry's `stair`), until the Incinerator is rebuilt */
                 { id: 'works', wall: 'w', z: 1, leaf: 'leaf_bulkhead', wide: true,
-                  label: 'THE WAREHOUSE', sub: 'BACK TO THE FLOOR',
-                  action: { room: 'warehouse', at: 'incinerator' },
-                  desc: 'Back onto the floor, and cooler.' },
+                  label: 'THE STAIR',
+                  action: { room: 'labs', at: 'stair' },
+                  desc: 'Up. Fewer flights than there were coming down.' },
             ],
             counters: [
                 { id: 'manifest', x: 2.6, z: 2.4, face: 270, plateY: 1.6, radius: 1.8, verb: 'READ',
@@ -40100,97 +40035,67 @@ const DOOR_HQ = {
            that only ever says DELAYED. The stair at one end, the garage's
            service hatch off the side, and at the far end THE END OF THE
            LINE. No number (a tunnel). ── */
+        /* ── DOOR HQ 2.0 (2026-11-26, wave 3): THE SUBWAY, the platform off the Garage's south opening (HQ_WORLD.zones.garage: walked
+           into, no card). 14 x 35 m, 5.25 m up, the track down the west side (the train: links.tunnel_downtown, a free end on the
+           platform's edge), the Metro pack's tiles; the track wall's climb down to the Sewers (links.tunnels_works), the storm drain
+           to the Woods (links.woods_sewer), the fire stair at the south end. One name, no subtitles. ── */
         tunnel: {
-            label: 'THE SUBWAY',   // (2026-11-18, the door audit: was THE TUNNEL; mondo calls it the subway, and it is the third public way out)
-            sub: 'THE PLATFORM · DOOR HQ',
+            label: 'SUBWAY',
             kind: 'box',
             shell: {
-                w: 8, d: 36, h: 4,
-                wallH: 4, dadoH: 1.6,
-                /* THE METRO PACK (2026-10-04): mondo's PSX metro sheets — the terrazzo floor, small white tiles up the walls over a
-                   dark tiled dado, bare concrete overhead */
+                w: 14, d: 35, h: 5.25,
+                wallH: 5.25, dadoH: 1.6,
                 floor: 'urban:MetroFloor', wall: 'urban:MetroWallTile', dado: 'urban:MetroTiles', trim: 'gunmetal', ceiling: 'urban:MetroConcrete',
                 floorColor: 0xd8d8d8, wallColor: 0xf0eee8, dadoColor: 0xc8c8c8, ceilColor: 0x8a8a8a,
                 pipes: true,
                 strips: false,
-                lights: [],
-                mood: { light: 0xfff0c0, ambient: 0.5 },
-                plate: { x: 0, z: 17.75, y: 2.8 },
+                lights: [{ x: 1.5, z: -12 }, { x: 1.5, z: 0 }, { x: 1.5, z: 12 }, { x: -5.6, z: 6 }],
+                mood: { light: 0xfff0c0, ambient: 0.55 },
+                plate: { x: 3.5, z: -17.25, y: 4.6 },
             },
             doors: [
-                { id: 'stairwell', wall: 's', x: 0, leaf: 'leaf_white_wood',
-                  label: 'THE STAIRWELL', sub: 'THE FIRE STAIR · UP',
-                  action: { room: 'stairwell', at: 'tunnel' },
-                  desc: 'Up the fire stair. Up as far as you like.' },
-                /* THE SUBWAY (2026-11-18, the eight doors): the plain way down from the Main Hall's Ring comes out here, at the platform's north end,
-                   where Room 1893's barn door stood (that door is cut: DOOR_HQ.cut.doors) */
-                { id: 'ring', wall: 'n', x: 2.7, leaf: 'leaf_white_wood',   // (east of the departures board: at x 0 its surround stood through the board)
-                  label: 'THE RING', sub: 'THE STAIR UP · THE MAIN HALL',
-                  action: { room: 'ring_g', at: 'subway' },
-                  desc: 'The stair up to the ring round the Main Hall.' },
-                { id: 'carnival', wall: 'n', x: 0, leaf: 'leaf_barn',
-                  label: 'THE END OF THE LINE', sub: 'ROOM 1893 · THE MIDWAY',
-                  action: { room: 'site_prebuilt_area51_ow_circus', at: 'tunnel' },   // THE DESERT ON PLOTS (2026-11-15): the circus stands in the desert now · THE ONE WORLD MOVE (2026-11-17): in the Circus' own room
-                  desc: 'The doors at the end of the platform. Music behind them. A smell of sugar and diesel.' },
-                { id: 'garage', wall: 'e', z: 12, leaf: 'leaf_bulkhead', wide: true,
-                  label: 'THE GARAGE', sub: 'ROOM P1 · SERVICE HATCH',
-                  action: { room: 'garage', at: 'tunnel' },
-                  desc: 'A maintenance door up to the garage. It comes out behind the ramp, where the barrier arm cannot see you.' },
+                /* THE GARAGE: the open north end (the Garage's `subway` opening, a door join) */
+                { id: 'garage', wall: 'n', x: 3.5, open: { w: 7, h: 4.2 },
+                  label: 'GARAGE', action: { room: 'garage', at: 'subway' } },
+                { id: 'stairwell', wall: 's', x: 3.5, leaf: 'leaf_white_wood',
+                  label: 'THE STAIRWELL', action: { room: 'stairwell', at: 'tunnel' } },
+                { id: 'carnival', wall: 'n', x: -2, leaf: 'leaf_barn',   // cut (DOOR_HQ.cut.doors.tunnel): never built
+                  label: 'THE END OF THE LINE',
+                  action: { room: 'site_prebuilt_area51_ow_circus', at: 'tunnel' } },
             ],
             counters: [
-                { id: 'departures', x: 0, z: 2, face: 0, plateY: 2.2, radius: 2.4, verb: 'READ',
-                  label: 'DEPARTURES', sub: 'NEXT TRAIN · THE BOARD', action: {},
-                  desc: 'The board over the platform. Every line the building runs, and the next train on each. The next train is always the same amount of late.' },
+                { id: 'departures', x: 0.5, z: 0.4, face: 0, plateY: 2.6, radius: 2.4, verb: 'READ',
+                  label: 'DEPARTURES', action: {} },
             ],
             props: [
-                { key: 'track_bed',      x: -2.8, z: 0, face: 0 },
-                /* the train_car prop is retired (2026-09-15): THE TRAIN is the `train` way on the track (links.tunnel_cyberpunk) — it arrives
-                   (THE METRO PACK, 2026-10-04: the pack's metro car, three-renderer.js _HQ_METRO_TRAIN) */
-                { key: 'platform_edge',  x: -1.2, z: 0, face: 0 },
-                { key: 'departures_board', wall: 'n', x: 0, mount: 2.4 },
-                { key: 'station_text',     wall: 'w', z: 1.5, mount: 3.15, text: ['DOOR HQ', 'THE PLATFORM UNDER THE BUILDING'] },   // THE SUBWAY (2026-11-18): this platform's own name (a fixed board; the city's boards change)
-                { key: 'station_text',     wall: 'e', z: 2,   mount: 2.5, text: ['DOOR HQ', 'THE PLATFORM UNDER THE BUILDING'] },
-                /* THE METRO PACK (2026-10-04): the platform dressed in mondo's PSX metro kit — the bench frames, the bins, the
-                   machines, the map, two tiled columns down the middle, the fluorescents in a line overhead, the posters on the
-                   track wall across the rails (the train covers the middle of it) */
-                { key: 'tube_map',       wall: 'e', z: -4, mount: 1.1 }, { key: 'metro_map', wall: 'e', z: 6 },
-                { key: 'metro_bench',    x: 3.425, z: -10.575, face: 270 }, { key: 'metro_bench', x: 3.425, z: -0.2, face: 270 }, { key: 'metro_bench', x: 3.425, z: 8.675, face: 270 },
-                { key: 'metro_ticket_machine', wall: 'e', z: -15 },
-                { key: 'metro_vending',  wall: 'e', z: -13 },
-                { key: 'metro_bin',      x: 3.5, z: -3, face: 270 }, { key: 'metro_bin', x: 3.5, z: 2.8, face: 270 },
-                { key: 'metro_column',   x: 1.6, z: -10 }, { key: 'metro_column', x: 1.6, z: -2 },
-                { key: 'metro_poster_1', wall: 'w', z: -15, mount: 1.4 }, { key: 'metro_poster_5', wall: 'w', z: -12.5, mount: 1.4 },
-                { key: 'metro_poster_2', wall: 'w', z: -10, mount: 1.4 }, { key: 'metro_poster_6', wall: 'w', z: -7.5, mount: 1.4 },
-                { key: 'metro_poster_3', wall: 'w', z: -5, mount: 1.4 }, { key: 'metro_poster_7', wall: 'w', z: 16, mount: 1.4 },
-                { key: 'wall_clock',     wall: 'e', z: 0, mount: 3.0 },
-                { key: 'wall_clock',     wall: 'e', z: 14, mount: 3.0 },
-                { key: 'notice_board',   wall: 'e', z: -8 },
-                { key: 'wet_floor_sign', x: 1.4, z: -14, face: 30 },
-                { key: 'pipe_run',       x: 3.2, z: -16, face: 0 }, { key: 'pipe_run', x: 3.2, z: 16, face: 0 },
-                { key: 'security_camera', wall: 'e', z: -16.5, mount: 3.4 }, { key: 'security_camera', wall: 'e', z: 16.5, mount: 3.4 },
-                { key: 'exit_sign',      wall: 's', x: 0, mount: 3.2 },
-                { key: 'exit_sign',      wall: 'e', z: 12, mount: 3.2 },
-                { key: 'railing_1m',     x: 1.2, z: -16.6, face: 0 }, { key: 'railing_1m', x: 1.2, z: 16.6, face: 0 },   // THE PARK RULE: the rails at the platform ends
-                { key: 'riser_1',        x: 3, z: 3.8, face: 90, rect: false },                                          // … and the step (the platform's raised end)
-                { key: 'metro_light',    x: 0.8, z: -16, ceil: true }, { key: 'metro_light', x: 0.8, z: -12, ceil: true }, { key: 'metro_light', x: 0.8, z: -8, ceil: true },
-                { key: 'metro_light',    x: 0.8, z: 0, ceil: true },   { key: 'metro_light', x: 0.8, z: 8, ceil: true },   { key: 'metro_light', x: 0.8, z: 12, ceil: true },
-                { key: 'metro_light',    x: 0.8, z: 16, ceil: true },
-                { key: 'bare_bulb',      x: 0.8, z: -4, ceil: true }, { key: 'bare_bulb', x: 0.8, z: 4, ceil: true },
+                { key: 'track_bed',      x: -5.6, z: 0, face: 0 },
+                { key: 'platform_edge',  x: -4.0, z: 0, face: 0 },
+                { key: 'departures_board', x: 0.5, z: -1.5, face: 180, mount: 3.0 },   // on the column's south face
+                /* the Metro pack: the columns down the platform's middle, the benches between them, the machines on the east wall */
+                { key: 'metro_column',   x: 0.5, z: -12, scale: 1.3 }, { key: 'metro_column', x: 0.5, z: -2.2, scale: 1.3 },
+                { key: 'metro_column',   x: 0.5, z: 8, scale: 1.3 },   { key: 'metro_column', x: 0.5, z: 15, scale: 1.3 },
+                { key: 'metro_bench',    x: 4.2, z: -9.5, face: 270 }, { key: 'metro_bench', x: 4.2, z: 2.2, face: 270 }, { key: 'metro_bench', x: 4.2, z: 10.5, face: 270 },
+                { key: 'metro_ticket_machine', wall: 'e', z: -14 },
+                { key: 'metro_vending',  wall: 'e', z: -11 },
+                { key: 'vending_machine', wall: 'e', z: 13.5 },
+                { key: 'metro_bin',      x: 4.2, z: -2.8, face: 270 }, { key: 'metro_bin', x: 4.2, z: 6.2, face: 270 },
+                { key: 'tube_map',       wall: 'e', z: -1.5, mount: 1.1 }, { key: 'metro_map', wall: 'e', z: 4.5 },
+                /* the posters on the track wall across the rails (the train covers the middle) */
+                { key: 'metro_poster_1', wall: 'w', z: -15, mount: 1.6 }, { key: 'metro_poster_5', wall: 'w', z: -10, mount: 1.6 },
+                { key: 'metro_poster_2', wall: 'w', z: -5.5, mount: 1.6 }, { key: 'metro_poster_6', wall: 'w', z: 16, mount: 1.6 },
+                { key: 'wall_clock',     wall: 'e', z: 0, mount: 3.4 },
+                { key: 'notice_board',   wall: 'e', z: 9 },
+                { key: 'security_camera', wall: 'e', z: -16.5, mount: 4.4 }, { key: 'security_camera', wall: 'e', z: 16.5, mount: 4.4 },
+                { key: 'pipe_run',       x: 6.6, z: -16.4, face: 0 },
+                { key: 'railing_1m',     x: -3.4, z: -16.6, face: 0 }, { key: 'railing_1m', x: -3.4, z: 16.6, face: 0 },   // THE PARK RULE: the rails at the platform's ends
+                { key: 'metro_light',    x: 1.5, z: -15, ceil: true }, { key: 'metro_light', x: 1.5, z: -9, ceil: true }, { key: 'metro_light', x: 1.5, z: -3, ceil: true },
+                { key: 'metro_light',    x: 1.5, z: 3, ceil: true },   { key: 'metro_light', x: 1.5, z: 9, ceil: true },  { key: 'metro_light', x: 1.5, z: 15, ceil: true },
+                { key: 'metro_light',    x: -2.6, z: -6, ceil: true }, { key: 'metro_light', x: -2.6, z: 6, ceil: true }, { key: 'metro_light', x: -2.6, z: 14, ceil: true },
             ],
-            agents: [
-                { x: 1.6, z: -2.4, face: 270, pose: 'hqPhone', gender: 'male', label: 'THE CONDUCTOR', reach: 2.4,
-                  line: '“Yes. Delayed. No, the same amount. Yes, I know it is the same amount. That is the timetable.”' },
-            ],
-            npcSpots: [
-                { x: 2.4, z: -0.2, face: 270, race: 'zombie', say: ['“Waiting.” “For the train?” “For the train.” “It is at the platform.” “Waiting.”'] },
-                { x: 2.4, z: 10, face: 270, race: 'skeleton', say: ['“I missed the last one.” “When was that?” “It is still here.”'] },
-            ],
-            onlineSpots: [{ x: 2.4, z: -10, face: 270 }],
-            lines: [
-                '“Where does it go?” “All lines.” “Which line is this?” “All of them. Mind the gap.”',
-                '“The train has been at the platform for an hour.” “Doors open.” “Nobody gets on.” “Nobody has to. It is at the platform.”',
-            ],
-            spawn: { x: 0, z: 16, face: 0 },
+            agents: [],
+            npcSpots: [],
+            onlineSpots: [{ x: 4.5, z: -6, face: 270 }],
+            spawn: { x: 3.5, z: -12, face: 180 },
         },
         /* ── ROOM 1893 · THE MIDWAY — the carnival at the end of the line: a
            wheel that turns, a carousel, the fortune teller's tent, the high
@@ -40265,84 +40170,103 @@ const DOOR_HQ = {
             ],
             spawn: { x: 0, z: 6.4, face: 0 },
         },
-        /* ── 4 · THE LABS — the lobby of the fourth floor. Six doors: the
-           dream lab straight ahead, the Mandela room and the upside-down
-           room to the west, Supply Closet 4B and Clone Disposal to the
-           east. The radiation sign is on the wall before you reach 4B. ── */
+        /* ── DOOR HQ 2.0, THE WORKS, MIDDLE (2026-11-26, wave 3; docs/plans/door-hq-2/plans/4_works_middle_bottom.png): THE GANTRY, the level's
+           hall round the flue. The freight ramp comes down from the factory on its north wall; every lab and holding-block room opens off its
+           four walls, joined door to door on one stage (HQ_WORLD zone `labs`, no card); the stair down to the Incinerator, the lift, Room X,
+           the Sewers and H-Wing stay doors. Room id `labs` kept (the lift's floor 4 and H-Wing's two doors read it). ── */
         labs: {
-            label: 'THE FOURTH FLOOR',
-            sub: 'THE FOURTH FLOOR · RESEARCH',
+            label: 'THE GANTRY',
             kind: 'box',
             shell: {
-                w: 10, d: 6, h: 3.2,
-                wallH: 3.2, dadoH: 1.05,
-                floor: 'terrazzo', wall: 'drywall', dado: 'teal', trim: 'teal', ceiling: 'ceiling',
-                floorColor: 0xd8dcd8, wallColor: 0xe8ece8, dadoColor: 0x4a8a8a,
-                pipes: false,
-                lights: [{ x: -2.6, z: 0 }, { x: 2.6, z: 0 }],
-                mood: { light: 0xeef6ff },
-                plate: { x: 3.4, z: -2.75, y: 2.7 },
+                w: 38.5,
+                d: 38.5,
+                h: 10.5,
+                wallH: 10.5,
+                dadoH: 2.1,
+                floor: 'concrete_floor',
+                wall: 'urban:ConcreteWoodFormed1a',
+                dado: 'urban:TileSubway1a',
+                trim: 'metal',
+                ceiling: 'urban:MetalTruss1b',
+                floorColor: 0x9a9c96,
+                wallColor: 0xbfc3bf,
+                dadoColor: 0xdfe5e5,
+                ceilColor: 0x5a5e62,
+                pipes: true,
+                strips: false,
+                keyLamp: 0,
+                lights: [
+                    { x: -12.25, z: -12.25 },
+                    { x: 12.25, z: -12.25 },
+                    { x: -12.25, z: 12.25 },
+                    { x: 12.25, z: 12.25 },
+                    { x: 0, z: -14 },
+                    { x: 0, z: 14 },
+                    { x: -14, z: 0 },
+                    { x: 14, z: 0 },
+                ],
+                mood: { light: 0xddebff, ambient: 0.42 },
+                plate: { x: -19.1, z: 0, y: 5.2 },
             },
             doors: [
-                { id: 'elevator', wall: 's', x: 0, leaf: null, proc: 'elevator',
-                  label: 'ELEVATOR', sub: 'THE CAR',
-                  action: { room: 'car', at: 'out' },
-                  desc: 'The car.' },
-                { id: 'dreamlab', wall: 'n', x: 0, leaf: 'leaf_hospital',
-                  label: 'THE DREAM LAB', sub: 'ROOM REM · SLEEP STUDY',
-                  action: { room: 'dreamlab', at: 'labs' },
-                  desc: 'Four cots, four subjects, one screen showing what they see. The subjects were chosen for what they do to a dream from the inside.' },
-                { id: 'mandela', wall: 'w', z: -1.5, leaf: 'leaf_orange_glass',
-                  label: 'THE MANDELA ROOM', sub: 'ROOM * · AS YOU REMEMBER IT',
-                  action: { room: 'mandela', at: 'labs' },
-                  desc: 'Whatever you remember this room being, it is not that now. Nobody comments.' },
-                { id: 'upsidedown', wall: 'w', z: 1.5, leaf: 'leaf_beige_wood',
-                  label: 'THE UPSIDE-DOWN ROOM', sub: 'ROOM 9 · MIND YOUR HEAD',
-                  action: { room: 'upsidedown', at: 'labs' },
-                  desc: 'An office. The furniture is on the ceiling. The clock is right, from down there.' },
-                { id: 'closet4b', wall: 'e', z: -1.5, leaf: 'leaf_cell',
-                  label: 'SUPPLY CLOSET 4B', sub: 'CLEARANCE L6 · RESTRICTED',
-                  action: { room: 'closet4b', at: 'labs' },
-                  desc: 'Radiation warnings, two armed guards, a blast door and an evacuation button — in front of a supply closet. This door is open. The one behind it is not.' },
-                { id: 'disposal', wall: 'e', z: 1.5, leaf: 'leaf_cell',
-                  label: 'CLONE DISPOSAL', sub: 'ROOM II · ONE OF YOU',
-                  action: { room: 'disposal', at: 'labs' },
-                  desc: 'A near-empty room, a table, a gun, a chute. The form does not say which of you is the clone.' },
+                /* the north wall: the freight ramp up to the factory in the middle, the Cells and the Tank either side, H-Wing's two plain doors in the corners */
+                { id: 'factory', wall: 'n', x: 0, leaf: 'leaf_wired_double', wide: true, label: 'FREIGHT RAMP', action: { room: 'factory', at: 'ramp' }, desc: 'The ramp the carts come down. It is steeper than it looks from the top.' },
+                { id: 'cells', wall: 'n', x: -8.75, leaf: 'leaf_cell', label: 'THE CELLS', action: { room: 'cells', at: 'labs' }, desc: 'Bars, bunks, a drain in every floor. Nobody on the list is here. Nobody here is on the list.' },
+                { id: 'tank', wall: 'n', x: 8.75, leaf: 'leaf_hospital', label: 'THE TANK', action: { room: 'tank', at: 'labs' }, desc: 'Salt water at skin temperature, a lid, and nothing at all. An hour in it and the subjects report the building.' },
+                { id: 'mandela', wall: 'n', x: -17.5, leaf: 'leaf_white_wood', label: 'THE MANDELA ROOM', action: { room: 'mandela', at: 'labs' }, desc: 'A plain door. It was not here last time.' },
+                { id: 'upsidedown', wall: 'n', x: 17.5, leaf: 'leaf_beige_wood', label: 'THE UPSIDE-DOWN ROOM', action: { room: 'upsidedown', at: 'labs' }, desc: 'A plain door. The handle is at the top.' },
+                /* the east wall: Clone Disposal, the lift, Room X (sealed) */
+                { id: 'disposal', wall: 'e', z: -8.75, leaf: 'leaf_cell', label: 'CLONE DISPOSAL', action: { room: 'disposal', at: 'labs' }, desc: 'A table, a gun, a chute. The form does not say which of you is the clone.' },
+                { id: 'elevator', wall: 'e', z: 0, leaf: null, proc: 'elevator', label: 'ELEVATOR', action: { room: 'car', at: 'out' }, desc: 'The car.' },
+                { id: 'orb', wall: 'e', z: 8.75, leaf: 'leaf_vault', wide: true, minClearance: 5, label: 'ROOM X', action: { room: 'orb', at: 'labs' }, desc: 'A vault door, a keypad, no window. The plate says ROOM X and nothing else.' },
+                /* the south wall: the Server Room, the stair down to the Incinerator, Supply Closet 4B */
+                { id: 'server', wall: 's', x: 8.75, leaf: 'leaf_orange_glass', label: 'SERVER ROOM', action: { room: 'server', at: 'labs' }, desc: 'Cold air and a hum. The door is propped with a box.' },
+                { id: 'stair', wall: 's', x: 0, leaf: 'leaf_bulkhead', wide: true, label: 'THE STAIR', action: { room: 'incinerator', at: 'works' }, desc: 'Down. More flights than there are coming back up.' },
+                { id: 'closet4b', wall: 's', x: -8.75, leaf: 'leaf_cell', label: 'SUPPLY CLOSET 4B', action: { room: 'closet4b', at: 'labs' }, desc: 'Radiation signs, a blast door and an evacuation button, in front of a supply closet.' },
+                /* the west wall: the Interrogation Room, the Hold */
+                { id: 'interrogation', wall: 'w', z: 8.75, leaf: 'leaf_cell', label: 'INTERROGATION ROOM', action: { room: 'interrogation', at: 'labs' }, desc: 'It locks from the outside. It has never been locked.' },
+                { id: 'padded', wall: 'w', z: -8.75, leaf: 'leaf_cell', label: 'THE HOLD', action: { room: 'padded', at: 'labs' }, desc: 'Leave is served here when it is served.' },
             ],
-            counters: [],
+            counters: [
+
+            ],
             props: [
-                { key: 'notice_board',   wall: 's', x: 2.8 },
-                { key: 'water_cooler',   wall: 's', x: -2.8 },
-                { key: 'vending_machine', wall: 's', x: 4.2 },
-                { key: 'teal_chair',     x: -3.9, z: 0.2, face: 90 }, { key: 'teal_chair', x: -3.9, z: -0.5, face: 90 },
-                { key: 'coffee_table',   x: -3.3, z: -0.15 },
-                { key: 'papers_a',       x: -3.3, z: -0.15, y: 0.46, face: -20 },
-                { key: 'potted_plant',   x: 4.4, z: 2.4, face: 0 },
-                { key: 'potted_plant',   x: -4.4, z: -2.4, face: 0 },
-                { key: 'radiation_sign', wall: 'e', z: -2.6, mount: 1.7 },
-                { key: 'wall_clock',     wall: 'n', x: 3.4, mount: 2.6 },
-                { key: 'picture_round_c', wall: 'n', x: -3.2, mount: 1.7 },
-                { key: 'exit_sign',      wall: 's', x: 0, mount: 2.8 },
-                { key: 'security_camera', wall: 'n', x: -4.4, mount: 2.6 },
-                { key: 'nameplate',      wall: 'e', z: 0, mount: 1.55 },
-                { key: 'fire_extinguisher', wall: 'w', z: 2.7 },
-                { key: 'rug_office',     x: 0, z: 0.4 },
-                { key: 'railing_1m',     x: 1.6, z: 2, face: 0 },                       // THE PARK RULE: the rail
-                { key: 'riser_1',        x: -1.6, z: 2.4, face: 0, rect: false },          // … and the step
-                { key: 'fluorescent',    x: -2.6, z: 0, ceil: true, face: 90 },
-                { key: 'fluorescent',    x: 2.6, z: 0, ceil: true, face: 90 },
+                /* THE FLUE: the Incinerator's chimney through the middle of the level (the column behind Rhonda's desk, here bare steel), the grate round its foot lit from the furnace below */
+                { key: 'flue', x: 0, z: 0, h: 10.5 },
+                /* the walls: gauges, valves, the breaker panels, cameras over every door line */
+                { key: 'gauge_board', wall: 'w', z: 0, mount: 1.6 },
+                { key: 'psx_pipe_valve_holder_large_1', wall: 'w', z: 3.2, mount: 1.2 },
+                { key: 'psx_pipe_valve_holder_large_1', wall: 'w', z: -3.2, mount: 1.2 },
+                { key: 'breaker_panel', wall: 'e', z: 3.6, mount: 1.3 },
+                { key: 'breaker_panel', wall: 'e', z: 4.6, mount: 1.3 },
+                { key: 'keypad', wall: 'e', z: 11.4, mount: 1.3 },
+                { key: 'exit_sign', wall: 's', x: 0, mount: 3.4 },
+                { key: 'security_camera', wall: 'n', x: -13.2, mount: 5.2 },
+                { key: 'security_camera', wall: 's', x: 13.2, mount: 5.2 },
+                { key: 'security_camera', wall: 'w', z: 13.2, mount: 5.2 },
+                { key: 'security_camera', wall: 'e', z: -13.2, mount: 5.2 },
+                { key: 'radiation_sign', wall: 's', x: -12.6, mount: 2.4 },
+                { key: 'radiation_sign', wall: 'e', z: 13, mount: 2.4 },
+                /* the keycard on the floor outside Room X: level 4, and the door wants a 5 */
+                { key: 'psx_keycard_1_authorization_level_4', x: 16.2, z: 6, y: 0.01, face: 35 },
+                /* the corners the door lines leave: drums and a hazmat suit south-east, boxes and shelving south-west, the waste pipe along the west wall */
+                { key: 'radiation_drum', x: 16.4, z: 16.2 },
+                { key: 'radiation_drum', x: 17.3, z: 15.3 },
+                { key: 'radiation_drum', x: 15.4, z: 17.2 },
+                { key: 'hazmat_suit', x: 13.6, z: 17.9, face: 0 },
+                { key: 'metal_shelving', wall: 's', x: -15.6 },
+                { key: 'metal_shelving', wall: 's', x: -13.6 },
+                { key: 'cardboard_boxes', x: -17.4, z: 14.4, face: 90 },
+                { key: 'waste_pipe', x: -17.7, z: -2.2, face: 90 },
+                { key: 'chain_hoist', x: 12.2, z: -12.2, face: 225 },
+                { key: 'stretcher', x: 13, z: -15.6, face: 90 },
+                { key: 'mop_bucket', x: -15, z: 16.8 },
             ],
-            agents: [
-                { x: 2.4, z: -2.2, face: 180, pose: 'hqArms', gender: 'female', label: 'THE FLOOR WARDEN', reach: 2.2,
-                  line: '“Fourth floor. Research. Do not sleep in the lab unless you are on the list, do not go into the closet, and do not trust the room on the left to be the room on the left.”' },
-            ],
-            npcSpots: [{ x: -3.9, z: 0.2, face: 90, race: 'mad scientist', say: ['“The upside-down room is my design.” “Why?” “To see what falls.” “What falls?” “Nothing. That is the finding.”'] }],
-            onlineSpots: [{ x: 1.4, z: -1.0, face: 0 }],
-            lines: [
-                '“Where is the lab?” “Which one?” “The dream one.” “Straight ahead. Do not wake anyone. They are working.”',
-                '“Supply closet 4B.” “Yes.” “With guards.” “Yes.” “What is in it?” “Supplies.”',
-            ],
-            spawn: { x: 0, z: 1.6, face: 0 },
+            agents: [],
+            npcSpots: [],
+            onlineSpots: [],
+            lines: [],
+            spawn: { x: 0, z: -14.5, face: 180 },
         },
         /* ── ROOM REM · THE DREAM LAB — four cots with EEG racks, the screen
            that draws what the sleepers see, the subjects (a succubus, a mad
@@ -40419,53 +40343,62 @@ const DOOR_HQ = {
             ],
             spawn: { x: 0, z: 2.6, face: 0 },
         },
-        /* ── ROOM 0dB · THE TANK — the sensory deprivation tank: one pod,
-           lid ajar, a blue light inside, and nothing else to hear. ── */
+        /* ── THE TANK (DOOR HQ 2.0, the Works' middle level, north wall of the Gantry): 14 x 14 m, white tile, the tank's cyan the only colour ── */
         tank: {
             label: 'THE TANK',
-            sub: 'SENSORY DEPRIVATION · ONE HOUR',
-            roomNo: '0dB', why: 'the loudest thing in it is you',
+            roomNo: '0dB',
+            why: 'the loudest thing in it is you',
             kind: 'box',
             shell: {
-                w: 4.4, d: 4.4, h: 2.8,
-                wallH: 2.8, dadoH: 1.2,
-                floor: 'tilefloor_2', wall: 'tilefloor_2', dado: 'tilefloor', trim: 'gunmetal', ceiling: 'ceiling',
-                floorColor: 0x3a4250, wallColor: 0x2c3440, dadoColor: 0x384050, ceilColor: 0x1e242c,
+                w: 14,
+                d: 14,
+                h: 6,
+                wallH: 6,
+                dadoH: 1.5,
+                floor: 'tilefloor',
+                wall: 'urban:TileSubway1a',
+                dado: 'urban:TileSubway1a',
+                trim: 'metal',
+                ceiling: 'urban:FibreCeilingTile1a',
+                floorColor: 0x9fb4b8,
+                wallColor: 0xa8c4c8,
+                dadoColor: 0xd4dcdc,
+                ceilColor: 0xdfe4e4,
                 pipes: false,
                 strips: false,
-                lights: [],
-                mood: { light: 0x304060, ambient: 0.25 },
-                plate: { x: 0, z: -1.95, y: 2.3 },
+                keyLamp: 0,
+                lights: [{ x: 0, z: -2.5 }],
+                mood: { light: 0x8fd3d8, ambient: 0.3 },
+                plate: { x: 0, z: -6.9, y: 4.4 },
             },
             doors: [
-                { id: 'dreamlab', wall: 'w', z: 0, leaf: 'leaf_cell',
-                  label: 'THE DREAM LAB', sub: 'BACK TO THE COTS',
-                  action: { room: 'dreamlab', at: 'tank' },
-                  desc: 'The way out. It is louder out there.' },
+                { id: 'labs', wall: 's', x: 0, leaf: 'leaf_hospital', label: 'THE GANTRY', action: { room: 'labs', at: 'tank' }, desc: 'The way out. It is louder out there.' },
             ],
             counters: [
-                { id: 'lid', x: 0.6, z: -0.025, face: 270, plateY: 1.4, radius: 1.6, verb: 'READ',
-                  label: 'THE LID', sub: 'FLOAT · SIXTY MINUTES', action: {},
-                  desc: 'The tank. Salt water at skin temperature, the lid, the dark. The log on the wall has every session and every one is longer than the last.' },
+                { id: 'lid', x: 0, z: -0.6, face: 0, plateY: 1.6, radius: 1.8, verb: 'READ', label: 'THE LID', action: {  }, desc: 'The tank. Salt water at skin temperature, the lid, the dark. The log on the wall has every session and every one is longer than the last.' },
             ],
             props: [
-                { key: 'iso_tank',       x: 0.6, z: -0.025, face: 270 },
-                { key: 'riser_1',        x: -1, z: -0.025, face: 90, rect: false },                // THE PARK RULE: the step in (… and the rail)
-                { key: 'railing_1m',     x: -0.4, z: -1.225, face: 0 },
-                { key: 'locker_bench',   wall: 's', x: -0.6 },
-                { key: 'sink',           wall: 'n', x: -1.2 },
-                { key: 'floor_drain',    x: -1.2, z: 0.975 },
-                { key: 'clipboard',      wall: 'n', x: 1.0, mount: 1.5, rot: -2 },              // the float log
-                { key: 'toilet_paper',   x: -1.6, z: 1.575, face: 0 },
-                { key: 'bare_bulb',      x: -0.8, z: 0.4, ceil: true },
+                /* THE TANK in the middle under its one lamp, the water's cyan the only colour; two cryo tubes behind it; the gear on the side walls */
+                { key: 'iso_tank', x: 0, z: -2.6, face: 0, h: 2 },
+                { key: 'floor_drain', x: 0, z: 0.4 },
+                { key: 'meshy_molten_cryo_tube', x: -4.2, z: -5.2, face: 180 },
+                { key: 'meshy_molten_cryo_tube', x: 4.2, z: -5.2, face: 180 },
+                { key: 'eeg_rack', x: 2.6, z: -2.4, face: 270 },
+                { key: 'steel_table', x: -5.2, z: 0.5, face: 90 },
+                { key: 'psx_monitoring_screen_mp_1', x: -5.2, z: 0.2, y: 0.76, face: 90 },
+                { key: 'clipboard_flat', x: -5.1, z: 1, y: 0.76, face: 60 },
+                { key: 'sink_row', wall: 'e', z: 0.5 },
+                { key: 'hazmat_suit', x: 6.2, z: -3.6, face: 270 },
+                { key: 'locker_bench', x: -5.6, z: -3.4, face: 90 },
+                { key: 'clipboard', wall: 'n', x: 1.4, mount: 1.4 },
+                { key: 'security_camera', wall: 'n', x: -6.2, mount: 4.4 },
+                { key: 'bare_bulb', x: 0, z: -2.6, ceil: true },
             ],
             agents: [],
-            npcSpots: [{ x: -1.2, z: -1.225, face: 135, say: ['“An hour in there and you hear the building.” “What does it say?” “Which floor.”'] }],
+            npcSpots: [],
             onlineSpots: [],
-            lines: [
-                '“Zero decibels.” “Then what is that?” “Your heart. It is not on the log.”',
-            ],
-            spawn: { x: -1.4, z: 0.6, face: 90 },
+            lines: [],
+            spawn: { x: 0, z: 4.6, face: 0 },
         },
         /* ── ROOM * · THE MANDELA ROOM — a different room every time you
            enter (variants with `when: { each: true }`: rolled on every entry,
@@ -40645,168 +40578,176 @@ const DOOR_HQ = {
             ],
             spawn: { x: -1.6, z: 0.8, face: 90 },
         },
-        /* ── ROOM 4B · SUPPLY CLOSET 4B — the vestibule: radiation warnings
-           on every wall, two armed guards, the evacuation button under its
-           cover, and THE BLAST DOOR that wants maximum clearance (L6). Behind
-           it: a supply closet. ── */
+        /* ── SUPPLY CLOSET 4B (DOOR HQ 2.0, the Gantry's south wall): 10.5 x 10.5 m of warnings in front of a blast door ── */
         closet4b: {
             label: 'SUPPLY CLOSET 4B',
-            sub: 'RESTRICTED · CLEARANCE L6',
-            roomNo: '4B', why: 'a supply closet on the fourth floor, B side; the clearance on it is the only thing in the register that outranks the penthouse',
+            roomNo: '4B',
+            why: 'a supply closet in the Works, B side; the clearance on it is the only thing in the register that outranks the penthouse',
             kind: 'box',
             shell: {
-                w: 6, d: 5, h: 3.2,
-                wallH: 3.2, dadoH: 1.2,
-                floor: 'concrete_floor', wall: 'concrete', dado: 'gunmetal', trim: 'gunmetal', ceiling: 'metal_3',
-                floorColor: 0x9a9a94, wallColor: 0xb8b6b0, dadoColor: 0x5a5e62, ceilColor: 0x6a6e72,
+                w: 10.5,
+                d: 10.5,
+                h: 4.5,
+                wallH: 4.5,
+                dadoH: 1.2,
+                floor: 'concrete_floor',
+                wall: 'concrete',
+                dado: 'gunmetal',
+                trim: 'gunmetal',
+                ceiling: 'metal_3',
+                floorColor: 0x9a9a94,
+                wallColor: 0xb8b8b0,
+                dadoColor: 0x5a5e62,
+                ceilColor: 0x6a6e72,
                 pipes: true,
-                light: { x: 0, z: 0 },
-                mood: { light: 0xfff0d8 },
-                plate: { x: 0, z: -2.25, y: 2.6 },
+                strips: false,
+                keyLamp: 0,
+                lights: [{ x: 0, z: 0 }],
+                mood: { light: 0xfff2d8, ambient: 0.45 },
+                plate: { x: -3.2, z: -5.15, y: 3.4 },
             },
             doors: [
-                { id: 'labs', wall: 's', x: 0, leaf: 'leaf_cell',
-                  label: 'THE FOURTH FLOOR', sub: 'BACK TO THE FLOOR',
-                  action: { room: 'labs', at: 'closet4b' },
-                  desc: 'The way back to the floor. The guards do not watch you leave; they watch the other door.' },
-                { id: 'blast', wall: 'n', x: 0, leaf: 'leaf_vault', wide: true, minClearance: 6,
-                  label: 'THE BLAST DOOR', sub: 'SUPPLY CLOSET 4B · CLEARANCE L6',
-                  action: { room: 'supply', at: 'blast' },
-                  desc: 'The blast door. Forty centimetres of steel, a wheel, a seal, and the highest clearance in the building on the plate. It is a supply closet. Nobody will say why.' },
+                { id: 'labs', wall: 's', x: 0, leaf: 'leaf_cell', label: 'THE GANTRY', action: { room: 'labs', at: 'closet4b' }, desc: 'The way back to the gantry. Nobody watches you leave; they watch the other door.' },
+                { id: 'blast', wall: 'n', x: 0, leaf: 'leaf_vault', wide: true, minClearance: 6, label: 'SUPPLY CLOSET 4B', action: { room: 'supply', at: 'blast' }, desc: 'The blast door. Forty centimetres of steel, a wheel, a seal, and the highest clearance in the building on the plate. It is a supply closet. Nobody will say why.' },
             ],
             counters: [
-                { id: 'evac', x: 2.7, z: 0.48, face: 270, plateY: 1.6, radius: 1.8, verb: 'PRESS',
-                  label: 'EVACUATION', sub: 'THE BUTTON · UNDER THE COVER', action: {},
-                  desc: 'A red button under a hinged cover, wired to a bell that rings in every room. Pressing it clears the building. The building is cleared to the foyer.' },
+                { id: 'evac', x: 3.4, z: -3.6, face: 0, plateY: 1.6, radius: 1.6, verb: 'PRESS', label: 'EVACUATION', action: {  }, desc: 'A red button under a hinged cover, wired to a bell that rings in every room. Pressing it clears the building. The building is cleared to the foyer.' },
             ],
             props: [
-                { key: 'radiation_sign', wall: 'n', x: -1.8, mount: 1.7 }, { key: 'radiation_sign', wall: 'n', x: 1.8, mount: 1.7 },
-                { key: 'radiation_sign', wall: 'w', z: -1.2, mount: 1.7 }, { key: 'radiation_sign', wall: 'e', z: -1.4, mount: 1.7 },
-                { key: 'evac_button',    wall: 'e', z: 0.6, mount: 1.2 },
-                { key: 'warning_tape',   x: 0, z: -1.2, face: 0 },
-                { key: 'keypad',         wall: 'n', z: 0, x: 1.1, mount: 1.3 },
-                { key: 'breaker_panel',  wall: 'w', z: 1.2 },
-                { key: 'security_camera', wall: 's', x: -2.4, mount: 2.6 }, { key: 'security_camera', wall: 'n', x: -2.4, mount: 2.6 },
-                { key: 'metal_shelving', wall: 'w', z: -0.2 },
-                { key: 'cardboard_boxes', x: -2.2, z: 1.8, face: 30 },                            // the masks
-                { key: 'railing_1m',     x: -0.6, z: 0.6, face: 0 },                              // THE PARK RULE: the queue rail
-                { key: 'riser_1',        x: 2.2, z: 1.78, face: 0, rect: false },                  // … and the step
-                { key: 'fire_extinguisher', wall: 'e', z: 1.9 },
-                { key: 'clipboard',      wall: 's', x: 2.0, mount: 1.5, rot: 3 },                 // the access log; every line is DENIED
-                { key: 'fluorescent',    x: 0, z: 0, ceil: true, face: 90 },
+                /* everything says danger and points at the blast door: tape on the floor before it, signs, the keypad, the button */
+                { key: 'warning_tape', x: 0, z: -3.2, face: 0 },
+                { key: 'radiation_sign', wall: 'n', x: -2.6, mount: 2.2 },
+                { key: 'radiation_sign', wall: 'n', x: 2.6, mount: 2.2 },
+                { key: 'radiation_sign', wall: 'w', z: 0, mount: 1.8 },
+                { key: 'radiation_sign', wall: 'e', z: 0, mount: 1.8 },
+                { key: 'keypad', wall: 'n', x: -2, mount: 1.3 },
+                { key: 'evac_button', wall: 'n', x: 3.4, mount: 1.2 },
+                { key: 'breaker_panel', wall: 'e', z: 2.6, mount: 1.3 },
+                { key: 'metal_shelving', wall: 'w', z: -2.2 },
+                { key: 'radiation_drum', x: -4.2, z: 2.2 },
+                { key: 'radiation_drum', x: -4.4, z: 3.1 },
+                { key: 'fire_extinguisher', wall: 'e', z: 1.2 },
+                { key: 'security_camera', wall: 'n', x: -4.6, mount: 3.6 },
+                { key: 'security_camera', wall: 'n', x: 4.6, mount: 3.6 },
+                { key: 'fluorescent', x: 0, z: 0, ceil: true, face: 90 },
             ],
-            agents: [
-                { x: -1.1, z: -1.5, face: 180, pose: 'hqArms', gender: 'male', label: 'ARMED GUARD', reach: 2.0,
-                  line: '“Clearance.” “I am L' + '—” “You do not have it.” “What is in there?” “Supplies.”' },
-                { x: 1.1, z: -1.5, face: 180, pose: 'hqArms', gender: 'female', label: 'ARMED GUARD', reach: 2.0,
-                  line: '“Do not press the button.” “What does it do?” “Evacuates the building.” “Why is it here?” “In case of the closet.”' },
-            ],
+            agents: [],
             npcSpots: [],
             onlineSpots: [],
-            lines: [
-                '“It is a closet.” “It is a closet with a blast door.” “What is in it?” “Supplies. L6 supplies.”',
-                '“Why the radiation signs?” “Regulation.” “Which regulation?” “The one about closets.”',
-            ],
-            spawn: { x: 0, z: 1.4, face: 0 },
+            lines: [],
+            spawn: { x: 0, z: 2.6, face: 0 },
         },
-        /* ── THE SUPPLY CLOSET (behind the blast door): mops, rolls, one bulb.
-           No number (it is 4B's inside). ── */
+        /* ── behind the blast door: SUPPLY CLOSET 4B, a supply closet (joined to closet4b on the stage, as before) ── */
         supply: {
             label: 'SUPPLY CLOSET 4B',
-            sub: 'INSIDE · SUPPLIES',
             kind: 'box',
             shell: {
-                w: 4.0, d: 3.6, h: 2.8,
-                wallH: 2.8, dadoH: 0.9,
-                floor: 'concrete', wall: 'drywall', dado: 'oxblood', trim: 'gunmetal', ceiling: 'ceiling',
-                floorColor: 0x8e8c88, wallColor: 0xe0dcd0, dadoColor: 0x5a4640,
+                w: 10.5,
+                d: 10.5,
+                h: 4.5,
+                wallH: 4.5,
+                dadoH: 0.9,
+                floor: 'concrete',
+                wall: 'drywall',
+                dado: 'oxblood',
+                trim: 'gunmetal',
+                ceiling: 'ceiling',
+                floorColor: 0x8e8c88,
+                wallColor: 0xe0dcd0,
+                dadoColor: 0x5a4640,
                 pipes: true,
                 strips: false,
-                light: { x: 0, z: 0 },
-                mood: { light: 0xffe8c0, ambient: 0.5 },
-                plate: { x: 0, z: -1.55, y: 2.3 },
+                keyLamp: 0,
+                lights: [],
+                mood: { light: 0xffe8c0, ambient: 0.45 },
+                plate: { x: 3.2, z: -5.15, y: 3.4 },
             },
             doors: [
-                { id: 'blast', wall: 's', x: 0, leaf: 'leaf_vault', wide: true,
-                  label: 'THE BLAST DOOR', sub: 'BACK TO THE FLOOR',
-                  action: { room: 'closet4b', at: 'blast' },
-                  desc: 'Forty centimetres of steel, from the inside. The wheel turns more easily from here.' },
+                { id: 'blast', wall: 's', x: 0, leaf: 'leaf_vault', wide: true, label: 'SUPPLY CLOSET 4B', action: { room: 'closet4b', at: 'blast' }, desc: 'Forty centimetres of steel, from the inside. The wheel turns more easily from here.' },
             ],
-            counters: [],
+            counters: [
+
+            ],
             props: [
-                { key: 'metal_shelving', wall: 'n', x: -0.6 }, { key: 'metal_shelving', wall: 'n', x: 0.6 },
-                { key: 'toilet_paper',   x: -0.6, z: -1.2, y: 1.2, face: 0 }, { key: 'toilet_paper', x: 0.2, z: -1.2, y: 1.2, face: 0 }, { key: 'toilet_paper', x: 0.9, z: -1.2, y: 0.6, face: 0 },
-                { key: 'mop_bucket',     x: 1, z: 0.8, face: 30 },
-                { key: 'mop',            wall: 'e', z: 0.0 },
-                { key: 'broom',          wall: 'w', z: 0.4 },
-                { key: 'wet_floor_sign', x: -0.9, z: 0.9, face: 60 },
-                { key: 'cardboard_box',  x: -1, z: -0.2, face: 20 },
-                { key: 'clipboard',      wall: 'e', z: -0.9, mount: 1.5, rot: 4 },                // INVENTORY: 400 ROLLS · 399
-                { key: 'riser_1',        x: 0.2, z: 0.2, face: 0, rect: false },                  // THE PARK RULE: the step stool (… and the shelf rail)
-                { key: 'railing_1m',     x: 0, z: -0.7, face: 0 },
-                { key: 'bare_bulb',      x: 0, z: 0, ceil: true },
+                /* behind the highest clearance in the building: a supply closet */
+                { key: 'metal_shelving', wall: 'w', z: -2.4 },
+                { key: 'metal_shelving', wall: 'w', z: 0.2 },
+                { key: 'metal_shelving', wall: 'n', x: -2.4 },
+                { key: 'metal_shelving', wall: 'n', x: 2.4 },
+                { key: 'toilet_paper', x: -2.4, z: -4.9, y: 1.25, face: 0 },
+                { key: 'toilet_paper', x: -2.1, z: -4.9, y: 1.25, face: 0 },
+                { key: 'toilet_paper', x: 2.4, z: -4.9, y: 0.75, face: 0 },
+                { key: 'mop_bucket', x: 3.6, z: -1.2 },
+                { key: 'mop', wall: 'e', z: -2.6 },
+                { key: 'broom', wall: 'e', z: -1.9 },
+                { key: 'wet_floor_sign', x: 2.6, z: 0.6, face: 200 },
+                { key: 'cardboard_box', x: 3.9, z: 1.9, face: 10 },
+                { key: 'clipboard', wall: 'e', z: 0.4, mount: 1.4 },
+                { key: 'bare_bulb', x: 0, z: -1, ceil: true },
             ],
             agents: [],
             npcSpots: [],
             onlineSpots: [],
-            lines: [
-                '“That is it?” “Four hundred rolls.” “The log says three hundred and ninety-nine.” “Yes. That is why the door.”',
-            ],
-            spawn: { x: 0, z: 0.7, face: 0 },
+            lines: [],
+            spawn: { x: 0, z: 2.6, face: 0 },
         },
-        /* ── ROOM II · CLONE DISPOSAL — a near-empty room: a steel table, a
-           lone gun on it, a garbage chute in the wall, two chairs facing each
-           other, and the other one of you already sitting in one of them
-           (`clone: true` — the walker's own vessel). ── */
+        /* ── CLONE DISPOSAL (DOOR HQ 2.0, the Gantry's east wall): 14 x 14 m: the chute, the table, the gun ── */
         disposal: {
             label: 'CLONE DISPOSAL',
-            sub: 'ONE OF YOU · THE CHUTE',
-            roomNo: 'II', why: 'the second copy; the form does not say which',
+            roomNo: 'II',
+            why: 'the second copy; the form does not say which',
             kind: 'box',
             shell: {
-                w: 6, d: 5, h: 3.2,
-                wallH: 3.2, dadoH: 1.0,
-                floor: 'concrete', wall: 'concrete', dado: 'gunmetal', trim: 'gunmetal', ceiling: 'concrete',
-                floorColor: 0x7e7c78, wallColor: 0x9a9894, dadoColor: 0x4e5256, ceilColor: 0x6a6866,
-                pipes: false,
+                w: 14,
+                d: 14,
+                h: 6,
+                wallH: 6,
+                dadoH: 1.5,
+                floor: 'tilefloor',
+                wall: 'urban:TileSubway1a',
+                dado: 'urban:TileSubway1a',
+                trim: 'metal',
+                ceiling: 'urban:FibreCeilingTile1a',
+                floorColor: 0xe6eaea,
+                wallColor: 0xe6eaea,
+                dadoColor: 0xd4dcdc,
+                ceilColor: 0xdfe4e4,
+                pipes: true,
                 strips: false,
-                lights: [],
-                mood: { light: 0xe8e0c8, ambient: 0.35 },
-                plate: { x: 0, z: -2.25, y: 2.6 },
+                keyLamp: 0,
+                lights: [{ x: 0, z: -2.5 }, { x: 0, z: 2.5 }],
+                mood: { light: 0xe6f0ff, ambient: 0.5 },
+                plate: { x: 3.6, z: -6.9, y: 4.4 },
             },
             doors: [
-                { id: 'labs', wall: 'w', z: 0, leaf: 'leaf_cell',
-                  label: 'THE FOURTH FLOOR', sub: 'BACK TO THE FLOOR',
-                  action: { room: 'labs', at: 'disposal' },
-                  desc: 'The way out. One of you takes it.' },
+                { id: 'labs', wall: 's', x: 0, leaf: 'leaf_cell', label: 'THE GANTRY', action: { room: 'labs', at: 'disposal' }, desc: 'The way out. One of you takes it.' },
             ],
             counters: [
-                { id: 'chute', x: 0, z: -1.9, face: 0, plateY: 1.5, radius: 2.0, verb: 'READ',
-                  label: 'THE CHUTE', sub: 'DISPOSAL · FORM II', action: {},
-                  desc: 'The hatch in the wall, and the form beside it. The form has two lines for names and both of them are yours. It does not say which line is the clone.' },
+                { id: 'chute', x: 0, z: -5, face: 0, plateY: 1.6, radius: 2, verb: 'READ', label: 'THE CHUTE', action: {  }, desc: 'The hatch in the wall, and the form beside it. The form has two lines for names and both of them are yours. It does not say which line is the clone.' },
             ],
             props: [
-                { key: 'steel_table',    x: -0.375, z: -0.125, face: 0 },
-                { key: 'lone_gun',       x: -0.375, z: -0.125, y: 0.76, face: 30 },
-                { key: 'garbage_chute',  wall: 'n', x: 0, mount: 0.6 },
-                { key: 'folding_chair',  x: -1.575, z: -0.125, face: 90 },
-                { key: 'folding_chair',  x: 0.825, z: -0.125, face: 270 },
-                { key: 'clipboard',      wall: 'n', x: 1.6, mount: 1.5, rot: -3 },                // the disposal log: your callsign, twice
-                { key: 'floor_drain',    x: -1, z: 1.225 },
-                { key: 'floor_stain',    x: 0.6, z: -1.2 },
-                { key: 'security_camera', wall: 's', x: -2.4, mount: 2.6 },
-                { key: 'railing_1m',     x: 0, z: -1.2, face: 0 },                                // THE PARK RULE: the chute's guard rail
-                { key: 'riser_1',        x: 1.2, z: 1.625, face: 0, rect: false },                  // … and the step
-                { key: 'bare_bulb',      x: 0, z: 0.2, ceil: true },
+                /* the chute in the back wall, the table and the gun in front of it, one chair; the suits on the west wall, a body bag waiting */
+                { key: 'garbage_chute', wall: 'n', x: 0, mount: 0.6 },
+                { key: 'warning_tape', x: 0, z: -5.6, face: 0 },
+                { key: 'steel_table', x: 0, z: -2.2, face: 0 },
+                { key: 'lone_gun', x: 0.2, z: -2.2, y: 0.76, face: 30 },
+                { key: 'clipboard_flat', x: -0.5, z: -2, y: 0.76, face: -10 },
+                { key: 'folding_chair', x: 0, z: -0.9, face: 0 },
+                { key: 'floor_drain', x: 0, z: -4 },
+                { key: 'hazmat_suit', x: -6.2, z: -3.2, face: 90 },
+                { key: 'hazmat_suit', x: -6.2, z: -1.8, face: 90 },
+                { key: 'stretcher', x: 4.8, z: -3.2, face: 0 },
+                { key: 'hw_body', x: 4.8, z: -3.2, y: 0.36, face: 0 },
+                { key: 'sink_row', wall: 'e', z: 1.2 },
+                { key: 'security_camera', wall: 'n', x: -6, mount: 4.4 },
+                { key: 'fluorescent', x: 0, z: -2.5, ceil: true, face: 90 },
+                { key: 'fluorescent', x: 0, z: 2.5, ceil: true, face: 90 },
             ],
             agents: [],
-            npcSpots: [{ x: 0.825, z: -0.125, face: 270, clone: true, say: ['“You took your time.” “Who are you?” “That is the form’s question, not mine. Sit down. One of us is going in the chute and I have been here longer.”', '“I remember your first crossing.” “So do I.” “Then which of us was there?”'] }],
+            npcSpots: [{ x: 1.7, z: -2.2, face: 270, clone: true, say: ['“You took your time.” “Who are you?” “That is the form’s question, not mine. Sit down. One of us is going in the chute and I have been here longer.”', '“I remember your first crossing.” “So do I.” “Then which of us was there?”'] }],   // YOU: the walker's own vessel, standing at the table (three-renderer.js `clone`)
             onlineSpots: [],
-            lines: [
-                '“Whose gun?” “Ours.” “Which of us?” “Whichever picks it up. That is the test, apparently.”',
-                '“The chute goes where?” “Down.” “Down to what?” “The other one of the incinerator.”',
-            ],
-            spawn: { x: -1.9, z: 0.2, face: 90 },
+            lines: [],
+            spawn: { x: 0, z: 4.6, face: 0 },
         },
         /* ══════════════════════════════════════════════════════════════════
            THE HAUNTED HOUSE COMPLEX (HQ plan 9.2 stage 1 — 2026-09-15).
@@ -87334,7 +87275,7 @@ const HQ_STAGE_RULES = {
        rebuild). A zone not listed keeps today's rooms and doors exactly; a later phase adds its zone here when its
        joins are built. `buildDelayMs` = the beat after the room's card drops before the first neighbour builds (the
        arrival stays smooth); `lampPickMs` = how often the lamp budget re-picks the nearest `lampsLive` point lights. */
-    zones: ['medwing', 'basement', 'dumb', 'works', 'annex', 'labs', 'executive', 'execwing', 'derelict', 'hwing'], buildDelayMs: 600, lampPickMs: 500,   // Phase 4: THE BASEMENT; Phase 5 (2026-09-27): THE D.U.M.B. (door joins); THE LAND cut (ZONES_PLAN Z0): the stage is DOOR HQ's only; ZONES_PLAN Z2 (2026-09-30): the floors
+    zones: ['medwing', 'garage', 'basement', 'dumb', 'works', 'annex', 'labs', 'executive', 'derelict', 'hwing'], buildDelayMs: 600, lampPickMs: 500,   // Phase 4: THE BASEMENT; Phase 5 (2026-09-27): THE D.U.M.B. (door joins); THE LAND cut (ZONES_PLAN Z0): the stage is DOOR HQ's only; ZONES_PLAN Z2 (2026-09-30): the floors
     /* a neighbour's PEOPLE (Phase 2): 'interior' = a closed room's cast (the nurse at her desk, the patient on his cot) is
        spawned with the room when it is built beside you, so the ward is not empty through its open door; an outdoor part's
        crowd still comes out when you cross (Phase 1's rule — a city block is dozens of rigs). 'none' = Phase 1's rule
@@ -87377,7 +87318,14 @@ const HQ_STAGE_RULES = {
         { a: 'ring_g', door: 'barbershop', b: 'barbershop', bDoor: 'egress' },
         { a: 'ring_g', door: 'lecture', b: 'classroom', bDoor: 'egress' },
         { a: 'ring_g', door: 'cubicles', b: 'cubicles', bDoor: 'egress' },
-        { a: 'central_egress', door: 'cafeteria', b: 'cafeteria', bDoor: 'lobby' },   // THE CAFETERIA (DOOR HQ 2.0 wave 2, 2026-11-26): the open front at 270 degrees (17.5 x 4.5 m), the Kitchen inside the same box
+        { a: 'central_egress', door: 'cafeteria', b: 'cafeteria', bDoor: 'lobby' },
+        /* THE GALLERY JOIN (DOOR HQ 2.0 wave 3, 2026-11-26): the Lobby's upper level and its five glass-fronted rooms, no card; each box
+           stands on the gallery's floor (hqStageRoundGeom `level` 1: rel.y = the hall's wallH) */
+        { a: 'central_egress', door: 'observatorium', b: 'observatorium', bDoor: 'lobby' },
+        { a: 'central_egress', door: 'cryptid', b: 'cryptid', bDoor: 'lobby' },
+        { a: 'central_egress', door: 'continuity', b: 'continuity', bDoor: 'lobby' },
+        { a: 'central_egress', door: 'spirit', b: 'spirit', bDoor: 'lobby' },
+        { a: 'central_egress', door: 'extraterrestrial', b: 'extraterrestrial', bDoor: 'lobby' },   // THE CAFETERIA (DOOR HQ 2.0 wave 2, 2026-11-26): the open front at 270 degrees (17.5 x 4.5 m), the Kitchen inside the same box
     ],
 };
 /* THE EXPLORATION DAY (§4.4 — Phase 3, 2026-09-26). One clock for every outdoor room (2026-10-17: hqRoomClock; was every zone with `clock: true`): a day of `dayMin` real
@@ -87772,16 +87720,23 @@ const HQ_WORLD = {
            door, `bDoor` = b's) is a pair of real doors back to back through a HQ_WORLD_RULES.wallM wall: both leaves swing
            when you come near and you walk through — no card. The wing's west door to the main hall stays a door (the hall
            is a round room of its own). Frames: the wing at the origin; a quarter turn carries a room's north to the west. */
-        medwing: { label: 'THE MEDICAL WING', ground: 'hq', hub: 'medwing', sky: null, clock: false,
+        /* DOOR HQ 2.0 wave 3 (2026-11-26): THE GARAGE + THE SUBWAY, one stage. The platform stands off the Garage's south opening (the
+           Garage's `subway` ⇄ the platform's `garage`, both `open` 7 x 4.2 m): you walk down to the train, no card. Under the Lobby. */
+        garage: { label: 'GARAGE', ground: 'hq', hub: 'garage', sky: null, clock: false,
             parts: {
-                medwing:       { x: 0,    z: 0,     y: 0, rot: 0 },
-                interrogation: { x: 9.7,  z: 0,     y: 0, rot: 0 },    // its west door faces the wing's east door
-                padded:        { x: -2.2, z: -6.0,  y: 0, rot: 0 },    // DOOR HQ 2.0 (2026-11-26): behind the wing's north door at x −2.2 (the old ward's), its south door facing it
+                garage: { x: 0,    z: -300, y: -9, rot: 0 },
+                tunnel: { x: -3.5, z: -256.05, y: -9, rot: 0 },   // its north wall 0.2 m south of the Garage's (26.25 + 0.2 + 17.5), its opening (x 3.5) on the Garage's (x 0)
             },
             joins: [
-                { a: 'medwing', b: 'padded',        kind: 'door', door: 'ward',          bDoor: 'egress' },
-                { a: 'medwing', b: 'interrogation', kind: 'door', door: 'interrogation', bDoor: 'egress' },
+                { a: 'garage', b: 'tunnel', kind: 'door', door: 'subway', bDoor: 'garage' },
             ] },
+        medwing: { label: 'THE MEDICAL WING', ground: 'hq', hub: 'medwing', sky: null, clock: false,
+            /* DOOR HQ 2.0 WAVE 3 (2026-11-26): the wing is retired (DOOR_HQ.retired.medwing); the Hold and the Interrogation Room went down to the
+               Works' middle level (zone `labs`) */
+            parts: {
+                medwing:       { x: 0,    z: 0,     y: 0, rot: 0 },
+            },
+            joins: [] },
         /* Z11 — THE BASEMENT (Phase 4, 2026-09-27, §8.4's basement merge built as the medical wing was: DOOR JOINS, the
            rooms kept whole). The service lobby at the foot of the lift, the kitchen and its cold room north, the laundry and
            the loading dock east, and west the long corridors — the boiler room off A, the server room off B, the room at the
@@ -87799,7 +87754,6 @@ const HQ_WORLD = {
                 corridor_a: { x: -15.7, z: 1.2,  y: -4, rot: 1 },
                 boiler:     { x: -13.7, z: -3.9, y: -4, rot: 1 },
                 corridor_b: { x: -41.9, z: 1.2,  y: -4, rot: 1 },
-                server:     { x: -47.9, z: -4.9, y: -4, rot: 1 },
                 deadend:    { x: -58.6, z: 1.2,  y: -4, rot: 1 },
             },
             joins: [
@@ -87808,7 +87762,7 @@ const HQ_WORLD = {
                 { a: 'services',   b: 'corridor_a', kind: 'door', door: 'corridor',   bDoor: 'lobby' },
                 { a: 'corridor_a', b: 'boiler',     kind: 'door', door: 'boiler',     bDoor: 'corridor' },
                 { a: 'corridor_a', b: 'corridor_b', kind: 'door', door: 'corridor_b', bDoor: 'corridor_a' },
-                { a: 'corridor_b', b: 'server',     kind: 'door', door: 'server',     bDoor: 'corridor' },
+                /* (DOOR HQ 2.0 WAVE 3, 2026-11-26: the Server Room is on the Works' middle level now, zone `labs`; corridor B's door to it is a door) */
                 { a: 'corridor_b', b: 'deadend',    kind: 'door', door: 'deadend',    bDoor: 'corridor' },
             ] },
         /* ZONES_PLAN Z2 THE FLOORS (2026-09-30): each floor of the building a staged zone, the medwing / basement recipe (DOOR
@@ -87850,33 +87804,40 @@ const HQ_WORLD = {
                 annex:      { x: 0, z: 0, y: 16, rot: 0 },
                 garden:     { x: 0, z: -14.2, y: 16, rot: 0 },
                 natatorium: { x: 20.2, z: -14.2, y: 16, rot: 0 },
-                orb:        { x: 1.6, z: -28.9, y: 16, rot: 3 },
-                dungeon:    { x: -6.1, z: -29.4, y: 16, rot: 3 },
             },
             joins: [
                 { a: 'annex', b: 'garden', kind: 'door', door: 'garden', bDoor: 'annex' },
                 { a: 'garden', b: 'natatorium', kind: 'door', door: 'pool', bDoor: 'garden' },
-                { a: 'garden', b: 'orb', kind: 'door', door: 'gate', bDoor: 'gate' },
-                { a: 'orb', b: 'dungeon', kind: 'door', door: 'dungeon', bDoor: 'orb' },
+                /* (DOOR HQ 2.0 WAVE 3, 2026-11-26: Room X is on the Works' middle level, sealed; the garden's gate and the dungeon's portcullis to it are doors) */
             ] },
-        /* Z2 — floor 4 (THE LABS): the lobby, the dream lab and its tank, the Mandela room and the carnival through its
-           mirrors, closet 4B and the supply closet. Doors: the upside-down room and disposal (their walls hold the Mandela
-           room and closet 4B), the carnival's tunnel down to the garage. */
-        labs: { label: 'THE FOURTH FLOOR', ground: 'hq', hub: 'labs', sky: null, clock: false,
+        /* DOOR HQ 2.0 WAVE 3 (2026-11-26) — THE WORKS, MIDDLE: the labs and the holding block (docs/plans/door-hq-2/plans/4_works_middle_bottom.png).
+           THE GANTRY (`labs`, 38.5 m square round the flue) is the hub; every room stands against one of its four walls, door to door through
+           HQ_WORLD_RULES.wallM: north the Cells (14 x 21) and the Tank, east Clone Disposal, south the Server Room and Supply Closet 4B (its
+           blast door into the supply closet behind it, joined as before), west the Interrogation Room and the Hold (14 x 17.5). Every room's
+           door to the Gantry is on its own south wall; the turn faces it in. Doors that stay doors: the freight ramp (up to the factory), the
+           stair (down to the Incinerator), the lift, Room X (sealed, L5), H-Wing's two plain doors, the Sewers from the Cells. Deep under the
+           building (y −30): only the validator reads it. */
+        labs: { label: 'THE GANTRY', ground: 'hq', hub: 'labs', sky: null, clock: false,
             parts: {
-                labs:     { x: 0, z: 0, y: 24, rot: 0 },
-                dreamlab: { x: 0, z: -7.2, y: 24, rot: 0 },
-                mandela:  { x: -8.2, z: -1.5, y: 24, rot: 1 },
-                closet4b: { x: 7.7, z: -1.5, y: 24, rot: 3 },
-                tank:     { x: 7.4, z: -7.2, y: 24, rot: 0 },
-                supply:   { x: 12.2, z: -1.5, y: 24, rot: 3 },
+                labs:          { x: 0,      z: 0,      y: -30, rot: 0 },
+                cells:         { x: -8.75,  z: -31.7,  y: -30, rot: 0 },
+                tank:          { x: 8.75,   z: -26.45, y: -30, rot: 0 },
+                disposal:      { x: 26.45,  z: -8.75,  y: -30, rot: 3 },
+                server:        { x: 8.75,   z: 26.45,  y: -30, rot: 2 },
+                closet4b:      { x: -8.75,  z: 24.7,   y: -30, rot: 2 },
+                supply:        { x: -8.75,  z: 35.4,   y: -30, rot: 2 },
+                interrogation: { x: -28.2,  z: 8.75,   y: -30, rot: 1 },
+                padded:        { x: -28.2,  z: -8.75,  y: -30, rot: 1 },
             },
             joins: [
-                { a: 'labs', b: 'dreamlab', kind: 'door', door: 'dreamlab', bDoor: 'labs' },
-                { a: 'labs', b: 'mandela', kind: 'door', door: 'mandela', bDoor: 'labs' },
-                { a: 'labs', b: 'closet4b', kind: 'door', door: 'closet4b', bDoor: 'labs' },
-                { a: 'dreamlab', b: 'tank', kind: 'door', door: 'tank', bDoor: 'dreamlab' },
-                { a: 'closet4b', b: 'supply', kind: 'door', door: 'blast', bDoor: 'blast' },
+                { a: 'labs', b: 'cells',         kind: 'door', door: 'cells',         bDoor: 'labs' },
+                { a: 'labs', b: 'tank',          kind: 'door', door: 'tank',          bDoor: 'labs' },
+                { a: 'labs', b: 'disposal',      kind: 'door', door: 'disposal',      bDoor: 'labs' },
+                { a: 'labs', b: 'server',        kind: 'door', door: 'server',        bDoor: 'labs' },
+                { a: 'labs', b: 'closet4b',      kind: 'door', door: 'closet4b',      bDoor: 'labs' },
+                { a: 'closet4b', b: 'supply',    kind: 'door', door: 'blast',         bDoor: 'blast' },
+                { a: 'labs', b: 'interrogation', kind: 'door', door: 'interrogation', bDoor: 'labs' },
+                { a: 'labs', b: 'padded',        kind: 'door', door: 'padded',        bDoor: 'labs' },
             ] },
         /* Z2 — PH (THE PENTHOUSE): the lobby, the corner office, the pool deck. */
         executive: { label: 'THE PENTHOUSE', ground: 'hq', hub: 'executive', sky: null, clock: false,
@@ -87890,17 +87851,7 @@ const HQ_WORLD = {
                 { a: 'executive', b: 'pool', kind: 'door', door: 'pool', bDoor: 'lobby' },
             ] },
         /* (the records wing zone: retired 2026-11-26, DOOR HQ 2.0 wave 3: Records and the Clock Room are rooms on the Ring) */
-        /* Z2 — floor M, the executive wing (off the rotunda's upper ring at 315°): the wing, the trophy case, continuity. */
-        execwing: { label: 'THE EXECUTIVE WING', ground: 'hq', hub: 'execwing', sky: null, clock: false,
-            parts: {
-                execwing:   { x: 60, z: 0, y: 0, rot: 0 },
-                trophycase: { x: 50.3, z: 0, y: 0, rot: 2 },
-                continuity: { x: 61.4, z: -8.2, y: 0, rot: 1 },
-            },
-            joins: [
-                { a: 'execwing', b: 'trophycase', kind: 'door', door: 'trophycase', bDoor: 'egress' },
-                { a: 'execwing', b: 'continuity', kind: 'door', door: 'continuity', bDoor: 'egress' },
-            ] },
+        /* (the executive wing, Z2 floor M: RETIRED 2026-11-26, DOOR HQ 2.0 wave 3: the Bureau of Continuity is on the Lobby's gallery, the Trophy Case a cabinet on the Lobby's wall) */
         /* THE SPACESHIP (LEVEL_DESIGN_PLAN §6, 2026-09-30 — mondo: "the spaceship to have no load screens going between the rooms"):
            the airlock, the hold, the bridge and the deck staged door to door (each pair 0.2 m apart and facing). The deck lies
            3.2 m under the airlock (its door is up the airlock tower); the collar (the one door off the ship), the bay and the
@@ -88127,9 +88078,12 @@ function hqStageRoundJoins(roomId, otherId) {
         if (!A || !B || !(hqRoundHubR(A) > 0)) continue;
         if (B.kind !== 'box' || !(B.shell && B.shell.w > 0 && B.shell.d > 0)) continue;
         const da = (A.doors || []).find(d => d && d.id === j.door), db = (B.doors || []).find(d => d && d.id === j.bDoor);
-        if (!da || !db || (da.level || 0) !== 0 || !isFinite(+da.deg) || !_hqDoorOnWall(B, db)) continue;
+        /* THE GALLERY JOIN (DOOR HQ 2.0 wave 3, 2026-11-26): a level-1 door of the hall (the gallery) joins too; its room stands
+           on the gallery's floor (rel.y = the hall's wallH), so the division offices are seen through their glass from below */
+        const lv = da && (da.level || 0);
+        if (!da || !db || (lv !== 0 && lv !== 1) || (lv === 1 && !A.shell.mezz) || !isFinite(+da.deg) || !_hqDoorOnWall(B, db)) continue;
         if (A.kind === 'bay' && (da.cap || da.side === 'in')) continue;   // THE RING: only a door on its outer wall
-        out.push({ a: j.a, b: j.b, door: da, bDoor: db });
+        out.push({ a: j.a, b: j.b, door: da, bDoor: db, level: lv });
     }
     return out;
 }
@@ -88137,17 +88091,18 @@ function hqStageRoundJoins(roomId, otherId) {
    door's angle, `gap` the wall between, `ow` / `oh` the doorway (the narrower leaf's), `pb` the box door on its wall */
 function hqStageRoundGeom(j) {
     if (!j) return null;
-    const A = DOOR_HQ.rooms[j.a], B = DOOR_HQ.rooms[j.b], a = +j.door.deg * Math.PI / 180, R = hqRoundHubR(A);
+    const A = DOOR_HQ.rooms[j.a], B = DOOR_HQ.rooms[j.b], a = +j.door.deg * Math.PI / 180, lv = (j.door.level || 0) === 1 ? 1 : 0;
+    const R = lv ? (A.shell.mezz.outer || A.shell.radius) : hqRoundHubR(A), ly = lv ? (+A.shell.wallH || 0) : 0;   // THE GALLERY JOIN: the upper drum, its floor
     const gap = HQ_WORLD_RULES.wallM, pb = _hqDoorOnWall(B, j.bDoor);
     const nOut = ({ n: [0, -1], s: [0, 1], e: [1, 0], w: [-1, 0] })[pb.wall];
     let th = Math.atan2(-Math.sin(a), Math.cos(a)) - Math.atan2(nOut[0], nOut[1]);   // the box's outward normal onto the way in to the hall's centre
     th = Math.atan2(Math.sin(th), Math.cos(th));
-    const rel = { x: 0, z: 0, y: 0, rot: th / (Math.PI / 2) };
+    const rel = { x: 0, z: 0, y: ly, rot: th / (Math.PI / 2) };
     const q = hqStageToRoom(rel, pb.x, pb.z), Rf = R + gap;
     rel.x = Rf * Math.sin(a) - q.x; rel.z = -Rf * Math.cos(a) - q.z;
-    const o = hqStageFromRoom(rel, 0, 0), back = { x: o.x, z: o.z, y: 0, rot: -rel.rot };
+    const o = hqStageFromRoom(rel, 0, 0), back = { x: o.x, z: o.z, y: -ly, rot: -rel.rot };
     const oa = hqDoorOpening(j.door), ob = hqDoorOpening(j.bDoor);
-    return { rel, back, R, deg: +j.door.deg, gap, ow: Math.min(oa.ow, ob.ow), oh: Math.min(oa.oh, ob.oh), pb };
+    return { rel, back, R, deg: +j.door.deg, gap, ow: Math.min(oa.ow, ob.ow), oh: Math.min(oa.oh, ob.oh), pb, level: lv, y: ly };
 }
 /* the stage's neighbour row for a room of a round join (hqStageNeighbours' shape; the hall's span is `side: 'round'` at the
    door's angle, `t0` / `t1` across the doorway) — null for any other room */
@@ -88159,9 +88114,9 @@ function hqStageRoundNeighbours(roomId) {
             const G = hqStageRoundGeom(j); if (!G) return;
             const S = DOOR_HQ.rooms[j.b].shell, hw = S.w / 2, hd = S.d / 2;
             const cs = [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]].map(p => hqStageToRoom(G.rel, p[0], p[1]));
-            out.push({ id: j.b, rel: G.rel, round: true, links: [],
+            out.push({ id: j.b, rel: G.rel, round: true, level: G.level, links: [],
                        rect: { x0: Math.min(...cs.map(p => p.x)), z0: Math.min(...cs.map(p => p.z)), x1: Math.max(...cs.map(p => p.x)), z1: Math.max(...cs.map(p => p.z)) },
-                       spans: [{ side: 'round', deg: G.deg, R: G.R, t0: -G.ow / 2, t1: G.ow / 2, kind: 'door', door: j.door.id, pad: 0.3, depth: G.gap + 0.5 }] });
+                       spans: [{ side: 'round', deg: G.deg, R: G.R, level: G.level, y: G.y, t0: -G.ow / 2, t1: G.ow / 2, kind: 'door', door: j.door.id, pad: 0.3, depth: G.gap + 0.5 }] });
         });
         return out.length ? out : null;
     }
@@ -88172,11 +88127,12 @@ function hqStageRoundNeighbours(roomId) {
               spans: [{ side: G.pb.wall, t0: G.pb.t - G.ow / 2, t1: G.pb.t + G.ow / 2, kind: 'door', door: j.bDoor.id, pad: 0.3, depth: G.gap + 0.5 }] }];
 }
 /* THE CROSSING's rule from the round hall: past its wall and `hys` metres inside the box beyond (no flip-flop) */
-function hqStageWhereRound(R, nbs, x, z, hys) {
+function hqStageWhereRound(R, nbs, x, z, hys, lvl) {
     const hy = (hys == null ? HQ_WORLD_RULES.crossHys : hys);
     if (!(Math.hypot(x, z) > R)) return null;
     for (let i = 0; i < nbs.length; i++) {
         if (!(nbs[i].spans && nbs[i].spans.length)) continue;
+        if (lvl != null && (nbs[i].level || 0) !== lvl) continue;   // THE GALLERY JOIN: a room on the gallery over a room on the floor
         const S = ((DOOR_HQ.rooms || {})[nbs[i].id] || {}).shell; if (!S || !(S.w > 0)) continue;
         const q = hqStageFromRoom(nbs[i].rel, x, z);
         if (Math.max(Math.abs(q.x) - S.w / 2, Math.abs(q.z) - S.d / 2) < -hy) return nbs[i].id;
@@ -93525,7 +93481,7 @@ const HQ_CATALOGUE_ALL = {
     psx_arc_2_wall_1_plain: { file: 'modular_structures/arc_2_wall_1_plain.glb', base: 'psxmp', h: 3, foot: 1.5, square: true, group: 'PSX Mega Pack · walls and structures' },
     psx_arc_2_wall_2_1: { file: 'modular_structures/arc_2_wall_2_1.glb', base: 'psxmp', h: 3, foot: 1.5, square: true, group: 'PSX Mega Pack · walls and structures' },
     psx_arc_2_wall_2_2: { file: 'modular_structures/arc_2_wall_2_2.glb', base: 'psxmp', h: 3, foot: 1.5, square: true, group: 'PSX Mega Pack · walls and structures' },
-    psx_bars_metal_1: { file: 'modular_structures/bars_metal_1.glb', base: 'psxmp', h: 2.4, foot: 1.25, square: true, group: 'PSX Mega Pack · walls and structures' },
+    psx_bars_metal_1: { file: 'modular_structures/bars_metal_1.glb', base: 'psxmp', h: 2.4, foot: 1.25, rect: { hw: 1.25, hd: 0.06 }, block: true, square: true, group: 'PSX Mega Pack · walls and structures' },
     psx_bars_metal_2: { file: 'modular_structures/bars_metal_2.glb', base: 'psxmp', h: 2.4, foot: 1.25, square: true, group: 'PSX Mega Pack · walls and structures' },
     psx_beam_1: { file: 'modular_structures/beam_1.glb', base: 'psxmp', h: 0.46, foot: 2, square: true, group: 'PSX Mega Pack · walls and structures' },
     psx_beam_2: { file: 'modular_structures/beam_2.glb', base: 'psxmp', h: 0.46, foot: 2, square: true, group: 'PSX Mega Pack · walls and structures' },
@@ -94039,7 +93995,7 @@ const HQ_SAFETY_SIGNS = {
 DOOR_HQ.decals = {
     site_prebuilt_downtown_underworld: [{kind:'grime',x:144.73,z:-117.26,y:29.75,r:1.6,rot:118},{kind:'grime',x:-16.05,z:-68.78,y:43.75,r:1.6,rot:146},{kind:'grime',x:134.65,z:-64.92,y:29.75,r:1.6,rot:61},{kind:'grime',x:100.3,z:-47.51,y:36.75,r:1.6,rot:59},{kind:'grime',x:-26.16,z:-15.59,y:42,r:1.6,rot:357},{kind:'grime',x:99.68,z:-16.25,y:28,r:1.6,rot:128},{kind:'grime',x:148.43,z:-8.4,y:28,r:1.6,rot:280},{kind:'grime',x:99.67,z:15.92,y:26.25,r:1.6,rot:352},{kind:'grime',x:92.9,z:19.74,y:22.75,r:1.6,rot:104},{kind:'grime',x:110.42,z:26.14,y:26.25,r:1.6,rot:306},{kind:'grime',x:109.91,z:58.05,y:22.75,r:1.6,rot:177},{kind:'grime',x:155.84,z:82.09,y:22.75,r:1.6,rot:17},{kind:'grime',x:100.28,z:110.03,y:21,r:1.6,rot:18},{kind:'grime',x:148.92,z:117.33,y:19.25,r:1.6,rot:88},{kind:'grime',x:-25.73,z:16.33,y:29.75,r:1.6,rot:265},{kind:'grime',x:68.75,z:15.45,y:17.5,r:1.6,rot:188},{kind:'grime',x:-15.53,z:57.33,y:26.25,r:1.6,rot:16},{kind:'grime',x:40.78,z:61.78,y:28,r:1.6,rot:153},{kind:'grime',x:26.49,z:68.6,y:28,r:1.6,rot:134},{kind:'grime',x:67.89,z:109.7,y:21,r:1.6,rot:293},{kind:'grime',x:-106.43,z:9.27,y:14,r:1.6,rot:303},{kind:'grime',x:-152.18,z:15.43,y:15.75,r:1.6,rot:146},{kind:'grime',x:-57.83,z:16.13,y:19.25,r:1.6,rot:126},{kind:'grime',x:-68.4,z:36.75,y:19.25,r:1.6,rot:87},{kind:'grime',x:-75.07,z:102.93,y:17.5,r:1.6,rot:301},{kind:'grime',x:-106.4,z:-116.72,y:0,r:1.6,rot:231},{kind:'grime',x:-152.03,z:-110.14,y:5.25,r:1.6,rot:247},{kind:'grime',x:-158.69,z:-107.15,y:1.75,r:1.6,rot:78},{kind:'grime',x:-141.38,z:-100.18,y:5.25,r:1.6,rot:292},{kind:'grime',x:-61.02,z:-92.66,y:0,r:1.6,rot:150},{kind:'grime',x:-100.07,z:-89.49,y:3.5,r:1.6,rot:99},{kind:'grime',x:-109.66,z:-67.74,y:10.5,r:1.6,rot:255},{kind:'grime',x:-99.4,z:-58.03,y:10.5,r:1.6,rot:74},{kind:'grime',x:-57.46,z:-47.63,y:10.5,r:1.6,rot:250},{kind:'grime',x:-99.65,z:-26.28,y:14,r:1.6,rot:285},{kind:'grime',x:-58,z:-16.25,y:12.25,r:1.6,rot:255},{kind:'grime',x:-127.83,z:-12.33,y:14,r:1.6,rot:72},{kind:'grime',x:-102.96,z:-9.29,y:10.5,r:1.6,rot:35},{kind:'grime',x:-149.23,z:-1.71,y:14,r:1.6,rot:316},{kind:'grime',x:-141.8,z:57.28,y:12.25,r:1.6,rot:14}],   // LABYRINTH-SEWERS-DECALS: written by bake-labyrinth.js
     garage: [ { kind: 'oil', x: 0, z: -15.5, r: 1.7, rot: 20 }, { kind: 'oil', x: 13.5, z: 7, r: 1.4, rot: 70 }, { kind: 'oil', x: -12, z: 9.5, r: 1.2 } ],
-    interrogation: [ { kind: 'blood', x: 0.9, z: 0.8, r: 1.1, rot: 35 } ],
+    interrogation: [ { kind: 'blood', x: -1.6, z: -2.4, r: 1.1, rot: 35 } ],   // DOOR HQ 2.0 WAVE 3: under the table in the middle of the room
     site_prebuilt_dumb_base: [{kind:'oil',x:82.25,z:-50.75,y:3.5,r:1.2,rot:310},{kind:'grime',x:75.25,z:-75.25,y:3.5,r:1.2,rot:89},{kind:'grime',x:92.75,z:-40.25,y:3.5,r:1.2,rot:195},{kind:'grime',x:40.25,z:-43.75,y:3.5,r:1.2,rot:199},{kind:'oil',x:54.25,z:-47.25,y:3.5,r:1.2,rot:139},{kind:'grime',x:-68.25,z:-124.25,y:10.5,r:1.3,rot:5},{kind:'grime',x:19.25,z:-124.25,y:10.5,r:1.3,rot:284},{kind:'grime',x:99.75,z:-92.75,y:3.5,r:1.3,rot:52},{kind:'oil',x:127.75,z:-47.25,y:10.5,r:1.3,rot:244},{kind:'oil',x:127.75,z:64.75,y:10.5,r:1.3,rot:289},{kind:'oil',x:64.75,z:124.25,y:10.5,r:1.3,rot:290},{kind:'oil',x:-40.25,z:124.25,y:10.5,r:1.3,rot:333},{kind:'oil',x:-124.25,z:-40.25,y:10.5,r:1.3,rot:60},{kind:'oil',x:-124.25,z:57.75,y:10.5,r:1.3,rot:335},{kind:'oil',x:-103.25,z:-110.25,y:10.5,r:1.3,rot:43},{kind:'oil',x:-82.25,z:92.75,y:8.75,r:1.4,rot:127},{kind:'oil',x:-50.75,z:96.25,y:8.75,r:1.4,rot:25},{kind:'scorch',x:-29.75,z:92.75,y:8.75,r:1.4,rot:340},{kind:'oil',x:82.25,z:96.25,y:10.5,r:1.4,rot:268},{kind:'grime',x:1.75,z:82.25,y:14,r:1.4,rot:139},{kind:'grime',x:36.75,z:78.75,y:14,r:1.4,rot:189},{kind:'puddle',x:-82.25,z:36.75,y:0,r:1.2,rot:323},{kind:'puddle',x:-71.75,z:54.25,y:0,r:1.2,rot:178},{kind:'oil',x:-96.25,z:43.75,y:0,r:1.2,rot:221},{kind:'grime',x:-89.25,z:57.75,y:0,r:1.2,rot:195},{kind:'blood',x:-33.25,z:43.75,y:0,r:1.2,rot:209},{kind:'scorch',x:-29.75,z:43.75,y:0,r:1.2,rot:236},{kind:'grime',x:-50.75,z:54.25,y:0,r:1.2,rot:248},{kind:'blood',x:-43.75,z:29.75,y:0,r:1.2,rot:322},{kind:'grime',x:-75.25,z:1.75,y:3.5,r:1.2,rot:270},{kind:'puddle',x:-96.25,z:12.25,y:3.5,r:1.2,rot:79},{kind:'blood',x:-75.25,z:12.25,y:3.5,r:1.2,rot:63},{kind:'oil',x:12.25,z:-8.75,y:0,r:1.3,rot:348},{kind:'grime',x:-8.75,z:8.75,y:0,r:1.6,rot:280},{kind:'grime',x:5.25,z:-5.25,y:0,r:1.2,rot:295},{kind:'blood',x:-43.75,z:-8.75,y:0,r:1.5,rot:243},{kind:'scorch',x:-43.75,z:-5.25,y:0,r:0.9,rot:118},{kind:'grime',x:-29.75,z:1.75,y:0,r:1.4,rot:280},{kind:'oil',x:47.25,z:-5.25,y:0,r:1.4,rot:26},{kind:'grime',x:33.25,z:1.75,y:0,r:1.4,rot:328},{kind:'scorch',x:40.25,z:12.25,y:0,r:0.8,rot:95},{kind:'puddle',x:-5.25,z:-57.75,y:0,r:1.2,rot:56},{kind:'puddle',x:-8.75,z:-50.75,y:0,r:0.9,rot:83},{kind:'grime',x:1.75,z:-47.25,y:0,r:1.3,rot:9},{kind:'grime',x:5.25,z:-26.25,y:0,r:1.1,rot:14},{kind:'scorch',x:-8.75,z:-82.25,y:0,r:1.4,rot:258},{kind:'puddle',x:5.25,z:-75.25,y:0,r:1.2,rot:317},{kind:'grime',x:1.75,z:-89.25,y:0,r:1.5,rot:67},{kind:'grime',x:-8.75,z:29.75,y:0,r:1.4,rot:162},{kind:'oil',x:-5.25,z:33.25,y:0,r:1,rot:46}],   // DUMB49-DECALS: written by bake-dumb.js
     site_prebuilt_moon_plots: [{kind:'scorch',x:810.25,z:162.75,y:0.35,r:4.6,rot:198},{kind:'scorch',x:859.25,z:141.75,y:-0.36,r:2.2,rot:28},{kind:'scorch',x:862.75,z:173.25,y:0,r:3.2,rot:15},{kind:'scorch',x:740.25,z:169.75,y:0,r:3.4,rot:120}],   // SPACE72-DECALS: written by bake-space.js
     site_prebuilt_downtown_sewers: [ { kind: 'puddle', x: 0, z: 0, r: 2.4 }, { kind: 'grime', x: -6, z: 4, r: 1.2 } ],
@@ -99207,7 +99163,7 @@ DOOR_HQ.stashes = {
 };
 DOOR_HQ.findSpots = { coldroom: { tape: { x: 1.3, z: -1.35 }, pay: { x: 0.4, z: 1.7, y: 1.2 }, stash: { x: -1.0, z: 1.7, y: 1.2 } },   // D5 THE STASH (2026-09-21): the three small rooms pin theirs (the far-corner rule finds no spot in a 3 m box)
     deadend: { stash: { x: -0.82, z: 0.05 } },   // the one floor point a metre from all three landings in a 3 m room
-    supply: { stash: { x: -1.0, z: -1.32, y: 1.2 } },   // the left shelf's end, a metre off the blast door's landing
+    supply: { stash: { x: -4.95, z: 0.75, y: 1.2 } },   // the left shelf's end (DOOR HQ 2.0 WAVE 3: the closet is 10.5 m now)
     /* THE ASTRAL REALM (2026-09-19): THE SPIRE OF THE UNTHOUGHT (7.5 m), THE SPINE (4.6 m), THE TOP SHELF (3.4 m under a 4.6 m ceiling) — the door gun's three */
     /* DISASTER CITY (2026-09-17): the streets' tape on THE ROOFTOP (the 4 m low building on the ring road's west leg — the door gun's), the mall's on a store roof over the west concourse */
     site_prebuilt_downtown_streets: { tape: { x: -176.75, z: 96.25 } },
@@ -108436,7 +108392,7 @@ var ZONE_LOOKS = {
            stone, office drywall and taupe carpet. Batch 6 mapped them (stone -> hz:Stone_11, a 128 px horror tile, on the hall's drum; drywall
            in 41 rooms; carpet in 13). They are out of the maps, and zoneLookRoom never swaps a shell key DOOR_HQ.textures names */
         doorhq: {
-            rooms: ['central_egress', 'foyer', 'continuity', 'office', 'cafeteria', 'clockroom', 'barbershop', 'trophycase', 'reception', 'dispensary', 'doorstore', 'medical', 'padded', 'medwing', 'recwing', 'execwing', 'executive', 'corner', 'pool', 'interrogation', 'records', 'it', 'observatorium', 'training_pit', 'training_hall', 'car', 'garage', 'dock', 'services', 'kitchen', 'coldroom', 'laundry', 'corridor_a', 'boiler', 'corridor_b', 'deadend', 'server', 'dungeon', 'ritual', 'sacrifice', 'orb', 'annex', 'classroom', 'cubicles', 'bathroom', 'crawlspace', 'thirteenth', 'locker', 'natatorium', 'garden', 'works', 'warehouse', 'incinerator', 'autopsy', 'intro_desert', 'intro_shaft', 'doorgarden', 'control', 'lostfound', 'stairwell', 'woodstair', 'tunnel', 'labs', 'dreamlab', 'tank', 'mandela', 'upsidedown', 'closet4b', 'supply', 'disposal', 'hwing_lobby', 'hwing_floor', 'hwing_home', 'training'],
+            rooms: ['central_egress', 'foyer', 'continuity', 'office', 'cafeteria', 'clockroom', 'barbershop', 'trophycase', 'reception', 'dispensary', 'doorstore', 'medical', 'padded', 'cells', 'medwing', 'recwing', 'execwing', 'executive', 'corner', 'pool', 'interrogation', 'records', 'it', 'observatorium', 'training_pit', 'training_hall', 'car', 'garage', 'dock', 'services', 'kitchen', 'coldroom', 'laundry', 'corridor_a', 'boiler', 'corridor_b', 'deadend', 'server', 'dungeon', 'ritual', 'sacrifice', 'orb', 'annex', 'classroom', 'cubicles', 'bathroom', 'crawlspace', 'thirteenth', 'locker', 'natatorium', 'garden', 'works', 'warehouse', 'incinerator', 'autopsy', 'intro_desert', 'intro_shaft', 'doorgarden', 'control', 'lostfound', 'stairwell', 'woodstair', 'tunnel', 'labs', 'dreamlab', 'tank', 'mandela', 'upsidedown', 'closet4b', 'supply', 'disposal', 'hwing_lobby', 'hwing_floor', 'hwing_home', 'training'],
             wall: { drywall_2: 'hz:Wall_03', drywall_3: 'hz:Wall_03', drywall_4: 'hz:Wall_03', rocks_5: 'hz:Stone_11',
                     bricks_2: 'hz:Brick_10', bricks_1: 'hz:Brick_11', bricks_3: 'hz:Brick_11', dungeon: 'hz:Brick_09', dungeon_3: 'hz:Brick_08', dungeon_4: 'hz:Brick_08',
                     gunmetal: 'hz:Metal_02', gunmetal_2: 'hz:Metal_02', metal: 'hz:Metal_02', aluminium: 'hz:Metal_05', metal_3: 'hz:Metal_05',
@@ -111173,8 +111129,8 @@ const DOOR_CAST = {
         name: 'AGENT GLASS', title: 'FIELD AGENT · DECORATED', dept: 'Operations', model: 'glass', gender: 'male',
         lines: [],
         spots: [
-            { room: 'central_egress', deg: 199.5, r: 19.35, level: 0, face: 20, pose: 'hqArms', reach: 1.9,
-              doing: 'By the water cooler, arms folded. He has already decided about you.' },
+            /* DOOR HQ 2.0 wave 3 (2026-11-26, mondo: Glass leads Extraterrestrial): at his desk behind the glass */
+            { room: 'extraterrestrial', x: 0, z: -3.75, face: 180, pose: 'hqArms', reach: 2.6 },
         ],
     },
     knox: {
@@ -111191,7 +111147,9 @@ const DOOR_CAST = {
         name: 'AGENT RINGER', title: 'SENIOR FIELD AGENT · VETERAN', dept: 'Operations', model: 'ringer', gender: 'male',
         lines: [],
         spots: [
-            { room: 'training', x: 23.4, z: -4.6, face: 250, pose: 'hqArms', reach: 2.0,
+            /* DOOR HQ 2.0 wave 3 (2026-11-26, mondo: Ringer leads Spirit Realm): at his desk behind the glass */
+            { room: 'spirit', x: -2.5, z: -4.15, face: 180, pose: 'hqArms', reach: 2.6, p: 0.8 },
+            { room: 'training', x: 23.4, z: -4.6, face: 250, pose: 'hqArms', reach: 2.0, p: 0.2,
               doing: 'Belle’s father. He watches the grid the way other people watch a stove.' },
         ],
     },
@@ -111301,8 +111259,9 @@ const DOOR_CAST = {
         name: 'AGENT FORREST', title: 'FIELD AGENT · NO PHOTOGRAPHS', dept: 'Operations', race: 'bigfoot', gender: 'male', base: 'bigfoot',
         lines: [],
         spots: [
-            { room: 'central_egress', deg: 200.5, r: 22.35, level: 1, face: 200, reach: 2.4, p: 0.8,
-              doing: 'Facing the wall. Woody Forrest values his privacy. Please do not photograph Agent Forrest.' },
+            /* DOOR HQ 2.0 wave 3 (2026-11-26): the head of the Cryptid Division, behind his desk, facing the glass */
+            { room: 'cryptid', x: 0, z: -3.75, face: 180, reach: 2.6,
+              doing: 'Woody Forrest values his privacy. Please do not photograph Agent Forrest.' },
         ],
     },
     sedaniel: {
@@ -111759,7 +111718,7 @@ function hqVariantRollEach(roomId, profile, n, last) {
 function hqStage2Rooms() {
     return {
         '2': ['works', 'warehouse', 'incinerator', 'autopsy', 'doorgarden', 'control', 'lostfound', 'stairwell', 'tunnel'],
-        '4': ['labs', 'dreamlab', 'tank', 'mandela', 'upsidedown', 'closet4b', 'supply', 'disposal'],
+        '4': ['labs', 'tank', 'mandela', 'upsidedown', 'closet4b', 'supply', 'disposal', 'cells', 'padded', 'interrogation', 'server', 'orb'],   // DOOR HQ 2.0 WAVE 3: the Works' middle level (the lift's floor 4)
     };
 }
 /* THE FEEDS (Room 24/7): one row per numbered room in the register — SIGNAL /
