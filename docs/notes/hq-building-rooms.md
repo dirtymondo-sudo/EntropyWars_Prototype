@@ -1900,3 +1900,13 @@ Checked in the browser (probe-fast, llvmpipe):
 - With the Training Room held back, walking from the Ring reached it and it loaded.
 - With the Lobby held back, riding the board from the Ring reached it and it loaded.
 - Riding the board Lobby → Ring and Ring → Lobby crossed with no card. Walking Ring → Lobby crossed too. ERRORS [].
+
+### THE WAY OUT OF THE TRAINING ROOM (2026-11-26, third fix)
+mondo: "Still an invisible wall when i try to walk out the training room into the hallway". The 10.5 m corridor between the Training Room's
+south wall and the Ring's drum lay outside the Ring's square (`rect`) as seen from the Training Room. Past the span's 1.5 m pad the point
+belonged to no part, so the box's own wall check stopped the walker about 1 m out of the door, whether or not the Ring was loaded.
+data.js `hqStageRoundNeighbours` now stretches the hub's square to the box's wall on the side of a `len` join, so the corridor is the
+Ring's (its own `_hqPassJ*` passage) and the crossing into it happens there. `_hqStageSurface` also reads a round hub that isn't drawn yet as
+its floor (the crossing then loads it).
+Reproduced first in the browser: with the Ring held back, the walker stopped at z 25.6 for 120 s. After the fix, with the Ring held back
+the walker crossed at z 25.4 and the Ring loaded; with the Ring loaded it crossed at z 25.3 into the corridor with no card.
