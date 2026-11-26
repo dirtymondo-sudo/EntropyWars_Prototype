@@ -4258,3 +4258,19 @@ the vertex stage`.
   flagged `_ew_bunMiss` and records again); each landing re-dirties the sun map and the hero lamp (`_ew_gate.sig = 0`) so a caster
   that sat out is back. A bundle recording also keeps the frame's build budget (past 4 ms, a new look sits the recording out,
   `L.bunHeld`). Cloud probe: the hall draws whole (screenshot). Off: `window.EW_SYNC_PIPES`.
+
+### THE BUILDS' REASONS (2026-11-26, build `20261126-buildwhy-01`)
+mondo's F3 after THE PIPELINES OFF THE FRAME: the 515 ms frame was gone (worst 177 ms), but one 2 s dip at 12 FPS walking the Main
+Hall toward the foyer (squares -2,3 to -3,3) built 29 shaders: the walker's hair, clothes and body (built once already 36 s before)
+together with the hall's walls, batches and props. three r186 builds a look again only when its key is new, and the key holds:
+the light list (every light's id + castShadow, in order; THE ONE RIG keeps the point lamps' slots fixed, so only the real lights
+move it: the hero torch, a caster, a spot), the pass's render context id (a target made again = a new id), the material's settings
+(transparent, side, maps, ...), the piece's receiveShadow, and the scene key (fog, environment, the context node's version).
+What we checked: the stage lamps' nearest-N pick does not reach the key on WebGPU (the rig). The cloud cannot walk the hall on
+WebGPU (SwiftShader loses the device), so the cause is not yet seen.
+Built: `_ewWhyOf(ro)` (three-renderer.js, beside `_ewKeep`) at every node build compares the piece's last build in the same kind of
+pass and tags it: `[first]`, `[lights]`, `[light node]`, `[pass]`, `[receive shadow]`, `[geometry]`, `[material swapped X>Y]`,
+`[material: transparent,side…]`, `[material key]`, `[scene key]`, `[same key]` (a build whose key was put aside and lost). The
+tags ride on "Last shader builds" and the dip's "built:" list; a new lens line "Why looks were built (session): …" counts them and
+names the last change of the light list (`_ewWhyLights`, from THE ONE RIG's signature: `+name#id` came, `-name#id` went).
+Next: the F3 from a walk names the reason, and the fix goes at it.
