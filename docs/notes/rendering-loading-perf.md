@@ -4274,3 +4274,19 @@ pass and tags it: `[first]`, `[lights]`, `[light node]`, `[pass]`, `[receive sha
 tags ride on "Last shader builds" and the dip's "built:" list; a new lens line "Why looks were built (session): …" counts them and
 names the last change of the light list (`_ewWhyLights`, from THE ONE RIG's signature: `+name#id` came, `-name#id` went).
 Next: the F3 from a walk names the reason, and the fix goes at it.
+
+### THE RIG'S OWN LAMPS (2026-11-26, build `20261126-riglamps-01`)
+mondo's first F3 with THE BUILDS' REASONS (walking the Main Hall): "lights 73 · scene key 46 · same key 42 …", and the one light list
+change named was "-ew rig p#4770 -ew rig p#4772 …" at 02:12:50, under the card: 24 of THE ONE RIG's own point lamps (32 pregrown
+minus the 8 seeded) LEAVING the list of real lights. Cause: THE KEPT LIGHT LIST reads what the scene gained from THE FRONT DESK, and
+a rig that grows adds its new lamps to its own group, so the desk handed each new rig lamp over as a newly added light; the rig
+does not carry its own lamps (`_ewRigKind` null), so they were listed as REAL lights until the list's 20 s re-read dropped them.
+In those 20 s every warm (`_ewRigFrameLights` / `_ewRigWarmKids`) compiled the room's looks for a light list with 24 extra lamps,
+which no frame draws with: those builds were wasted, the frames built each look again as it came into view ("[lights]" after the
+card), and the 20 s re-read changed the rig's signature, so the warm settled for another list. Fix: the desk's additions skip the
+rig's lamps and anything else in the rig's group (`ao._ew_rigLamp || ao.parent === R.group`).
+The reasons now read three's own list: `_ewWhyLi` (each light id + shadow from `ro.lightsNode.getLights()`), so "[lights]" is
+exact and the lens names which lights differed between a piece's two builds ("light lists differed N times, last: +name#id …").
+"[scene: fog,environment,context node,shadows,lighting]" names a scene-key part; "[same key, same moment]" = two builds of one
+key within 50 ms (two draws asked before the first build was kept). "[material: side]" on see-through two-sided pieces is three's
+own back + front pass of a transparent DoubleSide material (two builds, once each), not a rebuild.
