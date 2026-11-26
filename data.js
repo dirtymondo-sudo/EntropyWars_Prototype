@@ -34364,6 +34364,7 @@ const DOOR_HQ = {
     retired: { ring_m: 'central_egress',   /* THE EIGHT DOORS (2026-11-18): the mezzanine ring held only bay doors; its four doors in the Main Hall are closed */
                kitchen: 'cafeteria', coldroom: 'cafeteria',   /* DOOR HQ 2.0 WAVE 2 (2026-11-26, the Cafeteria thread): the Kitchen is the strip behind the Cafeteria's serving hatch, the Cold Room folded into it (LOOK_BOOK.md); the basement pair is gone */
                dispensary: 'doorstore',   /* DOOR HQ 2.0 WAVE 2 (2026-11-26, mondo: "The Hatch/The Dispensary/Shop needs to be renamed to Door Store and only door store"): Room 911 off the Medical Wing is the Door Store off the Lobby; the wing's door to it is cut */
+               recwing: 'ring_g',   /* DOOR HQ 2.0 WAVE 3 (2026-11-26, the Ring's rooms): Records and the Clock Room have their own doors on the Ring; the wing between is gone */
                reception: 'central_egress',   /* DOOR HQ 2.0 WAVE 1 (2026-11-26, mondo: "Rhonda's desk is the reception, she is the receptionist"): its door is cut, its two counters stand at her desk */
                site_prebuilt_downtown_mall: 'site_prebuilt_bayside_mall',   /* THE BAYSIDE MALL (2026-11-20): the old hall, 96 x 64 m behind a 28 m building, is this one building now (bake-mall.js) */
         site_prebuilt_cyberpunk_streets: 'site_prebuilt_downtown_streets', site_prebuilt_cyberpunk_noodle: 'site_prebuilt_downtown_streets',   /* THE DOOR AUDIT (2026-11-18, mondo: the new Cyberpunk City is "a reskin/reimagining of current disaster city"): the old Cyberpunk City's two rooms are never entered (its four ways in are cut); they stand only as the fight board's source */
@@ -34504,7 +34505,10 @@ const DOOR_HQ = {
                                 Party Builder and the Map Editor stay on the main menu; the ID card and the intake sheet are counters at Rhonda's desk */
                              'quartermaster', 'engineering', 'reception'],
             services: ['kitchen'], corridor_b: ['coldroom'],   // DOOR HQ 2.0 WAVE 2 (2026-11-26): the basement Kitchen and Cold Room are retired into the Cafeteria (DOOR_HQ.retired)
-            medwing: ['dispensary'],   // DOOR HQ 2.0 WAVE 2 (2026-11-26): the Dispensary is the Door Store, off the Lobby (DOOR_HQ.retired.dispensary)
+            medwing: ['dispensary'],
+            /* DOOR HQ 2.0 WAVE 3 (2026-11-26, the Ring's rooms): IT, Lost and Found, the Locker Room, the Bathroom, the Lecture Hall and the Cubicle
+               Floor stand on the Ring now, each behind its one door; the old floors' doors to them and their back ways are closed */
+            annex: ['classroom', 'cubicles', 'bathroom', 'locker'], works: ['lostfound'], server: ['it'], natatorium: ['locker'], crawlspace: ['stall'],   // DOOR HQ 2.0 WAVE 2 (2026-11-26): the Dispensary is the Door Store, off the Lobby (DOOR_HQ.retired.dispensary)
             tunnel: ['carnival'], mandela: ['mirrors'], site_prebuilt_area51_ow_circus: ['tunnel', 'mirrors'],   // the two doors to the Circus that stood open from the first minute
             dungeon: ['oubliette'], site_prebuilt_hollow_earth_ug_cavern: ['dungeon'],                              // the Dungeon's moving wall to the Cavern
             site_prebuilt_fairy_forest_ow_ritual: ['lookingglass'], site_prebuilt_camelot_ow_forest: ['deadtree'],   // the dead tree: Bohemian Grove and Camelot's Forest touch by a trail
@@ -35225,12 +35229,21 @@ const DOOR_HQ = {
                 { id: 'foyer',     deg: 180, level: 0, leaf: 'leaf_lobby_glass_double', wide: true, label: 'THE FOYER', action: { room: 'foyer', at: 'egress' } },
                 { id: 'cafeteria', deg: 270, level: 0, open: { w: 17.5, h: 4.5 }, label: 'CAFETERIA', action: { room: 'cafeteria', at: 'lobby' } },
                 { id: 'bay_terrestrial', deg: 300, level: 0, leaf: 'leaf_wired_double', wide: true, label: 'THE RING', action: { sector: 'terrestrial' } },
-                /* ── the Ring's rooms (plans/1_lobby_level_plan.png): their doors stand on the Ring's outer wall ── */
-                { id: 'it',        deg: 0, level: 0, onRing: { level: 0, deg: 35 },  leaf: 'leaf_holographic', label: 'IT', action: { room: 'it', at: 'egress' } },
+                /* ── the Ring's rooms (plans/1_lobby_level_plan.png): their doors stand on the Ring's outer wall. DOOR HQ 2.0 wave 3 (2026-11-26):
+                   all eleven, clockwise from the Training Room's line, each a box room behind one door JOINED to the Ring with no card
+                   (HQ_STAGE_RULES.round, THE RING AS A HUB); the angles keep the boxes clear of each other (each front's half-angle at the
+                   Ring's outer wall + a margin). The H-Wing door (about 228) and the Subway are not rooms of this row. ── */
+                { id: 'it',        deg: 0, level: 0, onRing: { level: 0, deg: 28 },  leaf: 'leaf_office', label: 'IT', action: { room: 'it', at: 'egress' } },
+                { id: 'lostfound', deg: 0, level: 0, onRing: { level: 0, deg: 52 },  leaf: 'leaf_office', label: 'LOST AND FOUND', action: { room: 'lostfound', at: 'egress' } },
+                { id: 'locker',    deg: 0, level: 0, onRing: { level: 0, deg: 74 },  leaf: 'leaf_office', label: 'LOCKER ROOM', action: { room: 'locker', at: 'egress' } },
+                { id: 'bathroom',  deg: 0, level: 0, onRing: { level: 0, deg: 95 },  leaf: 'leaf_office', label: 'BATHROOM', action: { room: 'bathroom', at: 'egress' } },
                 { id: 'woods',     deg: 0, level: 0, onRing: { level: 0, deg: 118 }, leaf: 'leaf_bulkhead', label: 'STAIR TO THE WOODS', action: { room: 'woodstair', at: 'egress' } },
-                { id: 'office',    deg: 0, level: 0, onRing: { level: 0, deg: 140 }, leaf: 'leaf_closet_warped', label: 'YOUR OFFICE', action: { room: 'office', at: 'egress' }, rankDoor: true },
-                { id: 'records',   deg: 0, level: 0, onRing: { level: 0, deg: 162 }, leaf: 'leaf_wired_double', wide: true, label: 'RECORDS', action: { room: 'recwing', at: 'egress' } },
-                { id: 'barbershop', deg: 0, level: 0, onRing: { level: 0, deg: 215 }, ringProps: [{ key: 'barber_pole', ddeg: 2 }], leaf: 'leaf_birch_glass', label: 'BARBERSHOP', action: { room: 'barbershop', at: 'egress' } },
+                { id: 'office',    deg: 0, level: 0, onRing: { level: 0, deg: 141 }, leaf: 'leaf_closet_warped', label: 'YOUR OFFICE', action: { room: 'office', at: 'egress' }, rankDoor: true },
+                { id: 'records',   deg: 0, level: 0, onRing: { level: 0, deg: 162 }, leaf: 'leaf_wired_double', wide: true, label: 'RECORDS', action: { room: 'records', at: 'egress' } },
+                { id: 'clockroom', deg: 0, level: 0, onRing: { level: 0, deg: 187 }, leaf: 'leaf_office', label: 'CLOCK ROOM', action: { room: 'clockroom', at: 'egress' } },
+                { id: 'barbershop', deg: 0, level: 0, onRing: { level: 0, deg: 211 }, ringProps: [{ key: 'barber_pole', ddeg: 2 }], leaf: 'leaf_birch_glass', label: 'BARBERSHOP', action: { room: 'barbershop', at: 'egress' } },
+                { id: 'lecture',   deg: 0, level: 0, onRing: { level: 0, deg: 250 }, leaf: 'leaf_office', label: 'LECTURE HALL', action: { room: 'classroom', at: 'egress' } },
+                { id: 'cubicles',  deg: 0, level: 0, onRing: { level: 0, deg: 290 }, leaf: 'leaf_office', label: 'CUBICLE FLOOR', action: { room: 'cubicles', at: 'egress' } },
                 { id: 'subway',    deg: 0, level: 0, onRing: { level: 0, deg: 350 }, leaf: 'leaf_white_wood', label: 'THE SUBWAY', action: { room: 'tunnel', at: 'ring' } },   // until the Garage holds the platform's way down
                 /* ── the gallery (level 1) ── */
                 { id: 'observatorium', deg: 0, level: 1, leaf: 'leaf_holographic', label: 'THE OBSERVATORY', action: { room: 'observatorium', at: 'egress' } },
@@ -35460,7 +35473,6 @@ const DOOR_HQ = {
 
         office: {
             label: 'YOUR OFFICE',
-            sub: 'STORY · CASE FILE',
             roomNo: '101', why: 'the room holds your worst fear; yours is a closet',
             noWalkers: true,   // mondo 2026-11-13: nobody has a route through your office (a man in black walked into the office scene)
             kind: 'box',
@@ -35705,208 +35717,98 @@ const DOOR_HQ = {
             spawn: { x: 0, z: 7.0, face: 0 },
         },
 
-        /* ── ROOM 247 · THE CLOCK ROOM (HQ plan 7.4 / 7.9, 2026-09-11) — a box
-           room off the ground ring at 225°, between MEDICAL and RECORDS. The
-           user's 247 and 365 merged: 24/7, and the form number is the year.
-           FORM 365 (Daily Office Operations Requirements) hangs on the east
-           wall — the counter reads the day's sheet (hqDailyOps); the PUNCH
-           CLOCK beside it is the login streak (hqPunchClock); the notice
-           board on the south wall posts today's Code Red (the existing panel).
-           The WORLD CLOCKS over the timekeeper's desk read SHASTA · GIZA ·
-           LOCAL · CERN · THE MOON, and every clock in the room disagrees on
-           purpose (three more on the walls, hung at different heights). ── */
+        /* ── CLOCK ROOM (DOOR HQ 2.0 wave 3, 2026-11-26): on the Ring now, its own door (the Records Wing is retired). 14 x 14 m, 5.25 m.
+           FORM 365 (the day's tasks), the punch clock (the login streak) and the Code Red board keep their counters; every clock in the
+           room disagrees. LOOK_BOOK.md "Clock Room". ── */
         clockroom: {
-            label: 'THE CLOCK ROOM',
-            sub: 'DAILY TASKS · LOGIN STREAK',
-            roomNo: '247', why: '24/7 — every clock in here is right somewhere; the form is the year',
-            kind: 'box',
+            label: 'CLOCK ROOM',
+            kind: 'box', noWalkers: true,
             shell: {
-                w: 9, d: 7, h: 3.4,
-                wallH: 3.4, dadoH: 1.05,
-                floor: 'terrazzo', wall: 'drywall', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling',
-                pipes: false,
-                light: { x: 0, z: 0 },
-                plate: { x: 0, z: -3.25, y: 2.85 },
+                w: 14, d: 14, h: 5.25,
+                wallH: 5.25, dadoH: 1.05,
+                floor: 'urban:TileLinoleum1c', wall: 'drywall_2', dado: 'urban:WoodPanelling1a', trim: 'brass', ceiling: 'ceiling',
+                floorColor: 0xc8c0b0, wallColor: 0xe0d6bc, ceilColor: 0xeeeae0,
+                pipes: false, strips: false,
+                lights: [{ x: -3.5, z: -2 }, { x: 3.5, z: -2 }, { x: 0, z: 3 }],
+                mood: { light: 0xfff1d6, ambient: 0.5 },
             },
             doors: [
-                { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_frosted', wide: true,
-                  label: 'THE RECORDS WING', sub: 'BACK TO THE WING',
-                  action: { room: 'recwing', at: 'clockroom' },
-                  desc: 'The way back to the hall. The frosted glass says CLOCK ROOM backwards from this side, which is the right way round for the clocks.' },
+                { id: 'egress', wall: 's', x: 0, leaf: 'leaf_office', label: 'THE RING', action: { room: 'central_egress', at: 'clockroom' } },
             ],
             counters: [
-                /* FORM 365 on the east wall → the day's three requirements */
-                { id: 'form365', x: 3.55, z: -0.7, face: 90, plateY: 2.35, radius: 2.0, verb: 'READ',
-                  label: 'FORM 365', sub: 'DAILY TASKS', action: { overlay: 'form365' } },
-                /* the punch clock → the login streak */
-                { id: 'punch', x: 3.55, z: 1.5, face: 90, plateY: 1.95, radius: 1.7, verb: 'PUNCH',
-                  label: 'PUNCH CLOCK', sub: 'LOGIN STREAK', action: { overlay: 'punch' } },
-                /* the notice board on the south wall → today's Code Red (the hall's own panel) */
-                { id: 'codered', x: -1.6, z: 2.95, face: 180, plateY: 2.05, radius: 1.8, verb: 'READ',
-                  label: 'CODE RED', sub: 'TODAY’S BONUS BATTLE', action: { overlay: 'codered' } },
+                { id: 'form365', x: -1.6, z: -5.6, face: 0, plateY: 2.35, radius: 2.0, verb: 'READ', label: 'FORM 365', action: { overlay: 'form365' } },
+                { id: 'punch', x: 5.95, z: -1.0, face: 90, plateY: 1.95, radius: 1.7, verb: 'PUNCH', label: 'PUNCH CLOCK', action: { overlay: 'punch' } },
+                { id: 'codered', x: 5.95, z: 2.2, face: 90, plateY: 2.05, radius: 1.8, verb: 'READ', label: 'CODE RED', action: { overlay: 'codered' } },
             ],
             props: [
-                /* ── the north wall: the timekeeper's desk under the world clocks ── */
-                { key: 'world_clocks',   wall: 'n', x: -1.6 },
-                { key: 'pocket_watch_hung', wall: 'n', x: 0.55, rot: 4 },      // 2026-09-12: the watch that keeps a different time, on its chain
-                { key: 'pocket_watch',   x: -2.225, z: -2.3, y: 0.76, face: 25 },   //   … and its twin open on the desk
-                { key: 'tanker_desk',    x: -1.875, z: -2.37, face: 180 },
-                { key: 'crt_terminal',   x: -2.425, z: -2.47, y: 0.76, face: 180 },
-                { key: 'rotary_phone',   x: -1.225, z: -2.42, y: 0.76, face: 160 },
-                { key: 'papers_a',       x: -1.775, z: -2.17, y: 0.76, face: 15 },
-                { key: 'stapler',        x: -1.325, z: -2.07, y: 0.76, face: 40 },
-                { key: 'computer_chair_blue', x: -1.875, z: -2.97, face: 180 },        // the 2026-09-13 chair
-                { key: 'filing_cabinet', wall: 'n', x: 1.3 },
-                { key: 'filing_cabinet', wall: 'n', x: 2.0 },
-                { key: 'cardboard_boxes', x: 3.6, z: -2.9, face: 25 },
-                { key: 'vent_grille',    wall: 'n', x: 3.4, mount: 2.5 },
-                /* ── the east wall: FORM 365, the punch clock, the card rack ── */
-                { key: 'form_sheet',     wall: 'e', z: -0.7 },
-                { key: 'punch_clock',    wall: 'e', z: 1.5 },
-                { key: 'wall_clock',     wall: 'e', z: -2.4, mount: 2.85 },                   // disagrees with the north wall
-                { key: 'folding_chair',  x: 3.3, z: 2.6, face: 300 },                        // where you wait to punch in
-                { key: 'trash_bin',      x: 3.9, z: 0.4, face: 270 },
-                /* ── the south wall: today's Code Red, two more clocks, the breaker ── */
-                { key: 'notice_board',   wall: 's', x: -1.6 },
-                { key: 'wall_clock',     wall: 's', x: 0.5, mount: 2.8 },                    // …and with the east wall
-                { key: 'wall_clock',     wall: 's', x: 1.6, mount: 2.45 },                   // …and with the one beside it
-                { key: 'breaker_panel',  wall: 's', x: 3.4 },
-                { key: 'fire_extinguisher', wall: 's', x: 2.5 },
-                { key: 'water_cooler',   x: -3.8, z: 2.7 },
-                { key: 'folding_chair',  x: -2.9, z: 2.75, face: 20 },
-                /* ── the west wall: the way out, one clock over it ── */
-                { key: 'exit_sign',      wall: 'w', z: 0, mount: 2.75 },
-                { key: 'wall_clock',     wall: 'w', z: -2.2, mount: 2.7 },                   // the fifth clock; nobody has set it
-                { key: 'picture_round_c', wall: 'w', z: 2.2 },
-                { key: 'rug_office',     x: -3.1, z: 0, face: 90 },
-                { key: 'potted_plant',   x: -3.9, z: -2.9 },
-                /* ── the ceiling ── */
-                { key: 'fluorescent',    x: -1.9, z: 0, ceil: true, face: 90 },
-                { key: 'fluorescent',    x: 1.9,  z: 0, ceil: true, face: 90 },
+                /* the north wall: the world clocks high, FORM 365 under them, the grandfather clock and the hourglass either side */
+                { key: 'world_clocks', wall: 'n', x: 0, mount: 3.2 },
+                { key: 'form_sheet',   wall: 'n', x: -1.6 },
+                { key: 'pocket_watch_hung', wall: 'n', x: 1.4, rot: 4 },
+                { key: 'gclock',       x: -5.6, z: -6.2, face: 180 },
+                { key: 'giant_hourglass', x: 4.8, z: -5.2, face: 200 },
+                /* the east wall: the punch clock and the Code Red board */
+                { key: 'punch_clock',  wall: 'e', z: -1.0, mount: 1.25 },
+                { key: 'notice_board', wall: 'e', z: 2.2 },
+                /* the timekeeper's desk, west */
+                { key: 'tanker_desk',  wall: 'w', z: -0.5 },
+                { key: 'desk_lamp',    x: -6.35, z: -1.2, y: 0.76, face: 90 },
+                { key: 'papers_a',     x: -6.3, z: -0.2, y: 0.76, face: 15 },
+                { key: 'office_chair', x: -5.2, z: -0.5, face: 270 },
+                /* every clock disagrees */
+                { key: 'wall_clock', wall: 'w', z: -4.2, mount: 3.1 }, { key: 'wall_clock', wall: 'w', z: 2.8, mount: 2.4 },
+                { key: 'wall_clock', wall: 'e', z: -4.6, mount: 2.9 }, { key: 'wall_clock', wall: 'e', z: 5.0, mount: 3.4 },
+                { key: 'wall_clock', wall: 's', x: -4.8, mount: 3.0 }, { key: 'wall_clock', wall: 's', x: 4.8, mount: 2.6 },
+                { key: 'potted_plant', x: -5.7, z: 5.6 },
+                { key: 'psx_ceiling_lamp_2_on', x: -3.5, z: -2, ceil: true }, { key: 'psx_ceiling_lamp_2_on', x: 3.5, z: -2, ceil: true },
+                { key: 'psx_ceiling_lamp_2_on', x: 0, z: 3, ceil: true },
             ],
-            agents: [
-                { x: -1.875, z: -2.97, face: 180, pose: 'hqSit', gender: 'male', label: 'THE TIMEKEEPER', reach: 2.6,
-                  line: '“Which clock?” “The right one.” “They are all the right one. That is the job.”' },
-            ],
-            npcSpots: [
-                { x: 2.7, z: 1.5,  face: 90 },     // punching in
-                { x: 2.4, z: -0.7, face: 90 },     // reading the form
-                { x: -2.6, z: 1.6, face: 30 },
-            ],
-            onlineSpots: [
-                { x: 1.9, z: 2.1, face: 60 },
-                { x: 0.6, z: -1.6, face: 20 },
-            ],
-            lines: [
-                '“Three lines a day. Nobody has ever done four.” “Is there a fourth line?” “No.”',
-                '“Punch in.” “I punched in yesterday.” “Then you are a day behind.”',
-                '“The Moon clock is slow.” “The Moon is slow.”',
-                '“Form 365 is due every day.” “Including today?” “Especially today.”',
-                '“The clocks disagree so that one of them is always right. It is a redundancy.”',
-            ],
-            spawn: { x: -3.3, z: 0, face: 90 },
+            agents: [], npcSpots: [], lines: [],
+            spawn: { x: 0, z: 4.4, face: 0 },
         },
 
-        /* ── ROOM 1287 · OCCAM'S BARBERSHOP (HQ plan 7.4, 2026-09-11) — a box
-           room off the ground ring at 105°, between the Quartermaster and
-           Reception. "Change your appearance": THE CHAIR is where you choose
-           what you walk the building as — the recruit (the Player model),
-           your most-played vessel, a D.O.O.R. agent, or any declassified
-           vessel with a rigged file (hqAvatarPref / hqSetAvatar → door.hq
-           .avatar; map.js _hqAvatar reads it; the renderer swaps you in
-           place, hq.setAvatar). THE MIRROR is the CHARACTER CREATOR (rev 8,
-           2026-09-13 — hqLook / hqSetLook → door.hq.look; the chair's
-           'look' mode walks it; the card's photo is the bust the mirror
-           took, profile.js doorCardPortrait). William of
-           Ockham, b. c. 1287: the simplest cut. The pole has not turned
-           since. ── */
+        /* ── BARBERSHOP (DOOR HQ 2.0 wave 3, 2026-11-26): on the Ring (its pole hangs beside the door outside). 14 x 10.5 m, 4.5 m. Two
+           chairs facing their mirrors on the back wall: THE CHAIR (who you walk the building as) and the MIRROR (the character creator);
+           the waiting chairs by the window wall. One name, no subtitle. LOOK_BOOK.md "Barbershop". ── */
         barbershop: {
-            label: 'OCCAM’S BARBERSHOP',
-            sub: 'CHANGE AVATAR',
-            roomNo: '1287', why: 'William of Ockham, b. c. 1287 — the simplest cut',
-            kind: 'box',
+            label: 'BARBERSHOP',
+            kind: 'box', noWalkers: true,
             shell: {
-                w: 8, d: 6, h: 3.3,
-                wallH: 3.3, dadoH: 1.05,
-                floor: 'checkerboard', wall: 'drywall', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling',
-                pipes: false,
-                light: { x: 0, z: 0.4 },
-                plate: { x: 0, z: -2.75, y: 2.8 },
+                w: 14, d: 10.5, h: 4.5,
+                wallH: 4.5, dadoH: 1.2,
+                floor: 'checkerboard', wall: 'drywall_2', dado: 'urban:TileSubway1a', trim: 'brass', ceiling: 'ceiling',
+                wallColor: 0xe8dcc0, ceilColor: 0xf0ece2,
+                pipes: false, strips: false,
+                lights: [{ x: -3, z: -1.5 }, { x: 3, z: -1.5 }, { x: 0, z: 2.5 }],
+                mood: { light: 0xfff1d6, ambient: 0.55 },
             },
             doors: [
-                { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_birch_glass',
-                  label: 'THE LOBBY',
-                  action: { room: 'central_egress', at: 'barbershop' },
-                  desc: 'The way back to the hall. The lettering on the glass reads OCCAM’S from the hall and, from in here, whatever you walked in as.' },
+                { id: 'egress', wall: 's', x: 0, leaf: 'leaf_birch_glass', label: 'THE RING', action: { room: 'central_egress', at: 'barbershop' } },
             ],
             counters: [
-                /* THE CHAIR → who you walk the building as (the HQ avatar) */
-                { id: 'chair', x: -1.6, z: -1.55, face: 0, plateY: 1.9, radius: 1.7, verb: 'SIT',
-                  label: 'THE CHAIR', sub: 'CHANGE AVATAR', action: { overlay: 'barber' } },
-                /* THE MIRROR → THE CHARACTER CREATOR (rev 8, 2026-09-13): your own look on a human base, filed on the
-                   card (hqSetLook); the mirror photographs the bust for the ID card, the chair's 'look' mode walks it */
-                { id: 'mirror', x: 1.6, z: -2.55, face: 0, plateY: 2.45, radius: 1.5, verb: 'LOOK',
-                  label: 'MIRROR', sub: 'CHARACTER CREATOR', action: { fn: '_mountReactCreator' },
-                  desc: 'Your own face, hair and clothes on file. The mirror takes the photo for your card; sit in the chair to walk the building as it.' },
+                { id: 'chair', x: -3.0, z: -0.9, face: 0, plateY: 1.9, radius: 1.7, verb: 'SIT', label: 'THE CHAIR', action: { overlay: 'barber' } },
+                { id: 'mirror', x: 3.0, z: -3.2, face: 0, plateY: 2.45, radius: 1.5, verb: 'LOOK', label: 'MIRROR', action: { fn: '_mountReactCreator' } },
             ],
             props: [
-                /* ── the north wall: two mirrors, the shelves under them, the two chairs ── */
-                { key: 'barber_mirror',  wall: 'n', x: -1.6 },
-                { key: 'barber_mirror',  wall: 'n', x: 1.6 },
-                { key: 'wall_shelf',     wall: 'n', x: -1.6, mount: 0.95 },
-                { key: 'wall_shelf',     wall: 'n', x: 1.6,  mount: 0.95 },
-                { key: 'solo_cup',       x: -2.0, z: -2.73, y: 0.98, face: 0 },       // the comb jar
-                { key: 'coffee_mug',     x: -1.2, z: -2.73, y: 0.98, face: 40 },
-                { key: 'clipboard_flat', x: 1.4,  z: -2.73, y: 0.98, face: 10 },      // the price list, face down
-                { key: 'solo_cup',       x: 2.05, z: -2.73, y: 0.98, face: 0 },
-                { key: 'barber_chair',   x: -1.6, z: -1.55, face: 0 },
-                { key: 'barber_chair',   x: 1.6,  z: -1.55, face: 0 },
-                { key: 'vent_grille',    wall: 'n', x: 3.3, mount: 2.6 },
-                /* ── the east wall: the sink, the towels, a clock that is early ── */
-                { key: 'sink',           wall: 'e', z: -1.4 },
-                { key: 'wall_clock',     wall: 'e', z: 2.0, mount: 2.5 },
-                { key: 'hook_rail_long', wall: 's', x: -1.7, mount: 1.9 },   // rev 22: the towels moved over the waiting chairs — the full-length MIRROR (the seam to the Looking-Glass) took the east wall at z 0.6
-                { key: 'trash_bin',      x: 3.6, z: -0.2, face: 270 },
-                /* ── the south wall: the bench, the magazines, the radio ── */
-                { key: 'folding_chair',  x: -2.6, z: 2.55, face: 0 },
-                { key: 'folding_chair',  x: -1.7, z: 2.55, face: 0 },
-                { key: 'folding_chair',  x: -0.8, z: 2.55, face: 0 },
-                { key: 'wall_shelf',     wall: 's', x: 1.2, mount: 1.15 },
-                { key: 'papers_a',       x: 0.95, z: 2.73, y: 1.18, face: 190 },      // the magazines, all from before
-                { key: 'retro_radio',    x: 1.5,  z: 2.73, y: 1.18, face: 180 },
-                { key: 'picture_round_b', wall: 's', x: 2.8 },
-                { key: 'fire_extinguisher', wall: 's', x: 3.5 },
-                { key: 'potted_plant',   x: 3.5, z: 2.5 },
-                /* ── the west wall: the way out, the pole inside the door, the frame ── */
-                { key: 'exit_sign',      wall: 'w', z: 0, mount: 2.7 },
-                { key: 'barber_pole',    wall: 'w', z: -1.9 },
-                { key: 'picture_round_a', wall: 'w', z: 1.9 },
-                { key: 'rug_office',     x: -0.4, z: 0.9, face: 90 },
-                /* ── the ceiling ── */
-                { key: 'fluorescent',    x: -1.8, z: 0.2, ceil: true, face: 90 },
-                { key: 'fluorescent',    x: 1.8,  z: 0.2, ceil: true, face: 90 },
+                /* the two chairs and their mirrors, the sink between */
+                { key: 'barber_mirror', wall: 'n', x: -3.0 },
+                { key: 'barber_mirror', wall: 'n', x: 3.0 },
+                { key: 'barber_chair',  x: -3.0, z: -2.6, face: 0 },
+                { key: 'barber_chair',  x: 3.0,  z: -2.6, face: 0 },
+                { key: 'sink',          wall: 'n', x: 0 },
+                { key: 'wall_shelf',    wall: 'n', x: 0, mount: 1.9 },
+                { key: 'retro_radio',   x: 0, z: -4.95, y: 1.95, face: 180 },
+                { key: 'hook_rail_long', wall: 'e', z: 0, mount: 1.7 },
+                /* the waiting chairs, west */
+                { key: 'psx_chair_mp_2', x: -6.3, z: -0.6, face: 90 }, { key: 'psx_chair_mp_2', x: -6.3, z: 0.4, face: 90 }, { key: 'psx_chair_mp_2', x: -6.3, z: 1.4, face: 90 },
+                { key: 'coffee_table',  x: -5.3, z: 0.4 },
+                { key: 'potted_plant',  x: 6.2, z: 4.3 },
+                { key: 'wall_clock',    wall: 'n', x: -5.8, mount: 3.2 },
+                { key: 'psx_ceiling_lamp_2_on', x: -3, z: -1.5, ceil: true }, { key: 'psx_ceiling_lamp_2_on', x: 3, z: -1.5, ceil: true },
+                { key: 'psx_ceiling_lamp_2_on', x: 0, z: 2.5, ceil: true },
             ],
-            agents: [
-                { x: 0, z: -2.3, face: 180, pose: 'hqTalk', gender: 'male', label: 'THE BARBER', reach: 1.6,
-                  line: '“Two ways to explain how you look. I only do the shorter one.”' },
-                { x: -1.7, z: 2.55, face: 0, pose: 'hqSit', gender: 'female', label: 'THE REGULAR', reach: 1.8,
-                  line: '“Same as last time.” “Last time you were a different person.” “Same as that, then.”' },
-            ],
-            npcSpots: [
-                { x: -2.6, z: 1.85, face: 0 },     // waiting, standing
-                { x: -0.8, z: 1.85, face: 20 },
-                { x: 2.5,  z: -0.6, face: 300 },   // next for the second chair
-            ],
-            onlineSpots: [
-                { x: 1.0, z: 1.2, face: 340 },
-            ],
-            lines: [
-                '“Just a trim.” “Of what?” “Whatever is simplest.”',
-                '“The mirror is not a window.” “It has been both.”',
-                '“Walk-ins welcome. Walk-outs are the Department’s business.”',
-                '“He does not cut hair. He cuts explanations.”',
-            ],
-            spawn: { x: -3.1, z: 0, face: 90 },
+            agents: [], npcSpots: [], lines: [],
+            spawn: { x: 0, z: 2.8, face: 0 },
         },
 
 
@@ -37095,219 +36997,105 @@ const DOOR_HQ = {
             ],
             spawn: { x: -2.6, z: 0, face: 90 },
         },
-        /* ── ROOM 42 · RECORDS (HQ plan 7.4, 2026-09-13) — the department
-           behind the wired double door at 240° on the ground ring, a
-           `kind: 'box'` room now (it was a door straight to the Codex).
-           "We only keep the file." THE READING DESK on the south wall is
-           the Codex (`_goToCodex` — the entity dossiers); THE CARD
-           CATALOGUE on the east wall is the unfiled sites (`_mountCommunity
-           Maps`, a modal over the paused building — map.js `_HQ_MODAL`);
-           the service stair on the north wall (`tapes`) is the way up to
-           the tape library — Room 360's projector, directly overhead (the
-           door's old REPLAY alt, now a door you walk through). The stacks
-           along the north wall are the file itself. The archivist sits at
-           the desk; the clerk is at the stacks. Lines are Claude
-           placeholders (A15). Viewer-local (RULE #2). */
+        /* ── RECORDS (DOOR HQ 2.0 wave 3, 2026-11-26): on the Ring now, its own door (the Records Wing between is retired). 17.5 x 21 m,
+           5.25 m. The stacks in three aisles either side of the middle walk, the card catalogue and the reading desk (the codex) at the
+           front. The card catalogue's community maps went with the map editor (main menu). LOOK_BOOK.md "Records". ── */
         records: {
             label: 'RECORDS',
-            sub: 'CODEX · COMMUNITY MAPS',
-            roomNo: '42', why: 'the room with the answer; it only keeps the file',
-            kind: 'box',
+            kind: 'box', noWalkers: true,
             shell: {
-                w: 10, d: 7, h: 3.4,
-                wallH: 3.4, dadoH: 1.1,
-                floor: 'concrete', wall: 'drywall', dado: 'wood', trim: 'teal', ceiling: 'ceiling',
-                floorColor: 0x8d8f86, wallColor: 0xc9c2ae, dadoColor: 0x6b4a2e,   // painted down: manila over green linoleum
-                pipes: false,                       // an acoustic ceiling; the file must stay dry
-                light: { x: 0, z: 0 },
-                mood: { light: 0xe9dcc0 },          // warm, and it flickers when the stacks are opened
-                plate: { x: 0, z: 3.35, y: 2.9 },
+                w: 17.5, d: 21, h: 5.25,
+                wallH: 5.25, dadoH: 1.05,
+                floor: 'carpet_3', wall: 'drywall_2', dado: 'urban:WoodPanelling1a', trim: 'brass', ceiling: 'ceiling',
+                wallColor: 0xd8cbb0, ceilColor: 0xeeeae0,
+                pipes: false, strips: false,
+                lights: [{ x: -4.5, z: -6 }, { x: 4.5, z: -6 }, { x: -4.5, z: 0 }, { x: 4.5, z: 0 }, { x: 0, z: 5.5 }],
+                mood: { light: 0xfff1d6, ambient: 0.45 },
             },
             doors: [
-                { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_wired_double', wide: true,
-                  label: 'THE RECORDS WING', sub: 'BACK TO THE WING',
-                  action: { room: 'recwing', at: 'records' },
-                  desc: 'The way back to the hall. Sign the file back in on your way out.' },
-                /* THE SERVICE STAIR → the tape library: Room 360's projector, directly overhead */
-                { id: 'tapes', wall: 'n', x: 3.4, leaf: 'leaf_exit',
-                  label: 'THE TAPE LIBRARY', sub: 'ROOM 360 · UPSTAIRS',
-                  action: { room: 'observatorium', at: 'projector' },
-                  desc: 'A service stair to the Observatorium, straight up. The tapes went up with the projector; the note on the rail says DO NOT REWIND.' },
+                { id: 'egress', wall: 's', x: 0, leaf: 'leaf_wired_double', wide: true, label: 'THE RING', action: { room: 'central_egress', at: 'records' } },
             ],
             counters: [
-                /* THE READING DESK → the Codex: every entity dossier */
-                { id: 'codex', x: 1.5, z: 3.0, face: 0, plateY: 1.85, radius: 1.9, verb: 'READ',
-                  label: 'THE READING DESK', sub: 'CODEX', action: { fn: '_goToCodex' },
-                  desc: 'The dossiers. Every entity the Department has filed, declassified or not, with the archivist watching you turn the pages.' },
-                /* THE CARD CATALOGUE → the unfiled sites (community maps) */
-                { id: 'unfiled', x: 4.5, z: -1.2, face: 270, plateY: 2.1, radius: 1.9, verb: 'SEARCH',
-                  label: 'THE CARD CATALOGUE', sub: 'UNFILED SITES · COMMUNITY MAPS', action: { fn: '_mountCommunityMaps' },
-                  desc: 'Sites the register has not numbered: maps filed by other operatives, and your own. Pull a drawer and one comes out.' },
+                { id: 'codex', x: 5.4, z: 4.2, face: 90, plateY: 1.9, radius: 2.0, verb: 'READ', label: 'THE READING DESK', action: { fn: '_goToCodex' } },
             ],
             props: [
-                /* ── the north wall: THE STACKS, west to east, then the stair ── */
-                { key: 'metal_shelving', wall: 'n', x: -4.2 },
-                { key: 'metal_shelving', wall: 'n', x: -3.1 },
-                { key: 'metal_shelving', wall: 'n', x: -2.0 },
-                { key: 'metal_shelving', wall: 'n', x: -0.9 },
-                { key: 'metal_shelving', wall: 'n', x: 0.2 },
-                { key: 'metal_shelving', wall: 'n', x: 1.3 },
-                { key: 'cardboard_boxes', x: -3.1, z: -3.25, y: 0.9, face: 10 },     // on the shelf, the overflow
-                { key: 'manila_folders', x: -0.9, z: -3.25, y: 0.9, face: 0 },
-                { key: 'manila_folder',  x: 1.3,  z: -3.25, y: 0.9, face: 15 },
-                { key: 'exit_sign',      wall: 'n', x: 3.4, mount: 2.8 },           // over the stair
-                /* ── the east wall: THE CARD CATALOGUE, the cabinets, the breaker ── */
-                { key: 'card_catalogue', wall: 'e', z: -1.2 },
-                { key: 'filing_cabinet', wall: 'e', z: 1.0 },
-                { key: 'filing_cabinet', wall: 'e', z: 1.7 },
-                { key: 'breaker_panel',  wall: 'e', z: 2.8 },
-                { key: 'potted_plant',   x: 4.4, z: 3.0, face: 200 },
-                /* ── the south wall: THE READING DESK, the clock, the frame ── */
-                { key: 'tanker_desk',    wall: 's', x: 1.5 },
-                { key: 'crt_terminal',   x: 1.15, z: 3.05, y: 0.76, face: 0 },
-                { key: 'desk_lamp',      x: 2.05, z: 3.1,  y: 0.76, face: 330 },
-                { key: 'manila_folders', x: 1.7,  z: 2.85, y: 0.76, face: 355 },
-                { key: 'clipboard_flat', x: 0.95, z: 2.85, y: 0.76, face: 10 },
-                { key: 'rotary_phone',   x: 2.1,  z: 2.8,  y: 0.76, face: 20 },
-                { key: 'pen',            x: 1.45, z: 2.75, y: 0.76, face: 70 },
-                { key: 'computer_chair_grey', x: 1.5,  z: 2.35, face: 180 },         // the archivist's, facing the desk (the 2026-09-13 chair)
-                { key: 'wall_clock',     wall: 's', x: -1.3, mount: 2.55 },
-                { key: 'picture_round_b', wall: 's', x: -3.0 },
-                { key: 'papers_a',       x: -1.3, z: 3.1, face: 0 },                  // the returns pile, on the floor
-                { key: 'papers_b',       x: -1.05, z: 2.95, y: 0.08, face: 30 },
-                { key: 'cardboard_box',  x: -4.0, z: 2.7, face: 20 },
-                { key: 'cardboard_box',  x: -4.0, z: 2.7, y: 0.42, face: 65 },
-                /* ── the west wall: the way in, the plate, the lamp ── */
-                { key: 'exit_sign',      wall: 'w', z: 0, mount: 2.9 },
-                { key: 'nameplate',      wall: 'w', z: -2.0, mount: 1.55 },
-                { key: 'water_cooler',   wall: 'w', z: 2.4 },
-                /* ── the floor, the ceiling ── */
-                { key: 'rug_office',     x: -1.0, z: 0.2 },
-                { key: 'trash_bin',      x: 2.7,  z: 2.9, face: 250 },
-                { key: 'fluorescent',    x: -2.2, z: 0, ceil: true, face: 0 },
-                { key: 'fluorescent',    x: 2.2,  z: 0, ceil: true, face: 0 },
+                /* the stacks: three rows of shelving either side of the middle walk (2.1 m aisles) */
+                { key: 'metal_shelving', x: -7.0, z: -8.0, face: 90 }, { key: 'metal_shelving', x: -7.0, z: -5.6, face: 90 }, { key: 'metal_shelving', x: -7.0, z: -3.2, face: 90 }, { key: 'metal_shelving', x: -7.0, z: -0.8, face: 90 },
+                { key: 'metal_shelving', x: -4.2, z: -8.0, face: 270 }, { key: 'metal_shelving', x: -4.2, z: -5.6, face: 270 }, { key: 'metal_shelving', x: -4.2, z: -3.2, face: 270 }, { key: 'metal_shelving', x: -4.2, z: -0.8, face: 270 },
+                { key: 'metal_shelving', x: 4.2, z: -8.0, face: 90 },  { key: 'metal_shelving', x: 4.2, z: -5.6, face: 90 },  { key: 'metal_shelving', x: 4.2, z: -3.2, face: 90 },  { key: 'metal_shelving', x: 4.2, z: -0.8, face: 90 },
+                { key: 'metal_shelving', x: 7.0, z: -8.0, face: 270 }, { key: 'metal_shelving', x: 7.0, z: -5.6, face: 270 }, { key: 'metal_shelving', x: 7.0, z: -3.2, face: 270 }, { key: 'metal_shelving', x: 7.0, z: -0.8, face: 270 },
+                { key: 'library_ladder', x: -5.6, z: -6.6, face: 90 },
+                { key: 'cardboard_boxes', x: 5.6, z: -9.4, face: 10 },
+                { key: 'cardboard_boxes', x: -1.6, z: -9.5, face: -20 },
+                { key: 'wall_clock', wall: 'n', x: 0, mount: 3.8 },
+                /* the front: the card catalogue west, the reading desk and the fiche reader east */
+                { key: 'card_catalogue', wall: 'w', z: 4.2 },
+                { key: 'card_catalogue', wall: 'w', z: 6.0 },
+                { key: 'tanker_desk',    wall: 'e', z: 4.2 },
+                { key: 'microfiche_reader', x: 8.15, z: 3.6, y: 0.76, face: 270 },
+                { key: 'banker_lamp',    x: 8.2, z: 4.8, y: 0.76, face: 270 },
+                { key: 'manila_folders', x: 7.9, z: 4.4, y: 0.76, face: 250 },
+                { key: 'office_chair',   x: 7.0, z: 4.2, face: 90 },
+                { key: 'water_cooler',   wall: 's', x: 6.4 },
+                { key: 'potted_plant',   x: -7.6, z: 9.3 },
+                { key: 'psx_ceiling_lamp_2_on', x: -4.5, z: -6, ceil: true }, { key: 'psx_ceiling_lamp_2_on', x: 4.5, z: -6, ceil: true },
+                { key: 'psx_ceiling_lamp_2_on', x: -4.5, z: 0,  ceil: true }, { key: 'psx_ceiling_lamp_2_on', x: 4.5, z: 0,  ceil: true },
+                { key: 'psx_ceiling_lamp_2_on', x: 0, z: 5.5, ceil: true },
             ],
-            agents: [
-                { x: 1.5, z: 2.35, face: 180, pose: 'hqSit', gender: 'female', label: 'THE ARCHIVIST', reach: 1.9,
-                  line: '“Sign the file out. Sign it back in. We do not keep the answer; we keep the file.”' },
-                { x: -2.0, z: -2.2, face: 0, pose: 'hqReach', gender: 'male', label: 'THE CLERK', reach: 1.6,
-                  line: '“Everything is filed. Not everything is filed where it says.”' },
-            ],
-            npcSpots: [
-                { x: -3.0, z: 1.0, face: 90 },       // reading, standing up
-            ],
-            onlineSpots: [],
-            lines: [
-                '“Do you have the answer?” “We have the file.” “Is the answer in the file?” “That is not a question this office answers.”',
-                '“The tapes went upstairs.” “All of them?” “The ones we could find.”',
-                '“Forty-two.” “What?” “The room. You asked what the room was.”',
-                '“An unfiled site is still a site. It just has not been numbered. Nobody comments on the ones that number themselves.”',
-            ],
-            spawn: { x: -3.6, z: 0, face: 90 },
+            agents: [], npcSpots: [], lines: [],
+            spawn: { x: 0, z: 6.5, face: 0 },
         },
-        /* ── ROOM 1337 · IT (HQ plan 7.4, 2026-09-13) — a `kind: 'box'` room
-           off the MEZZANINE at 120°, inside Arcane Engineering's stretch: the
-           user's Hacker Room as a door, not a map. A5's dev surfaces get a
-           physical home: THE LIBRARY console is the Spell Library
-           (`_goToSpellLibrary` — the spell / ability editor + the Spell Lab;
-           map.js `_spellLibraryBack` now comes home to the building), THE
-           BENCH is the balance lab (`_launchBalanceSim` — AI vs AI with
-           equal weights, the dashboard), and THE RACKS are the AI training
-           lab (`_launchAITraining` — the champion / challenger A/B rig; the
-           racks are what the CPU trains on). Every console leaves the
-           building the way the Quartermaster's shop does (a page), the
-           labs launch matches. The keypad hangs inside by the way out (the
-           door outside is holographic; the code is on the note). The
-           sysadmin sits at the library; the intern is on the phone to
-           Facilities about the fourth door. Lines are Claude placeholders
-           (A15). Viewer-local (RULE #2). */
+        /* ── IT (DOOR HQ 2.0 wave 3, 2026-11-26, the Ring's rooms; mondo: "Get rid of all the dev tools in IT"). Clean sheet, off the Ring's
+           outer wall (plans/1_lobby_level_plan.png, north-east), joined to the Ring with no card (HQ_STAGE_RULES.round). 17.5 x 14 m (5 x 4
+           squares), 4.5 m ceiling. Racks down the north wall, two desks either side, the help desk's clutter; nothing that opens an editor,
+           no terminal to press, no stair down (the Server Room is the Works'). LOOK_BOOK.md "IT". ── */
         it: {
             label: 'IT',
-            roomNo: '1337', why: 'the user’s Hacker Room — leet, as a door and not a map',
-            kind: 'box',
+            kind: 'box', noWalkers: true,
             shell: {
-                w: 8, d: 6, h: 3.0,
-                wallH: 3.0, dadoH: 1.0,
-                floor: 'concrete', wall: 'drywall', dado: 'teal', trim: 'teal', ceiling: 'ceiling',
-                floorColor: 0x50555e, wallColor: 0x6a7079, dadoColor: 0x2f4a4c,   // painted down: a server room, cold
-                pipes: true,                         // the cable trays are the conduits
-                light: { x: 0, z: 0 },
-                mood: { light: 0xa9e6da },            // the racks' green in the strip
-                plate: { x: 0, z: -2.75, y: 2.6 },
+                w: 17.5, d: 14, h: 4.5,
+                wallH: 4.5, dadoH: 1.05,
+                floor: 'urban:TileLinoleum1c', wall: 'drywall_2', dado: 'urban:WoodPanelling1a', trim: 'brass', ceiling: 'ceiling',
+                floorColor: 0xb8bcc0, wallColor: 0xd9d6cc, ceilColor: 0xeeeae0,
+                pipes: false, strips: false,
+                lights: [{ x: -4.5, z: -2.5 }, { x: 4.5, z: -2.5 }, { x: 0, z: 2.5 }],
+                mood: { light: 0xdfe8ff, ambient: 0.5 },
             },
             doors: [
-                { id: 'server', wall: 's', x: 0.3, leaf: 'leaf_holographic',
-                  label: 'THE SERVER ROOM', sub: 'ROOM 127 · STAIR · DOWN',
-                  action: { room: 'server', at: 'it' },
-                  desc: 'The stair down to the racks. The keypad by the door is for coming back up.' },
-                { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_holographic',
-                  label: 'THE LOBBY',
-                  action: { room: 'central_egress', at: 'it' },
-                  desc: 'The way back to the mezzanine. The keypad is on this side; the code is on the note; the note says DO NOT SHARE.' },
+                { id: 'egress', wall: 's', x: 0, leaf: 'leaf_office', label: 'THE RING', action: { room: 'central_egress', at: 'it' } },
             ],
-            counters: [
-                /* DOOR HQ 2.0 wave 1 (2026-11-26, mondo: "Get rid of all the dev tools in IT"): THE LIBRARY (the Spell Library), THE BENCH
-                   (the Balance Lab) and THE RACKS (the AI Training Lab) are gone from the building; all three are on the main menu's
-                   Settings > Developer tab */
-            ],
+            counters: [],
             props: [
-                /* ── the north wall: THE RACKS, the breaker, the vent, the clock ── */
-                { key: 'server_rack',    wall: 'n', x: -2.6 },
-                { key: 'server_rack',    wall: 'n', x: -1.8 },
-                { key: 'server_rack',    wall: 'n', x: -1.0 },
-                { key: 'breaker_panel',  wall: 'n', x: 0.7 },
-                { key: 'vent_grille',    wall: 'n', x: 1.8, mount: 2.5 },
-                { key: 'wall_clock',     wall: 'n', x: 2.9, mount: 2.4 },
-                { key: 'cardboard_boxes', x: 2.6, z: -2.4, face: 15 },               // the spares, still boxed
-                /* ── the east wall: THE LIBRARY desk, THE BENCH desk ── */
-                { key: 'tanker_desk',    wall: 'e', z: -0.9 },
-                { key: 'crt_terminal',   x: 3.55, z: -0.9,  y: 0.76, face: 270 },
-                { key: 'papers_b',       x: 3.5,  z: -1.45, y: 0.76, face: 260 },
-                { key: 'coffee_mug',     x: 3.35, z: -0.35, y: 0.76, face: 0 },
-                { key: 'pen',            x: 3.7,  z: -0.4,  y: 0.76, face: 100 },
-                { key: 'computer_chair_grey', x: 2.85, z: -0.9,  face: 90 },         // the sysadmin's, facing the desk (the 2026-09-13 chair)
-                { key: 'tanker_desk',    wall: 'e', z: 1.4 },
-                { key: 'tube_tv',        x: 3.55, z: 1.4,   y: 0.76, face: 270 },   // the bench's dashboard
-                { key: 'retro_speakers', x: 3.6,  z: 1.95,  y: 0.76, face: 270 },
-                { key: 'desk_fan',       x: 3.6,  z: 0.85,  y: 0.76, face: 250 },
-                { key: 'solo_cup',       x: 3.3,  z: 1.05,  y: 0.76, face: 0 },
-                { key: 'computer_chair_blue', x: 2.85, z: 1.4,   face: 90 },
-                { key: 'security_camera', wall: 'n', x: -0.2, mount: 2.6 },              // the racks are watched (2026-09-13)
-                /* ── the south wall: the shelf of spares, the cooler, the bin ── */
-                { key: 'metal_shelving', wall: 's', x: -2.4 },
-                { key: 'cardboard_box',  x: -2.4, z: 2.75, y: 0.9, face: 20 },       // on the shelf
-                { key: 'retro_radio',    x: -2.7, z: 2.75, y: 1.35, face: 0 },
-                { key: 'water_cooler',   wall: 's', x: 2.5 },
-                { key: 'trash_bin',      x: 2.0,  z: 2.6, face: 200 },                 // moved 0.4 east for the stair door (Phase 8)
-                { key: 'wet_floor_sign', x: -1.7, z: 2.3, face: 30 },                // the cooler leaks; the ticket is open
-                /* ── the west wall: the way in, the keypad by it, the plate ── */
-                { key: 'keypad',         wall: 'w', z: 1.55 },
-                { key: 'exit_sign',      wall: 'w', z: 0, mount: 2.7 },
-                { key: 'nameplate',      wall: 'w', z: -1.7, mount: 1.55 },
-                { key: 'fire_extinguisher', wall: 'w', z: -2.5 },
-                /* ── the floor: the cable trays, the ceiling ── */
-                { key: 'pipe_run',       x: -0.6, z: -1.5, face: 90 },
-                { key: 'pipe_run',       x: 0.4,  z: -1.5, face: 90 },
-                { key: 'fluorescent',    x: -1.6, z: -0.5, ceil: true, face: 0 },
-                { key: 'fluorescent',    x: 1.6,  z: 0.5,  ceil: true, face: 0 },
+                /* the racks, the north wall either side of the cable drum */
+                { key: 'server_rack', wall: 'n', x: -7.4 }, { key: 'server_rack', wall: 'n', x: -6.1 }, { key: 'server_rack', wall: 'n', x: -4.8 },
+                { key: 'server_rack', wall: 'n', x: 4.8 },  { key: 'server_rack', wall: 'n', x: 6.1 },  { key: 'server_rack', wall: 'n', x: 7.4 },
+                { key: 'cable_drum',   x: 0, z: -5.6, face: 90 },
+                { key: 'cardboard_boxes', x: -2.2, z: -5.7, face: 15 },
+                { key: 'wall_clock',   wall: 'n', x: 0, mount: 3.4 },
+                /* the two desks, west and east, each with its terminal, chair and gear */
+                { key: 'tanker_desk',  wall: 'w', z: -1.5 },
+                { key: 'crt_terminal', x: -8.3, z: -1.5, y: 0.76, face: 90 },
+                { key: 'dialup_modem', x: -8.35, z: -0.6, y: 0.76, face: 90 },
+                { key: 'banker_lamp',  x: -8.35, z: -2.4, y: 0.76, face: 90 },
+                { key: 'office_chair', x: -7.2, z: -1.5, face: 270 },
+                { key: 'tanker_desk',  wall: 'e', z: -1.5 },
+                { key: 'crt_terminal', x: 8.3, z: -1.5, y: 0.76, face: 270 },
+                { key: 'wifi_router',  x: 8.35, z: -0.6, y: 0.76, face: 270 },
+                { key: 'retro_speakers', x: 8.35, z: -2.4, y: 0.76, face: 270 },
+                { key: 'office_chair', x: 7.2, z: -1.5, face: 90 },
+                /* the corners by the door: spares and the cooler */
+                { key: 'metal_shelving', wall: 'w', z: 3.6 },
+                { key: 'cardboard_boxes', x: -7.6, z: 5.6, face: -20 },
+                { key: 'metal_shelving', wall: 'e', z: 3.6 },
+                { key: 'water_cooler',   wall: 's', x: 5.6 },
+                { key: 'trash_bin',      x: 4.2, z: 6.3, face: 0 },
+                { key: 'potted_plant',   x: -5.6, z: 6.1 },
+                { key: 'psx_ceiling_lamp_2_on', x: -4.5, z: -2.5, ceil: true },
+                { key: 'psx_ceiling_lamp_2_on', x: 4.5,  z: -2.5, ceil: true },
+                { key: 'psx_ceiling_lamp_2_on', x: 0,    z: 2.5,  ceil: true },
             ],
-            agents: [
-                { x: 2.85, z: -0.9, face: 90, pose: 'hqSit', gender: 'male', label: 'THE SYSADMIN', reach: 1.9,
-                  line: '“Do not touch the racks while they are thinking. You can tell by the fans.”' },
-                { x: -0.2, z: 0.9, face: 300, pose: 'hqPhone', gender: 'female', label: 'THE INTERN', reach: 1.6,
-                  line: '“Yes, the fourth door. No, there is no ticket. No, I did not open it. It was open.”' },
-            ],
-            npcSpots: [
-                { x: 0.9, z: -1.9, face: 0 },        // reading the rack labels
-            ],
-            onlineSpots: [],
-            lines: [
-                '“Have you tried turning it off?” “It is a door.” “Have you tried closing it?”',
-                '“The code is on the note.” “The note says DO NOT SHARE.” “Then you already have it.”',
-                '“It won again.” “Against what?” “Itself. It is very pleased.”',
-                '“The Spell Library is not a library. Nothing is due back.”',
-            ],
-            spawn: { x: -2.8, z: 0, face: 90 },
+            agents: [], npcSpots: [], lines: [],
+            spawn: { x: 0, z: 4.6, face: 0 },
         },
         /* ── ROOM 360 · THE OBSERVATORIUM (HQ plan 7.4, 2026-09-11) — a box
            room off the MEZZANINE at 240°, directly above Records. The user's
@@ -39088,205 +38876,137 @@ const DOOR_HQ = {
             ],
             spawn: { x: 0, z: 1.6, face: 0 },
         },
-        /* ── ROOM 314 · THE LECTURE HALL — three tiers the walker climbs,
-           nine desks, a board with the type wheel on it (the counter is the
-           lesson: a by-id panel that reads TYPE_CHART). ── */
+        /* ── LECTURE HALL (DOOR HQ 2.0 wave 3, 2026-11-26): on the Ring now (was off the old third floor). 21 x 21 m, 7 m. Three tiers of
+           desks rising toward the door, the board and the lectern at the front; THE BOARD keeps its counter (the type wheel).
+           LOOK_BOOK.md "Lecture Hall". ── */
         classroom: {
-            label: 'THE LECTURE HALL',
-            sub: 'ORIENTATION · THE TYPE WHEEL',
-            roomNo: '314', why: 'π — the lesson goes round and does not end',
-            kind: 'box',
+            label: 'LECTURE HALL',
+            kind: 'box', noWalkers: true,
             shell: {
-                w: 10, d: 8, h: 3.4,
-                wallH: 3.4, dadoH: 1.05,
-                floor: 'carpet', wall: 'drywall', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling',
-                floorColor: 0x9a9488,
-                pipes: false,
-                lights: [{ x: -2.5, z: -1.5 }, { x: 2.5, z: -1.5 }, { x: 0, z: 2.5 }],
-                mood: { light: 0xf4f1e8 },
-                plate: { x: 3.6, z: -3.75, y: 2.9 },
+                w: 21, d: 21, h: 7,
+                wallH: 7, dadoH: 1.2,
+                floor: 'carpet_3', wall: 'drywall_2', dado: 'urban:WoodPanelling1a', trim: 'brass', ceiling: 'ceiling',
+                wallColor: 0xe2d8c0, ceilColor: 0xeeeae0,
+                pipes: false, strips: false,
+                lights: [{ x: -5, z: -5 }, { x: 5, z: -5 }, { x: -5, z: 2.5 }, { x: 5, z: 2.5 }],
+                mood: { light: 0xfff1d6, ambient: 0.5 },
             },
             doors: [
-                { id: 'annex', wall: 'w', z: -2.6, leaf: 'leaf_beige_wood',
-                  label: 'THE THIRD FLOOR', sub: 'BACK TO THE FLOOR',
-                  action: { room: 'annex', at: 'classroom' },
-                  desc: 'The way back to the floor.' },
+                { id: 'egress', wall: 's', x: 0, leaf: 'leaf_office', label: 'THE RING', action: { room: 'central_egress', at: 'lecture' } },
             ],
             counters: [
-                { id: 'board', x: -0.5, z: -3.4, face: 180, plateY: 2.35, radius: 2.4, verb: 'READ',
-                  label: 'THE BOARD', sub: 'THE TYPE WHEEL · THE LESSON', action: {},
-                  desc: 'The six types and what each one is weak to, in chalk. It is the same wheel the damage roll reads; the instructor has never had to correct it.' },
+                { id: 'board', x: 0, z: -8.4, face: 0, plateY: 2.6, radius: 2.6, verb: 'READ', label: 'THE BOARD', action: {},
+                  desc: 'The six types and what each one is weak to, in chalk. It is the same wheel the damage roll reads.' },
             ],
             props: [
-                /* ── the north wall: the board, the lectern before it ── */
-                { key: 'chalkboard',     wall: 'n', x: -0.5 },
-                { key: 'lectern',        x: 2.4, z: -2.6, face: 180 },
-                { key: 'papers_b',       x: 2.4, z: -2.65, y: 1.1, face: 10 },
-                { key: 'pen',            x: 2.55, z: -2.5, y: 1.1, face: 80 },
-                { key: 'wall_clock',     wall: 'n', x: 4.2, mount: 2.8 },
-                { key: 'notice_board',   wall: 'e', z: -2.4 },
-                /* ── the tiers: three risers, three desks on each ── */
-                { key: 'riser_1',        x: 0.7, z: 0.275, face: 0 },
-                { key: 'riser_2',        x: 0.7, z: 1.675, face: 0 },
-                { key: 'riser_3',        x: 0.7, z: 3.075, face: 0 },
-                { key: 'school_desk',    x: -2.1, z: 0.275, y: 0.3, face: 0 }, { key: 'school_desk', x: 0.7, z: 0.275, y: 0.3, face: 0 }, { key: 'school_desk', x: 3.5, z: 0.275, y: 0.3, face: 0 },
-                { key: 'school_desk',    x: -2.1, z: 1.675, y: 0.6, face: 0 }, { key: 'school_desk', x: 0.7, z: 1.675, y: 0.6, face: 0 }, { key: 'school_desk', x: 3.5, z: 1.675, y: 0.6, face: 0 },
-                { key: 'school_desk',    x: -2.1, z: 3.075, y: 0.9, face: 0 }, { key: 'school_desk', x: 0.7, z: 3.075, y: 0.9, face: 0 }, { key: 'school_desk', x: 3.5, z: 3.075, y: 0.9, face: 0 },
-                { key: 'notebook_paper', x: 0.8, z: 0.175, y: 1.05, face: 15 },
-                { key: 'pencil',         x: -2, z: 1.575, y: 1.35, face: 40 },
-                { key: 'coffee_mug',     x: 3.6, z: 2.975, y: 1.65 },
-                /* ── the walls ── */
-                { key: 'trash_bin',      x: -4.4, z: -3.2, face: 90 },
-                { key: 'fire_extinguisher', wall: 'w', z: 1.0 },
-                { key: 'exit_sign',      wall: 'w', z: -2.6, mount: 2.8 },
-                { key: 'vent_grille',    wall: 's', x: 3.8, mount: 2.7 },
-                { key: 'security_camera', wall: 's', x: -4.2, mount: 2.7 },
-                { key: 'picture_round_a', wall: 'e', z: 1.8, mount: 1.8 },
-                { key: 'fluorescent',    x: -2.5, z: -1.5, ceil: true, face: 90 },
-                { key: 'fluorescent',    x: 2.5, z: -1.5, ceil: true, face: 90 },
-                { key: 'fluorescent',    x: 0, z: 2.5, ceil: true, face: 90 },
+                /* the front: three boards, the lectern, the projector screen's speakers */
+                { key: 'chalkboard', wall: 'n', x: -5.2 }, { key: 'chalkboard', wall: 'n', x: 0 }, { key: 'chalkboard', wall: 'n', x: 5.2 },
+                { key: 'lectern',    x: 4.2, z: -7.0, face: 180 },
+                { key: 'papers_b',   x: 4.2, z: -7.05, y: 1.1, face: 10 },
+                { key: 'pa_speaker', x: -9.4, z: -9.4, face: 150 },
+                { key: 'pa_speaker', x: 9.4,  z: -9.4, face: 210 },
+                { key: 'globe_lamp', x: -8.6, z: -5.4 },
+                { key: 'wall_clock', wall: 'n', x: 0, mount: 5.2 },
+                /* the tiers (each 8.4 m wide, either side of the middle aisle), four desks a tier, rising toward the door */
+                { key: 'riser_1', x: -5.4, z: -0.6, face: 0 }, { key: 'riser_1', x: 5.4, z: -0.6, face: 0 },
+                { key: 'riser_2', x: -5.4, z: 0.8,  face: 0 }, { key: 'riser_2', x: 5.4, z: 0.8,  face: 0 },
+                { key: 'riser_3', x: -5.4, z: 2.2,  face: 0 }, { key: 'riser_3', x: 5.4, z: 2.2,  face: 0 },
+                { key: 'school_desk', x: -7.6, z: -0.6, y: 0.3, face: 0 }, { key: 'school_desk', x: -3.2, z: -0.6, y: 0.3, face: 0 }, { key: 'school_desk', x: 3.2, z: -0.6, y: 0.3, face: 0 }, { key: 'school_desk', x: 7.6, z: -0.6, y: 0.3, face: 0 },
+                { key: 'school_desk', x: -7.6, z: 0.8,  y: 0.6, face: 0 }, { key: 'school_desk', x: -3.2, z: 0.8,  y: 0.6, face: 0 }, { key: 'school_desk', x: 3.2, z: 0.8,  y: 0.6, face: 0 }, { key: 'school_desk', x: 7.6, z: 0.8,  y: 0.6, face: 0 },
+                { key: 'school_desk', x: -7.6, z: 2.2,  y: 0.9, face: 0 }, { key: 'school_desk', x: -3.2, z: 2.2,  y: 0.9, face: 0 }, { key: 'school_desk', x: 3.2, z: 2.2,  y: 0.9, face: 0 }, { key: 'school_desk', x: 7.6, z: 2.2,  y: 0.9, face: 0 },
+                { key: 'notebook_paper', x: -3.1, z: -0.7, y: 1.05, face: 15 },
+                { key: 'pencil',         x: 7.7, z: 0.7, y: 1.35, face: 40 },
+                /* the back: the projector cart, off the aisle */
+                { key: 'film_projector', x: 5.6, z: 6.2, face: 0 },
+                { key: 'trash_bin',      x: -8.8, z: 8.8, face: 90 },
+                { key: 'potted_plant',   x: 9.2, z: 9.2 },
+                { key: 'psx_ceiling_lamp_2_on', x: -5, z: -5, ceil: true }, { key: 'psx_ceiling_lamp_2_on', x: 5, z: -5, ceil: true },
+                { key: 'psx_ceiling_lamp_2_on', x: -5, z: 2.5, ceil: true }, { key: 'psx_ceiling_lamp_2_on', x: 5, z: 2.5, ceil: true },
             ],
-            agents: [
-                { x: 2.4, z: -1.8, face: 180, pose: 'hqTalk', gender: 'female', label: 'THE INSTRUCTOR', reach: 2.6,
-                  line: '“Six types. Each one is weak to one. Write it down.” “Where is the seventh?” “There is no seventh. Write that down too.”' },
-                { x: -2.1, z: 0.775, face: 0, pose: 'hqSit', gender: 'male', label: 'THE RECRUIT IN THE FRONT ROW', reach: 1.8,
-                  line: '“I have written it down.” “Good.” “Twice.” “Then you are ready for Bay 1.”' },
-            ],
-            npcSpots: [{ x: 1.4, z: 2.175, face: 0 }],
-            onlineSpots: [{ x: 4.1, z: 3.575, face: 0 }],
-            lines: [
-                '“Human beats tech.” “Tech beats alien.” “Alien beats…” “Look at the board.”',
-                '“Is this on the test?” “The test is a crossing.” “Is the crossing on the test?” “Sit down.”',
-            ],
-            spawn: { x: -3.5, z: -2.6, face: 90 },
+            agents: [], npcSpots: [], lines: [],
+            spawn: { x: 0, z: 6.5, face: 0 },
         },
-        /* ── ROOM 9-5 · THE CUBICLE FLOOR — the shift at its desks; the
-           online operatives sit here (Room 86's rule). ── */
+        /* ── CUBICLE FLOOR (DOOR HQ 2.0 wave 3, 2026-11-26): on the Ring now (was off the old third floor). 28 x 21 m, 4.5 m. Six round
+           pods and four square cubicles either side of a wide middle walk; the copier corner west, the cooler east. LOOK_BOOK.md
+           "Cubicle Floor". ── */
         cubicles: {
-            label: 'THE CUBICLE FLOOR',
-            sub: 'THE SHIFT · OPEN PLAN',
-            roomNo: '9-5', why: 'the shift; nobody on it has ever left at five',
-            kind: 'box',
+            label: 'CUBICLE FLOOR',
+            kind: 'box', noWalkers: true,
             shell: {
-                w: 12, d: 8, h: 3.0,
-                wallH: 3.0, dadoH: 1.05,
-                floor: 'carpet', wall: 'drywall', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling',
-                pipes: false,
-                lights: [{ x: -3.5, z: -2 }, { x: 3.5, z: -2 }, { x: -3.5, z: 2 }, { x: 3.5, z: 2 }],
-                mood: { light: 0xf2f4f8 },
-                plate: { x: 0, z: -3.75, y: 2.55 },
+                w: 28, d: 21, h: 4.5,
+                wallH: 4.5, dadoH: 1.05,
+                floor: 'carpet_3', wall: 'drywall_2', dado: 'urban:WoodPanelling1a', trim: 'brass', ceiling: 'ceiling',
+                wallColor: 0xe0d8c4, ceilColor: 0xeeeae0,
+                pipes: false, strips: false,
+                lights: [{ x: -8, z: -5 }, { x: 0, z: -5 }, { x: 8, z: -5 }, { x: -8, z: 3 }, { x: 8, z: 3 }, { x: 0, z: 5 }],
+                mood: { light: 0xfff1d6, ambient: 0.5 },
             },
             doors: [
-                { id: 'annex', wall: 'w', z: 0, leaf: 'leaf_coffee',
-                  label: 'THE THIRD FLOOR', sub: 'BACK TO THE FLOOR',
-                  action: { room: 'annex', at: 'cubicles' },
-                  desc: 'The way back to the floor.' },
+                { id: 'egress', wall: 's', x: 0, leaf: 'leaf_office', label: 'THE RING', action: { room: 'central_egress', at: 'cubicles' } },
             ],
             counters: [],
             props: [
-                /* ── six round cubicles in two rows ── */
-                /* the cubicle's OPENING is measured off the mesh (`front: 'open'`) and lies
-                   on the model's +Z, so `face` names the way the mouth points: the north
-                   row opens SOUTH (180), the south row NORTH (0); the chairs sit at the
-                   mouth, 1.0 m from the centre (a 2.2 m cubicle), the sitter facing in */
-                { key: 'round_cubicle',  x: -3.625, z: -1.825, face: 180, rot: 20 },  { key: 'round_cubicle', x: -0.125, z: -1.825, face: 180, rot: -10 }, { key: 'round_cubicle', x: 3.375, z: -1.825, face: 180, rot: 15 },
-                { key: 'round_cubicle',  x: -3.625, z: 1.675, face: 0, rot: 20 },     { key: 'round_cubicle', x: -0.125, z: 1.675, face: 0, rot: -10 },    { key: 'round_cubicle', x: 3.375, z: 1.675, face: 0, rot: 15 },
-                { key: 'computer_chair_grey', x: -3.625, z: -0.775, face: 0 }, { key: 'computer_chair_blue', x: -0.125, z: -0.775, face: 0 }, { key: 'computer_chair_grey', x: 3.375, z: -0.775, face: 0 },
-                { key: 'computer_chair_blue', x: -3.625, z: 0.625, face: 180 }, { key: 'computer_chair_grey', x: -0.125, z: 0.625, face: 180 }, { key: 'computer_chair_blue', x: 3.375, z: 0.625, face: 180 },
-                /* ── the walls: the files, the cooler, the clocks that disagree ── */
-                { key: 'filing_cabinet', wall: 'n', x: -5.0 }, { key: 'filing_cabinet', wall: 'n', x: -4.3 }, { key: 'filing_cabinet', wall: 'n', x: 5.0 },
-                { key: 'water_cooler',   wall: 'e', z: -2.6 },
-                { key: 'notice_board',   wall: 'e', z: 0.4 },
-                { key: 'wall_clock',     wall: 'n', x: 0, mount: 2.3 },
-                { key: 'wall_clock',     wall: 's', x: 0, mount: 2.25 },
-                { key: 'office_plant',   x: 5.5, z: 3.4 },
-                { key: 'potted_plant',   x: -5.5, z: -3.4 },
-                { key: 'trash_bin',      x: -5.4, z: 3.3, face: 90 },
-                { key: 'trash_bin',      x: 5.4, z: -0.8, face: 270 },
-                { key: 'desk_fan',       x: -5.3, z: 1.6, y: 0, face: 60 },
-                { key: 'cardboard_boxes', x: 5.2, z: 3.2, face: -25 },
-                { key: 'vent_grille',    wall: 's', x: 4.4, mount: 2.5 },
-                { key: 'security_camera', wall: 's', x: -5.2, mount: 2.5 },
-                { key: 'fire_extinguisher', wall: 'w', z: 2.6 },
-                { key: 'exit_sign',      wall: 'w', z: 0, mount: 2.6 },
-                { key: 'nameplate',      wall: 'w', z: -2.2, mount: 1.55 },
-                { key: 'fluorescent',    x: -3.5, z: -2, ceil: true, face: 90 }, { key: 'fluorescent', x: 3.5, z: -2, ceil: true, face: 90 },
-                { key: 'fluorescent',    x: -3.5, z: 2, ceil: true, face: 90 },  { key: 'fluorescent', x: 3.5, z: 2, ceil: true, face: 90 },
+                /* the pods: three each side of the walk, back row */
+                { key: 'round_cubicle', x: -10.5, z: -6.0, face: 180, rot: 20 }, { key: 'round_cubicle', x: -5.6, z: -6.0, face: 180, rot: -10 },
+                { key: 'round_cubicle', x: 5.6, z: -6.0, face: 180, rot: 15 },   { key: 'round_cubicle', x: 10.5, z: -6.0, face: 180, rot: -20 },
+                { key: 'round_cubicle', x: -10.5, z: -0.6, face: 0, rot: 10 },   { key: 'round_cubicle', x: 10.5, z: -0.6, face: 0, rot: -15 },
+                /* the square cubicles, front row */
+                { key: 'square_cubicle', x: -5.6, z: -0.4, face: 0 }, { key: 'square_cubicle', x: 5.6, z: -0.4, face: 0 },
+                { key: 'square_cubicle', x: -5.6, z: 4.6, face: 0 },  { key: 'square_cubicle', x: 5.6, z: 4.6, face: 0 },
+                { key: 'computer_chair_blue', x: -5.6, z: 0.6, face: 0 }, { key: 'computer_chair_grey', x: 5.6, z: 0.6, face: 0 },
+                { key: 'computer_chair_grey', x: -5.6, z: 5.6, face: 0 }, { key: 'computer_chair_blue', x: 5.6, z: 5.6, face: 0 },
+                /* the copier corner, west */
+                { key: 'photocopier',    wall: 'w', z: 5.4 },
+                { key: 'paper_shredder', x: -13.2, z: 7.6, face: 90 },
+                { key: 'cardboard_boxes', x: -12.6, z: 9.2, face: 20 },
+                /* the east wall: the cooler, a plant, a fan on the filing cabinets */
+                { key: 'water_cooler',   wall: 'e', z: 5.4 },
+                { key: 'filing_cabinet', wall: 'e', z: 7.6 }, { key: 'filing_cabinet', wall: 'e', z: 8.4 },
+                { key: 'desk_fan',       x: 13.6, z: 8.0, y: 1.32, face: 270 },
+                { key: 'office_plant',   x: -12.8, z: -9.0 }, { key: 'office_plant', x: 12.8, z: -9.0 }, { key: 'office_plant', x: 0, z: -9.3 },
+                { key: 'wall_clock',     wall: 'n', x: 0, mount: 3.3 },
+                { key: 'psx_ceiling_lamp_2_on', x: -8, z: -5, ceil: true }, { key: 'psx_ceiling_lamp_2_on', x: 0, z: -5, ceil: true }, { key: 'psx_ceiling_lamp_2_on', x: 8, z: -5, ceil: true },
+                { key: 'psx_ceiling_lamp_2_on', x: -8, z: 3, ceil: true },  { key: 'psx_ceiling_lamp_2_on', x: 8, z: 3, ceil: true },  { key: 'psx_ceiling_lamp_2_on', x: 0, z: 5, ceil: true },
             ],
-            agents: [
-                { x: 4.375, z: -3.125, face: 180, pose: 'hqPhone', gender: 'male', label: 'THE SUPERVISOR', reach: 2.4,
-                  line: '“Yes. Yes. No. Yes — the desks are full. No, not of people. Of the shift.”' },
-            ],
-            npcSpots: [{ x: -1.5, z: 0.05, face: 90, race: 'politician', say: ['“I have a desk here.” “Which one?” “All of them, at some point. That is what a desk is for.”'] }],
-            onlineSpots: [
-                { x: -3.625, z: -0.775, face: 0 }, { x: -0.125, z: -0.775, face: 0 }, { x: 3.375, z: -0.775, face: 0 },
-                { x: -3.625, z: 0.625, face: 180 }, { x: -0.125, z: 0.625, face: 180 }, { x: 3.375, z: 0.625, face: 180 },
-            ],
-            lines: [
-                '“What are they working on?” “Crossings.” “All of them?” “All of them are working on all of them.”',
-                '“The clocks disagree.” “The north one is the shift. The south one is the day.” “Which is right?” “The shift.”',
-            ],
-            spawn: { x: -4.4, z: 0, face: 90 },
+            agents: [], npcSpots: [], lines: [],
+            spawn: { x: 0, z: 6.5, face: 0 },
         },
-        /* ── ROOM WC · THE BATHROOM — three stalls; the back wall of the
-           third is not a wall (a secret door into the crawlspace). ── */
+        /* ── THE BATHROOM (DOOR HQ 2.0 wave 3, 2026-11-26): on the Ring now (was off the old third floor; its draught into the crawlspace is
+           gone). 10.5 x 14 m, 4.5 m. Stalls on the back wall, urinals east, the sink row west. LOOK_BOOK.md "Bathroom". ── */
         bathroom: {
-            label: 'THE BATHROOM',
-            sub: 'THIRD FLOOR · STAFF',
-            roomNo: 'WC', why: 'the only room in the register whose number is a job',
-            kind: 'box',
+            label: 'BATHROOM',
+            kind: 'box', noWalkers: true,
             shell: {
-                w: 7, d: 6, h: 3.0,
-                wallH: 3.0, dadoH: 1.6,
-                floor: 'tilefloor_2', wall: 'drywall', dado: 'tilefloor', trim: 'teal', ceiling: 'ceiling',
-                floorColor: 0xd8dcd8, wallColor: 0xe6e8e0, dadoColor: 0xe8ecec,
-                pipes: false,
-                light: { x: 0.8, z: 0 },
-                mood: { light: 0xeefff2 },
-                plate: { x: 0, z: -2.75, y: 2.6 },
+                w: 10.5, d: 14, h: 4.5,
+                wallH: 4.5, dadoH: 1.6,
+                floor: 'tilefloor_2', wall: 'drywall_2', dado: 'urban:TileSubway1a', trim: 'metal', ceiling: 'ceiling',
+                wallColor: 0xe6e2d6, ceilColor: 0xf0ede6,
+                pipes: false, strips: false,
+                lights: [{ x: 0, z: -3.5 }, { x: 0, z: 2.5 }],
+                mood: { light: 0xf4f6f0, ambient: 0.6 },
             },
             doors: [
-                { id: 'annex', wall: 'e', z: 0, leaf: 'leaf_bathroom',
-                  label: 'THE THIRD FLOOR', sub: 'BACK TO THE FLOOR',
-                  action: { room: 'annex', at: 'bathroom' },
-                  desc: 'The way back to the floor. Wash your hands; the sign insists.' },
-                { id: 'secret', wall: 'n', x: 2.2, leaf: null, secret: true,
-                  label: 'A DRAUGHT', sub: 'THE BACK OF THE THIRD STALL',
-                  action: { room: 'crawlspace', at: 'stall' },
-                  desc: 'The back wall of the third stall is a panel. Behind it, a crawlspace, and a ladder down further than three floors.' },
+                { id: 'egress', wall: 's', x: 0, leaf: 'leaf_office', label: 'THE RING', action: { room: 'central_egress', at: 'bathroom' } },
             ],
             counters: [],
             props: [
-                /* ── the north wall: two stalls, and the third's door beside the panel ── */
-                { key: 'toilet_stall',   wall: 'n', x: -2.2 },
-                { key: 'toilet_stall',   wall: 'n', x: -1.0 },
-                { key: 'toilet_stall',   wall: 'n', x: 0.2 },
-                { key: 'toilet_paper',   x: 1.3, z: -2.5, face: 0 },
-                { key: 'clipboard',      wall: 'n', x: 3.0, mount: 1.5, rot: 3 },         // the cleaning rota; the third stall is ticked every day
-                /* ── the west wall: the urinals ── */
-                { key: 'urinal',         wall: 'w', z: -1.2 },
-                { key: 'urinal',         wall: 'w', z: -0.4 },
-                { key: 'hand_dryer',     wall: 'w', z: 1.2, mount: 1.2 },
-                /* ── the south wall: the basins, the mirror strip over them ── */
-                { key: 'sink_row',       wall: 's', x: -1.2 },
-                { key: 'trash_bin',      x: 1.2, z: 2.6, face: 0 },
-                { key: 'mop_bucket',     x: 2.9, z: 2.4, face: 20 },
-                { key: 'wet_floor_sign', x: 2.4, z: 1.4, face: 50 },
-                { key: 'floor_drain',    x: 0.6, z: 0.6 },
-                { key: 'vent_grille',    wall: 'e', z: 2.2, mount: 2.5 },
-                { key: 'exit_sign',      wall: 'e', z: 0, mount: 2.6 },
-                { key: 'fluorescent',    x: 0.8, z: 0, ceil: true, face: 90 },
-                { key: 'flicker_tube',   x: -2.2, z: -1.2, ceil: true, face: 90 },     // over the stalls; it has not decided
+                /* the stalls: three on the back wall, the cabin in the corner as the fourth */
+                { key: 'toilet_stall', wall: 'n', x: -3.3 }, { key: 'toilet_stall', wall: 'n', x: -1.1 }, { key: 'toilet_stall', wall: 'n', x: 1.1 },
+                { key: 'psx_toilet_cabin_mp_1', x: 3.6, z: -5.6, face: 180 },
+                { key: 'toilet_paper', x: -4.9, z: -3.2, y: 0.9, face: 90 },
+                /* the urinals, east */
+                { key: 'urinal', wall: 'e', z: -1.6 }, { key: 'urinal', wall: 'e', z: -0.4 },
+                /* the sink row and the dryer, west */
+                { key: 'sink_row',   wall: 'w', z: -0.8 },
+                { key: 'hand_dryer', wall: 'w', z: 1.6, mount: 1.2 },
+                { key: 'trash_bin',  x: -4.4, z: 2.6, face: 90 },
+                { key: 'mop_bucket', x: 4.3, z: 3.4, face: 210 },
+                { key: 'wet_floor_sign', x: 3.6, z: 2.2, face: 200 },
+                { key: 'psx_ceiling_lamp_2_on', x: 0, z: -3.5, ceil: true },
+                { key: 'psx_ceiling_lamp_2_on', x: 0, z: 2.5,  ceil: true },
             ],
-            agents: [],
-            /* ROOM DIALOGUE (Phase 8 stage 2, 2026-09-15): the conspiracy theorist at the sink — `say` is what whoever stands here says about THIS room, before any roster line (draft, A15) */
-            npcSpots: [{ x: -1.2, z: 1.9, face: 180, race: 'conspiracy theorist', say: ['“They really need a filter on this.” “On the tap?” “On the tap. Do you know what is in this water? Do you know what the fluoride is FOR?”', '“I do not drink from the building.” “Where do you drink from?” “I brought my own. From a spring. They know which spring.”', '“Look at the mirror.” “It is a mirror.” “It is a WINDOW. Wave. Somebody in Records just wrote that down.”'] }],
-            onlineSpots: [],
-            lines: [
-                '“The third stall is out of order.” “The sign is not on it.” “The sign is not the problem.”',
-                '“Who cleans in here?” “The rota says the porter.” “The porter is in B.” “The porter is everywhere.”',
-            ],
-            spawn: { x: 2.4, z: 0, face: 270 },
+            agents: [], npcSpots: [], lines: [],
+            spawn: { x: 0, z: 4.4, face: 0 },
         },
         /* ── THE CRAWLSPACE — low, one bulb, pipes; the stall above, the
            ladder below (a three-floor shortcut into the undercroft). ── */
@@ -39455,71 +39175,51 @@ const DOOR_HQ = {
                 },
             },
         },
-        /* ── ROOM 26 · THE LOCKER ROOM — twenty-six lockers, two showers,
-           the door through to the pool. ── */
+        /* ── THE LOCKER ROOM (DOOR HQ 2.0 wave 3, 2026-11-26): on the Ring now (was off the old third floor; its door to the pool is gone).
+           14 x 17.5 m, 4.5 m. Lockers down both long walls, two benches in the aisle, showers and sinks on the back wall.
+           LOOK_BOOK.md "Locker Room". ── */
         locker: {
-            label: 'THE LOCKER ROOM',
-            sub: 'THIRD FLOOR · TO THE POOL',
-            roomNo: '26', why: 'the alphabet; every locker has a letter and nobody has the one they want',
-            kind: 'box',
+            label: 'LOCKER ROOM',
+            kind: 'box', noWalkers: true,
             shell: {
-                w: 9, d: 7, h: 3.0,
-                wallH: 3.0, dadoH: 1.4,
-                floor: 'tilefloor_2', wall: 'drywall', dado: 'tilefloor', trim: 'teal', ceiling: 'ceiling',
-                floorColor: 0xd0d4d0, wallColor: 0xe2e2d8, dadoColor: 0xdfe6e6,
-                pipes: true,
-                lights: [{ x: -2.2, z: 0.6 }, { x: 2.2, z: 0.6 }],
-                mood: { light: 0xf0f6ff },
-                plate: { x: 3.2, z: -3.25, y: 2.6 },
+                w: 14, d: 17.5, h: 4.5,
+                wallH: 4.5, dadoH: 1.4,
+                floor: 'tilefloor_2', wall: 'drywall_2', dado: 'urban:TileSubway1a', trim: 'metal', ceiling: 'ceiling',
+                wallColor: 0xdcd8cc, ceilColor: 0xeeeae0,
+                pipes: false, strips: false,
+                lights: [{ x: 0, z: -5.5 }, { x: 0, z: 0 }, { x: 0, z: 5 }],
+                mood: { light: 0xf2f4ee, ambient: 0.55 },
             },
             doors: [
-                { id: 'annex', wall: 'e', z: 0, leaf: 'leaf_birch_glass',
-                  label: 'THE THIRD FLOOR', sub: 'BACK TO THE FLOOR',
-                  action: { room: 'annex', at: 'locker' },
-                  desc: 'The way back to the floor.' },
-                { id: 'pool', wall: 'w', z: 0, leaf: 'leaf_orange_glass',
-                  label: 'THE SWIMMING POOL', sub: 'ROOM 50M · THE POOL',
-                  action: { room: 'natatorium', at: 'locker' },
-                  desc: 'The pool. Shower first; the lifeguard checks.' },
+                { id: 'egress', wall: 's', x: 0, leaf: 'leaf_office', label: 'THE RING', action: { room: 'central_egress', at: 'locker' } },
             ],
             counters: [],
             props: [
-                /* ── the north wall: the showers, then the lockers run east ── */
-                { key: 'shower_stall',   wall: 'n', x: -3.6 },
-                { key: 'shower_stall',   wall: 'n', x: -2.4 },
-                { key: 'locker',         wall: 'n', x: -1.0 }, { key: 'locker', wall: 'n', x: -0.4 }, { key: 'locker', wall: 'n', x: 0.2 }, { key: 'locker', wall: 'n', x: 0.8 },
-                { key: 'locker',         wall: 'n', x: 1.4 },  { key: 'locker', wall: 'n', x: 2.0 },  { key: 'locker', wall: 'n', x: 2.6 }, { key: 'locker', wall: 'n', x: 3.2 },
-                /* ── the south wall: the rest of the alphabet ── */
-                { key: 'office_locker',  wall: 's', x: -3.6 }, { key: 'office_locker', wall: 's', x: -3.0 }, { key: 'office_locker', wall: 's', x: -2.4 }, { key: 'office_locker', wall: 's', x: -1.8 },
-                { key: 'office_locker',  wall: 's', x: -1.2 }, { key: 'office_locker', wall: 's', x: -0.6 }, { key: 'office_locker', wall: 's', x: 0.0 }, { key: 'office_locker', wall: 's', x: 0.6 },
-                { key: 'sink',           wall: 's', x: 2.4 },
-                { key: 'hand_dryer',     wall: 's', x: 3.4, mount: 1.2 },
-                /* ── the middle: the benches ── */
-                { key: 'locker_bench',   x: -0.125, z: -0.875, face: 0 },
-                { key: 'locker_bench',   x: -0.125, z: 0.875, face: 0 },
-                { key: 'hook_rail_long', wall: 'e', z: -2.4, mount: 1.8 },
-                { key: 'hook_rail_long', wall: 'e', z: 2.4, mount: 1.8 },
-                { key: 'clipboard',      wall: 'w', z: -2.2, mount: 1.45, rot: -4 },      // the rota; the showers are ticked, the pool is not
-                { key: 'lesson_plaque',  wall: 'w', z: 0.2, mount: 1.35, lesson: 'skate' },   // THE TEACHING ROOMS (R9, 2026-09-19): the deck leans on a locker; the plate says how
-                { key: 'wet_floor_sign', x: -2.9, z: -1.4, face: 30 },
-                { key: 'floor_drain',    x: -3.0, z: -2.1 },
-                { key: 'floor_drain',    x: 1.6, z: 0.2 },
-                { key: 'trash_bin',      x: 3.9, z: 2.6, face: 270 },
-                { key: 'mop_bucket',     x: 3.8, z: -2.6, face: 10 },
-                { key: 'wall_clock',     wall: 'w', z: 2.2, mount: 2.3 },
-                { key: 'vent_grille',    wall: 'w', z: -2.6, mount: 2.5 },
-                { key: 'exit_sign',      wall: 'e', z: 0, mount: 2.6 },
-                { key: 'fluorescent',    x: -2.2, z: 0.6, ceil: true, face: 90 },
-                { key: 'fluorescent',    x: 2.2, z: 0.6, ceil: true, face: 90 },
+                /* the lockers: green steel down the west wall, office lockers down the east */
+                { key: 'locker', wall: 'w', z: -5.6 }, { key: 'locker', wall: 'w', z: -4.7 }, { key: 'locker', wall: 'w', z: -3.8 }, { key: 'locker', wall: 'w', z: -2.9 },
+                { key: 'locker', wall: 'w', z: -1.2 }, { key: 'locker', wall: 'w', z: -0.3 }, { key: 'locker', wall: 'w', z: 0.6 },  { key: 'locker', wall: 'w', z: 1.5 },
+                { key: 'office_locker', wall: 'e', z: -5.6 }, { key: 'office_locker', wall: 'e', z: -4.7 }, { key: 'office_locker', wall: 'e', z: -3.8 }, { key: 'office_locker', wall: 'e', z: -2.9 },
+                { key: 'office_locker', wall: 'e', z: -1.2 }, { key: 'office_locker', wall: 'e', z: -0.3 }, { key: 'office_locker', wall: 'e', z: 0.6 },  { key: 'office_locker', wall: 'e', z: 1.5 },
+                /* the benches, down the aisle (two clear squares either side) */
+                { key: 'locker_bench', x: -3.2, z: -2.4, face: 90 },
+                { key: 'locker_bench', x: 3.2,  z: -2.4, face: 90 },
+                /* the back wall: two showers, the sinks between them, the dryer */
+                { key: 'shower_stall', wall: 'n', x: -4.9 },
+                { key: 'shower_stall', wall: 'n', x: 4.9 },
+                { key: 'sink',         wall: 'n', x: -1.2 },
+                { key: 'sink',         wall: 'n', x: 1.2 },
+                { key: 'hand_dryer',   wall: 'n', x: 0, mount: 1.2 },
+                { key: 'wall_clock',   wall: 'n', x: 0, mount: 3.3 },
+                /* by the door */
+                { key: 'water_cooler', wall: 's', x: -5.2 },
+                { key: 'trash_bin',    x: 4.8, z: 7.6, face: 0 },
+                { key: 'wet_floor_sign', x: -2.6, z: -6.6, face: 160 },
+                { key: 'psx_ceiling_lamp_2_on', x: 0, z: -5.5, ceil: true },
+                { key: 'psx_ceiling_lamp_2_on', x: 0, z: 0,    ceil: true },
+                { key: 'psx_ceiling_lamp_2_on', x: 0, z: 5,    ceil: true },
             ],
-            agents: [],
-            npcSpots: [{ x: 1.475, z: -1.475, face: 0 }, { x: -1.325, z: 1.575, face: 180 }],
-            onlineSpots: [{ x: 2.2, z: 1.9, face: 180 }],
-            lines: [
-                '“Which locker is mine?” “Whichever letter you are.” “I am not a letter.” “Then the bench.”',
-                '“Somebody has left a towel.” “Somebody always leaves a towel. It is the same towel.”',
-            ],
-            spawn: { x: 3.4, z: 0, face: 270 },
+            agents: [], npcSpots: [], lines: [],
+            spawn: { x: 0, z: 5.8, face: 0 },
         },
         /* ── ROOM 50M · THE NATATORIUM — six lanes, starting blocks, a
            lifeguard chair, clerestory windows onto nothing. The garden
@@ -40198,70 +39898,49 @@ const DOOR_HQ = {
             ],
             spawn: { x: -2.4, z: 0, face: 90 },
         },
-        /* ── ROOM ? · LOST AND FOUND (INTERDIMENSIONAL) — the shelves of
-           everything left in another reality, the claims book, the clerk who
-           needs you to describe it before she will look. ── */
+        /* ── LOST AND FOUND (DOOR HQ 2.0 wave 3, 2026-11-26): on the Ring now (was off the old second floor). 14 x 14 m, 4.5 m. Shelves of
+           everything left in another reality round three walls, the claims counter across the middle, the unclaimed by the door.
+           LOOK_BOOK.md "Lost and Found". ── */
         lostfound: {
             label: 'LOST AND FOUND',
-            sub: 'INTERDIMENSIONAL · CLAIMS',
-            roomNo: '?', why: 'the file nobody claimed; the number is the question on the form',
-            kind: 'box',
+            kind: 'box', noWalkers: true,
             shell: {
-                w: 8, d: 6, h: 3.2,
-                wallH: 3.2, dadoH: 1.05,
-                floor: 'terrazzo', wall: 'drywall', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling',
-                pipes: false,
-                lights: [{ x: -1.8, z: 0 }, { x: 1.8, z: 0 }],
-                mood: { light: 0xf4ecd8 },
-                plate: { x: 0, z: -2.75, y: 2.6 },
+                w: 14, d: 14, h: 4.5,
+                wallH: 4.5, dadoH: 1.05,
+                floor: 'carpet_3', wall: 'drywall_2', dado: 'urban:WoodPanelling1a', trim: 'brass', ceiling: 'ceiling',
+                wallColor: 0xe2d8c0, ceilColor: 0xeeeae0,
+                pipes: false, strips: false,
+                lights: [{ x: -3.5, z: -2.5 }, { x: 3.5, z: -2.5 }, { x: 0, z: 2.5 }],
+                mood: { light: 0xfff1d6, ambient: 0.5 },
             },
             doors: [
-                { id: 'works', wall: 'e', z: -1, leaf: 'leaf_coffee',
-                  label: 'THE SECOND FLOOR', sub: 'BACK TO THE FLOOR',
-                  action: { room: 'works', at: 'lostfound' },
-                  desc: 'The way back to the lobby. Check your pockets.' },
+                { id: 'egress', wall: 's', x: 0, leaf: 'leaf_office', label: 'THE RING', action: { room: 'central_egress', at: 'lostfound' } },
             ],
-            counters: [
-                { id: 'claims', x: -0.975, z: -0.375, face: 270, plateY: 1.5, radius: 1.8, verb: 'READ',
-                  label: 'THE CLAIMS BOOK', sub: 'DESCRIBE IT · WE WILL LOOK', action: {},
-                  desc: 'The book on the counter: every item on the shelves, where it was found, and whether anyone has come for it. One line is yours. You have not lost it yet.' },
-            ],
+            counters: [],
             props: [
-                { key: 'lost_shelf',     wall: 'n', x: -2.4 }, { key: 'lost_shelf', wall: 'n', x: 0 }, { key: 'lost_shelf', wall: 'n', x: 2.4 },
-                { key: 'lost_shelf',     wall: 's', x: 2.0 },
-                /* THE CLAIMS DESK (re-laid 2026-09-16): the desk stood against the west
-                   wall with the clerk sitting in FRONT of it facing the room — her back to
-                   it, the found things typed at the chair, in the air. Now the desk is a
-                   floor prop across the room (drawers to the clerk at −x, modesty panel to
-                   the counter), the clerk behind it facing east, the things ON it. */
-                { key: 'tanker_desk',    x: -1.825, z: -0.375, face: 270 },
-                { key: 'office_chair',   x: -2.525, z: -0.375, face: 90 },
-                { key: 'notebook_paper', x: -1.925, z: -0.675, y: 0.76, face: 5 },
-                { key: 'pen',            x: -1.675,  z: -0.175, y: 0.76, face: 70 },
-                { key: 'pocket_watch',   x: -2.025, z: 0.075, y: 0.76, face: 0 },
-                { key: 'house_key',      x: -1.725, z: -0.875, y: 0.76, face: 30 },
-                { key: 'car_key',        x: -1.975,  z: -1.025, y: 0.76, face: 110 },
-                { key: 'umbrella_stand', x: -3.4, z: 2.4, face: 0 },
-                { key: 'cardboard_boxes', x: 3.2, z: -2.3, face: 15 }, { key: 'cardboard_box', x: 2.6, z: -2.6, y: 0.9, face: 40 },
-                { key: 'metal_shelving', wall: 's', x: -1.2 },
-                { key: 'clipboard',      wall: 'w', z: -1.8, mount: 1.5, rot: 2 },
-                { key: 'wall_clock',     wall: 'e', z: -2.2, mount: 2.5 },
-                { key: 'security_camera', wall: 'e', z: 2.4, mount: 2.6 },
-                { key: 'railing_1m',     x: -2.3, z: 1.4, face: 90 },                                 // THE PARK RULE: the queue rail
-                { key: 'riser_1',        x: 1.5, z: 1.6, face: 0, rect: false },                      // … and the step to the top shelf
-                { key: 'fluorescent',    x: -1.8, z: 0, ceil: true, face: 90 }, { key: 'fluorescent', x: 1.8, z: 0, ceil: true, face: 90 },
+                /* the shelves: four on the north wall, two each side */
+                { key: 'lost_shelf', wall: 'n', x: -4.9 }, { key: 'lost_shelf', wall: 'n', x: -1.65 }, { key: 'lost_shelf', wall: 'n', x: 1.65 }, { key: 'lost_shelf', wall: 'n', x: 4.9 },
+                { key: 'lost_shelf', wall: 'w', z: -3.2 }, { key: 'lost_shelf', wall: 'w', z: 0.2 },
+                { key: 'lost_shelf', wall: 'e', z: -3.2 }, { key: 'lost_shelf', wall: 'e', z: 0.2 },
+                /* the claims counter, the clerk's side to the shelves */
+                { key: 'form_counter', x: 0, z: -2.0, face: 180 },
+                { key: 'banker_lamp',  x: -0.8, z: -2.0, y: 1.15, face: 180 },
+                { key: 'manila_folders', x: 0.6, z: -2.0, y: 1.15, face: 160 },
+                { key: 'key_rack',     wall: 'n', x: 0, mount: 1.6 },
+                { key: 'wall_clock',   wall: 'n', x: 0, mount: 3.3 },
+                /* the unclaimed: the trolley, the trunk, the board nobody rode */
+                { key: 'luggage_cart', x: -4.6, z: 3.6, face: 30 },
+                { key: 'footlocker',   x: 4.4, z: 3.2, face: 270 },
+                { key: 'backpack',     x: 4.5, z: 4.4, face: 200 },
+                { key: 'skateboard',   x: -3.2, z: 1.6, face: 70 },
+                { key: 'umbrella_stand', x: 5.6, z: 5.6 },
+                { key: 'cardboard_boxes', x: -5.5, z: 5.5, face: -15 },
+                { key: 'psx_ceiling_lamp_2_on', x: -3.5, z: -2.5, ceil: true },
+                { key: 'psx_ceiling_lamp_2_on', x: 3.5,  z: -2.5, ceil: true },
+                { key: 'psx_ceiling_lamp_2_on', x: 0,    z: 2.5,  ceil: true },
             ],
-            agents: [
-                { x: -2.525, z: -0.375, face: 90, pose: 'hqSit', gender: 'female', label: 'THE CLERK', reach: 2.4,
-                  line: '“Describe it.” “I have not lost anything.” “Describe it anyway. They always have.”' },
-            ],
-            npcSpots: [{ x: 1.6, z: -1.2, face: 0, race: 'djinn', say: ['“Three of these were wishes. Somebody left them on a shelf.” “Which three?” “The ones you are not allowed to touch.”'] }],
-            onlineSpots: [],
-            lines: [
-                '“One sock.” “Where?” “The laundry.” “That is this reality.” “Is it?”',
-                '“Somebody left a crown.” “Whose?” “It was on the form as king of somewhere. The somewhere is closed.”',
-            ],
-            spawn: { x: 2.4, z: 0, face: 270 },
+            agents: [], npcSpots: [], lines: [],
+            spawn: { x: 0, z: 4.6, face: 0 },
         },
         /* ── THE STAIRWELL — the fire stair that loops. You come in at THE
            TOP LANDING (a door six metres up, `y: 6`), walk down three flights
@@ -40344,8 +40023,7 @@ const DOOR_HQ = {
            middle, a gold ring round the floor, six columns; ONE straight flight 7 m wide rising 8.75 m (five battle levels) to
            the landing on the north wall, and the door to the Woods on the landing under the clock. ── */
         woodstair: {
-            label: 'THE STAIRCASE TO THE WOODS',
-            sub: 'THE STAIR · UP INTO THE WOODS',
+            label: 'STAIR TO THE WOODS',
             kind: 'box',
             shell: {
                 w: 30, d: 44, h: 18,
@@ -86490,7 +86168,7 @@ function hqRingMoveDoors() {
         const rid = hqRingId(d.onRing.level || 0), ring = DOOR_HQ.rooms[rid];
         if (!ring || !(ring.doors || []).some(x => x.id === d.id)) return;
         const T = (d.action && d.action.room) ? DOOR_HQ.rooms[d.action.room] : null;
-        ((T && T.doors) || []).forEach(b => { if (b && b.action && b.action.room === 'central_egress' && b.action.at === d.id) { b.action = { room: rid, at: d.id }; b.label = 'THE RING'; b.sub = 'BACK TO THE RING'; } });
+        ((T && T.doors) || []).forEach(b => { if (b && b.action && b.action.room === 'central_egress' && b.action.at === d.id) { b.action = { room: rid, at: d.id }; b.label = 'THE RING'; delete b.sub;   /* one name, no subtitle (DOOR HQ 2.0) */ } });
         out.push(d.id);
     });
     hall.doors = hall.doors.filter(d => !(d && d.onRing && out.indexOf(d.id) >= 0));
@@ -87655,7 +87333,7 @@ const HQ_STAGE_RULES = {
        rebuild). A zone not listed keeps today's rooms and doors exactly; a later phase adds its zone here when its
        joins are built. `buildDelayMs` = the beat after the room's card drops before the first neighbour builds (the
        arrival stays smooth); `lampPickMs` = how often the lamp budget re-picks the nearest `lampsLive` point lights. */
-    zones: ['medwing', 'basement', 'dumb', 'works', 'annex', 'labs', 'executive', 'recwing', 'execwing', 'derelict', 'hwing'], buildDelayMs: 600, lampPickMs: 500,   // Phase 4: THE BASEMENT; Phase 5 (2026-09-27): THE D.U.M.B. (door joins); THE LAND cut (ZONES_PLAN Z0): the stage is DOOR HQ's only; ZONES_PLAN Z2 (2026-09-30): the floors
+    zones: ['medwing', 'basement', 'dumb', 'works', 'annex', 'labs', 'executive', 'execwing', 'derelict', 'hwing'], buildDelayMs: 600, lampPickMs: 500,   // Phase 4: THE BASEMENT; Phase 5 (2026-09-27): THE D.U.M.B. (door joins); THE LAND cut (ZONES_PLAN Z0): the stage is DOOR HQ's only; ZONES_PLAN Z2 (2026-09-30): the floors
     /* a neighbour's PEOPLE (Phase 2): 'interior' = a closed room's cast (the nurse at her desk, the patient on his cot) is
        spawned with the room when it is built beside you, so the ward is not empty through its open door; an outdoor part's
        crowd still comes out when you cross (Phase 1's rule — a city block is dozens of rigs). 'none' = Phase 1's rule
@@ -87685,6 +87363,19 @@ const HQ_STAGE_RULES = {
         { a: 'central_egress', door: 'medical', b: 'medical', bDoor: 'lobby' },   // MEDICAL, the open front at 100 degrees (14 x 4.5 m)
         /* DOOR STORE (DOOR HQ 2.0 wave 2, 2026-11-26): the Lobby's open front (its `doorstore` row, no leaf) ⇄ the store's `lobby` opening */
         { a: 'central_egress', door: 'doorstore', b: 'doorstore', bDoor: 'lobby' },
+        /* THE RING AS A HUB (DOOR HQ 2.0 wave 3, 2026-11-26, the Ring's rooms; plans/1_lobby_level_plan.png): the Ring (`ring_g`, a closed ring
+           corridor) stands its eleven rooms behind its outer wall the way the Lobby stands its open fronts (data.js hqRoundHubR) */
+        { a: 'ring_g', door: 'it', b: 'it', bDoor: 'egress' },
+        { a: 'ring_g', door: 'lostfound', b: 'lostfound', bDoor: 'egress' },
+        { a: 'ring_g', door: 'locker', b: 'locker', bDoor: 'egress' },
+        { a: 'ring_g', door: 'bathroom', b: 'bathroom', bDoor: 'egress' },
+        { a: 'ring_g', door: 'woods', b: 'woodstair', bDoor: 'egress' },
+        { a: 'ring_g', door: 'office', b: 'office', bDoor: 'egress' },
+        { a: 'ring_g', door: 'records', b: 'records', bDoor: 'egress' },
+        { a: 'ring_g', door: 'clockroom', b: 'clockroom', bDoor: 'egress' },
+        { a: 'ring_g', door: 'barbershop', b: 'barbershop', bDoor: 'egress' },
+        { a: 'ring_g', door: 'lecture', b: 'classroom', bDoor: 'egress' },
+        { a: 'ring_g', door: 'cubicles', b: 'cubicles', bDoor: 'egress' },
         { a: 'central_egress', door: 'cafeteria', b: 'cafeteria', bDoor: 'lobby' },   // THE CAFETERIA (DOOR HQ 2.0 wave 2, 2026-11-26): the open front at 270 degrees (17.5 x 4.5 m), the Kitchen inside the same box
     ],
 };
@@ -88137,7 +87828,6 @@ const HQ_WORLD = {
                 works:       { x: 0, z: 0, y: 8, rot: 0 },
                 warehouse:   { x: 0, z: -9.2, y: 8, rot: 0 },
                 control:     { x: 9.2, z: -0.5, y: 8, rot: 0 },
-                lostfound:   { x: -9.2, z: -0.5, y: 8, rot: 0 },
                 incinerator: { x: 14.2, z: -7.2, y: 8, rot: 0 },
                 autopsy:     { x: -13.7, z: -6.2, y: 8, rot: 0 },
                 doorgarden:  { x: -6, z: -19.4, y: 8, rot: 0 },
@@ -88145,7 +87835,6 @@ const HQ_WORLD = {
             joins: [
                 { a: 'works', b: 'warehouse', kind: 'door', door: 'warehouse', bDoor: 'works' },
                 { a: 'works', b: 'control', kind: 'door', door: 'control', bDoor: 'works' },
-                { a: 'works', b: 'lostfound', kind: 'door', door: 'lostfound', bDoor: 'works' },
                 { a: 'warehouse', b: 'incinerator', kind: 'door', door: 'incinerator', bDoor: 'works' },
                 { a: 'warehouse', b: 'autopsy', kind: 'door', door: 'autopsy', bDoor: 'works' },
                 { a: 'warehouse', b: 'doorgarden', kind: 'door', door: 'garden', bDoor: 'works' },
@@ -88159,16 +87848,12 @@ const HQ_WORLD = {
             parts: {
                 annex:      { x: 0, z: 0, y: 16, rot: 0 },
                 garden:     { x: 0, z: -14.2, y: 16, rot: 0 },
-                locker:     { x: -9.7, z: 1.5, y: 16, rot: 0 },
-                classroom:  { x: 10.2, z: 1.1, y: 16, rot: 0 },
                 natatorium: { x: 20.2, z: -14.2, y: 16, rot: 0 },
                 orb:        { x: 1.6, z: -28.9, y: 16, rot: 3 },
                 dungeon:    { x: -6.1, z: -29.4, y: 16, rot: 3 },
             },
             joins: [
                 { a: 'annex', b: 'garden', kind: 'door', door: 'garden', bDoor: 'annex' },
-                { a: 'annex', b: 'locker', kind: 'door', door: 'locker', bDoor: 'annex' },
-                { a: 'annex', b: 'classroom', kind: 'door', door: 'classroom', bDoor: 'annex' },
                 { a: 'garden', b: 'natatorium', kind: 'door', door: 'pool', bDoor: 'garden' },
                 { a: 'garden', b: 'orb', kind: 'door', door: 'gate', bDoor: 'gate' },
                 { a: 'orb', b: 'dungeon', kind: 'door', door: 'dungeon', bDoor: 'orb' },
@@ -88203,18 +87888,7 @@ const HQ_WORLD = {
                 { a: 'executive', b: 'corner', kind: 'door', door: 'corner', bDoor: 'lobby' },
                 { a: 'executive', b: 'pool', kind: 'door', door: 'pool', bDoor: 'lobby' },
             ] },
-        /* Z2 — floor M, the records wing (off the rotunda at 240°): the wing, the records room, the clock room. The records
-           room's tapes stay the projector's spot in the observatorium (the observatorium is off the rotunda itself). */
-        recwing: { label: 'THE RECORDS WING', ground: 'hq', hub: 'recwing', sky: null, clock: false,
-            parts: {
-                recwing:   { x: -60, z: 0, y: 0, rot: 0 },
-                records:   { x: -62.2, z: -9.2, y: 0, rot: 1 },
-                clockroom: { x: -49.3, z: 0, y: 0, rot: 0 },
-            },
-            joins: [
-                { a: 'recwing', b: 'records', kind: 'door', door: 'records', bDoor: 'egress' },
-                { a: 'recwing', b: 'clockroom', kind: 'door', door: 'clockroom', bDoor: 'egress' },
-            ] },
+        /* (the records wing zone: retired 2026-11-26, DOOR HQ 2.0 wave 3: Records and the Clock Room are rooms on the Ring) */
         /* Z2 — floor M, the executive wing (off the rotunda's upper ring at 315°): the wing, the trophy case, continuity. */
         execwing: { label: 'THE EXECUTIVE WING', ground: 'hq', hub: 'execwing', sky: null, clock: false,
             parts: {
@@ -88435,6 +88109,13 @@ function hqStageFromRoom(rel, x, z) {
    two doors) for a room of either end, or null (the rows are checked here: a level-0 door of a round room, a wall door of a
    box room). */
 function hqStageRoundJoin(roomId, otherId) { return hqStageRoundJoins(roomId, otherId)[0] || null; }
+/* the radius a round join's box rooms stand behind: the round hall's drum, or (DOOR HQ 2.0 wave 3, 2026-11-26, the Ring's rooms) a CLOSED
+   ring corridor's outer wall (kind 'bay', `shell.full`): its rooms stand round it like the Lobby's round the hall. 0 = not a hub. */
+function hqRoundHubR(A) {
+    const S = A && A.shell; if (!S || A.kind === 'box') return 0;
+    if (A.kind === 'bay') return (S.full && S.rOut > 0) ? S.rOut : 0;
+    return S.radius > 0 ? S.radius : 0;
+}
 /* every row of a room (2026-11-18: a hall has one for each joined door, a box room one); `otherId` = only the row with that room */
 function hqStageRoundJoins(roomId, otherId) {
     const rows = (typeof HQ_STAGE_RULES !== 'undefined' && HQ_STAGE_RULES.round) || [], R = DOOR_HQ.rooms || {}, out = [];
@@ -88442,10 +88123,11 @@ function hqStageRoundJoins(roomId, otherId) {
         const j = rows[i]; if (!j || (j.a !== roomId && j.b !== roomId)) continue;
         if (otherId && j.a !== otherId && j.b !== otherId) continue;
         const A = R[j.a], B = R[j.b];
-        if (!A || !B || A.kind === 'box' || A.kind === 'bay' || !(A.shell && A.shell.radius > 0)) continue;
+        if (!A || !B || !(hqRoundHubR(A) > 0)) continue;
         if (B.kind !== 'box' || !(B.shell && B.shell.w > 0 && B.shell.d > 0)) continue;
         const da = (A.doors || []).find(d => d && d.id === j.door), db = (B.doors || []).find(d => d && d.id === j.bDoor);
         if (!da || !db || (da.level || 0) !== 0 || !isFinite(+da.deg) || !_hqDoorOnWall(B, db)) continue;
+        if (A.kind === 'bay' && (da.cap || da.side === 'in')) continue;   // THE RING: only a door on its outer wall
         out.push({ a: j.a, b: j.b, door: da, bDoor: db });
     }
     return out;
@@ -88454,7 +88136,7 @@ function hqStageRoundJoins(roomId, otherId) {
    door's angle, `gap` the wall between, `ow` / `oh` the doorway (the narrower leaf's), `pb` the box door on its wall */
 function hqStageRoundGeom(j) {
     if (!j) return null;
-    const A = DOOR_HQ.rooms[j.a], B = DOOR_HQ.rooms[j.b], a = +j.door.deg * Math.PI / 180, R = A.shell.radius;
+    const A = DOOR_HQ.rooms[j.a], B = DOOR_HQ.rooms[j.b], a = +j.door.deg * Math.PI / 180, R = hqRoundHubR(A);
     const gap = HQ_WORLD_RULES.wallM, pb = _hqDoorOnWall(B, j.bDoor);
     const nOut = ({ n: [0, -1], s: [0, 1], e: [1, 0], w: [-1, 0] })[pb.wall];
     let th = Math.atan2(-Math.sin(a), Math.cos(a)) - Math.atan2(nOut[0], nOut[1]);   // the box's outward normal onto the way in to the hall's centre
@@ -88483,7 +88165,7 @@ function hqStageRoundNeighbours(roomId) {
         return out.length ? out : null;
     }
     const j = js[0], G = hqStageRoundGeom(j); if (!G) return null;
-    const SA = DOOR_HQ.rooms[j.a].shell, Ro = Math.max(SA.radius, (SA.mezz && SA.mezz.outer) || 0, (SA.ring3 && SA.ring3.outer) || 0), c = hqStageToRoom(G.back, 0, 0);
+    const SA = DOOR_HQ.rooms[j.a].shell, Ro = Math.max(SA.radius || 0, SA.rOut || 0, (SA.mezz && SA.mezz.outer) || 0, (SA.ring3 && SA.ring3.outer) || 0), c = hqStageToRoom(G.back, 0, 0);
     return [{ id: j.a, rel: G.back, round: true, links: [],
               rect: { x0: c.x - Ro, z0: c.z - Ro, x1: c.x + Ro, z1: c.z + Ro },
               spans: [{ side: G.pb.wall, t0: G.pb.t - G.ow / 2, t1: G.pb.t + G.ow / 2, kind: 'door', door: j.bDoor.id, pad: 0.3, depth: G.gap + 0.5 }] }];
@@ -111614,7 +111296,7 @@ const DOOR_CAST = {
         name: 'SEDANIEL', title: 'COMPANY VEHICLE · ISSUED TO YOU', dept: 'Motor pool', race: 'honda civic', gender: 'male', base: 'honda civic',
         lines: ['“I drive a lonely road.”', '“She’s for the streets.”'],
         spots: [
-            { room: 'bay_terrestrial', deg: -38, r: 10.6, face: 52, reach: 2.8, rad: 1.5,
+            { room: 'bay_terrestrial', deg: -58, r: 10.6, face: 52, reach: 2.8, rad: 1.5,   // (2026-11-26, DOOR HQ 2.0 wave 3: moved 20 degrees off the Cubicle Floor's door)
               doing: 'Parked on the one corridor with a parking lot. Four doors, all of which open and close. He is paid in oil changes.' },
             /* scene A, the opening: he drives the recruit to the lone door (`live` = only while map.js runs the intro) */
             { room: 'intro_desert', x: -6, z: 60, face: 0, reach: 0, rad: 1.5, live: '_ewIntroLive',
