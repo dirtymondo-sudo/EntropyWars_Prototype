@@ -58455,7 +58455,8 @@ const ThreeRenderer = (function () {
         }
         if (S.sub && S.sub.length) L.push('Inside the ticks (ms/frame): ' + S.sub.filter(function (r) { return r[1] >= 0.02; }).slice(0, 10).map(function (r) { return r[0] + ' ' + r[1].toFixed(2); }).join(' · '));
         if (S.slow && S.slow.length) L.push('Slow frames (last ' + S.slow.length + ', gap · its JS · top): ' + S.slow.map(function (w) { return Math.round(w.iv) + ' ms · JS ' + Math.round(w.cpu) + (w.tm != null ? ' · timers ' + Math.round(w.tm) + (w.tmTop ? ' (slowest ' + w.tmTop + ')' : '') : '') + (w.rec ? ' · ' + w.rec + ' re-recorded' : '') + (w.pb ? ' · ' + w.pb + ' shader builds' : '') + (w.pp ? ' · ' + w.pp + ' new pipelines' : '') + (w.ep ? ' · epoch moved' : '') + ' · ' + w.top.map(function (t) { return t[0] + ' ' + t[1].toFixed(1); }).join(', '); }).join(' | '));
-        try { _dipLines().forEach(function (x) { L.push(x); }); } catch (eDip) {}   // THE DIP LOG: every dip of the session, lens open or not
+        try { _dipLines().forEach(function (x) { L.push(x); }); } catch (eDip) {}
+        try { var xcT = _hqXcText(); if (xcT) L.push(xcT); } catch (eXc) {}   // THE CROSSING CAPTURE   // THE DIP LOG: every dip of the session, lens open or not
         if (S.cnt) {   // THE SHADOW SPLIT (2026-11-15): which shadow costs — the sun's map or a lamp's cube sides — and how many objects each pass's walk visits
             var cN = function (k) { return S.cnt[k] || 0; }, cF = function (v) { return v >= 100 ? _lensFmtN(v) : (Math.round(v * 10) / 10); };
             L.push('Shadow split (a frame): sun ' + cF(cN('sun renders')) + ' renders, ' + cF(cN('sun calls')) + ' calls, ' + cF(cN('sun tris')) + ' tris · lamp ' + cF(cN('lamp renders')) + ' side renders, ' + cF(cN('lamp calls')) + ' calls, ' + cF(cN('lamp tris')) + ' tris');
@@ -101073,7 +101074,8 @@ const ThreeRenderer = (function () {
             else { var _cd0 = performance.now();
             if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(H.scene, H.camera, _hqPostOpts(H));
             else renderer.render(H.scene, H.camera);
-            if (!H.ready) { H._cardDrawAt = performance.now(); H._cardDrawMs = H._cardDrawAt - _cd0; } }
+            if (!H.ready) { H._cardDrawAt = performance.now(); H._cardDrawMs = H._cardDrawAt - _cd0; }
+            try { _hqXcFrame(H, _cd0); } catch (eXc) {} }   // THE CROSSING CAPTURE
         } finally { if (mwHold) mwScene.matrixWorldAutoUpdate = true; _hqFogBack(fogHold); _EW_PLU.on.x = 0; }   // (THE ROUND WORLDS: the classic bend is the walk's draw only)
         /* NO HELD FRAME ON THE WAY BACK (2026-10-25, mondo: "no freeze"): the debrief's last picture fades on the room's first
            drawn frame with the walker in it — the room's files still landing land in the live picture — and THE WAY BACK's ease
@@ -107884,6 +107886,7 @@ const ThreeRenderer = (function () {
     }
     /* before the frame: which doorways show, the room beyond each see-through one drawn into its picture, the walker who went in
        taken out of this room's picture */
+    var _hqImpFw = null;
     function _hqImpRender(H) {
         var I = H.imp, st = H.stage; if (!I || !st || !renderer || !H.camera) return;
         var pl = H.player, G = pl && pl.entry && pl.entry.group;
@@ -107896,6 +107899,21 @@ const ThreeRenderer = (function () {
             var r = I.recs[i], F = r.F, E = st.parts[r.id];
             var on = !!(E && E.attached && E.P.partRoot.parent && E.P.partRoot.visible !== false);
             var show = _hqImpD(F, ex, ez) < (F.window ? -0.1 : 0.05) && Math.hypot(ex - F.x, ez - F.z) < seeM + (F.window ? 0 : 10) && (on || !F.window);   // from the front only (dark until the room beyond stands; a window keeps its painted pane)
+            /* THE DOORWAY AT YOUR BACK (2026-11-26, mondo: "it still glitches when crossing into a room ... like the lighting changes and
+               everything for a split second", and in the glitch he sees the wallpaper of the room he is LEAVING): the swap happens when the
+               camera passes a see-through doorway's plane, and the new room arms its own doorway back at once. The camera then stands a few
+               centimetres on the room's side of that doorway, so it counted as "in front": the doorway's box (two-sided, reaching 0.6 m
+               past the plane) was cut by the camera's near plane and its inside faces filled the screen with the picture of the room
+               beyond, the room just left. A doorway the camera stands at (within its box's depth and a near plane) while looking AWAY
+               from it is not drawn: it is behind the eye. Old rule: window.EW_HQ_IMP_BACK_SHOW. */
+            if (show && !F.window && !(typeof window !== 'undefined' && window.EW_HQ_IMP_BACK_SHOW)) {
+                var bkM = (+HQ_STAGE_RULES.impDepthM || 0.6) + Math.max(0.1, (cam.near || 1) / U) + 0.2;
+                if (_hqImpD(F, ex, ez) > -bkM && Math.abs(_hqImpT(F, ex, ez)) < F.ow / 2 + bkM) {
+                    if (!_hqImpFw) _hqImpFw = new THREE.Vector3();
+                    cam.getWorldDirection(_hqImpFw);
+                    if (_hqImpFw.x * F.ox + _hqImpFw.z * F.oz < 0) show = false;
+                }
+            }
             r.shown = show;
             if (r.mesh.visible !== show) r.mesh.visible = show;
             if (r.paint) { for (var pi = 0; pi < r.paint.length; pi++) if (r.paint[pi].visible === show) r.paint[pi].visible = !show; }   // the painted view gives way to the real one
@@ -108032,9 +108050,48 @@ const ThreeRenderer = (function () {
         return { id: I.id, in: st.impIn || null, crossed: I.crossed || 0, recs: I.recs.map(function (r) { var E = st.parts[r.id]; return { id: r.id, door: r.F.door, see: r.see, look: r.look, on: !!(E && E.attached) && _hqImpAltOn(r), shown: r.shown, drawn: r.drawn, d: pl ? Math.round(_hqImpD(r.F, pl.x, pl.z) * 100) / 100 : null }; }) };
     }
     /* THE SWAP: the neighbour `to` becomes the current part; everything is re-anchored to its frame */
+    /* THE CROSSING CAPTURE (2026-11-26, mondo on WebGPU: "it still glitches when crossing into a room, like the lighting changes and
+       everything for a split second", in the glitch the wallpaper of the room he is leaving; the cloud's WebGPU cannot walk a crossing
+       and WebGL draws it clean, frame by frame). What each drawn frame did around the last crossing: the two before it, the swap
+       frame and three after, each its time, its gap, the camera and the walker (metres, the part's frame), and what the renderer
+       did in it (shader builds, draws held for a look still compiling, recordings made, recordings moved, light-list changes, the
+       rig's lamps, the parts drawn). The F3 lens prints it as "Last crossing". */
+    var _hqXc = { ring: [], last: null, cur: null, prev: null };
+    function _hqXcCounts() {
+        var U = _hqUnits(), H = _hq, c = H && H.camera, pl = H && H.player, w = new THREE.Vector3();
+        if (c) c.getWorldDirection(w);
+        var lt = (renderer && renderer._ew_late) ? _ewLateStats() : null, st = H && H.stage, drawn = 0, partsN = 0;
+        if (st) for (var id in st.parts) { var E = st.parts[id]; if (E && E.attached && E.P && E.P.partRoot) { partsN++; if (E.P.partRoot.visible !== false && E.P.partRoot.parent) drawn++; } }
+        return { t: performance.now(), room: (st && st.id) || '', cam: c ? [c.position.x / U, c.position.y / U, c.position.z / U, Math.atan2(w.x, w.z) * 180 / Math.PI] : null,
+                 pl: pl ? [pl.x, pl.y, pl.z, (pl.entry && pl.entry.model) ? pl.entry.model.rotation.y * 180 / Math.PI : null] : null,
+                 b: _ewKeep.builds | 0, p: _ewKeep.pipes | 0, held: lt ? lt.held | 0 : 0, recs: _ewBun.recs | 0, moved: _ewBun.fwKept | 0, sigs: _ewWhy.sigs | 0,
+                 rig: _ewRigG ? (_ewRigG.grows | 0) + '/' + (_ewRigG.moves | 0) : '-', sig: (function () { try { return _ewRigSig(); } catch (e) { return ''; } })(),
+                 nb: drawn + '/' + partsN, imp: (H && H.imp) ? H.imp.recs.filter(function (r) { return r.shown; }).length : 0 };
+    }
+    function _hqXcFrame(H, t0) {
+        var X = _hqXc, k = _hqXcCounts(), p = X.prev; X.prev = k;
+        if (!p) return;
+        var row = { gap: k.t - p.t, js: performance.now() - t0, k: k, d: { b: k.b - p.b, p: k.p - p.p, held: k.held - p.held, recs: k.recs - p.recs, moved: k.moved - p.moved, sigs: k.sigs - p.sigs, rigSig: k.sig !== p.sig } };
+        if (X.cur) { X.cur.rows.push(row); if (X.cur.rows.length >= 6) { X.last = X.cur; X.cur = null; } return; }
+        X.ring.push(row); if (X.ring.length > 2) X.ring.shift();
+    }
+    function _hqXcSwap(from, to) {
+        var X = _hqXc; X.cur = { at: new Date().toISOString().slice(11, 19), from: from, to: to, rows: X.ring.slice(), swapAt: X.ring.length }; X.ring = [];
+    }
+    function _hqXcText() {
+        var X = _hqXc.last || _hqXc.cur; if (!X) return null;
+        var f = function (v, n) { return v == null ? '-' : (+v).toFixed(n == null ? 1 : n); };
+        return 'Last crossing ' + X.at + 'Z ' + X.from + ' > ' + X.to + ' (frame 0 = the swap frame): ' + X.rows.map(function (r, i) {
+            var k = r.k, d = r.d, n = i - X.swapAt;
+            return '[' + n + '] gap ' + Math.round(r.gap) + ' ms' + (k.cam ? ' · cam ' + f(k.cam[0]) + ',' + f(k.cam[1]) + ',' + f(k.cam[2]) + ' look ' + Math.round(k.cam[3]) : '') + (k.pl ? ' · you ' + f(k.pl[0]) + ',' + f(k.pl[2]) + ' body ' + (k.pl[3] == null ? '-' : Math.round(k.pl[3])) : '') +
+                ' · ' + k.room + ' parts ' + k.nb + (k.imp ? ' doorways ' + k.imp : '') + (d.b ? ' · builds ' + d.b : '') + (d.p ? ' · pipelines ' + d.p : '') + (d.held ? ' · HELD ' + d.held : '') + (d.recs ? ' · recorded ' + d.recs : '') +
+                (d.moved ? ' · moved ' + d.moved : '') + (d.sigs ? ' · LIGHT LIST x' + d.sigs : '') + (d.rigSig ? ' · rig changed (' + k.rig + ')' : '');
+        }).join(' | ');
+    }
     function _hqStageSwap(H, to) {
         var st = H.stage, E = st.parts[to], rel = E.rel, U = _hqUnits(), t0 = performance.now();
         var fromId = st.id, fromRoom = H.room;
+        try { _hqXcSwap(fromId, to); } catch (eXc) {}   // THE CROSSING CAPTURE
         try { _hqCullReset(H); } catch (e) {}   // THE PORTALS (G1): every part drawn before the records change hands (the next tick re-picks)
         try { _hqLodReset(H); } catch (e) {}   // THE LOD LEVELS: re-picked on the new part's list
         /* THE KEPT INSTANCE PASS (2026-11-26, mondo: "it still glitches when i cross into rooms"): the swap threw the whole instance pass
