@@ -102661,10 +102661,60 @@ const ThreeRenderer = (function () {
     /* THE TALL SCENERY (see ThreeRenderer.tallSceneryTopAt): one pass over the battle room's pieces → the boxes of the
        tall grounded props, flat [x0, x1, z0, z1, top, isTree, …] in world px */
     var _tallScenery = null;
+    /* THE CLEAR SHOT (2026-11-26, three-camera.js): the boxes a spell shot's pick sights through. The room's pieces come with
+       THE TALL SCENERY's own read (`all`: no extra pass); the board's own objects (deployed things, turrets, monuments, map
+       objects: objectGroup) are read when a pick asks and at most once a second. Never every frame (RULE #1e). */
+    var SHOT_BOX_MAX = 900, SHOT_OBJ_MAX = 300;
+    var _shotObj = null;
+    function _tallSceneryGet() {
+        var F = _facilityNearGroup;
+        if (!F || !F.parent || typeof bw !== 'function') return null;
+        var now = Date.now(), C = _tallScenery;
+        if (!C || C.group !== F || (now - C.born < 60000 && now - C.at > 3000)) {
+            C = _tallScenery = _tallSceneryRead(F, (C && C.group === F) ? C.born : now, now);
+        }
+        return C;
+    }
+    function _shotObjRead(now) {
+        var out = { at: now, group: objectGroup, n: objectGroup ? objectGroup.children.length : 0, all: [] };
+        if (!objectGroup) return out;
+        var ts = CONFIG.tileSize || BASE_TILE, W = bw(), H = bh();
+        var elev = (typeof window._getElevationPx === 'function') ? window._getElevationPx : null;
+        var heights = (typeof state !== 'undefined' && state.boardHeights) || null;
+        var b = new THREE.Box3();
+        var walk = function (o, depth) {
+            if (!o || o.visible === false || out.all.length >= 7 * SHOT_OBJ_MAX) return;
+            if (o === _terrainDecoGroup && o.children.length > 160) return;   // ground cover (tufts, pebbles)
+            try { o.updateMatrixWorld(true); b.setFromObject(o); } catch (e) { return; }
+            if (b.isEmpty()) return;
+            var w = (b.max.x - b.min.x) / ts, d = (b.max.z - b.min.z) / ts;
+            if ((w > 4 || d > 4) && o.children && o.children.length > 1 && depth < 2) {
+                var kids = o.children.slice();
+                for (var k = 0; k < kids.length; k++) walk(kids[k], depth + 1);
+                return;
+            }
+            if (w > 4 || d > 4 || b.max.y - b.min.y < ts * 0.3) return;
+            var tx = Math.max(0, Math.min(W - 1, Math.floor((b.min.x + b.max.x) / 2 / ts))), ty = Math.max(0, Math.min(H - 1, Math.floor((b.min.z + b.max.z) / 2 / ts)));
+            var col = (heights && heights[ty] && heights[ty][tx]) || 0, colPx = (col > 0 && elev) ? elev(col) : 0;
+            if (b.max.y < colPx + ts * 0.45) return;
+            out.all.push(b.min.x, b.max.x, b.min.y, b.max.y, b.min.z, b.max.z, _occIsTreeRoot(o) ? 1 : 0);
+        };
+        var ch = objectGroup.children.slice();
+        for (var i = 0; i < ch.length; i++) walk(ch[i], 0);
+        return out;
+    }
+    function _shotBlockers() {
+        var now = Date.now();
+        if (!_shotObj || _shotObj.group !== objectGroup || now - _shotObj.at > 1000) _shotObj = _shotObjRead(now);
+        var C = _tallSceneryGet();
+        if (!C || !C.all.length) return _shotObj.all;
+        if (!_shotObj.all.length) return C.all;
+        return C.all.concat(_shotObj.all);
+    }
     var TALL_OFF_TILES = 4;   // THE ROOM'S GROUND: props this many squares past the board's edge count as tall scenery too
     function _tallSceneryRead(F, born, now) {
         var ts = CONFIG.tileSize || BASE_TILE, W = bw(), H = bh();
-        var out = { group: F, born: born, at: now, boxes: [] };
+        var out = { group: F, born: born, at: now, boxes: [], all: [] };
         var elev = (typeof window._getElevationPx === 'function') ? window._getElevationPx : null;
         var heights = (typeof state !== 'undefined' && state.boardHeights) || null;
         if (!elev || !heights || !(W > 0 && H > 0)) return out;
@@ -102681,7 +102731,7 @@ const ThreeRenderer = (function () {
             }
             if (b.isEmpty()) continue;
             var w = (b.max.x - b.min.x) / ts, d = (b.max.z - b.min.z) / ts;
-            if (w < 1 || d < 1 || w > 10 || d > 10) continue;
+            if (w > 10 || d > 10) continue;
             var tx = Math.floor((b.min.x + b.max.x) / 2 / ts), ty = Math.floor((b.min.z + b.max.z) / 2 / ts);
             /* THE ROOM'S GROUND (2026-11-07): a lens past the board's edge is a normal place for the board view (a unit on the
                near row), so a tree or a rock just off the board counts too, standing on the room's drawn ground there */
@@ -102695,6 +102745,9 @@ const ThreeRenderer = (function () {
                 var col = (heights[ty] && heights[ty][tx]) || 0;
                 colPx = col > 0 ? elev(col) : 0;
             }
+            /* THE CLEAR SHOT (three-camera.js): every piece that stands up, any size, floating or grounded, with its real box */
+            if (w <= 8 && d <= 8 && b.max.y - b.min.y >= ts * 0.3 && b.max.y >= colPx + ts * 0.45 && out.all.length < 7 * SHOT_BOX_MAX) out.all.push(b.min.x, b.max.x, b.min.y, b.max.y, b.min.z, b.max.z, isTree);
+            if (w < 1 || d < 1) continue;
             if (b.max.y < colPx + ts * 1.5) continue;           // no taller than the column it stands on
             if (b.min.y > colPx + ts * 1.0) continue;           // floats (an awning, a bridge, a sign)
             out.boxes.push(b.min.x, b.max.x, b.min.z, b.max.z, b.max.y, isTree);   // (6 a box; isTree: THE CLOSE VIEW)
@@ -112190,13 +112243,11 @@ const ThreeRenderer = (function () {
         roomGroundAt: function (wx, wz) { return _roomGroundAt(wx, wz); },
         /* THE CLOSE VIEW (2026-11-26, see three-camera.js): noTrees leaves the trees out. A tree's box is its whole crown, a
            tower several squares wide over squares units stand on, and THE TREE FADE already opens a tree on a sight line. */
+        /* THE CLEAR SHOT: flat [x0, x1, y0, y1, z0, z1, isTree, …] world px (see _shotBlockers) */
+        shotBlockers: function () { try { return _shotBlockers(); } catch (e) { return null; } },
         tallSceneryTopAt: function (wx, wz, noTrees) {
-            var F = _facilityNearGroup;
-            if (!F || !F.parent || typeof bw !== 'function') return -Infinity;
-            var now = Date.now(), C = _tallScenery;
-            if (!C || C.group !== F || (now - C.born < 60000 && now - C.at > 3000)) {
-                C = _tallScenery = _tallSceneryRead(F, (C && C.group === F) ? C.born : now, now);
-            }
+            var C = _tallSceneryGet();
+            if (!C) return -Infinity;
             var top = -Infinity, B = C.boxes;
             for (var i = 0; i < B.length; i += 6) {
                 if (noTrees && B[i + 5]) continue;

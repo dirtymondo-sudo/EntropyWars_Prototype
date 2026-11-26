@@ -574,7 +574,7 @@ const ThreeCamera = (function () {
     /* the beat: the controller's move, the rig on its subject and where it is headed, the clear angle's heading */
     function _crSig(cam) {
         const r = (v, k) => Number.isFinite(v) ? Math.round(v * k) : 'x';
-        return (cam._moveGen | 0) + '|' + _fgCarryKey(cam) + '|' + r(cam._tx, 50) + ',' + r(cam._ty, 50) + '|' + Math.round(_caWant * 57.3);
+        return (cam._moveGen | 0) + '|' + _fgCarryKey(cam) + '|' + r(cam._tx, 50) + ',' + r(cam._ty, 50) + '|' + Math.round(_caWant * 57.3) + '|' + Math.round(_caWantT * 57.3);
     }
     /* live = the crane the live pose needs; atTarget() = the crane at the beat's target pose (null = no target pose) */
     function _steadyCrane(cam, live, atTarget, cut) {
@@ -933,6 +933,77 @@ const ThreeCamera = (function () {
        Host and guest run it on the same relayed shot and the same rendered bodies (RULE #2). Kill switch:
        window.EW_NO_CLEAR_ANGLE = true. Probe: ThreeCamera.clearAngleState(). */
     const CA_CANDS = [0, 30, -30, 55, -55, 80, -80, 110, -110, 145, -145, 180];
+    /* ══ THE CLEAR SHOT (2026-11-26) ══
+       mondo: "still getting a lot of moments in battle when something is covering up the action or the units ... let the
+       camera be aware of the units on the board and any objects or props or terrain or deployed objects that would block
+       line of sight ... and always choose a [spot] that has a clear view". THE CLEAR ANGLE knew three blockers (the solid
+       columns, a prop a square wide and 1.5 squares tall, the unit bodies), judged two points a body and could only turn.
+       Measured in real VS CPU fights (Downtown, Fairy Forest, 70 spell shots): about one shot in ten had a body two
+       thirds covered for a moment, by a room piece past the board's edge, a monument, a small prop or another body.
+       Now: (1) THE BLOCKER BOXES (ThreeRenderer.shotBlockers): the real box of every piece that stands up in or round
+       the board, any size: room props, trees (soft: the tree fade opens a crown), monuments, deployed objects, turrets;
+       read when a pick is made, never every frame. (2) each body is sighted at three heights, and the path between the
+       bodies (where the spell flies) at its middle. (3) the lens may also RISE: every heading is tried at the beat's
+       own pitch and CS_TILTS steeper, a rise costing a little like a turn does, so an open frame keeps the director's
+       shot exactly. (4) past the board's edge the room's own ground and props count on the sight line (they were
+       skipped). The pitch is picked with the heading, at the cut, and held with it. What no spot clears still fades
+       (three-renderer.js THE FADE RULES). Kill switch: window.EW_NO_CLEAR_SHOT = true (THE CLEAR ANGLE as it was). */
+    const CS_TILTS = [0, -14, -28];     // degrees off the beat's own pitch (negative = the lens higher)
+    const CS_MIN_TILT = 34;             // never steeper than this (0 = straight down)
+    let _caDeltaT = 0, _caWantT = 0, _caCutWantT = 0;
+    let _csBx = null, _csLast = null, _csHalfW = 1, _csHalfH = 0.6;
+    function _clearShotOn() { return !(typeof window !== 'undefined' && window.EW_NO_CLEAR_SHOT); }
+    /* the blocker boxes within reach of a pick round (px, pz): flat [x0, x1, y0, y1, z0, z1, soft] */
+    function _csBoxes(px, pz, reach) {
+        _csBx = null;
+        if (!_clearShotOn() || typeof ThreeRenderer === 'undefined' || typeof ThreeRenderer.shotBlockers !== 'function') return;
+        let B = null;
+        try { B = ThreeRenderer.shotBlockers(); } catch (e) { B = null; }
+        if (!B || !B.length) return;
+        const out = [];
+        for (let i = 0; i + 6 < B.length; i += 7) {
+            if (B[i + 1] < px - reach || B[i] > px + reach || B[i + 5] < pz - reach || B[i + 4] > pz + reach) continue;
+            out.push(B[i], B[i + 1], B[i + 2], B[i + 3], B[i + 4], B[i + 5], B[i + 6]);
+        }
+        _csBx = out.length ? out : null;
+    }
+    /* the sight line from the lens (ex, ey, ez) to a body point (tx, ty, tz) against the boxes: 0 clear, 1 a solid piece
+       on it, CS_SOFT a tree. A piece the body stands in or under (a crown, an arch), and one that only meets the line
+       within `keep` of the body (its own square), does not count. */
+    const CS_SOFT = 0.12;   // a tree: its box is its whole crown and the tree fade opens it, so it only breaks a tie
+    function _csLine(ex, ey, ez, tx, ty, tz, keep) {
+        const B = _csBx;
+        if (!B) return 0;
+        const dx = tx - ex, dy = ty - ey, dz = tz - ez, horiz = Math.hypot(dx, dz);
+        const pad = tileSize * 0.15;
+        let worst = 0;
+        for (let i = 0; i < B.length; i += 7) {
+            const w = B[i + 6] ? CS_SOFT : 1;
+            if (w <= worst) continue;
+            if (tx > B[i] - pad && tx < B[i + 1] + pad && tz > B[i + 4] - pad && tz < B[i + 5] + pad) continue;   // the body stands in / under it
+            let t0 = 0, t1 = 1, a, b;
+            if (Math.abs(dx) < 1e-6) { if (ex < B[i] || ex > B[i + 1]) continue; }
+            else { a = (B[i] - ex) / dx; b = (B[i + 1] - ex) / dx; if (a > b) { const q = a; a = b; b = q; } if (a > t0) t0 = a; if (b < t1) t1 = b; if (t0 > t1) continue; }
+            if (Math.abs(dz) < 1e-6) { if (ez < B[i + 4] || ez > B[i + 5]) continue; }
+            else { a = (B[i + 4] - ez) / dz; b = (B[i + 5] - ez) / dz; if (a > b) { const q = a; a = b; b = q; } if (a > t0) t0 = a; if (b < t1) t1 = b; if (t0 > t1) continue; }
+            if (Math.abs(dy) < 1e-6) { if (ey < B[i + 2] || ey > B[i + 3]) continue; }
+            else { a = (B[i + 2] - ey) / dy; b = (B[i + 3] - ey) / dy; if (a > b) { const q = a; a = b; b = q; } if (a > t0) t0 = a; if (b < t1) t1 = b; if (t0 > t1) continue; }
+            if ((1 - t0) * horiz < keep) continue;   // only at the body's own square
+            worst = w;
+            if (worst >= 1) break;
+        }
+        return worst;
+    }
+    /* the lens itself inside a solid piece */
+    function _csEyeIn(ex, ey, ez) {
+        const B = _csBx;
+        if (!B) return false;
+        for (let i = 0; i < B.length; i += 7) {
+            if (!B[i + 6] && ex > B[i] && ex < B[i + 1] && ey > B[i + 2] && ey < B[i + 3] && ez > B[i + 4] && ez < B[i + 5]) return true;
+        }
+        return false;
+    }
+    function clearShotState() { return _csLast; }
     const CA_RECHECK_MS = 400;
     const CA_EASE_S = 0.22;
     const CA_EASE_GRAMMAR_S = 0.55;   // THE SHOT GRAMMAR: a mid-beat turn (a body now blocked) is slow, never a whip
@@ -946,18 +1017,19 @@ const ThreeCamera = (function () {
         const _caTick = () => { _caFrameNo++; window.requestAnimationFrame(_caTick); };
         window.requestAnimationFrame(_caTick);
     }   // THE SHOT GRAMMAR: a cut the clear angle has not picked for yet (see _clearAngle)
-    function _caReset() { _caSig = ''; _caShot = null; _caDelta = 0; _caWant = 0; _caAt = 0; _caCost = 0; _caHold = null; }
+    function _caReset() { _caSig = ''; _caShot = null; _caDelta = 0; _caWant = 0; _caAt = 0; _caCost = 0; _caHold = null; _caDeltaT = 0; _caWantT = 0; _caCutWantT = 0; }
     /* the shot is over but its frame holds (the CPU's parked last beat, a press-turn hold): the lens keeps the angle it
        turned to (it used to swing back to the director's heading in one frame — a jump of up to 180° round the pivot),
        and eases back over GUARD_CARRY_FADE_S, with the guard's carried frame, once the rig moves on (the glide home) */
     function _caHoldStep(cam, nowS) {
         if (!_initialized) { _caReset(); return 0; }   // a cut (the clean return home) drops it with the frame
         const key = _fgCarryKey(cam);
-        if (!_caHold) _caHold = { key: key, from: _caDelta, t0: null };
+        if (!_caHold) _caHold = { key: key, from: _caDelta, fromT: _caDeltaT, t0: null };
         if (_caHold.t0 == null && key !== _caHold.key) _caHold.t0 = nowS;
         if (_caHold.t0 != null) {
             const u = Math.max(0, Math.min(1, (nowS - _caHold.t0) / GUARD_CARRY_FADE_S));
             _caDelta = _caHold.from * (1 - _sbEase(u));
+            _caDeltaT = (_caHold.fromT || 0) * (1 - _sbEase(u));
             if (u >= 1) _caReset();
         }
         return _caDelta;
@@ -970,6 +1042,8 @@ const ThreeCamera = (function () {
         let cost = 0;
         if (ey < _eyeFloorWorld(ex, ez) + clear) cost += 3;   // the eye inside a wall / a hill (THE LENS FOOTPRINT)
         if (ey < _bodyTopYWorld(ex, ez) + ts * 0.3) cost += 3;   // the eye inside a model
+        const _cs = !!_csBx;
+        if (_cs && _csEyeIn(ex, ey, ez)) cost += 3;   // THE CLEAR SHOT: the eye inside a prop
         let dx = lx - ex, dy = ly - ey, dz = lz - ez;
         const dl = Math.hypot(dx, dy, dz) || 1;
         dx /= dl; dy /= dl; dz /= dl;
@@ -988,7 +1062,9 @@ const ThreeCamera = (function () {
         for (let si = 0; si < subs.length; si++) {
             const s = subs[si];
             const S = box(s);
-            if (!S) { cost += 2 * s.w; continue; }
+            if (!S) { if (!s.sec) cost += 2 * s.w; continue; }
+            /* THE CLEAR SHOT, THE OTHER PARTY: it only counts while it stands in the frame */
+            if (s.sec && (S[1] < -_csHalfW || S[0] > _csHalfW || S[3] < -_csHalfH || S[2] > _csHalfH)) continue;
             const area = Math.max(1e-6, (S[1] - S[0]) * (S[3] - S[2]));
             let cov = 0;
             for (let bi = 0; bi < bodies.length; bi++) {
@@ -1008,11 +1084,31 @@ const ThreeCamera = (function () {
                     const u = i / n;
                     if ((1 - u) * horiz < ts * 0.45) break;   // the body's own tile stands under it
                     const sx = ex + hx * u, sy = ey + (py - ey) * u, sz = ez + hz * u;
-                    if (W > 0 && H > 0 && (sx < 0 || sz < 0 || sx >= W * ts || sz >= H * ts)) continue;
+                    if (W > 0 && H > 0 && (sx < 0 || sz < 0 || sx >= W * ts || sz >= H * ts)) {
+                        /* THE CLEAR SHOT: past the board's edge the room's own ground and its tall props stand on the line */
+                        if (_clearShotOn() && Math.max(_tallTopWorld(sx, sz), _roomGroundOffWorld(sx, sz)) + ts * 0.15 > sy) { cost += 0.8 * s.w; break; }
+                        continue;
+                    }
                     if (_solidGroundYWorld(sx, sz) + ts * 0.15 > sy) { cost += 0.8 * s.w; break; }
                 }
             }
+            /* THE CLEAR SHOT: the body at three heights against the blocker boxes */
+            if (_cs) {
+                for (let k = 0; k < 3; k++) {
+                    const hit = _csLine(ex, ey, ez, s.x, s.foot + (s.top - s.foot) * (k === 0 ? 0.25 : k === 1 ? 0.55 : 0.88), s.z, ts * 0.45);
+                    if (hit) cost += hit * 0.45 * s.w;
+                }
+            }
             if (cost > stopAt) return cost;
+        }
+        /* THE CLEAR SHOT: the path between the bodies (where the spell flies), at its middle */
+        if (_cs && subs.length > 1) {
+            const a = subs[0];
+            for (let si = 1; si < subs.length && si < 4; si++) {
+                const b = subs[si];
+                const hit = _csLine(ex, ey, ez, (a.x + b.x) / 2, ((a.foot + a.top) + (b.foot + b.top)) / 4, (a.z + b.z) / 2, ts * 0.2);
+                if (hit) cost += hit * 0.3;
+            }
         }
         return cost;
     }
@@ -1068,20 +1164,40 @@ const ThreeCamera = (function () {
                 /* a beat about something else; mid-beat (a flung body) the held angle stays — under THE SHOT GRAMMAR a glide
                    off the subjects keeps it too (it only goes back to the director's own heading on a cut) */
                 const _sgA = !(typeof window !== 'undefined' && window.EW_NO_SHOT_GRAMMAR);
-                if (newShot || (_sgA ? atCut : resig)) { _caWant = 0; if (_sgA) _caCutWant = 0; }
+                if (newShot || (_sgA ? atCut : resig)) { _caWant = 0; _caWantT = 0; if (_sgA) { _caCutWant = 0; _caCutWantT = 0; } }
             } else {
                 const clear = ts * 0.45;
                 const sinT = Math.sin(P.tilt), cosT = Math.cos(P.tilt);
-                const eyeAt = (d) => {
+                const _csOn = _clearShotOn();
+                const eyeAt = (d, dt) => {
                     const yw = P.yaw + d;
-                    return [P.px + P.dist * sinT * Math.sin(yw), P.py + P.dist * cosT, P.pz + P.dist * sinT * Math.cos(yw)];
+                    if (!dt) return [P.px + P.dist * sinT * Math.sin(yw), P.py + P.dist * cosT, P.pz + P.dist * sinT * Math.cos(yw)];
+                    const sT = Math.sin(P.tilt + dt), cT = Math.cos(P.tilt + dt);
+                    return [P.px + P.dist * sT * Math.sin(yw), P.py + P.dist * cT, P.pz + P.dist * sT * Math.cos(yw)];
                 };
+                if (_csOn) _csBoxes(cx, cz, P.dist + spread + ts * 2); else _csBx = null;
                 try { bodies = (typeof cam._frameGuard.bodies === 'function') ? cam._frameGuard.bodies() : null; } catch (e) { bodies = null; }
                 if (!bodies) bodies = subs;
-                const costOf = (d, stopAt) => {
-                    const e = eyeAt(d);
-                    return _caOccl(e[0], Math.max(e[1], P.floorY), e[2], P.px, P.py, P.pz, subs, bodies, clear, stopAt)
-                        + Math.abs(d) / Math.PI * 1.2;
+                /* THE CLEAR SHOT, THE OTHER PARTY: the beat is about one side (the caster through the cast, the hit bodies
+                   from the cut on), and the lens was free to hide the other side behind it: Big Kick's target stood inside
+                   Bigfoot's back for the whole cast, a caster behind the Bigfoot it had just hit. The other side of the
+                   action (the shot's caster / its target) is sighted too, at a lower weight, while it is in the frame. */
+                let subsAll = subs;
+                if (_csOn && bodies !== subs) {
+                    const cid = cam._cineShotUnitId, tid = cam._cineShotTarget ? cam._cineShotTarget.id : null;
+                    for (let bi = 0; bi < bodies.length; bi++) {
+                        const o = bodies[bi];
+                        if (o.id == null || (o.id !== cid && o.id !== tid) || subs.some(q => q.id === o.id)) continue;
+                        if (subsAll === subs) subsAll = subs.slice();
+                        subsAll.push({ id: o.id, x: o.x, z: o.z, foot: o.foot, top: o.top, r: o.r, w: 0.6, sec: true });
+                    }
+                    const fovR = ((threeCamera && threeCamera.fov) || 45) * DEG2RAD;
+                    _csHalfH = Math.tan(fovR / 2) * 0.92; _csHalfW = _csHalfH * ((threeCamera && threeCamera.aspect) || 1.6);
+                }
+                const costOf = (d, stopAt, dt) => {
+                    const e = eyeAt(d, dt || 0);
+                    return _caOccl(e[0], Math.max(e[1], P.floorY), e[2], P.px, P.py, P.pz, subsAll, bodies, clear, stopAt)
+                        + Math.abs(d) / Math.PI * 1.2 + Math.abs(dt || 0) / Math.PI * 2.4;
                 };
                 /* THE SHOT GRAMMAR (2026-11-10, mondo: the camera "is spazzing out bc its trying to zoom in/out and spin/rotate/pan
                    at the same time"): the angle is picked AT a cut (or a new shot) and kept through the beat — a drift, a
@@ -1089,23 +1205,33 @@ const ThreeCamera = (function () {
                    swing the lens up to 55° on its own a moment after the cut. Mid-beat it only turns for a clearly better
                    view of a body that is now blocked, and then slowly. EW_NO_SHOT_GRAMMAR = the old re-pick. */
                 const _sg = !(typeof window !== 'undefined' && window.EW_NO_SHOT_GRAMMAR);
-                const held = (_sg ? (cut || (newShot && !onHeels)) : (newShot || resig)) ? 0 : _caWant;
-                const heldCost = costOf(held, Infinity);
-                let best = held, bestCost = heldCost;
-                if (heldCost > 0.05 + Math.abs(held) / Math.PI * 1.2) {
-                    for (const dd of CA_CANDS) {
-                        const d = dd * DEG2RAD;
-                        if (Math.abs(d - held) < 1e-3) continue;
-                        if (_sg && !atCut && Math.abs(d - (newShot ? 0 : _caCutWant)) > (CA_MIDBEAT_MAX + 1) * DEG2RAD) continue;
-                        const c = costOf(d, bestCost);
-                        if (c < bestCost - 1e-3) { best = d; bestCost = c; }
+                const _fresh = (_sg ? (cut || (newShot && !onHeels)) : (newShot || resig));
+                const held = _fresh ? 0 : _caWant;
+                const heldT = (_fresh || !_csOn) ? 0 : _caWantT;
+                const heldCost = costOf(held, Infinity, heldT);
+                let best = held, bestT = heldT, bestCost = heldCost;
+                if (heldCost > 0.05 + Math.abs(held) / Math.PI * 1.2 + Math.abs(heldT) / Math.PI * 2.4) {
+                    /* THE CLEAR SHOT: every heading at the beat's own pitch, then steeper; the pitch only moves at a cut */
+                    const tilts = (_csOn && (atCut || newShot)) ? CS_TILTS : [heldT / DEG2RAD];
+                    for (let ti = 0; ti < tilts.length; ti++) {
+                        const dt = tilts[ti] * DEG2RAD;
+                        if (dt && P.tilt + dt < CS_MIN_TILT * DEG2RAD) continue;
+                        for (const dd of CA_CANDS) {
+                            const d = dd * DEG2RAD;
+                            if (Math.abs(d - held) < 1e-3 && Math.abs(dt - heldT) < 1e-3) continue;
+                            if (_sg && !atCut && Math.abs(d - (newShot ? 0 : _caCutWant)) > (CA_MIDBEAT_MAX + 1) * DEG2RAD) continue;
+                            const c = costOf(d, bestCost, dt);
+                            if (c < bestCost - 1e-3) { best = d; bestT = dt; bestCost = c; }
+                        }
                     }
                 }
                 /* a recheck in the middle of a beat only turns a lens that is now blocked, and only for a clearly better one */
-                if (_sg ? !atCut : (!newShot && !resig)) { if (!(bestCost < heldCost - 0.8)) best = held; }
-                if (_sg && onHeels && !(bestCost < heldCost - 0.3)) best = held;   // the cut's own pick stays unless clearly worse
-                _caWant = best;
-                if (_sg && (atCut || newShot)) _caCutWant = atCut ? best : 0;   // mid-beat drift is bounded from the cut's own pick
+                if (_sg ? !atCut : (!newShot && !resig)) { if (!(bestCost < heldCost - 0.8)) { best = held; bestT = heldT; } }
+                if (_sg && onHeels && !(bestCost < heldCost - 0.3)) { best = held; bestT = heldT; }   // the cut's own pick stays unless clearly worse
+                _caWant = best; _caWantT = bestT;
+                if (_sg && (atCut || newShot)) { _caCutWant = atCut ? best : 0; _caCutWantT = atCut ? bestT : 0; }   // mid-beat drift is bounded from the cut's own pick
+                _csLast = { boxes: _csBx ? _csBx.length / 7 : 0, yaw: Math.round(best * 57.3), tilt: Math.round(bestT * 57.3), cost: +Math.min(bestCost, heldCost).toFixed(2), own: +costOf(0, Infinity, 0).toFixed(2), shot: cam._cineShotId };
+                _csBx = null;
                 _caCost = Math.min(bestCost, heldCost);
             }
             _caLast = { want: Math.round(_caWant * 57.3), cost: +_caCost.toFixed(2), about: about, n: subs.length, sig: resig, shot: newShot, id: cam._cineShotId, cut: cut, heels: onHeels, dt: Math.round((nowS - _caSnapAt) * 1000) };   // id: whose pick this is (battle.js THE CLEAN OPEN)
@@ -1113,22 +1239,24 @@ const ThreeCamera = (function () {
         }
         /* a cut (or a re-pick right on a cut's heels) lands on the angle; anything else eases (a shot opens on a glide
            from the board, so its first beat eases in from the director's own yaw) */
-        if (newShot && !cut && !_caHold) _caDelta = 0;   // (a held angle eases on into the next shot's)
+        if (newShot && !cut && !_caHold) { _caDelta = 0; _caDeltaT = 0; }   // (a held angle eases on into the next shot's)
         _caHold = null;
         if (_sgC ? atCut : (cut || (resig && nowS - _caSnapAt < 0.15))) {
-            if (_sgC && _initialized && Math.abs(_caWant - _caDelta) > 0.005) _initialized = false;   // lands as part of the cut (not drawn yet)
-            _caDelta = _caWant;
-        } else if (_caDelta !== _caWant) {
+            if (_sgC && _initialized && (Math.abs(_caWant - _caDelta) > 0.005 || Math.abs(_caWantT - _caDeltaT) > 0.005)) _initialized = false;   // lands as part of the cut (not drawn yet)
+            _caDelta = _caWant; _caDeltaT = _caWantT;
+        } else if (_caDelta !== _caWant || _caDeltaT !== _caWantT) {
             const dtS = _caT > 0 ? Math.min(_stepCap(), Math.max(0.001, nowS - _caT)) : 0.016;
             const _ease = (typeof window !== 'undefined' && window.EW_NO_SHOT_GRAMMAR) ? CA_EASE_S : CA_EASE_GRAMMAR_S;
             _caDelta += (_caWant - _caDelta) * (1 - Math.exp(-dtS / _ease));
             if (Math.abs(_caWant - _caDelta) < 0.002) _caDelta = _caWant;
+            _caDeltaT += (_caWantT - _caDeltaT) * (1 - Math.exp(-dtS / _ease));
+            if (Math.abs(_caWantT - _caDeltaT) < 0.002) _caDeltaT = _caWantT;
         }
         _caT = nowS;
         _caShot = cam._cineShotId;
         return _caDelta;
     }
-    function clearAngleState() { return _caLast ? Object.assign({ delta: Math.round(_caDelta * 57.3) }, _caLast) : null; }
+    function clearAngleState() { return _caLast ? Object.assign({ delta: Math.round(_caDelta * 57.3), tilt: Math.round(_caDeltaT * 57.3) }, _caLast) : null; }
 
     function sync(cam) {
         if (!threeCamera) return;
@@ -1176,7 +1304,7 @@ const ThreeCamera = (function () {
            tall or a short body fills the frame like a standard one. */
         const sizeK = (cam._cineTps && !cam._tpsCollide && cam._tpsSizeK > 0) ? cam._tpsSizeK : 1;
         const dist = baseDist / Math.max(cam.zoom, 0.05) * sizeK;
-        const tiltRad = cam.tilt * DEG2RAD;
+        let tiltRad = cam.tilt * DEG2RAD;   // THE CLEAR SHOT may raise the lens (below)
         let yawRad  = cam.yaw  * DEG2RAD;   // THE CLEAR ANGLE may turn it (below)
 
         /* View DIRECTION the camera faces (eye → scene), from pitch/yaw alone.
@@ -1187,7 +1315,7 @@ const ThreeCamera = (function () {
            so craning past the horizon reveals the sky dome instead of the
            underside of the board. */
         let dirX = -Math.sin(tiltRad) * Math.sin(yawRad);
-        const dirY = -Math.cos(tiltRad);
+        let dirY = -Math.cos(tiltRad);
         let dirZ = -Math.sin(tiltRad) * Math.cos(yawRad);
 
         /* ── Gimbal-safe UP vector ──
@@ -1354,8 +1482,10 @@ const ThreeCamera = (function () {
             dA = _clearAngle(cam, P, performance.now() / 1000);
         } else if (_caHold && !handHeld) dA = _caHoldStep(cam, performance.now() / 1000);   // a finished shot's angle eases home
         else if (_caSig || _caHold) _caReset();
-        if (dA) {
+        const dT = (caP || _caHold) ? _caDeltaT : 0;   // THE CLEAR SHOT: the pitch picked with the heading
+        if (dA || dT) {
             yawRad += dA;
+            if (dT) { tiltRad += dT; dirY = -Math.cos(tiltRad); }
             dirX = -Math.sin(tiltRad) * Math.sin(yawRad);
             dirZ = -Math.sin(tiltRad) * Math.cos(yawRad);
             threeCamera.up.set(-Math.cos(tiltRad) * Math.sin(yawRad), Math.sin(tiltRad), -Math.cos(tiltRad) * Math.cos(yawRad));
@@ -1481,7 +1611,7 @@ const ThreeCamera = (function () {
                 const P = caP;
                 const atTarget = () => {
                     if (!P) return null;
-                    const yw = P.yaw + _caWant, sinT = Math.sin(P.tilt), cosT = Math.cos(P.tilt);
+                    const yw = P.yaw + _caWant, sinT = Math.sin(P.tilt + _caWantT), cosT = Math.cos(P.tilt + _caWantT);
                     const ex = P.px + P.dist * sinT * Math.sin(yw), ez = P.pz + P.dist * sinT * Math.cos(yw);
                     let ey = pivY + P.dist * cosT;
                     if (ey < pivGroundY + clear) ey = pivGroundY + clear;
@@ -2127,6 +2257,7 @@ const ThreeCamera = (function () {
         markUserInput,
         snapImmediate,
         clearAngleState,
+        clearShotState,
         lensFloorHits: function () { return _lensFloorHits; },
         seedPose,
         seedState,
