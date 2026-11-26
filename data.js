@@ -88682,6 +88682,21 @@ function hqStageRoundNeighbours(roomId) {
     /* THE LEVEL JOIN: the hub's partner at its centre stands beside too (seen through the hub's passages: the Lobby from the Training Room) */
     const C = hqStageConc(j.a);
     if (C) hub.push({ id: C.other, rel: Object.assign({}, G.back), beside: true, portal: true, wait: true, links: [], spans: [], rect: hqStageConcRect(C.other, G.back) });
+    /* THE HUB'S OTHER OPEN FRONTS (2026-11-26, mondo: "The open rooms are all black along the surface ... they come back but then they go
+       black again"): from the Door Store (or Medical, the Cafeteria, an office on the gallery) only the Lobby was built, so every OTHER
+       open-fronted room round the Lobby was a black hole in its wall until the feet crossed into the Lobby, and went black again on the
+       way back. The hub's other rooms with an open front (`open.w`) now stand beside too, one hop on, drawn only through an open doorway
+       (`portal`), placed by the hub's frame here composed with their own frame in the hub. */
+    hqStageRoundJoins(j.a).forEach(k => {
+        if (k.a !== j.a || k.b === roomId || !(k.door.open && +k.door.open.w > 0) || hub.some(n => n.id === k.b)) return;
+        const Gk = hqStageRoundGeom(k); if (!Gk) return;
+        const o = hqStageToRoom(G.back, Gk.rel.x, Gk.rel.z);
+        const rel = { x: o.x, z: o.z, y: (G.back.y || 0) + (Gk.rel.y || 0), rot: G.back.rot + Gk.rel.rot };
+        const S = DOOR_HQ.rooms[k.b].shell, hw = S.w / 2, hd = S.d / 2;
+        const cs = [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]].map(p => hqStageToRoom(rel, p[0], p[1]));
+        hub.push({ id: k.b, rel, beside: true, portal: true, wait: true, links: [], spans: [], level: Gk.level,
+                   rect: { x0: Math.min(...cs.map(p => p.x)), z0: Math.min(...cs.map(p => p.z)), x1: Math.max(...cs.map(p => p.x)), z1: Math.max(...cs.map(p => p.z)) } });
+    });
     return hub;
 }
 /* ══ THE LEVEL JOIN (HQ_STAGE_RULES.concentric, 2026-11-26) ══════════════════════════════════════════════════════════════════
