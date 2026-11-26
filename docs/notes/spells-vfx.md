@@ -5527,3 +5527,29 @@ the last 20 or so units". ANSWER: no, the 11-11 pull took 130 of Meshy's ~680 bi
   Walk_Backward_While_Shooting; Incendiary Rounds (Marksman) + Extended Clips (Gangster) = Standing_Reload (lib 9); Bipod (Marksman) =
   Kneeling_Reload (lib 10). The single-shot gun spells keep castRanged (the trimmed quick draw): it already is a gun shot. Fire for Effect
   stays the phone kind (Mech + General share it).
+
+## THE CLOSE VIEW (2026-11-26, three-camera.js + battle.js + three-renderer.js)
+mondo: "i cant zoom in close behind my player like for a normal third person view without the camera getting forced to an
+over the top view ... getting snapped to a bird's eye view". Measured in a browser battle (Mount Shasta, Bigfoot beside a pine,
+real wheel to 4.5x and a right-drag to pitch 80): the lens stood 3 to 6 squares up at every heading. Four causes, all fixed:
+1. **THE CLEAR BOARD craned a close lens to its cap.** Its lift is the blocker's height divided by how far along the boom it
+   stands, so with a 2-square boom or a near-level lens one step, wall, prop or body by the unit asked for the whole 6 squares.
+   A close or low board view (boom <= `CLOSE_VIEW_DIST_TILES` 4.5, or within `CLOSE_VIEW_PITCH_DEG` 25 of level, never a menu
+   two-shot or a fitted frame) now goes through `_closeViewEye`: a little crane (the look at most ~15 degrees steeper), then a
+   third-person boom that DOLLIES IN along its own line to clear air in front of the blocker, then the lens footprint. The wide
+   tactical view keeps the crane.
+2. **A tree counted as a tower as wide as its crown** (THE TALL SCENERY's boxes), so a unit under a pine was "inside a wall".
+   `ThreeRenderer.tallSceneryTopAt(wx, wz, noTrees)`: boxes carry an isTree flag (6 numbers a box); the close view and the
+   lens floor's last word leave trees out (THE TREE FADE opens them). Buildings still block.
+3. **THE SKY-GAZE LIFT fired on the player's own pitch.** Its ramp starts at pitch ~70; a hand pitch was "hand held" only while
+   the button was down, so on release the lens rose a square or more. `camera._handTilt` (set by snap() with a tilt, cleared by
+   a moveTo that names one) switches it off, and the ramp never starts below the resting pitch.
+4. **The view was not kept.** `REST_TILT_MAX` 62 -> 80 (the remembered pitch every turn start and return lands on),
+   `TURN_FRAME_MIN_DIST` 3.0 -> 1.5 squares (the body-fit rule still caps it), and `_ownViewReturn()` (the end of the local
+   player's walk) brings the camera back from the Move pick's overhead read to the player's own view when they set one (a wheel
+   zoom, or a resting pitch past `OWN_VIEW_TILT` 62). Before, the overhead stayed until the next unit's turn.
+NOT changed: arming Move / Jump / Build / a free-aim spell still lifts to the overhead tile read (`TILE_PICK_TILT`), his earlier
+design; asked him whether a close view should keep its angle there too.
+Kill switch: `window.EW_NO_CLOSE_VIEW = true`. Probe: `ThreeCamera.closeViewState()` -> { crane px, boom 0..1 }.
+Camera only, each viewer's own (host and guest run the same rig). Checked with real mouse input over a move and three turns:
+zoom 4.53 / pitch 80 held, lens 0.3 to 0.5 squares over the focal each time.

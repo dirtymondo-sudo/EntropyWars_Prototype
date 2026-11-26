@@ -102659,7 +102659,7 @@ const ThreeRenderer = (function () {
         return (h === null || !isFinite(h)) ? -Infinity : G.floorY + h * k;
     }
     /* THE TALL SCENERY (see ThreeRenderer.tallSceneryTopAt): one pass over the battle room's pieces → the boxes of the
-       tall grounded props, flat [x0, x1, z0, z1, top, …] in world px */
+       tall grounded props, flat [x0, x1, z0, z1, top, isTree, …] in world px */
     var _tallScenery = null;
     var TALL_OFF_TILES = 4;   // THE ROOM'S GROUND: props this many squares past the board's edge count as tall scenery too
     function _tallSceneryRead(F, born, now) {
@@ -102671,11 +102671,13 @@ const ThreeRenderer = (function () {
         var b = new THREE.Box3(), ch = F.children, fwR = (_fw && _fw.on) ? _fw.roots : null, nCh = ch.length, nAll = nCh + (fwR ? fwR.length : 0);
         if (fwR && _fw.job) out.at = now - 4000;   // (the walked room's pieces are still being measured: read again soon)
         for (var i = 0; i < nAll; i++) {
-            if (i >= nCh) { var fr = fwR[i - nCh]; if (fr.o._ew_hqWall || fr.box.isEmpty()) continue; b.copy(fr.box); }   // THE FIGHT IN THE WALKED ROOM: the room's own pieces, by the boxes already measured
+            var isTree = 0;
+            if (i >= nCh) { var fr = fwR[i - nCh]; if (fr.o._ew_hqWall || fr.box.isEmpty()) continue; b.copy(fr.box); isTree = _occIsTreeRoot(fr.o) ? 1 : 0; }   // THE FIGHT IN THE WALKED ROOM: the room's own pieces, by the boxes already measured
             else {
             var c = ch[i];
             if (!c || c.visible === false || /^hq_(wall|ceil)/.test(c.name || '')) continue;
             try { c.updateMatrixWorld(true); b.setFromObject(c); } catch (e) { continue; }
+            isTree = _occIsTreeRoot(c) ? 1 : 0;
             }
             if (b.isEmpty()) continue;
             var w = (b.max.x - b.min.x) / ts, d = (b.max.z - b.min.z) / ts;
@@ -102695,7 +102697,7 @@ const ThreeRenderer = (function () {
             }
             if (b.max.y < colPx + ts * 1.5) continue;           // no taller than the column it stands on
             if (b.min.y > colPx + ts * 1.0) continue;           // floats (an awning, a bridge, a sign)
-            out.boxes.push(b.min.x, b.max.x, b.min.z, b.max.z, b.max.y);
+            out.boxes.push(b.min.x, b.max.x, b.min.z, b.max.z, b.max.y, isTree);   // (6 a box; isTree: THE CLOSE VIEW)
         }
         return out;
     }
@@ -112186,7 +112188,9 @@ const ThreeRenderer = (function () {
            -Infinity when the battle stands in no terrain room. ThreeCamera reads it past the board's edge, where the grid has
            no columns, so a lens behind the near row never sits inside a hillside of the room. */
         roomGroundAt: function (wx, wz) { return _roomGroundAt(wx, wz); },
-        tallSceneryTopAt: function (wx, wz) {
+        /* THE CLOSE VIEW (2026-11-26, see three-camera.js): noTrees leaves the trees out. A tree's box is its whole crown, a
+           tower several squares wide over squares units stand on, and THE TREE FADE already opens a tree on a sight line. */
+        tallSceneryTopAt: function (wx, wz, noTrees) {
             var F = _facilityNearGroup;
             if (!F || !F.parent || typeof bw !== 'function') return -Infinity;
             var now = Date.now(), C = _tallScenery;
@@ -112194,7 +112198,8 @@ const ThreeRenderer = (function () {
                 C = _tallScenery = _tallSceneryRead(F, (C && C.group === F) ? C.born : now, now);
             }
             var top = -Infinity, B = C.boxes;
-            for (var i = 0; i < B.length; i += 5) {
+            for (var i = 0; i < B.length; i += 6) {
+                if (noTrees && B[i + 5]) continue;
                 if (wx >= B[i] && wx <= B[i + 1] && wz >= B[i + 2] && wz <= B[i + 3] && B[i + 4] > top) top = B[i + 4];
             }
             return top;
