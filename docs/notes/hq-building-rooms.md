@@ -1486,3 +1486,5 @@ the vending machines". Plan: `docs/plans/door-hq-2/FLOOR_PLANS.md` (lobby level,
 - Checked: `node find-doorways.js training training_hall` clear; walk + battle board probes (playtest_city.js, playtest_maps.js).
 - **Joined (same day):** the Lobby shell landed (PR #2605) with the hall's `cafeteria` row at deg 270 (`open` 17.5 x 4.5); the round-join row
   `{ a: 'central_egress', door: 'cafeteria', b: 'cafeteria', bDoor: 'lobby' }` is in HQ_STAGE_RULES.round. Seen on screen from the Lobby floor.
+- **CHEF (same day, mondo: "Chef in the kitchen/cafteria"):** DOOR_CAST `chef` (the chef race's model, `race: 'chef'`, name CHEF, no title):
+  half the visits at the Kitchen's ranges, half at the head of the serving line. Out of every doorway square.
