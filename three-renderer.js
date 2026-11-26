@@ -88519,6 +88519,11 @@ const ThreeRenderer = (function () {
         }
         /* THE DOOR GUN rev 4 (2026-09-16): the walker's GUN clips (sprites.js HQ_GUN_CLIPS — the
            library's pistol aim + shot) beside the ride clip; the roster never wears them */
+        if (spec.kind === 'player' && def.libClips && !def.libClips.hqSleep && HQ_RES_SLEEP) {   // THE SEAT HEIGHT (2026-11-26): the walker lies on a lounger with the residents' bed clip
+            var slc = Object.assign({}, def.libClips), slt = Object.assign({}, def.libTimeScales);
+            slc.hqSleep = { clip: HQ_RES_SLEEP.clip, lib: HQ_RES_SLEEP.lib, trim: HQ_RES_SLEEP.trim.slice(), pinXZ: true }; slt.hqSleep = HQ_RES_SLEEP.ts;
+            def = Object.assign({}, def, { libClips: slc, libTimeScales: slt });
+        }
         if (spec.kind === 'player' && def.libClips && typeof HQ_GUN_CLIPS !== 'undefined' && !def.libClips.hqAim) {
             var glc = Object.assign({}, def.libClips), glt = Object.assign({}, def.libTimeScales);
             var GA = HQ_GUN_CLIPS.aim, GS = HQ_GUN_CLIPS.shoot;
@@ -98096,7 +98101,7 @@ const ThreeRenderer = (function () {
             if (ch._sceneWalk && ch.kind !== 'player' && e.actions && e.actions.walk) { want = 'walk'; var swt = e.actions.walk._ew_ts0 || 1; e.actions.walk.timeScale = swt * 0.62; }   // THE CUTSCENES: a cast member a scene walks (hq.sceneWalk)
             if (ch.kind === 'player') {
                 want = (ch.jumpT >= 0) ? 'jump' : (ch.moving ? (ch.running ? 'run' : 'walk') : 'idle');
-                if (ch.sit) want = (e.actions && e.actions.hqSit) ? 'hqSit' : 'idle';   // THE PROP PASS 5.2: seated (the library's Sitting_Idle, the skiff's clip)
+                if (ch.sit) want = (ch.sit.lie && e.actions && e.actions.hqSleep) ? 'hqSleep' : (e.actions && e.actions.hqSit) ? 'hqSit' : 'idle';   // THE PROP PASS 5.2: seated (the library's Sitting_Idle, the skiff's clip)
                 if (H.ride && H.ride.on) { var bph = _hqRideBailPhase(H.ride); want = bph ? (bph === 'fall' ? 'hqFall' : 'hqGetup') : (ch.jumpT >= 0) ? 'jump' : ((e.actions && e.actions.hqRide) ? 'hqRide' : 'idle'); }   // SKATEBOARDING (9.8): the air is the jump clip, everything else on the deck is THE RIDE stance (rev 2: Idle_10, sideways on the deck; rev 7: no push / kick clip at all — the user); a bail = the fall clip then the get-up (rev 3)
                 else if (H.vehicle && H.vehicle.on) want = (H.vehicle.kind === 'sub') ? 'hqDrive' : 'hqSit';   // THE DEEP (2026-09-18): at the helm — the library's driving loop in the bathyscaphe, the sitting idle in the skiff
                 else if (ch.swim) want = ch.moving ? 'hqSwim' : 'hqSwimIdle';   // THE DEEP: the swimmer — Swim_Fwd_Loop / Swim_Idle_Loop (sprites.js HQ_SWIM_CLIPS)
@@ -98166,6 +98171,10 @@ const ThreeRenderer = (function () {
             if (cullOn && ch.kind !== 'player' && !_hqCharOnView(H, e)) { e._ew_mixDebt = Math.min(30, (e._ew_mixDebt || 0) + dt); continue; }
             var mdt = dt + (e._ew_mixDebt || 0); e._ew_mixDebt = 0;
             e.mixer.update(mdt);
+            /* THE SEAT HEIGHT (2026-11-26): the sitter's thighs on the cushion (the walker on a seat; a seated cast member on the seat at its spot) */
+            if (ch.kind === 'player') { if (ch.sit && ch.sit.seat && (e._ew_curAnim === 'hqSit' || (ch.sit.lie && e._ew_curAnim === 'hqSleep'))) _hqSeatPin(ch, ch.sit.seat.y, mdt, ch.x, ch.z); /* (lying too: the bed clip's hips sat ~0.6 m toward the foot, the legs off the lounger) */ else if (e.model && e.model._ew_seatOff != null && !(H.ride && H.ride.on)) _hqSeatUnpin(e); }
+            else if (ch.pose && (ch.pose === 'hqSit' || ch.pose === 'hqSitTalk') && e._ew_curAnim === ch.pose) { if (!ch._seatChecked) _hqSeatFind(ch); if (ch._seatTop != null) _hqSeatPin(ch, ch._seatTop, mdt, ch.x, ch.z); }
+            else if (e.model && e.model._ew_seatOff != null) _hqSeatUnpin(e);
             _swayAuto(e.model, mdt);   // THE SWAY: a caped cast member's cape swings in the building too
             if (e.appearanceRig) { e.model.updateMatrixWorld(true); e.appearanceRig.tick(); }   // rev 9: the skirt against the legs
             var _hsR = e.unit ? _unitModelRigs.get(e.unit.id) : null; if (_hsR && _hsR.hairSweep) _hsR.hairSweep();   // THE HAIR EVERYWHERE: the late hair
@@ -98614,7 +98623,15 @@ const ThreeRenderer = (function () {
         if (o.kick) H.kicks.push({ key: p.key, grp: grp, disc: o.disc || null, rad: Math.max(0.12, cat.foot || 0.15), y0: o.y, x: grp.position.x / U, z: grp.position.z / U, y: o.y, vx: 0, vz: 0, vy: 0, spin: 0, tilt: 0, cool: 0, h: cat.h || 0.5 });
         /* (2026-11-18, the Colosseum's thrones: a seat that stands on a raised floor, `p.y`, is a seat too; `floor` = what it stands on, where the sitter gets up) */
         var raisedSeat = cat.seat != null && !floorProp && p.y > 0.5 && !o.onWall && !o.onCeil && !o.flip && !o.tabletop && !cat.float && !cat.hover && !cat.wall && !cat.ceil;
-        if (cat.seat != null && (floorProp || raisedSeat)) H.seats.push({ id: 'seat:' + H.seats.length, key: p.key, grp: grp, x: grp.position.x / U, z: grp.position.z / U, y: o.y + cat.seat, floor: o.y, yaw: grp.rotation.y, label: String(p.key).replace(/_/g, ' ').toUpperCase() });
+        /* THE SEAT HEIGHT (2026-11-26, DOOR HQ 2.0, mondo: "the character kinda floats in the air on top of the chair"): `seat` = the
+           measured top of the cushion and `seatZ` = how far forward of the prop's centre the hips go (metres along its front, from
+           the model itself: a ray grid over every seat model). `sx, sz` = that spot in the room; _hqSeatPin holds the sitter's
+           thighs on `y` */
+        if (cat.seat != null && (floorProp || raisedSeat)) {
+            var sk = grp.scale.y || 1, szz = (cat.seatZ || 0) * (grp.scale.z || 1), syw = new THREE.Euler().setFromQuaternion(grp.quaternion, 'YXZ').y;   // (the heading off the whole turn: a prop turned with a flip read rotation.y backwards, the curved sofa's sitter faced its back)
+            H.seats.push({ id: 'seat:' + H.seats.length, key: p.key, grp: grp, x: grp.position.x / U, z: grp.position.z / U, y: o.y + cat.seat * sk, floor: o.y, yaw: syw,
+                           sx: grp.position.x / U + Math.sin(syw) * szz, sz: grp.position.z / U + Math.cos(syw) * szz, lie: !!cat.lie, label: String(p.key).replace(/_/g, ' ').toUpperCase() });
+        }
     }
     /* 5.1 THE SWAY: a hanging prop (catalogue `sway: { amp, period }`) hangs from a pivot at its top on a damped spring — the
        room's draught keeps it moving a little, the walker's wake within a metre gives it a push */
@@ -98689,7 +98706,10 @@ const ThreeRenderer = (function () {
         var st = null; for (var i = 0; i < H.seats.length; i++) if (H.seats[i].id === id) st = H.seats[i];
         if (!st) return false;
         pl.sit = { seat: st, t0: performance.now() };
-        pl.x = st.x; pl.z = st.z; pl.y = st.y; pl.visY = st.y; pl.vy = 0; pl.air = false; pl.moving = false; pl.running = false; pl.mvx = 0; pl.mvz = 0;
+        /* THE SEAT HEIGHT: the feet stay on the seat's own floor (they were stood ON the seat, and the sit clip lowered the hips a
+           second time: the walker sat a seat's height over every chair); _hqSeatPin lowers or raises the body onto the cushion */
+        pl.x = (st.sx != null) ? st.sx : st.x; pl.z = (st.sz != null) ? st.sz : st.z; pl.y = st.floor; pl.visY = st.floor; pl.vy = 0;
+        if (st.lie) pl.sit.lie = true;   // a lounger (catalogue `lie`): flat on it, feet to its foot (the residents' bed clip), no chair sit pl.air = false; pl.moving = false; pl.running = false; pl.mvx = 0; pl.mvz = 0;
         pl.yaw = pl.targetYaw = st.yaw;
         H.keys = {}; H.dirty = true; if (H.shadows) H.shadows.dirty = true;
         if (H.opts.onSit) { try { H.opts.onSit({ kind: 'sit', key: st.key }); } catch (e) {} }
@@ -98702,10 +98722,63 @@ const ThreeRenderer = (function () {
         var fl = (st.floor > 0.5) ? st.floor + 0.05 : null;   // (a seat on a raised floor: the sitter gets up onto THAT floor, never the ground under it)
         var y = _hqSurface(nx, nz, fl, false);
         if (y === null) { nx = st.x; nz = st.z; y = _hqSurface(st.x, st.z, fl, true); }
-        pl.x = nx; pl.z = nz; pl.y = (y === null || !isFinite(y)) ? st.y : y; pl.visY = pl.y; pl.air = false; pl.vy = 0;
+        pl.x = nx; pl.z = nz; pl.y = (y === null || !isFinite(y)) ? st.floor : y; pl.visY = pl.y;
+        _hqSeatUnpin(pl.entry); pl.air = false; pl.vy = 0;
         pl.entry.group.position.set(pl.x * U, pl.visY * U, pl.z * U);
         H.dirty = true; if (H.shadows) H.shadows.dirty = true;
         if (H.opts.onSit) { try { H.opts.onSit({ kind: 'stand', key: st.key }); } catch (e) {} }
+    }
+    /* THE SEAT HEIGHT (2026-11-26): after the mixer has posed a sitter, the body is moved up or down (the model inside its group,
+       `_ew_hqBaseY` the rest) so the THIGH bones lie HQ_SEAT_LIFT x (height / 1.75 m) over the seat's top: the cushion under the
+       thighs, nobody over it or sunk into it. One bone pair a sitter a frame (their parents' matrices only), no scene walk. The
+       library sit clip seats a body on a 0.40 m chair; a seat lower than that puts the feet a little into the floor (the curved
+       couch, 0.30 m: 9 cm), a higher one lets them hang (a bed, a throne), as in life. */
+    var HQ_SEAT_LIFT = 0.085, HQ_SEAT_LIFT_HIPS = 0.18;
+    var _hqSeatV = null;
+    function _hqSeatBones(e) {
+        if (e._ew_seatBones !== undefined) return e._ew_seatBones;
+        var legs = [], hips = null;
+        var depth = function (n) { var d = 0; while (n.parent) { d++; n = n.parent; } return d; };
+        try { e.model.traverse(function (n) { if (!n.isBone) return; var nm = n.name || ''; if (!hips && /hips|pelvis/i.test(nm)) hips = n; if (/(up_?leg|upperleg|thigh)/i.test(nm) && !/twist|roll|end/i.test(nm)) legs.push({ b: n, d: depth(n) }); }); } catch (err) {}   // once per body (the rig's own bones), then kept
+        legs.sort(function (a, b) { return a.d - b.d; });   // the two thigh bones nearest the hips (a rig with two segments a thigh: the top ones, one a side)
+        e._ew_seatBones = (legs.length >= 2 && legs[0].d === legs[1].d) ? { legs: [legs[0].b, legs[1].b] } : (hips ? { hips: hips } : null);
+        return e._ew_seatBones;
+    }
+    function _hqSeatPin(ch, top, dt, sx, sz) {
+        var e = ch.entry, m = e && e.model; if (!m) return;
+        var B = _hqSeatBones(e); if (!B) return;
+        var U = _hqUnits(), V = _hqSeatV || (_hqSeatV = new THREE.Vector3());
+        if (m._ew_hqBaseY == null) m._ew_hqBaseY = m.position.y;
+        if (m._ew_seatBX == null) { m._ew_seatBX = m.position.x; m._ew_seatBZ = m.position.z; }
+        var k = (ch.heightM || 1.75) / 1.75, y, hx, hz;
+        if (B.legs) { B.legs[0].updateWorldMatrix(true, false); V.setFromMatrixPosition(B.legs[0].matrixWorld); y = V.y; hx = V.x; hz = V.z; B.legs[1].updateWorldMatrix(false, false); V.setFromMatrixPosition(B.legs[1].matrixWorld); y = (y + V.y) / 2 / U - HQ_SEAT_LIFT * k; hx = (hx + V.x) / 2 / U; hz = (hz + V.z) / 2 / U; }
+        else { B.hips.updateWorldMatrix(true, false); V.setFromMatrixPosition(B.hips.matrixWorld); y = V.y / U - HQ_SEAT_LIFT_HIPS * k; hx = V.x / U; hz = V.z / U; }
+        var o = m._ew_seatOff || { y: 0, x: 0, z: 0 };
+        /* the library sit clip leaves the hips ~0.28 m BEHIND the body's root (pinXZ or not): the sitter's back went through a chair's
+           back and a sofa's. The hips go on the seat's spot (`sx, sz`) as well as on its height */
+        var ty = o.y + (top - y), tx = (sx != null) ? o.x + (sx - hx) : 0, tz = (sz != null) ? o.z + (sz - hz) : 0;
+        if (!isFinite(ty + tx + tz) || Math.abs(ty) > 1.2 || Math.hypot(tx, tz) > 0.8) return;   // a pose that is not a sit yet (the cross-fade's first frames read a standing body)
+        var a = Math.min(1, dt * 14); o.y += (ty - o.y) * a; o.x += (tx - o.x) * a; o.z += (tz - o.z) * a; m._ew_seatOff = o;
+        var gs = (e.group && e.group.scale.x) || 1;   // (a spot's `scale` grows the group: the offset is in its units)
+        m.position.set(m._ew_seatBX + o.x * U / gs, m._ew_hqBaseY + o.y * U / gs, m._ew_seatBZ + o.z * U / gs);
+    }
+    function _hqSeatUnpin(e) {
+        var m = e && e.model; if (!m || m._ew_seatOff == null) return;
+        m._ew_seatOff = null; if (m._ew_hqBaseY != null) m.position.y = m._ew_hqBaseY; if (m._ew_seatBX != null) { m.position.x = m._ew_seatBX; m.position.z = m._ew_seatBZ; }
+    }
+    /* a seated cast member / native (`pose: 'hqSit'`) sits on the seat it was placed at: the nearest seat within 0.8 m on its
+       floor, looked up once (the room's seat list, kept as the props were placed), the body moved onto its spot */
+    function _hqSeatFind(ch) {
+        var H = _hq; ch._seatChecked = true; if (!H || !H.seats) return null;
+        var best = null, bd = 0.8;
+        for (var i = 0; i < H.seats.length; i++) { var st = H.seats[i], d = Math.hypot(((st.sx != null) ? st.sx : st.x) - ch.x, ((st.sz != null) ? st.sz : st.z) - ch.z); if (d < bd && Math.abs(st.floor - ch.y) < 0.6) { bd = d; best = st; } }
+        if (best) {
+            var U = _hqUnits();
+            ch.x = (best.sx != null) ? best.sx : best.x; ch.z = (best.sz != null) ? best.sz : best.z; ch.y = ch.visY = best.floor;
+            ch.entry.group.position.set(ch.x * U, ch.y * U, ch.z * U);
+            ch._seatTop = best.y;
+        }
+        return best;
     }
     function _hqTickSit(dt) {
         var H = _hq, pl = H.player, k = H.keys;
