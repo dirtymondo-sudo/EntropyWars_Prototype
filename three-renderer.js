@@ -53807,6 +53807,15 @@ const ThreeRenderer = (function () {
             })();
             return s;
         });
+        /* THE IMPOSSIBLE DOORS (_HQ_IMP_SHADER: the see-through doorway, the room beyond read at the eye's own pixel) */
+        reg(_HQ_IMP_SHADER.fs, 'impossible door', function (m) {
+            var u = m.uniforms, s = _ewProgMat(m), tP = _ewPT(u.tPortal), On = _ewPU(u.uOn, 'float'), Dk = _ewPU(u.uDark, 'color'), TM = _ewPU(u.uTexMat, 'mat4');
+            s.fragmentNode = T.Fn(function () {
+                var pr = TM.mul(V4(T.positionWorld, 1)).toVar(), r = tP(pr.xy.div(pr.w));
+                return V4(T.mix(Dk, r.rgb, On), 1);
+            })();
+            return s;
+        });
         /* the other scripts' programs (three-vfx.js, three-vfx-effects.js: ThreeRenderer.nodeProgram) */
         _ewProgsExt.forEach(function (e) { reg(e.fs, e.k, function (m, obj) { return e.fn(m, obj, _ewProgCtx()); }); });
         _ewProgsExt.length = 0;
@@ -100634,6 +100643,7 @@ const ThreeRenderer = (function () {
             _lt = _lensMark('matrix walk', _lt);   // THE STILL WALK: the still groups walk only what moved
             var backHold = _hqBackHold(H, now);   // THE WAY BACK MERGES FIRST: nothing is drawn until the room is merged (the debrief's picture still covers it)
             if (!backHold && H.reflectors && H.reflectors.length) { var _rsp = _lensIn('mirrors'); try { _hqTickReflectors(H); } finally { _lensOut(_rsp); } }   // THE THIRD PASS 5.4: the mirrored render before the frame
+            if (!backHold && H.imp) { var _isp = _lensIn('impossible doors'); try { _hqImpRender(H); } catch (e) { if (!H._impWarned) { H._impWarned = true; console.warn('[HQ] the impossible doors failed to draw — the doorways stay dark', e); } } finally { _lensOut(_isp); } }   // THE IMPOSSIBLE DOORS: the room beyond the doorway, before the frame
             var noPost = (typeof window !== 'undefined' && window.EW_HQ_NO_POST) || (_lens && !_lens.post);   // THE PERF LENS: post off
             /* THE CARD HOLD (2026-11-23, mondo's Downtown F3: a 50.8 s load into Bayside, 165 frames under the load card, 20 s of it
                drawing the whole city under the card: "scene: classic draws 9695, bundle replays 3965, sun shadow 3601 + 2836"): while
@@ -101821,6 +101831,7 @@ const ThreeRenderer = (function () {
             R.traverse(function (o) {
                 if (!o.isMesh || o.isInstancedMesh || !o.geometry) return;
                 var b = o.geometry._ew_lodBase || o.geometry;
+                o._ew_lodRoot = R;   // THE IMPOSSIBLE DOORS: a part drawn out of sight is sized from where it is walked
                 if (b._ew_lods || o._ew_lodCull) list.push(o);
                 else if (b._ew_lodWait) pend.add(o);
             });
@@ -101836,6 +101847,7 @@ const ThreeRenderer = (function () {
         var r = sp.radius * o.matrixWorld.getMaxScaleOnAxis(), d = v.distanceTo(cam) - r;
         return { f: d <= 1e-3 ? Infinity : (2 * r / d) * k, r: r };
     }
+    var _lodImpS = null;
     function _hqLodTick(H, now) {
         if (_lodOff()) { if (H.lod) _hqLodReset(H); return; }
         var RU = _lodRules();
@@ -101871,7 +101883,7 @@ const ThreeRenderer = (function () {
             var lodSeen = L.seen || (L.seen = new Set(L.list)), lodAdd = [];
             lodD.list.forEach(function (x) {
                 var inR = false; for (var r = 0; r < lodRoots.length && !inR; r++) if (lodRoots[r] && _ewDeskUnder(x, lodRoots[r])) inR = true;
-                if (inR) x.traverse(function (o) { if (!o.isMesh || o.isInstancedMesh || !o.geometry || lodSeen.has(o)) return; var b = o.geometry._ew_lodBase || o.geometry; if (b._ew_lods || o._ew_lodCull) { lodSeen.add(o); lodAdd.push(o); } else if (b._ew_lodWait) (L.pend || (L.pend = new Set())).add(o); });
+                if (inR) x.traverse(function (o) { if (!o.isMesh || o.isInstancedMesh || !o.geometry || lodSeen.has(o)) return; o._ew_lodRoot = lodRoots[r - 1]; var b = o.geometry._ew_lodBase || o.geometry; if (b._ew_lods || o._ew_lodCull) { lodSeen.add(o); lodAdd.push(o); } else if (b._ew_lodWait) (L.pend || (L.pend = new Set())).add(o); });
             });
             if (lodAdd.length) L.list = L.list.concat(lodAdd);
         }
@@ -101884,7 +101896,9 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < L.list.length; i++) {
             var o = L.list[i];
             if (o._ew_instHidden) continue;   // a batched copy: its batch picks (below)
-            var base = o.geometry._ew_lodBase || o.geometry, sc = _lodScreen(o, base, cp, k);
+            var lr = o._ew_lodRoot, cpo = cp;
+            if (lr && lr._ew_impDrop) { cpo = _lodImpS || (_lodImpS = new THREE.Vector3()); cpo.copy(cp); cpo.y += lr._ew_impDrop * U; }   // THE IMPOSSIBLE DOORS
+            var base = o.geometry._ew_lodBase || o.geometry, sc = _lodScreen(o, base, cpo, k);
             var cur = o._ew_lodL | 0, want = base._ew_lods ? _lodPick(sc.f, cur, T, RU.hys) : 0;
             if (want !== cur) { o._ew_lodL = want; L.swaps++; }
             var geo = _lodGeo(base, want);
@@ -105245,9 +105259,11 @@ const ThreeRenderer = (function () {
         H.stage = null;
         var id = H.opts && H.opts.room;
         var round = _hqStageRoundOf(id);   // THE ROUND JOIN: the round hall stages too (its one box behind the revolving door)
-        if (!round && (!id || _hqStageOff() || typeof hqStagePart !== 'function' || !hqStagePart(id) || !H.room || H.room.kind !== 'box')) return;
+        var imp = !!(id && !_hqStageOff() && typeof hqStageImpJoins === 'function' && hqStageImpJoins(id).length);   // THE IMPOSSIBLE DOORS: any room with one stages
+        if (!round && !imp && (!id || _hqStageOff() || typeof hqStagePart !== 'function' || !hqStagePart(id) || !H.room || H.room.kind !== 'box')) return;
         var nbs = _hqStageNbsOf(id); if (!nbs.length) return;
         H.stage = { id: id, nbs: nbs, nbsAll: nbs, parts: {}, skyYaw: 0, readyAt: 0, lampAt: 0, lampN: -1, blend: null, crossed: 0, loadAsked: null, warned: {}, round: !!round };
+        H.stage.imp = nbs.some(function (n) { return !!n.imp; });   // THE IMPOSSIBLE DOORS (the walk's hooks ask _hqImpSurface / _hqImpCam first)
     }
     /* ══ THE ROUND JOIN (data.js HQ_STAGE_RULES.round, 2026-10-24 — mondo: "lets get rid of the loading screen between the foyer and
        the main hall") ══════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -105265,7 +105281,7 @@ const ThreeRenderer = (function () {
     }
     function _hqStageRoundBeside(H) {
         var st = H && H.stage; if (!st) return true;
-        for (var i = 0; i < st.nbs.length; i++) { var nb = st.nbs[i]; if (!nb.round) continue; var E = st.parts[nb.id]; if (!E || !E.attached) return false; }
+        for (var i = 0; i < st.nbs.length; i++) { var nb = st.nbs[i]; if (!nb.round || nb.imp) continue; var E = st.parts[nb.id]; if (!E || !E.attached) return false; }
         return true;
     }
     function _hqRoundRoom(room) { return !!(room && room.kind !== 'box' && room.kind !== 'bay' && room.shell && room.shell.radius > 0); }
@@ -105459,8 +105475,9 @@ const ThreeRenderer = (function () {
     function _hqStageClosedBox(room) { return !!(room && room.kind === 'box' && room.shell && !(room.shell.open && room.shell.sky) && !room.terrain && !room.cave); }
     function _hqStageRootPlace(H, E) {
         var rel = E.rel || (E.rel = hqStageRel(H.stage.id, E.id)); if (!rel) return;
-        var U = _hqUnits(), R = E.P.partRoot;
-        R.position.set(rel.x * U, (rel.y || 0) * U, rel.z * U); R.rotation.set(0, rel.rot * Math.PI / 2, 0);
+        var U = _hqUnits(), R = E.P.partRoot, dy = E.impDrop || 0;   // THE IMPOSSIBLE DOORS: drawn `dy` m under (over) where it is walked
+        R.position.set(rel.x * U, ((rel.y || 0) + dy) * U, rel.z * U); R.rotation.set(0, rel.rot * Math.PI / 2, 0);
+        R._ew_impDrop = dy;
         R.updateMatrixWorld(true);
     }
     /* a neighbour's plates (the door / counter / bay labels) are the current part's only: the CSS2D layer draws through walls,
@@ -105501,7 +105518,7 @@ const ThreeRenderer = (function () {
         st.nbs.forEach(function (nb) { want[nb.id] = nb; });
         for (var id in st.parts) {
             var E = st.parts[id];
-            if (want[id]) { E.rel = want[id].rel; if (E.attached) _hqStageRootPlace(H, E); }
+            if (want[id]) { E.rel = want[id].rel; E.impDrop = want[id].imp ? want[id].imp.drop : 0; if (E.attached) _hqStageRootPlace(H, E); }
             else { E.rel = null; _hqStageAttach(H, E, false); }
         }
         var ids = Object.keys(st.parts), cap = Math.max(1, (HQ_STAGE_RULES.partsBuilt || 3) - 1);
@@ -105676,6 +105693,7 @@ const ThreeRenderer = (function () {
         if (pdMoving) _hqPdTick(H, now);
         if (H.pdWide) _hqPdWideCam(H, now);   // THE WIDE VIEW: the eye over the whole board while a plot moves
         if (pdMoving) return;   // THE PLOT DUNGEONS: a plot is moving — no crossing mid-move
+        if (_hqImpTick(H, now)) return;   // THE IMPOSSIBLE DOORS: a crossing through one this frame
         _hqStageCross(H, now);
     }
     function _hqStageBuildTick(H, now) {
@@ -105706,7 +105724,7 @@ const ThreeRenderer = (function () {
                 if (!st.warned[nb.id]) { st.warned[nb.id] = 1; if (H.opts.stageWarm) { try { H.opts.stageWarm(nb.id); } catch (e) {} } }
                 continue;
             }
-            if (!E) { E = st.parts[nb.id] = _hqStagePartNew(H, nb.id); if (!E) continue; E.rel = nb.rel; E.t0 = now; E.gate = _alGateOpen('part:' + nb.id, { own: true }); }
+            if (!E) { E = st.parts[nb.id] = _hqStagePartNew(H, nb.id); if (!E) continue; E.rel = nb.rel; E.impDrop = nb.imp ? nb.imp.drop : 0; E.t0 = now; E.gate = _alGateOpen('part:' + nb.id, { own: true }); }
             _hqStageBuildSlice(H, E, room);
             return;   // one part a frame, whoever it is
         }
@@ -106098,7 +106116,8 @@ const ThreeRenderer = (function () {
                 if (!o._ew_stageOn) return;
                 cnt++; if (ri === 0) own++;
                 if (!shown) return;
-                o.getWorldPosition(v); all.push({ o: o, d: v.distanceToSquared(cam), own: ri === 0 ? 0 : 1 });
+                o.getWorldPosition(v); if (R._ew_impDrop) v.y -= R._ew_impDrop * _hqUnits();   // THE IMPOSSIBLE DOORS: a room drawn out of sight is lit by where it is walked
+                all.push({ o: o, d: v.distanceToSquared(cam), own: ri === 0 ? 0 : 1 });
             });
         });
         var SR = HQ_STAGE_RULES, base = SR.lampsLive || 12, nbMin = (SR.lampsNb != null) ? Math.max(0, SR.lampsNb | 0) : 4;
@@ -107194,6 +107213,207 @@ const ThreeRenderer = (function () {
         var face = _hqNormDeg((H.cam.yaw + nb.rel.rot * Math.PI / 2) * 180 / Math.PI);   // the eye keeps looking where it looked
         try { H.opts.onStageLoad(to, { x: at.x, z: at.z, face: face }); } catch (e) { console.warn('[HQ stage] the load fallback failed', e); }
     }
+    /* ══ THE IMPOSSIBLE DOORS (data.js HQ_STAGE_RULES.impossible, DOOR HQ 2.0 wave 4, 2026-11-26) ═════════════════════════════
+       mondo: "wonder if you could make some doors work like the portal gun to allow this (disorienting architecture or non Euclidean
+       geometry)"; "less loading screens". A row joins a door of this room to a door of a room that stands anywhere. The stage builds
+       that room as a neighbour (THE STAGE's builders, its gate, its warm-up, its lamps, its people) placed where it would stand if it
+       were right behind the door (data.js hqStageImpGeom: the walk, the boom and the swap read that), but DRAWN `impDropM` under it
+       (_hqStageRootPlace: `E.impDrop`), so it never shows through a wall, never lights this room and is never lit by it.
+       THE WALK: the doorway is the room's own (cut, lined, its leaf swings like a joined door's); once the walker's middle passes the
+       doorway's plane inside its frame (`st.impIn`) the floor, the air and the boom past that plane are the other room's (_hqImpSurface,
+       _hqImpCam), and when the CAMERA passes it too (or the walker is 4.5 m in, or in first person) the stage swaps (_hqStageSwap):
+       you stand in that room, no card, no load. A camera behind the plane before the walker goes in is blocked (the boom shortens).
+       THE DARK DOORWAY (a plain row): the doorway is a box of black from the plane `impDepthM` into the far side; the walker walks into
+       it and is gone from this room's picture, the camera follows into the dark, and the other room is there. THE SEE-THROUGH DOOR
+       (`see`): the same box shows the other room, drawn from the camera moved by the drop into a render target (`impScale` of the
+       screen; three's projective rule, like the mirrors: a point of the box reads the pixel the eye sees there) with everything on
+       this side of the plane clipped off; the walker who has gone through is drawn there, in it. Only from the front (a lone door seen
+       from behind is a door in a field), within `impSeeM`, and only while the box is on screen. `look` = the window: drawn, never
+       crossed (its plane is glass to the walker and the boom). Viewer-local (RULE #2): nothing on `state`, nothing relayed. RULE #1e:
+       the per-frame work reads only this room's doorways. Off: window.EW_HQ_NO_IMPOSSIBLE (re-enter). ThreeRenderer.hq.impossible(). */
+    var _HQ_IMP_SHADER = {
+        vs: ['uniform mat4 uTexMat; varying vec4 vImp;',
+            'void main() { vec4 wp = modelMatrix * vec4(position, 1.0); vImp = uTexMat * wp; gl_Position = projectionMatrix * viewMatrix * wp; }'].join('\n'),
+        fs: ['uniform sampler2D tPortal; uniform float uOn; uniform vec3 uDark; varying vec4 vImp;',
+            'void main() { vec4 r = texture2DProj(tPortal, vImp); gl_FragColor = vec4(mix(uDark, r.rgb, uOn), 1.0); }'].join('\n')
+    };
+    var _hqImpBias = null, _hqImpFr = null, _hqImpPM = null;
+    function _hqImpMat() {
+        var m = new THREE.ShaderMaterial({ uniforms: { tPortal: { value: null }, uOn: { value: 0 }, uDark: { value: new THREE.Color(0x000000) }, uTexMat: { value: new THREE.Matrix4() } },
+            vertexShader: _HQ_IMP_SHADER.vs, fragmentShader: _HQ_IMP_SHADER.fs, side: THREE.DoubleSide, depthWrite: true, transparent: false, fog: false });
+        m.toneMapped = false; m._ew_imp = true; m.name = 'hq-impossible-door';
+        return m;
+    }
+    /* the doorway's sides of a point: d = along the way out past the plane, t = across it */
+    function _hqImpD(F, x, z) { return (x - F.x) * F.ox + (z - F.z) * F.oz; }
+    function _hqImpT(F, x, z) { return -(x - F.x) * F.oz + (z - F.z) * F.ox; }
+    /* the room's doorways: a box each, at the plane, reaching into the far side */
+    function _hqImpArm(H) {
+        _hqImpDrop(H);
+        var st = H.stage; if (!st) return;
+        var nbs = st.nbs.filter(function (n) { return !!n.imp; });
+        st.imp = nbs.length > 0; st.impIn = null;
+        if (!nbs.length) { H.imp = null; return; }
+        var I = H.imp = { id: st.id, recs: [], hid: false, was: true, crossed: 0 };
+        var U = _hqUnits(), dep = +HQ_STAGE_RULES.impDepthM || 0.6;
+        nbs.forEach(function (nb) {
+            var F = nb.imp, mat = _hqImpMat();
+            var g = new THREE.BoxGeometry(F.ow * U, F.oh * U, dep * U);
+            var m = new THREE.Mesh(g, mat);
+            m.position.set((F.x + F.ox * dep / 2) * U, (F.y + F.oh / 2) * U, (F.z + F.oz * dep / 2) * U);
+            m.rotation.y = Math.atan2(F.ox, F.oz);
+            m.name = 'hq-impossible:' + nb.id; m._ew_imp = true; m._ew_noBatch = true; m.visible = false;
+            H.scene.add(m); m.updateMatrixWorld(true);
+            g.computeBoundingBox();
+            var box = g.boundingBox.clone().applyMatrix4(m.matrixWorld);
+            I.recs.push({ id: nb.id, nb: nb, F: F, see: !!(F.see || F.look), look: !!F.look, mesh: m, mat: mat, box: box, rt: null, cam: null, cg: null, plane: new THREE.Plane(), prevD: null, drawn: 0, shown: false });
+        });
+    }
+    function _hqImpDrop(H) {
+        var I = H && H.imp; if (!I) return;
+        var pl = H.player, G = pl && pl.entry && pl.entry.group;
+        if (I.hid && G) { G.visible = I.was; I.hid = false; }
+        I.recs.forEach(function (r) {
+            try { if (r.mesh.parent) r.mesh.parent.remove(r.mesh); r.mesh.geometry.dispose(); r.mat.dispose(); } catch (e) {}
+            try { if (r.rt) r.rt.dispose(); } catch (e) {}
+        });
+        H.imp = null;
+        if (H.stage) H.stage.impIn = null;
+    }
+    /* the walk past the plane: the other room's floor, read in its frame (null = no floor: the window's glass, a room not stood yet) */
+    function _hqImpSurface(H, x, z, curY, ignoreBlockers) {
+        var I = H.imp, st = H.stage; if (!I || !st) return undefined;
+        for (var i = 0; i < I.recs.length; i++) {
+            var r = I.recs[i], F = r.F, d = _hqImpD(F, x, z);
+            if (d <= -0.02) continue;
+            if (r.look) { if (d < 0.6 && Math.abs(_hqImpT(F, x, z)) < F.ow / 2 + 0.4) return null; continue; }
+            if (st.impIn !== r.id) continue;
+            var E = st.parts[r.id]; if (!E || !E.attached) return null;
+            var q = hqStageFromRoom(r.nb.rel, x, z), ry = r.nb.rel.y || 0, y = null;
+            _hqStageAsk(H, E, function () { y = _hqSurface(q.x, q.z, curY == null ? null : curY - ry, ignoreBlockers); });
+            return (y == null) ? null : y + ry;
+        }
+        return undefined;
+    }
+    /* the boom past the plane: the other room's, once the walker is in it; blocked before (the eye never stands in the doorway's dark) */
+    function _hqImpCam(H, px, pz, py) {
+        var I = H.imp, st = H.stage; if (!I || !st) return undefined;
+        for (var i = 0; i < I.recs.length; i++) {
+            var r = I.recs[i], F = r.F, d = _hqImpD(F, px, pz);
+            if (d <= 0) continue;
+            var t = Math.abs(_hqImpT(F, px, pz));
+            if (st.impIn !== r.id) { if (t < F.ow / 2 + 0.35 && d < Math.max(0.6, F.gap + 0.4) && py < F.y + F.oh + 0.3) return true; continue; }
+            var E = st.parts[r.id]; if (!E || !E.attached) return true;
+            var q = hqStageFromRoom(r.nb.rel, px, pz), ry = r.nb.rel.y || 0, b = true;
+            _hqStageAsk(H, E, function () { b = _hqCamBlocked(q.x, q.z, py - ry); });
+            return b;
+        }
+        return undefined;
+    }
+    /* every stage frame: the doorways of the part you stand in (a new part arms its own), who has gone in, and the crossing */
+    function _hqImpTick(H, now) {
+        var st = H.stage; if (!st || !st.imp) return false;
+        if (!H.imp || H.imp.id !== st.id) _hqImpArm(H);
+        var I = H.imp, pl = H.player; if (!I || !pl) return false;
+        var U = _hqUnits(), cp = H.camera.position, ex = cp.x / U, ez = cp.z / U;
+        for (var i = 0; i < I.recs.length; i++) {
+            var r = I.recs[i], F = r.F, E = st.parts[r.id], on = !!(E && E.attached);
+            var d = _hqImpD(F, pl.x, pl.z), prev = r.prevD; r.prevD = d;
+            if (r.look || !on) { if (st.impIn === r.id) st.impIn = null; continue; }
+            var inL = Math.abs(_hqImpT(F, pl.x, pl.z)) < F.ow / 2 + 0.25 && pl.y > F.y - 1.2 && pl.y < F.y + F.oh;
+            if (st.impIn !== r.id) { if (!st.impIn && prev != null && prev <= 0 && d > 0 && inL) st.impIn = r.id; }
+            else if (d < -0.05) st.impIn = null;
+            if (st.impIn !== r.id) continue;
+            var cd = _hqImpD(F, ex, ez), ct = Math.abs(_hqImpT(F, ex, ez));
+            if ((cd > 0.02 && ct < F.ow / 2 + 0.8) || d > 4.5 || (H.fp && d > 0.05)) return _hqImpCross(H, r, now);
+        }
+        return false;
+    }
+    function _hqImpCross(H, r, now) {
+        var pl = H.player, st = H.stage;
+        if (!pl || H.snap || pl.dash || pl.climb || pl.sit || (H.ride && H.ride.on) || (H.vehicle && H.vehicle.on)) return false;
+        var placed = (H.portal && H.portal.placed && Object.keys(H.portal.placed).length) || (H.gun && H.gun.doors && H.gun.doors.length);
+        if (placed) { _hqStageLoad(H, r.id, now); return true; }   // the door gun's pair stands in this part: a plain load to the same spot (THE STAGE's rule)
+        var from = st.id;
+        _hqImpDrop(H);
+        if (!_hqStageSwap(H, r.id)) return false;
+        if (H.partRoot) H.partRoot._ew_impDrop = 0;
+        _hqImpArm(H);
+        if (H.imp) H.imp.crossed = (H.imp.crossed || 0) + 1;
+        console.log('[HQ impossible] ' + from + ' → ' + r.id + (r.see ? ' (see-through)' : ' (dark doorway)'));
+        return true;
+    }
+    /* before the frame: which doorways show, the room beyond each see-through one drawn into its picture, the walker who went in
+       taken out of this room's picture */
+    function _hqImpRender(H) {
+        var I = H.imp, st = H.stage; if (!I || !st || !renderer || !H.camera) return;
+        var pl = H.player, G = pl && pl.entry && pl.entry.group;
+        if (I.hid && G) { G.visible = I.was; I.hid = false; }
+        var U = _hqUnits(), cam = H.camera, cp = cam.position, ex = cp.x / U, ez = cp.z / U, seeM = +HQ_STAGE_RULES.impSeeM || 45, hide = false;
+        cam.updateMatrixWorld();
+        if (!_hqImpFr) { _hqImpFr = new THREE.Frustum(); _hqImpPM = new THREE.Matrix4(); _hqImpBias = new THREE.Matrix4().set(0.5, 0, 0, 0.5, 0, 0.5, 0, 0.5, 0, 0, 0.5, 0.5, 0, 0, 0, 1); }
+        _hqImpPM.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse); _hqImpFr.setFromProjectionMatrix(_hqImpPM);
+        for (var i = 0; i < I.recs.length; i++) {
+            var r = I.recs[i], F = r.F, E = st.parts[r.id];
+            var on = !!(E && E.attached && E.P.partRoot.parent && E.P.partRoot.visible !== false);
+            var show = on && _hqImpD(F, ex, ez) < 0.05;   // from the front only
+            r.shown = show;
+            if (r.mesh.visible !== show) r.mesh.visible = show;
+            if (!show) continue;
+            if (st.impIn === r.id) hide = true;
+            var u = r.mat.uniforms;
+            if (!r.see || Math.hypot(ex - F.x, ez - F.z) > seeM) { u.uOn.value = 0; continue; }
+            if (!_hqImpFr.intersectsBox(r.box)) continue;
+            if (_hqImpDraw(H, r, E, G)) { u.uOn.value = 1; u.tPortal.value = r.rt.texture; u.uTexMat.value.copy(_hqImpBias).multiply(_hqImpPM); }
+            else u.uOn.value = 0;
+        }
+        if (hide && G) { I.was = G.visible; G.visible = false; I.hid = true; }   // gone through: drawn only in the room beyond (the see-through picture)
+    }
+    function _hqImpDraw(H, r, E, G) {
+        var U = _hqUnits(), cam = H.camera, sc = +HQ_STAGE_RULES.impScale || 0.6, F = r.F, dyU = (E.impDrop || 0) * U;
+        if (!dyU) return false;
+        var w = Math.max(64, Math.round((H.w || 960) * sc)), h = Math.max(64, Math.round((H.h || 540) * sc));
+        if (!r.rt) r.rt = new THREE.WebGLRenderTarget(w, h, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat, stencilBuffer: false });
+        else if (r.rt.width !== w || r.rt.height !== h) r.rt.setSize(w, h);
+        var mc = r.cam || (r.cam = new THREE.PerspectiveCamera());
+        mc.copy(cam, false); mc.position.y += dyU; mc.updateMatrixWorld(true);
+        /* the far side of the plane only (a hair short of it: the far room's own doorway frame stays) */
+        var n = new THREE.Vector3(F.ox, 0, F.oz), p0 = new THREE.Vector3((F.x - F.ox * 0.02) * U, F.y * U + dyU, (F.z - F.oz * 0.02) * U);
+        var cpl = r.plane.setFromNormalAndCoplanarPoint(n, p0);
+        var sky = H.sky ? [H.sky.dome, H.sky.group, H.sky.landmarks].filter(function (o) { return !!o; }) : [];
+        var prevT = renderer.getRenderTarget(), prevClip = renderer.clippingPlanes, prevShadow = renderer.shadowMap ? renderer.shadowMap.needsUpdate : false, prevAuto = renderer.autoClear;
+        var CG = (renderer.isWebGPURenderer && typeof window !== 'undefined' && window.THREE_GPU && window.THREE_GPU.ClippingGroup) ? (r.cg || (r.cg = new window.THREE_GPU.ClippingGroup())) : null, kids = null;
+        var gy = G ? G.position.y : 0, ok = false;
+        H.imp.recs.forEach(function (q) { q.mesh.visible = false; });
+        try {
+            if (G) { G.position.y = gy + dyU; G.updateMatrixWorld(true); }   // the walker who has gone through stands in it
+            sky.forEach(function (o) { o.position.y += dyU; o.updateMatrixWorld(true); });   // the open sky round the far room
+            if (CG) { CG.clippingPlanes = [cpl]; kids = H.scene.children; CG.children = kids; CG.parent = H.scene; H.scene.children = [CG]; H.scene._ew_lentKids = kids; }
+            else renderer.clippingPlanes = [cpl];
+            if (renderer.shadowMap) renderer.shadowMap.needsUpdate = false;
+            renderer.setRenderTarget(r.rt); renderer.autoClear = true; renderer.clear();
+            renderer.render(H.scene, mc); r.drawn++; ok = true;
+        } catch (e) { if (!r.warned) { r.warned = true; console.warn('[HQ impossible] the picture through ' + r.id + ' failed', e); } }
+        finally {
+            if (kids) {
+                var lent = H.scene.children;
+                for (var li = 0; li < lent.length; li++) { if (lent[li] !== CG && kids.indexOf(lent[li]) < 0) kids.push(lent[li]); }
+                H.scene.children = kids; H.scene._ew_lentKids = null; CG.children = []; CG.parent = null;
+            }
+            if (!CG) renderer.clippingPlanes = prevClip;
+            renderer.setRenderTarget(prevT); renderer.autoClear = prevAuto;
+            if (renderer.shadowMap) renderer.shadowMap.needsUpdate = prevShadow;
+            if (G) { G.position.y = gy; G.updateMatrixWorld(true); }
+            sky.forEach(function (o) { o.position.y -= dyU; o.updateMatrixWorld(true); });
+            H.imp.recs.forEach(function (q) { q.mesh.visible = q.shown; });
+        }
+        return ok;
+    }
+    function _hqImpStats(H) {
+        var I = H.imp, st = H.stage; if (!I || !st) return null;
+        var pl = H.player;
+        return { id: I.id, in: st.impIn || null, crossed: I.crossed || 0, recs: I.recs.map(function (r) { var E = st.parts[r.id]; return { id: r.id, door: r.F.door, see: r.see, look: r.look, on: !!(E && E.attached), shown: r.shown, drawn: r.drawn, d: pl ? Math.round(_hqImpD(r.F, pl.x, pl.z) * 100) / 100 : null }; }) };
+    }
     /* THE SWAP: the neighbour `to` becomes the current part; everything is re-anchored to its frame */
     function _hqStageSwap(H, to) {
         var st = H.stage, E = st.parts[to], rel = E.rel, U = _hqUnits(), t0 = performance.now();
@@ -107556,6 +107776,7 @@ const ThreeRenderer = (function () {
     }
     function _hqStageSurface(x, z, curY, ignoreBlockers) {
         var H = _hq, st = H.stage; if (!st) return undefined;
+        if (st.imp) { var iy = _hqImpSurface(H, x, z, curY, ignoreBlockers); if (iy !== undefined) return iy; }   // THE IMPOSSIBLE DOORS: through the doorway (or the window's glass)
         /* an island's box is the island's ground (the host's floor is sunk under it): its own surface, read in its frame */
         var isl = _hqStageIslandAt(st, x, z);
         if (isl) { var yi = null; _hqStageAsk(H, isl.E, function () { yi = _hqSurface(isl.q.x, isl.q.z, curY == null ? null : curY - isl.ry, ignoreBlockers); }); return (yi == null) ? null : yi + isl.ry; }
@@ -107571,6 +107792,7 @@ const ThreeRenderer = (function () {
         if (over <= 0) return undefined;
         for (var i = 0; i < st.nbs.length; i++) {
             var nb = st.nbs[i], r = nb.rect;
+            if (nb.imp) continue;   // THE IMPOSSIBLE DOORS: only through the doorway (_hqImpSurface)
             if (!(x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1)) continue;
             var E = st.parts[nb.id]; if (!E || !E.attached) return null;
             var q = hqStageFromRoom(nb.rel, x, z), y = null, ry = nb.rel.y || 0;
@@ -107582,6 +107804,7 @@ const ThreeRenderer = (function () {
     /* the boom past the edge: through a span it clears the road; over a drawn neighbour it asks the neighbour */
     function _hqStageCam(px, pz, py) {
         var H = _hq, st = H.stage; if (!st) return undefined;
+        if (st.imp) { var ic = _hqImpCam(H, px, pz, py); if (ic !== undefined) return ic; }   // THE IMPOSSIBLE DOORS
         var isl = _hqStageIslandAt(st, px, pz);
         if (isl) { var bi = true; _hqStageAsk(H, isl.E, function () { bi = _hqCamBlocked(isl.q.x, isl.q.z, py - isl.ry); }); return bi; }   // THE COAST: over an island, the island's
         var S = H.room.shell, hw = S.w / 2, hd = S.d / 2, over = Math.max(Math.abs(px) - hw, Math.abs(pz) - hd);
@@ -107591,6 +107814,7 @@ const ThreeRenderer = (function () {
         if (over <= 0) return undefined;
         for (var i = 0; i < st.nbs.length; i++) {
             var nb = st.nbs[i], r = nb.rect;
+            if (nb.imp) continue;   // THE IMPOSSIBLE DOORS: only through the doorway (_hqImpCam)
             if (!(px > r.x0 && px < r.x1 && pz > r.z0 && pz < r.z1)) continue;
             var E = st.parts[nb.id]; if (!E || !E.attached) return true;
             var q = hqStageFromRoom(nb.rel, px, pz), b = true;
@@ -107616,6 +107840,7 @@ const ThreeRenderer = (function () {
             var a = _hqRad(sp.deg), along = x * Math.sin(a) - z * Math.cos(a), lat = x * Math.cos(a) + z * Math.sin(a);
             var E = st.parts[nb.id], on = !!(E && E.attached);
             if (Math.abs(lat) <= sp.t1 - pad && along >= Math.sqrt(Math.max(0, R * R - lat * lat)) - 0.5 && along <= R + (sp.depth - 0.5) + reach) return { k: 'door', nb: nb, E: E, on: on };   // from the drum's own arc (a wide open front)
+            if (nb.imp) continue;   // THE IMPOSSIBLE DOORS: past the doorway is _hqImpSurface's
             var B = _hqData().rooms[nb.id], SB = B && B.shell; if (!SB) continue;
             var q = hqStageFromRoom(nb.rel, x, z);
             if (Math.abs(q.x) < SB.w / 2 && Math.abs(q.z) < SB.d / 2) return { k: 'nb', nb: nb, E: E, on: on, q: q };
@@ -107623,6 +107848,7 @@ const ThreeRenderer = (function () {
         return null;
     }
     function _hqStageRoundSurface(x, z, curY, ignoreBlockers, lvl) {
+        if (_hq.stage && _hq.stage.imp) { var iy = _hqImpSurface(_hq, x, z, curY, ignoreBlockers); if (iy !== undefined) return iy; }   // THE IMPOSSIBLE DOORS
         var H = _hq, L = (lvl != null) ? lvl : _hqStageRoundLvl(H, curY);   // up on the gallery: only the rooms joined to the gallery's doors (THE GALLERY JOIN)
         var at = _hqStageRoundAt(H, x, z, HQ_BODY_R, 0.7, L); if (!at) return undefined;
         if (!at.on) return at.k === 'door' ? undefined : null;   // until the room beyond stands on the stage the door is the door it was
@@ -107633,6 +107859,7 @@ const ThreeRenderer = (function () {
         return (y == null) ? y : y + ry;
     }
     function _hqStageRoundCam(px, pz, py) {
+        if (_hq.stage && _hq.stage.imp) { var ic = _hqImpCam(_hq, px, pz, py); if (ic !== undefined) return ic; }   // THE IMPOSSIBLE DOORS
         var H = _hq, at = _hqStageRoundAt(H, px, pz, 0.28, 0.5, _hqStageRoundLvl(H, null)); if (!at) return undefined;
         if (!at.on) return at.k === 'door' ? undefined : true;
         var ry = at.nb.rel.y || 0;
@@ -107656,6 +107883,7 @@ const ThreeRenderer = (function () {
     }
     /* leaving the room: the neighbours' gates close, the detached ones are disposed (the attached ones go with the scene) */
     function _hqStageLeave(H) {
+        try { _hqImpDrop(H); } catch (e) {}   // THE IMPOSSIBLE DOORS: the doorways' boxes and their pictures
         var st = H && H.stage; if (!st) return;
         for (var id in st.parts) { var E = st.parts[id]; try { if (E.gate) E.gate.close(); } catch (e) {} if (!E.attached) { try { E.P.partRoot.traverse(function (o) { _disposeR(o); }); _hqUnlinkLeft(E.P.partRoot); } catch (e) {} } }   // (THE LEFT ROOM LETS GO)
     }
@@ -109213,6 +109441,8 @@ const ThreeRenderer = (function () {
         /* THE PORTALS / THE MEMORY BUDGET (G1 = Phase 12): { on, hidden: [ids], flips, pads, off } | null and
            { misc: { n, mb }, rigs: { n, mb }, budget, evicted, freedMB, off } */
         cull: function () { return _hq ? _hqCullStats(_hq) : null; },
+        /* THE IMPOSSIBLE DOORS: { id, in, recs: [{ id, see, look, shown, on, drawn, d }] } | null */
+        impossible: function () { return _hq ? _hqImpStats(_hq) : null; },
         mem: function () { return _mmRead(); },
         memTop: function () { try { var R = _mmRead(), live = _mmLive(_hq); return _mmTopLines(_hq, R, _mmList(live), live); } catch (e) { return ['unreadable: ' + (e && e.message)]; } },
         /* THE WORLD CLOCK (OPEN_WORLD_PLAN Phase 3): the room's place on the clock — { hour, room, locked, day, dusk, lamp, sunAz,

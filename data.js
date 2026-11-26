@@ -87666,6 +87666,24 @@ const HQ_STAGE_RULES = {
         { a: 'central_egress', door: 'spirit', b: 'spirit', bDoor: 'lobby' },
         { a: 'central_egress', door: 'extraterrestrial', b: 'extraterrestrial', bDoor: 'lobby' },   // THE CAFETERIA (DOOR HQ 2.0 wave 2, 2026-11-26): the open front at 270 degrees (17.5 x 4.5 m), the Kitchen inside the same box
     ],
+    /* THE IMPOSSIBLE DOORS (DOOR HQ 2.0 wave 4, 2026-11-26, mondo: "wonder if you could make some doors work like the portal gun ...
+       disorienting architecture or non Euclidean geometry"; H-Wing: "open a door and it leads to an outside room with a lone door standing
+       across the other side, walk to it and open it and I'm back in h-wing"). A door of room `a` and a door of room `b` are ONE doorway,
+       wherever the two rooms really are: `b` is built out of sight (`dropM` under `a`) but walked as if it stood right behind the door, so
+       walking through is no card and no load. Plain row = THE DARK DOORWAY (the opening is black, you walk into it and come out in `b`);
+       `see: true` = THE SEE-THROUGH DOOR (you see `b` through the open frame before you step in); `look: true` = a window onto `b` that is
+       never walked through (the Corner Office's). Either end may be a box room's wall door, a box room's free-standing door (`wall: 'free'`,
+       the lone door in a vignette) or a door of a round hub (the Ring, the Lobby); never two hubs. A room may have any number of rows.
+       Each thread adds its own rows here. Off: window.EW_HQ_NO_IMPOSSIBLE (every such door is a plain door again). Notes:
+       docs/notes/hq-building-rooms.md "THE IMPOSSIBLE DOORS". */
+    impossible: [
+        { a: 'labs', door: 'stair', b: 'incinerator', bDoor: 'works' },   // THE WORKS STAIR: down from the Gantry into the Incinerator, the dark doorway
+        { a: 'labs', door: 'mandela', b: 'mandela', bDoor: 'labs', see: true },   // H-WING'S PLAIN DOORS on the Gantry (until the H-Wing thread moves them)
+        { a: 'labs', door: 'upsidedown', b: 'upsidedown', bDoor: 'labs', see: true },
+    ],
+    /* the drop under `a` an impossible door's room is built at (m; out of the eye's 900 m reach both ways), the see-through door's render
+       target (a share of the screen), the reach it is drawn from (m), and the depth of the doorway's dark box (m) */
+    impDropM: 3000, impScale: 0.6, impSeeM: 45, impDepthM: 0.6,
 };
 /* THE EXPLORATION DAY (§4.4 — Phase 3, 2026-09-26). One clock for every outdoor room (2026-10-17: hqRoomClock; was every zone with `clock: true`): a day of `dayMin` real
    minutes (fork 6's default, 24), run by the walk (map.js _hqClockAdvance: the HQ frame, never while paused, a panel is up,
@@ -88357,6 +88375,8 @@ function hqStagePart(roomId) {
 /* toId's frame seen from fromId's room: a point (x, z) of toId's room lies at hqStageToRoom(rel, x, z) in fromId's.
    rot = toId's quarter turns relative to fromId's (rotation.y = rot·π/2 on the group that carries toId). */
 function hqStageRel(fromId, toId) {
+    const ij = fromId !== toId ? hqStageImpJoins(fromId, toId)[0] : null;   // THE IMPOSSIBLE DOORS: the room behind the door, as if it stood there
+    if (ij) { const G = hqStageImpGeom(ij); if (G) return Object.assign({}, fromId === ij.a ? G.rel : G.back); }
     const rj = fromId !== toId ? hqStageRoundJoin(fromId, toId) : null;   // THE ROUND JOIN: the hall and its box at the door's own angle
     if (rj) { const G = hqStageRoundGeom(rj); return G ? Object.assign({}, fromId === rj.a ? G.rel : G.back) : null; }
     const A = hqWorldFrame(fromId), B = hqWorldFrame(toId);
@@ -88452,7 +88472,7 @@ function hqStageWhereRound(R, nbs, x, z, hys, lvl) {
     const hy = (hys == null ? HQ_WORLD_RULES.crossHys : hys);
     if (!(Math.hypot(x, z) > R)) return null;
     for (let i = 0; i < nbs.length; i++) {
-        if (!(nbs[i].spans && nbs[i].spans.length)) continue;
+        if (!(nbs[i].spans && nbs[i].spans.length) || nbs[i].imp) continue;   // (THE IMPOSSIBLE DOORS: the renderer crosses those)
         if (lvl != null && (nbs[i].level || 0) !== lvl) continue;   // THE GALLERY JOIN: a room on the gallery over a room on the floor
         const S = ((DOOR_HQ.rooms || {})[nbs[i].id] || {}).shell; if (!S || !(S.w > 0)) continue;
         const q = hqStageFromRoom(nbs[i].rel, x, z);
@@ -88464,6 +88484,10 @@ function hqStageWhereRound(R, nbs, x, z, hys, lvl) {
    metres), spans: [{ side, t0, t1, kind }] (the joined stretches of THIS room's edge, in its own metres), links: [ids of
    the link doors on this room that a span replaces] }]. Empty for a room that is not staged. */
 function hqStageNeighbours(roomId) {
+    const base = _hqStageNeighboursBase(roomId), imp = hqStageImpNeighbours(roomId);   // THE IMPOSSIBLE DOORS: their rooms last (a real neighbour wins an overlap)
+    return imp.length ? base.concat(imp.filter(n => !base.some(b => b.id === n.id))) : base;
+}
+function _hqStageNeighboursBase(roomId) {
     const rnb = hqStageRoundNeighbours(roomId); if (rnb) return rnb;   // THE ROUND JOIN (the hall ⇄ the foyer)
     if (!hqStagePart(roomId)) return [];
     const out = [], R = DOOR_HQ.rooms[roomId];
@@ -88558,7 +88582,7 @@ function hqStageNearbyParts(roomId, reach) {
     const R = reach > 0 ? reach : 64, key = roomId + '|' + R, W = DOOR_HQ.world;
     const hit = _hqStageNearbyCache[key]; if (hit && hit.W === W) return hit.out;
     const A = hqWorldFrame(roomId), SA = DOOR_HQ.rooms[roomId].shell, out = [], co = new Set();
-    hqStageNeighbours(roomId).forEach(n => { co.add(n.id); hqStageNeighbours(n.id).forEach(m => co.add(m.id)); });
+    _hqStageNeighboursBase(roomId).forEach(n => { co.add(n.id); _hqStageNeighboursBase(n.id).forEach(m => co.add(m.id)); });   // (an impossible door's room is never ground beside this one)
     co.delete(roomId);
     Object.keys(_hqWorldIndex().part).forEach(id => {
         if (!co.has(id)) return;
@@ -88611,7 +88635,7 @@ function hqStageWhere(hw, hd, nbs, x, z, hys) {
     const over = Math.max(Math.abs(x) - hw, Math.abs(z) - hd);
     if (!(over > hy)) return null;
     for (let i = 0; i < nbs.length; i++) {
-        if (!(nbs[i].spans && nbs[i].spans.length)) continue;   // a part beside (no span): drawn, never crossed into
+        if (!(nbs[i].spans && nbs[i].spans.length) || nbs[i].imp) continue;   // a part beside (no span): drawn, never crossed into; an impossible door's room: the renderer crosses it (_hqImpTick)
         const r = nbs[i].rect; if (x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1) return nbs[i].id;
     }
     return null;
@@ -88674,6 +88698,7 @@ function hqWorldDoorJoinResolve(j) {
 }
 /* the door join (if any) that door `doorId` of room `roomId` belongs to, on a staged part: { nb, gap, ow, oh, other door id } */
 function hqStageDoorJoin(roomId, doorId) {
+    const ijd = hqStageImpDoorJoin(roomId, doorId); if (ijd) return ijd;   // THE IMPOSSIBLE DOORS
     const rjs = hqStageRoundJoins(roomId);   // THE ROUND JOIN: `round`, and `keep` = this side's leaf is the one in the doorway (the hall's)
     if (rjs.length) {
         const rj = rjs.find(x => { const m = roomId === x.a ? x.door : x.bDoor; return !!m && m.id === doorId; }); if (!rj) return null;
@@ -88687,6 +88712,100 @@ function hqStageDoorJoin(roomId, doorId) {
     if (!hqStagePart(other)) return null;
     const J = hqWorldDoorJoinResolve(j); if (!J) return null;
     return { nb: other, gap: J.gap, ow: J.ow, oh: J.oh, otherDoor: j.a === roomId ? j.bDoor : j.door };
+}
+
+/* ══ THE IMPOSSIBLE DOORS (HQ_STAGE_RULES.impossible, DOOR HQ 2.0 wave 4, 2026-11-26) ══════════════════════════════════════════
+   One doorway made of two doors in rooms that stand anywhere. The geometry is THE DOOR JOIN's: `b` is placed so its door's point stands
+   HQ_WORLD_RULES.wallM past `a`'s (0 for a free-standing door, which has no wall), its way out pointing back into `a`. That placement
+   (`rel` / `back`) is what the walk, the boom, the crossing and the swap read. The renderer draws the other room `dropM` under (or over)
+   the one you stand in instead, so it never shows through a wall or lights a room it is not in; the doorway is a dark box, or a window
+   drawn from that room (`see`). Pure: the rows, a door's frame in its room, the geometry, the stage's neighbour rows, the door's join. */
+function _hqImpOff() { return typeof window !== 'undefined' && !!window.EW_HQ_NO_IMPOSSIBLE; }
+function hqStageImpRows() { return (!_hqImpOff() && typeof HQ_STAGE_RULES !== 'undefined' && Array.isArray(HQ_STAGE_RULES.impossible)) ? HQ_STAGE_RULES.impossible : []; }
+/* a door's frame in its room: the point of the doorway (the wall's line, a free door's own point, the hub's wall at the door's angle),
+   `o` = the way out through it (unit, x/z), `y` = its floor, `wall` / `t` (a box wall door), `hub` (a round hub's door: `deg`, `R`, `level`) */
+function hqImpDoorFrame(room, door) {
+    const S = room && room.shell; if (!S || !door) return null;
+    if (room.kind === 'box') {
+        if (door.wall === 'free') { const f = (+door.face || 0) * Math.PI / 180; return { x: +door.x || 0, z: +door.z || 0, ox: -Math.sin(f), oz: Math.cos(f), y: +door.y || 0, free: true }; }
+        const p = _hqDoorOnWall(room, door); if (!p) return null;
+        const o = ({ n: [0, -1], s: [0, 1], e: [1, 0], w: [-1, 0] })[p.wall];
+        return { x: p.x, z: p.z, ox: o[0], oz: o[1], y: +door.y || 0, wall: p.wall, t: p.t };
+    }
+    const R = hqRoundHubR(room), lv = door.level || 0;
+    if (!(R > 0) || !isFinite(+door.deg) || (lv !== 0 && !(lv === 1 && S.mezz && room.kind !== 'bay'))) return null;
+    if (room.kind === 'bay' && (door.cap || door.side === 'in')) return null;
+    const Rw = lv ? (S.mezz.outer || S.radius) : R, a = +door.deg * Math.PI / 180;
+    return { x: Rw * Math.sin(a), z: -Rw * Math.cos(a), ox: Math.sin(a), oz: -Math.cos(a), y: lv ? (+S.wallH || 0) : 0, hub: true, deg: +door.deg, R: Rw, level: lv };
+}
+/* the rows of a room (`otherId` = only the row with that room), checked: both rooms and doors exist, both frames resolve, not two hubs */
+function hqStageImpJoins(roomId, otherId) {
+    const rows = hqStageImpRows(), R = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.rooms) || {}, out = [];
+    for (let i = 0; i < rows.length; i++) {
+        const j = rows[i]; if (!j || (j.a !== roomId && j.b !== roomId) || j.a === j.b) continue;
+        if (otherId && j.a !== otherId && j.b !== otherId) continue;
+        const A = R[j.a], B = R[j.b]; if (!A || !B) continue;
+        const da = (A.doors || []).find(d => d && d.id === j.door), db = (B.doors || []).find(d => d && d.id === j.bDoor);
+        if (!da || !db || da.hidden || db.hidden) continue;
+        const fa = hqImpDoorFrame(A, da), fb = hqImpDoorFrame(B, db);
+        if (!fa || !fb || (fa.hub && fb.hub)) continue;
+        out.push({ a: j.a, b: j.b, door: da, bDoor: db, fa, fb, see: !!j.see, look: !!j.look, row: j });
+    }
+    return out;
+}
+const _hqImpGeomCache = new WeakMap();
+/* the geometry: `rel` = b in a's metres (hqStageToRoom's rule; rot = a fraction of a quarter turn), `back` = a in b's, `gap` the wall
+   between, `ow` / `oh` the doorway (the smaller end's), `drop` = where the renderer draws b under a (m, negative = below) */
+function hqStageImpGeom(j) {
+    if (!j) return null;
+    const hit = _hqImpGeomCache.get(j.row); if (hit && hit.da === j.door && hit.db === j.bDoor && hit.W === DOOR_HQ.rooms) return hit.G;
+    const fa = j.fa, fb = j.fb, gap = (fa.free || fb.free) ? 0 : HQ_WORLD_RULES.wallM;
+    /* b's way out turned onto the way back into a: hqStageToRoom turns a direction at angle φ to φ − θ */
+    let th = Math.atan2(fb.oz, fb.ox) - Math.atan2(-fa.oz, -fa.ox);
+    let rot = th / (Math.PI / 2); rot = ((rot % 4) + 4) % 4; const rr = Math.round(rot); if (Math.abs(rot - rr) < 1e-6) rot = rr % 4;
+    const rel = { x: 0, z: 0, y: fa.y - fb.y, rot };
+    const q = hqStageToRoom(rel, fb.x, fb.z);
+    rel.x = fa.x + fa.ox * gap - q.x; rel.z = fa.z + fa.oz * gap - q.z;
+    const o = hqStageFromRoom(rel, 0, 0), back = { x: o.x, z: o.z, y: -rel.y, rot: rot ? 4 - rot : 0 };
+    const oa = hqDoorOpening(j.door), ob = hqDoorOpening(j.bDoor);
+    const G = { rel, back, gap, ow: Math.min(oa.ow, ob.ow), oh: Math.min(oa.oh, ob.oh), drop: -(+HQ_STAGE_RULES.impDropM || 3000) };
+    _hqImpGeomCache.set(j.row, { da: j.door, db: j.bDoor, W: DOOR_HQ.rooms, G });
+    return G;
+}
+/* the stage's neighbour rows (hqStageNeighbours' shape) for a room's impossible doors; `imp` = the doorway in THIS room's metres:
+   { x, z (the crossing's plane: the far end of the wall between), ox, oz (the way out), y, ow, oh, gap, drop, see, look, door, otherDoor,
+   free, hub }. A hub's door is also `round` (its span `side: 'round'`): the drum is cut and walked through like THE ROUND JOIN's. */
+function hqStageImpNeighbours(roomId) {
+    const js = hqStageImpJoins(roomId); if (!js.length) return [];
+    const out = [];
+    js.forEach(j => {
+        const G = hqStageImpGeom(j); if (!G) return;
+        const mine = roomId === j.a, other = mine ? j.b : j.a, f = mine ? j.fa : j.fb, rel = mine ? G.rel : G.back;
+        if (out.some(n => n.id === other)) return;   // one doorway a pair of rooms (the first row)
+        const S = DOOR_HQ.rooms[other].shell, OB = DOOR_HQ.rooms[other];
+        let rect;
+        if (OB.kind === 'box') {
+            const hw = S.w / 2, hd = S.d / 2, cs = [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]].map(p => hqStageToRoom(rel, p[0], p[1]));
+            rect = { x0: Math.min(...cs.map(p => p.x)), z0: Math.min(...cs.map(p => p.z)), x1: Math.max(...cs.map(p => p.x)), z1: Math.max(...cs.map(p => p.z)) };
+        } else { const Ro = Math.max(S.radius || 0, S.rOut || 0, (S.mezz && S.mezz.outer) || 0), c = hqStageToRoom(rel, 0, 0); rect = { x0: c.x - Ro, z0: c.z - Ro, x1: c.x + Ro, z1: c.z + Ro }; }
+        const imp = { x: f.x + f.ox * G.gap, z: f.z + f.oz * G.gap, ox: f.ox, oz: f.oz, y: f.y, ow: G.ow, oh: G.oh, gap: G.gap, drop: mine ? G.drop : -G.drop,
+                      see: j.see, look: j.look, door: (mine ? j.door : j.bDoor).id, otherDoor: (mine ? j.bDoor : j.door).id, free: !!f.free, hub: !!f.hub };
+        const nb = { id: other, rel, rect, spans: [], links: [], imp };
+        if (f.hub) { nb.round = true; nb.level = f.level; nb.spans.push({ side: 'round', deg: f.deg, R: f.R, level: f.level, y: f.y, t0: -G.ow / 2, t1: G.ow / 2, kind: 'door', door: imp.door, pad: 0.3, depth: G.gap + 0.5 }); }
+        else if (f.wall) nb.spans.push({ side: f.wall, t0: f.t - G.ow / 2, t1: f.t + G.ow / 2, kind: 'door', door: imp.door, pad: 0.3, depth: G.gap + 0.5 });
+        out.push(nb);
+    });
+    return out;
+}
+/* the door join (hqStageDoorJoin's shape) of an impossible door: the doorway is cut, lined and swung like a joined door's */
+function hqStageImpDoorJoin(roomId, doorId) {
+    const js = hqStageImpJoins(roomId); if (!js.length) return null;
+    const j = js.find(x => (x.a === roomId ? x.door : x.bDoor).id === doorId); if (!j) return null;
+    const G = hqStageImpGeom(j); if (!G) return null;
+    const mine = roomId === j.a, f = mine ? j.fa : j.fb, of = mine ? j.fb : j.fa;
+    const o = { nb: mine ? j.b : j.a, gap: G.gap, ow: G.ow, oh: G.oh, otherDoor: (mine ? j.bDoor : j.door).id, imp: true };
+    if (f.hub || of.hub) { o.round = true; o.keep = !!f.hub; }   // THE ROUND JOIN's doorway through the drum (the hub's own leaf stands in it)
+    return o;
 }
 
 /* THE VALIDATOR (§4.1). → { ok, errors: [...], parts, joins }. The rules:
