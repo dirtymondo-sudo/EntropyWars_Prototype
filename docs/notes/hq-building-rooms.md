@@ -1641,3 +1641,41 @@ THE WORKS, one box room 77 x 77 m, 8.75 m to a truss ceiling, WRITTEN BY `docs/p
 - Lights: 15 shell lamps in sodium (`mood.light 0xffb070`, ambient 0.42), high-bay lamps under the truss, a `light_glow` at the Chute,
   the grow lamps' purple. `node find-doorways.js factory`: clear.
 - **The join (merge with the Garage):** the factory is a part of HQ_WORLD.zones.garage at (64.95, -300, y -9), its west roller door `garage` (leaf_wired_double, wide) joined to the Garage's east `works`, no card. The ramp to the labs is still a card (the labs zone is 21 m lower). Proc fields: `arc_wall` reads `arcR` + `sheet`/`sheetColor` (never `r` / `wall`: a box room places a row with a string `wall` ON that box wall), `works_flue` reads `flueR` / `flueH`.
+
+## DOOR HQ 2.0, WAVE 4: H-WING (2026-11-26)
+Built from `docs/plans/door-hq-2/plans/5_h_wing.png` and LOOK_BOOK.md "H-Wing". A clean sheet: the old H (legs, crossbar, typing pool, hum
+room, six offices), the H-Wing lobby and its lift stop are gone. WRITTEN BY `docs/plans/door-hq-2/hwing.js` (edit the tool, then
+`node docs/plans/door-hq-2/hwing.js --write`; it replaces the block between the `<H-WING>` markers in data.js).
+- **THE HALLS** (`hwing_floor`, label H-WING, 112 x 77 m, 3.5 m ceiling of fibre tiles): a plan room (`terrain.gen` look `walls`): three
+  long halls (north, middle, bottom) and the cross halls, all 7 m wide, carve a solid mass of yellow wallpaper into blocks, as the
+  picture draws them. Inside three blocks, rooms that are more of the same: THE CUBICLES (desert block, in from the west hall), THE
+  BREAK ROOM (pines block, from the east hall), THE TYPING POOL (pool block, from the bottom hall). South of the bottom hall, THE BACK
+  HALLS (3.5 m): a turn, a dead end with a dead vending machine, an office nobody uses and the `loop` door (south wall), which comes
+  out at the Ring's door, inside, facing in. An even grid of `fluorescent` with every sixth a `flicker_tube`, 17 point lights at the
+  crossings, mood `#F1EBC0` ambient 0.65. Plan grid in the tool = metres from the top-left; the room frame is centred (x - 56, z - 38.5).
+- **ONE PLAIN DOOR FROM EVERY LEVEL** (`leaf_white_wood`, label H-WING, no plate), the shortcut network. H-Wing's end / the level's end:
+  `ring` (north wall) / `ring_g` `hwing` (a central_egress `onRing` row, deg 228, between the Barbershop and the Lecture Hall);
+  `upper` (north) / central_egress `hwing_upper` (level 1, deg 180: the gallery's back wall over the Foyer); `garage` (north) / garage
+  `hwing` (free door in the drum wall at deg 280, between the Ring stair and the ramp's foot; the plan's north-west is under the ramp);
+  `works_top` (north) / factory `hwing` (free door, deg 228, in the service corridor between the Boiler Room's and the Laundry's doors;
+  in factory.js); `works_middle` (west) / labs `hwing` (the Gantry's north-west corner, where the Mandela door stood; the Upside-Down
+  door is gone); `works_bottom` (east) / antechamber `hwing` (the Incinerator thread's Antechamber, on the Incinerator's stage). Nothing is joined: every one is a card (the impossible-doors thread may make them portals).
+- **THE ROOMS ON THE BLOCKS** (free doors against a block's face; `face` = the way into the hall): the six uncanny rooms keep their
+  dressing and their room ids: the Mandela Room (`mandela`, its `labs` door now leads to H-Wing), the Upside-Down Room (`upsidedown`,
+  same), Home (`hwing_home`), the Thirteenth Floor (`thirteenth`, its `crawl` panel is a plain door now), the Swimming Pool
+  (`natatorium`, its `garden` door), the Garden (`garden`, its `annex` door; its pool door is gone, its L5 gate to Room X stays).
+  GROWN (mondo: no room that small): the Mandela Room and the Upside-Down Room 7 x 6 -> 14 x 12, Home 4 x 7 -> 8 x 14 (every x / z in
+  them doubled, heights kept), the pool 18 -> 21 m wide (its deck clears the door). All six are `noWalkers`, no npc spots (the Thirteenth
+  Floor keeps its clone: it is you).
+- **THE VIGNETTES** (`hwing_desert` DESERT AT DUSK, `hwing_pines` SNOWY PINES, `hwing_corn` CORN FIELD, `hwing_moon` THE MOON): 28 x 38.5 m
+  OPEN rooms (`edge: 'open'`: nothing stands at the bound, the ground runs out) under their own sky: the desert = the opening's road at
+  sunset (`sky.hold` 18.85, the one road across, saguaros, a pair of power poles), the pines = a snowy night (`lock` 22, a ring of snow
+  pines + pines inside, falling snow), the corn = the Ranch's night (`hqRanchShell`), rows of `corn_row` either side of a path, the
+  moon = deep space with the Earth hung over the horizon and a flag. Each has door `hall` (south edge, where you arrive: the door you
+  came in by stands alone behind you) and door `lone` (north edge, across the room): `lone` comes out at H-Wing's `<name>_out` door
+  on ANOTHER face of the same block (the desert's on the middle hall, the moon's on the east hall, the corn's further down the bottom hall).
+- **RETIRED / CUT:** `DOOR_HQ.retired.hwing_lobby = 'hwing_floor'` (no H stop on the lift); HQ_WORLD.zones.hwing = the halls only, no
+  joins; the annex zone lost the Garden and the pool; `DOOR_HQ.cut.doors`: annex `garden`, crawlspace `thirteen`, deadend `hwing`.
+  HQ_ROOM_HOLES' old `hwing_floor` row dropped. `DOOR_HQ.hwing.rooms` / `.entries` list the new rooms and the six level doors.
+- Checked: `node find-doorways.js` on the halls, the vignettes, the six rooms, garage, factory, labs, central_egress, ring_g: clear
+  (the Antechamber's door is the Incinerator thread's, checked there). `node find-softlocks.js` on the five new rooms: 0.
