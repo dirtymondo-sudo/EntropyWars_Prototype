@@ -1312,3 +1312,28 @@ today's building before any rebuild:
 - DEV TOOLS OUT: IT's Library (Spell Library), Bench (Balance Lab), Racks (AI Training Lab) and the Interrogation Room's table
   (the CPU training transcript) are gone. All four are on the main menu, Settings > Developer (the transcript button is new:
   map.js `_mmShowTranscript`, the same sheet `_hqTranscriptHtml` drew).
+
+## THE SEAT HEIGHT (2026-11-26, DOOR HQ 2.0 wave 1, mondo: "the character kinda floats in the air on top of the chair")
+- WHY IT FLOATED: `_hqSit` stood the walker's FEET on the seat height (`y = floor + cat.seat`), then the library sit clip
+  (`Sitting_Idle_Loop`, pinXZ) dropped the hips onto its own invisible 0.40 m chair: the body sat a whole seat height (0.4-0.6 m)
+  over every chair, feet in the air. Seated cast members stood on the floor and sat on the clip's 0.40 m chair whatever was under them.
+- THE ROWS: every catalogue row with `seat` now holds the MEASURED top of its cushion and `seatZ` (metres forward of the prop's
+  centre where the hips go, +Z = the seat's front), from the models themselves (a ray grid over each seat as `hq.propPreview` builds
+  it, 2026-11-26). Several old guesses were off: curved_couch 0.30 (was 0.42), curved_office_couch 0.58, locker_bench 0.55,
+  tulip_chair 0.32, egg_chair 0.54, molded_chair 0.40, catholic_pew 0.97 (the model is scaled tall), church_pew 0.79,
+  royal_throne 0.62, royal_bed 0.82. A new seat model: measure it the same way (`seat`, `seatZ`), never guess.
+- THE PIN (three-renderer.js `_hqSeatPin`): the sitter's feet stay on the seat's floor; after the mixer each frame the body (the
+  model in its group, `_ew_hqBaseY` + `_ew_seatOff`) moves so the two THIGH bones lie `HQ_SEAT_LIFT` (0.085 m x height / 1.75)
+  over the seat top (a rig without thigh bones: the hips, `HQ_SEAT_LIFT_HIPS`), AND across so the thighs' top is on the seat's
+  spot: the sit clip leaves the hips ~0.28 m behind the body's root even with pinXZ (measured), so sitters had their backs through
+  chair backs and the curved sofa's back. One bone pair a sitter a frame, no scene walk.
+  The walker sits at the seat's `sx, sz` (H.seats). A seated cast member / native (`pose: 'hqSit'`/`'hqSitTalk'`) finds the
+  nearest seat within 0.8 m on its floor ONCE (`_hqSeatFind`), moves onto its spot and is pinned to it; with no seat near it is
+  left as before.
+- LIMITS: one chair clip for every seat. A seat lower than 0.40 m puts the feet slightly into the floor (the 0.30 m couch: ~1 cm
+  after the pin), a high one lets the feet hang (beds, throne, the locker bench), as in life.
+- THE LOUNGER lies (catalogue `lie: true`): the walker lies flat on it with the residents' bed clip (`HQ_RES_SLEEP`, now on the
+  walker's rig as `hqSleep`), feet to its foot; the chair sit had the legs through the deck.
+- The seat's heading is read off its whole turn (`Euler YXZ` of the quaternion), not `rotation.y` (same answer today; safe for a
+  flipped prop).
+- Proof: the 16 seat kinds in DOOR HQ + Rhonda, `/mnt/project-files/sitting-fix/`.

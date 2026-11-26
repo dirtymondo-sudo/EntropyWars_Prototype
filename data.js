@@ -33018,11 +33018,11 @@ const DOOR_HQ = {
            backrest is the tallest band's centroid, the front is the other way) and
            the model is turned so that front is +Z, the placer's contract. Nobody sits
            with the chair's back between them and the desk again. */
-        teal_chair:        { file: 'Meshy_AI_a_teal_office_chair_0903105124_texture.glb',             h: 0.96, foot: 0.32, front: 'back', seat: 0.46 },
-        office_chair:      { file: 'Meshy_AI_an_office_chair_0903105134_texture.glb',                 h: 0.96, foot: 0.32, front: 'back', seat: 0.46 },
-        folding_chair:     { file: 'Meshy_AI_a_folding_chair_0903105155_texture.glb',                 h: 0.84, foot: 0.28, front: 'back', seat: 0.44 },
-        curved_couch:      { file: 'Meshy_AI_a_curved_couch_0903105529_texture.glb',                  span: 2.6, foot: 1.0, front: 'back', seat: 0.42 },
-        curved_office_couch:{ file: 'Meshy_AI_a_curved_office_couch_0903105539_texture.glb',          span: 2.6, foot: 1.0, front: 'back', seat: 0.42 },
+        teal_chair:        { file: 'Meshy_AI_a_teal_office_chair_0903105124_texture.glb',             h: 0.96, foot: 0.32, front: 'back', seat: 0.42, seatZ: 0.02 },
+        office_chair:      { file: 'Meshy_AI_an_office_chair_0903105134_texture.glb',                 h: 0.96, foot: 0.32, front: 'back', seat: 0.44, seatZ: 0.02 },
+        folding_chair:     { file: 'Meshy_AI_a_folding_chair_0903105155_texture.glb',                 h: 0.84, foot: 0.28, front: 'back', seat: 0.43, seatZ: 0.02 },
+        curved_couch:      { file: 'Meshy_AI_a_curved_couch_0903105529_texture.glb',                  span: 2.6, foot: 1.0, front: 'back', seat: 0.30, seatZ: -0.08 },
+        curved_office_couch:{ file: 'Meshy_AI_a_curved_office_couch_0903105539_texture.glb',          span: 2.6, foot: 1.0, front: 'back', seat: 0.58, seatZ: -0.18 },
         filing_cabinet:    { file: 'ebd_laundry_filing_cabinet.glb', base: 'misc',                h: 1.32, foot: 0.40, wall: true },
         round_cabinet:     { file: 'Meshy_AI_a_round_filing_cabinet_0903105248_texture.glb',          h: 1.10, foot: 0.45 },
         office_locker:     { file: 'Meshy_AI_an_office_locker_0903110307_texture.glb',                h: 1.85, foot: 0.40, wall: true },
@@ -33112,9 +33112,9 @@ const DOOR_HQ = {
         brazier:            { file: 'Meshy_AI_brazier_0917035429_texture.glb',                        base: 'misc', h: 1.3, foot: 0.4, block: true, glow: { y: 1.25, size: 1.6, color: 0xff9a40 }, light: { color: 0xff9040, intensity: 0.85, dist: 9, y: 1.4 } },
         catacomb_wall:      { file: 'Meshy_AI_catacomb_wall_0917035320_texture.glb',                  base: 'misc', span: 3.2, foot: 0, wall: true, mount: 0 },
         church_building:    { file: 'Meshy_AI_catholic_church_building_0917035753_texture.glb',       base: 'misc', span: 20, foot: 6, rect: { hw: 10, hd: 3 }, block: true },
-        catholic_pew:       { file: 'Meshy_AI_catholic_church_pew_0917035928_texture.glb',            base: 'misc', span: 2.6, foot: 0.8, rect: { hw: 1.3, hd: 0.45 }, block: true, seat: 0.45 },   // second pass (2026-09-18): a pew is 2.6 m long — three seats, not a bus
+        catholic_pew:       { file: 'Meshy_AI_catholic_church_pew_0917035928_texture.glb',            base: 'misc', span: 2.6, foot: 0.8, rect: { hw: 1.3, hd: 0.45 }, block: true, seat: 0.97 },   // second pass (2026-09-18): a pew is 2.6 m long — three seats, not a bus
         church_wall:        { file: 'Meshy_AI_catholic_church_wall_0917035726_texture.glb',           base: 'misc', span: 4.0, foot: 0, wall: true, mount: 0 },
-        church_pew:         { file: 'Meshy_AI_church_pew_0917035915_texture.glb',                     base: 'misc', span: 2.6, foot: 0.8, rect: { hw: 1.3, hd: 0.45 }, block: true, seat: 0.45 },
+        church_pew:         { file: 'Meshy_AI_church_pew_0917035915_texture.glb',                     base: 'misc', span: 2.6, foot: 0.8, rect: { hw: 1.3, hd: 0.45 }, block: true, seat: 0.79 },
         /* second pass (2026-09-18): the carpet GLB stands UPRIGHT (its face along z — it read as a tapestry in the nave), so it IS a tapestry: the same file as a wall row (the same-thing rule: one file, two rows, like the leaves); the aisle is the terrain's carpet path */
         holy_tapestry:      { file: 'Meshy_AI_ornate_holy_carpet_0917035624_texture.glb',             base: 'misc', h: 5.0, foot: 0, wall: true, mount: 3.2 },
         church_podium:      { file: 'Meshy_AI_church_podium_0917035658_texture.glb',                  base: 'misc', h: 1.3, foot: 0.45, block: true },
@@ -33131,7 +33131,7 @@ const DOOR_HQ = {
         castle_gate:        { file: 'Castles_and_Forts.glb', base: 'misc', node: 'Gate_2x4',    h: 2.05, foot: 0 },
         castle_wall:        { file: 'Castles_and_Forts.glb', base: 'misc', node: 'Wall_2x4',    h: 2.0,  foot: 0 },
         pearly_gate:        { file: 'Meshy_AI_pearly_gate_0917035350_texture.glb',                    base: 'misc', span: 4.2, foot: 0, glow: { y: 2.2, size: 3.2, color: 0xfff0c0 } },
-        royal_throne:       { file: 'Meshy_AI_royal_throne_0917035803_texture.glb',                   base: 'misc', h: 1.9, foot: 0.5, block: true, front: 'back', seat: 0.55 },
+        royal_throne:       { file: 'Meshy_AI_royal_throne_0917035803_texture.glb',                   base: 'misc', h: 1.9, foot: 0.5, block: true, front: 'back', seat: 0.62, seatZ: -0.08 },
         skull_pile:         { file: 'Meshy_AI_skull_pile_0917035243_texture.glb',                     base: 'misc', span: 1.3, foot: 0.5, block: true },
         stained_glass:      { file: 'Meshy_AI_stained_glass_window_0917035453_texture.glb',           base: 'misc', h: 3.2, foot: 0, wall: true, mount: 5.5, glow: { y: 1.6, size: 3.0, color: 0xffd090 } },
         sarcophagus:        { file: 'Meshy_AI_stone_sarcophagus_0917035255_texture.glb',              base: 'misc', span: 2.3, foot: 0.8, block: true },
@@ -33144,15 +33144,15 @@ const DOOR_HQ = {
            Support spell's own file) comes in nose −Z and wears `turn: 180` so its nose is the placer's +Z front. ═══ */
         ancient_well:       { file: 'Meshy_AI_an_ancient_well_0922010024_texture.glb',            base: 'misc', h: 1.15, foot: 0.42, block: true },   // 2026-09-22: halved (the user: the wells are too big)                                  // EVERY WELL: the `well` way's head (_hqWayBuilders.well)
         wooden_bucket:      { file: 'Meshy_AI_wooden_bucket_0922011434_texture.glb',              base: 'misc', h: 0.16, foot: 0.08 },   // 2026-09-22: halved with the well                                               // the well's bucket on its rope (the way rig lowers it); kickable on a floor
-        city_bench:         { file: 'Meshy_AI_a_city_bench_0922010124_texture.glb',                base: 'misc', span: 1.7, foot: 0.8, rect: { hw: 0.85, hd: 0.3 }, block: true, seat: 0.45, front: 'back' },   // EVERY BENCH: park_bench + locker_bench wear it; a row of its own too
+        city_bench:         { file: 'Meshy_AI_a_city_bench_0922010124_texture.glb',                base: 'misc', span: 1.7, foot: 0.8, rect: { hw: 0.85, hd: 0.3 }, block: true, seat: 0.47, seatZ: 0.02, front: 'back' },   // EVERY BENCH: park_bench + locker_bench wear it; a row of its own too
         hot_dog_stand:      { file: 'Meshy_AI_a_hot_dog_stand_0922010432_texture.glb',             base: 'misc', span: 1.9, foot: 0.9, rect: { hw: 0.95, hd: 0.55 }, block: true, turn: 90 },                 // the street cities' kerbs (a scatter row, the kerb rule)
         military_tank:      { file: 'Meshy_AI_a_military_tank_0922010101_texture.glb',             base: 'misc', span: 7.0, foot: 2.4, rect: { hw: 1.8, hd: 3.5 }, block: true, turn: 90 },                   // AREA 51's pens
         fighter_jet:        { file: 'Meshy_AI_f22_fighter_jett_0713025555_texture.glb',            base: 'weapons', span: 15.5, foot: 4.5, rect: { hw: 6.8, hd: 7.8 }, block: true, turn: 180 },              // the F22 on RUNWAY 33 (the same file the Air Support spell flies — MODEL_INDEX §5, the same-thing rule)
         yellow_pole:        { file: 'Meshy_AI_a_yellow_pole_0922010159_texture.glb',               base: 'misc', h: 3.3,  foot: 0.12, block: true },                                  // the traffic light's pole on the board (_buildTrafficLight3D, GLB-first); a bollard of its own in a room
-        hospital_bed:       { file: 'Meshy_AI_a_hospital_bed_0922010451_texture.glb',              base: 'misc', span: 2.1, foot: 0.75, rect: { hw: 0.5, hd: 1.05 }, block: true, seat: 0.6 },                // Room 1111's ward (the cots elsewhere stay cots)
-        dorm_bed:           { file: 'furniture/bed_5.glb',                  base: 'psxmp', span: 2.0, foot: 0.7, rect: { hw: 0.5, hd: 1.0 }, block: true, seat: 0.5, turn: 90 },   // THE PSX MEGA PACK (2026-11-08): was Meshy_AI_a_dorm_bed_0922010217_texture.glb (wooden single bed; head +X -> turn 90)                  // the keep's guardroom
-        couples_bed:        { file: 'furniture/bed_4.glb',               base: 'psxmp', span: 2.1, foot: 1.0, rect: { hw: 0.85, hd: 1.05 }, block: true, seat: 0.5, turn: 90 },   // THE PSX MEGA PACK (2026-11-08): was Meshy_AI_a_couples_bed_0922010443_texture.glb; the pack bed's head is +X, turn 90 puts it at -Z like the Meshy bed                // the bunker's loft
-        royal_bed:          { file: 'Meshy_AI_a_royal_bed_0922010438_texture.glb',                 base: 'misc', span: 2.4, foot: 1.1, rect: { hw: 1.0, hd: 1.2 }, block: true, seat: 0.6 },                  // THE SOLAR in the keep
+        hospital_bed:       { file: 'Meshy_AI_a_hospital_bed_0922010451_texture.glb',              base: 'misc', span: 2.1, foot: 0.75, rect: { hw: 0.5, hd: 1.05 }, block: true, seat: 0.60 },                // Room 1111's ward (the cots elsewhere stay cots)
+        dorm_bed:           { file: 'furniture/bed_5.glb',                  base: 'psxmp', span: 2.0, foot: 0.7, rect: { hw: 0.5, hd: 1.0 }, block: true, seat: 0.45, turn: 90 },   // THE PSX MEGA PACK (2026-11-08): was Meshy_AI_a_dorm_bed_0922010217_texture.glb (wooden single bed; head +X -> turn 90)                  // the keep's guardroom
+        couples_bed:        { file: 'furniture/bed_4.glb',               base: 'psxmp', span: 2.1, foot: 1.0, rect: { hw: 0.85, hd: 1.05 }, block: true, seat: 0.47, turn: 90 },   // THE PSX MEGA PACK (2026-11-08): was Meshy_AI_a_couples_bed_0922010443_texture.glb; the pack bed's head is +X, turn 90 puts it at -Z like the Meshy bed                // the bunker's loft
+        royal_bed:          { file: 'Meshy_AI_a_royal_bed_0922010438_texture.glb',                 base: 'misc', span: 2.4, foot: 1.1, rect: { hw: 1.0, hd: 1.2 }, block: true, seat: 0.82 },                  // THE SOLAR in the keep
         camping_tent:       { file: 'ebd_survival_camping_tent.glb',              base: 'misc', span: 3.2, foot: 1.5, rect: { hw: 1.6, hd: 1.4 }, block: true },                             // the grove's camp
         carnival_tent:      { file: 'Meshy_AI_a_carnival_tent_0922010243_texture.glb',             base: 'misc', span: 6.0, foot: 2.8, rect: { hw: 3.0, hd: 3.0 }, block: true },                             // the grove's lawn (the carnival room's own canvas is the bigtop ceiling)
         fortune_teller_tent:{ file: 'Meshy_AI_a_fortune_teller_tent_0922010255_texture.glb',       base: 'misc', span: 3.2, foot: 1.6, block: true },                                                         // the `fortune_tent` proc's model (GLB-first; the proc keeps its key, its glow and its sign)
@@ -33576,7 +33576,7 @@ const DOOR_HQ = {
            floor proc the walker cannot enter), the mirror with its vanity
            bulbs (the glow is the bulbs), the pole — inside by the door and
            out in the hall beside it (a polar room hangs it on the drum) */
-        barber_chair:      { proc: 'barber_chair',   h: 1.2,     foot: 0.48, block: true, seat: 0.52 },
+        barber_chair:      { proc: 'barber_chair',   h: 1.2,     foot: 0.48, block: true, seat: 0.51, seatZ: -0.08 },
         barber_mirror:     { proc: 'barber_mirror',  h: 1.35,    foot: 0, wall: true, mount: 1.05, depth: 0.08, glow: { y: 1.28, size: 1.5, color: 0xfff1d6 } },
         barber_pole:       { proc: 'barber_pole',    h: 0.9,     foot: 0, wall: true, mount: 1.35, depth: 0.2 },
         /* THE OBSERVATORIUM (Room 360, 2026-09-11 — plan 7.4): the planetarium
@@ -33603,7 +33603,7 @@ const DOOR_HQ = {
         floor_panel:       { proc: 'floor_panel',    h: 0.9,     foot: 0, wall: true, mount: 1.0,  depth: 0.05, glow: { y: 0.45, size: 0.7, color: 0xffb020 } },   // the lobby: sixteen buttons, two lit
         exec_desk:         { proc: 'exec_desk',      span: 2.4,  foot: 1.2, depth: 1.05, rect: { hw: 1.2, hd: 0.525 }, block: true },   // 4C: the executive desk (top at 0.76 — desk props sit at y: 0.76). A FLOOR prop since 2026-09-16: centred, the drawers on the sitter's side (−z), the modesty panel to the room (+z)
         serving_line:      { proc: 'serving_line',   span: 3.0,  foot: 1.5, wall: true, depth: 1.15, rect: { hw: 1.5, hd: 0.575 }, block: true },   // Room 86 (2026-09-16): a 3 m cafeteria counter — the hot wells + sneeze guard on the wall side, THE TRAY SLIDE (0.85 m) along the front; trays at z = wall + 0.95
-        exec_chair:        { file: 'Meshy_AI_an_office_chair_0903105134_texture.glb', h: 1.1, foot: 0.36, block: true, front: 'back', seat: 0.48 },   // 4C: the chair behind the desk — 2026-11-03: office_chair's file (was proc 'exec_chair')
+        exec_chair:        { file: 'Meshy_AI_an_office_chair_0903105134_texture.glb', h: 1.1, foot: 0.36, block: true, front: 'back', seat: 0.50, seatZ: 0.02 },   // 4C: the chair behind the desk — 2026-11-03: office_chair's file (was proc 'exec_chair')
         wall_plaques:      { proc: 'wall_plaques',   h: 1.2,     foot: 0, wall: true, mount: 1.3,  depth: 0.05 },   // 4C: the achievements engraved (gold per hqTrophyCount, read at build)
         motto_plaque:      { proc: 'motto_plaque',   h: 0.6,     foot: 0, wall: true, mount: 1.5,  depth: 0.05 },
         /* THE MAP REMEMBERS (PHASE9_QUALITY_PLAN §6 D8, 2026-09-16): the door gun's
@@ -33625,10 +33625,10 @@ const DOOR_HQ = {
         saucer_pendant:    { proc: 'saucer_pendant',  h: 0.8,  foot: 0,    ceil: true, glow: { y: 0.05, size: 1.9, color: 0xffeacc }, light: { color: 0xffe8c8, intensity: 0.8, dist: 9, y: 0.0 } },   // TWA's fluted saucer, lit from under
         disc_cluster:      { proc: 'disc_cluster',    h: 0.9,  foot: 0,    ceil: true, glow: { y: 0.4, size: 1.4, color: 0xfff6e2 }, light: { color: 0xfff4dc, intensity: 0.6, dist: 7, y: 0.4 } },   // the Futuro's three white discs on threads
         mushroom_lamp:     { proc: 'mushroom_lamp',   h: 0.52, foot: 0.2,  glow: { y: 0.34, size: 1.0, color: 0xffb070 }, light: { color: 0xffa860, intensity: 0.45, dist: 5, y: 0.34 } },       // Panton's mushroom, orange from under the cap (a floor lamp or a tabletop)
-        egg_chair:         { proc: 'egg_chair',       h: 1.32, foot: 0.58, block: true, seat: 0.5 },                                                                                              // Aarnio's ball chair on its pedestal — the opening is the front (+Z)
-        tulip_chair:       { proc: 'tulip_chair',     h: 0.8,  foot: 0.3,  seat: 0.5 },                                                                                                           // Saarinen's tulip: one stem, a shell, a cushion
+        egg_chair:         { proc: 'egg_chair',       h: 1.32, foot: 0.58, block: true, seat: 0.54, seatZ: -0.1 },                                                                                              // Aarnio's ball chair on its pedestal — the opening is the front (+Z)
+        tulip_chair:       { proc: 'tulip_chair',     h: 0.8,  foot: 0.3,  seat: 0.32 },                                                                                                           // Saarinen's tulip: one stem, a shell, a cushion
         tulip_table:       { proc: 'tulip_table',     h: 0.74, foot: 0.5,  block: true },                                                                                                          // one stem, a white top (`r` the top's radius) — tabletop props seat on it
-        curved_sofa:       { proc: 'curved_sofa',     h: 0.9,  foot: 1.05, block: true, seat: 0.46 },                                                                                             // a 60° arc of tufted bench about a centre `r` in FRONT of it — six rows make a ring
+        curved_sofa:       { proc: 'curved_sofa',     h: 0.9,  foot: 1.05, block: true, seat: 0.46, seatZ: 0.02 },                                                                                             // a 60° arc of tufted bench about a centre `r` in FRONT of it — six rows make a ring
         porthole:          { proc: 'porthole',        h: 0.9,  foot: 0,    wall: true, mount: 1.3, depth: 0.1, glow: { y: 0.45, size: 1.6, color: 0xbfe0ff } },                                    // an oval pane onto a sky that drifts (`size`, `round`, `view`: sky · mountains · stars · space)
         pod_window:        { proc: 'pod_window',      h: 2.4,  foot: 0,    wall: true, mount: 0.5, depth: 0.1, glow: { y: 1.2, size: 3.2, color: 0xbfe0ff } },                                     // the 2.4 m round window with the mountains in it
         retro_console:     { proc: 'retro_console',   h: 1.2,  foot: 0.7,  rect: { hw: 0.8, hd: 0.38 }, block: true, glow: { y: 1.0, size: 1.6, color: 0xffc070 }, light: { color: 0xffb860, intensity: 0.35, dist: 4, y: 1.0 } },   // 2001's console: a bank of lamps that blink (a ticker), two screens; the operator stands at +Z
@@ -33636,7 +33636,7 @@ const DOOR_HQ = {
         space_divider:     { proc: 'space_divider',   h: 2.1,  foot: 1.1,  rect: { hw: 1.12, hd: 0.1 }, block: true },                                                                            // a screen of white rings you see through
         pod_bed:           { proc: 'pod_bed',         h: 1.0,  foot: 0.9,  rect: { hw: 0.52, hd: 1.12 }, block: true, glow: { y: 0.6, size: 1.6, color: 0x9fe8ff }, light: { color: 0x8fdcff, intensity: 0.4, dist: 4, y: 0.7 } },   // the cryo capsule under a glass dome (the head is −Z)
         infinity_pool:     { proc: 'infinity_pool',  h: 0.48,    foot: 3.0, rect: { hw: 3.1, hd: 1.85 }, block: true },   // Room 8: the raised basin, a RECT blocker (room axes: place it at face 0 / 180)
-        pool_lounger:      { proc: 'pool_lounger',   h: 0.8,     foot: 0.5, block: true, seat: 0.42 },   // Room 8: a lounger (a seat for hqSit at its own x/z)
+        pool_lounger:      { proc: 'pool_lounger',   h: 0.8,     foot: 0.5, block: true, seat: 0.10, lie: true },   // Room 8: a lounger (a seat for hqSit at its own x/z)
         pool_umbrella:     { proc: 'pool_umbrella',  h: 2.4,     foot: 0.12, block: true },  // Room 8: the pole; the canopy is overhead
         /* ══ THE EXPLORATION FLOORS (HQ plan Phase 8, 2026-09-14) — the
            procs the new floors stand on. Every row is procedural; a user
@@ -33720,13 +33720,13 @@ const DOOR_HQ = {
         urinal:          { file: 'ebd_burgerpiz_urinal.glb', base: 'misc', h: 0.85, foot: 0, wall: true, mount: 0.5 },   // the BurgerPiz pack urinal
         sink_row:        { file: 'ebd_diner_sink_row.glb', base: 'misc', span: 2.4, foot: 1.0, wall: true, mount: 0, rect: { hw: 1.2, hd: 0.38 }, block: true },  // the Diner pack counter of three basins; on a n / s wall
         hand_dryer:      { file: 'ebd_diner_hand_dryer.glb', base: 'misc', h: 0.3, foot: 0, wall: true, mount: 1.2 },   // the Diner pack dryer
-        locker_bench:    { proc: 'locker_bench',    h: 0.45, foot: 1.0, rect: { hw: 1.0, hd: 0.2 }, block: true, seat: 0.42 },
+        locker_bench:    { proc: 'locker_bench',    h: 0.45, foot: 1.0, rect: { hw: 1.0, hd: 0.2 }, block: true, seat: 0.55, seatZ: 0.02 },
         shower_stall:    { file: 'ebd_house_shower_stall.glb', base: 'misc', h: 2.1, foot: 0.6, wall: true, mount: 0, rect: { hw: 0.58, hd: 0.48 }, block: true },   // the House pack shower (tiles + the glass door)
         lap_pool:        { proc: 'lap_pool',        h: 0.35, foot: 5.0, rect: { hw: 6.2, hd: 2.9 }, block: true },           // Room 50M: six lanes, starting blocks, a rect the walker never enters
         lifeguard_chair: { proc: 'lifeguard_chair', h: 2.2,  foot: 0.4, block: true },
         garden_ring:     { proc: 'garden_ring',     h: 0.7,  foot: 0 },                                                       // Room 1618: the gravel ring + the hedge (the proc registers its own blockers)
         fountain:        { proc: 'fountain',        h: 2.0,  foot: 1.6, block: true, glow: { y: 1.4, size: 2.0, color: 0xbfe9ff }, light: { color: 0xcfefff, intensity: 0.6, dist: 9, y: 1.5 } },
-        park_bench:      { proc: 'park_bench',      h: 0.85, foot: 0.8, rect: { hw: 0.8, hd: 0.3 }, block: true, seat: 0.45 },
+        park_bench:      { proc: 'park_bench',      h: 0.85, foot: 0.8, rect: { hw: 0.8, hd: 0.3 }, block: true, seat: 0.47, seatZ: 0.02 },
         garden_tree:     { proc: 'garden_tree',     h: 4.5,  foot: 0.35, block: true },
         /* CAMELOT CASTLE (2026-09-18 — THE COMPLEX CANDIDATES #2): the castle's own kit — THE ROUND TABLE (an oak disc with no head and twelve high-backed
            chairs), a heraldic BANNER on a rod (a wall proc; the cloth's colour turns per instance), an ARMOUR STAND (a knight's plate on a post with
@@ -33801,8 +33801,8 @@ const DOOR_HQ = {
         rotary_phone:      { file: 'ebd_vhsshop_rotary_phone.glb', base: 'misc',                  span: 0.24, foot: 0 },
         /* ── the cafeteria kit (Room 86, HQ plan 7.4 / 5.6 — the serving
            counter is the `reception_wedge`, as the plan's fallback says) ── */
-        cafeteria_chair:   { file: 'Meshy_AI_cafeteria_chair_0910054640_texture.glb',               h: 0.86, foot: 0.28, front: 'back', seat: 0.44 },
-        molded_chair:      { file: 'Meshy_AI_a_molded_cafeteria_ch_0910054600_texture.glb',         h: 0.82, foot: 0.28, front: 'back', seat: 0.44 },
+        cafeteria_chair:   { file: 'Meshy_AI_cafeteria_chair_0910054640_texture.glb',               h: 0.86, foot: 0.28, front: 'back', seat: 0.44, seatZ: 0.02 },
+        molded_chair:      { file: 'Meshy_AI_a_molded_cafeteria_ch_0910054600_texture.glb',         h: 0.82, foot: 0.28, front: 'back', seat: 0.40, seatZ: 0.02 },
         meal_tray:         { file: 'Meshy_AI_cafeteria_meal_tray_w_0910054631_texture.glb',         span: 0.45, foot: 0 },
         meal_tray_empty:   { file: 'Meshy_AI_cafeteria_meal_tray_w_0910054659_texture.glb',         span: 0.42, foot: 0 },
         microwave:         { file: 'ebd_psx3_microwave.glb', base: 'misc',         span: 0.50, foot: 0 },
@@ -33849,8 +33849,8 @@ const DOOR_HQ = {
            site rooms' skies draw the same roster). Sizes are targets: none
            of the four GLBs is in the repo, so the renderer's bbox fit is
            the only scale — if one lands wrong, its `h` / `span` is the edit. */
-        computer_chair_blue:{ file: 'computer_chair_blue.glb',                                    h: 0.98, foot: 0.32, front: 'back', seat: 0.46 },
-        computer_chair_grey:{ file: 'computer_chair_grey.glb',                                    h: 0.98, foot: 0.32, front: 'back', seat: 0.46 },
+        computer_chair_blue:{ file: 'computer_chair_blue.glb',                                    h: 0.98, foot: 0.32, front: 'back', seat: 0.45, seatZ: 0.02 },
+        computer_chair_grey:{ file: 'computer_chair_grey.glb',                                    h: 0.98, foot: 0.32, front: 'back', seat: 0.45, seatZ: 0.02 },
         security_camera:   { file: 'camera_01_cc0_clip_ready_v1.glb',                             span: 0.34, foot: 0, wall: true, mount: 2.55 },
         utility_box:       { file: 'utility_box_01_cc0_clip_ready_v1.glb',                        h: 1.35, foot: 0.45 },
         asteroid_a:        { file: 'asteroid_1.glb',                                              span: 4.0, foot: 0 },
