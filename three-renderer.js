@@ -108092,6 +108092,13 @@ const ThreeRenderer = (function () {
             } catch (eI) { console.warn('[HQ stage] the kept instance pass could not move; built again', eI); try { _hqInstDrop(H); } catch (e) {} H._instTried = false; }
         }
         for (var id in st.parts) if (id !== to && st.parts[id].attached) moveObj(st.parts[id].P.partRoot);
+        /* THE MOVED RECORDINGS (2026-11-26, mondo on WebGPU: "it still glitches when crossing into a room, like the lighting changes and
+           everything for a split second"; the WebGL probe drew the swap frame clean, light values and screen brightness the same):
+           the re-anchor moves every part, and a recorded group replays the places it was recorded with. A quiet group's check is
+           skipped on two frames of three, so a group could draw where its room stood in the OLD frame under the NEW camera for a
+           frame or two. Every group is checked this frame and, its pieces unchanged, keeps its recording with each piece's place
+           written once (THE FIGHT IN THE WALKED ROOM's way: _fwEp), so nothing is recorded again. Off: window.EW_HQ_SWAP_NO_BUNMOVE. */
+        if (!(typeof window !== 'undefined' && window.EW_HQ_SWAP_NO_BUNMOVE)) { try { _fwEp++; var bT = _ewBunTargets(H); for (var bi = 0; bi < bT.length; bi++) bT[bi]._ew_bunDirty = true; } catch (eB) {} }
         /* the scene's loose things: the lamp masts / the shafts of the part you left go into its root (their local frame IS
            the old part's), the directional lights and the sky's bodies turn with the frame; the rest is the zone's */
         var spotT = []; H.scene.children.forEach(function (c) { if (c.isSpotLight && c.target) spotT.push(c.target); });

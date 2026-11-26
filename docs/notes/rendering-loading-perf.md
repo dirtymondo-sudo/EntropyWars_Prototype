@@ -4372,3 +4372,13 @@ continuous. Cause: `_hqTickChars` sets `entry.model.rotation.y = ch.yaw` before 
 `pl.yaw` by the re-anchor but not the model, so that one frame drew the body in the old frame's turn. The swap now sets the
 model's turn too. After: 0.004 rad at the swap. Probe note: a headless window drops real key presses on every evaluate;
 walk with `ThreeRenderer.hq.dev.press('w', true)` + `press('shift', true)`; `teleport` / a view's `face` is in DEGREES.
+
+## THE MOVED RECORDINGS AT THE CROSSING (2026-11-26)
+mondo on WebGPU: "it still glitches when crossing into a room, like the lighting changes and everything for a split second".
+A WebGL frame recorder across the Lobby -> Cafeteria swap read the hemisphere, the sun, the lamps, the fog, the exposure and the
+screen's brightness (49 pixels read straight after the scene render): all the same on the swap frame. So it is WebGPU-only: the
+swap's re-anchor moves every part, and a recorded group (a bundle) replays the places it was recorded with; a quiet group's check
+runs one frame in three, so a group could draw where its room stood in the OLD frame under the NEW camera. `_hqStageSwap` now
+does what the fight-in-the-walked-room does when it moves the room whole: `_fwEp++` and every target `_ew_bunDirty`, so every
+group is checked that frame and keeps its recording with each piece's place written once (no re-record). Off:
+`window.EW_HQ_SWAP_NO_BUNMOVE`. The cloud's WebGPU (SwiftShader) loses its device on this walk, so this was not seen there.
