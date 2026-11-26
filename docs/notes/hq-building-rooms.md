@@ -1465,7 +1465,7 @@ the vending machines". Plan: `docs/plans/door-hq-2/FLOOR_PLANS.md` (lobby level,
   A room thread only places the machine. Bisect: `window.EW_HQ_NO_VENDING`.
 - RETIRED: `DOOR_HQ.retired.dispensary = 'doorstore'`; the Medical Wing's `dispensary` door is cut (`DOOR_HQ.cut.doors.medwing`); the
   medwing stage zone no longer holds it. The Quartermaster (races, party builder) was cut in wave 1; nothing in story sells races.
-- OPEN for mondo: nobody staffs the till (DOOR HQ holds story characters only; who runs the Door Store is his call).
+- OTTO RUNS THE TILL (mondo 11-26: "Otto can be at the door store"): DOOR_CAST.otto's one spot is behind the till (x 0, z -7.7, hqArms); his old upper-level door posts are gone. The till is a low `exec_desk` (the booking desk's screens hid him). Probes: playtest_city.js sets EW_DISABLE_CAST, so pass `--pre=window.EW_DISABLE_CAST=false` to see the cast.
 ## DOOR HQ 2.0, WAVE 2: THE TRAINING ROOM (2026-11-26)
 - One definition still: data.js `rooms.training_hall` (the look + the `prebuilt_training` board's room); `rooms.training` (the walk's
   room, Room 64) is built from it after the table. The 8 x 8 pad, its keys, its level and HQ_ARENA_RULES.own.prebuilt_training are
@@ -1486,3 +1486,5 @@ the vending machines". Plan: `docs/plans/door-hq-2/FLOOR_PLANS.md` (lobby level,
 - Checked: `node find-doorways.js training training_hall` clear; walk + battle board probes (playtest_city.js, playtest_maps.js).
 - **Joined (same day):** the Lobby shell landed (PR #2605) with the hall's `cafeteria` row at deg 270 (`open` 17.5 x 4.5); the round-join row
   `{ a: 'central_egress', door: 'cafeteria', b: 'cafeteria', bDoor: 'lobby' }` is in HQ_STAGE_RULES.round. Seen on screen from the Lobby floor.
+- **CHEF (same day, mondo: "Chef in the kitchen/cafteria"):** DOOR_CAST `chef` (the chef race's model, `race: 'chef'`, name CHEF, no title):
+  half the visits at the Kitchen's ranges, half at the head of the serving line. Out of every doorway square.
