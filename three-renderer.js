@@ -50027,9 +50027,31 @@ const ThreeRenderer = (function () {
         if (grew) { R.grows++; _ewBun.epoch++; }   // THE STALE LIGHT LIST: a longer rig is a new light list this very frame — every recorded group re-records now, not a frame late
         var v = _ewRigV || (_ewRigV = new THREE.Vector3()), v2 = _ewRigV2 || (_ewRigV2 = new THREE.Vector3()), inv = null;
         if (!_ewRigIdentity(sc.matrixWorld)) inv = (_ewRigM || (_ewRigM = new THREE.Matrix4())).copy(sc.matrixWorld).invert();
+        /* THE KEPT SLOTS (2026-11-26, mondo in the Ring: "flickering lights or lights not loading and turning on all of a sudden in far
+           away rooms"). The point lamps took the rig's slots in list order, so when the stage lit or darkened one lamp (its pick runs
+           every 0.5 s as you walk) every lamp after it moved one slot. three writes a light's colour and intensity once a FRAME (its
+           first render) but its place every render, so for that frame each moved slot drew one lamp's colour at another's place: a
+           flash across the level. Now a lamp keeps its slot while it is lit; a new one takes a free slot (which was dark), a lamp that
+           goes leaves its slot dark. Old order: window.EW_RIG_SLOTS_IN_ORDER. */
+        var pSlots = null;
+        if (!(typeof window !== 'undefined' && window.EW_RIG_SLOTS_IN_ORDER)) {
+            var SP = R.src.p, LP = R.k.p, st0 = R.pStamp = (R.pStamp | 0) + 1;
+            pSlots = R.pSlots || (R.pSlots = []);
+            while (pSlots.length < LP.length) pSlots.push(null);
+            for (i = 0; i < SP.length; i++) SP[i]._ew_rigSt = st0;
+            for (i = 0; i < pSlots.length; i++) if (pSlots[i] && pSlots[i]._ew_rigSt !== st0) pSlots[i] = null;
+            var free = 0;
+            for (i = 0; i < SP.length; i++) {
+                var sp = SP[i], sj = sp._ew_rigSlot;
+                if (sj != null && pSlots[sj] === sp) continue;
+                while (free < pSlots.length && pSlots[free]) free++;
+                if (free >= pSlots.length) break;
+                pSlots[free] = sp; sp._ew_rigSlot = free; sp._ew_rigOnAt = (_hq && sc === _hq.scene && _hq.ready) ? _alNow() : 0;   // THE SOFT LAMP (the walk only: a spell's flash is never slowed): a lamp that comes on fades up
+            }
+        }
         for (var ki = 0; ki < _EW_RIG_KINDS.length; ki++) {
             k = _EW_RIG_KINDS[ki];
-            var Lk = R.k[k], Sk = R.src[k];
+            var Lk = R.k[k], Sk = (k === 'p' && pSlots) ? pSlots : R.src[k];
             for (i = 0; i < Lk.length; i++) {
                 var d = Lk[i], s = Sk[i];
                 if (!s) {
@@ -50039,6 +50061,7 @@ const ThreeRenderer = (function () {
                     continue;
                 }
                 d.color.copy(s.color); d.intensity = s.intensity;
+                if (k === 'p' && pSlots && s._ew_rigOnAt) { var fk = (_alNow() - s._ew_rigOnAt) / 600; if (fk < 1) d.intensity = s.intensity * Math.max(0, fk) * Math.max(0, fk); else s._ew_rigOnAt = 0; }   // THE SOFT LAMP: 0.6 s up, not a pop
                 if (k === 'a') continue;
                 s.getWorldPosition(v); if (inv) v.applyMatrix4(inv);
                 d.position.copy(v);
@@ -54457,7 +54480,7 @@ const ThreeRenderer = (function () {
                model mask) is drawn before the frame and is not it either */
             var quad = !!(sc && sc.isQuadMesh), side = !!this._ew_sideRender;
             var outer = !depth && !shadowPass && !quad && !side;
-            if (outer) { this._ew_shadowFrame = true; var _fsp = _lensIn('render: gpu frees'); try { _ewGpuFreeLater(this); } finally { _lensOut(_fsp); } var _nsp = _lensIn('render: node + rig ticks'); try { _ewNodeTick(); _ewRigTick(sc, cam); } finally { _lensOut(_nsp); } if (!this._ew_noBunTick) { var _bsp = _lensIn('bundle check'); try { _ewBunTick(this, sc, cam); } finally { _lensOut(_bsp); } } }   // THE IMPOSSIBLE DOORS' picture: the real camera's check only (_hqImpDraw)
+            if (outer) { this._ew_shadowFrame = true; var _fsp = _lensIn('render: gpu frees'); try { _ewGpuFreeLater(this); } finally { _lensOut(_fsp); } var _nsp = _lensIn('render: node + rig ticks'); try { _ewNodeTick(); if (!this._ew_noBunTick) _ewRigTick(sc, cam); } finally { _lensOut(_nsp); } if (!this._ew_noBunTick) { var _bsp = _lensIn('bundle check'); try { _ewBunTick(this, sc, cam); } finally { _lensOut(_bsp); } } }   // THE IMPOSSIBLE DOORS' picture: the real camera's check only (_hqImpDraw)
             /* THE RENDER BUNDLES (W6): a point light's six cube faces share one camera — they draw the groups the classic
                way, frustum-culled per face, instead of replaying a bundle recorded unculled */
             var unb = shadowPass && cam && cam.isPerspectiveCamera && _ewBun.marked.length ? _ewBun.marked : null;
@@ -99207,7 +99230,7 @@ const ThreeRenderer = (function () {
             return g;
         };
         var fl = new THREE.Mesh(strip(0.004, false), _hqMat(S.floor || 'terrazzo', 1, 1, { shininess: 22, side: THREE.DoubleSide })); fl.name = 'hq-open-floor'; G.add(fl);
-        var so = new THREE.Mesh(strip(oh, true), _hqMat(S.ceiling || 'ceiling', 1, 1, { side: THREE.DoubleSide })); so.name = 'hq-open-soffit'; G.add(so);
+        var so = new THREE.Mesh(strip(oh + 0.02, true), _hqMat(S.ceiling || 'ceiling', 1, 1, { side: THREE.DoubleSide })); so.name = 'hq-open-soffit'; G.add(so);   // (11-26, mondo: "flickering ceiling textures"): 2 cm over the opening's top, so the drum's lintel and the joined room's own front, whose undersides lie exactly at `oh`, cover it where they overlap instead of fighting it pixel by pixel
         [-1, 1].forEach(function (sd) {
             var lat = sd * (hw + 0.05), inner = Math.sqrt(Math.max(0, R * R - lat * lat)) - 0.1, len = far - inner;
             var w = _hqBox(0.1, oh, len, wallMat);
@@ -106468,7 +106491,7 @@ const ThreeRenderer = (function () {
                 cnt++; if (ri === 0) own++;
                 if (!shown) return;
                 o.getWorldPosition(v); if (R._ew_impDrop) v.y -= R._ew_impDrop * _hqUnits();   // THE IMPOSSIBLE DOORS: a room drawn out of sight is lit by where it is walked
-                all.push({ o: o, d: v.distanceToSquared(cam), own: ri === 0 ? 0 : 1 });
+                all.push({ o: o, d: v.distanceToSquared(cam) * ((o.visible && st.lampN >= 0) ? 0.64 : 1), own: ri === 0 ? 0 : 1 });   // THE STICKY PICK (11-26): a lit lamp stays lit until one 25 % nearer wants its place (two lamps near the line no longer swap every half second)
             });
         });
         var SR = HQ_STAGE_RULES, base = SR.lampsLive || 12, nbMin = (SR.lampsNb != null) ? Math.max(0, SR.lampsNb | 0) : 4;
@@ -107840,7 +107863,10 @@ const ThreeRenderer = (function () {
            again for it, then again for the real camera, every frame; the bundle check also ran for that camera and saw other
            lamps. Now, for this one render, the other parts are hidden (their lights stay: THE LIGHT RIG keeps every shader's light
            list), the part you stand in shows only its walker (once through the doorway), and the render skips the bundle check
-           (`_ew_noBunTick`): the real camera's check is the only one. WebGPU with the rig only (classic WebGL keys its programs on the
+           (`_ew_noBunTick`): the real camera's check is the only one. It skips THE LIGHT RIG's tick too (11-26, the flicker): three updates a
+           light's colour + intensity once a FRAME, at the frame's first render, which is this one; with the parts hidden the rig
+           handed its slots to other lamps here and the room you stand in was drawn with those values every other frame. The rig
+           keeps the real camera's last assignment (every lamp of the stage, the room beyond's included). WebGPU with the rig only (classic WebGL keys its programs on the
            light count, so there the whole scene draws as before). Old rule: window.EW_HQ_IMP_WHOLE_SCENE. */
         var hidL = [], wholeS = (typeof window !== 'undefined' && !!window.EW_HQ_IMP_WHOLE_SCENE) || !renderer.isWebGPURenderer || _ewRigOff(), inThis = H.stage && H.stage.impIn === r.key;
         if (!wholeS) {
