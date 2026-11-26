@@ -7319,6 +7319,7 @@ RACE_MODELS_3D['chess piece'] = { male: CHESS_PIECE_3D.pawn };
 const _CAST_POSES = {
   hqSit:     { clip: 'Sitting_Idle_Loop',      lib: 0, ts: 1.0, pinXZ: true },
   hqSitTalk: { clip: 'Sitting_Talking_Loop',   lib: 0, ts: 1.0, pinXZ: true },
+  hqSitDesk: { clip: 'Driving_Loop',           lib: 0, ts: 0.35, pinXZ: true },   // at a desk, forearms on the top (Rhonda, mondo 11-26: "have her arms on the counter top")
   hqTalk:    { clip: 'Idle_Talking_Loop',      lib: 0, ts: 1.0 },
   hqPhone:   { clip: 'Idle_TalkingPhone_Loop', lib: 1, ts: 1.0 },
   hqArms:    { clip: 'Idle_FoldArms_Loop',     lib: 1, ts: 1.0 },
