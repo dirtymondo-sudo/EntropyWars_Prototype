@@ -88546,11 +88546,15 @@ function hqStageImpJoins(roomId, otherId) {
         const j = rows[i]; if (!j || (j.a !== roomId && j.b !== roomId) || j.a === j.b) continue;
         if (otherId && j.a !== otherId && j.b !== otherId) continue;
         const A = R[j.a], B = R[j.b]; if (!A || !B) continue;
-        const da = (A.doors || []).find(d => d && d.id === j.door), db = (B.doors || []).find(d => d && d.id === j.bDoor);
+        /* THE WINDOW: `window: { wall, x | z, y, w, h }` in place of `door` = a picture on a's wall (no opening is cut: a painted or
+           prop window's glass), always `look` */
+        const win = (j.window && typeof j.window === 'object' && A.kind === 'box') ? j.window : null;
+        const da = win ? Object.assign({ id: '~window', open: { w: +win.w || 3, h: +win.h || 2 } }, win) : (A.doors || []).find(d => d && d.id === j.door);
+        const db = (B.doors || []).find(d => d && d.id === j.bDoor);
         if (!da || !db || da.hidden || db.hidden) continue;
         const fa = hqImpDoorFrame(A, da), fb = hqImpDoorFrame(B, db);
-        if (!fa || !fb || (fa.hub && fb.hub)) continue;
-        out.push({ a: j.a, b: j.b, door: da, bDoor: db, fa, fb, see: !!j.see, look: !!j.look, row: j });
+        if (!fa || !fb || (fa.hub && fb.hub) || (win && fa.free)) continue;
+        out.push({ a: j.a, b: j.b, door: da, bDoor: db, fa, fb, see: !!j.see, look: !!(j.look || win), window: !!win, row: j });
     }
     return out;
 }
@@ -88564,7 +88568,7 @@ function hqStageImpGeom(j) {
     /* b's way out turned onto the way back into a: hqStageToRoom turns a direction at angle φ to φ − θ */
     let th = Math.atan2(fb.oz, fb.ox) - Math.atan2(-fa.oz, -fa.ox);
     let rot = th / (Math.PI / 2); rot = ((rot % 4) + 4) % 4; const rr = Math.round(rot); if (Math.abs(rot - rr) < 1e-6) rot = rr % 4;
-    const rel = { x: 0, z: 0, y: fa.y - fb.y, rot };
+    const rel = { x: 0, z: 0, y: fa.y - fb.y - (+j.row.below || 0), rot };   // `below` (m): the far room stands lower than the doorway (a window looking down onto it)
     const q = hqStageToRoom(rel, fb.x, fb.z);
     rel.x = fa.x + fa.ox * gap - q.x; rel.z = fa.z + fa.oz * gap - q.z;
     const o = hqStageFromRoom(rel, 0, 0), back = { x: o.x, z: o.z, y: -rel.y, rot: rot ? 4 - rot : 0 };
@@ -88590,9 +88594,11 @@ function hqStageImpNeighbours(roomId) {
             rect = { x0: Math.min(...cs.map(p => p.x)), z0: Math.min(...cs.map(p => p.z)), x1: Math.max(...cs.map(p => p.x)), z1: Math.max(...cs.map(p => p.z)) };
         } else { const Ro = Math.max(S.radius || 0, S.rOut || 0, (S.mezz && S.mezz.outer) || 0), c = hqStageToRoom(rel, 0, 0); rect = { x0: c.x - Ro, z0: c.z - Ro, x1: c.x + Ro, z1: c.z + Ro }; }
         const imp = { x: f.x + f.ox * G.gap, z: f.z + f.oz * G.gap, ox: f.ox, oz: f.oz, y: f.y, ow: G.ow, oh: G.oh, gap: G.gap, drop: mine ? G.drop : -G.drop,
-                      see: j.see, look: j.look, door: (mine ? j.door : j.bDoor).id, otherDoor: (mine ? j.bDoor : j.door).id, free: !!f.free, hub: !!f.hub };
+                      see: j.see, look: j.look, door: (mine ? j.door : j.bDoor).id, otherDoor: (mine ? j.bDoor : j.door).id, free: !!f.free, hub: !!f.hub, window: !!(j.window && mine) };
+        if (j.window && !mine) return;   // a window is seen from its own room only (the room it shows has no way back through it)
         const nb = { id: other, rel, rect, spans: [], links: [], imp };
-        if (f.hub) { nb.round = true; nb.level = f.level; nb.spans.push({ side: 'round', deg: f.deg, R: f.R, level: f.level, y: f.y, t0: -G.ow / 2, t1: G.ow / 2, kind: 'door', door: imp.door, pad: 0.3, depth: G.gap + 0.5 }); }
+        if (imp.window) { imp.x = f.x; imp.z = f.z; }   // on the wall's face: nothing is cut
+        else if (f.hub) { nb.round = true; nb.level = f.level; nb.spans.push({ side: 'round', deg: f.deg, R: f.R, level: f.level, y: f.y, t0: -G.ow / 2, t1: G.ow / 2, kind: 'door', door: imp.door, pad: 0.3, depth: G.gap + 0.5 }); }
         else if (f.wall) nb.spans.push({ side: f.wall, t0: f.t - G.ow / 2, t1: f.t + G.ow / 2, kind: 'door', door: imp.door, pad: 0.3, depth: G.gap + 0.5 });
         out.push(nb);
     });
@@ -88601,7 +88607,7 @@ function hqStageImpNeighbours(roomId) {
 /* the door join (hqStageDoorJoin's shape) of an impossible door: the doorway is cut, lined and swung like a joined door's */
 function hqStageImpDoorJoin(roomId, doorId) {
     const js = hqStageImpJoins(roomId); if (!js.length) return null;
-    const j = js.find(x => (x.a === roomId ? x.door : x.bDoor).id === doorId); if (!j) return null;
+    const j = js.find(x => !x.window && (x.a === roomId ? x.door : x.bDoor).id === doorId); if (!j) return null;
     const G = hqStageImpGeom(j); if (!G) return null;
     const mine = roomId === j.a, f = mine ? j.fa : j.fb, of = mine ? j.fb : j.fa;
     const o = { nb: mine ? j.b : j.a, gap: G.gap, ow: G.ow, oh: G.oh, otherDoor: (mine ? j.bDoor : j.door).id, imp: true };

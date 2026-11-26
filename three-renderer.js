@@ -107285,10 +107285,10 @@ const ThreeRenderer = (function () {
         var I = H.imp = { id: st.id, recs: [], hid: false, was: true, crossed: 0 };
         var U = _hqUnits(), dep = +HQ_STAGE_RULES.impDepthM || 0.6;
         nbs.forEach(function (nb) {
-            var F = nb.imp, mat = _hqImpMat();
-            var g = new THREE.BoxGeometry(F.ow * U, F.oh * U, dep * U);
+            var F = nb.imp, mat = _hqImpMat(), dp = F.window ? 0.04 : dep, off = F.window ? -0.05 : dep / 2;   // THE WINDOW: a thin pane on the wall's face, in the room
+            var g = new THREE.BoxGeometry(F.ow * U, F.oh * U, dp * U);
             var m = new THREE.Mesh(g, mat);
-            m.position.set((F.x + F.ox * dep / 2) * U, (F.y + F.oh / 2) * U, (F.z + F.oz * dep / 2) * U);
+            m.position.set((F.x + F.ox * off) * U, (F.y + F.oh / 2) * U, (F.z + F.oz * off) * U);
             m.rotation.y = Math.atan2(F.ox, F.oz);
             m.name = 'hq-impossible:' + nb.id; m._ew_imp = true; m._ew_noBatch = true; m.visible = false;
             H.scene.add(m); m.updateMatrixWorld(true);
@@ -107384,7 +107384,7 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < I.recs.length; i++) {
             var r = I.recs[i], F = r.F, E = st.parts[r.id];
             var on = !!(E && E.attached && E.P.partRoot.parent && E.P.partRoot.visible !== false);
-            var show = on && _hqImpD(F, ex, ez) < 0.05;   // from the front only
+            var show = on && _hqImpD(F, ex, ez) < (F.window ? -0.1 : 0.05);   // from the front only
             r.shown = show;
             if (r.mesh.visible !== show) r.mesh.visible = show;
             if (!show) continue;
@@ -107406,7 +107406,8 @@ const ThreeRenderer = (function () {
         var mc = r.cam || (r.cam = new THREE.PerspectiveCamera());
         mc.copy(cam, false); mc.position.y += dyU; mc.updateMatrixWorld(true);
         /* the far side of the plane only (a hair short of it: the far room's own doorway frame stays) */
-        var n = new THREE.Vector3(F.ox, 0, F.oz), p0 = new THREE.Vector3((F.x - F.ox * 0.02) * U, F.y * U + dyU, (F.z - F.oz * 0.02) * U);
+        var ck = F.window ? (F.gap || 0) + 0.45 : -0.02;   // THE WINDOW: past the far room's own wall too (nothing is cut there: its wall would fill the pane)
+        var n = new THREE.Vector3(F.ox, 0, F.oz), p0 = new THREE.Vector3((F.x + F.ox * ck) * U, F.y * U + dyU, (F.z + F.oz * ck) * U);
         var cpl = r.plane.setFromNormalAndCoplanarPoint(n, p0);
         var sky = H.sky ? [H.sky.dome, H.sky.group, H.sky.landmarks].filter(function (o) { return !!o; }) : [];
         var prevT = renderer.getRenderTarget(), prevClip = renderer.clippingPlanes, prevShadow = renderer.shadowMap ? renderer.shadowMap.needsUpdate : false, prevAuto = renderer.autoClear;

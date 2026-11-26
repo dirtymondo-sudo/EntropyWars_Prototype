@@ -1661,3 +1661,35 @@ PH stop lands at its `elevator` door and keeps its gate, minClearance 4 + 12 Key
 - **RETIRED:** `corner` and `pool` -> `executive` (DOOR_HQ.retired); the PH zone in HQ_WORLD and its HQ_STAGE_RULES entry are gone (one
   room, nothing to join). `links.weir_bermuda` end a stands beside the weir now (x -14, z 27).
 - `node find-doorways.js executive`: clear.
+
+## DOOR HQ 2.0, WAVE 4: THE IMPOSSIBLE DOORS (2026-11-26)
+mondo: "wonder if you could make some doors work like the portal gun to allow this (disorienting architecture or non Euclidean
+geometry)"; H-Wing: "open a door and it leads to an outside room with a lone door standing across the other side, walk to it and open it
+and I'm back in h-wing"; "way less loading screens". A door of one room and a door of a room that stands anywhere are ONE doorway: no
+card, no load, and the two rooms never have to fit next to each other.
+- **The rows** (data.js `HQ_STAGE_RULES.impossible`, each thread adds its own): `{ a, door, b, bDoor }` = THE DARK DOORWAY (the opening
+  is black; you walk into it, the camera follows you into the dark, and you are in `b`). `see: true` = THE SEE-THROUGH DOOR (you see `b`
+  through the open frame before you step in, the walker who went through is seen in it). `look: true` = a window onto `b`, never walked
+  through. `window: { wall, x | z, y, w, h }` in place of `door` = a picture on a box room's wall with nothing cut (a prop or painted
+  window's glass; always `look`); `below: <m>` stands `b` lower than the doorway (a window looking down onto it). Either end may be a
+  box room's wall door, a box room's FREE-STANDING door (`wall: 'free'`, `x`, `z`, `face` = the heading its front faces: the lone door
+  in a vignette; it works from its front only, from behind it is a door in a field) or a door of a round hub (the Ring, the Lobby, its
+  gallery); never two hubs. Any room may have any number. `HQ_STAGE_RULES.impDropM` / `impScale` / `impSeeM` / `impDepthM` tune it.
+- **How it works** (data.js `hqStageImpJoins` / `hqImpDoorFrame` / `hqStageImpGeom` / `hqStageImpNeighbours` / `hqStageImpDoorJoin`;
+  three-renderer.js THE IMPOSSIBLE DOORS, `_hqImp*`): THE STAGE builds `b` as a neighbour of `a` (its builders, gate, warm-up, lamps,
+  people), placed for the walk as if it stood right behind the door (THE DOOR JOIN's geometry: `b`'s door `wallM` past `a`'s, its way
+  out pointing back in) but DRAWN `impDropM` (3,000 m) under it, so it never shows through a wall and its lamps never light the wrong
+  room (the lamp budget and the LOD levels read it where it is walked). The doorway is cut, lined and swung like a joined door's. Once
+  the walker's middle passes the doorway's plane inside its frame, the floor, air and boom past the plane are `b`'s; when the camera
+  passes it too (or the walker is 4.5 m in, or in first person) the stage swaps: you stand in `b`. The doorway is a box from the plane
+  into the far side: black, or (`see`) the far room drawn from the camera moved by the drop into a render target (the mirrors' rule:
+  each pixel reads what the eye sees there; everything on this side of the plane clipped off), only while it is on screen, within
+  `impSeeM`, and from the front. The far room is drawn by this room's light until you cross (then THE BLEND eases to its own).
+- **The rows today:** the Works stair (`labs.stair` -> `incinerator.works`, dark) and H-Wing's two plain doors on the Gantry
+  (`labs.mandela`, `labs.upsidedown`, see-through) until the H-Wing thread moves them.
+- **Not yet:** a room behind an impossible door is built after the stage's other neighbours (a room with many joins builds it last);
+  until it stands, the door is the plain door it always was (press E / walk in = the walk blink). The far room's fog and sky are this
+  room's in the picture.
+- Off: `window.EW_HQ_NO_IMPOSSIBLE = true` (re-enter). Console: `ThreeRenderer.hq.impossible()` -> `{ id, in, crossed, recs: [{ id, door,
+  see, look, on, shown, drawn, d }] }`. RULE #2: viewer-local, nothing on `state`, nothing relayed. RULE #1e: the frame reads only this
+  room's doorways.
