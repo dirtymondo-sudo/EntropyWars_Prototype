@@ -3152,3 +3152,14 @@ Angry at the Party loadout entry (PR #2643) offering only a theme. What changed 
 - autoGroup: the open party sheet wins over the HQ strip; any surface not in AUTO_ORDER is still found.
 - Proof: `/mnt/project-files/ui-maker-every-screen/` (HP/MP/EXP bars moved left, portraits right, name font + colour + size,
   stats panel fill/frame/corners, kit frame + title colour), on the loadout stand-in.
+- **THE BATTLE PANEL, PART BY PART (same day, mondo: "It doesnt have the same customability as the old command panel and quick
+  action panel ... you can get rid of those, they are old/not used. Just need to be able to edit the battle panel")**: 22 pieces
+  `dk*` (left bay, plates, portrait ring, name, badges, HP/MP bars, AP, tool buttons, each tool, items, middle bay, BACK + path,
+  BACK, list, each row, CONFIRM, right bay, tabs, each tab, right buttons, footer, key caps), each with text parts. Their
+  selectors start `body:not(#ewdu-a):not(#ewdu-b):not(#ewdu-c) .hrlg-rig.ewd` so a piece (3 more ids from preP) beats the
+  panel's own 4-id skin (_ewdCss X). The row pieces carry the one spell-button layout form (btnRowsForm / btnLookForm).
+  REMOVED from the piece list: Command menu (`rig`), Horologe hero (`hero`), Command panels (`cmds`), Unit info panel
+  (`quick`), Tile info panel + tabs (`tcard`, `ttabs`), Quick action list (`qlist`), Back button (`qback`); the Battle panel's
+  Layout switch (One / Classic) is gone and deckSignal always says on (console kill switch `EW_CLASSIC_PANEL` stays).
+  Proof: `/mnt/project-files/ui-maker-every-screen/4-6_battle_panel_*.png` (unit card moved right with its own fill / frame /
+  corners, command list moved left with rounded cyan rows and its own word colour).

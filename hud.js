@@ -19449,21 +19449,39 @@ const UIM_PIECES = [
   /* THE ONE BATTLE PANEL (2026-11-11): the whole window (its layout switch + picks ride its form); the Command menu piece
      below is the classic Horologe and leaves the panel alone */
   { id: 'deck', group: 'Battle', label: 'Battle panel', sel: '.hrlg-rig.ewd:not(.ewd-peek):not(.ewd-watch)', noHide: true, deck: true, origin: '0 100%', def: { l: 14, b: 12, w: 1272, h: 330 } },
-  { id: 'rig', group: 'Battle', label: 'Command menu', sel: '.hrlg-rig:not(.ewd)', noHide: true, tagRight: true, def: { l: 10, b: 80, w: 580, h: 400 } },
-  { id: 'hero', group: 'Battle', label: 'Horologe hero section', sel: '.hrlg-side', noHide: true, hero: true, origin: '0 100%', def: { l: 10, b: 80, w: 216, h: 400 } },
-  { id: 'cmds', group: 'Battle', label: 'Command panels', sel: '.hrlg-panels', noHide: true, origin: '0 100%', def: { l: 238, b: 80, w: 340, h: 300 } },
+  /* THE BATTLE PANEL, PART BY PART (mondo 11-26: "Just need to be able to edit the battle panel"): each bay, strip, list,
+     row and button of the one battle panel is a piece. The selectors carry three ids (body:not(#ewdu-...)) so a piece's
+     look beats the panel's own four-id skin (_ewdCss X). The old Command menu / Horologe / command panels / unit + tile
+     card / quick list / BACK chip pieces are gone with the classic layout. */
+  { id: 'dkactor', group: 'Battle', label: 'Left: whose turn', sel: 'body:not(#ewdu-a):not(#ewdu-b):not(#ewdu-c) .hrlg-rig.ewd > .ewd-actor', def: { l: 14, b: 12, w: 336, h: 260 } },
+  { id: 'dkplates', group: 'Battle', label: 'Frame name plates', sel: 'body:not(#ewdu-a):not(#ewdu-b):not(#ewdu-c) .hrlg-rig.ewd .ewd-plate', def: { l: 26, b: 262, w: 120, h: 22 } },
+  { id: 'dkring', group: 'Battle', label: 'Portrait ring', sel: 'body:not(#ewdu-a):not(#ewdu-b):not(#ewdu-c) .hrlg-rig.ewd .ewd-ring', def: { l: 26, b: 150, w: 104, h: 104 } },
+  { id: 'dkname', group: 'Battle', label: 'Name line', sel: 'body:not(#ewdu-a):not(#ewdu-b):not(#ewdu-c) .hrlg-rig.ewd .ewd-nm', def: { l: 142, b: 230, w: 196, h: 24 } },
+  { id: 'dkbadges', group: 'Battle', label: 'Level + badges', sel: 'body:not(#ewdu-a):not(#ewdu-b):not(#ewdu-c) .hrlg-rig.ewd .ewd-badges', def: { l: 142, b: 206, w: 196, h: 20 } },
+  { id: 'dkvitals', group: 'Battle', label: 'HP / MP bars', sel: 'body:not(#ewdu-a):not(#ewdu-b):not(#ewdu-c) .hrlg-rig.ewd .ewd-aid .hrlg-vitals', def: { l: 142, b: 170, w: 196, h: 34 } },
+  { id: 'dkap', group: 'Battle', label: 'AP icons', sel: 'body:not(#ewdu-a):not(#ewdu-b):not(#ewdu-c) .hrlg-rig.ewd .ewd-aprow', def: { l: 142, b: 144, w: 196, h: 24 } },
+  { id: 'dktools', group: 'Battle', label: 'Tool buttons', sel: 'body:not(#ewdu-a):not(#ewdu-b):not(#ewdu-c) .hrlg-rig.ewd .ewd-tools', def: { l: 26, b: 64, w: 312, h: 70 } },
+  { id: 'dktool', group: 'Battle', label: 'Each tool button', sel: 'body:not(#ewdu-a):not(#ewdu-b):not(#ewdu-c) .hrlg-rig.ewd .ewd-tools .hrlg-push', panelSel: 'body:not(#ewdu-a):not(#ewdu-b):not(#ewdu-c) .hrlg-rig.ewd .ewd-tools .hrlg-push', def: { l: 26, b: 108, w: 154, h: 26 } },
+  { id: 'dkinv', group: 'Battle', label: 'Items', sel: 'body:not(#ewdu-a):not(#ewdu-b):not(#ewdu-c) .hrlg-rig.ewd .ewd-inv', def: { l: 26, b: 24, w: 312, h: 34 } },
+  { id: 'dkcmd', group: 'Battle', label: 'Middle: command list', sel: 'body:not(#ewdu-a):not(#ewdu-b):not(#ewdu-c) .hrlg-rig.ewd > .ewd-cmd', def: { l: 348, b: 12, w: 360, h: 300 } },
+  { id: 'dkcrumbs', group: 'Battle', label: 'BACK + menu path', sel: 'body:not(#ewdu-a):not(#ewdu-b):not(#ewdu-c) .hrlg-rig.ewd .ewd-crumbs', def: { l: 358, b: 270, w: 340, h: 22 } },
+  { id: 'dkback', group: 'Battle', label: 'BACK button', sel: 'body:not(#ewdu-a):not(#ewdu-b):not(#ewdu-c) .hrlg-rig.ewd .ewd-back', panelSel: 'body:not(#ewdu-a):not(#ewdu-b):not(#ewdu-c) .hrlg-rig.ewd .ewd-back', def: { l: 358, b: 270, w: 80, h: 22 } },
+  { id: 'dklist', group: 'Battle', label: 'Command list', sel: 'body:not(#ewdu-a):not(#ewdu-b):not(#ewdu-c) .hrlg-rig.ewd .ewd-list', def: { l: 358, b: 60, w: 340, h: 200 } },
+  { id: 'dkrow', group: 'Battle', label: 'Each command row', sel: 'body:not(#ewdu-a):not(#ewdu-b):not(#ewdu-c) .hrlg-rig.ewd .ewd-list .hrlg-blade', panelSel: 'body:not(#ewdu-a):not(#ewdu-b):not(#ewdu-c) .hrlg-rig.ewd .ewd-list .hrlg-blade > .hrlg-body', def: { l: 358, b: 230, w: 340, h: 28 } },
+  { id: 'dkconfirm', group: 'Battle', label: 'CONFIRM button', sel: 'body:not(#ewdu-a):not(#ewdu-b):not(#ewdu-c) .hrlg-rig.ewd .ewd-confirm', panelSel: 'body:not(#ewdu-a):not(#ewdu-b):not(#ewdu-c) .hrlg-rig.ewd .ewd-confirm', def: { l: 358, b: 22, w: 340, h: 30 } },
+  { id: 'dkfocus', group: 'Battle', label: 'Right: what you picked', sel: 'body:not(#ewdu-a):not(#ewdu-b):not(#ewdu-c) .hrlg-rig.ewd > .ewd-focus', def: { l: 706, b: 12, w: 580, h: 260 } },
+  { id: 'dktabs', group: 'Battle', label: 'Right tabs', sel: 'body:not(#ewdu-a):not(#ewdu-b):not(#ewdu-c) .hrlg-rig.ewd .ewd-tabs', def: { l: 716, b: 274, w: 560, h: 26 } },
+  { id: 'dktab', group: 'Battle', label: 'Each tab', sel: 'body:not(#ewdu-a):not(#ewdu-b):not(#ewdu-c) .hrlg-rig.ewd .ewd-tabs .hrlg-ttab', panelSel: 'body:not(#ewdu-a):not(#ewdu-b):not(#ewdu-c) .hrlg-rig.ewd .ewd-tabs .hrlg-ttab', def: { l: 716, b: 274, w: 100, h: 26 } },
+  { id: 'dkfbtns', group: 'Battle', label: 'Right side buttons', sel: 'body:not(#ewdu-a):not(#ewdu-b):not(#ewdu-c) .hrlg-rig.ewd .ewd-focus .hrlg-tc-btns', def: { l: 716, b: 24, w: 560, h: 40 } },
+  { id: 'dkfoot', group: 'Battle', label: 'Footer', sel: 'body:not(#ewdu-a):not(#ewdu-b):not(#ewdu-c) .hrlg-rig.ewd > .ewd-foot', def: { l: 14, b: 0, w: 1272, h: 60 } },
+  { id: 'dkkbd', group: 'Battle', label: 'Key caps', sel: 'body:not(#ewdu-a):not(#ewdu-b):not(#ewdu-c) .hrlg-rig.ewd .ewd-kbd', def: { l: 40, b: 10, w: 40, h: 16 } },
   { id: 'score', group: 'Battle', label: 'Scoreboard', sel: '.ew-scoreboard', score: true, def: { cx: 0, t: 10, w: 440, h: 64 } },
-  { id: 'quick', group: 'Battle', label: 'Unit info panel', sel: '.hrlg-panel.quick > .hrlg-thead.qp', panelSel: '.hrlg-panel.quick > .hrlg-thead.qp > .hrlg-qp-bg', qp: true, origin: '100% 100%', def: { l: 220, b: 520, w: 520, h: 200 } },
   /* THE TILE INFO PANEL (2026-11-08): the clicked square's card + its tab strip. The card sits where the unit info card sits
      and follows the Unit info panel's move + size until it is moved or sized here (layoutCss); the tabs ride whichever card
      is up (hud.js _ttabsPin), at the card's size until sized here */
-  { id: 'tcard', group: 'Battle', label: 'Tile info panel', sel: '.hrlg-panel.quick > .hrlg-tcard', panelSel: '.hrlg-panel.quick > .hrlg-tcard > .hrlg-tc-bg', origin: '100% 100%', def: { l: 220, b: 520, w: 680, h: 190 } },
-  { id: 'ttabs', group: 'Battle', label: 'Tile info tabs', sel: '.hrlg-panel.quick > .hrlg-ttabs', origin: '0 100%', def: { l: 220, b: 716, w: 680, h: 32 } },
   /* the quick action list on its own (2026-10-18, mondo: "just make the actions list its own separate thing") */
-  { id: 'qlist', group: 'Battle', label: 'Quick action list', sel: '.hrlg-panel.quick > .hrlg-list', origin: '0 0', def: { l: 560, b: 130, w: 316, h: 300 } },
   /* the red BACK chip over every action list (mondo 2026-10-18: "let me move the red back button in the actions list
      around and resize it"): moved from its spot over its list (on the quick list it still rides along with the list) */
-  { id: 'qback', group: 'Battle', label: 'Back button', sel: '.hrlg-panel:not(.root) > .hrlg-backchip', origin: '0 100%', noScroll: true, flowH: 24, def: { l: 560, b: 440, w: 86, h: 24 } },
   { id: 'meta', group: 'Battle', label: 'Match info', sel: '.ew-matchmeta', def: { r: 12, t: 12, w: 220, h: 40 } },
   { id: 'turns', group: 'Battle', label: 'Turn order', sel: '.ew-turn-col', icons: 'turns', def: { l: 10, b: 490, w: 56, h: 240 } },
   { id: 'press', group: 'Battle', label: 'AP press icons', sel: '.ew-ap-press', origin: '0 0', ap: true, def: { l: 14, t: 12, w: 132, h: 40 } },
@@ -19685,6 +19703,37 @@ const TEXT_PARTS = {
   /* the team select's plate (2026-11-07): each line of text its own, the NEW stamp too */
   sqbar: [['name', 'Team name', '.sq-plate-name'], ['n', 'Unit count', '.sq-plate-n'], ['of', 'Team number', '.sq-plate-of'], ['caret', 'List arrow', '.sq-plate-caret'],
     ['units', 'Unit names', '.sq-plate-slot em'], ['foot', 'Bottom line', '.sq-plate-foot'], ['stamp', 'NEW stamp', '.sq-card-stamp'], ['arrows', 'Arrows', '.sq-arrow']],
+  /* THE BATTLE PANEL, PART BY PART (mondo 11-26) */
+  deck: [['plate', 'Frame name plates', '.ewd-plate'], ['name', 'Unit name', '.ewd-name'], ['rom', 'Party number', '.ewd-rom'], ['lv', 'Level line', '.ewd-lv'],
+    ['vlbl', 'HP / MP labels', '.ewd-aid .hrlg-vlbl'], ['vnum', 'HP / MP numbers', '.ewd-aid .hrlg-vnum'], ['tool', 'Tool button words', '.hrlg-push-lbl'],
+    ['row', 'Command names', '.ewd-list .hrlg-blabel'], ['say', 'Footer line', '.ewd-say'], ['keys', 'Footer keys', '.ewd-key'], ['pick', 'Picked name', '.ewd-focus .hrlg-view-tab-text, .ewd-uname']],
+  dkactor: [['plate', 'Name plate', '.ewd-plate'], ['name', 'Name', '.ewd-name'], ['rom', 'Party number', '.ewd-rom'], ['info', 'Info button', '.ewd-info'], ['lv', 'Level line', '.ewd-lv'],
+    ['chips', 'Status chips', '.hrlg-schip'], ['hplbl', 'HP label', '.hrlg-vrow.hp .hrlg-vlbl'], ['hpnum', 'HP numbers', '.hrlg-vrow.hp .hrlg-vnum'],
+    ['mplbl', 'MP label', '.hrlg-vrow.mp .hrlg-vlbl'], ['mpnum', 'MP numbers', '.hrlg-vrow.mp .hrlg-vnum'], ['aplbl', 'AP label', '.ewd-aplbl'],
+    ['tool', 'Tool button words', '.hrlg-push-lbl'], ['toolsub', 'Tool button notes', '.hrlg-push-sub'], ['inv', 'ITEMS label', '.ewd-invlbl'], ['count', 'Item counts', '.hrlg-item-count']],
+  dkname: [['rom', 'Party number', '.ewd-rom'], ['name', 'Name', '.ewd-name'], ['info', 'Info button', '.ewd-info']],
+  dkbadges: [['lv', 'Level line', '.ewd-lv'], ['chips', 'Status chips', '.hrlg-schip']],
+  dkvitals: [['hplbl', 'HP label', '.hrlg-vrow.hp .hrlg-vlbl'], ['hpnum', 'HP numbers', '.hrlg-vrow.hp .hrlg-vnum'], ['mplbl', 'MP label', '.hrlg-vrow.mp .hrlg-vlbl'],
+    ['mpnum', 'MP numbers', '.hrlg-vrow.mp .hrlg-vnum'], ['spend', 'MP cost preview', '.hrlg-vspendnum']],
+  dkap: [['lbl', 'AP label', '.ewd-aplbl'], ['ends', 'ENDS TURN words', '.ew-ap-ends']],
+  dktools: [['lbl', 'Words', '.hrlg-push-lbl'], ['sub', 'Notes', '.hrlg-push-sub'], ['glyph', 'Icons', '.hrlg-push-glyph']],
+  dktool: [['lbl', 'Words', '.hrlg-push-lbl'], ['sub', 'Notes', '.hrlg-push-sub'], ['glyph', 'Icon', '.hrlg-push-glyph']],
+  dkinv: [['lbl', 'ITEMS label', '.ewd-invlbl'], ['count', 'Item counts', '.hrlg-item-count'], ['mats', 'Materials', '.hrlg-mats-lbl, .hrlg-mat']],
+  dkcmd: [['plate', 'Name plate', '.ewd-plate'], ['back', 'BACK', '.ewd-back'], ['crumb', 'Menu path', '.ewd-crumb'], ['cnt', 'Row count', '.ewd-cnt'],
+    ['parent', 'Menus above', '.ewd-parent'], ['mode', 'Mode line', '.ewd-mode'], ['confirm', 'CONFIRM', '.ewd-cf-lbl'], ['tgt', 'CONFIRM target', '.ewd-cf-tgt']].concat(TX_ROWS.map(r => [r[0], r[1], '.ewd-list ' + r[2]])),
+  dkcrumbs: [['back', 'BACK', '.ewd-back'], ['crumb', 'Menu path', '.ewd-crumb'], ['sep', 'Arrows', '.ewd-sep'], ['cnt', 'Row count', '.ewd-cnt']],
+  dkback: [['arrow', 'Arrow', '.ewd-back-arrow'], ['key', 'Key cap', '.ewd-kbd']],
+  dklist: TX_ROWS,
+  dkrow: TX_ROWS,
+  dkconfirm: [['check', 'Tick', '.ewd-cf-check'], ['lbl', 'CONFIRM', '.ewd-cf-lbl'], ['tgt', 'Target', '.ewd-cf-tgt']],
+  dkfocus: [['plate', 'Name plate', '.ewd-plate'], ['name', 'Name', '.hrlg-view-tab-text, .ewd-uname'], ['dist', 'Distance', '.hrlg-view-tab-count'], ['coord', 'Square', '.ewd-coord'],
+    ['types', 'Type badges', '.hrlg-qtypes > span, .hrlg-qp-types > span'], ['hplbl', 'HP / MP labels', '.hrlg-qv-lbl'], ['hpnum', 'HP / MP numbers', '.hrlg-qv-num'],
+    ['stlbl', 'Stat names', '.hrlg-qstat-lbl'], ['stval', 'Stat numbers', '.hrlg-qstat-val'], ['grade', 'Stat grades', '.ew-grade > i'], ['elrx', 'Element marks', '.ew-elem-rx'],
+    ['tab', 'Tab words', '.hrlg-ttab-tx']],
+  dktabs: [['tx', 'Tab words', '.hrlg-ttab-tx'], ['ic', 'Tab icons', '.hrlg-ttab-ic'], ['own', 'Tab tags', '.hrlg-ttab-own']],
+  dktab: [['tx', 'Words', '.hrlg-ttab-tx'], ['ic', 'Icon', '.hrlg-ttab-ic'], ['own', 'Tag', '.hrlg-ttab-own']],
+  dkfbtns: [['lbl', 'Words', '.hrlg-blabel'], ['chip', 'Costs', '.hrlg-chip']],
+  dkfoot: [['say', 'The line', '.ewd-say'], ['keys', 'Key words', '.ewd-key'], ['kbd', 'Key caps', '.ewd-kbd']],
   /* THE LOADOUT (mondo 11-26: "change the fonts and the text and the color and the sizes") */
   lotabrow: [['name', 'Names', '.hq-lo-tabtx b'], ['lv', 'Levels', '.hq-lo-tabtx > i']],
   lotab: [['name', 'Names', '.hq-lo-tabtx b'], ['lv', 'Levels', '.hq-lo-tabtx > i']],
@@ -20290,7 +20339,7 @@ function uxMigrate() {
 /* THE ONE BATTLE PANEL's switches (window._ewDeck, read by _ewDeckCfg); the HUD redraws on its word */
 function deckSignal() {
   const X = uxOf();
-  const v = { on: X.dPanel !== 'classic', focusSelf: X.dFocus !== 'empty', apIn: X.dAp !== 'top', cone: !!X.dCone };
+  const v = { on: true, focusSelf: X.dFocus !== 'empty', apIn: X.dAp !== 'top', cone: !!X.dCone };
   const o = window._ewDeck;
   window._ewDeck = v;
   deckLook(X);
@@ -21988,8 +22037,7 @@ function qpStatSizes(X) {
 /* THE ONE BATTLE PANEL's own settings (the Battle panel piece) */
 function deckForm() {
   const X = uxOf();
-  return sec('dpanel', 'Battle panel', xp(fSeg('Layout', 'dPanel', [['one', 'One panel', 'Who is acting, what it can do and what it is aimed at, in one window along the bottom'], ['classic', 'Classic', 'The Horologe column, the command panels and the unit / tile card, as before']], X.dPanel)
-    + fSeg('Right side with nothing picked', 'dFocus', [['self', 'My stats + square', 'The acting unit\'s own stats, element box and the square it stands on'], ['empty', 'Nothing', 'The right side shows only when a unit, square or target is picked']], X.dFocus)
+  return sec('dpanel', 'Battle panel', xp(fSeg('Right side with nothing picked', 'dFocus', [['self', 'My stats + square', 'The acting unit\'s own stats, element box and the square it stands on'], ['empty', 'Nothing', 'The right side shows only when a unit, square or target is picked']], X.dFocus)
     + fSeg('AP icons', 'dAp', [['panel', 'In the panel', 'Under the HP / MP bars'], ['top', 'Top left', 'Where the AP press icons piece puts them']], X.dAp))
     + xCheck('Zoom cone (turn icon to the card)', 'dCone', X.dCone))
     + sec('dlook', 'Battle panel colours', xp(fSeg('Colours', 'dLook', [['blue', 'Night blue', 'The panel as it shipped: dark blue windows, white frames'], ['black', 'All black', 'Black windows, black rows and tabs, the white frames and the purple-blue picked row kept'], ['own', 'My colours', 'Pick each colour below']], X.dLook)
@@ -21999,7 +22047,7 @@ function deckForm() {
           + fColor('Rows, tabs + boxes', 'dRow', X.dRow, true) + fColor('Row edges', 'dRowEdge', X.dRowEdge)
           + fColor('Picked row (left)', 'dSel1', X.dSel1) + fColor('Picked row (right)', 'dSel2', X.dSel2)
         : '')))
-    + '<div class="uim-note">One panel: the left part is the unit whose turn it is, the middle is the one command list (red BACK on top, green CONFIRM at the bottom), the right part is what you picked, with its tabs. The footer says what to do and the keys that work now. Classic brings back the old layout and every piece of it.</div>'
+    + '<div class="uim-note">One panel: the left part is the unit whose turn it is, the middle is the one command list (red BACK on top, green CONFIRM at the bottom), the right part is what you picked, with its tabs. The footer says what to do and the keys that work now. Each part of it is its own piece in the list above.</div>'
     + xReset('d', 'Reset the battle panel');
 }
 function qpForm() {
@@ -24043,7 +24091,7 @@ function pieceDetail() {
   if (P.qp) h += qpForm();
   if (P.deck) h += deckForm();
   if (P.id === 'qlist') h += sec('qlfit', 'Fit its rows', xp(qlistFit(uxOf())));
-  if (P.id === 'qlist' || P.id === 'cmds') h += btnRowsForm(uxOf()) + btnLookForm(uxOf());   // the one spell-button layout (THE BUTTON ROWS + THE BADGE LOOKS)
+  if (P.id === 'dkrow' || P.id === 'dklist') h += btnRowsForm(uxOf()) + btnLookForm(uxOf());   // the one spell-button layout (THE BUTTON ROWS + THE BADGE LOOKS)
   if (P.id === 'hero' || P.id === 'cmds' || P.id === 'rig') h += horoLook(P);
   h += lookForm(P, L) + wordsForm(P);
   return h + '</div>';
