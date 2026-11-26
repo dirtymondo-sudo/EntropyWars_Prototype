@@ -198,7 +198,7 @@ const room = `        /* ── THE WORKS, TOP: THE FACTORY (DOOR HQ 2.0 wave 3,
             doors: [
                 { id: 'garage', wall: 'w', z: 0, leaf: 'leaf_wired_double', wide: true, label: 'GARAGE', action: { room: 'garage', at: 'works' } },
                 { id: 'ramp', wall: 's', x: 0, open: { w: 7, h: 5.2 }, label: 'FREIGHT RAMP', action: { room: 'labs', at: 'factory' } },
-                { id: 'hwing', wall: 'free', x: ${P(228, 38.2)[0]}, z: ${P(228, 38.2)[1]}, face: 48, leaf: 'leaf_white_wood', label: 'H-WING', action: { room: 'hwing_floor', at: 'works_top' }, desc: 'A plain door in the service corridor. It is not on the fire plan.' },   // DOOR HQ 2.0 wave 4: H-Wing's plain door, in the drum between the Boiler Room's and the Laundry's doors
+                { id: 'hwing', wall: 'free', x: ${P(228, 38.2)[0]}, z: ${P(228, 38.2)[1]}, face: 48, leaf: 'leaf_white_wood', label: 'H-WING', locked: true, action: { room: 'hwing_floor', at: 'works_top' }, desc: 'A plain door in the service corridor. It is not on the fire plan.' },   // DOOR HQ 2.0 wave 4: H-Wing's plain door, in the drum between the Boiler Room's and the Laundry's doors
             ],
             counters: [
 ${counters.map(c => '                ' + fmt(c) + ',').join('\n')}

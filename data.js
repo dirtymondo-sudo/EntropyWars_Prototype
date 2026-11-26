@@ -35288,7 +35288,7 @@ const DOOR_HQ = {
                 { id: 'barbershop', deg: 0, level: 0, onRing: { level: 0, deg: 211 }, ringProps: [{ key: 'barber_pole', ddeg: 2 }], leaf: 'leaf_birch_glass', label: 'BARBERSHOP', action: { room: 'barbershop', at: 'egress' } },
                 { id: 'lecture',   deg: 0, level: 0, onRing: { level: 0, deg: 250 }, leaf: 'leaf_office', label: 'LECTURE HALL', action: { room: 'classroom', at: 'egress' } },
                 { id: 'cubicles',  deg: 0, level: 0, onRing: { level: 0, deg: 290 }, leaf: 'leaf_office', label: 'CUBICLE FLOOR', action: { room: 'cubicles', at: 'egress' } },
-                { id: 'hwing',     deg: 0, level: 0, onRing: { level: 0, deg: 228 }, leaf: 'leaf_white_wood', label: 'H-WING', action: { room: 'hwing_floor', at: 'ring' } },   // DOOR HQ 2.0 wave 4 (2026-11-26): the plain door, no plate
+                { id: 'hwing',     deg: 0, level: 0, onRing: { level: 0, deg: 228 }, leaf: 'leaf_white_wood', label: 'H-WING', locked: true, action: { room: 'hwing_floor', at: 'ring' } },   // DOOR HQ 2.0 wave 4 (2026-11-26): the plain door, no plate
                 { id: 'subway',    deg: 0, level: 0, onRing: { level: 0, deg: 350 }, leaf: 'leaf_white_wood', label: 'GARAGE', action: { room: 'garage', at: 'ring' } },   // DOOR HQ 2.0 wave 3 (2026-11-26): the stair down to the Garage (the Subway is through it); the id stays
                 /* ── the gallery (level 1) ── */
                 /* THE DIVISION OFFICES (wave 3, plans/2_lobby_upper_level_penthouse.png): glass fronts, no door, joined with no card
@@ -35298,7 +35298,7 @@ const DOOR_HQ = {
                 { id: 'continuity',    deg: 140, level: 1, open: { w: 14, h: 4.9 }, label: 'BUREAU OF CONTINUITY', action: { room: 'continuity', at: 'lobby' } },
                 { id: 'spirit',        deg: 220, level: 1, open: { w: 14, h: 4.9 }, label: 'SPIRIT REALM DIVISION', action: { room: 'spirit', at: 'lobby' } },
                 { id: 'extraterrestrial', deg: 288, level: 1, open: { w: 14, h: 4.9 }, label: 'EXTRATERRESTRIAL DIVISION', action: { room: 'extraterrestrial', at: 'lobby' } },
-                { id: 'hwing_upper', deg: 180, level: 1, leaf: 'leaf_white_wood', label: 'H-WING', action: { room: 'hwing_floor', at: 'upper' } },   // DOOR HQ 2.0 wave 4 (2026-11-26): H-Wing's plain door on the upper level, over the Foyer
+                { id: 'hwing_upper', deg: 180, level: 1, leaf: 'leaf_white_wood', label: 'H-WING', locked: true, action: { room: 'hwing_floor', at: 'upper' } },   // DOOR HQ 2.0 wave 4 (2026-11-26): H-Wing's plain door on the upper level, over the Foyer
                 { id: 'elevator',  deg: 330, level: 1, leaf: null, proc: 'elevator', label: 'ELEVATOR', action: { room: 'car', at: 'out' }, floors: ['B', 'G', 'M', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '14', 'PH'] },
             ],
             counters: [
@@ -37694,7 +37694,7 @@ const DOOR_HQ = {
             },
             doors: [
                 /* DOOR HQ 2.0 WAVE 4 (2026-11-26): H-Wing's plain door, in the drum's wall between the Ring stair (270) and the ramp's foot (290) */
-                { id: 'hwing', wall: 'free', x: -23.78, z: -4.19, face: 100, leaf: 'leaf_white_wood', label: 'H-WING', action: { room: 'hwing_floor', at: 'garage' }, desc: 'A plain door in the car park wall. No sign, no number.' },
+                { id: 'hwing', wall: 'free', x: -23.78, z: -4.19, face: 100, leaf: 'leaf_white_wood', label: 'H-WING', locked: true, action: { room: 'hwing_floor', at: 'garage' }, desc: 'A plain door in the car park wall. No sign, no number.' },
                 /* THE LIFT: the doors in the core's south face, the car's G stop */
                 { id: 'elevator', wall: 'free', x: 0, z: 3.85, face: 180, leaf: null, proc: 'elevator', wide: true,
                   label: 'ELEVATOR', action: { room: 'car', at: 'out' } },
@@ -39276,7 +39276,7 @@ const DOOR_HQ = {
             doors: [
                 { id: 'garage', wall: 'w', z: 0, leaf: 'leaf_wired_double', wide: true, label: 'GARAGE', action: { room: 'garage', at: 'works' } },
                 { id: 'ramp', wall: 's', x: 0, open: { w: 7, h: 5.2 }, label: 'FREIGHT RAMP', action: { room: 'labs', at: 'factory' } },
-                { id: 'hwing', wall: 'free', x: -28.39, z: 25.56, face: 48, leaf: 'leaf_white_wood', label: 'H-WING', action: { room: 'hwing_floor', at: 'works_top' }, desc: 'A plain door in the service corridor. It is not on the fire plan.' },   // DOOR HQ 2.0 wave 4: H-Wing's plain door, in the drum between the Boiler Room's and the Laundry's doors
+                { id: 'hwing', wall: 'free', x: -28.39, z: 25.56, face: 48, leaf: 'leaf_white_wood', label: 'H-WING', locked: true, action: { room: 'hwing_floor', at: 'works_top' }, desc: 'A plain door in the service corridor. It is not on the fire plan.' },   // DOOR HQ 2.0 wave 4: H-Wing's plain door, in the drum between the Boiler Room's and the Laundry's doors
             ],
             counters: [
                 { id: 'line', x: 12.25, z: 2.49, face: 285, plateY: 1.6, radius: 1.8, verb: 'READ', label: 'THE LINE', action: {} },
@@ -40574,7 +40574,7 @@ const DOOR_HQ = {
                 { id: 'factory', wall: 'n', x: 0, leaf: 'leaf_wired_double', wide: true, label: 'FREIGHT RAMP', action: { room: 'factory', at: 'ramp' }, desc: 'The ramp the carts come down. It is steeper than it looks from the top.' },
                 { id: 'cells', wall: 'n', x: -8.75, leaf: 'leaf_cell', label: 'THE CELLS', action: { room: 'cells', at: 'labs' }, desc: 'Bars, bunks, a drain in every floor. Nobody on the list is here. Nobody here is on the list.' },
                 { id: 'tank', wall: 'n', x: 8.75, leaf: 'leaf_hospital', label: 'THE TANK', action: { room: 'tank', at: 'labs' }, desc: 'Salt water at skin temperature, a lid, and nothing at all. An hour in it and the subjects report the building.' },
-                { id: 'hwing', wall: 'n', x: -17.5, leaf: 'leaf_white_wood', label: 'H-WING', action: { room: 'hwing_floor', at: 'works_middle' }, desc: 'A plain door. It was not here last time.' },   // DOOR HQ 2.0 WAVE 4 (2026-11-26): H-Wing's door on this level (the Mandela and Upside-Down Rooms are in H-Wing)
+                { id: 'hwing', wall: 'n', x: -17.5, leaf: 'leaf_white_wood', label: 'H-WING', locked: true, action: { room: 'hwing_floor', at: 'works_middle' }, desc: 'A plain door. It was not here last time.' },   // DOOR HQ 2.0 WAVE 4 (2026-11-26): H-Wing's door on this level (the Mandela and Upside-Down Rooms are in H-Wing)
                 /* the east wall: Clone Disposal, the lift, Room X (sealed) */
                 { id: 'disposal', wall: 'e', z: -8.75, leaf: 'leaf_cell', label: 'CLONE DISPOSAL', action: { room: 'disposal', at: 'labs' }, desc: 'A table, a gun, a chute. The form does not say which of you is the clone.' },
                 { id: 'elevator', wall: 'e', z: 0, leaf: null, proc: 'elevator', label: 'ELEVATOR', action: { room: 'car', at: 'out' }, desc: 'The car.' },
@@ -111383,7 +111383,8 @@ function hqDoorGateShut(g, profile) {
 }
 function doorSiteState(door, profile) {
     if (!door) return 'open';
-    if (door.sealed) return 'sealed';   // a door shut until the story opens it (the foyer's front door, ZONES_PLAN Z0)
+    if (door.sealed) return 'sealed';
+    if (door.locked) return 'sealed';   // THE LOCKED DOOR (2026-11-26, H-Wing's doors from DOOR HQ): shut for good, its E says "Locked." (map.js _hqOpenPanel)   // a door shut until the story opens it (the foyer's front door, ZONES_PLAN Z0)
     if (door.gate && hqDoorGateShut(door.gate, profile)) return 'sealed';   // THE STORY GATES (2026-11-20, the Bayside Mall): below
     const lv = (typeof doorClearance === 'function') ? doorClearance(profile).level : 1;
     if (door.minClearance && lv < door.minClearance) return 'clearance';
