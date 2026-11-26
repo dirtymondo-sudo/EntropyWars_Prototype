@@ -11,13 +11,15 @@
      PROP      a placed prop that blocks the walker (a footprint, or a mesh collider: three-renderer.js _hqPlaceProps / _hqMcWants)
      COUNTER   a standing kiosk (the round hall's directory; every other counter is only a plate in the air)
      STAIR     a rotunda flight (shell stairs, the gallery's flight)
-     AGENT     a room agent's post (`agents`), a person standing there
-     POST      a native / roster post (`npcSpots`, `onlineSpots`), a person standing there
-     CAST      a story character's post (data.js DOOR_CAST spots in this room)
-     ROUTE     a room with walkers (a patrol agent, a post that roams, the room's population): the walkers' loop stops AT this door's
-               landing (three-renderer.js _hqRoundsDoorLanding: 1.7 m in on a straight wall, 2.2 m in on a round one) and waits there
-               2-7 s (HQ_ROUNDS_DEFAULT.pauseMs). That stop is the renderer's rule, not the room's: the fix is one change in
-               _hqRoundsStops (a door stop is walked through or stood 3.5 m+ in), the row clears in every room at once.
+     AGENT     a room agent's post (`agents`), a person sitting / posed there
+     POST      a native / roster post (`npcSpots`, `onlineSpots`), a person sitting / posed there
+     CAST      a story character's post (data.js DOOR_CAST spots in this room), sitting / posed
+               THE CLEAR DOORWAY (three-renderer.js, 11-26): the game stands a STANDING person placed in a square just past it
+               (_hqOutOfDoorway), so only a posed / seated one (it stays with its chair) or one with no room past the square
+               (a closet-sized room, the 4 m bays) is listed. `--as-placed` lists every post where the data puts it.
+     ROUTE     (`--old-route` only) the old walkers' door stop, 1.7 / 2.2 m in, 2-7 s. Since THE CLEAR DOORWAY no walker stops in a
+               square: an exit is walked through, a door that leads nowhere is looked at from past its square, every other stop is
+               pushed out, an arrival never waits there, paths go round squares, and a walker inside one never blocks the officer.
    A row says `lane` when it stands in the walking line straight in through the opening (the opening's width + a body either side):
    that is a stop in your tracks. `edge` = inside the square but beside the line (a cabinet against the wall next to the frame).
    Both fail: the square is kept clear.
@@ -25,7 +27,8 @@
        node find-doorways.js                    every DOOR HQ room (the hand-built ones; retired rooms left out), a table + exit 1 on any fail
        node find-doorways.js <room id> [more]   those rooms, every row
        --json        print the rooms' JSON          --square <m>   the square's side (default 3.5)
-       --lane-only   list (and fail on) `lane` rows only            --no-route   leave the ROUTE rows out (the renderer fix pending)
+       --lane-only   list (and fail on) `lane` rows only            --people-only  only AGENT / POST / CAST rows
+       --as-placed   people where the data puts them (no move)      --old-route    the old ROUTE rows (before THE CLEAR DOORWAY)
    x, z are the room's own metres (the F3 line's). The goal is zero rows. Run it on every DOOR HQ room a PR builds or changes.
    Terrain rooms (the zones built on plots) are not read: their doors are find-doors.js's. Notes: docs/notes/hq-building-rooms.md
    "THE DOORWAY CHECK". */
@@ -37,7 +40,7 @@ const SQ = +opt('--square', 3.5) || 3.5;
 
 const D = require('./load-data.js').loadGameData();
 const res = JSON.parse(vm.runInContext(`(() => {
-    const SQ = ${SQ}, WANT = ${JSON.stringify(IDS)};
+    const SQ = ${SQ}, WANT = ${JSON.stringify(IDS)}, OLD_ROUTE = ${flag('--old-route')}, OLD_PEOPLE = ${flag('--as-placed')};
     const BODY = 0.34, PERSON = 0.4, D2R = Math.PI / 180, r2 = v => Math.round(v * 100) / 100;
     const CAT = DOOR_HQ.catalogue || {}, terr = new Set(hqTerrainRooms()), retired = DOOR_HQ.retired || {};
     const WALLS = { n: [0, 1], s: [0, -1], e: [-1, 0], w: [1, 0] };
@@ -112,41 +115,61 @@ const res = JSON.parse(vm.runInContext(`(() => {
                 const P = [polar(b0, st.rIn), polar(b1, st.rIn), polar(b1, ro), polar(b0, ro)]; const c = polar((b0 + b1) / 2, (st.rIn + ro) / 2);
                 things.push({ kind: 'STAIR', what: st.id || 'stair', x: c[0], z: c[1], level, poly: P }); } };
         if (!isBox && kind === 'rotunda') { (room.stairs || []).forEach(st => flight(st, 0, S.radius)); if (S.ring3 && S.ring3.stair) flight(S.ring3.stair, 1, S.ring3.outer); }
-        const person = (kind, list, what) => (list || []).forEach((s, i) => { if (!s) return; const q = at(s); things.push({ kind, what: what(s, i), x: q[0], z: q[1], level: s.level || 0, poly: circ(q[0], q[1], s.rad || PERSON) }); });
+        const person = (kind, list, what) => (list || []).forEach((s, i) => { if (!s) return; const q = at(s); things.push({ kind, what: what(s, i), x: q[0], z: q[1], level: s.level || 0, poly: circ(q[0], q[1], s.rad || PERSON), person: true, posed: !!s.pose }); });
         person('AGENT', room.agents, s => s.label || 'agent');
         person('POST', room.npcSpots, (s, i) => 'npcSpots[' + i + ']' + (s.race ? ' ' + s.race : s.cast ? ' ' + s.cast : ''));
         person('POST', room.onlineSpots, (s, i) => 'onlineSpots[' + i + ']');
         for (const cid in DOOR_CAST) { const m = DOOR_CAST[cid]; if (!m || m.hidden) continue; (m.spots || []).forEach((s, i) => {
             if (!s || hqCastSpotRoom(s) !== id) return; const sp = (hqCastSpotRoom(s) === s.room) ? s : hqRingSpot(s.room.slice(4), s); const q = at(sp);
-            things.push({ kind: 'CAST', what: (m.name || cid) + ' (DOOR_CAST.' + cid + '.spots[' + i + ']' + (s.during ? ', a quest stage' : '') + ')', x: q[0], z: q[1], level: sp.level || 0, poly: circ(q[0], q[1], s.rad || PERSON) }); }); }
+            things.push({ kind: 'CAST', what: (m.name || cid) + ' (DOOR_CAST.' + cid + '.spots[' + i + ']' + (s.during ? ', a quest stage' : '') + ')', x: q[0], z: q[1], level: sp.level || 0, poly: circ(q[0], q[1], s.rad || PERSON), person: true, posed: !!s.pose }); }); }
         /* ── THE WALKERS: does anybody walk this room's loop? ── */
         const why = [];
         (room.agents || []).forEach(a => { if (a && a.patrol && !a.pose) why.push('patrol agent ' + (a.label || '')); });
         (room.npcSpots || []).forEach((s, si) => { if (s && !s.stay && !s.pose && !s.clone && s.roam !== false && (s.roam === true || HQ_POPULATION_RULES.spotRoamShare > 0)) why.push('npcSpots[' + si + '] may roam'); });
         try { const pop = hqRoomPopulation(id, null, {}); if (pop && pop.draw && pop.draw.length && !room.placed) why.push(pop.draw.length + ' extras (population)'); } catch (e) {}
         /* ── THE CHECK ── */
-        doors.forEach(d => {
-            const tx = -d.nz, tz = d.nx, hs = SQ / 2;
-            const sq = [[-hs, 0], [hs, 0], [hs, SQ], [-hs, SQ]].map(([a, b]) => [d.x + tx * a + d.nx * b, d.z + tz * a + d.nz * b]);
+        const sqOf = d => { const tx = -d.nz, tz = d.nx, hs = SQ / 2; return { d, tx, tz, hs, poly: [[-hs, 0], [hs, 0], [hs, SQ], [-hs, SQ]].map(([a, b]) => [d.x + tx * a + d.nx * b, d.z + tz * a + d.nz * b]) }; };
+        const SQS = doors.map(sqOf);
+        /* THE CLEAR DOORWAY (three-renderer.js _hqOutOfDoorway, copied): a standing person inside a square is stood past it in the game
+           (straight in first, then beside it); a posed or seated one stays. The game asks the floor; here a place counts when it is inside
+           the room's walls and on no blocking prop. */
+        const PADP = 0.45, inRoom = (x, z) => { if (isBox) return Math.abs(x) < (S.w || 10) / 2 - PADP && Math.abs(z) < (S.d || 10) / 2 - PADP; const r = Math.hypot(x, z);
+            if (kind === 'bay') return r > (S.rIn || 0) + PADP && r < (S.rOut || 30) - PADP; return r < (S.radius || 20) - PADP; };
+        const inSq = (x, z, level, p) => SQS.find(Q => { if ((Q.d.level || 0) !== (level || 0)) return false; const dx = x - Q.d.x, dz = z - Q.d.z, b = dx * Q.d.nx + dz * Q.d.nz, a = dx * Q.tx + dz * Q.tz; return b > -0.3 && b < SQ + p && Math.abs(a) < Q.hs + p; });
+        const props = things.filter(t => t.kind === 'PROP' || t.kind === 'COUNTER' || t.kind === 'STAIR');
+        const standPast = t => { const Q = inSq(t.x, t.z, t.level, PADP); if (!Q) return null; const a = (t.x - Q.d.x) * Q.tx + (t.z - Q.d.z) * Q.tz, b = (t.x - Q.d.x) * Q.d.nx + (t.z - Q.d.z) * Q.d.nz;
+            const deep = SQ + PADP + 0.1, side = Q.hs + PADP + 0.1, sg = a >= 0 ? 1 : -1;
+            for (const [ta, tb] of [[a, deep], [sg * side, Math.max(b, 0.6)], [-sg * side, Math.max(b, 0.6)], [a, deep + 1.2], [sg * side, deep], [-sg * side, deep]]) {
+                const x = Q.d.x + Q.tx * ta + Q.d.nx * tb, z = Q.d.z + Q.tz * ta + Q.d.nz * tb;
+                if (inSq(x, z, t.level, PADP) || !inRoom(x, z)) continue; const body = circ(x, z, PERSON); if (props.some(o => (o.level || 0) === (t.level || 0) && hits(body, o.poly))) continue;
+                return [x, z]; }
+            return false; };
+        let moved = 0;
+        things.forEach(t => { if (!t.person || t.posed || OLD_PEOPLE) return; const to = standPast(t); if (to === null) return; if (to) { moved++; t.x = to[0]; t.z = to[1]; t.poly = circ(to[0], to[1], PERSON); } else t.what += ' (no place past the square)'; });
+        SQS.forEach(Q => {
+            const d = Q.d, tx = Q.tx, tz = Q.tz, sq = Q.poly;
             const laneH = d.half + BODY;
             const lane = [[-laneH, 0], [laneH, 0], [laneH, SQ], [-laneH, SQ]].map(([a, b]) => [d.x + tx * a + d.nx * b, d.z + tz * a + d.nz * b]);
             things.forEach(t => {
                 if ((t.level || 0) !== d.level || !hits(sq, t.poly)) return;
                 const dx = t.x - d.x, dz = t.z - d.z, inM = dx * d.nx + dz * d.nz, al = dx * tx + dz * tz;
-                rows.push({ door: d.id + (d.side !== 'in' ? ' (' + d.side + ')' : ''), doorLabel: d.label, kind: t.kind, what: t.what, x: r2(t.x), z: r2(t.z), in: r2(inM), off: r2(al), where: hits(lane, t.poly) ? 'lane' : 'edge', level: d.level });
+                rows.push({ door: d.id + (d.side !== 'in' ? ' (' + d.side + ')' : ''), doorLabel: d.label, kind: t.kind, what: t.what + (t.posed ? ' (posed: stays with its seat)' : ''), x: r2(t.x), z: r2(t.z), in: r2(inM), off: r2(al), where: hits(lane, t.poly) ? 'lane' : 'edge', level: d.level });
             });
-            if (why.length) { const k = isBox ? 1.7 : 2.2; rows.push({ door: d.id + (d.side !== 'in' ? ' (' + d.side + ')' : ''), doorLabel: d.label, kind: 'ROUTE', what: 'walkers stop and wait here (' + why.slice(0, 2).join(', ') + (why.length > 2 ? ', +' + (why.length - 2) : '') + ')', x: r2(d.x + d.nx * k), z: r2(d.z + d.nz * k), in: k, off: 0, where: 'lane', level: d.level }); }
+            /* ROUTE (the old renderer only, --old-route): the walkers' door stop stood 1.7 / 2.2 m in and waited 2-7 s; since THE CLEAR DOORWAY
+               an exit is walked through, a door that leads nowhere is looked at from past the square, no other stop is made in one */
+            if (OLD_ROUTE && why.length) { const k = isBox ? 1.7 : 2.2; rows.push({ door: d.id + (d.side !== 'in' ? ' (' + d.side + ')' : ''), doorLabel: d.label, kind: 'ROUTE', what: 'walkers stop and wait here (' + why.slice(0, 2).join(', ') + (why.length > 2 ? ', +' + (why.length - 2) : '') + ')', x: r2(d.x + d.nx * k), z: r2(d.z + d.nz * k), in: k, off: 0, where: 'lane', level: d.level }); }
         });
-        out.push({ id, label: room.label || id, kind, doors: doors.length, walkers: why.length, rows });
+        out.push({ id, label: room.label || id, kind, doors: doors.length, walkers: why.length, moved, rows });
     });
     return JSON.stringify(out);
 })()`, D));
 
 let list = res;
-list.forEach(r => { if (!r.rows) return; if (flag('--lane-only')) r.rows = r.rows.filter(w => w.where === 'lane'); if (flag('--no-route')) r.rows = r.rows.filter(w => w.kind !== 'ROUTE'); });
+list.forEach(r => { if (!r.rows) return; if (flag('--lane-only')) r.rows = r.rows.filter(w => w.where === 'lane'); if (flag('--no-route')) r.rows = r.rows.filter(w => w.kind !== 'ROUTE'); if (flag('--people-only')) r.rows = r.rows.filter(w => /AGENT|POST|CAST|ROUTE/.test(w.kind)); });
 if (flag('--json')) { console.log(JSON.stringify(list, null, 1)); process.exit(list.some(r => r.rows && r.rows.length) ? 1 : 0); }
 const pad = (s, n) => { s = String(s); return s.length >= n ? s.slice(0, n) : s + ' '.repeat(n - s.length); };
-let bad = 0, nrows = 0; const byKind = {};
+let bad = 0, nrows = 0, nmoved = 0; const byKind = {};
+list.forEach(r => { nmoved += r.moved || 0; });
 list.forEach(r => {
     if (r.err) { console.log(`${r.id}: ${r.err}`); bad++; return; }
     if (!r.rows.length) { if (IDS.length) console.log(`OK    ${r.id} (${r.label}) · ${r.doors} doors clear`); return; }
@@ -155,5 +178,5 @@ list.forEach(r => {
     r.rows.forEach(w => console.log(`  ${pad(w.door, 26)} ${pad(w.kind, 7)} ${pad(w.where, 4)}  in ${pad(w.in.toFixed(2) + ' m', 7)} off ${pad(w.off.toFixed(2) + ' m', 8)} x ${pad(w.x, 7)} z ${pad(w.z, 7)} ${w.what}`));
 });
 const ok = list.length - bad;
-console.log(`\n[doorways] ${list.length} rooms · ${ok} clear · ${bad} fail · ${nrows} rows${Object.keys(byKind).length ? ' (' + Object.entries(byKind).map(([k, v]) => k + ' ' + v).join(', ') + ')' : ''} · square ${SQ} m`);
+console.log(`\n[doorways] ${list.length} rooms · ${ok} clear · ${bad} fail · ${nrows} rows${Object.keys(byKind).length ? ' (' + Object.entries(byKind).map(([k, v]) => k + ' ' + v).join(', ') + ')' : ''} · square ${SQ} m · ${nmoved} standing people the game stands past a square (--as-placed: where the data puts them)`);
 process.exit(bad ? 1 : 0);
