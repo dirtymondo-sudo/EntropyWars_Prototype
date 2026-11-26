@@ -97269,6 +97269,75 @@ const ThreeRenderer = (function () {
             for (var cx = -1; cx <= 1; cx += 2) { var c = new THREE.Mesh(new THREE.CylinderGeometry(0.004 * U, 0.004 * U, 0.16 * U, 4), cord); c.position.set(cx * (W / 2 - 0.02) * U, (H + 0.06) * U, 0.03 * U); c.rotation.z = cx * 0.35; g.add(c); }
             return g;
         },
+        /* DOOR STORE (DOOR HQ 2.0, 2026-11-26; LOOK_BOOK.md "Door Store": "doors standing in rows like cars in a showroom, each in its own
+           spotlight"). A capture door on its plinth (front +z): the plinth in the tier's colour (T1 steel, T2 brass, T3 vault black, the
+           tuned door dark with the six type colours), the D.O.O.R. frame in teal metal, the catalogue leaf shut in it (T3 the vault leaf,
+           as the battle draws it), the jamb lamps (a pair a tier; the tuned door one lamp a type), a halo where the room's light falls on it,
+           and a tag on the plinth's front: the item's name and price, read from ITEM_RULES (`p.item`). A row with `p.leaf` and no item is a
+           display door: the same stand, no lamps, no tag. */
+        store_door: function (U, p) {
+            p = p || {};
+            var g = new THREE.Group();
+            var R = (p.item && typeof ITEM_RULES !== 'undefined') ? ITEM_RULES[p.item] : null;
+            var tier = R ? (R.tier | 0) || 1 : 0, tuned = !!(R && R.tuned);
+            var leafKey = p.leaf || (tier >= 3 ? 'leaf_vault' : tier === 2 ? 'leaf_security' : 'leaf_wooden');
+            var cat = (_hqData().catalogue || {})[leafKey] || null;
+            var wide = !!(cat && cat.wide);
+            var oh = 2.15, ow = (cat && cat.aspect > 0) ? Math.max(0.9, Math.min(wide ? 2.0 : 1.2, cat.aspect * oh)) : 1.0;
+            var jw = 0.11, lh = 0.14, pd = 0.2, PH = 0.28, PW = ow + jw * 2 + 0.7, PD = 1.05;
+            /* the plinth */
+            var PCOL = tuned ? 0x26262b : tier >= 3 ? 0x1e1e22 : tier === 2 ? 0xb8893a : tier === 1 ? 0x8c939a : 0x3a3a3e;
+            var plMat = _hqMat(null, 1, 1, { color: PCOL, shininess: tier === 2 ? 70 : 35, specular: tier === 2 ? 0x8a6a30 : 0x444448 });
+            var plinth = _hqBox(PW, PH, PD, plMat); plinth.position.y = (PH / 2) * U; g.add(plinth);
+            var edge = _hqBox(PW + 0.04, 0.03, PD + 0.04, _hqMat(null, 1, 1, { color: 0xb8893a, shininess: 80, specular: 0x8a6a30 })); edge.position.y = (PH + 0.015) * U; g.add(edge);
+            /* the frame: teal metal, as the battle's door wears it */
+            var frMat = _hqMat('teal', 0.6, 2.2, { color: 0xc9d3d1, shininess: 30, specular: 0x555555 });
+            var y0 = PH + 0.03;
+            var jL = _hqBox(jw, oh + lh, pd, frMat); jL.position.set(-(ow / 2 + jw / 2) * U, (y0 + (oh + lh) / 2) * U, 0); g.add(jL);
+            var jR = _hqBox(jw, oh + lh, pd, frMat); jR.position.set((ow / 2 + jw / 2) * U, (y0 + (oh + lh) / 2) * U, 0); g.add(jR);
+            var lin = _hqBox(ow + jw * 2, lh, pd, frMat); lin.position.set(0, (y0 + oh + lh / 2) * U, 0); g.add(lin);
+            /* the leaf, shut in the frame */
+            if (cat && cat.file && typeof _miscModelInstance === 'function') {
+                var targetW = (ow - 0.01) * U, yawDeg = cat.yaw || 0;
+                var lg = _miscModelInstance(_hqModelUrl(cat), true, (oh - 0.015) * U, {
+                    fit: 'height', matPick: _hqPropMatPick,
+                    onDone: function (m, s, bb) {
+                        var c0 = m.children[0]; if (c0 && yawDeg) c0.rotation.y = yawDeg * Math.PI / 180;
+                        var sideways = (Math.abs(yawDeg) % 180) === 90;
+                        var w = (sideways ? (bb.max.z - bb.min.z) : (bb.max.x - bb.min.x)) * s;
+                        if (w > 0) m.scale.x = cat.aspect ? (targetW / w) : Math.min(1, targetW / w);
+                        m.scale.z = Math.min(1, m.scale.x);
+                        if (_hq) _hq.dirty = true;
+                    }
+                });
+                if (lg) { lg.position.set(0, y0 * U, 0); g.add(lg); }
+            }
+            /* the jamb lamps */
+            if (R) {
+                var COLS = (typeof CAPTURE_TYPE_COLORS !== 'undefined') ? CAPTURE_TYPE_COLORS : {};
+                var lamp = function (col, x, y) { var m = new THREE.Mesh(new THREE.BoxGeometry(jw * 0.7 * U, 0.12 * U, pd * 1.25 * U), _hqBasic(col)); m.position.set(x * U, y * U, 0); g.add(m); };
+                if (tuned) {
+                    ['human', 'divine', 'unholy', 'tech', 'anomaly', 'alien'].forEach(function (t, i) {
+                        var side = i < 3 ? -1 : 1, k = i % 3;
+                        lamp(COLS[t] || 0xffffff, side * (ow / 2 + jw / 2), y0 + oh * (0.35 + 0.22 * k));
+                    });
+                } else {
+                    for (var pi = 0; pi < Math.min(3, tier); pi++) for (var sd = -1; sd <= 1; sd += 2) lamp(0x5ce0d0, sd * (ow / 2 + jw / 2), y0 + oh * (0.45 + 0.2 * pi));
+                }
+            }
+            /* where the light falls: a soft pool on the floor in front, a halo over the lintel */
+            var pool = _hzGlowSprite(2.6 * U, 0xffe2b8, 0.16, 0.0, 0.0, 0.0); pool.position.set(0, (y0 + oh + 0.5) * U, 0.1 * U); g.add(pool);
+            /* the tag on the plinth's front: the name, the price (read live) */
+            if (R && typeof _hzTextTex === 'function') {
+                var nm = String(R.name || p.item).toUpperCase(), pr = (R.shopPrice | 0) + ' HAZARD PAY';
+                var tex = _hzTextTex('hq_storetag_' + p.item + '_' + (R.shopPrice | 0), [nm, pr], { w: 512, h: 128, bg: '#1a1a1d', color: '#f2e6cc', border: '#b8893a', pad: 0.1, sizes: [44, 32], font: '"Arial Narrow", Arial, sans-serif' });
+                if (tex) {
+                    var tag = new THREE.Mesh(new THREE.PlaneGeometry(1.0 * U, 0.22 * U), new THREE.MeshLambertMaterial({ map: tex, emissive: 0x2a2620, emissiveIntensity: 0.4 }));
+                    tag.position.set(0, (PH / 2) * U, (PD / 2 + 0.006) * U); g.add(tag);
+                }
+            }
+            return g;
+        },
     });
     /* THE SUBWAY's NAME BOARD (2026-11-18, data.js DOOR_HQ.subway): an enamel plate on the wall (front +z), white capitals on dark green in a
        white line, the line's name small under the station's. It reads its own placement row (`p.text`: data.js hqSubwayApply writes the

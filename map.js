@@ -4682,17 +4682,18 @@
            back at half. The GOLD moves through ProfileSystem.spendGold (the server's wallet through /api/economy/spend when there is
            one, else the local mirror) BEFORE the goods go into the bag (data.js hqShopBuyApply); a sell credits the refund the
            same way after the bag gives the item up (hqShopSell). The panel re-renders in place. ── */
-        function _hqPharmacyHtml() {
+        /* DOOR HQ 2.0 (2026-11-26): ONE shop panel, two shelves. The counter's `action.shelf` picks the stock (data.js HQ_DISPENSARY.shelves:
+           the Door Store's till = `doors`, a vending machine = `potions`); the header is the counter's own name and nothing under it. */
+        function _hqPharmacyHtml(shelf, title) {
             const p = _hqProfile();
             const gold = (p && p.account && p.account.gold) | 0;
-            const stock = (typeof window.hqShopStock === 'function') ? window.hqShopStock() : [];
+            const stock = (typeof window.hqShopStock === 'function') ? window.hqShopStock(shelf || null) : [];
             const bag = (typeof window.hqBagList === 'function') ? window.hqBagList(p) : [];
             const inBag = k => { const r = bag.find(x => x.key === k); return r ? r.n : 0; };
             const busy = !!_hqShopBusy;
-            let html = `<div class="hq-panel-hd"><b>THE HATCH</b><span>ROOM 911 · THE DISPENSARY · 💰 ${gold.toLocaleString()} HAZARD PAY · THE BAG ${bag.reduce((a, r) => a + r.n, 0)}</span></div>`;
+            let html = `<div class="hq-panel-hd"><b>${_hqEsc(String(title || 'DOOR STORE').toUpperCase())}</b><span>💰 ${gold.toLocaleString()}</span></div>`;
             if (_hqShopMsg) { html += `<div class="hq-pp-msg${_hqShopMsg.bad ? ' bad' : ''}">${_hqShopMsg.html}</div>`; _hqShopMsg = null; }
-            html += '<p class="hq-panel-desc">A hatch in the wall, a shelf behind it, a pharmacist behind the shelf. Hazard Pay only. Half back on anything unopened.</p>';
-            if (!p) html += '<p class="hq-panel-note">NO CARD ON FILE — sign in at Reception; the pharmacist sells to a name.</p>';
+            if (!p) html += '<p class="hq-panel-note">NO ID CARD ON FILE.</p>';
             html += '<div class="hq-shop">';
             stock.forEach(r => {
                 const have = inBag(r.key), room = r.max - have;
@@ -4707,14 +4708,14 @@
                     + `</span></div>`;
             });
             html += '</div>';
-            const extra = bag.filter(r => !stock.some(x => x.key === r.key));
+            const onShelf = (shelf && window.HQ_DISPENSARY && window.HQ_DISPENSARY.shelves && window.HQ_DISPENSARY.shelves[shelf]) || null;
+            const extra = bag.filter(r => !stock.some(x => x.key === r.key) && (!onShelf || onShelf(r.key)));
             if (extra.length) {
-                html += `<div class="hq-pp-sec"><b>ALSO IN THE BAG</b><span>THE PHARMACIST BUYS THESE TOO</span></div><div class="hq-shop">`;
+                html += `<div class="hq-pp-sec"><b>ALSO IN THE BAG</b><span></span></div><div class="hq-shop">`;
                 extra.forEach(r => { html += `<div class="hq-shop-row"><i class="hq-shop-icon">${r.icon}</i><b>${_hqEsc(r.name)} × ${r.n}</b><span>${_hqEsc(r.desc)}</span><small></small><em class="hq-shop-price"></em><span class="hq-shop-btns">${r.sell ? `<button class="hq-btn hq-btn-xs danger" data-sell="${_hqEsc(r.key)}" data-n="1"${busy ? ' disabled' : ''}>SELL 1 · +${r.sell}</button>` : '<i class="hq-chip dim">NO TAKERS</i>'}</span></div>`; });
                 html += '</div>';
             }
-            html += '<div class="hq-panel-actions"><button class="hq-btn" data-close="1">THAT IS ALL</button></div>';
-            html += '<p class="hq-panel-note">What you buy goes into THE BAG. Every launch tops the party\'s pockets up from it; ESC · ITEMS uses it on the party between fights. Revival Tonics and Elixirs are field-only — they never ride into a battle.</p>';
+            html += '<div class="hq-panel-actions"><button class="hq-btn" data-close="1">CLOSE</button></div>';
             return html;
         }
         let _hqShopBusy = false, _hqShopMsg = null;
@@ -4722,7 +4723,7 @@
             const body = _hqEl('hqPanelBody');
             const t = _hqPanelTarget;
             if (!body || !t || t.kind !== 'counter' || !t.counter || !t.counter.action || t.counter.action.overlay !== 'pharmacy') return;
-            body.innerHTML = _hqPharmacyHtml() + '<p class="hq-panel-foot">ESC · RIGHT CLICK · CLOSE</p>';
+            body.innerHTML = _hqPharmacyHtml(t.counter.action.shelf, t.counter.label) + '<p class="hq-panel-foot">ESC · RIGHT CLICK · CLOSE</p>';
         }
         /* the Quartermaster's SUPPLIES shelf (ui.js _shopBuySupply) reads the hatch's last word */
         window._hqShopTakeMsg = function () { const m = _hqShopMsg; _hqShopMsg = null; return m; };
@@ -4740,7 +4741,7 @@
             if (!paid || !paid.ok) { _hqShopMsg = { html: `<b>NO SALE</b> ${_hqEsc(String((paid && paid.error) || 'THE WALLET SAID NO').toUpperCase())}`, bad: true }; _hqShopRerender(); try { playSfx('uiError'); } catch (e) {} return false; }
             const r = _hqPartyTx(p => window.hqShopBuyApply(p, key, n));
             if (r && r.ok) { _hqShopMsg = { html: `<b>SOLD</b> ${r.added} × ${_hqEsc(String(r.name).toUpperCase())} · −${q.cost} · ${r.n} IN THE BAG` }; try { playSfx('uiButtonConfirm'); } catch (e) {} }
-            else { _hqShopMsg = { html: `<b>PAID, NOT BAGGED</b> THE BAG REFUSED IT — TELL THE QUARTERMASTER`, bad: true }; }
+            else { _hqShopMsg = { html: `<b>PAID, NOT BAGGED</b> THE BAG REFUSED IT`, bad: true }; }
             try { if (typeof window._refreshWallets === 'function') window._refreshWallets(); } catch (e) {}
             _hqShopRerender();
             return !!(r && r.ok);
@@ -8938,7 +8939,7 @@
             if (act.overlay === 'transcript') return _hqTranscriptHtml();
             if (act.overlay === 'chart') return _hqChartHtml();
             if (act.overlay === 'intake') return _hqIntakeHtml();
-            if (act.overlay === 'pharmacy') return _hqPharmacyHtml();   // THE DISPENSARY (Room 911): buy · sell
+            if (act.overlay === 'pharmacy') return _hqPharmacyHtml(act.shelf, c.label);   // DOOR HQ 2.0: the Door Store's till (doors) · a vending machine (potions)
             if (act.overlay === 'nav') return _hqNavHtml();   // THE SHIP'S ONE DOOR: the bridge's nav console
             if (act.overlay === 'training') return _hqTrainingHtml();
             if (act.overlay === 'crossing' && c.proc === 'battle_marker') return _hqMarkerHtml(t);   // THE MARKER (2026-09-20): the party's fight, no terminal

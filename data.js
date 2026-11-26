@@ -33486,6 +33486,11 @@ const DOOR_HQ = {
         music_box:       { proc: 'music_box',       h: 0.16, foot: 0,    glow: { y: 0.18, size: 0.6, color: 0xffd8a0 } },   // a tabletop: the lid up, the dancer turning (a ticker)
         price_tag:       { proc: 'price_tag',       h: 1.3,  foot: 0 },                                            // a tag on a stand beside a floor model (reads its own row's `text`)
         sale_banner:     { proc: 'sale_banner',     h: 0.6,  foot: 0,    wall: true, mount: 2.4, depth: 0.03 },    // EVERYTHING MUST GO (reads `text`)
+        /* DOOR STORE (DOOR HQ 2.0, 2026-11-26): a capture door on its plinth under its own light. The row's `item` (an ITEM_RULES capture
+           door) picks the leaf, the lamps (one pair a tier; the tuned door the six type colours) and the tag (name + price, read live);
+           a row with `leaf` instead is a display door with no tag. three-renderer.js _hqProcBuilders.store_door */
+        store_door:      { proc: 'store_door',      h: 2.8,  foot: 0.8, rect: { hw: 0.95, hd: 0.6 }, block: true,
+                           light: { color: 0xffe2b8, intensity: 0.9, dist: 6.5, y: 4.6 } },
         station_text:    { proc: 'station_sign',    h: 0.62, foot: 0,    wall: true, mount: 2.25, depth: 0.04 },   // the same board with fixed words (DOOR HQ's own platform)
         station_sign:    { proc: 'station_sign',    h: 0.62, foot: 0,    wall: true, mount: 2.25, depth: 0.04 },   // THE SUBWAY (2026-11-18): the platform's name board, an enamel plate (reads `text`: the station, the line under it; hqSubwayApply writes it per station)
         nightmare_bloom: { proc: 'nightmare_bloom', h: 1.9, foot: 0.7, block: true, glow: { y: 1.2, size: 2.2, color: 0xff3a4a }, light: { color: 0xff4a4a, intensity: 0.8, dist: 8, y: 1.3 } },   // a flower whose petals are teeth, opening and closing (a ticker)
@@ -34352,6 +34357,7 @@ const DOOR_HQ = {
        but are never entered: the 36-plot room `site_prebuilt_fairy_forest_plots` stood for all four; since ONE WORLD (2026-11-17) that room is retired too and the
        Woods are three rooms at their v13 places (the Clearing + Dead Man's Cave, the Redwood Trail, Bohemian Grove) + the route rooms of the links L3 and L4. */
     retired: { ring_m: 'central_egress',   /* THE EIGHT DOORS (2026-11-18): the mezzanine ring held only bay doors; its four doors in the Main Hall are closed */
+               dispensary: 'doorstore',   /* DOOR HQ 2.0 WAVE 2 (2026-11-26, mondo: "The Hatch/The Dispensary/Shop needs to be renamed to Door Store and only door store"): Room 911 off the Medical Wing is the Door Store off the Lobby; the wing's door to it is cut */
                reception: 'central_egress',   /* DOOR HQ 2.0 WAVE 1 (2026-11-26, mondo: "Rhonda's desk is the reception, she is the receptionist"): its door is cut, its two counters stand at her desk */
                site_prebuilt_downtown_mall: 'site_prebuilt_bayside_mall',   /* THE BAYSIDE MALL (2026-11-20): the old hall, 96 x 64 m behind a 28 m building, is this one building now (bake-mall.js) */
         site_prebuilt_cyberpunk_streets: 'site_prebuilt_downtown_streets', site_prebuilt_cyberpunk_noodle: 'site_prebuilt_downtown_streets',   /* THE DOOR AUDIT (2026-11-18, mondo: the new Cyberpunk City is "a reskin/reimagining of current disaster city"): the old Cyberpunk City's two rooms are never entered (its four ways in are cut); they stand only as the fight board's source */
@@ -34491,6 +34497,7 @@ const DOOR_HQ = {
                                 editor (keep it in the main menu for now)", "Get rid of the reception room, Rhonda's desk is the reception"): the Shop, the
                                 Party Builder and the Map Editor stay on the main menu; the ID card and the intake sheet are counters at Rhonda's desk */
                              'quartermaster', 'engineering', 'reception'],
+            medwing: ['dispensary'],   // DOOR HQ 2.0 WAVE 2 (2026-11-26): the Dispensary is the Door Store, off the Lobby (DOOR_HQ.retired.dispensary)
             tunnel: ['carnival'], mandela: ['mirrors'], site_prebuilt_area51_ow_circus: ['tunnel', 'mirrors'],   // the two doors to the Circus that stood open from the first minute
             dungeon: ['oubliette'], site_prebuilt_hollow_earth_ug_cavern: ['dungeon'],                              // the Dungeon's moving wall to the Cavern
             site_prebuilt_fairy_forest_ow_ritual: ['lookingglass'], site_prebuilt_camelot_ow_forest: ['deadtree'],   // the dead tree: Bohemian Grove and Camelot's Forest touch by a trail
@@ -36581,6 +36588,68 @@ const DOOR_HQ = {
                 'Half back on anything unopened. The pharmacist decides what counts as opened.',
             ],
             spawn: { x: -2.2, z: 1.6, face: 0 },
+        },
+        /* ── DOOR STORE (DOOR HQ 2.0 wave 2, 2026-11-26; docs/plans/door-hq-2/FLOOR_PLANS.md + LOOK_BOOK.md "Door Store") ── mondo: "The
+           Hatch/The Dispensary/Shop needs to be renamed to Door Store and only door store and no subtitles. Needs to be a physical store/shop
+           that sells door. No buying races in story mode. No need for the party builder to be there either. Potions should be sold from the
+           vending machines". It replaces the Dispensary (DOOR_HQ.retired.dispensary). A showroom off the Lobby with an open front, no door
+           (the `lobby` row's `open`, HQ_STAGE_RULES.round: no card): the capture doors stand on plinths like cars, each under its own light
+           (catalogue `store_door`, three-renderer.js; the tag reads ITEM_RULES, so a price change shows on the floor). The till sells the
+           doors shelf only (HQ_DISPENSARY.shelves.doors); the potions are the vending machines' (hqVendingApply). 21 x 17.5 m, 7 m high. ── */
+        doorstore: {
+            label: 'DOOR STORE',
+            kind: 'box',
+            shell: {
+                w: 21, d: 17.5, h: 7,
+                wallH: 7, dadoH: 1.05,
+                floor: 'urban:WoodFlooring1c', wall: 'drywall', dado: 'drywall', trim: 'gunmetal', ceiling: 'ceiling',
+                wallColor: 0x3c3b40, dadoColor: 0x232327, ceilColor: 0x45454a,   // the look book: charcoal walls, the doors carry the light
+                pipes: false,
+                light: { x: 0, z: -1 },
+                mood: { light: 0xffe7c2, ambient: 0.5 },
+                plate: { x: 0, z: -8.6, y: 5.4 },
+            },
+            doors: [
+                /* the open front onto the Lobby: no leaf, no frame (the Lobby's `doorstore` row is the same 14 m opening) */
+                { id: 'lobby', wall: 's', x: 0, open: { w: 14, h: 4.5 },
+                  label: 'LOBBY',
+                  action: { room: 'central_egress', at: 'doorstore' } },
+            ],
+            counters: [
+                { id: 'till', x: 0, z: -5.4, face: 0, plateY: 1.9, radius: 2.2, verb: 'SHOP',
+                  label: 'DOOR STORE', action: { overlay: 'pharmacy', shelf: 'doors' } },
+            ],
+            props: [
+                /* ── the stock (face 180 = the front toward the Lobby, +z): an arc of plinths facing the Lobby, the vault in the middle behind its ropes ── */
+                { key: 'store_door', item: 'captureDoor',      x: -7.0, z: 0.6,  face: 198 },
+                { key: 'store_door', item: 'captureDoor2',     x: -3.6, z: -1.1, face: 189 },
+                { key: 'store_door', item: 'captureDoor3',     x: 0,    z: -2.3, face: 180 },
+                { key: 'store_door', item: 'captureDoorTuned', x: 3.6,  z: -1.1, face: 171 },
+                { key: 'store_door', leaf: 'leaf_futuristic',  x: 7.0,  z: 0.6,  face: 162 },   // the showroom's one not for sale
+                { key: 'rope_stanchion', x: -1.7, z: -0.9, face: 0 },
+                { key: 'rope_stanchion', x: 1.7,  z: -0.9, face: 0 },
+                /* ── the window display either side of the open front ── */
+                { key: 'store_door', leaf: 'leaf_glass_exec', x: -8.6, z: 6.6, face: 215 },
+                { key: 'store_door', leaf: 'leaf_hotel',      x: 8.6,  z: 6.6, face: 145 },
+                /* ── the till at the back ── */
+                { key: 'booking_desk',  x: 0, z: -6.6, face: 0 },     // the screens to the back wall, where a clerk would stand
+                { key: 'wall_clock',    wall: 'n', x: -5.5, mount: 4.0 },
+                { key: 'potted_plant',  x: -3.2, z: -7.8 },
+                { key: 'potted_plant',  x: 3.2,  z: -7.8 },
+                /* ── the customers' corner (west) and the key case (east) ── */
+                { key: 'psx_sofa_3',    x: -9.6, z: -4.4, face: 90 },
+                { key: 'coffee_table',  x: -8.0, z: -4.4 },
+                { key: 'brochure_rack', wall: 'w', z: -1.4, mount: 1.1 },
+                { key: 'jewelry_case',  x: 9.2, z: -4.4, face: 270 },
+                { key: 'brochure_rack', wall: 'e', z: -1.4, mount: 1.1 },
+                { key: 'potted_plant',  x: -9.8, z: 3.2 },
+                { key: 'potted_plant',  x: 9.8,  z: 3.2 },
+                /* ── the ceiling ── */
+                { key: 'psx_ceiling_lamp_2_on', x: -5.25, z: 3.5, ceil: true },
+                { key: 'psx_ceiling_lamp_2_on', x: 5.25,  z: 3.5, ceil: true },
+                { key: 'psx_ceiling_lamp_2_on', x: 0,     z: -6.0, ceil: true },
+            ],
+            spawn: { x: 0, z: 6.0, face: 0 },
         },
         /* ── MEDICAL (DOOR HQ 2.0, 2026-11-26, mondo: "look more like a hospital, think Pokémon center") — a clean-sheet rebuild.
            The brightest room in the building, open to the Lobby with no door (the `lobby` row: a 14 m by 4.5 m opening, the Lobby
@@ -87999,6 +88068,8 @@ const HQ_STAGE_RULES = {
            doors (hqStageRoundJoins). In the hall every joined room stands beside it; in a joined room only the hall does (the
            hall's other joined doors are plain doors until you step into the hall). A box room has one row at most. */
         { a: 'central_egress', door: 'office', b: 'office', bDoor: 'egress' },   // YOUR OFFICE ⇄ the main hall, the closet door at 135°
+        /* DOOR STORE (DOOR HQ 2.0 wave 2, 2026-11-26): the Lobby's open front (its `doorstore` row, no leaf) ⇄ the store's `lobby` opening */
+        { a: 'central_egress', door: 'doorstore', b: 'doorstore', bDoor: 'lobby' },
     ],
 };
 /* THE EXPLORATION DAY (§4.4 — Phase 3, 2026-09-26). One clock for every outdoor room (2026-10-17: hqRoomClock; was every zone with `clock: true`): a day of `dayMin` real
@@ -88396,13 +88467,11 @@ const HQ_WORLD = {
         medwing: { label: 'THE MEDICAL WING', ground: 'hq', hub: 'medwing', sky: null, clock: false,
             parts: {
                 medwing:       { x: 0,    z: 0,     y: 0, rot: 0 },
-                dispensary:    { x: 4.4,  z: -6.9,  y: 0, rot: 0 },    // its south door at x −2.2 faces the wing's north door at x 2.2
                 interrogation: { x: 9.7,  z: 0,     y: 0, rot: 0 },    // its west door faces the wing's east door
                 padded:        { x: -2.2, z: -6.0,  y: 0, rot: 0 },    // DOOR HQ 2.0 (2026-11-26): behind the wing's north door at x −2.2 (the old ward's), its south door facing it
             },
             joins: [
                 { a: 'medwing', b: 'padded',        kind: 'door', door: 'ward',          bDoor: 'egress' },
-                { a: 'medwing', b: 'dispensary',    kind: 'door', door: 'dispensary',    bDoor: 'egress' },
                 { a: 'medwing', b: 'interrogation', kind: 'door', door: 'interrogation', bDoor: 'egress' },
             ] },
         /* Z11 — THE BASEMENT (Phase 4, 2026-09-27, §8.4's basement merge built as the medical wing was: DOOR JOINS, the
@@ -105488,13 +105557,17 @@ function hqPartyFieldItems(m) { return Object.keys(ITEM_RULES).filter(hqFieldIte
    then a healing potion from the bag, then from anyone's pockets), a mana potion on a
    caster only when a heal is wanted and nobody can pay for it. */
 const HQ_DISPENSARY = {
-    room: 'dispensary', counter: 'pharmacy',
+    room: 'doorstore', counter: 'till',   // DOOR HQ 2.0 (2026-11-26): the Door Store sells the doors; the potions are the vending machines' (hqVendingApply)
     stock: ['healPotion', 'manaPotion', 'reviveTonic', 'elixir', 'panacea', 'scanner',
             'captureDoor', 'captureDoor2', 'captureDoor3', 'captureDoorTuned'],   // ITEM_RULES keys, in the shelf's order (the price is the row's shopPrice); the capture doors (the user, 2026-09-25: "Make them available in the shop too")
     /* THE DOOR ISSUE (the user, 2026-09-25: "i need some actual doors in my bag to test"): once per profile, the HQ's first
        load after this lands puts these in the bag (profile.js backfillProfile → hqCaptureDoorIssue; door.hq.capIssue marks it) */
     capIssue: { captureDoor: 3, captureDoorTuned: 1 },
     labels: { buy: 'BUY', sell: 'SELL', bag: 'THE BAG' },
+    /* THE SHELVES (DOOR HQ 2.0, 2026-11-26, mondo: "Door Store ... sells door", "Potions should be sold from the vending machines"): a
+       counter's `action.shelf` picks one: `doors` = the capture doors (the Door Store's till), `potions` = everything else (a vending
+       machine). A shelf is a rule over `stock` (hqBagCategoryOf), so a new stock row lands on the right one by itself. */
+    shelves: { doors: k => hqBagCategoryOf(k) === 'doors', potions: k => hqBagCategoryOf(k) !== 'doors' },
 };
 function hqBagRecord(profile, create) {
     if (!profile) return null;
@@ -105595,7 +105668,10 @@ function hqCaptureDoorIssue(profile) {
     return { ok: true, added };
 }
 /* THE SHELF: the dispensary's stock with prices */
-function hqShopStock() { return HQ_DISPENSARY.stock.filter(k => typeof ITEM_RULES !== 'undefined' && ITEM_RULES[k]).map(k => hqBagItemRow(k, 0)); }
+function hqShopStock(shelf) {
+    const on = (shelf && HQ_DISPENSARY.shelves[shelf]) || null;
+    return HQ_DISPENSARY.stock.filter(k => typeof ITEM_RULES !== 'undefined' && ITEM_RULES[k] && (!on || on(k))).map(k => hqBagItemRow(k, 0));
+}
 /* a QUOTE: can this profile buy n of it? — { ok, cost, reason, gold, room } (nothing written) */
 function hqShopQuote(profile, key, n, opts) {
     n = Math.max(1, n | 0); opts = opts || {};
@@ -109062,7 +109138,7 @@ var ZONE_LOOKS = {
            stone, office drywall and taupe carpet. Batch 6 mapped them (stone -> hz:Stone_11, a 128 px horror tile, on the hall's drum; drywall
            in 41 rooms; carpet in 13). They are out of the maps, and zoneLookRoom never swaps a shell key DOOR_HQ.textures names */
         doorhq: {
-            rooms: ['central_egress', 'foyer', 'continuity', 'office', 'cafeteria', 'clockroom', 'barbershop', 'trophycase', 'reception', 'dispensary', 'medical', 'padded', 'medwing', 'recwing', 'execwing', 'executive', 'corner', 'pool', 'interrogation', 'records', 'it', 'observatorium', 'training_pit', 'training_hall', 'car', 'garage', 'dock', 'services', 'kitchen', 'coldroom', 'laundry', 'corridor_a', 'boiler', 'corridor_b', 'deadend', 'server', 'dungeon', 'ritual', 'sacrifice', 'orb', 'annex', 'classroom', 'cubicles', 'bathroom', 'crawlspace', 'thirteenth', 'locker', 'natatorium', 'garden', 'works', 'warehouse', 'incinerator', 'autopsy', 'intro_desert', 'intro_shaft', 'doorgarden', 'control', 'lostfound', 'stairwell', 'woodstair', 'tunnel', 'labs', 'dreamlab', 'tank', 'mandela', 'upsidedown', 'closet4b', 'supply', 'disposal', 'hwing_lobby', 'hwing_floor', 'hwing_home', 'training'],
+            rooms: ['central_egress', 'foyer', 'continuity', 'office', 'cafeteria', 'clockroom', 'barbershop', 'trophycase', 'reception', 'dispensary', 'doorstore', 'medical', 'padded', 'medwing', 'recwing', 'execwing', 'executive', 'corner', 'pool', 'interrogation', 'records', 'it', 'observatorium', 'training_pit', 'training_hall', 'car', 'garage', 'dock', 'services', 'kitchen', 'coldroom', 'laundry', 'corridor_a', 'boiler', 'corridor_b', 'deadend', 'server', 'dungeon', 'ritual', 'sacrifice', 'orb', 'annex', 'classroom', 'cubicles', 'bathroom', 'crawlspace', 'thirteenth', 'locker', 'natatorium', 'garden', 'works', 'warehouse', 'incinerator', 'autopsy', 'intro_desert', 'intro_shaft', 'doorgarden', 'control', 'lostfound', 'stairwell', 'woodstair', 'tunnel', 'labs', 'dreamlab', 'tank', 'mandela', 'upsidedown', 'closet4b', 'supply', 'disposal', 'hwing_lobby', 'hwing_floor', 'hwing_home', 'training'],
             wall: { drywall_2: 'hz:Wall_03', drywall_3: 'hz:Wall_03', drywall_4: 'hz:Wall_03', rocks_5: 'hz:Stone_11',
                     bricks_2: 'hz:Brick_10', bricks_1: 'hz:Brick_11', bricks_3: 'hz:Brick_11', dungeon: 'hz:Brick_09', dungeon_3: 'hz:Brick_08', dungeon_4: 'hz:Brick_08',
                     gunmetal: 'hz:Metal_02', gunmetal_2: 'hz:Metal_02', metal: 'hz:Metal_02', aluminium: 'hz:Metal_05', metal_3: 'hz:Metal_05',
@@ -115122,3 +115198,38 @@ function hqOneNameApply() {
 }
 try { hqOneNameApply(); } catch (e) { if (typeof console !== 'undefined') console.warn('[HQ ONE NAME] failed', e); }
 if (typeof window !== 'undefined') window.hqOneNameApply = hqOneNameApply;
+/* ══ DOOR HQ 2.0, WAVE 2: THE VENDING MACHINES SELL THE POTIONS (2026-11-26) ══ mondo: "Potions should be sold from the vending machines".
+   Every `vending_machine` prop in a DOOR HQ room (ZONE_LOOKS doorhq) is a counter of the shop's `potions` shelf (HQ_DISPENSARY.shelves;
+   map.js _hqPharmacyHtml): a room thread only places the machine, no counter row. Round room: the counter stands in front of the machine
+   (its deg, a metre in from its radius); box room: a metre in from its wall, or at its own x, z on the floor. Off for a bisect:
+   window.EW_HQ_NO_VENDING. */
+function hqVendingApply() {
+    if (typeof DOOR_HQ === 'undefined' || !DOOR_HQ.rooms || typeof ZONE_LOOKS === 'undefined') return 0;
+    if (typeof window !== 'undefined' && window.EW_HQ_NO_VENDING) return 0;
+    const ids = (ZONE_LOOKS.zones && ZONE_LOOKS.zones.doorhq && ZONE_LOOKS.zones.doorhq.rooms) || [];
+    const IN = 1.0, FACE = { n: 0, s: 180, e: 270, w: 90 };
+    let n = 0;
+    ids.forEach(id => {
+        const R = DOOR_HQ.rooms[id]; if (!R || !Array.isArray(R.props)) return;
+        const S = R.shell || {};
+        R.props.forEach((p, i) => {
+            if (!p || p.key !== 'vending_machine' || p._vend) return;
+            const c = { id: 'vend_' + i, label: 'VENDING MACHINE', verb: 'BUY', action: { overlay: 'pharmacy', shelf: 'potions' }, radius: 1.6, plateY: 2.15 };
+            if (p.deg != null) {
+                const r = (p.r != null) ? +p.r : (S.radius > 0 ? S.radius : 0); if (!(r > IN)) return;
+                Object.assign(c, { deg: +p.deg, r: Math.round((r - IN) * 100) / 100, level: p.level || 0 });
+            } else if (FACE[p.wall] != null && S.w > 0 && S.d > 0) {
+                const w2 = S.w / 2 - IN, d2 = S.d / 2 - IN;
+                c.x = p.wall === 'e' ? w2 : p.wall === 'w' ? -w2 : (p.x || 0);
+                c.z = p.wall === 's' ? d2 : p.wall === 'n' ? -d2 : (p.z || 0);
+                c.face = FACE[p.wall];
+            } else if (isFinite(+p.x) && isFinite(+p.z)) {
+                Object.assign(c, { x: +p.x, z: +p.z, face: p.face || 0 });
+            } else return;
+            (R.counters || (R.counters = [])).push(c); p._vend = 1; n++;
+        });
+    });
+    return n;
+}
+try { hqVendingApply(); } catch (e) { if (typeof console !== 'undefined') console.warn('[HQ VENDING] failed', e); }
+if (typeof window !== 'undefined') window.hqVendingApply = hqVendingApply;
