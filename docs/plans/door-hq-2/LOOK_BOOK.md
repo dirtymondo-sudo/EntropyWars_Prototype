@@ -41,7 +41,7 @@ worn by their DOOR_HQ.textures key:
 
 | Key | File | What it is | Where |
 | --- | --- | --- | --- |
-| `panel60` | `hq60_panel_wall.png` | off-white `#ECE7DA` moulded wall panels, rounded corners, soft seams (two a 3.2 m sheet) | Lobby walls (both levels), the flue, the Ring, the Foyer |
+| `panel60` | `hq60_panel_wall.png` | off-white `#ECE7DA` moulded wall panels, rounded corners, soft seams (two a 3.2 m sheet) | Lobby walls (both levels), the flue, the Ring, the Foyer, the Training Room, the Extraterrestrial office |
 | `teak60` | `hq60_teak_slats.png` | teak slat panelling `#8E4F25`, dark reveals | every dado, Rhonda's desk front, the Penthouse's wood walls, the ring rooms' dados |
 | `light60` | `hq60_light_ceiling.png` | a grid of lit white ceiling panels in a grey frame | Lobby dome + gallery underside, the Ring, the Foyer |
 | `orange60` | `hq60_tangerine.png` | gloss tangerine `#DE5F1C` | the Lobby floor's rings + spokes, the flue's band |
