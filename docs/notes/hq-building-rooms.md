@@ -1358,6 +1358,7 @@ today's building before any rebuild:
 - The seat's heading is read off its whole turn (`Euler YXZ` of the quaternion), not `rotation.y` (same answer today; safe for a
   flipped prop).
 - Proof: the 16 seat kinds in DOOR HQ + Rhonda, `/mnt/project-files/sitting-fix/`.
+
 ## DOOR HQ 2.0, THE FLOOR PLANS (2026-11-26, thread 2)
 The layout of the redesigned building is `docs/plans/door-hq-2/FLOOR_PLANS.md` + five pictures in `docs/plans/door-hq-2/plans/` (mondo OK'd
 all five 11-25; he cut the Dream Lab from DOOR HQ: the way to the Astral Realm is the D.U.M.B.'s). Read it before building or moving any
