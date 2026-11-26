@@ -1363,3 +1363,27 @@ today's building before any rebuild:
 The layout of the redesigned building is `docs/plans/door-hq-2/FLOOR_PLANS.md` + five pictures in `docs/plans/door-hq-2/plans/` (mondo OK'd
 all five 11-25; he cut the Dream Lab from DOOR HQ: the way to the Astral Realm is the D.U.M.B.'s). Read it before building or moving any
 DOOR HQ room: it says where each room sits, what it touches, and the rules every room thread keeps.
+
+## DOOR HQ 2.0, MEDICAL (2026-11-26, wave 2)
+mondo 11-26: "Improved medical facility, look more like a hospital, think Pokémon center". Built from FLOOR_PLANS.md (lobby level, east
+of Rhonda: "counter, then beds") and LOOK_BOOK.md "Medical". Room id `medical` (kept: its counters, the wake-after-a-loss room, map.js's
+Challenge button and HQ_PARTY_RULES.restCounter all read it).
+- **The room:** 21 x 17.5 m (6 x 5 squares), 7 m ceiling; white `#F4F6F5`, mint dado `#9FD8C8`, coral cross `#D9473F`; linoleum, clean drywall and the cream ceiling (the look book's plaster and fibre tiles read grey and grimy on screen),
+  mood `#F2FAFF` ambient 0.7, seven lights. South = the open front onto the Lobby
+  (door row `lobby`: `open: { w: 14, h: 4.5 }`, no leaf; the Lobby thread's `open` opening + THE ROUND JOIN row
+  `{ a: 'central_egress', door: 'medical', b: 'medical', bDoor: 'lobby' }` join it with no card). Middle: the nurse's counter
+  (a `nurse_counter` proc, 7.2 m, mint front, coral stripe), THE HEALING MACHINE behind it (no nurse stands there: every DOOR HQ room is `noWalkers` since wave 1, so a room's `agents` never show; a nurse needs a story character, mondo's call), the cross on the back wall over
+  everything. North: the ward behind a glass wall (five `glass_partition` bays; the open bay at the west end is the way in), four
+  `hospital_bed`s, screens, drips, a trace, the stretcher, the x-ray. West: sinks, supplies, potions in a cabinet, the cooler. East: the
+  STAFF ONLY door, the vending machine (potions through hqVendingApply), the wheelchairs.
+- **Counters:** `cot` = the HEALING MACHINE (verb HEAL; map.js's rest panel: the party back to full, free), `chart` (your record, on the
+  first bed), `desk` = CHALLENGE (`_goToCampaign`). One name each, no subs.
+- **Four procs drawn in code** (three-renderer.js, after `pod_bed`; catalogue rows beside `eeg_rack`): `heal_machine` (a white console,
+  a tilted tray of six slots with a small door in each; the slots light one by one, then all six flash, a 5.2 s loop on six
+  materials + a little screen; the look book's missing prop 1), `glass_partition` (one 3.5 m bay of glass in a steel frame, a frosted
+  band at eye height; a blocker), `nurse_counter` (the counter, a blocker), `med_cross` (the lit coral cross on a white disc, a wall prop).
+- **The old wing, until the Works rebuild:** Medical's STAFF ONLY door (east wall) -> `medwing` `egress`. The wing's north door `ward`
+  is now THE HOLD's (`padded` stands behind it in the medwing stage zone, at x -2.2 z -6.0, no card); the Interrogation Room stays on
+  the wing's east door. `medical` left the medwing zone (a card between them). When the Works rebuild moves the Hold and the
+  Interrogation Room down, take out the staff door and retire `medwing`.
+- `node find-doorways.js medical`: clear.
