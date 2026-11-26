@@ -1488,6 +1488,38 @@ the vending machines". Plan: `docs/plans/door-hq-2/FLOOR_PLANS.md` (lobby level,
   `{ a: 'central_egress', door: 'cafeteria', b: 'cafeteria', bDoor: 'lobby' }` is in HQ_STAGE_RULES.round. Seen on screen from the Lobby floor.
 - **CHEF (same day, mondo: "Chef in the kitchen/cafteria"):** DOOR_CAST `chef` (the chef race's model, `race: 'chef'`, name CHEF, no title):
   half the visits at the Kitchen's ranges, half at the head of the serving line. Out of every doorway square.
+## DOOR HQ 2.0, WAVE 3: THE RING'S ROOMS + THE RING AS A HUB (2026-11-26)
+Built from `docs/plans/door-hq-2/plans/1_lobby_level_plan.png` and LOOK_BOOK.md. Eleven rooms stand behind the Ring's outer wall, each behind
+one door, each JOINED to the Ring with no load card.
+- **THE RING AS A HUB:** THE ROUND JOIN took only the round hall (`radius`). data.js `hqRoundHubR(room)` now answers for a CLOSED ring corridor
+  too (kind `bay`, `shell.full`: its `rOut`), so `HQ_STAGE_RULES.round` rows `{ a: 'ring_g', door: <ring door id>, b: <room>, bDoor: 'egress' }`
+  stand a box room behind the ring's outer wall at that door's angle, turned to face the ring's centre. Only an outer-wall door joins (not a cap,
+  not `side: 'in'`). three-renderer.js: `_hqRingHub` / `_hqHubR`; `_hqBuildBayShell` cuts the outer wall at each joined doorway (`_hqDrumCuts`,
+  `_hqDrumBand`); the bay's floor, air and boom read `_hqStageRoundSurface` / `_hqStageRoundCam` past its wall; the crossing uses
+  `hqStageWhereRound(rOut)`; a stage neighbour that is a bay is built with `_hqBuildBayShell` and lit with `_hqBayRoomLamps`. The ring and its
+  rooms wear the hall's one rig (`_HQ_HALL_LIGHT`, ONE DOORWAY, ONE LIGHT), so nothing changes at a doorway. In the ring every joined room stands
+  beside it; in a room only the ring does.
+- **The rooms and their doors on the Ring** (central_egress `onRing` rows, clockwise from the Training Room's line; the angles keep the boxes clear
+  of each other, checked by projecting each box through hqStageRoundGeom): IT 28 (17.5 x 14), Lost and Found 52 (14 x 14), Locker Room 74
+  (14 x 17.5), Bathroom 95 (10.5 x 14), Stair to the Woods 118 (kept, 30 x 44), Your Office 141 (14 x 10.5, see below), Records 162 (17.5 x 21,
+  5.25 m), Clock Room 187 (14 x 14, 5.25 m), Barbershop 211 (14 x 10.5), Lecture Hall 250 (21 x 21, 7 m, three tiers), Cubicle Floor 290
+  (28 x 21). 4.5 m ceilings unless named. Each box room's door is `egress` on its south wall (the office's stays on its west wall). The H-Wing
+  door (about 228) and the Garage/Subway door (350) are other threads'.
+- **Kept counters:** Records' reading desk (`_goToCodex`); the Clock Room's FORM 365, punch clock, Code Red; the Barbershop's chair and mirror;
+  the Lecture Hall's board. **Out:** IT's sysadmin/intern and its stair to the Server Room, the card catalogue's community maps (the map editor
+  is on the main menu), every room's agents and npc/online spots (DOOR HQ holds story characters only), every subtitle.
+- **Retired:** the Records Wing (`DOOR_HQ.retired.recwing = 'ring_g'`, its HQ_WORLD zone and stage zone gone). Cut (DOOR_HQ.cut.doors): the old
+  third floor's doors to the Lecture Hall, Cubicle Floor, Bathroom and Locker Room; the old second floor's Lost and Found door; the Server
+  Room's IT door; the pool's locker door; the crawlspace's stall. `lostfound`, `locker`, `classroom` left the works / annex HQ_WORLD zones.
+- hqRingMoveDoors no longer writes `sub: 'BACK TO THE RING'` on a moved room's door (one name). Sedaniel's ring spot moved 20 degrees off the
+  Cubicle Floor's door.
+- `node find-doorways.js` on the eleven rooms + `ring_g`: all clear.
+- **YOUR OFFICE, REBUILT BIGGER** (mondo 11-26 chose "Rebuild it bigger"): 14 x 10.5 x 4.5, the janitor's whole storeroom. The old closet's
+  corner (desk, sink, breaker panel, cot, rug, the door on the west wall) moved WHOLE by x -4.2, z -2.95 to the room's north-west corner, and
+  scene F (STORY_CUTSCENES.orientation_office: every `cam`, every `place` / `walk`) moved by the same offset, so every approved frame shows
+  the same things. The rest is his: shelving on the north + east walls and back to back mid-room, the mop corner on the south wall. Broom,
+  mop, shelving, fridge, Locke's stage post ("Waiting in your office.", 4 m in) and the janitor's post left the doorway. A later move of the
+  corner = move the scene by the same offset.
 
 ## DOOR HQ 2.0, WAVE 3: THE WORKS, MIDDLE (the labs + the holding block) (2026-11-26)
 Built from `docs/plans/door-hq-2/plans/4_works_middle_bottom.png` (left) and LOOK_BOOK.md "The Works, middle". A clean sheet of the old
