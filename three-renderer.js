@@ -82,7 +82,7 @@ const ThreeRenderer = (function () {
         }
     })();
     /* THE BUILD LINE (the perf lens): bump the stamp in every PR that changes this file's walk / fight drawing */
-    var _EW_TR_STAMP = '11-25 wax-no-shadow';
+    var _EW_TR_STAMP = '11-26 async-pipes';
     function _ewBuildTok() {
         var sc = document.querySelectorAll('script[src*="three-renderer.js"]'), t = '';
         for (var i = 0; i < sc.length; i++) { var m = /[?&]v=([^&#]+)/.exec(sc[i].src || ''); if (m) { t = m[1]; break; } }
@@ -50748,9 +50748,41 @@ const ThreeRenderer = (function () {
             || typeof P.getForRender !== 'function' || typeof P.isReady !== 'function') return;
         r._ew_late = true;
         var L = _ewLate, land = function () { L.flying--; };
+        /* THE PIPELINES OFF THE FRAME, EVERY PASS (2026-11-26, mondo's F3 in the main hall: one 515 ms frame, "scene: classic draws
+           491", 16 shader builds and 10 new pipelines while walking, 27 groups re-recorded). THE LATE LOOK below made the scene pass's
+           new pipelines off the frame, but three makes every OTHER draw's pipeline in the frame (no compile promises outside
+           compileAsync = createRenderPipeline, not the async one): a bundle being re-recorded, the sun's and the lamp's shadow passes,
+           the model mask. On Firefox each one waits for the GPU side to compile it. Now in the walked room (after the card) every
+           pipeline of the room's scene is asked for the async way: three skips the draw until it stands (a re-recorded group is
+           flagged and records again, THE BUNDLES' own rule), and when one lands the room's shadow maps are drawn again so a caster
+           that sat a frame out is back in them. A bundle being recorded also keeps the frame's build budget: past it, a piece whose
+           look is new sits that recording out and the group records again next frame. Off: window.EW_SYNC_PIPES. */
+        var PLs = r._pipelines, pUf = PLs.updateForRender, apLand = function () {
+            L.flying--;
+            try { var H0 = _hq; if (H0 && H0.shadows) H0.shadows.dirty = true; var hl = H0 && H0.heroLit; if (hl && hl._ew_gate) hl._ew_gate.sig = 0; } catch (e) {}
+        };
+        if (typeof pUf === 'function') PLs.updateForRender = function (ro) {
+            var H0 = _hq;
+            if (H0 && H0.ready && !active && ro && ro.scene === H0.scene && !(typeof window !== 'undefined' && window.EW_SYNC_PIPES)) {
+                var k0 = L.sink.length;
+                this.getForRender(ro, L.sink);
+                for (; k0 < L.sink.length; k0++) { L.pipes++; L.flying++; L.apipes = (L.apipes | 0) + 1; try { L.sink[k0].then(apLand, apLand); } catch (e) { L.flying--; } }
+                return;
+            }
+            return pUf.apply(this, arguments);
+        };
         r._renderObjectDirect = function (object, material, sc, camera, lightsNode, group, clippingContext, passId) {
             var ctx = this._currentRenderContext;
             if (!L.on && sc && sc === L.scene && camera === L.cam) _lwSync(object);   // THE WHOLE BODY
+            if (L.on && this._currentRenderBundle !== null && sc === L.scene && ctx && !this._ew_sideRender && !this._ew_paneRender && !(typeof window !== 'undefined' && window.EW_SYNC_PIPES)) {
+                var roB = O.get(object, material, sc, camera, lightsNode, ctx, clippingContext, passId);
+                if (N.get(roB).nodeBuilderState === undefined && !NB.has(N.getForRenderCacheKey(roB))) {
+                    if (L.n > 0 && L.spent >= 4) { L.held++; L.bunHeld = (L.bunHeld | 0) + 1; var BGh = this._currentRenderBundle.bundleGroup; if (BGh) BGh._ew_bunMiss = true; return; }
+                    var tB = performance.now();
+                    try { return rod.apply(this, arguments); } finally { var dB = performance.now() - tB; L.spent += dB; L.n++; L.builds++; L.buildMs += dB; }
+                }
+                return rod.apply(this, arguments);
+            }
             if (!L.on || sc !== L.scene || camera !== L.cam || this._currentRenderBundle !== null || !ctx || ctx.renderTarget !== L.rt || this._ew_sideRender || this._ew_paneRender) return rod.apply(this, arguments);
             /* three r186's _renderObjectDirect, with its two waits taken off the frame */
             var ro = O.get(object, material, sc, camera, lightsNode, ctx, clippingContext, passId);
