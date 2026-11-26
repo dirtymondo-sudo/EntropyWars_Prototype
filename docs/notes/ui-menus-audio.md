@@ -3135,3 +3135,20 @@ CSS: end of styles-base.css "THE LOADOUT". Viewer-local (RULE #2).
   UIM_SURFACES, scope `#hqPause.hq-loadout`: panels = tab row / bar / stats / kit / detail line, head = section heads, buttons =
   portrait tabs + kit rows, the stage untouched; a row keeps its category colour on its left edge) + its stand-in
   `UIM_SPECIMENS.loadout` (captured from the real screen, the stage shows the portrait). Refresh the stand-in after a markup change.
+
+## EVERY SCREEN, ALWAYS (2026-11-26, mondo: "I need every part of the ui maker to always have all of that stuff no matter what screen")
+Angry at the Party loadout entry (PR #2643) offering only a theme. What changed (hud.js):
+- **The Party loadout has pieces**: portrait strip, portraits, each portrait, arrows, ROSTER, close, the name + bars strip, name,
+  level, HP / MP / EXP bars (block + each bar), columns, stats column, stat rows, move/range block, type chips, elements box,
+  name + slot line, model, abilities column, section titles, every row, description bar (ids `lo*`, scoped `#hqPause.hq-loadout`),
+  each with TEXT_PARTS (names, numbers, labels...). So the Layout view has move, size, scale, order, arrange (side by side /
+  stacked, line up), stick to a side, panel look (fill, fade, frame, corners, shadow, glow, look-like a theme role), text look per
+  text part (colour, font, weight, size, case, spacing, effect, align, hide) and words for all of them.
+- **A screen with no piece list gets pieces by itself** (`auto_<surface>`: the whole screen + each `roles.panel/head/well/button/chip`
+  selector), so a screen added to UIM_SURFACES later has the full Layout tools the day it lands. Add hand-named pieces when you can.
+- **A piece with no TEXT_PARTS finds its own** (`txAutoScan`: each kind of element in it that holds words, kept in `db.txauto`).
+- **The Menus view lists the picked screen's pieces**: "Layout, look + text" and one button a piece open the Layout view on that
+  screen with that piece picked (`data-dk="arrange"`).
+- autoGroup: the open party sheet wins over the HQ strip; any surface not in AUTO_ORDER is still found.
+- Proof: `/mnt/project-files/ui-maker-every-screen/` (HP/MP/EXP bars moved left, portraits right, name font + colour + size,
+  stats panel fill/frame/corners, kit frame + title colour), on the loadout stand-in.

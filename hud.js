@@ -18330,6 +18330,7 @@ if (!db.icons || typeof db.icons !== 'object') db.icons = {};
 if (!db.ux || typeof db.ux !== 'object') db.ux = {};
 if (!db.words || typeof db.words !== 'object' || Array.isArray(db.words)) db.words = {};
 if (!Array.isArray(db.picks)) db.picks = [];
+if (!db.txauto || typeof db.txauto !== 'object' || Array.isArray(db.txauto)) db.txauto = {};
 db.picks = db.picks.filter(k => k && typeof k === 'object' && typeof k.id === 'string' && typeof k.sel === 'string');
 if (!db.faces || typeof db.faces !== 'object' || Array.isArray(db.faces)) db.faces = {};
 if (!db.faces.u || typeof db.faces.u !== 'object' || Array.isArray(db.faces.u)) db.faces.u = {};
@@ -19581,9 +19582,54 @@ const MSC = '.ms-crt:not(.ms-crt-forge) ', PBC = '.ms-crt-forge ';
   ['editor', 'edleft', 'Left panel', '#edRoot .ed-left'],
   ['editor', 'edright', 'Right panel', '#edRoot .ed-right'],
   ['editor', 'edstat', 'Status bar', '#edRoot .ed-status'],
+  /* THE LOADOUT (mondo 11-26: "I want to line the hp bars up on the left and move the portraits over to the right and change
+     how these panels look"): every window, strip, bar and row of the pause menu's PARTY sheet is a piece */
+  ['loadout', 'lotabs', 'Portrait strip', '#hqPause.hq-loadout .hq-lo-tabs'],
+  ['loadout', 'lotabrow', 'Portraits', '#hqPause.hq-loadout .hq-lo-tabrow'],
+  ['loadout', 'lotab', 'Each portrait', '#hqPause.hq-loadout .hq-lo-tab'],
+  ['loadout', 'loarrows', 'Arrows', '#hqPause.hq-loadout .hq-lo-arrow'],
+  ['loadout', 'loroster', 'ROSTER button', '#hqPause.hq-loadout .hq-lo-roster'],
+  ['loadout', 'loclose', 'Close button', '#hqPause.hq-loadout .hq-lo-close'],
+  ['loadout', 'lobar', 'Name + bars strip', '#hqPause.hq-loadout .hq-lo-bar'],
+  ['loadout', 'lowho', 'Name', '#hqPause.hq-loadout .hq-lo-who'],
+  ['loadout', 'lolv', 'Level', '#hqPause.hq-loadout .hq-lo-lv'],
+  ['loadout', 'lovits', 'HP / MP / EXP bars', '#hqPause.hq-loadout .hq-lo-vits'],
+  ['loadout', 'lohp', 'HP bar', '#hqPause.hq-loadout .hq-lo-vit.hp'],
+  ['loadout', 'lomp', 'MP bar', '#hqPause.hq-loadout .hq-lo-vit.mp'],
+  ['loadout', 'loxp', 'EXP bar', '#hqPause.hq-loadout .hq-lo-vit.xp'],
+  ['loadout', 'lomain', 'Columns', '#hqPause.hq-loadout .hq-lo-main'],
+  ['loadout', 'lostats', 'Stats column', '#hqPause.hq-loadout .hq-lo-stats'],
+  ['loadout', 'lostat', 'Stat rows', '#hqPause.hq-loadout .hq-lo-stats .hq-pp-stats'],
+  ['loadout', 'losmall', 'Move / range / vision / inspect', '#hqPause.hq-loadout .hq-lo-small'],
+  ['loadout', 'lochips', 'Type chips', '#hqPause.hq-loadout .hq-lo-stats .hq-chips'],
+  ['loadout', 'loelem', 'Elements box', '#hqPause.hq-loadout .hq-lo-stats .hq-pp-elem'],
+  ['loadout', 'loduty', 'Name + slot line', '#hqPause.hq-loadout .hq-lo-duty'],
+  ['loadout', 'lostage', 'Model', '#hqPause.hq-loadout .hq-lo-stage'],
+  ['loadout', 'lokit', 'Abilities column', '#hqPause.hq-loadout .hq-lo-kit'],
+  ['loadout', 'losec', 'Section titles', '#hqPause.hq-loadout .hq-lo-sec'],
+  ['loadout', 'lorow', 'Every ability / item row', '#hqPause.hq-loadout .hq-lo-row'],
+  ['loadout', 'lodetail', 'Description bar', '#hqPause.hq-loadout .hq-lo-detail'],
 ].forEach(([surf, id, label, sel]) => {
   const S = UIM_SURFACES.find(x => x.id === surf);
   UIM_PIECES.push({ id, surf, group: surf === 'explore' ? 'Exploration' : (S ? S.label : surf), label, sel });
+});
+/* ── EVERY SCREEN, ALWAYS (2026-11-26, mondo: "I need every part of the ui maker to always have all of that stuff no matter
+   what screen or HUD or battle or exploration or pause menu"). A screen in UIM_SURFACES with no pieces listed above gets
+   its windows, title strips and buttons as pieces from its own roles, so a new screen has Layout (move, size, arrange,
+   panel look, text, words) the day it is added. ── */
+const _autoName = sel => {
+  const m = String(sel).trim().split(/\s+/).pop().replace(/::?[a-z-]+(\([^)]*\))?/g, '').split(/[.#]/).filter(Boolean).pop() || 'part';
+  return m.replace(/^(hq|ew|ms|pb|sq|lb|ui|uim|mm|bp)-/, '').replace(/[-_]+/g, ' ').replace(/^./, c => c.toUpperCase());
+};
+UIM_SURFACES.forEach(S => {
+  if (UIM_PIECES.some(P => (P.surf || (P.group === 'Battle' ? 'battle' : 'explore')) === S.id)) return;
+  const R = S.roles || {}, seen = new Set();
+  UIM_PIECES.push({ id: 'auto_' + S.id, surf: S.id, group: S.label, label: 'Whole screen', sel: S.scope, auto: true });
+  ['panel', 'head', 'well', 'button', 'chip'].forEach(role => String(R[role] || '').split(',').map(x => x.trim()).filter(Boolean).forEach(sel => {
+    if (/:hover|:focus|:active|::/.test(sel) || seen.has(sel)) return;
+    seen.add(sel);
+    UIM_PIECES.push({ id: 'auto_' + S.id + '_' + seen.size, surf: S.id, group: S.label, label: _autoName(sel), sel, auto: true });
+  }));
 });
 /* the group (screen) a piece belongs to = a UIM_SURFACES id; the HUD rows keep their Battle / Exploration groups */
 const groupOf = P => P.surf || (P.group === 'Battle' ? 'battle' : 'explore');
@@ -19639,6 +19685,27 @@ const TEXT_PARTS = {
   /* the team select's plate (2026-11-07): each line of text its own, the NEW stamp too */
   sqbar: [['name', 'Team name', '.sq-plate-name'], ['n', 'Unit count', '.sq-plate-n'], ['of', 'Team number', '.sq-plate-of'], ['caret', 'List arrow', '.sq-plate-caret'],
     ['units', 'Unit names', '.sq-plate-slot em'], ['foot', 'Bottom line', '.sq-plate-foot'], ['stamp', 'NEW stamp', '.sq-card-stamp'], ['arrows', 'Arrows', '.sq-arrow']],
+  /* THE LOADOUT (mondo 11-26: "change the fonts and the text and the color and the sizes") */
+  lotabrow: [['name', 'Names', '.hq-lo-tabtx b'], ['lv', 'Levels', '.hq-lo-tabtx > i']],
+  lotab: [['name', 'Names', '.hq-lo-tabtx b'], ['lv', 'Levels', '.hq-lo-tabtx > i']],
+  lobar: [['name', 'Name', '.hq-lo-who b'], ['race', 'Race line', '.hq-lo-who span'], ['lvw', 'LV word', '.hq-lo-lv i'], ['lv', 'Level number', '.hq-lo-lv b'],
+    ['vlbl', 'Bar labels', '.hq-lo-vit > i'], ['vnum', 'Bar numbers', '.hq-lo-vit > b']],
+  lowho: [['name', 'Name', 'b'], ['you', 'YOU tag', '.hq-pp-you'], ['race', 'Race line', 'span']],
+  lolv: [['lvw', 'LV word', 'i'], ['lv', 'Level number', 'b']],
+  lovits: [['hplbl', 'HP label', '.hq-lo-vit.hp > i'], ['hpnum', 'HP numbers', '.hq-lo-vit.hp > b'], ['mplbl', 'MP label', '.hq-lo-vit.mp > i'],
+    ['mpnum', 'MP numbers', '.hq-lo-vit.mp > b'], ['xplbl', 'EXP label', '.hq-lo-vit.xp > i'], ['xpnum', 'EXP number', '.hq-lo-vit.xp > b']],
+  lohp: [['lbl', 'Label', '> i'], ['num', 'Numbers', '> b']],
+  lomp: [['lbl', 'Label', '> i'], ['num', 'Numbers', '> b']],
+  loxp: [['lbl', 'Label', '> i'], ['num', 'Number', '> b']],
+  lostats: [['stlbl', 'Stat names', '.hq-pp-stat > b'], ['stval', 'Stat numbers', '.hq-pp-stat > em'],
+    ['small', 'Move / range numbers', '.hq-lo-small b'], ['smallw', 'Move / range words', '.hq-lo-small span'], ['chips', 'Type chips', '.hq-chip, .hq-pp-type']],
+  lostat: [['lbl', 'Stat names', '.hq-pp-stat > b'], ['val', 'Stat numbers', '.hq-pp-stat > em']],
+  losmall: [['num', 'Numbers', 'b'], ['word', 'Words', 'span']],
+  lokit: [['sec', 'Section titles', '.hq-lo-sec b'], ['secn', 'Section counts', '.hq-lo-sec span'], ['name', 'Row names', '.hq-lo-row > b'],
+    ['meta', 'Row costs', '.hq-lo-row > span'], ['chip', 'Row chips', '.hq-lo-row .hq-pp-type'], ['glyph', 'Row icons', '.hq-lo-disc'], ['none', 'NONE', '.hq-lo-none']],
+  losec: [['title', 'Title', 'b'], ['count', 'Count', 'span']],
+  lorow: [['name', 'Name', '> b'], ['meta', 'Cost', '> span'], ['chip', 'Chip', '.hq-pp-type'], ['glyph', 'Icon', '.hq-lo-disc']],
+  lodetail: [['name', 'Name', 'b'], ['meta', 'Cost line', 'i'], ['text', 'Description', 'span']],
   clog: [['title', 'COMBAT LOG title', '.ew-clog-title'], ['fold', 'Collapse button', '.ew-clog-fold'], ['round', 'Round lines', '.ew-clog-round'],
     ['hpn', 'HP numbers', '.ew-clog-hpn'], ['ally', 'Ally names', '.ct-ally'], ['enemy', 'Enemy names', '.ct-enemy'], ['spell', 'Spell names', '.ct-spell'],
     ['status', 'Status effects', '.ct-status'], ['dmg', 'Damage numbers', '.ct-dmg'], ['heal', 'Heal numbers', '.ct-heal'], ['ko', 'Knock-out words', '.ct-ko'],
@@ -19646,8 +19713,38 @@ const TEXT_PARTS = {
 };
 const txKey = (part, k) => 't:' + part + ':' + k;
 function txOn(L, part) { return TX_KEYS.some(k => { const v = L[txKey(part, k)]; return v != null && String(v) !== String(k === 'hide' ? false : LOOK_DEF[k]); }); }
+/* a piece with no list above (a picked part, a screen's own windows, a screen added later) finds its text parts itself: each
+   kind of element inside it that holds words is a part (db.txauto[piece id] = [[part id, label, selector]], kept so the
+   look still goes on when the screen is not up) */
+const TX_STATE = /^(on|off|cur|sel|active|selected|hover|focus|open|lead|down|live|ghost|is-|has-)/;
+function textPartsOf(P) { return TEXT_PARTS[P.id] || ((db.txauto || {})[P.id]) || []; }
+function txAutoScan(P) {
+  if (!P || TEXT_PARTS[P.id]) return;
+  const v = pieceVis(P); if (!v || !v.el) return;
+  const old = ((db.txauto || {})[P.id]) || [], bySel = new Map(old.map(x => [x[2], x])), out = old.slice();
+  const cls = el => [...el.classList].filter(c => !TX_STATE.test(c) && !/^uim/.test(c)).slice(0, 2);
+  const selOf = el => {
+    const c = cls(el), tag = el.tagName.toLowerCase();
+    if (c.length) return '.' + c.join('.');
+    const pa = el.parentElement, pc = pa && pa !== v.el ? cls(pa) : [];
+    return pc.length ? '.' + pc[0] + ' > ' + tag : tag;
+  };
+  const els = v.el.querySelectorAll('*');
+  for (let i = 0; i < els.length && i < 800 && out.length < 24; i++) {
+    const el = els[i];
+    if (/^(SCRIPT|STYLE|SVG|PATH|CANVAS|IMG|INPUT|SELECT|TEXTAREA)$/i.test(el.tagName)) continue;
+    let txt = '';
+    for (const n of el.childNodes) if (n.nodeType === 3 && n.nodeValue.trim()) { txt = n.nodeValue.trim(); break; }
+    if (!txt) continue;
+    const sel = selOf(el); if (bySel.has(sel)) continue;
+    let id = 'a' + (out.length + 1); while (out.some(x => x[0] === id)) id += 'x';
+    const row = [id, txt.length > 22 ? txt.slice(0, 21) + '…' : txt, sel];
+    bySel.set(sel, row); out.push(row);
+  }
+  if (out.length !== old.length) { db.txauto = db.txauto || {}; db.txauto[P.id] = out; }
+}
 function textPartsCss(P, L) {
-  const T = TEXT_PARTS[P.id]; if (!T || !L) return '';
+  const T = textPartsOf(P); if (!T.length || !L) return '';
   const n = (v, lo, hi) => Math.max(lo, Math.min(hi, +v || 0));
   let css = '';
   T.forEach(([id, , sel]) => {
@@ -22797,6 +22894,8 @@ html.uim-picking .uim-arr .uim-arr-catch { pointer-events: auto !important; }
 .uim-dk-surf { display: grid; grid-template-columns: 10px 1fr 128px; gap: 4px 7px; align-items: center; padding: 5px 6px; border: 1px solid transparent; border-radius: 5px; cursor: pointer; }
 .uim-dk-surf:hover { background: #191c24; }
 .uim-dk-surf.on { border-color: #3de0ff; background: #102630; }
+.uim-dk-plist { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.uim-dk-plist .uim-btn { font-size: 11px; padding: 3px 7px; }
 .uim-dk-surf i { width: 8px; height: 8px; border-radius: 50%; background: #3a4050; }
 .uim-dk-surf i.live { background: #3de0ff; box-shadow: 0 0 6px #3de0ff; }
 .uim-dk-surf b { color: #e4e8ef; font-weight: 500; }
@@ -23643,9 +23742,12 @@ function surfUp(id) {
 }
 const AUTO_ORDER = ['dialog', 'results', 'loading', 'pause', 'settings', 'lobby', 'shell', 'match', 'forge', 'squad', 'menu', 'editor'];
 function autoGroup() {
+  /* the party sheet covers the HQ strip: it wins while it is open (a rect, not a hit test: the HUD layout hides it) */
+  { const lo = document.querySelector('#hqPause.hq-loadout.on'); if (lo && !lo.closest(LIVE_SKIP)) { const r = lo.getBoundingClientRect(); if (r.width > 4 && r.height > 4) return 'loadout'; } }
   if (allVis('.hrlg-rig, .ew-scoreboard, .ew-turn-col', 1).length) return 'battle';
   if (allVis('#hqPage .hq-strip-l, #hqPage .hq-dock', 1).length) return 'explore';
   for (const id of AUTO_ORDER) if (surfUp(id)) return id;
+  for (const S of UIM_SURFACES) if (!HUD_GROUPS[S.id] && AUTO_ORDER.indexOf(S.id) < 0 && surfUp(S.id)) return S.id;   // a screen added later
   return 'battle';
 }
 /* the screen the Layout view works on: the Screen picker, or Auto = the one up now */
@@ -23873,8 +23975,8 @@ function menuBoxes() {
 function dockHead() {
   const lay = UI.live.mode === 'layout';
   return `<div class="uim-dock-hd" title="Drag to move this panel"><span class="grip">⋮⋮</span>
-    <button class="uim-btn${lay ? ' on' : ''}" data-dk="layout" title="Move, size, fade or hide the HUD pieces">Layout</button>
-    <button class="uim-btn${UI.live.mode === 'menus' ? ' on' : ''}" data-dk="menus" title="A theme for each menu or HUD">Menus</button>
+    <button class="uim-btn${lay ? ' on' : ''}" data-dk="layout" title="Move, size, arrange, look and text of every piece of every screen">Layout</button>
+    <button class="uim-btn${UI.live.mode === 'menus' ? ' on' : ''}" data-dk="menus" title="A theme for each menu or HUD, and its pieces">Menus</button>
     <button class="uim-btn${UI.live.mode === 'bars' ? ' on' : ''}" data-dk="bars" title="How the health bars look, and which places get a bar or a ring">Bars</button>
     <button class="uim-btn${UI.live.mode === 'faces' ? ' on' : ''}" data-dk="faces" title="Portraits: a face zoomed from a unit's sprite, aimed by you">Portraits</button>
     <button class="uim-btn${UI.live.mode === 'aim' ? ' on' : ''}" data-dk="aim" title="How the preview arrows, the tile highlights and the green super-effective ! look">Arrows</button>
@@ -23960,7 +24062,8 @@ function lookForm(P, L) {
     ${fRange('Corners', 'rad', -1, 60, 1, +v('rad'))}${fRange('Shadow', 'shad', 0, 60, 1, +v('shad'))}${fRange('Glow', 'glow', 0, 60, 1, +v('glow'))}${+v('glow') > 0 ? fColorOpt('Glow colour', 'glowC', v('glowC'), '#ffd76a', true) : ''}`)
     + '<div class="uim-note">Look like dresses the piece as that part of a theme (its 9-slice skin too). Corners −1 = as the game.</div>';
   /* which text the look goes on: all of it, or one text part of the piece (TEXT_PARTS) */
-  const T = TEXT_PARTS[P.id] || [];
+  txAutoScan(P);
+  const T = textPartsOf(P);
   UI.txpart = UI.txpart || {};
   const tp = T.some(x => x[0] === UI.txpart[P.id]) ? UI.txpart[P.id] : '';
   const kk = k => (tp ? txKey(tp, k) : k), tv = k => { const x = L[kk(k)]; return x == null ? (k === 'hide' ? false : LOOK_DEF[k]) : x; };
@@ -24115,6 +24218,11 @@ function surfDetail() {
   else if (!T) h += `<div class="uim-note">Not on screen right now. It keeps its original look.</div>`;
   else { _previewTheme = T; h += `<div class="uim-note">Not on screen right now. Its windows in ${esc(T.label)}:</div>${MINI_PREVIEW}`; }
   if (T) h += `<div class="uim-btns"><button class="uim-btn" data-dk="edittheme" data-val="${esc(T.id)}">Edit ${esc(T.label)} in the full editor</button></div>`;
+  /* EVERY SCREEN, ALWAYS (mondo 11-26): the screen's pieces right here; one click opens that piece's move, size, arrange,
+     panel look, fonts, text colours and words (the Layout view, on this screen) */
+  const mine = allPieces().filter(P => groupOf(P) === S.id);
+  h += `<div class="uim-btns"><button class="uim-btn pri" data-dk="arrange" data-val="${esc(S.id)}:">Layout, look + text</button></div>`;
+  if (mine.length) h += `<div class="uim-dk-plist">${mine.map(P => `<button class="uim-btn" data-dk="arrange" data-val="${esc(S.id)}:${esc(P.id)}">${esc(P.label)}</button>`).join('')}</div>`;
   return h + '</div>';
 }
 /* ── THE HOROLOGE'S LOOK, right in the panel (mondo 2026-10-16: "i dont see the same options for the horologe menu as
@@ -24764,7 +24872,7 @@ function liveMode(mode) {
   const A = UI.live;
   A.mode = mode; A.wrap.innerHTML = ''; A.boxes = {}; A.rects = {}; A.liveSet = {}; A.liveKey = null; A.listGroup = null;
   if (mode !== 'layout' && UI.picking) pickMode(false);
-  document.documentElement.classList.toggle('uim-arranging', mode !== 'menus' && mode !== 'btns');   // the pause menus step aside so the HUD shows (the menus + their buttons stay)
+  document.documentElement.classList.toggle('uim-arranging', mode !== 'menus' && mode !== 'btns' && (mode !== 'layout' || !!HUD_GROUPS[ghostGroup()]));   // the pause menus step aside so the HUD shows (the menus + their buttons stay)
   A.ov.querySelectorAll('.uim-arr-grid, .uim-arr-safe').forEach(g => { g.style.display = mode === 'layout' && UI.guides ? '' : 'none'; });
   A.dock.innerHTML = dockHead(); A.dock.dataset.mode = mode;
   dockBody(); apply();
@@ -25363,6 +25471,7 @@ function dockClick(e) {
     }
     else if (k === 'stampgo') stampGo();
     else if (k === 'heroskin') { UI.back = 'skins'; UI.role = 'hero'; liveOff(); }
+    else if (k === 'arrange') { const i = v.indexOf(':'); UI.ghost = v.slice(0, i); UI.piece = v.slice(i + 1); A.autoG = null; A.autoF = 0; liveOn('layout'); }
     else if (k === 'edittheme') { UI.themeId = v; UI.draft = null; UI.back = 'skins'; liveOff(); }
     if (shipB && shipRefill(shipB)) { touchLayout(); scheduleApply(); faceBump(); if (UI.live) dockBody(); }
     return;
