@@ -97334,6 +97334,75 @@ const ThreeRenderer = (function () {
             for (var cx = -1; cx <= 1; cx += 2) { var c = new THREE.Mesh(new THREE.CylinderGeometry(0.004 * U, 0.004 * U, 0.16 * U, 4), cord); c.position.set(cx * (W / 2 - 0.02) * U, (H + 0.06) * U, 0.03 * U); c.rotation.z = cx * 0.35; g.add(c); }
             return g;
         },
+        /* DOOR STORE (DOOR HQ 2.0, 2026-11-26; LOOK_BOOK.md "Door Store": "doors standing in rows like cars in a showroom, each in its own
+           spotlight"). A capture door on its plinth (front +z): the plinth in the tier's colour (T1 steel, T2 brass, T3 vault black, the
+           tuned door dark with the six type colours), the D.O.O.R. frame in teal metal, the catalogue leaf shut in it (T3 the vault leaf,
+           as the battle draws it), the jamb lamps (a pair a tier; the tuned door one lamp a type), a halo where the room's light falls on it,
+           and a tag on the plinth's front: the item's name and price, read from ITEM_RULES (`p.item`). A row with `p.leaf` and no item is a
+           display door: the same stand, no lamps, no tag. */
+        store_door: function (U, p) {
+            p = p || {};
+            var g = new THREE.Group();
+            var R = (p.item && typeof ITEM_RULES !== 'undefined') ? ITEM_RULES[p.item] : null;
+            var tier = R ? (R.tier | 0) || 1 : 0, tuned = !!(R && R.tuned);
+            var leafKey = p.leaf || (tier >= 3 ? 'leaf_vault' : tier === 2 ? 'leaf_security' : 'leaf_wooden');
+            var cat = (_hqData().catalogue || {})[leafKey] || null;
+            var wide = !!(cat && cat.wide);
+            var oh = 2.15, ow = (cat && cat.aspect > 0) ? Math.max(0.9, Math.min(wide ? 2.0 : 1.2, cat.aspect * oh)) : 1.0;
+            var jw = 0.11, lh = 0.14, pd = 0.2, PH = 0.28, PW = ow + jw * 2 + 0.7, PD = 1.05;
+            /* the plinth */
+            var PCOL = tuned ? 0x26262b : tier >= 3 ? 0x1e1e22 : tier === 2 ? 0xb8893a : tier === 1 ? 0x8c939a : 0x3a3a3e;
+            var plMat = _hqMat(null, 1, 1, { color: PCOL, shininess: tier === 2 ? 70 : 35, specular: tier === 2 ? 0x8a6a30 : 0x444448 });
+            var plinth = _hqBox(PW, PH, PD, plMat); plinth.position.y = (PH / 2) * U; g.add(plinth);
+            var edge = _hqBox(PW + 0.04, 0.03, PD + 0.04, _hqMat(null, 1, 1, { color: 0xb8893a, shininess: 80, specular: 0x8a6a30 })); edge.position.y = (PH + 0.015) * U; g.add(edge);
+            /* the frame: teal metal, as the battle's door wears it */
+            var frMat = _hqMat('teal', 0.6, 2.2, { color: 0xc9d3d1, shininess: 30, specular: 0x555555 });
+            var y0 = PH + 0.03;
+            var jL = _hqBox(jw, oh + lh, pd, frMat); jL.position.set(-(ow / 2 + jw / 2) * U, (y0 + (oh + lh) / 2) * U, 0); g.add(jL);
+            var jR = _hqBox(jw, oh + lh, pd, frMat); jR.position.set((ow / 2 + jw / 2) * U, (y0 + (oh + lh) / 2) * U, 0); g.add(jR);
+            var lin = _hqBox(ow + jw * 2, lh, pd, frMat); lin.position.set(0, (y0 + oh + lh / 2) * U, 0); g.add(lin);
+            /* the leaf, shut in the frame */
+            if (cat && cat.file && typeof _miscModelInstance === 'function') {
+                var targetW = (ow - 0.01) * U, yawDeg = cat.yaw || 0;
+                var lg = _miscModelInstance(_hqModelUrl(cat), true, (oh - 0.015) * U, {
+                    fit: 'height', matPick: _hqPropMatPick,
+                    onDone: function (m, s, bb) {
+                        var c0 = m.children[0]; if (c0 && yawDeg) c0.rotation.y = yawDeg * Math.PI / 180;
+                        var sideways = (Math.abs(yawDeg) % 180) === 90;
+                        var w = (sideways ? (bb.max.z - bb.min.z) : (bb.max.x - bb.min.x)) * s;
+                        if (w > 0) m.scale.x = cat.aspect ? (targetW / w) : Math.min(1, targetW / w);
+                        m.scale.z = Math.min(1, m.scale.x);
+                        if (_hq) _hq.dirty = true;
+                    }
+                });
+                if (lg) { lg.position.set(0, y0 * U, 0); g.add(lg); }
+            }
+            /* the jamb lamps */
+            if (R) {
+                var COLS = (typeof CAPTURE_TYPE_COLORS !== 'undefined') ? CAPTURE_TYPE_COLORS : {};
+                var lamp = function (col, x, y) { var m = new THREE.Mesh(new THREE.BoxGeometry(jw * 0.7 * U, 0.12 * U, pd * 1.25 * U), _hqBasic(col)); m.position.set(x * U, y * U, 0); g.add(m); };
+                if (tuned) {
+                    ['human', 'divine', 'unholy', 'tech', 'anomaly', 'alien'].forEach(function (t, i) {
+                        var side = i < 3 ? -1 : 1, k = i % 3;
+                        lamp(COLS[t] || 0xffffff, side * (ow / 2 + jw / 2), y0 + oh * (0.35 + 0.22 * k));
+                    });
+                } else {
+                    for (var pi = 0; pi < Math.min(3, tier); pi++) for (var sd = -1; sd <= 1; sd += 2) lamp(0x5ce0d0, sd * (ow / 2 + jw / 2), y0 + oh * (0.45 + 0.2 * pi));
+                }
+            }
+            /* where the light falls: a soft pool on the floor in front, a halo over the lintel */
+            var pool = _hzGlowSprite(2.6 * U, 0xffe2b8, 0.16, 0.0, 0.0, 0.0); pool.position.set(0, (y0 + oh + 0.5) * U, 0.1 * U); g.add(pool);
+            /* the tag on the plinth's front: the name, the price (read live) */
+            if (R && typeof _hzTextTex === 'function') {
+                var nm = String(R.name || p.item).toUpperCase(), pr = (R.shopPrice | 0) + ' HAZARD PAY';
+                var tex = _hzTextTex('hq_storetag_' + p.item + '_' + (R.shopPrice | 0), [nm, pr], { w: 512, h: 128, bg: '#1a1a1d', color: '#f2e6cc', border: '#b8893a', pad: 0.1, sizes: [44, 32], font: '"Arial Narrow", Arial, sans-serif' });
+                if (tex) {
+                    var tag = new THREE.Mesh(new THREE.PlaneGeometry(1.0 * U, 0.22 * U), new THREE.MeshLambertMaterial({ map: tex, emissive: 0x2a2620, emissiveIntensity: 0.4 }));
+                    tag.position.set(0, (PH / 2) * U, (PD / 2 + 0.006) * U); g.add(tag);
+                }
+            }
+            return g;
+        },
     });
     /* THE SUBWAY's NAME BOARD (2026-11-18, data.js DOOR_HQ.subway): an enamel plate on the wall (front +z), white capitals on dark green in a
        white line, the line's name small under the station's. It reads its own placement row (`p.text`: data.js hqSubwayApply writes the
@@ -97372,6 +97441,74 @@ const ThreeRenderer = (function () {
             return g;
         },
         /* THE SAUCER (TWA's flight-centre lamp): a stem, a fluted cream saucer, a lit disc under it */
+        /* THE ROOM WALL (DOOR HQ 2.0, 2026-11-26, the Cafeteria + Kitchen): a partition INSIDE a box room, so one room holds two
+           (the Kitchen behind the canteen, no card between them). Built in metres along the row's own x, its front (+z) facing the
+           row's `face` (face 180 = the room's axes: x east, front south). Row: `len` (m), `wallH` (m), `t` (m, 0.3), `dadoH`
+           (m, the dado line both sides), `front` / `back` = { wall, dado, wallColor, dadoColor } (sheet keys, `urban:` too),
+           `holes` = [{ x0, x1, y0, y1, sill }] in the row's x (a doorway from y0 0, a serving hatch from its counter height;
+           `sill: true` lays a steel shelf through it). `floor: '<sheet>'` instead lays a 1.5 cm floor patch `len` x `t` (a
+           kitchen's tiles on a canteen's floor). No catalogue footprint: THE REAL COLLISION reads the slabs, so a doorway
+           is walked through and a hatch is a wall to the waist. */
+        room_wall: function (U, p) {
+            p = p || {};
+            var g = new THREE.Group(), L = +p.len || 3.5, T = +p.t || 0.3, TILE = +p.tile || 1.6;
+            var M = function (tex, col, w, h, o) { return _hqMat(tex || null, Math.max(0.25, w / TILE), Math.max(0.25, h / TILE), Object.assign({ color: (col != null) ? col : 0xffffff, shininess: 14, specular: 0x202020 }, o || {})); };
+            if (p.floor) {
+                var fm = M(p.floor, p.floorColor, L, T, { shininess: 22, specular: 0x2a2a2a }), edge = M(null, p.floorColor != null ? p.floorColor : 0xbfc3c4, 1, 1);
+                var slab = new THREE.Mesh(new THREE.BoxGeometry(L * U, 0.015 * U, T * U), [edge, edge, fm, edge, edge, edge]);
+                slab.position.y = 0.0075 * U; g.add(slab);
+                return g;
+            }
+            var H = +p.wallH || 3.5, dH = (p.dadoH != null) ? +p.dadoH : 1.2, F = p.front || {}, B = p.back || {};
+            var holes = (p.holes || []).map(function (h) { return { x0: Math.max(-L / 2, +h.x0), x1: Math.min(L / 2, +h.x1), y0: Math.max(0, +h.y0 || 0), y1: Math.min(H, +h.y1), sill: !!h.sill }; }).filter(function (h) { return h.x1 > h.x0 && h.y1 > h.y0; });
+            var xs = [-L / 2, L / 2];
+            holes.forEach(function (h) { xs.push(h.x0, h.x1); });
+            xs = xs.sort(function (a, b) { return a - b; }).filter(function (v, i, A) { return i === 0 || v - A[i - 1] > 0.001; });
+            var trimC = (p.trimColor != null) ? p.trimColor : 0xb8893a;
+            for (var i = 0; i + 1 < xs.length; i++) {
+                var a = xs[i], b = xs[i + 1], mid = (a + b) / 2, segs = [[0, H]];
+                holes.forEach(function (h) {
+                    if (h.x0 > mid || h.x1 < mid) return;
+                    var out = [];
+                    segs.forEach(function (sg) {
+                        if (h.y1 <= sg[0] || h.y0 >= sg[1]) { out.push(sg); return; }
+                        if (h.y0 > sg[0]) out.push([sg[0], h.y0]);
+                        if (h.y1 < sg[1]) out.push([h.y1, sg[1]]);
+                    });
+                    segs = out;
+                });
+                segs.forEach(function (sg) {
+                    /* split at the dado line: tile below, the wall's sheet above, each face its own side's */
+                    var cuts = [sg[0]];
+                    if (dH > sg[0] + 0.01 && dH < sg[1] - 0.01) cuts.push(dH);
+                    cuts.push(sg[1]);
+                    for (var c = 0; c + 1 < cuts.length; c++) {
+                        var y0 = cuts[c], y1 = cuts[c + 1], w = b - a, hh = y1 - y0, low = y1 <= dH + 0.001;
+                        var fr = low ? M(F.dado || F.wall, low ? F.dadoColor : F.wallColor, w, hh) : M(F.wall, F.wallColor, w, hh);
+                        var bk = low ? M(B.dado || B.wall, B.dadoColor, w, hh) : M(B.wall, B.wallColor, w, hh);
+                        var ed = M(null, (p.edgeColor != null) ? p.edgeColor : 0xd8d2c4, 1, 1);
+                        var m = new THREE.Mesh(new THREE.BoxGeometry(w * U, hh * U, T * U), [ed, ed, ed, ed, fr, bk]);
+                        m.position.set(mid * U, ((y0 + y1) / 2) * U, 0); g.add(m);
+                    }
+                });
+            }
+            var brass = _hqMat(null, 1, 1, { color: trimC, shininess: 90, specular: 0xffe0a0 });
+            /* the dado rail, both faces, broken at every opening */
+            if (dH > 0.05 && dH < H) for (var r = 0; r + 1 < xs.length; r++) {
+                var ra = xs[r], rb = xs[r + 1], rm = (ra + rb) / 2;
+                if (holes.some(function (h) { return h.x0 <= rm && h.x1 >= rm && h.y0 <= dH && h.y1 >= dH; })) continue;
+                [1, -1].forEach(function (sd) { var rl = _hqBox(rb - ra, 0.06, 0.03, brass); rl.position.set(rm * U, dH * U, sd * (T / 2 + 0.015) * U); g.add(rl); });
+            }
+            /* a hatch's steel shelf through the wall; every opening's brass frame on the front */
+            var steel = _hqMat(null, 1, 1, { color: 0xb4b9be, shininess: 80, specular: 0x99a0a8 });
+            holes.forEach(function (h) {
+                var w = h.x1 - h.x0;
+                if (h.sill) { var sl = _hqBox(w + 0.1, 0.05, T + 0.5, steel); sl.position.set(((h.x0 + h.x1) / 2) * U, (h.y0 + 0.025) * U, 0); g.add(sl); }
+                var hd = _hqBox(w + 0.16, 0.08, 0.04, brass); hd.position.set(((h.x0 + h.x1) / 2) * U, (h.y1 + 0.04) * U, (T / 2 + 0.02) * U); g.add(hd);
+                [h.x0 - 0.04, h.x1 + 0.04].forEach(function (jx) { var jb = _hqBox(0.08, h.y1 - h.y0, 0.04, brass); jb.position.set(jx * U, ((h.y0 + h.y1) / 2) * U, (T / 2 + 0.02) * U); g.add(jb); });
+            });
+            return g;
+        },
         saucer_pendant: function (U, p) {
             var g = new THREE.Group();
             var cream = _hqMat(null, 1, 1, { color: (p && p.color != null) ? p.color : 0xf1ece0, shininess: 30, specular: 0x333333 });
@@ -99937,6 +100074,7 @@ const ThreeRenderer = (function () {
         var roomId = H.opts.room || 'central_egress', U = _hqUnits(), rows = [], cap = DR.max || 80;
         (H.props || []).forEach(function (pr) {
             var cat = D.catalogue[pr.key]; if (!cat || cat.wall || cat.ceil || cat.float || cat.hover) return;
+            if (pr.row && pr.row.decal === false) return;   // DOOR HQ 2.0 (2026-11-26): a row may refuse its key's mark (the Cafeteria kitchen's steel tables are not the Autopsy Room's)
             for (var i = 0; i < RULES.byKey.length; i++) { var ru = RULES.byKey[i]; if (ru.re.test(pr.key)) { var wp = new THREE.Vector3(); pr.grp.getWorldPosition(wp); rows.push({ kind: ru.kind, x: wp.x / U, z: wp.z / U, y: wp.y / U, r: ru.r, rot: Math.random() * 360 }); break; } }
         });
         if (RULES.door && !(room.kind === 'box' && room.shell && room.shell.open)) (H.doors || []).forEach(function (d) {

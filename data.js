@@ -33487,6 +33487,11 @@ const DOOR_HQ = {
         music_box:       { proc: 'music_box',       h: 0.16, foot: 0,    glow: { y: 0.18, size: 0.6, color: 0xffd8a0 } },   // a tabletop: the lid up, the dancer turning (a ticker)
         price_tag:       { proc: 'price_tag',       h: 1.3,  foot: 0 },                                            // a tag on a stand beside a floor model (reads its own row's `text`)
         sale_banner:     { proc: 'sale_banner',     h: 0.6,  foot: 0,    wall: true, mount: 2.4, depth: 0.03 },    // EVERYTHING MUST GO (reads `text`)
+        /* DOOR STORE (DOOR HQ 2.0, 2026-11-26): a capture door on its plinth under its own light. The row's `item` (an ITEM_RULES capture
+           door) picks the leaf, the lamps (one pair a tier; the tuned door the six type colours) and the tag (name + price, read live);
+           a row with `leaf` instead is a display door with no tag. three-renderer.js _hqProcBuilders.store_door */
+        store_door:      { proc: 'store_door',      h: 2.8,  foot: 0.8, rect: { hw: 0.95, hd: 0.6 }, block: true,
+                           light: { color: 0xffe2b8, intensity: 0.9, dist: 6.5, y: 4.6 } },
         station_text:    { proc: 'station_sign',    h: 0.62, foot: 0,    wall: true, mount: 2.25, depth: 0.04 },   // the same board with fixed words (DOOR HQ's own platform)
         station_sign:    { proc: 'station_sign',    h: 0.62, foot: 0,    wall: true, mount: 2.25, depth: 0.04 },   // THE SUBWAY (2026-11-18): the platform's name board, an enamel plate (reads `text`: the station, the line under it; hqSubwayApply writes it per station)
         nightmare_bloom: { proc: 'nightmare_bloom', h: 1.9, foot: 0.7, block: true, glow: { y: 1.2, size: 2.2, color: 0xff3a4a }, light: { color: 0xff4a4a, intensity: 0.8, dist: 8, y: 1.3 } },   // a flower whose petals are teeth, opening and closing (a ticker)
@@ -33603,6 +33608,7 @@ const DOOR_HQ = {
         /* THE EXECUTIVE FLOOR (plan 5.4 stage 1 + 7.4 Rooms 4C + 8, 2026-09-14) — eight procs; a user GLB replaces any of them by giving the entry a `file` */
         floor_panel:       { proc: 'floor_panel',    h: 0.9,     foot: 0, wall: true, mount: 1.0,  depth: 0.05, glow: { y: 0.45, size: 0.7, color: 0xffb020 } },   // the lobby: sixteen buttons, two lit
         exec_desk:         { proc: 'exec_desk',      span: 2.4,  foot: 1.2, depth: 1.05, rect: { hw: 1.2, hd: 0.525 }, block: true },   // 4C: the executive desk (top at 0.76 — desk props sit at y: 0.76). A FLOOR prop since 2026-09-16: centred, the drawers on the sitter's side (−z), the modesty panel to the room (+z)
+        room_wall:         { proc: 'room_wall',      h: 3.5,  foot: 0 },   // DOOR HQ 2.0 (2026-11-26): a partition inside a box room (the Kitchen behind the Cafeteria), or with `floor` a floor patch; sized by its row (`len`, `wallH`, `t`, `holes`), collides by its own slabs (three-renderer.js room_wall)
         serving_line:      { proc: 'serving_line',   span: 3.0,  foot: 1.5, wall: true, depth: 1.15, rect: { hw: 1.5, hd: 0.575 }, block: true },   // Room 86 (2026-09-16): a 3 m cafeteria counter — the hot wells + sneeze guard on the wall side, THE TRAY SLIDE (0.85 m) along the front; trays at z = wall + 0.95
         exec_chair:        { file: 'Meshy_AI_an_office_chair_0903105134_texture.glb', h: 1.1, foot: 0.36, block: true, front: 'back', seat: 0.50, seatZ: 0.02 },   // 4C: the chair behind the desk — 2026-11-03: office_chair's file (was proc 'exec_chair')
         wall_plaques:      { proc: 'wall_plaques',   h: 1.2,     foot: 0, wall: true, mount: 1.3,  depth: 0.05 },   // 4C: the achievements engraved (gold per hqTrophyCount, read at build)
@@ -34356,6 +34362,8 @@ const DOOR_HQ = {
        but are never entered: the 36-plot room `site_prebuilt_fairy_forest_plots` stood for all four; since ONE WORLD (2026-11-17) that room is retired too and the
        Woods are three rooms at their v13 places (the Clearing + Dead Man's Cave, the Redwood Trail, Bohemian Grove) + the route rooms of the links L3 and L4. */
     retired: { ring_m: 'central_egress',   /* THE EIGHT DOORS (2026-11-18): the mezzanine ring held only bay doors; its four doors in the Main Hall are closed */
+               kitchen: 'cafeteria', coldroom: 'cafeteria',   /* DOOR HQ 2.0 WAVE 2 (2026-11-26, the Cafeteria thread): the Kitchen is the strip behind the Cafeteria's serving hatch, the Cold Room folded into it (LOOK_BOOK.md); the basement pair is gone */
+               dispensary: 'doorstore',   /* DOOR HQ 2.0 WAVE 2 (2026-11-26, mondo: "The Hatch/The Dispensary/Shop needs to be renamed to Door Store and only door store"): Room 911 off the Medical Wing is the Door Store off the Lobby; the wing's door to it is cut */
                reception: 'central_egress',   /* DOOR HQ 2.0 WAVE 1 (2026-11-26, mondo: "Rhonda's desk is the reception, she is the receptionist"): its door is cut, its two counters stand at her desk */
                site_prebuilt_downtown_mall: 'site_prebuilt_bayside_mall',   /* THE BAYSIDE MALL (2026-11-20): the old hall, 96 x 64 m behind a 28 m building, is this one building now (bake-mall.js) */
         site_prebuilt_cyberpunk_streets: 'site_prebuilt_downtown_streets', site_prebuilt_cyberpunk_noodle: 'site_prebuilt_downtown_streets',   /* THE DOOR AUDIT (2026-11-18, mondo: the new Cyberpunk City is "a reskin/reimagining of current disaster city"): the old Cyberpunk City's two rooms are never entered (its four ways in are cut); they stand only as the fight board's source */
@@ -34495,6 +34503,8 @@ const DOOR_HQ = {
                                 editor (keep it in the main menu for now)", "Get rid of the reception room, Rhonda's desk is the reception"): the Shop, the
                                 Party Builder and the Map Editor stay on the main menu; the ID card and the intake sheet are counters at Rhonda's desk */
                              'quartermaster', 'engineering', 'reception'],
+            services: ['kitchen'], corridor_b: ['coldroom'],   // DOOR HQ 2.0 WAVE 2 (2026-11-26): the basement Kitchen and Cold Room are retired into the Cafeteria (DOOR_HQ.retired)
+            medwing: ['dispensary'],   // DOOR HQ 2.0 WAVE 2 (2026-11-26): the Dispensary is the Door Store, off the Lobby (DOOR_HQ.retired.dispensary)
             tunnel: ['carnival'], mandela: ['mirrors'], site_prebuilt_area51_ow_circus: ['tunnel', 'mirrors'],   // the two doors to the Circus that stood open from the first minute
             dungeon: ['oubliette'], site_prebuilt_hollow_earth_ug_cavern: ['dungeon'],                              // the Dungeon's moving wall to the Cavern
             site_prebuilt_fairy_forest_ow_ritual: ['lookingglass'], site_prebuilt_camelot_ow_forest: ['deadtree'],   // the dead tree: Bohemian Grove and Camelot's Forest touch by a trail
@@ -35527,252 +35537,172 @@ const DOOR_HQ = {
             spawn: { x: -1.55, z: -0.5, face: 90 },
         },
 
-        /* ── ROOM 86 · THE CAFETERIUM (HQ plan 7.4, built 2026-09-11) — the
-           roster ON BREAK. A 12 × 9 box off the ground ring at 75°: the
-           serving line along the north wall (four steel counters, the curved
-           till at the east end, the kitchen hatch above it), the hot side on
-           the east wall (the break nook that stood in the hall until today —
-           round fridge, microwave, coffee maker — plus the vending machine
-           that was on the other side yesterday), two long tables and the
-           chairs Training keeps signing out, the notice board on the south
-           wall (a counter → the leaderboard until FORM 365 exists, plan 7.9),
-           two clocks that disagree. `npcSpots` seat the roster draw;
-           `onlineSpots` are where the OTHER operatives on shift stand — one
-           per online player besides you (online.js `_ewOnlineCount`).
-           AFTER HOURS (plan 5.1's first variant, `variants.after_hours`,
-           rolled per visit by hqRollRoomVariants — 22:00–05:00 local, else
-           one visit in five) the door reads MÖBIUS STRIP CLUB, the serving
-           line and the tables are gone, the bar counter is one lathe with one
-           side, the light goes pink, and nobody comments. Same room, same
-           number. Overheard lines are Claude placeholders (A15 — rewrite at
-           will); the cast's own lines are the user's. */
+        /* ── THE CAFETERIA (DOOR HQ 2.0, 2026-11-26, wave 2; mondo: "Bigger cafeteria"; FLOOR_PLANS.md picture 1, LOOK_BOOK.md
+           "Cafeteria" + "Kitchen"). Clean sheet: was Room 86, a 15 x 12 box off the Ring. Now 35 x 24.5 m (10 x 7 squares) and
+           7 m high, off the Lobby's west side with NO DOOR: the whole middle of its south wall (17.5 m) is the Lobby opening
+           (`open`, joined with no card by HQ_STAGE_RULES.round). The KITCHEN is a strip in the same room behind it (21 x 7 m),
+           walled off by THE ROOM WALL (catalogue `room_wall`): a 12 m serving hatch over the line, a staff doorway at its east
+           end, so canteen and kitchen are one room and no card. The old basement Kitchen and its Cold Room are retired into
+           this room (DOOR_HQ.retired). Plan, west to east: booths down both side walls under false windows (a booth = two
+           psx_sofa_3 facing over a dinner table: the look book's stand-in until a diner booth model exists), four rows of
+           long tables on the hero line from the Lobby to the serving line, the till and the coffee corner at the east end.
+           Kept clear: the Lobby opening's lane (z > 8.75 across x ±9.1) and 3.5 m both sides of the kitchen doorway. ── */
         cafeteria: {
-            label: 'THE CAFETERIA',
-            sub: 'ON BREAK · THE KITCHEN',
-            roomNo: '86', why: '86’d — the menu is always out of it',
+            label: 'CAFETERIA',
             kind: 'box',
             shell: {
-                w: 15, d: 12, h: 4.0,
-                wallH: 4.0, dadoH: 1.05,
-                /* THE RETRO-FUTURIST PASS (2026-09-21 — the user: "more rounded offices, groovy curved architecture, lava lamps"): Room 86
-                   grew from 12 × 9 to 15 × 12 — a filleted white box under a cove with THE CONVERSATION RING (six arcs of orange velour
-                   round a tulip table and a lava lamp) on a shag rug in the east half, the two long tables in the west, the serving
-                   line where it was, portholes on the south wall, a sputnik over the ring */
-                round: 1.5, cove: 0.55,
-                floor: 'terrazzo', wall: 'drywall', dado: 'drywall', trim: 'metal', ceiling: 'ceiling',
-                floorColor: 0xf0ebdf, wallColor: 0xf5f2ec, dadoColor: 0xe07a3a, ceilColor: 0xf6f4ee,
-                pipes: false, strips: false,       // an acoustic ceiling; the conduits run over the hall, not the lunch
-                light: { x: 0, z: 0 },
-                plate: { x: 0, z: -5.75, y: 3.3 },
-                look: HQ_ROOM_LOOKS.retro,
+                w: 35, d: 24.5, h: 7.0,
+                wallH: 7.0, dadoH: 1.5,
+                floor: 'checkerboard_2', wall: 'drywall', dado: 'urban:TileSubway3b', trim: 'metal', ceiling: 'ceiling',
+                floorColor: 0xf2ead8, wallColor: 0xf3e4c0, dadoColor: 0xffffff, ceilColor: 0xf6f1e6,
+                pipes: false, strips: false,
+                lights: [{ x: -5.5, z: 2.5 }, { x: 5.5, z: 2.5 }, { x: -14, z: -1 }, { x: 14, z: -1 }, { x: 0, z: -2.5 }, { x: 0, z: 8 }, { x: -5, z: -8.8 }, { x: 5, z: -8.8 }],
+                mood: { light: 0xffe2b0, ambient: 0.6 },
+                plate: { x: 0, z: -4.9, y: 5.0 },
             },
             doors: [
-                { id: 'egress', wall: 'w', z: 1.2, leaf: 'leaf_saloon',
-                  label: 'THE LOBBY',
-                  action: { room: 'central_egress', at: 'cafeteria' },
-                  desc: 'The way back to the hall. The doors swing both ways, which Facilities calls a feature and Continuity calls a position.' },
-                /* THE SERVICE DOOR (Phase 8, 2026-09-14): the kitchen's stair, at the east end of the serving line */
-                { id: 'kitchen', wall: 'n', x: 4.3, leaf: 'leaf_saloon',
-                  label: 'THE KITCHEN', sub: 'ROOM 350 · SERVICE STAIR · DOWN TO B',
-                  action: { room: 'kitchen', at: 'service' },
-                  desc: 'The service stair down to the kitchen. The trays come up it; the cook does not.' },
+                { id: 'lobby', wall: 's', x: 0, open: { w: 17.5, h: 4.5 },
+                  label: 'LOBBY',
+                  action: { room: 'central_egress', at: 'cafeteria' } },
             ],
             counters: [
-                /* the notice board on the south wall → a PANEL (map.js by id): today's
-                   Form 365 lines and the pinned notices. ONE HOME PER FUNCTION (HQ plan
-                   Phase 8, 2026-09-14): the leaderboard is the hall's EMPLOYEE OF THE
-                   MONTH board only; the till is a prop again — the shop is the
-                   Quartermaster's door only. */
-                { id: 'notice', x: -2.0, z: 5.4, face: 0, plateY: 2.05, radius: 1.9, verb: 'READ',
-                  label: 'NOTICE BOARD', sub: 'DAILY TASKS · NOTICES', action: {},
-                  desc: 'Form 365 for today, pinned, and the notices under it. The standings are on the board in the hall; this one is for what is due.' },
+                /* the notice board → its panel (map.js by id 'notice'): today's Form 365 lines and the pinned notices */
+                { id: 'notice', x: -16.9, z: 9.6, face: 90, plateY: 2.05, radius: 1.9, verb: 'READ',
+                  label: 'NOTICE BOARD', action: {} },
             ],
             props: [
-                /* ── the north wall (z −6): THE SERVING LINE, west to east (2026-09-16: two 3 m cafeteria counters — hot wells, sneeze
-                   guard, THE TRAY SLIDE at 0.85 m along the front). The body runs z −5.98 … −5.23, the slide −5.23 … −4.83. ── */
-                { key: 'serving_line',   wall: 'n', x: -3.4 },
-                { key: 'serving_line',   wall: 'n', x: -0.4 },
-                { key: 'reception_wedge', x: 1.675, z: -3.625, face: 200 },                    // the curved till: a straight counter needs a form
-                { key: 'cash_register',  x: 1.275, z: -3.395, y: 0.76, face: 200 },           // on the wedge's counter (0.76 m — the 1.10 is its monitor)
-                { key: 'meal_tray',      x: -4.4, z: -5.03, y: 0.85, face: 10 },            // on the slide
-                { key: 'meal_tray',      x: -3.6, z: -5.05, y: 0.85, face: -8 },
-                { key: 'meal_tray',      x: -2.2, z: -5.03, y: 0.85 },
-                { key: 'meal_tray_empty', x: -1.4, z: -5.05, y: 0.85, face: 15 },
-                { key: 'meal_tray_empty', x: -0.4, z: -5.02, y: 0.85, face: -20 },
-                { key: 'coffee_mug',     x: -0.9, z: -5.55, y: 0.9, face: 30 },             // on the counter top, by the wells
-                { key: 'solo_cup',       x: 0.2,  z: -5.5, y: 0.9 },
-                { key: 'clipboard_flat', x: 0.75, z: -5.55, y: 0.9, face: -12 },              // the seconds sheet; nobody has had seconds
-                /* THE CHRISTMAS PACK (2026-10-24, mondo: "there is some food that could go in the cafeteria"): the pack's roast on the
-                   counter over the wells, the flan / cocoa / punch / cookies on the tables, a gingerbread man by the lava lamp */
-                { key: 'xmas_turkey',    x: -3.9, z: -5.55, y: 0.9, face: 0 },
-                { key: 'xmas_carvery',   x: -2.75, z: -5.55, y: 0.9, face: 0 },
-                { key: 'xmas_roast',     x: -1.75, z: -5.55, y: 0.9, face: 0 },
-                { key: 'observation_window', wall: 'n', x: -2.0, mount: 1.45 },              // the kitchen hatch; the kitchen is not on the plan
-                { key: 'wall_clock',     wall: 'n', x: 1.0, mount: 2.9 },
-                { key: 'vent_grille',    wall: 'n', x: 2.2, mount: 3.3 },                      // over the hatch; the kitchen door took its wall (Phase 8)
-                { key: 'saucer_pendant', x: -1.9, z: -3.8, ceil: true },                       // over the queue
-                /* ── the east wall (x 7.5): THE HOT SIDE (the break nook, moved in from the hall) ── */
-                { key: 'tanker_desk',    wall: 'e', z: -2.6 },
-                { key: 'microwave',      x: 7.05, z: -2.85, y: 0.76, face: 270 },
-                { key: 'coffee_maker',   x: 7.05, z: -2.35, y: 0.76, face: 270 },
-                { key: 'solo_cup',       x: 6.9,  z: -2.1, y: 0.76 },
-                { key: 'round_fridge',   x: 7.0,  z: -1.4, face: 270 },
-                { key: 'retro_speakers', x: 7.0,  z: -1.4, y: 1.05, face: 270 },              // the muzak followed the fridge
-                { key: 'mini_fridge',    x: 7.1,  z: -0.6, face: 270 },
-                { key: 'hook_rail_long', wall: 'e', z: 2.2, mount: 1.8 },                    // the aprons (the rail nobody hangs anything on)
-                { key: 'vending_machine', wall: 'e', z: 0.4 },                               // the one that was on the other side yesterday
-                { key: 'trash_bin',      x: 7.05, z: 1.5, face: 270 },
-                { key: 'palm_tree',      x: 6.5,  z: 3.6 },
-                { key: 'cardboard_boxes', x: 6.9, z: 2.6, face: -15 },
-                /* ── the west half: the two long tables and the chairs ── */
-                { key: 'conference_table', x: -3.575, z: -0.125, face: 0 },
-                { key: 'cafeteria_chair', x: -5.075, z: -0.125,  face: 90 },
-                { key: 'cafeteria_chair', x: -2.075, z: -0.125,  face: 270 },
-                { key: 'cafeteria_chair', x: -4.275, z: -1.225, face: 180 },
-                { key: 'cafeteria_chair', x: -2.875, z: -1.225, face: 180 },
-                { key: 'cafeteria_chair', x: -4.275, z: 0.975,  face: 0 },
-                { key: 'molded_chair',    x: -2.875, z: 1.025, face: 0 },
-                { key: 'meal_tray',      x: -4.075, z: -0.425,  y: 0.74, face: 5 },
-                { key: 'coffee_mug',     x: -3.075, z: 0.075,  y: 0.74 },
-                { key: 'solo_cup',       x: -3.775, z: 0.275,  y: 0.74 },
-                { key: 'papers_a',       x: -2.775, z: -0.625,  y: 0.74, face: 30 },              // somebody is working through lunch
-                { key: 'xmas_flan',      x: -4.575, z: 0.125, y: 0.74 },                         // THE CHRISTMAS PACK
-                { key: 'xmas_cocoa',     x: -4.625, z: -0.475, y: 0.74, face: 200 },
-                { key: 'conference_table', x: -3.575, z: 3.375, face: 0 },
-                { key: 'cafeteria_chair', x: -5.075, z: 3.375,  face: 90 },
-                { key: 'cafeteria_chair', x: -2.075, z: 3.375,  face: 270 },
-                { key: 'molded_chair',    x: -4.275, z: 2.275,  face: 180 },
-                { key: 'cafeteria_chair', x: -2.875, z: 2.275,  face: 180 },
-                { key: 'cafeteria_chair', x: -4.275, z: 4.475,  face: 0 },
-                { key: 'molded_chair',    x: -2.875, z: 4.525, face: 0 },
-                { key: 'meal_tray',      x: -3.175, z: 3.675,  y: 0.74, face: -10 },
-                { key: 'meal_tray_empty', x: -4.275, z: 3.075,  y: 0.74, face: 12 },
-                { key: 'solo_cup',       x: -3.575, z: 2.775,  y: 0.74 },
-                { key: 'coffee_mug',     x: -2.775, z: 2.975,  y: 0.74 },
-                { key: 'xmas_punch',     x: -4.625, z: 3.725, y: 0.74, face: 30 },                // THE CHRISTMAS PACK
-                { key: 'xmas_cookies',   x: -3.925, z: 3.875,  y: 0.74 },
-                /* ── the east half: THE CONVERSATION RING — six arcs of orange velour round a tulip table on a shag rug (the
-                   sunken lounge of every 1960s terminal, raised: the floor is one level); the sixth arc left out at the
-                   north-west so the tables walk in ── */
-                { key: 'shag_rug',       x: 2.8,  z: 1.2, r: 2.1, color: 0xd8632a, color2: 0xf0b64a },
-                { key: 'curved_sofa',    x: 3.425,  z: -1.875, face: 180, r: 2.3, color: 0xe8641e },
-                { key: 'curved_sofa',    x: 5.175, z: -0.125, face: 240, r: 2.3, color: 0xe8641e },
-                { key: 'curved_sofa',    x: 5.175, z: 3.375, face: 300, r: 2.3, color: 0xe8641e },
-                { key: 'curved_sofa',    x: 2.8,  z: 3.375,  face: 0,   r: 2.3, color: 0xe8641e },
-                { key: 'curved_sofa',    x: -0.075, z: 1.625, face: 60,  r: 2.3, color: 0xe8641e },
-                { key: 'tulip_table',    x: 2.8,  z: 1.2, r: 0.7 },
-                { key: 'lava_lamp',      x: 2.8,  z: 1.2, y: 0.74, face: 30 },                 // on the tulip table: the wax, at lunch
-                { key: 'solo_cup',       x: 3.3,  z: 1.0, y: 0.74 },
-                { key: 'coffee_mug',     x: 2.35, z: 1.5, y: 0.74, face: 200 },
-                { key: 'xmas_gingerbread', x: 3.05, z: 1.6, y: 0.74, face: 160 },               // THE CHRISTMAS PACK
-                { key: 'sputnik_lamp',   x: 2.8,  z: 1.2, ceil: true },                        // over the ring
-                { key: 'mushroom_lamp',  x: 0.3,  z: -4.0 },                                   // by the till
-                /* ── the door end and the south wall (z 6) ── */
-                { key: 'rug_office',     x: -6.0, z: 1.2, face: 0 },
-                { key: 'trash_bin',      x: -6.6, z: 4.4, face: 60 },
-                { key: 'wet_floor_sign', x: -5.6, z: 4.6, face: 130 },
-                { key: 'potted_plant',   x: -6.7, z: -5.1 },
-                { key: 'exit_sign',      wall: 'w', z: 1.2, mount: 2.75 },
-                { key: 'picture_round_b', wall: 'w', z: -2.4 },
-                { key: 'fire_extinguisher', wall: 's', x: 4.6 },
-                { key: 'notice_board',   wall: 's', x: -2.0 },
-                { key: 'picture_round_a', wall: 's', x: 0.6 },
-                { key: 'picture_round_c', wall: 's', x: 2.4 },
-                { key: 'wall_clock',     wall: 's', x: -4.6, mount: 2.95 },                  // disagrees with the north one on purpose
-                { key: 'porthole',       wall: 's', x: -3.5, mount: 1.75, size: 1.3 },      // THE RETRO-FUTURIST PASS: two oval windows on a sky that drifts
-                { key: 'porthole',       wall: 's', x: 5.1,  mount: 1.75, size: 1.3 },
-                /* ── the ceiling ── */
-                { key: 'fluorescent',    x: -3.6, z: 1.0, ceil: true, face: 90 },
-                { key: 'saucer_pendant', x: -3.6, z: -3.0, ceil: true },
-                { key: 'saucer_pendant', x: 0.2,  z: 4.4,  ceil: true },
+                /* ── THE KITCHEN'S WALLS: the front with the serving hatch (x −8.6 … 3.6, sill at 1.05 m) and the staff doorway
+                   (x 6.6 … 8.7), the two ends back to the north wall; mustard-and-white subway tile to 1.5 m on the canteen
+                   side, white tile all the way up inside ── */
+                { key: 'room_wall', x: 0, z: -5.25, face: 180, len: 21.3, wallH: 7.0, t: 0.3, dadoH: 1.5,
+                  front: { wall: 'drywall', wallColor: 0xf3e4c0, dado: 'urban:TileSubway3b' }, back: { wall: 'drywall', wallColor: 0xf4f6f5, dado: 'urban:TileGeneric1a', dadoColor: 0xf4f6f5 },
+                  holes: [{ x0: -8.6, x1: 3.6, y0: 1.05, y1: 2.45, sill: true }, { x0: 6.6, x1: 8.7, y0: 0, y1: 2.9 }] },
+                { key: 'room_wall', x: -10.5, z: -8.825, face: 270, len: 6.85, wallH: 7.0, t: 0.3, dadoH: 1.5,
+                  front: { wall: 'drywall', wallColor: 0xf3e4c0, dado: 'urban:TileSubway3b' }, back: { wall: 'drywall', wallColor: 0xf4f6f5, dado: 'urban:TileGeneric1a', dadoColor: 0xf4f6f5 } },
+                { key: 'room_wall', x: 10.5, z: -8.825, face: 90, len: 6.85, wallH: 7.0, t: 0.3, dadoH: 1.5,
+                  front: { wall: 'drywall', wallColor: 0xf3e4c0, dado: 'urban:TileSubway3b' }, back: { wall: 'drywall', wallColor: 0xf4f6f5, dado: 'urban:TileGeneric1a', dadoColor: 0xf4f6f5 } },
+                { key: 'room_wall', x: 0, z: -8.825, face: 180, floor: 'urban:TileLinoleum1a', floorColor: 0xf0f2f0, len: 20.7, t: 6.85, tile: 2.4 },   // the kitchen's floor
+                { key: 'room_wall', x: 0, z: -12.23, face: 180, len: 20.7, wallH: 7.0, t: 0.04, dadoH: 2.1,   // the kitchen's tile on the room's north wall
+                  front: { wall: 'drywall', wallColor: 0xf4f6f5, dado: 'urban:TileGeneric1a', dadoColor: 0xf4f6f5 }, back: { wall: 'drywall' } },
+                /* ── THE SERVING LINE (canteen side, its back on the wall under the hatch) ── */
+                { key: 'serving_line', x: -7.0, z: -4.525, face: 180 },
+                { key: 'serving_line', x: -4.0, z: -4.525, face: 180 },
+                { key: 'serving_line', x: -1.0, z: -4.525, face: 180 },
+                { key: 'serving_line', x: 2.0,  z: -4.525, face: 180 },
+                { key: 'meal_tray',       x: -8.0, z: -3.75, y: 0.85, face: 8 },
+                { key: 'meal_tray',       x: -7.3, z: -3.77, y: 0.85, face: -6 },
+                { key: 'meal_tray_empty', x: -5.2, z: -3.75, y: 0.85, face: 14 },
+                { key: 'meal_tray',       x: -2.1, z: -3.76, y: 0.85 },
+                { key: 'meal_tray_empty', x: 0.4,  z: -3.75, y: 0.85, face: -18 },
+                { key: 'solo_cup',        x: 2.9,  z: -4.6, y: 0.9 },
+                { key: 'coffee_mug',      x: -5.9, z: -4.7, y: 0.9, face: 30 },
+                { key: 'wall_clock', x: -2.5, z: -5.06, face: 180, mount: 3.9, h: 1.4 },   // over the hatch: the clock the whole room eats by
+                { key: 'reception_wedge', x: 4.8, z: -3.6, face: 200 },                       // the till: a curved counter at the end of the line
+                { key: 'cash_register',   x: 4.45, z: -3.4, y: 0.76, face: 200 },
+                /* ── THE LONG TABLES: four rows of four tables down the hero line from the Lobby to the serving line, the chairs both sides (a few signed out to Training) ── */
+                { key: 'psx_dinner_table_1', x: -7.75, z: -0.25, face: 90 }, { key: 'psx_dinner_table_1', x: -7.75, z: 1.45, face: 90 }, { key: 'psx_dinner_table_1', x: -7.75, z: 3.15, face: 90 }, { key: 'psx_dinner_table_1', x: -7.75, z: 4.85, face: 90 },
+                { key: 'cafeteria_chair', x: -8.7, z: -0.67, face: 90 }, { key: 'cafeteria_chair', x: -8.7, z: 0.17, face: 90 }, { key: 'molded_chair', x: -8.7, z: 1.03, face: 90 }, { key: 'cafeteria_chair', x: -8.7, z: 1.87, face: 90 }, { key: 'cafeteria_chair', x: -8.7, z: 2.73, face: 90 }, { key: 'molded_chair', x: -8.7, z: 4.43, face: 90 }, { key: 'cafeteria_chair', x: -8.7, z: 5.27, face: 90 },
+                { key: 'cafeteria_chair', x: -6.8, z: -0.67, face: 270 }, { key: 'cafeteria_chair', x: -6.8, z: 0.17, face: 270 }, { key: 'molded_chair', x: -6.8, z: 1.03, face: 270 }, { key: 'cafeteria_chair', x: -6.8, z: 1.87, face: 270 }, { key: 'cafeteria_chair', x: -6.8, z: 2.73, face: 270 }, { key: 'cafeteria_chair', x: -6.8, z: 3.57, face: 270 }, { key: 'molded_chair', x: -6.8, z: 4.43, face: 270 }, { key: 'cafeteria_chair', x: -6.8, z: 5.27, face: 270 },
+                { key: 'psx_dinner_table_1', x: -3.25, z: -0.25, face: 90 }, { key: 'psx_dinner_table_1', x: -3.25, z: 1.45, face: 90 }, { key: 'psx_dinner_table_1', x: -3.25, z: 3.15, face: 90 }, { key: 'psx_dinner_table_1', x: -3.25, z: 4.85, face: 90 },
+                { key: 'molded_chair', x: -4.2, z: 0.17, face: 90 }, { key: 'cafeteria_chair', x: -4.2, z: 1.03, face: 90 }, { key: 'cafeteria_chair', x: -4.2, z: 1.87, face: 90 }, { key: 'cafeteria_chair', x: -4.2, z: 2.73, face: 90 }, { key: 'molded_chair', x: -4.2, z: 3.57, face: 90 }, { key: 'cafeteria_chair', x: -4.2, z: 4.43, face: 90 }, { key: 'cafeteria_chair', x: -4.2, z: 5.27, face: 90 },
+                { key: 'cafeteria_chair', x: -2.3, z: -0.67, face: 270 }, { key: 'molded_chair', x: -2.3, z: 0.17, face: 270 }, { key: 'cafeteria_chair', x: -2.3, z: 1.03, face: 270 }, { key: 'cafeteria_chair', x: -2.3, z: 2.73, face: 270 }, { key: 'molded_chair', x: -2.3, z: 3.57, face: 270 }, { key: 'cafeteria_chair', x: -2.3, z: 4.43, face: 270 }, { key: 'cafeteria_chair', x: -2.3, z: 5.27, face: 270 },
+                { key: 'psx_dinner_table_1', x: 3.25, z: -0.25, face: 90 }, { key: 'psx_dinner_table_1', x: 3.25, z: 1.45, face: 90 }, { key: 'psx_dinner_table_1', x: 3.25, z: 3.15, face: 90 }, { key: 'psx_dinner_table_1', x: 3.25, z: 4.85, face: 90 },
+                { key: 'molded_chair', x: 2.3, z: -0.67, face: 90 }, { key: 'cafeteria_chair', x: 2.3, z: 0.17, face: 90 }, { key: 'cafeteria_chair', x: 2.3, z: 1.03, face: 90 }, { key: 'cafeteria_chair', x: 2.3, z: 1.87, face: 90 }, { key: 'molded_chair', x: 2.3, z: 2.73, face: 90 }, { key: 'cafeteria_chair', x: 2.3, z: 3.57, face: 90 }, { key: 'cafeteria_chair', x: 2.3, z: 5.27, face: 90 },
+                { key: 'molded_chair', x: 4.2, z: -0.67, face: 270 }, { key: 'cafeteria_chair', x: 4.2, z: 0.17, face: 270 }, { key: 'cafeteria_chair', x: 4.2, z: 1.03, face: 270 }, { key: 'cafeteria_chair', x: 4.2, z: 1.87, face: 270 }, { key: 'molded_chair', x: 4.2, z: 2.73, face: 270 }, { key: 'cafeteria_chair', x: 4.2, z: 3.57, face: 270 }, { key: 'cafeteria_chair', x: 4.2, z: 4.43, face: 270 }, { key: 'cafeteria_chair', x: 4.2, z: 5.27, face: 270 },
+                { key: 'psx_dinner_table_1', x: 7.75, z: -0.25, face: 90 }, { key: 'psx_dinner_table_1', x: 7.75, z: 1.45, face: 90 }, { key: 'psx_dinner_table_1', x: 7.75, z: 3.15, face: 90 }, { key: 'psx_dinner_table_1', x: 7.75, z: 4.85, face: 90 },
+                { key: 'cafeteria_chair', x: 6.8, z: -0.67, face: 90 }, { key: 'cafeteria_chair', x: 6.8, z: 1.03, face: 90 }, { key: 'molded_chair', x: 6.8, z: 1.87, face: 90 }, { key: 'cafeteria_chair', x: 6.8, z: 2.73, face: 90 }, { key: 'cafeteria_chair', x: 6.8, z: 3.57, face: 90 }, { key: 'cafeteria_chair', x: 6.8, z: 4.43, face: 90 }, { key: 'molded_chair', x: 6.8, z: 5.27, face: 90 },
+                { key: 'cafeteria_chair', x: 8.7, z: -0.67, face: 270 }, { key: 'cafeteria_chair', x: 8.7, z: 0.17, face: 270 }, { key: 'cafeteria_chair', x: 8.7, z: 1.03, face: 270 }, { key: 'molded_chair', x: 8.7, z: 1.87, face: 270 }, { key: 'cafeteria_chair', x: 8.7, z: 3.57, face: 270 }, { key: 'cafeteria_chair', x: 8.7, z: 4.43, face: 270 }, { key: 'molded_chair', x: 8.7, z: 5.27, face: 270 },
+                { key: 'meal_tray',       x: -7.7, z: -0.2, y: 0.86, face: 95 },
+                { key: 'solo_cup',        x: -7.6, z: 0.4,  y: 0.86 },
+                { key: 'meal_tray_empty', x: -3.3, z: 3.6,  y: 0.86, face: 80 },
+                { key: 'coffee_mug',      x: -3.1, z: 5.2,  y: 0.86 },
+                { key: 'meal_tray',       x: 3.2,  z: 1.6,  y: 0.86, face: 100 },
+                { key: 'papers_a',        x: 3.35, z: 4.9,  y: 0.86, face: 30 },             // somebody is working through lunch
+                { key: 'solo_cup',        x: 7.8,  z: 3.0,  y: 0.86 },
+                { key: 'meal_tray_empty', x: 7.7,  z: 5.0,  y: 0.86, face: 85 },
+                { key: 'saucer_pendant', x: -7.75, z: 0.6, ceil: true, color: 0xe0a82e }, { key: 'saucer_pendant', x: -7.75, z: 4.0, ceil: true, color: 0xd9692b },
+                { key: 'saucer_pendant', x: -3.25, z: 0.6, ceil: true, color: 0xd9692b }, { key: 'saucer_pendant', x: -3.25, z: 4.0, ceil: true, color: 0xe0a82e },
+                { key: 'saucer_pendant', x: 3.25,  z: 0.6, ceil: true, color: 0xe0a82e }, { key: 'saucer_pendant', x: 3.25,  z: 4.0, ceil: true, color: 0xd9692b },
+                { key: 'saucer_pendant', x: 7.75,  z: 0.6, ceil: true, color: 0xd9692b }, { key: 'saucer_pendant', x: 7.75,  z: 4.0, ceil: true, color: 0xe0a82e },
+                /* ── THE BOOTHS: two sofas facing over a dinner table, down both side walls, a false window and a sputnik over each ── */
+                { key: 'psx_sofa_3', x: -16.2, z: -11.7, face: 0 },  { key: 'psx_dinner_table_1', x: -16.2, z: -10.5 }, { key: 'psx_sofa_3', x: -16.2, z: -9.3, face: 180 },
+                { key: 'psx_sofa_3', x: -16.2, z: -8.2, face: 0 },   { key: 'psx_dinner_table_1', x: -16.2, z: -7.0 },  { key: 'psx_sofa_3', x: -16.2, z: -5.8, face: 180 },
+                { key: 'psx_sofa_3', x: -16.2, z: -4.7, face: 0 },   { key: 'psx_dinner_table_1', x: -16.2, z: -3.5 },  { key: 'psx_sofa_3', x: -16.2, z: -2.3, face: 180 },
+                { key: 'psx_sofa_3', x: -16.2, z: -1.2, face: 0 },   { key: 'psx_dinner_table_1', x: -16.2, z: 0 },     { key: 'psx_sofa_3', x: -16.2, z: 1.2, face: 180 },
+                { key: 'psx_sofa_3', x: -16.2, z: 2.3, face: 0 },    { key: 'psx_dinner_table_1', x: -16.2, z: 3.5 },   { key: 'psx_sofa_3', x: -16.2, z: 4.7, face: 180 },
+                { key: 'psx_sofa_3', x: -16.2, z: 5.8, face: 0 },    { key: 'psx_dinner_table_1', x: -16.2, z: 7.0 },   { key: 'psx_sofa_3', x: -16.2, z: 8.2, face: 180 },
+                { key: 'psx_sofa_3', x: 16.2, z: -8.2, face: 0 },    { key: 'psx_dinner_table_1', x: 16.2, z: -7.0 },   { key: 'psx_sofa_3', x: 16.2, z: -5.8, face: 180 },
+                { key: 'psx_sofa_3', x: 16.2, z: -4.7, face: 0 },    { key: 'psx_dinner_table_1', x: 16.2, z: -3.5 },   { key: 'psx_sofa_3', x: 16.2, z: -2.3, face: 180 },
+                { key: 'psx_sofa_3', x: 16.2, z: -1.2, face: 0 },    { key: 'psx_dinner_table_1', x: 16.2, z: 0 },      { key: 'psx_sofa_3', x: 16.2, z: 1.2, face: 180 },
+                { key: 'psx_sofa_3', x: 16.2, z: 2.3, face: 0 },     { key: 'psx_dinner_table_1', x: 16.2, z: 3.5 },    { key: 'psx_sofa_3', x: 16.2, z: 4.7, face: 180 },
+                { key: 'psx_sofa_3', x: 16.2, z: 5.8, face: 0 },     { key: 'psx_dinner_table_1', x: 16.2, z: 7.0 },    { key: 'psx_sofa_3', x: 16.2, z: 8.2, face: 180 },
+                { key: 'coffee_mug', x: -16.4, z: -3.4, y: 0.86 }, { key: 'solo_cup', x: -15.8, z: 3.6, y: 0.86 }, { key: 'meal_tray', x: 16.1, z: 0.1, y: 0.86, face: 10 },
+                { key: 'false_window', wall: 'n', x: -14.0, mount: 1.6 }, { key: 'false_window', wall: 'n', x: 14.0, mount: 1.6 },
+                { key: 'false_window', wall: 'w', z: -7.0, mount: 1.6 }, { key: 'false_window', wall: 'w', z: 0, mount: 1.6 }, { key: 'false_window', wall: 'w', z: 7.0, mount: 1.6 },
+                { key: 'false_window', wall: 'e', z: -7.0, mount: 1.6 }, { key: 'false_window', wall: 'e', z: 0, mount: 1.6 }, { key: 'false_window', wall: 'e', z: 7.0, mount: 1.6 },
+                { key: 'sputnik_lamp', x: -16.2, z: -10.5, ceil: true }, { key: 'sputnik_lamp', x: -16.2, z: -3.5, ceil: true }, { key: 'sputnik_lamp', x: -16.2, z: 3.5, ceil: true },
+                { key: 'sputnik_lamp', x: 16.2, z: -7.0, ceil: true },  { key: 'sputnik_lamp', x: 16.2, z: 0, ceil: true },     { key: 'sputnik_lamp', x: 16.2, z: 7.0, ceil: true },
+                /* ── THE COFFEE CORNER (the east nook, beside the kitchen) ── */
+                { key: 'steel_table',      x: 12.4, z: -11.6, face: 180, decal: false },
+                { key: 'espresso_machine', x: 12.0, z: -11.65, y: 0.76, face: 180 },
+                { key: 'coffee_maker',     x: 12.85, z: -11.7, y: 0.76, face: 180 },
+                { key: 'pastry_case',      x: 14.6, z: -11.75, face: 180 },
+                { key: 'potted_plant',     x: 16.8, z: -11.6 },
+                /* ── the Lobby end: bins, the jukebox, the notice board, the clocks that disagree ── */
+                { key: 'trash_bin',   x: -12.3, z: 11.7, face: 0 }, { key: 'trash_bin', x: 12.3, z: 11.7, face: 0 },
+                { key: 'potted_plant', x: -16.8, z: 11.6 },
+                { key: 'jukebox',     x: 16.6, z: 11.2, face: 270 },
+                { key: 'water_cooler', wall: 'e', z: 9.6 },
+                { key: 'notice_board', wall: 'w', z: 9.6 },
+                { key: 'fire_extinguisher', wall: 's', x: 14.0 },
+                { key: 'wall_clock',  wall: 'w', z: -3.5, mount: 4.4 },
+                { key: 'wall_clock',  wall: 'e', z: 3.5, mount: 4.1 },   // disagrees with the west one on purpose
+                /* ── THE KITCHEN: two ranges under their hoods and the deck oven on the north wall, the sinks, the shelving and the
+                   fridges east; the pass behind the hatch (two steam tables), the prep island in the middle; the west end is
+                   the folded-in Cold Room's stock ── */
+                { key: 'kitchen_range', wall: 'n', x: -6.0 }, { key: 'range_hood', wall: 'n', x: -6.0, mount: 1.75 },
+                { key: 'kitchen_range', wall: 'n', x: -4.4 }, { key: 'range_hood', wall: 'n', x: -4.4, mount: 1.75 },
+                { key: 'deck_oven',     x: -2.0, z: -11.6, face: 180 },
+                { key: 'sink',          wall: 'n', x: 0.6 }, { key: 'sink', wall: 'n', x: 1.5 },
+                { key: 'metal_shelving', wall: 'n', x: 3.2 }, { key: 'metal_shelving', wall: 'n', x: 4.2 },
+                { key: 'round_fridge',  x: 6.2, z: -11.6, face: 180 },
+                { key: 'mini_fridge',   x: 7.3, z: -11.75, face: 180 },
+                { key: 'food_trolley',  x: 9.5, z: -11.2, face: 90 },
+                { key: 'hook_rail_long', wall: 'n', x: -8.4, mount: 1.8 },
+                { key: 'fire_extinguisher', wall: 'n', x: -0.6 },
+                { key: 'wall_clock',    wall: 'n', x: 2.7, mount: 3.4 },
+                { key: 'steam_table',   x: -6.0, z: -6.35, face: 0 },
+                { key: 'steam_table',   x: -2.6, z: -6.35, face: 0 },
+                { key: 'steel_table',   x: 0.6, z: -6.35, face: 0, decal: false },
+                { key: 'stock_pots',    x: 0.5, z: -6.35, y: 0.76 },
+                { key: 'steel_table',   x: -3.0, z: -9.0, face: 0, decal: false }, { key: 'steel_table', x: -1.3, z: -9.0, face: 0, decal: false },
+                { key: 'microwave',     x: -3.3, z: -9.0, y: 0.76, face: 0 },
+                { key: 'stock_pots',    x: -1.2, z: -9.05, y: 0.76 },
+                { key: 'floor_drain',   x: -2.1, z: -7.6 },
+                { key: 'bread_rack',    x: -9.6, z: -11.6, face: 180 },
+                { key: 'metal_shelving', x: -9.85, z: -9.2, face: 90 },
+                { key: 'cardboard_boxes', x: -9.5, z: -7.0, face: 15 },
+                { key: 'fluorescent',   x: -5.0, z: -8.8, ceil: true, face: 90 }, { key: 'fluorescent', x: 0, z: -8.8, ceil: true, face: 90 }, { key: 'fluorescent', x: 5.0, z: -8.8, ceil: true, face: 90 },
             ],
-            agents: [
-                { x: 2.825, z: -3.525, face: 240, gender: 'female', label: 'CASHIER', reach: 2.0, line: '“Hazard Pay or exact change. We do not make change.”' },
-            ],
-            /* the roster on break (the renderer draws three) */
+            agents: [],
             npcSpots: [
-                { x: -3.4, z: -3.2, face: 180 },    // in the queue
-                { x: 0.9,  z: -3.2, face: 200 },
-                { x: -2.2, z: 5.0,  face: 0 },
-                { x: 1.0,  z: 5.1,  face: 340 },
-                { x: 5.9,  z: 4.6,  face: 300 },
+                { x: -5.5, z: -2.6, face: 180 },    // in the queue
+                { x: -1.5, z: -2.6, face: 180 },
+                { x: 0.0,  z: 2.5,  face: 90 },
+                { x: 12.5, z: 2.5,  face: 270 },
             ],
-            /* the other operatives on shift: one per online player besides you */
             onlineSpots: [
-                { x: -0.6, z: 5.1,  face: 20 },
-                { x: 3.2,  z: 5.075,  face: 350 },
-                { x: -6.2, z: -1.6, face: 120 },
-                { x: 6.185,  z: -1.375, face: 240 },
+                { x: -11.5, z: 1.8, face: 270 },
+                { x: 11.5,  z: -1.8, face: 90 },
+                { x: 0,     z: -1.6, face: 180 },
+                { x: -5.5,  z: 6.8, face: 0 },
             ],
             lines: [
                 '“The menu is out of it.” “Out of what?” “Everything. That is the menu.”',
                 '“Somebody signed two chairs out to Training and never signed them back in.”',
-                '“The vending machine was on the other side yesterday.” “This is the other side.”',
                 '“The clocks disagree. Lunch is whichever one you believe.”',
-                '“Do not sit in the corner.” There is no corner. That is the point.',
             ],
-            spawn: { x: -6.1, z: 1.2, face: 90 },
-            /* ── AFTER HOURS: MÖBIUS STRIP CLUB (plan 5.1 · 7.4). Rolled per
-               visit (hqRollRoomVariants): `when.hours` = the local clock,
-               `when.p` = the seeded roll otherwise. `drop` = base prop keys
-               that go home for the night; `add` = the night's furniture;
-               `door` re-plates the egress door while it lasts. ── */
-            variants: {
-                after_hours: {
-                    when: { hours: [22, 5], p: 0.2 },
-                    label: 'MÖBIUS STRIP CLUB',
-                    sub: 'AFTER HOURS · LEADERBOARD · SHOP',
-                    why: '86’d by day; after hours the bar has one side, and nobody comments',
-                    door: { label: 'MÖBIUS STRIP CLUB', sub: 'AFTER HOURS · LEADERBOARD · SHOP', desc: 'Room 86, after hours. The bar is a Möbius strip: one side, one edge, no last call. Nobody comments. Nobody has ever commented.' },
-                    shell: { mood: { light: 0xff4f9a } },
-                    drop: ['serving_line', 'tanker_desk', 'reception_wedge', 'cash_register', 'meal_tray', 'meal_tray_empty', 'observation_window',
-                           'conference_table', 'cafeteria_chair', 'molded_chair', 'papers_a', 'clipboard_flat', 'wet_floor_sign', 'rug_office',
-                           'coffee_mug', 'solo_cup', 'xmas_turkey', 'xmas_carvery', 'xmas_roast', 'xmas_flan', 'xmas_cocoa', 'xmas_punch', 'xmas_cookies', 'xmas_gingerbread'],
-                    add: [
-                        { key: 'mobius_bar',      x: 0, z: 0.3, face: 0 },
-                        /* six chairs round the one side, facing the middle */
-                        { key: 'cafeteria_chair', x: 0,     z: -2.15, face: 180 },
-                        { key: 'cafeteria_chair', x: 2.12,  z: -0.93, face: 240 },
-                        { key: 'cafeteria_chair', x: 2.12,  z: 1.53,  face: 300 },
-                        { key: 'cafeteria_chair', x: 0,     z: 2.75,  face: 0 },
-                        { key: 'cafeteria_chair', x: -2.12, z: 1.53,  face: 60 },
-                        { key: 'cafeteria_chair', x: -2.12, z: -0.93, face: 120 },
-                        /* on the band (its centreline stands at 1.05 m all the way round) */
-                        { key: 'solo_cup',        x: 1.5,  z: 0.3,  y: 1.05 },
-                        { key: 'solo_cup',        x: -1.5, z: 0.3,  y: 1.05 },
-                        { key: 'solo_cup',        x: 0,    z: -1.2, y: 1.05 },
-                        { key: 'coffee_mug',      x: 0,    z: 1.8,  y: 1.05, face: 40 },   // somebody is still working through lunch
-                        { key: 'xmas_champagne',  x: 1.06, z: -0.76, y: 1.05 },            // THE CHRISTMAS PACK (2026-10-24): two bottles on the band
-                        { key: 'xmas_champagne',  x: -1.06, z: 1.36, y: 1.05 },
-                        { key: 'retro_speakers',  x: -5.4, z: 3.7, face: 40 },
-                        { key: 'folding_chair',   x: -5.2, z: -1.0, face: 90 },               // the coat check
-                        { key: 'folding_chair',   x: -5.2, z: -0.4, face: 90 },
-                    ],
-                    counters: [
-                        { id: 'notice', x: -2.0, z: 3.9, face: 0, plateY: 2.05, radius: 1.9, verb: 'READ',
-                          label: 'NOTICE BOARD', sub: 'DAILY TASKS · NOTICES', action: {},
-                          desc: 'Form 365 for today, pinned over the set list.' },
-                        { id: 'bar', x: 0, z: 2.1, face: 0, plateY: 1.45, radius: 2.2, verb: 'ORDER',
-                          label: 'THE BAR', sub: 'THE MENU · MEMBERS', action: {},
-                          desc: 'One side, one bartender, one menu. Hazard Pay is not taken here.' },
-                    ],
-                    agents: [
-                        { x: 0, z: 0.3, face: 180, gender: 'male', label: 'BARTENDER', reach: 2.6, line: '“Members only.” Everyone is a member. That is the strip.' },
-                    ],
-                    npcSpots: [
-                        { x: -3.6, z: 2.6,  face: 40 },
-                        { x: 3.6,  z: 2.6,  face: 320 },
-                        { x: -3.4, z: -2.2, face: 130 },
-                        { x: 3.6,  z: -2.0, face: 230 },
-                    ],
-                    lines: [
-                        '“Which side of the bar are you on?” “Yes.”',
-                        '“Last call is a straight line. We do not have those here.”',
-                        '“It was a cafeteria an hour ago.” “It has always been a bar.”',
-                        '“Do not comment on the bar.” Nobody was going to.',
-                    ],
-                },
-            },
+            spawn: { x: 0, z: 7.0, face: 0 },
         },
 
         /* ── ROOM 247 · THE CLOCK ROOM (HQ plan 7.4 / 7.9, 2026-09-11) — a box
@@ -36270,6 +36200,68 @@ const DOOR_HQ = {
                 'Half back on anything unopened. The pharmacist decides what counts as opened.',
             ],
             spawn: { x: -2.2, z: 1.6, face: 0 },
+        },
+        /* ── DOOR STORE (DOOR HQ 2.0 wave 2, 2026-11-26; docs/plans/door-hq-2/FLOOR_PLANS.md + LOOK_BOOK.md "Door Store") ── mondo: "The
+           Hatch/The Dispensary/Shop needs to be renamed to Door Store and only door store and no subtitles. Needs to be a physical store/shop
+           that sells door. No buying races in story mode. No need for the party builder to be there either. Potions should be sold from the
+           vending machines". It replaces the Dispensary (DOOR_HQ.retired.dispensary). A showroom off the Lobby with an open front, no door
+           (the `lobby` row's `open`, HQ_STAGE_RULES.round: no card): the capture doors stand on plinths like cars, each under its own light
+           (catalogue `store_door`, three-renderer.js; the tag reads ITEM_RULES, so a price change shows on the floor). The till sells the
+           doors shelf only (HQ_DISPENSARY.shelves.doors); the potions are the vending machines' (hqVendingApply). 21 x 17.5 m, 7 m high. ── */
+        doorstore: {
+            label: 'DOOR STORE',
+            kind: 'box',
+            shell: {
+                w: 21, d: 17.5, h: 7,
+                wallH: 7, dadoH: 1.05,
+                floor: 'urban:WoodFlooring1c', wall: 'drywall', dado: 'drywall', trim: 'gunmetal', ceiling: 'ceiling',
+                wallColor: 0x3c3b40, dadoColor: 0x232327, ceilColor: 0x45454a,   // the look book: charcoal walls, the doors carry the light
+                pipes: false,
+                light: { x: 0, z: -1 },
+                mood: { light: 0xffe7c2, ambient: 0.5 },
+                plate: { x: 0, z: -8.6, y: 5.4 },
+            },
+            doors: [
+                /* the open front onto the Lobby: no leaf, no frame (the Lobby's `doorstore` row is the same 14 m opening) */
+                { id: 'lobby', wall: 's', x: 0, open: { w: 14, h: 4.5 },
+                  label: 'LOBBY',
+                  action: { room: 'central_egress', at: 'doorstore' } },
+            ],
+            counters: [
+                { id: 'till', x: 0, z: -5.4, face: 0, plateY: 1.9, radius: 2.2, verb: 'SHOP',
+                  label: 'DOOR STORE', action: { overlay: 'pharmacy', shelf: 'doors' } },
+            ],
+            props: [
+                /* ── the stock (face 180 = the front toward the Lobby, +z): an arc of plinths facing the Lobby, the vault in the middle behind its ropes ── */
+                { key: 'store_door', item: 'captureDoor',      x: -7.0, z: 0.6,  face: 198 },
+                { key: 'store_door', item: 'captureDoor2',     x: -3.6, z: -1.1, face: 189 },
+                { key: 'store_door', item: 'captureDoor3',     x: 0,    z: -2.3, face: 180 },
+                { key: 'store_door', item: 'captureDoorTuned', x: 3.6,  z: -1.1, face: 171 },
+                { key: 'store_door', leaf: 'leaf_futuristic',  x: 7.0,  z: 0.6,  face: 162 },   // the showroom's one not for sale
+                { key: 'rope_stanchion', x: -1.7, z: -0.9, face: 0 },
+                { key: 'rope_stanchion', x: 1.7,  z: -0.9, face: 0 },
+                /* ── the window display either side of the open front ── */
+                { key: 'store_door', leaf: 'leaf_glass_exec', x: -8.6, z: 6.6, face: 215 },
+                { key: 'store_door', leaf: 'leaf_hotel',      x: 8.6,  z: 6.6, face: 145 },
+                /* ── the till at the back ── */
+                { key: 'booking_desk',  x: 0, z: -6.6, face: 0 },     // the screens to the back wall, where a clerk would stand
+                { key: 'wall_clock',    wall: 'n', x: -5.5, mount: 4.0 },
+                { key: 'potted_plant',  x: -3.2, z: -7.8 },
+                { key: 'potted_plant',  x: 3.2,  z: -7.8 },
+                /* ── the customers' corner (west) and the key case (east) ── */
+                { key: 'psx_sofa_3',    x: -9.6, z: -4.4, face: 90 },
+                { key: 'coffee_table',  x: -8.0, z: -4.4 },
+                { key: 'brochure_rack', wall: 'w', z: -1.4, mount: 1.1 },
+                { key: 'jewelry_case',  x: 9.2, z: -4.4, face: 270 },
+                { key: 'brochure_rack', wall: 'e', z: -1.4, mount: 1.1 },
+                { key: 'potted_plant',  x: -9.8, z: 3.2 },
+                { key: 'potted_plant',  x: 9.8,  z: 3.2 },
+                /* ── the ceiling ── */
+                { key: 'psx_ceiling_lamp_2_on', x: -5.25, z: 3.5, ceil: true },
+                { key: 'psx_ceiling_lamp_2_on', x: 5.25,  z: 3.5, ceil: true },
+                { key: 'psx_ceiling_lamp_2_on', x: 0,     z: -6.0, ceil: true },
+            ],
+            spawn: { x: 0, z: 6.0, face: 0 },
         },
         /* ── MEDICAL (DOOR HQ 2.0, 2026-11-26, mondo: "look more like a hospital, think Pokémon center") — a clean-sheet rebuild.
            The brightest room in the building, open to the Lobby with no door (the `lobby` row: a 14 m by 4.5 m opening, the Lobby
@@ -37548,77 +37540,76 @@ const DOOR_HQ = {
             ],
             spawn: { x: 0, z: -8.4, face: 180 },
         },
-        /* ══ THE TRAINING ROOM MAP (2026-10-20, mondo: "i want all of those voxel maps remade as new maps. Even the training room
-           and holo sim. They should be able to be built with the tools in the map editor ... design them with square tiles in mind")
-           — the `prebuilt_training` board is no longer the voxel Δ: it is the 8×8 cut of THIS room (HQ_ARENA_RULES.own.prebuilt_training,
-           baked by `node bake-arenas.js --own prebuilt_training`). The room is 18 × 18 battle squares, 2 levels to the mezzanine;
-           THE MATS are the 8 × 8 in the middle (x, z −14..14 = squares 5..12), the lessons' own tiles (TUTORIAL_LESSONS pins
-           them on the 8×8: keep it flat and open). West: the bleachers (six rows facing the mats). East: the mezzanine 2 levels
-           up (the steel stair along the north wall, the desk over the mats). North: the wall pads, the dummies. South (the camera's
-           side): low things only. Not linked into the building (Room 64 is still the walk's training room).
-           2× EVERYWHERE (2026-10-28, mondo: "2x everywhere"): the squares are 3.5 m (the hall 63 m, was 31.5 m on 1.75 m squares) —
-           the plan doubled (the mats, the apron, the bleachers' rows, the mezzanine, the stair), the heights kept in battle levels;
-           the props stay their real size, a group of them (the lockers, the desk) moved together to its new place.
-           THE TEST CHAMBER (2026-11-12, mondo: "make the training room look more like the old one, or just a newer design that is retro scifi
-           secret psychic testing sleek and futuristic"; he picked the mock-up): the gym is out. THE PAD is the same 8 x 8 (flat, open, the
-           lessons' tiles), pale tile in two tints with cyan seams, A-H / 1-8 on the apron and the old room's ORTHOGONAL GEOMETRY EXPOSURE AREA
-           as floor paint; four emitter pylons (one level, off the board) with an orb each; west the tank row (iso_tank + eeg_rack), north
-           the screen wall, the consoles and the subject chairs, east the operators' deck on the old mezzanine, racks under it; aluminium
-           walls, gunmetal dado. The pad's keys stay `urban:` sheets ON PURPOSE: a named terrain key (aluminium…) would change the board's
-           tile type, a rule change. The 8 x 8 pick is unchanged (no rebake). ══ */
+        /* ══ THE TRAINING ROOM, DOOR HQ 2.0 (2026-11-26, mondo: the most important room in DOOR HQ, on the Lobby's main line north of
+           Rhonda's desk; docs/plans/door-hq-2/FLOOR_PLANS.md + LOOK_BOOK.md). ONE room: the walk's Training Room (`rooms.training`, built
+           from this after the table) and the `prebuilt_training` board are cut from it. 63 x 63 m (18 x 18 squares), 14 m to an open
+           steel truss, the 8 x 8 pad in the middle (x, z -14..14, squares 5..12; HQ_ARENA_RULES.own.prebuilt_training, no rebake: the
+           pad, its keys and its level are unchanged). THE SHOT: you walk in through the grand doors on the south wall, small, down a
+           teal lane to the pad; the scoreboard stands at the far (north) wall, lit pad ringed by high-bay lamps (one even light, no
+           square in shadow). Concrete panels to 3.5 m, brushed aluminium above. West: the Range Console's desk on the pad's middle line, high
+           round windows over it (someone watches). North-west: the sparring corner. East: the operators' deck 3.5 m up (the steel stair
+           along the north wall), racks under it. South (the battle camera's side): low things only: the orientation corner (its
+           cutscene is shot on these exact spots: never move the TV cart, the three desks or Locke's spot), the coffee, the lockers.
+           Kept from mondo's 11-12 calls: no seats round the pad (he had the bleachers taken out), the retro sci-fi look. Out: the
+           test-chamber tanks, brain racks, orbs and corner pylons (DOOR keeps its nefarious side hidden at the start; the pylons
+           stood 3.5 m tall a square off the pad), the floor slogan, every door blurb. Nothing over 1.2 m within two squares of the
+           pad; nothing in a door's 3.5 m square (find-doorways.js). ══ */
         training_hall: {
             label: 'TRAINING ROOM',
-            sub: 'THE MATS · 8 × 8',
             kind: 'box',
             site: 'prebuilt_training',
             shell: {
-                w: 63, d: 63, h: 7.0,
-                wallH: 7.0, dadoH: 1.75,
-                floor: 'urban:TileGeneric3a', wall: 'aluminium', dado: 'gunmetal', trim: 'teal', ceiling: 'urban:FibreCeilingTile1a',
-                wallColor: 0xdfe8ee, pipes: false, keyLamp: 0, grassField: false,   // grassField: the pad is tile (THE GRASS FIELD grew a lawn on it in battle)
+                w: 63, d: 63, h: 14.0,
+                wallH: 14.0, dadoH: 3.5,
+                floor: 'concrete_floor', wall: 'aluminium', dado: 'urban:ConcretePanels1a', trim: 'teal', ceiling: 'urban:MetalTruss1a',
+                floorColor: 0xa4a6aa, wallColor: 0xe4e8ec, dadoColor: 0xc4c6c4, ceilColor: 0x9a9ea4,
+                pipes: false, keyLamp: 0, grassField: false,   // grassField: the pad is tile (THE GRASS FIELD grew a lawn on it in battle)
                   // THE ROOM'S OWN KEY LIGHT: a lit room takes none of the camera's Key Light (it blew the pad and a spell's water to white)
-                lights: [{ x: -10.5, z: -10.5 }, { x: 10.5, z: -10.5 }, { x: -10.5, z: 10.5 }, { x: 10.5, z: 10.5 },
-                         { x: -24.5, z: -10.5 }, { x: -24.5, z: 10.5 }, { x: 28.0, z: -14.0 }, { x: 28.0, z: 14.0 }],
-                mood: { light: 0xe6f4ff, strip: 0x9fe8ff, ambient: 1.0 },
+                /* the high-bay grid's real lights: the pad evenly (four + the middle), the Range Console, the deck, the doors */
+                lights: [{ x: -7.0, z: -7.0 }, { x: 7.0, z: -7.0 }, { x: -7.0, z: 7.0 }, { x: 7.0, z: 7.0 }, { x: 0, z: 0 },
+                         { x: -26.25, z: 0 }, { x: 28.0, z: -14.0 }, { x: 28.0, z: 14.0 }, { x: 0, z: 24.5 }],
+                mood: { light: 0xf4f0e6, strip: 0x9fe8ff, ambient: 1.0 },
                 fog: { color: 0x16181d, density: 0.0 },
                 look: { name: 'TRAINING ROOM', retro: { enabled: true, preset: 'teal', pixelSize: 1, ditherStrength: 0.34, grain: 0.024, tintAmount: 0.22, levels: 28 }, cin: { vignette: true, vigAmount: 0.3, vigSize: 0.58 }, nightMood: 0.0, bloom: 0 },
             },
             terrain: {
-                floor: 'urban:TileGeneric3a', cliff: 'gunmetal', path: 'urban:ConcreteStriped2a',
+                floor: 'concrete_floor', cliff: 'gunmetal', path: 'urban:ConcreteStriped2a',
                 noise: { amp: 0, scale: 5 }, crag: false, stalactites: false, stairs: 'steel',
                 marks: [
-                    { k: 'text', x: -15.2, z: -12.25, text: 'A', size: 1.1, color: 0xd8f4ff }, { k: 'text', x: -12.25, z: 15.2, text: '1', size: 1.1, color: 0xd8f4ff },
-                    { k: 'text', x: -15.2, z: -8.75, text: 'B', size: 1.1, color: 0xd8f4ff }, { k: 'text', x: -8.75, z: 15.2, text: '2', size: 1.1, color: 0xd8f4ff },
-                    { k: 'text', x: -15.2, z: -5.25, text: 'C', size: 1.1, color: 0xd8f4ff }, { k: 'text', x: -5.25, z: 15.2, text: '3', size: 1.1, color: 0xd8f4ff },
-                    { k: 'text', x: -15.2, z: -1.75, text: 'D', size: 1.1, color: 0xd8f4ff }, { k: 'text', x: -1.75, z: 15.2, text: '4', size: 1.1, color: 0xd8f4ff },
-                    { k: 'text', x: -15.2, z: 1.75, text: 'E', size: 1.1, color: 0xd8f4ff }, { k: 'text', x: 1.75, z: 15.2, text: '5', size: 1.1, color: 0xd8f4ff },
-                    { k: 'text', x: -15.2, z: 5.25, text: 'F', size: 1.1, color: 0xd8f4ff }, { k: 'text', x: 5.25, z: 15.2, text: '6', size: 1.1, color: 0xd8f4ff },
-                    { k: 'text', x: -15.2, z: 8.75, text: 'G', size: 1.1, color: 0xd8f4ff }, { k: 'text', x: 8.75, z: 15.2, text: '7', size: 1.1, color: 0xd8f4ff },
-                    { k: 'text', x: -15.2, z: 12.25, text: 'H', size: 1.1, color: 0xd8f4ff }, { k: 'text', x: 12.25, z: 15.2, text: '8', size: 1.1, color: 0xd8f4ff },
-                    { k: 'text', x: 0, z: -19.4, text: 'ORTHOGONAL GEOMETRY EXPOSURE AREA', size: 1.3, color: 0xffb020 },
-                    { k: 'line', x0: -14.0, z0: -14, x1: -14.0, z1: 14, w: 0.2, color: 0x30d8ff, y: 0.07 }, { k: 'line', x0: -14, z0: -14.0, x1: 14, z1: -14.0, w: 0.2, color: 0x30d8ff, y: 0.07 },
-                    { k: 'line', x0: -10.5, z0: -14, x1: -10.5, z1: 14, w: 0.2, color: 0x30d8ff, y: 0.07 }, { k: 'line', x0: -14, z0: -10.5, x1: 14, z1: -10.5, w: 0.2, color: 0x30d8ff, y: 0.07 },
-                    { k: 'line', x0: -7.0, z0: -14, x1: -7.0, z1: 14, w: 0.2, color: 0x30d8ff, y: 0.07 }, { k: 'line', x0: -14, z0: -7.0, x1: 14, z1: -7.0, w: 0.2, color: 0x30d8ff, y: 0.07 },
-                    { k: 'line', x0: -3.5, z0: -14, x1: -3.5, z1: 14, w: 0.2, color: 0x30d8ff, y: 0.07 }, { k: 'line', x0: -14, z0: -3.5, x1: 14, z1: -3.5, w: 0.2, color: 0x30d8ff, y: 0.07 },
-                    { k: 'line', x0: 0.0, z0: -14, x1: 0.0, z1: 14, w: 0.2, color: 0x30d8ff, y: 0.07 }, { k: 'line', x0: -14, z0: 0.0, x1: 14, z1: 0.0, w: 0.2, color: 0x30d8ff, y: 0.07 },
-                    { k: 'line', x0: 3.5, z0: -14, x1: 3.5, z1: 14, w: 0.2, color: 0x30d8ff, y: 0.07 }, { k: 'line', x0: -14, z0: 3.5, x1: 14, z1: 3.5, w: 0.2, color: 0x30d8ff, y: 0.07 },
-                    { k: 'line', x0: 7.0, z0: -14, x1: 7.0, z1: 14, w: 0.2, color: 0x30d8ff, y: 0.07 }, { k: 'line', x0: -14, z0: 7.0, x1: 14, z1: 7.0, w: 0.2, color: 0x30d8ff, y: 0.07 },
-                    { k: 'line', x0: 10.5, z0: -14, x1: 10.5, z1: 14, w: 0.2, color: 0x30d8ff, y: 0.07 }, { k: 'line', x0: -14, z0: 10.5, x1: 14, z1: 10.5, w: 0.2, color: 0x30d8ff, y: 0.07 },
-                    { k: 'line', x0: 14.0, z0: -14, x1: 14.0, z1: 14, w: 0.2, color: 0x30d8ff, y: 0.07 }, { k: 'line', x0: -14, z0: 14.0, x1: 14, z1: 14.0, w: 0.2, color: 0x30d8ff, y: 0.07 },
-                    { k: 'line', x0: -16.1, z0: -16.1, x1: 16.1, z1: -16.1, w: 0.14, color: 0xffb020 },
-                    { k: 'line', x0: -16.1, z0: 16.1, x1: 16.1, z1: 16.1, w: 0.14, color: 0xffb020 },
-                    { k: 'line', x0: -16.1, z0: -16.1, x1: -16.1, z1: 16.1, w: 0.14, color: 0xffb020 },
-                    { k: 'line', x0: 16.1, z0: -16.1, x1: 16.1, z1: 16.1, w: 0.14, color: 0xffb020 },
+                    /* A-H down the west side, 1-8 along the south (the lessons read the pad by them) */
+                    { k: 'text', x: -15.2, z: -12.25, text: 'A', size: 1.1, color: 0xe9e9e4 }, { k: 'text', x: -12.25, z: 15.2, text: '1', size: 1.1, color: 0xe9e9e4 },
+                    { k: 'text', x: -15.2, z: -8.75, text: 'B', size: 1.1, color: 0xe9e9e4 }, { k: 'text', x: -8.75, z: 15.2, text: '2', size: 1.1, color: 0xe9e9e4 },
+                    { k: 'text', x: -15.2, z: -5.25, text: 'C', size: 1.1, color: 0xe9e9e4 }, { k: 'text', x: -5.25, z: 15.2, text: '3', size: 1.1, color: 0xe9e9e4 },
+                    { k: 'text', x: -15.2, z: -1.75, text: 'D', size: 1.1, color: 0xe9e9e4 }, { k: 'text', x: -1.75, z: 15.2, text: '4', size: 1.1, color: 0xe9e9e4 },
+                    { k: 'text', x: -15.2, z: 1.75, text: 'E', size: 1.1, color: 0xe9e9e4 }, { k: 'text', x: 1.75, z: 15.2, text: '5', size: 1.1, color: 0xe9e9e4 },
+                    { k: 'text', x: -15.2, z: 5.25, text: 'F', size: 1.1, color: 0xe9e9e4 }, { k: 'text', x: 5.25, z: 15.2, text: '6', size: 1.1, color: 0xe9e9e4 },
+                    { k: 'text', x: -15.2, z: 8.75, text: 'G', size: 1.1, color: 0xe9e9e4 }, { k: 'text', x: 8.75, z: 15.2, text: '7', size: 1.1, color: 0xe9e9e4 },
+                    { k: 'text', x: -15.2, z: 12.25, text: 'H', size: 1.1, color: 0xe9e9e4 }, { k: 'text', x: 12.25, z: 15.2, text: '8', size: 1.1, color: 0xe9e9e4 },
+                    /* the pad's seams, white */
+                    { k: 'line', x0: -14.0, z0: -14, x1: -14.0, z1: 14, w: 0.2, color: 0xe9e9e4, y: 0.07 }, { k: 'line', x0: -14, z0: -14.0, x1: 14, z1: -14.0, w: 0.2, color: 0xe9e9e4, y: 0.07 },
+                    { k: 'line', x0: -10.5, z0: -14, x1: -10.5, z1: 14, w: 0.2, color: 0xe9e9e4, y: 0.07 }, { k: 'line', x0: -14, z0: -10.5, x1: 14, z1: -10.5, w: 0.2, color: 0xe9e9e4, y: 0.07 },
+                    { k: 'line', x0: -7.0, z0: -14, x1: -7.0, z1: 14, w: 0.2, color: 0xe9e9e4, y: 0.07 }, { k: 'line', x0: -14, z0: -7.0, x1: 14, z1: -7.0, w: 0.2, color: 0xe9e9e4, y: 0.07 },
+                    { k: 'line', x0: -3.5, z0: -14, x1: -3.5, z1: 14, w: 0.2, color: 0xe9e9e4, y: 0.07 }, { k: 'line', x0: -14, z0: -3.5, x1: 14, z1: -3.5, w: 0.2, color: 0xe9e9e4, y: 0.07 },
+                    { k: 'line', x0: 0.0, z0: -14, x1: 0.0, z1: 14, w: 0.2, color: 0xe9e9e4, y: 0.07 }, { k: 'line', x0: -14, z0: 0.0, x1: 14, z1: 0.0, w: 0.2, color: 0xe9e9e4, y: 0.07 },
+                    { k: 'line', x0: 3.5, z0: -14, x1: 3.5, z1: 14, w: 0.2, color: 0xe9e9e4, y: 0.07 }, { k: 'line', x0: -14, z0: 3.5, x1: 14, z1: 3.5, w: 0.2, color: 0xe9e9e4, y: 0.07 },
+                    { k: 'line', x0: 7.0, z0: -14, x1: 7.0, z1: 14, w: 0.2, color: 0xe9e9e4, y: 0.07 }, { k: 'line', x0: -14, z0: 7.0, x1: 14, z1: 7.0, w: 0.2, color: 0xe9e9e4, y: 0.07 },
+                    { k: 'line', x0: 10.5, z0: -14, x1: 10.5, z1: 14, w: 0.2, color: 0xe9e9e4, y: 0.07 }, { k: 'line', x0: -14, z0: 10.5, x1: 14, z1: 10.5, w: 0.2, color: 0xe9e9e4, y: 0.07 },
+                    { k: 'line', x0: 14.0, z0: -14, x1: 14.0, z1: 14, w: 0.2, color: 0xe9e9e4, y: 0.07 }, { k: 'line', x0: -14, z0: 14.0, x1: 14, z1: 14.0, w: 0.2, color: 0xe9e9e4, y: 0.07 },
+                    /* the teal frame round the pad, and the teal lane from the grand doors to it (the main line, carried in from the Lobby) */
+                    { k: 'line', x0: -16.1, z0: -16.1, x1: 16.1, z1: -16.1, w: 0.35, color: 0x2f6f68 },
+                    { k: 'line', x0: -16.1, z0: 16.1, x1: 16.1, z1: 16.1, w: 0.35, color: 0x2f6f68 },
+                    { k: 'line', x0: -16.1, z0: -16.1, x1: -16.1, z1: 16.1, w: 0.35, color: 0x2f6f68 },
+                    { k: 'line', x0: 16.1, z0: -16.1, x1: 16.1, z1: 16.1, w: 0.35, color: 0x2f6f68 },
+                    { k: 'line', x0: 0, z0: 16.3, x1: 0, z1: 31.3, w: 1.75, color: 0x2f6f68 },
                 ],
                 features: [
-                    { k: 'wall', x0: -19.25, z0: -19.25, x1: -19.25, z1: -19.25, t: 1.75, h: 3.5, key: 'gunmetal', rail: false }, { k: 'wall', x0: 19.25, z0: -19.25, x1: 19.25, z1: -19.25, t: 1.75, h: 3.5, key: 'gunmetal', rail: false }, { k: 'wall', x0: -19.25, z0: 19.25, x1: -19.25, z1: 19.25, t: 1.75, h: 3.5, key: 'gunmetal', rail: false }, { k: 'wall', x0: 19.25, z0: 19.25, x1: 19.25, z1: 19.25, t: 1.75, h: 3.5, key: 'gunmetal', rail: false },
-                    /* THE MATS: 8 × 8 foam squares, one battle square each, blue and black (the plateau under them is the mats' 4 cm) */
-                    { k: 'board', x: 0, z: 0, n: 8, cell: 3.5, keys: ['urban:TileGeneric1a', 'urban:TileGeneric1a'], colors: [0x66707a, 0x36424e], h: 0.06 },
-                    /* THE BLEACHERS ARE GONE (2026-11-12, mondo: "get rid of the seats on the camelot map and the training room"): the six seat rows
-                       on the west side, the walk behind them, their two end walls and the rail are out; the west side is open floor. */
-                    /* THE MEZZANINE (east): a steel grate 2 levels up along the east wall, its rail on the mats' side; the steel stair up the north wall */
+                    /* THE PAD: 8 x 8 squares, one battle square each, grey in two tints (its keys stay `urban:` sheets: a named terrain key
+                       would change the board's tile type) */
+                    { k: 'board', x: 0, z: 0, n: 8, cell: 3.5, keys: ['urban:TileGeneric1a', 'urban:TileGeneric1a'], colors: [0x8e9094, 0x5c6168], h: 0.06 },
+                    /* THE DECK (east): a steel grate 2 levels up along the east wall, its rail on the pad's side; the steel stair up the north
+                       wall starts two squares east of the scoreboard */
                     { k: 'bridge', x0: 28.0, z0: -31.5, x1: 28.0, z1: 31.5, w: 7, y: 3.5, thick: 0.3, rails: false, key: 'urban:MetalSubwayGrill1a', id: 'mezzanine' },   // two squares wide (x 24.5..31.5), wall to wall
-                    { k: 'ramp', x0: 3.5, z0: -29.75, x1: 24.5, z1: -29.75, w: 3.5, h0: 0, h1: 3.5, stairs: true, model: 'steel', edge: 0.01 },   // one square wide along the north wall, six squares long
+                    { k: 'ramp', x0: 7.0, z0: -29.75, x1: 24.5, z1: -29.75, w: 3.5, h0: 0, h1: 3.5, stairs: true, model: 'steel', edge: 0.01 },   // one square wide along the north wall, five squares long
                     { k: 'rail', x0: 24.6, z0: -28.0, x1: 24.6, z1: 31.2, y: 3.5, model: 'pipe' },
                     { k: 'wall', x0: 24.49, z0: -21.0, x1: 24.51, z1: -21.0, y: 3.2, t: 0.35, key: 'metal', rail: false, column: true },   // the columns on the square corners under the grate's edge
                     { k: 'wall', x0: 24.49, z0: -7.0, x1: 24.51, z1: -7.0, y: 3.2, t: 0.35, key: 'metal', rail: false, column: true },
@@ -37627,23 +37618,43 @@ const DOOR_HQ = {
                 ],
             },
             props: [
-                /* NORTH: the screen wall, the consoles, the subject chairs */
-                { key: 'dream_screen', wall: 'n', x: -7, mount: 3.0 }, { key: 'dream_screen', wall: 'n', x: 0, mount: 3.0 }, { key: 'dream_screen', wall: 'n', x: 7, mount: 3.0 },
-                { key: 'wall_clock', wall: 'n', x: 0, mount: 5.4 },
-                { key: 'monitor_stack', wall: 'n', x: -12.25 }, { key: 'monitor_stack', wall: 'n', x: 12.25 },
-                { key: 'retro_console', x: -5.25, z: -26.25, face: 180 }, { key: 'retro_console', x: 5.25, z: -26.25, face: 180 },
-                { key: 'egg_chair', x: -10.5, z: -22.75, face: 180 }, { key: 'egg_chair', x: 10.5, z: -22.75, face: 180 }, { key: 'egg_chair', x: 0, z: -22.75, face: 180 },
-                { key: 'server_rack', wall: 'n', x: -25.2 }, { key: 'server_rack', wall: 'n', x: -24.4 }, { key: 'server_rack', wall: 'n', x: -23.6 },
-                /* WEST: the tank row, a trace beside each tank; the round windows and the vent over them */
-                { key: 'iso_tank', x: -24.5, z: -10.5, face: 90 }, { key: 'iso_tank', x: -24.5, z: -3.5, face: 90 }, { key: 'iso_tank', x: -24.5, z: 3.5, face: 90 }, { key: 'iso_tank', x: -24.5, z: 10.5, face: 90 },
-                { key: 'eeg_rack', x: -24.5, z: -8.75, face: 90 }, { key: 'eeg_rack', x: -24.5, z: -1.75, face: 90 }, { key: 'eeg_rack', x: -24.5, z: 5.25, face: 90 }, { key: 'eeg_rack', x: -24.5, z: 12.25, face: 90 },
-                { key: 'observation_window', wall: 'w', z: -9.0, mount: 5.0 }, { key: 'observation_window', wall: 'w', z: 9.0, mount: 5.0 },
-                { key: 'vent_grille',    wall: 'w', z: 0, mount: 5.4 },
-                { key: 'dream_screen', wall: 'w', z: -3.5, mount: 2.6 }, { key: 'dream_screen', wall: 'w', z: 3.5, mount: 2.6 },
-                { key: 'door_xray', wall: 'w', z: -16, mount: 1.6 }, { key: 'door_xray', wall: 'w', z: 16, mount: 1.6 },
-                /* the emitters at the pad's four corners */
-                { key: 'floating_orb', x: -19.25, z: -19.25, y: 3.5 }, { key: 'floating_orb', x: 19.25, z: -19.25, y: 3.5 }, { key: 'floating_orb', x: -19.25, z: 19.25, y: 3.5 }, { key: 'floating_orb', x: 19.25, z: 19.25, y: 3.5 },
-                /* EAST under the deck: the racks; on the deck: the operators' consoles, the monitors */
+                /* THE LIGHT: high-bay lamps hung from the truss in a ring round the pad, two squares off its edge (a lamp over the pad stood
+                   between the battle camera and the squares as a dark dot); the room's real lights hang over the pad itself */
+                { key: 'high_bay_lamp', x: -12.25, z: -19.25, y: 11.2, floor: true }, { key: 'high_bay_lamp', x: -19.25, z: -12.25, y: 11.2, floor: true },
+                { key: 'high_bay_lamp', x: -5.25, z: -19.25, y: 11.2, floor: true }, { key: 'high_bay_lamp', x: -19.25, z: -5.25, y: 11.2, floor: true },
+                { key: 'high_bay_lamp', x: 5.25, z: -19.25, y: 11.2, floor: true }, { key: 'high_bay_lamp', x: -19.25, z: 5.25, y: 11.2, floor: true },
+                { key: 'high_bay_lamp', x: 12.25, z: -19.25, y: 11.2, floor: true }, { key: 'high_bay_lamp', x: -19.25, z: 12.25, y: 11.2, floor: true },
+                { key: 'high_bay_lamp', x: -12.25, z: 19.25, y: 11.2, floor: true }, { key: 'high_bay_lamp', x: 19.25, z: -12.25, y: 11.2, floor: true },
+                { key: 'high_bay_lamp', x: -5.25, z: 19.25, y: 11.2, floor: true }, { key: 'high_bay_lamp', x: 19.25, z: -5.25, y: 11.2, floor: true },
+                { key: 'high_bay_lamp', x: 5.25, z: 19.25, y: 11.2, floor: true }, { key: 'high_bay_lamp', x: 19.25, z: 5.25, y: 11.2, floor: true },
+                { key: 'high_bay_lamp', x: 12.25, z: 19.25, y: 11.2, floor: true }, { key: 'high_bay_lamp', x: 19.25, z: 12.25, y: 11.2, floor: true },
+                { key: 'high_bay_lamp', x: -19.25, z: -19.25, y: 11.2, floor: true }, { key: 'high_bay_lamp', x: -19.25, z: 19.25, y: 11.2, floor: true },
+                { key: 'high_bay_lamp', x: 19.25, z: -19.25, y: 11.2, floor: true }, { key: 'high_bay_lamp', x: 19.25, z: 19.25, y: 11.2, floor: true },
+                /* NORTH, the far wall: the scoreboard on the main line, the clock over it; round windows high up, a vent */
+                { key: 'scoreboard', x: 0, z: -30.6, face: 180 },
+                { key: 'wall_clock', wall: 'n', x: 0, mount: 10.4 },
+                /* DOOR's own banners (ZONE_FLAGS 'door') either side of the scoreboard */
+                { key: 'zone_banner', wall: 'n', x: -15.75, mount: 9.5, flag: 'door' }, { key: 'zone_banner', wall: 'n', x: -8.75, mount: 9.5, flag: 'door' },
+                { key: 'zone_banner', wall: 'n', x: 8.75, mount: 9.5, flag: 'door' }, { key: 'zone_banner', wall: 'n', x: 15.75, mount: 9.5, flag: 'door' },
+                { key: 'observation_window', wall: 'n', x: -12.25, mount: 8.0 }, { key: 'observation_window', wall: 'n', x: -19.25, mount: 8.0 },
+                { key: 'vent_grille', wall: 'n', x: -26.25, mount: 11.0 },
+                /* NORTH-WEST, the sparring corner (well off the pad) */
+                { key: 'punching_bag', x: -26.25, z: -27.5, face: 180 }, { key: 'punching_bag', x: -22.75, z: -27.5, face: 180 },
+                { key: 'wing_chun_dummy', x: -19.25, z: -27.5, face: 180 },
+                { key: 'dumbbell_rack', x: -30.2, z: -17.5, face: 90 },
+                { key: 'medicine_ball_rack', x: -30.2, z: -13.3, face: 90 },
+                /* WEST: the Range Console's desk on the pad's middle line, the door x-rays either side, round windows high over it */
+                { key: 'tanker_desk',    wall: 'w', z: 0 },
+                { key: 'crt_terminal',   x: -31.1, z: -0.35, y: 0.76, face: 90 },
+                { key: 'rotary_phone',   x: -31.12, z: 0.42, y: 0.76, face: 70 },
+                { key: 'papers_a',       x: -31.0, z: 0.05, y: 0.76, face: 100 },
+                { key: 'clipboard_flat', x: -30.95, z: 0.78, y: 0.76, face: 95 },
+                { key: 'instrument_whistle', x: -31.05, z: -0.75, y: 0.77, face: 30 },
+                { key: 'lesson_plaque',  wall: 'w', z: 1.9, lesson: 'floor' },
+                { key: 'door_xray', wall: 'w', z: -7.0, mount: 1.6 }, { key: 'door_xray', wall: 'w', z: 7.0, mount: 1.6 },
+                { key: 'observation_window', wall: 'w', z: -10.5, mount: 8.0 }, { key: 'observation_window', wall: 'w', z: 0, mount: 8.0 }, { key: 'observation_window', wall: 'w', z: 10.5, mount: 8.0 },
+                { key: 'water_cooler',   wall: 'w', z: 14.0 },
+                /* EAST under the deck: the racks; on the deck: the operators' consoles, the monitors, the projector */
                 { key: 'server_rack', wall: 'e', z: -12.65 }, { key: 'server_rack', wall: 'e', z: -11.75 }, { key: 'server_rack', wall: 'e', z: -10.85 }, { key: 'server_rack', wall: 'e', z: -9.95 },
                 { key: 'server_rack', wall: 'e', z: 9.95 }, { key: 'server_rack', wall: 'e', z: 10.85 }, { key: 'server_rack', wall: 'e', z: 11.75 }, { key: 'server_rack', wall: 'e', z: 12.65 },
                 { key: 'retro_control_panel', x: 30.4, z: 0, face: 270 },
@@ -37651,49 +37662,40 @@ const DOOR_HQ = {
                 { key: 'computer_chair_blue', x: 27.1, z: -3.5, y: 3.5, face: 270 }, { key: 'computer_chair_grey', x: 27.1, z: 3.5, y: 3.5, face: 270 },
                 { key: 'monitor_stack',  wall: 'e', z: -3.0, mount: 3.5 }, { key: 'monitor_stack', wall: 'e', z: 3.0, mount: 3.5 },
                 { key: 'star_projector', x: 26.2, z: 0, y: 3.5, face: 270 },
-                /* SOUTH (the camera's side, kept low) */
-                { key: 'exit_sign',      wall: 's', x: 0, mount: 3.1 },
-                { key: 'keypad',         wall: 's', x: 2.2 },
-                { key: 'radiation_sign', wall: 's', x: 10.0 },
-                { key: 'tulip_table',    x: -10.5, z: 28.5 }, { key: 'tulip_chair', x: -11.8, z: 28.5, face: 90 }, { key: 'tulip_chair', x: -9.2, z: 28.5, face: 270 },
+                { key: 'locker',         wall: 'e', z: 17.5 }, { key: 'locker', wall: 'e', z: 18.4 },
+                { key: 'hook_rail',      wall: 'e', z: 19.3 },
+                { key: 'folding_chair',  x: 30.2, z: 5.2, face: 280 }, { key: 'folding_chair', x: 30.2, z: 6.7, face: 260 },
+                /* SOUTH (the battle camera's side, kept low): the grand doors' sign and keypad; east of them the locker row */
+                { key: 'exit_sign',      wall: 's', x: 0, mount: 3.6 },
+                { key: 'keypad',         wall: 's', x: 2.6 },
+                { key: 'locker', wall: 's', x: 7.0 }, { key: 'locker', wall: 's', x: 7.9 }, { key: 'locker', wall: 's', x: 8.8 }, { key: 'locker', wall: 's', x: 9.7 },
+                { key: 'locker', wall: 's', x: 10.6 }, { key: 'locker', wall: 's', x: 11.5 }, { key: 'locker', wall: 's', x: 12.4 },
+                { key: 'locker_bench',   x: 8.35, z: 29.0, face: 0 }, { key: 'locker_bench', x: 11.05, z: 29.0, face: 0 },
                 { key: 'fire_extinguisher', wall: 's', x: 14.8, mount: 1.0 },
+                { key: 'tulip_table',    x: -10.5, z: 28.5 }, { key: 'tulip_chair', x: -11.8, z: 28.5, face: 90 }, { key: 'tulip_chair', x: -9.2, z: 28.5, face: 270 },
                 { key: 'security_camera', x: 31.2, z: 31.2, face: 315, mount: 5.6 },
                 /* THE ORIENTATION CORNER (2026-11-12, mondo: "a little area where the player takes a seat and the TV gets rolled in"): three
-                   school desks by the main hall door, their sitters' backs to the pad, the tape TV on its AV cart at the south wall (the cart
-                   is one Meshy model, mondo's pick on the card; the TV and the player are the pack pieces Room 64 had). Low things only: this
-                   is the battle camera's side. The cutscenes' shots are planned on these spots: keep the lane from the door to the cart clear. */
+                   school desks by the grand doors, their sitters' backs to the pad, the tape TV on its AV cart at the south wall. The
+                   cutscenes' shots are planned on these spots: keep the lane from the door to the cart clear. */
                 { key: 'cursed_tv_set',  x: -5.25, z: 29.4, face: 0 },   // 📺 (2026-11-17) the cart, the TV, the remote and the cable are ONE file now: the Cursed TV unit's own set (mondo: the cutscene's TV and the unit the same)
                 { key: 'vhs_player',     x: -5.25, z: 29.4, y: 0.67, face: 0, span: 0.34 },   // (mondo 11-14: "VHS too big": a real deck, a real tape)
-                { key: 'vhs_tape',       x: -5.25, z: 29.38, y: 0.76, face: 20, span: 0.19 },   // (mondo 11-15: "the vhs isnt sitting on the cart": it lay under the bottom rail; now on top of the deck, seated by THE TABLETOP SEAT)
+                { key: 'vhs_tape',       x: -5.25, z: 29.38, y: 0.76, face: 20, span: 0.19 },   // (mondo 11-15: "the vhs isnt sitting on the cart": now on top of the deck, seated by THE TABLETOP SEAT)
                 { key: 'school_desk',    x: -7.35, z: 26.0, face: 0 }, { key: 'school_desk', x: -5.25, z: 26.0, face: 0 }, { key: 'school_desk', x: -3.15, z: 26.0, face: 0 },
-                /* ROOM 64'S THINGS, MOVED IN: the range console's desk on the west wall, the forty-four-minute corner, the lockers, the cooler, the sign */
-                { key: 'tanker_desk',    wall: 'w', z: 0 },
-                { key: 'crt_terminal',   x: -31.1, z: -0.35, y: 0.76, face: 90 },
-                { key: 'rotary_phone',   x: -31.12, z: 0.42, y: 0.76, face: 70 },
-                { key: 'papers_a',       x: -31.0, z: 0.05, y: 0.76, face: 100 },
-                { key: 'clipboard_flat', x: -30.95, z: 0.78, y: 0.76, face: 95 },
-                { key: 'lesson_plaque',  wall: 'w', z: 1.9, lesson: 'floor' },
+                /* the coffee */
                 { key: 'cardboard_boxes', x: -13.4, z: 30.4, face: 0 },
                 { key: 'coffee_maker',   x: -13.4, z: 30.4, y: 0.95, face: 0 },
                 { key: 'solo_cup',       x: -12.95, z: 30.25, y: 0.95 },
                 { key: 'trash_bin',      x: -14.3, z: 30.7, face: 45 },
-                { key: 'water_cooler',   wall: 's', x: -17.5 },
-                { key: 'locker',         wall: 'e', z: 17.5 }, { key: 'locker', wall: 'e', z: 18.4 },
-                { key: 'hook_rail',      wall: 'e', z: 19.3 },
-                { key: 'folding_chair',  x: 30.2, z: 5.2, face: 280 }, { key: 'folding_chair', x: 30.2, z: 6.7, face: 260 },
                 { key: 'wet_floor_sign', x: -21.5, z: 22.5, face: 140 },   // it is still not wet
             ],
-            /* the doors are part of the room's look, so the board's room wears them too (Room 64's three, moved to these walls) */
+            /* the grand doors to the Lobby (the main line), the service stair, the condemned crossing; one name each, no blurb */
             doors: [
-                { id: 'egress',    wall: 's', x: 0,   leaf: 'leaf_exit', label: 'THE LOBBY',
-                  action: { room: 'central_egress', at: 'training' },
-                  desc: 'The way back up. The EXIT sign over this one is accurate, which is why it was chosen.' },
-                { id: 'stairs', wall: 'w', z: -24.5, leaf: 'leaf_closet_alt', label: 'SERVICE STAIR', sub: 'DOWN TO B · SERVICES',
-                  action: { room: 'services', at: 'stairs' },
-                  desc: 'The back stair down to the service floor. The kitchen, the laundry, and a corridor Facilities would rather you did not.' },
-                { id: 'condemned', wall: 'e', z: 24.5, leaf: 'leaf_shabby_wood', label: 'CONDEMNED CROSSING', sub: 'MYSTERY DUNGEON',
-                  action: { fn: '_goToMysteryDungeon' },
-                  desc: 'Condemned in 1987. The field office on the far side never acknowledged the memo, and somebody keeps oiling the hinges.' },
+                { id: 'egress',    wall: 's', x: 0,   leaf: 'leaf_wired_double', label: 'THE LOBBY',
+                  action: { room: 'central_egress', at: 'training' } },
+                { id: 'stairs', wall: 'w', z: -24.5, leaf: 'leaf_closet_alt', label: 'SERVICE STAIR',
+                  action: { room: 'services', at: 'stairs' } },
+                { id: 'condemned', wall: 'e', z: 24.5, leaf: 'leaf_shabby_wood', label: 'CONDEMNED CROSSING',
+                  action: { fn: '_goToMysteryDungeon' } },
             ],
             spawn: { x: 0, z: 28.0, face: 0 },
         },
@@ -85842,17 +85844,14 @@ const DOOR_HQ = {
    the agents, the sparring vessels, the lines. It carries no `site`, so it stays a plain HQ room (no site console, no Code Red). */
 DOOR_HQ.rooms.training = Object.assign({}, DOOR_HQ.rooms.training_hall, {
     label: 'TRAINING ROOM',
-    sub: 'PRACTICE · GAUNTLET · DUNGEON',
     roomNo: '64', why: '8 × 8',
     counters: [
         /* the launch console on the west wall (the tanker desk is the physical counter; this is the interaction) */
         { id: 'range', x: -30.4, z: 0, face: 90, plateY: 1.9, radius: 2.4, verb: 'USE',
-          label: 'RANGE CONSOLE', sub: 'PRACTICE BATTLE', action: { overlay: 'training' } },
+          label: 'RANGE CONSOLE', action: { overlay: 'training' } },
     ],
-    agents: [
-        { x: 6.0,   z: 20.5, face: 330, line: 'Eyes on the grid, officer. It measured 7×7 on Tuesday. Nobody filed the change.' },
-        { x: -27.5, z: -4.4, face: 115, line: 'Forty-one minutes. I am taking my break at forty-four.' },
-    ],
+    /* DOOR HQ 2.0: no nameless agents standing about (only the story's own people: Locke, Knox, Ringer come by their DOOR_CAST spots) */
+    agents: [],
     npcSpots: [
         /* two vessels sparring on the pad, one on the south walkway */
         { x: -1.75, z: 1.75, face: 90 },
@@ -87684,6 +87683,8 @@ const HQ_STAGE_RULES = {
            THE OPEN FRONTS: each room thread adds its own row here once its box room has the matching `lobby` door:
            { a: 'central_egress', door: 'doorstore' | 'medical' | 'cafeteria', b: <the room>, bDoor: 'lobby' } */
         { a: 'central_egress', door: 'medical', b: 'medical', bDoor: 'lobby' },   // MEDICAL, the open front at 100 degrees (14 x 4.5 m)
+        /* DOOR STORE (DOOR HQ 2.0 wave 2, 2026-11-26): the Lobby's open front (its `doorstore` row, no leaf) ⇄ the store's `lobby` opening */
+        { a: 'central_egress', door: 'doorstore', b: 'doorstore', bDoor: 'lobby' },
     ],
 };
 /* THE EXPLORATION DAY (§4.4 — Phase 3, 2026-09-26). One clock for every outdoor room (2026-10-17: hqRoomClock; was every zone with `clock: true`): a day of `dayMin` real
@@ -88081,13 +88082,11 @@ const HQ_WORLD = {
         medwing: { label: 'THE MEDICAL WING', ground: 'hq', hub: 'medwing', sky: null, clock: false,
             parts: {
                 medwing:       { x: 0,    z: 0,     y: 0, rot: 0 },
-                dispensary:    { x: 4.4,  z: -6.9,  y: 0, rot: 0 },    // its south door at x −2.2 faces the wing's north door at x 2.2
                 interrogation: { x: 9.7,  z: 0,     y: 0, rot: 0 },    // its west door faces the wing's east door
                 padded:        { x: -2.2, z: -6.0,  y: 0, rot: 0 },    // DOOR HQ 2.0 (2026-11-26): behind the wing's north door at x −2.2 (the old ward's), its south door facing it
             },
             joins: [
                 { a: 'medwing', b: 'padded',        kind: 'door', door: 'ward',          bDoor: 'egress' },
-                { a: 'medwing', b: 'dispensary',    kind: 'door', door: 'dispensary',    bDoor: 'egress' },
                 { a: 'medwing', b: 'interrogation', kind: 'door', door: 'interrogation', bDoor: 'egress' },
             ] },
         /* Z11 — THE BASEMENT (Phase 4, 2026-09-27, §8.4's basement merge built as the medical wing was: DOOR JOINS, the
@@ -88102,8 +88101,6 @@ const HQ_WORLD = {
         basement: { label: 'THE BASEMENT', ground: 'hq', hub: 'services', sky: null, clock: false,
             parts: {
                 services:   { x: 0,     z: 0,    y: -4, rot: 0 },
-                kitchen:    { x: -2.2,  z: -6.2, y: -4, rot: 0 },
-                coldroom:   { x: 5.0,   z: -7.7, y: -4, rot: 0 },
                 laundry:    { x: 8.7,   z: 0,    y: -4, rot: 0 },
                 dock:       { x: 15.9,  z: 0,    y: -4, rot: 1 },
                 corridor_a: { x: -15.7, z: 1.2,  y: -4, rot: 1 },
@@ -88113,10 +88110,8 @@ const HQ_WORLD = {
                 deadend:    { x: -58.6, z: 1.2,  y: -4, rot: 1 },
             },
             joins: [
-                { a: 'services',   b: 'kitchen',    kind: 'door', door: 'kitchen',    bDoor: 'lobby' },
                 { a: 'services',   b: 'laundry',    kind: 'door', door: 'laundry',    bDoor: 'lobby' },
                 { a: 'laundry',    b: 'dock',       kind: 'door', door: 'dock',       bDoor: 'laundry' },
-                { a: 'kitchen',    b: 'coldroom',   kind: 'door', door: 'coldroom',   bDoor: 'kitchen' },
                 { a: 'services',   b: 'corridor_a', kind: 'door', door: 'corridor',   bDoor: 'lobby' },
                 { a: 'corridor_a', b: 'boiler',     kind: 'door', door: 'boiler',     bDoor: 'corridor' },
                 { a: 'corridor_a', b: 'corridor_b', kind: 'door', door: 'corridor_b', bDoor: 'corridor_a' },
@@ -105176,13 +105171,17 @@ function hqPartyFieldItems(m) { return Object.keys(ITEM_RULES).filter(hqFieldIte
    then a healing potion from the bag, then from anyone's pockets), a mana potion on a
    caster only when a heal is wanted and nobody can pay for it. */
 const HQ_DISPENSARY = {
-    room: 'dispensary', counter: 'pharmacy',
+    room: 'doorstore', counter: 'till',   // DOOR HQ 2.0 (2026-11-26): the Door Store sells the doors; the potions are the vending machines' (hqVendingApply)
     stock: ['healPotion', 'manaPotion', 'reviveTonic', 'elixir', 'panacea', 'scanner',
             'captureDoor', 'captureDoor2', 'captureDoor3', 'captureDoorTuned'],   // ITEM_RULES keys, in the shelf's order (the price is the row's shopPrice); the capture doors (the user, 2026-09-25: "Make them available in the shop too")
     /* THE DOOR ISSUE (the user, 2026-09-25: "i need some actual doors in my bag to test"): once per profile, the HQ's first
        load after this lands puts these in the bag (profile.js backfillProfile → hqCaptureDoorIssue; door.hq.capIssue marks it) */
     capIssue: { captureDoor: 3, captureDoorTuned: 1 },
     labels: { buy: 'BUY', sell: 'SELL', bag: 'THE BAG' },
+    /* THE SHELVES (DOOR HQ 2.0, 2026-11-26, mondo: "Door Store ... sells door", "Potions should be sold from the vending machines"): a
+       counter's `action.shelf` picks one: `doors` = the capture doors (the Door Store's till), `potions` = everything else (a vending
+       machine). A shelf is a rule over `stock` (hqBagCategoryOf), so a new stock row lands on the right one by itself. */
+    shelves: { doors: k => hqBagCategoryOf(k) === 'doors', potions: k => hqBagCategoryOf(k) !== 'doors' },
 };
 function hqBagRecord(profile, create) {
     if (!profile) return null;
@@ -105283,7 +105282,10 @@ function hqCaptureDoorIssue(profile) {
     return { ok: true, added };
 }
 /* THE SHELF: the dispensary's stock with prices */
-function hqShopStock() { return HQ_DISPENSARY.stock.filter(k => typeof ITEM_RULES !== 'undefined' && ITEM_RULES[k]).map(k => hqBagItemRow(k, 0)); }
+function hqShopStock(shelf) {
+    const on = (shelf && HQ_DISPENSARY.shelves[shelf]) || null;
+    return HQ_DISPENSARY.stock.filter(k => typeof ITEM_RULES !== 'undefined' && ITEM_RULES[k] && (!on || on(k))).map(k => hqBagItemRow(k, 0));
+}
 /* a QUOTE: can this profile buy n of it? — { ok, cost, reason, gold, room } (nothing written) */
 function hqShopQuote(profile, key, n, opts) {
     n = Math.max(1, n | 0); opts = opts || {};
@@ -108750,7 +108752,7 @@ var ZONE_LOOKS = {
            stone, office drywall and taupe carpet. Batch 6 mapped them (stone -> hz:Stone_11, a 128 px horror tile, on the hall's drum; drywall
            in 41 rooms; carpet in 13). They are out of the maps, and zoneLookRoom never swaps a shell key DOOR_HQ.textures names */
         doorhq: {
-            rooms: ['central_egress', 'foyer', 'continuity', 'office', 'cafeteria', 'clockroom', 'barbershop', 'trophycase', 'reception', 'dispensary', 'medical', 'padded', 'medwing', 'recwing', 'execwing', 'executive', 'corner', 'pool', 'interrogation', 'records', 'it', 'observatorium', 'training_pit', 'training_hall', 'car', 'garage', 'dock', 'services', 'kitchen', 'coldroom', 'laundry', 'corridor_a', 'boiler', 'corridor_b', 'deadend', 'server', 'dungeon', 'ritual', 'sacrifice', 'orb', 'annex', 'classroom', 'cubicles', 'bathroom', 'crawlspace', 'thirteenth', 'locker', 'natatorium', 'garden', 'works', 'warehouse', 'incinerator', 'autopsy', 'intro_desert', 'intro_shaft', 'doorgarden', 'control', 'lostfound', 'stairwell', 'woodstair', 'tunnel', 'labs', 'dreamlab', 'tank', 'mandela', 'upsidedown', 'closet4b', 'supply', 'disposal', 'hwing_lobby', 'hwing_floor', 'hwing_home', 'training'],
+            rooms: ['central_egress', 'foyer', 'continuity', 'office', 'cafeteria', 'clockroom', 'barbershop', 'trophycase', 'reception', 'dispensary', 'doorstore', 'medical', 'padded', 'medwing', 'recwing', 'execwing', 'executive', 'corner', 'pool', 'interrogation', 'records', 'it', 'observatorium', 'training_pit', 'training_hall', 'car', 'garage', 'dock', 'services', 'kitchen', 'coldroom', 'laundry', 'corridor_a', 'boiler', 'corridor_b', 'deadend', 'server', 'dungeon', 'ritual', 'sacrifice', 'orb', 'annex', 'classroom', 'cubicles', 'bathroom', 'crawlspace', 'thirteenth', 'locker', 'natatorium', 'garden', 'works', 'warehouse', 'incinerator', 'autopsy', 'intro_desert', 'intro_shaft', 'doorgarden', 'control', 'lostfound', 'stairwell', 'woodstair', 'tunnel', 'labs', 'dreamlab', 'tank', 'mandela', 'upsidedown', 'closet4b', 'supply', 'disposal', 'hwing_lobby', 'hwing_floor', 'hwing_home', 'training'],
             wall: { drywall_2: 'hz:Wall_03', drywall_3: 'hz:Wall_03', drywall_4: 'hz:Wall_03', rocks_5: 'hz:Stone_11',
                     bricks_2: 'hz:Brick_10', bricks_1: 'hz:Brick_11', bricks_3: 'hz:Brick_11', dungeon: 'hz:Brick_09', dungeon_3: 'hz:Brick_08', dungeon_4: 'hz:Brick_08',
                     gunmetal: 'hz:Metal_02', gunmetal_2: 'hz:Metal_02', metal: 'hz:Metal_02', aluminium: 'hz:Metal_05', metal_3: 'hz:Metal_05',
@@ -114810,3 +114812,38 @@ function hqOneNameApply() {
 }
 try { hqOneNameApply(); } catch (e) { if (typeof console !== 'undefined') console.warn('[HQ ONE NAME] failed', e); }
 if (typeof window !== 'undefined') window.hqOneNameApply = hqOneNameApply;
+/* ══ DOOR HQ 2.0, WAVE 2: THE VENDING MACHINES SELL THE POTIONS (2026-11-26) ══ mondo: "Potions should be sold from the vending machines".
+   Every `vending_machine` prop in a DOOR HQ room (ZONE_LOOKS doorhq) is a counter of the shop's `potions` shelf (HQ_DISPENSARY.shelves;
+   map.js _hqPharmacyHtml): a room thread only places the machine, no counter row. Round room: the counter stands in front of the machine
+   (its deg, a metre in from its radius); box room: a metre in from its wall, or at its own x, z on the floor. Off for a bisect:
+   window.EW_HQ_NO_VENDING. */
+function hqVendingApply() {
+    if (typeof DOOR_HQ === 'undefined' || !DOOR_HQ.rooms || typeof ZONE_LOOKS === 'undefined') return 0;
+    if (typeof window !== 'undefined' && window.EW_HQ_NO_VENDING) return 0;
+    const ids = (ZONE_LOOKS.zones && ZONE_LOOKS.zones.doorhq && ZONE_LOOKS.zones.doorhq.rooms) || [];
+    const IN = 1.0, FACE = { n: 0, s: 180, e: 270, w: 90 };
+    let n = 0;
+    ids.forEach(id => {
+        const R = DOOR_HQ.rooms[id]; if (!R || !Array.isArray(R.props)) return;
+        const S = R.shell || {};
+        R.props.forEach((p, i) => {
+            if (!p || p.key !== 'vending_machine' || p._vend) return;
+            const c = { id: 'vend_' + i, label: 'VENDING MACHINE', verb: 'BUY', action: { overlay: 'pharmacy', shelf: 'potions' }, radius: 1.6, plateY: 2.15 };
+            if (p.deg != null) {
+                const r = (p.r != null) ? +p.r : (S.radius > 0 ? S.radius : 0); if (!(r > IN)) return;
+                Object.assign(c, { deg: +p.deg, r: Math.round((r - IN) * 100) / 100, level: p.level || 0 });
+            } else if (FACE[p.wall] != null && S.w > 0 && S.d > 0) {
+                const w2 = S.w / 2 - IN, d2 = S.d / 2 - IN;
+                c.x = p.wall === 'e' ? w2 : p.wall === 'w' ? -w2 : (p.x || 0);
+                c.z = p.wall === 's' ? d2 : p.wall === 'n' ? -d2 : (p.z || 0);
+                c.face = FACE[p.wall];
+            } else if (isFinite(+p.x) && isFinite(+p.z)) {
+                Object.assign(c, { x: +p.x, z: +p.z, face: p.face || 0 });
+            } else return;
+            (R.counters || (R.counters = [])).push(c); p._vend = 1; n++;
+        });
+    });
+    return n;
+}
+try { hqVendingApply(); } catch (e) { if (typeof console !== 'undefined') console.warn('[HQ VENDING] failed', e); }
+if (typeof window !== 'undefined') window.hqVendingApply = hqVendingApply;

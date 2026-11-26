@@ -1418,3 +1418,69 @@ upper-level plan, so the room threads can join to it. A clean sheet: the old hal
   350 (until the Garage). YOUR OFFICE IS BEHIND A CARD AGAIN (Lobby -> Ring -> Office) until the joins thread (plan threads 6/7)
   joins the Ring; its old hall join row is gone.
 - `node find-doorways.js central_egress foyer ring_g`: 0 rows.
+## DOOR HQ 2.0, THE CAFETERIA + THE KITCHEN (2026-11-26, wave 2)
+mondo: "Bigger cafeteria". Built from FLOOR_PLANS.md picture 1 and LOOK_BOOK.md "Cafeteria" / "Kitchen". Room id `cafeteria` (kept), label
+CAFETERIA, no sub, no room number.
+- **The box:** 35 x 24.5 m (10 x 7 squares), 7 m high, on the Lobby's west side (the hall's door at deg 270). Its south wall's middle 17.5 m
+  is the Lobby opening: door row `{ id: 'lobby', wall: 's', x: 0, open: { w: 17.5, h: 4.5 } }`, no leaf. The Lobby thread adds `open`
+  (hqDoorOpening) and the hall's row; the join row `{ a: 'central_egress', door: 'cafeteria', b: 'cafeteria', bDoor: 'lobby' }` in
+  HQ_STAGE_RULES.round lands when the Lobby shell is on main. Until then the hall's old `cafeteria` row (the Ring door) leads in at `lobby`.
+- **The Kitchen is in the same room:** a 21 x 7 m strip behind the canteen (z −12.25 … −5.25, x ±10.5), walled by THE ROOM WALL
+  (`room_wall`, a new proc, three-renderer.js; any box room can use it): a partition built in metres from its row (`len`, `wallH`, `t`,
+  `dadoH`, `front` / `back` sheets, `holes` = openings, `sill` = a steel shelf through a hatch). It has no catalogue footprint: THE REAL
+  COLLISION reads its slabs, so a doorway in it is walked through and a hatch is a wall to the waist. With `floor: '<sheet>'` it lays a
+  1.5 cm floor patch instead (the kitchen's linoleum on the canteen's checkerboard). The front wall has a 12 m serving hatch (sill
+  1.05 m) over the serving line and a 2.1 x 2.9 m staff doorway at its east end; a 4 cm lining tiles the room's north wall inside.
+- **Retired:** the basement `kitchen` and `coldroom` (DOOR_HQ.retired -> `cafeteria`; out of HQ_WORLD basement's parts and joins;
+  services' `kitchen` door and corridor_b's secret `coldroom` door cut). The Cold Room is folded into the Kitchen's west end. The old
+  room's MOBIUS STRIP CLUB night variant is gone with it (one name a room).
+- **Dressing:** four rows of four `psx_dinner_table_1` on the hero line with `cafeteria_chair` / `molded_chair` both sides (a few signed
+  out), saucer pendants over them; booths down both side walls (two `psx_sofa_3` over a `psx_dinner_table_1`, the look book's stand-in
+  until a diner booth model exists) under `false_window`s and sputnik lamps; the serving line (four `serving_line`), the till
+  (`reception_wedge`), a big `wall_clock` over the hatch; the coffee corner in the east nook; the Kitchen's ranges, hoods, deck oven,
+  sinks, shelving, fridges, two `steam_table`s at the pass and the prep island.
+- **Decals:** a prop row may say `decal: false` to refuse its key's mark (three-renderer.js _hqBuildDecals): the kitchen's steel tables
+  carried the Autopsy Room's blood (HQ_DECAL_RULES.byKey).
+- **Kept clear:** the opening's lane (z > 8.75 across x ±9.1) and 3.5 m both sides of the kitchen doorway. `node find-doorways.js
+  cafeteria`: 0 rows.
+
+
+## DOOR HQ 2.0, WAVE 2: THE DOOR STORE (2026-11-26)
+mondo: "The Hatch/The Dispensary/Shop needs to be renamed to Door Store and only door store and no subtitles. Needs to be a physical
+store/shop that sells door. No buying races in story mode. No need for the party builder to be there either. Potions should be sold from
+the vending machines". Plan: `docs/plans/door-hq-2/FLOOR_PLANS.md` (lobby level, north-east of Rhonda), `LOOK_BOOK.md` "Door Store".
+- THE ROOM: data.js `DOOR_HQ.rooms.doorstore` (label DOOR STORE, nothing else), a box 21 x 17.5 m, 7 m high, charcoal walls, oak floor.
+  Its front is OPEN onto the Lobby: the `lobby` row `{ wall: 's', x: 0, open: { w: 14, h: 4.5 } }` (no leaf) meets the Lobby's
+  `doorstore` row through HQ_STAGE_RULES.round (`{ a: 'central_egress', door: 'doorstore', b: 'doorstore', bDoor: 'lobby' }`, no card).
+  The `open` opening is the Lobby thread's (hqDoorOpening); the join row is inert until the Lobby's door is on main.
+- THE STOCK: catalogue `store_door` (proc, three-renderer.js `_hqProcBuilders.store_door`): a plinth in the tier's colour, the teal
+  D.O.O.R. frame, the leaf shut in it (T1 `leaf_wooden`, T2 `leaf_security`, T3 `leaf_vault`), jamb lamps (a pair a tier; the Tuned Door
+  the six type colours), a halo, its own light, and a tag reading ITEM_RULES name + shopPrice LIVE. A row's `item` = a capture door;
+  `leaf` with no item = a display door (the window display, the futuristic one). Face 180 = the front toward the Lobby (+z).
+- THE TILL: counter `till` (overlay `pharmacy`, `shelf: 'doors'`). ONE shop panel, two shelves: data.js `HQ_DISPENSARY.shelves`
+  (`doors` = hqBagCategoryOf 'doors', `potions` = the rest), `hqShopStock(shelf)`; map.js `_hqPharmacyHtml(shelf, title)` heads the panel
+  with the counter's own name and the wallet, no subtitle, no blurb. HQ_DISPENSARY.room/counter = doorstore/till.
+- THE VENDING MACHINES: data.js `hqVendingApply()` (end of data.js, after hqOneNameApply) makes EVERY `vending_machine` prop in a DOOR HQ
+  room a VENDING MACHINE counter on the `potions` shelf (round room: its deg, 1 m in; box room: 1 m in from its wall, or its x, z).
+  A room thread only places the machine. Bisect: `window.EW_HQ_NO_VENDING`.
+- RETIRED: `DOOR_HQ.retired.dispensary = 'doorstore'`; the Medical Wing's `dispensary` door is cut (`DOOR_HQ.cut.doors.medwing`); the
+  medwing stage zone no longer holds it. The Quartermaster (races, party builder) was cut in wave 1; nothing in story sells races.
+- OPEN for mondo: nobody staffs the till (DOOR HQ holds story characters only; who runs the Door Store is his call).
+## DOOR HQ 2.0, WAVE 2: THE TRAINING ROOM (2026-11-26)
+- One definition still: data.js `rooms.training_hall` (the look + the `prebuilt_training` board's room); `rooms.training` (the walk's
+  room, Room 64) is built from it after the table. The 8 x 8 pad, its keys, its level and HQ_ARENA_RULES.own.prebuilt_training are
+  unchanged (no rebake), so the lessons' tiles and the quest fight's seats stand.
+- 63 x 63 m, 14 m to an open truss (`urban:MetalTruss1a`), concrete panels to 3.5 m, aluminium above. Grand doors on the south wall
+  (`leaf_wired_double`, the Lobby's main line comes in here: the Lobby's `training` door, deg 0, `at: 'egress'`), a teal lane from them
+  to the pad, white seams, a teal frame. The scoreboard stands at the north wall on the main line, four DOOR banners (`zone_banner`
+  flag `door`) either side, the clock over it. High-bay lamps hang in a RING two squares off the pad (a lamp over the pad showed as a
+  dark dot on the squares from the battle camera); the real lights hang over the pad.
+- Kept: the east operators' deck (its stair now starts at x 7, two squares east of the scoreboard), the Range Console desk on the west
+  wall, the orientation corner exactly where the cutscene `orientation_tv` is shot (TV cart -5.25, 29.4; desks z 26; Locke -6.35, 29.3),
+  the coffee, Knox's and Ringer's DOOR_CAST spots. New: the sparring corner north-west (bags, wing chun dummy, racks), the locker row
+  and benches east of the doors, round windows high on the north and west walls.
+- Out: the psychic test chamber's tanks, brain racks, orbs, corner pylons (3.5 m tall a square off the pad), the screen wall, the
+  subject chairs, the radiation sign, the floor slogan, every door blurb, the two nameless agents (`rooms.training.agents` = []).
+- mondo's 11-12 call stands over the look book: NO SEATS round the pad (he had the bleachers taken out), so the look book's
+  `bleacher_stand` rows were not built.
+- Checked: `node find-doorways.js training training_hall` clear; walk + battle board probes (playtest_city.js, playtest_maps.js).
