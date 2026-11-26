@@ -1877,3 +1877,9 @@ Sep 3, 2026 at 02_08_16 AM (1).png` and `(5).png` (the pit fenced by low oxblood
   of the screen not a big ass panel"):** the `cot` / `healzone` counters (the healing machine, every hub's healing zone) open THE DIALOGUE
   BOX, not the centre panel: the counter's name, "Heal your party?", YES (`data-party-rest`) / NO. No party list, no notes. map.js
   `_hqHealDlg(t)` picks it in `_hqCounterPanelHtml` and makes `_hqOpenPanel` treat it as a person's box; keys 1 / 2 answer too.
+
+### H-WING IS LOCKED BUT ONE DOOR (2026-11-26, mondo: "it is supposed to be end game stuff")
+Every DOOR HQ door into H-Wing carries `locked: true` (data.js `doorSiteState` reads it as `sealed`: no swing, no walk-in; map.js
+`_hqOpenPanel` shows only "Locked." in THE DIALOGUE BOX): the Ring, the Lobby's upper gallery, the Garage, the Works top (factory.js
+writes it) and the Gantry. The one way in is the Antechamber's door at the Works' bottom, by the Incinerator. H-Wing's own doors back
+out stay open (leaving by one is a shortcut, not a way in). Any door row can take `locked: true`.
