@@ -87683,6 +87683,7 @@ const HQ_STAGE_RULES = {
         /* (DOOR HQ 2.0, 2026-11-26: Your Office's door stands on the Ring now, plans/1_lobby_level_plan.png; its row left with it.)
            THE OPEN FRONTS: each room thread adds its own row here once its box room has the matching `lobby` door:
            { a: 'central_egress', door: 'doorstore' | 'medical' | 'cafeteria', b: <the room>, bDoor: 'lobby' } */
+        { a: 'central_egress', door: 'medical', b: 'medical', bDoor: 'lobby' },   // MEDICAL, the open front at 100 degrees (14 x 4.5 m)
     ],
 };
 /* THE EXPLORATION DAY (§4.4 — Phase 3, 2026-09-26). One clock for every outdoor room (2026-10-17: hqRoomClock; was every zone with `clock: true`): a day of `dayMin` real

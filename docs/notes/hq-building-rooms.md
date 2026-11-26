@@ -1387,3 +1387,34 @@ Challenge button and HQ_PARTY_RULES.restCounter all read it).
   the wing's east door. `medical` left the medwing zone (a card between them). When the Works rebuild moves the Hold and the
   Interrogation Room down, take out the staff door and retire `medwing`.
 - `node find-doorways.js medical`: clear.
+
+## DOOR HQ 2.0, WAVE 2: THE LOBBY SHELL, THE OPEN FRONTS, THE FOYER, THE RING (2026-11-26)
+The bare shell of the redesigned Lobby (`central_egress`), built from `docs/plans/door-hq-2/plans/1_lobby_level_plan.png` and the
+upper-level plan, so the room threads can join to it. A clean sheet: the old hall's props, agents, bay doors and gallery are gone.
+- **The room:** 49 m across (`radius: 24.5`), the gallery (the upper level, no name) a 7 m slab over the floor's outer band at
+  5.25 m (`mezz: { inner: 17.5, outer: 24.5 }`), 14 m to the dome. THE FLOOR GOES ON UNDER THE GALLERY: three-renderer.js
+  `_hqSurface` stands a walker below (curY under half the slab's height, or none given) on the floor there, and one up on the
+  slab (`underGal`); before, a slab inside the drum was always the slab. No third ring (`ring3`) any more.
+- **THE MAIN LINE runs north:** the Foyer at 180, Rhonda, the Training Room at 0. The gallery's doors: the Observatory (0), the
+  Bureau of Continuity (125, the `execwing` door), the lift (330). Spawn deg 180 r 14 facing the desk.
+- **THE FLUE** (`shell.flue: { r, tex, band }`): the column in the middle, floor to dome, marble with brass bands; solid to the
+  walker and the boom. The Cube hangs off it (`cube.deg / cube.r`: 180, 10 m, over the main line).
+- **THE SLIM DESK** (`desk.arc: [a0, a1]`): a 0.85 m curved counter over 130-230 degrees, open behind; Rhonda's chair (and her
+  DOOR_CAST post, r 3.1) in the well between it and the flue. Scene E's shots that stood in the old well were moved.
+- **THE TWIN STAIRS** (`free: true` on a stair row): flights in the void along the gallery's edge, from either side of the Foyer
+  (166 -> 132, 194 -> 228), 30 steps; a `free` flight's mass is its own width, the floor past its outer side is walkable.
+- **THE OPEN FRONT** (data.js `hqDoorOpening`, three-renderer.js `_hqBuildDoors` `openF` + `_hqOpenFrontFill`): a door row
+  `open: { w, h }` is a doorless opening that size: no leaf, frame, lamp or plate. The drum is cut to it (`_hqDrumCuts` now uses
+  the chord's angle) even before it is joined (a dark opening, press to enter); once a round join row names it
+  (`HQ_STAGE_RULES.round`), the curve between the drum and the room's flat front is filled (floor, soffit, side walls) and
+  `_hqStageRoundAt` lets the walker in from the drum's own arc. The room's side writes the same size on its `lobby` door.
+  Built: the Door Store (35, 14 m), Medical (100, 14 m, joined in this PR), the Cafeteria (270, 17.5 m); the room threads add
+  their own join rows.
+- **THE FOYER** stays the 11-15 box (scene A's lift and logo wall), its double doors now on the main line at 180, dressed from the
+  look book (podium, luggage cart, umbrella stand, two plants, two lamps); no inspector, no doorman, no clipBeside.
+- **THE RING** (`ring_g`, bayShell.corridor): the staff corridor round the whole level, r 45.5-52.5 (7 m), a closed loop
+  (`arc[0]: [0, 360]`), 4.5 m ceiling, the look book's carpet, plaster, panelling and brass. Two doors from the Lobby (62, 300).
+  On its outer wall (`onRing`): IT 35, the Stair to the Woods 118, Your Office 140, Records 162, the Barbershop 215, the Subway
+  350 (until the Garage). YOUR OFFICE IS BEHIND A CARD AGAIN (Lobby -> Ring -> Office) until the joins thread (plan threads 6/7)
+  joins the Ring; its old hall join row is gone.
+- `node find-doorways.js central_egress foyer ring_g`: 0 rows.
