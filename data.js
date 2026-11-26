@@ -111403,6 +111403,18 @@ const DOOR_CAST = {
               doing: 'Belle’s father. He watches the grid the way other people watch a stove.' },
         ],
     },
+    /* CHEF (DOOR HQ 2.0, 2026-11-26, mondo: "Chef in the kitchen/cafteria"): the chef race's own model, one name and no title. Either at the
+       ranges in the Kitchen or at the head of the serving line in the Cafeteria, never in a doorway (find-doorways.js cafeteria). */
+    chef: {
+        name: 'CHEF', dept: 'Support', race: 'chef', gender: 'male',
+        lines: [],
+        spots: [
+            { room: 'cafeteria', x: -5.2, z: -10.75, level: 0, face: 0, reach: 2.2, p: 0.5,
+              doing: 'At the ranges.' },
+            { room: 'cafeteria', x: -9.3, z: -3.6, level: 0, face: 160, reach: 2.2, p: 0.5,
+              doing: 'At the head of the serving line.' },
+        ],
+    },
     rhonda: {
         name: 'RHONDA', title: 'RECEPTION · INTAKE · HUMAN RESOURCES', dept: 'Support', model: 'rhonda', gender: 'female',
         lines: [],
