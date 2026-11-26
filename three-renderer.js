@@ -97532,11 +97532,11 @@ const ThreeRenderer = (function () {
             /* the heat: a glowing seam at the floor and the furnace's light through the grating */
             var hot = _hqMat(null, 1, 1, { color: 0xff6a1a, emissive: 0xff5a10, emissiveIntensity: 1.1, noAo: true });
             var seam = new THREE.Mesh(new THREE.CylinderGeometry((R + 0.02) * U, (R + 0.02) * U, 0.1 * U, 40, 1, true), hot); seam.position.y = 0.12 * U; g.add(seam);
-            var glow = new THREE.Mesh(new THREE.RingGeometry(R * U, ring * U, 48, 1), _hqMat(null, 1, 1, { color: 0xff7a2a, emissive: 0xff4a08, emissiveIntensity: 0.9, noAo: true }));
+            var glow = new THREE.Mesh(new THREE.RingGeometry(R * U, ring * U, 48, 1), _hqBasic(0xff7a24));
             glow.rotation.x = -Math.PI / 2; glow.position.y = 0.004 * U; g.add(glow);
             var grate = _hqMat(null, 1, 1, { color: 0x24201e, shininess: 30, specular: 0x403830 });
-            var n = 56;
-            for (var i = 0; i < n; i++) { var a = (i / n) * Math.PI * 2, mid = (R + ring) / 2, sl = _hqBox(0.07, 0.05, ring - R, grate); sl.position.set(Math.sin(a) * mid * U, 0.03 * U, Math.cos(a) * mid * U); sl.rotation.y = a; g.add(sl); }
+            var n = 32;
+            for (var i = 0; i < n; i++) { var a = (i / n) * Math.PI * 2, mid = (R + ring) / 2, sl = _hqBox(0.05, 0.05, ring - R, grate); sl.position.set(Math.sin(a) * mid * U, 0.03 * U, Math.cos(a) * mid * U); sl.rotation.y = a; g.add(sl); }
             [R + 0.05, (R + ring) / 2, ring - 0.05].forEach(function (rr) { var t = new THREE.Mesh(new THREE.TorusGeometry(rr * U, 0.04 * U, 4, 64), grate); t.rotation.x = Math.PI / 2; t.position.y = 0.05 * U; g.add(t); });
             /* a steel kerb round the grating's edge */
             var kerb = new THREE.Mesh(new THREE.TorusGeometry(ring * U, 0.07 * U, 4, 64), _hqMat(null, 1, 1, { color: 0xc9a227, shininess: 40 })); kerb.rotation.x = Math.PI / 2; kerb.position.y = 0.05 * U; g.add(kerb);

@@ -41240,7 +41240,7 @@ const DOOR_HQ = {
                 { key: 'hazmat_suit', x: -6.2, z: -3.2, face: 90 },
                 { key: 'hazmat_suit', x: -6.2, z: -1.8, face: 90 },
                 { key: 'stretcher', x: 4.8, z: -3.2, face: 0 },
-                { key: 'hw_body', x: 4.8, z: -3.2, y: 0.75, face: 0 },
+                { key: 'hw_body', x: 4.8, z: -3.2, y: 0.36, face: 0 },
                 { key: 'sink_row', wall: 'e', z: 1.2 },
                 { key: 'security_camera', wall: 'n', x: -6, mount: 4.4 },
                 { key: 'fluorescent', x: 0, z: -2.5, ceil: true, face: 90 },
