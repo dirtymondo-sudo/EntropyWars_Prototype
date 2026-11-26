@@ -3114,3 +3114,18 @@ you zoom in ... If im zooming in on a district then the level of detail that sho
   Districts with no real name (a route's bare key 'R', 'L', 'T') get no label.
 - Wheel-out limit = max(6000, 1.6 x the fit) (the world is wider than 6000 units; the old cap zoomed IN on a wheel-out).
 - Proof: /mnt/project-files/map-one-zoom/before.jpg + after.jpg.
+
+## THE LOADOUT (2026-11-26, mondo: the party screen as a JRPG loadout)
+mondo: "look and function more like a traditional RPG or JRPG character loadout screen ... full screen ... the 3d unit models in
+the middle ... change their abilities and held items ... xp to the next level ... health and mana ... little tab row at the top with
+portraits of my party ... functional and simple". The pause menu's member sheet (map.js `_hqPauseMemberHtml`) is now FULL SCREEN:
+`#hqPause.hq-loadout` (toggled by `_hqPauseRender` when the body holds `.hq-lo`) hides the head + the command column. Layout: the TAB
+ROW (a portrait a member, ★ = the lead, ◂ ▸, ROSTER = the old shifts / on call / captives list, ✕), the BAR (name, race, LV, HP, MP,
+EXP TO NEXT LV with bars), three columns STATS | THE STAGE | THE KIT, and one DETAIL LINE (the hovered row's numbers + description, or
+the last write's result). THE STAGE = the forge's `EWCharViewer` mounted on `.hq-lo-stage` (`_hqLoMount` after each render,
+`_hqLoUnmount` when the loadout closes or the menu drops): MANIFESTING ring until dressed + idle playing, never a frozen figure; drag
+turns it. THE KIT: ABILITIES one line each (✎ EDIT opens the tier rack in the right column, widened), PASSIVES (the race's own),
+HELD ITEMS = the GEAR rows (`C.passives.rows` with `sp.accessory` / `gear*` ids; ✎ CHANGE lists them all with HOLD / REMOVE =
+`node:<member>:<id>`), USE AN ITEM = the bag's field items on this member (`itemon:bag:<key>:<member>`). PARTY (the command) opens
+the loadout on the lead; the menu's fresh open still shows the roster. Keys: ← → member, Backspace roster, Esc steps back.
+CSS: end of styles-base.css "THE LOADOUT". Viewer-local (RULE #2).
