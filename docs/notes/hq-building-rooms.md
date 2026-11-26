@@ -1468,7 +1468,7 @@ the vending machines". Plan: `docs/plans/door-hq-2/FLOOR_PLANS.md` (lobby level,
 - OTTO RUNS THE TILL (mondo 11-26: "Otto can be at the door store"): DOOR_CAST.otto's one spot is behind the till (x 0, z -7.7, hqArms); his old upper-level door posts are gone. The till is a low `exec_desk` (the booking desk's screens hid him). Probes: playtest_city.js sets EW_DISABLE_CAST, so pass `--pre=window.EW_DISABLE_CAST=false` to see the cast.
 - THE PAWN SHOP LAYOUT (mondo 11-26: "the doors against the back wall behind a long counter, they are in front of the counter and otto so he
   is completely hidden. Think more pawn shop or ammo store"): all seven doors on plinths along the north wall (z -7.9, every 2.8 m, the vault
-  in the middle), one long counter of seven `jewelry_case`s at z -4.6 (x -4.8..4.8), Otto between them (z -6.0), the till counter in front
+  in the middle), one long plain counter (proc `shop_counter`, 9.6 m, walnut + brass; mondo: "Just a normal counter", not glass cases) at z -4.6, Otto between them (z -6.0), the till counter in front
   (z -3.4). The shop floor south of the counter is open.
 ## DOOR HQ 2.0, WAVE 2: THE TRAINING ROOM (2026-11-26)
 - One definition still: data.js `rooms.training_hall` (the look + the `prebuilt_training` board's room); `rooms.training` (the walk's

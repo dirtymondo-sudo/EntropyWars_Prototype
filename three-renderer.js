@@ -97423,6 +97423,23 @@ const ThreeRenderer = (function () {
             for (var cx = -1; cx <= 1; cx += 2) { var c = new THREE.Mesh(new THREE.CylinderGeometry(0.004 * U, 0.004 * U, 0.16 * U, 4), cord); c.position.set(cx * (W / 2 - 0.02) * U, (H + 0.06) * U, 0.03 * U); c.rotation.z = cx * 0.35; g.add(c); }
             return g;
         },
+        /* THE SHOP COUNTER (DOOR HQ 2.0, the Door Store, mondo 11-26: "Just a normal counter"): one long plain counter, front +z.
+           Walnut body, a dark kick at the floor, a brass rail under a walnut top at 1.05 m, a lower work shelf on the clerk's side
+           (-z). 9.6 m long (the catalogue rect is the blocker). */
+        shop_counter: function (U) {
+            var g = new THREE.Group(), L = 9.6, D = 0.8, H = 1.05;
+            var wood = _hqMat('wood', 6, 1, { color: 0x7a5a3a, shininess: 30, specular: 0x2a2018 });
+            var top = _hqMat('wood', 8, 1, { color: 0x8a6a48, shininess: 55, specular: 0x3a2a1c });
+            var kick = _hqMat(null, 1, 1, { color: 0x1e1a16, shininess: 10 });
+            var brass = _hqMat(null, 1, 1, { color: 0xb8893a, shininess: 80, specular: 0x8a6a30 });
+            var k = _hqBox(L - 0.1, 0.12, D - 0.12, kick); k.position.set(0, 0.06 * U, 0.02 * U); g.add(k);
+            var body = _hqBox(L, H - 0.17, D - 0.08, wood); body.position.set(0, (0.12 + (H - 0.17) / 2) * U, 0); g.add(body);
+            var t = _hqBox(L + 0.08, 0.05, D + 0.06, top); t.position.set(0, (H - 0.025) * U, 0.02 * U); g.add(t);
+            var rail = _hqBox(L + 0.02, 0.035, 0.03, brass); rail.position.set(0, (H - 0.08) * U, (D / 2) * U); g.add(rail);
+            for (var i = -3; i <= 3; i++) { var pnl = _hqBox(L / 7 - 0.12, H - 0.45, 0.02, top); pnl.position.set(i * (L / 7) * U, (0.12 + (H - 0.3) / 2) * U, (D / 2 - 0.03) * U); g.add(pnl); }
+            var shelf = _hqBox(L - 0.2, 0.03, 0.3, top); shelf.position.set(0, 0.8 * U, -(D / 2 + 0.12) * U); g.add(shelf);
+            return g;
+        },
         /* DOOR STORE (DOOR HQ 2.0, 2026-11-26; LOOK_BOOK.md "Door Store": "doors standing in rows like cars in a showroom, each in its own
            spotlight"). A capture door on its plinth (front +z): the plinth in the tier's colour (T1 steel, T2 brass, T3 vault black, the
            tuned door dark with the six type colours), the D.O.O.R. frame in teal metal, the catalogue leaf shut in it (T3 the vault leaf,
