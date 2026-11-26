@@ -19470,6 +19470,7 @@ const UIM_PIECES = [
   { id: 'dkrow', group: 'Battle', label: 'Each command row', sel: 'body:not(#ewdu-a):not(#ewdu-b):not(#ewdu-c) .hrlg-rig.ewd .ewd-list .hrlg-blade', panelSel: 'body:not(#ewdu-a):not(#ewdu-b):not(#ewdu-c) .hrlg-rig.ewd .ewd-list .hrlg-blade > .hrlg-body', def: { l: 358, b: 230, w: 340, h: 28 } },
   { id: 'dkconfirm', group: 'Battle', label: 'CONFIRM button', sel: 'body:not(#ewdu-a):not(#ewdu-b):not(#ewdu-c) .hrlg-rig.ewd .ewd-confirm', panelSel: 'body:not(#ewdu-a):not(#ewdu-b):not(#ewdu-c) .hrlg-rig.ewd .ewd-confirm', def: { l: 358, b: 22, w: 340, h: 30 } },
   { id: 'dkfocus', group: 'Battle', label: 'Right: what you picked', sel: 'body:not(#ewdu-a):not(#ewdu-b):not(#ewdu-c) .hrlg-rig.ewd > .ewd-focus', def: { l: 706, b: 12, w: 580, h: 260 } },
+  { id: 'dkfvitals', group: 'Battle', label: 'Picked unit HP / MP bars', sel: 'body:not(#ewdu-a):not(#ewdu-b):not(#ewdu-c) .hrlg-rig.ewd .ewd-focus .hrlg-qvitals', def: { l: 830, b: 190, w: 440, h: 34 } },
   { id: 'dktabs', group: 'Battle', label: 'Right tabs', sel: 'body:not(#ewdu-a):not(#ewdu-b):not(#ewdu-c) .hrlg-rig.ewd .ewd-tabs', def: { l: 716, b: 274, w: 560, h: 26 } },
   { id: 'dktab', group: 'Battle', label: 'Each tab', sel: 'body:not(#ewdu-a):not(#ewdu-b):not(#ewdu-c) .hrlg-rig.ewd .ewd-tabs .hrlg-ttab', panelSel: 'body:not(#ewdu-a):not(#ewdu-b):not(#ewdu-c) .hrlg-rig.ewd .ewd-tabs .hrlg-ttab', def: { l: 716, b: 274, w: 100, h: 26 } },
   { id: 'dkfbtns', group: 'Battle', label: 'Right side buttons', sel: 'body:not(#ewdu-a):not(#ewdu-b):not(#ewdu-c) .hrlg-rig.ewd .ewd-focus .hrlg-tc-btns', def: { l: 716, b: 24, w: 560, h: 40 } },
@@ -19667,7 +19668,39 @@ function pieceById(id) { return UIM_PIECES.find(p => p.id === id) || pickPieces(
    editor. anywhere with text should be editable"): each HUD piece names its text parts (TEXT_PARTS[piece id] = [part id,
    label, selector inside the piece]); a part's colour / font / weight / size / case / spacing / effect / align / hidden
    sit on db.layout[piece id] as 't:<part>:<key>' (LOOK_DEF's text keys + hide), over the piece's All text look. ── */
-const TX_KEYS = ['ink', 'font', 'fw', 'fsz', 'tcase', 'track', 'tfx', 'align', 'hide'];
+const TX_KEYS = ['ink', 'font', 'fw', 'fsz', 'tcase', 'track', 'tfx', 'align', 'hide', 'pw', 'ph', 'pbg', 'pedge', 'pedgeW', 'prad', 'pdx', 'pdy', 'ps', 'pclip', 'pclipS'];
+/* EVERY PART ITS OWN BOX (2026-11-26, mondo: "i still cant change all of the individual things inside, like i want to change
+   how the level has an outline around it and i need to be able to change the width of the health bar"): a part of a piece
+   (a text, a badge, a bar) takes a width, a height, a fill, an outline (or none), corners, a shape, a nudge and a size */
+const PART_DEF = { pw: 0, ph: 0, pbg: '', pedge: '', pedgeW: -1, prad: -1, pdx: 0, pdy: 0, ps: 1, pclip: '', pclipS: 12 };
+const txDef = k => (k === 'hide' ? false : k in PART_DEF ? PART_DEF[k] : LOOK_DEF[k]);
+/* THE CUT (2026-11-26, mondo: "if i have a parallelogram for the header then the panel of the whole thing shows underneath
+   and it looks ugly, so i would want to be able to crop the panel"): a clip-path in a shape; h > 0 shapes only the top
+   h px (the band a header sits in), the rest stays square */
+const CLIP_SHAPES = [['', 'As the game'], ['para', 'Parallelogram'], ['parar', 'Parallelogram ◂'], ['trap', 'Trapezoid'], ['trapd', 'Trapezoid ▾'], ['bevel', 'Bevel'], ['notch', 'Notch'], ['round', 'Round'], ['hex', 'Hexagon'], ['tab', 'Tab']];
+function clipCss(shape, sz, h) {
+  const s = Math.max(0, Math.min(300, +sz || 0)) + 'px', R = `calc(100% - ${s})`, band = +h > 0 ? Math.round(+h) + 'px' : '';
+  if (shape === 'round') return `inset(0 round ${s})`;
+  /* the cut is the box MINUS a few corner triangles (evenodd: each triangle is walked from the outer square and back), so
+     what stands past the box's edge (a name plate on the frame, a glow) is never cut */
+  const B = band || '100%', H = band || '50%', Bs = band ? band : `calc(100% - ${s})`;
+  const T = {
+    para: band ? [['0 0', `${s} 0`, `0 ${B}`], ['100% 0', `100% ${B}`, `${R} ${B}`]] : [['0 0', `${s} 0`, '0 100%'], ['100% 0', '100% 100%', `${R} 100%`]],
+    parar: [[`${R} 0`, '100% 0', `100% ${B}`], ['0 0', `${s} ${B}`, `0 ${B}`]],
+    trap: [['0 0', `${s} 0`, `0 ${B}`], [`${R} 0`, '100% 0', `100% ${B}`]],
+    tab: [['0 0', `${s} 0`, `0 ${B}`], [`${R} 0`, '100% 0', `100% ${B}`]],
+    trapd: [['0 0', `${s} ${B}`, `0 ${B}`], ['100% 0', `100% ${B}`, `${R} ${B}`]],
+    bevel: band ? [['0 0', `${s} 0`, `0 ${s}`], [`${R} 0`, '100% 0', `100% ${s}`]]
+      : [['0 0', `${s} 0`, `0 ${s}`], [`${R} 0`, '100% 0', `100% ${s}`], [`100% ${Bs}`, '100% 100%', `${R} 100%`], [`0 ${Bs}`, `${s} 100%`, '0 100%']],
+    notch: band ? [['0 0', `${s} 0`, `0 ${s}`]] : [['0 0', `${s} 0`, `0 ${s}`], [`100% ${Bs}`, '100% 100%', `${R} 100%`]],
+    hex: band ? [['0 0', `${s} 0`, `0 ${B}`], [`${R} 0`, '100% 0', `100% ${B}`]]
+      : [['0 0', `${s} 0`, `0 ${H}`], [`0 ${H}`, `${s} 100%`, '0 100%'], [`${R} 0`, '100% 0', `100% ${H}`], [`100% ${H}`, '100% 100%', `${R} 100%`]],
+  }[shape];
+  if (!T) return '';
+  const M = '-400px', o = [`${M} ${M}`, `calc(100% + 400px) ${M}`, `calc(100% + 400px) calc(100% + 400px)`, `${M} calc(100% + 400px)`, `${M} ${M}`];
+  T.forEach(t => { o.push(t[0], t[1], t[2], t[0], `${M} ${M}`); });
+  return `polygon(evenodd, ${o.join(', ')})`;
+}
 const TX_ROWS = [['label', 'Action names', '.hrlg-blabel'], ['sub', 'Row notes', '.hrlg-subline'], ['glyph', 'Row icons', '.hrlg-glyph'],
   ['cursor', 'Cursor', '.hrlg-cursor'], ['chip', 'Costs', '.hrlg-chip'], ['badge', 'Type badges', '.hrlg-badges > span'],
   ['tag', 'Item tags', '.hrlg-tag'], ['key', 'Keys + counts', '.hrlg-cfree'], ['ends', 'ENDS TURN tags', '.hrlg-endsturn']];
@@ -19691,6 +19724,8 @@ const TEXT_PARTS = {
   meta: [['site', 'Site name', '> div:not([class])'], ['weather', 'Weather', '.ew-weather-chip'], ['zodiac', 'Zodiac', '.ew-meta-plate > span > span:not([class])'],
     ['zsign', 'Zodiac sign', '.ew-zodiac-blessed']],
   turns: [['loop', 'Round loop mark', '.ew-tc-loop']],
+  dock: [['ring', 'Every portrait ring', '.hq-dock-pp > svg'], ['lead', 'Lead portrait ring', '.hq-dock-pp.lead > svg'], ['others', 'Other portrait rings', '.hq-dock-pp:not(.lead) > svg'],
+    ['each', 'Each portrait (ring + name)', '.hq-dock-pp'], ['bars', 'Bars under it', '.hq-dock-bars'], ['tag', 'Name + HP plate', '.hq-dock-tag'], ['name', 'Name', '.hq-dock-tag b'], ['hp', 'HP words', '.hq-dock-tag em']],
   press: [['ends', 'ENDS TURN words', '.ew-ap-ends']],
   desc: [['name', 'Name', '.ew-descbar-name'], ['icon', 'Icon', '.ew-descbar-ico'], ['badges', 'Badges', '.hrlg-badges > span'],
     ['tags', 'Tags', '.ew-descbar-inner > span:not([class])'], ['desc', 'Description', '.ew-descbar-desc'],
@@ -19707,13 +19742,13 @@ const TEXT_PARTS = {
   deck: [['plate', 'Frame name plates', '.ewd-plate'], ['name', 'Unit name', '.ewd-name'], ['rom', 'Party number', '.ewd-rom'], ['lv', 'Level line', '.ewd-lv'],
     ['vlbl', 'HP / MP labels', '.ewd-aid .hrlg-vlbl'], ['vnum', 'HP / MP numbers', '.ewd-aid .hrlg-vnum'], ['tool', 'Tool button words', '.hrlg-push-lbl'],
     ['row', 'Command names', '.ewd-list .hrlg-blabel'], ['say', 'Footer line', '.ewd-say'], ['keys', 'Footer keys', '.ewd-key'], ['pick', 'Picked name', '.ewd-focus .hrlg-view-tab-text, .ewd-uname']],
-  dkactor: [['plate', 'Name plate', '.ewd-plate'], ['name', 'Name', '.ewd-name'], ['rom', 'Party number', '.ewd-rom'], ['info', 'Info button', '.ewd-info'], ['lv', 'Level line', '.ewd-lv'],
+  dkactor: [['lvchip', 'Level badge', '.ml-chip'], ['typechip', 'Type badges', '.ew-type-chip'], ['hpbar', 'HP bar', '.hrlg-vrow.hp .hrlg-vbar'], ['mpbar', 'MP bar', '.hrlg-vrow.mp .hrlg-vbar'], ['plate', 'Name plate', '.ewd-plate'], ['name', 'Name', '.ewd-name'], ['rom', 'Party number', '.ewd-rom'], ['info', 'Info button', '.ewd-info'], ['lv', 'Level line', '.ewd-lv'],
     ['chips', 'Status chips', '.hrlg-schip'], ['hplbl', 'HP label', '.hrlg-vrow.hp .hrlg-vlbl'], ['hpnum', 'HP numbers', '.hrlg-vrow.hp .hrlg-vnum'],
     ['mplbl', 'MP label', '.hrlg-vrow.mp .hrlg-vlbl'], ['mpnum', 'MP numbers', '.hrlg-vrow.mp .hrlg-vnum'], ['aplbl', 'AP label', '.ewd-aplbl'],
     ['tool', 'Tool button words', '.hrlg-push-lbl'], ['toolsub', 'Tool button notes', '.hrlg-push-sub'], ['inv', 'ITEMS label', '.ewd-invlbl'], ['count', 'Item counts', '.hrlg-item-count']],
   dkname: [['rom', 'Party number', '.ewd-rom'], ['name', 'Name', '.ewd-name'], ['info', 'Info button', '.ewd-info']],
-  dkbadges: [['lv', 'Level line', '.ewd-lv'], ['chips', 'Status chips', '.hrlg-schip']],
-  dkvitals: [['hplbl', 'HP label', '.hrlg-vrow.hp .hrlg-vlbl'], ['hpnum', 'HP numbers', '.hrlg-vrow.hp .hrlg-vnum'], ['mplbl', 'MP label', '.hrlg-vrow.mp .hrlg-vlbl'],
+  dkbadges: [['lvchip', 'Level badge', '.ml-chip'], ['typechip', 'Type badges', '.ew-type-chip'], ['lv', 'Level line', '.ewd-lv'], ['chips', 'Status chips', '.hrlg-schip']],
+  dkvitals: [['hpbar', 'HP bar', '.hrlg-vrow.hp .hrlg-vbar'], ['mpbar', 'MP bar', '.hrlg-vrow.mp .hrlg-vbar'], ['hplbl', 'HP label', '.hrlg-vrow.hp .hrlg-vlbl'], ['hpnum', 'HP numbers', '.hrlg-vrow.hp .hrlg-vnum'], ['mplbl', 'MP label', '.hrlg-vrow.mp .hrlg-vlbl'],
     ['mpnum', 'MP numbers', '.hrlg-vrow.mp .hrlg-vnum'], ['spend', 'MP cost preview', '.hrlg-vspendnum']],
   dkap: [['lbl', 'AP label', '.ewd-aplbl'], ['ends', 'ENDS TURN words', '.ew-ap-ends']],
   dktools: [['lbl', 'Words', '.hrlg-push-lbl'], ['sub', 'Notes', '.hrlg-push-sub'], ['glyph', 'Icons', '.hrlg-push-glyph']],
@@ -19726,10 +19761,12 @@ const TEXT_PARTS = {
   dklist: TX_ROWS,
   dkrow: TX_ROWS,
   dkconfirm: [['check', 'Tick', '.ewd-cf-check'], ['lbl', 'CONFIRM', '.ewd-cf-lbl'], ['tgt', 'Target', '.ewd-cf-tgt']],
-  dkfocus: [['plate', 'Name plate', '.ewd-plate'], ['name', 'Name', '.hrlg-view-tab-text, .ewd-uname'], ['dist', 'Distance', '.hrlg-view-tab-count'], ['coord', 'Square', '.ewd-coord'],
+  dkfocus: [['hpbar', 'HP bar', '.hrlg-thp:not(.mp)'], ['mpbar', 'MP bar', '.hrlg-thp.mp'], ['lvchip', 'Level badge', '.ml-chip'], ['typechip', 'Type badges', '.ew-type-chip'], ['plate', 'Name plate', '.ewd-plate'], ['name', 'Name', '.hrlg-view-tab-text, .ewd-uname'], ['dist', 'Distance', '.hrlg-view-tab-count'], ['coord', 'Square', '.ewd-coord'],
     ['types', 'Type badges', '.hrlg-qtypes > span, .hrlg-qp-types > span'], ['hplbl', 'HP / MP labels', '.hrlg-qv-lbl'], ['hpnum', 'HP / MP numbers', '.hrlg-qv-num'],
     ['stlbl', 'Stat names', '.hrlg-qstat-lbl'], ['stval', 'Stat numbers', '.hrlg-qstat-val'], ['grade', 'Stat grades', '.ew-grade > i'], ['elrx', 'Element marks', '.ew-elem-rx'],
     ['tab', 'Tab words', '.hrlg-ttab-tx']],
+  dkfvitals: [['hpbar', 'HP bar', '.hrlg-thp:not(.mp)'], ['mpbar', 'MP bar', '.hrlg-thp.mp'], ['hplbl', 'HP label', '.hrlg-qv-lbl:not(.mp)'], ['hpnum', 'HP numbers', '.hrlg-qv-num:not(.mp)'],
+    ['mplbl', 'MP label', '.hrlg-qv-lbl.mp'], ['mpnum', 'MP numbers', '.hrlg-qv-num.mp'], ['fc', 'Damage / heal forecast', '.hrlg-qv-fc']],
   dktabs: [['tx', 'Tab words', '.hrlg-ttab-tx'], ['ic', 'Tab icons', '.hrlg-ttab-ic'], ['own', 'Tab tags', '.hrlg-ttab-own']],
   dktab: [['tx', 'Words', '.hrlg-ttab-tx'], ['ic', 'Icon', '.hrlg-ttab-ic'], ['own', 'Tag', '.hrlg-ttab-own']],
   dkfbtns: [['lbl', 'Words', '.hrlg-blabel'], ['chip', 'Costs', '.hrlg-chip']],
@@ -19761,16 +19798,18 @@ const TEXT_PARTS = {
     ['big', 'Big words', '.ct-crit, .ct-over, .ct-good']],
 };
 const txKey = (part, k) => 't:' + part + ':' + k;
-function txOn(L, part) { return TX_KEYS.some(k => { const v = L[txKey(part, k)]; return v != null && String(v) !== String(k === 'hide' ? false : LOOK_DEF[k]); }); }
+function txOn(L, part) { return TX_KEYS.some(k => { const v = L[txKey(part, k)]; return v != null && String(v) !== String(txDef(k)); }); }
 /* a piece with no list above (a picked part, a screen's own windows, a screen added later) finds its text parts itself: each
    kind of element inside it that holds words is a part (db.txauto[piece id] = [[part id, label, selector]], kept so the
    look still goes on when the screen is not up) */
 const TX_STATE = /^(on|off|cur|sel|active|selected|hover|focus|open|lead|down|live|ghost|is-|has-)/;
-function textPartsOf(P) { return TEXT_PARTS[P.id] || ((db.txauto || {})[P.id]) || []; }
+function textPartsOf(P) { return (TEXT_PARTS[P.id] || []).concat(((db.txauto || {})[P.id]) || []); }
 function txAutoScan(P) {
-  if (!P || TEXT_PARTS[P.id]) return;
+  if (!P) return;
   const v = pieceVis(P); if (!v || !v.el) return;
-  const old = ((db.txauto || {})[P.id]) || [], bySel = new Map(old.map(x => [x[2], x])), out = old.slice();
+  const hand = TEXT_PARTS[P.id] || [], old = ((db.txauto || {})[P.id]) || [], bySel = new Map(old.map(x => [x[2], x])), out = old.slice();
+  hand.forEach(x => bySel.set(x[2], x));
+  const win = v.el.ownerDocument.defaultView || window;
   const cls = el => [...el.classList].filter(c => !TX_STATE.test(c) && !/^uim/.test(c)).slice(0, 2);
   const selOf = el => {
     const c = cls(el), tag = el.tagName.toLowerCase();
@@ -19779,15 +19818,24 @@ function txAutoScan(P) {
     return pc.length ? '.' + pc[0] + ' > ' + tag : tag;
   };
   const els = v.el.querySelectorAll('*');
-  for (let i = 0; i < els.length && i < 800 && out.length < 24; i++) {
+  for (let i = 0; i < els.length && i < 900 && out.length < 36; i++) {
     const el = els[i];
-    if (/^(SCRIPT|STYLE|SVG|PATH|CANVAS|IMG|INPUT|SELECT|TEXTAREA)$/i.test(el.tagName)) continue;
+    if (/^(SCRIPT|STYLE|PATH|G|DEFS|CLIPPATH|STOP|LINEARGRADIENT|RADIALGRADIENT|INPUT|SELECT|TEXTAREA|BR|WBR)$/i.test(el.tagName)) continue;
     let txt = '';
     for (const n of el.childNodes) if (n.nodeType === 3 && n.nodeValue.trim()) { txt = n.nodeValue.trim(); break; }
-    if (!txt) continue;
+    /* a part with no words of its own but a box you can see (a bar, a badge, a frame, a picture) is a part too */
+    let boxy = false;
+    if (!txt && el.classList.length) {
+      const r = el.getBoundingClientRect();
+      if (r.width >= 4 && r.height >= 2) {
+        try { const cs = win.getComputedStyle(el); boxy = /^(SVG|IMG|CANVAS)$/i.test(el.tagName) || (cs.backgroundColor && !/rgba\(0, 0, 0, 0\)|transparent/.test(cs.backgroundColor)) || (cs.backgroundImage && cs.backgroundImage !== 'none') || parseFloat(cs.borderTopWidth) > 0 || parseFloat(cs.borderLeftWidth) > 0; } catch (e) {}
+      }
+    }
+    if (!txt && !boxy) continue;
     const sel = selOf(el); if (bySel.has(sel)) continue;
-    let id = 'a' + (out.length + 1); while (out.some(x => x[0] === id)) id += 'x';
-    const row = [id, txt.length > 22 ? txt.slice(0, 21) + '…' : txt, sel];
+    let id = 'a' + (out.length + 1); while (out.some(x => x[0] === id) || hand.some(x => x[0] === id)) id += 'x';
+    const nm = txt || _autoName(sel);
+    const row = [id, nm.length > 22 ? nm.slice(0, 21) + '…' : nm, sel];
     bySel.set(sel, row); out.push(row);
   }
   if (out.length !== old.length) { db.txauto = db.txauto || {}; db.txauto[P.id] = out; }
@@ -19809,6 +19857,17 @@ function textPartsCss(P, L) {
     if (g('track') != null && +g('track') !== 0) t.push(`letter-spacing: ${(+g('track') || 0).toFixed(2)}em !important;`);
     if (g('tfx') && TFX[g('tfx')]) t.push(`text-shadow: ${TFX[g('tfx')]} !important;`);
     if (g('align')) t.push(`text-align: ${g('align')} !important;`);
+    /* its box */
+    if (+g('pw') > 0) t.push(`width: ${n(g('pw'), 2, 2000)}px !important; min-width: 0 !important; max-width: none !important; flex: 0 0 auto !important; box-sizing: border-box !important;`);
+    if (+g('ph') > 0) t.push(`height: ${n(g('ph'), 1, 1200)}px !important; min-height: 0 !important; max-height: none !important; box-sizing: border-box !important;`);
+    if (g('pbg')) t.push(`background: ${g('pbg')} !important;`);
+    if (g('pedge') === 'none') t.push('border-color: transparent !important; border-image: none !important; outline: none !important; box-shadow: none !important;');
+    else if (g('pedge')) t.push(`border: ${g('pedgeW') != null && +g('pedgeW') >= 0 ? n(g('pedgeW'), 0, 16) : 1}px solid ${g('pedge')} !important; border-image: none !important;`);
+    else if (g('pedgeW') != null && +g('pedgeW') >= 0) t.push(`border-width: ${n(g('pedgeW'), 0, 16)}px !important;`);
+    if (g('prad') != null && +g('prad') >= 0) t.push(`border-radius: ${n(g('prad'), 0, 400)}px !important;`);
+    if (+g('pdx') || +g('pdy')) t.push(`translate: ${+g('pdx') || 0}px ${+g('pdy') || 0}px !important;`);
+    if (g('ps') != null && +g('ps') > 0 && +g('ps') !== 1) t.push(`scale: ${n(g('ps'), 0.2, 4)} !important;`);
+    if (g('pclip')) { const c = clipCss(g('pclip'), g('pclipS') == null ? PART_DEF.pclipS : g('pclipS'), 0); if (c) t.push(`clip-path: ${c} !important;`); }
     if (t.length) css += `${S} { ${t.join(' ')} }\n`;
   });
   return css;
@@ -19847,7 +19906,7 @@ function layoutCss() {
    any theme's role, its own fill / frame / corners / shadow / glow, its text. Stored on db.layout[id] next to x / y / s /
    o / hide; LOOK_DEF = untouched (nothing written). ── */
 const LOOK_DEF = { w: 0, h: 0, pad: -1, z: '', zrel: false, ord: '', skin: '', skinT: '', bg: '', bg2: '', edge: '', edgeW: 2, rad: -1, shad: 0, glow: 0, glowC: '',
-  ink: '', font: '', fw: '', fsz: 0, tcase: '', track: 0, tfx: '', align: '', flow: '', gap: -1, jal: '', pin: '', pinM: 24, pinA: '' };
+  ink: '', font: '', fw: '', fsz: 0, tcase: '', track: 0, tfx: '', align: '', flow: '', gap: -1, jal: '', pin: '', pinM: 24, pinA: '', clip: '', clipS: 16, clipH: 0 };
 /* ── THE ARRANGE + THE SIDE (2026-11-07, mondo on the team select: "There's not enough customization/options in the ui maker
    for this menu layout. I want to put the buttons vertically on the left side of the screen"). Any piece:
      flow = how the parts inside it are laid out: '' as the game, 'row' side by side, 'col' stacked one above the other;
@@ -19924,6 +19983,7 @@ function lookCss(P, L) {
   if (+L.shad > 0) sh.push(`0 ${Math.round(+L.shad / 3)}px ${n(L.shad, 0, 80)}px rgba(0,0,0,0.7)`);
   if (+L.glow > 0) sh.push(`0 0 ${n(L.glow, 0, 80)}px ${L.glowC || 'var(--ew-sel, #ffd76a)'}`);
   if (sh.length) dl.push(`box-shadow: ${sh.join(', ')} !important;`);
+  if (L.clip) { const c = clipCss(L.clip, L.clipS == null ? LOOK_DEF.clipS : L.clipS, L.clipH); if (c) dl.push(`clip-path: ${c} !important;`); }   // THE CUT
   let css = d.length ? `${S} { ${d.join(' ')} }\n` : '';
   css += flowCss(P, L, n);   // THE ARRANGE + THE SIDE
   if (dl !== d && dl.length) css += `${preP(P.panelSel)} { ${dl.join(' ')} }\n`;
@@ -20057,7 +20117,11 @@ function pieceSkinCss() {
 const ICONS_DEF = { tcGap: 6, dockDir: 'row', dockGap: 6, dockTag: 'none',
   /* tcFit fixed | fill (spread over the room up to tcTop px under the screen top, between tcGapMin and tcGapMax);
      tcSize = a fixed icon size in px, 0 = fit the room (2026-10-17) */
-  tcFit: 'fixed', tcGapMin: -16, tcGapMax: 40, tcTop: 12, tcSize: 0 };
+  tcFit: 'fixed', tcGapMin: -16, tcGapMax: 40, tcTop: 12, tcSize: 0,
+  /* THE PARTY ICONS, EASY (2026-11-26, mondo: "The party icons on the side of the screen during exploration mode are really
+     hard to control the layout"): the lead's size, the others' size (px, 0 = as the game), how many before a new row /
+     column (0 = one line), how they line up across, and the gap between lines */
+  dockLead: 0, dockSize: 0, dockWrap: 0, dockAlign: '', dockLine: 6 };
 function iconsOf() { return Object.assign({}, ICONS_DEF, db.icons || {}); }
 function iconsTidy() {
   const I = db.icons || (db.icons = {});
@@ -20072,6 +20136,18 @@ function iconsCss() {
   const D = R + '#hqPage .hq-dock', gap = n(I.dockGap, -20, 60, 6);
   if (I.dockDir === 'col' || I.dockDir === 'colup') css += `${D} { flex-direction: ${I.dockDir === 'col' ? 'column' : 'column-reverse'} !important; align-items: flex-start !important; }\n${D} .hq-dock-pp.lead { margin-right: 0 !important; }\n`;
   if (gap !== ICONS_DEF.dockGap) css += gap >= 0 ? `${D} { gap: ${gap}px !important; }\n` : `${D} { gap: 0 !important; }\n${D} > .hq-dock-pp + .hq-dock-pp { margin-${I.dockDir === 'col' ? 'top' : I.dockDir === 'colup' ? 'bottom' : 'left'}: ${gap}px !important; }\n`;
+  const lead = n(I.dockLead, 0, 240, 0), each = n(I.dockSize, 0, 200, 0), wrap = Math.round(n(I.dockWrap, 0, 12, 0)), col = I.dockDir === 'col' || I.dockDir === 'colup';
+  if (lead) css += `${D} .hq-dock-pp.lead > svg { width: ${lead}px !important; height: ${lead}px !important; }\n`;
+  if (each) css += `${D} .hq-dock-pp:not(.lead) > svg { width: ${each}px !important; height: ${each}px !important; }\n`;
+  const AL = { start: 'flex-start', center: 'center', end: 'flex-end' }[I.dockAlign];
+  if (wrap) {
+    /* a grid of wrap per line: rows of wrap side by side, or columns of wrap stacked */
+    const g = Math.max(0, gap), lg = n(I.dockLine, -20, 80, 6);
+    css += col
+      ? `${D} { display: grid !important; grid-auto-flow: column !important; grid-template-rows: repeat(${wrap}, auto) !important; grid-template-columns: none !important; row-gap: ${g}px !important; column-gap: ${lg}px !important; align-items: end !important; justify-items: ${AL ? I.dockAlign : 'center'} !important; }\n`
+      : `${D} { display: grid !important; grid-auto-flow: row !important; grid-template-columns: repeat(${wrap}, auto) !important; column-gap: ${g}px !important; row-gap: ${lg}px !important; align-items: ${AL ? I.dockAlign : 'end'} !important; justify-items: center !important; }\n`;
+    if (I.dockDir === 'colup') css += `${D} > .hq-dock-pp { order: 0; } ${D} > .hq-dock-pp.lead { order: 99; }\n`;
+  } else if (AL) css += `${D} { align-items: ${AL} !important; }\n`;
   /* each portrait is a small grid: the ring on top, its bars under it, the name + HP under them or beside them */
   css += `${D} .hq-dock-pp { display: grid !important; grid-template-columns: auto auto; column-gap: 8px; row-gap: 3px; justify-items: center; align-items: center; }
 ${D} .hq-dock-pp > svg { grid-column: 1; grid-row: 1; }
@@ -23519,7 +23595,7 @@ function tidyLayout(id) {
   const L = db.layout[id]; if (!L) return;
   Object.keys(LOOK_DEF).forEach(k => { if (L[k] != null && String(L[k]) === String(LOOK_DEF[k])) delete L[k]; });
   /* the text parts' own keys ('t:<part>:<key>'): back at the game's own = gone */
-  Object.keys(L).forEach(key => { const m = /^t:[^:]+:(.+)$/.exec(key); if (m && (L[key] == null || String(L[key]) === String(m[1] === 'hide' ? false : LOOK_DEF[m[1]]))) delete L[key]; });
+  Object.keys(L).forEach(key => { const m = /^t:[^:]+:(.+)$/.exec(key); if (m && (L[key] == null || String(L[key]) === String(txDef(m[1])))) delete L[key]; });
   if (L.z == null) delete L.zrel;
   if (!+L.x && !+L.y && (L.s == null || +L.s === 1) && (L.o == null || +L.o >= 1) && !L.hide && !lookOn(L) && !Object.keys(L).some(k => /^t:/.test(k))) delete db.layout[id];
 }
@@ -24107,15 +24183,17 @@ function lookForm(P, L) {
   let look = lp(P.id, `${fSelect('Look like', 'skin', LOOK_ROLES, v('skin'))}${v('skin') && v('skin') !== 'none' ? fSelect('From theme', 'skinT', ths, v('skinT')) : ''}
     ${fColorOpt('Fill', 'bg', v('bg'), '#101622', true)}${v('bg') ? fColorOpt('Fade to', 'bg2', v('bg2'), '#05070c', true, 'A second fill colour: the fill fades into it top to bottom') : ''}
     ${fColorOpt('Frame', 'edge', v('edge'), '#6fb4ff', true)}${v('edge') ? fRange('Frame width', 'edgeW', 0, 16, 1, +v('edgeW')) : ''}
-    ${fRange('Corners', 'rad', -1, 60, 1, +v('rad'))}${fRange('Shadow', 'shad', 0, 60, 1, +v('shad'))}${fRange('Glow', 'glow', 0, 60, 1, +v('glow'))}${+v('glow') > 0 ? fColorOpt('Glow colour', 'glowC', v('glowC'), '#ffd76a', true) : ''}`)
+    ${fRange('Corners', 'rad', -1, 60, 1, +v('rad'))}
+    ${fSelect('Cut to shape', 'clip', CLIP_SHAPES, v('clip'))}${v('clip') ? fRange('Slant / corner', 'clipS', 0, 200, 1, +v('clipS')) + fRange('Only the top (px)', 'clipH', 0, 400, 1, +v('clipH'), 'Shape only this many pixels at the top (a slanted title bar), the rest stays square. 0 = the whole window') : ''}
+    ${fRange('Shadow', 'shad', 0, 60, 1, +v('shad'))}${fRange('Glow', 'glow', 0, 60, 1, +v('glow'))}${+v('glow') > 0 ? fColorOpt('Glow colour', 'glowC', v('glowC'), '#ffd76a', true) : ''}`)
     + '<div class="uim-note">Look like dresses the piece as that part of a theme (its 9-slice skin too). Corners −1 = as the game.</div>';
   /* which text the look goes on: all of it, or one text part of the piece (TEXT_PARTS) */
   txAutoScan(P);
   const T = textPartsOf(P);
   UI.txpart = UI.txpart || {};
   const tp = T.some(x => x[0] === UI.txpart[P.id]) ? UI.txpart[P.id] : '';
-  const kk = k => (tp ? txKey(tp, k) : k), tv = k => { const x = L[kk(k)]; return x == null ? (k === 'hide' ? false : LOOK_DEF[k]) : x; };
-  const pick = T.length ? `<div class="uim-f" title="Every bit of text in this piece has its own look: pick one, or All text for every word at once"><label>Which text</label><div style="flex-wrap:wrap">`
+  const kk = k => (tp ? txKey(tp, k) : k), tv = k => { const x = L[kk(k)]; return x == null ? txDef(k) : x; };
+  const pick = T.length ? `<div class="uim-f" title="Every part of this piece (each text, badge, bar, frame) has its own look and box: pick one, or All text for every word at once"><label>Which part</label><div style="flex-wrap:wrap">`
     + [['', 'All text']].concat(T).map(([id, lbl]) => `<button class="uim-btn${tp === id ? ' on' : ''}" data-dk="txpart" data-val="${P.id}:${id}">${esc(lbl)}${id && txOn(L, id) ? ' •' : ''}</button>`).join('') + '</div></div>' : '';
   const tx = pick + lp(P.id, `${tp ? fCheck('Hide it', kk('hide'), tv('hide')) : ''}${fColorOpt('Colour', kk('ink'), tv('ink'), '#ffffff', false)}${fFont('Font', kk('font'), tv('font'))}${fSeg('Weight', kk('fw'), WEIGHTS, tv('fw'))}
     ${fRange('Size', kk('fsz'), 0, 72, 1, +tv('fsz'))}
@@ -24124,6 +24202,14 @@ function lookForm(P, L) {
     ${fSeg('Effect', kk('tfx'), [['', 'As the game'], ['none', 'None'], ['drop', 'Soft shadow'], ['hard', 'Hard 1px'], ['hard2', 'Hard 2px'], ['outline', 'Outline'], ['glow', 'Glow']], tv('tfx'))}
     ${fSeg('Align', kk('align'), [['', 'As the game'], ['left', 'Left'], ['center', 'Centre'], ['right', 'Right']], tv('align'))}`)
     + `<div class="uim-note">${tp ? 'Goes on this text only, over the All text look. ' : 'Goes on every word inside the piece. '}Size 0 = as the game.${T.length ? ' A • marks text with its own look.' : ''}</div>`;
+  /* EVERY PART ITS OWN BOX: the picked part's width, height, fill, outline, corners, shape, nudge and size */
+  const pbox = tp ? '<div class="uim-h">Its box</div>' + lp(P.id, `${fRange('Width', kk('pw'), 0, 1200, 1, +tv('pw'))}${fRange('Height', kk('ph'), 0, 400, 1, +tv('ph'))}
+    ${fColorOpt('Fill', kk('pbg'), tv('pbg'), '#101622', true)}
+    ${fSeg('Outline', kk('pedge'), [['', 'As the game'], ['none', 'None']].concat(tv('pedge') && tv('pedge') !== 'none' ? [[tv('pedge'), 'Own colour']] : [['#ffffff', 'Own colour']]), tv('pedge'))}
+    ${tv('pedge') && tv('pedge') !== 'none' ? fColor('Outline colour', kk('pedge'), tv('pedge')) : ''}${fRange('Outline width', kk('pedgeW'), -1, 16, 1, +tv('pedgeW'))}
+    ${fRange('Corners', kk('prad'), -1, 60, 1, +tv('prad'))}${fSelect('Cut to shape', kk('pclip'), CLIP_SHAPES, tv('pclip'))}${tv('pclip') ? fRange('Slant / corner', kk('pclipS'), 0, 100, 1, +tv('pclipS')) : ''}
+    ${fRange('Nudge X', kk('pdx'), -400, 400, 1, +tv('pdx'))}${fRange('Nudge Y', kk('pdy'), -400, 400, 1, +tv('pdy'))}${fRange('Size', kk('ps'), 0.2, 3, 0.05, +tv('ps'))}`)
+    + '<div class="uim-note">0 / −1 = as the game.</div>' : '';
   const on = k => Object.keys(LOOK_DEF).filter(x => k.indexOf(x) >= 0).some(x => L[x] != null && String(L[x]) !== String(LOOK_DEF[x]));
   /* THE ARRANGE + THE SIDE: the parts inside it across or stacked, and the side of the screen it stands against */
   const arr = lp(P.id, `${fSeg('Its parts', 'flow', [['', 'As the game'], ['row', 'Side by side', 'The parts inside this piece stand in a row'], ['col', 'Stacked', 'The parts inside this piece stand one above the other, in a column']], v('flow'))}
@@ -24135,8 +24221,8 @@ function lookForm(P, L) {
     + '<div class="uim-note">Its parts lays out what is inside the piece: a row of buttons can become a column. Stick to stands the piece against that side of the screen, at the top, middle or bottom of it; Move X / Y still nudge it from there.</div>';
   return sec('lb', 'Size + order', box, on(['w', 'h', 'pad', 'z', 'ord']) ? 'changed' : '')
     + sec('la', 'Arrange + screen side', arr, on(['flow', 'gap', 'jal', 'pin', 'pinM', 'pinA']) ? 'changed' : '')
-    + sec('lk', 'Panel look', look, on(['skin', 'bg', 'edge', 'rad', 'shad', 'glow']) ? 'changed' : '')
-    + sec('lt', 'Text look', tx, on(['ink', 'font', 'fw', 'fsz', 'tcase', 'track', 'tfx', 'align']) || T.some(x => txOn(L, x[0])) ? 'changed' : '');
+    + sec('lk', 'Panel look', look, on(['skin', 'bg', 'edge', 'rad', 'shad', 'glow', 'clip']) ? 'changed' : '')
+    + sec('lt', 'Parts: text + box', tx + pbox, on(['ink', 'font', 'fw', 'fsz', 'tcase', 'track', 'tfx', 'align']) || T.some(x => txOn(L, x[0])) ? 'changed' : '');
 }
 /* the words in a piece: type what shows instead, ⊘ hides them, empty = the game's own words */
 function wordsForm(P) {
@@ -24172,6 +24258,9 @@ function iconsForm(which) {
   } else {
     h += seg('Stack', 'dockDir', [['row', 'In a row'], ['col', 'Column, lead on top'], ['colup', 'Column, lead at the bottom']], I.dockDir)
       + R('Spacing', 'dockGap', -20, 40, 1, +I.dockGap)
+      + R('Lead size (0 = as the game)', 'dockLead', 0, 200, 1, +I.dockLead) + R('Others size (0 = as the game)', 'dockSize', 0, 160, 1, +I.dockSize)
+      + R('How many in a line (0 = one line)', 'dockWrap', 0, 8, 1, +I.dockWrap) + (+I.dockWrap ? R('Space between lines', 'dockLine', -20, 80, 1, +I.dockLine) : '')
+      + seg('Line up', 'dockAlign', [['', 'As the game'], ['start', I.dockDir === 'row' ? 'Top' : 'Left'], ['center', 'Middle'], ['end', I.dockDir === 'row' ? 'Bottom' : 'Right']], I.dockAlign)
       + seg('Name + HP', 'dockTag', [['none', 'Hidden'], ['under', 'Under the bars', 'Plain text, no panel'], ['panel', 'Panel beside', 'The old plate next to the lead']], I.dockTag)
       + `<div class="uim-note">The health bars sit under each portrait. Rings, bars or both, and their look: the Bars mode.</div>`;
   }

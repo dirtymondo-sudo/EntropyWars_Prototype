@@ -3163,3 +3163,19 @@ Angry at the Party loadout entry (PR #2643) offering only a theme. What changed 
   Layout switch (One / Classic) is gone and deckSignal always says on (console kill switch `EW_CLASSIC_PANEL` stays).
   Proof: `/mnt/project-files/ui-maker-every-screen/4-6_battle_panel_*.png` (unit card moved right with its own fill / frame /
   corners, command list moved left with rounded cyan rows and its own word colour).
+- **EVERY PART ITS OWN BOX + THE CUT + THE PARTY ICONS (same day, mondo: "i want to change how the level has an outline around
+  it and i need to be able to change the width of the health bar and mp bar inside the unit that i click's panel ... The party
+  icons ... really hard to control the layout ... if i have a parallelogram for the header then the panel of the whole thing
+  shows underneath ... crop the panel")**:
+  - "Which part" (was Which text) now lists the hand-named parts AND every part found inside the piece (`txAutoScan` runs on every
+    piece now and adds elements with words or a visible box: bars, badges, frames, pictures; `db.txauto`). A picked part has
+    "Its box": width, height, fill, outline (as game / none / own colour + width), corners, cut to shape, nudge X / Y, size
+    (keys `t:<part>:pw ph pbg pedge pedgeW prad pclip pclipS pdx pdy ps`, PART_DEF; `txDef` is the default of any part key).
+  - Battle panel parts: Level badge (`.ml-chip`), Type badges, own HP / MP bars, and the new piece `dkfvitals` "Picked unit HP /
+    MP bars" (+ hpbar / mpbar parts on `dkfocus`).
+  - THE CUT: piece Panel look "Cut to shape" (CLIP_SHAPES: parallelogram both ways, trapezoid both ways, bevel, notch, round,
+    hexagon, tab) + "Slant / corner" + "Only the top (px)" (shapes only that band: the slanted title bar case). `clipCss` cuts
+    corner triangles out of a big square (evenodd), so a name plate standing on the frame is never cut.
+  - Party icons (`dock` piece, ICONS_DEF): Lead size, Others size, How many in a line (wraps into a grid), Space between lines,
+    Line up; plus its parts (each ring, lead ring, other rings, each portrait, bars, name + HP plate, name, HP words).
+  Proof: `/mnt/project-files/ui-maker-every-screen/7-12_*.png`.
