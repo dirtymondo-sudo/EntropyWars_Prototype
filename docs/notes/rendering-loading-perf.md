@@ -4290,3 +4290,21 @@ exact and the lens names which lights differed between a piece's two builds ("li
 "[scene: fog,environment,context node,shadows,lighting]" names a scene-key part; "[same key, same moment]" = two builds of one
 key within 50 ms (two draws asked before the first build was kept). "[material: side]" on see-through two-sided pieces is three's
 own back + front pass of a transparent DoubleSide material (two builds, once each), not a rebuild.
+
+### THE KEPT LOOKS STAY KEPT (2026-11-26, build `20261126-keptlooks-01`)
+mondo in the DOOR HQ 2.0 Lobby (Mac, Firefox, WebGPU, MEM 1352/700): "The open rooms are all black along the surface, lots of textures
+loading black, they come back but then they go black again." Mechanism: since THE PIPELINES OFF THE FRAME (above) a look whose
+pipeline is not made yet is left OUT of the frame (three's `isReady`) until Firefox hands it back, so any REBUILD of a look a wall
+already wore shows that wall black for a beat (a missing wall = the void behind it). His F3 on the builds' reasons had already named
+the rebuilds: "same key 42" = a look put aside and lost, then built again. Cause of the loss: THE KEPT SHADERS' lists (`_ewKeep.kept`)
+were queues: every release pushed a NEW row, so the same churning looks (a wall fading see-through in front of the camera and back,
+a light list / scene key flipping back) filled the 1,000 pipeline rows with copies and pushed the room's other looks out; programs
+(cap 2,000) could also go while a kept pipeline was made from them, and three keys a pipeline on its programs' ids, so that pipeline
+was unreachable and compiled again.
+Fix (three-renderer.js `_ewKeepPush`, `_ewKeepProgUsed`): each kept list is a Map in last-released order; a look released again moves
+to the end (one row); only the looks unused longest go. A program goes only once no pipeline in three's cache is made from it (held
+count `_ewKeep.gHeld`), and a dropped pipeline lets its programs go with it. Caps unchanged (1,600 / 1,000 / 2,000).
+Not reproduced in the cloud: SwiftShader WebGPU loses its device in the Lobby, and the node renderer on WebGL 2 (llvmpipe) walked the
+Lobby with no rebuild at all ("first 164 · material: side 4"). Check on his machine: F3 "Why looks were built (session)" should show
+few or no "same key" rows after a walk round the Lobby. If walls still flash black with "same key" near 0, read the other tags
+(lights / scene key / pass): those are genuinely new looks and the next fix is to keep drawing the old look while the new one compiles.

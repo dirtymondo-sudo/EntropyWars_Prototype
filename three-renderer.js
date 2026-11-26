@@ -82,7 +82,7 @@ const ThreeRenderer = (function () {
         }
     })();
     /* THE BUILD LINE (the perf lens): bump the stamp in every PR that changes this file's walk / fight drawing */
-    var _EW_TR_STAMP = '11-26 level-join nearest-first';
+    var _EW_TR_STAMP = '11-26 nearest-first kept-looks';
     function _ewBuildTok() {
         var sc = document.querySelectorAll('script[src*="three-renderer.js"]'), t = '';
         for (var i = 0; i < sc.length; i++) { var m = /[?&]v=([^&#]+)/.exec(sc[i].src || ''); if (m) { t = m[1]; break; } }
@@ -50284,7 +50284,7 @@ const ThreeRenderer = (function () {
         var t = ''; try { t = new Date().toISOString().slice(11, 19); } catch (e) {}
         _ewWhy.sigDiff = out.length + ' ' + out.slice(0, 6).join(' ').slice(0, 200) + (out.length > 6 ? ' …' : '') + ' (' + t + 'Z)';
     }
-    var _ewKeep = { builds: 0, pipes: 0, reused: 0, inst: 0, kept: { b: [], p: [], g: [] }, at: 0, b0: 0, p0: 0, rateB: 0, rateP: 0 };
+    var _ewKeep = { builds: 0, pipes: 0, reused: 0, inst: 0, kept: { b: new Map(), p: new Map(), g: new Map() }, at: 0, b0: 0, p0: 0, rateB: 0, rateP: 0, gHeld: 0 };
     /* (11-20, mondo's battle F3s: "kept 640/384/768", all three lists at their cap in a city fight, with 7 shader builds a second: a
        build put aside was thrown out and made again. His 2nd and 3rd fights of a session ran smooth, the 1st did not: the looks are
        built once and must then STAY. Room for a long session: 1,600 builds, 1,000 pipelines, 2,000 programs.) */
@@ -50292,10 +50292,28 @@ const ThreeRenderer = (function () {
     function _ewKeepOff() {
         try { return !!window.EW_NO_SHADER_KEEP || /[?&]ew_keep=0\b/.test(location.search); } catch (e) { return false; }
     }
+    /* THE KEPT LOOKS STAY KEPT (2026-11-26, mondo in the DOOR HQ 2.0 Lobby: "lots of textures loading black, they come back but then
+       they go black again"). Since THE PIPELINES OFF THE FRAME a look whose pipeline is not made yet is LEFT OUT of the frame until
+       Firefox hands it back, so every rebuild of a look a wall already wore shows that wall black for a beat. The kept lists were
+       a queue: a look put aside (a wall fading see-through in front of the camera and back, a light list or scene key flipping
+       and flipping back) was pushed again on EVERY release, so the same few hundred churning looks filled the 1,000 rows with
+       copies and pushed the room's other looks out; the next time a wall needed one of those it was built again ("same key" in
+       his F3 builds), and the wall went black again. Now each kind is a Map in last-released order: a look released again moves
+       to the end (one row, not a copy), and only the looks unused the longest are let go. A program (a shader module) is also
+       kept while ANY kept pipeline is made from it: three keys a pipeline on its programs' ids, so a dropped program under a
+       kept pipeline made that pipeline unreachable and the look was compiled again. Lens: "kept b/p/g". */
     function _ewKeepPush(kind, item, drop) {
         var L = _ewKeep.kept[kind];
-        L.push({ it: item, drop: drop });
-        while (L.length > _EW_KEEP_CAP[kind] * _ewKeepScale()) { var o = L.shift(); try { o.drop(); } catch (e) {} }   // THE LAB GAP: a lab run holds three times as many (_ewKeepScale)
+        if (L.has(item)) L.delete(item);   // released again: the newest row (no copy)
+        L.set(item, drop);
+        var cap = _EW_KEEP_CAP[kind] * _ewKeepScale();   // THE LAB GAP: a lab run holds three times as many (_ewKeepScale)
+        while (L.size > cap) { var it = L.keys().next().value, d = L.get(it); L.delete(it); try { d(); } catch (e) {} }
+    }
+    /* is a program still under a pipeline three keeps in its cache (in use or kept)? */
+    function _ewKeepProgUsed(P, pg) {
+        var hit = false;
+        try { P.caches.forEach(function (pl) { if (!hit && pl && (pl.vertexProgram === pg || pl.fragmentProgram === pg || pl.computeProgram === pg)) hit = true; }); } catch (e) {}
+        return hit;
     }
     function _ewKeepSetup(r) {
         if (r._ew_keep) return;
@@ -50363,13 +50381,24 @@ const ThreeRenderer = (function () {
         };
         if (P && P._releasePipeline && P._releaseProgram) {
             var rp = P._releasePipeline, rg = P._releaseProgram;
+            var relProg = function (self, pg) {   // a program goes only once no kept pipeline is made from it (THE KEPT LOOKS STAY KEPT)
+                if (!pg || pg.usedTimes !== 0 || !self.programs[pg.stage] || self.programs[pg.stage].get(pg.code) !== pg) return;
+                if (_ewKeepProgUsed(self, pg)) { _ewKeep.gHeld++; return; }
+                rg.call(self, pg);
+            };
             P._releasePipeline = function (pl) {
                 var self = this;
-                _ewKeepPush('p', pl, function () { if (pl.usedTimes === 0 && self.caches.get(pl.cacheKey) === pl) rp.call(self, pl); });
+                _ewKeepPush('p', pl, function () {
+                    if (pl.usedTimes === 0 && self.caches.get(pl.cacheKey) === pl) {
+                        rp.call(self, pl);
+                        /* its programs, set aside while it was kept, may go with it now */
+                        [pl.vertexProgram, pl.fragmentProgram, pl.computeProgram].forEach(function (pg) { if (pg && pg.usedTimes === 0 && !_ewKeep.kept.g.has(pg)) relProg(self, pg); });
+                    }
+                });
             };
             P._releaseProgram = function (pg) {
                 var self = this;
-                _ewKeepPush('g', pg, function () { if (pg.usedTimes === 0 && self.programs[pg.stage] && self.programs[pg.stage].get(pg.code) === pg) rg.call(self, pg); });
+                _ewKeepPush('g', pg, function () { relProg(self, pg); });
             };
         }
     }
@@ -51087,7 +51116,7 @@ const ThreeRenderer = (function () {
             K.rateB = (K.builds - K.b0) / dt; K.rateP = (K.pipes - K.p0) / dt;
             K.at = now; K.b0 = K.builds; K.p0 = K.pipes;
         }
-        return { builds: K.builds, pipes: K.pipes, rateB: K.rateB, rateP: K.rateP, kept: K.kept.b.length + '/' + K.kept.p.length + '/' + K.kept.g.length, off: _ewKeepOff(), inst: K.inst, reach: K.reach || 0, rig: _ewRigG ? { moves: _ewRigG.moves, grows: _ewRigG.grows, lamps: _ewRigG.group.children.length } : null };
+        return { builds: K.builds, pipes: K.pipes, rateB: K.rateB, rateP: K.rateP, kept: K.kept.b.size + '/' + K.kept.p.size + '/' + K.kept.g.size, off: _ewKeepOff(), inst: K.inst, reach: K.reach || 0, rig: _ewRigG ? { moves: _ewRigG.moves, grows: _ewRigG.grows, lamps: _ewRigG.group.children.length } : null };
     }
     /* ══ THE NODE LAYER (WEBGPU_PLAN W1, 2026-10-03) ══════════════════════════════════════════════════════════════════════
        The node renderer ignores ShaderChunk patches and onBeforeCompile, so on its path each classic effect is rebuilt
