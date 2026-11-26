@@ -3498,10 +3498,11 @@
             html += `<div class="hq-lo-bar">`
                 + `<div class="hq-lo-who"><b>${_hqEsc(name)}${m.you ? ' <i class="hq-pp-you">YOU</i>' : ''}</b><span>${_hqEsc(_hqPauseRaceLabel(m, u))}${v.down ? ' · <em class="bad">DOWN</em>' : ''}</span></div>`
                 + `<div class="hq-lo-lv"><i>LV</i><b>${lvl != null ? lvl : '–'}</b></div>`
+                + `<div class="hq-lo-vits">`   // mondo 11-26: HP, MP and EXP stacked, not side by side
                 + `<div class="hq-lo-vit hp"><i>HP</i><b>${v.hp} / ${v.hpMax}</b><span class="hq-lo-meter"><i style="width:${pctOf(v.hp, v.hpMax)}%"></i></span></div>`
                 + `<div class="hq-lo-vit mp"><i>MP</i><b>${v.mp} / ${v.mpMax}</b><span class="hq-lo-meter"><i style="width:${pctOf(v.mp, v.mpMax)}%"></i></span></div>`
                 + `<div class="hq-lo-vit xp"><i>${xp && xp.max ? 'EXP' : 'EXP TO NEXT LV'}</i><b>${xp ? (xp.max ? 'MAX' : xp.left) : '–'}</b><span class="hq-lo-meter"><i style="width:${xp ? (xp.max ? 100 : (xp.pct * 100).toFixed(1)) : 0}%"></i></span></div>`
-                + `</div>`;
+                + `</div></div>`;
             html += `<div class="hq-lo-main${P.circuit === m.id ? ' rack' : ''}">`;
             /* left: THE STATS */
             html += `<div class="hq-lo-stats">`;
@@ -3516,7 +3517,7 @@
                 html += '</div>';
                 html += `<div class="hq-lo-small"><span><b>${u.move | 0}</b>MOVE</span><span><b>${u.range | 0}</b>RANGE</span><span><b>${u.vision | 0}</b>VISION</span><span><b>${u.inspect | 0}</b>INSPECT</span></div>`;
                 html += `<div class="hq-chips">${_hqPauseTypeChips(u.types)}${u.zodiac ? `<i class="hq-chip dim">${_hqEsc(String(u.zodiac).toUpperCase())}</i>` : ''}</div>`;
-                if (typeof window.elemAffinityBoxHtml === 'function') html += `<div class="hq-pp-elem">${window.elemAffinityBoxHtml(u.race, { own: true, size: 'md', label: 'ELEMENTS' })}</div>`;
+                if (typeof window.elemAffinityBoxHtml === 'function') html += `<div class="hq-pp-elem">${window.elemAffinityBoxHtml(u.race, { own: true, size: 'xl', label: 'ELEMENTS' })}</div>`;   // mondo 11-26: bigger, the column's width
             }
             /* the name + the slot, small, at the foot of the column */
             html += `<div class="hq-lo-duty">`
