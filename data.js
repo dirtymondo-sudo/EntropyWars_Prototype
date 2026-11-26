@@ -33773,6 +33773,11 @@ const DOOR_HQ = {
         /* THE URBAN BLOCK (9.2 stage 4, 2026-09-16): the casino floor's machines and the platform's gates — procs until the user's GLBs land (plan 9.6 #5) */
         slot_machine:    { proc: 'slot_machine',    h: 1.8,  foot: 0.35, rect: { hw: 0.33, hd: 0.32 }, block: true, glow: { y: 1.3, size: 1.1, color: 0xffd040 }, light: { color: 0xffc040, intensity: 0.45, dist: 4, y: 1.4 } },   // THE CASINO FLOOR: a cabinet, three reels that spin (ticker), a lever, the top light
         turnstile:       { proc: 'turnstile',       h: 1.0,  foot: 0.4,  block: true },                                        // THE PLATFORM: a tripod gate that turns as you come up (ticker)
+        /* MEDICAL (DOOR HQ 2.0, 2026-11-26): the look book's missing healing machine, the ward's glass wall, the hospital's cross (three-renderer.js, drawn in code) */
+        heal_machine:    { proc: 'heal_machine',    h: 2.2,  foot: 1.0, rect: { hw: 1.0, hd: 0.5 }, block: true, light: { color: 0x9fffe8, intensity: 0.6, dist: 6, y: 1.6 } },
+        nurse_counter:   { proc: 'nurse_counter',   h: 1.15, foot: 0,   rect: { hw: 3.65, hd: 0.42 }, block: true },
+        glass_partition: { proc: 'glass_partition', h: 2.7,  foot: 0,   rect: { hw: 1.75, hd: 0.08 }, block: true },
+        med_cross:       { proc: 'med_cross',       h: 1.6,  foot: 0,   wall: true, mount: 4.6, depth: 0.12, glow: { y: 0.8, size: 2.4, color: 0xff8a80 } },
         eeg_rack:        { proc: 'eeg_rack',        h: 1.4,  foot: 0.35, block: true, glow: { y: 1.0, size: 0.9, color: 0x80ffb0 }, light: { color: 0x60ff90, intensity: 0.5, dist: 4, y: 1.0 } },   // Room REM: the trace beside a cot (ticker)
         dream_screen:    { proc: 'dream_screen',    h: 1.2,  foot: 0,    wall: true, mount: 1.1, depth: 0.1, glow: { y: 0.6, size: 2.2, color: 0xc0a0ff } },   // Room REM: what the sleepers see (ticker: the drawing drifts)
         iso_tank:        { file: 'molten_sleeper_casket.glb', base: 'misc', h: 1.3, foot: 0.6, rect: { hw: 0.35, hd: 0.55 }, block: true, glow: { y: 0.8, size: 1.6, color: 0x60a0ff } },   /* h stays the old pod's 1.3 m: the boards stand it on 1.3 m ghost blocks (Antarctica) */   // Room 0dB: the pod (THE CODED SHAPES OUT 2026-11-03: the Molten Maps sci-fi pack sleeper casket, CC0)
@@ -36061,21 +36066,6 @@ const DOOR_HQ = {
             spawn: { x: -3.1, z: 0, face: 90 },
         },
 
-        /* ── ROOM 1111 · MEDICAL (HQ plan 7.4, 2026-09-13 rev 3) — the ward
-           behind the hospital door at 210° on the ground ring, a `kind:
-           'box'` room now (it was a door straight to Challenge mode).
-           "Where EXITED operatives are processed." THE SERVICES DESK on
-           the south wall is Challenge mode (`_goToCampaign` — revives,
-           retries, the services desk); THE CHART on the east wall between
-           the two beds is your record (`overlay: 'chart'` → map.js
-           _hqChartHtml, read through data.js hqMedicalRecord: matches,
-           wins, EXITS (the losses), what the ward counted, and the
-           CONDITION line — INTAKE / FIT FOR DUTY / UNDER OBSERVATION /
-           ADMINISTRATIVE LEAVE); the cell door on the north wall (`padded`)
-           is Room 5150. The nurse sits at the desk, the orderly stands by
-           the cell door, a patient sits on the far cot. Lines are Claude's
-           stage dressing (the room's overheard pool), not cast lines (A15).
-           Viewer-local, nothing relayed (RULE #2). ── */
         /* ── ROOM 1 · RECEPTION (HQ plan 7.4, 2026-09-14) — the intake office
            behind the ground ring's window door at 120° (between the Barbershop
            at 105° and Your Office at 150°). It was a door straight to the
@@ -36281,114 +36271,122 @@ const DOOR_HQ = {
             ],
             spawn: { x: -2.2, z: 1.6, face: 0 },
         },
+        /* ── MEDICAL (DOOR HQ 2.0, 2026-11-26, mondo: "look more like a hospital, think Pokémon center") — a clean-sheet rebuild.
+           The brightest room in the building, open to the Lobby with no door (the `lobby` row: a 14 m by 4.5 m opening, the Lobby
+           thread's `open` door + THE ROUND JOIN in HQ_STAGE_RULES.round). Plan: docs/plans/door-hq-2/plans/1_lobby_level_plan.png
+           (east of Rhonda, "counter, then beds"); look: LOOK_BOOK.md "Medical". 21 x 17.5 m (6 x 5 squares), 7 m ceiling.
+           South: the opening and the waiting benches. Middle: the counter (a `nurse_counter` proc), THE HEALING MACHINE
+           behind it (a proc: six slots, a small door in each, they light in turn), the cross over everything on the back wall.
+           North: the ward behind a glass wall, four beds with screens and drips; its way in is the open bay at the west end.
+           West: supplies, the x-ray, the sinks. East: the staff door (to the old wing: the Hold and the Interrogation Room stay
+           reachable until the Works rebuild moves them), the vending machine (potions, data.js hqVendingApply).
+           THE COT is the healing machine now (counter `cot`: HQ_PARTY_RULES.restCounter, map.js's rest panel). The chart and the
+           Challenge desk keep their ids. Viewer-local, nothing relayed (RULE #2). ── */
         medical: {
             label: 'MEDICAL',
-            sub: 'CHALLENGE MODE',
             roomNo: '1111', why: 'the number you dial',
             kind: 'box',
             shell: {
-                w: 8, d: 6, h: 3.2,
-                wallH: 3.2, dadoH: 1.1,
-                floor: 'terrazzo', wall: 'drywall', dado: 'teal', trim: 'teal', ceiling: 'ceiling',
-                floorColor: 0xd9dad2, wallColor: 0xdde6dc, dadoColor: 0x7fa89a,   // painted down: hospital green over pale terrazzo
-                pipes: false,                       // an acoustic ceiling; the ward is the one clean room
-                light: { x: 0, z: 0 },
-                mood: { light: 0xeef4ee },          // cold white, and it never goes off
-                plate: { x: -1.5, z: -2.95, y: 2.75 },
+                w: 21, d: 17.5, h: 7.0,
+                wallH: 7.0, dadoH: 1.2,
+                floor: 'urban:TileLinoleum1a', wall: 'drywall', dado: 'drywall', trim: 'metal', ceiling: 'ceiling',   // the look book's plaster and fibre tiles read grey and grimy on screen: clean drywall, the cream ceiling
+                floorColor: 0xf4f8f6, wallColor: 0xf4f6f5, dadoColor: 0x9fd8c8, ceilColor: 0xf6f8f8,
+                pipes: false, keyLamp: 0,
+                lights: [{ x: -5.25, z: -1.75 }, { x: 5.25, z: -1.75 }, { x: -5.25, z: 4.5 }, { x: 5.25, z: 4.5 }, { x: 0, z: -6.6 }, { x: -7.0, z: -6.6 }, { x: 7.0, z: -6.6 }],
+                mood: { light: 0xf2faff, ambient: 0.7 },
+                plate: { x: 0, z: -8.7, y: 3.6 },
             },
             doors: [
-                { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_hospital',
-                  label: 'THE MEDICAL WING', sub: 'BACK TO THE WING',
-                  action: { room: 'medwing', at: 'ward' },
-                  desc: 'The way back to the hall. Discharged operatives sign the clipboard on the way out; the clipboard is the chart.' },
-                /* THE CELL DOOR → Room 5150, the Padded Room */
-                { id: 'padded', wall: 'n', x: 2.6, leaf: 'leaf_cell',
-                  label: 'THE HOLD',
-                  action: { room: 'padded', at: 'egress' },
-                  desc: 'A cell door with a slot, at the back of the ward. Administrative leave is served on the other side of it. It is not locked. It has never needed to be.' },
+                /* THE OPEN FRONT: no leaf, no plate; the Lobby thread's `open` opening (until it lands, a plain doorway) */
+                { id: 'lobby', wall: 's', x: 0, open: { w: 14, h: 4.5 },
+                  label: 'LOBBY',
+                  action: { room: 'central_egress', at: 'medical' } },
+                /* THE STAFF DOOR → the old wing (the Hold, the Interrogation Room) until the Works rebuild re-homes them */
+                { id: 'staff', wall: 'e', z: 1.75, leaf: 'leaf_hospital',
+                  label: 'STAFF ONLY',
+                  action: { room: 'medwing', at: 'egress' },
+                  desc: 'Staff only. Nobody has ever asked who counts as staff.' },
             ],
             counters: [
-                /* THE SERVICES DESK → Challenge mode: revives, retries */
-                { id: 'desk', x: -1.5, z: 2.2, face: 0, plateY: 1.85, radius: 1.9, verb: 'CHECK IN',
-                  label: 'THE SERVICES DESK', sub: 'CHALLENGE MODE', action: { fn: '_goToCampaign' },
-                  desc: 'Challenge services. Revives, retries, the ladder — the nurse files the attempt and the ward keeps the count.' },
-                /* THE CHART → your record: matches, wins, exits, the condition line */
-                { id: 'chart', x: 3.2, z: -0.1, face: 270, plateY: 1.9, radius: 1.7, verb: 'READ',
-                  label: 'THE CHART', sub: 'YOUR RECORD', action: { overlay: 'chart' },
-                  desc: 'The clipboard at the foot of the bed. Every crossing the ward counted, every exit it processed, and the line at the bottom that says whether you are fit for duty.' },
-                /* THE COT (THE PARTY, 2026-09-19) → REST: the party's HP / MP restored, the down back on their feet — free, the JRPG inn */
-                { id: 'cot', x: 2.7, z: 1.375, face: 90, plateY: 1.5, radius: 1.6, verb: 'REST',
-                  label: 'THE COT', sub: 'REST THE PARTY', action: {},
-                  desc: 'The second cot, made up. The ward takes the whole party in, no questions, no chart — an hour on the cots and everyone walks out at full. The nurse calls it triage. It is not triage.' },
+                /* THE HEALING MACHINE → REST (id `cot`: the party's HP / MP back to full, the down on their feet; free) */
+                { id: 'cot', x: 0, z: 0.75, face: 0, plateY: 1.9, radius: 2.0, verb: 'HEAL',
+                  label: 'HEALING MACHINE', action: {},
+                  desc: 'Put your doors on the tray. It takes a second.' },
+                /* THE CHART → your record (overlay `chart`) */
+                { id: 'chart', x: -3.5, z: -5.6, face: 0, plateY: 1.6, radius: 1.5, verb: 'READ',
+                  label: 'CHART', action: { overlay: 'chart' },
+                  desc: 'Every crossing, every exit, and one line at the bottom: fit for duty or not.' },
+                /* CHALLENGE → Challenge mode (revives, retries, the ladder) */
+                { id: 'desk', x: -4.2, z: 0.75, face: 0, plateY: 1.9, radius: 1.4, verb: 'CHECK IN',
+                  label: 'CHALLENGE', action: { fn: '_goToCampaign' },
+                  desc: 'Revives and retries. The nurse keeps count.' },
             ],
             props: [
-                /* ── the north wall: the sink, the shelves, the breaker, the supplies, the cell door ── */
-                { key: 'sink',           wall: 'n', x: -3.0 },
-                { key: 'wall_shelf',     wall: 'n', x: -3.0, mount: 1.55 },
-                { key: 'wall_shelf',     wall: 'n', x: -3.0, mount: 2.0 },
-                { key: 'toilet_paper',   x: -3.15, z: -2.85, y: 2.0, face: 180 },
-                { key: 'coffee_mug',     x: -2.8,  z: -2.85, y: 1.55, face: 160 },
-                { key: 'vent_grille',    wall: 'n', x: -2.2, mount: 2.4 },
-                { key: 'breaker_panel',  wall: 'n', x: -1.5 },
-                { key: 'hook_rail',      wall: 'n', x: -0.7 },
-                { key: 'metal_shelving', wall: 'n', x: 0.4 },
-                { key: 'manila_folders', x: 0.4,  z: -2.85, y: 0.9,  face: 5 },      // the supplies: the files, the boxes
-                { key: 'cardboard_box',  x: 0.55, z: -2.85, y: 1.3,  face: 20 },
-                { key: 'exit_sign',      wall: 'n', x: 2.6, mount: 2.75 },           // over the cell door — it says EXIT; it is not one
-                /* ── the east wall: THE WARD — two cots, the chart between them, the visitor's chair ── */
-                { key: 'hospital_bed',   x: 3.5, z: -0.375, face: 90 },                   // THE 2026-09-22 BATCH: the ward's two cots are the user's hospital beds
-                { key: 'hospital_bed',   x: 3.5, z: 1.375,  face: 90 },
-                { key: 'meal_tray_empty', x: 3.45, z: 1.675, y: 0.46, face: 100 },   // lunch came; it went untouched
-                { key: 'clipboard',      wall: 'e', z: -0.1, mount: 1.4, rot: 2 },   // THE CHART
-                { key: 'folding_chair',  x: 2.6, z: -0.375, face: 90 },                // the visitor's, nobody visits
-                { key: 'potted_plant',   x: 3.5, z: -2.5, face: 200 },
-                { key: 'locker',         wall: 'e', z: 2.6 },
-                /* ── the south wall: THE SERVICES DESK, the notice board, the clock, the extinguisher ── */
-                { key: 'tanker_desk',    wall: 's', x: -1.5 },
-                { key: 'crt_terminal',   x: -1.85, z: 2.55, y: 0.76, face: 0 },
-                { key: 'desk_lamp',      x: -0.95, z: 2.6,  y: 0.76, face: 330 },
-                { key: 'clipboard_flat', x: -1.3,  z: 2.35, y: 0.76, face: 10 },
-                { key: 'rotary_phone',   x: -0.85, z: 2.3,  y: 0.76, face: 20 },
-                { key: 'pen',            x: -1.55, z: 2.25, y: 0.76, face: 70 },
-                { key: 'manila_folders', x: -2.1,  z: 2.35, y: 0.76, face: 355 },
-                { key: 'computer_chair_grey', x: -1.5,  z: 2.35, face: 180 },        // the nurse's, facing the desk (the 2026-09-13 chair)
-                { key: 'notice_board',   wall: 's', x: 1.6 },
-                { key: 'wall_clock',     wall: 's', x: 3.2, mount: 2.5 },
-                { key: 'fire_extinguisher', wall: 's', x: 3.0 },
-                { key: 'trash_bin',      x: 0.4, z: 2.6, face: 250 },
-                /* ── the west wall: the way in, the plate, the cooler, the waiting chairs ── */
-                { key: 'exit_sign',      wall: 'w', z: 0, mount: 2.75 },
-                { key: 'nameplate',      wall: 'w', z: -1.6, mount: 1.55 },
-                { key: 'filing_cabinet', wall: 'w', z: -2.3 },
-                { key: 'water_cooler',   wall: 'w', z: 2.5 },
-                { key: 'folding_chair',  x: -3.2, z: 1.1,  face: 90 },               // the waiting room, such as it is
-                { key: 'folding_chair',  x: -3.2, z: 1.75, face: 90 },
-                { key: 'papers_a',       x: -3.3, z: 2.05, y: 0.42, face: 20 },      // a magazine from 1987, on the second chair
-                /* ── the floor, the ceiling ── */
-                { key: 'wet_floor_sign', x: 0.4, z: 1.5, face: 140 },
-                { key: 'floor_drain',    x: 0.6, z: -0.6 },
-                { key: 'fluorescent',    x: -2.0, z: 0, ceil: true, face: 0 },
-                { key: 'fluorescent',    x: 2.0,  z: 0, ceil: true, face: 0 },
+                /* ── the counter: three desks in a row, the nurse behind; the healing machine behind her ── */
+                { key: 'nurse_counter',  x: 0, z: -0.6, face: 180 },
+                { key: 'psx_pills_bottle_1', x: -1.1, z: -0.35, y: 1.13, face: 20 },
+                { key: 'psx_bandage_mp_1',   x: -0.8, z: -0.4,  y: 1.12, face: 70 },
+                { key: 'clipboard_flat',     x: 1.2,  z: -0.45, y: 1.12, face: 10 },
+                { key: 'pen',                x: 1.45, z: -0.4,  y: 1.12, face: 80 },
+                { key: 'heal_machine',   x: 0,    z: -2.4, face: 180 },
+                { key: 'number_dispenser', x: -4.6, z: 0.3, face: 0 },
+                /* ── the back wall: the cross, the clock ── */
+                { key: 'med_cross',      wall: 'n', x: 0, mount: 4.4 },
+                { key: 'wall_clock',     wall: 'n', x: -7.0, mount: 4.6 },
+                /* ── the ward: a glass wall (the open bay at the west end is its way in), four beds, screens, drips ── */
+                { key: 'glass_partition', x: -5.25, z: -4.375, face: 0 },
+                { key: 'glass_partition', x: -1.75, z: -4.375, face: 0 },
+                { key: 'glass_partition', x: 1.75,  z: -4.375, face: 0 },
+                { key: 'glass_partition', x: 5.25,  z: -4.375, face: 0 },
+                { key: 'glass_partition', x: 8.75,  z: -4.375, face: 0 },
+                { key: 'hospital_bed',   x: -3.5, z: -7.45, face: 180 },
+                { key: 'hospital_bed',   x: 0,    z: -7.45, face: 180 },
+                { key: 'hospital_bed',   x: 3.5,  z: -7.45, face: 180 },
+                { key: 'hospital_bed',   x: 7.0,  z: -7.45, face: 180 },
+                { key: 'privacy_screen', x: -1.75, z: -7.6, face: 90 },
+                { key: 'privacy_screen', x: 5.25,  z: -7.6, face: 90 },
+                { key: 'iv_stand',       x: -4.45, z: -8.1 },
+                { key: 'iv_stand',       x: -0.95, z: -8.1 },
+                { key: 'iv_stand',       x: 2.55,  z: -8.1 },
+                { key: 'iv_stand',       x: 6.05,  z: -8.1 },
+                { key: 'eeg_rack',       x: 1.0,   z: -8.1, face: 180 },
+                { key: 'stretcher',      x: 9.4,   z: -6.6, face: 0 },
+                { key: 'door_xray',      wall: 'w', z: -6.6, mount: 1.4 },
+                /* ── the west wall: the sinks, the supplies, the potions behind glass ── */
+                { key: 'sink_row',       wall: 'w', z: -1.75 },
+                { key: 'specimen_shelf', x: -9.95, z: 1.75, face: 90 },
+                { key: 'psx_display_cabinet_mp_1', x: -10.05, z: 4.4, face: 90 },
+                { key: 'psx_healing_potion_mp_1', x: -10.0, z: 4.2, y: 1.05, face: 90 },
+                { key: 'psx_healing_potion_mp_2', x: -10.0, z: 4.6, y: 1.05, face: 90 },
+                { key: 'water_cooler',   wall: 'w', z: 6.7 },
+                /* ── the east wall: the vending machine (potions), the wheelchairs by the front ── */
+                { key: 'vending_machine', wall: 'e', z: -2.0 },
+                { key: 'wheelchair',     x: 9.5,  z: 5.6, face: 270 },
+                { key: 'wheelchair',     x: 9.5,  z: 7.3, face: 270 },
+                /* ── the front: the waiting benches facing the counter, the plants at the corners ── */
+                { key: 'metro_bench',    x: -4.4, z: 3.5, face: 0 },
+                { key: 'metro_bench',    x: 4.4,  z: 3.5, face: 0 },
+                { key: 'potted_plant',   x: -9.6, z: 7.9, face: 30 },
+                { key: 'potted_plant',   x: 9.6,  z: -3.4, face: 200 },
+                /* ── the ceiling: the light panels ── */
+                { key: 'psx_ceiling_lamp_2_on', x: -7.0, z: -6.6, ceil: true },
+                { key: 'psx_ceiling_lamp_2_on', x: 0,    z: -6.6, ceil: true },
+                { key: 'psx_ceiling_lamp_2_on', x: 7.0,  z: -6.6, ceil: true },
+                { key: 'psx_ceiling_lamp_2_on', x: -5.25, z: -1.75, ceil: true },
+                { key: 'psx_ceiling_lamp_2_on', x: 5.25,  z: -1.75, ceil: true },
+                { key: 'psx_ceiling_lamp_2_on', x: -5.25, z: 4.5, ceil: true },
+                { key: 'psx_ceiling_lamp_2_on', x: 5.25,  z: 4.5, ceil: true },
+                { key: 'psx_ceiling_lamp_2_on', x: 0,     z: 4.5, ceil: true },
             ],
             agents: [
-                { x: -1.5, z: 2.35, face: 180, pose: 'hqSit', gender: 'female', label: 'THE NURSE', reach: 1.9,
-                  line: '“Name, employee number, and how many times. Do not round down.”' },
-                { x: 2, z: -1.075, face: 180, pose: 'hqArms', gender: 'male', label: 'THE ORDERLY', reach: 1.6,
-                  line: '“The door at the back is not locked. Everyone asks. Nobody has tried it.”' },
-                { x: 3.5, z: 1.375, face: 270, pose: 'hqSit', gender: 'male', label: 'THE PATIENT', reach: 1.6,
-                  line: '“I was EXITED on the Moon. They processed me. I feel processed.”' },
             ],
-            npcSpots: [
-                { x: -3.2, z: 1.1, face: 90 },      // waiting, on the first chair
-            ],
+            npcSpots: [],
             onlineSpots: [],
             lines: [
-                '“Fit for duty?” “The chart says so.” “Is the chart ever wrong?” “The chart is never asked.”',
+                '“Fit for duty?” “The chart says so.”',
                 '“EXITED is not dead.” “What is it?” “Processed.”',
-                '“Retries are filed at the desk. Revives are filed at the desk. Complaints are filed at the desk, under retries.”',
-                '“The door at the back?” “Room 5150.” “What is it for?” “Leave.” “Whose?” “Yours, eventually.”',
             ],
-            spawn: { x: -2.6, z: 0, face: 90 },
+            spawn: { x: 0, z: 4.2, face: 0 },
         },
         /* ── ROOM 5150 · THE PADDED ROOM (HQ plan 7.4, 2026-09-13 rev 3) —
            the one-cell box room behind the cell door at the back of the
@@ -36417,8 +36415,8 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'egress', wall: 's', x: 0, leaf: 'leaf_cell',
-                  label: 'MEDICAL', sub: 'BACK TO THE WARD',
-                  action: { room: 'medical', at: 'padded' },
+                  label: 'THE MEDICAL WING',
+                  action: { room: 'medwing', at: 'ward' },
                   desc: 'The way back to the ward. The slot is at eye height from the other side.' },
             ],
             counters: [
@@ -36478,14 +36476,14 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_hospital',
-                  label: 'THE LOBBY',
-                  action: { room: 'central_egress', at: 'medical' },
+                  label: 'MEDICAL',
+                  action: { room: 'medical', at: 'staff' },   // DOOR HQ 2.0 (2026-11-26): Medical opens on the Lobby now; the wing is behind its staff door
                   desc: 'The way back to the hall, through the same hospital door. The wing is quieter than the hall and everyone says so on the way out.' },
-                /* ROOM 1111 · the ward (the services desk, the chart, Room 5150 behind it) */
-                { id: 'ward', wall: 'n', x: -2.2, leaf: 'leaf_hospital',
-                  label: 'MEDICAL', sub: 'CHALLENGE MODE',
-                  action: { room: 'medical', at: 'egress' },
-                  desc: 'Room 1111. Where EXITED operatives are processed. The services desk files your retries, the chart at the foot of the bed is your record, and the door at the back of the ward is Room 5150. Nobody comments on the door at the back of the ward.' },
+                /* THE HOLD (DOOR HQ 2.0, 2026-11-26): the ward moved to the Lobby; its old door is the Hold's until the Works rebuild re-homes it */
+                { id: 'ward', wall: 'n', x: -2.2, leaf: 'leaf_cell',
+                  label: 'THE HOLD',
+                  action: { room: 'padded', at: 'egress' },
+                  desc: 'A cell door with a slot. It is not locked. It has never needed to be.' },
                 /* ROOM 1984 · Internal Affairs, at the far end of the corridor */
                 /* ROOM 911 · THE DISPENSARY (THE BAG, 2026-09-20): the potion shop, beside the ward */
                 { id: 'dispensary', wall: 'n', x: 2.2, leaf: 'leaf_hospital',
@@ -88082,16 +88080,14 @@ const HQ_WORLD = {
         medwing: { label: 'THE MEDICAL WING', ground: 'hq', hub: 'medwing', sky: null, clock: false,
             parts: {
                 medwing:       { x: 0,    z: 0,     y: 0, rot: 0 },
-                medical:       { x: -2.2, z: -8.2,  y: 0, rot: 1 },    // the ward's west door (its way out) faces the wing's north door at x −2.2
                 dispensary:    { x: 4.4,  z: -6.9,  y: 0, rot: 0 },    // its south door at x −2.2 faces the wing's north door at x 2.2
                 interrogation: { x: 9.7,  z: 0,     y: 0, rot: 0 },    // its west door faces the wing's east door
-                padded:        { x: -7.2, z: -10.8, y: 0, rot: 1 },    // behind the ward's cell door (the ward's north wall is the ground's west)
+                padded:        { x: -2.2, z: -6.0,  y: 0, rot: 0 },    // DOOR HQ 2.0 (2026-11-26): behind the wing's north door at x −2.2 (the old ward's), its south door facing it
             },
             joins: [
-                { a: 'medwing', b: 'medical',       kind: 'door', door: 'ward',          bDoor: 'egress' },
+                { a: 'medwing', b: 'padded',        kind: 'door', door: 'ward',          bDoor: 'egress' },
                 { a: 'medwing', b: 'dispensary',    kind: 'door', door: 'dispensary',    bDoor: 'egress' },
                 { a: 'medwing', b: 'interrogation', kind: 'door', door: 'interrogation', bDoor: 'egress' },
-                { a: 'medical', b: 'padded',        kind: 'door', door: 'padded',        bDoor: 'egress' },
             ] },
         /* Z11 — THE BASEMENT (Phase 4, 2026-09-27, §8.4's basement merge built as the medical wing was: DOOR JOINS, the
            rooms kept whole). The service lobby at the foot of the lift, the kitchen and its cold room north, the laundry and
