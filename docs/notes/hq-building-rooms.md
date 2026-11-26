@@ -1465,7 +1465,7 @@ the vending machines". Plan: `docs/plans/door-hq-2/FLOOR_PLANS.md` (lobby level,
   A room thread only places the machine. Bisect: `window.EW_HQ_NO_VENDING`.
 - RETIRED: `DOOR_HQ.retired.dispensary = 'doorstore'`; the Medical Wing's `dispensary` door is cut (`DOOR_HQ.cut.doors.medwing`); the
   medwing stage zone no longer holds it. The Quartermaster (races, party builder) was cut in wave 1; nothing in story sells races.
-- OPEN for mondo: nobody staffs the till (DOOR HQ holds story characters only; who runs the Door Store is his call).
+- OTTO RUNS THE TILL (mondo 11-26: "Otto can be at the door store"): DOOR_CAST.otto's one spot is behind the till (x 0, z -7.7, hqArms); his old upper-level door posts are gone. The till is a low `exec_desk` (the booking desk's screens hid him). Probes: playtest_city.js sets EW_DISABLE_CAST, so pass `--pre=window.EW_DISABLE_CAST=false` to see the cast.
 ## DOOR HQ 2.0, WAVE 2: THE TRAINING ROOM (2026-11-26)
 - One definition still: data.js `rooms.training_hall` (the look + the `prebuilt_training` board's room); `rooms.training` (the walk's
   room, Room 64) is built from it after the table. The 8 x 8 pad, its keys, its level and HQ_ARENA_RULES.own.prebuilt_training are

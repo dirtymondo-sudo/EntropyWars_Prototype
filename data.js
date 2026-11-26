@@ -36244,7 +36244,8 @@ const DOOR_HQ = {
                 { key: 'store_door', leaf: 'leaf_glass_exec', x: -8.6, z: 6.6, face: 215 },
                 { key: 'store_door', leaf: 'leaf_hotel',      x: 8.6,  z: 6.6, face: 145 },
                 /* ── the till at the back ── */
-                { key: 'booking_desk',  x: 0, z: -6.6, face: 0 },     // the screens to the back wall, where a clerk would stand
+                { key: 'exec_desk',     x: 0, z: -6.6, face: 180 },   // the till: a low desk, so Otto behind it is seen and easy to click (the drawers to him)
+                { key: 'cash_register', x: 0.6, z: -6.55, y: 0.76, face: 180 },
                 { key: 'wall_clock',    wall: 'n', x: -5.5, mount: 4.0 },
                 { key: 'potted_plant',  x: -3.2, z: -7.8 },
                 { key: 'potted_plant',  x: 3.2,  z: -7.8 },
@@ -111499,10 +111500,10 @@ const DOOR_CAST = {
         name: 'OTTO MATIC', title: 'FACILITIES · MAINTENANCE', dept: 'Facilities', model: 'otto', gender: 'male',
         lines: [],
         spots: [
-            { room: 'central_egress', deg: 312.5, r: 23.1, level: 1, face: 312, pose: 'hqFix', reach: 2.0, p: 0.5,
-              doing: 'Working on the Canon Office door. It is not clear whether it is being installed or removed.' },
-            { room: 'central_egress', deg: 87.5, r: 23.1, level: 1, face: 87, pose: 'hqFix', reach: 2.0, p: 0.5,
-              doing: 'Working on the Arcane Engineering door. There was not a door here yesterday. There is a form.' },
+            /* DOOR HQ 2.0 (mondo 2026-11-26: "Otto can be at the door store"): he stands behind the Door Store's till, facing the shop;
+               the till's counter is 1.2 m in front of the desk, so he talks across it (reach) */
+            { room: 'doorstore', x: 0, z: -7.7, face: 180, pose: 'hqArms', reach: 3.2,
+              doing: 'Behind the till.' },
         ],
     },
     forrest: {
