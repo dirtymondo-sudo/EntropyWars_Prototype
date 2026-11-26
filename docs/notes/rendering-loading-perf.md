@@ -4354,3 +4354,12 @@ no crossfade out of the hidden first clip (`_playUnitModelAnim`). A kept rig sti
 The HQ load card waits for every body's clips (`_hqCharsAnimWaiting`, in the gate's progress signature) and the walker counts as
 attached only with its clips on. The forge viewer (`_cvAnimOn`) and the dock do the same. Probe: `ThreeRenderer.hq.dev.chars()`
 gives `shown` + `animReady` per body (shown && !animReady = the bug). Off: `window.EW_NO_ANIM_GATE`.
+
+## THE KEPT INSTANCE PASS + THE KEPT LAMP LIST (2026-11-26, mondo's Cafeteria F3: "it still glitches when i cross into rooms")
+- THE KEPT INSTANCE PASS (`_hqStageSwap`): every crossing threw the instance pass away and built it again (the whole stage scanned,
+  ~100 new InstancedMeshes = new looks, pipelines, recordings). The batches now move with the swap's re-anchor `A` (each batch's
+  matrix premultiplied, its inverse and centre too), so every copy's instance matrix stays as it is. A chunked room drops it as before.
+  Old: `EW_HQ_INST_SWAP_DROP`. Cloud probe: Lobby -> Cafeteria crossing, the chairs and tables stand where they were.
+- THE KEPT LAMP LIST (`_hqStagePick`, RULE #1e; his lens: "!! _hqStagePick < _hqStageLamps 21K/s"): each part's point lamps listed once
+  (`R._ew_lampList`), new lamps through THE FRONT DESK (`st.lampDq`), an overflowed desk or 20 s lists all again, a lamp out of its part
+  dropped by the parent test. Old: `EW_HQ_LAMP_WALK`.

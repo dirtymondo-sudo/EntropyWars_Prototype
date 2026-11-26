@@ -106580,17 +106580,35 @@ const ThreeRenderer = (function () {
         var roots = [H.partRoot]; for (var id in st.parts) if (st.parts[id].attached) roots.push(st.parts[id].P.partRoot);
         if (extra) roots.push(extra);
         var cnt = 0;
+        /* THE KEPT LAMP LIST (2026-11-26, mondo's F3: "!! _hqStagePick < _hqStageLamps 21K/s", RULE #1e): the pick walked every built part
+           of the level (26 rooms kept built) to find its ~40 point lamps, twice a second and on every portal flip. A part's lamps are
+           now listed once; a lamp that joins later comes in through THE FRONT DESK (an overflowed desk, or 20 s, lists all again); a
+           lamp taken out of its part is dropped by the parent test. Old: window.EW_HQ_LAMP_WALK. */
+        var lampWalk = typeof window !== 'undefined' && !!window.EW_HQ_LAMP_WALK, tNow = _alNow();
+        /* the arrivals since the last pick (THE FRONT DESK): a lamp among them joins its part's list; an overflowed desk lists all again */
+        var dq = st.lampDq || (st.lampDq = _ewDeskQueue()), DT = _ewDeskTake(dq), arr = [];
+        if (!DT.over) for (var ai = 0; ai < DT.list.length; ai++) { var ao = DT.list[ai]; if (!ao) continue; if (ao.isPointLight) arr.push(ao); else if (ao.children && ao.children.length) ao.traverse(function (q) { if (q.isPointLight) arr.push(q); }); }
+        var lampsOf = function (R) {
+            var LC = R._ew_lampList;
+            if (lampWalk || DT.over || !LC || tNow - LC.at > 20000) {
+                var L = []; R.traverse(function (o) { if (o.isPointLight) L.push(o); });
+                LC = R._ew_lampList = { at: tNow, list: L };
+            } else for (var aj = 0; aj < arr.length; aj++) if (LC.list.indexOf(arr[aj]) < 0 && _ewDeskUnder(arr[aj], R)) LC.list.push(arr[aj]);
+            return LC.list;
+        };
+        var under = function (o, R) { for (var q = o.parent; q; q = q.parent) if (q === R) return true; return false; };
         roots.forEach(function (R, ri) {
             var shown = R.visible !== false;   // THE PORTALS: a hidden part's lamps still count (the pads light its share, dark)
-            R.traverse(function (o) {
-                if (!o.isPointLight) return;
+            var LL = lampsOf(R);
+            for (var li = 0; li < LL.length; li++) (function (o) {
+                if (!lampWalk && !under(o, R)) return;
                 if (o._ew_stageOn == null) o._ew_stageOn = o.visible;   // a light its owner switched off stays off
                 if (!o._ew_stageOn) return;
                 cnt++; if (ri === 0) own++;
                 if (!shown) return;
                 o.getWorldPosition(v); if (R._ew_impDrop) v.y -= R._ew_impDrop * _hqUnits();   // THE IMPOSSIBLE DOORS: a room drawn out of sight is lit by where it is walked
                 all.push({ o: o, d: v.distanceToSquared(cam) * ((o.visible && st.lampN >= 0) ? 0.64 : 1), own: ri === 0 ? 0 : 1 });   // THE STICKY PICK (11-26): a lit lamp stays lit until one 25 % nearer wants its place (two lamps near the line no longer swap every half second)
-            });
+            })(LL[li]);
         });
         var SR = HQ_STAGE_RULES, base = SR.lampsLive || 12, nbMin = (SR.lampsNb != null) ? Math.max(0, SR.lampsNb | 0) : 4;
         if (st.round) base = Math.max(base, SR.lampsRound || 32);   // THE WHOLE HALL LIT: the hall + the foyer, every lamp
@@ -108019,7 +108037,13 @@ const ThreeRenderer = (function () {
         var fromId = st.id, fromRoom = H.room;
         try { _hqCullReset(H); } catch (e) {}   // THE PORTALS (G1): every part drawn before the records change hands (the next tick re-picks)
         try { _hqLodReset(H); } catch (e) {}   // THE LOD LEVELS: re-picked on the new part's list
-        try { _hqInstDrop(H); } catch (e) {} H._instTried = false;
+        /* THE KEPT INSTANCE PASS (2026-11-26, mondo: "it still glitches when i cross into rooms"): the swap threw the whole instance pass
+           away and built it again (every prop of the stage scanned, every batch a new InstancedMesh: new looks, new pipelines, new
+           recordings, ~100 batches in the Lobby's level) on every crossing. A batch's copies only move by the swap's re-anchor `A`
+           (below), so the batches are moved by it too (each one's frame and its inverse): every copy's matrix in its batch stays the
+           same and nothing is rebuilt. A chunked room (its cells keyed on world squares) drops it as before. Old: EW_HQ_INST_SWAP_DROP. */
+        var instKeep = !!(H.inst && !H.inst.cells && !(typeof window !== 'undefined' && window.EW_HQ_INST_SWAP_DROP));
+        if (!instKeep) { try { _hqInstDrop(H); } catch (e) {} H._instTried = false; }
         try { _hqChunkHome(H); } catch (e) {}   // THE CHUNKS: the part you leave is a neighbour now, drawn whole
         /* the part you leave: its people stand down (the walker stays), its record becomes a neighbour's */
         var Q = { id: fromId, P: {}, extra: null, opts: Object.assign({}, H.opts, { room: fromId }), gate: null, step: _HQ_STAGE_STEPS.length, built: true, attached: true, t0: t0, rel: null };
@@ -108059,6 +108083,14 @@ const ThreeRenderer = (function () {
         var moveObj = function (o) { o.updateMatrix(); o.matrix.premultiply(A); o.matrix.decompose(o.position, o.quaternion, o.scale); o.updateMatrixWorld(true); };
         H.partRoot.position.set(0, 0, 0); H.partRoot.rotation.set(0, 0, 0); H.partRoot.updateMatrixWorld(true);
         moveObj(Q.P.partRoot);
+        if (instKeep && H.inst) {   // THE KEPT INSTANCE PASS
+            try {
+                H.inst.recs.forEach(function (rec) {
+                    var im = rec.im; im.matrix.premultiply(A); im.matrixWorldNeedsUpdate = true; im.updateMatrixWorld(true);
+                    rec.inv.copy(im.matrix).invert(); if (rec.C) rec.C.applyMatrix4(A);
+                });
+            } catch (eI) { console.warn('[HQ stage] the kept instance pass could not move; built again', eI); try { _hqInstDrop(H); } catch (e) {} H._instTried = false; }
+        }
         for (var id in st.parts) if (id !== to && st.parts[id].attached) moveObj(st.parts[id].P.partRoot);
         /* the scene's loose things: the lamp masts / the shafts of the part you left go into its root (their local frame IS
            the old part's), the directional lights and the sky's bodies turn with the frame; the rest is the zone's */
