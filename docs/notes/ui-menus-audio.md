@@ -3129,3 +3129,9 @@ HELD ITEMS = the GEAR rows (`C.passives.rows` with `sp.accessory` / `gear*` ids;
 `node:<member>:<id>`), USE AN ITEM = the bag's field items on this member (`itemon:bag:<key>:<member>`). PARTY (the command) opens
 the loadout on the lead; the menu's fresh open still shows the roster. Keys: ← → member, Backspace roster, Esc steps back.
 CSS: end of styles-base.css "THE LOADOUT". Viewer-local (RULE #2).
+- 11-26 pass 2 (mondo: "make that element box bigger/wider. The HP MP and XP bars should be on top of each other ... make sure this
+  is added to the ui maker"): HP / MP / EXP TO NEXT LV stack in `.hq-lo-vits` (label | bar | number rows); the element box is
+  `size: 'xl'` at the stats column's full width; the windows sit 8 px apart. UI MAKER: surface `loadout` ("Party loadout", hud.js
+  UIM_SURFACES, scope `#hqPause.hq-loadout`: panels = tab row / bar / stats / kit / detail line, head = section heads, buttons =
+  portrait tabs + kit rows, the stage untouched; a row keeps its category colour on its left edge) + its stand-in
+  `UIM_SPECIMENS.loadout` (captured from the real screen, the stage shows the portrait). Refresh the stand-in after a markup change.

@@ -8012,7 +8012,7 @@ html.ew-mobile .pause-card { max-height: calc(100dvh - 16px); }
 .hq-lo-close { font-size: 13px; }
 .hq-lo-arrow:hover, .hq-lo-roster:hover, .hq-lo-close:hover { border-color: #f2d98a; color: #f2d98a; }
 /* the bar */
-.hq-lo-bar { display: grid; grid-template-columns: minmax(180px, 1.2fr) auto repeat(3, minmax(150px, 1fr)); align-items: center; gap: 22px; padding: 10px 22px; background: rgba(0,0,0,0.55); border-bottom: 1px solid rgba(255,255,255,0.18); }
+.hq-lo-bar { display: grid; grid-template-columns: minmax(180px, 1fr) auto minmax(320px, 560px); align-items: center; gap: 22px; padding: 10px 22px; background: rgba(0,0,0,0.55); border-bottom: 1px solid rgba(255,255,255,0.18); }
 .hq-lo-who { min-width: 0; }
 .hq-lo-who b { display: block; font-size: 24px; letter-spacing: 0.06em; color: #fff; line-height: 1.1; overflow-wrap: anywhere; }
 .hq-lo-who span { display: block; font-size: 10px; letter-spacing: 0.2em; color: #b8a060; margin-top: 3px; }
@@ -8020,10 +8020,11 @@ html.ew-mobile .pause-card { max-height: calc(100dvh - 16px); }
 .hq-lo-lv { display: flex; align-items: baseline; gap: 6px; }
 .hq-lo-lv i { font-style: normal; font-size: 11px; letter-spacing: 0.16em; color: #b8a060; }
 .hq-lo-lv b { font-size: 30px; color: #f2d98a; line-height: 1; }
-.hq-lo-vit { display: grid; grid-template-columns: auto 1fr; align-items: baseline; gap: 2px 10px; }
+.hq-lo-vits { display: flex; flex-direction: column; gap: 6px; }
+.hq-lo-vit { display: grid; grid-template-columns: 120px minmax(0, 1fr) 96px; align-items: center; gap: 12px; }
 .hq-lo-vit > i { font-style: normal; font-size: 10px; letter-spacing: 0.18em; color: #b8a060; white-space: nowrap; }
-.hq-lo-vit > b { justify-self: end; font-size: 16px; color: #ece7d8; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.hq-lo-meter { grid-column: 1 / -1; display: block; height: 8px; border-radius: 4px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14); overflow: hidden; }
+.hq-lo-vit > b { grid-column: 3; grid-row: 1; justify-self: end; font-size: 16px; color: #ece7d8; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.hq-lo-meter { grid-column: 2; grid-row: 1; display: block; height: 8px; border-radius: 4px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14); overflow: hidden; }
 .hq-lo-meter i { display: block; height: 100%; }
 .hq-lo-vit.hp .hq-lo-meter i { background: #2ed158; }
 .hq-lo-vit.mp .hq-lo-meter i { background: #2f9dff; }
@@ -8078,3 +8079,10 @@ html.ew-mobile .pause-card { max-height: calc(100dvh - 16px); }
 }
 .hq-lo-tab.lead .hq-lo-tabface { position: relative; }
 .hq-lo-tab.lead .hq-lo-tabface::after { content: '★'; position: absolute; top: -4px; left: -4px; font-size: 12px; color: #f2d98a; text-shadow: 0 1px 2px #000; }
+/* the element box: the whole column's width, the big cells (mondo 11-26) */
+.hq-lo-stats .hq-pp-elem .ew-elem-box { display: grid; width: 100%; box-sizing: border-box; }
+.hq-lo-stats .hq-pp-elem .ew-elem-box.xl .ew-elem-row { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+/* the windows sit apart, so a UI Maker theme's panels read as JRPG windows */
+#hqPage #hqPause.hq-loadout .hq-lo { gap: 8px; padding: 8px; box-sizing: border-box; }
+#hqPage #hqPause.hq-loadout .hq-lo-main { gap: 8px; }
+.hq-lo-tabs, .hq-lo-bar, .hq-lo-stats, .hq-lo-kit, .hq-lo-detail { border: 1px solid rgba(255,255,255,0.35); border-radius: 8px; }
