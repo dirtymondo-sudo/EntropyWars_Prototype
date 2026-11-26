@@ -35316,7 +35316,9 @@ const DOOR_HQ = {
                 { key: 'office_chair',   deg: 180, r: 3.98, level: 0, rot: 180 },            // Rhonda's (DOOR_CAST rhonda)
                 { key: 'crt_terminal',   deg: 168, r: 4.42, level: 0, y: 0.8 },
                 { key: 'desk_lamp',      deg: 150, r: 4.45, level: 0, y: 0.8, rot: 20 },
-                { key: 'papers_b',       deg: 186, r: 4.45, level: 0, y: 0.8, rot: -20 },
+                { key: 'manila_folders', deg: 180, r: 4.27, level: 0, y: 0.8, rot: 8 },     // under her hands (mondo 11-26: "put a keyboard or folders or stack of papers in front of her")
+                { key: 'papers_b',       deg: 187.5, r: 4.32, level: 0, y: 0.8, rot: -20 },   // the stack by her right hand
+                { key: 'clipboard_flat', deg: 173, r: 4.3,  level: 0, y: 0.8, rot: 25 },    // and the clipboard by her left
                 { key: 'coffee_mug',     deg: 175, r: 4.5,  level: 0, y: 0.8, rot: 40 },
                 { key: 'laminator',      deg: 205, r: 4.45, level: 0, y: 0.8, rot: 180 },   // the INTAKE SHEET's
                 { key: 'vending_machine', deg: 347, level: 0, wall: true },   // THE LEVEL JOIN: off the north passage's 7 m mouth (was 352)

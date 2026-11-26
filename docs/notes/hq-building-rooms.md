@@ -1839,6 +1839,8 @@ counter top if you can".
   shows the raw clip. The seat pin (`_hqSeatPin`) treats `hqSitDesk` like `hqSit`.
 - Scene E's shots (RHONDA LETS HER STAY) were left as they were: she is 0.9 m nearer the camera, so E4's medium is a little closer.
 - Checked: `node find-doorways.js central_egress` clear; probe pictures (playtest_city.js with `--pre=window.EW_DISABLE_CAST=false`).
+- UNDER HER HANDS (11-26, mondo: "put a keyboard or folders or stack of papers in front of her"): `manila_folders` at deg 180 r 4.27 (right under
+  her hands), `papers_b` by her right hand (187.5, r 4.32), `clipboard_flat` by her left (173, r 4.3). No loose keyboard prop exists (the CRT has its own).
 
 ### THE NEAREST FIRST (2026-11-26, fix after the level join)
 mondo: "Having trouble walking and skating into the training room, like there is an invisible wall". The stage built its parts in list
