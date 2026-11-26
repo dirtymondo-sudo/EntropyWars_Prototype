@@ -4363,3 +4363,12 @@ gives `shown` + `animReady` per body (shown && !animReady = the bug). Off: `wind
 - THE KEPT LAMP LIST (`_hqStagePick`, RULE #1e; his lens: "!! _hqStagePick < _hqStageLamps 21K/s"): each part's point lamps listed once
   (`R._ew_lampList`), new lamps through THE FRONT DESK (`st.lampDq`), an overflowed desk or 20 s lists all again, a lamp out of its part
   dropped by the parent test. Old: `EW_HQ_LAMP_WALK`.
+
+## THE TURNED BODY AT THE CROSSING (2026-11-26)
+mondo (Extraterrestrial F3, build hqcross-01): "the character faces another direction for a split second" at every crossing.
+A frame recorder (scene.onAfterRender: model yaw minus camera yaw, per main render) walked the Lobby into the Cafeteria:
+the body read 1.574 rad (90°) off the camera for exactly the swap frame, 0 before and after; the camera itself was
+continuous. Cause: `_hqTickChars` sets `entry.model.rotation.y = ch.yaw` before `_hqStageTick`, and `_hqStageSwap` turned
+`pl.yaw` by the re-anchor but not the model, so that one frame drew the body in the old frame's turn. The swap now sets the
+model's turn too. After: 0.004 rad at the swap. Probe note: a headless window drops real key presses on every evaluate;
+walk with `ThreeRenderer.hq.dev.press('w', true)` + `press('shift', true)`; `teleport` / a view's `face` is in DEGREES.

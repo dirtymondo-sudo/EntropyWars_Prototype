@@ -108109,6 +108109,10 @@ const ThreeRenderer = (function () {
         var rv = function (o, kx, kz) { if (o[kx] == null || o[kz] == null) return; var c = Math.cos(th), s = Math.sin(th), x = o[kx], z = o[kz]; o[kx] = x * c + z * s; o[kz] = -x * s + z * c; };
         rv(pl, 'mvx', 'mvz'); rv(pl, 'velX', 'velZ'); rv(pl, 'pushX', 'pushZ'); rv(pl, 'svx', 'svz');   // THE COAST: a swimmer's way on
         pl.yaw += th; if (pl.targetYaw != null) pl.targetYaw += th;
+        /* THE TURNED BODY (2026-11-26, mondo: "the character faces another direction for a split second" at every crossing; a frame
+           recording showed the body 90° off the camera for exactly the swap frame): the characters' tick set the model's turn from
+           the OLD frame's yaw earlier this frame and the swap runs after it, so the frame was drawn with the body unturned. It turns here too. */
+        if (pl.entry && pl.entry.model) pl.entry.model.rotation.y = pl.yaw;
         if (H.ride && H.ride.on) { var Rd = H.ride, dy0 = rel.y || 0; Rd.hd += th; if (dy0) ['lastY', 'airY0', 'launchY', 'airApex'].forEach(function (k) { if (typeof Rd[k] === 'number') Rd[k] -= dy0; }); }   // the roll keeps its line (and its heights) across the seam
         if (Vx) {
             var vp = mp(Vx.x, Vx.z); Vx.x = vp.x; Vx.z = vp.z; Vx.y -= (rel.y || 0); Vx.yaw += th;
