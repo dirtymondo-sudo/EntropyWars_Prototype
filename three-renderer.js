@@ -36,7 +36,7 @@ const ThreeRenderer = (function () {
             'EW_BUN_HELD_NO_SHARED EW_BUN_INST_NO_REST EW_BUN_NO_OUT EW_BUN_OUT_HIDE_HASH EW_BUN_OUT_RETURN_ALWAYS EW_BUN_QUIET_LOOP EW_BUN_REST_AT_5 ' +
             'EW_BUN_TURN_20 EW_BUN_WAKE_ALL EW_PT_LIVE_STEADY EW_PT_LIVE_COPY EW_BUN_LAMPS_ONE EW_BUN_TARGETS_EVERY EW_BONES_WALK_ALL EW_BVH_LIB EW_CALM EW_CALM_LIQUIDS EW_CANOPY_CUT_BAND EW_CANOPY_CUT_RADIUS EW_CC_DEBUG_CUTS EW_CC_DEBUG_UNLIT ' +
             'EW_CC_NO_DETAILS EW_CC_NO_HEMS EW_CLOTH_COLLIDE EW_CSS2D_ALWAYS EW_CSS_PLATES EW_CUBE_NO_ANIM EW_CV_LIT_BAKES EW_DEATH_CAM_ALL_UNITS EW_DESK_OFF ' +
-            'EW_DIP_OFF EW_DISABLE_3D_UNITS EW_DISABLE_ANIM_LIB EW_DISABLE_BOOT_FIT EW_DISABLE_CANOPY_CUTAWAY EW_DISABLE_CLOTH_COLLIDE EW_DISABLE_COAT_FIT ' +
+            'EW_DIP_OFF EW_NO_ANIM_GATE EW_DISABLE_3D_UNITS EW_DISABLE_ANIM_LIB EW_DISABLE_BOOT_FIT EW_DISABLE_CANOPY_CUTAWAY EW_DISABLE_CLOTH_COLLIDE EW_DISABLE_COAT_FIT ' +
             'EW_DISABLE_FACE_IDLE EW_DISABLE_GRASS_WIND EW_DISABLE_GRAVESTONES EW_DISABLE_JIGGLE EW_DISABLE_POWER_AURA EW_DISABLE_RIPPLE EW_DISABLE_SHADOW_GATING ' +
             'EW_DISABLE_SKY_MOON_3D EW_DISABLE_SPELL_GRADE EW_DISABLE_SWAY EW_DISABLE_TERRAIN_MERGE EW_DISABLE_TILE_GLOW EW_DISABLE_WEAPON_GLB EW_FADE_OWN_SHADOW ' +
             'EW_FC_PILE EW_FIELD_DISPOSE_ALL EW_FIELD_KEY_HIGH EW_FIELD_LAMPS_ALL EW_FIELD_NO_BATCH EW_FIELD_NO_INSTANCE EW_FREE_ALL_AT_ONCE EW_GGRASS EW_GHOST_OLD ' +
@@ -21862,6 +21862,11 @@ const ThreeRenderer = (function () {
         entry.model = wrap;
         entry.modelDef = def;
         entry.modelMats = [];
+        /* THE MOVING REVEAL (2026-11-26, mondo: "I should NEVER see a character not animating or staying still waiting for their
+           animations to load"): a rigged body stays hidden until its clips are wired and its first pose is on (the library bake,
+           the procedural clips or the Meshy idle), then shows a couple of frames later so the caller's own slot (a seated pose)
+           is already playing. false = still waiting; the HQ load card waits on it (_hqCharsAnimReady). Off: window.EW_NO_ANIM_GATE. */
+        entry._ew_animReady = false;
 
         // Invisible pick pillar (see contract note above). Height tracks the
         // model's rendered height (ts * UNIT_SPRITE_SIZE_RATIO * heightRatio)
@@ -21922,6 +21927,8 @@ const ThreeRenderer = (function () {
         if (!_rig) _rig = _rigCarryTake(unit, def, ts, appearanceKey);   // THE BODIES CARRY OVER: the same body from the walk / the fight
         if (_rig) {
             entry._ew_modelAttached = true;
+            entry._ew_animReady = _rig.animReady !== false;   // THE MOVING REVEAL: a kept rig still baking keeps its body hidden
+            if (!entry._ew_animReady) (_rig.animEntries = _rig.animEntries || []).push(entry);
             if (_rig.inner.parent) _rig.inner.parent.remove(_rig.inner);
             wrap.add(_rig.inner);
             try { _unitGearSync(unit, _rig.inner, ts); } catch (_ge) {}   // THE GEAR ON THE BODY: a kept rig whose gear changed
@@ -22147,6 +22154,7 @@ const ThreeRenderer = (function () {
             if (res.procClips) entry._ew_procEye = _rigRec.procEye = _procRigAttachEye(m);   // THE PROCEDURAL RIGS: the core eye (after the twins: it gets no x-ray/outline)
             if (!hasSkin && !res.procClips) {
                 console.warn('[ThreeRenderer] unit model has no rig (skin/bones) — clips skipped, rendering static:', def.model);
+                entry._ew_animReady = true; _rigRec.animReady = true;
                 _unitRevealDressed(entry, unit.id, m, appearanceRig);
                 return;
             }
@@ -22155,6 +22163,20 @@ const ThreeRenderer = (function () {
             entry.actions = {};
             _rigRec.mixer = mixer;
             _rigRec.actions = entry.actions;
+            /* THE MOVING REVEAL: the gate. _animOpen once the clips are on; the body is shown two frames later (the reveal below) */
+            _rigRec.animReady = false; _rigRec.animEntries = [entry]; _rigRec.animWait = [];
+            var _animGateOff = typeof window !== 'undefined' && window.EW_NO_ANIM_GATE;
+            if (!_animGateOff) entry._ew_animFresh = true;   // no crossfade out of the hidden first clip (_playUnitModelAnim)
+            var _animOpen = function () {
+                if (_rigRec.animReady) return;
+                _rigRec.animReady = true;
+                try { if (entry.mixer === mixer) mixer.update(0); } catch (_mu) {}
+                var es = _rigRec.animEntries || []; _rigRec.animEntries = null;
+                for (var _ai = 0; _ai < es.length; _ai++) es[_ai]._ew_animReady = true;
+                entry._ew_animReady = true;
+                var ws = _rigRec.animWait || []; _rigRec.animWait = null;
+                for (var _wi = 0; _wi < ws.length; _wi++) { try { ws[_wi](); } catch (_we) {} }
+            };
             // Slot wiring shared by both animation sources (retargeted
             // library bakes and per-character Meshy clip GLBs). Two slots may
             // share one clip (e.g. cast + castMagic). clipAction() returns
@@ -22218,14 +22240,20 @@ const ThreeRenderer = (function () {
                 var clips = def.clips || {};
                 Object.keys(clips).forEach(function (name) {
                     _loadUnitGLB(clips[name], function (cres) {
-                        if (!cres.clips || !cres.clips.length) return;
+                        if (!cres.clips || !cres.clips.length) { if (name === 'idle') _animOpen(); return; }
                         _wireSlot(name, cres.clips[0], _meshyTScale(name));
+                        if (name === 'idle') _animOpen();   // THE MOVING REVEAL: the idle is on
                     });
                 });
+                /* no idle file at all, or it failed: nothing more is coming, so the body is not held back for it */
+                var _ic = clips.idle ? _unitGlbCache[clips.idle] : null;
+                if (!clips.idle || (_ic && _ic.failed) || (_ic && _ic.root && !(_ic.clips && _ic.clips.length))) _animOpen();
+                else if (_ic && !_ic.root) (_ic.doneCbs = _ic.doneCbs || []).push(function (e2) { if (e2 && e2.failed) _animOpen(); });
             }
             if (res.procClips) {
                 // THE PROCEDURAL RIGS: the assembly's own keyframe clips, one per slot
                 Object.keys(res.procClips).forEach(function (name) { _wireSlot(name, res.procClips[name], 1); });
+                _animOpen();
             } else if (_animLibActive(def)) {
                 // Shared animation library: bake (or fetch the cached bake of)
                 // every retargeted slot for this character; on any failure
@@ -22242,6 +22270,7 @@ const ThreeRenderer = (function () {
                         _wireSlot(name, baked[name],
                             (def.libTimeScales && def.libTimeScales[name]) || 1);
                     });
+                    _animOpen();   // THE MOVING REVEAL: every slot is on
                     _libOnDeferred(res, function (name, clip) {   // THE BODY: the spell verbs, as they bake
                         if (entry.mixer !== mixer) return false;
                         if (!entry.actions[name]) _wireSlot(name, clip, (def.libTimeScales && def.libTimeScales[name]) || 1);
@@ -22252,7 +22281,18 @@ const ThreeRenderer = (function () {
                 _loadMeshyClips();
             }
 
-            _unitRevealDressed(entry, unit.id, m, appearanceRig);   // THE DRESSED REVEAL
+            /* THE MOVING REVEAL: the body (and the dressed reveal after it) waits for its clips, then two frames for the caller's
+               own slot to take over (a seated cast member never stands up out of the idle); until then the stand-in stays */
+            var _reveal = function () {
+                var go = function () {
+                    entry._ew_animFresh = false;
+                    var cur = _getUnitEntry(unit.id); if (cur && cur !== entry) cur._ew_animFresh = false;
+                    _unitRevealDressed(entry, unit.id, m, appearanceRig);   // THE DRESSED REVEAL
+                };
+                if (typeof requestAnimationFrame === 'function') requestAnimationFrame(function () { requestAnimationFrame(go); }); else go();
+            };
+            if (_animGateOff || _rigRec.animReady) { entry._ew_animFresh = false; _unitRevealDressed(entry, unit.id, m, appearanceRig); }
+            else { m.visible = false; _rigRec.animWait.push(_reveal); }
         });
     }
 
@@ -22287,7 +22327,10 @@ const ThreeRenderer = (function () {
         next.enabled = true;
         next.reset();
         next.play();
-        if (prev && prev !== next) next.crossFadeFrom(prev, MODEL_ANIM_FADE, false);
+        if (prev && prev !== next) {
+            if (entry._ew_animFresh) { prev.stop(); next.setEffectiveWeight(1); }   // THE MOVING REVEAL: still hidden, the first pose goes on at once (no stand-then-sit)
+            else next.crossFadeFrom(prev, MODEL_ANIM_FADE, false);
+        }
         return true;
     }
 
@@ -27990,10 +28033,15 @@ const ThreeRenderer = (function () {
                 m.scale.setScalar(s);
                 m.position.set(-((bb.min.x + bb.max.x) * 0.5) * s, -bb.min.y * s, -((bb.min.z + bb.max.z) * 0.5) * s);
                 var hasSkin = _cvOwnBakes(m, ownMats, ownTex);
+                /* THE MOVING REVEAL (2026-11-26): shown once dressed AND its idle plays */
+                var dkDress = true, dkAnim = !(hasSkin || entry.procClips);
+                var dkShow = function () { if (dkDress && dkAnim) m.visible = true; };
+                var dkAnimOn = function () { if (dkAnim) return; dkAnim = true; dkShow(); };
                 if (def.creatorBase && typeof _createAppearanceRig === 'function') {
                     try { rig = _createAppearanceRig(m, def.raceLook || (typeof normalizeCharacterAppearance === 'function' ? normalizeCharacterAppearance(U.appearance) : U.appearance)); rigRoot = m; } catch (e) { rig = null; }
-                    if (rig && !rig.dressed()) { m.visible = false; rig.whenDressed(function () { m.visible = true; }); }   // THE DRESSED REVEAL
+                    if (rig && !rig.dressed()) { dkDress = false; rig.whenDressed(function () { dkDress = true; dkShow(); }); }   // THE DRESSED REVEAL
                 }
+                m.visible = dkDress && dkAnim;
                 var inner = new THREE.Group();
                 inner.rotation.y = def.yawOffset || 0;
                 inner.add(m);
@@ -28002,14 +28050,20 @@ const ThreeRenderer = (function () {
                 if (!hasSkin && !entry.procClips) return;
                 var mx = mixer = new THREE.AnimationMixer(m);
                 var playIdle = function (clip, tsc) {
-                    if (tok !== utok || dead || mixer !== mx || !clip) return;
+                    if (tok !== utok || dead || mixer !== mx) return;
+                    if (!clip) { dkAnimOn(); return; }
                     var act = mx.clipAction(clip);
                     act.setLoop(THREE.LoopRepeat, Infinity);
                     if (tsc) act.timeScale = tsc;
                     act.play();
+                    mx.update(0);
+                    dkAnimOn();
                 };
                 var meshyIdle = function () {
-                    if (def.clips && def.clips.idle) _loadUnitGLB(def.clips.idle, function (ce) { playIdle(ce.clips && ce.clips[0], def.idleTimeScale || 0); });
+                    if (!(def.clips && def.clips.idle)) { dkAnimOn(); return; }
+                    _loadUnitGLB(def.clips.idle, function (ce) { playIdle(ce.clips && ce.clips[0], def.idleTimeScale || 0); });
+                    var ie = _unitGlbCache[def.clips.idle];
+                    if (ie && ie.failed) dkAnimOn(); else if (ie && !ie.root) (ie.doneCbs = ie.doneCbs || []).push(function (e2) { if (e2 && e2.failed) dkAnimOn(); });
                 };
                 if (entry.procClips) playIdle(entry.procClips.idle, 1);   // THE PROCEDURAL RIGS
                 else if (_animLibActive(def)) {
@@ -50027,9 +50081,31 @@ const ThreeRenderer = (function () {
         if (grew) { R.grows++; _ewBun.epoch++; }   // THE STALE LIGHT LIST: a longer rig is a new light list this very frame — every recorded group re-records now, not a frame late
         var v = _ewRigV || (_ewRigV = new THREE.Vector3()), v2 = _ewRigV2 || (_ewRigV2 = new THREE.Vector3()), inv = null;
         if (!_ewRigIdentity(sc.matrixWorld)) inv = (_ewRigM || (_ewRigM = new THREE.Matrix4())).copy(sc.matrixWorld).invert();
+        /* THE KEPT SLOTS (2026-11-26, mondo in the Ring: "flickering lights or lights not loading and turning on all of a sudden in far
+           away rooms"). The point lamps took the rig's slots in list order, so when the stage lit or darkened one lamp (its pick runs
+           every 0.5 s as you walk) every lamp after it moved one slot. three writes a light's colour and intensity once a FRAME (its
+           first render) but its place every render, so for that frame each moved slot drew one lamp's colour at another's place: a
+           flash across the level. Now a lamp keeps its slot while it is lit; a new one takes a free slot (which was dark), a lamp that
+           goes leaves its slot dark. Old order: window.EW_RIG_SLOTS_IN_ORDER. */
+        var pSlots = null;
+        if (!(typeof window !== 'undefined' && window.EW_RIG_SLOTS_IN_ORDER)) {
+            var SP = R.src.p, LP = R.k.p, st0 = R.pStamp = (R.pStamp | 0) + 1;
+            pSlots = R.pSlots || (R.pSlots = []);
+            while (pSlots.length < LP.length) pSlots.push(null);
+            for (i = 0; i < SP.length; i++) SP[i]._ew_rigSt = st0;
+            for (i = 0; i < pSlots.length; i++) if (pSlots[i] && pSlots[i]._ew_rigSt !== st0) pSlots[i] = null;
+            var free = 0;
+            for (i = 0; i < SP.length; i++) {
+                var sp = SP[i], sj = sp._ew_rigSlot;
+                if (sj != null && pSlots[sj] === sp) continue;
+                while (free < pSlots.length && pSlots[free]) free++;
+                if (free >= pSlots.length) break;
+                pSlots[free] = sp; sp._ew_rigSlot = free; sp._ew_rigOnAt = (_hq && sc === _hq.scene && _hq.ready) ? _alNow() : 0;   // THE SOFT LAMP (the walk only: a spell's flash is never slowed): a lamp that comes on fades up
+            }
+        }
         for (var ki = 0; ki < _EW_RIG_KINDS.length; ki++) {
             k = _EW_RIG_KINDS[ki];
-            var Lk = R.k[k], Sk = R.src[k];
+            var Lk = R.k[k], Sk = (k === 'p' && pSlots) ? pSlots : R.src[k];
             for (i = 0; i < Lk.length; i++) {
                 var d = Lk[i], s = Sk[i];
                 if (!s) {
@@ -50039,6 +50115,7 @@ const ThreeRenderer = (function () {
                     continue;
                 }
                 d.color.copy(s.color); d.intensity = s.intensity;
+                if (k === 'p' && pSlots && s._ew_rigOnAt) { var fk = (_alNow() - s._ew_rigOnAt) / 600; if (fk < 1) d.intensity = s.intensity * Math.max(0, fk) * Math.max(0, fk); else s._ew_rigOnAt = 0; }   // THE SOFT LAMP: 0.6 s up, not a pop
                 if (k === 'a') continue;
                 s.getWorldPosition(v); if (inv) v.applyMatrix4(inv);
                 d.position.copy(v);
@@ -54457,7 +54534,7 @@ const ThreeRenderer = (function () {
                model mask) is drawn before the frame and is not it either */
             var quad = !!(sc && sc.isQuadMesh), side = !!this._ew_sideRender;
             var outer = !depth && !shadowPass && !quad && !side;
-            if (outer) { this._ew_shadowFrame = true; var _fsp = _lensIn('render: gpu frees'); try { _ewGpuFreeLater(this); } finally { _lensOut(_fsp); } var _nsp = _lensIn('render: node + rig ticks'); try { _ewNodeTick(); _ewRigTick(sc, cam); } finally { _lensOut(_nsp); } if (!this._ew_noBunTick) { var _bsp = _lensIn('bundle check'); try { _ewBunTick(this, sc, cam); } finally { _lensOut(_bsp); } } }   // THE IMPOSSIBLE DOORS' picture: the real camera's check only (_hqImpDraw)
+            if (outer) { this._ew_shadowFrame = true; var _fsp = _lensIn('render: gpu frees'); try { _ewGpuFreeLater(this); } finally { _lensOut(_fsp); } var _nsp = _lensIn('render: node + rig ticks'); try { _ewNodeTick(); if (!this._ew_noBunTick) _ewRigTick(sc, cam); } finally { _lensOut(_nsp); } if (!this._ew_noBunTick) { var _bsp = _lensIn('bundle check'); try { _ewBunTick(this, sc, cam); } finally { _lensOut(_bsp); } } }   // THE IMPOSSIBLE DOORS' picture: the real camera's check only (_hqImpDraw)
             /* THE RENDER BUNDLES (W6): a point light's six cube faces share one camera — they draw the groups the classic
                way, frustum-culled per face, instead of replaying a bundle recorded unculled */
             var unb = shadowPass && cam && cam.isPerspectiveCamera && _ewBun.marked.length ? _ewBun.marked : null;
@@ -70802,6 +70879,15 @@ const ThreeRenderer = (function () {
         _loadUnitGLB(def.model, function (entry) {
             if (!_cv || tok !== _cvToken) return;      // stale — user moved on
             if (!entry || !entry.root) return;
+            /* THE MOVING REVEAL: shown once dressed AND its idle plays (see the reveal below) */
+            var _cvAnimOk = false, _cvDressOk = false, _cvRevealArmed = false, wrap = null;
+            function _cvShowNow() {
+                if (!_cvRevealArmed || !_cvAnimOk || !_cvDressOk || !wrap) return;
+                if (!_cv || _cv !== v || tok !== _cvToken) return;
+                v.dressWait = 0;
+                if (!wrap.visible) { wrap.visible = true; _cvHostState(v.host, 'ready'); }
+            }
+            function _cvAnimOn() { if (_cvAnimOk) return; _cvAnimOk = true; _cvShowNow(); }
             var m = _cloneUnitModel(entry.root);
             var bb = entry.bbox;
             var rawH = (bb.max.y - bb.min.y) || 1;
@@ -70886,13 +70972,16 @@ const ThreeRenderer = (function () {
                     if (ev.action === _cv.preview.act) _cvPreviewEnd(false);
                 });
                 function _playIdleClip(clip, ts) {
-                    if (!_cv || tok !== _cvToken || v.mixer !== mixer || !clip) return;
+                    if (!_cv || tok !== _cvToken || v.mixer !== mixer) return;
+                    if (!clip) { _cvAnimOn(); return; }
                     var act = mixer.clipAction(clip);
                     act.setLoop(THREE.LoopRepeat, Infinity);
                     if (ts) act.timeScale = ts;
                     act.play();
+                    mixer.update(0);
                     v.idleAct = act;
                     v.actions.idle = act;
+                    _cvAnimOn();   // THE MOVING REVEAL
                 }
                 if (entry.procClips) {
                     v.clips = entry.procClips;                  // every slot — the MOVE PREVIEW picks from it
@@ -70908,30 +70997,39 @@ const ThreeRenderer = (function () {
                             _loadUnitGLB(def.clips.idle, function (ce) {
                                 _playIdleClip(ce.clips && ce.clips[0], def.idleTimeScale || 0);
                             });
-                        }
+                            _cvIdleFailWatch(def.clips.idle);
+                        } else _cvAnimOn();
                     });
                 } else if (def.clips && def.clips.idle) {
                     v.clipUrls = def.clips;                     // per-character Meshy exports, loaded on demand
                     _loadUnitGLB(def.clips.idle, function (ce) {
                         _playIdleClip(ce.clips && ce.clips[0], def.idleTimeScale || 0);
                     });
-                }
+                    _cvIdleFailWatch(def.clips.idle);
+                } else _cvAnimOn();
+            } else _cvAnimOn();
+            function _cvIdleFailWatch(u) {   // an idle file that never lands does not hold the body back for ever
+                var ie = _unitGlbCache[u];
+                if (ie && ie.failed) _cvAnimOn();
+                else if (ie && !ie.root) (ie.doneCbs = ie.doneCbs || []).push(function (e2) { if (e2 && e2.failed) _cvAnimOn(); });
             }
             /* THE DRESSED REVEAL: MANIFESTING spins and the BODY ITSELF stays hidden until every piece of the look is on it. The
                canvas fade alone was not enough (mondo 11-05 "i still see the naked flash briefly"): on a body swap with the body
                GLB cached, the new body was added while the canvas was still fading out of the last character (0.5 s CSS), so the
                bare body drew on a canvas that was still showing. */
+            /* THE MOVING REVEAL (2026-11-26, mondo: "I should NEVER see a character not animating"): the body also waits for its
+               idle to be playing (the library bake, or the def's own idle file) */
             var dRig = v.appearanceRig;
-            if (dRig && !dRig.dressed()) {
+            _cvDressOk = !(dRig && !dRig.dressed());
+            if (!_cvDressOk || !_cvAnimOk) {
                 v.dressWait = tok;
                 wrap.visible = false;
-                dRig.whenDressed(function () {
+                if (!_cvDressOk) dRig.whenDressed(function () {
                     if (!_cv || _cv !== v || tok !== _cvToken || v.appearanceRig !== dRig) return;
-                    v.dressWait = 0;
-                    wrap.visible = true;
-                    _cvHostState(v.host, 'ready');
+                    _cvDressOk = true; _cvShowNow();
                 });
             } else { v.dressWait = 0; _cvHostState(v.host, 'ready'); }
+            _cvRevealArmed = true;
             if (!v.raf) { v.clock.getDelta(); v.raf = requestAnimationFrame(_cvFrame); }
         });
         // a failed base GLB never fires the success cb — watch the cache entry
@@ -98721,8 +98819,10 @@ const ThreeRenderer = (function () {
                 if (ch.kind !== 'player' && !_hqCharCullOff()) { try { _hqCharCullSetup(e); } catch (err) {} }   // THE PEOPLE OFF SCREEN
                 ch.cleaned = true;
                 if (H.shadows) { try { _applyShadowFlags(e.group); } catch (err) {} }   // THE LIGHT PASS 2.1: a body casts and receives
-                if (ch.kind === 'player') { H.playerAttached = true; if (H.portal && H.portal.issued) { try { _hqGunAttach(); } catch (err) {} } }   // THE GATE: the card waits for this AND for every file to land (_hqFrame); DOOR DASH: an issued gun is strapped on (hidden) so the first dash has it in the hand
+                if (ch.kind === 'player') ch._attachPending = true;   // THE GATE: the card waits for this AND for every file to land (_hqFrame); DOOR DASH: an issued gun is strapped on (hidden) so the first dash has it in the hand
             }
+            /* THE MOVING REVEAL (2026-11-26): the walker counts as attached once its clips are on too (the card waits for it) */
+            if (ch._attachPending && e._ew_animReady !== false) { ch._attachPending = false; H.playerAttached = true; if (H.portal && H.portal.issued) { try { _hqGunAttach(); } catch (err) {} } }   // DOOR DASH: an issued gun is strapped on (hidden) so the first dash has it in the hand
             e.model.rotation.y = ch.yaw;
             if (ch.heldUpright && ch.heldBone) {
                 /* undo the hand's world rotation + scale so the held prop stays
@@ -99207,7 +99307,7 @@ const ThreeRenderer = (function () {
             return g;
         };
         var fl = new THREE.Mesh(strip(0.004, false), _hqMat(S.floor || 'terrazzo', 1, 1, { shininess: 22, side: THREE.DoubleSide })); fl.name = 'hq-open-floor'; G.add(fl);
-        var so = new THREE.Mesh(strip(oh, true), _hqMat(S.ceiling || 'ceiling', 1, 1, { side: THREE.DoubleSide })); so.name = 'hq-open-soffit'; G.add(so);
+        var so = new THREE.Mesh(strip(oh + 0.02, true), _hqMat(S.ceiling || 'ceiling', 1, 1, { side: THREE.DoubleSide })); so.name = 'hq-open-soffit'; G.add(so);   // (11-26, mondo: "flickering ceiling textures"): 2 cm over the opening's top, so the drum's lintel and the joined room's own front, whose undersides lie exactly at `oh`, cover it where they overlap instead of fighting it pixel by pixel
         [-1, 1].forEach(function (sd) {
             var lat = sd * (hw + 0.05), inner = Math.sqrt(Math.max(0, R * R - lat * lat)) - 0.1, len = far - inner;
             var w = _hqBox(0.1, oh, len, wallMat);
@@ -102359,8 +102459,28 @@ const ThreeRenderer = (function () {
         return walk ? (S.frames >= 4 && now - S.at >= 120) : (S.frames >= HQ_SETTLE_FRAMES && now - S.at >= HQ_SETTLE_MS);   // a walk through a door: a short rest, the blink stays a blink
     }
     /* has anything moved since the last tick? (the cap counts from the last progress, not from the entry) */
+    /* THE MOVING REVEAL (2026-11-26, mondo: "I should NEVER see a character not animating"): the card also waits for every body
+       in the room to have its clips on (a failed model file does not hold it). Returns the count still waiting. */
+    function _hqCharBodyShown(e) {   // is the body itself drawn? (its first skinned mesh and every parent up to the entry's group)
+        if (!e || !e.model) return false;
+        var sk = null; e.model.traverse(function (n) { if (!sk && n.isSkinnedMesh && !n._ew_silhouette) sk = n; });
+        if (!sk) return false;
+        for (var q = sk; q; q = q.parent) { if (!q.visible) return false; if (q === e.group) return true; }
+        return true;
+    }
+    function _hqCharsAnimWaiting(H) {
+        if (typeof window !== 'undefined' && window.EW_NO_ANIM_GATE) return 0;
+        var n = 0, cs = H.chars || [];
+        for (var i = 0; i < cs.length; i++) {
+            var e = cs[i].entry; if (!e || e._ew_animReady !== false) continue;
+            var ce = cs[i].def && cs[i].def.model ? _unitGlbCache[cs[i].def.model] : null;
+            if (ce && ce.failed) continue;
+            n++;
+        }
+        return n;
+    }
     function _hqGateProgress(H, now) {
-        var G = H.gate, st = H.stage, S = H.settle, a = [G ? G.done + '/' + G.total : '', H.playerAttached ? 1 : 0, _alPending()];
+        var G = H.gate, st = H.stage, S = H.settle, a = [G ? G.done + '/' + G.total : '', H.playerAttached ? 1 : 0, _alPending(), _hqCharsAnimWaiting(H)];
         if (st) for (var id in st.parts) { var E = st.parts[id]; a.push(id, E.gate ? E.gate.done + '/' + E.gate.total : '', E.built ? 'b' : (E.slice ? E.slice.frames : 0), E.warm ? E.warm.i + '.' + E.warm.ti : '', E.attached ? 'a' : ''); }
         if (S) a.push(S.warms, S.warm ? S.warm.i + '.' + S.warm.ti : '', (S.why === 'files' || S.why === 'warm') ? '' : 's');
         var sig = a.join('|');
@@ -102373,7 +102493,7 @@ const ThreeRenderer = (function () {
         var gateOk = !G || G.idle() || G.closed;
         var still = _hqGateProgress(H, now);
         var capped = still > HQ_GATE_CAP_MS || now - H.t0 > HQ_GATE_HARD_MS;
-        var landed = playerOk && gateOk && !(H.stage && H.stage.round && !_hqStageRoundBeside(H));   // THE ROUND JOIN: the card holds until the room beyond stands beside this one
+        var landed = playerOk && gateOk && !_hqCharsAnimWaiting(H) && !(H.stage && H.stage.round && !_hqStageRoundBeside(H));   // THE ROUND JOIN: the card holds until the room beyond stands beside this one
         if (landed && !H.landed) { H.landed = true; H.landedAt = now; }   // the passes start under the card (_hqFrame)
         if (!capped) {
             if (!landed) return;
@@ -106469,7 +106589,7 @@ const ThreeRenderer = (function () {
                 cnt++; if (ri === 0) own++;
                 if (!shown) return;
                 o.getWorldPosition(v); if (R._ew_impDrop) v.y -= R._ew_impDrop * _hqUnits();   // THE IMPOSSIBLE DOORS: a room drawn out of sight is lit by where it is walked
-                all.push({ o: o, d: v.distanceToSquared(cam), own: ri === 0 ? 0 : 1 });
+                all.push({ o: o, d: v.distanceToSquared(cam) * ((o.visible && st.lampN >= 0) ? 0.64 : 1), own: ri === 0 ? 0 : 1 });   // THE STICKY PICK (11-26): a lit lamp stays lit until one 25 % nearer wants its place (two lamps near the line no longer swap every half second)
             });
         });
         var SR = HQ_STAGE_RULES, base = SR.lampsLive || 12, nbMin = (SR.lampsNb != null) ? Math.max(0, SR.lampsNb | 0) : 4;
@@ -107841,7 +107961,10 @@ const ThreeRenderer = (function () {
            again for it, then again for the real camera, every frame; the bundle check also ran for that camera and saw other
            lamps. Now, for this one render, the other parts are hidden (their lights stay: THE LIGHT RIG keeps every shader's light
            list), the part you stand in shows only its walker (once through the doorway), and the render skips the bundle check
-           (`_ew_noBunTick`): the real camera's check is the only one. WebGPU with the rig only (classic WebGL keys its programs on the
+           (`_ew_noBunTick`): the real camera's check is the only one. It skips THE LIGHT RIG's tick too (11-26, the flicker): three updates a
+           light's colour + intensity once a FRAME, at the frame's first render, which is this one; with the parts hidden the rig
+           handed its slots to other lamps here and the room you stand in was drawn with those values every other frame. The rig
+           keeps the real camera's last assignment (every lamp of the stage, the room beyond's included). WebGPU with the rig only (classic WebGL keys its programs on the
            light count, so there the whole scene draws as before). Old rule: window.EW_HQ_IMP_WHOLE_SCENE. */
         var hidL = [], wholeS = (typeof window !== 'undefined' && !!window.EW_HQ_IMP_WHOLE_SCENE) || !renderer.isWebGPURenderer || _ewRigOff(), inThis = H.stage && H.stage.impIn === r.key;
         if (!wholeS) {
@@ -110692,7 +110815,8 @@ const ThreeRenderer = (function () {
                     return { id: ch.id, kind: ch.kind, label: ch.label, x: +ch.x.toFixed(2), z: +ch.z.toFixed(2), y: +ch.y.toFixed(2),
                         deg: +_hqNormDeg(Math.atan2(ch.x, -ch.z) * 180 / Math.PI).toFixed(1), r: +Math.hypot(ch.x, ch.z).toFixed(2),
                         face: +_hqNormDeg((Math.PI - ch.yaw) * 180 / Math.PI).toFixed(0), pose: ch.pose, anim: e._ew_curAnim || null,
-                        actions: e.actions ? Object.keys(e.actions).length : 0, attached: !!e._ew_modelAttached, heightM: ch.heightM, race: ch.race, away: !!ch.away };
+                        actions: e.actions ? Object.keys(e.actions).length : 0, attached: !!e._ew_modelAttached, heightM: ch.heightM, race: ch.race, away: !!ch.away,
+                        animReady: e._ew_animReady !== false, shown: _hqCharBodyShown(e) };   // THE MOVING REVEAL: a probe checks shown => animReady
                 });
             },
             /* world position (m) of a named bone on a character, and relative to the character's root */

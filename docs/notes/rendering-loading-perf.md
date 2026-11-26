@@ -4333,3 +4333,24 @@ hwing_corn's groups re-recorded again and again, "skipped draws 56 (influences i
   a mesh first built with face shapes and no list (clone, twin, warm-up build) threw on every build. Mesh.prototype.morphTargetInfluences
   is now an accessor that hands out a list of zeros when the geometry has shapes and no list. Off: `EW_NO_MORPH_KEEP`.
 Unverified on WebGPU from the cloud (no WebGPU here): needs his next F3 from H-Wing.
+
+## THE KEPT SLOTS + THE SOFT LAMP + THE STICKY PICK + THE SOFFIT LIFT (2026-11-26, mondo in the Ring: "flickering ceiling textures, flickering lights or lights not loading and turning on all of a sudden in far away rooms")
+- THE KEPT SLOTS (`_ewRigTick`): the rig's point slots were handed out in list order, so lighting or darkening one lamp moved every
+  lamp after it one slot. three writes a light's colour + intensity once a FRAME (the frame's first render) but its place every
+  render: for a frame each moved slot drew one lamp's colour at another's place, a flash across the level every time the stage's
+  lamp pick (0.5 s) changed. A lamp now keeps its slot while lit; a new one takes a free (dark) slot. Old: `EW_RIG_SLOTS_IN_ORDER`.
+- THE SOFT LAMP: in the walk a lamp that takes a slot fades up over 0.6 s (squared) instead of popping on.
+- THE STICKY PICK (`_hqStagePick`): a lit lamp counts as 20 % nearer, so two lamps near the budget line no longer swap every 0.5 s.
+- THE PORTAL PASS skips the rig tick too (`_ew_noBunTick`): its hidden parts handed the rig's slots to other lamps and, the portal
+  being the frame's first render, the room you stand in drew with those every other frame (H-Wing).
+- THE SOFFIT LIFT (`_hqOpenFrontFill`): the open front's soffit lay exactly on the drum lintel's underside (panel60 vs light60 at 4 m
+  and 12 m, found by an up-ray probe over the Ring + Lobby stage): z-fighting. Now 2 cm higher; the probe finds no ceiling pairs.
+
+## THE MOVING REVEAL (2026-11-26, mondo: "I should NEVER see a character not animating or staying still waiting for their animations to load")
+three-renderer.js `_attachUnitModel`: a rigged body stays hidden (`m.visible = false`, the board's sprite stand-in stays) until its clips
+are wired (library bake, procedural clips, or the Meshy idle file; a missing / failed idle does not hold it), then shows two frames
+later so the caller's own slot (a seated pose) is already on; `entry._ew_animReady` false = still waiting, `entry._ew_animFresh` =
+no crossfade out of the hidden first clip (`_playUnitModelAnim`). A kept rig still baking keeps its body hidden (`_rig.animEntries`).
+The HQ load card waits for every body's clips (`_hqCharsAnimWaiting`, in the gate's progress signature) and the walker counts as
+attached only with its clips on. The forge viewer (`_cvAnimOn`) and the dock do the same. Probe: `ThreeRenderer.hq.dev.chars()`
+gives `shown` + `animReady` per body (shown && !animReady = the bug). Off: `window.EW_NO_ANIM_GATE`.
