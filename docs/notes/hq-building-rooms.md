@@ -1855,3 +1855,20 @@ three-renderer.js `_EMISSIVE_TERRAIN.light60`), `orange60` (tangerine), `orbit60
 Worn by: the Lobby (walls both levels, dado, trim, dome, flue, floor rings + spokes, Rhonda's desk front), the Ring (bayShell), the Foyer,
 the Spirit Realm office, the Penthouse's wood walls, and every HQ room that named `urban:WoodPanelling1a` (that sheet was never on R2: those
 dados drew untextured). The Works and H-Wing keep their own looks. Which room wears which: LOOK_BOOK.md section 0 "THE SIXTIES REFIT".
+
+## THE TRAINING ROOM, TIGHT (2026-11-26, the redo)
+mondo: "too spacious and big, there is no function to the form ... The 8x8 board and the little classroom with the tv are the most
+important parts ... take out the scoreboard ... the door training room reference photos". The photos: `door_reference_images/ChatGPT Image
+Sep 3, 2026 at 02_08_16 AM (1).png` and `(5).png` (the pit fenced by low oxblood barriers, lit seams, machinery in the corners, windows high).
+- data.js `rooms.training_hall`: 42 x 49 m (12 x 14 squares), 10.5 m high, stone over an oxblood dado. THE PIT = the 8 x 8 board at
+  x -14..14, z -17.5..10.5 (its middle at z -3.5); oxblood barriers (terrain `wall` rows, 1.05 m) 0.9 m off its edge, a 3.5 m gap with a
+  hazard stripe in the middle of each side; a two-square walkway. SOUTH (4 squares): the open front from the Ring at x 0, THE CLASSROOM west
+  of it (desks z 19, the TV cart -5.25, 22.4, the chalkboard), lockers / coffee / break table east. WEST: the Range Console at z -3.5.
+  NORTH: pumps + generators in the corners, gauge boards, two clocks, the service stair (w, z -21) and the Condemned Crossing (e, z -21).
+- Out: the scoreboard, the banners, the east deck and its stair, the racks and consoles, the sparring corner, every hung lamp (the board's
+  camera drew a hung lamp standing on the walkway: light is the shell's own `lights`).
+- HQ_ARENA_RULES.own.prebuilt_training: ox / oz 2 (re-cut by `node bake-arenas.js --own prebuilt_training`; base kept `training_floor`).
+- Moved with it: STORY_CUTSCENES.orientation_tv (every place, cam, props `near` and the screen: z -7), DOOR_CAST Locke (-6.35, 22.3),
+  Knox (19.6, 3.5, the east walkway's folding chairs), Ringer (18.2, -8.75); `rooms.training` counter / sparring spots / spawn (0, 21).
+- Checked: find-doorways.js + find-softlocks.js clear; probes: the room, the cutscene's first shots, the Ring's north passage (joined, no
+  card), the battle board.
