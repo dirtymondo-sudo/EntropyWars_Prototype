@@ -88683,6 +88683,15 @@ function hqStageRoundNeighbours(roomId) {
     const hub = [{ id: j.a, rel: G.back, round: true, links: [],
               rect: { x0: c.x - Ro, z0: c.z - Ro, x1: c.x + Ro, z1: c.z + Ro },
               spans: [{ side: G.pb.wall, t0: G.pb.t - G.ow / 2, t1: G.pb.t + G.ow / 2, kind: 'door', door: j.bDoor.id, pad: 0.3, depth: G.gap + 0.5 }] }];
+    /* THE PASSAGE JOIN, the way back (2026-11-26, mondo: "Still an invisible wall when i try to walk out the training room into the
+       hallway"): a `len` corridor lies between this box's wall and the hub's drum, outside the hub's square, so from the box it belonged to
+       nobody and was a wall past the span's pad. The hub's square reaches the box's wall on that side: the corridor is the hub's (its own
+       passage, _hqPassJ*) and the crossing into it happens there. */
+    if (G.len > 0) {
+        const SB = DOOR_HQ.rooms[j.b].shell, R0 = hub[0].rect, hw = SB.w / 2, hd = SB.d / 2;
+        if (G.pb.wall === 's') R0.z0 = Math.min(R0.z0, hd); else if (G.pb.wall === 'n') R0.z1 = Math.max(R0.z1, -hd);
+        else if (G.pb.wall === 'e') R0.x0 = Math.min(R0.x0, hw); else if (G.pb.wall === 'w') R0.x1 = Math.max(R0.x1, -hw);
+    }
     /* THE LEVEL JOIN: the hub's partner at its centre stands beside too (seen through the hub's passages: the Lobby from the Training Room) */
     const C = hqStageConc(j.a);
     if (C) hub.push({ id: C.other, rel: Object.assign({}, G.back), beside: true, portal: true, wait: true, links: [], spans: [], rect: hqStageConcRect(C.other, G.back) });

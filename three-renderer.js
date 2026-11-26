@@ -82,7 +82,7 @@ const ThreeRenderer = (function () {
         }
     })();
     /* THE BUILD LINE (the perf lens): bump the stamp in every PR that changes this file's walk / fight drawing */
-    var _EW_TR_STAMP = '11-26 no invisible wall';
+    var _EW_TR_STAMP = '11-26 training way out';
     function _ewBuildTok() {
         var sc = document.querySelectorAll('script[src*="three-renderer.js"]'), t = '';
         for (var i = 0; i < sc.length; i++) { var m = /[?&]v=([^&#]+)/.exec(sc[i].src || ''); if (m) { t = m[1]; break; } }
@@ -108506,7 +108506,7 @@ const ThreeRenderer = (function () {
             var nb = st.nbs[i], r = nb.rect;
             if (nb.imp) continue;   // THE IMPOSSIBLE DOORS: only through the doorway (_hqImpSurface)
             if (!(x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1)) continue;
-            var E = st.parts[nb.id]; if (!E || !E.attached) return null;
+            var E = st.parts[nb.id]; if (!E || !E.attached) return nb.round ? (nb.rel.y || 0) : null;   // NO INVISIBLE WALL (DOOR HQ): a round hub not drawn yet is its floor; the crossing loads it
             var q = hqStageFromRoom(nb.rel, x, z), y = null, ry = nb.rel.y || 0;
             _hqStageAsk(H, E, function () { y = _hqSurface(q.x, q.z, curY == null ? null : curY - ry, ignoreBlockers); });
             return (y == null) ? null : y + ry;
