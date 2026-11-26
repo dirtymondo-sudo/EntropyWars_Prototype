@@ -4318,3 +4318,18 @@ all its rooms), then went black again on the way back. Fix (data.js `hqStageRoun
 an open front (`door.open.w`) stand beside as `beside, portal, wait` neighbours, their frame = the hub's frame here composed with theirs
 in the hub (checked: a point round-trips to 1e-14). Cloud probe (node renderer, WebGL 2): from the Door Store the gallery offices and
 the Cafeteria are drawn through the Lobby where the picture showed black before.
+
+## THE PORTAL BUDGET + ONLY THE ROOM BEYOND + THE MORPH LIST KEEP (2026-11-26, mondo's H-Wing F3: 5.6 FPS, "DOOR HQ is a buggy mess")
+His F3 in H-Wing: "mirror/extra: classic draws 17.3" ms a frame (one dip 1635 ms), "replay: a group, all of it 41 ms", 49.6 re-records/s,
+hwing_corn's groups re-recorded again and again, "skipped draws 56 (influences is null)", "238x EWCreator_eyes [same key, same moment]".
+- THE PORTAL BUDGET (three-renderer.js `_hqImpRender`, data.js HQ_STAGE_RULES `impPerFrame 1, impEveryN 2, impFarEveryN 6`): each
+  see-through doorway on screen drew the whole scene again every frame. Now one a frame, the nearest every 2nd frame, the others every
+  6th, the most overdue first; between turns a doorway keeps its last picture + the view it was drawn from. Old: `EW_HQ_IMP_EVERY_FRAME`.
+- ONLY THE ROOM BEYOND (`_hqImpDraw`, WebGPU with the light rig only): for the picture's render the other built parts are hidden and the
+  part you stand in shows only its walker once through; the render skips the bundle check (`renderer._ew_noBunTick`), so recordings are
+  no longer replayed + refreshed for a second camera and re-recorded for its lamps. One camera for every doorway. Old: `EW_HQ_IMP_WHOLE_SCENE`.
+- impKeepM 60 -> 100: H-Wing's rooms were taken down and rebuilt while walking its floor (1,177 objects added, 64 shader builds a time).
+- THE MORPH LIST KEEP (`_ewMorphListKeep`, from init): three's MorphNode keeps the influences it found at a mesh's first build forever;
+  a mesh first built with face shapes and no list (clone, twin, warm-up build) threw on every build. Mesh.prototype.morphTargetInfluences
+  is now an accessor that hands out a list of zeros when the geometry has shapes and no list. Off: `EW_NO_MORPH_KEEP`.
+Unverified on WebGPU from the cloud (no WebGPU here): needs his next F3 from H-Wing.

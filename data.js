@@ -87892,7 +87892,11 @@ const HQ_STAGE_RULES = {
     /* the rooms of a level are KEPT BUILT while you walk it (detached when out of sight): up to this many parts (THE LEVEL JOIN) */
     levelKeep: 26,
     /* an impossible door's room is built only while the walker is within `impBuildM` of one of its doorways, and taken down past `impKeepM` */
-    impBuildM: 30, impKeepM: 60,
+    impBuildM: 30, impKeepM: 100,
+    /* THE PORTAL BUDGET (2026-11-26, mondo's H-Wing F3: 5.6 FPS): at most `impPerFrame` see-through doorways draw their picture a frame, the
+       nearest every `impEveryN` frames, the others every `impFarEveryN` (between turns a doorway keeps its last picture). impKeepM 60 -> 100:
+       H-Wing's rooms were taken down and built again as you walked its floor (a dip of 1,177 objects added, 64 shader builds, each time) */
+    impPerFrame: 1, impEveryN: 2, impFarEveryN: 6,
 };
 /* THE EXPLORATION DAY (§4.4 — Phase 3, 2026-09-26). One clock for every outdoor room (2026-10-17: hqRoomClock; was every zone with `clock: true`): a day of `dayMin` real
    minutes (fork 6's default, 24), run by the walk (map.js _hqClockAdvance: the HQ frame, never while paused, a panel is up,
