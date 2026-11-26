@@ -37782,77 +37782,76 @@ const DOOR_HQ = {
             ],
             spawn: { x: 0, z: -8.4, face: 180 },
         },
-        /* ══ THE TRAINING ROOM MAP (2026-10-20, mondo: "i want all of those voxel maps remade as new maps. Even the training room
-           and holo sim. They should be able to be built with the tools in the map editor ... design them with square tiles in mind")
-           — the `prebuilt_training` board is no longer the voxel Δ: it is the 8×8 cut of THIS room (HQ_ARENA_RULES.own.prebuilt_training,
-           baked by `node bake-arenas.js --own prebuilt_training`). The room is 18 × 18 battle squares, 2 levels to the mezzanine;
-           THE MATS are the 8 × 8 in the middle (x, z −14..14 = squares 5..12), the lessons' own tiles (TUTORIAL_LESSONS pins
-           them on the 8×8: keep it flat and open). West: the bleachers (six rows facing the mats). East: the mezzanine 2 levels
-           up (the steel stair along the north wall, the desk over the mats). North: the wall pads, the dummies. South (the camera's
-           side): low things only. Not linked into the building (Room 64 is still the walk's training room).
-           2× EVERYWHERE (2026-10-28, mondo: "2x everywhere"): the squares are 3.5 m (the hall 63 m, was 31.5 m on 1.75 m squares) —
-           the plan doubled (the mats, the apron, the bleachers' rows, the mezzanine, the stair), the heights kept in battle levels;
-           the props stay their real size, a group of them (the lockers, the desk) moved together to its new place.
-           THE TEST CHAMBER (2026-11-12, mondo: "make the training room look more like the old one, or just a newer design that is retro scifi
-           secret psychic testing sleek and futuristic"; he picked the mock-up): the gym is out. THE PAD is the same 8 x 8 (flat, open, the
-           lessons' tiles), pale tile in two tints with cyan seams, A-H / 1-8 on the apron and the old room's ORTHOGONAL GEOMETRY EXPOSURE AREA
-           as floor paint; four emitter pylons (one level, off the board) with an orb each; west the tank row (iso_tank + eeg_rack), north
-           the screen wall, the consoles and the subject chairs, east the operators' deck on the old mezzanine, racks under it; aluminium
-           walls, gunmetal dado. The pad's keys stay `urban:` sheets ON PURPOSE: a named terrain key (aluminium…) would change the board's
-           tile type, a rule change. The 8 x 8 pick is unchanged (no rebake). ══ */
+        /* ══ THE TRAINING ROOM, DOOR HQ 2.0 (2026-11-26, mondo: the most important room in DOOR HQ, on the Lobby's main line north of
+           Rhonda's desk; docs/plans/door-hq-2/FLOOR_PLANS.md + LOOK_BOOK.md). ONE room: the walk's Training Room (`rooms.training`, built
+           from this after the table) and the `prebuilt_training` board are cut from it. 63 x 63 m (18 x 18 squares), 14 m to an open
+           steel truss, the 8 x 8 pad in the middle (x, z -14..14, squares 5..12; HQ_ARENA_RULES.own.prebuilt_training, no rebake: the
+           pad, its keys and its level are unchanged). THE SHOT: you walk in through the grand doors on the south wall, small, down a
+           teal lane to the pad; the scoreboard stands at the far (north) wall, lit pad ringed by high-bay lamps (one even light, no
+           square in shadow). Concrete panels to 3.5 m, brushed aluminium above. West: the Range Console's desk on the pad's middle line, high
+           round windows over it (someone watches). North-west: the sparring corner. East: the operators' deck 3.5 m up (the steel stair
+           along the north wall), racks under it. South (the battle camera's side): low things only: the orientation corner (its
+           cutscene is shot on these exact spots: never move the TV cart, the three desks or Locke's spot), the coffee, the lockers.
+           Kept from mondo's 11-12 calls: no seats round the pad (he had the bleachers taken out), the retro sci-fi look. Out: the
+           test-chamber tanks, brain racks, orbs and corner pylons (DOOR keeps its nefarious side hidden at the start; the pylons
+           stood 3.5 m tall a square off the pad), the floor slogan, every door blurb. Nothing over 1.2 m within two squares of the
+           pad; nothing in a door's 3.5 m square (find-doorways.js). ══ */
         training_hall: {
             label: 'TRAINING ROOM',
-            sub: 'THE MATS · 8 × 8',
             kind: 'box',
             site: 'prebuilt_training',
             shell: {
-                w: 63, d: 63, h: 7.0,
-                wallH: 7.0, dadoH: 1.75,
-                floor: 'urban:TileGeneric3a', wall: 'aluminium', dado: 'gunmetal', trim: 'teal', ceiling: 'urban:FibreCeilingTile1a',
-                wallColor: 0xdfe8ee, pipes: false, keyLamp: 0, grassField: false,   // grassField: the pad is tile (THE GRASS FIELD grew a lawn on it in battle)
+                w: 63, d: 63, h: 14.0,
+                wallH: 14.0, dadoH: 3.5,
+                floor: 'concrete_floor', wall: 'aluminium', dado: 'urban:ConcretePanels1a', trim: 'teal', ceiling: 'urban:MetalTruss1a',
+                floorColor: 0xa4a6aa, wallColor: 0xe4e8ec, dadoColor: 0xc4c6c4, ceilColor: 0x9a9ea4,
+                pipes: false, keyLamp: 0, grassField: false,   // grassField: the pad is tile (THE GRASS FIELD grew a lawn on it in battle)
                   // THE ROOM'S OWN KEY LIGHT: a lit room takes none of the camera's Key Light (it blew the pad and a spell's water to white)
-                lights: [{ x: -10.5, z: -10.5 }, { x: 10.5, z: -10.5 }, { x: -10.5, z: 10.5 }, { x: 10.5, z: 10.5 },
-                         { x: -24.5, z: -10.5 }, { x: -24.5, z: 10.5 }, { x: 28.0, z: -14.0 }, { x: 28.0, z: 14.0 }],
-                mood: { light: 0xe6f4ff, strip: 0x9fe8ff, ambient: 1.0 },
+                /* the high-bay grid's real lights: the pad evenly (four + the middle), the Range Console, the deck, the doors */
+                lights: [{ x: -7.0, z: -7.0 }, { x: 7.0, z: -7.0 }, { x: -7.0, z: 7.0 }, { x: 7.0, z: 7.0 }, { x: 0, z: 0 },
+                         { x: -26.25, z: 0 }, { x: 28.0, z: -14.0 }, { x: 28.0, z: 14.0 }, { x: 0, z: 24.5 }],
+                mood: { light: 0xf4f0e6, strip: 0x9fe8ff, ambient: 1.0 },
                 fog: { color: 0x16181d, density: 0.0 },
                 look: { name: 'TRAINING ROOM', retro: { enabled: true, preset: 'teal', pixelSize: 1, ditherStrength: 0.34, grain: 0.024, tintAmount: 0.22, levels: 28 }, cin: { vignette: true, vigAmount: 0.3, vigSize: 0.58 }, nightMood: 0.0, bloom: 0 },
             },
             terrain: {
-                floor: 'urban:TileGeneric3a', cliff: 'gunmetal', path: 'urban:ConcreteStriped2a',
+                floor: 'concrete_floor', cliff: 'gunmetal', path: 'urban:ConcreteStriped2a',
                 noise: { amp: 0, scale: 5 }, crag: false, stalactites: false, stairs: 'steel',
                 marks: [
-                    { k: 'text', x: -15.2, z: -12.25, text: 'A', size: 1.1, color: 0xd8f4ff }, { k: 'text', x: -12.25, z: 15.2, text: '1', size: 1.1, color: 0xd8f4ff },
-                    { k: 'text', x: -15.2, z: -8.75, text: 'B', size: 1.1, color: 0xd8f4ff }, { k: 'text', x: -8.75, z: 15.2, text: '2', size: 1.1, color: 0xd8f4ff },
-                    { k: 'text', x: -15.2, z: -5.25, text: 'C', size: 1.1, color: 0xd8f4ff }, { k: 'text', x: -5.25, z: 15.2, text: '3', size: 1.1, color: 0xd8f4ff },
-                    { k: 'text', x: -15.2, z: -1.75, text: 'D', size: 1.1, color: 0xd8f4ff }, { k: 'text', x: -1.75, z: 15.2, text: '4', size: 1.1, color: 0xd8f4ff },
-                    { k: 'text', x: -15.2, z: 1.75, text: 'E', size: 1.1, color: 0xd8f4ff }, { k: 'text', x: 1.75, z: 15.2, text: '5', size: 1.1, color: 0xd8f4ff },
-                    { k: 'text', x: -15.2, z: 5.25, text: 'F', size: 1.1, color: 0xd8f4ff }, { k: 'text', x: 5.25, z: 15.2, text: '6', size: 1.1, color: 0xd8f4ff },
-                    { k: 'text', x: -15.2, z: 8.75, text: 'G', size: 1.1, color: 0xd8f4ff }, { k: 'text', x: 8.75, z: 15.2, text: '7', size: 1.1, color: 0xd8f4ff },
-                    { k: 'text', x: -15.2, z: 12.25, text: 'H', size: 1.1, color: 0xd8f4ff }, { k: 'text', x: 12.25, z: 15.2, text: '8', size: 1.1, color: 0xd8f4ff },
-                    { k: 'text', x: 0, z: -19.4, text: 'ORTHOGONAL GEOMETRY EXPOSURE AREA', size: 1.3, color: 0xffb020 },
-                    { k: 'line', x0: -14.0, z0: -14, x1: -14.0, z1: 14, w: 0.2, color: 0x30d8ff, y: 0.07 }, { k: 'line', x0: -14, z0: -14.0, x1: 14, z1: -14.0, w: 0.2, color: 0x30d8ff, y: 0.07 },
-                    { k: 'line', x0: -10.5, z0: -14, x1: -10.5, z1: 14, w: 0.2, color: 0x30d8ff, y: 0.07 }, { k: 'line', x0: -14, z0: -10.5, x1: 14, z1: -10.5, w: 0.2, color: 0x30d8ff, y: 0.07 },
-                    { k: 'line', x0: -7.0, z0: -14, x1: -7.0, z1: 14, w: 0.2, color: 0x30d8ff, y: 0.07 }, { k: 'line', x0: -14, z0: -7.0, x1: 14, z1: -7.0, w: 0.2, color: 0x30d8ff, y: 0.07 },
-                    { k: 'line', x0: -3.5, z0: -14, x1: -3.5, z1: 14, w: 0.2, color: 0x30d8ff, y: 0.07 }, { k: 'line', x0: -14, z0: -3.5, x1: 14, z1: -3.5, w: 0.2, color: 0x30d8ff, y: 0.07 },
-                    { k: 'line', x0: 0.0, z0: -14, x1: 0.0, z1: 14, w: 0.2, color: 0x30d8ff, y: 0.07 }, { k: 'line', x0: -14, z0: 0.0, x1: 14, z1: 0.0, w: 0.2, color: 0x30d8ff, y: 0.07 },
-                    { k: 'line', x0: 3.5, z0: -14, x1: 3.5, z1: 14, w: 0.2, color: 0x30d8ff, y: 0.07 }, { k: 'line', x0: -14, z0: 3.5, x1: 14, z1: 3.5, w: 0.2, color: 0x30d8ff, y: 0.07 },
-                    { k: 'line', x0: 7.0, z0: -14, x1: 7.0, z1: 14, w: 0.2, color: 0x30d8ff, y: 0.07 }, { k: 'line', x0: -14, z0: 7.0, x1: 14, z1: 7.0, w: 0.2, color: 0x30d8ff, y: 0.07 },
-                    { k: 'line', x0: 10.5, z0: -14, x1: 10.5, z1: 14, w: 0.2, color: 0x30d8ff, y: 0.07 }, { k: 'line', x0: -14, z0: 10.5, x1: 14, z1: 10.5, w: 0.2, color: 0x30d8ff, y: 0.07 },
-                    { k: 'line', x0: 14.0, z0: -14, x1: 14.0, z1: 14, w: 0.2, color: 0x30d8ff, y: 0.07 }, { k: 'line', x0: -14, z0: 14.0, x1: 14, z1: 14.0, w: 0.2, color: 0x30d8ff, y: 0.07 },
-                    { k: 'line', x0: -16.1, z0: -16.1, x1: 16.1, z1: -16.1, w: 0.14, color: 0xffb020 },
-                    { k: 'line', x0: -16.1, z0: 16.1, x1: 16.1, z1: 16.1, w: 0.14, color: 0xffb020 },
-                    { k: 'line', x0: -16.1, z0: -16.1, x1: -16.1, z1: 16.1, w: 0.14, color: 0xffb020 },
-                    { k: 'line', x0: 16.1, z0: -16.1, x1: 16.1, z1: 16.1, w: 0.14, color: 0xffb020 },
+                    /* A-H down the west side, 1-8 along the south (the lessons read the pad by them) */
+                    { k: 'text', x: -15.2, z: -12.25, text: 'A', size: 1.1, color: 0xe9e9e4 }, { k: 'text', x: -12.25, z: 15.2, text: '1', size: 1.1, color: 0xe9e9e4 },
+                    { k: 'text', x: -15.2, z: -8.75, text: 'B', size: 1.1, color: 0xe9e9e4 }, { k: 'text', x: -8.75, z: 15.2, text: '2', size: 1.1, color: 0xe9e9e4 },
+                    { k: 'text', x: -15.2, z: -5.25, text: 'C', size: 1.1, color: 0xe9e9e4 }, { k: 'text', x: -5.25, z: 15.2, text: '3', size: 1.1, color: 0xe9e9e4 },
+                    { k: 'text', x: -15.2, z: -1.75, text: 'D', size: 1.1, color: 0xe9e9e4 }, { k: 'text', x: -1.75, z: 15.2, text: '4', size: 1.1, color: 0xe9e9e4 },
+                    { k: 'text', x: -15.2, z: 1.75, text: 'E', size: 1.1, color: 0xe9e9e4 }, { k: 'text', x: 1.75, z: 15.2, text: '5', size: 1.1, color: 0xe9e9e4 },
+                    { k: 'text', x: -15.2, z: 5.25, text: 'F', size: 1.1, color: 0xe9e9e4 }, { k: 'text', x: 5.25, z: 15.2, text: '6', size: 1.1, color: 0xe9e9e4 },
+                    { k: 'text', x: -15.2, z: 8.75, text: 'G', size: 1.1, color: 0xe9e9e4 }, { k: 'text', x: 8.75, z: 15.2, text: '7', size: 1.1, color: 0xe9e9e4 },
+                    { k: 'text', x: -15.2, z: 12.25, text: 'H', size: 1.1, color: 0xe9e9e4 }, { k: 'text', x: 12.25, z: 15.2, text: '8', size: 1.1, color: 0xe9e9e4 },
+                    /* the pad's seams, white */
+                    { k: 'line', x0: -14.0, z0: -14, x1: -14.0, z1: 14, w: 0.2, color: 0xe9e9e4, y: 0.07 }, { k: 'line', x0: -14, z0: -14.0, x1: 14, z1: -14.0, w: 0.2, color: 0xe9e9e4, y: 0.07 },
+                    { k: 'line', x0: -10.5, z0: -14, x1: -10.5, z1: 14, w: 0.2, color: 0xe9e9e4, y: 0.07 }, { k: 'line', x0: -14, z0: -10.5, x1: 14, z1: -10.5, w: 0.2, color: 0xe9e9e4, y: 0.07 },
+                    { k: 'line', x0: -7.0, z0: -14, x1: -7.0, z1: 14, w: 0.2, color: 0xe9e9e4, y: 0.07 }, { k: 'line', x0: -14, z0: -7.0, x1: 14, z1: -7.0, w: 0.2, color: 0xe9e9e4, y: 0.07 },
+                    { k: 'line', x0: -3.5, z0: -14, x1: -3.5, z1: 14, w: 0.2, color: 0xe9e9e4, y: 0.07 }, { k: 'line', x0: -14, z0: -3.5, x1: 14, z1: -3.5, w: 0.2, color: 0xe9e9e4, y: 0.07 },
+                    { k: 'line', x0: 0.0, z0: -14, x1: 0.0, z1: 14, w: 0.2, color: 0xe9e9e4, y: 0.07 }, { k: 'line', x0: -14, z0: 0.0, x1: 14, z1: 0.0, w: 0.2, color: 0xe9e9e4, y: 0.07 },
+                    { k: 'line', x0: 3.5, z0: -14, x1: 3.5, z1: 14, w: 0.2, color: 0xe9e9e4, y: 0.07 }, { k: 'line', x0: -14, z0: 3.5, x1: 14, z1: 3.5, w: 0.2, color: 0xe9e9e4, y: 0.07 },
+                    { k: 'line', x0: 7.0, z0: -14, x1: 7.0, z1: 14, w: 0.2, color: 0xe9e9e4, y: 0.07 }, { k: 'line', x0: -14, z0: 7.0, x1: 14, z1: 7.0, w: 0.2, color: 0xe9e9e4, y: 0.07 },
+                    { k: 'line', x0: 10.5, z0: -14, x1: 10.5, z1: 14, w: 0.2, color: 0xe9e9e4, y: 0.07 }, { k: 'line', x0: -14, z0: 10.5, x1: 14, z1: 10.5, w: 0.2, color: 0xe9e9e4, y: 0.07 },
+                    { k: 'line', x0: 14.0, z0: -14, x1: 14.0, z1: 14, w: 0.2, color: 0xe9e9e4, y: 0.07 }, { k: 'line', x0: -14, z0: 14.0, x1: 14, z1: 14.0, w: 0.2, color: 0xe9e9e4, y: 0.07 },
+                    /* the teal frame round the pad, and the teal lane from the grand doors to it (the main line, carried in from the Lobby) */
+                    { k: 'line', x0: -16.1, z0: -16.1, x1: 16.1, z1: -16.1, w: 0.35, color: 0x2f6f68 },
+                    { k: 'line', x0: -16.1, z0: 16.1, x1: 16.1, z1: 16.1, w: 0.35, color: 0x2f6f68 },
+                    { k: 'line', x0: -16.1, z0: -16.1, x1: -16.1, z1: 16.1, w: 0.35, color: 0x2f6f68 },
+                    { k: 'line', x0: 16.1, z0: -16.1, x1: 16.1, z1: 16.1, w: 0.35, color: 0x2f6f68 },
+                    { k: 'line', x0: 0, z0: 16.3, x1: 0, z1: 31.3, w: 1.75, color: 0x2f6f68 },
                 ],
                 features: [
-                    { k: 'wall', x0: -19.25, z0: -19.25, x1: -19.25, z1: -19.25, t: 1.75, h: 3.5, key: 'gunmetal', rail: false }, { k: 'wall', x0: 19.25, z0: -19.25, x1: 19.25, z1: -19.25, t: 1.75, h: 3.5, key: 'gunmetal', rail: false }, { k: 'wall', x0: -19.25, z0: 19.25, x1: -19.25, z1: 19.25, t: 1.75, h: 3.5, key: 'gunmetal', rail: false }, { k: 'wall', x0: 19.25, z0: 19.25, x1: 19.25, z1: 19.25, t: 1.75, h: 3.5, key: 'gunmetal', rail: false },
-                    /* THE MATS: 8 × 8 foam squares, one battle square each, blue and black (the plateau under them is the mats' 4 cm) */
-                    { k: 'board', x: 0, z: 0, n: 8, cell: 3.5, keys: ['urban:TileGeneric1a', 'urban:TileGeneric1a'], colors: [0x66707a, 0x36424e], h: 0.06 },
-                    /* THE BLEACHERS ARE GONE (2026-11-12, mondo: "get rid of the seats on the camelot map and the training room"): the six seat rows
-                       on the west side, the walk behind them, their two end walls and the rail are out; the west side is open floor. */
-                    /* THE MEZZANINE (east): a steel grate 2 levels up along the east wall, its rail on the mats' side; the steel stair up the north wall */
+                    /* THE PAD: 8 x 8 squares, one battle square each, grey in two tints (its keys stay `urban:` sheets: a named terrain key
+                       would change the board's tile type) */
+                    { k: 'board', x: 0, z: 0, n: 8, cell: 3.5, keys: ['urban:TileGeneric1a', 'urban:TileGeneric1a'], colors: [0x8e9094, 0x5c6168], h: 0.06 },
+                    /* THE DECK (east): a steel grate 2 levels up along the east wall, its rail on the pad's side; the steel stair up the north
+                       wall starts two squares east of the scoreboard */
                     { k: 'bridge', x0: 28.0, z0: -31.5, x1: 28.0, z1: 31.5, w: 7, y: 3.5, thick: 0.3, rails: false, key: 'urban:MetalSubwayGrill1a', id: 'mezzanine' },   // two squares wide (x 24.5..31.5), wall to wall
-                    { k: 'ramp', x0: 3.5, z0: -29.75, x1: 24.5, z1: -29.75, w: 3.5, h0: 0, h1: 3.5, stairs: true, model: 'steel', edge: 0.01 },   // one square wide along the north wall, six squares long
+                    { k: 'ramp', x0: 7.0, z0: -29.75, x1: 24.5, z1: -29.75, w: 3.5, h0: 0, h1: 3.5, stairs: true, model: 'steel', edge: 0.01 },   // one square wide along the north wall, five squares long
                     { k: 'rail', x0: 24.6, z0: -28.0, x1: 24.6, z1: 31.2, y: 3.5, model: 'pipe' },
                     { k: 'wall', x0: 24.49, z0: -21.0, x1: 24.51, z1: -21.0, y: 3.2, t: 0.35, key: 'metal', rail: false, column: true },   // the columns on the square corners under the grate's edge
                     { k: 'wall', x0: 24.49, z0: -7.0, x1: 24.51, z1: -7.0, y: 3.2, t: 0.35, key: 'metal', rail: false, column: true },
@@ -37861,23 +37860,43 @@ const DOOR_HQ = {
                 ],
             },
             props: [
-                /* NORTH: the screen wall, the consoles, the subject chairs */
-                { key: 'dream_screen', wall: 'n', x: -7, mount: 3.0 }, { key: 'dream_screen', wall: 'n', x: 0, mount: 3.0 }, { key: 'dream_screen', wall: 'n', x: 7, mount: 3.0 },
-                { key: 'wall_clock', wall: 'n', x: 0, mount: 5.4 },
-                { key: 'monitor_stack', wall: 'n', x: -12.25 }, { key: 'monitor_stack', wall: 'n', x: 12.25 },
-                { key: 'retro_console', x: -5.25, z: -26.25, face: 180 }, { key: 'retro_console', x: 5.25, z: -26.25, face: 180 },
-                { key: 'egg_chair', x: -10.5, z: -22.75, face: 180 }, { key: 'egg_chair', x: 10.5, z: -22.75, face: 180 }, { key: 'egg_chair', x: 0, z: -22.75, face: 180 },
-                { key: 'server_rack', wall: 'n', x: -25.2 }, { key: 'server_rack', wall: 'n', x: -24.4 }, { key: 'server_rack', wall: 'n', x: -23.6 },
-                /* WEST: the tank row, a trace beside each tank; the round windows and the vent over them */
-                { key: 'iso_tank', x: -24.5, z: -10.5, face: 90 }, { key: 'iso_tank', x: -24.5, z: -3.5, face: 90 }, { key: 'iso_tank', x: -24.5, z: 3.5, face: 90 }, { key: 'iso_tank', x: -24.5, z: 10.5, face: 90 },
-                { key: 'eeg_rack', x: -24.5, z: -8.75, face: 90 }, { key: 'eeg_rack', x: -24.5, z: -1.75, face: 90 }, { key: 'eeg_rack', x: -24.5, z: 5.25, face: 90 }, { key: 'eeg_rack', x: -24.5, z: 12.25, face: 90 },
-                { key: 'observation_window', wall: 'w', z: -9.0, mount: 5.0 }, { key: 'observation_window', wall: 'w', z: 9.0, mount: 5.0 },
-                { key: 'vent_grille',    wall: 'w', z: 0, mount: 5.4 },
-                { key: 'dream_screen', wall: 'w', z: -3.5, mount: 2.6 }, { key: 'dream_screen', wall: 'w', z: 3.5, mount: 2.6 },
-                { key: 'door_xray', wall: 'w', z: -16, mount: 1.6 }, { key: 'door_xray', wall: 'w', z: 16, mount: 1.6 },
-                /* the emitters at the pad's four corners */
-                { key: 'floating_orb', x: -19.25, z: -19.25, y: 3.5 }, { key: 'floating_orb', x: 19.25, z: -19.25, y: 3.5 }, { key: 'floating_orb', x: -19.25, z: 19.25, y: 3.5 }, { key: 'floating_orb', x: 19.25, z: 19.25, y: 3.5 },
-                /* EAST under the deck: the racks; on the deck: the operators' consoles, the monitors */
+                /* THE LIGHT: high-bay lamps hung from the truss in a ring round the pad, two squares off its edge (a lamp over the pad stood
+                   between the battle camera and the squares as a dark dot); the room's real lights hang over the pad itself */
+                { key: 'high_bay_lamp', x: -12.25, z: -19.25, y: 11.2, floor: true }, { key: 'high_bay_lamp', x: -19.25, z: -12.25, y: 11.2, floor: true },
+                { key: 'high_bay_lamp', x: -5.25, z: -19.25, y: 11.2, floor: true }, { key: 'high_bay_lamp', x: -19.25, z: -5.25, y: 11.2, floor: true },
+                { key: 'high_bay_lamp', x: 5.25, z: -19.25, y: 11.2, floor: true }, { key: 'high_bay_lamp', x: -19.25, z: 5.25, y: 11.2, floor: true },
+                { key: 'high_bay_lamp', x: 12.25, z: -19.25, y: 11.2, floor: true }, { key: 'high_bay_lamp', x: -19.25, z: 12.25, y: 11.2, floor: true },
+                { key: 'high_bay_lamp', x: -12.25, z: 19.25, y: 11.2, floor: true }, { key: 'high_bay_lamp', x: 19.25, z: -12.25, y: 11.2, floor: true },
+                { key: 'high_bay_lamp', x: -5.25, z: 19.25, y: 11.2, floor: true }, { key: 'high_bay_lamp', x: 19.25, z: -5.25, y: 11.2, floor: true },
+                { key: 'high_bay_lamp', x: 5.25, z: 19.25, y: 11.2, floor: true }, { key: 'high_bay_lamp', x: 19.25, z: 5.25, y: 11.2, floor: true },
+                { key: 'high_bay_lamp', x: 12.25, z: 19.25, y: 11.2, floor: true }, { key: 'high_bay_lamp', x: 19.25, z: 12.25, y: 11.2, floor: true },
+                { key: 'high_bay_lamp', x: -19.25, z: -19.25, y: 11.2, floor: true }, { key: 'high_bay_lamp', x: -19.25, z: 19.25, y: 11.2, floor: true },
+                { key: 'high_bay_lamp', x: 19.25, z: -19.25, y: 11.2, floor: true }, { key: 'high_bay_lamp', x: 19.25, z: 19.25, y: 11.2, floor: true },
+                /* NORTH, the far wall: the scoreboard on the main line, the clock over it; round windows high up, a vent */
+                { key: 'scoreboard', x: 0, z: -30.6, face: 180 },
+                { key: 'wall_clock', wall: 'n', x: 0, mount: 10.4 },
+                /* DOOR's own banners (ZONE_FLAGS 'door') either side of the scoreboard */
+                { key: 'zone_banner', wall: 'n', x: -15.75, mount: 9.5, flag: 'door' }, { key: 'zone_banner', wall: 'n', x: -8.75, mount: 9.5, flag: 'door' },
+                { key: 'zone_banner', wall: 'n', x: 8.75, mount: 9.5, flag: 'door' }, { key: 'zone_banner', wall: 'n', x: 15.75, mount: 9.5, flag: 'door' },
+                { key: 'observation_window', wall: 'n', x: -12.25, mount: 8.0 }, { key: 'observation_window', wall: 'n', x: -19.25, mount: 8.0 },
+                { key: 'vent_grille', wall: 'n', x: -26.25, mount: 11.0 },
+                /* NORTH-WEST, the sparring corner (well off the pad) */
+                { key: 'punching_bag', x: -26.25, z: -27.5, face: 180 }, { key: 'punching_bag', x: -22.75, z: -27.5, face: 180 },
+                { key: 'wing_chun_dummy', x: -19.25, z: -27.5, face: 180 },
+                { key: 'dumbbell_rack', x: -30.2, z: -17.5, face: 90 },
+                { key: 'medicine_ball_rack', x: -30.2, z: -13.3, face: 90 },
+                /* WEST: the Range Console's desk on the pad's middle line, the door x-rays either side, round windows high over it */
+                { key: 'tanker_desk',    wall: 'w', z: 0 },
+                { key: 'crt_terminal',   x: -31.1, z: -0.35, y: 0.76, face: 90 },
+                { key: 'rotary_phone',   x: -31.12, z: 0.42, y: 0.76, face: 70 },
+                { key: 'papers_a',       x: -31.0, z: 0.05, y: 0.76, face: 100 },
+                { key: 'clipboard_flat', x: -30.95, z: 0.78, y: 0.76, face: 95 },
+                { key: 'instrument_whistle', x: -31.05, z: -0.75, y: 0.77, face: 30 },
+                { key: 'lesson_plaque',  wall: 'w', z: 1.9, lesson: 'floor' },
+                { key: 'door_xray', wall: 'w', z: -7.0, mount: 1.6 }, { key: 'door_xray', wall: 'w', z: 7.0, mount: 1.6 },
+                { key: 'observation_window', wall: 'w', z: -10.5, mount: 8.0 }, { key: 'observation_window', wall: 'w', z: 0, mount: 8.0 }, { key: 'observation_window', wall: 'w', z: 10.5, mount: 8.0 },
+                { key: 'water_cooler',   wall: 'w', z: 14.0 },
+                /* EAST under the deck: the racks; on the deck: the operators' consoles, the monitors, the projector */
                 { key: 'server_rack', wall: 'e', z: -12.65 }, { key: 'server_rack', wall: 'e', z: -11.75 }, { key: 'server_rack', wall: 'e', z: -10.85 }, { key: 'server_rack', wall: 'e', z: -9.95 },
                 { key: 'server_rack', wall: 'e', z: 9.95 }, { key: 'server_rack', wall: 'e', z: 10.85 }, { key: 'server_rack', wall: 'e', z: 11.75 }, { key: 'server_rack', wall: 'e', z: 12.65 },
                 { key: 'retro_control_panel', x: 30.4, z: 0, face: 270 },
@@ -37885,49 +37904,40 @@ const DOOR_HQ = {
                 { key: 'computer_chair_blue', x: 27.1, z: -3.5, y: 3.5, face: 270 }, { key: 'computer_chair_grey', x: 27.1, z: 3.5, y: 3.5, face: 270 },
                 { key: 'monitor_stack',  wall: 'e', z: -3.0, mount: 3.5 }, { key: 'monitor_stack', wall: 'e', z: 3.0, mount: 3.5 },
                 { key: 'star_projector', x: 26.2, z: 0, y: 3.5, face: 270 },
-                /* SOUTH (the camera's side, kept low) */
-                { key: 'exit_sign',      wall: 's', x: 0, mount: 3.1 },
-                { key: 'keypad',         wall: 's', x: 2.2 },
-                { key: 'radiation_sign', wall: 's', x: 10.0 },
-                { key: 'tulip_table',    x: -10.5, z: 28.5 }, { key: 'tulip_chair', x: -11.8, z: 28.5, face: 90 }, { key: 'tulip_chair', x: -9.2, z: 28.5, face: 270 },
+                { key: 'locker',         wall: 'e', z: 17.5 }, { key: 'locker', wall: 'e', z: 18.4 },
+                { key: 'hook_rail',      wall: 'e', z: 19.3 },
+                { key: 'folding_chair',  x: 30.2, z: 5.2, face: 280 }, { key: 'folding_chair', x: 30.2, z: 6.7, face: 260 },
+                /* SOUTH (the battle camera's side, kept low): the grand doors' sign and keypad; east of them the locker row */
+                { key: 'exit_sign',      wall: 's', x: 0, mount: 3.6 },
+                { key: 'keypad',         wall: 's', x: 2.6 },
+                { key: 'locker', wall: 's', x: 7.0 }, { key: 'locker', wall: 's', x: 7.9 }, { key: 'locker', wall: 's', x: 8.8 }, { key: 'locker', wall: 's', x: 9.7 },
+                { key: 'locker', wall: 's', x: 10.6 }, { key: 'locker', wall: 's', x: 11.5 }, { key: 'locker', wall: 's', x: 12.4 },
+                { key: 'locker_bench',   x: 8.35, z: 29.0, face: 0 }, { key: 'locker_bench', x: 11.05, z: 29.0, face: 0 },
                 { key: 'fire_extinguisher', wall: 's', x: 14.8, mount: 1.0 },
+                { key: 'tulip_table',    x: -10.5, z: 28.5 }, { key: 'tulip_chair', x: -11.8, z: 28.5, face: 90 }, { key: 'tulip_chair', x: -9.2, z: 28.5, face: 270 },
                 { key: 'security_camera', x: 31.2, z: 31.2, face: 315, mount: 5.6 },
                 /* THE ORIENTATION CORNER (2026-11-12, mondo: "a little area where the player takes a seat and the TV gets rolled in"): three
-                   school desks by the main hall door, their sitters' backs to the pad, the tape TV on its AV cart at the south wall (the cart
-                   is one Meshy model, mondo's pick on the card; the TV and the player are the pack pieces Room 64 had). Low things only: this
-                   is the battle camera's side. The cutscenes' shots are planned on these spots: keep the lane from the door to the cart clear. */
+                   school desks by the grand doors, their sitters' backs to the pad, the tape TV on its AV cart at the south wall. The
+                   cutscenes' shots are planned on these spots: keep the lane from the door to the cart clear. */
                 { key: 'cursed_tv_set',  x: -5.25, z: 29.4, face: 0 },   // 📺 (2026-11-17) the cart, the TV, the remote and the cable are ONE file now: the Cursed TV unit's own set (mondo: the cutscene's TV and the unit the same)
                 { key: 'vhs_player',     x: -5.25, z: 29.4, y: 0.67, face: 0, span: 0.34 },   // (mondo 11-14: "VHS too big": a real deck, a real tape)
-                { key: 'vhs_tape',       x: -5.25, z: 29.38, y: 0.76, face: 20, span: 0.19 },   // (mondo 11-15: "the vhs isnt sitting on the cart": it lay under the bottom rail; now on top of the deck, seated by THE TABLETOP SEAT)
+                { key: 'vhs_tape',       x: -5.25, z: 29.38, y: 0.76, face: 20, span: 0.19 },   // (mondo 11-15: "the vhs isnt sitting on the cart": now on top of the deck, seated by THE TABLETOP SEAT)
                 { key: 'school_desk',    x: -7.35, z: 26.0, face: 0 }, { key: 'school_desk', x: -5.25, z: 26.0, face: 0 }, { key: 'school_desk', x: -3.15, z: 26.0, face: 0 },
-                /* ROOM 64'S THINGS, MOVED IN: the range console's desk on the west wall, the forty-four-minute corner, the lockers, the cooler, the sign */
-                { key: 'tanker_desk',    wall: 'w', z: 0 },
-                { key: 'crt_terminal',   x: -31.1, z: -0.35, y: 0.76, face: 90 },
-                { key: 'rotary_phone',   x: -31.12, z: 0.42, y: 0.76, face: 70 },
-                { key: 'papers_a',       x: -31.0, z: 0.05, y: 0.76, face: 100 },
-                { key: 'clipboard_flat', x: -30.95, z: 0.78, y: 0.76, face: 95 },
-                { key: 'lesson_plaque',  wall: 'w', z: 1.9, lesson: 'floor' },
+                /* the coffee */
                 { key: 'cardboard_boxes', x: -13.4, z: 30.4, face: 0 },
                 { key: 'coffee_maker',   x: -13.4, z: 30.4, y: 0.95, face: 0 },
                 { key: 'solo_cup',       x: -12.95, z: 30.25, y: 0.95 },
                 { key: 'trash_bin',      x: -14.3, z: 30.7, face: 45 },
-                { key: 'water_cooler',   wall: 's', x: -17.5 },
-                { key: 'locker',         wall: 'e', z: 17.5 }, { key: 'locker', wall: 'e', z: 18.4 },
-                { key: 'hook_rail',      wall: 'e', z: 19.3 },
-                { key: 'folding_chair',  x: 30.2, z: 5.2, face: 280 }, { key: 'folding_chair', x: 30.2, z: 6.7, face: 260 },
                 { key: 'wet_floor_sign', x: -21.5, z: 22.5, face: 140 },   // it is still not wet
             ],
-            /* the doors are part of the room's look, so the board's room wears them too (Room 64's three, moved to these walls) */
+            /* the grand doors to the Lobby (the main line), the service stair, the condemned crossing; one name each, no blurb */
             doors: [
-                { id: 'egress',    wall: 's', x: 0,   leaf: 'leaf_exit', label: 'THE LOBBY',
-                  action: { room: 'central_egress', at: 'training' },
-                  desc: 'The way back up. The EXIT sign over this one is accurate, which is why it was chosen.' },
-                { id: 'stairs', wall: 'w', z: -24.5, leaf: 'leaf_closet_alt', label: 'SERVICE STAIR', sub: 'DOWN TO B · SERVICES',
-                  action: { room: 'services', at: 'stairs' },
-                  desc: 'The back stair down to the service floor. The kitchen, the laundry, and a corridor Facilities would rather you did not.' },
-                { id: 'condemned', wall: 'e', z: 24.5, leaf: 'leaf_shabby_wood', label: 'CONDEMNED CROSSING', sub: 'MYSTERY DUNGEON',
-                  action: { fn: '_goToMysteryDungeon' },
-                  desc: 'Condemned in 1987. The field office on the far side never acknowledged the memo, and somebody keeps oiling the hinges.' },
+                { id: 'egress',    wall: 's', x: 0,   leaf: 'leaf_wired_double', label: 'THE LOBBY',
+                  action: { room: 'central_egress', at: 'training' } },
+                { id: 'stairs', wall: 'w', z: -24.5, leaf: 'leaf_closet_alt', label: 'SERVICE STAIR',
+                  action: { room: 'services', at: 'stairs' } },
+                { id: 'condemned', wall: 'e', z: 24.5, leaf: 'leaf_shabby_wood', label: 'CONDEMNED CROSSING',
+                  action: { fn: '_goToMysteryDungeon' } },
             ],
             spawn: { x: 0, z: 28.0, face: 0 },
         },
@@ -86076,17 +86086,14 @@ const DOOR_HQ = {
    the agents, the sparring vessels, the lines. It carries no `site`, so it stays a plain HQ room (no site console, no Code Red). */
 DOOR_HQ.rooms.training = Object.assign({}, DOOR_HQ.rooms.training_hall, {
     label: 'TRAINING ROOM',
-    sub: 'PRACTICE · GAUNTLET · DUNGEON',
     roomNo: '64', why: '8 × 8',
     counters: [
         /* the launch console on the west wall (the tanker desk is the physical counter; this is the interaction) */
         { id: 'range', x: -30.4, z: 0, face: 90, plateY: 1.9, radius: 2.4, verb: 'USE',
-          label: 'RANGE CONSOLE', sub: 'PRACTICE BATTLE', action: { overlay: 'training' } },
+          label: 'RANGE CONSOLE', action: { overlay: 'training' } },
     ],
-    agents: [
-        { x: 6.0,   z: 20.5, face: 330, line: 'Eyes on the grid, officer. It measured 7×7 on Tuesday. Nobody filed the change.' },
-        { x: -27.5, z: -4.4, face: 115, line: 'Forty-one minutes. I am taking my break at forty-four.' },
-    ],
+    /* DOOR HQ 2.0: no nameless agents standing about (only the story's own people: Locke, Knox, Ringer come by their DOOR_CAST spots) */
+    agents: [],
     npcSpots: [
         /* two vessels sparring on the pad, one on the south walkway */
         { x: -1.75, z: 1.75, face: 90 },
