@@ -34083,7 +34083,8 @@ const DOOR_HQ = {
             /* DOOR HQ 2.0 (2026-11-26, plans/1_lobby_level_plan.png): THE RING is the staff corridor round the whole Lobby level, 7 m wide
                (two squares), outside the open-front rooms (r 45.5-52.5 in the Lobby's frame), A CLOSED LOOP (`arc[0]` a full circle). Its
                two inner doors are the Lobby's THE RING doors (62, 300); the Ring's rooms stand on its outer wall (`onRing` rows). */
-            rings: { 0: { rIn: 45.5, rOut: 52.5, id: 'ring_g', floor: 'GROUND FLOOR' }, 1: { rIn: 24.5, rOut: 28.5, id: 'ring_m', floor: 'MEZZANINE' } },
+            rings: { 0: { rIn: 52.5, rOut: 59.5, id: 'ring_g', floor: 'GROUND FLOOR' },   /* THE LEVEL JOIN (2026-11-26): two squares further out (was 45.5-52.5), clear of the Cafeteria's back wall (r 52.2): the Lobby and the Ring stand on one stage now */
+                  1: { rIn: 24.5, rOut: 28.5, id: 'ring_m', floor: 'MEZZANINE' } },
             endPadM: 2.2,             // metres of blank outer wall past the outermost threshold, before the cap
             gapM: 2.6,                // the least outer wall between two bays' door runs (room for a cabinet)
             arc: { 0: [0, 360], 1: null },
@@ -35247,17 +35248,23 @@ const DOOR_HQ = {
             /* `onRing: { level, deg }` = a room's door on the Ring's outer wall (hqRingMoveDoors moves it there at load) */
             doors: [
                 /* ── the floor ── */
-                { id: 'training',  deg: 0,   level: 0, leaf: 'leaf_exit', label: 'TRAINING ROOM', action: { room: 'training', at: 'egress' } },
+                /* THE LEVEL JOIN (2026-11-26): the three ways out to the Ring are OPEN PASSAGES, 7 m wide, walked with no card (the Ring builds the
+                   corridor, HQ_STAGE_RULES.concentric). `ringIn` = the Ring's door at the far end (the two bay rows make theirs, egress_<sector>).
+                   THE MAIN LINE: the north passage crosses the Ring to the Training Room (its door is the Ring's `training` row below). */
+                { id: 'north',     deg: 0,   level: 0, open: { w: 7, h: 4 }, ringIn: 'egress_main', label: 'THE RING', action: { room: 'ring_g', at: 'egress_main' } },
                 { id: 'doorstore', deg: 35,  level: 0, open: { w: 14, h: 4.5 }, label: 'DOOR STORE', action: { room: 'doorstore', at: 'lobby' } },
-                { id: 'bay_celestial', deg: 62, level: 0, leaf: 'leaf_wired_double', wide: true, label: 'THE RING', action: { sector: 'celestial' } },
+                { id: 'bay_celestial', deg: 67.5, level: 0, open: { w: 7, h: 4 }, label: 'THE RING', action: { sector: 'celestial' } },   // THE LEVEL JOIN: between the Door Store and Medical (was 62, a leaf)
                 { id: 'medical',   deg: 100, level: 0, open: { w: 14, h: 4.5 }, label: 'MEDICAL', action: { room: 'medical', at: 'lobby' } },
                 { id: 'foyer',     deg: 180, level: 0, leaf: 'leaf_lobby_glass_double', wide: true, label: 'THE FOYER', action: { room: 'foyer', at: 'egress' } },
                 { id: 'cafeteria', deg: 270, level: 0, open: { w: 17.5, h: 4.5 }, label: 'CAFETERIA', action: { room: 'cafeteria', at: 'lobby' } },
-                { id: 'bay_terrestrial', deg: 300, level: 0, leaf: 'leaf_wired_double', wide: true, label: 'THE RING', action: { sector: 'terrestrial' } },
+                { id: 'bay_terrestrial', deg: 315, level: 0, open: { w: 7, h: 4 }, label: 'THE RING', action: { sector: 'terrestrial' } },   // THE LEVEL JOIN: clear of the Cafeteria's front (was 300, a leaf)
                 /* ── the Ring's rooms (plans/1_lobby_level_plan.png): their doors stand on the Ring's outer wall. DOOR HQ 2.0 wave 3 (2026-11-26):
                    all eleven, clockwise from the Training Room's line, each a box room behind one door JOINED to the Ring with no card
                    (HQ_STAGE_RULES.round, THE RING AS A HUB); the angles keep the boxes clear of each other (each front's half-angle at the
                    Ring's outer wall + a margin). The H-Wing door (about 228) and the Subway are not rooms of this row. ── */
+                /* THE TRAINING ROOM's door on the Ring (THE LEVEL JOIN, 2026-11-26): an open passage 7 m wide out of the Ring's outer wall on the main
+                   line, 10.5 m long (HQ_STAGE_RULES.round `len`), the Training Room's open south front at its end, no card. */
+                { id: 'training',  deg: 0, level: 0, onRing: { level: 0, deg: 0 },   open: { w: 7, h: 4 }, label: 'TRAINING ROOM', action: { room: 'training', at: 'egress' } },
                 { id: 'it',        deg: 0, level: 0, onRing: { level: 0, deg: 28 },  leaf: 'leaf_office', label: 'IT', action: { room: 'it', at: 'egress' } },
                 { id: 'lostfound', deg: 0, level: 0, onRing: { level: 0, deg: 52 },  leaf: 'leaf_office', label: 'LOST AND FOUND', action: { room: 'lostfound', at: 'egress' } },
                 { id: 'locker',    deg: 0, level: 0, onRing: { level: 0, deg: 74 },  leaf: 'leaf_office', label: 'LOCKER ROOM', action: { room: 'locker', at: 'egress' } },
@@ -35300,12 +35307,12 @@ const DOOR_HQ = {
                 { key: 'papers_b',       deg: 186, r: 4.45, level: 0, y: 1.05, rot: -20 },
                 { key: 'coffee_mug',     deg: 175, r: 4.5,  level: 0, y: 1.05, rot: 40 },
                 { key: 'laminator',      deg: 205, r: 4.45, level: 0, y: 1.05, rot: 180 },   // the INTAKE SHEET's
-                { key: 'vending_machine', deg: 352, level: 0, wall: true },
-                { key: 'vending_machine', deg: 8,   level: 0, wall: true },
-                { key: 'vending_machine', deg: 76,  level: 0, wall: true },
+                { key: 'vending_machine', deg: 347, level: 0, wall: true },   // THE LEVEL JOIN: off the north passage's 7 m mouth (was 352)
+                { key: 'vending_machine', deg: 13,  level: 0, wall: true },   // (was 8)
+                { key: 'vending_machine', deg: 80,  level: 0, wall: true },   // (was 76: the east passage is at 67.5 now)
                 { key: 'vending_machine', deg: 157, level: 0, wall: true },
                 { key: 'vending_machine', deg: 204, level: 0, wall: true },
-                { key: 'vending_machine', deg: 318, level: 0, wall: true },
+                { key: 'vending_machine', deg: 327, level: 0, wall: true },   // (was 318: the west passage is at 315 now)
                 { key: 'notice_board',   deg: 145, level: 0, wall: true, mount: 1.3 },        // LOCKE'S CASE BOARD (the counter md_board_hq)
                 { key: 'trophy_case',    deg: 238, level: 0, wall: true },                     // THE TROPHY CASE (the counter trophies)
             ],
@@ -37355,7 +37362,7 @@ const DOOR_HQ = {
             ],
             /* the grand doors to the Lobby (the main line), the service stair, the condemned crossing; one name each, no blurb */
             doors: [
-                { id: 'egress',    wall: 's', x: 0,   leaf: 'leaf_wired_double', label: 'THE LOBBY',
+                { id: 'egress',    wall: 's', x: 0,   open: { w: 7, h: 4 }, label: 'THE RING',   // THE LEVEL JOIN (2026-11-26): an open front onto the passage from the Ring (no card); hqRingMoveDoors points it at the Ring
                   action: { room: 'central_egress', at: 'training' } },
                 { id: 'stairs', wall: 'w', z: -24.5, leaf: 'leaf_closet_alt', label: 'SERVICE STAIR',
                   action: { room: 'services', at: 'stairs' } },
@@ -86425,6 +86432,7 @@ function hqRingRoom(level) {
             action: { room: 'central_egress', at: bd.id || null },
             desc: 'Back to the ring. The desk will still be there. Probably the same desk.',
         });
+        if (bd.open) { const e = doors[doors.length - 1]; e.open = Object.assign({}, bd.open); delete e.leaf; delete e.wide; delete e.desc; }   // THE LEVEL JOIN (2026-11-26): an open passage to the Lobby
         /* the thresholds, `spacing` apart along the outer wall, centred on the run. THE BAY DOORS ARE GONE (2026-11-18): none is made */
         const noBays = (typeof HQ_EARNED_DOOR_RULES !== 'undefined') && !HQ_EARNED_DOOR_RULES.thresholds;
         if (!noBays) sec.maps.forEach((id, i) => {
@@ -86439,7 +86447,7 @@ function hqRingRoom(level) {
             });
         });
         /* the inner wall by the way out: extinguisher, breaker, a clock on a wide segment */
-        const doorHalfDeg = m2degIn((bd.wide ? 3.3 : 2.5) / 2);
+        const doorHalfDeg = m2degIn((bd.open ? +bd.open.w + 0.6 : (bd.wide ? 3.3 : 2.5)) / 2);
         props.push({ key: 'fire_extinguisher', deg: norm(seg.deg + doorHalfDeg + m2degIn(0.9)), side: 'in', wall: true });
         props.push({ key: 'breaker_panel', deg: norm(seg.deg - doorHalfDeg - m2degIn(1.0)), side: 'in', wall: true });
         if ((seg.to - seg.from) * Math.PI / 180 * lay.rIn >= 14) props.push({ key: 'wall_clock', deg: norm(seg.deg + doorHalfDeg + m2degIn(2.6)), side: 'in', wall: true });
@@ -86459,6 +86467,11 @@ function hqRingRoom(level) {
         delete row.onRing; delete row.ringProps;
         doors.push(row);
         (d.ringProps || []).forEach(q => props.push({ key: q.key, deg: norm(d.onRing.deg + (q.ddeg || 0)), side: 'out', wall: true }));
+    });
+    /* THE LEVEL JOIN (2026-11-26): a Lobby door with `ringIn` (the north passage on the main line) has its far end on this ring's inner
+       wall: an open passage door back to the Lobby (the two bay rows above make theirs) */
+    if (level === 0) (((DOOR_HQ.rooms.central_egress || {}).doors) || []).filter(d => d && d.ringIn && (d.level || 0) === 0 && isFinite(+d.deg)).forEach(d => {
+        doors.push({ id: d.ringIn, deg: norm(d.deg), side: 'in', level: 0, open: Object.assign({}, d.open || { w: 7, h: 4 }), label: 'THE LOBBY', action: { room: 'central_egress', at: d.id } });
     });
     /* fluorescents along the centreline (the shell adds its own strips; these are the kit's fixtures) */
     const stripStep = m2degMid(3.2);
@@ -86495,10 +86508,24 @@ function hqRingRoom(level) {
         props.push({ key: 'cardboard_boxes', deg: norm(lay.arc[0] + m2degIn(1.4 + back)), r: lay.rIn + 1.0, rot: 25 });
         props.push({ key: 'filing_cabinet', deg: norm(lay.arc[0] + m2degIn(2.6 + back)), side: 'in', wall: true });
     }
+    /* THE LEVEL JOIN (2026-11-26): nothing stands in an open passage's mouth (a cabinet the gap dressing put at 2 degrees stood in the
+       north passage): a floor or wall piece within its width (+ 0.8 m) of an open door is stepped along the wall past its edge */
+    doors.filter(d => d.open && +d.open.w > 0).forEach(d => {
+        const rr = d.side === 'in' ? lay.rIn : lay.rOut, half = (+d.open.w / 2 + 0.8) / rr * 180 / Math.PI;
+        props.forEach(q => {
+            if (!q || q.ceil || typeof q.deg !== 'number') return;
+            const onSide = q.wall ? (q.side === d.side) : (typeof q.r === 'number' && (d.side === 'in' ? q.r < lay.mid : q.r >= lay.mid));
+            if (!onSide) return;
+            const dd = ((q.deg - d.deg + 540) % 360) - 180;
+            if (Math.abs(dd) < half) q.deg = norm(d.deg + (dd < 0 ? -1 : 1) * (half + 0.4));
+        });
+    });
     const bayList = lay.segments.map(sg => sg.bayNo != null ? sg.bayNo : '?').join(' · ');
     const s0 = lay.segments[0];
     return {
         label: 'THE RING', sub: lay.floor + (lay.segments.some(sg => /BAY/.test(String(sg.label || ''))) ? ' · BAYS ' + bayList : ''),
+        /* DOOR HQ 2.0 wave 4: the Ring is a DOOR HQ room too (mondo: "No men in black walking around", and nobody standing in a doorway) */
+        noWalkers: true,
         kind: 'bay', corridor: true, level: lay.level, ring: null, segments: lay.segments.map(sg => Object.assign({}, sg, { door: undefined, lines: ((DOOR_HQ.bays || {})[sg.sector] || {}).lines || [] })),
         shell: { rIn: lay.rIn, rOut: lay.rOut, arc: lay.arc.slice(), full: lay.full, wallH: B.wallH, dadoH: B.dadoH,
                  floor: B.floor, wall: B.wall, dado: B.dado, trim: B.trim, ceiling: B.ceiling },
@@ -87729,6 +87756,9 @@ const HQ_STAGE_RULES = {
         { a: 'ring_g', door: 'barbershop', b: 'barbershop', bDoor: 'egress' },
         { a: 'ring_g', door: 'lecture', b: 'classroom', bDoor: 'egress' },
         { a: 'ring_g', door: 'cubicles', b: 'cubicles', bDoor: 'egress' },
+        /* THE PASSAGE JOIN (THE LEVEL JOIN, 2026-11-26): `len` = metres of corridor between the hub's wall and the box's front (the box stands
+           that much further out; the hub's open door builds the corridor, _hqOpenFrontFill). The Training Room, beyond the Ring on the main line */
+        { a: 'ring_g', door: 'training', b: 'training', bDoor: 'egress', len: 10.5 },
         { a: 'central_egress', door: 'cafeteria', b: 'cafeteria', bDoor: 'lobby' },
         /* THE GALLERY JOIN (DOOR HQ 2.0 wave 3, 2026-11-26): the Lobby's upper level and its five glass-fronted rooms, no card; each box
            stands on the gallery's floor (hqStageRoundGeom `level` 1: rel.y = the hall's wallH) */
@@ -87738,6 +87768,15 @@ const HQ_STAGE_RULES = {
         { a: 'central_egress', door: 'spirit', b: 'spirit', bDoor: 'lobby' },
         { a: 'central_egress', door: 'extraterrestrial', b: 'extraterrestrial', bDoor: 'lobby' },   // THE CAFETERIA (DOOR HQ 2.0 wave 2, 2026-11-26): the open front at 270 degrees (17.5 x 4.5 m), the Kitchen inside the same box
     ],
+    /* THE LEVEL JOIN (2026-11-26, DOOR HQ 2.0 wave 4, mondo: "more connected and way less loading screens"): two ROUND hubs that share a
+       centre (the Lobby inside the Ring) stand on ONE stage, each the other's neighbour at the same frame (no turn, no offset). Every open
+       door on the inner hub's drum whose action leads to the outer hub, and the outer hub's open inner-wall door that leads back, are the two
+       ends of one PASSAGE: a corridor the outer hub builds from its inner wall to the inner hub's drum (its floor, walls, soffit and lamps),
+       walked with no card; the crossing is at either end. Through an open door you also SEE one hop further (the Lobby's open fronts from
+       the Ring, the Training Room from the Lobby): those rooms stand beside (`portal`, drawn while their doorway is on screen). */
+    concentric: [{ a: 'central_egress', b: 'ring_g' }],
+    /* the rooms of a level are KEPT BUILT while you walk it (detached when out of sight): up to this many parts (THE LEVEL JOIN) */
+    levelKeep: 26,
 };
 /* THE EXPLORATION DAY (§4.4 — Phase 3, 2026-09-26). One clock for every outdoor room (2026-10-17: hqRoomClock; was every zone with `clock: true`): a day of `dayMin` real
    minutes (fork 6's default, 24), run by the walk (map.js _hqClockAdvance: the HQ frame, never while paused, a panel is up,
@@ -88431,6 +88470,7 @@ function hqStagePart(roomId) {
 /* toId's frame seen from fromId's room: a point (x, z) of toId's room lies at hqStageToRoom(rel, x, z) in fromId's.
    rot = toId's quarter turns relative to fromId's (rotation.y = rot·π/2 on the group that carries toId). */
 function hqStageRel(fromId, toId) {
+    if (fromId !== toId && hqStageConcPair(fromId, toId)) return { x: 0, z: 0, y: 0, rot: 0 };   // THE LEVEL JOIN: one centre, one frame
     const rj = fromId !== toId ? hqStageRoundJoin(fromId, toId) : null;   // THE ROUND JOIN: the hall and its box at the door's own angle
     if (rj) { const G = hqStageRoundGeom(rj); return G ? Object.assign({}, fromId === rj.a ? G.rel : G.back) : null; }
     const A = hqWorldFrame(fromId), B = hqWorldFrame(toId);
@@ -88478,7 +88518,7 @@ function hqStageRoundJoins(roomId, otherId) {
         const lv = da && (da.level || 0);
         if (!da || !db || (lv !== 0 && lv !== 1) || (lv === 1 && !A.shell.mezz) || !isFinite(+da.deg) || !_hqDoorOnWall(B, db)) continue;
         if (A.kind === 'bay' && (da.cap || da.side === 'in')) continue;   // THE RING: only a door on its outer wall
-        out.push({ a: j.a, b: j.b, door: da, bDoor: db, level: lv });
+        out.push({ a: j.a, b: j.b, door: da, bDoor: db, level: lv, len: (+j.len > 0) ? +j.len : 0 });   // THE PASSAGE JOIN: `len` m of corridor between
     }
     return out;
 }
@@ -88488,7 +88528,7 @@ function hqStageRoundGeom(j) {
     if (!j) return null;
     const A = DOOR_HQ.rooms[j.a], B = DOOR_HQ.rooms[j.b], a = +j.door.deg * Math.PI / 180, lv = (j.door.level || 0) === 1 ? 1 : 0;
     const R = lv ? (A.shell.mezz.outer || A.shell.radius) : hqRoundHubR(A), ly = lv ? (+A.shell.wallH || 0) : 0;   // THE GALLERY JOIN: the upper drum, its floor
-    const gap = HQ_WORLD_RULES.wallM, pb = _hqDoorOnWall(B, j.bDoor);
+    const gap = HQ_WORLD_RULES.wallM + ((+j.len > 0) ? +j.len : 0), pb = _hqDoorOnWall(B, j.bDoor);   // THE PASSAGE JOIN: the box stands `len` further out
     const nOut = ({ n: [0, -1], s: [0, 1], e: [1, 0], w: [-1, 0] })[pb.wall];
     let th = Math.atan2(-Math.sin(a), Math.cos(a)) - Math.atan2(nOut[0], nOut[1]);   // the box's outward normal onto the way in to the hall's centre
     th = Math.atan2(Math.sin(th), Math.cos(th));
@@ -88497,7 +88537,7 @@ function hqStageRoundGeom(j) {
     rel.x = Rf * Math.sin(a) - q.x; rel.z = -Rf * Math.cos(a) - q.z;
     const o = hqStageFromRoom(rel, 0, 0), back = { x: o.x, z: o.z, y: -ly, rot: -rel.rot };
     const oa = hqDoorOpening(j.door), ob = hqDoorOpening(j.bDoor);
-    return { rel, back, R, deg: +j.door.deg, gap, ow: Math.min(oa.ow, ob.ow), oh: Math.min(oa.oh, ob.oh), pb, level: lv, y: ly };
+    return { rel, back, R, deg: +j.door.deg, gap, ow: Math.min(oa.ow, ob.ow), oh: Math.min(oa.oh, ob.oh), pb, level: lv, y: ly, len: (+j.len > 0) ? +j.len : 0 };
 }
 /* the stage's neighbour row for a room of a round join (hqStageNeighbours' shape; the hall's span is `side: 'round'` at the
    door's angle, `t0` / `t1` across the doorway) — null for any other room */
@@ -88513,13 +88553,94 @@ function hqStageRoundNeighbours(roomId) {
                        rect: { x0: Math.min(...cs.map(p => p.x)), z0: Math.min(...cs.map(p => p.z)), x1: Math.max(...cs.map(p => p.x)), z1: Math.max(...cs.map(p => p.z)) },
                        spans: [{ side: 'round', deg: G.deg, R: G.R, level: G.level, y: G.y, t0: -G.ow / 2, t1: G.ow / 2, kind: 'door', door: j.door.id, pad: 0.3, depth: G.gap + 0.5 }] });
         });
+        hqStageConcNeighbours(roomId, out);   // THE LEVEL JOIN: the other hub at the same centre, and what its open doors show
         return out.length ? out : null;
     }
     const j = js[0], G = hqStageRoundGeom(j); if (!G) return null;
     const SA = DOOR_HQ.rooms[j.a].shell, Ro = Math.max(SA.radius || 0, SA.rOut || 0, (SA.mezz && SA.mezz.outer) || 0, (SA.ring3 && SA.ring3.outer) || 0), c = hqStageToRoom(G.back, 0, 0);
-    return [{ id: j.a, rel: G.back, round: true, links: [],
+    const hub = [{ id: j.a, rel: G.back, round: true, links: [],
               rect: { x0: c.x - Ro, z0: c.z - Ro, x1: c.x + Ro, z1: c.z + Ro },
               spans: [{ side: G.pb.wall, t0: G.pb.t - G.ow / 2, t1: G.pb.t + G.ow / 2, kind: 'door', door: j.bDoor.id, pad: 0.3, depth: G.gap + 0.5 }] }];
+    /* THE LEVEL JOIN: the hub's partner at its centre stands beside too (seen through the hub's passages: the Lobby from the Training Room) */
+    const C = hqStageConc(j.a);
+    if (C) hub.push({ id: C.other, rel: Object.assign({}, G.back), beside: true, portal: true, wait: true, links: [], spans: [], rect: hqStageConcRect(C.other, G.back) });
+    return hub;
+}
+/* ══ THE LEVEL JOIN (HQ_STAGE_RULES.concentric, 2026-11-26) ══════════════════════════════════════════════════════════════════
+   → { me, other, inner, outer, r0 (the inner hub's drum), r1 (the outer hub's inner wall), pass: [{ deg, w, h, me (this room's door id),
+   them (the other's) }] } for a room of a row, or null (off, or the rows do not hold: two round hubs, an open door at each end) */
+const _hqStageConcCache = {};
+function hqStageConc(roomId) {
+    const rows = (typeof HQ_STAGE_RULES !== 'undefined' && HQ_STAGE_RULES.concentric) || [];
+    if (!roomId || !rows.length) return null;
+    const R = DOOR_HQ.rooms || {}, hit = _hqStageConcCache[roomId];
+    if (hit && hit.R === R && hit.A === R[hit.a] && hit.B === R[hit.b]) return hit.out;
+    let out = null, key = null;
+    rows.forEach(row => {
+        if (out || !row || (row.a !== roomId && row.b !== roomId)) return;
+        const A = R[row.a], B = R[row.b]; if (!A || !B) return;
+        const ra = hqRoundHubR(A) > 0 && A.kind !== 'bay' ? A.shell.radius : 0, rb = (B.kind === 'bay' && B.shell && B.shell.full) ? +B.shell.rIn : 0;
+        if (!(ra > 0) || !(rb > ra)) return;
+        const pass = [];
+        (B.doors || []).forEach(d => {
+            if (!d || d.side !== 'in' || (d.level || 0) !== 0 || !(d.open && +d.open.w > 0) || !d.action || d.action.room !== row.a) return;
+            const da = (A.doors || []).find(x => x && x.id === d.action.at && (x.level || 0) === 0 && x.open && +x.open.w > 0);
+            if (!da) return;
+            const w = Math.min(+d.open.w, +da.open.w), h = Math.min(+d.open.h || 4, +da.open.h || 4);
+            pass.push({ deg: +d.deg, w, h, a: da.id, b: d.id });
+        });
+        if (!pass.length) return;
+        key = row;
+        out = { a: row.a, b: row.b, inner: row.a, outer: row.b, r0: ra, r1: rb, pass };
+    });
+    const res = out ? Object.assign({}, out, { me: roomId, other: roomId === out.a ? out.b : out.a,
+        pass: out.pass.map(p => Object.assign({}, p, { me: roomId === out.a ? p.a : p.b, them: roomId === out.a ? p.b : p.a })) }) : null;
+    _hqStageConcCache[roomId] = { R, a: key ? key.a : null, b: key ? key.b : null, A: key ? R[key.a] : null, B: key ? R[key.b] : null, out: res };
+    return res;
+}
+function hqStageConcPair(aId, bId) { const C = hqStageConc(aId); return !!(C && C.other === bId); }
+/* a hub's bounding square in another room's metres (rel = the hub's frame there) */
+function hqStageConcRect(id, rel) {
+    const S = ((DOOR_HQ.rooms || {})[id] || {}).shell || {}, Ro = Math.max(S.radius || 0, S.rOut || 0, (S.mezz && S.mezz.outer) || 0), c = hqStageToRoom(rel, 0, 0);
+    return { x0: c.x - Ro, z0: c.z - Ro, x1: c.x + Ro, z1: c.z + Ro };
+}
+/* the hub's own neighbour rows (hqStageRoundNeighbours `out`) + the other hub (`conc`, its spans the passages) + what the other hub's open
+   doors show one hop on (`beside`, `portal`: the open-fronted rooms round the Lobby from the Ring, the Training Room from the Lobby) */
+function hqStageConcNeighbours(roomId, out) {
+    const C = hqStageConc(roomId); if (!C) return out;
+    const I = { x: 0, z: 0, y: 0, rot: 0 };
+    out.push({ id: C.other, rel: Object.assign({}, I), round: true, conc: true, links: [], rect: hqStageConcRect(C.other, I),
+               spans: C.pass.map(p => ({ side: 'pass', deg: p.deg, t0: -p.w / 2, t1: p.w / 2, kind: 'pass', door: p.me, r0: C.r0, r1: C.r1, h: p.h })) });
+    hqStageRoundJoins(C.other).forEach(j => {
+        if (j.a !== C.other || !(j.door.open && +j.door.open.w > 0) || out.some(n => n.id === j.b)) return;
+        const G = hqStageRoundGeom(j); if (!G) return;
+        const S = DOOR_HQ.rooms[j.b].shell, hw = S.w / 2, hd = S.d / 2;
+        const cs = [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]].map(p => hqStageToRoom(G.rel, p[0], p[1]));
+        out.push({ id: j.b, rel: G.rel, beside: true, portal: true, wait: true, links: [], spans: [], level: G.level,
+                   rect: { x0: Math.min(...cs.map(p => p.x)), z0: Math.min(...cs.map(p => p.z)), x1: Math.max(...cs.map(p => p.x)), z1: Math.max(...cs.map(p => p.z)) } });
+    });
+    return out;
+}
+/* THE CROSSING between the two hubs: from the inner one once the feet are `hys` past the outer one's inner wall, from the outer one once
+   they are `hys` inside the inner one's drum (the passage belongs to whoever you came from). → the other hub's id or null */
+function hqStageWhereConc(roomId, x, z, hys) {
+    const C = hqStageConc(roomId); if (!C) return null;
+    const hy = (hys == null ? HQ_WORLD_RULES.crossHys : hys), r = Math.hypot(x, z);
+    if (roomId === C.inner) return r > C.r1 + hy ? C.outer : null;
+    return r < C.r0 - hy ? C.inner : null;
+}
+/* the corridors a ROUND hub's own surface, air and boom answer for, with or without the stage built (a room asked from its neighbour
+   reads them too): the LEVEL JOIN's passages (both hubs) and THE PASSAGE JOIN's corridors out of a hub's wall (`len`).
+   → [{ deg, w, h, r0, r1, conc (the other hub's id, or null) }] */
+function hqStagePassages(roomId) {
+    const out = [], C = hqStageConc(roomId);
+    if (C) C.pass.forEach(p => out.push({ deg: p.deg, w: p.w, h: p.h, r0: C.r0, r1: C.r1, conc: C.other, inner: roomId === C.inner }));
+    hqStageRoundJoins(roomId).forEach(j => {
+        if (j.a !== roomId || !(j.len > 0) || (j.level || 0) !== 0) return;
+        const G = hqStageRoundGeom(j); if (!G) return;
+        out.push({ deg: G.deg, w: G.ow, h: G.oh, r0: G.R, r1: G.R + G.gap, conc: null, inner: false, box: j.b });
+    });
+    return out;
 }
 /* THE CROSSING's rule from the round hall: past its wall and `hys` metres inside the box beyond (no flip-flop) */
 function hqStageWhereRound(R, nbs, x, z, hys, lvl) {
@@ -88748,6 +88869,9 @@ function hqWorldDoorJoinResolve(j) {
 }
 /* the door join (if any) that door `doorId` of room `roomId` belongs to, on a staged part: { nb, gap, ow, oh, other door id } */
 function hqStageDoorJoin(roomId, doorId) {
+    /* THE LEVEL JOIN: a passage door of either hub (no leaf; the outer hub builds the corridor) */
+    const C = hqStageConc(roomId), cp = C ? C.pass.find(p => p.me === doorId) : null;
+    if (cp) return { nb: C.other, conc: true, gap: C.r1 - C.r0, ow: cp.w, oh: cp.h, otherDoor: cp.them, outer: roomId === C.outer, r0: C.r0, r1: C.r1 };
     const rjs = hqStageRoundJoins(roomId);   // THE ROUND JOIN: `round`, and `keep` = this side's leaf is the one in the doorway (the hall's)
     if (rjs.length) {
         const rj = rjs.find(x => { const m = roomId === x.a ? x.door : x.bDoor; return !!m && m.id === doorId; }); if (!rj) return null;
