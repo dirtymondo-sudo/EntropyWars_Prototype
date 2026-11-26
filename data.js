@@ -33647,7 +33647,8 @@ const DOOR_HQ = {
         shag_rug:          { proc: 'shag_rug',        h: 0.03, foot: 0 },                                                                                                                          // a thick disc (`r`, `color`, `color2` the inner ring)
         space_divider:     { proc: 'space_divider',   h: 2.1,  foot: 1.1,  rect: { hw: 1.12, hd: 0.1 }, block: true },                                                                            // a screen of white rings you see through
         pod_bed:           { proc: 'pod_bed',         h: 1.0,  foot: 0.9,  rect: { hw: 0.52, hd: 1.12 }, block: true, glow: { y: 0.6, size: 1.6, color: 0x9fe8ff }, light: { color: 0x8fdcff, intensity: 0.4, dist: 4, y: 0.7 } },   // the cryo capsule under a glass dome (the head is −Z)
-        infinity_pool:     { proc: 'infinity_pool',  h: 0.48,    foot: 3.0, rect: { hw: 3.1, hd: 1.85 }, block: true },   // Room 8: the raised basin, a RECT blocker (room axes: place it at face 0 / 180)
+        infinity_pool:     { proc: 'infinity_pool',  h: 0.48,    foot: 3.0, rect: { hw: 3.1, hd: 1.85 }, block: true },
+        penthouse_pool:    { proc: 'infinity_pool',  h: 0.48,    foot: 3.0, rect: { hw: 12.35, hd: 5.3 }, block: true },   // DOOR HQ 2.0 wave 4 (2026-11-26): the Penthouse's pool, 24.5 x 10.5 (its row's poolW / poolD)   // Room 8: the raised basin, a RECT blocker (room axes: place it at face 0 / 180)
         pool_lounger:      { proc: 'pool_lounger',   h: 0.8,     foot: 0.5, block: true, seat: 0.10, lie: true },   // Room 8: a lounger (a seat for hqSit at its own x/z)
         pool_umbrella:     { proc: 'pool_umbrella',  h: 2.4,     foot: 0.12, block: true },  // Room 8: the pole; the canopy is overhead
         /* ══ THE EXPLORATION FLOORS (HQ plan Phase 8, 2026-09-14) — the
@@ -34189,8 +34190,10 @@ const DOOR_HQ = {
        plain door is `leaf_coffee` (the old L2 rank leaf `leaf_hollow_core` was
        deleted 11-15); HOME's front door is `leaf_suburban_house`. */
     hwing: {
-        rooms: ['hwing_lobby', 'hwing_floor', 'hwing_home'],
-        entries: [{ room: 'deadend', door: 'hwing' }],   // 2026-09-26 (the user): no door from the garage — the wing is hard to find and hard to reach
+        /* DOOR HQ 2.0 WAVE 4 (2026-11-26, plans/5_h_wing.png): the halls, the four vignettes and the six uncanny rooms; one plain door on every level */
+        rooms: ['hwing_floor', 'hwing_desert', 'hwing_pines', 'hwing_corn', 'hwing_moon', 'hwing_home', 'natatorium', 'garden', 'thirteenth', 'mandela', 'upsidedown'],
+        entries: [{ room: 'ring_g', door: 'hwing' }, { room: 'central_egress', door: 'hwing_upper' }, { room: 'garage', door: 'hwing' },
+                  { room: 'factory', door: 'hwing' }, { room: 'labs', door: 'hwing' }, { room: 'antechamber', door: 'hwing' }],
         legM: 48, barM: 12,
     },
     facility: {
@@ -34371,9 +34374,11 @@ const DOOR_HQ = {
     /* THE OLD WOODS (same day, the same rule): the Clearing, the Redwood Trail, Dead Man's Cave and Bohemian Grove stand in data.js (nothing of his deleted)
        but are never entered: the 36-plot room `site_prebuilt_fairy_forest_plots` stood for all four; since ONE WORLD (2026-11-17) that room is retired too and the
        Woods are three rooms at their v13 places (the Clearing + Dead Man's Cave, the Redwood Trail, Bohemian Grove) + the route rooms of the links L3 and L4. */
-    retired: { ring_m: 'central_egress',   /* THE EIGHT DOORS (2026-11-18): the mezzanine ring held only bay doors; its four doors in the Main Hall are closed */
+    retired: { ring_m: 'central_egress',
+               hwing_lobby: 'hwing_floor',   /* DOOR HQ 2.0 WAVE 4 (2026-11-26): H-Wing has no lobby and no lift stop; a plain door on every level leads in */   /* THE EIGHT DOORS (2026-11-18): the mezzanine ring held only bay doors; its four doors in the Main Hall are closed */
                kitchen: 'cafeteria', coldroom: 'cafeteria',   /* DOOR HQ 2.0 WAVE 2 (2026-11-26, the Cafeteria thread): the Kitchen is the strip behind the Cafeteria's serving hatch, the Cold Room folded into it (LOOK_BOOK.md); the basement pair is gone */
                dreamlab: 'labs', medwing: 'medical',   /* DOOR HQ 2.0 WAVE 3 (2026-11-26): no Dream Lab in DOOR HQ (mondo 11-25; the Astral way is the D.U.M.B.'s); the old medical wing's Hold and Interrogation Room are on the Works' middle level */
+               corner: 'executive', pool: 'executive',   /* DOOR HQ 2.0 WAVE 4 (2026-11-26): the Corner Office and the Infinity Pool are parts of the one long Penthouse room */
                execwing: 'continuity', trophycase: 'central_egress',   /* DOOR HQ 2.0 WAVE 3 (2026-11-26): the Bureau of Continuity is on the Lobby's gallery; the Trophy Case is a cabinet on the Lobby's wall */
                dispensary: 'doorstore',   /* DOOR HQ 2.0 WAVE 2 (2026-11-26, mondo: "The Hatch/The Dispensary/Shop needs to be renamed to Door Store and only door store"): Room 911 off the Medical Wing is the Door Store off the Lobby; the wing's door to it is cut */
                works: 'factory', warehouse: 'factory', autopsy: 'factory', doorgarden: 'factory', control: 'factory', dock: 'factory', laundry: 'factory', boiler: 'factory',   /* DOOR HQ 2.0 WAVE 3 (2026-11-26, the Works' factory): the old second floor's lobby, Room 1000, Room Y, Room ½ and Room 24/7, and the basement's dock, laundry and boiler room are areas of ONE round room round the flue now (docs/plans/door-hq-2/factory.js); the Incinerator stays its own room (the labs' stair) */
@@ -34522,10 +34527,14 @@ const DOOR_HQ = {
             medwing: ['dispensary'],
             /* DOOR HQ 2.0 WAVE 3 (2026-11-26, the Ring's rooms): IT, Lost and Found, the Locker Room, the Bathroom, the Lecture Hall and the Cubicle
                Floor stand on the Ring now, each behind its one door; the old floors' doors to them and their back ways are closed */
-            annex: ['classroom', 'cubicles', 'bathroom', 'locker'], works: ['lostfound'], server: ['it'], natatorium: ['locker'], crawlspace: ['stall'],
+            annex: ['classroom', 'cubicles', 'bathroom', 'locker', 'garden'], works: ['lostfound'], server: ['it'], natatorium: ['locker'], crawlspace: ['stall', 'thirteen'],
             medical: ['staff'],   // DOOR HQ 2.0 WAVE 3 (2026-11-26): Medical's STAFF ONLY door led to the old wing (retired); the Hold and the Interrogation Room are down in the Works   // DOOR HQ 2.0 WAVE 2 (2026-11-26): the Dispensary is the Door Store, off the Lobby (DOOR_HQ.retired.dispensary)
             tunnel: ['carnival'], mandela: ['mirrors'], site_prebuilt_area51_ow_circus: ['tunnel', 'mirrors'],   // the two doors to the Circus that stood open from the first minute
-            dungeon: ['oubliette', 'ritual'], site_prebuilt_hollow_earth_ug_cavern: ['dungeon'],   // + DOOR HQ 2.0 WAVE 4 (2026-11-26): the Ritual Room is at the bottom of the Works, off the Incinerator                              // the Dungeon's moving wall to the Cavern
+            /* DOOR HQ 2.0 WAVE 4 (2026-11-26, H-WING): the uncanny rooms are H-Wing's; the third floor's garden door, the crawlspace's panel to the
+               Thirteenth Floor and the room at the end's draught into the wing are closed (H-Wing is reached by its plain door on every level) */
+            deadend: ['hwing'],
+            // + DOOR HQ 2.0 WAVE 4 (2026-11-26, the Works' bottom): the Dungeon's `ritual` door is cut: the Ritual Room is off the Incinerator
+            dungeon: ['oubliette', 'ritual'], site_prebuilt_hollow_earth_ug_cavern: ['dungeon'],                              // the Dungeon's moving wall to the Cavern
             site_prebuilt_fairy_forest_ow_ritual: ['lookingglass'], site_prebuilt_camelot_ow_forest: ['deadtree'],   // the dead tree: Bohemian Grove and Camelot's Forest touch by a trail
             site_prebuilt_fairy_forest_ow_redwood: ['lemuria'], site_prebuilt_hollow_earth_ow_agartha: ['woods'],     // the second Lemuria way (Mount Shasta's hidden adit stays)
             /* Area 51 to the D.U.M.B. was five ways: the floor lift (link area51_dumb) and the hidden vent stay */
@@ -34985,7 +34994,7 @@ const DOOR_HQ = {
            A `pool` way at BOTH ends: on the parapet's west corner in Room 8, free on the Triangle's
            north strip (its lanes carry the sea links' doors; a `way` hangs anywhere on the strip). */
         { id: 'weir_bermuda', route: 'deep', way: 'pool',
-          a: { room: 'pool', wall: 'free', x: -4.2, z: -3.4, face: 180, sub: 'THE WEIR · OVER THE EDGE' },
+          a: { room: 'executive', wall: 'free', x: -14.0, z: 27.0, face: 180 },   // DOOR HQ 2.0 wave 4 (2026-11-26): beside the Penthouse pool's weir, at the edge
           /* THE DEEP (2026-09-18): RE-POINTED off the bypassed board onto THE OPEN SEA's cay — the tide pool on the beach west of the jetty */
           b: { site: 'prebuilt_bermuda', part: 'ow_triangle', wall: 'free', x: 71.75, z: 68.25, face: 0, sub: 'THE TIDE POOL · SURFACE IN ROOM 8' },   // THE BEACH ON PLOTS (2026-11-15): the tide pool on the sand by the Lagoon (bake-beach.js checks this row)
           why: 'the water goes over the weir and nobody said where; the lifeguard is not certified for the edge and the Triangle is where the water was going',
@@ -35260,6 +35269,7 @@ const DOOR_HQ = {
                 { id: 'barbershop', deg: 0, level: 0, onRing: { level: 0, deg: 211 }, ringProps: [{ key: 'barber_pole', ddeg: 2 }], leaf: 'leaf_birch_glass', label: 'BARBERSHOP', action: { room: 'barbershop', at: 'egress' } },
                 { id: 'lecture',   deg: 0, level: 0, onRing: { level: 0, deg: 250 }, leaf: 'leaf_office', label: 'LECTURE HALL', action: { room: 'classroom', at: 'egress' } },
                 { id: 'cubicles',  deg: 0, level: 0, onRing: { level: 0, deg: 290 }, leaf: 'leaf_office', label: 'CUBICLE FLOOR', action: { room: 'cubicles', at: 'egress' } },
+                { id: 'hwing',     deg: 0, level: 0, onRing: { level: 0, deg: 228 }, leaf: 'leaf_white_wood', label: 'H-WING', action: { room: 'hwing_floor', at: 'ring' } },   // DOOR HQ 2.0 wave 4 (2026-11-26): the plain door, no plate
                 { id: 'subway',    deg: 0, level: 0, onRing: { level: 0, deg: 350 }, leaf: 'leaf_white_wood', label: 'GARAGE', action: { room: 'garage', at: 'ring' } },   // DOOR HQ 2.0 wave 3 (2026-11-26): the stair down to the Garage (the Subway is through it); the id stays
                 /* ── the gallery (level 1) ── */
                 /* THE DIVISION OFFICES (wave 3, plans/2_lobby_upper_level_penthouse.png): glass fronts, no door, joined with no card
@@ -35269,6 +35279,7 @@ const DOOR_HQ = {
                 { id: 'continuity',    deg: 140, level: 1, open: { w: 14, h: 4.9 }, label: 'BUREAU OF CONTINUITY', action: { room: 'continuity', at: 'lobby' } },
                 { id: 'spirit',        deg: 220, level: 1, open: { w: 14, h: 4.9 }, label: 'SPIRIT REALM DIVISION', action: { room: 'spirit', at: 'lobby' } },
                 { id: 'extraterrestrial', deg: 288, level: 1, open: { w: 14, h: 4.9 }, label: 'EXTRATERRESTRIAL DIVISION', action: { room: 'extraterrestrial', at: 'lobby' } },
+                { id: 'hwing_upper', deg: 180, level: 1, leaf: 'leaf_white_wood', label: 'H-WING', action: { room: 'hwing_floor', at: 'upper' } },   // DOOR HQ 2.0 wave 4 (2026-11-26): H-Wing's plain door on the upper level, over the Foyer
                 { id: 'elevator',  deg: 330, level: 1, leaf: null, proc: 'elevator', label: 'ELEVATOR', action: { room: 'car', at: 'out' }, floors: ['B', 'G', 'M', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '14', 'PH'] },
             ],
             counters: [
@@ -36748,303 +36759,112 @@ const DOOR_HQ = {
             spawn: { x: -3.2, z: 0, face: 90 },
         },
         /* execwing (THE EXECUTIVE SUITE) — RETIRED 2026-11-26 (DOOR HQ 2.0 wave 3): the Bureau of Continuity stands on the Lobby's gallery itself; DOOR_HQ.retired sends it there */
-        /* ── THE EXECUTIVE FLOOR (HQ plan 5.4 stage 1 + 7.4 ROOMS 4C + 8,
-           2026-09-14) — the elevator on the mezzanine at 0° (KEYHOLDER
-           rank + 12 Keys; the gate is the elevator door's, unchanged) rides
-           to THE PENTHOUSE: the executive lobby, a box room off the top of
-           the car with the FLOOR PANEL by the doors (a counter with no
-           action: the sixteen buttons, two of them lit — M is the way down,
-           PH is where you stand; there is no 13), the assistant's desk, and
-           two doors: the corner office (4C) on the east wall and the pool
-           (8) on the north. The lobby wears no number — it is a floor.
-           The plan's "rings as further rotunda instances" (5.4) is NOT
-           this: one floor, one lobby, two rooms; the rings stay open. ── */
+        /* ── PENTHOUSE (DOOR HQ 2.0 wave 4, 2026-11-26; plan docs/plans/door-hq-2/plans/2_lobby_upper_level_penthouse.png, look
+           LOOK_BOOK.md "Penthouse"). ONE long room, reached only by the lift (the car's PH button keeps its gate: locked until late).
+           31.5 x 63 m, 7 m high. North: the lift. The roofed half (z -31.5 .. 3.5) is the lounge, with the CORNER OFFICE in a glass box
+           on its east side (x 5.25 .. 15.75, z -24.5 .. -7): the desk with its back to THE WINDOW on the building's outside wall, the
+           window that should not exist (a building with no outside). The south half is open to the night sky: the INFINITY POOL,
+           24.5 x 10.5 m, its weir on the room's south line, and past it nothing (`sides.s: 'open'`, `apron: false`: no wall, no
+           ground, only the sky under the edge). Retired into it: `corner` (Room 4C) and `pool` (Room 8). One name: PENTHOUSE.
+           The "impossible doors" thread may make the window a portal. ── */
         executive: {
-            label: 'THE PENTHOUSE',
-            sub: 'EXECUTIVE FLOOR · KEYHOLDER RANK',
+            label: 'PENTHOUSE',
             kind: 'box',
             shell: {
-                w: 11, d: 8, h: 3.4,
-                wallH: 3.4, dadoH: 1.05,
-                /* THE RETRO-FUTURIST PASS (2026-09-21): the lobby grew 9 × 6 → 11 × 8, filleted and coved — the claret carpet under white
-                   plaster, a sputnik either side, egg chairs, a lava lamp on the coffee table */
-                round: 1.6, cove: 0.55,
-                floor: 'carpet', wall: 'drywall', dado: 'oxblood', trim: 'metal', ceiling: 'ceiling',
-                floorColor: 0x5b2a2c, wallColor: 0xf2eee4, dadoColor: 0x4a2a24, ceilColor: 0xf6f4ee,
-                pipes: false, strips: false, lights: [],
-                mood: { light: 0xfff0d6, ambient: 0.6 },          // warm, dimmable; nobody has found the dimmer
-                plate: { x: 0, z: -3.95, y: 2.9 },
-                look: HQ_ROOM_LOOKS.retro,
-            },
-            doors: [
-                /* the car: the way down — the egress's elevator from the other side (proc leaf, both halves pocket) */
-                { id: 'elevator', wall: 's', x: 0, leaf: null, proc: 'elevator',
-                  label: 'ELEVATOR', sub: 'THE CAR · DOWN',
-                  action: { room: 'car', at: 'out' },
-                  desc: 'The car. Five of its buttons work now. The other eleven light up when pressed and the car does not move; the office calls this a feature.' },
-                { id: 'corner', wall: 'e', z: -0.6, leaf: 'leaf_glass_exec',
-                  label: 'THE CORNER OFFICE', sub: 'YOUR OFFICE · STORY',
-                  action: { room: 'corner', at: 'lobby' },
-                  desc: 'Your office, once the ladder passed L3. A corner office in a round building. The closet downstairs is still yours; nobody has said which one you should be in.' },
-                { id: 'pool', wall: 'n', x: 2.2, leaf: 'leaf_glass',
-                  label: 'THE INFINITY POOL', sub: 'ON BREAK · THE EDGE',
-                  action: { room: 'pool', at: 'lobby' },
-                  desc: 'The pool. The edge is over the void. The top of the leaderboard takes its break here and does not talk about the edge.' },
-            ],
-            counters: [
-                /* THE FLOOR PANEL → nothing; the panel is the whole interaction (the way down is a button on it) */
-                { id: 'floorpanel', x: 1.55, z: 3.5, face: 0, plateY: 1.75, radius: 1.5, verb: 'PRESS',
-                  label: 'THE FLOOR PANEL', sub: 'SIXTEEN BUTTONS · TWO WORK', action: {},
-                  desc: 'B · G · M · 2 through 12 · 14 · PH. Two of them are lit. The car stops at M and at PH; the other floors are on the panel because the panel came with them.' },
-            ],
-            props: [
-                /* ── the south wall (z 4): the car, the panel beside it, the exit sign over it ── */
-                { key: 'floor_panel',    wall: 's', x: 1.55, mount: 1.0 },
-                { key: 'exit_sign',      wall: 's', x: 0, mount: 2.9 },
-                { key: 'potted_plant',   x: -1.7,  z: 3.5,  face: 20 },
-                { key: 'potted_plant',   x: 3.9,   z: 3.5,  face: 200 },
-                { key: 'security_camera',wall: 's', x: -3.0, mount: 2.6 },
-                { key: 'hook_rail',      wall: 's', x: -2.0 },
-                /* ── the north wall (z −4): the assistant's desk between the pool door and the corner ── */
-                { key: 'tanker_desk',    wall: 'n', x: -1.6 },
-                { key: 'crt_terminal',   x: -1.95, z: -3.55, y: 0.76, face: 180 },
-                { key: 'rotary_phone',   x: -1.15, z: -3.6,  y: 0.76, face: 200 },
-                { key: 'desk_lamp',      x: -2.25, z: -3.75, y: 0.76, face: 210 },
-                { key: 'papers_a',       x: -1.4,  z: -3.4,  y: 0.76, face: 15 },
-                { key: 'manila_folders', x: -0.9,  z: -3.45, y: 0.76, face: 340 },
-                { key: 'coffee_mug',     x: -0.75, z: -3.3,  y: 0.76, face: 140 },
-                { key: 'computer_chair_grey', x: -1.6, z: -2.95, face: 0 },        // the assistant's, facing the desk
-                { key: 'wall_clock',     wall: 'n', x: -3.2, mount: 2.6 },
-                { key: 'picture_round_a',wall: 'n', x: 0.3, mount: 1.7 },
-                /* ── the west wall (x −5.5): the seats you wait on ── */
-                { key: 'shag_rug',       x: -4.3,  z: -0.3, r: 1.3, color: 0x8a3a30, color2: 0xe8b33a },
-                { key: 'teal_chair',     x: -4.6,  z: -0.9, face: 90 },
-                { key: 'teal_chair',     x: -4.6,  z: 0.3,  face: 90 },
-                { key: 'coffee_table',   x: -4.0,  z: -0.3 },
-                { key: 'papers_a',       x: -4.15, z: -0.15, y: 0.46, face: 25 },     // the annual report; the year is not printed
-                { key: 'lava_lamp',      x: -3.85, z: -0.45, y: 0.46, face: 30 },     // THE RETRO-FUTURIST PASS: on the coffee table
-                { key: 'water_cooler',   wall: 'w', z: 1.7 },
-                { key: 'vent_grille',    wall: 'w', z: -1.5, mount: 2.6 },
-                { key: 'nameplate',      wall: 'w', z: -1.6, mount: 1.55 },
-                /* ── the east wall (x 5.5): the corner office door at −0.6, the files by it, the egg chair ── */
-                { key: 'filing_cabinet', wall: 'e', z: 1.0 },
-                { key: 'filing_cabinet', wall: 'e', z: 1.6 },
-                { key: 'egg_chair',      x: 3.6,   z: 1.4, face: 270, color: 0x8a3a30 },
-                /* ── the floor, the ceiling ── */
-                { key: 'rug_office',     x: 0.4,   z: 0.2 },
-                { key: 'fluorescent',    x: 0,     z: 0, ceil: true, face: 0 },
-                { key: 'sputnik_lamp',   x: -2.6,  z: 0, ceil: true },
-                { key: 'sputnik_lamp',   x: 2.6,   z: 0, ceil: true },
-            ],
-            agents: [
-                { x: -1.6, z: -2.95, face: 0, pose: 'hqSit', gender: 'female', label: 'THE EXECUTIVE ASSISTANT', reach: 1.9,
-                  line: '“The Director is in a meeting. The meeting is in the corner office. The corner office is yours. I have not resolved this either.”' },
-                { x: 4.2, z: -2.4, face: 300, pose: 'hqArms', gender: 'male', label: 'THE DIRECTOR’S GUARD', reach: 1.6,
-                  line: '“Keys were checked at the elevator. They are checked again here. The Keys have not changed; the policy has.”' },
-            ],
-            npcSpots: [
-                { x: -4.6, z: 0.3, face: 90 },      // waiting for a meeting that is not on the panel
-            ],
-            onlineSpots: [],
-            lines: [
-                '“Which floor?” “PH.” “That is the top.” “It is the only other one.”',
-                '“Sixteen buttons.” “Two work.” “Which two?” “The two that matter, and one of them is down.”',
-                '“Is it a corner office?” “The building is round.” “So?” “So it is a corner, and we do not ask of what.”',
-                '“The pool is over the void.” “Is that safe?” “The edge is. The void has not filed a complaint.”',
-            ],
-            spawn: { x: 0, z: 2.4, face: 180 },
-        },
-        /* ── ROOM 4C · THE CORNER OFFICE (HQ plan 7.4, 2026-09-14) — your
-           office once the ladder passes L3 (MASTER A5: Support at L1–L3,
-           Executive at L4+). The closet's counter is here at the desk (THE
-           IN-TRAY → the same case file, overlay 'intray'), the achievements
-           hang as WALL PLAQUES (a counter → the profile on its Achievements
-           tab, like Room 111's cabinet), and THE WINDOW is a counter with no
-           action: a corner office has two outside walls; the building is
-           round and has no outside; the panel is what the window looks out
-           on — the seven bays, with the count on file for each. Viewer-local
-           (RULE #2). The closet (101) stays yours; the door downstairs is
-           still the rank door. ── */
-        corner: {
-            label: 'THE CORNER OFFICE',
-            sub: 'YOUR OFFICE · STORY',
-            roomNo: '4C', why: 'a corner office in a round building — one dimension short of Room 4D, and a Form 90 problem',
-            kind: 'box',
-            shell: {
-                w: 6.4, d: 5.2, h: 3.4,
-                wallH: 3.4, dadoH: 1.05,
-                /* THE RETRO-FUTURIST PASS (2026-09-21): a cove (the doors sit too near the corners for a fillet), white plaster over walnut, a saucer over the desk */
-                cove: 0.5,
-                floor: 'carpet', wall: 'drywall', dado: 'wood', trim: 'metal', ceiling: 'ceiling',
-                floorColor: 0x4f3a2e, wallColor: 0xf2eee4, dadoColor: 0x5a3a2c, ceilColor: 0xf6f4ee,
+                w: 31.5, d: 63, h: 7,
+                wallH: 7, dadoH: 1.2,
+                open: true, sides: { s: 'open' }, apron: false,
+                canopy: [{ x0: -15.75, x1: 15.75, z0: -31.5, z1: 3.5 }], canopyGlow: 0x4a4234,
+                floor: 'marble_light', wall: 'urban:WoodPanelling1a', dado: 'urban:WoodPanelling1a', trim: 'brass', ceiling: 'ceiling',
+                floorColor: 0xeee8dc, wallColor: 0x9a8670, dadoColor: 0x5a4632, ceilColor: 0xb8ad94,
                 pipes: false, strips: false,
-                light: { x: 0, z: 0.4 },
-                mood: { light: 0xfff0d6, ambient: 0.6 },
-                plate: { x: -1.2, z: -2.55, y: 2.9 },
-                look: HQ_ROOM_LOOKS.retro,
+                lights: [{ x: -5.25, z: -21.0 }, { x: -5.25, z: -7.0 }, { x: 10.5, z: -15.75 }, { x: 10.5, z: -28.0 }, { x: 0, z: 12.0 }, { x: -8.75, z: 26.0 }, { x: 8.75, z: 26.0 }],
+                mood: { light: 0x9fb4d9, ambient: 0.42 },
+                sky: { night: 1, lock: 23, tint: 0x101a2e, tintAmt: 0.6, stars: 1.4, nebula: 0.35, clouds: 0.25, fog: { color: 0x141d33, amount: 0.45, top: 0.05, band: 0.5 }, scenery: 'none', density: 0.5 },
+                plate: { x: -5.25, z: -31.3, y: 5.9 },
             },
             doors: [
-                { id: 'lobby', wall: 'w', z: 0.6, leaf: 'leaf_glass_exec',
-                  label: 'THE PENTHOUSE', sub: 'BACK TO THE LOBBY',
-                  action: { room: 'executive', at: 'corner' },
-                  desc: 'The way back to the lobby. The glass is frosted from the lobby side and clear from this one; that is what the rank buys.' },
+                /* the lift: the only way in or out */
+                { id: 'elevator', wall: 'n', x: -5.25, leaf: null, proc: 'elevator', label: 'ELEVATOR', action: { room: 'car', at: 'out' } },
             ],
-            counters: [
-                /* ONE HOME PER FUNCTION (Phase 8, 2026-09-14): the in-tray counter went back
-                   to Room 101 (the desk stays; the fax still arrives downstairs) and THE
-                   PLAQUES are a PANEL (the count, and where the cabinet is) — the
-                   achievements open in Room 111 only. */
-                { id: 'plaques', x: 0.2, z: 2.0, face: 0, plateY: 1.9, radius: 1.7, verb: 'READ',
-                  label: 'THE PLAQUES', sub: 'ENGRAVED · SEE ROOM 111', action: {},
-                  desc: 'Your achievements on the wall, engraved. The blanks are hung too; the office engraves on the day. The cabinet they are copied from is in Room 111.' },
-                /* THE WINDOW → nothing; the panel is the view */
-                { id: 'view', x: 2.825, z: -1, face: 90, plateY: 1.9, radius: 1.6, verb: 'LOOK OUT',
-                  label: 'THE WINDOW', sub: 'IT SHOULD NOT EXIST', action: {},
-                  desc: 'A corner office has two outside walls. The building is round and has no outside. The window looks out on the seven bays anyway.' },
-            ],
+            counters: [],
             props: [
-                /* ── the north wall: the desk, the chair behind it, the second window ── */
-                { key: 'exec_desk',      x: 0.875,   z: -1.5, face: 180 },              // a floor prop (2026-09-16): centred on z −1.5, the drawers to the north (the Director's knees), the modesty panel to the room
-                { key: 'exec_chair',     x: 0.875,   z: -2.2, face: 180 },              // behind the desk, facing the room
-                { key: 'crt_terminal',   x: 0.175,  z: -1.75, y: 0.76, face: 0 },
-                { key: 'rotary_phone',   x: 1.625,  z: -1.7,  y: 0.76, face: 340 },
-                { key: 'desk_lamp',      x: -0.125,  z: -1.55, y: 0.76, face: 30 },
-                { key: 'papers_a',       x: 1.075,   z: -1.55, y: 0.76, face: 15 },      // the in-tray: the case file, face down
-                { key: 'clipboard_flat', x: 1.425,  z: -1.5,  y: 0.76, face: -20 },
-                { key: 'pen',            x: 0.725,  z: -1.45, y: 0.76, face: 75 },
-                { key: 'coffee_mug',     x: -0.075, z: -1.9,  y: 0.76, face: 20 },
-                { key: 'manila_folders', x: 1.875,   z: -1.9,  y: 0.76, face: 10 },
-                { key: 'false_window',   wall: 'n', x: -2.1, mount: 1.0 },
-                { key: 'vent_grille',    wall: 'n', x: 2.6, mount: 2.55 },
-                /* ── the east wall: THE WINDOW (the corner’s second outside wall), the files ── */
-                { key: 'false_window',   wall: 'e', z: -1.0, mount: 1.0 },
-                { key: 'filing_cabinet', wall: 'e', z: 1.2 },
-                { key: 'filing_cabinet', wall: 'e', z: 1.85 },
-                { key: 'lava_lamp',      x: 1.675,   z: -1.15, y: 0.76, face: 280 },            // on the desk's front corner
-                { key: 'potted_plant',   x: 2.75,  z: 2.35, face: 200 },
-                /* ── the south wall: THE PLAQUES, either side of the centre ── */
-                { key: 'wall_plaques',   wall: 's', x: -0.9, mount: 1.3 },
-                { key: 'wall_plaques',   wall: 's', x: 1.3,  mount: 1.3 },
-                { key: 'wall_clock',     wall: 's', x: 2.6, mount: 2.55 },
-                /* ── the west wall: the way out at 0.6, the plate, the hooks, the fridge you requisitioned in the closet ── */
-                { key: 'exit_sign',      wall: 'w', z: 0.6, mount: 2.9 },
-                { key: 'nameplate',      wall: 'w', z: -1.4, mount: 1.55 },
-                { key: 'hook_rail',      wall: 'w', z: 2.1 },
-                { key: 'mini_fridge',    x: -2.75, z: -2.1, face: 90 },               // requisitioned; nobody has asked for it back
-                { key: 'trash_bin',      x: -2.0,  z: -2.2, face: 10 },
-                /* ── the floor, the ceiling ── */
-                { key: 'rug_office',     x: 0.2,   z: 0.4 },
-                { key: 'teal_chair',     x: -0.125,  z: -0.5, face: 0 },                 // for whoever the Director is meeting — facing the Director
-                { key: 'teal_chair',     x: 1.775,   z: -0.5, face: 0 },
-                { key: 'egg_chair',      x: 1.9,   z: 1.7,  face: 315, color: 0xc9622c },      // THE RETRO-FUTURIST PASS: the ball chair in the corner, facing the desk
-                { key: 'fluorescent',    x: 0,     z: 0.4, ceil: true, face: 0 },
-                { key: 'saucer_pendant', x: -1.6,  z: 1.8, ceil: true },                       // THE RETRO-FUTURIST PASS: over the globe's corner
+                /* ── the lounge: two Chesterfields across a coffee table under the first chandelier, a wingback either side ── */
+                { key: 'shag_rug',          x: -5.25, z: -17.5, r: 3.2, color: 0x101a2e, color2: 0xd9c79e },
+                { key: 'chesterfield_sofa', x: -5.25, z: -19.6, face: 180 },
+                { key: 'chesterfield_sofa', x: -5.25, z: -15.4, face: 0 },
+                { key: 'coffee_table',      x: -5.25, z: -17.5 },
+                { key: 'wingback_chair',    x: -8.6,  z: -17.5, face: 90 },
+                { key: 'psx_armchair_1',    x: -1.9,  z: -17.5, face: 270 },
+                { key: 'crystal_chandelier', x: -5.25, z: -17.5, y: 5.4 },
+                { key: 'crystal_chandelier', x: -5.25, z: -5.25, y: 5.4 },
+                /* the west wall: the couch, the bust, the plants, the lamps */
+                { key: 'greek_couch',       x: -14.6, z: -8.75, face: 90 },
+                { key: 'marble_bust',       x: -14.7, z: -24.5, face: 90 },
+                { key: 'globe_lamp',        x: -14.6, z: -12.5 },
+                { key: 'globe_lamp',        x: -14.6, z: -28.6 },
+                { key: 'potted_plant',      x: -14.6, z: -4.5 },
+                { key: 'potted_plant',      x: -10.5, z: -30.5 },
+                { key: 'potted_plant',      x: 0.0,   z: -30.5 },
+                /* the piano in the north-east corner, by the office */
+                { key: 'decor_piano',       x: 10.5,  z: -28.6, face: 180 },
+                { key: 'globe_lamp',        x: 14.6,  z: -30.4 },
+                /* ── THE CORNER OFFICE: a glass box, its door in the middle bay, the name over it ── */
+                { key: 'office_glass',      x: 5.25, z: -22.75, face: 270, frame: 0xb8a172 },
+                { key: 'office_glass',      x: 5.25, z: -19.25, face: 270, frame: 0xb8a172 },
+                { key: 'office_glass_door', x: 5.25, z: -15.75, face: 270, text: ['CORNER OFFICE'], frame: 0xb8a172 },
+                { key: 'office_glass',      x: 5.25, z: -12.25, face: 270, frame: 0xb8a172 },
+                { key: 'office_glass',      x: 5.25, z: -8.75,  face: 270, frame: 0xb8a172 },
+                { key: 'room_wall', x: 10.5, z: -24.5, face: 180, len: 10.8, wallH: 4.9, t: 0.3, dadoH: 1.2, trimColor: 0xb8a172,
+                  front: { wall: 'urban:WoodPanelling1a', dado: 'urban:WoodPanelling1a', wallColor: 0x9a8670, dadoColor: 0x5a4632 },
+                  back:  { wall: 'urban:WoodPanelling1a', dado: 'urban:WoodPanelling1a', wallColor: 0x9a8670, dadoColor: 0x5a4632 } },
+                { key: 'room_wall', x: 10.5, z: -7.0, face: 180, len: 10.8, wallH: 4.9, t: 0.3, dadoH: 1.2, trimColor: 0xb8a172,
+                  front: { wall: 'urban:WoodPanelling1a', dado: 'urban:WoodPanelling1a', wallColor: 0x9a8670, dadoColor: 0x5a4632 },
+                  back:  { wall: 'urban:WoodPanelling1a', dado: 'urban:WoodPanelling1a', wallColor: 0x9a8670, dadoColor: 0x5a4632 } },
+                /* THE WINDOW: on the building's outside wall, behind the desk */
+                { key: 'false_window',      wall: 'e', z: -15.75, mount: 0.4, winW: 4.2, winH: 4.2 },
+                { key: 'brass_telescope',   x: 14.4, z: -20.6, face: 90 },
+                { key: 'rug_office',        x: 11.4, z: -15.75, span: 4.2 },
+                { key: 'exec_desk',         x: 11.6, z: -15.75, face: 270 },
+                { key: 'exec_chair',        x: 12.4, z: -15.75, face: 270 },
+                { key: 'desk_lamp',         x: 11.35, z: -16.75, y: 0.76, face: 250 },
+                { key: 'rotary_phone',      x: 11.4, z: -14.9, y: 0.76, face: 300 },
+                { key: 'papers_a',          x: 11.4, z: -15.6, y: 0.76, face: 15 },
+                { key: 'globe_lamp',        x: 14.6, z: -10.0 },
+                { key: 'potted_plant',      x: 14.6, z: -23.2 },
+                /* ── the pool deck, under the sky ── */
+                { key: 'penthouse_pool',    x: 0, z: 26.2, face: 180, poolW: 24.5, poolD: 10.5, fall: 40, glow: 0x1a6f86 },
+                { key: 'pool_lounger',      x: -10.5, z: 17.2, face: 0 },
+                { key: 'pool_lounger',      x: -8.4,  z: 17.2, face: 0 },
+                { key: 'patio_umbrella',    x: -5.6,  z: 16.6 },
+                { key: 'pool_lounger',      x: -2.8,  z: 17.2, face: 0 },
+                { key: 'pool_lounger',      x: 2.8,   z: 17.2, face: 0 },
+                { key: 'patio_umbrella',    x: 5.6,   z: 16.6 },
+                { key: 'pool_lounger',      x: 8.4,   z: 17.2, face: 0 },
+                { key: 'pool_lounger',      x: 10.5,  z: 17.2, face: 0 },
+                /* palms in planters, at the deck's corners */
+                { key: 'planter',           x: -13.5, z: 6.5, face: 0 },
+                { key: 'palm_tree',         x: -13.5, z: 6.5, y: 0.5, face: 20 },
+                { key: 'planter',           x: 13.5,  z: 6.5, face: 0 },
+                { key: 'palm_tree',         x: 13.5,  z: 6.5, y: 0.5, face: 200 },
+                { key: 'planter',           x: -14.0, z: 14.0, face: 90 },
+                { key: 'palm_tree',         x: -14.0, z: 14.0, y: 0.5, face: 110 },
+                { key: 'planter',           x: 14.0,  z: 14.0, face: 90 },
+                { key: 'palm_tree',         x: 14.0,  z: 14.0, y: 0.5, face: 290 },
+                { key: 'globe_lamp',        x: -14.6, z: 22.0 },
+                { key: 'globe_lamp',        x: 14.6,  z: 22.0 },
+                { key: 'globe_lamp',        x: -14.6, z: 29.5 },
+                { key: 'globe_lamp',        x: 14.6,  z: 29.5 },
             ],
             agents: [],
             npcSpots: [],
             onlineSpots: [],
-            lines: [
-                '“Two windows.” “The building has none.” “Then what are they?” “Two.”',
-                '“Is the closet still mine?” “Yes.” “And this?” “Also. The office does not take a room back; it adds one.”',
-                '“Who is the Director?” “The nameplate is blank.” “Whose office is this?” “The nameplate is blank on purpose.”',
-            ],
-            spawn: { x: -1.9, z: 0.6, face: 90 },
+            lines: [],
+            spawn: { x: -5.25, z: -27.5, face: 180 },
+            noWalkers: true,
         },
-        /* ── ROOM 8 · THE INFINITY POOL (HQ plan 7.4, 2026-09-14) — an
-           amenity on the Executive floor: an OPEN room (no ceiling, the
-           7.2-stage-3 shell) under Heaven's own sky, walled knee-high (a
-           parapet, `edge: 'low'`) with the cloud plain running out past it
-           over the void; the pool is a raised basin against the north
-           parapet (`infinity_pool` proc: the water at the coping, a weir
-           on the far side that looks over the edge), loungers, umbrellas,
-           the lamps. THE EDGE is a counter with no action (a panel: the
-           view, and who is on break — the top of the leaderboard); THE
-           RANKING is the board on the south parapet (→ the leaderboard).
-           Online silhouettes take the loungers (`onlineSpots`, as in Room
-           86). Optional later (plan 7.4): its own board. The shell reads
-           TERRAIN keys (tilefloor_2 / marble_light / cloud_2), like every
-           outdoor room. Viewer-local (RULE #2). ── */
-        pool: {
-            label: 'THE INFINITY POOL',
-            sub: 'ON BREAK · THE EDGE',
-            roomNo: '8', why: '∞ on its side — the user’s',
-            kind: 'box',
-            shell: {
-                w: 12, d: 9, h: 3.4,
-                wallH: 3.4, dadoH: 0.4,
-                open: true, edge: 'low',
-                floor: 'tilefloor_2', wall: 'marble_light', dado: 'marble_light', trim: 'teal', ceiling: 'ceiling',
-                apron: 'cloud_2', skirt: 'cloud_2', apronColor: 0xf4f0e2,
-                floorColor: 0xe9eef2,
-                pipes: false,
-                lights: [{ x: -4.5, z: -3.0 }, { x: 4.5, z: -3.0 }, { x: -4.5, z: 3.0 }, { x: 4.5, z: 3.0 }],
-                mood: { light: 0xfff0d0 },
-                /* Heaven's sky (EW_MAP_META prebuilt_heaven env): the tint, the fog, the divine roster, daylight */
-                sky: { night: 0, tint: 0xfff3d0, tintAmt: 0.38, stars: 0.15, nebula: 0.35, day: 1, clouds: 0.6, fog: { color: 0xfdf2d8, amount: 0.55, top: 0.05, band: 0.5 }, scenery: 'divine', density: 0.8 },
-                plate: { x: 0, z: -4.4, y: 2.2 },
-            },
-            doors: [
-                { id: 'lobby', wall: 's', x: 0, leaf: 'leaf_glass',
-                  label: 'THE PENTHOUSE', sub: 'BACK TO THE LOBBY',
-                  action: { room: 'executive', at: 'pool' },
-                  desc: 'The way back to the lobby. Towels are to be returned; the towels are not counted.' },
-            ],
-            counters: [
-                /* THE EDGE → nothing; the panel is the view and who is on break */
-                { id: 'edge', x: 0.75, z: -1.9, face: 0, plateY: 1.75, radius: 2.0, verb: 'LOOK',
-                  label: 'THE EDGE', sub: 'OVER THE VOID', action: {},
-                  desc: 'The far side of the pool is a weir. The water goes over it. Nobody has said where the water goes; the void has not said either.' },
-            ],
-            props: [
-                /* ── the pool: a raised basin against the north parapet, the weir looking over the edge ── */
-                { key: 'infinity_pool',  x: 0.75,     z: -2.5, face: 0 },
-                { key: 'wet_floor_sign', x: -2.2,  z: 2.2,  face: 140 },   // moved from (−3.6, −1.2): THE WEIR's landing (7.7 wave 2, 2026-09-16)
-                /* ── loungers along the west and east, an umbrella and a table between each pair ── */
-                /* the west pair moved 0.8 m south for THE WEIR's landing (7.7 wave 2, 2026-09-16) */
-                { key: 'pool_lounger',   x: -4.6,  z: 0.2,  face: 90 },
-                { key: 'pool_lounger',   x: -4.6,  z: 1.6,  face: 90 },
-                { key: 'pool_umbrella',  x: -4.9,  z: 0.9 },
-                { key: 'coffee_table',   x: -3.6,  z: 0.9 },
-                { key: 'solo_cup',       x: -3.6,  z: 0.9,  y: 0.46, face: 20 },
-                { key: 'pool_lounger',   x: 4.6,   z: -0.6, face: 270 },
-                { key: 'pool_lounger',   x: 4.6,   z: 0.8,  face: 270 },
-                { key: 'pool_umbrella',  x: 4.9,   z: 0.1 },
-                { key: 'coffee_table',   x: 3.6,   z: 0.1 },
-                { key: 'coffee_mug',     x: 3.6,   z: 0.1,  y: 0.46, face: 140 },
-                { key: 'pool_lounger',   x: -1.4,  z: 2.4,  face: 0 },
-                { key: 'pool_lounger',   x: 1.4,   z: 2.4,  face: 0 },
-                /* ── the palms and the lamps at the corners (the lights are the shell's point lights) ── */
-                { key: 'palm_tree',      x: -5.3,  z: -3.6, face: 20 },
-                { key: 'palm_tree',      x: 5.3,   z: -3.6, face: 200 },
-                { key: 'palm_tree',      x: 5.3,   z: 3.6,  face: 110 },
-                { key: 'potted_plant',   x: -2.0,  z: 3.9,  face: 30 },
-                /* ── the south side: the way in at 0, the ranking board by the towels ── */
-                { key: 'notice_board',   wall: 's', x: -3.2, mount: 0.0 },            // the board stands on the parapet (the low wall is 0.95 m; the board's own frame from the ground)
-                { key: 'trash_bin',      x: 2.6,   z: 3.9,  face: 250 },
-                { key: 'hook_rail',      wall: 's', x: 2.0, mount: 1.2 },            // the towels
-            ],
-            agents: [
-                { x: -1.4, z: 2.4, face: 0, pose: 'hqSit', gender: 'male', label: 'THE TOP OF THE BOARD', reach: 1.8,
-                  line: '“I am on break. The board says so. If the board changes while I am on break, the break is over and I was never here.”' },
-                { x: 2.95, z: -0.35, face: 0, pose: 'hqArms', gender: 'female', label: 'THE LIFEGUARD', reach: 1.8,
-                  line: '“Nobody swims. The water goes over the edge and I am not certified for the edge.”' },
-            ],
-            npcSpots: [
-                { x: 1.4, z: 2.4, face: 0 },        // on break, on the south lounger
-            ],
-            onlineSpots: [
-                { x: -4.6, z: 0.2,  face: 90 },
-                { x: 4.6,  z: 0.8,  face: 270 },
-                { x: 4.6,  z: -0.6, face: 270 },
-            ],
-            lines: [
-                '“Where does the water go?” “Over.” “Over what?” “The edge. After that it is the void’s water.”',
-                '“Is it heated?” “The void is not.” “And the pool?” “The pool is trying.”',
-                '“Top of the board.” “On break.” “For how long?” “Until the board disagrees.”',
-                '“Towels?” “By the ranking.” “How many?” “The office does not count towels. It counts Keys.”',
-            ],
-            spawn: { x: 0, z: 3.0, face: 0 },
-        },
+        /* corner (ROOM 4C · THE CORNER OFFICE) and pool (ROOM 8 · THE INFINITY POOL) — RETIRED 2026-11-26 (DOOR HQ 2.0 wave 4): both stand in the
+           PENTHOUSE (`executive`) now; DOOR_HQ.retired sends them there */
         /* ── INTERROGATION ROOM (DOOR HQ 2.0, the Gantry's west wall; mondo: no CPU training, no table at the door, the mirror is a window):
            14 x 17.5 m. The observation booth inside the door, the window in the wall across the room, the table in the middle of the room
            behind it, three squares from its doorway. ── */
@@ -37787,6 +37607,8 @@ const DOOR_HQ = {
                 ],
             },
             doors: [
+                /* DOOR HQ 2.0 WAVE 4 (2026-11-26): H-Wing's plain door, in the drum's wall between the Ring stair (270) and the ramp's foot (290) */
+                { id: 'hwing', wall: 'free', x: -23.78, z: -4.19, face: 100, leaf: 'leaf_white_wood', label: 'H-WING', action: { room: 'hwing_floor', at: 'garage' }, desc: 'A plain door in the car park wall. No sign, no number.' },
                 /* THE LIFT: the doors in the core's south face, the car's G stop */
                 { id: 'elevator', wall: 'free', x: 0, z: 3.85, face: 180, leaf: null, proc: 'elevator', wide: true,
                   label: 'ELEVATOR', action: { room: 'car', at: 'out' } },
@@ -39035,7 +38857,7 @@ const DOOR_HQ = {
         thirteenth: {
             label: 'THE THIRTEENTH FLOOR',
             sub: 'BETWEEN 12 AND 14 · VACANT',
-            kind: 'box',
+            kind: 'box', noWalkers: true,
             shell: {
                 w: 12, d: 9, h: 3.2,
                 wallH: 3.2, dadoH: 1.05,
@@ -39050,10 +38872,10 @@ const DOOR_HQ = {
                 look: HQ_ROOM_LOOKS.faded,
             },
             doors: [
-                { id: 'crawl', wall: 'w', z: 0, leaf: null, secret: true,
-                  label: 'A DRAUGHT', sub: 'THE CRAWLSPACE',
-                  action: { room: 'crawlspace', at: 'thirteen' },
-                  desc: 'The panel you came in by, from this side. It is the only way out that is a way out.' },
+                { id: 'crawl', wall: 'w', z: 0, leaf: 'leaf_beige_wood',   // DOOR HQ 2.0 WAVE 4 (2026-11-26): the Thirteenth Floor is H-Wing's; the crawlspace's panel is closed
+                  label: 'H-WING',
+                  action: { room: 'hwing_floor', at: 'thirteenth' },
+                  desc: 'A plain door. The floor it leads to has no number either.' },
                 { id: 'elevator', wall: 'e', z: 0, leaf: null, proc: 'elevator', floors: ['13'],
                   label: 'ELEVATOR', sub: 'DOWN ONLY',
                   action: { room: 'car', at: 'out' },
@@ -39119,7 +38941,7 @@ const DOOR_HQ = {
                         { key: 'teal_chair', x: 3.2, z: 3.6, face: 0 },     { key: 'teal_chair', x: 4.1, z: 3.6, face: 0 },
                         { key: 'teal_chair', x: -5.2, z: 2.6, face: 90 },   { key: 'teal_chair', x: 5.2, z: -2.8, face: 270 },
                     ],
-                    npcSpots: [{ x: 0.6, z: -1.0, face: 90, clone: true, say: ['“You turned them.” “I did not touch the chairs.” “You turned ME.”', '“Sit.” “Where?” “Any of them. They are all facing you now.”'] }],   // THE OTHER ONE in the middle of the room, facing the lift
+                    npcSpots: [],   // THE OTHER ONE in the middle of the room, facing the lift
                     lines: ['“The chairs were facing the walls.” “They have always faced the middle.” “Somebody turned them.” “Somebody sat in them.”'],
                 },
                 vacant: {
@@ -39191,9 +39013,9 @@ const DOOR_HQ = {
             label: 'THE SWIMMING POOL',
             sub: 'THE POOL · SIX LANES',
             roomNo: '50M', why: 'an Olympic length; the pool is twelve metres and the plate is optimistic',
-            kind: 'box',
+            kind: 'box', noWalkers: true,
             shell: {
-                w: 18, d: 12, h: 5.0,
+                w: 21, d: 12, h: 5.0,   // DOOR HQ 2.0 WAVE 4 (2026-11-26): 18 -> 21 m, so the deck at the shallow end clears H-Wing's door
                 wallH: 5.0, dadoH: 2.0,
                 floor: 'tilefloor', wall: 'drywall', dado: 'tilefloor_2', trim: 'teal', ceiling: 'ceiling',
                 floorColor: 0xd4dcdc, wallColor: 0xe4e8e4, dadoColor: 0xcfe0e6, ceilTile: 2.0,
@@ -39207,10 +39029,10 @@ const DOOR_HQ = {
                   label: 'THE LOCKER ROOM', sub: 'BACK TO ROOM 26',
                   action: { room: 'locker', at: 'pool' },
                   desc: 'Back through the lockers.' },
-                { id: 'garden', wall: 'w', z: 0, leaf: 'leaf_wired_double', wide: true,
-                  label: 'THE GARDEN', sub: 'ROOM 1618 · OPEN AIR',
-                  action: { room: 'garden', at: 'pool' },
-                  desc: 'The courtyard, through the far wall — the loop back to the annex without the lockers.' },
+                { id: 'garden', wall: 'w', z: 0, leaf: 'leaf_beige_wood',   // DOOR HQ 2.0 WAVE 4 (2026-11-26): the pool is H-Wing's; its one way out is this plain door
+                  label: 'H-WING',
+                  action: { room: 'hwing_floor', at: 'pool' },
+                  desc: 'A plain door at the shallow end. The hall outside is yellow and hums.' },
             ],
             counters: [],
             props: [
@@ -39242,7 +39064,7 @@ const DOOR_HQ = {
                 { x: -6.8, z: 4.6, face: 90, pose: 'hqSit', gender: 'male', label: 'THE OTHER LIFEGUARD', reach: 2.4,
                   line: '“Certified for the pool.” “And the edge?” “That is the one upstairs. She has the edge. I have the lanes.”' },
             ],
-            npcSpots: [{ x: -3.0, z: -4.0, face: 180, say: ['“Fifty metres. Nobody has measured it since the annex turned up; it may be more.”', '“The deep end is the far end. The far end is further than it looks. Everything on three is.”'] }, { x: 4.0, z: 4.2, face: 0, say: ['“The plunge pool goes somewhere. Do not take my word for it; take a breath.”', '“No running. No diving off the blocks. No asking where the water comes from.”'] }],
+            npcSpots: [],
             onlineSpots: [{ x: 6.8, z: 4.6, face: 270 }],
             lines: [
                 '“Nobody swims.” “Somebody swims. The lanes are wet.” “The lanes are always wet. That is what a pool is.”',
@@ -39259,7 +39081,7 @@ const DOOR_HQ = {
             label: 'THE GARDEN',
             sub: 'THE COURTYARD · OPEN AIR',
             roomNo: '1618', why: 'φ — the ring, the hedge and the fountain are laid out on it, and the gardener will tell you so',
-            kind: 'box',
+            kind: 'box', noWalkers: true,
             shell: {
                 w: 22, d: 22, h: 3.6,
                 wallH: 3.6, dadoH: 0.9,
@@ -39275,14 +39097,10 @@ const DOOR_HQ = {
                 plate: { x: 0, z: -10.75, y: 3.1 },
             },
             doors: [
-                { id: 'annex', wall: 's', x: 0, leaf: 'leaf_wired_double', wide: true,
-                  label: 'THE THIRD FLOOR', sub: 'BACK TO THE FLOOR',
-                  action: { room: 'annex', at: 'garden' },
-                  desc: 'Back inside.' },
-                { id: 'pool', wall: 'e', z: 0, leaf: 'leaf_wired_double', wide: true,
-                  label: 'THE SWIMMING POOL', sub: 'ROOM 50M · THE POOL',
-                  action: { room: 'natatorium', at: 'garden' },
-                  desc: 'The pool, through the east wall.' },
+                { id: 'annex', wall: 's', x: 0, leaf: 'leaf_beige_wood',   // DOOR HQ 2.0 WAVE 4 (2026-11-26): the Garden is H-Wing's; its way in is this plain door (the pool's door is gone)
+                  label: 'H-WING',
+                  action: { room: 'hwing_floor', at: 'garden' },
+                  desc: 'A plain door in the garden wall. Behind it the carpet starts.' },
                 { id: 'gate', wall: 'n', x: 0, leaf: 'leaf_portcullis', wide: true, minClearance: 5,
                   label: 'THE GATE', sub: 'ROOM X · CLEARANCE L5',
                   action: { room: 'orb', at: 'gate' },
@@ -39315,7 +39133,7 @@ const DOOR_HQ = {
                 { x: -4.4, z: 5.2, face: 300, pose: 'hqLean', gender: 'male', label: 'THE GROUNDSKEEPER', reach: 2.6,
                   line: '“Golden ratio.” “The what?” “The ring. The hedge. The fountain. Measure it. Nobody measures it.”' },
             ],
-            npcSpots: [{ x: 0.525, z: 4.225, face: 0, say: ['“The sky is Olympus’s. The soil is ours. The well is nobody’s, which is why it goes where it goes.”', '“Mind the gate. It is an L5 both ways and it does not care which way you were going.”'] }, { x: -4.4, z: -3.0, face: 60, say: ['“Things grow here that were not planted. We keep a list. The list grows too.”', '“1618 is the golden ratio. The gardener did not choose it. The garden did.”'] }, { x: 5.0, z: -1.2, face: 270, say: ['“If you are looking for the waiting room, it is through the wall you did not notice. Most people notice on the way back.”', '“The bees are on loan too. They came with the sky.”'] }],
+            npcSpots: [],
             onlineSpots: [{ x: -0.675, z: -4.375, face: 180 }, { x: 4.225, z: 0.525, face: 270 }],
             lines: [
                 '“Whose sky is that?” “Olympus’s. On loan.” “Do they know?” “They filed a complaint. It is in Records.”',
@@ -39372,6 +39190,7 @@ const DOOR_HQ = {
             doors: [
                 { id: 'garage', wall: 'w', z: 0, leaf: 'leaf_wired_double', wide: true, label: 'GARAGE', action: { room: 'garage', at: 'works' } },
                 { id: 'ramp', wall: 's', x: 0, open: { w: 7, h: 5.2 }, label: 'FREIGHT RAMP', action: { room: 'labs', at: 'factory' } },
+                { id: 'hwing', wall: 'free', x: -28.39, z: 25.56, face: 48, leaf: 'leaf_white_wood', label: 'H-WING', action: { room: 'hwing_floor', at: 'works_top' }, desc: 'A plain door in the service corridor. It is not on the fire plan.' },   // DOOR HQ 2.0 wave 4: H-Wing's plain door, in the drum between the Boiler Room's and the Laundry's doors
             ],
             counters: [
                 { id: 'line', x: 12.25, z: 2.49, face: 285, plateY: 1.6, radius: 1.8, verb: 'READ', label: 'THE LINE', action: {} },
@@ -40669,8 +40488,7 @@ const DOOR_HQ = {
                 { id: 'factory', wall: 'n', x: 0, leaf: 'leaf_wired_double', wide: true, label: 'FREIGHT RAMP', action: { room: 'factory', at: 'ramp' }, desc: 'The ramp the carts come down. It is steeper than it looks from the top.' },
                 { id: 'cells', wall: 'n', x: -8.75, leaf: 'leaf_cell', label: 'THE CELLS', action: { room: 'cells', at: 'labs' }, desc: 'Bars, bunks, a drain in every floor. Nobody on the list is here. Nobody here is on the list.' },
                 { id: 'tank', wall: 'n', x: 8.75, leaf: 'leaf_hospital', label: 'THE TANK', action: { room: 'tank', at: 'labs' }, desc: 'Salt water at skin temperature, a lid, and nothing at all. An hour in it and the subjects report the building.' },
-                { id: 'mandela', wall: 'n', x: -17.5, leaf: 'leaf_white_wood', label: 'THE MANDELA ROOM', action: { room: 'mandela', at: 'labs' }, desc: 'A plain door. It was not here last time.' },
-                { id: 'upsidedown', wall: 'n', x: 17.5, leaf: 'leaf_beige_wood', label: 'THE UPSIDE-DOWN ROOM', action: { room: 'upsidedown', at: 'labs' }, desc: 'A plain door. The handle is at the top.' },
+                { id: 'hwing', wall: 'n', x: -17.5, leaf: 'leaf_white_wood', label: 'H-WING', action: { room: 'hwing_floor', at: 'works_middle' }, desc: 'A plain door. It was not here last time.' },   // DOOR HQ 2.0 WAVE 4 (2026-11-26): H-Wing's door on this level (the Mandela and Upside-Down Rooms are in H-Wing)
                 /* the east wall: Clone Disposal, the lift, Room X (sealed) */
                 { id: 'disposal', wall: 'e', z: -8.75, leaf: 'leaf_cell', label: 'CLONE DISPOSAL', action: { room: 'disposal', at: 'labs' }, desc: 'A table, a gun, a chute. The form does not say which of you is the clone.' },
                 { id: 'elevator', wall: 'e', z: 0, leaf: null, proc: 'elevator', label: 'ELEVATOR', action: { room: 'car', at: 'out' }, desc: 'The car.' },
@@ -40868,21 +40686,21 @@ const DOOR_HQ = {
             label: 'THE MANDELA ROOM',
             sub: 'THE WAITING ROOM · AS YOU REMEMBER IT',
             roomNo: '*', why: 'the footnote; the number is whatever it was when you last looked',
-            kind: 'box',
+            kind: 'box', noWalkers: true,   // DOOR HQ 2.0 WAVE 4 (2026-11-26): moved into H-Wing and grown x2 (mondo: no room that small)
             shell: {
-                w: 7, d: 6, h: 3.2,
+                w: 14, d: 12, h: 3.2,
                 wallH: 3.2, dadoH: 1.05,
                 floor: 'carpet', wall: 'drywall', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling',
                 floorColor: 0x9aa8b8, wallColor: 0xe8e4d8, dadoColor: 0x6a4a44,
                 pipes: false,
                 lights: [{ x: 0, z: 0 }],
                 mood: { light: 0xf4f0e6 },
-                plate: { x: 0, z: -2.75, y: 2.6 },
+                plate: { x: 0, z: -5.5, y: 2.6 },
             },
             doors: [
-                { id: 'labs', wall: 's', x: 0, leaf: 'leaf_orange_glass',
-                  label: 'THE FOURTH FLOOR', sub: 'BACK TO THE FLOOR',
-                  action: { room: 'labs', at: 'mandela' },
+                { id: 'labs', wall: 's', x: 0, leaf: 'leaf_beige_wood',   // DOOR HQ 2.0 WAVE 4 (2026-11-26): the Mandela Room is H-Wing's (the id stays)
+                  label: 'H-WING',
+                  action: { room: 'hwing_floor', at: 'mandela' },
                   desc: 'The way back to the floor. The room will be something else when you come back.' },
                 { id: 'mirrors', wall: 'n', x: 0, leaf: 'leaf_frame_only',
                   label: 'THE HALL OF MIRRORS', sub: 'DOWN TO THE MIDWAY',
@@ -40890,31 +40708,31 @@ const DOOR_HQ = {
                   desc: 'The way the carnival came in. Music on the far side, three floors down and no stairs between.' },
             ],
             counters: [
-                { id: 'frame', x: 2.6, z: -1.2, face: 270, plateY: 1.6, radius: 1.8, verb: 'READ',
+                { id: 'frame', x: 5.2, z: -2.4, face: 270, plateY: 1.6, radius: 1.8, verb: 'READ',
                   label: 'THE FRAME', sub: 'WHAT YOU REMEMBER', action: {},
                   desc: 'The one thing in the room that is always here. The picture in it is of the room, as it was when you last came in. Nobody else remembers it that way.' },
             ],
             props: [
-                { key: 'teal_chair',     x: -2.2, z: 0.8, face: 0 }, { key: 'teal_chair', x: -1.4, z: 0.8, face: 0 }, { key: 'teal_chair', x: -0.6, z: 0.8, face: 0 },
-                { key: 'coffee_table',   x: -1.4, z: -0.4 },
-                { key: 'papers_b',       x: -1.4, z: -0.4, y: 0.46, face: 25 },
-                { key: 'potted_plant',   x: 2.8, z: 2.2, face: 0 },
-                { key: 'water_cooler',   wall: 'w', z: -1.6 },
-                { key: 'wall_clock',     wall: 'n', x: -2.0, mount: 2.5 },
-                { key: 'picture_round_c', wall: 'e', z: -1.2, mount: 1.6 },                    // THE FRAME
-                { key: 'notice_board',   wall: 's', x: 2.2 },
-                { key: 'rug_office',     x: 0.6, z: -0.6 },
-                { key: 'railing_1m',     x: 1.6, z: 1.8, face: 0 },                             // THE PARK RULE: the rail
-                { key: 'riser_1',        x: 2.4, z: -0.2, face: 0, rect: false },                // … and the step
+                { key: 'teal_chair',     x: -4.4, z: 1.6, face: 0 }, { key: 'teal_chair', x: -2.8, z: 1.6, face: 0 }, { key: 'teal_chair', x: -1.2, z: 1.6, face: 0 },
+                { key: 'coffee_table',   x: -2.8, z: -0.8 },
+                { key: 'papers_b',       x: -2.8, z: -0.8, y: 0.46, face: 25 },
+                { key: 'potted_plant',   x: 5.6, z: 4.4, face: 0 },
+                { key: 'water_cooler',   wall: 'w', z: -3.2 },
+                { key: 'wall_clock',     wall: 'n', x: -4, mount: 2.5 },
+                { key: 'picture_round_c', wall: 'e', z: -2.4, mount: 1.6 },                    // THE FRAME
+                { key: 'notice_board',   wall: 's', x: 4.4 },
+                { key: 'rug_office',     x: 1.2, z: -1.2 },
+                { key: 'railing_1m',     x: 3.2, z: 3.6, face: 0 },                             // THE PARK RULE: the rail
+                { key: 'riser_1',        x: 4.8, z: -0.4, face: 0, rect: false },                // … and the step
                 { key: 'fluorescent',    x: 0, z: 0, ceil: true, face: 90 },
             ],
             agents: [],
-            npcSpots: [{ x: -1.4, z: 0.8, face: 0, say: ['“I have been waiting an hour.” “For what?” “I do not remember. The room was different when I sat down.”'] }],
+            npcSpots: [],
             onlineSpots: [],
             lines: [
                 '“This was the library.” “It has always been the waiting room.” “There was a globe.” “There has never been a globe.”',
             ],
-            spawn: { x: 0, z: 1.6, face: 0 },
+            spawn: { x: 0, z: 3.2, face: 0 },
             variants: {
                 library: {
                     when: { each: true },
@@ -40924,11 +40742,11 @@ const DOOR_HQ = {
                     shell: { floor: 'carpet', floorColor: 0x6a4a3a, wallColor: 0xd8c8a8, dadoColor: 0x4a2e22, mood: { light: 0xffe8c0 } },
                     drop: ['teal_chair', 'coffee_table', 'papers_b', 'water_cooler', 'notice_board', 'rug_office', 'potted_plant'],
                     add: [
-                        { key: 'wall_shelf', wall: 'w', z: -1.4, mount: 1.0 }, { key: 'wall_shelf', wall: 'w', z: -1.4, mount: 1.7 }, { key: 'wall_shelf', wall: 'w', z: 0.6, mount: 1.0 }, { key: 'wall_shelf', wall: 'w', z: 0.6, mount: 1.7 },
-                        { key: 'wall_shelf', wall: 's', x: 2.0, mount: 1.0 }, { key: 'wall_shelf', wall: 's', x: 2.0, mount: 1.7 },
-                        { key: 'office_chair', x: -0.8, z: 0.8, face: 0 }, { key: 'coffee_table', x: -0.8, z: -0.4 },
-                        { key: 'notebook_paper', x: -0.8, z: -0.4, y: 0.46, face: 10 }, { key: 'table_lamp', x: -0.3, z: -0.5, y: 0.46 },
-                        { key: 'rug_round', x: 0.4, z: 0.4 },
+                        { key: 'wall_shelf', wall: 'w', z: -2.8, mount: 1.0 }, { key: 'wall_shelf', wall: 'w', z: -2.8, mount: 1.7 }, { key: 'wall_shelf', wall: 'w', z: 1.2, mount: 1.0 }, { key: 'wall_shelf', wall: 'w', z: 1.2, mount: 1.7 },
+                        { key: 'wall_shelf', wall: 's', x: 4, mount: 1.0 }, { key: 'wall_shelf', wall: 's', x: 4, mount: 1.7 },
+                        { key: 'office_chair', x: -1.6, z: 1.6, face: 0 }, { key: 'coffee_table', x: -1.6, z: -0.8 },
+                        { key: 'notebook_paper', x: -1.6, z: -0.8, y: 0.46, face: 10 }, { key: 'table_lamp', x: -0.6, z: -1, y: 0.46 },
+                        { key: 'rug_round', x: 0.8, z: 0.8 },
                     ],
                     lines: ['“This was the waiting room.” “It has always been the library.” “There were chairs.” “There are chairs. Sit.”'],
                 },
@@ -40940,12 +40758,12 @@ const DOOR_HQ = {
                     shell: { floorColor: 0xf0d8e0, wallColor: 0xfff0f4, dadoColor: 0xe0b0c0, mood: { light: 0xfff0f8 } },
                     drop: ['teal_chair', 'coffee_table', 'papers_b', 'water_cooler', 'notice_board', 'wall_clock', 'potted_plant'],
                     add: [
-                        { key: 'cot', x: -1.6, z: -1.2, face: 0 },
-                        { key: 'rug_round', x: 0.4, z: 0.6 },
-                        { key: 'teal_chair', x: 1.6, z: 1.6, face: 300 },
-                        { key: 'cardboard_box', x: 1.8, z: -2.2, face: 20 },
-                        { key: 'picture_round_c', wall: 'w', z: 0.4, mount: 1.6 },
-                        { key: 'wall_shelf', wall: 's', x: -2.0, mount: 1.5 },
+                        { key: 'cot', x: -3.2, z: -2.4, face: 0 },
+                        { key: 'rug_round', x: 0.8, z: 1.2 },
+                        { key: 'teal_chair', x: 3.2, z: 3.2, face: 300 },
+                        { key: 'cardboard_box', x: 3.6, z: -4.4, face: 20 },
+                        { key: 'picture_round_c', wall: 'w', z: 0.8, mount: 1.6 },
+                        { key: 'wall_shelf', wall: 's', x: -4, mount: 1.5 },
                     ],
                     lines: ['“Whose is the cot?” “Yours.” “I am too old for it.” “You were not, when it was here.”'],
                 },
@@ -40957,13 +40775,13 @@ const DOOR_HQ = {
                     shell: { floor: 'terrazzo', floorColor: 0xd8d4c8, wallColor: 0xe0e4e8, dadoColor: 0x506070, mood: { light: 0xeef2ff } },
                     drop: ['teal_chair', 'coffee_table', 'papers_b', 'rug_office', 'potted_plant'],
                     add: [
-                        { key: 'tanker_desk', wall: 'w', z: 0.2, face: 90 },
-                        { key: 'office_chair', x: -2.2, z: 0.2, face: 90 },
-                        { key: 'crt_terminal', x: -2.6, z: 0.2, y: 0.76, face: 90 },
-                        { key: 'papers_a', x: -2.5, z: -0.5, y: 0.76, face: 15 },
-                        { key: 'filing_cabinet', wall: 's', x: -2.2 }, { key: 'filing_cabinet', wall: 's', x: -1.5 },
-                        { key: 'office_plant', x: 2.8, z: 2.2 },
-                        { key: 'folding_chair', x: -0.8, z: 0.2, face: 270 },
+                        { key: 'tanker_desk', wall: 'w', z: 0.4, face: 90 },
+                        { key: 'office_chair', x: -4.4, z: 0.4, face: 90 },
+                        { key: 'crt_terminal', x: -5.2, z: 0.4, y: 0.76, face: 90 },
+                        { key: 'papers_a', x: -5, z: -1, y: 0.76, face: 15 },
+                        { key: 'filing_cabinet', wall: 's', x: -4.4 }, { key: 'filing_cabinet', wall: 's', x: -3 },
+                        { key: 'office_plant', x: 5.6, z: 4.4 },
+                        { key: 'folding_chair', x: -1.6, z: 0.4, face: 270 },
                     ],
                     lines: ['“Whose desk?” “Yours.” “I have never worked here.” “The in-tray says otherwise.”'],
                 },
@@ -40976,9 +40794,9 @@ const DOOR_HQ = {
             label: 'THE UPSIDE-DOWN ROOM',
             sub: 'MIND YOUR HEAD',
             roomNo: '9', why: 'a six, upside down',
-            kind: 'box',
+            kind: 'box', noWalkers: true,   // DOOR HQ 2.0 WAVE 4 (2026-11-26): moved into H-Wing and grown x2 (mondo: no room that small)
             shell: {
-                w: 7, d: 6, h: 3.2,
+                w: 14, d: 12, h: 3.2,
                 wallH: 3.2, dadoH: 2.15,
                 floor: 'ceiling', wall: 'drywall', dado: 'drywall', trim: 'oxblood', ceiling: 'carpet',
                 floorColor: 0xe8e8e0, wallColor: 0xe6e3d8, dadoColor: 0xe6e3d8, ceilColor: 0x8a4a48,
@@ -40986,53 +40804,53 @@ const DOOR_HQ = {
                 strips: false,
                 lights: [],
                 mood: { light: 0xf4f1e8, ambient: 0.7 },
-                plate: { x: 0, z: -2.75, y: 2.6 },
+                plate: { x: 0, z: -5.5, y: 2.6 },
             },
             doors: [
-                { id: 'labs', wall: 'w', z: 0, leaf: 'leaf_beige_wood',
-                  label: 'THE FOURTH FLOOR', sub: 'BACK TO THE FLOOR',
-                  action: { room: 'labs', at: 'upsidedown' },
+                { id: 'labs', wall: 'w', z: 0, leaf: 'leaf_beige_wood',   // DOOR HQ 2.0 WAVE 4 (2026-11-26): the Upside-Down Room is H-Wing's (the id stays)
+                  label: 'H-WING',
+                  action: { room: 'hwing_floor', at: 'upsidedown' },
                   desc: 'The way back to the floor. The door is the right way up. It is the only thing that is.' },
             ],
             counters: [
-                { id: 'note', x: 0.6, z: 0.625, face: 0, plateY: 0.6, radius: 1.8, verb: 'READ',
+                { id: 'note', x: 1.2, z: 1.25, face: 0, plateY: 0.6, radius: 1.8, verb: 'READ',
                   label: 'THE NOTE ON THE FLOOR', sub: 'THE FLOOR IS THE CEILING', action: {},
                   desc: 'A sheet of paper on the floor, weighted with a stapler. It says which way is up. It is upside down.' },
             ],
             props: [
                 /* the office, on the ceiling */
-                { key: 'tanker_desk',    x: -1.6, z: -1.6, face: 0, flip: true },
-                { key: 'office_chair',   x: -1.6, z: -0.6, face: 0, flip: true },
-                { key: 'crt_terminal',   x: -1.2, z: -2.0, y: 0.76, face: 0, flip: true },
-                { key: 'filing_cabinet', x: 2.6, z: -2.4, face: 180, flip: true },
-                { key: 'filing_cabinet', x: 1.9, z: -2.4, face: 180, flip: true },
-                { key: 'teal_chair',     x: 2.4, z: 1.6, face: 270, flip: true }, { key: 'teal_chair', x: 2.4, z: 0.8, face: 270, flip: true },
-                { key: 'coffee_table',   x: 1.6, z: 1.2, flip: true },
-                { key: 'potted_plant',   x: -2.8, z: 2.2, flip: true },
-                { key: 'water_cooler',   x: -2.9, z: -2.2, face: 90, flip: true },
-                { key: 'trash_bin',      x: -0.6, z: -2.2, face: 0, flip: true },
-                { key: 'rug_office',     x: 0.4, z: 0, flip: true },
-                { key: 'wall_clock',     wall: 'n', x: 1.0, mount: 0.6, flip: true },
-                { key: 'notice_board',   wall: 'e', z: -1.6, mount: 0.9, flip: true },
-                { key: 'picture_round_c', wall: 's', x: -1.6, mount: 1.0, flip: true },
-                { key: 'nameplate',      wall: 'e', z: 1.6, mount: 1.3, flip: true },
+                { key: 'tanker_desk',    x: -3.2, z: -3.2, face: 0, flip: true },
+                { key: 'office_chair',   x: -3.2, z: -1.2, face: 0, flip: true },
+                { key: 'crt_terminal',   x: -2.4, z: -4, y: 0.76, face: 0, flip: true },
+                { key: 'filing_cabinet', x: 5.2, z: -4.8, face: 180, flip: true },
+                { key: 'filing_cabinet', x: 3.8, z: -4.8, face: 180, flip: true },
+                { key: 'teal_chair',     x: 4.8, z: 3.2, face: 270, flip: true }, { key: 'teal_chair', x: 4.8, z: 1.6, face: 270, flip: true },
+                { key: 'coffee_table',   x: 3.2, z: 2.4, flip: true },
+                { key: 'potted_plant',   x: -5.6, z: 4.4, flip: true },
+                { key: 'water_cooler',   x: -5.8, z: -4.4, face: 90, flip: true },
+                { key: 'trash_bin',      x: -1.2, z: -4.4, face: 0, flip: true },
+                { key: 'rug_office',     x: 0.8, z: 0, flip: true },
+                { key: 'wall_clock',     wall: 'n', x: 2, mount: 0.6, flip: true },
+                { key: 'notice_board',   wall: 'e', z: -3.2, mount: 0.9, flip: true },
+                { key: 'picture_round_c', wall: 's', x: -3.2, mount: 1.0, flip: true },
+                { key: 'nameplate',      wall: 'e', z: 3.2, mount: 1.3, flip: true },
                 /* the floor: the strip light, the note, the one rail */
                 { key: 'fluorescent',    x: 0, z: 0, flip: true, face: 90 },
-                { key: 'paper_sheet',    x: 0.6, z: 0.4, y: 0.005, face: 200 },
-                { key: 'railing_1m',     x: -1.2, z: 1.8, face: 0 },                              // THE PARK RULE: the one thing the right way up
-                { key: 'riser_1',        x: 2.4, z: -0.375, face: 0, rect: false },                 // … and the step
-                { key: 'vent_grille',    wall: 'w', z: 2.0, mount: 0.3 },
-                { key: 'lesson_plaque',  wall: 's', x: 1.6, lesson: 'ceiling' },                             // D8 (4): the right way up, like the rail — a hatch OUT of the flipped office
+                { key: 'paper_sheet',    x: 1.2, z: 0.8, y: 0.005, face: 200 },
+                { key: 'railing_1m',     x: -2.4, z: 3.6, face: 0 },                              // THE PARK RULE: the one thing the right way up
+                { key: 'riser_1',        x: 4.8, z: -0.75, face: 0, rect: false },                 // … and the step
+                { key: 'vent_grille',    wall: 'w', z: 4, mount: 0.3 },
+                { key: 'lesson_plaque',  wall: 's', x: 3.2, lesson: 'ceiling' },                             // D8 (4): the right way up, like the rail — a hatch OUT of the flipped office
                 { key: 'exit_sign',      wall: 'w', z: 0, mount: 0.4, flip: true },
             ],
             agents: [],
-            npcSpots: [{ x: 1, z: -0.575, face: 180, race: 'ghost', say: ['“I am the right way up.” “You are standing on the ceiling.” “I am standing on the floor. You are the one who came in through the ceiling.”'] }],
+            npcSpots: [],
             onlineSpots: [],
             lines: [
                 '“Where is the light switch?” “On the floor.” “By the door?” “Under it.”',
                 '“Nothing has fallen.” “That is the finding.”',
             ],
-            spawn: { x: -1.6, z: 0.8, face: 90 },
+            spawn: { x: -3.2, z: 1.6, face: 90 },
         },
         /* ── SUPPLY CLOSET 4B (DOOR HQ 2.0, the Gantry's south wall): 10.5 x 10.5 m of warnings in front of a blast door ── */
         closet4b: {
@@ -85523,339 +85341,476 @@ const DOOR_HQ = {
             ],
             spawn: { x: 0, z: 37.2, face: 0 },
         },
-        /* ══════════════════════════════════════════════════════════════════
-           H-WING (HQ plan 5.5, stage 1 — 2026-09-14 rev 4). See DOOR_HQ.hwing
-           for the shape and the rules. Every room here is the one look:
-           beige carpet, drywall, ceiling tile, fluorescents, right angles,
-           blank plates, no number. The legs run north (-z); the crossbar
-           runs east–west; the lobby is at the south end of the west leg.
-           ══════════════════════════════════════════════════════════════════ */
-        /* ── THE LOBBY — the car's door that the car never arrives at; the
-           corridor straight on (the stair up to P1 is gone — 2026-09-26, the
-           user: the garage is easy to reach, the wing must not be) ── */
-        hwing_lobby: {
-            label: 'H-WING',
-            sub: 'SUBLEVEL · NOT ON THE PLAN',
-            kind: 'box',
-            shell: {
-                w: 8, d: 6, h: 2.7,
-                wallH: 2.7, dadoH: 0.85,
-                floor: 'carpet_4', wall: 'drywall', dado: 'drywall_2', trim: 'drywall_3', ceiling: 'ceiling',
-                floorColor: 0xc9b47c, wallColor: 0xe8dfc6, dadoColor: 0xd9cda8, ceilColor: 0xf0ece2,
-                pipes: false,
-                lights: [{ x: -2, z: 0 }, { x: 2, z: 0 }],
-                mood: { light: 0xfff2c4, ambient: 0.95 },
-                plate: { x: 0, z: -2.75, y: 2.3 },
-            },
-            doors: [
-                { id: 'elevator', wall: 'e', z: 0, leaf: null, proc: 'elevator',
-                  label: 'ELEVATOR', sub: 'THE CAR · H IS ON NO BUTTON',
-                  action: { room: 'car', at: 'out' },
-                  desc: 'The car comes when it is called from here. It does not stop here from anywhere else; there is no H on the panel. Nobody has asked why the door exists.' },
-                { id: 'corridor', wall: 'n', x: 0, leaf: 'leaf_coffee',
-                  label: 'H-WING', sub: 'THE CORRIDOR · STRAIGHT ON',
-                  action: { room: 'hwing_floor', at: 'lobby' },
-                  desc: 'A hollow-core door onto a corridor that goes straight. Straight is the problem.' },
-            ],
-            counters: [
-                { id: 'wingplan', x: -3.35, z: 0, face: 90, plateY: 1.7, radius: 1.8, verb: 'READ',
-                  label: 'THE FLOOR PLAN', sub: 'YOU ARE HERE · IT IS AN H', action: {},
-                  desc: 'The floor plan by the stair: an H, two long legs and a bar, every door drawn. The YOU ARE HERE dot has been rubbed off and put back somewhere else.' },
-            ],
-            props: [
-                { key: 'notice_board',   wall: 'w', z: 0, mount: 1.2 },                   // THE FLOOR PLAN (the counter stands at it)
-                { key: 'water_cooler',   wall: 'w', z: 2.2 },
-                { key: 'potted_plant',   x: 3.4, z: -2.4 },
-                { key: 'potted_plant',   x: -3.4, z: -2.4 },
-                { key: 'nameplate',      wall: 'n', x: 1.6, mount: 1.55 },                // blank; every plate down here is
-                { key: 'wall_clock',     wall: 'e', z: -2.0, mount: 2.05 },
-                { key: 'fire_extinguisher', wall: 'e', z: 2.2 },
-                { key: 'exit_sign',      wall: 's', x: 0, mount: 2.45 },                  // over the stair: the honest one
-                { key: 'paper_sheet',    x: 2.2, z: 1.4, y: 0.01, face: 40 },
-                { key: 'fluorescent',    x: -2, z: 0, ceil: true, face: 90 },
-                { key: 'fluorescent',    x: 2,  z: 0, ceil: true, face: 90 },
-                { key: 'security_camera', wall: 'n', x: -2.6, mount: 2.5 },
-            ],
-            agents: [],
-            npcSpots: [],
-            onlineSpots: [],
-            lines: [
-                '“What is this level?” “Sub-basement.” “Below the undercroft?” “Below is not the word. Under.”',
-                '“The carpet is beige.” “Yes.” “The walls are straight.” “Yes.” “Who authorised the corners?” “Nobody. That is what the corners are.”',
-            ],
-            spawn: { x: 0, z: 2.2, face: 0 },
-        },
-        /* ── THE FLOOR (LEVEL_DESIGN_PLAN L6, 2026-09-30 — mondo: "H-Wing is the backrooms of this game … design H-Wing
-           like you were going to do for the backrooms"). The wing's legs, crossbar, typing pool, break room and office were
-           five box rooms behind cards; they are ONE room now, a LAYOUT (`space` / `hall` rows) in yellow wallpaper on damp
-           carpet under a 3 m ceiling of humming tubes. The H is still the spine: the west leg from the lobby door, the east
-           leg from the room at the end, the crossbar between them, and a north corridor that joins the legs at the top.
-           Between the legs: THE HUM ROOM and THE POOL ROOMS (the carpet wet, waded), each with two ways in through the hall
-           up to HOME; south of the crossbar THE TYPING POOL, THE BREAK ROOM (a dead end) and the open office behind them
-           (the room a fight has). Off the legs, six offices the same, every plate blank; the two middle ones on each side
-           have a narrow passage behind the wall (one to the north corridor, one to the next office). A door off the north
-           corridor is still the corridor that repeats (it lands you at the lobby door with the lobby behind you). The lobby, the
-           floor and HOME stand door to door (HQ_WORLD.zones.hwing): no card inside the wing. ── */
+        /* <H-WING> — WRITTEN BY docs/plans/door-hq-2/hwing.js (edit the tool, run --write). DOOR HQ 2.0 wave 4 (2026-11-26), plans/5_h_wing.png:
+           H-WING is on no level. Yellowed halls laid out like a dungeon (a plan room: halls 7 m wide, a 3.5 m ceiling, an even grid of
+           tubes); a plain door from every level of the building on its outer walls (the Ring, the Lobby's upper level, the Garage, the
+           Works top / middle / bottom), so it is also the shortcut network. On the blocks between the halls: the uncanny rooms (the
+           Swimming Pool, the Garden, Home, the Thirteenth Floor, the Mandela Room, the Upside-Down Room) and four VIGNETTES, small open
+           rooms under another sky with a lone door across them that comes out on another face of the same block. Every door here is
+           an ordinary door for now (the impossible-doors thread may turn them into portals). */
         hwing_floor: {
             label: 'H-WING',
-            sub: 'THE CORRIDORS · THE OFFICES · THE TYPING POOL · THE HUM',
-            kind: 'box',
+            kind: 'box', noWalkers: true,
             shell: {
-                w: 72, d: 60, h: 3.0,
-                wallH: 3.0, dadoH: 0.85,
+                w: 112, d: 77, h: 3.5,
+                wallH: 3.5, dadoH: 0.85,
                 floor: 'carpet_4', wall: 'wallpaper', dado: 'drywall_2', trim: 'drywall_3', ceiling: 'ceiling',
-                floorColor: 0xc8b878, wallColor: 0xe8d890, dadoColor: 0xd8c880, ceilColor: 0xf0ece2,
-                pipes: false,
-                strips: false,
-                lights: [{ x: -24, z: 18 }, { x: -24, z: -12 }, { x: 24, z: 18 }, { x: 24, z: -12 }, { x: 0, z: 0 }, { x: -12, z: -12 }, { x: 12, z: -12 }, { x: -11, z: 10 }, { x: 0, z: 21 }, { x: 0, z: -24 }],
-                mood: { light: 0xfff0b0, ambient: 0.8 },
-                fog: { color: 0x2a2612, density: 0.02 },
+                floorColor: 0x9c8e5e, wallColor: 0xd8c78a, dadoColor: 0xc8b878, ceilColor: 0xf0ece2,
+                pipes: false, strips: false, keyLamp: 0,
+                lights: [{ x: -52.5, z: -35 }, { x: -17.5, z: -35 }, { x: 17.5, z: -35 }, { x: 52.5, z: -35 }, { x: -52.5, z: -10.5 }, { x: -17.5, z: -10.5 }, { x: 17.5, z: -10.5 }, { x: 52.5, z: -10.5 }, { x: -52.5, z: 14 }, { x: -17.5, z: 14 }, { x: 17.5, z: 14 }, { x: 52.5, z: 14 }, { x: -37, z: -22.5 }, { x: 37, z: -22.5 }, { x: 0, z: 1.5 }, { x: 0, z: 24.5 }, { x: 35, z: 24.5 }],
+                mood: { light: 0xf1ebc0, ambient: 0.65 },
+                fog: { color: 0x2a2612, density: 0.016 },
                 look: HQ_ROOM_LOOKS.faded,
-                plate: { x: -21.6, z: 29.75, y: 2.4 },
+                plate: { x: -52.5, z: -38.25, y: 2.9 },
             },
             terrain: {
-                res: 0.4375,   // THE GRID FIT (2026-10-26): sampled every quarter square, so a tier's edge on a square line never smears into the square beside it
+                res: 0.875,
                 floor: 'carpet_4', cliff: 'wallpaper', path: 'carpet_4',
                 noise: { amp: 0, scale: 5 }, crag: false,
                 gen: { kind: 'plan', look: 'walls', wallKey: 'wallpaper', rim: 0, forceGrow: -0.3 },
                 features: [
-                    /* THE H: the two legs, the crossbar, the north corridor that joins the legs at the top */
-                    { k: 'hall', pts: [[-24.5, 29.75], [-24.5, -24.5]], w: 3.5 },   // the west leg (the lobby door at its south end)
-                    { k: 'hall', pts: [[24.5, 29.75], [24.5, -24.5]], w: 3.5 },   // the east leg (the room at the end at its south end)
-                    { k: 'hall', pts: [[15.75, -24.5], [15.75, -29.75]], w: 3.5 },   // the corridor that repeats: off the north corridor, not in line with the leg
-                    { k: 'hall', pts: [[-24.5, 0], [24.5, 0]], w: 3.5 },   // the crossbar
-                    { k: 'hall', pts: [[-24.5, -24.5], [24.5, -24.5]], w: 3.5 },   // the north corridor
-                    { k: 'hall', pts: [[0, 0], [0, -29.75]], w: 3.5 },   // the hall up to HOME
-                    /* THE HUM ROOM and THE POOL ROOMS between the legs, north of the crossbar; each has two ways in (loops through the HOME hall) */
-                    { k: 'space', x: -12.25, z: -11.375, w: 14, d: 12.25 },   // THE HUM ROOM
-                    { k: 'hall', pts: [[-22.75, -11.375], [-19.25, -11.375]], w: 1.75 },
-                    { k: 'hall', pts: [[-5.25, -9.625], [-1.75, -9.625]], w: 1.75 },
-                    { k: 'space', x: 12.25, z: -11.375, w: 14, d: 12.25 },   // THE POOL ROOMS (the carpet is wet)
-                    { k: 'hall', pts: [[1.75, -14.875], [5.25, -14.875]], w: 1.75 },
-                    { k: 'hall', pts: [[19.25, -9.625], [22.75, -9.625]], w: 1.75 },
-                    /* south of the crossbar: THE TYPING POOL, THE BREAK ROOM (a dead end), the open office behind them */
-                    { k: 'space', x: -11.375, z: 9.625, w: 12.25, d: 8.75 },   // THE TYPING POOL
-                    { k: 'hall', pts: [[-11.375, 1.75], [-11.375, 5.25]], w: 1.75 },
-                    { k: 'space', x: 11.375, z: 7.875, w: 5.25, d: 5.25 },   // THE BREAK ROOM
-                    { k: 'hall', pts: [[11.375, 1.75], [11.375, 5.25]], w: 1.75 },
-                    { k: 'space', x: 0, z: 21, w: 21, d: 10.5 },   // the open office (the room a fight has)
-                    { k: 'hall', pts: [[-7.875, 12.25], [-7.875, 17.5]], w: 1.75 },
-                    { k: 'hall', pts: [[10.5, 21], [22.75, 21]], w: 3.5 },
-                    /* THE OFFICES: six the same, off the legs (every plate blank); the two middle ones on each side are joined by a narrow passage behind the wall */
-                    { k: 'space', x: -30.625, z: 15.75, w: 5.25, d: 3.5 },   // an office
-                    { k: 'hall', pts: [[-26.25, 16.625], [-28, 16.625]], w: 1.75 },
-                    { k: 'space', x: -30.625, z: -6.125, w: 5.25, d: 5.25 },   // an office
-                    { k: 'hall', pts: [[-26.25, -6.125], [-28, -6.125]], w: 1.75 },
-                    { k: 'space', x: -30.625, z: 26.25, w: 5.25, d: 3.5 },   // an office
-                    { k: 'hall', pts: [[-26.25, 25.375], [-28, 25.375]], w: 1.75 },
-                    { k: 'space', x: 30.625, z: 14, w: 5.25, d: 3.5 },   // an office
-                    { k: 'hall', pts: [[26.25, 14.875], [28, 14.875]], w: 1.75 },
-                    { k: 'space', x: 30.625, z: -7.875, w: 5.25, d: 5.25 },   // an office
-                    { k: 'hall', pts: [[26.25, -7.875], [28, -7.875]], w: 1.75 },
-                    { k: 'space', x: 30.625, z: 25.375, w: 5.25, d: 5.25 },   // an office
-                    { k: 'hall', pts: [[26.25, 25.375], [28, 25.375]], w: 1.75 },
-                    { k: 'hall', pts: [[-30.625, -8.75], [-30.625, -13.125], [-34.125, -13.125], [-34.125, -20.125], [-28.875, -20.125], [-28.875, -23.625], [-26.25, -23.625]], w: 1.75 },   // the west passage (office to the north corridor)
-                    { k: 'hall', pts: [[30.625, -10.5], [30.625, -18.375], [34.125, -18.375], [34.125, 6.125], [30.625, 6.125], [30.625, 12.25]], w: 1.75 },   // the east passage (office to office)
-                    /* the wet carpet: waded */
-                    { k: 'pool', x: 12, z: -12, r: 4.2, rz: 3, y: -0.2, depth: 0.35 },
+                    { k: 'hall', pts: [[-56, -35], [56, -35]], w: 7 },
+                    { k: 'hall', pts: [[-56, -10.5], [56, -10.5]], w: 7 },
+                    { k: 'hall', pts: [[-56, 14], [56, 14]], w: 7 },
+                    { k: 'hall', pts: [[-52.5, -38.5], [-52.5, 17.5]], w: 7 },
+                    { k: 'hall', pts: [[52.5, -38.5], [52.5, 17.5]], w: 7 },
+                    { k: 'hall', pts: [[-17.5, -38.5], [-17.5, 17.5]], w: 7 },
+                    { k: 'hall', pts: [[17.5, -38.5], [17.5, 17.5]], w: 7 },
+                    { k: 'hall', pts: [[0, -38.5], [0, -7]], w: 7 },
+                    { k: 'hall', pts: [[-35, -14], [-35, 17.5]], w: 7 },
+                    { k: 'hall', pts: [[35, -14], [35, 17.5]], w: 7 },
+                    { k: 'space', x: -36.75, z: -22.75, w: 17.5, d: 10.5 },
+                    { k: 'hall', pts: [[-49, -22.75], [-45.5, -22.75]], w: 3.5 },
+                    { k: 'space', x: 36.75, z: -22.75, w: 17.5, d: 10.5 },
+                    { k: 'hall', pts: [[45.5, -22.75], [49, -22.75]], w: 3.5 },
+                    { k: 'space', x: 0, z: 1.75, w: 21, d: 10.5 },
+                    { k: 'hall', pts: [[0, 7], [0, 10.5]], w: 3.5 },
+                    { k: 'hall', pts: [[0, 17.5], [0, 31.5], [42, 31.5], [42, 38.5]], w: 3.5 },
+                    { k: 'hall', pts: [[21.75, 17.5], [21.75, 24.5], [31.5, 24.5]], w: 3.5 },
+                    { k: 'space', x: 35, z: 24.5, w: 7, d: 7 },
+                    { k: 'hall', pts: [[10.5, 31.5], [10.5, 36.75]], w: 3.5 },
+                    { k: 'hall', pts: [[-10.5, 31.5], [0, 31.5]], w: 3.5 },
                 ],
             },
             doors: [
-                { id: 'lobby', wall: 's', x: -24, leaf: 'leaf_coffee',
-                  label: 'H-WING · LOBBY', sub: 'BACK TO THE CAR',
-                  action: { room: 'hwing_lobby', at: 'corridor' },
-                  desc: 'The lobby, the car, the way up.' },
-                { id: 'deadend', wall: 's', x: 24, leaf: 'leaf_cell',
-                  label: 'THE ROOM AT THE END', sub: 'SERVICES · THE OTHER WALL',
-                  action: { room: 'deadend', at: 'hwing' },
-                  desc: 'A cell door at the south end of the east leg. From the other side it is a wall in a three-metre room on the service floor. From this side it is a door.' },
-                { id: 'loop', wall: 'n', x: 16, leaf: 'leaf_coffee',
-                  label: 'H-WING', sub: 'THE CORRIDOR · STRAIGHT ON',
-                  action: { room: 'hwing_floor', at: 'lobby' },
-                  desc: 'The corridor continues past the end of the leg. It continues as the corridor you started in, from the lobby door, with the lobby behind you. This has been measured too.' },
-                { id: 'home', wall: 'n', x: 0, leaf: 'leaf_suburban_house',
-                  label: 'HOME', sub: 'NO NUMBER · NO PLATE',
-                  action: { room: 'hwing_home', at: 'hall' },
-                  desc: 'A front door. A house’s front door, at the end of a corridor under a building, with a mat in front of it. You know the door.' },
+                { id: 'ring', wall: 'n', x: -52.5, leaf: 'leaf_white_wood', label: 'THE RING', action: { room: 'ring_g', at: 'hwing' } },
+                { id: 'upper', wall: 'n', x: -17.5, leaf: 'leaf_white_wood', label: 'THE LOBBY', action: { room: 'central_egress', at: 'hwing_upper' } },
+                { id: 'garage', wall: 'n', x: 17.5, leaf: 'leaf_white_wood', label: 'GARAGE', action: { room: 'garage', at: 'hwing' } },
+                { id: 'works_top', wall: 'n', x: 52.5, leaf: 'leaf_white_wood', label: 'THE WORKS', action: { room: 'factory', at: 'hwing' } },
+                { id: 'works_middle', wall: 'w', z: -10.5, leaf: 'leaf_white_wood', label: 'THE GANTRY', action: { room: 'labs', at: 'hwing' } },
+                { id: 'works_bottom', wall: 'e', z: -10.5, leaf: 'leaf_white_wood', label: 'THE INCINERATOR', action: { room: 'antechamber', at: 'hwing' } },
+                { id: 'loop', wall: 's', x: 42, leaf: 'leaf_white_wood', label: 'H-WING', action: { room: 'hwing_floor', at: 'ring' } },
+                { id: 'desert', wall: 'free', x: -24.5, z: -31.5, face: 0, leaf: 'leaf_white_wood', label: 'DESERT AT DUSK', action: { room: 'hwing_desert', at: 'hall' } },
+                { id: 'desert_out', wall: 'free', x: -45.5, z: -14, face: 180, leaf: 'leaf_white_wood', label: 'DESERT AT DUSK', action: { room: 'hwing_desert', at: 'lone' } },
+                { id: 'mandela', wall: 'free', x: -8.75, z: -14, face: 180, leaf: 'leaf_beige_wood', label: 'THE MANDELA ROOM', action: { room: 'mandela', at: 'labs' } },
+                { id: 'upsidedown', wall: 'free', x: 8.75, z: -31.5, face: 0, leaf: 'leaf_beige_wood', label: 'THE UPSIDE-DOWN ROOM', action: { room: 'upsidedown', at: 'labs' } },
+                { id: 'pines', wall: 'free', x: 45.5, z: -31.5, face: 0, leaf: 'leaf_white_wood', label: 'SNOWY PINES', action: { room: 'hwing_pines', at: 'hall' } },
+                { id: 'pines_out', wall: 'free', x: 24.5, z: -14, face: 180, leaf: 'leaf_white_wood', label: 'SNOWY PINES', action: { room: 'hwing_pines', at: 'lone' } },
+                { id: 'home', wall: 'free', x: -49, z: 1.75, face: 270, leaf: 'leaf_suburban_house', label: 'HOME', action: { room: 'hwing_home', at: 'hall' } },
+                { id: 'thirteenth', wall: 'free', x: -21, z: 1.75, face: 90, leaf: 'leaf_beige_wood', label: 'THE THIRTEENTH FLOOR', action: { room: 'thirteenth', at: 'crawl' } },
+                { id: 'pool', wall: 'free', x: 0, z: -7, face: 0, leaf: 'leaf_beige_wood', label: 'THE SWIMMING POOL', action: { room: 'natatorium', at: 'garden' } },
+                { id: 'garden', wall: 'free', x: 26.25, z: 10.5, face: 180, leaf: 'leaf_beige_wood', label: 'THE GARDEN', action: { room: 'garden', at: 'annex' } },
+                { id: 'moon', wall: 'free', x: 43.75, z: -7, face: 0, leaf: 'leaf_white_wood', label: 'THE MOON', action: { room: 'hwing_moon', at: 'hall' } },
+                { id: 'moon_out', wall: 'free', x: 49, z: 5.25, face: 90, leaf: 'leaf_white_wood', label: 'THE MOON', action: { room: 'hwing_moon', at: 'lone' } },
+                { id: 'corn', wall: 'free', x: -42, z: 17.5, face: 0, leaf: 'leaf_white_wood', label: 'CORN FIELD', action: { room: 'hwing_corn', at: 'hall' } },
+                { id: 'corn_out', wall: 'free', x: -28, z: 17.5, face: 0, leaf: 'leaf_white_wood', label: 'CORN FIELD', action: { room: 'hwing_corn', at: 'lone' } },
             ],
-            counters: [
-                /* D5 (2026-09-21): THE OUT-TRAY — the pool types up THE TAPES (hqTapeShelf): the ones on file, the last three, the pages still blank */
-                { id: 'typing', x: -16.4, z: 8.0, face: 270, plateY: 1.4, radius: 1.6, verb: 'READ',
-                  label: 'THE OUT-TRAY', sub: 'THE SHIFT · WHAT IS TYPED UP', action: {},
-                  desc: 'The out-tray on the filing cabinet. The pool types up every tape you bring in; the pages for the ones you have not are in the tray too, blank, with the number on.' },
+            counters: [],
+            props: [
+                { key: 'fluorescent', x: -49, z: -35, ceil: true, face: 90 },
+                { key: 'fluorescent', x: -49, z: -10.5, ceil: true, face: 90 },
+                { key: 'fluorescent', x: -49, z: 14, ceil: true, face: 90 },
+                { key: 'fluorescent', x: -42, z: -35, ceil: true, face: 90 },
+                { key: 'fluorescent', x: -42, z: -10.5, ceil: true, face: 90 },
+                { key: 'flicker_tube', x: -42, z: 14, ceil: true, face: 90 },
+                { key: 'fluorescent', x: -35, z: -35, ceil: true, face: 90 },
+                { key: 'fluorescent', x: -35, z: -10.5, ceil: true, face: 90 },
+                { key: 'fluorescent', x: -35, z: 14, ceil: true, face: 90 },
+                { key: 'fluorescent', x: -28, z: -35, ceil: true, face: 90 },
+                { key: 'fluorescent', x: -28, z: -10.5, ceil: true, face: 90 },
+                { key: 'flicker_tube', x: -28, z: 14, ceil: true, face: 90 },
+                { key: 'fluorescent', x: -21, z: -35, ceil: true, face: 90 },
+                { key: 'fluorescent', x: -21, z: -10.5, ceil: true, face: 90 },
+                { key: 'fluorescent', x: -21, z: 14, ceil: true, face: 90 },
+                { key: 'fluorescent', x: -14, z: -35, ceil: true, face: 90 },
+                { key: 'fluorescent', x: -14, z: -10.5, ceil: true, face: 90 },
+                { key: 'flicker_tube', x: -14, z: 14, ceil: true, face: 90 },
+                { key: 'fluorescent', x: -7, z: -35, ceil: true, face: 90 },
+                { key: 'fluorescent', x: -7, z: -10.5, ceil: true, face: 90 },
+                { key: 'fluorescent', x: -7, z: 14, ceil: true, face: 90 },
+                { key: 'fluorescent', x: 0, z: -35, ceil: true, face: 90 },
+                { key: 'fluorescent', x: 0, z: -10.5, ceil: true, face: 90 },
+                { key: 'flicker_tube', x: 0, z: 14, ceil: true, face: 90 },
+                { key: 'fluorescent', x: 7, z: -35, ceil: true, face: 90 },
+                { key: 'fluorescent', x: 7, z: -10.5, ceil: true, face: 90 },
+                { key: 'fluorescent', x: 7, z: 14, ceil: true, face: 90 },
+                { key: 'fluorescent', x: 14, z: -35, ceil: true, face: 90 },
+                { key: 'fluorescent', x: 14, z: -10.5, ceil: true, face: 90 },
+                { key: 'flicker_tube', x: 14, z: 14, ceil: true, face: 90 },
+                { key: 'fluorescent', x: 21, z: -35, ceil: true, face: 90 },
+                { key: 'fluorescent', x: 21, z: -10.5, ceil: true, face: 90 },
+                { key: 'fluorescent', x: 21, z: 14, ceil: true, face: 90 },
+                { key: 'fluorescent', x: 28, z: -35, ceil: true, face: 90 },
+                { key: 'fluorescent', x: 28, z: -10.5, ceil: true, face: 90 },
+                { key: 'flicker_tube', x: 28, z: 14, ceil: true, face: 90 },
+                { key: 'fluorescent', x: 35, z: -35, ceil: true, face: 90 },
+                { key: 'fluorescent', x: 35, z: -10.5, ceil: true, face: 90 },
+                { key: 'fluorescent', x: 35, z: 14, ceil: true, face: 90 },
+                { key: 'fluorescent', x: 42, z: -35, ceil: true, face: 90 },
+                { key: 'fluorescent', x: 42, z: -10.5, ceil: true, face: 90 },
+                { key: 'flicker_tube', x: 42, z: 14, ceil: true, face: 90 },
+                { key: 'fluorescent', x: 49, z: -35, ceil: true, face: 90 },
+                { key: 'fluorescent', x: 49, z: -10.5, ceil: true, face: 90 },
+                { key: 'fluorescent', x: 49, z: 14, ceil: true, face: 90 },
+                { key: 'fluorescent', x: -52.5, z: -24.5, ceil: true, face: 0 },
+                { key: 'fluorescent', x: 52.5, z: -24.5, ceil: true, face: 0 },
+                { key: 'flicker_tube', x: -17.5, z: -24.5, ceil: true, face: 0 },
+                { key: 'fluorescent', x: 17.5, z: -24.5, ceil: true, face: 0 },
+                { key: 'fluorescent', x: -52.5, z: -17.5, ceil: true, face: 0 },
+                { key: 'fluorescent', x: 52.5, z: -17.5, ceil: true, face: 0 },
+                { key: 'fluorescent', x: -17.5, z: -17.5, ceil: true, face: 0 },
+                { key: 'fluorescent', x: 17.5, z: -17.5, ceil: true, face: 0 },
+                { key: 'flicker_tube', x: -52.5, z: -3.5, ceil: true, face: 0 },
+                { key: 'fluorescent', x: 52.5, z: -3.5, ceil: true, face: 0 },
+                { key: 'fluorescent', x: -17.5, z: -3.5, ceil: true, face: 0 },
+                { key: 'fluorescent', x: 17.5, z: -3.5, ceil: true, face: 0 },
+                { key: 'fluorescent', x: -52.5, z: 3.5, ceil: true, face: 0 },
+                { key: 'fluorescent', x: 52.5, z: 3.5, ceil: true, face: 0 },
+                { key: 'flicker_tube', x: -17.5, z: 3.5, ceil: true, face: 0 },
+                { key: 'fluorescent', x: 17.5, z: 3.5, ceil: true, face: 0 },
+                { key: 'fluorescent', x: 0, z: -24.5, ceil: true, face: 0 },
+                { key: 'fluorescent', x: 0, z: -17.5, ceil: true, face: 0 },
+                { key: 'fluorescent', x: -35, z: -3.5, ceil: true, face: 0 },
+                { key: 'fluorescent', x: 35, z: -3.5, ceil: true, face: 0 },
+                { key: 'flicker_tube', x: -35, z: 3.5, ceil: true, face: 0 },
+                { key: 'fluorescent', x: 35, z: 3.5, ceil: true, face: 0 },
+                { key: 'fluorescent', x: 0, z: 24.5, ceil: true, face: 90 },
+                { key: 'fluorescent', x: 7, z: 31.5, ceil: true, face: 90 },
+                { key: 'fluorescent', x: 21, z: 31.5, ceil: true, face: 90 },
+                { key: 'fluorescent', x: 35, z: 31.5, ceil: true, face: 90 },
+                { key: 'flicker_tube', x: 42, z: 35.5, ceil: true, face: 90 },
+                { key: 'fluorescent', x: 21.75, z: 21, ceil: true, face: 90 },
+                { key: 'fluorescent', x: 35, z: 24.5, ceil: true, face: 90 },
+                { key: 'fluorescent', x: -42, z: -24.5, ceil: true, face: 90 },
+                { key: 'fluorescent', x: -35, z: -24.5, ceil: true, face: 90 },
+                { key: 'fluorescent', x: -42, z: -21, ceil: true, face: 90 },
+                { key: 'flicker_tube', x: -35, z: -21, ceil: true, face: 90 },
+                { key: 'fluorescent', x: 31.5, z: -24.5, ceil: true, face: 90 },
+                { key: 'fluorescent', x: 38.5, z: -24.5, ceil: true, face: 90 },
+                { key: 'fluorescent', x: 31.5, z: -21, ceil: true, face: 90 },
+                { key: 'fluorescent', x: 38.5, z: -21, ceil: true, face: 90 },
+                { key: 'fluorescent', x: -7, z: 0, ceil: true, face: 90 },
+                { key: 'flicker_tube', x: 0, z: 0, ceil: true, face: 90 },
+                { key: 'fluorescent', x: 7, z: 0, ceil: true, face: 90 },
+                { key: 'fluorescent', x: -7, z: 3.5, ceil: true, face: 90 },
+                { key: 'fluorescent', x: 0, z: 3.5, ceil: true, face: 90 },
+                { key: 'fluorescent', x: 7, z: 3.5, ceil: true, face: 90 },
+                { key: 'square_cubicle', x: -43, z: -26.5, face: 180 },
+                { key: 'square_cubicle', x: -43, z: -19.1, face: 0 },
+                { key: 'square_cubicle', x: -38.5, z: -26.5, face: 180 },
+                { key: 'square_cubicle', x: -38.5, z: -19.1, face: 0 },
+                { key: 'square_cubicle', x: -34, z: -26.5, face: 180 },
+                { key: 'square_cubicle', x: -34, z: -19.1, face: 0 },
+                { key: 'square_cubicle', x: -29.5, z: -26.5, face: 180 },
+                { key: 'square_cubicle', x: -29.5, z: -19.1, face: 0 },
+                { key: 'office_chair', x: -40.8, z: -22.6, face: 140 },
+                { key: 'office_chair', x: -31.4, z: -23.6, face: 300 },
+                { key: 'paper_sheet', x: -36.4, z: -22.3, y: 0.01, face: 35 },
+                { key: 'paper_sheet', x: -43.6, z: -23.5, y: 0.01, face: 300 },
+                { key: 'water_cooler', x: -28.6, z: -22.5, face: 270 },
+                { key: 'psx_vending_machine_1', x: 29, z: -27.3, face: 180 },
+                { key: 'psx_vending_machine_1', x: 30.6, z: -27.3, face: 180 },
+                { key: 'water_cooler', x: 36.5, z: -27.5, face: 180 },
+                { key: 'psx_table_large_2', x: 36.75, z: -22, face: 0 },
+                { key: 'office_chair', x: 35.2, z: -22, face: 90 },
+                { key: 'office_chair', x: 38.3, z: -22.1, face: 280 },
+                { key: 'coffee_mug', x: 36.6, z: -22.1, y: 0.78 },
+                { key: 'wall_clock', x: 36.75, z: -27.9, y: 2.3, face: 180 },
+                { key: 'square_cubicle', x: -7.5, z: -1, face: 180 },
+                { key: 'square_cubicle', x: -7.5, z: 3, face: 180 },
+                { key: 'square_cubicle', x: -2.5, z: -1, face: 180 },
+                { key: 'square_cubicle', x: -2.5, z: 3, face: 180 },
+                { key: 'square_cubicle', x: 2.5, z: -1, face: 180 },
+                { key: 'square_cubicle', x: 2.5, z: 3, face: 180 },
+                { key: 'square_cubicle', x: 7.5, z: -1, face: 180 },
+                { key: 'square_cubicle', x: 7.5, z: 3, face: 180 },
+                { key: 'paper_sheet', x: -5, z: 5.5, y: 0.01, face: 80 },
+                { key: 'paper_sheet', x: 4.6, z: 1.2, y: 0.01, face: 20 },
+                { key: 'paper_sheet', x: 5.2, z: 5.7, y: 0.01, face: 150 },
+                { key: 'filing_cabinet', x: 10, z: -2.5, face: 270 },
+                { key: 'filing_cabinet', x: 10, z: -1.1, face: 270 },
+                { key: 'filing_cabinet', x: -48.95, z: -26.3, face: 90 },
+                { key: 'filing_cabinet', x: -55.55, z: 6, face: 90 },
+                { key: 'water_cooler', x: -14.4, z: -20, face: 270 },
+                { key: 'office_chair', x: -17, z: 6.5, face: 200 },
+                { key: 'filing_cabinet', x: 3.1, z: -24, face: 270 },
+                { key: 'filing_cabinet', x: 3.1, z: -22.6, face: 270 },
+                { key: 'psx_vending_machine_1', x: 20.5, z: 2, face: 270 },
+                { key: 'office_chair', x: 42, z: -11.1, face: 60 },
+                { key: 'filing_cabinet', x: 55.55, z: -23.5, face: 270 },
+                { key: 'water_cooler', x: 55.6, z: 7.4, face: 270 },
+                { key: 'paper_sheet', x: -25.6, z: -9.5, y: 0.01, face: 10 },
+                { key: 'paper_sheet', x: 10.4, z: 14.9, y: 0.01, face: 120 },
+                { key: 'paper_sheet', x: 35, z: -34, y: 0.01, face: 260 },
+                { key: 'office_chair', x: 7.5, z: 12.5, face: 330 },
+                { key: 'psx_vending_machine_1', x: 10.5, z: 36.5, face: 0 },
+                { key: 'square_cubicle', x: 35, z: 22.7, face: 180 },
+                { key: 'office_chair', x: 35.5, z: 25.9, face: 20 },
+                { key: 'psx_cobweb_1', x: -1, z: 30.5, y: 2.9, face: 45 },
+                { key: 'psx_cobweb_1', x: 41.2, z: 37.7, y: 2.9, face: 315 },
+                { key: 'psx_cobweb_1', x: -55.3, z: 16.9, y: 2.9, face: 135 },
+            ],
+            agents: [], npcSpots: [], onlineSpots: [], lines: [],
+            spawn: { x: -52.5, z: -34.3, face: 180 },
+        },
+        hwing_desert: {
+            label: 'DESERT AT DUSK',
+            kind: 'box', noWalkers: true,
+            shell: hqAncientShell({ w: 28, d: 38.5, h: 20, wallH: 20, floor: 'desert', apron: 'desert', skirt: 'dirt_2', apronColor: 0xffffff, floorColor: 0xffffff, plate: { x: 0, z: -18.85, y: 5.0 },
+                                    mood: { lamp: 0xff9a50, glow: 0xff7a30, strip: 0xffc080, light: 0xffb878, ambient: 0.5 },
+                                    sky: { night: 0, hold: 19.3, tint: 0xe08a50, tintAmt: 0.65, stars: 0.5, nebula: 0.4, day: 1, clouds: 0.08, fog: { color: 0xe29a60, amount: 0.55, top: 0.05, band: 0.45, density: 0.02 }, scenery: 'none' },
+                                    atmos: { kind: 'dust', color: 0xd8c0a0, n: 40 },
+                                    look: HQ_ROOM_LOOKS.plateau }),
+            terrain: { res: 1.75, floor: 'desert', cliff: 'bricks_1', path: 'urban_street', noise: { amp: 0.12, scale: 9 }, crag: false,
+                features: [{ k: 'path', pts: [[-30, -4], [30, -4]], w: 5 }] },
+            doors: [
+                { id: 'hall', wall: 's', x: 0, leaf: 'leaf_white_wood', label: 'H-WING', action: { room: 'hwing_floor', at: 'desert' } },
+                { id: 'lone', wall: 'n', x: 0, leaf: 'leaf_white_wood', label: 'H-WING', action: { room: 'hwing_floor', at: 'desert_out' } },
             ],
             props: [
-                { key: 'fluorescent', x: -24, z: 24, ceil: true, face: 0 },
-                { key: 'fluorescent', x: 24, z: 24, ceil: true, face: 0 },
-                { key: 'fluorescent', x: -24, z: 18, ceil: true, face: 0 },
-                { key: 'flicker_tube', x: 24, z: 18, ceil: true, face: 0 },
-                { key: 'flicker_tube', x: -24, z: 12, ceil: true, face: 0 },
-                { key: 'fluorescent', x: 24, z: 12, ceil: true, face: 0 },
-                { key: 'fluorescent', x: -24, z: 6, ceil: true, face: 0 },
-                { key: 'fluorescent', x: 24, z: 6, ceil: true, face: 0 },
-                { key: 'fluorescent', x: -24, z: -6, ceil: true, face: 0 },
-                { key: 'flicker_tube', x: 24, z: -6, ceil: true, face: 0 },
-                { key: 'fluorescent', x: -24, z: -12, ceil: true, face: 0 },
-                { key: 'fluorescent', x: 24, z: -12, ceil: true, face: 0 },
-                { key: 'flicker_tube', x: -24, z: -18, ceil: true, face: 0 },
-                { key: 'fluorescent', x: 24, z: -18, ceil: true, face: 0 },
-                { key: 'fluorescent', x: -16, z: 0, ceil: true, face: 90 },
-                { key: 'fluorescent', x: -8, z: 0, ceil: true, face: 90 },
-                { key: 'fluorescent', x: 8, z: 0, ceil: true, face: 90 },
-                { key: 'fluorescent', x: 16, z: 0, ceil: true, face: 90 },
-                { key: 'fluorescent', x: -16, z: -24, ceil: true, face: 90 },
-                { key: 'fluorescent', x: -8, z: -24, ceil: true, face: 90 },
-                { key: 'flicker_tube', x: 8, z: -24, ceil: true, face: 90 },
-                { key: 'fluorescent', x: 16, z: -24, ceil: true, face: 90 },
-                { key: 'fluorescent', x: 0, z: -6, ceil: true, face: 0 },
-                { key: 'fluorescent', x: 0, z: -18, ceil: true, face: 0 },
-                { key: 'fluorescent', x: 0, z: -27, ceil: true, face: 0 },
-                { key: 'fluorescent', x: -16, z: -15, ceil: true, face: 90 },
-                { key: 'fluorescent', x: -16, z: -9, ceil: true, face: 90 },
-                { key: 'flicker_tube', x: -12, z: -15, ceil: true, face: 90 },
-                { key: 'flicker_tube', x: -12, z: -9, ceil: true, face: 90 },
-                { key: 'fluorescent', x: -8, z: -15, ceil: true, face: 90 },
-                { key: 'fluorescent', x: -8, z: -9, ceil: true, face: 90 },
-                { key: 'fluorescent', x: 8, z: -15, ceil: true, face: 90 },
-                { key: 'fluorescent', x: 8, z: -9, ceil: true, face: 90 },
-                { key: 'fluorescent', x: 16, z: -15, ceil: true, face: 90 },
-                { key: 'fluorescent', x: 16, z: -9, ceil: true, face: 90 },
-                { key: 'flicker_tube', x: -15, z: 10.4, ceil: true, face: 90 },
-                { key: 'fluorescent', x: -11, z: 10.4, ceil: true, face: 90 },
-                { key: 'fluorescent', x: -7, z: 10.4, ceil: true, face: 90 },
-                { key: 'fluorescent', x: -7, z: 18.5, ceil: true, face: 90 },
-                { key: 'fluorescent', x: -7, z: 23.5, ceil: true, face: 90 },
-                { key: 'fluorescent', x: 0, z: 18.5, ceil: true, face: 90 },
-                { key: 'fluorescent', x: 0, z: 23.5, ceil: true, face: 90 },
-                { key: 'fluorescent', x: 7, z: 18.5, ceil: true, face: 90 },
-                { key: 'flicker_tube', x: 7, z: 23.5, ceil: true, face: 90 },
-                { key: 'fluorescent', x: 11, z: 8, ceil: true, face: 0 },
-                { key: 'tanker_desk', x: -32.62, z: 14.915, face: 90 },
-                { key: 'office_chair', x: -31.57, z: 14.915, face: 270 },
-                { key: 'crt_terminal', x: -32.568, z: 15.148, y: 0.76, face: 90 },
-                { key: 'filing_cabinet', x: -30.625, z: 14.272, face: 180 },
-                { key: 'fluorescent', x: -30.5, z: 16, ceil: true, face: 0 },
-                { key: 'nameplate', x: -25.45, z: 14.7, face: 90, mount: 1.55 },
-                { key: 'tanker_desk', x: -32.62, z: -6.24, face: 90 },
-                { key: 'office_chair', x: -31.57, z: -6.24, face: 270 },
-                { key: 'crt_terminal', x: -32.568, z: -5.89, y: 0.76, face: 90 },
-                { key: 'filing_cabinet', x: -30.625, z: -7.877, face: 180 },
-                { key: 'fluorescent', x: -30.5, z: -6, ceil: true, face: 0 },
-                { key: 'nameplate', x: -25.45, z: -7.3, face: 90, mount: 1.55 },
-                { key: 'tanker_desk', x: -32.62, z: 27.045, face: 90 },
-                { key: 'office_chair', x: -31.57, z: 27.045, face: 270 },
-                { key: 'crt_terminal', x: -32.568, z: 27.278, y: 0.76, face: 90 },
-                { key: 'filing_cabinet', x: -30.625, z: 24.772, face: 180 },
-                { key: 'fluorescent', x: -30.5, z: 26, ceil: true, face: 0 },
-                { key: 'nameplate', x: -25.45, z: 24.7, face: 90, mount: 1.55 },
-                { key: 'tanker_desk', x: 32.62, z: 14.795, face: 270 },
-                { key: 'office_chair', x: 31.57, z: 14.795, face: 90 },
-                { key: 'crt_terminal', x: 32.568, z: 15.028, y: 0.76, face: 270 },
-                { key: 'filing_cabinet', x: 30.625, z: 13.127, face: 180 },
-                { key: 'fluorescent', x: 30.5, z: 14, ceil: true, face: 0 },
-                { key: 'nameplate', x: 25.45, z: 12.7, face: 270, mount: 1.55 },
-                { key: 'tanker_desk', x: 32.62, z: -7.79, face: 270 },
-                { key: 'office_chair', x: 31.57, z: -7.79, face: 90 },
-                { key: 'crt_terminal', x: 32.568, z: -7.44, y: 0.76, face: 270 },
-                { key: 'filing_cabinet', x: 30.625, z: -9.627, face: 180 },
-                { key: 'fluorescent', x: 30.5, z: -8, ceil: true, face: 0 },
-                { key: 'nameplate', x: 25.45, z: -9.3, face: 270, mount: 1.55 },
-                { key: 'tanker_desk', x: 32.62, z: 25.26, face: 270 },
-                { key: 'office_chair', x: 31.57, z: 25.26, face: 90 },
-                { key: 'crt_terminal', x: 32.568, z: 25.61, y: 0.76, face: 270 },
-                { key: 'filing_cabinet', x: 30.625, z: 23.158, face: 180 },
-                { key: 'fluorescent', x: 30.5, z: 25, ceil: true, face: 0 },
-                { key: 'nameplate', x: 25.45, z: 23.7, face: 270, mount: 1.55 },
-                { key: 'papers_a', x: 32.3, z: -8.4, y: 0.76, face: 15 },
-                { key: 'rotary_phone', x: 32.62, z: -8.49, y: 0.76, face: 270 },
-                { key: 'desk_lamp', x: -32.62, z: 14.526, y: 0.76 },
-                { key: 'cardboard_box', x: -28.875, z: 27.417, face: 20 },
-                { key: 'trash_bin', x: 28.875, z: 27.242, face: 90 },
-                { key: 'potted_plant', x: -28.63, z: -4.142 },
-                { key: 'square_cubicle', x: -14.873, z: 7.874, face: 0 },
-                { key: 'square_cubicle', x: -11.375, z: 7.874, face: 0 },
-                { key: 'square_cubicle', x: -7.877, z: 7.874, face: 0 },
-                { key: 'square_cubicle', x: -14.873, z: 11.373, face: 180 },
-                { key: 'square_cubicle', x: -11.375, z: 11.373, face: 180 },
-                { key: 'square_cubicle', x: -7.877, z: 11.373, face: 180 },
-                { key: 'filing_cabinet', x: -17.092, z: 7.876, face: 90 },
-                { key: 'water_cooler', x: -16.6, z: 12, face: 90 },
-                { key: 'notice_board', x: -15, z: 14.45, face: 0, mount: 1.2 },
-                { key: 'wall_clock', x: -5.05, z: 10, face: 270, mount: 2.05 },
-                { key: 'exit_sign', x: -13.5, z: 14.45, face: 0, mount: 2.45 },
-                { key: 'potted_plant', x: -5.76, z: 5.833 },
-                { key: 'paper_sheet', x: -13.1, z: 10.3, y: 0.01, face: 15 },
-                { key: 'paper_sheet', x: -8.4, z: 10.5, y: 0.01, face: 250 },
-                { key: 'vending_machine', x: 9.1, z: 7.875, face: 90 },
-                { key: 'mini_fridge', x: 9.275, z: 9.975, face: 90 },
-                { key: 'coffee_table', x: 11.055, z: 7.955 },
-                { key: 'molded_chair', x: 10.18, z: 7.955, face: 90 },
-                { key: 'molded_chair', x: 11.93, z: 7.955, face: 270 },
-                { key: 'molded_chair', x: 11.055, z: 9.11, face: 0 },
-                { key: 'steel_table', x: 13.125, z: 6.195, face: 270 },
-                { key: 'microwave', x: 13.125, z: 5.775, y: 0.76, face: 270 },
-                { key: 'coffee_maker', x: 13.125, z: 6.615, y: 0.76, face: 270 },
-                { key: 'retro_radio', x: 13.125, z: 6.825, y: 0.76, face: 270 },
-                { key: 'notice_board', x: 12.8, z: 5.55, face: 180, mount: 1.2 },
-                { key: 'wall_clock', x: 11, z: 10.45, face: 0, mount: 2.05 },
-                { key: 'trash_bin', x: 13.65, z: 9.975, face: 180 },
-                { key: 'solo_cup', x: 10.968, z: 7.85, y: 0.46, face: 10 },
-                { key: 'coffee_mug', x: 11.318, z: 8.165, y: 0.46, face: 120 },
-                { key: 'water_cooler', x: -22.8, z: 4, face: 270 },
-                { key: 'fire_extinguisher', x: 22.7, z: -4, face: 90 },
-                { key: 'folding_chair', x: 22.9, z: -20.5, face: 270 },
-                { key: 'exit_sign', x: -24, z: -25.45, face: 180, mount: 2.45 },
-                { key: 'picture_round_a', x: -25.45, z: -16, face: 90, mount: 1.7 },
-                { key: 'picture_round_a', x: 25.45, z: -16, face: 270, mount: 1.7 },
-                { key: 'wall_clock', x: -22.55, z: -6, face: 270, mount: 2.05 },
-                { key: 'wall_clock', x: 22.55, z: 12, face: 90, mount: 2.05 },
-                { key: 'paper_sheet', x: -23.6, z: -8, y: 0.01, face: 75 },
-                { key: 'paper_sheet', x: 23.6, z: 4, y: 0.01, face: 300 },
-                { key: 'floor_stain', x: -24.3, z: 6 },
-                { key: 'floor_stain', x: 24.3, z: -6 },
-                { key: 'potted_plant', x: -22.9, z: 28.4 },
-                { key: 'rug_round', x: 0, z: -28.2 },
-                { key: 'wall_clock', x: -1.15, z: -20, face: 90, mount: 2.05 },
-                { key: 'security_camera', x: -22.6, z: 26, face: 225, mount: 2.7 },
-                { key: 'floor_stain', x: 9, z: -12 },
-                { key: 'floor_stain', x: 16.5, z: -15 },
-                { key: 'floor_stain', x: 14, z: -7.5 },
-                { key: 'wet_floor_sign', x: 6.125, z: -14.873, face: 30 },
-                { key: 'wet_floor_sign', x: 18.375, z: -7.877, face: 200 },
-                { key: 'office_chair', x: -14.875, z: -14.872, face: 120 },
-                { key: 'cardboard_boxes', x: -18.375, z: -6.126, face: 15 },
-                { key: 'paper_sheet', x: -10, z: -11, y: 0.01, face: 40 },
-                { key: 'office_chair', x: -6.127, z: 18.376, face: 200 },
-                { key: 'office_chair', x: 4.373, z: 23.624, face: 30 },
-                { key: 'cardboard_box', x: 9.624, z: 16.625, face: 20 },
-                { key: 'cardboard_boxes', x: -9.625, z: 25.375, face: 80 },
-                { key: 'floor_stain', x: 2, z: 20 },
-                { key: 'paper_sheet', x: -3, z: 23, y: 0.01, face: 130 },
-                { key: 'trash_bin', x: 9.927, z: 25.677, face: 180 },
+                { key: 'saguaro_cactus', x: -12, z: 13.67, face: 104, h: 4.35 },
+                { key: 'saguaro_cactus', x: 5.5, z: 1.06, face: 119, h: 5.76 },
+                { key: 'saguaro_cactus', x: 6.12, z: 1.39, face: 246, h: 5.45 },
+                { key: 'saguaro_cactus', x: 7.6, z: -8.38, face: 135, h: 5.64 },
+                { key: 'saguaro_cactus', x: 4.75, z: -14.5, face: 246, h: 5.02 },
+                { key: 'saguaro_cactus', x: 10.14, z: 9.99, face: 44, h: 5.13 },
+                { key: 'saguaro_cactus', x: 10.16, z: 6.13, face: 232, h: 5.3 },
+                { key: 'prickly_pear', x: -12, z: -1.73, face: 112 },
+                { key: 'prickly_pear', x: -10.92, z: 11.71, face: 147 },
+                { key: 'prickly_pear', x: 4.92, z: -1.06, face: 101 },
+                { key: 'prickly_pear', x: -6.76, z: 6.94, face: 51 },
+                { key: 'prickly_pear', x: -5.98, z: 2.86, face: 138 },
+                { key: 'prickly_pear', x: -9.97, z: -9.18, face: 265 },
+                { key: 'tumbleweed', x: -12, z: -0.03, face: 128 },
+                { key: 'tumbleweed', x: 5.14, z: -12.27, face: 58 },
+                { key: 'tumbleweed', x: 9.45, z: 12.95, face: 326 },
+                { key: 'tumbleweed', x: 6.22, z: -6.94, face: 313 },
+                { key: 'power_pole', x: -9.5, z: -4, face: 90 },
+                { key: 'power_pole', x: 9.5, z: -4, face: 90 },
             ],
-            agents: [
-                { x: -5.8, z: 13.9, face: 300, pose: 'hqPhone', gender: 'male', label: 'THE SUPERVISOR', reach: 2.4,
-                  line: '“Yes. The same shift. Yes, upstairs as well. No, they have not noticed. No, I have not told them.”' },
-                { x: 29.4, z: -6.9, face: 240, pose: 'hqArms', gender: 'female', label: 'THE CLERK', reach: 2.2,
-                  line: '“Which office is this?” “This one.” “I meant the number.” “So did I.”' },
-            ],
-            npcSpots: [{ x: 9.6, z: 6.6, face: 135, say: ['“The machine takes coins we stopped minting. It gives change in them too.”', '“Break is fifteen minutes. The clock in here is on the wrong wall, so nobody knows when it started.”'] }],
-            onlineSpots: [
-                { x: -15, z: 8.6, face: 0 },   { x: -11, z: 8.6, face: 0 },   { x: -7, z: 8.6, face: 0 },
-                { x: -15, z: 12.2, face: 180 },  { x: -11, z: 12.2, face: 180 },  { x: -7, z: 12.2, face: 180 },
-            ],
-            lines: [
-                '“How long is it?” “Forty-eight metres.” “Every time?” “Every time it has been measured.”',
-                '“The hum.” “The lights.” “It is not the lights.” “Then it is not the lights.”',
-                '“Which office is mine?” “That one.” “They are all that one.”',
-                '“Is this the east leg or the west?” “Look at the plate.” “The plate is blank.” “Then it is the east.”',
-                '“The carpet is wet.” “The carpet is always wet.” “Where does the water come from?” “The pools.” “Where do the pools come from?” “The carpet.”',
-                '“Whose house?” “Yours.” “I never lived under an office.” “No. The office is under it.”',
-                '“What are they typing?” “Crossings.” “The same crossings as upstairs?” “The same shift.”',
-                '“The machine took my coins.” “And?” “Gave them back.” “Then it works.”',
-            ],
-            spawn: { x: -24, z: 26.4, face: 0 },
+            counters: [], agents: [], npcSpots: [], onlineSpots: [], lines: [],
+            spawn: { x: 0, z: 15.65, face: 0 },
         },
+        hwing_pines: {
+            label: 'SNOWY PINES',
+            kind: 'box', noWalkers: true,
+            shell: hqMountainShell({ w: 28, d: 38.5, h: 20, wallH: 20, floor: 'calm_snow', apron: 'calm_snow', skirt: 'ice_1', floorColor: 0xf2f6ff, apronColor: 0xf2f6ff, plate: { x: 0, z: -18.85, y: 5.0 },
+                                    mood: { lamp: 0xffc070, glow: 0xffa040, light: 0xb8c8ff, ambient: 0.45 },
+                                    sky: { night: 1, lock: 22, tint: 0x1c2a48, tintAmt: 0.45, stars: 0.8, nebula: 0.4, fog: { color: 0x39465e, amount: 0.6, top: 0.07, band: 0.55, density: 0.03 }, scenery: 'none' },
+                                    forest: { depth: 14, spacing: 2.8, rows: 2.6, start: 1.0, kinds: ['xmas_snow_pine', 'xmas_snow_pine_2', 'xmas_snow_pine_3', 'xmas_pine', 'xmas_pine_2'] },
+                                    atmos: { kind: 'snow', wind: 0.6 },
+                                    look: HQ_ROOM_LOOKS.mountain }),
+            terrain: { res: 1.75, floor: 'calm_snow', cliff: 'ice_1', path: 'calm_snow', noise: { amp: 0.18, scale: 7 }, crag: false,
+                features: [
+                    { k: 'tree', x: -12, z: -15.43, kind: 'xmas_snow_pine_3', h: 6.26 },
+                    { k: 'tree', x: -11.13, z: -13.58, kind: 'xmas_snow_pine_3', h: 6.99 },
+                    { k: 'tree', x: 7.69, z: 14.51, kind: 'xmas_pine', h: 6.19 },
+                    { k: 'tree', x: -7.61, z: -2.07, kind: 'xmas_pine', h: 7.11 },
+                    { k: 'tree', x: 5.14, z: 9.61, kind: 'xmas_snow_pine_2', h: 5.86 },
+                    { k: 'tree', x: -9.24, z: -14.95, kind: 'xmas_snow_pine', h: 8.31 },
+                    { k: 'tree', x: 3.78, z: -15.07, kind: 'xmas_snow_pine_3', h: 7.15 },
+                    { k: 'tree', x: -4.71, z: 9.55, kind: 'xmas_snow_pine_3', h: 7.36 },
+                    { k: 'tree', x: -4.15, z: 15.76, kind: 'xmas_snow_pine_3', h: 6.54 },
+                    { k: 'tree', x: -5.46, z: -15.03, kind: 'xmas_pine', h: 6.91 },
+                    { k: 'tree', x: -4.25, z: -7.7, kind: 'xmas_snow_pine', h: 7.44 },
+                    { k: 'tree', x: 9.88, z: -3.48, kind: 'xmas_snow_pine_3', h: 8.12 },
+                    { k: 'tree', x: -3.89, z: 6.26, kind: 'xmas_snow_pine', h: 5.76 },
+                    { k: 'tree', x: 7.17, z: 6.38, kind: 'xmas_pine', h: 6.62 },
+                    { k: 'tree', x: -11.57, z: -10.26, kind: 'xmas_snow_pine_3', h: 5.96 },
+                    { k: 'tree', x: 3.62, z: 6.98, kind: 'xmas_snow_pine_2', h: 8 },
+                ] },
+            doors: [
+                { id: 'hall', wall: 's', x: 0, leaf: 'leaf_white_wood', label: 'H-WING', action: { room: 'hwing_floor', at: 'pines' } },
+                { id: 'lone', wall: 'n', x: 0, leaf: 'leaf_white_wood', label: 'H-WING', action: { room: 'hwing_floor', at: 'pines_out' } },
+            ],
+            props: [
+                { key: 'snow_heap', x: -11.99, z: 10.22, face: 329 },
+                { key: 'snow_heap', x: -4.78, z: -1.62, face: 126 },
+                { key: 'snow_heap', x: -3.26, z: 6.08, face: 252 },
+                { key: 'snow_heap', x: -9.45, z: -12.3, face: 23 },
+                { key: 'snow_heap', x: -9.65, z: -16.17, face: 198 },
+                { key: 'snow_heap', x: -3.33, z: -1.19, face: 80 },
+                { key: 'lantern_post', x: 2.2, z: -16.05, face: 180 },
+            ],
+            counters: [], agents: [], npcSpots: [], onlineSpots: [], lines: [],
+            spawn: { x: 0, z: 15.65, face: 0 },
+        },
+        hwing_corn: {
+            label: 'CORN FIELD',
+            kind: 'box', noWalkers: true,
+            shell: hqRanchShell({ w: 28, d: 38.5, h: 20, wallH: 20, plate: { x: 0, z: -18.85, y: 5.0 },
+                                   sky: { night: 1, lock: 23, tint: 0x2a1638, tintAmt: 0.5, stars: 1.2, nebula: 0.8, fog: { color: 0x2c2040, amount: 0.86, top: 0.1, band: 0.6, density: 0.024 }, scenery: 'none' } }),
+            terrain: { res: 1.75, floor: 'grass_rocky', cliff: 'dirt', path: 'dirt', noise: { amp: 0.06, scale: 8 }, crag: false,
+                features: [{ k: 'path', pts: [[0, 19.25], [0, -19.25]], w: 3 }] },
+            doors: [
+                { id: 'hall', wall: 's', x: 0, leaf: 'leaf_white_wood', label: 'H-WING', action: { room: 'hwing_floor', at: 'corn' } },
+                { id: 'lone', wall: 'n', x: 0, leaf: 'leaf_white_wood', label: 'H-WING', action: { room: 'hwing_floor', at: 'corn_out' } },
+            ],
+            props: [
+                { key: 'corn_row', x: -12.25, z: -16.25, face: 0 },
+                { key: 'corn_row', x: -8.75, z: -16.25, face: 0 },
+                { key: 'corn_row', x: -5.25, z: -16.25, face: 0 },
+                { key: 'corn_row', x: 5.25, z: -16.25, face: 0 },
+                { key: 'corn_row', x: 8.75, z: -16.25, face: 0 },
+                { key: 'corn_row', x: 12.25, z: -16.25, face: 0 },
+                { key: 'corn_row', x: -12.25, z: -14.5, face: 0 },
+                { key: 'corn_row', x: -8.75, z: -14.5, face: 0 },
+                { key: 'corn_row', x: -5.25, z: -14.5, face: 0 },
+                { key: 'corn_row', x: 5.25, z: -14.5, face: 0 },
+                { key: 'corn_row', x: 8.75, z: -14.5, face: 0 },
+                { key: 'corn_row', x: 12.25, z: -14.5, face: 0 },
+                { key: 'corn_row', x: -12.25, z: -12.75, face: 0 },
+                { key: 'corn_row', x: -8.75, z: -12.75, face: 0 },
+                { key: 'corn_row', x: -5.25, z: -12.75, face: 0 },
+                { key: 'corn_row', x: 5.25, z: -12.75, face: 0 },
+                { key: 'corn_row', x: 8.75, z: -12.75, face: 0 },
+                { key: 'corn_row', x: 12.25, z: -12.75, face: 0 },
+                { key: 'corn_row', x: -12.25, z: -11, face: 0 },
+                { key: 'corn_row', x: -8.75, z: -11, face: 0 },
+                { key: 'corn_row', x: -5.25, z: -11, face: 0 },
+                { key: 'corn_row', x: 5.25, z: -11, face: 0 },
+                { key: 'corn_row', x: 8.75, z: -11, face: 0 },
+                { key: 'corn_row', x: 12.25, z: -11, face: 0 },
+                { key: 'corn_row', x: -12.25, z: -9.25, face: 0 },
+                { key: 'corn_row', x: -8.75, z: -9.25, face: 0 },
+                { key: 'corn_row', x: -5.25, z: -9.25, face: 0 },
+                { key: 'corn_row', x: 5.25, z: -9.25, face: 0 },
+                { key: 'corn_row', x: 8.75, z: -9.25, face: 0 },
+                { key: 'corn_row', x: 12.25, z: -9.25, face: 0 },
+                { key: 'corn_row', x: -12.25, z: -7.5, face: 0 },
+                { key: 'corn_row', x: -8.75, z: -7.5, face: 0 },
+                { key: 'corn_row', x: -5.25, z: -7.5, face: 0 },
+                { key: 'corn_row', x: 5.25, z: -7.5, face: 0 },
+                { key: 'corn_row', x: 8.75, z: -7.5, face: 0 },
+                { key: 'corn_row', x: 12.25, z: -7.5, face: 0 },
+                { key: 'corn_row', x: -12.25, z: -5.75, face: 0 },
+                { key: 'corn_row', x: -8.75, z: -5.75, face: 0 },
+                { key: 'corn_row', x: -5.25, z: -5.75, face: 0 },
+                { key: 'corn_row', x: 5.25, z: -5.75, face: 0 },
+                { key: 'corn_row', x: 8.75, z: -5.75, face: 0 },
+                { key: 'corn_row', x: 12.25, z: -5.75, face: 0 },
+                { key: 'corn_row', x: -12.25, z: -4, face: 0 },
+                { key: 'corn_row', x: -8.75, z: -4, face: 0 },
+                { key: 'corn_row', x: -5.25, z: -4, face: 0 },
+                { key: 'corn_row', x: 5.25, z: -4, face: 0 },
+                { key: 'corn_row', x: 8.75, z: -4, face: 0 },
+                { key: 'corn_row', x: 12.25, z: -4, face: 0 },
+                { key: 'corn_row', x: -12.25, z: -2.25, face: 0 },
+                { key: 'corn_row', x: -8.75, z: -2.25, face: 0 },
+                { key: 'corn_row', x: -5.25, z: -2.25, face: 0 },
+                { key: 'corn_row', x: 5.25, z: -2.25, face: 0 },
+                { key: 'corn_row', x: 8.75, z: -2.25, face: 0 },
+                { key: 'corn_row', x: 12.25, z: -2.25, face: 0 },
+                { key: 'corn_row', x: -12.25, z: -0.5, face: 0 },
+                { key: 'corn_row', x: -8.75, z: -0.5, face: 0 },
+                { key: 'corn_row', x: -5.25, z: -0.5, face: 0 },
+                { key: 'corn_row', x: 5.25, z: -0.5, face: 0 },
+                { key: 'corn_row', x: 8.75, z: -0.5, face: 0 },
+                { key: 'corn_row', x: 12.25, z: -0.5, face: 0 },
+                { key: 'corn_row', x: -12.25, z: 1.25, face: 0 },
+                { key: 'corn_row', x: -8.75, z: 1.25, face: 0 },
+                { key: 'corn_row', x: -5.25, z: 1.25, face: 0 },
+                { key: 'corn_row', x: 5.25, z: 1.25, face: 0 },
+                { key: 'corn_row', x: 8.75, z: 1.25, face: 0 },
+                { key: 'corn_row', x: 12.25, z: 1.25, face: 0 },
+                { key: 'corn_row', x: -12.25, z: 3, face: 0 },
+                { key: 'corn_row', x: -8.75, z: 3, face: 0 },
+                { key: 'corn_row', x: -5.25, z: 3, face: 0 },
+                { key: 'corn_row', x: 5.25, z: 3, face: 0 },
+                { key: 'corn_row', x: 8.75, z: 3, face: 0 },
+                { key: 'corn_row', x: 12.25, z: 3, face: 0 },
+                { key: 'corn_row', x: -12.25, z: 4.75, face: 0 },
+                { key: 'corn_row', x: -8.75, z: 4.75, face: 0 },
+                { key: 'corn_row', x: -5.25, z: 4.75, face: 0 },
+                { key: 'corn_row', x: 5.25, z: 4.75, face: 0 },
+                { key: 'corn_row', x: 8.75, z: 4.75, face: 0 },
+                { key: 'corn_row', x: 12.25, z: 4.75, face: 0 },
+                { key: 'corn_row', x: -12.25, z: 6.5, face: 0 },
+                { key: 'corn_row', x: -8.75, z: 6.5, face: 0 },
+                { key: 'corn_row', x: -5.25, z: 6.5, face: 0 },
+                { key: 'corn_row', x: 5.25, z: 6.5, face: 0 },
+                { key: 'corn_row', x: 8.75, z: 6.5, face: 0 },
+                { key: 'corn_row', x: 12.25, z: 6.5, face: 0 },
+                { key: 'corn_row', x: -12.25, z: 8.25, face: 0 },
+                { key: 'corn_row', x: -8.75, z: 8.25, face: 0 },
+                { key: 'corn_row', x: -5.25, z: 8.25, face: 0 },
+                { key: 'corn_row', x: 5.25, z: 8.25, face: 0 },
+                { key: 'corn_row', x: 8.75, z: 8.25, face: 0 },
+                { key: 'corn_row', x: 12.25, z: 8.25, face: 0 },
+                { key: 'corn_row', x: -12.25, z: 10, face: 0 },
+                { key: 'corn_row', x: -8.75, z: 10, face: 0 },
+                { key: 'corn_row', x: -5.25, z: 10, face: 0 },
+                { key: 'corn_row', x: 5.25, z: 10, face: 0 },
+                { key: 'corn_row', x: 8.75, z: 10, face: 0 },
+                { key: 'corn_row', x: 12.25, z: 10, face: 0 },
+                { key: 'corn_row', x: -12.25, z: 11.75, face: 0 },
+                { key: 'corn_row', x: -8.75, z: 11.75, face: 0 },
+                { key: 'corn_row', x: -5.25, z: 11.75, face: 0 },
+                { key: 'corn_row', x: 5.25, z: 11.75, face: 0 },
+                { key: 'corn_row', x: 8.75, z: 11.75, face: 0 },
+                { key: 'corn_row', x: 12.25, z: 11.75, face: 0 },
+                { key: 'corn_row', x: -12.25, z: 13.5, face: 0 },
+                { key: 'corn_row', x: -8.75, z: 13.5, face: 0 },
+                { key: 'corn_row', x: -5.25, z: 13.5, face: 0 },
+                { key: 'corn_row', x: 5.25, z: 13.5, face: 0 },
+                { key: 'corn_row', x: 8.75, z: 13.5, face: 0 },
+                { key: 'corn_row', x: 12.25, z: 13.5, face: 0 },
+                { key: 'corn_row', x: -12.25, z: 15.25, face: 0 },
+                { key: 'corn_row', x: -8.75, z: 15.25, face: 0 },
+                { key: 'corn_row', x: -5.25, z: 15.25, face: 0 },
+                { key: 'corn_row', x: 5.25, z: 15.25, face: 0 },
+                { key: 'corn_row', x: 8.75, z: 15.25, face: 0 },
+                { key: 'corn_row', x: 12.25, z: 15.25, face: 0 },
+                { key: 'hay_bale', x: 2.6, z: 6.5, face: 20 },
+                { key: 'lantern_post', x: -2.2, z: -16.05, face: 180 },
+            ],
+            counters: [], agents: [], npcSpots: [], onlineSpots: [], lines: [],
+            spawn: { x: 0, z: 15.65, face: 0 },
+        },
+        hwing_moon: {
+            label: 'THE MOON',
+            kind: 'box', noWalkers: true,
+            shell: hqAncientShell({ w: 28, d: 38.5, h: 20, wallH: 20, floor: 'moon', apron: 'moon', skirt: 'moon_3', apronColor: 0xc8c8d0, floorColor: 0xc8c8d0, plate: { x: 0, z: -18.85, y: 5.0 },
+                                    mood: { lamp: 0xd8e0ff, glow: 0xa0b0ff, light: 0xe8ecff, ambient: 0.4 },
+                                    sky: { night: 1, lock: 23, tint: 0x05060d, tintAmt: 0.55, stars: 2.2, nebula: 0.6, fog: { color: 0x0a0c14, amount: 0.12, top: 0.02, band: 0.3 }, scenery: 'none' },
+                                    look: HQ_ROOM_LOOKS.plateau }),
+            terrain: { res: 1.75, floor: 'moon', cliff: 'moon_3', path: 'moon_2', noise: { amp: 0.22, scale: 6 }, crag: false, features: [] },
+            doors: [
+                { id: 'hall', wall: 's', x: 0, leaf: 'leaf_white_wood', label: 'H-WING', action: { room: 'hwing_floor', at: 'moon' } },
+                { id: 'lone', wall: 'n', x: 0, leaf: 'leaf_white_wood', label: 'H-WING', action: { room: 'hwing_floor', at: 'moon_out' } },
+            ],
+            props: [
+                { key: 'psxg_rock_1', x: -11.99, z: -13.73, face: 153, h: 0.66 },
+                { key: 'psxg_rock_1', x: 6.91, z: -1.35, face: 16, h: 0.98 },
+                { key: 'psxg_rock_1', x: 9.33, z: -12.94, face: 274, h: 0.76 },
+                { key: 'psxg_rock_1', x: -3.72, z: 9.93, face: 319, h: 0.96 },
+                { key: 'psxg_rock_1', x: -5.04, z: -7.86, face: 304, h: 0.53 },
+                { key: 'psxg_rock_4', x: 8.42, z: -7.43, face: 323, h: 0.45 },
+                { key: 'psxg_rock_4', x: 3.08, z: -11.83, face: 170, h: 0.42 },
+                { key: 'psxg_rock_4', x: 5.17, z: -1.67, face: 117, h: 0.62 },
+                { key: 'psxg_rock_4', x: -3.59, z: -4.74, face: 91, h: 0.6 },
+                { key: 'psxg_rock_1', x: -5.28, z: 0.93, face: 291, h: 0.67 },
+                { key: 'asteroid_b', x: -11.99, z: 11.92, face: 345 },
+                { key: 'asteroid_b', x: 11.28, z: 6.9, face: 37 },
+                { key: 'asteroid_b', x: 5.78, z: -12.42, face: 48 },
+                { key: 'asteroid_b', x: 4.66, z: -10.09, face: 268 },
+                { key: 'flag_pole', x: -5.5, z: -6, face: 30 },
+                { key: 'earth', x: 14, z: -70, y: 26, h: 14 },
+            ],
+            counters: [], agents: [], npcSpots: [], onlineSpots: [], lines: [],
+            spawn: { x: 0, z: 15.65, face: 0 },
+        },
+        /* </H-WING> */
         /* ── HOME — the childhood-home threshold (SCAFFOLDING, MASTER A0 /
            A14 Q5: the hallway only; nothing in it is canon until the user
            writes it). The stairs end at the ceiling; the kitchen door opens
@@ -85863,17 +85818,17 @@ const DOOR_HQ = {
         hwing_home: {
             label: 'HOME',
             sub: 'NO NUMBER · NO PLATE',
-            kind: 'box',
+            kind: 'box', noWalkers: true,   // DOOR HQ 2.0 WAVE 4 (2026-11-26): moved into H-Wing and grown x2 (mondo: no room that small)
             shell: {
-                w: 4, d: 7, h: 2.7,
+                w: 8, d: 14, h: 2.7,
                 wallH: 2.7, dadoH: 0.9,
                 floor: 'carpet_2', wall: 'drywall_2', dado: 'drywall_3', trim: 'drywall_4', ceiling: 'ceiling',
                 floorColor: 0x8a6a62, wallColor: 0xd9c9a6, dadoColor: 0xc2b08e, ceilColor: 0xf2eee4,
                 pipes: false,
                 strips: false,
-                light: { x: -0.4, z: 0.4 },
+                light: { x: -0.8, z: 0.8 },
                 mood: { light: 0xffd6a0, ambient: 0.7 },
-                plate: { x: 0, z: -3.25, y: 2.3 },
+                plate: { x: 0, z: -6.5, y: 2.3 },
             },
             doors: [
                 { id: 'hall', wall: 's', x: 0, leaf: 'leaf_suburban_house',
@@ -85886,30 +85841,30 @@ const DOOR_HQ = {
                   desc: 'The kitchen door. It opens onto the hall, from the front door, with the front door behind you. The stairs end at the ceiling. The phone is ringing.' },
             ],
             counters: [
-                { id: 'phone', x: -1.2, z: -0.5, face: 90, plateY: 1.3, radius: 1.8, verb: 'ANSWER',
+                { id: 'phone', x: -2.4, z: -1, face: 90, plateY: 1.3, radius: 1.8, verb: 'ANSWER',
                   label: 'THE PHONE', sub: 'IT IS RINGING', action: {},
                   desc: 'The phone on the hall table. It is ringing. It was ringing when you came in.' },
             ],
             props: [
-                { key: 'house_stairs',   x: 1.43, z: 0, face: 0 },                     // against the east wall, up to the ceiling; nothing is up there
-                { key: 'hook_rail',      wall: 'w', z: 2.2, mount: 1.6 },
-                { key: 'picture_round_a', wall: 'w', z: 0.2, mount: 1.6 },
-                { key: 'picture_round_b', wall: 'w', z: -1.2, mount: 1.6 },
-                { key: 'picture_round_c', wall: 'w', z: -2.4, mount: 1.6 },
-                { key: 'coffee_table',   x: -1.2, z: -0.4 },                               // the hall table
-                { key: 'rotary_phone',   x: -1.2, z: -0.5, y: 0.46, face: 90 },
-                { key: 'table_lamp',     x: -1.2, z: 0.15, y: 0.46 },
-                { key: 'house_key',      x: -1.0, z: -0.9, y: 0.46, face: 30 },
-                { key: 'rug_round',      x: 0, z: 1.8 },
-                { key: 'potted_plant',   x: -1.6, z: 2.6 },
-                { key: 'wall_clock',     wall: 'e', z: 2.2, mount: 2.0 },                  // stopped
-                { key: 'bare_bulb',      x: -0.4, z: 0.4, ceil: true },                          // a bulb in the hall; the shade is gone
+                { key: 'house_stairs',   x: 2.86, z: 0, face: 0 },                     // against the east wall, up to the ceiling; nothing is up there
+                { key: 'hook_rail',      wall: 'w', z: 4.4, mount: 1.6 },
+                { key: 'picture_round_a', wall: 'w', z: 0.4, mount: 1.6 },
+                { key: 'picture_round_b', wall: 'w', z: -2.4, mount: 1.6 },
+                { key: 'picture_round_c', wall: 'w', z: -4.8, mount: 1.6 },
+                { key: 'coffee_table',   x: -2.4, z: -0.8 },                               // the hall table
+                { key: 'rotary_phone',   x: -2.4, z: -1, y: 0.46, face: 90 },
+                { key: 'table_lamp',     x: -2.4, z: 0.3, y: 0.46 },
+                { key: 'house_key',      x: -2, z: -1.8, y: 0.46, face: 30 },
+                { key: 'rug_round',      x: 0, z: 3.6 },
+                { key: 'potted_plant',   x: -3.2, z: 5.2 },
+                { key: 'wall_clock',     wall: 'e', z: 4.4, mount: 2.0 },                  // stopped
+                { key: 'bare_bulb',      x: -0.8, z: 0.8, ceil: true },                          // a bulb in the hall; the shade is gone
             ],
             agents: [],
             npcSpots: [],
             onlineSpots: [],
             lines: [],
-            spawn: { x: 0, z: 2.6, face: 0 },
+            spawn: { x: 0, z: 5.2, face: 0 },
         },
     },
 };
@@ -87731,7 +87686,7 @@ const HQ_STAGE_RULES = {
        rebuild). A zone not listed keeps today's rooms and doors exactly; a later phase adds its zone here when its
        joins are built. `buildDelayMs` = the beat after the room's card drops before the first neighbour builds (the
        arrival stays smooth); `lampPickMs` = how often the lamp budget re-picks the nearest `lampsLive` point lights. */
-    zones: ['medwing', 'garage', 'basement', 'dumb', 'works', 'annex', 'labs', 'incinerator', 'executive', 'derelict', 'hwing'], buildDelayMs: 600, lampPickMs: 500,   // Phase 4: THE BASEMENT; Phase 5 (2026-09-27): THE D.U.M.B. (door joins); THE LAND cut (ZONES_PLAN Z0): the stage is DOOR HQ's only; ZONES_PLAN Z2 (2026-09-30): the floors
+    zones: ['medwing', 'garage', 'basement', 'dumb', 'works', 'annex', 'labs', 'incinerator', 'derelict', 'hwing'], buildDelayMs: 600, lampPickMs: 500,   // Phase 4: THE BASEMENT; Phase 5 (2026-09-27): THE D.U.M.B. (door joins); THE LAND cut (ZONES_PLAN Z0): the stage is DOOR HQ's only; ZONES_PLAN Z2 (2026-09-30): the floors
     /* a neighbour's PEOPLE (Phase 2): 'interior' = a closed room's cast (the nurse at her desk, the patient on his cot) is
        spawned with the room when it is built beside you, so the ward is not empty through its open door; an outdoor part's
        crowd still comes out when you cross (Phase 1's rule — a city block is dozens of rigs). 'none' = Phase 1's rule
@@ -88240,12 +88195,9 @@ const HQ_WORLD = {
         annex: { label: 'THE THIRD FLOOR', ground: 'hq', hub: 'annex', sky: null, clock: false,
             parts: {
                 annex:      { x: 0, z: 0, y: 16, rot: 0 },
-                garden:     { x: 0, z: -14.2, y: 16, rot: 0 },
-                natatorium: { x: 20.2, z: -14.2, y: 16, rot: 0 },
+                /* (DOOR HQ 2.0 WAVE 4, 2026-11-26: the Garden and the Swimming Pool are H-Wing's rooms now, each behind its own plain door) */
             },
             joins: [
-                { a: 'annex', b: 'garden', kind: 'door', door: 'garden', bDoor: 'annex' },
-                { a: 'garden', b: 'natatorium', kind: 'door', door: 'pool', bDoor: 'garden' },
                 /* (DOOR HQ 2.0 WAVE 3, 2026-11-26: Room X is on the Works' middle level, sealed; the garden's gate and the dungeon's portcullis to it are doors) */
             ] },
         /* DOOR HQ 2.0 WAVE 3 (2026-11-26) — THE WORKS, MIDDLE: the labs and the holding block (docs/plans/door-hq-2/plans/4_works_middle_bottom.png).
@@ -88295,17 +88247,7 @@ const HQ_WORLD = {
                 { a: 'incinerator', b: 'sacrifice',   kind: 'door', door: 'sacrifice',   bDoor: 'incinerator' },
                 { a: 'incinerator', b: 'antechamber', kind: 'door', door: 'antechamber', bDoor: 'incinerator' },
             ] },
-        /* Z2 — PH (THE PENTHOUSE): the lobby, the corner office, the pool deck. */
-        executive: { label: 'THE PENTHOUSE', ground: 'hq', hub: 'executive', sky: null, clock: false,
-            parts: {
-                executive: { x: 0, z: 0, y: 34, rot: 0 },
-                corner:    { x: 8.9, z: -1.2, y: 34, rot: 0 },
-                pool:      { x: 2.2, z: -8.7, y: 34, rot: 0 },
-            },
-            joins: [
-                { a: 'executive', b: 'corner', kind: 'door', door: 'corner', bDoor: 'lobby' },
-                { a: 'executive', b: 'pool', kind: 'door', door: 'pool', bDoor: 'lobby' },
-            ] },
+        /* (Z2 — PH, THE PENTHOUSE zone: retired 2026-11-26, DOOR HQ 2.0 wave 4: the Penthouse is one room, the Corner Office and the Infinity Pool inside it) */
         /* (the records wing zone: retired 2026-11-26, DOOR HQ 2.0 wave 3: Records and the Clock Room are rooms on the Ring) */
         /* (the executive wing, Z2 floor M: RETIRED 2026-11-26, DOOR HQ 2.0 wave 3: the Bureau of Continuity is on the Lobby's gallery, the Trophy Case a cabinet on the Lobby's wall) */
         /* THE SPACESHIP (LEVEL_DESIGN_PLAN §6, 2026-09-30 — mondo: "the spaceship to have no load screens going between the rooms"):
@@ -88315,16 +88257,13 @@ const HQ_WORLD = {
         /* H-WING (LEVEL_DESIGN_PLAN L6, 2026-09-30): the lobby at the car, THE FLOOR (the backrooms layout) and HOME stand door
            to door — the lobby's north door onto the west leg's south end, the floor's north door onto HOME's front door. The
            corridor that repeats and the room at the end's cell door stay doors (a draught is never a join). */
-        hwing: { label: 'H-WING', ground: 'hq', hub: 'hwing_lobby', sky: null, clock: false,
+        /* DOOR HQ 2.0 WAVE 4 (2026-11-26): H-Wing is ONE room of halls now (hwing_floor); its rooms stand behind doors on the blocks between the
+           halls, so nothing is joined (the impossible-doors thread may make them portals) */
+        hwing: { label: 'H-WING', ground: 'hq', hub: 'hwing_floor', sky: null, clock: false,
             parts: {
                 hwing_floor: { x: -400, z: -400, y: -8, rot: 0 },
-                hwing_lobby: { x: -424, z: -366.8, y: -8, rot: 0 },   // its north door (x 0) faces the floor's south door at x −24
-                hwing_home:  { x: -400, z: -433.7, y: -8, rot: 0 },   // its front door (south, x 0) faces the floor's north door at x 0
             },
-            joins: [
-                { a: 'hwing_lobby', b: 'hwing_floor', kind: 'door', door: 'corridor', bDoor: 'lobby' },
-                { a: 'hwing_floor', b: 'hwing_home', kind: 'door', door: 'home', bDoor: 'hall' },
-            ] },
+            joins: [] },
         derelict: { label: 'THE SPACESHIP', ground: 'space', hub: 'site_prebuilt_derelict_airlock', sky: null, clock: false,
             parts: {
                 site_prebuilt_derelict_airlock: { x: 600, z: 600, y: 0, rot: 0 },
@@ -98628,7 +98567,6 @@ function hqTerrainSolidTop(info, x, z) {
 const HQ_ROOM_HOLES = {
     "facility_holosim": [[-17,-16,-12],[-17,11,15],[-16,-17,-12],[-16,11,16],[-15,-17,-12],[-15,11,16],[-14,-17,-12],[-14,11,16],[-13,-17,-12],[-13,11,16],[-12,-17,-12],[-12,11,16],[11,-17,-12],[11,11,16],[12,-17,-12],[12,11,16],[13,-17,-12],[13,11,16],[14,-17,-12],[14,11,16],[15,-17,-12],[15,11,16],[16,-16,-12],[16,11,15]],
     "garage": [[-16,-16,-6],[-16,6,15],[-15,-16,-9],[-15,8,15],[-14,-16,-10],[-14,9,15],[-13,-16,-12],[-13,11,15],[-12,-16,-13],[-12,12,15],[-11,-16,-14],[-11,13,15],[-10,-16,-14],[-10,14,15],[-9,-16,-15],[-9,14,15],[-8,-16,-16],[-8,15,15],[-7,15,15],[6,-16,-16],[6,15,15],[7,-16,-16],[7,15,15],[8,-16,-15],[8,14,15],[9,-16,-14],[9,13,15],[10,-16,-14],[10,13,15],[11,-16,-13],[11,12,15],[12,-16,-12],[12,11,15],[13,-16,-10],[13,9,15],[14,-16,-9],[14,8,15],[15,-16,-7],[15,6,15]],
-    "hwing_floor": [[-17,-20,-3],[-17,2,6],[-17,11,19],[-16,-20,-17],[-16,16,19],[-15,-20,-19],[-15,16,19],[-14,-20,-19],[-14,16,19],[-13,16,19],[-12,-12,-3],[-12,2,11],[-10,-18,-17],[-2,16,17],[-1,-20,-17],[-1,16,17],[0,-20,-17],[0,16,17],[1,-20,-17],[1,16,17],[2,-20,-17],[2,-12,-12],[2,-2,3],[2,9,11],[3,-20,-17],[3,-12,-12],[3,-2,3],[3,9,11],[4,-20,-17],[4,-12,-12],[4,-2,3],[4,9,11],[5,-20,-17],[5,-12,-12],[5,-2,3],[5,9,11],[5,19,19],[6,-20,-17],[6,-12,-12],[6,-2,3],[6,9,11],[7,-12,-12],[7,-2,11],[8,-12,-12],[8,7,11],[9,-12,-8],[9,7,11],[10,-12,-8],[10,16,19],[11,-20,-17],[11,-12,-8],[11,16,19],[12,-20,-17],[12,-12,-8],[13,-12,-8],[14,-12,-8],[14,7,11],[15,-12,-8],[15,7,11],[16,-12,11]],
     "site_prebuilt_camelot_dungeon": [[-20,-27,8],[-20,13,26],[-19,-27,-12],[-19,1,8],[-19,13,26],[-18,-27,-12],[-18,1,8],[-18,13,26],[-17,-27,-12],[-17,1,8],[-17,23,26],[-16,-27,-12],[-16,1,8],[-16,23,26],[-15,-27,-12],[-15,1,8],[-15,23,26],[-14,-27,-12],[-14,1,8],[-14,23,26],[-13,1,2],[-13,23,26],[-12,1,2],[-12,23,26],[-11,-9,-8],[-11,-3,2],[-11,23,26],[-10,-9,-8],[-10,-3,2],[-10,23,26],[-9,-9,-8],[-9,-3,2],[-9,7,8],[-9,23,26],[-8,-9,-8],[-8,-3,2],[-8,7,8],[-8,23,26],[-7,-27,-26],[-7,7,8],[-7,23,26],[-6,-27,-26],[-6,7,8],[-6,23,26],[-5,-27,-26],[-5,7,16],[-5,21,26],[-4,-27,-26],[-4,7,16],[-4,21,26],[-3,-27,-26],[-3,-17,-16],[-3,-11,-10],[-3,9,16],[-2,-27,-25],[-2,-18,-15],[-2,-12,-10],[-2,9,16],[-1,-17,-10],[-1,9,16],[0,-17,-10],[0,9,16],[1,-17,-10],[1,9,16],[2,-17,-10],[2,9,16],[3,-27,-24],[3,-17,-10],[3,9,16],[4,-27,-22],[4,-17,-10],[4,9,16],[5,-27,-26],[5,-11,-10],[5,9,16],[6,-27,-26],[6,-11,-10],[6,9,16],[7,-27,-26],[8,-27,-26],[9,-27,-26],[9,17,18],[9,23,26],[10,-27,-26],[10,17,18],[10,23,26],[11,-27,-26],[11,-11,-10],[11,23,26],[12,-27,-26],[12,-11,-10],[12,23,26],[13,-27,-26],[13,-11,-10],[13,23,26],[14,-27,-26],[14,-11,-10],[14,23,26],[15,-27,-26],[15,-11,-10],[15,3,26],[16,-27,-26],[16,-11,26],[17,-27,26],[18,-27,26],[19,-27,26]],
     "site_prebuilt_camelot_keep": [[-12,-12,-12],[-12,11,11],[-11,-12,-12],[-11,11,11],[-10,10,11],[-9,9,11],[-8,9,11],[-7,9,11],[-6,9,11],[-5,9,11],[-4,10,11],[-3,9,11],[-2,10,11],[0,-12,-12],[1,-12,-12],[2,-12,-12],[3,-12,-12],[4,-12,-12],[4,-7,-6],[4,5,5],[5,-12,-11],[5,11,11],[6,-12,-12],[6,6,6],[6,10,11],[7,-12,-12],[7,5,5],[7,11,11],[8,-12,-12],[8,11,11],[9,-12,-12],[9,-6,-6],[9,11,11],[10,-12,-12],[10,11,11],[11,-12,-12],[11,10,11]],
     "site_prebuilt_camelot_ward": [[-28,26,26],[-27,25,26],[-26,25,26],[-25,25,26],[-24,25,26],[-23,25,26],[-22,25,26],[-21,25,26],[-20,25,26]],
@@ -108851,7 +108789,7 @@ var ZONE_LOOKS = {
            stone, office drywall and taupe carpet. Batch 6 mapped them (stone -> hz:Stone_11, a 128 px horror tile, on the hall's drum; drywall
            in 41 rooms; carpet in 13). They are out of the maps, and zoneLookRoom never swaps a shell key DOOR_HQ.textures names */
         doorhq: {
-            rooms: ['central_egress', 'foyer', 'continuity', 'office', 'cafeteria', 'clockroom', 'barbershop', 'trophycase', 'reception', 'dispensary', 'doorstore', 'medical', 'padded', 'cells', 'medwing', 'recwing', 'execwing', 'executive', 'corner', 'pool', 'interrogation', 'records', 'it', 'observatorium', 'factory', 'training_pit', 'training_hall', 'car', 'garage', 'dock', 'services', 'kitchen', 'coldroom', 'laundry', 'corridor_a', 'boiler', 'corridor_b', 'deadend', 'server', 'dungeon', 'ritual', 'sacrifice', 'orb', 'annex', 'classroom', 'cubicles', 'bathroom', 'crawlspace', 'thirteenth', 'locker', 'natatorium', 'garden', 'works', 'warehouse', 'incinerator', 'downstair', 'antechamber', 'autopsy', 'intro_desert', 'intro_shaft', 'doorgarden', 'control', 'lostfound', 'stairwell', 'woodstair', 'tunnel', 'labs', 'dreamlab', 'tank', 'mandela', 'upsidedown', 'closet4b', 'supply', 'disposal', 'hwing_lobby', 'hwing_floor', 'hwing_home', 'training'],
+            rooms: ['central_egress', 'foyer', 'continuity', 'office', 'cafeteria', 'clockroom', 'barbershop', 'trophycase', 'reception', 'dispensary', 'doorstore', 'medical', 'padded', 'cells', 'medwing', 'recwing', 'execwing', 'executive', 'corner', 'pool', 'interrogation', 'records', 'it', 'observatorium', 'factory', 'training_pit', 'training_hall', 'car', 'garage', 'dock', 'services', 'kitchen', 'coldroom', 'laundry', 'corridor_a', 'boiler', 'corridor_b', 'deadend', 'server', 'dungeon', 'ritual', 'sacrifice', 'orb', 'annex', 'classroom', 'cubicles', 'bathroom', 'crawlspace', 'thirteenth', 'locker', 'natatorium', 'garden', 'works', 'warehouse', 'incinerator', 'downstair', 'antechamber', 'autopsy', 'intro_desert', 'intro_shaft', 'doorgarden', 'control', 'lostfound', 'stairwell', 'woodstair', 'tunnel', 'labs', 'dreamlab', 'tank', 'mandela', 'upsidedown', 'closet4b', 'supply', 'disposal', 'hwing_floor', 'hwing_desert', 'hwing_pines', 'hwing_corn', 'hwing_moon', 'hwing_home', 'training'],
             wall: { drywall_2: 'hz:Wall_03', drywall_3: 'hz:Wall_03', drywall_4: 'hz:Wall_03', rocks_5: 'hz:Stone_11',
                     bricks_2: 'hz:Brick_10', bricks_1: 'hz:Brick_11', bricks_3: 'hz:Brick_11', dungeon: 'hz:Brick_09', dungeon_3: 'hz:Brick_08', dungeon_4: 'hz:Brick_08',
                     gunmetal: 'hz:Metal_02', gunmetal_2: 'hz:Metal_02', metal: 'hz:Metal_02', aluminium: 'hz:Metal_05', metal_3: 'hz:Metal_05',
