@@ -1501,7 +1501,7 @@ one door, each JOINED to the Ring with no load card.
   beside it; in a room only the ring does.
 - **The rooms and their doors on the Ring** (central_egress `onRing` rows, clockwise from the Training Room's line; the angles keep the boxes clear
   of each other, checked by projecting each box through hqStageRoundGeom): IT 28 (17.5 x 14), Lost and Found 52 (14 x 14), Locker Room 74
-  (14 x 17.5), Bathroom 95 (10.5 x 14), Stair to the Woods 118 (kept, 30 x 44), Your Office 141 (kept, the closet), Records 162 (17.5 x 21,
+  (14 x 17.5), Bathroom 95 (10.5 x 14), Stair to the Woods 118 (kept, 30 x 44), Your Office 141 (14 x 10.5, see below), Records 162 (17.5 x 21,
   5.25 m), Clock Room 187 (14 x 14, 5.25 m), Barbershop 211 (14 x 10.5), Lecture Hall 250 (21 x 21, 7 m, three tiers), Cubicle Floor 290
   (28 x 21). 4.5 m ceilings unless named. Each box room's door is `egress` on its south wall (the office's stays on its west wall). The H-Wing
   door (about 228) and the Garage/Subway door (350) are other threads'.
@@ -1513,8 +1513,13 @@ one door, each JOINED to the Ring with no load card.
   Room's IT door; the pool's locker door; the crawlspace's stall. `lostfound`, `locker`, `classroom` left the works / annex HQ_WORLD zones.
 - hqRingMoveDoors no longer writes `sub: 'BACK TO THE RING'` on a moved room's door (one name). Sedaniel's ring spot moved 20 degrees off the
   Cubicle Floor's door.
-- `node find-doorways.js` on the eleven rooms + `ring_g`: all clear but YOUR OFFICE, kept as it was (the approved office scene stands Locke in
-  its doorway; whether to rebuild it bigger is asked of mondo).
+- `node find-doorways.js` on the eleven rooms + `ring_g`: all clear.
+- **YOUR OFFICE, REBUILT BIGGER** (mondo 11-26 chose "Rebuild it bigger"): 14 x 10.5 x 4.5, the janitor's whole storeroom. The old closet's
+  corner (desk, sink, breaker panel, cot, rug, the door on the west wall) moved WHOLE by x -4.2, z -2.95 to the room's north-west corner, and
+  scene F (STORY_CUTSCENES.orientation_office: every `cam`, every `place` / `walk`) moved by the same offset, so every approved frame shows
+  the same things. The rest is his: shelving on the north + east walls and back to back mid-room, the mop corner on the south wall. Broom,
+  mop, shelving, fridge, Locke's stage post ("Waiting in your office.", 4 m in) and the janitor's post left the doorway. A later move of the
+  corner = move the scene by the same offset.
 
 ## DOOR HQ 2.0, WAVE 3: THE WORKS, MIDDLE (the labs + the holding block) (2026-11-26)
 Built from `docs/plans/door-hq-2/plans/4_works_middle_bottom.png` (left) and LOOK_BOOK.md "The Works, middle". A clean sheet of the old
