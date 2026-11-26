@@ -68,7 +68,12 @@ const res = JSON.parse(vm.runInContext(`(() => {
             const push = (x, z, nx, nz, side) => doors.push({ id: d.id, side, x, z, nx, nz, half, level, label: d.label || '', to: (d.action && d.action.room) || null });
             if (isBox) {
                 if (d.wall === 'free') { const f = (+d.face || 0) * D2R, nx = Math.sin(f), nz = -Math.cos(f); push(+d.x || 0, +d.z || 0, nx, nz, 'front'); push(+d.x || 0, +d.z || 0, -nx, -nz, 'back'); return; }
-                const W = _hqDoorOnWall(room, d); if (!W) return; const n = WALLS[W.wall]; push(W.x, W.z, n[0], n[1], 'in');
+                const W = _hqDoorOnWall(room, d); if (!W) return; const n = WALLS[W.wall];
+                /* THE GLASS FRONT (DOOR HQ 2.0 wave 3): an open front glazed but for one bay names that bay as \`walk: [t0, t1]\` (metres along
+                   its wall); the clear square is that bay's, the panes beside it are the front itself */
+                if (Array.isArray(d.walk) && d.walk.length === 2) { const t0 = +d.walk[0], t1 = +d.walk[1], tc = (t0 + t1) / 2, ns = W.wall === 'n' || W.wall === 's';
+                    doors.push({ id: d.id, side: 'in', x: ns ? tc : W.x, z: ns ? W.z : tc, nx: n[0], nz: n[1], half: Math.abs(t1 - t0) / 2, level: d.level || 0, label: d.label || '', to: (d.action && d.action.room) || null }); return; }
+                push(W.x, W.z, n[0], n[1], 'in');
             } else if (d.deg != null) {
                 const inward = d.side === 'in', R = wallR(level, d.side), p = polar(d.deg, R), L = Math.hypot(p[0], p[1]) || 1;
                 push(p[0], p[1], inward ? p[0] / L : -p[0] / L, inward ? p[1] / L : -p[1] / L, 'in');
