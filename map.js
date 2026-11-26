@@ -9600,6 +9600,12 @@
             if (picking && /^[1-4]$/.test(e.key)) { e.preventDefault(); e.stopPropagation(); _hqTalkStep(+e.key - 1); return; }
             if (!picking && (e.key === 'Enter' || e.key === ' ' || e.key === 'e' || e.key === 'E')) { e.preventDefault(); e.stopPropagation(); _hqTalkStep(null); if (!_hqPanelTarget) _hqInteractHold(); }
         }, true);
+        /* THE HEALING MACHINE's box: 1 = YES, 2 = NO (the numbers its answers wear) */
+        document.addEventListener('keydown', (e) => {
+            if (!_hqPanelTarget || !_hqHealDlg(_hqPanelTarget) || e.repeat || !/^[12]$/.test(e.key)) return;
+            const body = _hqEl('hqPanelBody'), b = body && body.querySelectorAll('.ew-dlg-opt')[+e.key - 1];
+            if (b) { e.preventDefault(); e.stopPropagation(); b.click(); }
+        }, true);
         /* E LEAVES WHAT E OPENED (mondo 11-15: "i press e to talk to them but then i have to click with the mouse to exit. e should
            exit the dialogue too"): a box whose only button is its close (a person's line, a notice, a sheet on the wall) closes on
            E — the key that opened it. A box with something to choose (a door's ways, a counter's action, the map) keeps E out
