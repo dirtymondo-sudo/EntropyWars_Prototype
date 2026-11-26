@@ -1671,3 +1671,96 @@ the Training Room are one stage now: you walk from the Foyer to the Training Roo
   freight ramp to the Gantry and the Gantry's stair to the Incinerator (two HQ_WORLD zones 21 m apart; same missing piece); the Foyer's
   street door; H-Wing's plain doors (the impossible-doors thread's); the Training Room's service stair and the Condemned Crossing (a
   dungeon). Off: `window.EW_HQ_NO_STAGE` (every passage is a dark opening you press, a card to the Ring).
+
+## DOOR HQ 2.0, WAVE 4: THE WORKS, BOTTOM (the Incinerator + the ritual rooms) (2026-11-26)
+Built from the right side of `docs/plans/door-hq-2/plans/4_works_middle_bottom.png` and LOOK_BOOK.md "The Works, bottom". A clean sheet of
+the old 8 x 8 m Incinerator and the third floor's small Ritual and Sacrifice Rooms. One stage, no card between the five rooms.
+- **HQ_WORLD zone `incinerator`** (y -60, under the Gantry; HQ_STAGE_RULES.zones): THE INCINERATOR is the hub; one room a side, each one's
+  door to it on its OWN south wall (the labs' turns: north rot 0, west rot 1, south rot 2, east rot 3), HQ_WORLD_RULES.wallM apart.
+  The Gantry's `stair` door now leads to `downstair` at `labs` (a card: the Gantry is its own zone 30 m higher). The old `works` door
+  of the Incinerator is gone.
+- **THE STAIR** (`downstair`, 14 x 28 x 14 m, new): you land on a 5.25 m deep landing 7 m up (terrain plateau; the door `labs` carries
+  `y: 7`) and walk down ONE built stone flight 7 m wide (terrain ramp `stairs`, `built`, cheek walls; a pipe rail either side on the
+  landing's front edge) toward the Incinerator, seen through the 7 m opening at its foot (door `incinerator`, `open` 7 x 7).
+- **THE INCINERATOR** (`incinerator`, 31.5 m box, 24.5 m high): THE DRUM (hqRingWalls r 14, floor to ceiling, old brick blackened, open
+  at the four doors, jamb walls out to the box wall); THE PIT (a terrain `plateau` r 8.5 `sink` -10.5); THE PARAPET round it
+  (hqRingWalls r 8.85, **1.35 m**, `glass: true` so the fire shows from the catwalk (a solid parapet read as a black wall), a pipe handrail outside it; the walker jumps 1.3 m, a 1.1 m wall was jumped into the pit); the floor round it is grating
+  (the catwalk). Doors: `stair` (n, open 7 x 7), `ritual` (w), `sacrifice` (e), `antechamber` (s, open 3.5 x 5).
+  **`terrain.noRescue: true`** (new, data.js hqTerrainCompile): a room with no plan always got THE RETURN GUARANTEE's rescue ramps out
+  of a pit; for a pit walled all round they carved ramps up through the catwalk (dips 1.5-8 m deep at r 9-14). The flag skips them;
+  `node find-softlocks.js incinerator` reads 0 traps with it.
+- **THE FURNACE** (catalogue + proc `incinerator_furnace`, three-renderer.js, beside `flue`): the row stands at `y: 1` with `lift: 1`
+  (a terrain room's prop over a sunk pit lands at max(ground, y); `lift` takes the drawing back to the floor). It draws the pit's iron
+  rim and hot lip, the blackened brick shaft, the fire bed (an orange floor, a white-hot heart, 14 flame sprites, a column of nine big flames up the pit whose top ones lick over the parapet, a point light down in the pit), two girders across,
+  THE FLUE hung from the ceiling to 9 m (r 3.2, soot bands, a flared mouth with a hot rim), a point of daylight up inside it with a
+  faint shaft, four door leaves (`_hqWorksLeaf`) falling out of the mouth into the fire on a 6.5 s cycle, embers rising. One ticker,
+  no scene walk. Its catalogue light is the room's key light (`lights: []`, `keyLamp: 0`). Params: `pitR`, `pitD`, `roomH`, `flueR`, `flueBot`.
+- **THE RITUAL ROOM** (`ritual`, 28 x 17.5 x 7, west): obsidian floor, the circle + candle ring in the middle, the altar against the far
+  wall between two hooded figures and two candelabra, four braziers, catacomb walls, robes on racks in the west bay, the cauldron and the
+  bones in the east. Counter `order` kept. Its old doors to the Dungeon and the Sacrifice Room are gone (the Dungeon's `ritual` door is
+  in `DOOR_HQ.cut.doors.dungeon`).
+- **THE SACRIFICE ROOM** (`sacrifice`, 21 x 14 x 7, east): the slab, drain, chains, three hooks, the iron maiden, the bier, the stocks,
+  the stapler table; counter `altar` kept; the ladder `hatch` up to the crawlspace stays (the crawlspace's only way in).
+- **ANTECHAMBER** (`antechamber`, 14 x 14 x 7, south, new): pews down both side walls, a brazier, two hooded figures, the robes; straight
+  across from the opening the plain white door `hwing` into H-Wing (`{ room: 'hwing_floor', at: 'works_bottom' }`; the H-Wing thread's
+  end lands at `antechamber` / `hwing`).
+- No agents, no npcSpots (story characters only in DOOR HQ). One name each, no subtitles. Lines kept from the old rooms; nothing new written.
+- Checked: `node find-doorways.js incinerator downstair ritual sacrifice antechamber labs` all clear; `node find-softlocks.js incinerator
+  downstair` 0; `hqWorldValidate()` the same 255 rows as main (none name these rooms).
+## DOOR HQ 2.0, WAVE 4: H-WING (2026-11-26)
+Built from `docs/plans/door-hq-2/plans/5_h_wing.png` and LOOK_BOOK.md "H-Wing". A clean sheet: the old H (legs, crossbar, typing pool, hum
+room, six offices), the H-Wing lobby and its lift stop are gone. WRITTEN BY `docs/plans/door-hq-2/hwing.js` (edit the tool, then
+`node docs/plans/door-hq-2/hwing.js --write`; it replaces the block between the `<H-WING>` markers in data.js).
+- **THE HALLS** (`hwing_floor`, label H-WING, 112 x 77 m, 3.5 m ceiling of fibre tiles): a plan room (`terrain.gen` look `walls`): three
+  long halls (north, middle, bottom) and the cross halls, all 7 m wide, carve a solid mass of yellow wallpaper into blocks, as the
+  picture draws them. Inside three blocks, rooms that are more of the same: THE CUBICLES (desert block, in from the west hall), THE
+  BREAK ROOM (pines block, from the east hall), THE TYPING POOL (pool block, from the bottom hall). South of the bottom hall, THE BACK
+  HALLS (3.5 m): a turn, a dead end with a dead vending machine, an office nobody uses and the `loop` door (south wall), which comes
+  out at the Ring's door, inside, facing in. An even grid of `fluorescent` with every sixth a `flicker_tube`, 17 point lights at the
+  crossings, mood `#F1EBC0` ambient 0.65. Plan grid in the tool = metres from the top-left; the room frame is centred (x - 56, z - 38.5).
+- **ONE PLAIN DOOR FROM EVERY LEVEL** (`leaf_white_wood`, label H-WING, no plate), the shortcut network. H-Wing's end / the level's end:
+  `ring` (north wall) / `ring_g` `hwing` (a central_egress `onRing` row, deg 228, between the Barbershop and the Lecture Hall);
+  `upper` (north) / central_egress `hwing_upper` (level 1, deg 180: the gallery's back wall over the Foyer); `garage` (north) / garage
+  `hwing` (free door in the drum wall at deg 280, between the Ring stair and the ramp's foot; the plan's north-west is under the ramp);
+  `works_top` (north) / factory `hwing` (free door, deg 228, in the service corridor between the Boiler Room's and the Laundry's doors;
+  in factory.js); `works_middle` (west) / labs `hwing` (the Gantry's north-west corner, where the Mandela door stood; the Upside-Down
+  door is gone); `works_bottom` (east) / the Incinerator (lands at its `works` door until the Incinerator thread's Antechamber is on main; that thread re-points it to antechamber `hwing`). Nothing is joined: every one is a card (the impossible-doors thread may make them portals).
+- **THE ROOMS ON THE BLOCKS** (free doors against a block's face; `face` = the way into the hall): the six uncanny rooms keep their
+  dressing and their room ids: the Mandela Room (`mandela`, its `labs` door now leads to H-Wing), the Upside-Down Room (`upsidedown`,
+  same), Home (`hwing_home`), the Thirteenth Floor (`thirteenth`, its `crawl` panel is a plain door now), the Swimming Pool
+  (`natatorium`, its `garden` door), the Garden (`garden`, its `annex` door; its pool door is gone, its L5 gate to Room X stays).
+  GROWN (mondo: no room that small): the Mandela Room and the Upside-Down Room 7 x 6 -> 14 x 12, Home 4 x 7 -> 8 x 14 (every x / z in
+  them doubled, heights kept), the pool 18 -> 21 m wide (its deck clears the door). All six are `noWalkers`, no npc spots (the Thirteenth
+  Floor keeps its clone: it is you).
+- **THE VIGNETTES** (`hwing_desert` DESERT AT DUSK, `hwing_pines` SNOWY PINES, `hwing_corn` CORN FIELD, `hwing_moon` THE MOON): 28 x 38.5 m
+  OPEN rooms (`edge: 'open'`: nothing stands at the bound, the ground runs out) under their own sky: the desert = the opening's road at
+  sunset (`sky.hold` 18.85, the one road across, saguaros, a pair of power poles), the pines = a snowy night (`lock` 22, a ring of snow
+  pines + pines inside, falling snow), the corn = the Ranch's night (`hqRanchShell`), rows of `corn_row` either side of a path, the
+  moon = deep space with the Earth hung over the horizon and a flag. Each has door `hall` (south edge, where you arrive: the door you
+  came in by stands alone behind you) and door `lone` (north edge, across the room): `lone` comes out at H-Wing's `<name>_out` door
+  on ANOTHER face of the same block (the desert's on the middle hall, the moon's on the east hall, the corn's further down the bottom hall).
+- **RETIRED / CUT:** `DOOR_HQ.retired.hwing_lobby = 'hwing_floor'` (no H stop on the lift); HQ_WORLD.zones.hwing = the halls only, no
+  joins; the annex zone lost the Garden and the pool; `DOOR_HQ.cut.doors`: annex `garden`, crawlspace `thirteen`, deadend `hwing`.
+  HQ_ROOM_HOLES' old `hwing_floor` row dropped. `DOOR_HQ.hwing.rooms` / `.entries` list the new rooms and the six level doors.
+- Checked: `node find-doorways.js` on the halls, the vignettes, the six rooms, garage, factory, labs, central_egress, ring_g: clear
+  (the Antechamber's door is the Incinerator thread's, checked there). `node find-softlocks.js` on the five new rooms: 0.
+
+## DOOR HQ 2.0, WAVE 4: THE PENTHOUSE (2026-11-26)
+Built from the right side of `docs/plans/door-hq-2/plans/2_lobby_upper_level_penthouse.png` and LOOK_BOOK.md "Penthouse". A clean sheet:
+the old executive lobby (the assistant, the guard, the floor panel), Room 4C and Room 8 are gone. Room id kept: `executive` (the car's
+PH stop lands at its `elevator` door and keeps its gate, minClearance 4 + 12 Keys: locked until late). Label PENTHOUSE, nothing else.
+- **ONE LONG ROOM**, 31.5 x 63 m, 7 m high, reached only by the lift (its one door, north wall at x -5.25). The north half (z -31.5 .. 3.5)
+  is roofed: the lounge (two Chesterfields under a chandelier, a wingback, the Greek couch, the bust, the piano in the north-east corner),
+  and THE CORNER OFFICE, a glass box on the east side (x 5.25 .. 15.75, z -24.5 .. -7; five `office_glass` bays, the door bay in the middle
+  with CORNER OFFICE over it, `room_wall` sides 4.9 m): the desk with its back to THE WINDOW (`false_window` at h 4, on the room's east
+  wall, the building's outside, which a round building with no outside should not have). The "impossible doors" thread may make it a portal.
+  The south half is under the night sky: THE INFINITY POOL (24.5 x 10.5 m, lit from below), its weir ON the room's south line, and past it
+  nothing: no wall, no ground, only the sky under the edge. Loungers, two umbrellas, palms in planters, globe lamps.
+- **Three shell fields (three-renderer.js, box shell; any box room):** `canopy: [{ x0, x1, z0, z1 }]` = a ceiling over part of an OPEN
+  room (a sky of its own); `sides: { n|s|e|w: 'open' | 'low' | 'walls' }` = one side's own edge (the pool's south side is `open`);
+  `apron: false` = no ground strip or skirt round an open room (nothing below the edge). The walker stops at the room's bound.
+- **`infinity_pool` reads its row:** `poolW`, `poolD` (metres; the catalogue row's `rect` must match: `penthouse_pool` = 24.5 x 10.5),
+  `fall` (how far the water drops past the weir), `glow` (the basin lit from below). Old rows unchanged (6 x 3.6).
+- **RETIRED:** `corner` and `pool` -> `executive` (DOOR_HQ.retired); the PH zone in HQ_WORLD and its HQ_STAGE_RULES entry are gone (one
+  room, nothing to join). `links.weir_bermuda` end a stands beside the weir now (x -14, z 27).
+- `node find-doorways.js executive`: clear.
