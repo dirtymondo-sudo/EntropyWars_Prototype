@@ -1387,3 +1387,22 @@ Challenge button and HQ_PARTY_RULES.restCounter all read it).
   the wing's east door. `medical` left the medwing zone (a card between them). When the Works rebuild moves the Hold and the
   Interrogation Room down, take out the staff door and retire `medwing`.
 - `node find-doorways.js medical`: clear.
+
+## DOOR HQ 2.0, WAVE 2: THE TRAINING ROOM (2026-11-26)
+- One definition still: data.js `rooms.training_hall` (the look + the `prebuilt_training` board's room); `rooms.training` (the walk's
+  room, Room 64) is built from it after the table. The 8 x 8 pad, its keys, its level and HQ_ARENA_RULES.own.prebuilt_training are
+  unchanged (no rebake), so the lessons' tiles and the quest fight's seats stand.
+- 63 x 63 m, 14 m to an open truss (`urban:MetalTruss1a`), concrete panels to 3.5 m, aluminium above. Grand doors on the south wall
+  (`leaf_wired_double`, the Lobby's main line comes in here: the Lobby's `training` door, deg 0, `at: 'egress'`), a teal lane from them
+  to the pad, white seams, a teal frame. The scoreboard stands at the north wall on the main line, four DOOR banners (`zone_banner`
+  flag `door`) either side, the clock over it. High-bay lamps hang in a RING two squares off the pad (a lamp over the pad showed as a
+  dark dot on the squares from the battle camera); the real lights hang over the pad.
+- Kept: the east operators' deck (its stair now starts at x 7, two squares east of the scoreboard), the Range Console desk on the west
+  wall, the orientation corner exactly where the cutscene `orientation_tv` is shot (TV cart -5.25, 29.4; desks z 26; Locke -6.35, 29.3),
+  the coffee, Knox's and Ringer's DOOR_CAST spots. New: the sparring corner north-west (bags, wing chun dummy, racks), the locker row
+  and benches east of the doors, round windows high on the north and west walls.
+- Out: the psychic test chamber's tanks, brain racks, orbs, corner pylons (3.5 m tall a square off the pad), the screen wall, the
+  subject chairs, the radiation sign, the floor slogan, every door blurb, the two nameless agents (`rooms.training.agents` = []).
+- mondo's 11-12 call stands over the look book: NO SEATS round the pad (he had the bleachers taken out), so the look book's
+  `bleacher_stand` rows were not built.
+- Checked: `node find-doorways.js training training_hall` clear; walk + battle board probes (playtest_city.js, playtest_maps.js).
