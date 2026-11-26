@@ -10857,3 +10857,13 @@ each SHOT names where the walker really is (a crash + retry once photographed th
 asphalt / pavement / concrete on the field, the plates' facing (a lane's own heading read MIRRORED from behind — the
 plates face the road now, with a grey back), the neon city's black floor (the field's emissive lift + the shell's
 tint), the road out over the void on a site room (capped to the apron).
+
+
+## THE COVER PROBE (2026-11-26) — playtest_cover.js
+`MAP=<id> TAG=<name> MINUTES=6 node playtest_cover.js`, then `node playtest_cover_report.js ./shots/occ/<name>.json`: a real VS CPU
+fight with real rays from the lens to the caster / target every drawn frame; says what covered a body and how often, and saves a
+frame when a body is two thirds covered. `FLAGS=EW_NO_CLEAR_SHOT` = the old picker for an A/B. Learned: (1) the match start is
+racy in the cloud (phase falls back to `setup`): the probe restarts the match until `battle` holds 6 s; (2) raycast each mesh
+in a try (one `scene` raycast throws on a half-loaded skinned mesh) and set `raycaster.camera` for sprites; (3) about 3 samples a
+second on llvmpipe, 15-25 spell shots in 6 minutes; (4) floating numbers and effects are not caught by rays or DOM rects (they
+draw in the canvas): look at the saved frames. Notes: docs/notes/spells-vfx.md "THE CLEAR SHOT".

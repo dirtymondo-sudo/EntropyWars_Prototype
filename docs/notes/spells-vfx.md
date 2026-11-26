@@ -5553,3 +5553,35 @@ design; asked him whether a close view should keep its angle there too.
 Kill switch: `window.EW_NO_CLOSE_VIEW = true`. Probe: `ThreeCamera.closeViewState()` -> { crane px, boom 0..1 }.
 Camera only, each viewer's own (host and guest run the same rig). Checked with real mouse input over a move and three turns:
 zoom 4.53 / pitch 80 held, lens 0.3 to 0.5 squares over the focal each time.
+
+
+## THE CLEAR SHOT (2026-11-26, mondo: "still getting a lot of moments in battle when something is covering up the action or the units ... let the camera be aware of the units ... objects or props or terrain or deployed objects ... and always choose a [spot] that has a clear view")
+THE CLEAR ANGLE (10-29, above) already turned a spell shot to the nearest heading that sees its body. Its gaps, read in the code
+and measured (`playtest_cover.js`, real VS CPU fights, real rays from the lens to each body at three heights):
+it knew only the solid columns, props a square wide and 1.5 squares tall, and the unit bodies; two points a body; it could only
+turn; past the board's edge it skipped the sight line; and it judged only the ONE side the beat is about (the caster through the
+cast, the hit bodies from the cut), so a caster's own back hid its target for the whole cast.
+- **THE BLOCKER BOXES** (three-renderer.js `_shotBlockers`, `ThreeRenderer.shotBlockers()`): flat `[x0, x1, y0, y1, z0, z1, isTree]`
+  of every piece that stands up in or round the board, any size, grounded or floating. The room's pieces come out of THE TALL
+  SCENERY's own read (`_tallSceneryRead` -> `all`, no second pass; pieces over 8 squares wide are left out: a shell, a ground
+  sheet, a merged batch); the board's own objects (objectGroup: deployed things, turrets, monuments, map objects) are read when a
+  pick asks, at most once a second. Never per frame (RULE #1e).
+- **THE PICK** (three-camera.js `_clearAngle` / `_caOccl`, `_csLine`): each body at three heights against the boxes (exact
+  segment-box test; a piece the body stands in or under, or one met only at the body's own square, does not count; a tree is
+  soft, `CS_SOFT` 0.12: its box is its whole crown and the tree fade opens it, so it only breaks a tie), the middle of the path
+  between the bodies, the lens inside a prop (+3), and off the board the room's ground + tall props on the line.
+- **THE LENS MAY RISE**: every heading is tried at the beat's own pitch and 14 / 28 degrees steeper (`CS_TILTS`, never past
+  `CS_MIN_TILT` 34), a rise costing like a turn. Picked with the heading at the cut, held and eased with it (`_caWantT` /
+  `_caDeltaT`, the steady crane's target pose and beat key carry it). Mid-beat the pitch never moves.
+- **THE OTHER PARTY**: the shot's caster / target (`cam._cineShotUnitId`, `_cineShotTarget.id`) that the beat is NOT about joins
+  the subjects at weight 0.6 while its box is inside the frame (`sec`), from the frame guard's own visible bodies (fog-safe).
+- Measured, old (3 fights, 70 shots, 1,518 sight points) vs new (2 fights, 46 shots, 1,009): room / prop cover 1.25 % -> 0.30 %
+  (Fairy Forest: 0), another body in front 0.99 % -> 1.39 % (no change: crowded squares and a Giant, mostly one point of three),
+  shots with a body two thirds covered for a moment 7 of 70 -> 2 of 46. The lens turned in about half the shots before and
+  after; it now also rises in some (12 of 22 on Downtown, 2 of 18 in the forest).
+- NOT fixed here, seen in the same captures: the spell effects themselves, the floating numbers, name plates and banners over a
+  small body cover more of the action than scenery does; overhead beats (pitch under 45) and bullet rides are not judged
+  (`about`); a story fight in a walked room was not measured (the probe's FIELD mode does not start one yet).
+- Switch: `window.EW_NO_CLEAR_SHOT = true` (THE CLEAR ANGLE as it was). Probe: `ThreeCamera.clearShotState()` ->
+  { boxes, yaw, tilt, cost, own (the director's own frame's cost), shot }. Camera only, each viewer's own (RULE #2: host and
+  guest run the same rig on the same relayed shot).
