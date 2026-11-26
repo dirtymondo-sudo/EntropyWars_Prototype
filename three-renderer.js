@@ -82,7 +82,7 @@ const ThreeRenderer = (function () {
         }
     })();
     /* THE BUILD LINE (the perf lens): bump the stamp in every PR that changes this file's walk / fight drawing */
-    var _EW_TR_STAMP = '11-26 rig-lamps';
+    var _EW_TR_STAMP = '11-26 level-join';
     function _ewBuildTok() {
         var sc = document.querySelectorAll('script[src*="three-renderer.js"]'), t = '';
         for (var i = 0; i < sc.length; i++) { var m = /[?&]v=([^&#]+)/.exec(sc[i].src || ''); if (m) { t = m[1]; break; } }
@@ -72636,11 +72636,25 @@ const ThreeRenderer = (function () {
         var out = [], L = lvl || 0, S = room.shell, Rd = L ? ((S.mezz && S.mezz.outer) || S.radius) : (_hqHubR(room) || S.radius), y0 = L ? S.wallH : 0;   // THE GALLERY JOIN (DOOR HQ 2.0 wave 3): level 1 = the upper drum
         (room.doors || []).forEach(function (d) {
             if (!d || d.hidden || (d.level || 0) !== L || !isFinite(+d.deg)) return;
+            if (room.kind === 'bay' && (d.side === 'in' || d.cap)) return;   // a ring's outer wall only (its inner wall: _hqDrumCutsIn)
             var dj = _hqDoorJoinOf(d);
             if ((!dj || !dj.round) && d.open && +d.open.w > 0) dj = { ow: +d.open.w, oh: +d.open.h || 4.5 };   // THE OPEN FRONT: cut even before its room is joined
             if (!dj || (!dj.round && !(d.open && +d.open.w > 0))) return;
             var half = Math.asin(Math.min(1, (dj.ow / 2 + 0.03) / Rd)) * 180 / Math.PI;   // the chord's half-angle (a wide open front is no arc)
             out.push({ a0: +d.deg - half, a1: +d.deg + half, top: y0 + dj.oh + 0.03 });
+        });
+        return out.sort(function (p, q) { return p.a0 - q.a0; });
+    }
+    /* THE LEVEL JOIN (2026-11-26): a ring's INNER wall is cut at each passage to the hub inside it (an open inner door joined by
+       HQ_STAGE_RULES.concentric); not joined (the stage off) it stays whole */
+    function _hqDrumCutsIn(room) {
+        var out = [], S = room.shell;
+        if (!room || room.kind !== 'bay' || !S || !S.full) return out;
+        (room.doors || []).forEach(function (d) {
+            if (!d || d.hidden || d.side !== 'in' || (d.level || 0) !== 0 || !isFinite(+d.deg) || !(d.open && +d.open.w > 0)) return;
+            var dj = _hqDoorJoinOf(d); if (!dj || !dj.conc) return;
+            var half = Math.asin(Math.min(1, (dj.ow / 2 + 0.03) / S.rIn)) * 180 / Math.PI;
+            out.push({ a0: +d.deg - half, a1: +d.deg + half, top: dj.oh + 0.03 });
         });
         return out.sort(function (p, q) { return p.a0 - q.a0; });
     }
@@ -73928,9 +73942,20 @@ const ThreeRenderer = (function () {
             G.add(_hqArcBand(rOut - 0.03, 0.06, S.dadoH, a0, a1, _hqMat(texDado, lenOut / 2.2, 1, { side: THREE.BackSide, shininess: 14 })));
             [[0, 0.08], [S.dadoH, S.dadoH + 0.09], [WH - 0.12, WH]].forEach(function (b) { G.add(_hqArcBand(rOut - 0.05, b[0], b[1], a0, a1, trimOut)); });
         }
-        G.add(_hqArcBand(rIn, 0, WH, a0, a1, _hqMat(texWall, lenIn / 3.2, WH / 3.2)));
-        G.add(_hqArcBand(rIn + 0.03, 0.06, S.dadoH, a0, a1, _hqMat(texDado, lenIn / 2.2, 1, { shininess: 14 })));
-        [[0, 0.08], [S.dadoH, S.dadoH + 0.09], [WH - 0.12, WH]].forEach(function (b) { G.add(_hqArcBand(rIn + 0.05, b[0], b[1], a0, a1, trimIn)); });
+        var iCuts = _hqDrumCutsIn(room);   // THE LEVEL JOIN: the passages in to the Lobby
+        if (iCuts.length) {
+            var circI = 2 * Math.PI * rIn;
+            _hqDrumBand(G, iCuts, rIn, 0, WH, function (f, h) { return _hqMat(texWall, circI * f / 3.2, h / 3.2); });
+            _hqDrumBand(G, iCuts, rIn + 0.03, 0.06, S.dadoH, function (f) { return _hqMat(texDado, circI * f / 2.2, 1, { shininess: 14 }); });
+            var iTrimMk = function (f) { return _hqMat(texTrim, circI * f / 1.5, 1, { shininess: 40, specular: 0x555555 }); };
+            _hqDrumBand(G, iCuts, rIn + 0.05, 0, 0.08, iTrimMk);
+            _hqDrumBand(G, iCuts, rIn + 0.05, S.dadoH, S.dadoH + 0.09, iTrimMk);
+            G.add(_hqArcBand(rIn + 0.05, WH - 0.12, WH, a0, a1, trimIn));
+        } else {
+            G.add(_hqArcBand(rIn, 0, WH, a0, a1, _hqMat(texWall, lenIn / 3.2, WH / 3.2)));
+            G.add(_hqArcBand(rIn + 0.03, 0.06, S.dadoH, a0, a1, _hqMat(texDado, lenIn / 2.2, 1, { shininess: 14 })));
+            [[0, 0.08], [S.dadoH, S.dadoH + 0.09], [WH - 0.12, WH]].forEach(function (b) { G.add(_hqArcBand(rIn + 0.05, b[0], b[1], a0, a1, trimIn)); });
+        }
         /* end caps: a slab across the corridor at each end, dado + trim strips
            on its inward face (a FULL ring — the containment ring closed by
            hand, HQ plan 5.4a stage 2 — has no ends) */
@@ -87889,9 +87914,13 @@ const ThreeRenderer = (function () {
             if (box && typeof door.wall === 'string' && door.wall !== 'free') grp._ew_hqWall = door.wall;   // THE ROOM ROUND THE FIELD: a door fades with its wall
             G.add(grp);
             var rec = { door: door, group: grp, lens: lens, glow: glow, plate: plate, plateEl: el, plateChip: chip, plateGpu: pm.gpu, state: 'open', level: level, Rw: Rw, y0: y0, wide: wide, ow: ow, inward: inward, box: box, leaf: leafKey, motion: motion, openT: 0, angle: !!(secret && !found), glimmer: glimmer };
-            var dj = (box || room.kind !== 'bay' || (!door.cap && door.side !== 'in')) ? _hqDoorJoinOf(door) : null;   // THE ROUND JOIN: a door of the round hall joins too (THE RING AS A HUB: one on the ring's outer wall)
-            if (dj) { rec.join = dj; rec.joinBack = back; rec.leafG = leafGroup; rec.oh = oh; rec.pd = pd; _hqDoorSleeve(grp, dj, ow, oh, pd, wallMat, capMat, U); }   // THE DOOR JOIN (Phase 2); the leaf + the recess for THE PORTALS (G1)
-            if (openF) { rec.open = true; if (!box && room.kind !== 'bay') { _hqOpenFrontFill(G, room, a, ow, oh, (dj && dj.round) ? dj : { gap: 0.6, shut: true }, wallMat, level ? y0 : 0, Rw); back.visible = false; } }
+            var dj = (box || room.kind !== 'bay' || (!door.cap && door.side !== 'in') || (door.side === 'in' && openF)) ? _hqDoorJoinOf(door) : null;   // THE ROUND JOIN: a door of the round hall joins too (THE RING AS A HUB: one on the ring's outer wall; THE LEVEL JOIN: a passage on its inner wall)
+            if (dj && dj.conc) { rec.join = dj; rec.joinBack = back; rec.oh = oh; rec.pd = pd; }   // THE LEVEL JOIN: no leaf, no sleeve (the outer hub builds the corridor)
+            else if (dj) { rec.join = dj; rec.joinBack = back; rec.leafG = leafGroup; rec.oh = oh; rec.pd = pd; _hqDoorSleeve(grp, dj, ow, oh, pd, wallMat, capMat, U); }   // THE DOOR JOIN (Phase 2); the leaf + the recess for THE PORTALS (G1)
+            if (openF) { rec.open = true;
+                if (dj && dj.conc) { if (dj.outer) { try { _hqConcFill(G, room, a, ow, oh, dj); } catch (eCF) { console.warn('[HQ] the passage failed', door.id, eCF); } } back.visible = false; }   // THE LEVEL JOIN: the corridor from the Ring's inner wall to the Lobby's drum
+                else if (!box && room.kind !== 'bay') { _hqOpenFrontFill(G, room, a, ow, oh, (dj && dj.round) ? dj : { gap: 0.6, shut: true }, wallMat, level ? y0 : 0, Rw); back.visible = false; }
+                else if (!box && room.kind === 'bay' && dj && dj.round) { _hqOpenFrontFill(G, room, a, ow, oh, dj, wallMat, 0, Rw); back.visible = false; } }   // THE PASSAGE JOIN: the corridor out of the Ring's outer wall (the Training Room)
             if (dj && dj.round) {
                 /* THE ROUND JOIN: the doorway's point (the near test from either side), the revolving leaf that turns in it */
                 rec.wpt = box ? { x: box.wx, z: box.wz } : { x: Rw * Math.sin(_hqRad(a)), z: -Rw * Math.cos(_hqRad(a)) };
@@ -91130,12 +91159,14 @@ const ThreeRenderer = (function () {
             if (_hq.ramps && _hq.ramps.length) { var rpy = _hqRampSurfaceAt(x, z); if (rpy !== undefined && rpy > y) y = rpy; }   // SKATEBOARDING (9.8): a quarter pipe is a SURFACE (the curve), read like the gallery's slab
         } else if (room.kind === 'bay') {
             if (_hq.stage) { var rjB = _hqStageRoundSurface(x, z, curY, ignoreBlockers); if (rjB !== undefined) return rjB; }   // THE RING AS A HUB: the doorway through its outer wall, the room beyond it
+            var pjB = _hqPassJSurface(x, z, curY, ignoreBlockers); if (pjB !== undefined) return pjB;   // THE LEVEL JOIN: its passages (in to the Lobby, out to the Training Room)
             /* a corridor: between the two wall arcs, short of the end caps (a full ring has none) */
             var capPad = ((0.15 + HQ_BODY_R) / Math.max(1, r)) * 180 / Math.PI;
             if (!S.full && !_hqWithinArc(deg, S.arc[0] + capPad, S.arc[1] - capPad, 0)) return null;
             if (r < S.rIn + HQ_BODY_R + 0.08 || r > S.rOut - HQ_BODY_R - 0.08) return null;
             y = 0;
         } else {
+            if (curY == null || curY < S.wallH * 0.5) { var pjY = _hqPassJSurface(x, z, curY, ignoreBlockers); if (pjY !== undefined) return pjY; }   // THE LEVEL JOIN: the passages out to the Ring, the Ring past them
             if (_hq.stage) { var rjY = _hqStageRoundSurface(x, z, curY, ignoreBlockers); if (rjY !== undefined) return rjY; }   // THE ROUND JOIN: the doorway through the drum, the room beyond it
             /* THE THIRD RING (2026-09-16): the gallery's flight, its slab (for a walker up there) or its rail — else the mezzanine / the floor decide */
             if (S.ring3) { var r3 = _hqRing3At(x, z, curY); if (r3 === null) return null; if (r3 !== undefined) y = r3; }
@@ -91607,11 +91638,13 @@ const ThreeRenderer = (function () {
             if (_hq.ramps && _hq.ramps.length) { var rpa = _hqRampSurfaceAt(x, z); if (rpa !== undefined && y < rpa - 0.05) return false; }   // SKATEBOARDING (9.8): the quarter pipe's mass
         } else if (room.kind === 'bay') {
             if (_hq.stage && y < S.wallH * 0.5) { var rjBA = _hqStageRoundSurface(x, z, null, true); if (rjBA !== undefined) return rjBA !== null && y >= rjBA - 0.05; }   // THE RING AS A HUB: the doorway's air, the room beyond's
+            var pjBA = _hqPassJAir(x, z, y); if (pjBA !== undefined) return pjBA;   // THE LEVEL JOIN: the passages' air
             var deg = _hqNormDeg(Math.atan2(x, -z) * 180 / Math.PI);
             var capPad = ((0.15 + HQ_BODY_R) / Math.max(1, r)) * 180 / Math.PI;
             if (!S.full && !_hqWithinArc(deg, S.arc[0] + capPad, S.arc[1] - capPad, 0)) return false;
             if (r < S.rIn + HQ_BODY_R + 0.08 || r > S.rOut - HQ_BODY_R - 0.08) return false;
         } else {
+            if (y < S.wallH * 0.5) { var pjA = _hqPassJAir(x, z, y); if (pjA !== undefined) return pjA; }   // THE LEVEL JOIN: the passages' air, the Ring's past them
             if (_hq.stage) { var rjA = (y < S.wallH * 0.5) ? _hqStageRoundSurface(x, z, null, true, 0) : _hqStageRoundSurface(x, z, y, true, 1); if (rjA !== undefined) return rjA !== null && y >= rjA - 0.05; }   // (THE GALLERY JOIN: a height on the gallery asks the gallery's rooms)   // THE ROUND JOIN: the doorway's air, the room beyond's
             var wallR = _hqLevelR(S, _hqLevelOf(S, y));
             if (r > wallR - HQ_BODY_R - 0.08) return false;
@@ -91639,6 +91672,7 @@ const ThreeRenderer = (function () {
             var d = ds[i];
             if (d.portalSurf && d.portalSurf !== 'wall') continue;   /* a flat threshold is not a doorway the boom must stay out of */
             if (d.way && d.wayOpen) continue;   /* THE DEEP (2026-09-18): an OPEN way (a whirlpool, an upwelling, a road) has no doorway to keep the boom out of */
+            if (d.open && d.join && (d.join.conc || (d.join.gap || 0) > 3)) continue;   /* THE LEVEL JOIN: a passage is a corridor the boom follows down (_hqPassJCam) */
             if (py > d.y0 + 3.0 || py < d.y0 - 0.4) continue;
             var hw = (d.ow || 1.2) * 0.5 + 0.6;
             if (d.box) {
@@ -91688,6 +91722,7 @@ const ThreeRenderer = (function () {
         }
         if (_hq.room.kind === 'bay') {
             if (_hq.stage) { var rjBC = _hqStageRoundCam(px, pz, py); if (rjBC !== undefined) return rjBC; }   // THE RING AS A HUB: the boom through the doorway / over the room beyond
+            var pjBC = _hqPassJCam(px, pz, py); if (pjBC !== undefined) return pjBC;   // THE LEVEL JOIN: the boom down a passage
             if (r > S.rOut - 0.28 || r < S.rIn + 0.28) return true;
             if (py > S.wallH - 0.3 || py < 0.22) return true;
             if (S.full) return false;
@@ -91697,6 +91732,7 @@ const ThreeRenderer = (function () {
         }
         var pl = _hq.player;
         var lvlC = _hqLevelOf(S, pl ? pl.y : 0), onMezz = lvlC >= 1;
+        if (lvlC === 0) { var pjC = _hqPassJCam(px, pz, py); if (pjC !== undefined) return pjC; }   // THE LEVEL JOIN: the boom down a passage, over the Ring past it
         if (_hq.stage && lvlC <= 1) { var rjC = _hqStageRoundCam(px, pz, py); if (rjC !== undefined) return rjC; }   // (THE GALLERY JOIN: on the gallery, its rooms)   // THE ROUND JOIN: the boom through the doorway / over the room beyond
         var wallR = _hqLevelR(S, lvlC);
         if (r > wallR - 0.28) return true;
@@ -99090,10 +99126,60 @@ const ThreeRenderer = (function () {
             var c = P(inner + len / 2, lat, oh / 2); w.position.set(c[0], c[1], c[2]);
             w.rotation.y = -a; w.name = 'hq-open-side'; G.add(w);
         });
+        if ((dj.gap || 0) > 3) {   // THE PASSAGE JOIN (2026-11-26): a long corridor gets the Ring's ceiling strips down its middle
+            var sLen = far - R, sN = Math.max(1, Math.floor((sLen - 1.5) / 3.5)), sMat = _hqBasic(0xeef3ff), sGeo = new THREE.BoxGeometry(0.3 * U, 0.06 * U, 1.3 * U);
+            for (var si = 0; si < sN; si++) {
+                var sc = P(R + 1 + (sLen - 1.5) * (si + 0.5) / sN, 0, oh - 0.04), sm = new THREE.Mesh(sGeo, sMat);
+                sm.position.set(sc[0], sc[1], sc[2]); sm.rotation.y = -a; sm.name = 'hq-pass-strip'; G.add(sm);
+                var sg = _hzGlowSprite(1.4 * U, 0xdfe9ff, 0.2, 0.03, 0.02, 0.35); sg.position.set(sc[0], sc[1] - 0.2 * U, sc[2]); G.add(sg);
+            }
+        }
         if (dj.shut) {   // not joined yet: the dark beyond, at the front's line
             var bk = _hqBox(2 * hw + 0.2, oh, 0.08, _hqMat(null, 1, 1, { color: 0x15161a, shininess: 4 }));
             var bc = P(far, 0, oh / 2); bk.position.set(bc[0], bc[1], bc[2]); bk.rotation.y = -a; bk.name = 'hq-open-dark'; G.add(bk);
         }
+    }
+    /* THE LEVEL JOIN (2026-11-26): the passage between the Ring's inner wall (r1) and the Lobby's drum (r0), built by the Ring in its own
+       frame (the two hubs share the centre): the floor and the soffit between the two arcs, a wall with its dado and trims each side, a row
+       of ceiling strips and their glow. The Ring's own sheets: a staff corridor. Its two lamps are the Ring's (_hqBayRoomLamps). */
+    function _hqConcFill(G, room, deg, ow, oh, dj) {
+        var U = _hqUnits(), S = room.shell, a = _hqRad(deg), hw = ow / 2, N = 16, r0 = dj.r0, r1 = dj.r1;
+        var ox = Math.sin(a), oz = -Math.cos(a), lx = Math.cos(a), lz = Math.sin(a);
+        var P = function (along, lat, y) { return [(ox * along + lx * lat) * U, y * U, (oz * along + lz * lat) * U]; };
+        var inA = function (lat) { return Math.sqrt(Math.max(0, r0 * r0 - lat * lat)) - 0.06; }, outA = function (lat) { return Math.sqrt(Math.max(0, r1 * r1 - lat * lat)) + 0.06; };
+        var strip = function (y, down, w) {
+            var pos = [], idx = [], uv = [];
+            for (var i = 0; i <= N; i++) {
+                var lat = -w + 2 * w * i / N;
+                pos.push.apply(pos, P(inA(lat), lat, y)); pos.push.apply(pos, P(outA(lat), lat, y));
+                if (i < N) { var k = i * 2; if (down) idx.push(k, k + 1, k + 2, k + 1, k + 3, k + 2); else idx.push(k, k + 2, k + 1, k + 1, k + 2, k + 3); }
+            }
+            for (var j = 0; j < pos.length / 3; j++) uv.push(pos[j * 3] / U / 2.2, pos[j * 3 + 2] / U / 2.2);
+            var g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+            g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+            return g;
+        };
+        var fl = new THREE.Mesh(strip(0.004, false, hw + 0.06), _hqMat(S.floor || 'concrete', 1, 1, { shininess: 6, specular: 0x222222, side: THREE.DoubleSide })); fl.name = 'hq-pass-floor'; fl.receiveShadow = true; G.add(fl);
+        var so = new THREE.Mesh(strip(oh, true, hw + 0.06), _hqMat(S.ceiling || 'ceiling', 1, 1, { side: THREE.DoubleSide })); so.name = 'hq-pass-soffit'; G.add(so);
+        var len = r1 - r0, wallM = _hqMat(S.wall || 'stone', len / 3.2, oh / 3.2), dadoM = _hqMat(S.dado || 'oxblood', len / 2.2, 1, { shininess: 14 }), trimM = _hqMat(S.trim || 'teal', len / 1.5, 1, { shininess: 40, specular: 0x555555 });
+        [-1, 1].forEach(function (sd) {
+            var lat = sd * (hw + 0.06), i0 = inA(lat), i1 = outA(lat), L = i1 - i0;
+            var put = function (m, w, h, y, off) { var c = P(i0 + L / 2, lat + sd * off, y); m.position.set(c[0], c[1], c[2]); m.rotation.y = -a; G.add(m); return m; };
+            put(_hqBox(0.12, oh, L, wallM), 0.12, oh, oh / 2, 0.06).name = 'hq-pass-side';
+            put(_hqBox(0.03, (S.dadoH || 1.05) - 0.06, L, dadoM), 0, 0, ((S.dadoH || 1.05) + 0.06) / 2, -0.015);
+            put(_hqBox(0.04, 0.08, L, trimM), 0, 0, 0.04, -0.02);
+            put(_hqBox(0.04, 0.09, L, trimM), 0, 0, (S.dadoH || 1.05) + 0.045, -0.02);
+        });
+        /* the strips down the middle, one every 3.5 m (procedural: the passage reads lit end to end) */
+        var stripMat = _hqBasic(0xeef3ff), n = Math.max(1, Math.floor((len - 2) / 3.5));
+        var geo = new THREE.BoxGeometry(0.3 * U, 0.06 * U, 1.3 * U), strips = new THREE.InstancedMesh(geo, stripMat, n);
+        var mtx = new THREE.Matrix4(), q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, -a, 0)), one = new THREE.Vector3(1, 1, 1), pos = new THREE.Vector3();
+        for (var i = 0; i < n; i++) {
+            var at = r0 + 1 + (len - 2) * (i + 0.5) / n, c = P(at, 0, oh - 0.04);
+            pos.set(c[0], c[1], c[2]); mtx.compose(pos, q, one); strips.setMatrixAt(i, mtx);
+            var gl = _hzGlowSprite(1.4 * U, 0xdfe9ff, 0.2, 0.03, 0.02, 0.35); gl.position.set(c[0], c[1] - 0.2 * U, c[2]); G.add(gl);
+        }
+        strips.instanceMatrix.needsUpdate = true; strips.name = 'hq-pass-strips'; G.add(strips);
     }
     /* ══════════════════════════════════════════════════════════════════════════════
        THE PREMIUM POLISH (PREMIUM_POLISH_PLAN.md, 2026-09-21) — THE LIGHT PASS + THE AIR PASS
@@ -105406,7 +105492,7 @@ const ThreeRenderer = (function () {
     }
     function _hqStageRoundBeside(H) {
         var st = H && H.stage; if (!st) return true;
-        for (var i = 0; i < st.nbs.length; i++) { var nb = st.nbs[i]; if (!nb.round || nb.imp) continue; var E = st.parts[nb.id]; if (!E || !E.attached) return false; }
+        for (var i = 0; i < st.nbs.length; i++) { var nb = st.nbs[i]; if ((!nb.round && !nb.wait) || nb.imp) continue; var E = st.parts[nb.id]; if (!E || !E.attached) return false; }   // (THE LEVEL JOIN: the other hub and what its open doors show, too)
         return true;
     }
     function _hqRoundRoom(room) { return !!(room && room.kind !== 'box' && room.kind !== 'bay' && room.shell && room.shell.radius > 0); }
@@ -105496,6 +105582,15 @@ const ThreeRenderer = (function () {
             var bpl = new THREE.PointLight(0xe6eeff, 0.42, (blen > 40 ? 16 : 13) * U, 2);
             bpl.position.copy(_hqPolarW(S.arc[0] + bspan * (bl + 0.5) / nb, bmid, S.wallH - 0.5));
             sc.add(bpl);
+        }
+        /* THE LEVEL JOIN (2026-11-26): a lamp half-way down each passage (to the Lobby, out to the Training Room) */
+        if (!_hqStageOff() && typeof hqStagePassages === 'function') {
+            var rid = _hqRoomIdOf(room), ps = []; try { ps = rid ? hqStagePassages(rid) : []; } catch (e) { ps = []; }
+            ps.forEach(function (p) {
+                var pl = new THREE.PointLight(0xe6eeff, 0.42, 16 * U, 2);
+                pl.position.copy(_hqPolarW(p.deg, (p.r0 + p.r1) / 2, (p.h || 4) - 0.5));
+                sc.add(pl);
+            });
         }
     }
     function _hqRoundRoomLamps(room, sc) {
@@ -105646,7 +105741,10 @@ const ThreeRenderer = (function () {
             if (want[id]) { E.rel = want[id].rel; E.impDrop = want[id].imp ? want[id].imp.drop : 0; if (E.attached) _hqStageRootPlace(H, E); }
             else { E.rel = null; _hqStageAttach(H, E, false); }
         }
-        var ids = Object.keys(st.parts), cap = Math.max(1, (HQ_STAGE_RULES.partsBuilt || 3) - 1);
+        /* THE LEVEL JOIN (2026-11-26): on a joined level (the Lobby, the Ring and their rooms) the rooms you walk away from stay built,
+           detached, up to HQ_STAGE_RULES.levelKeep: the way back attaches them again with no rebuild */
+        var lvlKeep = st.nbs.some(function (n) { return n.conc || n.portal; }) ? (HQ_STAGE_RULES.levelKeep || 0) : 0;
+        var ids = Object.keys(st.parts), cap = Math.max(1, Math.max(lvlKeep, HQ_STAGE_RULES.partsBuilt || 3) - 1);
         if (ids.length > cap) ids.filter(function (i) { return !want[i]; }).slice(0, ids.length - cap).forEach(function (i) { _hqStageDispose(H, st.parts[i]); });
         _hqStageOuterSides(H);
     }
@@ -105665,6 +105763,7 @@ const ThreeRenderer = (function () {
     var HQ_CULL_SEE = /portcullis|bars|grille|glass|screen|curtain|bead/i;
     function _hqCullOff() { return typeof window !== 'undefined' && !!window.EW_NO_PORTALS; }
     function _hqCullCand(nb) {
+        if (nb && nb.portal) return true;   // THE LEVEL JOIN: a room seen one hop on, only through an open doorway of a part on the stage
         if (!nb || nb.inside || nb.host || nb.beside || !nb.spans || !nb.spans.length) return false;
         for (var i = 0; i < nb.spans.length; i++) if (nb.spans[i].kind !== 'door') return false;
         return true;
@@ -105736,14 +105835,15 @@ const ThreeRenderer = (function () {
         if (_hqCullOff()) { if (H.cull) _hqCullReset(H); return; }
         var C = H.cull || (H.cull = { on: false, hidden: [], flips: 0, fr: null, pm: null });
         var U = _hqUnits(), cam = H.camera.position, cx = cam.x / U, cz = cam.z / U, room = H.room, S = room && room.shell;
-        var ctx = { cur: st.id, closed: !!S && _hqStageClosedBox(room) && !(H.reflectors && H.reflectors.length) && Math.abs(cx) <= S.w / 2 + 0.3 && Math.abs(cz) <= S.d / 2 + 0.3, parts: [], doors: [] };
+        var hubIn = !!st.round && !!S && (_hqRoundRoom(room) || _hqRingHub(room));   // THE LEVEL JOIN: a DOOR HQ hub (the Lobby, the Ring) is indoors: its rooms behind shut doors need not be drawn
+        var ctx = { cur: st.id, closed: !!S && (hubIn || (_hqStageClosedBox(room) && Math.abs(cx) <= S.w / 2 + 0.3 && Math.abs(cz) <= S.d / 2 + 0.3)) && !(H.reflectors && H.reflectors.length), parts: [], doors: [] };
         var on = {}; on[st.id] = 1;
         if (ctx.closed) {
             st.nbs.forEach(function (nb) {
                 var E = st.parts[nb.id]; if (!E || !E.attached || !E.P || !E.P.partRoot) return;
                 on[nb.id] = 1;
                 var r = nb.rect, cand = _hqCullCand(nb) && !!E.built && !_hqCullLightsBad(E, now);
-                ctx.parts.push({ id: nb.id, cand: cand, closed: _hqStageClosedBox(E.P.room), via: (nb.beside && nb.via) || null,
+                ctx.parts.push({ id: nb.id, cand: cand, closed: _hqStageClosedBox(E.P.room) || (!!st.round && (_hqRoundRoom(E.P.room) || _hqRingHub(E.P.room) || (E.P.room && E.P.room.kind === 'box' && !(E.P.room.shell && E.P.room.shell.open)))), via: (nb.beside && nb.via) || null,
                                  camIn: !!r && cx >= r.x0 - 0.3 && cx <= r.x1 + 0.3 && cz >= r.z0 - 0.3 && cz <= r.z1 + 0.3 });
             });
             for (var id0 in st.parts) if (st.parts[id0].attached && !on[id0]) return _hqCullApply(H, C, { on: false, hide: {} });   // a part the ring holds that is not a neighbour: draw it all
@@ -107320,7 +107420,8 @@ const ThreeRenderer = (function () {
         var st = H.stage, pl = H.player; if (!pl || H.snap || pl.dash || pl.climb || (pl.sit && !V) || (H.ride && H.ride.on && !(H.room && H.room.pd && !H.ride.grind))) return;   // (THE PLOT DUNGEONS: the board rolls from plot to plot)
         var S = H.room.shell, hw = S.w / 2, hd = S.d / 2;
         var rLv = _hqRoundRoom(H.room) ? _hqStageRoundLvl(H, pl.y) : 0;   // THE GALLERY JOIN: the gallery's rooms from the gallery, the floor's from the floor
-        var to = _hqHubR(H.room) > 0 ? hqStageWhereRound(rLv ? ((S.mezz && S.mezz.outer) || S.radius) : _hqHubR(H.room), st.nbs, pl.x, pl.z, HQ_WORLD_RULES.crossHys, rLv)   // THE ROUND JOIN: from the hall (or the Ring), into the box beyond its door
+        var to = (_hqHubR(H.room) > 0 && !rLv && typeof hqStageWhereConc === 'function') ? hqStageWhereConc(st.id, pl.x, pl.z, HQ_WORLD_RULES.crossHys) : null;   // THE LEVEL JOIN: from the Lobby into the Ring, and back
+        if (!to) to = _hqHubR(H.room) > 0 ? hqStageWhereRound(rLv ? ((S.mezz && S.mezz.outer) || S.radius) : _hqHubR(H.room), st.nbs, pl.x, pl.z, HQ_WORLD_RULES.crossHys, rLv)   // THE ROUND JOIN: from the hall (or the Ring), into the box beyond its door
             : hqStageWhere(hw, hd, st.nbs, V ? V.x : pl.x, V ? V.z : pl.z, HQ_WORLD_RULES.crossHys);
         if (!to) return;
         var E = st.parts[to];
@@ -107992,6 +108093,69 @@ const ThreeRenderer = (function () {
         if (at.k === 'door') return py - ry < 0.22 || py - ry > _hqRoundOh(at.nb) - 0.15;
         var b = true;
         _hqStageAsk(H, at.E, function () { b = _hqCamBlocked(at.q.x, at.q.z, py - ry); });
+        return b;
+    }
+    /* ══ THE LEVEL JOIN + THE PASSAGE JOIN (2026-11-26): a ROUND hub's own corridors (data.js hqStagePassages): the passages between the Lobby and
+       the Ring (both answer for them: the Ring built them, the Lobby stands at the other end) and a corridor out of the Ring's outer wall to a
+       box room `len` m out (the Training Room). Read by the feet, the air and the boom of the hub, with or without the stage (a hub asked from
+       its neighbour answers for its corridors too); past a passage's far end the other hub answers (it stands at the same centre, the same
+       frame). The list is the room's (built once per room record): nothing here walks the scene (RULE #1e). */
+    var _hqPassJMap = {};
+    function _hqPassJList() {
+        var room = _hq && _hq.room; if (!room || room.kind === 'box' || _hqStageOff() || typeof hqStagePassages !== 'function') return null;
+        var id = (_hq.opts && _hq.opts.room) || null; if (!id) return null;
+        var c = _hqPassJMap[id]; if (c && c.room === room) return c.list;
+        var list = []; try { list = hqStagePassages(id) || []; } catch (e) { list = []; }
+        _hqPassJMap[id] = { room: room, list: list };
+        return list;
+    }
+    /* where (x, z) stands against the hub's corridors → { k: 'in' (the corridor's floor) | 'side' (its walls) | 'other' (past the far end: the
+       other hub's) , p, lat, along } | null (the hub's own) */
+    function _hqPassJWhere(x, z, body) {
+        var L = _hqPassJList(); if (!L || !L.length) return null;
+        var r = Math.hypot(x, z);
+        for (var i = 0; i < L.length; i++) {
+            var p = L[i], a = _hqRad(p.deg), along = x * Math.sin(a) - z * Math.cos(a), lat = Math.abs(x * Math.cos(a) + z * Math.sin(a));
+            if (along < 0) continue;
+            var inner = lat < p.w / 2 - body;
+            if (p.conc) {
+                if (p.inner) { if (r > p.r1 + 0.6) return { k: 'other', p: p }; }   // the Lobby: past the Ring's inner wall is the Ring's corridor
+                else if (inner && along < p.r0 - 0.7 && along > p.r0 - 4) return { k: 'other', p: p };   // the Ring: inside the Lobby's drum is the Lobby's
+                if (inner && along >= p.r0 - 0.7 && along <= p.r1 + 0.6) return { k: 'in', p: p, lat: lat, along: along };
+                if (lat < p.w / 2 + 0.6 && along > p.r0 + 0.05 && along < p.r1 - 0.05) return { k: 'side', p: p };
+            } else {
+                if (inner && along >= p.r0 - 0.6 && along <= p.r1 + 0.3) return { k: 'in', p: p, lat: lat, along: along };
+                if (lat < p.w / 2 + 0.6 && along > p.r0 + 0.05 && along < p.r1) return { k: 'side', p: p };
+            }
+        }
+        return null;
+    }
+    function _hqPassJOther(p, fn) {
+        var H = _hq, st = H && H.stage; if (!st || !p.conc) return false;
+        var E = st.parts[p.conc]; if (!E || !E.attached) return false;
+        _hqStageAsk(H, E, fn); return true;
+    }
+    function _hqPassJSurface(x, z, curY, ignoreBlockers) {
+        if (curY != null && curY > 2.6) return undefined;   // the floor's level only (the Lobby's gallery is its own)
+        var w = _hqPassJWhere(x, z, HQ_BODY_R + 0.04); if (!w) return undefined;
+        if (w.k === 'in') return 0;
+        if (w.k === 'side') return null;
+        var y = null; if (!_hqPassJOther(w.p, function () { y = _hqSurface(x, z, curY, ignoreBlockers); })) return null;
+        return y;
+    }
+    function _hqPassJAir(x, z, y) {
+        if (y > 2.6) return undefined;
+        var w = _hqPassJWhere(x, z, HQ_BODY_R + 0.04); if (!w) return undefined;
+        if (w.k === 'in') return y >= -0.05 && y + 1.7 <= (w.p.h || 4) && _hqAirClearOfBlockers(x, z, y);
+        if (w.k === 'side') return false;
+        var ok = false; if (!_hqPassJOther(w.p, function () { ok = _hqAirOK(x, z, y); })) return false;
+        return ok;
+    }
+    function _hqPassJCam(px, pz, py) {
+        var w = _hqPassJWhere(px, pz, 0.28); if (!w) return undefined;
+        if (w.k === 'in') return py < 0.22 || py > (w.p.h || 4) - 0.15;
+        if (w.k === 'side') return true;
+        var b = true; if (!_hqPassJOther(w.p, function () { b = _hqCamBlocked(px, pz, py); })) return true;
         return b;
     }
     function _hqRoundOh(nb) { var j = (typeof hqStageRoundJoin === 'function') ? hqStageRoundJoin(nb.id) : null, G = j ? hqStageRoundGeom(j) : null; return G ? G.oh : 2.45; }
