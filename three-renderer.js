@@ -97457,6 +97457,106 @@ const ThreeRenderer = (function () {
         },
     });
 
+    /* ── MEDICAL (DOOR HQ 2.0, 2026-11-26): the three pieces the look book listed as missing, drawn in code ──
+       THE HEALING MACHINE: the Pokémon Center moment. A white console behind the nurse's counter with a sloped tray of six
+       slots; a small door stands in each slot (the party's doors). The slots light one by one, then all six flash, and it
+       starts again (a ticker on six materials, nothing else). The front is +Z (it faces the counter). */
+    Object.assign(_hqProcBuilders, {
+        heal_machine: function (U) {
+            var g = new THREE.Group();
+            var white = _hqMat(null, 1, 1, { color: 0xf4f6f5, shininess: 70, specular: 0x777777 });
+            var mint = _hqMat(null, 1, 1, { color: 0x9fd8c8, shininess: 40, specular: 0x444444 });
+            var coral = _hqMat(null, 1, 1, { color: 0xd9473f, shininess: 50, specular: 0x553333 });
+            var steel = _hqMat(null, 1, 1, { color: 0xb8c0c4, shininess: 80, specular: 0x888888 });
+            /* the body: a white cabinet on a mint plinth, a coral band round the top */
+            var plinth = _hqBox(2.0, 0.12, 0.95, mint); plinth.position.y = 0.06 * U; g.add(plinth);
+            var body = _hqBox(1.9, 0.86, 0.85, white); body.position.y = 0.55 * U; g.add(body);
+            var band = _hqBox(1.94, 0.1, 0.89, coral); band.position.y = 1.0 * U; g.add(band);
+            [-1, 1].forEach(function (s) { var side = _hqBox(0.04, 0.7, 0.7, mint); side.position.set(s * 0.97 * U, 0.55 * U, 0); g.add(side); });
+            /* the tray: a steel slab tilted toward the counter, six slots in two rows */
+            var tray = new THREE.Group(); tray.position.set(0, 1.1 * U, 0.05 * U); tray.rotation.x = 0.32; g.add(tray);
+            var slab = _hqBox(1.7, 0.06, 0.7, steel); tray.add(slab);
+            var doorMat = _hqMat(null, 1, 1, { color: 0x5a3a22, shininess: 30 });
+            var brass = _hqMat(null, 1, 1, { color: 0xb8893a, shininess: 90, specular: 0x886633 });
+            var lamps = [];
+            for (var i = 0; i < 6; i++) {
+                var cx = (-0.56 + (i % 3) * 0.56), cz = (i < 3 ? -0.16 : 0.18);
+                var lm = new THREE.MeshPhongMaterial({ color: 0x2f6f68, emissive: 0x7fffe0, emissiveIntensity: 0.15, shininess: 60 });
+                var well = _hqBox(0.4, 0.02, 0.26, lm); well.position.set(cx * U, 0.035 * U, cz * U); tray.add(well);
+                var dr = _hqBox(0.16, 0.28, 0.03, doorMat); dr.position.set(cx * U, 0.19 * U, cz * U); tray.add(dr);
+                var kb = new THREE.Mesh(new THREE.SphereGeometry(0.012 * U, 6, 5), brass); kb.position.set((cx + 0.05) * U, 0.17 * U, (cz + 0.02) * U); tray.add(kb);
+                lamps.push(lm);
+            }
+            /* the back board: a white panel with the screen and the cross over it */
+            var back = _hqBox(1.9, 1.05, 0.12, white); back.position.set(0, 1.62 * U, -0.38 * U); g.add(back);
+            var trim = _hqBox(1.94, 0.06, 0.16, coral); trim.position.set(0, 2.16 * U, -0.38 * U); g.add(trim);
+            var cv = null, ctx = null, tex = null;
+            if (typeof document !== 'undefined') { cv = document.createElement('canvas'); cv.width = 256; cv.height = 96; ctx = cv.getContext('2d'); tex = new THREE.CanvasTexture(cv); }
+            var scr = new THREE.Mesh(new THREE.PlaneGeometry(1.1 * U, 0.42 * U), tex ? new THREE.MeshBasicMaterial({ map: tex }) : _hqBasic(0x0c2a26));
+            scr.position.set(0, 1.5 * U, -0.315 * U); g.add(scr);
+            var crossMat = new THREE.MeshPhongMaterial({ color: 0xd9473f, emissive: 0xd9473f, emissiveIntensity: 0.45 });
+            var cv1 = _hqBox(0.12, 0.34, 0.03, crossMat); cv1.position.set(0, 1.9 * U, -0.31 * U); g.add(cv1);
+            var ch1 = _hqBox(0.34, 0.12, 0.03, crossMat); ch1.position.set(0, 1.9 * U, -0.31 * U); g.add(ch1);
+            var glow = _hzGlowSprite(1.6 * U, 0x9fffe8, 0.18, 0.06, 0.02, 0.6); glow.position.set(0, 1.25 * U, 0.2 * U); g.add(glow);
+            /* the cycle: 0..3 s the slots light one by one, 3..4 s all six flash, then a beat of rest */
+            var seed = (_hqProcSeed++) * 0.7, last = -1;
+            if (_hq) _hq.tickers.push(function (dt, now) {
+                var t = ((now * 0.001 + seed) % 5.2), lit = Math.floor(t / 0.5), flash = t >= 3 && t < 4.2, k;
+                for (k = 0; k < 6; k++) lamps[k].emissiveIntensity = flash ? (0.55 + 0.45 * Math.abs(Math.sin(t * 9))) : (k < lit ? 0.85 : 0.15);
+                var step = Math.floor(t * 4);
+                if (!ctx || step === last) return; last = step;
+                ctx.fillStyle = '#0c2a26'; ctx.fillRect(0, 0, 256, 96);
+                ctx.fillStyle = '#7fffe0'; for (k = 0; k < 6; k++) { ctx.globalAlpha = (flash || k < lit) ? 1 : 0.25; ctx.fillRect(18 + k * 38, 54, 28, 26); }
+                ctx.globalAlpha = 1; ctx.strokeStyle = '#7fffe0'; ctx.lineWidth = 2; ctx.beginPath();
+                for (var x = 0; x < 256; x += 4) { var ph = (x / 256) * 12 + t * 6, y = 28 - (((ph % 6) > 5.4) ? 16 * Math.sin((ph % 6 - 5.4) * 5.2) : 0); if (!x) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
+                ctx.stroke(); tex.needsUpdate = true;
+            });
+            return g;
+        },
+        /* THE NURSE'S COUNTER: 7.2 m of white counter, a mint front with a coral stripe, a raised top shelf on the customer
+           side (+Z) and a lower desk behind it; a blocker (catalogue rect) */
+        nurse_counter: function (U) {
+            var g = new THREE.Group(), L = 7.2;
+            var white = _hqMat(null, 1, 1, { color: 0xf4f6f5, shininess: 60, specular: 0x666666 });
+            var mint = _hqMat(null, 1, 1, { color: 0x9fd8c8, shininess: 40, specular: 0x444444 });
+            var coral = _hqMat(null, 1, 1, { color: 0xd9473f, shininess: 50, specular: 0x553333 });
+            var base = _hqBox(L, 0.08, 0.8, mint); base.position.y = 0.04 * U; g.add(base);
+            var front = _hqBox(L, 1.0, 0.1, mint); front.position.set(0, 0.55 * U, 0.35 * U); g.add(front);
+            var stripe = _hqBox(L + 0.02, 0.1, 0.12, coral); stripe.position.set(0, 0.82 * U, 0.36 * U); g.add(stripe);
+            var top = _hqBox(L + 0.1, 0.06, 0.38, white); top.position.set(0, 1.1 * U, 0.3 * U); g.add(top);
+            var desk = _hqBox(L, 0.05, 0.55, white); desk.position.set(0, 0.76 * U, -0.1 * U); g.add(desk);
+            var body = _hqBox(L, 0.72, 0.5, white); body.position.set(0, 0.4 * U, -0.1 * U); g.add(body);
+            [-1, 1].forEach(function (s) { var end = _hqBox(0.1, 1.1, 0.8, white); end.position.set(s * (L / 2) * U, 0.55 * U, 0); g.add(end); });
+            return g;
+        },
+        /* THE GLASS WALL: one 3.5 m bay of a ward partition: a steel frame, clear glass, a frosted band at eye height so it
+           reads as glass from across the room. A blocker (catalogue rect); the long side is X. */
+        glass_partition: function (U) {
+            var g = new THREE.Group();
+            var steel = _hqMat(null, 1, 1, { color: 0xdfe4e2, shininess: 80, specular: 0x888888 });
+            var glass = new THREE.MeshPhongMaterial({ color: 0xcff0ea, transparent: true, opacity: 0.18, shininess: 160, specular: 0xffffff, depthWrite: false });
+            var frost = new THREE.MeshPhongMaterial({ color: 0xffffff, transparent: true, opacity: 0.42, shininess: 20, depthWrite: false });
+            var sill = _hqBox(3.5, 0.12, 0.12, steel); sill.position.y = 0.06 * U; g.add(sill);
+            var head = _hqBox(3.5, 0.08, 0.12, steel); head.position.y = 2.66 * U; g.add(head);
+            [-1.72, 0, 1.72].forEach(function (x) { var p = _hqBox(0.06, 2.7, 0.12, steel); p.position.set(x * U, 1.35 * U, 0); g.add(p); });
+            var pane = _hqBox(3.44, 2.5, 0.02, glass); pane.position.y = 1.36 * U; pane.renderOrder = 2; g.add(pane);
+            var band = _hqBox(3.44, 0.3, 0.025, frost); band.position.y = 1.45 * U; band.renderOrder = 3; g.add(band);
+            return g;
+        },
+        /* THE CROSS: the hospital's sign, a coral cross on a lit white disc (a wall prop: the back on the wall, +Z out) */
+        med_cross: function (U) {
+            var g = new THREE.Group();
+            var disc = new THREE.Mesh(new THREE.CylinderGeometry(0.8 * U, 0.8 * U, 0.06 * U, 40), new THREE.MeshPhongMaterial({ color: 0xf4f6f5, emissive: 0xf2faff, emissiveIntensity: 0.35, shininess: 30 }));
+            disc.rotation.x = Math.PI / 2; disc.position.set(0, 0.8 * U, 0.03 * U); g.add(disc);
+            var ring = new THREE.Mesh(new THREE.TorusGeometry(0.8 * U, 0.04 * U, 8, 40), _hqMat(null, 1, 1, { color: 0x9fd8c8, shininess: 60 }));
+            ring.position.set(0, 0.8 * U, 0.06 * U); g.add(ring);
+            var cm = new THREE.MeshPhongMaterial({ color: 0xd9473f, emissive: 0xd9473f, emissiveIntensity: 0.55, shininess: 40 });
+            var v = _hqBox(0.36, 1.1, 0.06, cm); v.position.set(0, 0.8 * U, 0.09 * U); g.add(v);
+            var h = _hqBox(1.1, 0.36, 0.06, cm); h.position.set(0, 0.8 * U, 0.09 * U); g.add(h);
+            return g;
+        },
+    });
+
     /* ── THE LANDMARK: THE WATCHER — a vast eye on the sea's horizon that blinks and wanders its gaze; it is not looking at you (mostly) ── */
     Object.assign(_hqLandmarkBuilders, {
         eye: function (U, o, rng) {
