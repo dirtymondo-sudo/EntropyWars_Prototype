@@ -105943,6 +105943,7 @@ const ThreeRenderer = (function () {
                 }
                 continue;
             }
+            if (nb.imp && !E && _hqImpFar(H, nb, +HQ_STAGE_RULES.impBuildM || 30)) continue;   // THE IMPOSSIBLE DOORS: built only near a doorway
             var room = _hqData().rooms[nb.id];
             /* the floor plan is compiled off the main thread (map.js THE SURVEY) — never here: the part waits for it */
             if (room.terrain && !room._terrainInfo) {
@@ -107482,8 +107483,8 @@ const ThreeRenderer = (function () {
         if (!nbs.length) { H.imp = null; return; }
         var I = H.imp = { id: st.id, recs: [], hid: false, was: true, crossed: 0 };
         var U = _hqUnits(), dep = +HQ_STAGE_RULES.impDepthM || 0.6;
-        nbs.forEach(function (nb) {
-            var F = nb.imp, mat = _hqImpMat(), dp = F.window ? 0.04 : dep, off = F.window ? -0.05 : dep / 2;   // THE WINDOW: a thin pane on the wall's face, in the room
+        nbs.forEach(function (nb) { nb.altI = 0; (nb.alts && nb.alts.length ? nb.alts : [{ rel: nb.rel, rect: nb.rect, imp: nb.imp }]).forEach(function (alt, ai) {
+            var F = alt.imp, mat = _hqImpMat(), dp = F.window ? 0.04 : dep, off = F.window ? -0.05 : dep / 2;   // THE WINDOW: a thin pane on the wall's face, in the room
             var g = new THREE.BoxGeometry(F.ow * U, F.oh * U, dp * U);
             var m = new THREE.Mesh(g, mat);
             m.position.set((F.x + F.ox * off) * U, (F.y + F.oh / 2) * U, (F.z + F.oz * off) * U);
@@ -107492,8 +107493,38 @@ const ThreeRenderer = (function () {
             H.scene.add(m); m.updateMatrixWorld(true);
             g.computeBoundingBox();
             var box = g.boundingBox.clone().applyMatrix4(m.matrixWorld);
-            I.recs.push({ id: nb.id, nb: nb, F: F, see: !!(F.see || F.look), look: !!F.look, mesh: m, mat: mat, box: box, rt: null, cam: null, cg: null, plane: new THREE.Plane(), prevD: null, drawn: 0, shown: false });
-        });
+            I.recs.push({ id: nb.id, key: nb.id + '#' + ai, ai: ai, alt: alt, rel: alt.rel, nb: nb, F: F, see: !!(F.see || F.look), look: !!F.look, mesh: m, mat: mat, box: box, rt: null, cam: null, cg: null, plane: new THREE.Plane(), prevD: null, drawn: 0, shown: false });
+        }); });
+        _hqImpAlts(H, true);
+    }
+    /* TWO DOORS TO ONE ROOM (data.js hqStageImpNeighbours `alts`): the part stands behind the doorway nearest the walker (2 m of
+       hysteresis; never while the walker is in one), moved 3000 m under the floor where no eye sees it go. The other doorway is dark */
+    function _hqImpAltOn(r) { return (r.nb.altI || 0) === r.ai; }
+    function _hqImpAlts(H, force) {
+        var I = H.imp, st = H.stage, pl = H.player; if (!I || !st || !pl) return;
+        var seen = {};
+        for (var i = 0; i < I.recs.length; i++) {
+            var nb = I.recs[i].nb; if (!nb.alts || nb.alts.length < 2 || seen[nb.id]) continue; seen[nb.id] = 1;
+            if (st.impIn && st.impIn.indexOf(nb.id + '#') === 0) continue;
+            var best = nb.altI || 0, bd = Infinity, cur = Infinity;
+            nb.alts.forEach(function (a, ai) { var d = Math.hypot(pl.x - a.imp.x, pl.z - a.imp.z); if (ai === (nb.altI || 0)) cur = d; if (d < bd) { bd = d; best = ai; } });
+            if (best === (nb.altI || 0) || (!force && bd > cur - 2)) continue;
+            _hqImpAltSet(H, nb, best);
+        }
+    }
+    function _hqImpAltSet(H, nb, ai) {
+        var a = nb.alts && nb.alts[ai]; if (!a) return;
+        nb.altI = ai; nb.rel = a.rel; nb.rect = a.rect; nb.imp = a.imp;
+        var E = H.stage.parts[nb.id]; if (!E) return;
+        E.rel = a.rel; E.impDrop = a.imp.drop;
+        if (E.attached) _hqStageRootPlace(H, E);
+    }
+    /* THE BUILD REACH: an impossible door's room is built only within impBuildM of one of its doorways (H-Wing has ten of them) */
+    function _hqImpFar(H, nb, m) {
+        var pl = H.player; if (!pl || !nb.imp) return false;
+        var L = nb.alts && nb.alts.length ? nb.alts : [{ imp: nb.imp }], d = Infinity;
+        for (var i = 0; i < L.length; i++) d = Math.min(d, Math.hypot(pl.x - L[i].imp.x, pl.z - L[i].imp.z));
+        return d > m;
     }
     function _hqImpDrop(H) {
         var I = H && H.imp; if (!I) return;
@@ -107513,9 +107544,12 @@ const ThreeRenderer = (function () {
             var r = I.recs[i], F = r.F, d = _hqImpD(F, x, z);
             if (d <= -0.02) continue;
             if (r.look) { if (d < 0.6 && Math.abs(_hqImpT(F, x, z)) < F.ow / 2 + 0.4) return null; continue; }
-            if (st.impIn !== r.id) continue;
+            if (st.impIn !== r.key) continue;
             var E = st.parts[r.id]; if (!E || !E.attached) return null;
-            var q = hqStageFromRoom(r.nb.rel, x, z), ry = r.nb.rel.y || 0, y = null;
+            /* the threshold: through the far wall's thickness and a body past it the doorway is the doorway's own floor (the far room,
+               asked alone, would read its wall there: its stage cut is not this stage's) */
+            if (d < (F.gap || 0) + HQ_BODY_R + 0.5) return Math.abs(_hqImpT(F, x, z)) < F.ow / 2 ? F.y : null;
+            var q = hqStageFromRoom(r.rel, x, z), ry = r.rel.y || 0, y = null;
             _hqStageAsk(H, E, function () { y = _hqSurface(q.x, q.z, curY == null ? null : curY - ry, ignoreBlockers); });
             return (y == null) ? null : y + ry;
         }
@@ -107528,9 +107562,9 @@ const ThreeRenderer = (function () {
             var r = I.recs[i], F = r.F, d = _hqImpD(F, px, pz);
             if (d <= 0) continue;
             var t = Math.abs(_hqImpT(F, px, pz));
-            if (st.impIn !== r.id) { if (t < F.ow / 2 + 0.35 && d < Math.max(0.6, F.gap + 0.4) && py < F.y + F.oh + 0.3) return true; continue; }
+            if (st.impIn !== r.key) { if (t < F.ow / 2 + 0.35 && d < Math.max(0.6, F.gap + 0.4) && py < F.y + F.oh + 0.3) return true; continue; }
             var E = st.parts[r.id]; if (!E || !E.attached) return true;
-            var q = hqStageFromRoom(r.nb.rel, px, pz), ry = r.nb.rel.y || 0, b = true;
+            var q = hqStageFromRoom(r.rel, px, pz), ry = r.rel.y || 0, b = true;
             _hqStageAsk(H, E, function () { b = _hqCamBlocked(q.x, q.z, py - ry); });
             return b;
         }
@@ -107542,14 +107576,20 @@ const ThreeRenderer = (function () {
         if (!H.imp || H.imp.id !== st.id) _hqImpArm(H);
         var I = H.imp, pl = H.player; if (!I || !pl) return false;
         var U = _hqUnits(), cp = H.camera.position, ex = cp.x / U, ez = cp.z / U;
+        _hqImpAlts(H, false);
+        if (!I.keepT || now - I.keepT > 700) {   // THE BUILD REACH: a room left far behind is taken down (built again when you come back)
+            I.keepT = now;
+            var km = +HQ_STAGE_RULES.impKeepM || 60;
+            st.nbs.forEach(function (nb) { var E0 = st.parts[nb.id]; if (nb.imp && E0 && !(st.impIn && st.impIn.indexOf(nb.id + '#') === 0) && _hqImpFar(H, nb, km)) { console.log('[HQ impossible] ' + nb.id + ' taken down (far from its doorways)'); _hqStageDispose(H, E0); } });
+        }
         for (var i = 0; i < I.recs.length; i++) {
-            var r = I.recs[i], F = r.F, E = st.parts[r.id], on = !!(E && E.attached);
+            var r = I.recs[i], F = r.F, E = st.parts[r.id], on = !!(E && E.attached) && _hqImpAltOn(r);
             var d = _hqImpD(F, pl.x, pl.z), prev = r.prevD; r.prevD = d;
-            if (r.look || !on) { if (st.impIn === r.id) st.impIn = null; continue; }
+            if (r.look || !on) { if (st.impIn === r.key) st.impIn = null; continue; }
             var inL = Math.abs(_hqImpT(F, pl.x, pl.z)) < F.ow / 2 + 0.25 && pl.y > F.y - 1.2 && pl.y < F.y + F.oh;
-            if (st.impIn !== r.id) { if (!st.impIn && prev != null && prev <= 0 && d > 0 && inL) st.impIn = r.id; }
+            if (st.impIn !== r.key) { if (!st.impIn && prev != null && prev <= 0 && d > 0 && inL) st.impIn = r.key; }
             else if (d < -0.05) st.impIn = null;
-            if (st.impIn !== r.id) continue;
+            if (st.impIn !== r.key) continue;
             var cd = _hqImpD(F, ex, ez), ct = Math.abs(_hqImpT(F, ex, ez));
             if ((cd > 0.02 && ct < F.ow / 2 + 0.8) || d > 4.5 || (H.fp && d > 0.05)) return _hqImpCross(H, r, now);
         }
@@ -107561,6 +107601,7 @@ const ThreeRenderer = (function () {
         var placed = (H.portal && H.portal.placed && Object.keys(H.portal.placed).length) || (H.gun && H.gun.doors && H.gun.doors.length);
         if (placed) { _hqStageLoad(H, r.id, now); return true; }   // the door gun's pair stands in this part: a plain load to the same spot (THE STAGE's rule)
         var from = st.id;
+        _hqImpAltSet(H, r.nb, r.ai);   // the part stands behind THIS doorway (the swap re-anchors from its place)
         _hqImpDrop(H);
         if (!_hqStageSwap(H, r.id)) return false;
         if (H.partRoot) H.partRoot._ew_impDrop = 0;
@@ -107582,13 +107623,13 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < I.recs.length; i++) {
             var r = I.recs[i], F = r.F, E = st.parts[r.id];
             var on = !!(E && E.attached && E.P.partRoot.parent && E.P.partRoot.visible !== false);
-            var show = on && _hqImpD(F, ex, ez) < (F.window ? -0.1 : 0.05);   // from the front only
+            var show = _hqImpD(F, ex, ez) < (F.window ? -0.1 : 0.05) && Math.hypot(ex - F.x, ez - F.z) < seeM + 10;   // from the front only (dark until the room beyond stands)
             r.shown = show;
             if (r.mesh.visible !== show) r.mesh.visible = show;
             if (!show) continue;
-            if (st.impIn === r.id) hide = true;
+            if (st.impIn === r.key) hide = true;
             var u = r.mat.uniforms;
-            if (!r.see || Math.hypot(ex - F.x, ez - F.z) > seeM) { u.uOn.value = 0; continue; }
+            if (!on || !_hqImpAltOn(r) || !r.see || Math.hypot(ex - F.x, ez - F.z) > seeM) { u.uOn.value = 0; continue; }
             if (!_hqImpFr.intersectsBox(r.box)) continue;
             if (_hqImpDraw(H, r, E, G)) { u.uOn.value = 1; u.tPortal.value = r.rt.texture; u.uTexMat.value.copy(_hqImpBias).multiply(_hqImpPM); }
             else u.uOn.value = 0;
@@ -107608,6 +107649,8 @@ const ThreeRenderer = (function () {
         var n = new THREE.Vector3(F.ox, 0, F.oz), p0 = new THREE.Vector3((F.x + F.ox * ck) * U, F.y * U + dyU, (F.z + F.oz * ck) * U);
         var cpl = r.plane.setFromNormalAndCoplanarPoint(n, p0);
         var sky = H.sky ? [H.sky.dome, H.sky.group, H.sky.landmarks].filter(function (o) { return !!o; }) : [];
+        var skyOff = !!(H.sky && H.sky.air && H.sky.air.id !== r.id), skyVis = sky.map(function (o) { return o.visible; });   // another open room's sky is not this one's
+        if (skyOff) sky.forEach(function (o) { o.visible = false; });
         var prevT = renderer.getRenderTarget(), prevClip = renderer.clippingPlanes, prevShadow = renderer.shadowMap ? renderer.shadowMap.needsUpdate : false, prevAuto = renderer.autoClear;
         var CG = (renderer.isWebGPURenderer && typeof window !== 'undefined' && window.THREE_GPU && window.THREE_GPU.ClippingGroup) ? (r.cg || (r.cg = new window.THREE_GPU.ClippingGroup())) : null, kids = null;
         var gy = G ? G.position.y : 0, ok = false;
@@ -107631,7 +107674,7 @@ const ThreeRenderer = (function () {
             renderer.setRenderTarget(prevT); renderer.autoClear = prevAuto;
             if (renderer.shadowMap) renderer.shadowMap.needsUpdate = prevShadow;
             if (G) { G.position.y = gy; G.updateMatrixWorld(true); }
-            sky.forEach(function (o) { o.position.y -= dyU; o.updateMatrixWorld(true); });
+            sky.forEach(function (o, si) { o.position.y -= dyU; o.updateMatrixWorld(true); if (skyOff) o.visible = skyVis[si]; });
             H.imp.recs.forEach(function (q) { q.mesh.visible = q.shown; });
         }
         return ok;
@@ -107639,7 +107682,7 @@ const ThreeRenderer = (function () {
     function _hqImpStats(H) {
         var I = H.imp, st = H.stage; if (!I || !st) return null;
         var pl = H.player;
-        return { id: I.id, in: st.impIn || null, crossed: I.crossed || 0, recs: I.recs.map(function (r) { var E = st.parts[r.id]; return { id: r.id, door: r.F.door, see: r.see, look: r.look, on: !!(E && E.attached), shown: r.shown, drawn: r.drawn, d: pl ? Math.round(_hqImpD(r.F, pl.x, pl.z) * 100) / 100 : null }; }) };
+        return { id: I.id, in: st.impIn || null, crossed: I.crossed || 0, recs: I.recs.map(function (r) { var E = st.parts[r.id]; return { id: r.id, door: r.F.door, see: r.see, look: r.look, on: !!(E && E.attached) && _hqImpAltOn(r), shown: r.shown, drawn: r.drawn, d: pl ? Math.round(_hqImpD(r.F, pl.x, pl.z) * 100) / 100 : null }; }) };
     }
     /* THE SWAP: the neighbour `to` becomes the current part; everything is re-anchored to its frame */
     function _hqStageSwap(H, to) {

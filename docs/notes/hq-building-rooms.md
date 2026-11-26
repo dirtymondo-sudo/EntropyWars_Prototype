@@ -1788,11 +1788,24 @@ card, no load, and the two rooms never have to fit next to each other.
   into the far side: black, or (`see`) the far room drawn from the camera moved by the drop into a render target (the mirrors' rule:
   each pixel reads what the eye sees there; everything on this side of the plane clipped off), only while it is on screen, within
   `impSeeM`, and from the front. The far room is drawn by this room's light until you cross (then THE BLEND eases to its own).
-- **The rows today:** the Works stair (`labs.stair` -> `incinerator.works`, dark) and H-Wing's two plain doors on the Gantry
-  (`labs.mandela`, `labs.upsidedown`, see-through) until the H-Wing thread moves them.
-- **Not yet:** a room behind an impossible door is built after the stage's other neighbours (a room with many joins builds it last);
-  until it stands, the door is the plain door it always was (press E / walk in = the walk blink). The far room's fog and sky are this
-  room's in the picture.
+- **The rows today:** THE WORKS STAIR (`labs.stair` -> `downstair.labs`, dark: the Gantry's stair door opens onto the Stair's landing,
+  7 m up, with no card, and the Stair is staged with the Incinerator, so the Gantry to the pit is one walk) and ALL FOURTEEN of H-Wing's
+  free-standing plain doors, see-through: the four vignettes (`desert`/`desert_out`, `pines`/`pines_out`, `moon`/`moon_out`,
+  `corn`/`corn_out` -> each vignette's `hall` / `lone`) and the six uncanny rooms (`mandela`, `upsidedown`, `home`, `thirteenth`,
+  `pool`, `garden`). Walked in the probe: H-Wing -> the Desert at Dusk -> its lone door -> back in H-Wing at `desert_out`, then the
+  Gantry -> the Stair, no card either time.
+- **Two doors to one room** (a vignette's hall door and lone door): data.js gives the room ONE neighbour with an `alts` row per doorway;
+  the renderer (`_hqImpAlts`) stands the part behind the doorway nearest the walker (2 m of hysteresis, never while you are in one; the
+  move happens 3,000 m under the floor). The other doorway is dark until you come nearer to it.
+- **THE BUILD REACH** (`impBuildM` 30, `impKeepM` 60): a room behind impossible doors is built only while you are within 30 m of one of
+  its doorways, and taken down once you are 60 m from all of them (H-Wing has ten such rooms; it never holds them all). Until it stands
+  its doorway is black and walking in is the plain door (the card).
+- **THE THRESHOLD:** through the far wall's thickness and a body past it the floor is the doorway's own (asked alone, the far room reads
+  its own wall there and the walker stalled on the plane).
+- **Not yet:** the Corner Office window (the Penthouse `executive`, false window on the east wall of the Corner Office): one row
+  `{ a: 'executive', window: { wall: 'e', z: <its z>, y: 4, w, h }, b: <the room to show>, bDoor: <a door of it>, look: true }` once
+  mondo says what it shows. The far room's fog is this room's in the picture; an open-air room's sky shows only through the doors of the
+  first open-air room the stage built (another vignette's doorway shows no sky until you are in its hall).
 - Off: `window.EW_HQ_NO_IMPOSSIBLE = true` (re-enter). Console: `ThreeRenderer.hq.impossible()` -> `{ id, in, crossed, recs: [{ id, door,
   see, look, on, shown, drawn, d }] }`. RULE #2: viewer-local, nothing on `state`, nothing relayed. RULE #1e: the frame reads only this
   room's doorways.

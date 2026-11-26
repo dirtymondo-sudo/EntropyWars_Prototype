@@ -87779,9 +87779,23 @@ const HQ_STAGE_RULES = {
        Each thread adds its own rows here. Off: window.EW_HQ_NO_IMPOSSIBLE (every such door is a plain door again). Notes:
        docs/notes/hq-building-rooms.md "THE IMPOSSIBLE DOORS". */
     impossible: [
-        { a: 'labs', door: 'stair', b: 'incinerator', bDoor: 'works' },   // THE WORKS STAIR: down from the Gantry into the Incinerator, the dark doorway
-        { a: 'labs', door: 'mandela', b: 'mandela', bDoor: 'labs', see: true },   // H-WING'S PLAIN DOORS on the Gantry (until the H-Wing thread moves them)
-        { a: 'labs', door: 'upsidedown', b: 'upsidedown', bDoor: 'labs', see: true },
+        { a: 'labs', door: 'stair', b: 'downstair', bDoor: 'labs' },   // THE WORKS STAIR: the Gantry's stair door onto the Stair's landing, the dark doorway
+        /* H-WING'S PLAIN DOORS (mondo: "open a door and it leads to an outside 'room' with a lone door standing across the other side,
+           walk to it and open it and I'm back in h-wing"): every free door in the halls, seen through */
+        { a: 'hwing_floor', door: 'desert', b: 'hwing_desert', bDoor: 'hall', see: true },
+        { a: 'hwing_floor', door: 'desert_out', b: 'hwing_desert', bDoor: 'lone', see: true },
+        { a: 'hwing_floor', door: 'pines', b: 'hwing_pines', bDoor: 'hall', see: true },
+        { a: 'hwing_floor', door: 'pines_out', b: 'hwing_pines', bDoor: 'lone', see: true },
+        { a: 'hwing_floor', door: 'moon', b: 'hwing_moon', bDoor: 'hall', see: true },
+        { a: 'hwing_floor', door: 'moon_out', b: 'hwing_moon', bDoor: 'lone', see: true },
+        { a: 'hwing_floor', door: 'corn', b: 'hwing_corn', bDoor: 'hall', see: true },
+        { a: 'hwing_floor', door: 'corn_out', b: 'hwing_corn', bDoor: 'lone', see: true },
+        { a: 'hwing_floor', door: 'mandela', b: 'mandela', bDoor: 'labs', see: true },
+        { a: 'hwing_floor', door: 'upsidedown', b: 'upsidedown', bDoor: 'labs', see: true },
+        { a: 'hwing_floor', door: 'home', b: 'hwing_home', bDoor: 'hall', see: true },
+        { a: 'hwing_floor', door: 'thirteenth', b: 'thirteenth', bDoor: 'crawl', see: true },
+        { a: 'hwing_floor', door: 'pool', b: 'natatorium', bDoor: 'garden', see: true },
+        { a: 'hwing_floor', door: 'garden', b: 'garden', bDoor: 'annex', see: true },
     ],
     /* the drop under `a` an impossible door's room is built at (m; out of the eye's 900 m reach both ways), the see-through door's render
        target (a share of the screen), the reach it is drawn from (m), and the depth of the doorway's dark box (m) */
@@ -87795,6 +87809,8 @@ const HQ_STAGE_RULES = {
     concentric: [{ a: 'central_egress', b: 'ring_g' }],
     /* the rooms of a level are KEPT BUILT while you walk it (detached when out of sight): up to this many parts (THE LEVEL JOIN) */
     levelKeep: 26,
+    /* an impossible door's room is built only while the walker is within `impBuildM` of one of its doorways, and taken down past `impKeepM` */
+    impBuildM: 30, impKeepM: 60,
 };
 /* THE EXPLORATION DAY (§4.4 — Phase 3, 2026-09-26). One clock for every outdoor room (2026-10-17: hqRoomClock; was every zone with `clock: true`): a day of `dayMin` real
    minutes (fork 6's default, 24), run by the walk (map.js _hqClockAdvance: the HQ frame, never while paused, a panel is up,
@@ -88983,7 +88999,6 @@ function hqStageImpNeighbours(roomId) {
     js.forEach(j => {
         const G = hqStageImpGeom(j); if (!G) return;
         const mine = roomId === j.a, other = mine ? j.b : j.a, f = mine ? j.fa : j.fb, rel = mine ? G.rel : G.back;
-        if (out.some(n => n.id === other)) return;   // one doorway a pair of rooms (the first row)
         const S = DOOR_HQ.rooms[other].shell, OB = DOOR_HQ.rooms[other];
         let rect;
         if (OB.kind === 'box') {
@@ -88993,11 +89008,16 @@ function hqStageImpNeighbours(roomId) {
         const imp = { x: f.x + f.ox * G.gap, z: f.z + f.oz * G.gap, ox: f.ox, oz: f.oz, y: f.y, ow: G.ow, oh: G.oh, gap: G.gap, drop: mine ? G.drop : -G.drop,
                       see: j.see, look: j.look, door: (mine ? j.door : j.bDoor).id, otherDoor: (mine ? j.bDoor : j.door).id, free: !!f.free, hub: !!f.hub, window: !!(j.window && mine) };
         if (j.window && !mine) return;   // a window is seen from its own room only (the room it shows has no way back through it)
-        const nb = { id: other, rel, rect, spans: [], links: [], imp };
+        /* TWO DOORS TO ONE ROOM (H-Wing's vignettes: the hall door and the lone door): one part, one place at a time. Each doorway is an
+           `alts` row ({ rel, rect, imp }); the renderer stands the part behind the doorway nearest the walker (_hqImpAlt) */
+        const had = out.find(n => n.id === other);
+        if (had && had.imp.window !== imp.window) return;
+        const nb = had || { id: other, rel, rect, spans: [], links: [], imp, alts: [] };
+        nb.alts.push({ rel, rect, imp });
         if (imp.window) { imp.x = f.x; imp.z = f.z; }   // on the wall's face: nothing is cut
-        else if (f.hub) { nb.round = true; nb.level = f.level; nb.spans.push({ side: 'round', deg: f.deg, R: f.R, level: f.level, y: f.y, t0: -G.ow / 2, t1: G.ow / 2, kind: 'door', door: imp.door, pad: 0.3, depth: G.gap + 0.5 }); }
+        else if (f.hub) { if (had && !had.round) return; nb.round = true; nb.level = f.level; nb.spans.push({ side: 'round', deg: f.deg, R: f.R, level: f.level, y: f.y, t0: -G.ow / 2, t1: G.ow / 2, kind: 'door', door: imp.door, pad: 0.3, depth: G.gap + 0.5 }); }
         else if (f.wall) nb.spans.push({ side: f.wall, t0: f.t - G.ow / 2, t1: f.t + G.ow / 2, kind: 'door', door: imp.door, pad: 0.3, depth: G.gap + 0.5 });
-        out.push(nb);
+        if (!had) out.push(nb);
     });
     return out;
 }
