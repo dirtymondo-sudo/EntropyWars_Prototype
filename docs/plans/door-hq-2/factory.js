@@ -196,7 +196,7 @@ const room = `        /* ── THE WORKS, TOP: THE FACTORY (DOOR HQ 2.0 wave 3,
                 plate: { x: -33.5, z: -4.2, y: 4.6 },
             },
             doors: [
-                { id: 'garage', wall: 'w', z: 0, open: { w: 7, h: 5.2 }, label: 'GARAGE', action: { room: 'garage', at: 'works' } },
+                { id: 'garage', wall: 'w', z: 0, leaf: 'leaf_wired_double', wide: true, label: 'GARAGE', action: { room: 'garage', at: 'works' } },
                 { id: 'ramp', wall: 's', x: 0, open: { w: 7, h: 5.2 }, label: 'FREIGHT RAMP', action: { room: 'labs', at: 'factory' } },
             ],
             counters: [
