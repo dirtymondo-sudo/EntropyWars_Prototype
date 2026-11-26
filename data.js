@@ -37007,8 +37007,8 @@ const DOOR_HQ = {
             shell: {
                 w: 17.5, d: 21, h: 5.25,
                 wallH: 5.25, dadoH: 1.05,
-                floor: 'carpet_3', wall: 'drywall_2', dado: 'urban:WoodPanelling1a', trim: 'brass', ceiling: 'ceiling',
-                wallColor: 0xd8cbb0, ceilColor: 0xeeeae0,
+                floor: 'carpet_4', wall: 'drywall_2', dado: 'urban:WoodPanelling1a', trim: 'brass', ceiling: 'ceiling',
+                wallColor: 0xd8cbb0, floorColor: 0x8c7e62, ceilColor: 0xeeeae0,
                 pipes: false, strips: false,
                 lights: [{ x: -4.5, z: -6 }, { x: 4.5, z: -6 }, { x: -4.5, z: 0 }, { x: 4.5, z: 0 }, { x: 0, z: 5.5 }],
                 mood: { light: 0xfff1d6, ambient: 0.45 },
@@ -38886,8 +38886,8 @@ const DOOR_HQ = {
             shell: {
                 w: 21, d: 21, h: 7,
                 wallH: 7, dadoH: 1.2,
-                floor: 'carpet_3', wall: 'drywall_2', dado: 'urban:WoodPanelling1a', trim: 'brass', ceiling: 'ceiling',
-                wallColor: 0xe2d8c0, ceilColor: 0xeeeae0,
+                floor: 'carpet_4', wall: 'drywall_2', dado: 'urban:WoodPanelling1a', trim: 'brass', ceiling: 'ceiling',
+                wallColor: 0xe2d8c0, floorColor: 0x7a3e36, ceilColor: 0xeeeae0,
                 pipes: false, strips: false,
                 lights: [{ x: -5, z: -5 }, { x: 5, z: -5 }, { x: -5, z: 2.5 }, { x: 5, z: 2.5 }],
                 mood: { light: 0xfff1d6, ambient: 0.5 },
@@ -38936,8 +38936,8 @@ const DOOR_HQ = {
             shell: {
                 w: 28, d: 21, h: 4.5,
                 wallH: 4.5, dadoH: 1.05,
-                floor: 'carpet_3', wall: 'drywall_2', dado: 'urban:WoodPanelling1a', trim: 'brass', ceiling: 'ceiling',
-                wallColor: 0xe0d8c4, ceilColor: 0xeeeae0,
+                floor: 'carpet_4', wall: 'drywall_2', dado: 'urban:WoodPanelling1a', trim: 'brass', ceiling: 'ceiling',
+                wallColor: 0xe0d8c4, floorColor: 0x737d84, ceilColor: 0xeeeae0,
                 pipes: false, strips: false,
                 lights: [{ x: -8, z: -5 }, { x: 0, z: -5 }, { x: 8, z: -5 }, { x: -8, z: 3 }, { x: 8, z: 3 }, { x: 0, z: 5 }],
                 mood: { light: 0xfff1d6, ambient: 0.5 },
@@ -39908,8 +39908,8 @@ const DOOR_HQ = {
             shell: {
                 w: 14, d: 14, h: 4.5,
                 wallH: 4.5, dadoH: 1.05,
-                floor: 'carpet_3', wall: 'drywall_2', dado: 'urban:WoodPanelling1a', trim: 'brass', ceiling: 'ceiling',
-                wallColor: 0xe2d8c0, ceilColor: 0xeeeae0,
+                floor: 'carpet_4', wall: 'drywall_2', dado: 'urban:WoodPanelling1a', trim: 'brass', ceiling: 'ceiling',
+                wallColor: 0xe2d8c0, floorColor: 0x8a7660, ceilColor: 0xeeeae0,
                 pipes: false, strips: false,
                 lights: [{ x: -3.5, z: -2.5 }, { x: 3.5, z: -2.5 }, { x: 0, z: 2.5 }],
                 mood: { light: 0xfff1d6, ambient: 0.5 },
