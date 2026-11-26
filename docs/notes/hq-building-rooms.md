@@ -1488,3 +1488,33 @@ the vending machines". Plan: `docs/plans/door-hq-2/FLOOR_PLANS.md` (lobby level,
   `{ a: 'central_egress', door: 'cafeteria', b: 'cafeteria', bDoor: 'lobby' }` is in HQ_STAGE_RULES.round. Seen on screen from the Lobby floor.
 - **CHEF (same day, mondo: "Chef in the kitchen/cafteria"):** DOOR_CAST `chef` (the chef race's model, `race: 'chef'`, name CHEF, no title):
   half the visits at the Kitchen's ranges, half at the head of the serving line. Out of every doorway square.
+
+## DOOR HQ 2.0, WAVE 3: THE GARAGE, THE LIFT, THE SUBWAY (2026-11-26)
+Built from the left side of `docs/plans/door-hq-2/plans/3_garage_works_top.png` and LOOK_BOOK.md "Garage". A clean sheet: the old drum's
+plaza, quarter pipes, dock office, booth, attendant, lines and subtitles are gone. Room ids kept (`garage`, `tunnel`): the elevator's G
+stop, the taxi and train links and the climb lesson all read them.
+- **THE GARAGE** (`rooms.garage`, label GARAGE): a 49 m drum (r 24.5, 9 m to the roof) in a 52.5 m box. Angles clockwise from north.
+  THE LIFT in the middle: a 7 x 7 m core, floor to roof, the elevator doors on its south face (door `elevator`, `wall: 'free'`, proc
+  elevator, wide), a grind kerb round it (r 6, open at the doors), a yellow ring and the lane's dashed ring (r 12.25) painted round it.
+  THE RAMP climbs the west side (spiral 290 -> 350 degrees, r 18-24.7, 0 -> 3.5 m, a pipe guard rail on its inner edge) to THE DECK over
+  the north (bridge 350 -> 65, inner rail, open 6-14 where THE LADDER lands: HQ_WALK_LESSONS.climb, the plaque on the column at 355).
+  At the deck's end the street gate: the `garage_ramp` up to daylight, the boom gate down, a ticket machine, the exit sign. Bays round
+  the drum (yellow lines, 7.5 degrees each), ten cars on the ground and two on the deck, cones, barrels, tyres, a vending machine
+  (potions, hqVendingApply) by the Subway opening, fluorescents in two rings (two flicker).
+- **THE DOORS:** east (90) `works` = the Loading Dock's roller door (`leaf_wired_double`, wide, a closed `roller_shutter` either side,
+  the cage lamp over it) in a 10.5 m alcove; it points at the old `dock` (`at: 'garage'`, the dock's door now lands `at: 'works'`)
+  until the Works' factory room lands, then `{ room: 'factory', at: 'garage' }` (the factory thread switches it). South (180)
+  `subway` = an `open` 7 x 4.2 m opening onto the platform. West (270) `ring` = the stair up to the Ring (the Ring's `subway` row
+  at 350 now reads GARAGE and lands `at: 'ring'`). The taxi (`links.garage_taxi` a) stands in the south-west bays (x -12.73,
+  z 18.19, face 35). The old secret `tunnel` hatch is gone (the platform is walked into now). H-Wing's plain door (the plan's
+  north-west) is the H-Wing thread's.
+- **THE SUBWAY** (`rooms.tunnel`, label SUBWAY): 14 x 35 m, 5.25 m up, the Metro pack, the track down the west side (`track_bed`
+  x -5.6, `platform_edge` x -4.0; the train's free end `links.tunnel_downtown` a at x -4.3 z 6), columns scaled 1.3 to the roof,
+  benches facing the track, the machines on the east wall. Doors: `garage` (north, `open` 7 x 4.2 at x 3.5), `stairwell` (south),
+  the storm drain to the Woods (`links.woods_sewer`, east, secret) and the climb down to the Sewers (`links.tunnels_works`, west)
+  unchanged. Its `ring` door is gone (the Ring leads to the Garage).
+- **ONE STAGE:** `HQ_WORLD.zones.garage` (parts garage + tunnel, y -9, under the Lobby; HQ_STAGE_RULES.zones) with ONE door join
+  `{ a: 'garage', b: 'tunnel', door: 'subway', bDoor: 'garage' }`: you walk from the car park down to the train, no card. A factory
+  join can be added to the same zone (the Garage box's east wall is x 26.25 in the zone frame, z -300).
+- Checked: `node find-doorways.js garage tunnel` 0 rows; `node find-softlocks.js garage` 0 traps (3 slots, harmless gaps under
+  the deck); `hqWorldValidate()` no new errors.
