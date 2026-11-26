@@ -106047,9 +106047,10 @@ const ThreeRenderer = (function () {
         return list;
     }
     function _hqStageBuildTick(H, now) {
-        var st = H.stage, nbsO = _hqStageBuildOrder(H, now);
+        var st = H.stage, nbsO = _hqStageBuildOrder(H, now), hold = (typeof window !== 'undefined' && window.EW_HQ_STAGE_HOLD) || null;   // EW_HQ_STAGE_HOLD = ['training']: a probe's hook, those parts are not built (walk at a room that is not there yet)
         for (var i = 0; i < nbsO.length; i++) {
             var nb = nbsO[i], E = st.parts[nb.id];
+            if (hold && hold.indexOf(nb.id) >= 0 && !(E && E.built)) continue;
             if (E && E.built) {
                 if (!H.sky && H === _hq && _hqStageOpenBox(_hqData().rooms[nb.id])) _hqStageSkyUp(H, _hqData().rooms[nb.id], nb.id);   // THE OPEN-AIR ROOM INDOORS
                 if (!E.attached && E.rel && _hqStageReady(H, E, now)) {
@@ -107543,7 +107544,7 @@ const ThreeRenderer = (function () {
     function _hqStageCross(H, now) {
         /* THE COAST (Phase 7): a swimmer and the helm cross too (the harbour's water into the cay's, the skiff under way) */
         var V = H.vehicle && H.vehicle.on ? H.vehicle : null;
-        var st = H.stage, pl = H.player; if (!pl || H.snap || pl.dash || pl.climb || (pl.sit && !V) || (H.ride && H.ride.on && !(H.room && H.room.pd && !H.ride.grind))) return;   // (THE PLOT DUNGEONS: the board rolls from plot to plot)
+        var st = H.stage, pl = H.player; if (!pl || H.snap || pl.dash || pl.climb || (pl.sit && !V) || (H.ride && H.ride.on && H.ride.grind)) return;   /* THE BOARD CROSSES (2026-11-26, mondo: "riding into the lobby and it blocked me"): a rider crosses like a walker; only a grind (its rail is this part's) waits. It was the plot dungeons only, so a board ran into the far room's own wall at every joined doorway */   // (THE PLOT DUNGEONS: the board rolls from plot to plot)
         var S = H.room.shell, hw = S.w / 2, hd = S.d / 2;
         var rLv = _hqRoundRoom(H.room) ? _hqStageRoundLvl(H, pl.y) : 0;   // THE GALLERY JOIN: the gallery's rooms from the gallery, the floor's from the floor
         var to = (_hqHubR(H.room) > 0 && !rLv && typeof hqStageWhereConc === 'function') ? hqStageWhereConc(st.id, pl.x, pl.z, HQ_WORLD_RULES.crossHys) : null;   // THE LEVEL JOIN: from the Lobby into the Ring, and back
@@ -107953,7 +107954,7 @@ const ThreeRenderer = (function () {
         var rv = function (o, kx, kz) { if (o[kx] == null || o[kz] == null) return; var c = Math.cos(th), s = Math.sin(th), x = o[kx], z = o[kz]; o[kx] = x * c + z * s; o[kz] = -x * s + z * c; };
         rv(pl, 'mvx', 'mvz'); rv(pl, 'velX', 'velZ'); rv(pl, 'pushX', 'pushZ'); rv(pl, 'svx', 'svz');   // THE COAST: a swimmer's way on
         pl.yaw += th; if (pl.targetYaw != null) pl.targetYaw += th;
-        if (H.ride && H.ride.on) H.ride.hd += th;   // THE PLOT DUNGEONS: the roll keeps its line across the seam
+        if (H.ride && H.ride.on) { var Rd = H.ride, dy0 = rel.y || 0; Rd.hd += th; if (dy0) ['lastY', 'airY0', 'launchY', 'airApex'].forEach(function (k) { if (typeof Rd[k] === 'number') Rd[k] -= dy0; }); }   // the roll keeps its line (and its heights) across the seam
         if (Vx) {
             var vp = mp(Vx.x, Vx.z); Vx.x = vp.x; Vx.z = vp.z; Vx.y -= (rel.y || 0); Vx.yaw += th;
             var vr = Vx.rec; vr.x = Vx.x; vr.z = Vx.z; vr.y = Vx.y; vr.yaw = Vx.yaw;
@@ -108326,8 +108327,12 @@ const ThreeRenderer = (function () {
         if (_hq.stage && _hq.stage.imp) { var iy = _hqImpSurface(_hq, x, z, curY, ignoreBlockers); if (iy !== undefined) return iy; }   // THE IMPOSSIBLE DOORS
         var H = _hq, L = (lvl != null) ? lvl : _hqStageRoundLvl(H, curY);   // up on the gallery: only the rooms joined to the gallery's doors (THE GALLERY JOIN)
         var at = _hqStageRoundAt(H, x, z, HQ_BODY_R, 0.7, L); if (!at) return undefined;
-        if (!at.on) return at.k === 'door' ? undefined : null;   // until the room beyond stands on the stage the door is the door it was
         var ry = at.nb.rel.y || 0;
+        /* NO INVISIBLE WALL (2026-11-26, mondo: "Still getting invisible walls ... This is not up to standards at all"): a room beyond the
+           doorway that is not on the stage yet is a FLAT FLOOR at its own height, never a wall: the walker (and the board) go on through
+           the doorway, the crossing (_hqStageCross) finds a part that is not drawn and loads it the old way (_hqStageLoad). Its builds come
+           nearest first (_hqStageBuildOrder), so that load is the rare case; a wall the walker can't see is never the answer. */
+        if (!at.on) return ry;
         if (at.k === 'door') return ry;
         var y = null;
         _hqStageAsk(H, at.E, function () { y = _hqSurface(at.q.x, at.q.z, curY == null ? null : curY - ry, ignoreBlockers); });
@@ -108388,7 +108393,7 @@ const ThreeRenderer = (function () {
         var w = _hqPassJWhere(x, z, HQ_BODY_R + 0.04); if (!w) return undefined;
         if (w.k === 'in') return 0;
         if (w.k === 'side') return null;
-        var y = null; if (!_hqPassJOther(w.p, function () { y = _hqSurface(x, z, curY, ignoreBlockers); })) return null;
+        var y = null; if (!_hqPassJOther(w.p, function () { y = _hqSurface(x, z, curY, ignoreBlockers); })) return 0;   // NO INVISIBLE WALL: the other hub not drawn yet = its floor (the crossing loads it)
         return y;
     }
     function _hqPassJAir(x, z, y) {
@@ -108396,7 +108401,7 @@ const ThreeRenderer = (function () {
         var w = _hqPassJWhere(x, z, HQ_BODY_R + 0.04); if (!w) return undefined;
         if (w.k === 'in') return y >= -0.05 && y + 1.7 <= (w.p.h || 4) && _hqAirClearOfBlockers(x, z, y);
         if (w.k === 'side') return false;
-        var ok = false; if (!_hqPassJOther(w.p, function () { ok = _hqAirOK(x, z, y); })) return false;
+        var ok = false; if (!_hqPassJOther(w.p, function () { ok = _hqAirOK(x, z, y); })) return y >= -0.05 && y + 1.7 <= (w.p.h || 4);   // NO INVISIBLE WALL: the passage's own height
         return ok;
     }
     function _hqPassJCam(px, pz, py) {
