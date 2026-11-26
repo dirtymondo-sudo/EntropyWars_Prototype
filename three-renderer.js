@@ -88462,6 +88462,11 @@ const ThreeRenderer = (function () {
         }
         /* THE DOOR GUN rev 4 (2026-09-16): the walker's GUN clips (sprites.js HQ_GUN_CLIPS — the
            library's pistol aim + shot) beside the ride clip; the roster never wears them */
+        if (spec.kind === 'player' && def.libClips && !def.libClips.hqSleep && HQ_RES_SLEEP) {   // THE SEAT HEIGHT (2026-11-26): the walker lies on a lounger with the residents' bed clip
+            var slc = Object.assign({}, def.libClips), slt = Object.assign({}, def.libTimeScales);
+            slc.hqSleep = { clip: HQ_RES_SLEEP.clip, lib: HQ_RES_SLEEP.lib, trim: HQ_RES_SLEEP.trim.slice(), pinXZ: true }; slt.hqSleep = HQ_RES_SLEEP.ts;
+            def = Object.assign({}, def, { libClips: slc, libTimeScales: slt });
+        }
         if (spec.kind === 'player' && def.libClips && typeof HQ_GUN_CLIPS !== 'undefined' && !def.libClips.hqAim) {
             var glc = Object.assign({}, def.libClips), glt = Object.assign({}, def.libTimeScales);
             var GA = HQ_GUN_CLIPS.aim, GS = HQ_GUN_CLIPS.shoot;
@@ -97526,6 +97531,106 @@ const ThreeRenderer = (function () {
         },
     });
 
+    /* ── MEDICAL (DOOR HQ 2.0, 2026-11-26): the three pieces the look book listed as missing, drawn in code ──
+       THE HEALING MACHINE: the Pokémon Center moment. A white console behind the nurse's counter with a sloped tray of six
+       slots; a small door stands in each slot (the party's doors). The slots light one by one, then all six flash, and it
+       starts again (a ticker on six materials, nothing else). The front is +Z (it faces the counter). */
+    Object.assign(_hqProcBuilders, {
+        heal_machine: function (U) {
+            var g = new THREE.Group();
+            var white = _hqMat(null, 1, 1, { color: 0xf4f6f5, shininess: 70, specular: 0x777777 });
+            var mint = _hqMat(null, 1, 1, { color: 0x9fd8c8, shininess: 40, specular: 0x444444 });
+            var coral = _hqMat(null, 1, 1, { color: 0xd9473f, shininess: 50, specular: 0x553333 });
+            var steel = _hqMat(null, 1, 1, { color: 0xb8c0c4, shininess: 80, specular: 0x888888 });
+            /* the body: a white cabinet on a mint plinth, a coral band round the top */
+            var plinth = _hqBox(2.0, 0.12, 0.95, mint); plinth.position.y = 0.06 * U; g.add(plinth);
+            var body = _hqBox(1.9, 0.86, 0.85, white); body.position.y = 0.55 * U; g.add(body);
+            var band = _hqBox(1.94, 0.1, 0.89, coral); band.position.y = 1.0 * U; g.add(band);
+            [-1, 1].forEach(function (s) { var side = _hqBox(0.04, 0.7, 0.7, mint); side.position.set(s * 0.97 * U, 0.55 * U, 0); g.add(side); });
+            /* the tray: a steel slab tilted toward the counter, six slots in two rows */
+            var tray = new THREE.Group(); tray.position.set(0, 1.1 * U, 0.05 * U); tray.rotation.x = 0.32; g.add(tray);
+            var slab = _hqBox(1.7, 0.06, 0.7, steel); tray.add(slab);
+            var doorMat = _hqMat(null, 1, 1, { color: 0x5a3a22, shininess: 30 });
+            var brass = _hqMat(null, 1, 1, { color: 0xb8893a, shininess: 90, specular: 0x886633 });
+            var lamps = [];
+            for (var i = 0; i < 6; i++) {
+                var cx = (-0.56 + (i % 3) * 0.56), cz = (i < 3 ? -0.16 : 0.18);
+                var lm = new THREE.MeshPhongMaterial({ color: 0x2f6f68, emissive: 0x7fffe0, emissiveIntensity: 0.15, shininess: 60 });
+                var well = _hqBox(0.4, 0.02, 0.26, lm); well.position.set(cx * U, 0.035 * U, cz * U); tray.add(well);
+                var dr = _hqBox(0.16, 0.28, 0.03, doorMat); dr.position.set(cx * U, 0.19 * U, cz * U); tray.add(dr);
+                var kb = new THREE.Mesh(new THREE.SphereGeometry(0.012 * U, 6, 5), brass); kb.position.set((cx + 0.05) * U, 0.17 * U, (cz + 0.02) * U); tray.add(kb);
+                lamps.push(lm);
+            }
+            /* the back board: a white panel with the screen and the cross over it */
+            var back = _hqBox(1.9, 1.05, 0.12, white); back.position.set(0, 1.62 * U, -0.38 * U); g.add(back);
+            var trim = _hqBox(1.94, 0.06, 0.16, coral); trim.position.set(0, 2.16 * U, -0.38 * U); g.add(trim);
+            var cv = null, ctx = null, tex = null;
+            if (typeof document !== 'undefined') { cv = document.createElement('canvas'); cv.width = 256; cv.height = 96; ctx = cv.getContext('2d'); tex = new THREE.CanvasTexture(cv); }
+            var scr = new THREE.Mesh(new THREE.PlaneGeometry(1.1 * U, 0.42 * U), tex ? new THREE.MeshBasicMaterial({ map: tex }) : _hqBasic(0x0c2a26));
+            scr.position.set(0, 1.5 * U, -0.315 * U); g.add(scr);
+            var crossMat = new THREE.MeshPhongMaterial({ color: 0xd9473f, emissive: 0xd9473f, emissiveIntensity: 0.45 });
+            var cv1 = _hqBox(0.12, 0.34, 0.03, crossMat); cv1.position.set(0, 1.9 * U, -0.31 * U); g.add(cv1);
+            var ch1 = _hqBox(0.34, 0.12, 0.03, crossMat); ch1.position.set(0, 1.9 * U, -0.31 * U); g.add(ch1);
+            var glow = _hzGlowSprite(1.6 * U, 0x9fffe8, 0.18, 0.06, 0.02, 0.6); glow.position.set(0, 1.25 * U, 0.2 * U); g.add(glow);
+            /* the cycle: 0..3 s the slots light one by one, 3..4 s all six flash, then a beat of rest */
+            var seed = (_hqProcSeed++) * 0.7, last = -1;
+            if (_hq) _hq.tickers.push(function (dt, now) {
+                var t = ((now * 0.001 + seed) % 5.2), lit = Math.floor(t / 0.5), flash = t >= 3 && t < 4.2, k;
+                for (k = 0; k < 6; k++) lamps[k].emissiveIntensity = flash ? (0.55 + 0.45 * Math.abs(Math.sin(t * 9))) : (k < lit ? 0.85 : 0.15);
+                var step = Math.floor(t * 4);
+                if (!ctx || step === last) return; last = step;
+                ctx.fillStyle = '#0c2a26'; ctx.fillRect(0, 0, 256, 96);
+                ctx.fillStyle = '#7fffe0'; for (k = 0; k < 6; k++) { ctx.globalAlpha = (flash || k < lit) ? 1 : 0.25; ctx.fillRect(18 + k * 38, 54, 28, 26); }
+                ctx.globalAlpha = 1; ctx.strokeStyle = '#7fffe0'; ctx.lineWidth = 2; ctx.beginPath();
+                for (var x = 0; x < 256; x += 4) { var ph = (x / 256) * 12 + t * 6, y = 28 - (((ph % 6) > 5.4) ? 16 * Math.sin((ph % 6 - 5.4) * 5.2) : 0); if (!x) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
+                ctx.stroke(); tex.needsUpdate = true;
+            });
+            return g;
+        },
+        /* THE NURSE'S COUNTER: 7.2 m of white counter, a mint front with a coral stripe, a raised top shelf on the customer
+           side (+Z) and a lower desk behind it; a blocker (catalogue rect) */
+        nurse_counter: function (U) {
+            var g = new THREE.Group(), L = 7.2;
+            var white = _hqMat(null, 1, 1, { color: 0xf4f6f5, shininess: 60, specular: 0x666666 });
+            var mint = _hqMat(null, 1, 1, { color: 0x9fd8c8, shininess: 40, specular: 0x444444 });
+            var coral = _hqMat(null, 1, 1, { color: 0xd9473f, shininess: 50, specular: 0x553333 });
+            var base = _hqBox(L, 0.08, 0.8, mint); base.position.y = 0.04 * U; g.add(base);
+            var front = _hqBox(L, 1.0, 0.1, mint); front.position.set(0, 0.55 * U, 0.35 * U); g.add(front);
+            var stripe = _hqBox(L + 0.02, 0.1, 0.12, coral); stripe.position.set(0, 0.82 * U, 0.36 * U); g.add(stripe);
+            var top = _hqBox(L + 0.1, 0.06, 0.38, white); top.position.set(0, 1.1 * U, 0.3 * U); g.add(top);
+            var desk = _hqBox(L, 0.05, 0.55, white); desk.position.set(0, 0.76 * U, -0.1 * U); g.add(desk);
+            var body = _hqBox(L, 0.72, 0.5, white); body.position.set(0, 0.4 * U, -0.1 * U); g.add(body);
+            [-1, 1].forEach(function (s) { var end = _hqBox(0.1, 1.1, 0.8, white); end.position.set(s * (L / 2) * U, 0.55 * U, 0); g.add(end); });
+            return g;
+        },
+        /* THE GLASS WALL: one 3.5 m bay of a ward partition: a steel frame, clear glass, a frosted band at eye height so it
+           reads as glass from across the room. A blocker (catalogue rect); the long side is X. */
+        glass_partition: function (U) {
+            var g = new THREE.Group();
+            var steel = _hqMat(null, 1, 1, { color: 0xdfe4e2, shininess: 80, specular: 0x888888 });
+            var glass = new THREE.MeshPhongMaterial({ color: 0xcff0ea, transparent: true, opacity: 0.18, shininess: 160, specular: 0xffffff, depthWrite: false });
+            var frost = new THREE.MeshPhongMaterial({ color: 0xffffff, transparent: true, opacity: 0.42, shininess: 20, depthWrite: false });
+            var sill = _hqBox(3.5, 0.12, 0.12, steel); sill.position.y = 0.06 * U; g.add(sill);
+            var head = _hqBox(3.5, 0.08, 0.12, steel); head.position.y = 2.66 * U; g.add(head);
+            [-1.72, 0, 1.72].forEach(function (x) { var p = _hqBox(0.06, 2.7, 0.12, steel); p.position.set(x * U, 1.35 * U, 0); g.add(p); });
+            var pane = _hqBox(3.44, 2.5, 0.02, glass); pane.position.y = 1.36 * U; pane.renderOrder = 2; g.add(pane);
+            var band = _hqBox(3.44, 0.3, 0.025, frost); band.position.y = 1.45 * U; band.renderOrder = 3; g.add(band);
+            return g;
+        },
+        /* THE CROSS: the hospital's sign, a coral cross on a lit white disc (a wall prop: the back on the wall, +Z out) */
+        med_cross: function (U) {
+            var g = new THREE.Group();
+            var disc = new THREE.Mesh(new THREE.CylinderGeometry(0.8 * U, 0.8 * U, 0.06 * U, 40), new THREE.MeshPhongMaterial({ color: 0xf4f6f5, emissive: 0xf2faff, emissiveIntensity: 0.35, shininess: 30 }));
+            disc.rotation.x = Math.PI / 2; disc.position.set(0, 0.8 * U, 0.03 * U); g.add(disc);
+            var ring = new THREE.Mesh(new THREE.TorusGeometry(0.8 * U, 0.04 * U, 8, 40), _hqMat(null, 1, 1, { color: 0x9fd8c8, shininess: 60 }));
+            ring.position.set(0, 0.8 * U, 0.06 * U); g.add(ring);
+            var cm = new THREE.MeshPhongMaterial({ color: 0xd9473f, emissive: 0xd9473f, emissiveIntensity: 0.55, shininess: 40 });
+            var v = _hqBox(0.36, 1.1, 0.06, cm); v.position.set(0, 0.8 * U, 0.09 * U); g.add(v);
+            var h = _hqBox(1.1, 0.36, 0.06, cm); h.position.set(0, 0.8 * U, 0.09 * U); g.add(h);
+            return g;
+        },
+    });
+
     /* ── THE LANDMARK: THE WATCHER — a vast eye on the sea's horizon that blinks and wanders its gaze; it is not looking at you (mostly) ── */
     Object.assign(_hqLandmarkBuilders, {
         eye: function (U, o, rng) {
@@ -98100,7 +98205,7 @@ const ThreeRenderer = (function () {
             if (ch._sceneWalk && ch.kind !== 'player' && e.actions && e.actions.walk) { want = 'walk'; var swt = e.actions.walk._ew_ts0 || 1; e.actions.walk.timeScale = swt * 0.62; }   // THE CUTSCENES: a cast member a scene walks (hq.sceneWalk)
             if (ch.kind === 'player') {
                 want = (ch.jumpT >= 0) ? 'jump' : (ch.moving ? (ch.running ? 'run' : 'walk') : 'idle');
-                if (ch.sit) want = (e.actions && e.actions.hqSit) ? 'hqSit' : 'idle';   // THE PROP PASS 5.2: seated (the library's Sitting_Idle, the skiff's clip)
+                if (ch.sit) want = (ch.sit.lie && e.actions && e.actions.hqSleep) ? 'hqSleep' : (e.actions && e.actions.hqSit) ? 'hqSit' : 'idle';   // THE PROP PASS 5.2: seated (the library's Sitting_Idle, the skiff's clip)
                 if (H.ride && H.ride.on) { var bph = _hqRideBailPhase(H.ride); want = bph ? (bph === 'fall' ? 'hqFall' : 'hqGetup') : (ch.jumpT >= 0) ? 'jump' : ((e.actions && e.actions.hqRide) ? 'hqRide' : 'idle'); }   // SKATEBOARDING (9.8): the air is the jump clip, everything else on the deck is THE RIDE stance (rev 2: Idle_10, sideways on the deck; rev 7: no push / kick clip at all — the user); a bail = the fall clip then the get-up (rev 3)
                 else if (H.vehicle && H.vehicle.on) want = (H.vehicle.kind === 'sub') ? 'hqDrive' : 'hqSit';   // THE DEEP (2026-09-18): at the helm — the library's driving loop in the bathyscaphe, the sitting idle in the skiff
                 else if (ch.swim) want = ch.moving ? 'hqSwim' : 'hqSwimIdle';   // THE DEEP: the swimmer — Swim_Fwd_Loop / Swim_Idle_Loop (sprites.js HQ_SWIM_CLIPS)
@@ -98170,6 +98275,10 @@ const ThreeRenderer = (function () {
             if (cullOn && ch.kind !== 'player' && !_hqCharOnView(H, e)) { e._ew_mixDebt = Math.min(30, (e._ew_mixDebt || 0) + dt); continue; }
             var mdt = dt + (e._ew_mixDebt || 0); e._ew_mixDebt = 0;
             e.mixer.update(mdt);
+            /* THE SEAT HEIGHT (2026-11-26): the sitter's thighs on the cushion (the walker on a seat; a seated cast member on the seat at its spot) */
+            if (ch.kind === 'player') { if (ch.sit && ch.sit.seat && (e._ew_curAnim === 'hqSit' || (ch.sit.lie && e._ew_curAnim === 'hqSleep'))) _hqSeatPin(ch, ch.sit.seat.y, mdt, ch.x, ch.z); /* (lying too: the bed clip's hips sat ~0.6 m toward the foot, the legs off the lounger) */ else if (e.model && e.model._ew_seatOff != null && !(H.ride && H.ride.on)) _hqSeatUnpin(e); }
+            else if (ch.pose && (ch.pose === 'hqSit' || ch.pose === 'hqSitTalk') && e._ew_curAnim === ch.pose) { if (!ch._seatChecked) _hqSeatFind(ch); if (ch._seatTop != null) _hqSeatPin(ch, ch._seatTop, mdt, ch.x, ch.z); }
+            else if (e.model && e.model._ew_seatOff != null) _hqSeatUnpin(e);
             _swayAuto(e.model, mdt);   // THE SWAY: a caped cast member's cape swings in the building too
             if (e.appearanceRig) { e.model.updateMatrixWorld(true); e.appearanceRig.tick(); }   // rev 9: the skirt against the legs
             var _hsR = e.unit ? _unitModelRigs.get(e.unit.id) : null; if (_hsR && _hsR.hairSweep) _hsR.hairSweep();   // THE HAIR EVERYWHERE: the late hair
@@ -98586,7 +98695,15 @@ const ThreeRenderer = (function () {
         if (o.kick) H.kicks.push({ key: p.key, grp: grp, disc: o.disc || null, rad: Math.max(0.12, cat.foot || 0.15), y0: o.y, x: grp.position.x / U, z: grp.position.z / U, y: o.y, vx: 0, vz: 0, vy: 0, spin: 0, tilt: 0, cool: 0, h: cat.h || 0.5 });
         /* (2026-11-18, the Colosseum's thrones: a seat that stands on a raised floor, `p.y`, is a seat too; `floor` = what it stands on, where the sitter gets up) */
         var raisedSeat = cat.seat != null && !floorProp && p.y > 0.5 && !o.onWall && !o.onCeil && !o.flip && !o.tabletop && !cat.float && !cat.hover && !cat.wall && !cat.ceil;
-        if (cat.seat != null && (floorProp || raisedSeat)) H.seats.push({ id: 'seat:' + H.seats.length, key: p.key, grp: grp, x: grp.position.x / U, z: grp.position.z / U, y: o.y + cat.seat, floor: o.y, yaw: grp.rotation.y, label: String(p.key).replace(/_/g, ' ').toUpperCase() });
+        /* THE SEAT HEIGHT (2026-11-26, DOOR HQ 2.0, mondo: "the character kinda floats in the air on top of the chair"): `seat` = the
+           measured top of the cushion and `seatZ` = how far forward of the prop's centre the hips go (metres along its front, from
+           the model itself: a ray grid over every seat model). `sx, sz` = that spot in the room; _hqSeatPin holds the sitter's
+           thighs on `y` */
+        if (cat.seat != null && (floorProp || raisedSeat)) {
+            var sk = grp.scale.y || 1, szz = (cat.seatZ || 0) * (grp.scale.z || 1), syw = new THREE.Euler().setFromQuaternion(grp.quaternion, 'YXZ').y;   // (the heading off the whole turn: a prop turned with a flip read rotation.y backwards, the curved sofa's sitter faced its back)
+            H.seats.push({ id: 'seat:' + H.seats.length, key: p.key, grp: grp, x: grp.position.x / U, z: grp.position.z / U, y: o.y + cat.seat * sk, floor: o.y, yaw: syw,
+                           sx: grp.position.x / U + Math.sin(syw) * szz, sz: grp.position.z / U + Math.cos(syw) * szz, lie: !!cat.lie, label: String(p.key).replace(/_/g, ' ').toUpperCase() });
+        }
     }
     /* 5.1 THE SWAY: a hanging prop (catalogue `sway: { amp, period }`) hangs from a pivot at its top on a damped spring — the
        room's draught keeps it moving a little, the walker's wake within a metre gives it a push */
@@ -98661,7 +98778,10 @@ const ThreeRenderer = (function () {
         var st = null; for (var i = 0; i < H.seats.length; i++) if (H.seats[i].id === id) st = H.seats[i];
         if (!st) return false;
         pl.sit = { seat: st, t0: performance.now() };
-        pl.x = st.x; pl.z = st.z; pl.y = st.y; pl.visY = st.y; pl.vy = 0; pl.air = false; pl.moving = false; pl.running = false; pl.mvx = 0; pl.mvz = 0;
+        /* THE SEAT HEIGHT: the feet stay on the seat's own floor (they were stood ON the seat, and the sit clip lowered the hips a
+           second time: the walker sat a seat's height over every chair); _hqSeatPin lowers or raises the body onto the cushion */
+        pl.x = (st.sx != null) ? st.sx : st.x; pl.z = (st.sz != null) ? st.sz : st.z; pl.y = st.floor; pl.visY = st.floor; pl.vy = 0;
+        if (st.lie) pl.sit.lie = true;   // a lounger (catalogue `lie`): flat on it, feet to its foot (the residents' bed clip), no chair sit pl.air = false; pl.moving = false; pl.running = false; pl.mvx = 0; pl.mvz = 0;
         pl.yaw = pl.targetYaw = st.yaw;
         H.keys = {}; H.dirty = true; if (H.shadows) H.shadows.dirty = true;
         if (H.opts.onSit) { try { H.opts.onSit({ kind: 'sit', key: st.key }); } catch (e) {} }
@@ -98674,10 +98794,63 @@ const ThreeRenderer = (function () {
         var fl = (st.floor > 0.5) ? st.floor + 0.05 : null;   // (a seat on a raised floor: the sitter gets up onto THAT floor, never the ground under it)
         var y = _hqSurface(nx, nz, fl, false);
         if (y === null) { nx = st.x; nz = st.z; y = _hqSurface(st.x, st.z, fl, true); }
-        pl.x = nx; pl.z = nz; pl.y = (y === null || !isFinite(y)) ? st.y : y; pl.visY = pl.y; pl.air = false; pl.vy = 0;
+        pl.x = nx; pl.z = nz; pl.y = (y === null || !isFinite(y)) ? st.floor : y; pl.visY = pl.y;
+        _hqSeatUnpin(pl.entry); pl.air = false; pl.vy = 0;
         pl.entry.group.position.set(pl.x * U, pl.visY * U, pl.z * U);
         H.dirty = true; if (H.shadows) H.shadows.dirty = true;
         if (H.opts.onSit) { try { H.opts.onSit({ kind: 'stand', key: st.key }); } catch (e) {} }
+    }
+    /* THE SEAT HEIGHT (2026-11-26): after the mixer has posed a sitter, the body is moved up or down (the model inside its group,
+       `_ew_hqBaseY` the rest) so the THIGH bones lie HQ_SEAT_LIFT x (height / 1.75 m) over the seat's top: the cushion under the
+       thighs, nobody over it or sunk into it. One bone pair a sitter a frame (their parents' matrices only), no scene walk. The
+       library sit clip seats a body on a 0.40 m chair; a seat lower than that puts the feet a little into the floor (the curved
+       couch, 0.30 m: 9 cm), a higher one lets them hang (a bed, a throne), as in life. */
+    var HQ_SEAT_LIFT = 0.085, HQ_SEAT_LIFT_HIPS = 0.18;
+    var _hqSeatV = null;
+    function _hqSeatBones(e) {
+        if (e._ew_seatBones !== undefined) return e._ew_seatBones;
+        var legs = [], hips = null;
+        var depth = function (n) { var d = 0; while (n.parent) { d++; n = n.parent; } return d; };
+        try { e.model.traverse(function (n) { if (!n.isBone) return; var nm = n.name || ''; if (!hips && /hips|pelvis/i.test(nm)) hips = n; if (/(up_?leg|upperleg|thigh)/i.test(nm) && !/twist|roll|end/i.test(nm)) legs.push({ b: n, d: depth(n) }); }); } catch (err) {}   // once per body (the rig's own bones), then kept
+        legs.sort(function (a, b) { return a.d - b.d; });   // the two thigh bones nearest the hips (a rig with two segments a thigh: the top ones, one a side)
+        e._ew_seatBones = (legs.length >= 2 && legs[0].d === legs[1].d) ? { legs: [legs[0].b, legs[1].b] } : (hips ? { hips: hips } : null);
+        return e._ew_seatBones;
+    }
+    function _hqSeatPin(ch, top, dt, sx, sz) {
+        var e = ch.entry, m = e && e.model; if (!m) return;
+        var B = _hqSeatBones(e); if (!B) return;
+        var U = _hqUnits(), V = _hqSeatV || (_hqSeatV = new THREE.Vector3());
+        if (m._ew_hqBaseY == null) m._ew_hqBaseY = m.position.y;
+        if (m._ew_seatBX == null) { m._ew_seatBX = m.position.x; m._ew_seatBZ = m.position.z; }
+        var k = (ch.heightM || 1.75) / 1.75, y, hx, hz;
+        if (B.legs) { B.legs[0].updateWorldMatrix(true, false); V.setFromMatrixPosition(B.legs[0].matrixWorld); y = V.y; hx = V.x; hz = V.z; B.legs[1].updateWorldMatrix(false, false); V.setFromMatrixPosition(B.legs[1].matrixWorld); y = (y + V.y) / 2 / U - HQ_SEAT_LIFT * k; hx = (hx + V.x) / 2 / U; hz = (hz + V.z) / 2 / U; }
+        else { B.hips.updateWorldMatrix(true, false); V.setFromMatrixPosition(B.hips.matrixWorld); y = V.y / U - HQ_SEAT_LIFT_HIPS * k; hx = V.x / U; hz = V.z / U; }
+        var o = m._ew_seatOff || { y: 0, x: 0, z: 0 };
+        /* the library sit clip leaves the hips ~0.28 m BEHIND the body's root (pinXZ or not): the sitter's back went through a chair's
+           back and a sofa's. The hips go on the seat's spot (`sx, sz`) as well as on its height */
+        var ty = o.y + (top - y), tx = (sx != null) ? o.x + (sx - hx) : 0, tz = (sz != null) ? o.z + (sz - hz) : 0;
+        if (!isFinite(ty + tx + tz) || Math.abs(ty) > 1.2 || Math.hypot(tx, tz) > 0.8) return;   // a pose that is not a sit yet (the cross-fade's first frames read a standing body)
+        var a = Math.min(1, dt * 14); o.y += (ty - o.y) * a; o.x += (tx - o.x) * a; o.z += (tz - o.z) * a; m._ew_seatOff = o;
+        var gs = (e.group && e.group.scale.x) || 1;   // (a spot's `scale` grows the group: the offset is in its units)
+        m.position.set(m._ew_seatBX + o.x * U / gs, m._ew_hqBaseY + o.y * U / gs, m._ew_seatBZ + o.z * U / gs);
+    }
+    function _hqSeatUnpin(e) {
+        var m = e && e.model; if (!m || m._ew_seatOff == null) return;
+        m._ew_seatOff = null; if (m._ew_hqBaseY != null) m.position.y = m._ew_hqBaseY; if (m._ew_seatBX != null) { m.position.x = m._ew_seatBX; m.position.z = m._ew_seatBZ; }
+    }
+    /* a seated cast member / native (`pose: 'hqSit'`) sits on the seat it was placed at: the nearest seat within 0.8 m on its
+       floor, looked up once (the room's seat list, kept as the props were placed), the body moved onto its spot */
+    function _hqSeatFind(ch) {
+        var H = _hq; ch._seatChecked = true; if (!H || !H.seats) return null;
+        var best = null, bd = 0.8;
+        for (var i = 0; i < H.seats.length; i++) { var st = H.seats[i], d = Math.hypot(((st.sx != null) ? st.sx : st.x) - ch.x, ((st.sz != null) ? st.sz : st.z) - ch.z); if (d < bd && Math.abs(st.floor - ch.y) < 0.6) { bd = d; best = st; } }
+        if (best) {
+            var U = _hqUnits();
+            ch.x = (best.sx != null) ? best.sx : best.x; ch.z = (best.sz != null) ? best.sz : best.z; ch.y = ch.visY = best.floor;
+            ch.entry.group.position.set(ch.x * U, ch.y * U, ch.z * U);
+            ch._seatTop = best.y;
+        }
+        return best;
     }
     function _hqTickSit(dt) {
         var H = _hq, pl = H.player, k = H.keys;
