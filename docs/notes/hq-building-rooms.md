@@ -1333,3 +1333,8 @@ today's building before any rebuild:
 - DEV TOOLS OUT: IT's Library (Spell Library), Bench (Balance Lab), Racks (AI Training Lab) and the Interrogation Room's table
   (the CPU training transcript) are gone. All four are on the main menu, Settings > Developer (the transcript button is new:
   map.js `_mmShowTranscript`, the same sheet `_hqTranscriptHtml` drew).
+
+## DOOR HQ 2.0, THE FLOOR PLANS (2026-11-26, thread 2)
+The layout of the redesigned building is `docs/plans/door-hq-2/FLOOR_PLANS.md` + five pictures in `docs/plans/door-hq-2/plans/` (mondo OK'd
+all five 11-25; he cut the Dream Lab from DOOR HQ: the way to the Astral Realm is the D.U.M.B.'s). Read it before building or moving any
+DOOR HQ room: it says where each room sits, what it touches, and the rules every room thread keeps.
