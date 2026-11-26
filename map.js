@@ -3098,6 +3098,8 @@
             if (el) { el.classList.remove('on'); el.style.display = 'none'; el.setAttribute('aria-hidden', 'true'); }
             window._hqPauseSettingsBody = null;
             document.removeEventListener('keydown', _hqPauseKey);
+            if (el) el.classList.remove('hq-loadout');
+            _hqLoUnmount();
             _hqPause = null;
         }
         window._hqClosePause = function () {
@@ -3456,119 +3458,184 @@
             });
             return html + `</div>`;
         }
+        /* ══ THE LOADOUT (mondo 2026-11-26: "look and function more like a traditional JRPG character loadout screen ... full
+           screen ... the 3d unit models in the middle ... change their abilities and held items ... xp to the next level ...
+           health and mana ... little tab row at the top with portraits of my party ... functional and simple").
+           The member sheet, full screen (#hqPause.hq-loadout hides the head + the command column): the TAB ROW (a portrait a
+           member, ◂ ▸, ROSTER = the shifts / on call / captives list), the BAR (name, race, LV, HP, MP, EXP TO NEXT LV), then
+           three columns: the STATS (bars), THE STAGE (the live model, three-renderer.js EWCharViewer: hidden behind the
+           MANIFESTING ring until it is dressed and its idle plays, never a frozen figure), the KIT (ABILITIES, PASSIVES,
+           HELD ITEMS = the gear rows, each one line; ✎ EDIT opens the tier rack, ✎ CHANGE the gear list). The DETAIL LINE at
+           the bottom reads the row under the cursor (one line: no walls of text on the sheet). Viewer-local (RULE #2). ══ */
+        function _hqLoGearOf(row) { const sp = row && row.sp; return !!(sp && (sp.accessory || /^gear/.test(String(row.id || '')))); }
+        function _hqLoRowHtml(o) {
+            /* one kit row: disc · name · chip · meta · (a button) — the description rides data-lo-desc for the detail line */
+            return `<div class="hq-lo-row${o.cls ? ' ' + o.cls : ''}" tabindex="0" style="--cc:${o.color || '#d9d2b8'}" data-lo-name="${_hqEsc(o.name)}" data-lo-meta="${_hqEsc(o.meta || '')}" data-lo-desc="${_hqEsc(o.desc || '')}">`
+                + `<i class="hq-lo-disc">${o.glyph || '◈'}</i><b>${_hqEsc(o.name)}</b>${o.chip || ''}<span>${_hqEsc(o.meta || '')}</span>${o.btn || ''}</div>`;
+        }
         function _hqPauseMemberHtml(i) {
             const rec = _hqParty(); const m = rec && rec.members.find(x => x.id === i);
             if (!m) return _hqPausePartyHtml();
+            const P = _hqPause;
             const idx = rec.members.indexOf(m);
             const units = _hqPauseUnits(rec); const u = units[m.id];
-            const po = _hqPausePortrait(m, u);
             const v = _hqPauseVitals(m, u);
             const name = m.name || (u && u.name) || _hqMemberName(m);
             const xp = _hqPauseXpOf(m);
             const lvl = xp ? xp.lvl : (u ? ((typeof getUnitLevel === 'function') ? getUnitLevel(u) : (u.level || 1)) : null);
-            const n = rec.members.length;
-            const prev = rec.members[(idx + n - 1) % n], next = rec.members[(idx + 1) % n];
-            let html = `<div class="hq-pp-nav"><button class="hq-btn hq-btn-sm" data-cmd="party">◂ PARTY</button><span>${idx < HQ_PARTY_RULES.shift ? 'FIRST SHIFT' : 'SECOND SHIFT'} · ${String(idx + 1).padStart(2, '0')} / ${String(n).padStart(2, '0')}</span><span class="hq-pp-nav-r"><button class="hq-btn hq-btn-sm" data-member="${_hqEsc(prev.id)}" title="← previous">◂</button><button class="hq-btn hq-btn-sm" data-member="${_hqEsc(next.id)}" title="→ next">▸</button></span></div>`;
-            if (_hqPause.msg) { html += `<div class="hq-pp-msg${_hqPause.msg.bad ? ' bad' : ''}">${_hqPause.msg.html}</div>`; _hqPause.msg = null; }
-            html += `<div class="hq-pp-sheet">`;
-            /* left: the face + identity + the vitals + the stats + the duty actions */
-            html += `<div class="hq-pp-left">`;
-            html += `<div class="hq-pp-face big${po && po.kind === 'sprite' ? ' sprite' : ''}"${po ? ` style="background-image:url('${po.url}')"` : ''}>${v.down ? '<i class="hq-pp-downstamp">DOWN</i>' : ''}</div>`;
-            html += `<div class="hq-panel-hd"><b>${_hqEsc(name)}${m.you ? ' <i class="hq-pp-you">YOU</i>' : ''}</b><span>${_hqEsc(_hqPauseRaceLabel(m, u))}${lvl != null ? ' · Lv ' + lvl : ''}</span></div>`;
-            html += '<div class="hq-pp-stats">';
-            html += _hqPauseBar('HP', v.hp | 0, Math.max(1, v.hpMax | 0), v.down ? '#ff4a4a' : '#2ed158', `${v.hp} / ${v.hpMax}`);
-            html += _hqPauseBar('MP', v.mp | 0, Math.max(1, v.mpMax | 0), '#2f9dff', `${v.mp} / ${v.mpMax}`);
-            if (xp) html += _hqPauseBar('EXP', xp.into | 0, Math.max(1, xp.need | 0), '#ffd86a', xp.max ? 'MAX LEVEL' : `${xp.into} / ${xp.need} · NEXT IN ${xp.left}`);   // THE LEVELS
+            /* THE TAB ROW */
+            let html = `<div class="hq-lo">`;
+            html += `<div class="hq-lo-tabs"><button class="hq-lo-arrow" data-lo-step="-1" title="Previous (←)">◂</button><div class="hq-lo-tabrow">`;
+            rec.members.forEach((x, k) => {
+                const ux = units[x.id], px = _hqPausePortrait(x, ux), vx = _hqPauseVitals(x, ux), xx = _hqPauseXpOf(x);
+                html += `<button class="hq-lo-tab${x.id === m.id ? ' on' : ''}${vx.down ? ' down' : ''}${k === 0 ? ' lead' : ''}" data-member="${_hqEsc(x.id)}" title="${_hqEsc(_hqMemberName(x) + (k === 0 ? ' · LEAD' : ''))}">`
+                    + `<span class="hq-lo-tabface${px && px.kind === 'sprite' ? ' sprite' : ''}"${px ? ` style="background-image:url('${px.url}')"` : ''}></span>`
+                    + `<span class="hq-lo-tabtx"><b>${_hqEsc(_hqMemberName(x))}</b><i>${xx ? 'LV ' + xx.lvl : ''}</i><span class="hq-lo-tabhp"><i style="width:${(vx.pct * 100).toFixed(0)}%"></i></span></span></button>`;
+            });
+            html += `</div><button class="hq-lo-arrow" data-lo-step="1" title="Next (→)">▸</button><button class="hq-lo-roster" data-lo-roster="1" title="The shifts, on call, captives (Backspace)">ROSTER</button><button class="hq-lo-close" data-cmd="resume" title="Resume (Esc)">✕</button></div>`;
+            /* THE BAR: who, HP, MP, EXP TO NEXT LV */
+            const pctOf = (a, b) => Math.max(0, Math.min(100, b > 0 ? a / b * 100 : 0)).toFixed(1);
+            html += `<div class="hq-lo-bar">`
+                + `<div class="hq-lo-who"><b>${_hqEsc(name)}${m.you ? ' <i class="hq-pp-you">YOU</i>' : ''}</b><span>${_hqEsc(_hqPauseRaceLabel(m, u))}${v.down ? ' · <em class="bad">DOWN</em>' : ''}</span></div>`
+                + `<div class="hq-lo-lv"><i>LV</i><b>${lvl != null ? lvl : '–'}</b></div>`
+                + `<div class="hq-lo-vit hp"><i>HP</i><b>${v.hp} / ${v.hpMax}</b><span class="hq-lo-meter"><i style="width:${pctOf(v.hp, v.hpMax)}%"></i></span></div>`
+                + `<div class="hq-lo-vit mp"><i>MP</i><b>${v.mp} / ${v.mpMax}</b><span class="hq-lo-meter"><i style="width:${pctOf(v.mp, v.mpMax)}%"></i></span></div>`
+                + `<div class="hq-lo-vit xp"><i>${xp && xp.max ? 'EXP' : 'EXP TO NEXT LV'}</i><b>${xp ? (xp.max ? 'MAX' : xp.left) : '–'}</b><span class="hq-lo-meter"><i style="width:${xp ? (xp.max ? 100 : (xp.pct * 100).toFixed(1)) : 0}%"></i></span></div>`
+                + `</div>`;
+            html += `<div class="hq-lo-main${P.circuit === m.id ? ' rack' : ''}">`;
+            /* left: THE STATS */
+            html += `<div class="hq-lo-stats">`;
             if (u) {
+                html += '<div class="hq-pp-stats">';
                 html += _hqPauseBar('ATK', u.atk | 0, 100, _HQ_STAT_BAR_C, null, 'atk', u);
                 html += _hqPauseBar('M ATK', u.intStat | 0, 100, _HQ_STAT_BAR_C, null, 'int', u);
                 html += _hqPauseBar('DEF', u.def | 0, 100, _HQ_STAT_BAR_C, null, 'def', u);
                 html += _hqPauseBar('M DEF', u.mdef | 0, 100, _HQ_STAT_BAR_C, null, 'mdef', u);
                 html += _hqPauseBar('SPD', u.spd | 0, 100, _HQ_STAT_BAR_C, null, 'spd');
                 html += _hqPauseBar('CRT', u.crt | 0, 30, _HQ_STAT_BAR_C, `${u.crt | 0}%`, 'crt');
-                html += `<div class="hq-pp-diamonds"><span><b>${u.vision | 0}</b>VISION</span><span><b>${u.move | 0}</b>MOVE</span><span><b>${u.range | 0}</b>RANGE</span><span><b>${u.inspect | 0}</b>INSPECT</span></div>`;
+                html += '</div>';
+                html += `<div class="hq-lo-small"><span><b>${u.move | 0}</b>MOVE</span><span><b>${u.range | 0}</b>RANGE</span><span><b>${u.vision | 0}</b>VISION</span><span><b>${u.inspect | 0}</b>INSPECT</span></div>`;
+                html += `<div class="hq-chips">${_hqPauseTypeChips(u.types)}${u.zodiac ? `<i class="hq-chip dim">${_hqEsc(String(u.zodiac).toUpperCase())}</i>` : ''}</div>`;
+                if (typeof window.elemAffinityBoxHtml === 'function') html += `<div class="hq-pp-elem">${window.elemAffinityBoxHtml(u.race, { own: true, size: 'md', label: 'ELEMENTS' })}</div>`;
             }
-            html += '</div>';
-            if (u) html += `<div class="hq-chips">${_hqPauseTypeChips(u.types)}${u.zodiac ? `<i class="hq-chip dim">${_hqEsc(String(u.zodiac).toUpperCase())}</i>` : ''}</div>`;
-            /* THE ELEMENT BOX (2026-09-23): a party member's reactions are always read (own: true) */
-            if (u && typeof window.elemAffinityBoxHtml === 'function') html += `<div class="hq-pp-elem">${window.elemAffinityBoxHtml(u.race, { own: true, size: 'md', label: 'ELEMENTS' })}</div>`;
-            else html += `<p class="hq-panel-note">The sheet could not be rebuilt from the record (a retired vessel?). The bare loadout is below.</p>`;
-            /* THE NAME (mondo, 2026-09-30): rename a member here — an empty name (or the race's own label) makes it its race again */
-            html += `<div class="hq-pp-duty hq-pp-name"><b>NAME</b><span>${m.you ? 'YOUR AGENT · THE ID CARD WEARS IT TOO' : (m.name ? 'CLEAR IT TO GO BACK TO THE RACE' : 'NO NAME · READS AS ITS RACE')}</span>`
-                + `<div class="hq-pp-name-row"><input class="hq-pp-name-input" type="text" maxlength="18" spellcheck="false" autocomplete="off" data-party-rename="${_hqEsc(m.id)}" value="${_hqEsc(m.name || '')}" placeholder="${_hqEsc(_hqPauseRaceLabel(m, u))}" aria-label="Name">`
-                + `<button class="hq-btn hq-btn-sm" data-party-act="rename:${_hqEsc(m.id)}">✎ RENAME</button>`
-                + (m.name && !m.you ? `<button class="hq-btn hq-btn-sm" data-party-act="unname:${_hqEsc(m.id)}" title="Back to the race's name">✕ CLEAR</button>` : '')
-                + `</div></div>`;
-            /* THE DUTY ROSTER: swap the slot (a shift change), relieve (never the officer) */
-            html += `<div class="hq-pp-duty"><b>DUTY</b><span>${v.down ? 'DOWN — A REVIVE OR THE COT IN MEDICAL BRINGS THEM BACK' : idx === 0 ? 'THE LEAD · SLOT 1 · YOU WALK THE BUILDING AS THEM' : idx < HQ_PARTY_RULES.shift ? 'FIRST SHIFT · SENT OUT FIRST' : 'SECOND SHIFT · ON THE BENCH'}</span>`
-                + `<div class="hq-panel-actions">`
-                + `<button class="hq-btn hq-btn-sm" data-party-act="swap:${_hqEsc(m.id)}" title="Trade slots — slot 1 is THE LEAD, the one you walk the building as">⇄ SWAP SLOT</button>`
-                + (m.you ? `<button class="hq-btn hq-btn-sm" disabled title="You cannot relieve yourself">RELIEVE</button>` : `<button class="hq-btn hq-btn-sm danger" data-party-act="relieve:${_hqEsc(m.id)}">RELIEVE OF DUTY</button>`)
-                + `</div></div>`;
+            /* the name + the slot, small, at the foot of the column */
+            html += `<div class="hq-lo-duty">`
+                + (P.loRename === m.id
+                    ? `<div class="hq-pp-name-row"><input class="hq-pp-name-input" type="text" maxlength="18" spellcheck="false" autocomplete="off" data-party-rename="${_hqEsc(m.id)}" value="${_hqEsc(m.name || '')}" placeholder="${_hqEsc(_hqPauseRaceLabel(m, u))}" aria-label="Name"><button class="hq-btn hq-btn-xs" data-party-act="rename:${_hqEsc(m.id)}">OK</button>${m.name && !m.you ? `<button class="hq-btn hq-btn-xs" data-party-act="unname:${_hqEsc(m.id)}">CLEAR</button>` : ''}</div>`
+                    : `<button class="hq-btn hq-btn-xs" data-lo-rename="${_hqEsc(m.id)}">✎ NAME</button>`)
+                + `<button class="hq-btn hq-btn-xs" data-party-act="swap:${_hqEsc(m.id)}">⇄ SWAP</button>`
+                + (m.you ? '' : `<button class="hq-btn hq-btn-xs danger" data-party-act="relieve:${_hqEsc(m.id)}">RELIEVE</button>`)
+                + `<i>${idx === 0 ? 'LEAD' : idx < HQ_PARTY_RULES.shift ? '1ST SHIFT' : '2ND SHIFT'} · ${String(idx + 1).padStart(2, '0')}</i></div>`;
             html += `</div>`;
-            /* right: abilities (with FIELD MEDICINE) · passives · gear · items (with the potions) */
-            html += `<div class="hq-pp-right">`;
-            let spells = u && Array.isArray(u.spells) ? u.spells.filter(Boolean) : [];
-            if (!spells.length) {
-                const ids = (m.meta && Array.isArray(m.meta.customSpells) && m.meta.customSpells.length) ? m.meta.customSpells : ((m.loadout && m.loadout.spells) || []);
-                spells = ids.filter(Boolean).map(id => (typeof getSpellById === 'function') ? getSpellById(id) : null).filter(Boolean);
-            }
-            const field = (typeof window.hqPartyFieldSpells === 'function') ? window.hqPartyFieldSpells(u, m) : [];
-            const circOpen = _hqPause.circuit === m.id;   // THE SPELL TIERS IN THE FIELD (2026-09-24; was THE CIRCUIT, 2026-09-21): the tier rack on the sheet
-            const _lrn = (typeof window.hqLearnInfo === 'function') ? window.hqLearnInfo(m) : null;   // STORY SPELL LEARNING (2026-11-25)
-            html += `<div class="hq-pp-sec"><b>ABILITIES</b><span>${spells.length} EQUIPPED${field.length ? ' · ' + field.length + ' USABLE HERE' : ''}${_lrn ? ' · KNOWS ' + _lrn.knownCount + ' OF ' + _lrn.total : ''}${_lrn && _lrn.picks ? ` · <em class="hq-learn-due">${_lrn.picks} TO LEARN</em>` : ''}</span><button class="hq-btn hq-btn-xs hq-pp-sec-btn${circOpen ? ' on' : ''}" data-party-act="circuit:${_hqEsc(m.id)}" title="Equip abilities by tier (I–IV = 1–4 SP · 7 slots · 16 SP), as in the party builder">${circOpen ? '◂ CLOSE · SPELLS' : '✎ EDIT · SPELLS'}</button></div>`;
-            if (circOpen) html += _hqPauseCircuitHtml(m);
-            if (!spells.length) html += `<p class="hq-panel-note">No abilities on the record.</p>`;
-            else {
-                html += '<div class="hq-pp-spells">';
+            /* centre: THE STAGE (the live model is mounted after the render: _hqLoMount) */
+            const po = _hqPausePortrait(m, u);
+            html += `<div class="hq-lo-stage" data-lo-stage="${_hqEsc(m.id)}"><div class="hq-lo-fallback${po && po.kind === 'sprite' ? ' sprite' : ''}"${po ? ` style="background-image:url('${po.url}')"` : ''}></div>${v.down ? '<i class="hq-pp-downstamp">DOWN</i>' : ''}</div>`;
+            /* right: THE KIT, or the tier rack while ✎ EDIT is open */
+            html += `<div class="hq-lo-kit">`;
+            if (P.circuit === m.id) {
+                html += `<div class="hq-lo-sec"><b>ABILITIES</b><button class="hq-btn hq-btn-xs on" data-party-act="circuit:${_hqEsc(m.id)}">◂ DONE</button></div>`;
+                html += _hqPauseCircuitHtml(m);
+            } else {
+                let spells = u && Array.isArray(u.spells) ? u.spells.filter(Boolean) : [];
+                if (!spells.length) {
+                    const ids = (m.meta && Array.isArray(m.meta.customSpells) && m.meta.customSpells.length) ? m.meta.customSpells : ((m.loadout && m.loadout.spells) || []);
+                    spells = ids.filter(Boolean).map(id => (typeof getSpellById === 'function') ? getSpellById(id) : null).filter(Boolean);
+                }
+                const C = (typeof window.hqPartyTreeCircuit === 'function') ? window.hqPartyTreeCircuit(m) : null;
+                const lrn = C && C.learn;
+                const field = (typeof window.hqPartyFieldSpells === 'function') ? window.hqPartyFieldSpells(u, m) : [];
+                html += `<div class="hq-lo-sec"><b>ABILITIES</b><span>${spells.length}${C ? ' / ' + C.cap : ''}${C ? ' · SP ' + (C.spUsed || 0) + ' / ' + (C.spMax || 16) : ''}${lrn && lrn.picks ? ` · <em class="hq-learn-due">✦ ${lrn.picks} TO LEARN</em>` : ''}</span><button class="hq-btn hq-btn-xs" data-party-act="circuit:${_hqEsc(m.id)}">✎ EDIT</button></div>`;
+                html += `<div class="hq-lo-list">`;
+                if (!spells.length) html += `<p class="hq-lo-none">NONE</p>`;
                 spells.forEach(sp => {
                     const cat = _HQ_CAT[sp.type] || _HQ_CAT.utility;
                     const tc = _HQ_TYPE_COLORS[sp.spellType] || '#aaa';
-                    let desc = sp.desc || '';
-                    if (!desc) { try { desc = (typeof describeSpell === 'function') ? describeSpell(sp) : ''; } catch (e) {} }
-                    const bits = [];
-                    if (sp.cost) bits.push(`${sp.cost} MP`);
-                    if (sp.apCost) bits.push(`${sp.apCost} AP`);
-                    if (sp.range != null) bits.push(`RNG ${sp.range}`);
-                    if (sp.dmg) bits.push(`PWR ${sp.dmg}`);
-                    else if (Array.isArray(sp.hitDamages)) bits.push(`PWR ${sp.hitDamages.reduce((a, b) => a + (b || 0), 0)} × ${sp.hitDamages.length}`);
-                    if (sp.heal || sp.healAmt) bits.push(`HEAL ${sp.healAmt != null ? sp.healAmt : sp.heal}`);
-                    if (sp.aoeRadius) bits.push(`AOE ${sp.aoeRadius}`);
-                    let use = '';
-                    const isField = field.some(f => f.id === sp.id);
-                    if (isField) {
-                        const can = !v.down && v.mp >= (sp.cost | 0);
+                    let btn = '';
+                    if (field.some(f => f.id === sp.id)) {
                         const targets = window.hqPartyFieldTargets(_hqProfile(), units, m.id, sp);
-                        const why = v.down ? 'DOWN' : v.mp < (sp.cost | 0) ? 'NOT ENOUGH MP' : !targets.length ? (sp.kind === 'revive' ? 'NOBODY IS DOWN' : 'EVERYONE IS FULL') : '';
-                        use = `<button class="hq-btn hq-btn-sm hq-pp-use" data-party-act="cast:${_hqEsc(m.id)}:${_hqEsc(sp.id)}"${can && targets.length ? '' : ' disabled'} title="${_hqEsc(why || 'USE OUTSIDE BATTLE')}">${sp.kind === 'healAll' ? 'USE ON ALL' : sp.kind === 'selfHeal' ? 'USE ON SELF' : 'USE ▸'}</button>${why ? `<i class="hq-pp-why">${_hqEsc(why)}</i>` : ''}`;
+                        const can = !v.down && v.mp >= (sp.cost | 0) && targets.length;
+                        btn = `<button class="hq-btn hq-btn-xs" data-party-act="cast:${_hqEsc(m.id)}:${_hqEsc(sp.id)}"${can ? '' : ' disabled'}>USE</button>`;
                     }
-                    html += `<div class="hq-pp-spell${isField ? ' field' : ''}" style="--cc:${cat.c}"><div class="hq-pp-spell-hd"><i class="hq-pp-cat">${cat.g}</i><b>${_hqEsc(sp.name || sp.id)}</b>${_hqTypeShown(sp) ? `<i class="hq-pp-type" style="--tc:${tc}">${_hqEsc(String(sp.spellType).toUpperCase())}</i>` : ''}<span>${_hqEsc(bits.join(' · '))}</span>${use}</div>${desc ? `<p>${_hqEsc(desc)}</p>` : ''}</div>`;
+                    html += _hqLoRowHtml({ name: sp.name || sp.id, glyph: cat.g, color: cat.c, meta: sp.cost ? sp.cost + ' MP' : '', desc: _hqPauseSpellMeta(sp) + ' · ' + _hqPauseSpellDesc(sp),
+                        chip: _hqTypeShown(sp) ? `<i class="hq-pp-type" style="--tc:${tc}">${_hqEsc(String(sp.spellType).toUpperCase())}</i>` : '', btn });
                 });
-                html += '</div>';
-            }
-            if (u) {
+                html += `</div>`;
+                /* PASSIVES (the race's own) and HELD ITEMS (the gear rows) */
                 let pas = [];
-                try { pas = (typeof getUnitPassives === 'function') ? getUnitPassives(u) : []; } catch (e) { pas = []; }
-                html += `<div class="hq-pp-sec"><b>PASSIVES</b><span>${pas.length}</span></div>`;
-                html += pas.length ? '<div class="hq-pp-passives">' + pas.map(p => `<div class="hq-pp-passive"><b>${p.icon ? p.icon + ' ' : ''}${_hqEsc(p.name || p.id)}</b><p>${_hqEsc(p.desc || '')}</p></div>`).join('') + '</div>' : `<p class="hq-panel-note">None.</p>`;
+                try { pas = (u && typeof getUnitPassives === 'function') ? getUnitPassives(u) : []; } catch (e) { pas = []; }
+                const gearRows = (C && C.passives) ? C.passives.rows.filter(_hqLoGearOf) : [];
+                const held = gearRows.filter(r => r.st === 'equipped');
+                const heldIds = new Set(held.map(r => r.id));
+                const own = pas.filter(p => !heldIds.has(p.id) && !(p.accessory || /^gear/.test(String(p.id || ''))));
+                if (own.length) {
+                    html += `<div class="hq-lo-sec"><b>PASSIVES</b><span>${own.length}</span></div><div class="hq-lo-list">`;
+                    own.forEach(p => { html += _hqLoRowHtml({ name: p.name || p.id, glyph: p.icon || '◈', meta: '', desc: p.desc || '' }); });
+                    html += `</div>`;
+                }
+                const gearOpen = P.loGear === m.id;
+                html += `<div class="hq-lo-sec"><b>HELD ITEMS</b><span>${held.length}</span>${gearRows.length ? `<button class="hq-btn hq-btn-xs${gearOpen ? ' on' : ''}" data-lo-gear="${_hqEsc(m.id)}">${gearOpen ? '◂ DONE' : '✎ CHANGE'}</button>` : ''}</div><div class="hq-lo-list">`;
+                const gearList = gearOpen ? gearRows : held;
+                if (!gearList.length) html += `<p class="hq-lo-none">NONE</p>`;
+                gearList.forEach(r => {
+                    const sp = r.sp || {};
+                    const on = r.st === 'equipped';
+                    const tag = on ? 'HELD' : r.st === 'ok' ? '+' + r.cost + ' SP' : r.st === 'slots' ? 'NO SLOT' : r.st === 'sp' ? 'NEEDS ' + r.cost + ' SP' : r.st === 'sealed' ? 'SEALED' : '';
+                    const btn = gearOpen ? `<button class="hq-btn hq-btn-xs${on ? ' danger' : ''}" data-party-act="node:${_hqEsc(m.id)}:${_hqEsc(r.id)}"${on || r.st === 'ok' ? '' : ' disabled'}>${on ? 'REMOVE' : 'HOLD'}</button>` : '';
+                    html += _hqLoRowHtml({ name: sp.name || r.id, glyph: sp.icon || '◈', meta: gearOpen ? tag : (r.cost ? r.cost + ' SP' : ''), desc: sp.desc || '', cls: on ? 'on' : '', btn });
+                });
+                html += `</div>`;
+                /* the bag's potions, used on THIS member */
+                const bag = (typeof window.hqPartyBagItems === 'function') ? (window.hqPartyBagItems(_hqProfile()) || []) : [];
+                const usable = bag.filter(r => (r.n | 0) > 0);
+                if (usable.length) {
+                    html += `<div class="hq-lo-sec"><b>USE AN ITEM</b><span>THE BAG</span></div><div class="hq-lo-list">`;
+                    usable.forEach(r => {
+                        const ok = _hqPauseItemOk(r.key, v);
+                        html += _hqLoRowHtml({ name: r.name, glyph: r.icon || '🧪', meta: '× ' + r.n, desc: r.desc || '',
+                            btn: `<button class="hq-btn hq-btn-xs" data-party-act="itemon:bag:${_hqEsc(r.key)}:${_hqEsc(m.id)}"${ok ? '' : ' disabled'} title="${_hqEsc(_hqPauseItemWhy(r.key, v))}">USE</button>` });
+                    });
+                    html += `</div>`;
+                }
             }
-            /* GEAR (THE GEAR MERGE, SPELL_LIBRARY_PLAN.md Phase 4): the equipped passive / gear rows of the member's kit — they sit
-               in the spell slots (◈ PASSIVES in ABILITIES), no cap of their own since 2026-10-06 */
-            const _kitIds = (typeof window.hqPartySpellIds === 'function') ? window.hqPartySpellIds(m) : [];
-            const gear = _kitIds.filter(id => typeof spellIsPassive === 'function' && spellIsPassive(id)).map(id => { const d = (typeof SPELL_BY_ID !== 'undefined') ? SPELL_BY_ID[id] : null; const _lv = (typeof passiveLevelOfUps === 'function' && m.meta && m.meta.spellUpgrades) ? passiveLevelOfUps(m.meta.spellUpgrades[id]) : 0; return { icon: (d && d.icon) || '◈', label: ((d && d.name) || id) + (_lv ? ' +' + _lv : ''), desc: (d && d.desc) || '', sp: ((typeof spellSpCost === 'function') ? spellSpCost(id) : 1) + _lv }; });
-            html += `<div class="hq-pp-sec"><b>GEAR</b><span>${gear.length} · IN THE SPELL SLOTS</span></div>`;
-            html += gear.length ? '<div class="hq-pp-gear">' + gear.map(g => `<div class="hq-pp-gear-row" title="${_hqEsc(g.desc)}"><i>${_hqEsc(g.icon)} ${g.sp} SP</i><b>${_hqEsc(g.label)}</b><span>${_hqEsc(g.desc)}</span></div>`).join('') + '</div>' : `<p class="hq-panel-note">Nothing equipped — gear and passives are picked under ABILITIES (◈ PASSIVES).</p>`;
-            const items = (m.loadout && m.loadout.items) || (u && u.items) || {};
-            const carried = Object.keys(items).filter(k => items[k] > 0);
-            const fieldItems = (typeof window.hqPartyFieldItems === 'function') ? window.hqPartyFieldItems(m) : [];
-            html += `<div class="hq-pp-sec"><b>ITEMS</b><span>${carried.reduce((a, k) => a + items[k], 0)} CARRIED${fieldItems.length ? ' · POTIONS USABLE HERE' : ''}</span></div>`;
-            html += carried.length ? '<div class="hq-chips">' + carried.map(k => {
-                const r = (typeof ITEM_RULES !== 'undefined') ? ITEM_RULES[k] : null; const meta = (typeof ITEM_META !== 'undefined') ? ITEM_META[k] : null;
-                const fi = fieldItems.find(f => f.key === k);
-                return `<i class="hq-chip">${(r && r.icon) || (meta && meta.icon) || ''} ${_hqEsc((r && r.name) || k)} × ${items[k]}${fi ? ` <button class="hq-btn hq-btn-xs" data-party-act="item:${_hqEsc(m.id)}:${_hqEsc(k)}"${v.down ? ' disabled' : ''}>USE ▸</button>` : ''}</i>`;
-            }).join('') + '</div>' : `<p class="hq-panel-note">Pockets empty.</p>`;
             html += `</div></div>`;
+            /* THE DETAIL LINE: the last word (a write's result), else the row under the cursor */
+            let detail = '';
+            if (P.msg) { detail = `<span class="${P.msg.bad ? 'bad' : ''}">${P.msg.html}</span>`; P.msg = null; }
+            html += `<div class="hq-lo-detail" id="hqLoDetail">${detail}</div>`;
+            html += `</div>`;
             return html;
+        }
+        /* THE STAGE: the shared character viewer (the forge's) on the loadout's centre column; let go when the loadout closes */
+        function _hqLoMount() {
+            const body = _hqEl('hqPauseBody');
+            const host = body && body.querySelector('[data-lo-stage]');
+            if (!host) { _hqLoUnmount(); return; }
+            const V = window.EWCharViewer;
+            const rec = _hqParty(); const m = rec && rec.members.find(x => x.id === host.getAttribute('data-lo-stage'));
+            if (!V || !m) return;
+            const u = _hqPause && _hqPause.units ? _hqPause.units[m.id] : null;
+            const race = (u && u.race) || (m.meta && m.meta.race) || 'door agent';
+            const gender = (u && u.gender) || (m.meta && m.meta.gender) || 'male';
+            const appearance = (m.meta && m.meta.appearance) || (u && u.appearance) || null;
+            try {
+                if (V.supports && !V.supports(race, gender, appearance)) { host.classList.add('ew-cv-fail'); return; }
+                if (V.mount(host, race, gender, { accent: '#f2d98a', appearance })) _hqLoMounted = true;
+                else host.classList.add('ew-cv-fail');
+            } catch (e) { console.warn('[HQ] loadout: the stage', e); host.classList.add('ew-cv-fail'); }
+        }
+        /* THE DETAIL LINE: one line for the row under the cursor (name · numbers · what it does) */
+        function _hqLoDetail(row) {
+            const d = document.getElementById('hqLoDetail'); if (!d || !row) return;
+            const meta = row.getAttribute('data-lo-meta') || '', desc = row.getAttribute('data-lo-desc') || '';
+            d.innerHTML = `<b>${_hqEsc(row.getAttribute('data-lo-name') || '')}</b>${meta && !desc ? `<i>${_hqEsc(meta)}</i>` : ''}<span>${_hqEsc(desc.replace(/^ · /, ''))}</span>`;   // the numbers ride the description
+        }
+        document.addEventListener('mouseover', (e) => { if (!_hqPause) return; const r = e.target && e.target.closest && e.target.closest('#hqPause .hq-lo-row'); if (r) _hqLoDetail(r); });
+        document.addEventListener('focusin', (e) => { if (!_hqPause) return; const r = e.target && e.target.closest && e.target.closest('#hqPause .hq-lo-row'); if (r) _hqLoDetail(r); });
+        let _hqLoMounted = false;
+        function _hqLoUnmount() {
+            if (!_hqLoMounted) return;
+            _hqLoMounted = false;
+            try { if (window.EWCharViewer) window.EWCharViewer.unmount(); } catch (e) {}
         }
         /* ══ THE SPELL TIERS IN THE FIELD (2026-09-24 — the tier rework; was THE CIRCUIT IN THE FIELD, 2026-09-21) — the
            user: "no secondary job, no branches / paths — every spell's rung is its TIER, Tier I–IV costs 1–4 SP, 7 slots,
@@ -3842,6 +3909,7 @@
                 } else { say(`<b>NO</b> ${_hqEsc((r && r.note) || 'THE BUILDING SAID NO')}`, true); try { playSfx('uiError'); } catch (e) {} }
             }
             else if (verb === 'rename' || verb === 'unname') {   // THE NAME (2026-09-30)
+                P.loRename = null;   // THE LOADOUT: the name field closes with the write
                 const inp = document.querySelector(`#hqPause [data-party-rename="${a}"]`);
                 const was = rec.members.find(x => x.id === a);
                 const r = _hqPartyTx(p => window.hqPartyRename(p, a, verb === 'unname' ? '' : (inp ? inp.value : '')));
@@ -4054,6 +4122,7 @@
             window._hqPauseSettingsBody = null;
             if (body) {
                 const keep = P.keepScroll ? body.scrollTop : 0; P.keepScroll = false;   // THE CIRCUIT IN THE FIELD: a click on a node re-renders the sheet where it stood
+                const kitEl = body.querySelector('.hq-lo-kit'); const keepKit = kitEl ? kitEl.scrollTop : 0;   // THE LOADOUT: its kit column scrolls on its own
                 body.scrollTop = 0;
                 body.setAttribute('data-view', P.cmd + (P.member != null ? '-member' : ''));
                 if (P.cmd === 'party') body.innerHTML = safe(() => (P.member != null) ? _hqPauseMemberHtml(P.member) : _hqPausePartyHtml(), 'party');
@@ -4067,8 +4136,14 @@
                 }
                 else body.innerHTML = '';
                 if (keep) body.scrollTop = keep;
+                /* THE LOADOUT (mondo 11-26): the member sheet takes the whole screen; its stage holds the live model */
+                const lo = !!body.querySelector('.hq-lo');
+                const root = _hqEl('hqPause'); if (root) root.classList.toggle('hq-loadout', lo);
+                if (lo) { const k2 = body.querySelector('.hq-lo-kit'); if (k2 && keepKit) k2.scrollTop = keepKit; _hqLoMount(); }
+                else _hqLoUnmount();
             }
-            if (foot) foot.innerHTML = `<span>↑ ↓ COMMAND</span><span>ENTER SELECT</span>${P.cmd === 'settings' ? '<span>← → PAGE</span>' : '<span>← → MEMBER</span>'}<span>BACKSPACE BACK</span><span>ESC / P RESUME</span>`;
+            if (foot && P.cmd === 'party' && P.member != null) foot.innerHTML = `<span>← → MEMBER</span><span>DRAG TO TURN</span><span>BACKSPACE ROSTER</span><span>ESC BACK</span>`;
+            else if (foot) foot.innerHTML = `<span>↑ ↓ COMMAND</span><span>ENTER SELECT</span>${P.cmd === 'settings' ? '<span>← → PAGE</span>' : '<span>← → MEMBER</span>'}<span>BACKSPACE BACK</span><span>ESC / P RESUME</span>`;
         }
         function _hqPauseSelect(id) {
             const P = _hqPause; if (!P) return;
@@ -4096,6 +4171,7 @@
                 return;
             }
             P.cmd = id; P.member = null; P.arm = null;
+            if (id === 'party') { try { const rec = _hqParty(); if (rec && rec.members.length) P.member = rec.members[0].id; } catch (e) {} }   // THE LOADOUT: PARTY opens on the lead; ROSTER is its last tab
             P.cursor = Math.max(0, _HQ_PAUSE_CMDS.findIndex(c => c.id === id));
             try { playSfx('uiButtonConfirm'); } catch (e) {}
             _hqPauseRender();
@@ -4113,9 +4189,10 @@
             const t = e.target;
             const typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable);
             const k = e.key;
-            if (k === 'Escape') { e.preventDefault(); e.stopPropagation(); if (P.socket) { P.socket = null; P.sockQ = ''; _hqPauseRender(); } else if (P.circuit) { P.circuit = null; _hqPauseRender(); } else if (P.arm) { P.arm = null; _hqPauseRender(); } else if (P.member != null) { P.member = null; _hqPauseRender(); } else window._hqClosePause(); return; }
+            if (k === 'Escape') { e.preventDefault(); e.stopPropagation(); if (P.loGear || P.loRename) { P.loGear = null; P.loRename = null; _hqPauseRender(); } else if (P.socket) { P.socket = null; P.sockQ = ''; _hqPauseRender(); } else if (P.circuit) { P.circuit = null; _hqPauseRender(); } else if (P.arm) { P.arm = null; _hqPauseRender(); } else if (P.member != null) { P.member = null; _hqPauseRender(); } else window._hqClosePause(); return; }
             if (typing && k === 'Enter' && t.getAttribute && t.getAttribute('data-party-rename')) { e.preventDefault(); e.stopPropagation(); _hqPartyAct('rename:' + t.getAttribute('data-party-rename')); return; }   // THE NAME: ENTER files it
             if (typing) return;
+            if ((k === 'ArrowUp' || k === 'ArrowDown') && P.cmd === 'party' && P.member != null) { e.preventDefault(); return; }   // THE LOADOUT: no hidden command cursor under it
             if (k === 'ArrowUp' || k === 'ArrowDown') {
                 e.preventDefault();
                 P.cursor = (P.cursor + (k === 'ArrowDown' ? 1 : _HQ_PAUSE_CMDS.length - 1)) % _HQ_PAUSE_CMDS.length;
@@ -4126,6 +4203,7 @@
             if (k === 'Enter') {
                 if (t && t.tagName === 'BUTTON' && t.closest('#hqPauseBody')) return;   // a focused body button keeps its own ENTER
                 e.preventDefault();
+                if (P.cmd === 'party' && P.member != null) return;   // THE LOADOUT: the command column is hidden
                 const c = _HQ_PAUSE_CMDS[P.cursor]; if (c) _hqPauseSelect(c.id);
                 return;
             }
@@ -4156,6 +4234,16 @@
             if (cmd) { _hqPauseSelect(cmd.getAttribute('data-cmd')); return; }
             const pact = e.target.closest('[data-party-act]');
             if (pact) { if (!pact.disabled) _hqPartyAct(pact.getAttribute('data-party-act')); return; }
+            /* THE LOADOUT's own buttons: ◂ ▸ (a member), ROSTER, ✎ NAME, ✎ CHANGE (the held items) */
+            const step = e.target.closest('[data-lo-step]');
+            if (step) { _hqPauseKey({ key: +step.getAttribute('data-lo-step') > 0 ? 'ArrowRight' : 'ArrowLeft', target: document.body, preventDefault() {}, stopPropagation() {} }); try { playSfx('uiCursorMove'); } catch (err) {} return; }
+            if (e.target.closest('[data-lo-roster]')) { _hqPause.member = null; _hqPause.circuit = null; _hqPause.loGear = null; try { playSfx('uiButtonConfirm'); } catch (err) {} _hqPauseRender(); return; }
+            const ren = e.target.closest('[data-lo-rename]');
+            if (ren) { _hqPause.loRename = ren.getAttribute('data-lo-rename'); _hqPauseRender(); const inp = document.querySelector('#hqPause [data-party-rename]'); if (inp) { inp.focus(); try { inp.select(); } catch (err) {} } return; }
+            const gr = e.target.closest('[data-lo-gear]');
+            if (gr) { const id = gr.getAttribute('data-lo-gear'); _hqPause.loGear = (_hqPause.loGear === id) ? null : id; _hqPause.keepScroll = true; try { playSfx('uiCursorMove'); } catch (err) {} _hqPauseRender(); return; }
+            const lrow = e.target.closest('.hq-lo-row');
+            if (lrow) { _hqLoDetail(lrow); return; }
             /* THE QUICK ACTIONS (2026-09-20): SHEET ▸ on a card; a WALK-TO button (the cot, the dispensary) drops the menu and goes */
             const sheet = e.target.closest('[data-member-sheet]');
             if (sheet) { _hqPause.member = sheet.getAttribute('data-member-sheet'); _hqPause.arm = null; try { playSfx('uiButtonConfirm'); } catch (err) {} _hqPauseRender(); return; }
