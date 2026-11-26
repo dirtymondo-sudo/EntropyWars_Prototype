@@ -33491,6 +33491,7 @@ const DOOR_HQ = {
         /* DOOR STORE (DOOR HQ 2.0, 2026-11-26): a capture door on its plinth under its own light. The row's `item` (an ITEM_RULES capture
            door) picks the leaf, the lamps (one pair a tier; the tuned door the six type colours) and the tag (name + price, read live);
            a row with `leaf` instead is a display door with no tag. three-renderer.js _hqProcBuilders.store_door */
+        shop_counter:    { proc: 'shop_counter',    h: 1.05, foot: 0, rect: { hw: 4.85, hd: 0.45 }, block: true },   // the Door Store's one long counter (three-renderer.js _hqProcBuilders.shop_counter)
         store_door:      { proc: 'store_door',      h: 2.8,  foot: 0.8, rect: { hw: 0.95, hd: 0.6 }, block: true,
                            light: { color: 0xffe2b8, intensity: 0.9, dist: 6.5, y: 4.6 } },
         station_text:    { proc: 'station_sign',    h: 0.62, foot: 0,    wall: true, mount: 2.25, depth: 0.04 },   // the same board with fixed words (DOOR HQ's own platform)
@@ -36274,14 +36275,9 @@ const DOOR_HQ = {
                 { key: 'store_door', item: 'captureDoorTuned', x: 2.8,  z: -7.9, face: 180 },
                 { key: 'store_door', leaf: 'leaf_futuristic',  x: 5.6,  z: -7.9, face: 180 },
                 { key: 'store_door', leaf: 'leaf_hotel',       x: 8.4,  z: -7.9, face: 180 },
-                /* ── THE COUNTER: one long run of glass cases, Otto behind it, the till in the middle ── */
-                { key: 'jewelry_case',  x: -4.8, z: -4.6, face: 180 },
-                { key: 'jewelry_case',  x: -3.2, z: -4.6, face: 180 },
-                { key: 'jewelry_case',  x: -1.6, z: -4.6, face: 180 },
-                { key: 'jewelry_case',  x: 0,    z: -4.6, face: 180 },
-                { key: 'jewelry_case',  x: 1.6,  z: -4.6, face: 180 },
-                { key: 'jewelry_case',  x: 3.2,  z: -4.6, face: 180 },
-                { key: 'jewelry_case',  x: 4.8,  z: -4.6, face: 180 },
+                /* ── THE COUNTER (mondo 11-26: "Just a normal counter"): one long plain counter, Otto behind it, the till in the middle ── */
+                { key: 'shop_counter',  x: 0, z: -4.6, face: 180 },
+                { key: 'cash_register', x: 0.9, z: -4.6, y: 1.05, face: 180 },
                 { key: 'wall_clock',    wall: 'n', x: -4.2, mount: 4.6 },
                 /* ── the shop floor: the customers' bench, the racks ── */
                 { key: 'psx_sofa_3',    x: -9.6, z: 0.5, face: 90 },
