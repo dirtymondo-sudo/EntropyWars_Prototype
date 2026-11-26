@@ -4345,3 +4345,12 @@ Unverified on WebGPU from the cloud (no WebGPU here): needs his next F3 from H-W
   being the frame's first render, the room you stand in drew with those every other frame (H-Wing).
 - THE SOFFIT LIFT (`_hqOpenFrontFill`): the open front's soffit lay exactly on the drum lintel's underside (panel60 vs light60 at 4 m
   and 12 m, found by an up-ray probe over the Ring + Lobby stage): z-fighting. Now 2 cm higher; the probe finds no ceiling pairs.
+
+## THE MOVING REVEAL (2026-11-26, mondo: "I should NEVER see a character not animating or staying still waiting for their animations to load")
+three-renderer.js `_attachUnitModel`: a rigged body stays hidden (`m.visible = false`, the board's sprite stand-in stays) until its clips
+are wired (library bake, procedural clips, or the Meshy idle file; a missing / failed idle does not hold it), then shows two frames
+later so the caller's own slot (a seated pose) is already on; `entry._ew_animReady` false = still waiting, `entry._ew_animFresh` =
+no crossfade out of the hidden first clip (`_playUnitModelAnim`). A kept rig still baking keeps its body hidden (`_rig.animEntries`).
+The HQ load card waits for every body's clips (`_hqCharsAnimWaiting`, in the gate's progress signature) and the walker counts as
+attached only with its clips on. The forge viewer (`_cvAnimOn`) and the dock do the same. Probe: `ThreeRenderer.hq.dev.chars()`
+gives `shown` + `animReady` per body (shown && !animReady = the bug). Off: `window.EW_NO_ANIM_GATE`.
