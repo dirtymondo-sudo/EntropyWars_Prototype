@@ -1659,7 +1659,7 @@ room, six offices), the H-Wing lobby and its lift stop are gone. WRITTEN BY `doc
   `hwing` (free door in the drum wall at deg 280, between the Ring stair and the ramp's foot; the plan's north-west is under the ramp);
   `works_top` (north) / factory `hwing` (free door, deg 228, in the service corridor between the Boiler Room's and the Laundry's doors;
   in factory.js); `works_middle` (west) / labs `hwing` (the Gantry's north-west corner, where the Mandela door stood; the Upside-Down
-  door is gone); `works_bottom` (east) / antechamber `hwing` (the Incinerator thread's Antechamber, on the Incinerator's stage). Nothing is joined: every one is a card (the impossible-doors thread may make them portals).
+  door is gone); `works_bottom` (east) / the Incinerator (lands at its `works` door until the Incinerator thread's Antechamber is on main; that thread re-points it to antechamber `hwing`). Nothing is joined: every one is a card (the impossible-doors thread may make them portals).
 - **THE ROOMS ON THE BLOCKS** (free doors against a block's face; `face` = the way into the hall): the six uncanny rooms keep their
   dressing and their room ids: the Mandela Room (`mandela`, its `labs` door now leads to H-Wing), the Upside-Down Room (`upsidedown`,
   same), Home (`hwing_home`), the Thirteenth Floor (`thirteenth`, its `crawl` panel is a plain door now), the Swimming Pool
@@ -1679,3 +1679,23 @@ room, six offices), the H-Wing lobby and its lift stop are gone. WRITTEN BY `doc
   HQ_ROOM_HOLES' old `hwing_floor` row dropped. `DOOR_HQ.hwing.rooms` / `.entries` list the new rooms and the six level doors.
 - Checked: `node find-doorways.js` on the halls, the vignettes, the six rooms, garage, factory, labs, central_egress, ring_g: clear
   (the Antechamber's door is the Incinerator thread's, checked there). `node find-softlocks.js` on the five new rooms: 0.
+
+## DOOR HQ 2.0, WAVE 4: THE PENTHOUSE (2026-11-26)
+Built from the right side of `docs/plans/door-hq-2/plans/2_lobby_upper_level_penthouse.png` and LOOK_BOOK.md "Penthouse". A clean sheet:
+the old executive lobby (the assistant, the guard, the floor panel), Room 4C and Room 8 are gone. Room id kept: `executive` (the car's
+PH stop lands at its `elevator` door and keeps its gate, minClearance 4 + 12 Keys: locked until late). Label PENTHOUSE, nothing else.
+- **ONE LONG ROOM**, 31.5 x 63 m, 7 m high, reached only by the lift (its one door, north wall at x -5.25). The north half (z -31.5 .. 3.5)
+  is roofed: the lounge (two Chesterfields under a chandelier, a wingback, the Greek couch, the bust, the piano in the north-east corner),
+  and THE CORNER OFFICE, a glass box on the east side (x 5.25 .. 15.75, z -24.5 .. -7; five `office_glass` bays, the door bay in the middle
+  with CORNER OFFICE over it, `room_wall` sides 4.9 m): the desk with its back to THE WINDOW (`false_window` at h 4, on the room's east
+  wall, the building's outside, which a round building with no outside should not have). The "impossible doors" thread may make it a portal.
+  The south half is under the night sky: THE INFINITY POOL (24.5 x 10.5 m, lit from below), its weir ON the room's south line, and past it
+  nothing: no wall, no ground, only the sky under the edge. Loungers, two umbrellas, palms in planters, globe lamps.
+- **Three shell fields (three-renderer.js, box shell; any box room):** `canopy: [{ x0, x1, z0, z1 }]` = a ceiling over part of an OPEN
+  room (a sky of its own); `sides: { n|s|e|w: 'open' | 'low' | 'walls' }` = one side's own edge (the pool's south side is `open`);
+  `apron: false` = no ground strip or skirt round an open room (nothing below the edge). The walker stops at the room's bound.
+- **`infinity_pool` reads its row:** `poolW`, `poolD` (metres; the catalogue row's `rect` must match: `penthouse_pool` = 24.5 x 10.5),
+  `fall` (how far the water drops past the weir), `glow` (the basin lit from below). Old rows unchanged (6 x 3.6).
+- **RETIRED:** `corner` and `pool` -> `executive` (DOOR_HQ.retired); the PH zone in HQ_WORLD and its HQ_STAGE_RULES entry are gone (one
+  room, nothing to join). `links.weir_bermuda` end a stands beside the weir now (x -14, z 27).
+- `node find-doorways.js executive`: clear.
