@@ -88,9 +88,21 @@ const NUT = { race: 'nutcracker', spells: ['ncClack', 'ncQuickMarch', 'ncCrackOp
   { name: 'crackopen', spell: 'ncCrackOpen', at: 'foe0' },
   { name: 'suite', spell: 'ncNutcrackerSuite', at: 'self' },
 ] };
+/* THE ORIGAMI GIRL (KIT=ori): every fold in a row, the held shape, the unfold at her turn, the wad (`do`: a line run in the page) */
+const ORI = { race: 'origami girl', flat: true, spells: ['ogSwordigami', 'ogKamikaze', 'ogPaperStar', 'ogPickANumber', 'ogPaperFan', 'ogThousandCranes'], at: [4, 7], foes: [[1, 2], [3, 0], [5, 2]], steps: [
+  { name: 'sword', spell: 'ogSwordigami', at: 'foe1', home: true, foe1: [1, 0] },
+  { name: 'star', spell: 'ogPaperStar', at: 'foe1', home: true, foe1: [3, 0] },
+  { name: 'kamikaze', spell: 'ogKamikaze', at: 'foe1', home: true, foe1: [4, 0] },
+  { name: 'fortune', spell: 'ogPickANumber', at: 'foe1', home: true, foe1: [2, 0] },
+  { name: 'fan', spell: 'ogPaperFan', at: 'foe1', home: true, foe1: [2, 0] },
+  { name: 'cranes', spell: 'ogThousandCranes', at: 'foe1', home: true, foe1: [3, 0] },
+  { name: 'unfold', do: "(function(){var c=GAME.state.units.find(function(u){return u.id===__kit.caster;}); ['foldSword','foldPlane','foldFortune','foldCrane'].forEach(function(k){ if (c.status && c.status[k]) { try { clearStatus(c,k); } catch(e){ delete c.status[k]; } } }); delete c._ogFolded; try { GAME.markDirty(); } catch(e){} return JSON.stringify(c.status); })()" },
+  { name: 'seven', do: "(function(){var c=GAME.state.units.find(function(u){return u.id===__kit.caster;}); var f=GAME.state.units.find(function(u){return u.id===__kit.foes[1];}); try { VFX3D.fire('ogact','ogSevenFolds',{uid:f.id,fx:'sevenfolds',durMs:2600,owner:c.player}); return 'fired'; } catch(e){ return 'threw '+e.message; } })()" },
+  { name: 'wad', do: "(function(){var c=GAME.state.units.find(function(u){return u.id===__kit.caster;}); c.hp=1; try { window.applyDamageToUnit(c, 9999, 'probe: ', {}); return 'killed '+c.dead+' '+c._dying; } catch(e){ return 'threw '+e.message; }})()" },
+] };
 (async () => {
   const browser = await require(path.join(REPO, 'probe-fast.js')).launch(chromium, { headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
-  const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 }, ignoreHTTPSErrors: true });
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: +(process.env.DSF || 1), ignoreHTTPSErrors: true });
   await ctx.addInitScript((flags) => { try { localStorage.setItem('ew_cinematicActionCam', '1'); } catch (e) {} for (const f of flags) { const [k, val] = f.split('='); window[k] = val === undefined ? true : (isNaN(+val) ? val : +val); } }, []);
   const page = await ctx.newPage();
   const errs = [];
@@ -118,6 +130,7 @@ const NUT = { race: 'nutcracker', spells: ['ncClack', 'ncQuickMarch', 'ncCrackOp
   }, MAP);
   console.log('launch', launched);
   await sleep(2500);
+  if (KIT === 'ori') console.log('party', await page.evaluate(() => { const st = window.GAME.state; st.partyMeta = st.partyMeta || {}; st.partyMeta[1] = st.partyMeta[1] || []; st.partyMeta[1][0] = Object.assign({}, st.partyMeta[1][0] || {}, { race: 'origami girl', gender: 'female' }); return JSON.stringify(st.partyMeta[1][0]); }));
   for (let i = 0; i < 2; i++) { await page.evaluate(() => { const b = document.querySelector('.pb-btn-primary') || [...document.querySelectorAll('button')].find(x => /SEAL YOUR FATE/i.test(x.innerText)); if (b) b.click(); }); await sleep(1500); if (await page.evaluate(() => window.GAME.state.phase) === 'battle') break; }
   await page.evaluate(() => { const st = window.GAME.state; if (st.phase !== 'battle') { try { window.applyPartyBuild(false); } catch (e) {} st.teamLockedIn = true; try { window.startMatch(); } catch (e) {} } });
   for (let i = 0; i < 60; i++) { if (await page.evaluate(() => window.GAME?.state?.phase) === 'battle') break; await sleep(1000); }
@@ -133,7 +146,8 @@ const NUT = { race: 'nutcracker', spells: ['ncClack', 'ncQuickMarch', 'ncCrackOp
   await sleep(2500);
   const RAM = { race: 'monster truck', spells: ['mtRam'], at: [4, 7], foes: [[8, 7], [12, 12], [13, 12]], steps: [ { name: 'ram0', spell: 'mtRam', at: 'foe0' }, { name: 'drive', move: [5, 7] }, { name: 'ram1', spell: 'mtRam', at: 'foe0', from: [5, 7] } ] };
   if (process.env.CLOSE) await page.evaluate((c) => { window.__kitClose = c; }, JSON.parse(process.env.CLOSE));
-  const kits = KIT === 'ram' ? [RAM] : KIT === 'truck' ? [TRUCK] : KIT === 'nut' ? [NUT] : [TRUCK, NUT];
+  if (process.env.CLOSEZ) await page.evaluate(() => { window.__kitNoCine = true; try { localStorage.setItem('ew_cinematicActionCam', '0'); } catch (e) {} });
+  const kits = KIT === 'ram' ? [RAM] : KIT === 'truck' ? [TRUCK] : KIT === 'nut' ? [NUT] : KIT === 'ori' ? [ORI] : [TRUCK, NUT];
   const report = [];
   for (const K of kits) {
     const staged = await page.evaluate((K) => {
@@ -142,6 +156,7 @@ const NUT = { race: 'nutcracker', spells: ['ncClack', 'ncQuickMarch', 'ncCrackOp
       const foes = st.units.filter(u => u.player === 2 && !u.dead).slice(0, K.foes.length);
       for (const u of st.units) if (!u.dead && u !== caster && !foes.includes(u)) { u.dead = true; u.hp = 0; }
       const put = (u, x, y) => { u.x = x; u.y = y; try { u.z = getHeightAt(x, y); } catch (e) { u.z = 0; } };
+      if (K.flat) { const N = (st.gridSize || st.mapSize || 16); let best = null; for (let y = 2; y < N - 3 && !best; y++) for (let x = 2; x + 6 < N - 1 && !best; x++) { let ok = true; const h0 = getHeightAt(x, y); for (let dy = 0; dy <= 2 && ok; dy++) for (let dx = 0; dx <= 6 && ok; dx++) { let h; try { h = getHeightAt(x + dx, y + dy); } catch (e) { ok = false; } if (h !== h0) ok = false; try { if (typeof isTileBlocked === 'function' && isTileBlocked(x + dx, y + dy)) ok = false; } catch (e) {} } if (ok) { try { const fan = SPELL_BY_ID['ogPaperFan'] || RACE_ABILITY_BY_ID['ogPaperFan']; for (let d = 1; d <= 4 && ok; d++) if (!window.lineSpellHeadingTo(fan, x, y, h0, x + d, y, h0)) ok = false; } catch (e) {} } if (ok) best = [x, y]; } if (best) { K.at = best; K.foes = K.foes.map(f => [best[0] + f[0], best[1] + f[1]]); } window.__kitHome = K.at; window.__kitFoeHome = K.foes; }
       caster.race = K.race; put(caster, K.at[0], K.at[1]);
       foes.forEach((f, i) => { put(f, K.foes[i][0], K.foes[i][1]); f.hp = f.maxHp = 9999; f.status = {}; delete f._cracks; });
       caster.status = {}; delete caster._revs;
@@ -159,16 +174,21 @@ const NUT = { race: 'nutcracker', spells: ['ncClack', 'ncQuickMarch', 'ncCrackOp
       const res = await page.evaluate((S) => {
         const st = GAME.state, c = st.units.find(u => u.id === __kit.caster);
         const foes = __kit.foes.map(id => st.units.find(u => u.id === id));
+        if (S.home && window.__kitHome) { c.x = __kitHome[0]; c.y = __kitHome[1]; try { c.z = getHeightAt(c.x, c.y); } catch (e) {} foes.forEach((f, i) => { f.x = __kitFoeHome[i][0]; f.y = __kitFoeHome[i][1]; try { f.z = getHeightAt(f.x, f.y); } catch (e) {} f.hp = 9999; }); }
+        if (S.foe1) { const f = foes[1]; f.x = c.x + S.foe1[0]; f.y = c.y + S.foe1[1]; try { f.z = getHeightAt(f.x, f.y); } catch (e) {} }
         if (S.from) { c.x = S.from[0]; c.y = S.from[1]; try { c.z = getHeightAt(c.x, c.y); } catch (e) {} }
         c.ap = 9; c.maxAp = Math.max(c.maxAp || 0, 9); c.mp = 9999; c._spellCooldowns = {}; c._spellsUsedThisTurn = {}; c._movedThisTurn = false; c.hasMoved = false; c.moveUsed = 0;
         st._blitzActiveUnitId = c.id; st.activePlayer = 1; st.selectedUnitId = c.id;
+        if (S.do) { if (window.__kitClose) { st.cinematicActionCam = false; try { camera.snap(Object.assign({ _force: true, x: c.x, y: c.y }, window.__kitClose)); } catch (e) {} } try { return 'do ' + eval(S.do); } catch (e) { return 'do threw ' + e.message; } }
         if (S.move) { try { return 'move ' + GAME.doMove(c, S.move[0], S.move[1], getHeightAt(S.move[0], S.move[1])); } catch (e) { return 'move threw ' + e.message; } }
         let tx, ty;
         if (S.at === 'self') { tx = c.x; ty = c.y; }
         else if (S.at === 'foe0') { tx = foes[0].x; ty = foes[0].y; }
+        else if (S.at === 'foe1') { tx = foes[1].x; ty = foes[1].y; }
         else if (S.at === 'foe1near') { const f = foes[1]; f.x = c.x + 1; f.y = c.y; if (st.units.some(u => u !== f && !u.dead && u.x === f.x && u.y === f.y)) { f.x = c.x; f.y = c.y + 1; } try { f.z = getHeightAt(f.x, f.y); } catch (e) {} tx = f.x; ty = f.y; }
         else { tx = S.at[0]; ty = S.at[1]; }
         if (window.__kitClose) { st.cinematicActionCam = false; try { camera.snap(Object.assign({ _force: true, x: c.x, y: c.y }, window.__kitClose)); } catch (e) {} }
+        if (window.__kitNoCine) st.cinematicActionCam = false;
         const sp = c.spells.find(s => s.id === S.spell);
         st.actionMode = 'spell'; st.selectedTool = sp.name;
         let why = null; try { why = (window.TargetQuery && TargetQuery.spellBlockReason) ? TargetQuery.spellBlockReason(c, sp) : null; } catch (e) { why = 'err ' + e.message; }
@@ -179,7 +199,12 @@ const NUT = { race: 'nutcracker', spells: ['ncClack', 'ncQuickMarch', 'ncCrackOp
       for (const at of PICS) {
         const w = at - (Date.now() - t0); if (w > 0) await sleep(w);
         const f = path.join(OUT, `${TAG}_${K.race.replace(/ /g, '')}_${S.name}_${at}.png`);
-        try { await page.screenshot({ path: f, timeout: 30000 }); } catch (e) { console.log('  ! shot failed', e.message.split('\n')[0]); }
+        let clip = null, ori = null;
+        if (process.env.CROP) { const r = await page.evaluate((Z) => { try { const st = GAME.state, c = st.units.find(u => u.id === __kit.caster), f = st.units.find(u => u.id === __kit.foes[1]); if (Z) { st.cinematicActionCam = false; try { camera.snap({ _force: true, x: (c.x + f.x) / 2, y: (c.y + f.y) / 2 }); camera.snap({ _force: true, zoom: Z }); } catch (e) {} } const a = ThreeRenderer.worldToScreen(c.x, c.y, 0), b = ThreeRenderer.worldToScreen(f.x, f.y, 0); return { a, b, ori: Object.assign({ z: +(+camera.zoom).toFixed(2) }, ThreeRenderer.oriState ? ThreeRenderer.oriState(c.id) : null) }; } catch (e) { return { err: e.message }; } }, +(process.env.CLOSEZ || 0)).catch(() => null);
+          if (+(process.env.CLOSEZ || 0)) await sleep(60);
+          if (r && +(process.env.CLOSEZ || 0)) { const q = await page.evaluate(() => { try { const st = GAME.state, c = st.units.find(u => u.id === __kit.caster), f = st.units.find(u => u.id === __kit.foes[1]); return { a: ThreeRenderer.worldToScreen(c.x, c.y, 0), b: ThreeRenderer.worldToScreen(f.x, f.y, 0) }; } catch (e) { return null; } }).catch(() => null); if (q) { r.a = q.a; r.b = q.b; } }
+          if (r && r.a) { const [cw, ch] = process.env.CROP.split('x').map(Number); const mx = r.b ? (r.a.x + r.b.x) / 2 : r.a.x, my = (r.b ? (r.a.y + r.b.y) / 2 : r.a.y) - ch * 0.12; clip = { x: Math.max(0, Math.min(1280 - cw, mx - cw / 2)), y: Math.max(0, Math.min(720 - ch, my - ch / 2)), width: cw, height: ch }; } ori = r && (r.ori || r.err); }
+        try { await page.screenshot(Object.assign({ path: f, timeout: 30000 }, clip ? { clip } : {})); if (ori) console.log('   ori@' + at, S.name, JSON.stringify(ori)); } catch (e) { console.log('  ! shot failed', e.message.split('\n')[0]); }
       }
       await sleep(Math.max(0, 3200 - (Date.now() - t0)));
       const after = await page.evaluate(() => { const st = GAME.state, c = st.units.find(u => u.id === __kit.caster); return { at: [c.x, c.y], revs: c._revs || 0, foes: __kit.foes.map(id => { const f = st.units.find(u => u.id === id); return [f.x, f.y, f.hp, f._cracks || 0, Object.keys(f.status || {}).join('+')]; }), log: (st.logEntries || []).slice(-5).map(e => String((e && (e.text || e.msg || e.message)) || JSON.stringify(e)).slice(0, 160)) }; });

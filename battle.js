@@ -14502,11 +14502,10 @@
             if (!target) return 0;
             return Math.max(0, Math.max(Math.abs(target.x - fx), Math.abs(target.y - fy)) - 1);
         }
-        /* doSpell, before the gates: a cast of her own opens the held shape (the new fold starts from the flat sheet) */
+        /* doSpell, before the gates: where the flight began (the held shape opens only once the cast went through: _ogAfterCast) */
         function _ogBeginCast(unit, spell) {
             if (!unit || !spell || !/^og[A-Z]/.test(spell.id || '')) return;
             unit._ogFromX = unit.x; unit._ogFromY = unit.y;
-            if (unit._ogFolded) _ogUnfold(unit);
         }
         /* Pick a Number: one of four, rolled once for the cast */
         function _ogCastRow(unit, spell) {
@@ -14542,6 +14541,7 @@
                 _ogAct(unit, 'ogPickANumber', 'roll', x, y, { scale: spell._ogRoll, owner: ally ? 1 : 2 });
             }
             const id = spell.ogFold && _OG_FOLDS[spell.ogFold];
+            if (unit._ogFolded || _OG_FOLD_IDS.some(k => unitHasStatus(unit, k))) _ogUnfold(unit);   // a cast that went through opens the held shape (a refused one never does)
             if (!id || unit.dead || unit._dying) return;
             applyStatusPayload(unit, { id: id, duration: 2 }, `${spell.name}: `, unit);
             if (unitHasStatus(unit, id)) unit._ogFolded = spell.ogFold;
@@ -86373,7 +86373,7 @@
             /* ☂ THE WEATHERMAN: Cold Front reads the sky, Severe Weather Warning the ground (_wnCastRow) */
             if (spell && (spell.wnSkyRead || spell.wnByGround)) spell = _wnCastRow(unit, spell, x, y);
             _psBeginCast(unit, spell, x, y, z);
-            _ogBeginCast(unit, spell);   // 🕊 THE ORIGAMI GIRL: she opens flat to fold again; where the flight began
+            _ogBeginCast(unit, spell);   // 🕊 THE ORIGAMI GIRL: where the flight began
             _pgBeginCast(unit, spell);   // 🏀 THE POINT GUARD: the Crossover notes who stood next to him
             if (unit && unit.race === 'rat') unit._ratCastId = spell ? spell.id : null;   // 👑 THE RAT KING: Gnaw's bonus reads the cast
             /* Clash final authority: movement/positioning spells can never
