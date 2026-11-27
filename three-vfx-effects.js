@@ -25303,6 +25303,98 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         hit: function (L) { _dxSky(L, 'solarEclipse', 3000); }
     };
 
+    /* ═══ UNMADE, the Demiurge's finisher (2026-11-27, mondo: "Go ahead and do the finisher") ═══
+       "He made it. He can take it back. The victim is folded up, corner by corner, and put away in the black cube."
+       The eclipse comes on and the seal stands in the sky; THE BLACK CUBE comes down over the victim; a gold cage draws round
+       them edge by edge; the cage FOLDS, three times, a half each time (the body folds with it: it is the victim's double,
+       the real body is hidden); what is left is a small gold-edged cube, which rises into the black cube as that opens;
+       the cube shuts on the hit, turns once, and folds itself away. o = { ms, cubeAt, cageAt, foldAt, liftAt, hitAt }. */
+    function _sigUnmade3D(cx, cy, tx, ty, o) {
+        o = o || {};
+        if (!_canSpawn()) return false;
+        var wpT = _worldPos(tx, ty), ts = wpT.ts, i;
+        var ms = o.ms > 0 ? o.ms : 7800;
+        var cubeAt = o.cubeAt != null ? o.cubeAt : 100, cageAt = o.cageAt != null ? o.cageAt : cubeAt + 900, foldAt = o.foldAt != null ? o.foldAt : cageAt + 900, liftAt = o.liftAt != null ? o.liftAt : foldAt + 1300, hitAt = o.hitAt != null ? o.hitAt : liftAt + 800;
+        var g = new THREE.Group(); g.position.set(wpT.x, wpT.y, wpT.z);
+        var F = { g: g, ts: ts, wp: wpT };
+        try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.spellSky) ThreeRenderer.spellSky('solarEclipse', hitAt + 2600, { night: true }); } catch (e) {}
+        var CY = ts * 2.7, CS = ts * 1.15;
+        var skySeal = _dxSkySheet(F, _dxMetatronTex(), ts * 70, _DX.gold, ts * 34), seal = _dxFloor(F, _dxMetatronTex(), ts * 3.4, _DX.gold, false), glow = _dxFloor(F, _sigGlowTex(), ts * 4.2, _DX.gold, true, ts * 0.02);
+        /* the black cube: black stone, gold edges, a soft gold light round it */
+        var big = new THREE.Group(); g.add(big);
+        var bigM = _pzSolid(_DX.voidc), bigCore = new THREE.Mesh(_dxBox(), bigM); bigCore.renderOrder = 157; bigCore.scale.setScalar(CS); big.add(bigCore);
+        var bigE = _pzSolid(0xe8a81c), bigW = _dxWireBox(big, CS, CS, CS, bigE, ts * 0.035), bigG = _pzGlow(_DX.gold), bigGW = _dxWireBox(big, CS, CS, CS, bigG, ts * 0.12);
+        var halo = _pzSpr(_DX.gold, ts * 4.2, big);
+        /* the victim's double and the cage round it: one group, so a fold folds both */
+        var pack = new THREE.Group(); g.add(pack);
+        var body = _finDouble(tx, ty, ts, { hide: true, slot: ['idle'] }); pack.add(body);
+        /* the cage is cut to the victim: a little taller than the body, never smaller than a person */
+        var bH = ts * 1.3; try { var fd0 = body.userData.fd; if (fd0 && fd0.d && fd0.d.height > 0) bH = fd0.d.height; } catch (e0) {}
+        var KH = Math.max(ts * 1.3, Math.min(ts * 3.0, bH * 1.14)), KW = Math.max(ts * 0.95, Math.min(ts * 2.2, KH * 0.62)), GOLDC = new THREE.Color(_DX.gold), cageM = _pzSolid(0xe8a81c), cageG = _pzGlow(_DX.gold), edges = [], hx = KW / 2;
+        var E = [];
+        for (i = 0; i < 4; i++) { var a = (i & 1) ? hx : -hx, b = (i & 2) ? hx : -hx; E.push([a, 0, b, a, KH, b]); }
+        for (i = 0; i < 2; i++) { var y = i ? KH : 0; E.push([-hx, y, -hx, hx, y, -hx], [hx, y, -hx, hx, y, hx], [hx, y, hx, -hx, y, hx], [-hx, y, hx, -hx, y, -hx]); }
+        for (i = 0; i < 12; i++) edges.push({ e: E[i], m: _dxBar(cageM, pack), gl: _dxBar(cageG, pack) });
+        var stoneM = _pzSolid(_DX.voidc), stone = new THREE.Mesh(_dxBox(), stoneM); stone.renderOrder = 157; stone.scale.set(KW * 0.96, KH * 0.96, KW * 0.96); stone.position.y = KH / 2; pack.add(stone);
+        /* the crease: a gold sheet that flashes where the fold is made */
+        var crM = _pzGlow(_DX.hot), crease = _dxBar(crM, g); crease.renderOrder = 159;   /* a LINE where the fold is made, never a sheet */
+        var pil = _dxPillar(F, ts * 0.4, ts * 22, _DX.gold, 0);
+        var c = tilePx(tx, ty), bz = tileZ(tx, ty), hit = false, folds = 0, lastS = 0, creaseAt = -9999, FD = Math.max(120, (liftAt - foldAt) / 3);
+        var AX = [[0.46, 1, 1], [0.46, 1, 0.46], [0.46, 0.28, 0.46]];
+        return !!_sigRunOwned(g, ms, function (el) {
+            _fdTick(body, el);
+            var he = el - hitAt, gone = he < 0 ? 1 : 1 - _sigClamp01((he - 1500) / 600);
+            var inK = _sigClamp01((el - cubeAt) / 500);
+            skySeal.rotation.z = -el * 0.00018; skySeal.material.opacity = 0.62 * _sigClamp01((el - cubeAt) / 900) * gone;
+            seal.rotation.z = el * 0.0004; seal.material.opacity = 0.85 * inK * gone; glow.material.opacity = (0.16 + 0.05 * Math.sin(el * 0.008)) * inK * gone;
+            /* the black cube comes down, waits, opens for what is lifted to it, shuts on the hit and folds itself away */
+            var dk = _sigEaseOutCubic(_sigClamp01((el - cubeAt) / 950)), open = el < liftAt ? 0 : (he < 0 ? _dxEaseIO((el - liftAt) / Math.max(1, hitAt - liftAt - 60)) : 1 - _sigEaseOutBack(_sigClamp01(he / 130)));
+            var away = he < 500 ? 0 : _sigEaseInCubic(_sigClamp01((he - 500) / 900));
+            big.position.y = _dxLerp(ts * 11, CY, dk) + Math.sin(el * 0.0016) * ts * 0.06;
+            big.rotation.set(0.6155 * (1 - open) * (he < 0 ? 1 : 0), el * 0.0007 + (he > 0 ? he * 0.004 + away * 9 : 0), 0.7854 * (1 - open) * (he < 0 ? 1 : 0), 'YXZ');
+            big.scale.setScalar(Math.max(0.001, (1 - away)));
+            bigW.scale.setScalar(1 + 0.55 * open); bigGW.scale.setScalar(1 + 0.55 * open); bigCore.scale.setScalar(CS * (1 - 0.35 * open));
+            bigM.opacity = 0.98 * inK; bigE.opacity = 0.95 * inK; bigG.opacity = (0.16 + 0.07 * Math.sin(el * 0.01) + 0.2 * open) * inK * (1 - away);
+            halo.material.opacity = (0.2 + 0.25 * open) * inK * (1 - away);
+            /* the cage draws edge by edge */
+            var ck = _sigClamp01((el - cageAt) / Math.max(1, foldAt - cageAt - 150));
+            for (var k = 0; k < 12; k++) {
+                var q = _sigEaseOutCubic(_sigClamp01(ck * 12 - k) ), e = edges[k].e;
+                edges[k].m.visible = edges[k].gl.visible = q > 0.01;
+                if (q > 0.01) { _dxBarSet(edges[k].m, e[0], e[1], e[2], _dxLerp(e[0], e[3], q), _dxLerp(e[1], e[4], q), _dxLerp(e[2], e[5], q), ts * 0.03); _dxBarSet(edges[k].gl, e[0], e[1], e[2], _dxLerp(e[0], e[3], q), _dxLerp(e[1], e[4], q), _dxLerp(e[2], e[5], q), ts * 0.1); }
+            }
+            cageM.opacity = 0.96 * (he < 0 ? 1 : 0); cageG.opacity = (0.2 + 0.08 * Math.sin(el * 0.012)) * (he < 0 ? 1 : 0);
+            if (el > cageAt && el < foldAt && el - lastS > 60 && _canSpawn()) { lastS = el; var an = rn(0, 6.28); _spawn({ x: c.x + Math.cos(an) * ts * 0.5, y: c.y + Math.sin(an) * ts * 0.5, z: bz + 4, mode: 'billboard', sprite: 'sparkle', ml: rn(600, 1000), size0: rn(4, 8), size1: 1, vx: 0, vy: 0, vz: rn(60, 160), opacity0: 0.9, tint: _DX.hot }); }
+            /* the folds: each one a held breath, then a snap to half */
+            var fe = el - foldAt, fi = Math.max(0, Math.min(2, Math.floor(fe / FD))), fk = fe < 0 ? 0 : (fe >= FD * 3 ? 1 : _sigEaseInCubic(_sigClamp01((fe - fi * FD - FD * 0.55) / (FD * 0.3))));
+            var from = fe < 0 || fi === 0 ? [1, 1, 1] : AX[fi - 1], to = fe < 0 ? [1, 1, 1] : AX[fi];
+            var sx = _dxLerp(from[0], to[0], fk), sy = _dxLerp(from[1], to[1], fk), sz = _dxLerp(from[2], to[2], fk);
+            var done = fe < 0 ? 0 : fi + (fk >= 1 ? 1 : 0);
+            if (done > folds) {
+                folds = done; creaseAt = el; _shake(folds === 3 ? 'hard' : 'normal'); _dxKick(6 + folds * 4, 220);
+                if (folds === 3) _dxBarSet(crease, -KW * 0.7, KH * 0.28, 0, KW * 0.7, KH * 0.28, 0, ts * 0.07); else _dxBarSet(crease, 0, -ts * 0.1, 0, 0, KH * 1.1, 0, ts * 0.07);
+                for (var s2 = 0; s2 < 10; s2++) { var sa = rn(0, 6.28), sv = rn(60, 200); _spawn({ x: c.x, y: c.y, z: bz + ts * rn(0.2, 1.2), mode: 'billboard', sprite: 'sparkle', ml: rn(300, 600), size0: rn(4, 9), size1: 1, vx: Math.cos(sa) * sv, vy: Math.sin(sa) * sv, vz: rn(-10, 60), opacity0: 0.95, tint: _DX.hot }); }
+            }
+            crM.opacity = 0.9 * (1 - _sigClamp01((el - creaseAt) / 260));
+            /* the stone takes the body as it folds: flesh at the first fold, black cube by the third */
+            var stK = fe < 0 ? 0 : _sigClamp01(fe / (FD * 2.6));
+            stoneM.opacity = 0.97 * stK * (he < 0 ? 1 : 0); _fdFade(body, 1 - _sigClamp01((stK - 0.55) / 0.4)); _fdTint(body, GOLDC, Math.min(0.7, stK * 1.2));
+            /* the lift: what is left turns and goes up into the cube */
+            var lk = el < liftAt ? 0 : _sigEaseInCubic(_sigClamp01((el - liftAt) / Math.max(1, hitAt - liftAt)));
+            pack.scale.set(sx, sy, sz); pack.position.y = _dxLerp(0, CY - KH * 0.14, lk) + (fe > FD * 3 && lk === 0 ? ts * 0.12 * Math.sin((el - foldAt) * 0.004) + ts * 0.14 : 0);
+            pack.rotation.y = fe > FD * 3 ? (el - foldAt - FD * 3) * 0.004 * (1 + lk * 4) : 0;
+            pack.visible = he < 0;
+            pil.material.opacity = el < liftAt ? 0 : (he < 0 ? 0.12 * lk : 0.2 * (1 - _sigClamp01(he / 900)));
+            if (he >= 0 && !hit) {
+                hit = true; body.visible = false;
+                _shake('heavy'); _dxKick(20, 380); _sigScreenFlash('#ffc24a', 240, 0.24);
+                _sigShockRing3D(tx, ty, { color: _DX.gold, r0: ts * 0.3, r1: ts * 3.4, ms: 640, height: CY });
+                _sigShockRing3D(tx, ty, { color: _DX.violet, r0: ts * 0.3, r1: ts * 2.6, ms: 700 });
+                _dxCrater(tx, ty, 3.2, _DX.gold, 2400);
+                _dxShards(tx, ty, 14, ts * 0.4);
+            }
+        });
+    }
     function _dxStage(phase, spellId, p) {
         var S = _DX_SPELLS[spellId];
         if (!S || !p || _dxOff() || p.mark) return;
@@ -43103,6 +43195,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         P.at(P.CHARGE - 1500, function () { var H = 1500 + P.STRIKE; _sigTheRuler3D(P.cx, P.cy, P.tx, P.ty, { ms: P.STRIKE + 5400, rulerAt: 100, tapAt: 1200, riseAt: H - 800, hitAt: H }); });
         P.at(P.hitAt, function () { P.ring(0xd8b070, { r1: P.ts * 3.2, ms: 620 }); P.flash('#ffffff', 180, 0.75); P.shake('heavy'); P.grade('#ffe080', 700); });
         P.at(P.hitAt + 300, function () { P.whiteout(0xf4ecd8, 5, { ms: 800, peak: 0.5 }); });
+    };
+    /* THE DEMIURGE (2026-11-27): Unmade on the stage */
+    _FIN_STAGE.unmade = function (P) {
+        P.circle(0xffc24a, 0x05030a);
+        P.at(P.CHARGE - 1400, function () { var H = 1400 + P.STRIKE; _sigUnmade3D(P.cx, P.cy, P.tx, P.ty, { ms: P.STRIKE + 5400, cubeAt: 100, cageAt: Math.round(H * 0.2), foldAt: Math.round(H * 0.4), liftAt: Math.round(H * 0.82), hitAt: H }); });
+        P.at(P.hitAt, function () { P.shake('heavy'); P.grade('#ffc24a', 700); });
     };
     function _finStagePlay(def, o) {
         if (!_VS.on || !def) return 0;
@@ -80983,6 +81081,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         sigTheDrain3D: _sigTheDrain3D,
         sigEventHorizon3D: _sigEventHorizon3D,
         sigHeatDeath3D: _sigHeatDeath3D,
+        sigUnmade3D: _sigUnmade3D,
         sigUpUpAndAway3D: _sigUpUpAndAway3D,
         sigAirSupport3D: _sigAirSupport3D,
         sigDecommissioned3D: _sigDecommissioned3D,

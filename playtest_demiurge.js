@@ -25,7 +25,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 const CAST = (a) => {
   const st = GAME.state, spellId = a.spellId;
   const sp0 = SPELL_BY_ID[spellId]; if (!sp0) return { err: 'no spell ' + spellId };
-  const form = (RACE_GENDER_SPELLS.demiurge.female.indexOf(spellId) >= 0) ? 'female' : 'male';
+  const form = a.form || ((RACE_GENDER_SPELLS.demiurge.female.indexOf(spellId) >= 0) ? 'female' : 'male');
   const caster = st.units.find(u => u.player === 1 && u.race === 'demiurge' && (u.gender || 'male') === form);
   if (!caster) return { err: 'no ' + form + ' demiurge' };
   const foes = st.units.filter(u => u.player === 2).slice(0, 3);
@@ -40,6 +40,22 @@ const CAST = (a) => {
   { let k = 0; st.units.forEach(u => { if (u !== caster && foes.indexOf(u) < 0) put(u, P.far.x + (u.player === 1 ? 0 : 1), P.far.y + (k++ % 3)); }); }   /* a real square: a body sent to NaN never comes back */
   if (a.fin) { foes[0].hp = 1; }
   try { ThreeRenderer.invalidateUnits(); GAME.markDirty(); GAME.renderIfDirty && GAME.renderIfDirty(); } catch (e) {}
+  /* PIECE=1: the Unmade set piece alone on its own clock (no banner, no finisher): the cloud's 2 fps cannot keep a whole
+     execution in step, so the folds and the lift are checked here */
+  if (a.piece) {
+    try { camera.moveTo({ x: foes[0].x, y: foes[0].y, zoom: (typeof getCloseZoom === 'function' ? getCloseZoom() : 1.4) * (a.zoom || 0.8), duration: 0, _fogAllowed: true }); } catch (e) {}
+    const t00 = performance.now() - 2;
+    const ok = window.ThreeVFXEffects.sigUnmade3D(caster.x, caster.y, foes[0].x, foes[0].y, { ms: 7400, cubeAt: 100, cageAt: 1000, foldAt: 2000, liftAt: 3400, hitAt: 4200 });
+    return { ms: ok ? 1 : 0, form, at: t00 };
+  }
+  /* UNMADE=1: the finisher itself (the gauge is filled, the real doFinisher runs) */
+  if (a.unmade) {
+    foes[0].hp = 1;   /* a kill: the execution's whole ending */
+    caster.ap = 9; st._blitzActiveUnitId = caster.id; st.aiThinking = false; st.currentPlayer = 1; st._actionExecuting = false;
+    st.entropyGauge = st.entropyGauge || {}; st.entropyGauge[1] = 99999;
+    let ok = false; try { ok = window.doFinisher(caster, foes[0].id); } catch (e) { return { err: 'finisher threw ' + e.message }; }
+    return { ms: ok === false ? 0 : 1, form, at: performance.now(), fin: JSON.stringify(window.getFinisherFor && window.getFinisherFor(caster)) };
+  }
   const sp = JSON.parse(JSON.stringify(sp0));
   caster.spells = [sp]; caster._spellSlots = [spellId]; caster._raceAbilities = [];
   caster.ap = 9; caster.mp = caster.maxMp = 999; caster._spellCooldowns = {}; caster._spellsUsedThisTurn = {};
@@ -103,11 +119,13 @@ const CAST = (a) => {
   }));
   await page.evaluate(() => { let n = 0, t0 = performance.now(); const f = () => { n++; const t = performance.now(); if (t - t0 >= 1000) { window.__dmFps = Math.round(n * 1000 / (t - t0)); n = 0; t0 = t; } (window.__ewRawRaf || requestAnimationFrame)(f); }; f(); });
   const rows = [];
-  const list = SPELLS.slice(); if (process.env.FIN) list.push('FIN');
+  const list = SPELLS.slice(); if (process.env.FIN) list.push('FIN'); if (process.env.UNMADE) list.push('UNMADE'); if (process.env.PIECE) list.push('PIECE');
   for (const id of list) {
     for (const T of TIMES) {
       const fin = id === 'FIN';
-      const r = await page.evaluate(CAST, { spellId: fin ? (process.env.FINSPELL || 'dmCornerstone') : id, fin });
+      if (id === 'PIECE') await page.evaluate(() => { const V = window.ThreeVFXEffects; if (V && !V.__dmWrapped) { V.__dmWrapped = true; const f = V.sigUnmade3D; V.sigUnmade3D = function () { window.__dmU = { t: performance.now(), o: arguments[4] }; return f.apply(this, arguments); }; } });
+      const r = await page.evaluate(CAST, id === 'PIECE' ? { spellId: 'dmCornerstone', piece: true, zoom: +(process.env.ZOOM || 0.8) } : id === 'UNMADE' ? { spellId: 'dmCornerstone', unmade: true, form: process.env.FORM || 'male' } : { spellId: fin ? (process.env.FINSPELL || 'dmCornerstone') : id, fin });
+      if (id === 'UNMADE') console.log('finisher', r.fin);
       if (r.err || !r.ms) { console.log('CAST FAIL', id, JSON.stringify(r)); break; }
       /* 'c1200' = 1200 ms after the cast, 'h400' = 400 ms after the real hit. The page itself parks its frame loop at that
          moment (probe-fast's hold), so the picture is the frame of that instant however slow the round trip is. */
@@ -116,10 +134,16 @@ const CAST = (a) => {
         window.__dmHeld = 0;
         const hold = () => { window.__ewHold = true; window.__dmHeld = performance.now(); };
         if (a.kind === 'c') { setTimeout(hold, Math.max(0, a.val - (performance.now() - a.at))); return; }
+        if (a.kind === 'u') {   /* 'u2400' = 2400 ms into the Unmade set piece (its own clock: el) */
+          const V = window.ThreeVFXEffects; if (V && !V.__dmWrapped) { V.__dmWrapped = true; const f = V.sigUnmade3D; V.sigUnmade3D = function () { window.__dmU = { t: performance.now(), o: arguments[4] }; return f.apply(this, arguments); }; }
+          const iu = setInterval(() => { const U = window.__dmU; if ((U && U.t > a.at) || performance.now() - a.at > 30000) { clearInterval(iu); setTimeout(hold, Math.max(0, a.val - (U && U.t > a.at ? performance.now() - U.t : 0))); } }, 8);
+          return;
+        }
         const iv = setInterval(() => { const s = window.__dmxStat && window.__dmxStat(); if ((s && s.hit > a.at) || performance.now() - a.at > 12000) { clearInterval(iv); setTimeout(hold, Math.max(0, a.val - (s && s.hit > a.at ? performance.now() - s.hit : 0))); } }, 8);
       }, { kind, val, at: r.at });
-      for (let i = 0; i < 600; i++) { if (await page.evaluate(() => window.__dmHeld > 0).catch(() => false)) break; await sleep(25); }
+      for (let i = 0; i < 1600; i++) { if (await page.evaluate(() => window.__dmHeld > 0).catch(() => false)) break; await sleep(25); }
       const info = await page.evaluate((at) => ({ held: Math.round(window.__dmHeld - at), fps: window.__dmFps, shot: camera._cineShotId, dmx: (window.__dmxStat ? window.__dmxStat() : null), dir: (window.SpellDirector && SpellDirector.log.length ? SpellDirector.log[SpellDirector.log.length - 1].beats : null) }), r.at);
+      if (kind === 'u') console.log('unmade clock', await page.evaluate(() => JSON.stringify(window.__dmU && window.__dmU.o)));
       const pic = `${TAG}_${id}_${T}.png`;
       /* the probe's own caster is the active unit, so its command menu is up; a real cast has closed it */
       await page.evaluate(() => { const hit = [...document.querySelectorAll('div,section,aside')].filter(e => e.childElementCount > 2 && /END TURN/.test(e.textContent || '') && e.getBoundingClientRect().width < innerWidth * 0.6); hit.forEach(e => { e.style.visibility = 'hidden'; }); });
@@ -129,6 +153,8 @@ const CAST = (a) => {
       /* let the cast end before the next one */
       await sleep(3200);
       for (let i = 0; i < 40; i++) { if (await page.evaluate(() => camera._cineShotId == null && !GAME.state._execActive)) break; await sleep(250); }
+      if (id === 'PIECE') await sleep(6000);
+      if (id === 'UNMADE') { for (let i = 0; i < 160; i++) { if (await page.evaluate(() => !GAME.state._actionExecuting && camera._cineShotId == null)) break; await sleep(250); } await sleep(3000); }
     }
   }
   fs.writeFileSync(`${OUT}/${TAG}.json`, JSON.stringify(rows, null, 1));
