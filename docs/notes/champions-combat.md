@@ -6771,7 +6771,7 @@ AVAILABLE_RACES (data.js + server.js), codex lore, the VFX and the spell moves o
 ## THE FLOATING BRAIN'S PIECES (2026-11-27, thread "Animate the floating brain's pieces")
 mondo: "Can we make individually animated pieces for the floating brain; it feels stiff compared to the other units that have tentacles
 hanging, it'd be nice if the eye could move around too." The Floating Brain (`boltzmann brain`) was one still Meshy mesh (`clips: {}`).
-- THE FILE: `Assets/characters/races/boltzmann_brain/male/boltzmann_brain_v2.glb`, cut from the still model by the repo tool
+- THE FILE: `Assets/characters/races/boltzmann_brain/male/boltzmann_brain_v4.glb` (v2 = the first cut, see THE LIDS' FLICKER), cut from the still model by the repo tool
   `bake-brain.py` (numpy + pillow, no Blender, NO Meshy credits; a copy in project files `floating-brain/`). The old file stays on R2.
   Nodes: `ewBbBody` (the brain, a node at its middle) > `ewBbBrain` (its mesh), `ewBbEye` (a real ball in the socket: the painted eye
   cap, 419 triangles, is cut out and its own picture is wrapped on the ball; gaze +Z), `ewBbLidU` / `ewBbLidD` (two lids, rest = open
@@ -6791,6 +6791,13 @@ hanging, it'd be nice if the eye could move around too." The Floating Brain (`bo
 - THE PROBE: `TAG=a SHOTS=4 GAP=900 ZOOM=6 ACTS=idle,nrObserverEffect,hit,death node playtest_brain.js` (a real VS CPU board, the
   camera close; each picture comes with the live rig's numbers: the eye's turn, the lids, the brain's lift / nod / throb, three
   tendril tips against their roots). ZOOM over 6 pushes the brain off the top of the frame.
+- THE LIDS' FLICKER (same day, mondo: "looks like there is z-fighting with the eyelids blinking"): the lids sat at 1.03 x the eye's
+  radius over a ball at 0.985 (0.16 world units apart on the board; camera near 1, far 20000), and a swollen eye (`es`) grew through
+  them. Now the file is `boltzmann_brain_v4.glb` (a NEW name: R2 files are cached for good): ball 0.95, lids 1.10 (0.53 world units),
+  open = 60 degrees back under the rim; a clip with `es` over 0.05 puts the lids away (scale 0.001) until the eye shrinks (Dread's
+  swell went, so its lids still flutter); `_bbLidTick` (the unit loop) gives each brain's lids their own material with
+  polygonOffset, so they always draw over the ball (the board swaps a unit's materials for Lambert after the build, so a flag set in
+  the builder is lost). Read in the live game by the probe: `lidOffset: true:MeshLambertMaterial:own`.
 - NOT DONE: in a fight the tendrils read dark, the ink outline is as wide as they are; the eye does not follow the camera or a
   target, it plays its script; no new VFX or sound for the spells.
 ## THE ORIGAMI GIRL (2026-11-27, thread "Build origami girl's spells and VFX")
