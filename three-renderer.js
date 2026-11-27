@@ -8995,7 +8995,7 @@ const ThreeRenderer = (function () {
            ground's own, its top coolK / warmK (the two tones the slow patches drift between) */
         sheets: { calm_grass: [0.252, 0.313, 0.163], calm_rockygrass: [0.270, 0.315, 0.200], calm_purplegrass: [0.324, 0.195, 0.513], calm_darkgrass: [0.213, 0.240, 0.162],
                   grass: [0.302, 0.307, 0.197], grass_dark_fantasy: [0.302, 0.307, 0.197], grass_2: [0.261, 0.519, 0.163], grass_3: [0.352, 0.673, 0.061], grass_4: [0.303, 0.276, 0.163], grass_rocky: [0.434, 0.533, 0.234], purple_grass: [0.462, 0.286, 0.557] },
-        lit: 1.0, rootK: 0.40, coolK: [1.08, 1.34, 1.28], warmK: [1.42, 1.44, 1.04],
+        lit: 1.0, rootK: 0.70, coolK: [1.08, 1.34, 1.28], warmK: [1.42, 1.44, 1.04],
         patchM: 1.8,        // patch size, squares
         pressR: 0.42,       // a unit lays the grass down this far round its feet (× tile)
         pressN: 4,          // press map texels per square
@@ -9024,7 +9024,7 @@ const ThreeRenderer = (function () {
        tuft is built. Nothing reads the camera any more (aGgS and uGgR are gone from the shader and its WebGPU twin); the same corners and
        triangles as before, drawn from both sides. A blade that leans toward the light is a little lighter, away a little darker (sunK), so a
        tuft has a lit side. _ggFace3(r, az) fills the eight blades' headings for one tuft. */
-    var _GG3 = { DX: new Float32Array(8), DZ: new Float32Array(8), PX: new Float32Array(8), PZ: new Float32Array(8), SH: new Float32Array(8), sun: 0.9, sunK: 0.13, twist: 0.75, jit: 0.9, reach: 0.55, wide: 0.85 };   // reach: how far a blade arches out from the root (x the old fan's splay: a fan laid flat is a starfish), wide: a blade's width x
+    var _GG3 = { DX: new Float32Array(8), DZ: new Float32Array(8), PX: new Float32Array(8), PZ: new Float32Array(8), SH: new Float32Array(8), sun: 0.9, sunK: 0.13, twist: 0.75, jit: 0.9, reach: 0.45, wide: 0.85 };   // reach: how far a blade arches out from the root (x the old fan's splay: a fan laid flat is a starfish), wide: a blade's width x
     function _ggFace3(r, az) {
         var G = _GG3;
         for (var b = 0; b < 8; b++) {
@@ -9429,17 +9429,17 @@ const ThreeRenderer = (function () {
        of the head re-sent every cell's index), and the far rings' tufts are 25 and 9 corners against 49.
        On arriving (and after a jump of 30 m+) the field fills first (fillMs a frame), then RISES out of the ground over riseS.
        Old field back, live: window.EW_HQ_GRASS_NO_RINGS = true (one ring to old.radiusM, a hard edge). No culling: window.EW_HQ_GRASS_NO_CULL. */
-    var HQ_GRASS = { cellM: 7, perSquare: 10, autoN: { high: 8, low: 6 },   /* (11-27, THE BLADES STAND IN THE WORLD: 9 / 7 / 5 before; a near tuft's blade is 3 triangles now, was 5, so more tufts for fewer triangles) */ tickMs: 100, steep: 0.55, height: 1.43,   // height: a tuft against the board's (a walker stands in it, a board's camera looks down on it)
+    var HQ_GRASS = { cellM: 7, perSquare: 14, autoN: { high: 13, low: 9 },   /* (11-27, THE BLADES STAND IN THE WORLD: 9 / 7 / 5 before; a near tuft's blade is 3 triangles now, was 5, so more tufts for fewer triangles) */ tickMs: 100, steep: 0.55, height: 1.65,   /* (11-27 round 2: 1.43; shin high in a wood, never knee deep: it hid the rocks and plants) */   // height: a tuft against the board's (a walker stands in it, a board's camera looks down on it)
         /* to = where the ring ends (m from the walker) · band = it shrinks away over its last metres · lead = it grows in over this many metres, done where the ring before
            starts to shrink · pad = a cell is built this far ahead · cell = cell size × cellM (the tufts stand that much further apart) · tall = height × · blades / pts = which
            of the fan's seven blades a tuft keeps and which of a blade's seven corners (root L R, two pairs, tip) · spread / thick = how far the blades splay / how thick each is */
-        rings: [{ to: 22, band: 7, pad: 3, blades: [0, 1, 2, 3, 4, 5, 6], pts: [0, 1, 4, 5, 6] },
-                { to: 52, band: 12, lead: 6, pad: 5, cell: 2, tall: 1.06, spread: 1.15, thick: 1.5, blades: [0, 1, 3, 5, 6], pts: [0, 1, 4, 5, 6] },
-                { to: 110, band: 30, lead: 10, pad: 8, cell: 4, tall: 1.14, spread: 1.4, thick: 2.6, blades: [0, 3, 6], pts: [0, 1, 6] }],
-        low: { perSquare: 7, rings: [{ to: 16, band: 5, pad: 3, blades: [0, 1, 2, 3, 4, 5, 6], pts: [0, 1, 4, 5, 6] }, { to: 42, band: 12, lead: 5, pad: 5, cell: 2, tall: 1.08, spread: 1.2, thick: 1.8, blades: [0, 3, 6], pts: [0, 1, 4, 5, 6] }] },
+        rings: [{ to: 17, band: 5, pad: 3, blades: [0, 1, 2, 3, 4, 5, 6], pts: [0, 1, 4, 5, 6] },
+                { to: 42, band: 10, lead: 5, pad: 5, cell: 2, tall: 1.05, spread: 1.1, thick: 2.0, blades: [0, 1, 3, 5, 6], pts: [0, 1, 4, 5, 6] },
+                { to: 100, band: 28, lead: 9, pad: 8, cell: 6, tall: 1.15, spread: 1.5, thick: 4.4, blades: [0, 3, 6], pts: [0, 1, 6] }],
+        low: { perSquare: 10, rings: [{ to: 12, band: 4, pad: 3, blades: [0, 1, 2, 3, 4, 5, 6], pts: [0, 1, 4, 5, 6] }, { to: 38, band: 11, lead: 5, pad: 5, cell: 2, tall: 1.08, spread: 1.2, thick: 2.6, blades: [0, 3, 6], pts: [0, 1, 4, 5, 6] }] },
         old: { radiusM: 28, low: 16 },
         buildMs: 3, fillMs: 8, riseS: 0.9, riseWaitMs: 2500, jumpM: 30 };
-    try { window.EW_HQ_GRASS = HQ_GRASS; } catch (e) {}
+    try { window.EW_HQ_GRASS = HQ_GRASS; window.EW_GG3 = _GG3; HQ_GRASS.flush = function () { _ggPalCache = {}; _hqGrassDrop(); }; } catch (e) {}   // flush = retune live (a probe): the walked room's field is dropped and grows again with the values as they stand
     var _hqGG = null;
     function _hqGrassDrop() {
         var S = _hqGG; _hqGG = null; if (!S) return;
@@ -9462,7 +9462,7 @@ const ThreeRenderer = (function () {
        ────────────────────────────────────────────────────────────────────── */
     var GROUND_RULES = {
         clumpM: 2.6,        // G1: a clump's size (m)
-        clumpH: [0.48, 1.50],   // a clump's height, × the tuft's
+        clumpH: [0.70, 1.30],   // (11-27 round 2: 0.48-1.50; the low end read as scratches on the floor)   // a clump's height, × the tuft's
         clumpTint: 0.14,    // ± a clump's brightness step
         clumpLean: 0.65,    // how much a clump's blades lean the same way (0 own way .. 1 all one way)
         gapKeep: 0.40,      // the share of tufts kept on the seam between two clumps
@@ -9482,7 +9482,7 @@ const ThreeRenderer = (function () {
            flora.md section 0, G12-G17). G12 THE COVER SPLIT: big irregular patches (domain-warped noise, ranked so the split holds in every
            room): the lowest `q[0]` of the ground is bare (the sheet, its stones and litter show), up to `q[1]` short sward, the rest dense.
            It replaces G3's bare blobs. `band` = how soft a patch's edge is (in rank). Off: EW_NO_COVER (G3 as before). */
-        cover: { m: 11, warpM: 26, warp: 6, q: [0.24, 0.48], band: 0.05, bareKeep: 0.42, bareH: 0.46, shortKeep: 0.92, shortH: 0.70 },
+        cover: { m: 11, warpM: 26, warp: 6, q: [0.24, 0.48], band: 0.05, bareKeep: 0.90, bareH: 0.65, shortKeep: 0.95, shortH: 0.85 }   /* (11-27 round 2, mondo: "that grass is just not cutting it ... does not look like a AAA game": the thin share was 42 % kept at 0.46 height, a floor with scratches on it; the split is now a change of HEIGHT, the cover stays whole) */,
         /* G13 THE ECOLOGY: the cover rank is pushed up at a trunk's foot (canopy.m), down beside a path (path.m past its edge) and round the
            landmarks (a grand stair's foot and its approach, the room's spawn): the rank bias at the thing, fading out over its radius */
         canopy: { m: 6.5, bias: 0.45, edgeM: 3.5, edgeBias: 0.40, nearBias: 0.18, shade: [0.80, 0.90, 0.99], openM: 8, sun: [1.09, 1.05, 0.84] },   // G15: under a crown cooler and darker, in the open warmer
@@ -9502,7 +9502,7 @@ const ThreeRenderer = (function () {
         ],
         /* G16 THE GROUNDING: a blade's root sinks this share of its height into the ground, and the foot is darker (root colour ×, over the
            lowest share of the blade) */
-        sink: 0.07, base: [0.66, 0.50],
+        sink: 0.07, base: [0.90, 0.50],
         /* G17 THE WALKER: the grass bows down and away round the walker's feet (shader; r0..r1 m, down = how far it lies), so he reads */
         walker: { r0: 0.7, r1: 2.0, down: 0.55 },
         /* G19 THE LITTER (mondo's critique, "the forest floor is missing an intermediate layer": fallen leaves, twigs, moss at roots,
@@ -9869,7 +9869,7 @@ const ThreeRenderer = (function () {
         }
         S.busy = w < want.length;
         if (!S.t0 && (!S.busy || now - S.born > G0.riseWaitMs)) { S.t0 = now; S.fillMs = Math.round(now - S.born); }
-        try { window._ewHqGrass = { cells: cells, tufts: tufts, tris: tris, rings: per, level: _ggLevel, fillMs: S.fillMs || 0, lastBuildMs: +(performance.now() - tb).toFixed(1), built: w }; } catch (e) {}
+        try { window._ewHqGrass = { cells: cells, tufts: tufts, tris: tris, rings: per, level: _ggLevel, fillMs: S.fillMs || 0, lastBuildMs: +(performance.now() - tb).toFixed(1), built: w, spentMs: Math.round(S.spent = (S.spent || 0) + (performance.now() - tb)) }; } catch (e) {}
     }
     /* ──────────────────────────────────────────────────────────────────────
        THE FLORA FIELD (2026-11-20, mondo: "a foliage pass on every single zone ... accurate to that zone's climate"; data.js ZONE_FLORA).
