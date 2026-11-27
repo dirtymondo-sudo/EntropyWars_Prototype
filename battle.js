@@ -950,7 +950,8 @@
                 applyTo: 'all',
             },
             'point guard': {   // 2026-11-24 THE POINT GUARD: every throw of his is the basketball
-                projectileClass: 'proj-basketball',
+                /* THE BALL IS OUT (11-27): the Alley-Oop is a high lob, and he CARRIES the ball into the Slam Dunk (no throw: three-renderer.js draws nothing for 'proj-basketball-carry') */
+                projectileClass: (u, sp) => (sp && sp.id === 'pgAlleyOop') ? 'proj-basketball-arc' : (sp && sp.id === 'pgSlamDunk') ? 'proj-basketball-carry' : 'proj-basketball',
                 applyTo: 'all',
             },
             'honda civic': {

@@ -11757,12 +11757,12 @@ const RACE_ABILITIES = {
            it). Crossover (`pgAnkles`) Staggers + Marks whoever stood next to him before the escape; Alley-Oop (`pgOop`) gives the ally a
            sure critical on its next basic attack (the Monarch's `_deltaCrit`). battle.js "THE CHEERLEADER + THE POINT GUARD". */
         { id: 'pgChestPass', name: 'Chest Pass', tier: 1, families: ['basketball'], cost: 25, apCost: 1, spellType: 'human',
-          animClip: { name: 'Pass', lib: 12, ts: 0.9, strikeAt: 0.33 },   // THE BASKETBALL CLIPS (11-27): the pack's two-hand pass
+          animClip: { name: 'Pass', lib: 12, ts: 0.75, strikeAt: 0.33, ball: { hold: 'two' } },   // THE BASKETBALL CLIPS (11-27): the pack's two-hand pass
           element: 'physical', type: 'damage', kind: 'ricochet', damageType: 'physical', dmg: 80, range: 4, bounceDamage: 45, bounceRadius: 2,
           projectileOverride: 'proj-basketball',
           desc: 'Two hands, off the chest. Deals WEAK physical damage to a Single Enemy within 4, then the ball bounces to another enemy within 2 for less.' },
         { id: 'pgCrossover', name: 'Crossover', tier: 2, families: ['basketball'], cost: 35, apCost: 1, cooldownRounds: 2, spellType: 'human',
-          animClip: { name: 'SkillDash', lib: 12, ts: 1.2, trim: [0, 1.0], strikeAt: 0.4 },   // THE BASKETBALL CLIPS (11-27): drops low and drives
+          animClip: { name: 'SkillDash', lib: 12, ts: 1.0, trim: [0, 1.0], strikeAt: 0.4, ball: { beats: 3, top: 0.1 } },   // THE BASKETBALL CLIPS (11-27): drops low and drives
           element: 'wind', type: 'utility', kind: 'escape', range: 0, teleportDistance: 2, pgAnkles: true,
           desc: 'Ankle breaker. He crosses over and is gone, up to 2 squares away; every enemy that was next to him is Staggered for 1 round and left Marked. Cooldown: 2 rounds.' },
         { id: 'pgAlleyOop', name: 'Alley-Oop', tier: 3, families: ['basketball'], cost: 60, apCost: 1, cooldownRounds: 3, spellType: 'human',
@@ -11770,15 +11770,15 @@ const RACE_ABILITIES = {
           element: 'wind', type: 'buff', kind: 'buff', range: 5, statStageBoost: { atk: 2 }, pgOop: true,
           desc: 'He throws it up, they put it down. A Single Ally within 5 gets +2 ATK stages, and its next basic attack is a sure critical hit. Cooldown: 3 rounds.' },
         { id: 'pgBuzzerBeater', name: 'Buzzer Beater', tier: 4, families: ['basketball'], cost: 90, apCost: 1, cooldownRounds: 3, spellType: 'human',
-          animClip: { name: 'Shoot', lib: 12, ts: 0.8, strikeAt: 0.40 },   // THE BASKETBALL CLIPS (11-27): the jump shot, the release at the top
+          animClip: { name: 'Shoot', lib: 12, ts: 0.65, strikeAt: 0.40, ball: { hold: 'two' } },   // THE BASKETBALL CLIPS (11-27): the jump shot, the release at the top
           element: 'wind', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 165, range: 7, ignoresLineOfSight: true,
-          executeBelowPct: 0.15, executeAfterHit: true, projectileOverride: 'proj-basketball',
+          executeBelowPct: 0.15, executeAfterHit: true, projectileOverride: 'proj-basketball-arc',
           desc: 'Three, two, one... Deals HEAVY physical damage to a Single Enemy up to 7 squares away; the ball arcs over cover. If it leaves the target under 15% HP, it is out. Cooldown: 3 rounds.' },
         /* SLAM DUNK (2026-11-24, mondo: "you gotta give him a slam dunk ability too"): a charge row that LEAPS (chargeToTarget's
            vault, flat ground is fine, unlike leapStrike which needs higher ground) onto the tile beside the target and dunks on it;
            a hoop drops in over the victim (three-vfx-effects.js pgSlam). Assist marks it like any of his hits. */
         { id: 'pgSlamDunk', name: 'Slam Dunk', tier: 3, families: ['basketball'], cost: 70, apCost: 1, cooldownRounds: 2, spellType: 'human',
-          animClip: { name: 'Dunk', lib: 12, ts: 0.9, strikeAt: 0.72 },   // THE BASKETBALL CLIPS (11-27): the arm up over the rim, thrown down at 0.72 s
+          animClip: { name: 'Dunk', lib: 12, ts: 0.8, strikeAt: 0.72 },   // THE BASKETBALL CLIPS (11-27): the arm up over the rim, thrown down at 0.72 s
           element: 'physical', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 145, range: 3, chargeToTarget: true,
           statusEffects: [{ id: 'stagger', duration: 1 }],
           desc: 'Takes off from 3 squares out. Leaps onto a Single Enemy within 3 and dunks on it for MEDIUM physical damage, leaving it Staggered for 1 round. Cooldown: 2 rounds.' },
@@ -13142,22 +13142,22 @@ const RACE_ABILITIES = {
 
     'occulus': [
         /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): All-Seeing. */
-        { id: 'goAntimagicGaze', name: 'Antimagic Gaze', tier: 2, families: ['occulus'], cost: 50, apCost: 1,
+        { id: 'goAntimagicGaze', animSlot: 'occAntimagic', animStrikeMs: 260, name: 'Antimagic Gaze', tier: 2, families: ['occulus'], cost: 50, apCost: 1,
           spellType: 'alien', element: 'psychic', type: 'damage', kind: 'line', range: 4, lineWidth: 1, dmg: 70,
           damageType: 'magic', statusEffects: [{ id: 'silence', duration: 1 }],
           desc: 'The great central eye opens and magic dies in its stare. Deals WEAK magic damage to All Enemies in a line and Silences them for a round.' },
-        { id: 'goEyeStalks', name: 'Every Eye at Once', tier: 4, families: ['occulus'], cost: 100, apCost: 1,
+        { id: 'goEyeStalks', animSlot: 'occEveryEye', animStrikeMs: 270, name: 'Every Eye at Once', tier: 4, families: ['occulus'], cost: 100, apCost: 1,
           cooldownRounds: 2, spellType: 'alien', element: 'psychic', type: 'damage', kind: 'damage', range: 5, dmg: 40,   // STATS29 PASS 2026-10-30: dmg 50→40 a ray (2.06× the Tier IV median a cast in STATS29, 1.90× in STATS28; Occulus 58%)
           damageType: 'magic', randomTargets: { count: 5, scope: 'enemies', distinct: false, mult: 1 },
           bonusVsStatus: { status: 'silence', mult: 1.5 },
           desc: 'Every stalk turns and fires. 5 rays land on random enemies within 5 tiles (the same enemy can be hit again), WEAK magic damage each. Deals bonus damage to Silenced targets. Cooldown: 2 rounds.' },
-        { id: 'raceDeathGaze', spellType: 'anomaly', name: 'Death Gaze',
+        { id: 'raceDeathGaze', animSlot: 'occDeathGaze', animStrikeMs: 340, spellType: 'anomaly', name: 'Death Gaze',
           type: 'damage', tier: 4, families: ['eyesight'], cost: 50, dmg: 200, range: 4,   // STATS25 PASS 2026-10-29: dmg 180→200 (451 a cast, 0.80× the Tier IV median; Occulus 38/39%, Bligblog)
           kind: 'damage', damageType: 'magic',
           statStageBoost: { def: -1 },
           bonusVsStatus: { status: 'stun', mult: 1.5 },
           desc: 'Deals HEAVY magic damage to a Single Enemy. Lowers the target\'s DEF by 1 stage. Deals bonus damage to Stunned targets.' },
-        { id: 'raceOmniVision', tier: 2, families: ['eyesight'], spellType: 'divine', name: 'Omni-Vision',
+        { id: 'raceOmniVision', animSlot: 'occOmni', tier: 2, families: ['eyesight'], spellType: 'divine', name: 'Omni-Vision',
           type: 'utility', cost: 20, range: 5, apCost: 1,
           kind: 'scan', scanRadius: 1,
           desc: 'The all-seeing eye reveals. Reveals fog and hidden units in the 3x3 around the caster.' },
