@@ -109084,7 +109084,7 @@ var ZONE_FLORA = (function () {
     return {
         field: 'asset:world/nature/flora/ew_flora_field.glb',
         /* the field's reach round the walker (m), a cell's side, the candidate spots' spacing; `low` = the low grass setting / a weak machine */
-        reach: 46, cellM: 14, step: 1.4, low: { reach: 30, thin: 0.6 }, buildMs: 2.5, fillMs: 7,
+        reach: 74 /* (11-27, mondo: "i can still see the grass loading in at a distance": 46 before, a whole 14 m square of flowers and tufts appeared 46 m ahead) */, cellM: 14, step: 1.4, low: { reach: 30, thin: 0.6 }, buildMs: 2.5, fillMs: 7,
         /* THE ONE KNOB: every layer's count times this (the whole world's ground cover thicker or thinner; the grass tufts take `lushG`) */
         lush: 2.2, lushG: 1.2,
         /* a plant's size against its file: [from, to] (default below) */

@@ -9438,9 +9438,13 @@ const ThreeRenderer = (function () {
         /* to = where the ring ends (m from the walker) · band = it shrinks away over its last metres · lead = it grows in over this many metres, done where the ring before
            starts to shrink · pad = a cell is built this far ahead · cell = cell size × cellM (the tufts stand that much further apart) · tall = height × · blades / pts = which
            of the fan's seven blades a tuft keeps and which of a blade's seven corners (root L R, two pairs, tip) · spread / thick = how far the blades splay / how thick each is */
-        rings: [{ to: 17, band: 5, pad: 3, blades: [0, 1, 2, 3, 4, 5, 6], pts: [0, 1, 4, 5, 6] },
-                { to: 42, band: 10, lead: 5, pad: 5, cell: 2, tall: 1.05, spread: 1.1, thick: 2.0, blades: [0, 1, 3, 5, 6], pts: [0, 1, 4, 5, 6] },
-                { to: 100, band: 28, lead: 9, pad: 8, cell: 6, tall: 1.15, spread: 1.5, thick: 4.4, blades: [0, 3, 6], pts: [0, 1, 6] }],
+        rings: [{ to: 17, band: 5, pad: 5, blades: [0, 1, 2, 3, 4, 5, 6], pts: [0, 1, 4, 5, 6] },   // (pad 3 / 5 before 11-27: a runner outran the build)
+                { to: 42, band: 10, lead: 5, pad: 8, cell: 2, tall: 1.1, spread: 1.4, thick: 3.4, blades: [0, 1, 3, 5, 6], pts: [0, 1, 4, 5, 6] },   // (11-27 THE FAR CLUMPS: thick 2.0, spread 1.1: a quarter of the tufts must still cover the ground)
+                { to: 100, band: 28, lead: 9, pad: 8, cell: 5, tall: 1.25, spread: 2.4, thick: 10, blades: [0, 3, 6], pts: [0, 1, 6] },   // (cell 6, thick 4.4, spread 1.5 before: it read as bare lawn from 40 m)
+                /* THE FAR CLUMPS (2026-11-27, mondo: "i can still see the grass loading in at a distance ... load like a lower res a big clump(s) of grass in the shape of the grass
+                   in the distance"): the field ended 100 m out and grew in from 72 m as he walked. The dense blades end at 17 m and the two rings behind were too thin to read (a lawn with a patch of grass
+                   round him). They are fatter now, and a fourth ring runs to 240 m: two very fat blades a tuft, one triangle each, 2.7 m apart, in 70 m cells built 20 m ahead, so the far ground already wears grass where the real blades will come up. */
+                { to: 240, band: 70, lead: 16, pad: 20, cell: 10, tall: 1.5, spread: 4, thick: 24, blades: [0, 6], pts: [0, 1, 6] }],
         low: { perSquare: 10, rings: [{ to: 12, band: 4, pad: 3, blades: [0, 1, 2, 3, 4, 5, 6], pts: [0, 1, 4, 5, 6] }, { to: 38, band: 11, lead: 5, pad: 5, cell: 2, tall: 1.08, spread: 1.2, thick: 2.6, blades: [0, 3, 6], pts: [0, 1, 4, 5, 6] }] },
         old: { radiusM: 28, low: 16 },
         buildMs: 3, fillMs: 8, riseS: 0.9, riseWaitMs: 2500, jumpM: 30 };
@@ -81473,10 +81477,10 @@ const ThreeRenderer = (function () {
        skirting: top under 0.2 m), a deck / step / doorstep (under 0.55 m, and deeper than 0.7 m or about the doorway's width), the lintel and all over it, a post (under 1 m wide), lettering, and a part that FILLS
        the doorway (a door picture, a lit portal: about the doorway's width, foot to head). Nothing is written back: the room's rows are untouched
        (the editor saves them as they were). window.EW_NO_DOOR_CLEAR = true: the rows as written. */
-    var HQ_DOOR_CLEAR = { cell: 8, inZ: 0.45, outZ: 0.7, minX: 0.2, post: 1.0, floor: 0.2, head: 0.12, deckD: 0.7, deckH: 0.55, keepD: 0.3 };
+    var HQ_ARCH_DOOR_CLEAR = { cell: 8, inZ: 0.45, outZ: 0.7, minX: 0.2, post: 1.0, floor: 0.2, head: 0.12, deckD: 0.7, deckH: 0.55, keepD: 0.3 };   // (2026-11-27, the Haunted House crash: this table was named HQ_DOOR_CLEAR like the doorway squares' table below, which replaced it at load; inZ / outZ read undefined, every cleared doorway's box was NaN and the walls beside a door were built with NaN corners)
     function _hqArchDoorGrid(texb) {
         if ((typeof window !== 'undefined' && window.EW_NO_DOOR_CLEAR) || typeof hqTexbDoor !== 'function' || !texb || !texb.length) return null;
-        var g = { map: {}, n: 0 }, D2R = Math.PI / 180, K = HQ_DOOR_CLEAR;
+        var g = { map: {}, n: 0 }, D2R = Math.PI / 180, K = HQ_ARCH_DOOR_CLEAR;
         texb.forEach(function (f) {
             if (!f || !f.hollow || f.doorsOnly || (typeof hqTexbPackShut === 'function' && hqTexbPackShut(f)) || (typeof hqTexbPrism === 'function' && hqTexbPrism(f))) return;
             var D = hqTexbDoor(f), d = Math.max(2, +f.d || 8), w = Math.max(2, +f.w || 8);
@@ -81495,7 +81499,7 @@ const ThreeRenderer = (function () {
     }
     /* one part against one doorway → null (the part as it is) or the pieces that replace it */
     function _hqArchDoorCut(P, row, door) {
-        var K = HQ_DOOR_CLEAR, D2R = Math.PI / 180, S = P.size || [1, 1, 1], pp = P.p || [0, 0, 0];
+        var K = HQ_ARCH_DOOR_CLEAR, D2R = Math.PI / 180, S = P.size || [1, 1, 1], pp = P.p || [0, 0, 0];
         var rel = (((+row.rot || 0) + (+P.ry || 0) - door.rot) % 360 + 360) % 360, kq = Math.round(rel / 90);
         if (Math.abs(rel - kq * 90) > 0.5) return null;
         kq = kq % 4;
@@ -81572,7 +81576,7 @@ const ThreeRenderer = (function () {
     }
     function _hqArchDoorClear(row, grid) {
         if (!grid || !row || !row.parts || !row.parts.length || typeof row.ground === 'function') return row;
-        var K = HQ_DOOR_CLEAR, D2R = Math.PI / 180, rq = (+row.rot || 0) * D2R, rc = Math.cos(rq), rs = Math.sin(rq), changed = false, out = [];
+        var K = HQ_ARCH_DOOR_CLEAR, D2R = Math.PI / 180, rq = (+row.rot || 0) * D2R, rc = Math.cos(rq), rs = Math.sin(rq), changed = false, out = [];
         var near = function (P) {
             var pp = P.p || [0, 0, 0], S = P.size || [1, 1, 1], r = Math.max(+S[0] || 0, P.s === 'quad' ? 0 : (+S[2] || 0)) / 2 + 1.5;
             var wx = row.x + pp[0] * rc - pp[2] * rs, wz = row.z + pp[0] * rs + pp[2] * rc, list = null;
