@@ -3257,7 +3257,7 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| car_sedan_bot | `Assets/world/vehicles/sedan_bot/ew_sedan_bot_b.glb` | Meshy AI | Meshy image-to-3D, cut into panels + rigged core (bake-sedan-bot.py) |
+| car_sedan_bot | `Assets/world/vehicles/sedan_bot/ew_sedan_bot_c.glb` | Meshy AI | Meshy image-to-3D, cut into panels + rigged core (bake-sedan-bot.py) |
 
 ### Meshy AI parts (the cutscene's AV cart, a new wood-cased TV, the haunted remote) put together by Claude in code (project files cursed-tv/models/assemble.mjs): the casters split off the cart so each wheel spins, rabbit ears + power cable built in code; no bones, the rig is three-renderer.js THE CURSED TV (2026-11-17) — Meshy AI, reworked by Claude (1)
 

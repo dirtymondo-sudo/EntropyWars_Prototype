@@ -89284,7 +89284,7 @@ const ThreeRenderer = (function () {
             var inst = cat.bot ? _sbotModel(cat, U, { scale: fs, onDone: instO.onDone })   // THE SEDAN BOT (2026-11-27): its own file, its parts kept apart
                      : packed ? _carPackModel(cat.pack, U, { hq: true, rng: _carPackRng(p), snow: _carPackSnowy(room), paint: p.paint, scale: fs, onDone: instO.onDone })
                               : _miscModelInstance(_hqModelUrl(cat), true, target, instO);
-            grp.add(inst); if (cat.bot) grp._ew_botInst = inst;
+            grp.add(inst); if (cat.bot) { grp._ew_botInst = inst; grp._ew_mover = true; grp._ew_bunOut = true; }   // (its panels move inside it while it stands: never in a recording, THE MOVERS OUT)
             if (cat.glow && _hqLampHalo(p.key)) {
                 var gl = _hzGlowSprite(cat.glow.size * U, cat.glow.color, 0.5, 0.05, 0.03, 0.4);
                 gl.position.y = cat.glow.y * U;
@@ -95519,7 +95519,7 @@ const ThreeRenderer = (function () {
            `wet` = the deepest water; `reach` = how near its side you stand to get in. THE HILL (11-22): `grade` = the steepest ground it
            stands on (rise over run), `hill` = how much of a slope's pull it feels, `steerMax` = the wheels' hardest lock (handbrake). */
         car: { v: 21, rev: 7, accel: 8.5, brake: 20, coast: 2.4, hand: 15, steer: 0.88, steerHi: 0.22, steerIn: 10, steerMax: 1.1, handSteer: 1.7, wb: 0.6, step: 0.34, clear: 0.34, drop: 0.7, grade: 0.9, wet: 0.45, hill: 0.3, bump: 0.25, lean: 0.035, squat: 0.02, reach: 1.7, exit: 0.75, camDist: 8.0, camUp: 0.9, len: 4.6, beam: 1.9,
-               bot: { morph: 2.4, walk: 4.5, run: 10, accel: 4, turn: 1.9, walkRef: 4.5, runRef: 10, camUp: 2.4, camBack: 5, seat: [0.37, 0.44, -0.02], thigh: 0.12, shin: 0.8, glass: 0.2 } },   // THE SEDAN BOT (2026-11-27)
+               bot: { morph: 2.4, walk: 4.5, run: 10, accel: 4, turn: 3.2, mouse: true, mouseK: 1.6, walkRef: 4.5, runRef: 10, camUp: 2.4, camBack: 5, seat: [0.37, 0.44, -0.02], thigh: 0.12, shin: 0.8, glass: 0.2 } },   // THE SEDAN BOT (2026-11-27)
         keys: { dive: 'c', rise: 'space', board: 'e' },
         labels: { boat: 'THE SKIFF', sub: 'THE BATHYSCAPHE', ship: 'THE SPACESHIP', car: 'THE CAR' },
     };
@@ -95743,7 +95743,7 @@ const ThreeRenderer = (function () {
                 gltf.animations.forEach(function (c) { var a = B.mixer.clipAction(c); a.setEffectiveWeight(0); a.play(); B.acts[c.name] = a; });
             }
             g.add(sc); g._ew_bot = B;
-            if (tickers) tickers.push(function (dt) { _sbotTick(B, dt); });
+            if (tickers) tickers.push(function (dt) { var V = _hq && _hq.vehicle; if (V && V.on && V.rec && _sbotOf(V.rec) === B) return; _sbotTick(B, dt); });   // (driven: the wheel lays its parts itself, _hqTickCar, whatever room's list this sits in)
             if (o.onDone) o.onDone(g, s, new THREE.Box3(new THREE.Vector3(-0.97, 0, -2.25), new THREE.Vector3(0.97, 1.45, 2.25)));
             if (_hq) _hq.dirty = true;
         }, function (e) { try { console.warn('[HQ] the sedan bot did not load', e); } catch (e2) {} });
@@ -95797,7 +95797,7 @@ const ThreeRenderer = (function () {
             var sp = Math.abs(B.v), want = (t >= 1 && sp > 0.35) ? ((sp > (RB.walk || 4.5) * 1.25 && B.acts.run) ? 'run' : 'walk') : '';
             if (want !== B.cur) { if (B.cur && B.acts[B.cur]) B.acts[B.cur].fadeOut(0.25); if (want && B.acts[want]) { B.acts[want].reset().setEffectiveWeight(1).fadeIn(0.25).play(); } B.cur = want; }
             if (want && B.acts[want]) B.acts[want].timeScale = (B.v < 0 ? -1 : 1) * Math.max(0.3, sp / (want === 'run' ? (RB.runRef || 10) : (RB.walkRef || 4.5)));
-            B.mixer.update(dt);
+            try { B.mixer.update(dt); } catch (eMx) {}
         }
         B.root.updateMatrixWorld(true);
         _sbotM1.copy(B.root.matrixWorld).invert();
@@ -96060,6 +96060,10 @@ const ThreeRenderer = (function () {
         /* THE SEDAN BOT: as a robot it walks (W / S, SHIFT runs) and turns on the spot; while it changes it stands */
         var Bt = _sbotOf(rec), RB = Bt ? _sbotRules() : null, bw = !!(Bt && Bt.t >= 1), bl = !!(Bt && Bt.t > 0 && Bt.t < 1);
         if (bl) { thr = 0; turn = 0; hand = true; }
+        /* THE MOUSE STEERS (mondo 11-27: "the car and the robot dont move with the direction of my mouse like other units"): the camera is
+           the mouse's alone here (it does not swing with the turn). The car's front wheels turn toward where the camera looks while it
+           rolls (A / D steer as before, the eye going round with them); the robot walks as the officer does: W / A / S / D by the camera, it turns to face its way */
+        var mS = !!(Bt && RB.mouse !== false && !H.paused && H.cam), camF = mS ? Math.PI - H.cam.yaw : 0, turn0 = turn, bMv = false, bDq = 0;
         _hqWalkGridOn = true;   // the rider's grid: every ask reads its own cell's blockers (RULE #1e)
         try {
             for (var s = 0; s < steps; s++) {
@@ -96071,7 +96075,17 @@ const ThreeRenderer = (function () {
                 else v -= Math.sign(v) * Math.min(Math.abs(v), ((R.coast || 2.4) + Math.abs(v) * 0.12) * h);
                 v -= Math.sin(V.gy || 0) * 9.8 * (R.hill != null ? R.hill : 0.3) * h * ((thr || Math.abs(v) > 0.4) ? 1 : 0);   // the hill: slower up, faster down (a parked car holds)
                 v = Math.max(-(R.rev || 7) * 1.3, Math.min(vmax * 1.15, v));
-                if (bw) { v = V.v + (thr * ((H.keys && H.keys.shift) ? (RB.run || 10) : (RB.walk || 4.5)) * (thr < 0 ? 0.6 : 1) - V.v) * Math.min(1, h * (RB.accel || 4)); if (!thr && Math.abs(v) < 0.05) v = 0; }
+                if (bw && mS) {
+                    bMv = thr !== 0 || turn0 !== 0;
+                    bDq = bMv ? camF - Math.atan2(turn0, thr) - V.yaw : 0; bDq = Math.atan2(Math.sin(bDq), Math.cos(bDq));
+                    var bTv = bMv ? ((H.keys && H.keys.shift) ? (RB.run || 10) : (RB.walk || 4.5)) * Math.max(0, Math.cos(Math.min(Math.PI / 2, Math.abs(bDq) * 1.2))) : 0;
+                    v = V.v + (bTv - V.v) * Math.min(1, h * (RB.accel || 4)); if (!bMv && Math.abs(v) < 0.05) v = 0;
+                }
+                else if (bw) { v = V.v + (thr * ((H.keys && H.keys.shift) ? (RB.run || 10) : (RB.walk || 4.5)) * (thr < 0 ? 0.6 : 1) - V.v) * Math.min(1, h * (RB.accel || 4)); if (!thr && Math.abs(v) < 0.05) v = 0; }
+                else if (mS && !bl && turn0 === 0 && (thr !== 0 || Math.abs(v) > 0.6)) {
+                    var cDq = Math.atan2(Math.sin(camF - V.yaw), Math.cos(camF - V.yaw));
+                    turn = Math.max(-1, Math.min(1, turn0 - Math.max(-1, Math.min(1, cDq * (RB.mouseK || 1.6))) * (v < -0.3 ? -1 : 1)));
+                } else turn = turn0;
                 /* the front wheels */
                 var sp = Math.min(1, Math.abs(v) / vmax), lim = (R.steer || 0.88) + ((R.steerHi || 0.22) - (R.steer || 0.88)) * Math.pow(sp, 0.6);
                 if (hand) lim = Math.min(R.steerMax || 1.1, lim * (R.handSteer || 1.7));
@@ -96081,7 +96095,7 @@ const ThreeRenderer = (function () {
                 var nyaw = V.yaw - (v / wb) * Math.tan(V.steer) * h;
                 rx += fx * v * h; rz += fz * v * h;
                 var nx = rx + Math.sin(nyaw) * wb / 2, nz = rz + Math.cos(nyaw) * wb / 2;
-                if (bw) { V.steer = 0; nyaw = V.yaw - turn * (RB.turn || 1.9) * h; nx = V.x + fx * v * h; nz = V.z + fz * v * h; }
+                if (bw) { V.steer = 0; if (mS) { var bSt = (RB.turn || 3.2) * h; nyaw = V.yaw + Math.max(-bSt, Math.min(bSt, bDq)); } else nyaw = V.yaw - turn * (RB.turn || 1.9) * h; nx = V.x + fx * v * h; nz = V.z + fz * v * h; }
                 if (Math.abs(v) < 0.002 && Math.abs(nyaw - V.yaw) < 1e-6) { V.v = v; continue; }
                 var hit = _hqCarHits(V, R, nx, nz, nyaw, V.y), ok = hit === 0;
                 if (!ok) { var cur = _hqCarHits(V, R, V.x, V.z, V.yaw, V.y); ok = cur > 0 && hit <= cur; }   // already touching: out, never deeper in
@@ -96107,7 +96121,7 @@ const ThreeRenderer = (function () {
                 V.pitch += (wantP - V.pitch) * Math.min(1, h * 9); V.roll += (wantR - V.roll) * Math.min(1, h * 9);
             }
         } finally { _hqWalkGridOn = false; }
-        if (V.yaw !== yaw0) H.cam.yaw -= (V.yaw - yaw0);   // the eye follows the turn and keeps the mouse's offset (the rider's rule)
+        if (V.yaw !== yaw0 && (!mS || (!bw && turn0 !== 0))) H.cam.yaw -= (V.yaw - yaw0);   // the eye follows the turn and keeps the mouse's offset (the rider's rule)
         var grp = rec.grp;
         grp.position.set(V.x * U, V.y * U, V.z * U);
         if (grp.rotation.order !== 'YXZ') grp.rotation.order = 'YXZ';
@@ -96117,6 +96131,7 @@ const ThreeRenderer = (function () {
         pl.x = V.x; pl.z = V.z; pl.y = V.y + (R.camUp || 0);
         var seatB = !!(Bt && Bt.t <= 0);   // THE SEDAN BOT: the driver sits at the wheel behind real glass (drawn); inside the robot he is not
         if (Bt) { var st = RB.seat || [0.37, 0.5, 0]; Bt.v = V.v; Bt.steer = V.steer;
+            try { _sbotTick(Bt, dt); } catch (eBt) { if (!Bt.warned) { Bt.warned = true; try { console.warn('[HQ] the sedan bot tick', eBt); } catch (e2) {} } }   // (driven: its parts are laid by the wheel itself, in whatever room's list its ticker sits)
             if (seatB) { pl.x += Math.cos(V.yaw) * st[0] + Math.sin(V.yaw) * st[2]; pl.z += -Math.sin(V.yaw) * st[0] + Math.cos(V.yaw) * st[2]; pl.y = V.y; }
             else pl.y += Bt.t * (RB.camUp || 2.4);
             if (V.camD0 == null) V.camD0 = H.cam.dist; H.cam.dist = V.camD0 + Bt.t * (RB.camBack || 5); }
@@ -111907,7 +111922,8 @@ const ThreeRenderer = (function () {
                 return out;
             },
             /* THE SEDAN BOT, for a probe: bot() = the driven bot's state; bot(t) holds it at t (0 car … 1 robot); bot('go') = the F key; spawnProp(row) stands one more catalogue prop in the room */
-            bot: function (t) { var V = _hq && _hq.vehicle, B = V && _sbotOf(V.rec); if (!B) return null; if (t === 'go') _sbotToggle(V); else if (t != null) { B.t = Math.max(0, Math.min(1, +t)); B.dir = 0; B.dirty = true; } var pe = _hq.player && _hq.player.entry; return { anim: pe && pe._ew_curAnim, vis: pe && pe.group && pe.group.visible, seatOff: pe && pe.model && pe.model._ew_seatOff, py: pe && pe.group && +(pe.group.position.y / _hqUnits()).toFixed(2), t: +B.t.toFixed(3), dir: B.dir, v: +B.v.toFixed(2), parts: B.parts.length, clips: Object.keys(B.acts), cur: B.cur }; },
+            bot: function (t) { var V = _hq && _hq.vehicle, B = V && _sbotOf(V.rec); if (!B) return null; if (t === 'go') _sbotToggle(V); else if (t != null) { B.t = Math.max(0, Math.min(1, +t)); B.dir = 0; B.dirty = true; } var pe = _hq.player && _hq.player.entry; var dbg = null; try { var wp = function (o) { var e = o.matrixWorld.elements; return [Math.round(e[12]), Math.round(e[13]), Math.round(e[14])]; }, gq = V.rec.grp; dbg = { yaw: +V.yaw.toFixed(2), camF: +(Math.PI - _hq.cam.yaw).toFixed(2), x: +V.x.toFixed(1), z: +V.z.toFixed(1), root: wp(B.root), grp: wp(gq), out: gq._ew_bunOut, par: gq.parent && (gq.parent.name || gq.parent.type), parBun: !!(gq.parent && gq.parent.isBundleGroup), fz: !!(gq.parent && gq.parent._ew_fz), bun: (function (st) { return st ? { dyn: !!st.dyn, quiet: st.quiet, why: st.why } : null; })(gq.parent && gq.parent._ew_bun), parts: B.parts.filter(function (P) { return /chest|roof|doorFL|legL/.test(P.n); }).map(function (P) { return [P.n, wp(P.node), P.r ? wp(P.r) : null, P.node.matrixAutoUpdate, P.node.visible]; }) }; } catch (eD) { dbg = String(eD); }
+                return { dbg: dbg, anim: pe && pe._ew_curAnim, vis: pe && pe.group && pe.group.visible, seatOff: pe && pe.model && pe.model._ew_seatOff, py: pe && pe.group && +(pe.group.position.y / _hqUnits()).toFixed(2), t: +B.t.toFixed(3), dir: B.dir, v: +B.v.toFixed(2), parts: B.parts.length, clips: Object.keys(B.acts), cur: B.cur }; },
             board: function (id) { return _hqBoard(id); },
             spawnProp: function (row) { if (!_hq || !_hq._placeOne) return false; _hq._placeOne(row); _hq.dirty = true; return (_hq.boats || []).map(function (b) { return b.id; }); },
             crossing: function () { try { return _hqXcText(); } catch (e) { return null; } },   /* a probe's read: THE CROSSING CAPTURE's line */
