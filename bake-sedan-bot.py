@@ -103,25 +103,58 @@ def flat(name, rgb, rough=0.5):
     m = bpy.data.materials.new(name); m.use_nodes = True
     b = next(n for n in m.node_tree.nodes if n.type == 'BSDF_PRINCIPLED'); b.inputs['Base Color'].default_value = (*rgb, 1); b.inputs['Roughness'].default_value = rough; b.inputs['Metallic'].default_value = 0
     return m
-M_PLATE, M_INK = flat('ew_plate', (0.92, 0.92, 0.88)), flat('ew_plate_ink', (0.02, 0.05, 0.22), 0.35)
+M_PLATE, M_INK = flat('ew_plate', (0.90, 0.90, 0.86), 0.45), flat('ew_plate_ink', (0.02, 0.05, 0.22), 0.35)
+M_PFRAME, M_PBOLT, M_PTAG = flat('ew_plate_frame', (0.025, 0.025, 0.03), 0.55), flat('ew_plate_bolt', (0.62, 0.63, 0.65), 0.3), flat('ew_plate_tag', (0.72, 0.08, 0.06), 0.5)
 _bvh = BVHTree.FromObject(car, bpy.context.evaluated_depsgraph_get())
+# THE PLATE, REMADE (mondo 11-27: "looks really bad ... add more details ... cover up the original one fully"). A long plate, PW x PH: the plate
+# Meshy painted between the tail lamps measures 0.655 x 0.16 at z 0.775 (ortho render, 1 mm a pixel), so 0.70 x 0.205 hides all of it.
+# Built facing local -Y: a dark raised frame, the pale face sunk inside it, a ruled line, a navy band with a small door on it, DOOR pressed out
+# thick, DISASTER CITY small over it, two bolt heads, a year tag. Six small materials; no texture.
+PW, PH = 0.70, 0.22
+def _box(w, d, h, cx, cy, cz, mat, bev=0.0):
+    bpy.ops.mesh.primitive_cube_add(size=1); o = bpy.context.active_object; o.data.transform(T(cx, cy, cz) @ Matrix.Diagonal((w, d, h, 1)))
+    if bev:
+        m = o.modifiers.new('b', 'BEVEL'); m.width = bev; m.segments = 2; bpy.ops.object.modifier_apply(modifier='b')
+    o.data.materials.append(mat); return o
+def _text(body, size, ext, cx, cy, cz, mat, bold=0.0, space=1.0):
+    cu = bpy.data.curves.new('t', 'FONT'); cu.body = body; cu.align_x = 'CENTER'; cu.align_y = 'CENTER'; cu.size = size; cu.extrude = ext; cu.space_character = space; cu.offset = bold
+    cu.bevel_depth = min(0.0012, ext * 0.4); cu.bevel_resolution = 1
+    to = bpy.data.objects.new('t', cu); bpy.context.scene.collection.objects.link(to); bpy.context.view_layer.update()
+    me = bpy.data.meshes.new_from_object(to.evaluated_get(bpy.context.evaluated_depsgraph_get())); bpy.data.objects.remove(to)
+    tx = bpy.data.objects.new('tm', me); bpy.context.scene.collection.objects.link(tx); me.transform(T(cx, cy, cz) @ R('X', 90)); me.materials.append(mat); return tx
 def plate(tag, z, sy):
     hit, nrm, _, _ = _bvh.ray_cast(Vector((0, sy * 4, z)), Vector((0, -sy, 0)))
     n = Vector((0, nrm.y, nrm.z)).normalized(); n = n if n.y * sy > 0 else Vector((0, sy, 0))
     right = Vector((0, 0, 1)).cross(n).normalized(); up = n.cross(right)
     M = Matrix((( right.x, -n.x, up.x, hit.x + n.x * 0.012), (right.y, -n.y, up.y, hit.y + n.y * 0.012), (right.z, -n.z, up.z, hit.z + n.z * 0.012), (0, 0, 0, 1)))
-    bpy.ops.mesh.primitive_cube_add(size=1); pl = bpy.context.active_object; pl.data.transform(Matrix.Diagonal((0.47, 0.012, 0.21, 1))); pl.data.materials.append(M_PLATE)
-    cu = bpy.data.curves.new('t', 'FONT'); cu.body = 'DOOR'; cu.align_x = 'CENTER'; cu.align_y = 'CENTER'; cu.size = 0.15; cu.extrude = 0.004; cu.space_character = 1.12
-    to = bpy.data.objects.new('t', cu); bpy.context.scene.collection.objects.link(to); bpy.context.view_layer.update()
-    me = bpy.data.meshes.new_from_object(to.evaluated_get(bpy.context.evaluated_depsgraph_get())); bpy.data.objects.remove(to)
-    tx = bpy.data.objects.new('tm', me); bpy.context.scene.collection.objects.link(tx); me.transform(T(0, -0.008, 0.004) @ R('X', 90)); me.materials.append(M_INK)
-    bpy.ops.object.select_all(action='DESELECT'); pl.select_set(True); tx.select_set(True); bpy.context.view_layer.objects.active = pl; bpy.ops.object.join()
+    fw, band = 0.017, 0.072                                         # the frame's width; the navy band at the left
+    cxT = band / 2                                                  # the lettering's middle (the band pushes it right)
+    bits = [_box(PW - 0.004, 0.016, PH - 0.004, 0, 0.002, 0, M_PLATE)]                                   # the face, sunk
+    for sx in (-1, 1): bits.append(_box(fw, 0.026, PH, sx * (PW - fw) / 2, -0.001, 0, M_PFRAME, 0.004))  # the frame: four raised bars
+    for sz in (-1, 1): bits.append(_box(PW, 0.026, fw, 0, -0.001, sz * (PH - fw) / 2, M_PFRAME, 0.004))
+    iw, ih = PW - 2 * fw - 0.014, PH - 2 * fw - 0.014                                                   # the ruled line inside the frame
+    for sx in (-1, 1): bits.append(_box(0.0035, 0.004, ih, sx * iw / 2, -0.007, 0, M_INK))
+    for sz in (-1, 1): bits.append(_box(iw, 0.004, 0.0035, 0, -0.007, sz * ih / 2, M_INK))
+    bx = -PW / 2 + fw + band / 2
+    bits.append(_box(band, 0.004, PH - 2 * fw, bx, -0.0065, 0, M_INK))                                   # the band
+    bits.append(_box(0.030, 0.004, 0.058, bx, -0.0095, -0.006, M_PLATE, 0.001))                          # a small door on it
+    bits.append(_box(0.022, 0.003, 0.021, bx, -0.0115, 0.008, M_INK)); bits.append(_box(0.022, 0.003, 0.021, bx, -0.0115, -0.020, M_INK))
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.0032, segments=8, ring_count=5, location=(bx + 0.010, -0.012, -0.006)); k = bpy.context.active_object; k.data.materials.append(M_PBOLT); bits.append(k)
+    bits.append(_text('DOOR', 0.118, 0.0055, cxT, -0.006, -0.017, M_INK, bold=0.0035, space=1.16))       # the word, pressed out
+    bits.append(_text('DISASTER CITY', 0.021, 0.002, cxT, -0.006, 0.058, M_INK, bold=0.0006, space=1.25))
+    for sx in (-1, 1):                                                                                   # two bolt heads, a washer under each
+        bpy.ops.mesh.primitive_cylinder_add(vertices=14, radius=0.0115, depth=0.004, location=(cxT + sx * 0.205, -0.008, 0.058), rotation=(math.radians(90), 0, 0)); w = bpy.context.active_object; w.data.materials.append(M_PFRAME); bits.append(w)
+        bpy.ops.mesh.primitive_cylinder_add(vertices=6, radius=0.0078, depth=0.008, location=(cxT + sx * 0.205, -0.012, 0.058), rotation=(math.radians(90), 0, 0)); w = bpy.context.active_object; w.data.materials.append(M_PBOLT); bits.append(w)
+    bits.append(_box(0.036, 0.003, 0.028, PW / 2 - fw - 0.030, -0.0065, -0.058, M_PTAG))                 # the year tag
+    bpy.ops.object.select_all(action='DESELECT')
+    for o in bits: o.select_set(True)
+    pl = bits[0]; bpy.context.view_layer.objects.active = pl; bpy.ops.object.join()
     pl.data.transform(M); pl.name = 'p_' + tag
     print('PLATE', tag, [round(v, 3) for v in hit], [round(v, 2) for v in n])
     return pl, hit + n * 0.012
-pf, _ = plate('plateF', 0.44, -1)
+pf, _ = plate('plateF', 0.45, -1)
 bpy.ops.object.select_all(action='DESELECT'); pf.select_set(True); parts['chest'].select_set(True); bpy.context.view_layer.objects.active = parts['chest']; bpy.ops.object.join()
-pr, PLATE_R = plate('plate', 0.75, 1); parts['plate'] = pr      # (over the plate Meshy painted between the tail lamps)
+pr, PLATE_R = plate('plate', 0.782, 1); parts['plate'] = pr      # (over the plate Meshy painted between the tail lamps)
 bpy.data.objects.remove(car)
 
 # ---------------------------------------------------------------- the interior + the steering wheel
@@ -211,7 +244,7 @@ if SHOTS:
         for name, p in parts.items():
             p.matrix_world = bpy.data.objects[('o_' if which == 'open' else 'r_') + name].matrix_world.copy() if which != 'car' else T(*PIV[name])
         body.hide_render = which != 'robot'
-    pose('car'); shot('car_a', (1, -1.2, .6), (0, 0, .7), 5.6); shot('car_b', (1, 0.15, .12), (0, 0, .8), 5.2); shot('car_top', (0.01, 0.3, 1), (0, 0, .7), 5.2); shot('car_r', (0.35, 1, .3), (0, 0, .7), 5.2)
+    pose('car'); shot('car_a', (1, -1.2, .6), (0, 0, .7), 5.6); shot('car_b', (1, 0.15, .12), (0, 0, .8), 5.2); shot('car_top', (0.01, 0.3, 1), (0, 0, .7), 5.2); shot('car_r', (0.35, 1, .3), (0, 0, .7), 5.2); shot('plate_r', (0.3, 1, .15), (0, 2.1, .75), 1.5); shot('plate_f', (0.3, -1, .15), (0, -2.1, .5), 1.5)
     pose('open'); shot('open', (1, -1.2, .8), (0, 0, .8), 6.6)
     pose('robot')
     for n, d in [('f', (0, -1, .05)), ('q', (1, -1.3, .4)), ('s', (1, 0, 0)), ('b', (-.7, 1, .3))]: shot('bot_' + n, d, (0, 0, 2.4), 6.0, (700, 900))

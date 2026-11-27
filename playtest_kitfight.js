@@ -16,12 +16,14 @@ const MINUTES = +(process.env.MINUTES || 8);
 const UNITS = (process.env.UNITS || 'leprechaun:male,medic:male,medic:female,martian:female').split(',').map(s => { const [race, gender] = s.split(':'); return { race, gender: gender || 'male' }; });
 const WANT = (process.env.SPELLS || '').split(',').filter(Boolean);
 const FLAGS = (process.env.FLAGS || '').split(',').filter(Boolean);
+const REPEAT = +(process.env.REPEAT || 1);                                    // cast each row this many times (Transform: there and back)
+const FRAMES = (process.env.FRAMES || '').split(',').map(Number).filter(Boolean);   // FRAMES=10,1200: ten more frames, 1.2 s apart, after a cast (a change that plays on: _f0.._f9)
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const TURN_FN = eval('(' + fs.readFileSync(path.join(REPO, 'playtest.js'), 'utf8').match(/const TURN_FN = ([\s\S]*?\n\});\n/)[1].replace(/\);\s*$/, '') + ')');
 const END = () => { const st = window.GAME.state, u = st.units.find(x => x.id === st._blitzActiveUnitId); if (u && st.controllers[u.player] === 'local') { u.ap = 0; try { window.endUnitIfDone(u); } catch (e) {} } };
 
 /* in the page, on a P1 unit's turn: cast the next untried spell of its own (enemy / ally / tile / fallen ally as the kind wants) */
-const CAST = (todo) => {
+const CAST = (todo, repeat) => {
   const G = window.GAME, st = G.state;
   if (!st || st.phase !== 'battle') return { status: 'not-battle' };
   if (st.winner != null) return { status: 'done' };
@@ -29,14 +31,15 @@ const CAST = (todo) => {
   if (!unit || unit.dead) return { status: 'no-unit' };
   if (st.controllers[unit.player] !== 'local') return { status: 'ai-turn' };
   window.__kitTried = window.__kitTried || {};
-  const rows = (unit.spells || []).filter(s => s && todo.indexOf(s.id) >= 0 && !window.__kitTried[s.id]);
+  if ((repeat || 1) > 1 && window.__kitOnly != null && window.__kitOnly !== unit.id) return { status: 'nothing', race: unit.race, has: [] };   // (REPEAT: the same unit casts again, there and back)
+  const rows = (unit.spells || []).filter(s => s && todo.indexOf(s.id) >= 0 && (window.__kitTried[s.id] | 0) < (repeat || 1));
   const ENEMY = new Set(['damage', 'aoe', 'line', 'lifeDrain', 'debuff', 'multiHit', 'barrage']);
   const D = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
   for (const spell of rows) {
     if (!G.canAffordSpell(unit, spell) || (unit.mp || 0) < (spell.cost || 0)) continue;
     const tiles = G.getSpellRangeTiles(unit, spell) || [];
     let pick = null;
-    if (spell.kind === 'healAll') pick = { x: unit.x, y: unit.y, z: unit.z };
+    if (spell.kind === 'healAll' || spell.kind === 'transform') pick = { x: unit.x, y: unit.y, z: unit.z };
     else if (spell.kind === 'revive') {
       const dead = st.units.find(u => u.player === unit.player && u.dead && D(u, unit) <= (spell.range || 1) + 3);
       if (!dead) continue; pick = { x: dead.x, y: dead.y, z: dead.z };
@@ -55,7 +58,7 @@ const CAST = (todo) => {
     let ret, err = null;
     try { ret = G.doSpell(unit, pick.x, pick.y, pick.z); } catch (e) { err = String(e && e.message || e); }
     st.selectedTool = null; st.actionMode = null;
-    window.__kitTried[spell.id] = 1;
+    window.__kitTried[spell.id] = (window.__kitTried[spell.id] | 0) + 1; window.__kitOnly = unit.id;
     const logs = st.logEntries.slice(L0).map(e => typeof e === 'string' ? e : e.m).slice(0, 6);
     return { status: 'cast', spell: spell.id, race: unit.race, gender: unit.gender, at: pick, ret: ret === undefined ? 'undef' : ret, err, logs, gold: unit.lpGold | 0 };
   }
@@ -116,7 +119,7 @@ const CAST = (todo) => {
       if (window.__kitUnits && window.__kitUnits[k]) u.gender = window.__kitUnits[k].gender; k++;
       const kit = (window.RACE_ABILITIES && window.RACE_ABILITIES[u.race]) || [];
       const off = (typeof window.raceGenderOffSpellIds === 'function') ? window.raceGenderOffSpellIds(u.race, u.gender) : [];
-      const mine = kit.filter(s => off.indexOf(s.id) < 0 && /^(lp|md|go(Hypno|Brain))/.test(s.id));
+      const mine = kit.filter(s => off.indexOf(s.id) < 0 && (/^(lp|md|go(Hypno|Brain))/.test(s.id) || want.indexOf(s.id) >= 0));
       for (const s of mine) { if (!(u.spells || []).some(x => x.id === s.id)) { u.spells = (u.spells || []).concat([Object.assign({}, s)]); } if (all.indexOf(s.id) < 0) all.push(s.id); }
       u.mp = u.maxMp = Math.max(u.maxMp || 0, 999);
     }
@@ -124,15 +127,17 @@ const CAST = (todo) => {
   }, WANT);
   console.log('units', await page.evaluate(() => JSON.stringify(window.GAME.state.units.filter(u => u.player === 1).map(u => [u.race, u.gender, u.spells.length]))));
   console.log('todo', todo.join(','));
+  await page.evaluate('window.__kitCast = ' + CAST.toString());
   const start = Date.now(), rows = []; let stalls = 0;
   while (Date.now() - start < MINUTES * 60000) {
-    const left = todo.filter(id => !rows.some(r => r.spell === id));
+    const left = todo.filter(id => rows.filter(r => r.spell === id).length < REPEAT);
     if (!left.length) break;
-    const r = await page.evaluate(CAST, left).catch(e => ({ status: 'err', e: String(e.message).slice(0, 120) }));
+    const r = await page.evaluate(([l, n]) => (window.__kitCast)(l, n), [left, REPEAT]).catch(e => ({ status: 'err', e: String(e.message).slice(0, 120) }));
     if (r.status === 'cast') {
       console.log('CAST', JSON.stringify(r));
       await sleep(900); try { await page.screenshot({ path: `${OUT}/${TAG}_${r.spell}_a.png` }); } catch (e) {}
       await sleep(700); try { await page.screenshot({ path: `${OUT}/${TAG}_${r.spell}_b.png` }); } catch (e) {}
+      for (let fi = 0; fi < (FRAMES[0] || 0); fi++) { await sleep(FRAMES[1] || 1000); try { await page.screenshot({ path: `${OUT}/${TAG}_${r.spell}_${rows.filter(x => x.spell === r.spell).length}_f${fi}.png` }); } catch (e) {} }
       r.gold2 = await page.evaluate(() => { const u = GAME.state.units.find(x => x.race === 'leprechaun'); return u ? u.lpGold | 0 : null; });
       rows.push(r); stalls = 0;
       for (let i = 0; i < 20 && await page.evaluate(() => camera && camera._cineShotId != null).catch(() => false); i++) await sleep(300);

@@ -3708,7 +3708,8 @@ const RACE_MODELS_3D = {
            the garage's transforming sedan by bake-sedan-bot.py --unit (the car = its panels + cabin + DOOR plates, no bones; the robot =
            its rigged core with the same panels skinned to the bones). Before: Meshy_AI_1990s_sedan_0719015525_texture.glb + the
            1990s_sedan_transform biped (both kept on R2) */
-        model: 'https://cdn.entropywars.net/Assets/characters/races/hondacivic/ew_sedan_unit_a_car.glb',
+        model: 'https://cdn.entropywars.net/Assets/characters/races/hondacivic/ew_sedan_unit_b_car.glb',
+        foldFx: 'https://cdn.entropywars.net/Assets/world/vehicles/sedan_bot/ew_sedan_bot_e.glb',   // THE FOLD IN A FIGHT (three-renderer.js): the transforming file its change plays
         clips: {},
         heightRatio: 0.55,        // roofline ~chest-high → ~1.7 tiles bumper-to-bumper
         yawOffset: 0,             // (the tool's car has its nose on +Z; the old export's long axis was X: Math.PI / 2)
@@ -3718,7 +3719,8 @@ const RACE_MODELS_3D = {
         deathTimeScale: 1.9, hitTimeScale: 2.8, jumpTimeScale: 3.2,
       };
       const robot = _mkUAL('hondacivic', '1990s_sedan_transform', {
-        model: 'https://cdn.entropywars.net/Assets/characters/races/hondacivic/ew_sedan_unit_a_robot.glb',
+        model: 'https://cdn.entropywars.net/Assets/characters/races/hondacivic/ew_sedan_unit_b_robot.glb',
+        foldFx: 'https://cdn.entropywars.net/Assets/world/vehicles/sedan_bot/ew_sedan_bot_e.glb', foldBot: true,
         heightRatio: 1.45,        // 3.2m bipedal combat platform (mech is 1.5)
         basicAttackKind: 'punch', // "it stood up and punched a building"
         transformFx: true,
