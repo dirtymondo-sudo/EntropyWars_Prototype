@@ -39286,6 +39286,22 @@ const ThreeRenderer = (function () {
         _battleSkyDayCache.key = id; _battleSkyDayCache.v = v;
         return v;
     }
+    /* ══ THE SPELL SKY (2026-11-27, THE DEMIURGE'S CATACLYSMS; mondo: "use ... sky events, background changing ... everything
+       available to you") ══ A spell may hold one of the celestial events (the blood moon, the black sun, the lunar eclipse) over
+       the fight for its own cast: `ThreeRenderer.spellSky(type, ms, { night })`. It rides the same dome uniforms the round's real
+       event does (the eclipse's diamond ring and umbra run from the call), comes in over about a quarter of a second, and when
+       its time is up the dome eases back to the fight's own sky (a real event of the round takes over again). Looks only,
+       each seat its own: nothing is state, no rule reads it, and the caller rides a relayed spell beat (RULE #2).
+       Off: window.EW_NO_SPELL_SKY = true. */
+    var _spSky = { ev: 0, t0: 0, until: 0, night: 0, last: 0 };
+    function _spellSkySet(type, ms, o) {
+        if (typeof window !== 'undefined' && window.EW_NO_SPELL_SKY) return false;
+        var ev = ({ bloodMoon: 1, solarEclipse: 2, lunarEclipse: 3 })[type] || 0, now = performance.now();
+        if (!ev) { _spSky.until = 0; return false; }
+        if (_spSky.ev !== ev || now >= _spSky.until) _spSky.t0 = now;
+        _spSky.ev = ev; _spSky.until = now + Math.max(200, Math.min(20000, +ms || 2000)); _spSky.night = (o && o.night) ? 1 : 0;
+        return true;
+    }
     function _envReadState() {
         var night = 0;
         try {
@@ -39474,6 +39490,15 @@ const ThreeRenderer = (function () {
         var kEv = (performance.now() < _skyRevealBoostUntil) ? 0.16 : k;
         S.skyAmt += ((s.ev > 0 ? 1 : 0) - S.skyAmt) * kEv;
         if (s.ev > 0) S.skyEvent = s.ev;
+        /* THE SPELL SKY: a boss spell holds a celestial event over the fight for its cast (looks only; _spellSkySet) */
+        var _spNow = performance.now(), _spOn = _spSky.ev > 0 && _spNow < _spSky.until;
+        if (_spOn) {
+            /* on the clock, not per frame: the sky is there a third of a second after the call at any frame rate */
+            var _spK = 1 - Math.exp(-Math.min(0.5, Math.max(0.001, (_spNow - (_spSky.last || _spNow - 16)) / 1000)) * 9);
+            S.skyAmt += (1 - S.skyAmt) * _spK; S.skyEvent = _spSky.ev;
+            if (_spSky.night) S.night += (1 - S.night) * _spK * 0.8;
+        } else if (_spSky.ev) { _spSky.ev = 0; }
+        _spSky.last = _spNow;
         S.zodiac += (s.zi - S.zodiac) * 0.08;
         S.storm += (s.w.storm - S.storm) * k;
         S.snow += (s.w.snow - S.snow) * k;
@@ -39550,7 +39575,7 @@ const ThreeRenderer = (function () {
         _ewRimTick(S.night);   // THE UNIT RIM LIGHT: warm by day, cool moonlight by night
         _envUni.uSkyEvent.value = S.skyEvent;
         _envUni.uSkyAmt.value = S.skyAmt;
-        _envUni.uEvAge.value = _skyEvShownAt ? Math.min(99, (performance.now() - _skyEvShownAt) / 1000) : 99;
+        _envUni.uEvAge.value = _spOn ? Math.min(99, (_spNow - _spSky.t0) / 1000) : (_skyEvShownAt ? Math.min(99, (performance.now() - _skyEvShownAt) / 1000) : 99);
         _envUni.uZodiac.value = S.zodiac;
         /* MOVING MAPS: the storm a sea map sails into builds with the rounds
            (a floor under the weather's own storm, never a real weather) */
@@ -112559,7 +112584,8 @@ const ThreeRenderer = (function () {
         /* THE HORSES (2026-10-27): a unit drawn in the saddle for o.ms (held while its body travels) — o.key = the coat
            ('horse' | 'horse_brown' | 'horse_black', else the race's / the id's); mountKeyFor(unit) = that coat */
         mountUnit: function (uid, o) { try { return _mountUnit(uid, o); } catch (e) { return false; } },
-        demiAct: function (uid, name, ms) { try { return _demiAct(uid, name, ms); } catch (e) { return false; } },   // THE DEMIURGE: a spell's own part act
+        demiAct: function (uid, name, ms) { try { return _demiAct(uid, name, ms); } catch (e) { return false; } },
+        spellSky: function (type, ms, o) { try { return _spellSkySet(type, ms, o); } catch (e) { return false; } },   // THE SPELL SKY: a boss spell's own celestial event   // THE DEMIURGE: a spell's own part act
         mountKeyFor: function (unit) { return _mountKeyFor(unit); },
         /* THE LOADING SCREEN (2026-09-19): how many model files are still in flight through the two GLB
            caches — the HQ load card's progress line (map.js) reads it; textures are not counted */
