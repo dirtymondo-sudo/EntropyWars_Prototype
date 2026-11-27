@@ -115028,6 +115028,10 @@ const ThreeRenderer = (function () {
         /* 🕊 THE ORIGAMI IN A FIGHT: fold unit uid into a shape, its blow, the fortune's flap, Seven Folds on a victim (see the block) */
         oriAct: function (uid, what, o) { try { return _oriAct(uid, what, o); } catch (e) { console.warn('[origami] act failed', e); return false; } },
         oriCrane: function (o) { try { return _oriCrane(o); } catch (e) { return null; } },   // a small paper crane for a flock (three-vfx-effects.js)
+        /* 🗡 THE PAPER SWORD AS A BLADE (2026-11-27, mondo: "her swordmanship abilities should use the paper sword instead of the normal
+           sword model"): her folded sword, finished (the fight's own sheet + look), tip up (+y), flat in x y; the spells' sword effects
+           (three-vfx-effects.js _sigBladeInst) swing it in place of the master sword. The caller owns it (S.dispose). */
+        oriSword: function () { try { var S = _oriSheet(_ORI_SHEET.sword, {}); if (!S) return null; S.mats[0].emissive = new THREE.Color(0xffffff); S.mats[0].emissiveMap = _oriGrain(); S.mats[0].emissiveIntensity = 0.24; S.mats[1].emissive = new THREE.Color(0xa5182f); S.mats[1].emissiveIntensity = 0.3; S.set(S.total); return S; } catch (e) { return null; } },
         oriState: function (uid) { var r = _oriU.get(uid); return r ? { shape: r.shape, tau: +(+r.tau).toFixed(2), open: +(+r.open).toFixed(2), act: r.actShape, wad: !!r.wad, f7: !!r.f7, col: r.col } : null; },   // (a probe's read)
         jawAct: function (uid, pat, ms) { var n = _animNow(); _jawHolds[uid] = { pat: String(pat || 'clack'), t0: n, until: n + (+ms || 900) }; return true; },   // 🌰 THE JAW'S SPELL PATTERNS
         jawOpen: function (uid, amt, ms) { _jawHolds[uid] = { amt: Math.max(0, Math.min(1.2, +amt || 0)), until: _animNow() + (+ms || 600) }; return true; },
