@@ -11823,7 +11823,8 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'stagger', duration: 1 }], animSlot: 'mtHop',
           desc: 'The struts pump it into the air and it comes down on all four. Deals MEDIUM physical damage to All Enemies next to it, pushes them 1 square away and Staggers them. Cooldown: 2 rounds.' },
         { id: 'mtBurnout', name: 'Burnout', tier: 4, families: ['monstertruck'], cost: 90, apCost: 1, cooldownRounds: 3, spellType: 'tech',
-          element: 'fire', type: 'damage', kind: 'aoe', damageType: 'physical', dmg: 120, range: 0, aoeRadius: 2, aoeOriginSelf: true,
+          vfxElement: 'fire',   /* no fire ELEMENT: that lit the grass under the truck and burnt it (kit probe 11-27) */
+          type: 'damage', kind: 'aoe', damageType: 'physical', dmg: 120, range: 0, aoeRadius: 2, aoeOriginSelf: true,
           statusEffects: [{ id: 'burn', duration: 2 }, { id: 'blind', duration: 1 }], selfStatusAfter: [{ id: 'revs', duration: 2, gain: 5 }],
           animSlot: 'mtBurnout',
           desc: 'Brakes on, wheels spinning, a ring of burning rubber and smoke. Deals MEDIUM physical damage to All Enemies within 2, Burns them for 2 rounds and Blinds them for 1, and fills its Revs (5). Cooldown: 3 rounds.' },
