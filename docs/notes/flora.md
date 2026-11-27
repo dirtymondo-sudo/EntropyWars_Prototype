@@ -407,6 +407,12 @@ of whatever ground it is on").** `GGRASS.shadow: false`: no blade reads the shad
 `GGRASS.rootK` 1.0 (0.70) and `GROUND_RULES.base` [1.0, 0.55] ([0.90, 0.50]): the lower half of a blade runs from the sheet's own colour up to the tip. `_GG3.sunK` 0.07
 (0.13). Back: `EW_GRASS_SHADOW = true`. Known: grass in a building's shadow stays as bright as grass in the sun.
 
+**G27 · THE FAR CLUMPS (11-27, mondo: "i can still see the grass loading in at a distance ... load like a lower res a big clump(s) of grass in the shape of the
+grass in the distance").** `HQ_GRASS.rings`: a fourth ring to 240 m (two very fat one-triangle blades a tuft, 70 m cells built 20 m ahead); ring 2 thick 3.4 / spread 1.4,
+ring 3 cell 5 / thick 10 / spread 2.4 (they read as bare lawn); pads 5 / 8 (3 / 5). data.js `ZONE_FLORA.reach` 74 (46: a 14 m square of flowers and tufts appeared
+46 m ahead, with no fade). Stonehenge: grass 419K -> about 470K triangles, small plants 134K at reach 74. Not done: a fade-in for the small plants (they still appear
+whole, now 74 m out).
+
 **Not done in this pass (ideas, none built):** blade colour against a sunlit floor (the tufts read darker than the sheet in full
 sun); a gust that the plants and the grass share; trees were left as they are (they already sway).
 
