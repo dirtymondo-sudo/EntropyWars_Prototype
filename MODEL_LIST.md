@@ -25,13 +25,13 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 1366 |
+| Meshy AI | no | 1372 |
 | Meshy AI, reworked by Claude | no | 18 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 107 |
 | Built by Claude in code (a bake tool writes the file) | no (pack bark picture) | 14 |
 | Motion capture (real actors), cut into loops by Claude | yes (motion) | 2 |
-| **UNSORTED** (no SOURCES row yet) | ? | 11 |
+| **UNSORTED** (no SOURCES row yet) | ? | 5 |
 
 Counts are distinct files (a pack kit cut into pieces counts each piece used; the MakeHuman count is the creator's
 picks, each a GLB per body; the code count is procedural catalogue rows).
@@ -3779,6 +3779,12 @@ These rows draw mondo's car pack (GGBot low-poly cars, Assets/vehicles/, `_CAR_P
 | chess_queen_dark | `Assets/world/packs/chess/Low Poly Chess Set.fbx#chess_queen_dark` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
 | chess_rook | `Assets/world/packs/chess/Low Poly Chess Set.fbx#chess_rook` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
 | chess_rook_dark | `Assets/world/packs/chess/Low Poly Chess Set.fbx#chess_rook_dark` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
+| edge_rock_gran_a | `Assets/world/props/meshy/edge_rock_gran_a.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d, 900 triangles, a 512 px sheet), mondo's OK 2026-11-27: THE ROCK LINE's boulders, planted as tree kinds on the land past a room's line (originals in project files foliage-pass/rocks/) |
+| edge_rock_gran_b | `Assets/world/props/meshy/edge_rock_gran_b.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d, 900 triangles, a 512 px sheet), mondo's OK 2026-11-27: THE ROCK LINE's boulders, planted as tree kinds on the land past a room's line (originals in project files foliage-pass/rocks/) |
+| edge_rock_gran_c | `Assets/world/props/meshy/edge_rock_gran_c.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d, 900 triangles, a 512 px sheet), mondo's OK 2026-11-27: THE ROCK LINE's boulders, planted as tree kinds on the land past a room's line (originals in project files foliage-pass/rocks/) |
+| edge_rock_sand_a | `Assets/world/props/meshy/edge_rock_sand_a.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d, 900 triangles, a 512 px sheet), mondo's OK 2026-11-27: THE ROCK LINE's boulders, planted as tree kinds on the land past a room's line (originals in project files foliage-pass/rocks/) |
+| edge_rock_sand_b | `Assets/world/props/meshy/edge_rock_sand_b.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d, 900 triangles, a 512 px sheet), mondo's OK 2026-11-27: THE ROCK LINE's boulders, planted as tree kinds on the land past a room's line (originals in project files foliage-pass/rocks/) |
+| edge_rock_sand_c | `Assets/world/props/meshy/edge_rock_sand_c.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d, 900 triangles, a 512 px sheet), mondo's OK 2026-11-27: THE ROCK LINE's boulders, planted as tree kinds on the land past a room's line (originals in project files foliage-pass/rocks/) |
 | fae_bloom_tree | `Assets/world/props/meshy/ew_plant_healflower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
 | fae_bloom_tree_blue | `Assets/world/props/meshy/ew_plant_healflower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
 | fae_bloom_tree_pink | `Assets/world/props/meshy/ew_plant_healflower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
@@ -4745,10 +4751,4 @@ before asking for a new one (THE PACK-FIRST RULE).
 | skinwalker_face_b | `Assets/characters/races/skinwalker/male/faces/face_b.glb` | **UNSORTED** | add a SOURCES row in list-models.js |
 | skinwalker_face_c | `Assets/characters/races/skinwalker/male/faces/face_c.glb` | **UNSORTED** | add a SOURCES row in list-models.js |
 | skinwalker_face_d | `Assets/characters/races/skinwalker/male/faces/face_d.glb` | **UNSORTED** | add a SOURCES row in list-models.js |
-| edge_rock_gran_a | `Assets/world/props/meshy/edge_rock_gran_a.glb` | **UNSORTED** | add a SOURCES row in list-models.js |
-| edge_rock_gran_b | `Assets/world/props/meshy/edge_rock_gran_b.glb` | **UNSORTED** | add a SOURCES row in list-models.js |
-| edge_rock_gran_c | `Assets/world/props/meshy/edge_rock_gran_c.glb` | **UNSORTED** | add a SOURCES row in list-models.js |
-| edge_rock_sand_a | `Assets/world/props/meshy/edge_rock_sand_a.glb` | **UNSORTED** | add a SOURCES row in list-models.js |
-| edge_rock_sand_b | `Assets/world/props/meshy/edge_rock_sand_b.glb` | **UNSORTED** | add a SOURCES row in list-models.js |
-| edge_rock_sand_c | `Assets/world/props/meshy/edge_rock_sand_c.glb` | **UNSORTED** | add a SOURCES row in list-models.js |
 
