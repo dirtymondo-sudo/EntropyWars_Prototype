@@ -25,8 +25,8 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 1365 |
-| Meshy AI, reworked by Claude | no | 16 |
+| Meshy AI | no | 1364 |
+| Meshy AI, reworked by Claude | no | 17 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 107 |
 | Built by Claude in code (a bake tool writes the file) | no (pack bark picture) | 14 |
@@ -65,7 +65,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | bigfoot | `Assets/characters/races/bigfoot/male/Meshy_AI_bigfoot_v2_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW LOOKS, mondo 2026-11-18 concepts round; wings / halo / cape / trident apart: THE UNIT GEAR; project files unit-concepts-20261118/) |
 | black goo | `Assets/characters/races/blackgoo/Meshy_AI_black_goo_with_one_ey_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | bligblog | `Assets/characters/races/bligblog/Meshy_AI_bligblog_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
-| boltzmann brain | `Assets/characters/races/boltzmann_brain/male/Meshy_AI_boltzmann_brain.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES 2, mondo 2026-11-17 picks from the zone characters; concepts + models in project files new-races-2/; the Boltzmann Brain is unrigged) |
+| boltzmann brain | `Assets/characters/races/boltzmann_brain/male/boltzmann_brain_v2.glb` | Meshy AI, reworked by Claude | the Floating Brain's own Meshy model (2026-11-17) cut into moving pieces by Claude 2026-11-27 with the repo tool bake-brain.py: the brain, a real eyeball wrapped in the Meshy eye's own picture, two lids, the nine nerve tendrils on spring chains. No new Meshy credits |
 | bunny girl (female) | `Assets/characters/races/bunnygirl/Meshy_AI_bunny_girl_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | butterfly girl (female) | `Assets/characters/races/butterfly_girl/female/Meshy_AI_butterfly_girl_wings2_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API from mondo's picked concepts (THE COMING RACES 2, 2026-11-23; the Bear's polar look + the Rat King are form looks; project files char-concepts-20261123/) |
 | cameraman | `Assets/characters/races/paparazzi/male/Meshy_AI_paparazzi_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES 2, mondo 2026-11-17 picks from the zone characters; concepts + models in project files new-races-2/; the Boltzmann Brain is unrigged) |
@@ -4574,7 +4574,7 @@ stand-ins (`keypad` carries the sticky-note code, `monitor_stack` its live feeds
 `lost_shelf`, `shag_rug`, `planter`, `false_window` are built to their rooms; a single pack model would drop those parts). Any of
 these can still go: mondo names it and how it should look.
 
-## 13. EVERY MODEL FILE ON R2 — the ones not named in the tables above (3535 of 6112, bucket `ewmusicsfx`, listed 2026-11-20)
+## 13. EVERY MODEL FILE ON R2 — the ones not named in the tables above (3536 of 6112, bucket `ewmusicsfx`, listed 2026-11-20)
 
 THE R2 AUDIT (2026-11-04, mondo: "You are supposed to document every single model"). Every model file in the bucket that the
 game tables above do not name, grouped by folder and why it is there. `node list-models.js --r2` re-lists the bucket into
@@ -4599,6 +4599,7 @@ before asking for a new one (THE PACK-FIRST RULE).
 | `Assets/characters/races/atlantean/female` | on R2, the game does not load it | Meshy AI · Meshy AI rigged character (mondo) | 1: Meshy_AI_hot_attractive_atlant_biped_Character_output.glb | 8.3 |
 | `Assets/characters/races/bigfoot/male` | animation clip file (the shared library replaced per-character clips; kept for the fallback / a re-consolidate) | Meshy AI · Meshy AI rigged character (mondo) | 14: Meshy_AI_bigfoot_biped_Animation_Charged_Spell_Cast_withSkin.glb, Meshy_AI_bigfoot_biped_Animation_Collect_Object_withSkin.glb, Meshy_AI_bigfoot_biped_Animation_Dead_withSkin.glb, Meshy_AI_bigfoot_biped_Animation_Face_Punch_Reaction_withSkin.glb, Meshy_AI_bigfoot_biped_Animation_Idle_10_withSkin.glb, Meshy_AI_bigfoot_biped_Animation_Knock_Down_withSkin.glb, Meshy_AI_bigfoot_biped_Animation_Leg_Sweep_withSkin.glb, Meshy_AI_bigfoot_biped_Animation_Regular_Jump_withSkin.glb, Meshy_AI_bigfoot_biped_Animation_Right_Hand_Sword_Slash_withSkin.glb, Meshy_AI_bigfoot_biped_Animation_Running_withSkin.glb, Meshy_AI_bigfoot_biped_Animation_Spartan_Kick_withSkin.glb, Meshy_AI_bigfoot_biped_Animation_Step_in_High_Kick_withSkin.glb, Meshy_AI_bigfoot_biped_Animation_Sweeping_Kick_withSkin.glb, Meshy_AI_bigfoot_biped_Animation_Walking_withSkin.glb | 103.0 |
 | `Assets/characters/races/bigfoot/male` | on R2, the game does not load it | Meshy AI · Meshy AI rigged character (mondo) | 1: Meshy_AI_bigfoot_biped_Character_output.glb | 7.3 |
+| `Assets/characters/races/boltzmann_brain/male` | on R2, the game does not load it | Meshy AI · Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES 2, mondo 2026-11-17 picks from the zone characters; concepts + models in project files new-races-2/; the Boltzmann Brain is unrigged) | 1: Meshy_AI_boltzmann_brain.glb | 4.1 |
 | `Assets/characters/races/catgirl/female` | animation clip file (the shared library replaced per-character clips; kept for the fallback / a re-consolidate) | Meshy AI · Meshy AI rigged character (mondo) | 12: Meshy_AI_young_female_catgirl_biped_Animation_Backflip_Jump_withSkin.glb, Meshy_AI_young_female_catgirl_biped_Animation_Cowboy_Quick_Draw_Shooting_withSkin.glb, Meshy_AI_young_female_catgirl_biped_Animation_Dead_withSkin.glb, Meshy_AI_young_female_catgirl_biped_Animation_Hit_Reaction_1_withSkin.glb, Meshy_AI_young_female_catgirl_biped_Animation_Hit_Reaction_withSkin.glb, Meshy_AI_young_female_catgirl_biped_Animation_Idle_5_withSkin.glb, Meshy_AI_young_female_catgirl_biped_Animation_Knock_Down_withSkin.glb, Meshy_AI_young_female_catgirl_biped_Animation_Left_Hook_from_Guard_withSkin.glb, Meshy_AI_young_female_catgirl_biped_Animation_Regular_Jump_withSkin.glb, Meshy_AI_young_female_catgirl_biped_Animation_Right_Hand_Sword_Slash_withSkin.glb, Meshy_AI_young_female_catgirl_biped_Animation_Running_withSkin.glb, Meshy_AI_young_female_catgirl_biped_Animation_Walking_withSkin.glb | 89.8 |
 | `Assets/characters/races/catgirl/female` | on R2, the game does not load it | Meshy AI · Meshy AI rigged character (mondo) | 1: Meshy_AI_young_female_catgirl_biped_Character_output.glb | 7.5 |
 | `Assets/characters/races/cosmicwraith/male` | on R2, the game does not load it | Meshy AI · Meshy AI rigged character (mondo) | 1: Meshy_AI_cosmic_wraith_realis_biped_Character_output.glb | 6.5 |

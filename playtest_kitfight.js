@@ -39,7 +39,7 @@ const CAST = (todo, repeat) => {
     if (!G.canAffordSpell(unit, spell) || (unit.mp || 0) < (spell.cost || 0)) continue;
     const tiles = G.getSpellRangeTiles(unit, spell) || [];
     let pick = null;
-    if (spell.kind === 'healAll' || spell.kind === 'transform') pick = { x: unit.x, y: unit.y, z: unit.z };
+    if (spell.kind === 'healAll' || spell.kind === 'transform' || (spell.kind === 'buff' && !spell.range)) pick = { x: unit.x, y: unit.y, z: unit.z };
     else if (spell.kind === 'revive') {
       const dead = st.units.find(u => u.player === unit.player && u.dead && D(u, unit) <= (spell.range || 1) + 3);
       if (!dead) continue; pick = { x: dead.x, y: dead.y, z: dead.z };
