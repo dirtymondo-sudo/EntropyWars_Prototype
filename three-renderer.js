@@ -9429,7 +9429,7 @@ const ThreeRenderer = (function () {
        of the head re-sent every cell's index), and the far rings' tufts are 25 and 9 corners against 49.
        On arriving (and after a jump of 30 m+) the field fills first (fillMs a frame), then RISES out of the ground over riseS.
        Old field back, live: window.EW_HQ_GRASS_NO_RINGS = true (one ring to old.radiusM, a hard edge). No culling: window.EW_HQ_GRASS_NO_CULL. */
-    var HQ_GRASS = { cellM: 7, perSquare: 14, autoN: { high: 13, low: 9 },   /* (11-27, THE BLADES STAND IN THE WORLD: 9 / 7 / 5 before; a near tuft's blade is 3 triangles now, was 5, so more tufts for fewer triangles) */ tickMs: 100, steep: 0.55, height: 1.65,   /* (11-27 round 2: 1.43; shin high in a wood, never knee deep: it hid the rocks and plants) */   // height: a tuft against the board's (a walker stands in it, a board's camera looks down on it)
+    var HQ_GRASS = { cellM: 7, perSquare: 14, autoN: { high: 13, low: 9 },   /* (11-27, THE BLADES STAND IN THE WORLD: 9 / 7 / 5 before; a near tuft's blade is 3 triangles now, was 5, so more tufts for fewer triangles) */ tickMs: 100, steep: 0.55, pastM: 18, height: 1.65,   /* (11-27 round 2: 1.43; shin high in a wood, never knee deep: it hid the rocks and plants) */   // height: a tuft against the board's (a walker stands in it, a board's camera looks down on it)
         /* to = where the ring ends (m from the walker) · band = it shrinks away over its last metres · lead = it grows in over this many metres, done where the ring before
            starts to shrink · pad = a cell is built this far ahead · cell = cell size × cellM (the tufts stand that much further apart) · tall = height × · blades / pts = which
            of the fan's seven blades a tuft keeps and which of a blade's seven corners (root L R, two pairs, tip) · spread / thick = how far the blades splay / how thick each is */
@@ -9660,7 +9660,8 @@ const ThreeRenderer = (function () {
     }
     function _hqGrassCell(S, R, cx, cz) {
         var info = S.info, U = S.U, C = GGRASS, cm = R.cellM, ts = 3.5 * U, n = S.n, x0 = cx * cm, z0 = cz * cm, none = { mesh: null, cx: cx, cz: cz };
-        if (x0 + cm < info.x0 || z0 + cm < info.z0 || x0 > info.x0 + (info.nx - 1) * info.res || z0 > info.z0 + (info.nz - 1) * info.res) return none;   // wholly off the room's ground
+        var eM = S.edgeF ? HQ_GRASS.pastM : 0;   // THE GRASS RUNS ON PAST THE LINE (11-27)
+        if (x0 + cm < info.x0 - eM || z0 + cm < info.z0 - eM || x0 > info.x0 + (info.nx - 1) * info.res + eM || z0 > info.z0 + (info.nz - 1) * info.res + eM) return none;   // wholly off the room's ground
         var seed = ((((cx + 4096) * 73856093) ^ ((cz + 4096) * 19349663)) + R.i * 0x2545F491) & 0x7FFFFFFF | 1;
         var rnd = function () { seed = (seed * 1103515245 + 12345) & 0x7FFFFFFF; return ((seed >> 8) & 0xFFFF) / 0xFFFF; };
         var SC = S.scratch, pos = SC.pos, col = SC.col, gg = SC.gg, gs = SC.gs, P = R.shape.P, T = R.shape.T, PL = P.length, TL = T.length, PT = info.paint, kw = S.windK;
@@ -9669,7 +9670,16 @@ const ThreeRenderer = (function () {
             var xm = x0 + (i + rnd()) / n * cm, zm = z0 + (j + rnd()) / n * cm;
             var r0 = rnd(), r1 = rnd(), r2 = rnd(), r4 = rnd(), r5 = rnd();
             var ni = Math.round((xm - info.x0) / info.res), nj = Math.round((zm - info.z0) / info.res);
-            if (ni < 1 || nj < 1 || ni >= info.nx - 1 || nj >= info.nz - 1) continue;
+            var EP = null;
+            if (ni < 1 || nj < 1 || ni >= info.nx - 1 || nj >= info.nz - 1) {
+                /* THE GRASS RUNS ON PAST THE LINE (2026-11-27, mondo at Stonehenge: "why is there a clear seam here and the grass is different on one side than the
+                   other? That needs to be fixed everywhere"): the blades stopped dead on the room's line while the ground ran on (THE SAME GROUND). Where the land
+                   past the line is green country they now grow on for pastM metres, thinning, on the land's own height, in the sheet of the room's last square. */
+                if (!S.edgeF) continue;
+                try { EP = S.edgeF.at(xm, zm); } catch (eE) { EP = null; }
+                if (!EP || !(EP.d < HQ_GRASS.pastM) || !EP.W || (EP.W.grass || 0) + (EP.W.forest || 0) + (EP.W.wood || 0) < 0.6 || r2 * r2 > 1.15 - EP.d / HQ_GRASS.pastM) continue;
+                ni = ni < 1 ? 1 : ni > info.nx - 2 ? info.nx - 2 : ni; nj = nj < 1 ? 1 : nj > info.nz - 2 ? info.nz - 2 : nj;
+            }
             var nk = nj * info.nx + ni;
             var onMass = !!(info.mask && !info.mask[nk]); if (onMass && (!S.massOk || r2 > GROUND_RULES.massKeep)) continue;   // THE GRASS EVERYWHERE: a flat MASS (a hand plan's / the woods' thicket floor) grows grass too, a city block / a hall / a cave wall none
             /* THE LAST ROW WEARS ITS NEIGHBOUR (2026-11-22): the lattice's outer ring is never painted, so a road that reaches the room's line wore the room's
@@ -9681,8 +9691,8 @@ const ThreeRenderer = (function () {
             var GRo = S.gr, GR = GROUND_RULES, edgeK = 1, gO = null;
             var inB = false, nearB = false; for (var b = 0; b < S.boxes.length; b++) { var B = S.boxes[b], dx = xm - B[0], dz = zm - B[1], lx0 = Math.abs(dx * B[4] + dz * B[5]), lz0 = Math.abs(-dx * B[5] + dz * B[4]); if (lx0 < B[2] && lz0 < B[3]) { inB = true; break; } if (GRo && lx0 < B[2] + GR.edgeM && lz0 < B[3] + GR.edgeM) nearB = true; }
             if (inB) continue;
-            if (hqTerrainFluidAt(info, xm, zm)) continue;
-            if (hqTerrainSlope(info, xm, zm) > HQ_GRASS.steep) continue;
+            if (!EP && hqTerrainFluidAt(info, xm, zm)) continue;
+            if (!EP && hqTerrainSlope(info, xm, zm) > HQ_GRASS.steep) continue;
             var pathE = Infinity;   // G13: how far past the nearest path's edge (m)
             if (S.paths.length) { var onP = false; for (var pq = 0; pq < S.paths.length; pq++) { var PP = S.paths[pq]; if (xm > PP.x0 - 3 && xm < PP.x1 + 3 && zm > PP.z0 - 3 && zm < PP.z1 + 3) { var pe = _hqTPolyDist(xm, zm, PP.pts).d - PP.w / 2; if (pe < 0.15) { onP = true; break; } if (pe < pathE) pathE = pe; } } if (onP) continue; }   // never on a path (the flora field's rule)
             var cK = 1, cD = 0, cCv = 1;
@@ -9715,7 +9725,7 @@ const ThreeRenderer = (function () {
                 else if (nearB || ndG < GR.edgeM) edgeK = GR.edgeTall;
                 else if (info.fluids && info.fluids.length && (hqTerrainFluidAt(info, xm + GR.wetM, zm) || hqTerrainFluidAt(info, xm - GR.wetM, zm) || hqTerrainFluidAt(info, xm, zm + GR.wetM) || hqTerrainFluidAt(info, xm, zm - GR.wetM))) edgeK = GR.wetTall;
             }
-            var wx = xm * U, wz = zm * U, gy = hqTerrainHeight(info, xm, zm) * U;
+            var wx = xm * U, wz = zm * U, gy = (EP ? EP.y : hqTerrainHeight(info, xm, zm)) * U;
             var clump = _ewValHash(xm / (3.5 * 0.55) + 11.3, zm / (3.5 * 0.55) + 4.7), patch = _ewValHash(xm / (3.5 * C.patchM) + 3.1, zm / (3.5 * C.patchM) + 8.9);
             var pt = Math.min(1, Math.max(0, (patch - 0.3) / 0.4)); pt = pt * pt * (3 - 2 * pt);
             var h = ts * HQ_GRASS.height * R.tall * (C.hMin + (C.hMax - C.hMin) * (0.25 + 0.75 * clump) * (0.55 + 0.45 * r1));
@@ -9812,6 +9822,7 @@ const ThreeRenderer = (function () {
                 gr: _grOn() ? { near: _grNearBucket(H.terrain, H.room), trees: _grTreeBucket(H.terrain), marks: _grMarks(H.room), o: {} } : null,   // THE GROUND RULES: the standing things, the trunks, the landmarks, read once
                 massOk: !!(H.terrain.gen && H.terrain.gen.solidMass && ['city', 'halls', 'cave'].indexOf(H.terrain.gen.kind) < 0 && !window.EW_NO_GRASS_MASS) };
             S.n = Math.max(2, Math.round(S.N * G0.cellM / 3.5));
+            try { S.edgeF = (_hqEdgeLandOn(H.room) && !window.EW_NO_GRASS_PAST) ? _hqEdgeLandFn(H.room, H.terrain) : null; } catch (eF) { S.edgeF = null; }   // THE GRASS RUNS ON PAST THE LINE
             S.right = { value: new THREE.Vector2(1, 0) };   // THE CAMERA THAT DRAWS IT: the room's own (2026-11-18: the board's camera stands still while you walk, and a front-side tuft turned to it was culled from behind)
             var kU0 = U * S.windK, maxPL = 0;
             defs.forEach(function (d, i) {
@@ -81824,6 +81835,19 @@ const ThreeRenderer = (function () {
             var hOf = function (m) { return m * U / TM / 1.07; };   // _nrTree: target = TM × h × (0.85 … 1.3)
             var low = !!(typeof window !== 'undefined' && window.EW_PERF_LOW);
             var X0 = R.x0 - 62, X1 = R.x1 + 62, Z0 = R.z0 - 62, Z1 = R.z1 + 62, stp = 4.2;
+            /* THE BELT (2026-11-27, mondo at Stonehenge's line: "that needs to have natural barriers like trees or something if i cant walk there. i never wanna
+               see an open field i cant walk through ... or rocks or whatever is natural and makes sense"). Open green country past a room's line stood one tree
+               in twenty: a lawn you could see and not enter. Now the first 17 m past the line is a WOOD'S EDGE, three staggered rows of the land's own trees
+               (nine in ten lattice points near the line, six in ten behind), open only where a way or a road leaves the room. Dry land that has plants of
+               its own (`plants`, or scrub's dead trees) stands them thick along the line the same way. A side opts out with `edges.<side>.open: true`,
+               a room with `edges.noBelt: true`; `EW_HQ_NO_BELT` = as before. NOT covered: desert / mesa sides with no `plants` row (they need rocks). */
+            var kindsB = ['tree', 'tree_4', 'tree_3', 'tree', 'pine', 'tree_4'], beltOn = !(E.noBelt || (typeof window !== 'undefined' && window.EW_HQ_NO_BELT));
+            var wayGap = function (side, x, z) {
+                if ((E[side] || {}).open) return true;
+                var ws = Array.isArray(E.ways) ? E.ways : []; for (var wq = 0; wq < ws.length; wq++) { var wy = ws[wq]; if (wy && wy.side === side && Math.abs(((side === 'n' || side === 's') ? x : z) - (+wy.at || 0)) < (+wy.w || 3.5) / 2 + 4.5) return true; }
+                var ds = room.doors || []; for (var dq = 0; dq < ds.length; dq++) { var dd = ds[dq]; if (dd && dd.wall === side && Math.abs(((side === 'n' || side === 's') ? x - (+dd.x || 0) : z - (+dd.z || 0))) < (+dd.w || 3.5) / 2 + 4.5) return true; }   // any way out on this side keeps its lane
+                return false;
+            };
             var roadLanes = [];   // every road out's lane past the line (its door's place, the way out, half its width + a tree's reach)
             (room.doors || []).forEach(function (d) { if (!d || d.way !== 'road' || !d.wall) return; try { var f = _hqBoxWall(room, d.wall, d); if (f) roadLanes.push({ x: f.wx, z: f.wz, dx: -f.nx, dz: -f.nz, hw: ((+d.w || 9) / 2) + 3.5 }); } catch (e) {} });
             for (var tz = Z0; tz < Z1; tz += stp) for (var tx = X0; tx < X1; tx += stp) {
@@ -81837,11 +81861,12 @@ const ThreeRenderer = (function () {
                 var wf = P.W.forest + (P.W.wood || 0);   /* (A FOOTPATH KEEPS ITS WOOD: the forest THE WAY ON opened beside a trail) */
                 if (wf > 0.5) { if (c2 > thin * Math.min(1, wf)) continue; plantTree(kindsF[(d2 * kindsF.length) | 0], hOf(13 + d2 * 9), px, pz, P.y * U); planted++; }
                 else if (P.W.mountain > 0.5 && P.d > 5 && P.d < 46 && P.y - P.eH < 34) { if ((E[P.side] || {}).bare) continue; if (c2 > 0.13 * thin) continue; plantTree(kindsM[(d2 * kindsM.length) | 0], hOf(8 + d2 * 6), px, pz, P.y * U); planted++; }
+                else if ((P.W.grass || 0) > 0.6 && beltOn && P.d < 17 && !wayGap(P.side, px, pz)) { if (c2 > (P.d < 10 ? 0.92 : 0.6)) continue; plantTree(kindsB[(d2 * kindsB.length) | 0], hOf(6.5 + ((d2 * 5.7) % 1) * 6), px, pz, P.y * U); planted++; }   // THE BELT: no open field past the line
                 else if ((P.W.grass || 0) > 0.6 && P.d > 4) { if (c2 > 0.045 * thin) continue; plantTree(kindsG[(d2 * kindsG.length) | 0], hOf(6 + d2 * 5), px, pz, P.y * U); planted++; }   // open green country: a tree here and there
                 else if ((P.W.snow || 0) > 0.6 && P.d > (E.snowTrees ? 2.2 : 4)) { if (c2 > (+E.snowTrees || 0.03) * thin) continue;   /* `edges.snowTrees: p` (2026-11-20, the Snowy Pines three plots wide): a room in a snow WOOD, its pines run on past its line (p = how many of the lattice points grow one; 0.03 = open tundra) */ plantTree(E.snowTrees ? kindsSW[(d2 * kindsSW.length) | 0] : kindsS[(d2 * kindsS.length) | 0], hOf(5.5 + d2 * 4), px, pz, P.y * U); planted++; }   // tundra: a few snow pines
                 else if ((P.W.scrub || 0) + (P.W.mesa || 0) + P.W.desert > 0.6 && P.d > 4) {   // THE DRY LAND'S PLANTS: a scrub side grows dead trees by itself; any dry side grows what its `plants: { kinds, p, h: [lo, hi] }` says (the room's own cactus runs on past its line)
                     var PL = (E[P.side] || {}).plants || ((P.W.scrub || 0) > 0.5 ? { kinds: ['tree_5', 'tree_6', 'tree_5', 'pine_2'], p: 0.09, h: [3, 6.5] } : null);
-                    if (!PL || !PL.kinds || !PL.kinds.length || c2 > (PL.p || 0.08) * thin) continue;
+                    if (!PL || !PL.kinds || !PL.kinds.length || c2 > ((beltOn && P.d < 17 && !wayGap(P.side, px, pz)) ? 0.7 : (PL.p || 0.08) * thin)) continue;   // (THE BELT on dry land: its own plants stand thick along the line)
                     var ph = PL.h || [3, 6]; plantTree(PL.kinds[(d2 * PL.kinds.length) | 0], hOf(ph[0] + ((d2 * 7.3) % 1) * (ph[1] - ph[0])), px, pz, P.y * U); planted++; }
             }
         }
