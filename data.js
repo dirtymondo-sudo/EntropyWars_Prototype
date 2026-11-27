@@ -413,6 +413,8 @@ const FINISHERS = {
     'monarch':        { id: 'fin_monarch', name: 'Sweet Dreams', glyph: '🦋', type: 'anomaly', sig: 'lullaby', built: true, tagline: 'SLEEP NOW, AGENT', desc: 'The wings close round the victim like a chrysalis, the spiral turns on its shell, and when it cracks open only monarch butterflies come out.' },   // 2026-11-23 THE MONARCH (mondo OK'd the kit) (borrows the lullaby staging)
     'bear':           { id: 'fin_bear', name: 'Mauled', glyph: '🐻', type: 'anomaly', sig: 'blurryFootage', built: true, tagline: 'YOU POKED THE BEAR', desc: 'The trees part, the bear stands up to its full height, and it comes down on the victim with everything it has.' },   // 2026-11-23 THE BEAR (mondo OK'd the kit) (borrows the blurryFootage staging)
     'demiurge':       { id: 'fin_demiurge', name: 'Unmade', glyph: '⬛', type: 'divine', sig: 'heatDeath', built: true, tagline: 'BACK INTO THE CUBE', desc: 'He made it. He can take it back. The victim is folded up, corner by corner, and put away in the black cube.' },   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms) (borrows the heatDeath staging; the name is a first pass)
+    'monster truck':  { id: 'fin_monster_truck', name: 'Crushed', glyph: '🛻', type: 'tech', sig: 'hitAndRun', built: true, tagline: 'MONSTER JAM', desc: 'The hood opens like a mouth, the wheels catch, and the truck drives up and over. What is left fits in a glovebox.' },   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells") (borrows the Honda Civic's staging; the name is a first pass)
+    'nutcracker':     { id: 'fin_nutcracker', name: 'Cracked', glyph: '🌰', type: 'anomaly', sig: 'joust', built: true, tagline: 'CRACK', desc: 'The lever goes down, the jaw comes up, and the shell gives. The Nutcracker salutes and marches off.' },   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells") (borrows the Knight\'s staging; the name is a first pass)
     'abomination':    { id: 'fin_abomination', name: 'Too Much Body', glyph: '🫀', type: 'anomaly', sig: 'blurryFootage', built: true, tagline: 'IT HAS MORE ARMS THAN YOU', desc: 'Every arm, every tentacle and every mouth it has comes down on the victim at once, and then it is a little bigger.' },   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name) (borrows the blurryFootage staging)
     'farmer':         { id: 'fin_farmer', name: 'Reap What You Sow', glyph: '🌾', type: 'human', sig: 'gardenVariety', built: true, tagline: 'HARVEST TIME', desc: 'The field comes up all at once round the victim, and the pitchfork comes down with the season.' },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) (borrows the gardenVariety staging)
     'jellyfish ufo':  { id: 'fin_jellyfish_ufo', name: 'Abyssal Glow', glyph: '🪼', type: 'anomaly', sig: 'theBloom', built: true, tagline: 'LIGHTS IN THE DEEP', desc: 'The bell lights the victim from the inside like the things that live in the dark, brighter and brighter, then everything goes dark.' },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) (borrows the theBloom staging)
@@ -4119,7 +4121,7 @@ const RACE_MERGED = { 'nun': { race: 'priest', gender: 'female' } };
 /* 👁🌑 THE REALM WINDOW: races that SEE a Shadow Realm pair on their own turns (they cannot touch it). A projecting
    spirit both sees and touches (battle.js unitSeesRealm / unitCrossesRealm). */
 const REALM_SIGHT_RACES = ['ghost', 'shadow entity'];
-const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber', 'pharaoh', 'deep sea diver', 'gambler', 'hacker', 'monk', 'shogun', 'cameraman', 'mechanic', 'janitor', 'trucker', 'gladiator', 'farmer', 'jellyfish ufo', 'bear', 'rat', 'butterfly girl', 'plastic surgeon', 'monarch', 'abomination', 'hollow', 'weatherman', 'cheerleader', 'point guard', 'centaur', 'music producer', 'princess', 'demiurge'];
+const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber', 'pharaoh', 'deep sea diver', 'gambler', 'hacker', 'monk', 'shogun', 'cameraman', 'mechanic', 'janitor', 'trucker', 'gladiator', 'farmer', 'jellyfish ufo', 'bear', 'rat', 'butterfly girl', 'plastic surgeon', 'monarch', 'abomination', 'hollow', 'weatherman', 'cheerleader', 'point guard', 'centaur', 'music producer', 'princess', 'demiurge', 'monster truck', 'nutcracker'];
 /* THE COMING RACES (2026-11-19, mondo: "wire them in the game at least in the relation web, give them sprite ai portraits ... my associate
    [does] their spell and combat plan on another account"): races whose model, sprite and name are in (sprites.js RACE_MODELS_3D,
    RACE_PROFILES) but whose kit is not. They are NOT playable: the Relationship Web lists them (docs/plans/story-web/build/fresh.js).
@@ -4322,6 +4324,8 @@ const RACE_CLASS = {
     'monarch': 'specialist',   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
     'bear': 'bruiser',   // 2026-11-23 THE BEAR (mondo OK'd the kit)
     'demiurge': 'bruiser',   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms)
+    'monster truck': 'tank',   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells")
+    'nutcracker': 'bruiser',   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells")
     'abomination': 'bruiser',   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name)
     'farmer': 'support',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): the field heals the team
     'lifeguard': 'support',   // 2026-11-16
@@ -4406,6 +4410,8 @@ const RACE_TERRAIN_PREFERENCE = {
     'monarch': 'urban',   // 2026-11-23 THE MONARCH (mondo OK'd the kit): the D.U.M.B.'s halls
     'bear': 'mountain',   // 2026-11-23 THE BEAR (mondo OK'd the kit): the grizzly's slopes, the polar's ice field
     'demiurge': 'wasteland',   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms): the cosmic wraith's ground, a first pass
+    'monster truck': 'wasteland',   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells"): the dirt track
+    'nutcracker': 'urban',   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells")
     'abomination': 'wasteland',   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name): the rot, the drains, the dark
     'farmer': 'grass',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): the fields
     'jellyfish ufo': 'deep_water',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): a sea creature: never drowns (map.js unitIsDeepWaterAdapted)
@@ -4830,6 +4836,8 @@ const RACE_BASE_STATS = {
     'monarch':            { hp: 1000, mp: 210, atk:  95, def:  85, mdef: 140, int: 165, vision: 4, crt: 24, spd: 120 },   // 2026-11-23 THE MONARCH (mondo OK'd the kit) — first pass on the specialist median
     'bear':               { hp: 1320, mp: 100, atk: 147, def: 120, mdef:  60, int:  70, vision: 3, crt: 15, spd: 105 },   // 2026-11-23 THE BEAR (mondo OK'd the kit) — first pass on the bruiser median: big and slow, soft to magic; LAB LOOP 11-23 PASS 2: HP 1250→1320, ATK 125→147 (37.4% over 136 games)
     'demiurge':           { hp: 1260, mp: 130, atk: 140, def: 125, mdef:  90, int:  70, vision: 3, crt: 16, spd: 100 },   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms) — the ARMOURED form (physical), first pass on the bruiser median; the COSMIC form's row is RACE_GENDER_STATS below
+    'monster truck':      { hp: 1340, mp: 110, atk: 140, def: 150, mdef:  65, int:  40, vision: 3, crt: 12, spd:  95 },   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells") — first pass on the tank median (the Trucker's row, heavier and slower)
+    'nutcracker':         { hp: 1120, mp: 130, atk: 138, def: 135, mdef:  80, int:  60, vision: 3, crt: 16, spd: 110 },   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells") — first pass on the bruiser median (hard wood)
     'abomination':        { hp: 1250, mp: 150, atk: 144, def: 110, mdef:  90, int:  72, vision: 3, crt: 12, spd:  80 },   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name) — first pass from the plan: slow, heavy, its limbs are its shield; LAB LOOP 11-23 PASS 2: HP 1300→1250, ATK 150→144, M.ATK 90→72 (59.3% over 135 games)
     'farmer':             { hp: 1100, mp: 170, atk: 110, def: 105, mdef: 100, int: 115, vision: 3, crt: 15, spd: 100 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — first pass on the support median
     'jellyfish ufo':      { hp: 1030, mp: 150, atk: 105, def: 120, mdef: 130, int: 62, vision: 3, crt: 18, spd: 105 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — first pass: a bruiser with claws on ATK and the bell on M.ATK; LAB LOOP 11-22 PASS 1: HP 1200→1150, ATK 125→119, M.ATK 125→106 (68.6% over 49 games); LAB LOOP 11-22 PASS 2: HP 1150→1080, ATK 119→111, M.ATK 106→82 (70.1% over 62 games); LAB LOOP 11-22 PASS 4: HP 1080→1030, ATK 111→105, M.ATK 82→62 (60.3% over 131 games)
@@ -5042,6 +5050,8 @@ const RACE_PHYSIQUE = {
     'monarch':             { h: 1.72, w: 58 },   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
     'bear':                { h: 2.40, w: 360 },   // 2026-11-23 THE BEAR (mondo OK'd the kit): stood up on its hind legs
     'demiurge':            { h: 2.60, w: 180 },   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms)
+    'monster truck':       { h: 2.40, w: 4200 },   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells"): a living truck on monster wheels
+    'nutcracker':          { h: 1.90, w: 60 },   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells"): a man-sized toy soldier, hat included
     'abomination':         { h: 3.10, w: 420 },   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name): the assembled body is 3.1 m from the floor to the top of its head
     'farmer':              { h: 1.78, w: 85 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
     'jellyfish ufo':       { h: 1.90, w: 60 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — a bell over a metal body; floats
@@ -11792,6 +11802,56 @@ const RACE_ABILITIES = {
           element: 'metal', type: 'damage', kind: 'aoe', damageType: 'physical', dmg: 150, range: 0, aoeRadius: 1, aoeOriginSelf: true, favorSpend: 50,
           desc: 'For the crowd. Deals HEAVY physical damage to every enemy next to him and spends all his Favor: +50 damage for each. Cooldown: 4 rounds.' },
     ],
+    'monster truck': [
+        /* 🛻 THE MONSTER TRUCK (2026-11-27, mondo: "a monster truck, like a literal monster that is a truck ... it's hood could be a
+           separate part and it has like fangs, and the wheels could be separate too so they could spin, maybe even hydraulics").
+           FIRST PASS (names + numbers his to change). Its rule, REVS (STATUS_DEFS revs, battle.js "THE MONSTER TRUCK"): every
+           square it drives on a walk banks 1 Rev (up to 5); they last into its next turn. Ram spends them all (+25 a Rev), Burnout
+           spins the wheels in place and fills them. Every spell moves a part of it (`animSlot` = the truck's own clips,
+           three-renderer.js THE MONSTER TRUCK): the hood jaw bites, the wheels spin, the struts pump. Notes:
+           docs/notes/champions-combat.md "THE MONSTER TRUCK + THE NUTCRACKER". */
+        { id: 'mtChomp', name: 'Chomp', tier: 1, families: ['monstertruck'], cost: 25, apCost: 1, spellType: 'tech',
+          element: 'metal', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 90, range: 1, animSlot: 'mtChomp',
+          statusEffects: [{ id: 'bleed', duration: 2 }],
+          desc: 'The hood flips up and the fangs come down. Deals WEAK physical damage to a Single Enemy next to it and makes it Bleed for 2 rounds.' },
+        { id: 'mtRam', name: 'Ram', tier: 2, families: ['monstertruck'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'tech',
+          type: 'damage', kind: 'tackle', damageType: 'physical', dmg: 105, range: 4, chargeToTarget: true, pushDistance: 2, collisionBonus: 40,
+          revsSpend: 25, animSlot: 'mtRam',
+          desc: 'Floors it. Charges a Single Enemy up to 4 squares away and drives it up to 2 squares along the line: MEDIUM physical damage, 40 more if it is crushed into a wall or a body, and +25 for every Rev, which are all spent. Cooldown: 2 rounds.' },
+        { id: 'mtHydraulicSlam', name: 'Hydraulic Slam', tier: 3, families: ['monstertruck'], cost: 75, apCost: 1, cooldownRounds: 2, spellType: 'tech',
+          element: 'earth', type: 'damage', kind: 'aoe', damageType: 'physical', dmg: 130, range: 0, aoeRadius: 1, aoeOriginSelf: true, pushDistance: 1,
+          statusEffects: [{ id: 'stagger', duration: 1 }], animSlot: 'mtHop',
+          desc: 'The struts pump it into the air and it comes down on all four. Deals MEDIUM physical damage to All Enemies next to it, pushes them 1 square away and Staggers them. Cooldown: 2 rounds.' },
+        { id: 'mtBurnout', name: 'Burnout', tier: 4, families: ['monstertruck'], cost: 90, apCost: 1, cooldownRounds: 3, spellType: 'tech',
+          element: 'fire', type: 'damage', kind: 'aoe', damageType: 'physical', dmg: 120, range: 0, aoeRadius: 2, aoeOriginSelf: true,
+          statusEffects: [{ id: 'burn', duration: 2 }, { id: 'blind', duration: 1 }], selfStatusAfter: [{ id: 'revs', duration: 2, gain: 5 }],
+          animSlot: 'mtBurnout',
+          desc: 'Brakes on, wheels spinning, a ring of burning rubber and smoke. Deals MEDIUM physical damage to All Enemies within 2, Burns them for 2 rounds and Blinds them for 1, and fills its Revs (5). Cooldown: 3 rounds.' },
+    ],
+    'nutcracker': [
+        /* 🌰 THE NUTCRACKER (2026-11-27, mondo: a nutcracker "which can also maybe have separate parts so its mouth can move like an
+           actual nutcracker"). FIRST PASS (names + numbers his to change). Its rule, CRACKS (STATUS_DEFS cracked, battle.js "THE
+           NUTCRACKER"): its bites and its march put Cracks on the enemy (up to 3, 3 rounds). Crack Open spends them: +45 a Crack,
+           and at 3 the shell gives (Broken 1 round: no passives). The jaw (bone `ewJaw`) clacks with every spell (three-renderer.js
+           THE NUTCRACKER, `nutAct`). Notes: docs/notes/champions-combat.md "THE MONSTER TRUCK + THE NUTCRACKER". */
+        { id: 'ncClack', name: 'Clack', tier: 1, families: ['nutcracker'], cost: 25, apCost: 1, spellType: 'anomaly',
+          element: 'earth', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 85, range: 1,
+          statusEffects: [{ id: 'cracked', duration: 3, gain: 1 }],
+          desc: 'Clack clack. Deals WEAK physical damage to a Single Enemy next to it and puts a Crack on it (up to 3).' },
+        { id: 'ncQuickMarch', name: 'Quick March', tier: 2, families: ['nutcracker'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+          type: 'damage', kind: 'dash', damageType: 'physical', dmg: 95, range: 4, dashSweep: 1,
+          statusEffects: [{ id: 'cracked', duration: 3, gain: 1 }],
+          desc: 'Left, right, left. Marches up to 4 squares in a line; every enemy on or beside the path takes WEAK physical damage and a Crack. Cooldown: 2 rounds.' },
+        { id: 'ncCrackOpen', name: 'Crack Open', tier: 3, families: ['nutcracker'], cost: 75, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+          animClip: { name: 'Angry_Ground_Stomp', lib: 9, ts: 1.0, strikeAt: 0.45 },   // the stamp that brings the lever down
+          element: 'earth', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 115, range: 1, crackSpend: 45,
+          desc: 'The lever goes down. Deals MEDIUM physical damage to a Single Enemy next to it, +45 for every Crack on it, which are all spent. At 3 Cracks the shell gives: Broken (no passives) for 1 round. Cooldown: 2 rounds.' },
+        { id: 'ncNutcrackerSuite', name: 'Nutcracker Suite', tier: 4, families: ['nutcracker'], cost: 90, apCost: 1, cooldownRounds: 3, spellType: 'anomaly',
+          animClip: { name: 'Joyful_Dance_with_Hand_Sway', lib: 9, ts: 1.45, trim: [0, 2.0], strikeAt: 1.2 },   // the dance (THE MESHY CASTS)
+          type: 'damage', kind: 'aoe', damageType: 'physical', dmg: 115, range: 0, aoeRadius: 2, aoeOriginSelf: true,
+          statusEffects: [{ id: 'cracked', duration: 3, gain: 1 }, { id: 'slow', duration: 1 }],
+          desc: 'The key in its back winds all the way and it dances, the jaw snapping in time. Deals MEDIUM physical damage to All Enemies within 2, puts a Crack on each and Slows them for 1 round. Cooldown: 3 rounds.' },
+    ],
     'demiurge': [
         /* ⬛ THE DEMIURGE (2026-11-26, mondo: "this guy is like the original creator of the black cube, the demiurge, cosmic abilities,
            spiritual abilities, the architect, sacred geometry, fractal math, etc for his powers ... one character but with 2 forms ...
@@ -15671,6 +15731,41 @@ const STATUS_DEFS = {
             }
         },
         onRemove(unit) { delete unit._momentum; }
+    },
+    /* 🛻 REVS (2026-11-27, the Monster Truck): the count lives on unit._revs (up to 5); the status is its clock and its icon. Each
+       apply adds the payload's `gain` and resets the clock to 2, so it carries into its next turn. A walk banks a Rev a square
+       (battle.js _mtBankRevs); Ram (`revsSpend`) spends them; Burnout fills them. */
+    revs: {
+        icon: '🛞', glyph: '🛞', short: 'REV', label: 'Revs',
+        colorText: 'revving',
+        kind: 'buff', category: 'buff', stack: 'replace',
+        iconSrc: createStatusIconDataUri('🛞', '#2a1410', '#ffe2d0', '#e05a2a'),
+        onApply(unit, src, info) {
+            const gain = Math.max(0, Math.round((info && info.payload && Number(info.payload.gain)) || 1));
+            const before = unit._revs || 0;
+            unit._revs = Math.min(5, before + gain);
+            if (unit._revs > before && typeof showFloatingTextForUnit === 'function') {
+                showFloatingTextForUnit(unit, `🛞 REVS ${unit._revs}`, 'buff', { durationMs: 900 });
+            }
+        },
+        onRemove(unit) { delete unit._revs; }
+    },
+    /* 🌰 CRACKED (2026-11-27, the Nutcracker): the count lives on unit._cracks (up to 3); the status is its clock and its icon.
+       Each apply adds the payload's `gain` and resets the clock. Crack Open (`crackSpend`) spends them (battle.js _ncCrackOpen). */
+    cracked: {
+        icon: '🌰', glyph: '🌰', short: 'CRK', label: 'Cracked',
+        colorText: 'cracked',
+        kind: 'debuff', category: 'status', stack: 'replace',
+        iconSrc: createStatusIconDataUri('🌰', '#2e1a10', '#ffe8d0', '#c8783a'),
+        onApply(unit, src, info) {
+            const gain = Math.max(0, Math.round((info && info.payload && Number(info.payload.gain)) || 1));
+            const before = unit._cracks || 0;
+            unit._cracks = Math.min(3, before + gain);
+            if (unit._cracks > before && typeof showFloatingTextForUnit === 'function') {
+                showFloatingTextForUnit(unit, `🌰 CRACK ${unit._cracks}`, 'debuff', { durationMs: 900 });
+            }
+        },
+        onRemove(unit) { delete unit._cracks; }
     },
     /* 🎩 TRICK SET (2026-11-16, the Magician's Sleight of Hand): which trick = unit._trick, in turn (unit._trickNext). The line
        naming it goes to his own seat only (addLog seats); everyone else reads "Trick Set". Springs once (battle.js _magician*). */
@@ -22977,6 +23072,8 @@ const RACE_TREE = {
     'monarch':       ['monButterflyKiss', ['monPendulum', 'monKaleidoscopeWings'], ['monTriggerWord', 'monSleeperCell'], ['monMetamorphosis', 'monChaosTheory']],   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
     'bear':          ['brPawSwipe', ['raceBite', 'raceMaul'], ['brBearHug', 'brHibernate'], 'brBearDown'],   // 2026-11-23 THE BEAR (mondo OK'd the kit)
     'demiurge':      [['dmSerpentStrike', 'dmVoidGaze'], ['dmCompassSweep', 'dmFractalBloom'], ['dmCornerstone', 'dmAsAbove'], ['dmGoldenSpiral', 'dmTesseract']],   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms): every rung is one of each form (RACE_GENDER_SPELLS)
+    'monster truck': ['mtChomp', 'mtRam', 'mtHydraulicSlam', 'mtBurnout'],   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells"): its own four
+    'nutcracker':    ['ncClack', 'ncQuickMarch', 'ncCrackOpen', 'ncNutcrackerSuite'],   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells"): its own four
     'abomination':   ['abGrasp', 'abManyMouths', 'abBoneCage', 'abUnfold'],   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name): its own four
     'farmer':        ['nrPitchforkJab', ['nrSowField', 'nrHayBale'], 'nrGetOffMyLand', 'nrHarvestMoon'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
     'jellyfish ufo': ['nrPincerClaw', ['nrBioLash', 'nrJetPulse'], 'nrVenomInjector', 'nrAbyssalOverload'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
@@ -25347,6 +25444,26 @@ const SPELL_FAMILIES = {
         unique: 'butterfly girl',
         identity: { who: ['Butterfly Girl', 'Morpho', 'Collector'], adj: ['Iridescent', 'Fluttering', 'Chaotic'], look: ['huge blue morpho wings', 'curled antennae', 'blue to violet hair'], vibe: ['every flap she makes grows into a storm', 'gone in a blue flash'] }
     },
+    monstertruck: {   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells") — the Monster Truck's own
+        id: 'monstertruck',
+        name: 'Monster Truck',
+        glyph: '🛻',
+        color: '#d0402a',
+        kind: 'signature',
+        desc: 'A truck that is a monster: a fanged hood that bites, wheels that rev and ram, struts that pump it into the air.',
+        unique: 'monster truck',
+        identity: { who: ['Monster Truck', 'Big Red', 'The Crusher'], adj: ['Revving', 'Fanged', 'Mud-Caked'], look: ['a hood full of fangs', 'skull hubcaps on monster tyres', 'red coil springs over chrome struts'], vibe: ['eats cars', 'never brakes'] }
+    },
+    nutcracker: {   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells") — the Nutcracker's own
+        id: 'nutcracker',
+        name: 'Nutcracker',
+        glyph: '🌰',
+        color: '#c83a3a',
+        kind: 'signature',
+        desc: 'A toy soldier with a jaw for cracking nuts: it clacks, marches, cracks the shell open and dances the suite.',
+        unique: 'nutcracker',
+        identity: { who: ['Nutcracker', 'Toy Soldier', 'The Captain'], adj: ['Wooden', 'Painted', 'Clacking'], look: ['a tall black shako', 'a red coat with gold frogging', 'a white beard on a jaw that drops'], vibe: ['stands to attention', 'cracks anything'] }
+    },
     demiurgy: {   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms) — both forms' own
         id: 'demiurgy',
         name: 'Demiurgy',
@@ -27685,6 +27802,8 @@ const RACE_FAMILIES = {
     'monarch': ['monarchprogramming', 'seduction', 'spygear', 'deepstate'],   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
     'bear': ['bear', 'beastabilities', 'apexpredator', 'nature', 'ice'],   // 2026-11-23 THE BEAR (mondo OK'd the kit): Nature is the grizzly's, Ice the polar bear's (RACE_GENDER_SPELLS)
     'demiurge': ['demiurgy', 'cosmic', 'fractal', 'astral', 'ancientknowledge'],   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms): mondo's themes (cosmic, spiritual, the architect, sacred geometry, fractal math)
+    'monster truck': ['monstertruck', 'drivingskills', 'machinery', 'apexpredator', 'fire'],   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells"): a car, an engine, a mouth, the burnout
+    'nutcracker': ['nutcracker', 'hauntedtoy', 'christmasspirit', 'militarysupport', 'swordsmanship'],   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells"): a toy come alive, the Christmas ballet, a soldier with a sabre
     'abomination': ['abomination', 'nightmares', 'cosmic', 'shadow'],   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name)
     'farmer': ['farming', 'agriculture', 'humangrit', 'teamwork'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
     'jellyfish ufo': ['bioelectric', 'jellyfish', 'lightning', 'deepsea'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
@@ -28348,6 +28467,8 @@ const CAMPAIGN_RACE_PRICES = {
   'monarch': 450,   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
   'bear': 450,   // 2026-11-23 THE BEAR (mondo OK'd the kit)
   'demiurge': 900,   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms)
+  'monster truck': 500,   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells")
+  'nutcracker': 400,   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells")
   'abomination': 450,   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name)
   'farmer': 350,   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
   'jellyfish ufo': 400,   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)

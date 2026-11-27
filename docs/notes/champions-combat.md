@@ -6645,3 +6645,26 @@ physical attack and the other is more magic attack". Parts apart so they animate
   entry, NPC temperament, his place in the story, the feral form (not modelled; Meshy had 44 credits).
 - Files: `bake-demiurge.js` (raw 10-13 MB Meshy GLBs -> 0.3-3 MB, the bones), R2 `Assets/characters/races/demiurge/{armoured,cosmic}/`,
   `Assets/characters/gear/demiurge/dm_*.glb`, portraits `demiurge_{armoured,cosmic}_px.png` (cut from his hero concepts).
+
+## THE MONSTER TRUCK + THE NUTCRACKER (2026-11-27, thread "Make monster truck and nutcracker spells")
+mondo 11-27: "a monster truck, like a literal monster that is a truck ... it's hood could be a separate part and it has like fangs,
+and the wheels could be separate too so they could spin, maybe even hydraulics", and a Nutcracker "so its mouth can move like an
+actual nutcracker"; then "wire them up ... make their unique race spells and do their spell animation+vfx". The MODELS + their procRigs
+are the wiring thread's ("Make Meshy concepts for new characters": RACE_MODELS_3D, sprite, RACE_PROFILES, RACE_SPRITE_GENDERS,
+EW_COMING_RACES, three-renderer.js "THE MONSTER TRUCK" / the nutcracker's `ewJaw` bone). This thread: the kits, rules, stats, finishers,
+AVAILABLE_RACES (data.js + server.js), codex lore, the VFX and the spell moves of the parts. ALL NAMES AND NUMBERS ARE A FIRST PASS.
+- `monster truck` (tank, family `monstertruck`, spellType tech; pool monstertruck, drivingskills, machinery, apexpredator, fire).
+  RULE, REVS: any walk banks 1 Rev a square driven (battle.js `_mtBankRevs` in finishMoveAt, beside the Skater's bank; STATUS_DEFS
+  `revs`, count on `unit._revs`, cap 5, clock 2 so it reaches the next turn). Chomp T1 (bite, Bleed), Ram T2 (tackle 4, push 2,
+  `revsSpend: 25` a Rev, spends all), Hydraulic Slam T3 (self 3x3, push 1, Stagger), Burnout T4 (self 5x5, Burn + Blind, its
+  selfStatusAfter fills Revs to 5). `revsSpend` lands in _runPostEffects as a second blow and in the forecast (`tag: 'revs'`).
+- `nutcracker` (bruiser, family `nutcracker`, spellType anomaly; pool nutcracker, hauntedtoy, christmasspirit, militarysupport,
+  swordsmanship). RULE, CRACKS: its bites put Cracks on the enemy (STATUS_DEFS `cracked`, count on `unit._cracks`, cap 3, clock 3).
+  Clack T1, Quick March T2 (dash 4 with sweep), Crack Open T3 (`crackSpend: 45` a Crack, spends all; at 3 the target is Broken 1 round;
+  battle.js `_ncCrackOpen`), Nutcracker Suite T4 (self 5x5, Crack + Slow). Casts: Crack Open = Angry_Ground_Stomp, the Suite =
+  Joyful_Dance_with_Hand_Sway (lib 9).
+- Finishers `fin_monster_truck` "Crushed" (borrows the Honda Civic's hitAndRun staging), `fin_nutcracker` "Cracked" (borrows joust).
+- VFX: three-vfx-effects.js "THE MONSTER TRUCK + THE NUTCRACKER" (fang rows, tyre tracks + exhaust, the slam's crack + dust ring, the
+  burnout's skid circle + fire ring + smoke; wooden jaws, a gold crack, walnut shards, the Suite's gold waltz ring + sugar-pink snow).
+  Seat colour rings like the bear's. Kill switch `EW_NO_MTNC_VFX`.
+- LEFT OUT ON PURPOSE (no lore invented): element affinity, home zone, biomes, residents, NPC temperament, story place.
