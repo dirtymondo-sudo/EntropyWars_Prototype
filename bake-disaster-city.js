@@ -404,6 +404,7 @@ JOIN.garage_taxi = spot('Taxi rank', 3, 3, 270, '.P'); JOIN.streets_drain = spot
 dcCtx.JOIN = JOIN;   // THE JOINS a district may move in `build` (a link door that belongs inside one of its own walk-ins: I.js puts the sewers door on the Pump court's back wall)
 
 /* THE LEVELS, THE CROSSINGS' STAIRS (after the doors above have their squares, before anything is dressed) */
+const seamWalks = [];
 const lvCut = new Map(), lvStairs = [], lvCount = { flights: 0, ramps: 0, cut: 0, steep: 0, closed: 0 };
 PLAN.plots.forEach(p => {
     [['E', 1, 0], ['S', 0, 1]].forEach(([s, dx, dy]) => {
@@ -417,6 +418,12 @@ PLAN.plots.forEach(p => {
         const ks = []; for (let k = 0; k < N; k++) { const g = (dx ? p.y : p.x) * N + k; if (walkSq(sq(g, 1, 0)) && walkSq(sq(g, -1, 0))) ks.push(g); }
         if (!ks.length) { console.warn("THE LEVELS: a walk the plan joins has no open square on the line", p.id, s, q.id); lvCount.closed++; return; }
         const runs = []; ks.forEach(k => { const r = runs[runs.length - 1]; if (r && r[r.length - 1] === k - 1) r.push(k); else runs.push([k]); });
+        /* THE SPREAD'S LINES (11-27, the polish pass; mondo: "a useless staircase because of the recent disaster city pass"): a line the spread opens
+           into a road (docs/disaster-city/spread.js CUTX / CUTZ) gets no flight, no ramp and no cut: the two plots no longer touch, the new ground
+           between them makes the climb, and a flight left here ran up into the air over the new pavement. The walks are handed to the spread
+           (`seamWalks`): Bluff Drive builds its bank stairs where they come out. */
+        const seam = !process.env.DC_COMPACT && (lineC === 4 * N || lineC === 8 * N);   // (the squares are still taken below, as before: every later throw of the dice stays where it fell)
+        if (seam) { runs.forEach(run => seamWalks.push({ x: !!dx, line: gx(lineC), a: gx(run[0]), b: gx(run[run.length - 1] + 1), lo: r3(lvOf(loP) * LVM), hi: r3(lvOf(hiP) * LVM), toLo })); lvCount.seam = (lvCount.seam || 0) + runs.length; }
         runs.forEach(run => {
             const avail = (side, cols, max) => { let n = 0; while (n < max && cols.every(k => { const c = sq(k, side, n); return walkSq(c) && !occ.has(c[0] + ',' + c[1]); })) n++; return n; };
             /* one level on a walk two squares wide: a stair on one square, a ramp three squares long on the other */
@@ -432,9 +439,9 @@ PLAN.plots.forEach(p => {
             if (per / C > 1.001) { console.warn('THE LEVELS: a stair steeper than the walk climbs', p.id, s, q.id, 'squares', m, 'levels', d); lvCount.steep++; }
             const along = (cols[0] + cols[cols.length - 1] + 1) / 2, lineM = gx(lineC), fa = r3(lineM + toLo * nLo * C), ta = r3(lineM - toLo * nHi * C), am = gx(along);
             const row = { k: 'ramp', id: 'dc:stair:' + p.id + s + (runs.length > 1 ? ':' + run[0] : ''), absY: true, x0: dx ? fa : am, z0: dx ? am : fa, x1: dx ? ta : am, z1: dx ? am : ta, w: r3(cols.length * C), h0: r3(lvOf(loP) * LVM), h1: r3(lvOf(hiP) * LVM), stairs: true, model: LEVELS.stairs[loP.d] || 'concrete', edge: 0.01 };
-            features.push(row); lvStairs.push(row); lvCount.flights++;
+            if (!seam) { features.push(row); lvStairs.push(row); lvCount.flights++; }
             cols.forEach(k => {
-                for (let i = 0; i < nHi; i++) { const c = sq(k, -toLo, i); lvCut.set(c[0] + ',' + c[1], { x: !!dx, line: lineC, dir: -toLo, m: nHi, h0: lvOf(hiP) * LVM - nHi * per, h1: lvOf(hiP) * LVM }); lvCount.cut++; }
+                for (let i = 0; i < nHi && !seam; i++) { const c = sq(k, -toLo, i); lvCut.set(c[0] + ',' + c[1], { x: !!dx, line: lineC, dir: -toLo, m: nHi, h0: lvOf(hiP) * LVM - nHi * per, h1: lvOf(hiP) * LVM }); lvCount.cut++; }
                 for (let i = 0; i <= nLo; i++) { const c = sq(k, toLo, i); take(c[0], c[1]); }
                 for (let i = 0; i <= nHi; i++) { const c = sq(k, -toLo, i); take(c[0], c[1]); }
             });
@@ -442,7 +449,7 @@ PLAN.plots.forEach(p => {
             const lineM = gx(lineC);
             if (rampK != null) {
                 const rm = gc(rampK), f3 = r3(lineM + toLo * 3 * C);
-                features.push({ k: 'ramp', id: 'dc:ramp:' + p.id + s, absY: true, x0: dx ? f3 : rm, z0: dx ? rm : f3, x1: dx ? lineM : rm, z1: dx ? rm : lineM, w: C, h0: r3(lvOf(loP) * LVM), h1: r3(lvOf(hiP) * LVM), edge: 0.2 });
+                if (!seam) features.push({ k: 'ramp', id: 'dc:ramp:' + p.id + s, absY: true, x0: dx ? f3 : rm, z0: dx ? rm : f3, x1: dx ? lineM : rm, z1: dx ? rm : lineM, w: C, h0: r3(lvOf(loP) * LVM), h1: r3(lvOf(hiP) * LVM), edge: 0.2 });
                 for (let i = 0; i <= 3; i++) { const c = sq(rampK, toLo, i); take(c[0], c[1]); }
                 { const c = sq(rampK, -toLo, 0); take(c[0], c[1]); }
                 lvCount.ramps++;
@@ -1507,7 +1514,7 @@ if (DISTRICTS.some(m => typeof m.last === 'function')) { dcRun('last'); clearSta
    DC_COMPACT=1 = the room without it (the compact city, to compare). ── */
 const SPREAD = require('./docs/disaster-city/spread.js'), SPREAD_ON = !process.env.DC_COMPACT, spreadAt = (x, z) => SPREAD_ON ? SPREAD.map(x, z) : [x, z];
 if (SPREAD_ON) { const i = block.indexOf('site_prebuilt_downtown_streets: {'), e = block.indexOf('        /* DC144-END */');
-    const sp = SPREAD.apply(block.slice(i, e)); block = block.slice(0, i) + sp.text + block.slice(e);
+    const sp = SPREAD.apply(block.slice(i, e), { seamWalks, cells: Array.from({ length: 144 }, (_, cy) => Array.from({ length: 144 }, (_, cx) => cellAt(cx, cy)).join('')) }); block = block.slice(0, i) + sp.text + block.slice(e);
     console.log('THE SPREAD ' + JSON.stringify(sp.count)); sp.say.forEach(q => console.warn('THE SPREAD: ' + q));
     Object.values(JOIN).forEach(o => { if (o && typeof o.x === 'number' && typeof o.z === 'number') { const m = SPREAD.map(o.x, o.z); o.x = m[0]; o.z = m[1]; } }); }
 console.log(JSON.stringify(Object.assign({ features: features.length, props: props.length, streets: streets.length, bytes: block.length }, count)));
