@@ -524,6 +524,9 @@ function apply(block, opt) {
     T.busStops = (T.busStops || []).map(b => Object.assign(mp(b), { signs: (b.signs || []).map(mp) }));
     count.features = T.features.length; count.props = room.props.length; count.lamps = T.gen.lamps.length; count.trees = trees.length; count.streets = streets.length;
 
+    /* THE HARBOUR IN THE CITY'S ROOM (2026-11-27, docs/disaster-city/harbour.js): the room grows 40 squares east over the water and the Beach zone's
+       Harbour is set down on it. Nothing above this line knows: X0, NX, DX, DZ are the city's own, as before (`DC_NO_HARBOUR=1` = without it). */
+    const HB = process.env.DC_NO_HARBOUR ? null : require('./harbour.js').lay({ room, T, H, FL, P, NX, NZ, X0, Z0, b64, count, say });
     /* the text: a key a line, a row a line in the long lists */
     const rows = (arr, ind) => '[\n' + arr.map(v => ind + ser(v)).join(',\n') + '\n' + ind.slice(4) + ']';
     const tl = []; Object.keys(T).forEach(k => { if (T[k] === undefined) return; tl.push('                ' + k + ': ' + (k === 'features' ? rows(T.features, '                    ') : ser(T[k])) + ','); });

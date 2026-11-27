@@ -15342,6 +15342,34 @@ with mondo's OK.
 `EW_PROBE_TRIES=1`). Never edit a served .js while a probe runs.
 
 
+### ONE BEACH, ONE ROOM (2026-11-27; mondo: "it's supposed to be one beach but i have to walk out on the dock to get to this other harbor ... fuck it let's do it and then just try to fix the frame rate afterwards")
+The Harbour is no longer a room behind a door on the Long Pier. It stands in Disaster City's room, east of the Shore, and the pier is one walk from the sand
+to the Dutchman. `site_prebuilt_bermuda_beach` is RETIRED as a room (data.js `DOOR_HQ.retired` -> the city); its BEACH140 block stays in data.js as the
+SOURCE: `bake-beach.js` still writes it, and `docs/disaster-city/harbour.js` (run by `spread.js`, the city bake's last step) lays it into the city. The Deep
+and the islands stay their own rooms (mondo's "ocean/deep" was read as the Harbour's sea; the Deep is under water, behind the sub).
+- **The place.** The city's grids grow EAST only, 40 squares: x 392 to 532 (`room.dc144.harbour = { x0, x1, dx: 455, dz: -126, sea: -1.45 }`). NO city
+  coordinate moved and `dc144.spread` is unchanged. A sea-room point (x, z, y) stands at city (x + 455, z - 126, y - 1.45): the whole sea room is lowered
+  by the city's sea level, so the ship, the gangway, the gantry stairs and the quay keep their steps to one another.
+- **The shell + the west side.** A shell is centred on 0, so it is 1064 m wide and the 140 m west of x -392 is a DEAD STRIP: `edges.w.inset` 139.9,
+  `backdropInset { w: 140 }`, and a ghost wall `dc:deadstrip:w` on x -392.4 (the west doors at x -390.25 / -389.4 stand inside it as before).
+- **What joins.** The Long Pier's city half (`shore:longpier`, its `harbour` door) is removed; the sea room's pier deck (y -0.85) runs on from the sand.
+  The Quay gets a LANDING (harbour.js `LANDING`: sea-room cols 19..23, rows 36..42, cobbles) so its west end is on the beach: two ways between the beach
+  and the Harbour, both dry. The sea room's own foreshore (cols under 24, rows 36..49) is NOT copied: the city's Shore is the beach there.
+- **The sunk rows.** B.js cuts the city's sea with sunk plateau rows that reach about 45 m past x 392; harbour land they touch is raised again by
+  plateau rows `hb:ground<n>` (0.1 m overlap). A new piece of land in that band needs its own row.
+- **The people.** Raw `npcSpots` of a transplanted room are dropped by `hqPlacesExpand`: the Harbour's eight placed people are a literal in harbour.js
+  (`PEOPLE`), and data.js `HQ_NPC_PLACES.site_prebuilt_downtown_streets` lists their races with `keep`.
+- **The links.** `beach_dutchman`, `beach_volcano`, `babel_beach`, `beach_triangle`: their Beach ends are city squares now (hand rows in data.js
+  `DOOR_HQ.links`); `bake-beach.js` WANT checks the Dutchman row at the city place. `hubs.beach.room` = Katana Island (the hub needs a standing room).
+- **THE BEACH ARCH** (mondo: "it seems totally in the wrong spot"; his pick 11-27: Bayside, by the mall): the 18 gate parts leave `shore:boardwalk:look`
+  and stand as `dc:beach-gate:arch` at harbour.js `GATE` (285.9, 77), over the way from Bayside onto the sand.
+- **The map.** `bake-map.js`: the city's picture is 22 plots wide, the Harbour's 8 plots are city plots `HB<col>-<row>` (district Q "The Harbour"); the
+  Beach zone row has no room of its own.
+- **Ground zones.** Two zones ahead of the beach zone: `[350,-217,392,-105]` (the landing + the pier's foot) and `[392,-252,532,378]` (the Harbour).
+- **Checks.** `find-softlocks.js`: the Hills' two old spots, nothing in the Harbour. `find-doors.js`: 339 walk-ins, 1 drawn door closed (the same as main).
+- **Still naming the old room** (harmless, the redirect covers them): the sky / flora / label / encounter tables in data.js. `DC_NO_HARBOUR=1` = the city
+  without it (a bisect).
+- **Open.** Frame rate (the city room draws the Harbour too now; mondo: "fix the frame rate afterwards"). The world map plan (R6 / R9 under the city).
 ### THE SPREAD, THE POLISH PASS (2026-11-27, thread "Polish Disaster City after the new layout")
 mondo 11-27, from Police staging and the Street market: "a street that is all messed up bc it has this a big bump and its not connected to the next part
 of the street smoothly ... a useless staircase because of the recent disaster city pass ... there are many more things just like this". What the cuts broke,

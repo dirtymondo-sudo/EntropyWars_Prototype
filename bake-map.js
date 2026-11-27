@@ -41,7 +41,7 @@ const ZONES = [
     { hub: 'kingdom', layout: 'camelot', rooms: [{ room: 'site_prebuilt_camelot_kingdom', layer: 'surface', wx: -29, wy: -3, zx: 0, zy: 0 }] },
     { hub: 'ranch', layout: 'estate', rooms: [] },   // THE TEST SLICE (2026-11-17): the room is the Haunted House + the Ranch now (6 x 3 plots, not moved yet); the Corn Fields and the Lake are rooms of their own (`room.world`)
     { hub: 'desert', layout: 'desert', rooms: [] },   // ONE WORLD 4.2 (2026-11-17): every Desert room says its own place (`room.world`): the four districts and the roads between them (site_ow_dh1..dh4, site_ow_r9); the Highway's room is retired
-    { hub: 'beach', layout: 'beach', rooms: [{ room: 'site_prebuilt_bermuda_beach', layer: 'surface', wx: 12, wy: 2, zx: 0, zy: 0 }] },   // THE ONE WORLD MOVE (2026-11-17, phase 4.3): the Beach stands at 12,2 (8 x 10); the Triangle and the Volcano Island are rooms of their own (`room.world`)
+    { hub: 'beach', layout: 'beach', rooms: [] },   // ONE BEACH, ONE ROOM (2026-11-27): the Harbour's sea room (was at 12,2) is part of Disaster City's room; the islands say their own places (`room.world`)   // THE ONE WORLD MOVE (2026-11-17, phase 4.3): the Beach stands at 12,2 (8 x 10); the Triangle and the Volcano Island are rooms of their own (`room.world`)
     { hub: 'ley', layout: 'leylines', rooms: [] },
     { hub: 'antarctica', layout: 'antarctica', rooms: [{ room: 'site_prebuilt_antarctica_plots', layer: 'surface', wx: 0, wy: 46, zx: 0, zy: 0 }] },
     { hub: 'divine', layout: 'afterlife', rooms: [
@@ -77,7 +77,7 @@ function buildWorld() {
 }
 /* the district inks: one hue a letter, kept apart within a zone */
 const INKS = ['#e0b040', '#5fb0e0', '#e06a8a', '#7fd07a', '#c08ae0', '#e08a40', '#50d0c0', '#d0d060', '#a0a0ff', '#ff9a9a', '#9ae0ff', '#e0c0a0', '#b0e050', '#ff80d0'];
-const CITY_DN = { C: 'Civic Center', F: 'Financial', E: 'Entertainment', U: 'University', H: 'Hero Plaza', B: 'Bayside', R: 'Southside', S: 'Sports + Culture', I: 'Industrial', N: 'Disaster Hills', Y: 'The Highway', A: 'The Avenues', D: 'Bluff Drive', P: 'Woodland Parkway', V: 'Desert View Drive' };   // (Y A D P V: THE SPREAD's new ground, 2026-11-27; a letter is used only when the room has such plots)
+const CITY_DN = { C: 'Civic Center', F: 'Financial', E: 'Entertainment', U: 'University', H: 'Hero Plaza', B: 'Bayside', R: 'Southside', S: 'Sports + Culture', I: 'Industrial', N: 'Disaster Hills', Y: 'The Highway', A: 'The Avenues', D: 'Bluff Drive', P: 'Woodland Parkway', V: 'Desert View Drive', Q: 'The Harbour' };   // (Y A D P V: THE SPREAD's new ground, 2026-11-27; a letter is used only when the room has such plots)
 
 /* ── THE GROUND KINDS (G of the picture): the paint key's family. map.js draws each in its colour, shaded by height ── */
 const KINDS = ['nothing', 'grass', 'dark grass', 'dirt', 'sand', 'snow', 'rock', 'paved', 'wood', 'ash', 'lava rock', 'cloud', 'red rock', 'crystal', 'gold', 'metal'];
@@ -178,13 +178,18 @@ function buildTable(S, rasters) {
                    strip is one or two plots wide): 19 across (the parkway · 4 · the highway's 2 · 4 · Bluff Drive · 4 · the beach) and 18 down (the
                    Hills' 3 · 4 · North Avenue · 4 · South Avenue · 4 · Desert View Drive). A compact column / row -> its place now: sc / sr. */
                 const SPREAD = !!(room.dc144 && room.dc144.spread), sc = c => SPREAD ? c + (c < 4 ? 1 : c < 8 ? 3 : 4) : c, sr = q => SPREAD ? q + (q < 4 ? 0 : q < 8 ? 1 : 2) : q;
-                row.cols = SPREAD ? 19 : 13; row.rows = SPREAD ? 18 : 15; row.ox = -room.shell.w / 2 + (SPREAD ? 0 : 112); row.oz = -378;
+                /* ONE BEACH, ONE ROOM (2026-11-27, docs/disaster-city/harbour.js): the room runs 40 squares further east over the water (the Harbour) and its
+                   shell as far again west (a dead strip under the forest), so the plot grid starts at the city's own west line, not at the shell's */
+                const HARB = SPREAD && room.dc144.harbour ? room.dc144.harbour : null;
+                row.cols = SPREAD ? (HARB ? 22 : 19) : 13; row.rows = SPREAD ? 18 : 15; row.ox = SPREAD ? room.dc144.spread.x0 : -room.shell.w / 2 + 112; row.oz = -378;
                 row.plots = [];
                 CL.plots.forEach(p => { const hm = home[p.d], to = MV.to[p.d]; row.plots.push([p.id, p.name, p.d, sc(p.x - hm[0] * 4 + to[0] * 4), sr(p.y - hm[1] * 4 + to[1] * 4) + 3]); used[p.d] = 1; });
                 HL.plots.forEach(p => { const m = /^H(\d+)-(\d+)$/.exec(p.id); if (m) { row.plots.push([p.id, p.name, 'N', sc(+m[1]), +m[2]]); used.N = 1; } });
                 if (SPREAD) { const two = n => String(n).padStart(2, '0'), add = (id, name, d, c, q) => { row.plots.push([id, name, d, c, q]); used[d] = 1; };
                     for (let q = 3; q < 18; q++) { add('PK-' + two(q), 'Woodland Parkway', 'P', 0, q); add('HW05-' + two(q), q < 4 ? 'Highway Park' : 'The Highway', 'Y', 5, q); add('HW06-' + two(q), q < 4 ? 'Highway Park' : 'The Highway', 'Y', 6, q); add('BD-' + two(q), 'Bluff Drive', 'D', 11, q); }
-                    [1, 2, 3, 4, 7, 8, 9, 10, 12, 13, 14, 15].forEach(c => { add('NA-' + two(c), 'North Avenue', 'A', c, 7); add('SA-' + two(c), 'South Avenue', 'A', c, 12); if (c < 11) add('DV-' + two(c), 'Desert View Drive', 'V', c, 17); }); }
+                    [1, 2, 3, 4, 7, 8, 9, 10, 12, 13, 14, 15].forEach(c => { add('NA-' + two(c), 'North Avenue', 'A', c, 7); add('SA-' + two(c), 'South Avenue', 'A', c, 12); if (c < 11) add('DV-' + two(c), 'Desert View Drive', 'V', c, 17); });
+                    /* the Harbour's eight plots (the sea room's names: a sea plot (c, r) lies on the city's plot (16 + c, 1 + r)) */
+                    if (HARB) [['The Quay', 2, 3], ['The Breakwater', 3, 3], ['The Long Pier', 2, 4], ['The Flying Dutchman', 3, 4], ['The Skiff', 2, 5], ['The Channel', 3, 5], ['The Harbour Mouth', 2, 6], ['The Roads', 3, 6]].forEach(([n, c, q]) => add('HB' + two(16 + c) + '-' + two(1 + q), n, 'Q', 16 + c, 1 + q)); }
             } else {
                 const P = room.plots || {}; row.cols = P.nx || P.n || Math.round(room.shell.w / PLOT); row.rows = P.nz || Math.round(room.shell.d / PLOT);   // (rows from the shell: a room that wrote `n` alone is not always square, Leylines is 9 x 7)
                 row.ox = -room.shell.w / 2; row.oz = -room.shell.d / 2;

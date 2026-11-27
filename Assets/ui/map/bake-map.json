@@ -71,13 +71,13 @@
  },
  "site_prebuilt_downtown_streets": {
   "id": "site_prebuilt_downtown_streets",
-  "nx": 224,
+  "nx": 304,
   "nz": 216,
   "h0": -1.5,
   "hs": 0.25,
-  "v": "5d0f2de308",
-  "bytes": 19273,
-  "s": "86.9"
+  "v": "92d3353f97",
+  "bytes": 20385,
+  "s": "92.8"
  },
  "site_prebuilt_vatican_under": {
   "id": "site_prebuilt_vatican_under",
