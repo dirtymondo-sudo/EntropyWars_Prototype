@@ -163,6 +163,7 @@ const EW_ASSET_MOVES = [
   ['Assets/Sprites/Races/leopard_girl/', 'Assets/characters/races/leopard_girl/'],   // 2026-11-27 THE NEW CHARACTERS
   ['Assets/Sprites/Races/draconian/', 'Assets/characters/races/draconian/'],   // 2026-11-27 THE NEW CHARACTERS
   ['Assets/Sprites/Races/flower_girl/', 'Assets/characters/races/flower_girl/'],   // 2026-11-27 THE NEW CHARACTERS
+  ['Assets/Sprites/Races/origami_girl/', 'Assets/characters/races/origami_girl/'],   // 2026-11-27 THE ORIGAMI GIRL
   ['Assets/Sprites/Races/leprechaun/', 'Assets/characters/races/leprechaun/'],   // 2026-11-27 THE NEW CHARACTERS
   ['Assets/Sprites/Races/medic/', 'Assets/characters/races/medic/'],   // 2026-11-27 THE NEW CHARACTERS
   ['Assets/Sprites/Races/music_producer/', 'Assets/characters/races/music_producer/'],   // 2026-11-24 THE MUSIC PRODUCER
@@ -629,6 +630,7 @@ const RACE_SPRITE_GENDERS = {
   'leopard girl': 'female',   // 2026-11-27 THE NEW CHARACTERS
   'draconian': 'male',   // 2026-11-27 THE NEW CHARACTERS
   'flower girl': 'female',   // 2026-11-27 THE NEW CHARACTERS
+  'origami girl': 'female',   // 2026-11-27 THE ORIGAMI GIRL
   'leprechaun': 'both',   // 2026-11-27 THE NEW CHARACTERS
   'medic': 'both',   // 2026-11-27 THE NEW CHARACTERS (one race: the male is the Doctor, the female the Nurse)
   'princess': 'female',   // 2026-11-24 THE PRINCESS
@@ -822,6 +824,7 @@ const _CHARACTER_SPRITES = {
   'leopard girl': `${_S}/Races/leopard_girl/female/leopard_girl_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
   'draconian': `${_S}/Races/draconian/male/draconian_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
   'flower girl': `${_S}/Races/flower_girl/female/flower_girl_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
+  'origami girl': `${_S}/Races/origami_girl/female/origami_girl_px.png`,   // 2026-11-27 THE ORIGAMI GIRL — 128x128 pixel sprite (Sprite AI restyle of a straight-on render of her model)
   'leprechaun': `${_S}/Races/leprechaun/male/leprechaun_m_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
   'medic': `${_S}/Races/medic/male/doctor_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
   'princess': `${_S}/Races/princess/female/princess_px.png`,   // 2026-11-24 THE PRINCESS — 128x128 pixel sprite (Sprite AI restyle of her Meshy concept)
@@ -2959,6 +2962,17 @@ const RACE_MODELS_3D = {
     female: _mkUAL('flower_girl', 'flower_girl', {
       model: 'https://cdn.entropywars.net/Assets/characters/races/flower_girl/female/Meshy_AI_flower_girl_Running.glb',
       heightRatio: 0.95, basicAttackKind: 'magic',
+    }),
+  },
+  /* 📄 THE ORIGAMI GIRL (2026-11-27, mondo: "a sheet of origami crane ... girl", he picked crane girl b): Meshy image-to-3d + rig from
+     Claude's concept (project files origami-girl/: concepts/, model.py, models/). Her two paper wings are one separate flat pair
+     (origami_wings.glb, built by Claude from the one Meshy wing) worn on her back: `hold2` on Spine02 (`open` = no grip; `hold` is
+     kept free: it is the weapon a basic attack leaves from). The sheet she folds into is three-renderer.js THE ORIGAMI. */
+  'origami girl': {
+    female: _mkUAL('origami_girl', 'origami_girl', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/origami_girl/female/Meshy_AI_origami_girl_Running.glb',
+      heightRatio: 0.97, basicAttackKind: 'slash',
+      hold2: { key: 'ori_wings', bone: 'Spine02', open: true, pos: [0, -0.35, -0.16], rot: [0, 0, 0], h: 0.95 },
     }),
   },
   'leprechaun': {
@@ -7875,6 +7889,7 @@ const RACE_SPRITES = {
   'leopard girl': `${_S}/Races/leopard_girl/female/leopard_girl_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
   'draconian': `${_S}/Races/draconian/male/draconian_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
   'flower girl': `${_S}/Races/flower_girl/female/flower_girl_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
+  'origami girl': `${_S}/Races/origami_girl/female/origami_girl_px.png`,   // 2026-11-27 THE ORIGAMI GIRL — 128x128 pixel sprite (Sprite AI restyle of a straight-on render of her model)
   'leprechaun': `${_S}/Races/leprechaun/male/leprechaun_m_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
   'medic': `${_S}/Races/medic/male/doctor_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
   'princess': `${_S}/Races/princess/female/princess_px.png`,   // 2026-11-24 THE PRINCESS — 128x128 pixel sprite (Sprite AI restyle of her Meshy concept)
