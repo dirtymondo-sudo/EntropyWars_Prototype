@@ -1254,3 +1254,21 @@ Left: a rig that grows later (more point lamps than the 20 it is grown to at the
 right after one still builds what was not seen since. The proof timer (`_ewScCheck`) builds one stand-in every ~250 ms after real
 builds; it is JS only, no pipeline.
 
+
+## THE CUT (2026-11-27, mondo in the Sewers: "i can't see the battle at all because the ceiling is covering everything up, i thought we already made it to where roofs would disappear" · "roof ceiling whatever, anything that is covering the action")
+- WHY IT MISSED: the old opener only knew a room's flat shell ceiling (`_ew_hqPart 'ceil'`, faded by the eye's height, `_fieldGroundTick`),
+  wall sides, trees and a piece over a unit on a sight line. The Sewers (bake-labyrinth.js) are plot-built on many levels: every closed square
+  is a brick mass to the top of the room (54 m), each run of passage wears a barrel vault (`hq_arch`, a texbuilding: big, never faded) and
+  the shell ceiling is 54 m up. Measured in a real fight (11-27): every ray from the battle camera met a plan wall's top or a vault first.
+- THE CUT (three-renderer.js `_cutArm` / `_cutTick` / `_cutDrop`, beside `_fieldGroundTick`): in a fight in a room with no open sky
+  (`_hqEnclosed`: a box room without `shell.open && shell.sky`, or a bay; 183 rooms), the ROOM's materials (the walked room's `hq_walked`
+  holder, or the copied room's `_facilityNearGroup`) get one world clip plane `CUT_M` (3.5 m, one battle square) over the highest feet of
+  the units the viewer can see (fog-gated), eased as units climb. Board, units, effects, HUD are never cut. Classic clippingPlanes on WebGL,
+  `_ewNodeClip`'s discard on WebGPU (a moved cut marks the walked room's render bundles dirty). Shadows are not cut (clipShadows off).
+  Looks read at the arm and every 20 s (a late model); every look given back at `_fwLeave` / `_fieldGroundRelease`.
+- What the cut took covers nothing: the sight-line fade skips hits above it (`_cutHides`), `tallSceneryTopAt` and `shotBlockers` (THE CLOSE
+  VIEW, THE CLEAR SHOT) are clipped to it (`_cutBoxes`).
+- Not covered: open-sky rooms with floors over floors (the Bayside Mall, Camelot Palace) keep THE OVERHEAD FADE.
+- Off: `window.EW_NO_CUT = true`; height: `window.EW_CUT_M` (metres). Drawn per viewer, nothing relayed.
+- Proof (cloud WebGL, real fights via playtest_handover.js's strike): /mnt/project-files/battle-cut/ (Sewers before/after, a spell, an enemy
+  attack, the close view; the D.U.M.B. before/after: its ceiling lamp panels hung over the board).
