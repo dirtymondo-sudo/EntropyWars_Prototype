@@ -6620,3 +6620,28 @@ borrows pileOn (Happily Never After).
   other rows already use. VFX: the element looks (light / arcane), side colours as everywhere.
 - Residents: Came A Lot (HQ_NPC_PLACES `princess @K:Great Hall >K day`, the castle at night), the Keep's encounter list (w 5),
   DOOR_TEXT home Came A Lot, three roster lines. Proof: project files `princess/proof/` (probe `princess/probe_pr.js`).
+
+## THE DEMIURGE (2026-11-26, thread "Add the Demiurge's two forms")
+mondo 11-26: "this guy is like the original creator of the black cube, the demiurge, cosmic abilities, spiritual abilities, the architect,
+sacred geometry, fractal math ... one character but with 2 forms, and you can pick either, kinda like the male/female split ... one is more
+physical attack and the other is more magic attack". Parts apart so they animate with his spells (cube spinning in the staff, wings, snakes).
+- ONE RACE `demiurge`, TWO FORMS on THE COATS pattern (the Bear): male side = ARMOURED (⚔), female side = COSMIC (✦). data.js
+  RACE_PROFILES.demiurge `labelMale / labelFemale / coats`. A team may field one of each.
+- STATS PER FORM (new, any race may use it): data.js `RACE_GENDER_STATS[race][gender]` over RACE_BASE_STATS, read through
+  `raceBaseStats(race, gender)`; `computeUnitStats(race, cls, zodiac, gender)` and party-builder.js computeStats / computeFullStats pass
+  the gender. Armoured: HP 1260 ATK 140 DEF 125 INT 70. Cosmic: HP 1040 MP 220 ATK 60 MDEF 135 INT 172.
+- FAMILY `demiurgy` (unique), RACE_TREE in pairs, RACE_GENDER_SPELLS gives each form its four:
+  armoured (physical) Serpent Strike T1, Compass Sweep T2, Cornerstone T3, Golden Spiral T4;
+  cosmic (magic) Void Gaze T1, Fractal Bloom T2, As Above, So Below T3, Tesseract T4. Finisher `fin_demiurge` "Unmade".
+  ALL NAMES, NUMBERS AND THE FINISHER ARE A FIRST PASS for mondo to rename / rebalance (not canon). Pool: demiurgy, cosmic, fractal,
+  astral, ancientknowledge.
+- THE PARTS (three-renderer.js "THE DEMIURGE", on THE UNIT GEAR: `gear.demi`): the cube spins in the staff's cage (`dmCage` / `dmCube`);
+  armoured = two shoulder serpents (9-bone chains that sway and lunge), the bladed tail, the horn crest, wings; cosmic = the halo, two
+  void eyes, three orbiting cubes, the robe on THE SWAY spring chains (`ewsway_c40..47`), wings. Every part is in `_procRigDeps`, so the
+  unit lands whole (nothing pops in late). `_demiTick` runs off the board loop's per-unit slot (`_demiSlot`), no scene walk.
+- THE ACTS: `_DM_ACTS` (cast, strike, serpent, sweep, cube, spiral, gaze, bloom, halo); three-vfx-effects.js `_DM_SPELL_ACTS` maps each
+  spell to one on the 'windup' intent (`ThreeRenderer.demiAct(uid, name, ms)`), which online.js already relays, so the guest sees them.
+- LEFT OUT ON PURPOSE (no lore invented): a rule of his own / passive, element affinity, reach kit, residents and zone spawns, point of
+  entry, NPC temperament, his place in the story, the feral form (not modelled; Meshy had 44 credits).
+- Files: `bake-demiurge.js` (raw 10-13 MB Meshy GLBs -> 0.3-3 MB, the bones), R2 `Assets/characters/races/demiurge/{armoured,cosmic}/`,
+  `Assets/characters/gear/demiurge/dm_*.glb`, portraits `demiurge_{armoured,cosmic}_px.png` (cut from his hero concepts).

@@ -141,6 +141,7 @@ Never deliver patches, diffs or loose files in place of the merged PR + upload (
 - `bake-outfit.py` (2026-11-12): a Meshy T2 a-pose remake of a unit -> its clothes as creator pieces on the MPFB bodies (`ewm_t2<unit>_outfit/_hat.glb`;
   sprites.js RACE_REMADE_LOOKS). Notes: models-assets.md "THE MESHY OUTFITS".
 - `bake-foliage.py` (2026-11-20): `python3 -I bake-foliage.py --retro <kit>/3D\ Models --tex <kit>/Textures --blend <flowerset.blend> --flowertex <dir> --out <dir>` (needs `pip install bpy`) turns the Retro Foliage kit + the hand-painted flowers into `rf_*` / `hp_*` GLBs and the one-sheet `ew_flora_field.glb`. Notes: flora.md.
+- `bake-demiurge.js` (2026-11-26): `node bake-demiurge.js <raw models dir> <out dir>` shrinks the Demiurge's Meshy bodies + parts and writes their bones. Notes: models-assets.md "THE DEMIURGE'S PARTS".
 - `bake-rig-fix.py` (2026-11-19): `python3 -I bake-rig-fix.py <in.glb> <out.glb> --preset egirl | --set Joint=x,y,z` repairs a Meshy auto-rig's shoulders (joints + collarbone/arm weights). Notes: models-assets.md "THE RIG FIX".
 - `bake-face.py` (2026-11-12): an old Meshy unit's head -> MPFB head shape + face skin (`<race>Face`, `ew_face_<race>`). Notes: character-creator.md "THE UNIT FACES".
 - `bake-beards.py` (2026-11-02): `python3 -I bake-beards.py --mpfb /tmp/mpfb2 --packs /tmp/mhpacks [--only full]` joins a pack beard + moustache
