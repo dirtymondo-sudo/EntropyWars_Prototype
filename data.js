@@ -109394,6 +109394,51 @@ function zoneFloraRoomId(room) {
     return _zfRoomIds.get(room) || null;
 }
 /* rows in, rows out (the room's own rows are never changed: a swapped row is a copy) */
+/* THE CROPS VARY (2026-11-27, mondo: "all the very repetitive corn? can we do different crops or more variety of corn plants too?"). The Estate's corn
+   is 2,775 copies of one model, one height, one green. A row of a key listed here stands as its FIELD PATCH says: the world is cut in soft patches
+   (`patch` metres across, smooth noise on the row's own spot, so a room looks the same every visit) and each patch is one of `looks` (by weight):
+   a `tint` (the model drawn through a tinted twin of its material; a list = a gain per channel), a height range `vy` (the row's own height, the plan kept), or `to` = another
+   crop stood in its place (`n` of them along the row's 3.5 m, `h` their height range). Every row also takes its own small height off `vy`.
+   Copies, never the room's own rows; nothing blocks that did not (`noBlock` kept). Off: window.EW_NO_CROP_VARY. */
+const CROP_VARY = {
+    corn_row: { patch: 30, edge: 0.07, looks: [
+        { w: 41, vy: [0.92, 1.16] },                                   // the green corn, as it was, no two rows one height
+        { w: 14, vy: [0.58, 0.78], tint: [1.25, 1.3, 0.85] },                     // a young field, shoulder high
+        { w: 18, vy: [0.98, 1.24], tint: [1.7, 1.35, 0.72] },                   // ripening: tall and gone yellow
+        { w: 12, vy: [0.8, 1.02], tint: [2.1, 1.45, 1.0] },                    // dry, ready to cut
+        { w: 10, to: 'sunflowers', n: 3, h: [2.2, 2.9], vy: [1, 1] },  // a sunflower field
+        { w: 5, to: 'sunflowers', n: 3, h: [2.0, 2.6], tint: 0xd9b878, vy: [1, 1] } ] }   // sunflowers past their best
+};
+function cropRowsVary(room, rows) {
+    if (!rows || !rows.length || (typeof window !== 'undefined' && window.EW_NO_CROP_VARY)) return rows;
+    const h2 = (x, y, s) => { let n = Math.sin(x * 127.1 + y * 311.7 + s * 74.7) * 43758.5453; return n - Math.floor(n); };
+    const noise = (x, y, s) => { const xi = Math.floor(x), yi = Math.floor(y), fx = x - xi, fy = y - yi, u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy);
+        return (h2(xi, yi, s) * (1 - u) + h2(xi + 1, yi, s) * u) * (1 - v) + (h2(xi, yi + 1, s) * (1 - u) + h2(xi + 1, yi + 1, s) * u) * v; };
+    const wd = (room && room.world) || null, ox = (wd && wd.x) || 0, oz = (wd && wd.z) || 0;   // (a room at its world place: the patches run on across a seam)
+    let out = null;
+    for (let i = 0; i < rows.length; i++) {
+        const p = rows[i], V = p && CROP_VARY[p.key];
+        if (!V || p.vy || p.tint != null || p.x == null) { if (out) out.push(p); continue; }
+        if (!out) out = rows.slice(0, i);
+        const r1 = h2(p.x, p.z, 1), r2 = h2(p.x, p.z, 2), r3 = h2(p.x, p.z, 3);
+        /* the patch: two octaves, stretched to 0..1, a little of the row's own chance at a patch's rim so two fields meet ragged */
+        let t = noise((p.x + ox) / V.patch + 31.7, (p.z + oz) / V.patch - 12.3, 5) * 0.72 + noise((p.x + ox) / (V.patch * 0.37), (p.z + oz) / (V.patch * 0.37), 9) * 0.28;
+        t = Math.min(0.9999, Math.max(0, (t - 0.22) / 0.56 + (r1 - 0.5) * V.edge));
+        let tot = 0; V.looks.forEach(L => { tot += L.w; }); let acc = 0, L = V.looks[0];
+        /* (the looks are dealt out of order along the noise, so a tall yellow field can stand by a young one, not always by its neighbour in the list) */
+        const order = V._order || (V._order = V.looks.map((_, k) => k).sort((a, b) => h2(a, 7, 4) - h2(b, 7, 4)));
+        for (let k = 0; k < order.length; k++) { acc += V.looks[order[k]].w / tot; if (t < acc) { L = V.looks[order[k]]; break; } }
+        const vy = L.vy ? L.vy[0] + (L.vy[1] - L.vy[0]) * r2 : 1;
+        if (!L.to) { const c = Object.assign({}, p, { vy: Math.round(vy * 100) / 100 }); if (L.tint != null) c.tint = L.tint; out.push(c); continue; }
+        const a = (p.face || 0) * Math.PI / 180, dx = Math.cos(a), dz = -Math.sin(a), n = L.n || 3, span = 3.5;
+        for (let k = 0; k < n; k++) {
+            const rk = h2(p.x + k * 1.7, p.z - k * 2.3, 6), off = ((k + 0.5) / n - 0.5) * span + (rk - 0.5) * 0.3, zig = ((k & 1) ? 0.26 : -0.26);   // (the clumps stand staggered: a hedge of them, not a fence)
+            const c = { key: L.to, x: Math.round((p.x + dx * off - dz * zig) * 100) / 100, z: Math.round((p.z + dz * off + dx * zig) * 100) / 100, face: Math.round(rk * 360), noBlock: true, h: Math.round((L.h[0] + (L.h[1] - L.h[0]) * ((rk * 7.13 + r3) % 1)) * 100) / 100 };
+            if (p.y != null) c.y = p.y; if (L.tint != null) c.tint = L.tint; out.push(c);
+        }
+    }
+    return out || rows;
+}
 function zoneFloraSwap(room, rows, fallbackId) {
     if (!rows || !rows.length || (typeof window !== 'undefined' && (window.EW_NO_FLORA || window.EW_NO_FLORA_SWAP))) return rows;
     const S = ZONE_FLORA.swap, id = zoneFloraRoomId(room) || fallbackId || null; if (!S || !id) return rows;
