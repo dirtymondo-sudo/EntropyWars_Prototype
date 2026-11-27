@@ -18,6 +18,7 @@ const WANT = (process.env.SPELLS || '').split(',').filter(Boolean);
 const FLAGS = (process.env.FLAGS || '').split(',').filter(Boolean);
 const REPEAT = +(process.env.REPEAT || 1);                                    // cast each row this many times (Transform: there and back)
 const FRAMES = (process.env.FRAMES || '').split(',').map(Number).filter(Boolean);   // FRAMES=10,1200: ten more frames, 1.2 s apart, after a cast (a change that plays on: _f0.._f9)
+const EARLY = (process.env.EARLY || '').split(',').map(Number).filter(Boolean);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const TURN_FN = eval('(' + fs.readFileSync(path.join(REPO, 'playtest.js'), 'utf8').match(/const TURN_FN = ([\s\S]*?\n\});\n/)[1].replace(/\);\s*$/, '') + ')');
 const END = () => { const st = window.GAME.state, u = st.units.find(x => x.id === st._blitzActiveUnitId); if (u && st.controllers[u.player] === 'local') { u.ap = 0; try { window.endUnitIfDone(u); } catch (e) {} } };
@@ -33,7 +34,7 @@ const CAST = (todo, repeat) => {
   window.__kitTried = window.__kitTried || {};
   if ((repeat || 1) > 1 && window.__kitOnly != null && window.__kitOnly !== unit.id) return { status: 'nothing', race: unit.race, has: [] };   // (REPEAT: the same unit casts again, there and back)
   const rows = (unit.spells || []).filter(s => s && todo.indexOf(s.id) >= 0 && (window.__kitTried[s.id] | 0) < (repeat || 1));
-  const ENEMY = new Set(['damage', 'aoe', 'line', 'lifeDrain', 'debuff', 'multiHit', 'barrage']);
+  const ENEMY = new Set(['damage', 'aoe', 'line', 'lifeDrain', 'debuff', 'multiHit', 'barrage', 'linePush', 'tackle']);
   const D = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
   for (const spell of rows) {
     if (!G.canAffordSpell(unit, spell) || (unit.mp || 0) < (spell.cost || 0)) continue;
@@ -135,7 +136,8 @@ const CAST = (todo, repeat) => {
     const r = await page.evaluate(([l, n]) => (window.__kitCast)(l, n), [left, REPEAT]).catch(e => ({ status: 'err', e: String(e.message).slice(0, 120) }));
     if (r.status === 'cast') {
       console.log('CAST', JSON.stringify(r));
-      await sleep(900); try { await page.screenshot({ path: `${OUT}/${TAG}_${r.spell}_a.png` }); } catch (e) {}
+      let _el = 0; for (let ei = 0; ei < EARLY.length; ei++) { await sleep(Math.max(0, EARLY[ei] - _el)); _el = EARLY[ei]; try { await page.screenshot({ path: `${OUT}/${TAG}_${r.spell}_e${ei}.png` }); } catch (e) {} }   // EARLY=200,500: frames inside the windup (a fold)
+      await sleep(Math.max(0, 900 - _el)); try { await page.screenshot({ path: `${OUT}/${TAG}_${r.spell}_a.png` }); } catch (e) {}
       await sleep(700); try { await page.screenshot({ path: `${OUT}/${TAG}_${r.spell}_b.png` }); } catch (e) {}
       for (let fi = 0; fi < (FRAMES[0] || 0); fi++) { await sleep(FRAMES[1] || 1000); try { await page.screenshot({ path: `${OUT}/${TAG}_${r.spell}_${rows.filter(x => x.spell === r.spell).length}_f${fi}.png` }); } catch (e) {} }
       r.gold2 = await page.evaluate(() => { const u = GAME.state.units.find(x => x.race === 'leprechaun'); return u ? u.lpGold | 0 : null; });
