@@ -23380,6 +23380,11 @@ const ThreeRenderer = (function () {
                locally on host AND guest (the swap itself is driven by the
                synced _spriteOverride), so no relay is needed. */
             if (def.foldFx) { try { _sbotFoldStart(unit, def, ts); } catch (_fs) {} }   // THE FOLD IN A FIGHT: the sedan's real change over the swap
+            /* 🎭 THE ACTOR'S QUICK CHANGE (2026-11-27): a costume swap (sprites.js wireActorRoles `costumeFx`) drops a velvet curtain
+               round the body and pulls it open on the new costume (three-vfx-effects.js acQuickChange; local on both screens) */
+            if (def.costumeFx && !(state && state.devAutoSim) && typeof window !== 'undefined' && window.ThreeVFXEffects && window.ThreeVFXEffects.acQuickChange) {
+                try { window.ThreeVFXEffects.acQuickChange(unit.x, unit.y); } catch (_qc) {}
+            }
             if (def.transformFx && !(state && state.devAutoSim)
                 && typeof window !== 'undefined' && window.ThreeVFXEffects
                 && window.ThreeVFXEffects.sigShockRing3D) {
@@ -72512,6 +72517,8 @@ const ThreeRenderer = (function () {
             return false;
         }
         var def = res.def;
+        /* 🎭 THE ACTOR ON THE STAGE (2026-11-27): a role's spell preview dresses the hero in that costume first (opts.acRole) */
+        if (opts.acRole && def.overrideForms && typeof actorRoleLook === 'function') { var _acF = def.overrideForms[actorRoleLook(res.gender, opts.acRole === 'audition' ? null : opts.acRole)]; if (_acF) def = _acF; }
         // the accent stains the summoning circle
         if (opts.accent) { try { v.circleMat.color.set(opts.accent); } catch (_e) {} }
         var holdId = ((def.hold && def.hold.key) || '') + '|' + ((def.hold2 && def.hold2.key) || '');   // THE WEAPONS IN THE HANDS 11-22: two looks on one body differ by what they hold (pirate -> sheriff kept the cutlass)
@@ -73254,6 +73261,24 @@ const ThreeRenderer = (function () {
                 b0.timers.push(setTimeout(function () { if (_cv !== v || v.beat !== b0) return; v.oriKeep = true; try { _cvPreviewSpell(spell, Object.assign({}, opts, { _ori: true })); } finally { v.oriKeep = false; } }, _CV_ORI_FOLD_MS));
                 return _CV_ORI_FOLD_MS + 1800;
             }
+        }
+        /* 🎭 THE ACTOR ON THE STAGE: a role spell changes the costume first (the curtain), then the beat plays in it */
+        var _acReq = v.characterRequest;
+        if (spell && spell.acRole && !opts._ac && _acReq && _acReq.race === 'actor' && ((_acReq.opts && _acReq.opts.acRole) || 'audition') !== spell.acRole) {
+            _cvBeatCancel(true);
+            var _acOpts = Object.assign({}, _acReq.opts || {}, { acRole: spell.acRole });
+            _cvSetCharacter(_acReq.race, _acReq.gender, _acOpts);
+            var _acUrl = v.url, b1 = { id: spell.id, timers: [] }, _acT0 = Date.now();
+            v.beat = b1;
+            try { if (_cvStageEnter() && VFX3D.stage && VFX3D.stage.fire) VFX3D.stage.fire('burst', 'acQuickChange', { tx: 0, ty: 0, sx: 0, sy: 0 }); } catch (_eq) {}
+            var _acWait = function () {
+                if (_cv !== v || v.beat !== b1) return;
+                if (v.model && v.url === _acUrl) { b1.timers.push(setTimeout(function () { if (_cv !== v || v.beat !== b1) return; v.beat = null; _cvPreviewSpell(spell, Object.assign({}, opts, { _ac: true })); }, 450)); return; }
+                if (Date.now() - _acT0 > 8000) { v.beat = null; return; }
+                b1.timers.push(setTimeout(_acWait, 100));
+            };
+            _acWait();
+            return 2600;
         }
         if (!_cvStageEnter()) return _cvPlaySpell(spell, opts);     // Stage 2 fallback: the animation alone
         _cvBeatCancel(true);
@@ -114967,6 +114992,7 @@ const ThreeRenderer = (function () {
             else outFront[0] = NaN;
             return isFinite(outHead[0] + outHead[1] + outHead[2]);
         },
+        unitModelUrl: function (uid) { var r = _unitModelRigs.get(uid); return r ? r.url : null; },   // the body a unit wears now (probes: THE ACTOR's costume check)
         getUnitWorldPos: function (uid, out) {
             var e = _getUnitEntry(uid);
             if (!e || !e.group || e.group.visible === false) return false;
