@@ -25546,6 +25546,47 @@
                     c.at(actionMs(1100), () => { c.snd('empBurst'); c.insert('ENTROPY: MAXIMUM', 'terminal', actionMs(900)); });
                 }
             },
+            /* ═════════ UNMADE (2026-11-27, mondo: "Go ahead and do the finisher"): the Demiurge's own execution ═════════
+               The black cube comes down, a gold cage draws round the victim, the cage folds three times with the victim in it,
+               and what is left goes up into the cube (three-vfx-effects.js _sigUnmade3D). The eclipse is called by the piece.
+               No insert cards on the way (mondo: minimal text); the stamp at the end is the one every execution has. */
+            unmade: {
+                chargeMs: 2200, strikeMs: 5000, resolveMs: 2400,
+                castSpell: { type: 'damage', dmg: 1, name: 'Unmade', kind: 'damage' },
+                siren(c) { c.snd('debuff'); c.dsnd('identSting'); c.grade('vignette', actionMs(900)); },
+                charge(c) {
+                    const V = c.VFX, u = c.unit;
+                    if (V.sigMagicCircle3D) V.sigMagicCircle3D(u.x, u.y, { radiusPx: c.ts * 0.9, growMs: 240, holdMs: c.CHARGE_MS, fadeMs: 400, spin: true, color: 0xffc24a, color2: 0x05030a });
+                    c.snd('thunderRumble');
+                },
+                cam(c) {
+                    const u = c.unit, p = c.pos(c.target), S = c.STRIKE_MS;
+                    if (typeof cineFaceCam === 'function') cineFaceCam(u, { dist: 2.4, tilt: 76, cut: true, duration: 400 }); else c.dive(u, 1.2, 300);   // the maker
+                    c.at(S - actionMs(4300), () => { if (typeof cineSkyWatch === 'function') cineSkyWatch(p, { ms: actionMs(1000), span: 4, tiltUp: 116, tiltDown: 84 }); });   // the cube comes down
+                    /* the cage and the folds from the SIDE: a face shot of the victim looks past the maker, and the maker is a boss: he stood in front of the cage */
+                    c.at(S - actionMs(3250), () => { if (!(typeof cineSideDolly === 'function' && cineSideDolly(u, c.target, { mode: 'hold', tilt: 80 })) && typeof cineFaceCam === 'function') cineFaceCam(c.target, { dist: 3.0, tilt: 80, cut: true, duration: 300 }); });
+                    c.at(S - actionMs(820), () => { if (typeof cineSkyWatch === 'function') cineSkyWatch(p, { ms: actionMs(900), span: 4, tiltUp: 106, tiltDown: 98 }); c.slow(0.55, actionMs(600)); });   // up into the cube: the lens is at the cube's height when it shuts
+                    c.at(S - actionMs(150), () => { c.slow(0.3, actionMs(380)); });
+                    c.at(S + actionMs(700), () => { c.slowClear(); if (typeof cineGodShot === 'function') cineGodShot(p, 7, { cut: false, duration: 900, tilt: 48 }); });   // nothing is left
+                    c.at(S + actionMs(1700), () => { if (typeof cineEndCapReverse === 'function') cineEndCapReverse(u, c.target, {}); });
+                    return true;
+                },
+                stage(c) {
+                    const V = c.VFX, u = c.unit, p = c.pos(c.target), S = c.STRIKE_MS;
+                    if (V.sigUnmade3D) V.sigUnmade3D(u.x, u.y, p.x, p.y, { ms: S + actionMs(3200), cubeAt: S - actionMs(4400), cageAt: S - actionMs(3200), foldAt: S - actionMs(2200), liftAt: S - actionMs(800), hitAt: S });
+                    c.at(S - actionMs(4400), () => c.snd('thunderRumble'));
+                    for (let i = 0; i < 3; i++) c.at(S - actionMs(2200) + actionMs(Math.round((i + 0.85) * 1400 / 3)), () => { c.snd('freezeSolid'); c.dsnd('slam'); });   // the three folds
+                    c.at(S - actionMs(800), () => c.snd('empBurst'));
+                },
+                strike(c) {
+                    c.freeze(actionMs(170), { grade: 'desat' });
+                    c.kick(18, 300);
+                    c.snd('explosion'); c.dsnd('slam');
+                },
+                resolve(c) {
+                    c.insert('UNMADE.', 'stamp', actionMs(1000));
+                }
+            },
             upUpAndAway: {
                 chargeMs: 2200, strikeMs: 4300, resolveMs: 2400,
                 castSpell: { type: 'damage', dmg: 1, name: 'Up, Up and Away', kind: 'damage' },
