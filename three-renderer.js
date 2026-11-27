@@ -36725,7 +36725,8 @@ const ThreeRenderer = (function () {
        spot over the least of them. Screen px of the float layer, read per frame from the models (a few projections).
        window.EW_NO_CLEAN_READ = true → as before. Each viewer lays out its own pops (RULE #2: a look needs no relay). */
     var FLOAT_BODY_W = 0.46;        // a body's width on screen as a share of its drawn height (narrower than its arms)
-    var FLOAT_BODY_MIN_W = 0.32;    // never narrower than this share of a square's width at its depth (a car, a beast)
+    var FLOAT_BODY_MIN_W = 0.32;
+    var FLOAT_BODY_REACH = 0.24;    // the farthest a body step takes a stack, as a share of the frame    // never narrower than this share of a square's width at its depth (a car, a beast)
     var _floatBodyIds = [], _floatBodyBoxes = [], _floatShotKeep = [null, null];
     function _floatShotLive() {
         try {
@@ -36765,6 +36766,17 @@ const ThreeRenderer = (function () {
         }
         add(_floatShotKeep[0]); add(_floatShotKeep[1]);
         for (var i = 0; i < live.length; i++) add(live[i].follow);
+        /* and every other body the viewer can see (a hit's number landed on the body behind its target): fog-safe, a
+           hidden enemy is never a wall (a pop stepping round it would point at it) */
+        try {
+            var vp = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : (state.activePlayer || 1);
+            for (var u = 0; u < state.units.length; u++) {
+                var su = state.units[u];
+                if (!su || su.dead || ids.indexOf(su.id) >= 0) continue;
+                if (su.player !== vp && state.fogOfWar && !(_fogVisibleSet && _fogVisibleSet.has(su.x + ',' + su.y))) continue;
+                add(su.id);
+            }
+        } catch (e) {}
         for (var j = 0; j < ids.length; j++) { var b = _floatBodyBox(ids[j], cam, viewW, viewH); if (b) out.push(b); }
         return out;
     }
@@ -36956,6 +36968,9 @@ const ThreeRenderer = (function () {
             var walls = SF.walls && SF.walls.length ? SF.walls : null;
             var soft = _floatShotBodies(live, cam, viewW, viewH);   // THE CLEAN READ: the shot's bodies
             if (!soft.length) soft = null;
+            /* THE CLEAN READ: in a shot each unit's stack, once placed, is a wall for the next (Empty the Clip's three
+               numbers stepped off their bodies onto each other: "-407346") */
+            if (soft) walls = walls ? walls.slice() : [];
             for (var gk in cols) {
                 var G = cols[gk];
                 G.dy = G.d > 0 ? G.d : G.u;
@@ -36982,7 +36997,7 @@ const ThreeRenderer = (function () {
                     }
                     return a / gA;
                 };
-                if (!hits(0, 0) && !(over(0, 0) > 0)) continue;
+                if (!hits(0, 0) && !(over(0, 0) > 0)) { if (soft) walls.push([gl - 2, gt - 2, gr + 2, gb + 2]); continue; }
                 // the steps: clear of each wall's every side, alone and two at once (a corner)
                 var dxs = [0], dys = [0];
                 for (var wj = 0; walls && wj < walls.length; wj++) {
@@ -36995,8 +37010,13 @@ const ThreeRenderer = (function () {
                     dxs.push(SB[0] - gr - gapS, SB[2] - gl + gapS);
                     dys.push(SB[1] - gb - gapS, SB[3] - gt + gapS);
                 }
-                // a body's cover costs more than the longest step across the screen: clear wins, then the least covered
+                // a body's cover costs more than the longest step across the screen: clear wins, then the least covered.
+                // A body step never takes a stack farther than FLOAT_BODY_REACH of the frame from its unit (mondo 10-21:
+                // the pops stay "clearly on that enemy"); a HUD wall still may (it must).
                 var overK = (SF.r - SF.l) + (SF.b - SF.t);
+                var reachX = soft ? Math.max((gr - gl) * 1.2, (SF.r - SF.l) * FLOAT_BODY_REACH) : Infinity;
+                var reachY = soft ? Math.max((gb - gt) * 1.2, (SF.b - SF.t) * FLOAT_BODY_REACH) : Infinity;
+                var hardHere = hits(0, 0);
                 var bestC = Infinity, bx2 = 0, by2 = 0, px = G.px != null ? G.px : 0, py = G.px != null ? G.py : 0, hasPrev = G.px != null;
                 for (var xi = 0; xi < dxs.length; xi++) {
                     var ox = dxs[xi];
@@ -37006,12 +37026,14 @@ const ThreeRenderer = (function () {
                         if (gt + oy < SF.t - 0.5 || gb + oy > SF.b + 0.5) continue;
                         var cst = Math.sqrt(ox * ox + oy * oy) + (hasPrev ? 0.35 * Math.sqrt((ox - px) * (ox - px) + (oy - py) * (oy - py)) : 0);
                         if (cst >= bestC) continue;
+                        if (!hardHere && (Math.abs(ox) > reachX || Math.abs(oy) > reachY)) continue;
                         if (soft) cst += over(ox, oy) * overK;
                         if (cst >= bestC || hits(ox, oy)) continue;
                         bestC = cst; bx2 = ox; by2 = oy;
                     }
                 }
                 if (bestC < Infinity) { G.wx = bx2; G.wy = by2; }
+                if (soft) walls.push([gl + G.wx - 2, gt + G.wy - 2, gr + G.wx + 2, gb + G.wy + 2]);
             }
             for (var sj = 0; sj < live.length; sj++) {
                 var C2 = cols[live[sj]._sfKey];

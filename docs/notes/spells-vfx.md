@@ -5585,3 +5585,31 @@ cast, the hit bodies from the cut), so a caster's own back hid its target for th
 - Switch: `window.EW_NO_CLEAR_SHOT = true` (THE CLEAR ANGLE as it was). Probe: `ThreeCamera.clearShotState()` ->
   { boxes, yaw, tilt, cost, own (the director's own frame's cost), shot }. Camera only, each viewer's own (RULE #2: host and
   guest run the same rig on the same relayed shot).
+
+## THE CLEAN READ (2026-11-27, mondo: "fix the text and affect clutter. Give them AAA polish and attention to detail, easy to read and also keep the action easy to read")
+What still covered the action after THE CLEAR SHOT, from real VS CPU spell shots (`playtest_clutter.js`): the hit's number and
+its words drawn on the body (often on ANOTHER body: Big Kick's -312 on the Mothman behind Bigfoot), every nearby plate (name,
+level, race tags, status row) over the frame, the caster's own plate over the target, LAST STAND! at full size beside the
+number, the score plate and the match line peeking under the top bar, an achievement toast and the "Auto Attack!" banner in
+the middle of the frame while the last hit was still read, a word cut by the screen's edge at its pop-in swell, the corner
+total reading 0 on a slow frame rate, and see-through spell meshes (Air Mail's eye, the rings) between the lens and the body.
+Every rule below holds in a live spell shot AND while its chrome lingers on the last hit (`body.ew-spell-shot`).
+- **THE BODIES ARE WALLS** (three-renderer.js `_floatShotBodies` / `_floatBodyBox`, in THE SAFE FRAME's step): the shot's
+  caster, target and every body a pop rides are SOFT walls for the pop stacks: a stack steps the shortest way to a spot clear
+  of every body (beside it, never on the head or the chest); with none, the spot over the least of them. A body step goes at
+  most `FLOAT_BODY_REACH` (24 %) of the frame (or 1.2 stack widths), so the pops stay on their unit. The HUD walls stay hard.
+  The live shot's caster / target are kept through the linger (`_floatShotKeep`).
+- **THE CORNER IS A WALL** (battle.js `_ewFloatSafeRect`): each line of `.acam-title` (TOTAL DMG, the AP lines) is a hard wall,
+  read at any opacity, so a number steps round the total instead of fading it (THE NUMBERS WIN stays the fallback).
+- **A WORD IS A CAPTION IN A SHOT**: the "whole moment" kinds (LAST STAND!, level up) take the caption's size cap there.
+- **THE PLATES** (three-renderer.js `_updatePlateVisibility`, `tp-shot`): the caster's plate goes (a self-cast keeps it), a hit
+  body's plate keeps only its bars (no name, level, race tags, status row); the shot's focus set is kept through the linger.
+- **THE SCREEN STEPS OUT** (`body.ew-shot-clean`, hud.js): the score plate, the match line and a toast fade for the shot;
+  map.js `_drainCenterBannerQueue` holds a centre banner until the chrome leaves.
+- **THE SWELL COUNTS** in THE SAFE FRAME (a pop at its 1.6× pop-in stays inside the screen). **THE ROLL RUNS ON THE CLOCK**
+  (`_acRollDamageNum`: ~0.45 s at any frame rate; the same speed as before at 60 fps).
+- **THE EFFECTS** (three-vfx-effects.js `_crFrame` / `_crFrontK`, in `_hsTame`): every see-through signature mesh fades within two
+  squares of the lens (was fire only), and one between the lens and the shot's caster or target, over that body on screen,
+  draws at `_CR_FRONT_K` 0.4 (an aura on the body itself stays). Per signature group, never a scene walk (RULE #1e).
+- Each seat lays out its own (looks only; the shot is relayed, RULE #2). Switch: `window.EW_NO_CLEAN_READ = true` (all of it
+  except the swell and the roll). Probe: `FLAGS=EW_NO_CLEAN_READ MAP=<id> TAG=A node playtest_clutter.js` vs `TAG=B`.

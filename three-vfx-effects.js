@@ -10317,62 +10317,62 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        the clear-shot captures: Air Mail's eye and EMP Burst's rings filled the frame over the target). In a live spell
        shot every see-through signature mesh (not only a fire spell's) fades as it comes within two squares of the lens
        (_hsNearK), and one standing between the lens and the shot's caster or target, over that body on screen, draws at
-       _CR_FRONT_K: the effect still reads, the body reads through it. Looks only, each seat its own (the shot is relayed).
+       _CLR_FRONT_K: the effect still reads, the body reads through it. Looks only, each seat its own (the shot is relayed).
        Off: window.EW_NO_CLEAN_READ = true. */
-    var _CR_FRONT_K = 0.4;
-    var _crAt = 0, _crShot = false, _crBodies = [], _crCamV = null, _crV = null, _crW = null;
+    var _CLR_FRONT_K = 0.4;
+    var _clrAt = 0, _clrShot = false, _clrBodies = [], _clrCamV = null, _clrV = null, _clrW = null;
     /* the shot's bodies this frame: [ndc x0, x1, y0, y1, distance from the lens], or none outside a live shot */
-    function _crFrame() {
+    function _clrFrame() {
         var now = performance.now();
-        if (now - _crAt < 12) return _crShot;
-        _crAt = now; _crShot = false; _crBodies.length = 0;
+        if (now - _clrAt < 12) return _clrShot;
+        _clrAt = now; _clrShot = false; _clrBodies.length = 0;
         try {
             if (window.EW_NO_CLEAN_READ || typeof camera === 'undefined' || !camera || camera._cineShotId == null
                 || typeof state === 'undefined' || !state.cinematicActionCam || state.phase !== 'battle') return false;
             var cam = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null;
             var R = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
             if (!cam || !R || !R.getUnitWorldPos) return false;
-            if (!_crCamV) { _crCamV = new THREE.Vector3(); _crV = new THREE.Vector3(); _crW = [0, 0, 0]; }
-            cam.getWorldPosition(_crCamV);
-            _crShot = true;
+            if (!_clrCamV) { _clrCamV = new THREE.Vector3(); _clrV = new THREE.Vector3(); _clrW = [0, 0, 0]; }
+            cam.getWorldPosition(_clrCamV);
+            _clrShot = true;
             var ids = [camera._cineShotUnitId, camera._cineShotTarget && camera._cineShotTarget.id];
             for (var i = 0; i < ids.length; i++) {
                 var id = ids[i];
-                if (id == null || (i === 1 && id === ids[0]) || !R.getUnitWorldPos(id, _crW)) continue;
+                if (id == null || (i === 1 && id === ids[0]) || !R.getUnitWorldPos(id, _clrW)) continue;
                 var h = (R.getUnitVisualHeight && R.getUnitVisualHeight(id)) || (_cfg().tileSize || 128) * 0.9;
-                _crV.set(_crW[0], _crW[1], _crW[2]).project(cam);
-                if (_crV.z > 1) continue;
-                var fx = _crV.x, fy = _crV.y;
-                _crV.set(_crW[0], _crW[1] + h, _crW[2]).project(cam);
-                if (_crV.z > 1) continue;
-                var hh = Math.abs(_crV.y - fy) * 0.5 * cam.aspect, cx = (fx + _crV.x) / 2;   // half a body's height, in x units
-                _crBodies.push([cx - hh * 0.5, cx + hh * 0.5, Math.min(fy, _crV.y), Math.max(fy, _crV.y),
-                    Math.hypot(_crW[0] - _crCamV.x, _crW[1] + h / 2 - _crCamV.y, _crW[2] - _crCamV.z)]);
+                _clrV.set(_clrW[0], _clrW[1], _clrW[2]).project(cam);
+                if (_clrV.z > 1) continue;
+                var fx = _clrV.x, fy = _clrV.y;
+                _clrV.set(_clrW[0], _clrW[1] + h, _clrW[2]).project(cam);
+                if (_clrV.z > 1) continue;
+                var hh = Math.abs(_clrV.y - fy) * 0.5 * cam.aspect, cx = (fx + _clrV.x) / 2;   // half a body's height, in x units
+                _clrBodies.push([cx - hh * 0.5, cx + hh * 0.5, Math.min(fy, _clrV.y), Math.max(fy, _clrV.y),
+                    Math.hypot(_clrW[0] - _clrCamV.x, _clrW[1] + h / 2 - _clrCamV.y, _clrW[2] - _clrCamV.z)]);
             }
-        } catch (e) { _crShot = false; }
-        return _crShot;
+        } catch (e) { _clrShot = false; }
+        return _clrShot;
     }
-    /* a mesh in front of a shot body, over it on screen → _CR_FRONT_K, else 1 */
-    function _crFrontK(o) {
-        if (!_crBodies.length) return 1;
+    /* a mesh in front of a shot body, over it on screen → _CLR_FRONT_K, else 1 */
+    function _clrFrontK(o) {
+        if (!_clrBodies.length) return 1;
         try {
             var geo = o.geometry;
             if (!geo) return 1;
             if (!geo.boundingSphere) geo.computeBoundingSphere();
             var bs = geo.boundingSphere;
             if (!bs) return 1;
-            _crV.copy(bs.center).applyMatrix4(o.matrixWorld);
+            _clrV.copy(bs.center).applyMatrix4(o.matrixWorld);
             var sx = o.matrixWorld.getMaxScaleOnAxis(), rad = bs.radius * sx;
-            var d = _crV.distanceTo(_crCamV);
+            var d = _clrV.distanceTo(_clrCamV);
             var cam = ThreeCamera.getCamera();
-            _crV.project(cam);
-            if (_crV.z > 1) return 1;
+            _clrV.project(cam);
+            if (_clrV.z > 1) return 1;
             var rN = rad / Math.max(1, d) / Math.tan(cam.fov * Math.PI / 360);   // its radius in ndc y units
-            for (var i = 0; i < _crBodies.length; i++) {
-                var B = _crBodies[i];
+            for (var i = 0; i < _clrBodies.length; i++) {
+                var B = _clrBodies[i];
                 if (d >= B[4] - (_cfg().tileSize || 128) * 0.45) continue;   // behind the body, or on it (an aura round it stays)
-                if (_crV.x + rN / cam.aspect < B[0] || _crV.x - rN / cam.aspect > B[1] || _crV.y + rN < B[2] || _crV.y - rN > B[3]) continue;
-                return _CR_FRONT_K;
+                if (_clrV.x + rN / cam.aspect < B[0] || _clrV.x - rN / cam.aspect > B[1] || _clrV.y + rN < B[2] || _clrV.y - rN > B[3]) continue;
+                return _CLR_FRONT_K;
             }
         } catch (e) {}
         return 1;
@@ -10380,7 +10380,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* one signature group, after its tick: the step back on a hit square, a fire spell's shells at their tame strength
        and fading near the lens */
     function _hsTame(entry) {
-        var back = _hsHits.length > 0, fire = !!entry.hsFire, shot = _crFrame();
+        var back = _hsHits.length > 0, fire = !!entry.hsFire, shot = _clrFrame();
         if (!back && !fire && !shot && !entry.hsDirty) return;
         var g = entry.group;
         if (!g) return;
@@ -10393,7 +10393,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var k = 1;
             if (back) { _hsObjV.setFromMatrixPosition(o.matrixWorld); k *= _hsBackAt(_hsObjV.x + pad, _hsObjV.z + pad); }
             if ((fire || shot) && o.isMesh) k *= _hsNearK(o, ts);
-            if (shot && (o.isMesh || o.isSprite)) k *= _crFrontK(o);   // THE CLEAN READ: the body reads through it
+            if (shot && (o.isMesh || o.isSprite)) k *= _clrFrontK(o);   // THE CLEAN READ: the body reads through it
             var mats = Array.isArray(mat) ? mat : [mat];
             for (var i = 0; i < mats.length; i++) {
                 var m = mats[i];

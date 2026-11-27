@@ -10867,3 +10867,11 @@ racy in the cloud (phase falls back to `setup`): the probe restarts the match un
 in a try (one `scene` raycast throws on a half-loaded skinned mesh) and set `raycaster.camera` for sprites; (3) about 3 samples a
 second on llvmpipe, 15-25 spell shots in 6 minutes; (4) floating numbers and effects are not caught by rays or DOM rects (they
 draw in the canvas): look at the saved frames. Notes: docs/notes/spells-vfx.md "THE CLEAR SHOT".
+
+## THE CLUTTER PROBE (2026-11-27) — playtest_clutter.js
+`MAP=<id> TAG=<name> MINUTES=8 node playtest_clutter.js`: a real VS CPU fight (playtest.js's P1 tactics) that ~0.4 s after each damage
+number of a spell shot saves a frame (one a shot) and measures how much of every body on screen (6 x 6 points a body) sits under a
+floating pop, the corner title, or a HUD box (score, match line, toast, centre banner). `FLAGS=EW_NO_CLEAN_READ` = the A side.
+Learned: (1) the fight runs UNDER the loading card for minutes on llvmpipe: wait for `.ls-status` / "TAP TO SKIP" to leave before
+counting; (2) plates are sprites in the canvas (THE PLATES IN THE WORLD), not DOM: judge them in the frames; (3) a pop's DOM box
+has a wide margin round its ink: use `_ewMargin*`. Notes: docs/notes/spells-vfx.md "THE CLEAN READ".

@@ -30789,15 +30789,15 @@
             });
             /* THE CLEAN READ (2026-11-27): the shot's corner (the spell name, TOTAL DMG, the AP lines) is a wall too, so a
                hit's number steps round it instead of fading the total out from under the reader (THE NUMBERS WIN stays the
-               fallback). Read at any opacity: a yielded corner is still where it is. Each line's own box, not the title's
-               (its plate fades out to the right). */
+               fallback). Read at any opacity: a yielded corner is still where it is. Each line's own box (the AP lines'
+               values reach past the total's plate). */
             if (!window.EW_NO_CLEAN_READ && _acChromeEl && _acChromeEl.isConnected
                 && (_acChromeEl.classList.contains('active') || _acChromeEl.classList.contains('dmg-linger'))) {
                 _acChromeEl.querySelectorAll('.acam-title > *').forEach(el => {
                     if (getComputedStyle(el).display === 'none') return;
                     const r = el.getBoundingClientRect();
                     if (!(r.width > 0 && r.height > 0) || r.bottom <= o.top || r.top >= o.bottom) return;
-                    R.walls.push([r.left - o.left - pad, r.top - o.top - pad, Math.min(r.right, r.left + r.width * 0.8) - o.left + pad, r.bottom - o.top + pad]);
+                    R.walls.push([r.left - o.left - pad, r.top - o.top - pad, r.right - o.left + pad, r.bottom - o.top + pad]);
                 });
             }
             return (_floatSafe = R);
