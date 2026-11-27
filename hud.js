@@ -15401,6 +15401,10 @@ function _hudHideCss() {
     /* spell shots: the turn clock steps aside (battle.js showActionCamChrome / hideActionCamChrome toggle the class) */
     body.ew-spell-shot .ew-turn-col, body.ew-spell-shot .ew-reserves-box { opacity: 0; }
     body.ew-spell-shot .ew-turn-col *, body.ew-spell-shot .ew-reserves-box * { pointer-events: none !important; }
+    /* THE CLEAN READ (2026-11-27): the score plate and the match line peeked out under the shot's top bar, and a toast sat
+       over the frame; they step aside for the shot and come back with the turn clock */
+    body.ew-shot-clean .ew-scoreboard, body.ew-shot-clean .ew-matchmeta, body.ew-shot-clean .achieve-toast { opacity: 0 !important; transition: opacity 0.2s ease; }
+    body.ew-shot-clean .ew-scoreboard *, body.ew-shot-clean .ew-matchmeta * { pointer-events: none !important; }
 
     /* ══════════ THE AP PRESS ICONS — top left (hud.js ApPress, mondo 2026-10-17) ══════════
        Bare cube-in-a-ring icons, no plate: spent on the left (faded, hollow), live on the right (glowing gold), the
