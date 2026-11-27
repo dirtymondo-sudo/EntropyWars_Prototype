@@ -420,6 +420,7 @@ const FINISHERS = {
     'demiurge':       { id: 'fin_demiurge', name: 'Unmade', glyph: '⬛', type: 'divine', sig: 'unmade', built: true, tagline: 'BACK INTO THE CUBE', desc: 'He made it. He can take it back. The victim is folded up, corner by corner, and put away in the black cube.' },   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms) (its own staging since 11-27: battle.js `unmade` + three-vfx-effects.js _sigUnmade3D; the name is a first pass)
     'monster truck':  { id: 'fin_monster_truck', name: 'Crushed', glyph: '🛻', type: 'tech', sig: 'hitAndRun', built: true, tagline: 'MONSTER JAM', desc: 'The hood opens like a mouth, the wheels catch, and the truck drives up and over. What is left fits in a glovebox.' },   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells") (borrows the Honda Civic's staging; the name is a first pass)
     'snowman':        { id: 'fin_snowman', name: 'Snowed In', glyph: '⛄', type: 'anomaly', sig: 'flashFrozen', built: true, tagline: 'SCHOOL IS CANCELLED', lines: [['🧊 FLASH FROZEN', '⛄ SNOWED IN']], desc: 'The victim is packed in snow mid-scream, admired from three angles, and given a carrot.' },   // 2026-11-27 THE SNOWMAN (mondo: "a new character, Snowman ... unique animations for its spells") (borrows the Ice Queen's staging; the name is a first pass)
+    'actor':          { id: 'fin_actor', name: 'That\'s a Wrap', glyph: '🎬', type: 'human', sig: 'farewellTour', built: true, tagline: 'AND... CUT', desc: 'The lights come up, the crew applauds, and the victim is written out of the script for good.' },   // 2026-11-27 THE ACTOR (borrows the farewellTour staging; the name is a first pass)
     'nutcracker':     { id: 'fin_nutcracker', name: 'Cracked', glyph: '🌰', type: 'anomaly', sig: 'joust', built: true, tagline: 'CRACK', desc: 'The lever goes down, the jaw comes up, and the shell gives. The Nutcracker salutes and marches off.' },   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells") (borrows the Knight\'s staging; the name is a first pass)
     'origami girl':   { id: 'fin_origami_girl', name: 'Seven Folds', glyph: '🕊', type: 'anomaly', sig: 'thousandCuts', built: true, overlay: 'sevenFolds', tagline: 'NOBODY FOLDS EIGHT', desc: 'She folds the victim in half, and again, seven times, down to a square the size of a stamp, and tucks it in her sleeve.' },   // 2026-11-27 THE ORIGAMI GIRL (mondo: "build her spells and vfx and all that") (borrows the thousandCuts staging for the paper cuts; the folding is battle.js _finSevenFolds; the name is a first pass)
     'abomination':    { id: 'fin_abomination', name: 'Too Much Body', glyph: '🫀', type: 'anomaly', sig: 'blurryFootage', built: true, tagline: 'IT HAS MORE ARMS THAN YOU', desc: 'Every arm, every tentacle and every mouth it has comes down on the victim at once, and then it is a little bigger.' },   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name) (borrows the blurryFootage staging)
@@ -3227,6 +3228,12 @@ const RACE_PROFILES = {
         labelFemale: 'Nurse',
         types: ['human']
     },
+    'actor': {   // 2026-11-27 THE ACTOR (mondo: "an actor/actress ... audition look, red carpet look, romeo and juliet, and action stars") — the male is the Actor, the female the Actress
+        label: 'Actor',
+        labelMale: 'Actor',
+        labelFemale: 'Actress',
+        types: ['human']
+    },
     'butterfly girl': {   // 2026-11-23 THE COMING RACES 2
         label: 'Butterfly Girl',
         types: ['anomaly']   // 2026-11-23 THE BUTTERFLY GIRL: settled (her kit is Anomaly)
@@ -4012,6 +4019,10 @@ const PASSIVE_DEFS = {
         id: 'lpPotOfGold', icon: '🪙', name: 'Pot o\' Gold',
         desc: 'Every hit he lands on an enemy pockets 1 Gold (up to 5), and each Gold gives his spells +5% crit chance: the luck of the Irish. An enemy that hits him knocks 1 Gold loose.',
     },
+    acInCharacter: {   // 2026-11-27 THE ACTOR: battle.js THE ACTOR (_acCastRow, _acAfterCast); STATUS_DEFS roleCarpet / roleRomance / roleAction
+        id: 'acInCharacter', icon: '🎭', name: 'In Character',
+        desc: 'Every spell is a role, and the costume goes on with it: Red Carpet (+1 M.DEF), Star-Crossed (+1 M.ATK) or Action Star (+1 ATK, +1 SPD). The costume and its edge stay on until another role\'s spell; an Audition spell takes it off. A spell from the role already worn hits and heals 25% harder.',
+    },
     mdCriticalCare: {   // 2026-11-27 THE LEPRECHAUN + THE MEDIC: battle.js _healScaledAmount (lowHpHealBonus)
         id: 'mdCriticalCare', icon: '🩺', name: 'Critical Care',
         lowHpHealBonus: 0.5,
@@ -4115,6 +4126,7 @@ const RACE_PASSIVES = {
     'weatherman':    ['wnTheForecast', 'wnTheRundown'],   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: his rule, her rule (each names who it is for)
     'leprechaun':    ['lpPotOfGold'],   // 2026-11-27 THE LEPRECHAUN + THE MEDIC
     'medic':         ['mdCriticalCare'],   // 2026-11-27 THE LEPRECHAUN + THE MEDIC: the Doctor's and the Nurse's
+    'actor':         ['acInCharacter'],   // 2026-11-27 THE ACTOR
     'centaur':       ['cenHitAndRun'],   // 2026-11-24 THE CENTAUR
     'cheerleader':   ['chSpirit'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
     'princess':      ['prDamsel'],   // 2026-11-24 THE PRINCESS
@@ -4199,7 +4211,7 @@ const RACE_MERGED = { 'nun': { race: 'priest', gender: 'female' } };
 /* 👁🌑 THE REALM WINDOW: races that SEE a Shadow Realm pair on their own turns (they cannot touch it). A projecting
    spirit both sees and touches (battle.js unitSeesRealm / unitCrossesRealm). */
 const REALM_SIGHT_RACES = ['ghost', 'shadow entity'];
-const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber', 'pharaoh', 'deep sea diver', 'gambler', 'hacker', 'monk', 'shogun', 'cameraman', 'mechanic', 'janitor', 'trucker', 'gladiator', 'farmer', 'jellyfish ufo', 'bear', 'rat', 'butterfly girl', 'plastic surgeon', 'monarch', 'abomination', 'hollow', 'weatherman', 'cheerleader', 'point guard', 'centaur', 'music producer', 'princess', 'demiurge', 'monster truck', 'nutcracker', 'leopard girl', 'draconian', 'flower girl', 'leprechaun', 'medic', 'origami girl', 'snowman'];
+const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber', 'pharaoh', 'deep sea diver', 'gambler', 'hacker', 'monk', 'shogun', 'cameraman', 'mechanic', 'janitor', 'trucker', 'gladiator', 'farmer', 'jellyfish ufo', 'bear', 'rat', 'butterfly girl', 'plastic surgeon', 'monarch', 'abomination', 'hollow', 'weatherman', 'cheerleader', 'point guard', 'centaur', 'music producer', 'princess', 'demiurge', 'monster truck', 'nutcracker', 'leopard girl', 'draconian', 'flower girl', 'leprechaun', 'medic', 'origami girl', 'snowman', 'actor'];
 /* THE COMING RACES (2026-11-19, mondo: "wire them in the game at least in the relation web, give them sprite ai portraits ... my associate
    [does] their spell and combat plan on another account"): races whose model, sprite and name are in (sprites.js RACE_MODELS_3D,
    RACE_PROFILES) but whose kit is not. They are NOT playable: the Relationship Web lists them (docs/plans/story-web/build/fresh.js).
@@ -4386,6 +4398,7 @@ const RACE_CLASS = {
     'weatherman': 'specialist',   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: he moves the sky, she runs the show
     'leprechaun': 'specialist',   // 2026-11-27 THE LEPRECHAUN + THE MEDIC: the gold, the luck, the rainbow
     'medic': 'healer',   // 2026-11-27 THE LEPRECHAUN + THE MEDIC: the Doctor and the Nurse
+    'actor': 'specialist',   // 2026-11-27 THE ACTOR: four looks, four jobs
     'centaur': 'ranged',   // 2026-11-24 THE CENTAUR: a horse archer
     'cheerleader': 'support',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
     'princess': 'support',   // 2026-11-24 THE PRINCESS
@@ -4483,6 +4496,7 @@ const RACE_TERRAIN_PREFERENCE = {
     'weatherman': 'urban',   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: Disaster City's news station
     'leprechaun': 'grass',   // 2026-11-27 THE LEPRECHAUN + THE MEDIC: the green hills, a first pass
     'medic': 'urban',   // 2026-11-27 THE LEPRECHAUN + THE MEDIC: the hospital, a first pass
+    'actor': 'urban',   // 2026-11-27 THE ACTOR: a first pass (Hollywood Hills sits in Disaster City)
     'centaur': 'grass',   // 2026-11-24 THE CENTAUR: open ground to run on
     'cheerleader': 'urban',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: Disaster City University
     'princess': 'grass',   // 2026-11-24 THE PRINCESS: the gardens of Came A Lot
@@ -4916,6 +4930,7 @@ const RACE_BASE_STATS = {
     'weatherman':         { hp:  930, mp: 230, atk:  70, def:  80, mdef: 125, int: 160, vision: 4, crt: 18, spd: 105 },   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR — first pass on the specialist median
     'leprechaun':         { hp:  900, mp: 210, atk:  82, def:  80, mdef: 120, int: 155, vision: 4, crt: 26, spd: 125 },   // 2026-11-27 THE LEPRECHAUN + THE MEDIC — first pass on the specialist median: small, quick and lucky
     'medic':              { hp: 1050, mp: 220, atk:  80, def:  95, mdef: 125, int: 145, vision: 3, crt: 15, spd: 105 },   // 2026-11-27 THE LEPRECHAUN + THE MEDIC — first pass on the support median (the Doctor and the Nurse share it)
+    'actor':              { hp: 1000, mp: 210, atk: 100, def:  85, mdef:  95, int: 115, vision: 3, crt: 18, spd: 112 },   // 2026-11-27 THE ACTOR — first pass: an all-rounder, the costume does the specialising
     'centaur':            { hp:  900, mp: 150, atk: 118, def:  78, mdef:  62, int:  95, vision: 5, crt: 20, spd: 128 },   // 2026-11-24 THE CENTAUR — first pass between Robin Hood (ranged) and the Unicorn (a horse's body)
     'cheerleader':        { hp: 1020, mp: 210, atk:  95, def:  85, mdef: 120, int: 140, vision: 3, crt: 20, spd: 125 },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — first pass: a quick support who kicks
     'princess':           { hp:  960, mp: 230, atk:  60, def:  75, mdef: 135, int: 150, vision: 4, crt: 15, spd: 120 },   // 2026-11-24 THE PRINCESS — first pass: a frail royal caster, magic and healing
@@ -5137,6 +5152,7 @@ const RACE_PHYSIQUE = {
     'weatherman':          { h: 1.80, w: 76 },   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR
     'leprechaun':          { h: 1.10, w: 34 },   // 2026-11-27 THE LEPRECHAUN + THE MEDIC
     'medic':               { h: 1.78, w: 72 },   // 2026-11-27 THE LEPRECHAUN + THE MEDIC
+    'actor':               { h: 1.80, w: 72 },   // 2026-11-27 THE ACTOR (the Actress 1.70)
     'centaur':             { h: 2.40, w: 480 },   // 2026-11-24 THE CENTAUR: a horse with a rider's body on it, head to hoof
     'cheerleader':         { h: 1.66, w: 55 },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
     'princess':            { h: 1.68, w: 52 },   // 2026-11-24 THE PRINCESS (the crown not counted)
@@ -11579,6 +11595,57 @@ const RACE_ABILITIES = {
           element: 'light', type: 'heal', kind: 'healAll', range: 0, healAmt: 150, cleanse: 2,
           desc: 'All hands. Heals All Allies a BIG amount and cleanses 2 debuffs from each. Cooldown: 4 rounds.' },
     ],
+    'actor': [
+        /* 🎭 THE ACTOR (2026-11-27 THE ACTOR, mondo: "an actor/actress, i have their audition look, red carpet look, romeo and juliet, and action stars,
+           they should have a unique playstyle that uses transformations for different spells and stuff, kinda like the time cop or aliens
+           with their spaceships"). One race, both genders share the kit (the male is the Actor, the female the Actress). FIRST PASS: names
+           and numbers are his to change.
+           THE RULE, IN CHARACTER (acInCharacter): a row's `acRole` is its costume. A role spell puts that costume on (sprites.js ACTOR_LOOKS
+           / overrideForms, THE QUICK CHANGE in three-renderer.js) and its edge with it (STATUS_DEFS roleCarpet / roleRomance / roleAction,
+           kept until another role's spell); an Audition row (`acRole: 'audition'`) takes it off. A spell cast in the costume already worn
+           is In Character: x1.25 damage and healing (battle.js THE ACTOR _acCastRow). Notes: champions-combat.md "THE ACTOR". */
+        /* THE AUDITION (his base look: jeans, the jacket, the lanyard) */
+        { id: 'acColdRead', name: 'Cold Read', tier: 1, families: ['audition'], cost: 25, apCost: 1, spellType: 'human', acRole: 'audition',
+          animClip: { name: 'Talk_Passionately', lib: 9, ts: 1.45, trim: [1.8, 3.8], strikeAt: 2.8 },
+          element: 'sonic', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 80, range: 4,
+          statusEffects: [{ id: 'stagger', duration: 1 }],
+          desc: 'Reads the sides straight at them like it is the role of a lifetime. Deals WEAK magic damage to a Single Enemy within 4 and Staggers it for 1 round. Takes the costume off.' },
+        { id: 'acCurtainCall', name: 'Curtain Call', tier: 4, families: ['audition'], cost: 100, apCost: 1, cooldownRounds: 4, spellType: 'human', acRole: 'audition',
+          animClip: { name: 'Formal_Bow', lib: 8, ts: 1.4, trim: [1.4, 3.4], strikeAt: 2.6 },
+          element: 'light', type: 'heal', kind: 'healAll', range: 0, healAmt: 130, cleanse: 1,
+          desc: 'The whole cast comes out for a bow. Heals All Allies a MEDIUM amount and cleanses 1 debuff from each. Takes the costume off. Cooldown: 4 rounds.' },
+        /* THE RED CARPET (the tux / the red gown) */
+        { id: 'acPhotoOp', name: 'Photo Op', tier: 1, families: ['redcarpet'], cost: 30, apCost: 1, spellType: 'human', acRole: 'carpet',
+          animClip: { name: 'Jazz_Hands_inplace', lib: 9, ts: 1.3, trim: [0.2, 2.0], strikeAt: 1.49 },
+          element: 'light', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 65, range: 4, aoeRadius: 1,
+          statusEffects: [{ id: 'blind', duration: 1 }],
+          desc: 'Strikes a pose and the flashbulbs go off. Deals WEAK magic damage to every enemy in a 3x3 within 4 and Blinds them for 1 round. Puts on the Red Carpet.' },
+        { id: 'acStarPower', name: 'Star Power', tier: 3, families: ['redcarpet'], cost: 75, apCost: 1, cooldownRounds: 3, spellType: 'human', acRole: 'carpet',
+          animClip: { name: 'Victory_Cheer', lib: 8, ts: 1.3, trim: [0, 1.8], strikeAt: 0.58 },
+          vfxElement: 'light', type: 'buff', kind: 'warCry', range: 0, auraRadius: 2,
+          statStageBoost: { atk: 1, int: 1 },
+          desc: 'Everyone wants to stand next to the star. Every ally within 2 gains +1 ATK and +1 M.ATK stage. Puts on the Red Carpet. Cooldown: 3 rounds.' },
+        /* STAR-CROSSED (Romeo and Juliet) */
+        { id: 'acBalconyScene', name: 'Balcony Scene', tier: 2, families: ['starcrossed'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'human', acRole: 'romance',
+          animClip: { name: 'Kneel_on_One_Knee_and_Stand', lib: 10, ts: 1.4, trim: [0, 2.0], strikeAt: 1.38 },
+          element: 'light', type: 'heal', kind: 'heal', range: 4, healAmt: 110,
+          statusEffects: [{ id: 'regen', duration: 2 }],
+          desc: 'Wherefore art thou. Heals a Single Ally within 4 a MEDIUM amount and gives it Regen for 2 rounds. Puts on Star-Crossed. Cooldown: 2 rounds.' },
+        { id: 'acPlague', name: 'A Plague on Both Your Houses', tier: 3, families: ['starcrossed'], cost: 75, apCost: 1, cooldownRounds: 3, spellType: 'human', acRole: 'romance',
+          animClip: { name: 'Dont_You_Dare', lib: 9, ts: 1.4, trim: [0.8, 2.8], strikeAt: 1.64 },
+          element: 'poison', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 100, range: 4, aoeRadius: 1,
+          statusEffects: [{ id: 'poison', duration: 2 }],
+          desc: 'The dying curse, played to the back row. Deals MEDIUM magic damage to every enemy in a 3x3 within 4 and Poisons them for 2 rounds. Puts on Star-Crossed. Cooldown: 3 rounds.' },
+        /* THE ACTION STAR */
+        { id: 'acStuntDouble', name: 'Stunt Double', tier: 2, families: ['actionhero'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'human', acRole: 'action',
+          type: 'damage', kind: 'tackle', damageType: 'physical', dmg: 110, range: 4, chargeToTarget: true, pushDistance: 1, collisionBonus: 40,
+          desc: 'Does their own stunts. Charges a Single Enemy up to 4 squares away and knocks it back 1 square: MEDIUM physical damage, 40 more if it hits a wall or a body. Puts on the Action Star. Cooldown: 2 rounds.' },
+        { id: 'acWalkAway', name: 'Walk Away From It', tier: 4, families: ['actionhero'], cost: 95, apCost: 1, cooldownRounds: 4, spellType: 'human', acRole: 'action',
+          animClip: { name: 'Show_Both_Arm_Muscles', lib: 8, ts: 1.3, strikeAt: 0.82 },
+          element: 'fire', type: 'damage', kind: 'aoe', damageType: 'physical', dmg: 140, range: 4, aoeRadius: 1,
+          statusEffects: [{ id: 'burn', duration: 2 }],
+          desc: 'Cool people do not look at explosions. Blows up a 3x3 within 4: HEAVY physical damage to every enemy in it, and they Burn for 2 rounds. Puts on the Action Star. Cooldown: 4 rounds.' },
+    ],
     'weatherman': [
         /* THE WEATHERMAN + NEWS ANCHOR (2026-11-24, mondo: "Weatherman should have spells that summon and interact with the weather
            system ... The News Anchor can maybe use the microphone the popstar uses"). One race; no spell is shared (RACE_GENDER_SPELLS).
@@ -16138,6 +16205,27 @@ const STATUS_DEFS = {
             }
         },
         onRemove(unit) { delete unit._cracks; }
+    },
+    /* 🎭 THE ROLES (2026-11-27 THE ACTOR, the Actor's In Character): the costume worn and its edge. One at a time (battle.js _acAfterCast swaps them);
+       a role spell keeps it on until another role's spell or an Audition spell. dispelProof: a cleanse does not undress anyone. The look
+       itself rides unit._spriteOverride (battle.js UNIT_ANIM_OVERRIDES.actor). */
+    roleCarpet: {
+        icon: '🎞', glyph: '🎞', short: 'RED', label: 'Red Carpet', colorText: 'dressed for the red carpet',
+        kind: 'buff', category: 'buff', stack: 'replace', dispelProof: true, acRole: 'carpet',
+        stageMod: { mdef: 1 },
+        iconSrc: createStatusIconDataUri('🎞', '#1c1418', '#fff4ee', '#d0283c')
+    },
+    roleRomance: {
+        icon: '🌹', glyph: '🌹', short: 'STA', label: 'Star-Crossed', colorText: 'in costume as a star-crossed lover',
+        kind: 'buff', category: 'buff', stack: 'replace', dispelProof: true, acRole: 'romance',
+        stageMod: { int: 1 },
+        iconSrc: createStatusIconDataUri('🌹', '#1c1418', '#fff4ee', '#b04a78')
+    },
+    roleAction: {
+        icon: '💥', glyph: '💥', short: 'ACT', label: 'Action Star', colorText: 'in costume as an action star',
+        kind: 'buff', category: 'buff', stack: 'replace', dispelProof: true, acRole: 'action',
+        stageMod: { atk: 1, spd: 1 },
+        iconSrc: createStatusIconDataUri('💥', '#1c1418', '#fff4ee', '#e07a28')
     },
     /* 🕊 THE FOLD (2026-11-27, the Origami Girl): the shape she ended her turn in. One at a time; her next turn's start opens her
        flat again (battle.js _ogTurnStart) and a new fold replaces the old (_ogBeginCast). The shape on the board is drawn from
@@ -22778,6 +22866,7 @@ const EW_RACE_BIOMES = {
     'weatherman': ['urban'],   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR — Disaster City (Hero Plaza's news office)
     'leprechaun': ['forest'],   // 2026-11-27 THE LEPRECHAUN + THE MEDIC — the green, a first pass
     'medic': ['urban'],   // 2026-11-27 THE LEPRECHAUN + THE MEDIC — the hospital, a first pass
+    'actor': ['urban'],   // 2026-11-27 THE ACTOR — a first pass (the Hollywood Hills are Disaster City's)
     'centaur': ['ancient', 'forest'],   // 2026-11-24 THE CENTAUR — Mount Olympus and its woods (Claude's pick: mondo named no home)
     'cheerleader': ['urban'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — Disaster City University (the DCU Aftershocks)
     'princess': ['arthurian'],   // 2026-11-24 THE PRINCESS — Came A Lot
@@ -23471,6 +23560,7 @@ const RACE_TREE = {
     'weatherman':    [['wnColdFront', 'wnTopStory'], ['wnSevereWeather', 'wnExclusive'], ['wnStormTracker', 'wnFakeNews'], ['wnStormOfCentury', 'wnPrimeTime']],   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: every rung is one of each (RACE_GENDER_SPELLS): his weather, her show
     'leprechaun':    ['lpShillelagh', ['lpLuckyCoin', 'lpRainbowRoad'], 'lpFoolsGold', 'lpPotOfGold'],   // 2026-11-27 THE LEPRECHAUN + THE MEDIC
     'medic':         [['mdReflexTest', 'mdSedative'], ['mdPrescription', 'mdBedsideManner'], ['mdDefibrillator', 'mdTriage'], ['mdMalpractice', 'mdCodeBlue']],   // 2026-11-27 THE LEPRECHAUN + THE MEDIC: every rung is one of each (RACE_GENDER_SPELLS): the Doctor's, the Nurse's
+    'actor':         [['acColdRead', 'acPhotoOp'], ['acBalconyScene', 'acStuntDouble'], ['acStarPower', 'acPlague'], ['acCurtainCall', 'acWalkAway']],   // 2026-11-27 THE ACTOR: each rung two different roles
     'centaur':       ['cenHoofStomp', 'cenParthianShot', ['cenWildHerd', 'raceRideBy'], 'cenSagittarius'],   // 2026-11-24 THE CENTAUR
     'cheerleader':   ['chHighKick', 'chReadyOk', 'chBasketToss', 'chGimme'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: her own four
     'princess':      ['prWishingStar', 'prTrueLove', 'prSpindle', 'prEverAfter'],   // 2026-11-24 THE PRINCESS: her own four
@@ -25913,6 +26003,46 @@ const SPELL_FAMILIES = {
         unique: 'leprechaun',
         identity: { who: ['Leprechaun', 'Cobbler', 'Hoarder'], adj: ['Lucky', 'Green', 'Crooked'], look: ['a green coat and buckled hat', 'a red beard', 'a blackthorn stick'], vibe: ['hides his gold and never plays fair', 'always one step ahead of you'] }
     },
+    audition: {   // 2026-11-27 THE ACTOR — the Actor's own
+        id: 'audition',
+        name: 'The Audition',
+        glyph: '🎭',
+        color: '#c8b89a',
+        kind: 'signature',
+        desc: 'The actor as they walk in: jeans, a lanyard and a stack of sides. Its spells take the costume off.',
+        unique: 'actor',
+        identity: { who: ['Actor', 'Actress', 'Hopeful'], adj: ['Hungry', 'Typecast', 'Off-Book'], look: ['a lanyard with a badge', 'a bag of scripts'], vibe: ['will do anything for the part', 'waiting for the callback'] }
+    },
+    redcarpet: {   // 2026-11-27 THE ACTOR — the Actor's own
+        id: 'redcarpet',
+        name: 'Red Carpet',
+        glyph: '🎞',
+        color: '#d0283c',
+        kind: 'signature',
+        desc: 'Tux and gown under the flashbulbs. Its spells put the Red Carpet on.',
+        unique: 'actor',
+        identity: { who: ['Star', 'Leading Man', 'Leading Lady'], adj: ['Glamorous', 'Photogenic'], look: ['a black tux', 'a red silk gown'], vibe: ['never takes a bad picture'] }
+    },
+    starcrossed: {   // 2026-11-27 THE ACTOR — the Actor's own
+        id: 'starcrossed',
+        name: 'Star-Crossed',
+        glyph: '🌹',
+        color: '#b04a78',
+        kind: 'signature',
+        desc: 'Romeo and Juliet, in velvet and brocade. Its spells put Star-Crossed on.',
+        unique: 'actor',
+        identity: { who: ['Romeo', 'Juliet', 'Lover'], adj: ['Doomed', 'Tragic', 'Dramatic'], look: ['a velvet doublet', 'a brocade gown'], vibe: ['dies beautifully every night'] }
+    },
+    actionhero: {   // 2026-11-27 THE ACTOR — the Actor's own
+        id: 'actionhero',
+        name: 'Action Star',
+        glyph: '💥',
+        color: '#e07a28',
+        kind: 'signature',
+        desc: 'The summer blockbuster: stunts and explosions. Its spells put the Action Star on.',
+        unique: 'actor',
+        identity: { who: ['Action Star', 'Stunt Double'], adj: ['Gritty', 'Explosive'], look: ['a quilted vest', 'a biker jacket'], vibe: ['does their own stunts'] }
+    },
     medicine: {   // 2026-11-27 THE LEPRECHAUN + THE MEDIC — the Doctor's and the Nurse's own
         id: 'medicine',
         name: 'Medicine',
@@ -28286,6 +28416,7 @@ const RACE_FAMILIES = {
     'weatherman': ['newsroom', 'wind', 'lightning', 'stagepresence'],   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR
     'leprechaun': ['leprechaun', 'gambling', 'fae', 'trickery'],   // 2026-11-27 THE LEPRECHAUN + THE MEDIC (NEW_CHARACTERS.md: Leprechaun -> Gambling)
     'medic': ['medicine', 'healingmagic', 'chemistry', 'humangrit'],   // 2026-11-27 THE LEPRECHAUN + THE MEDIC
+    'actor': ['audition', 'redcarpet', 'starcrossed', 'actionhero', 'stagepresence'],   // 2026-11-27 THE ACTOR: the four looks + Stage Presence
     'centaur': ['centaur', 'archery', 'horsebackriding', 'athleticism'],   // 2026-11-24 THE CENTAUR (the idea list's own three)
     'cheerleader': ['cheer', 'teamwork', 'athleticism', 'stagepresence'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
     'princess': ['fairytale', 'royalty', 'healingmagic', 'light'],   // 2026-11-24 THE PRINCESS
@@ -28958,6 +29089,7 @@ const CAMPAIGN_RACE_PRICES = {
   'weatherman': 400,   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR
   'leprechaun': 400,   // 2026-11-27 THE LEPRECHAUN + THE MEDIC
   'medic': 400,   // 2026-11-27 THE LEPRECHAUN + THE MEDIC
+  'actor': 400,   // 2026-11-27 THE ACTOR
   'centaur': 450,   // 2026-11-24 THE CENTAUR
   'cheerleader': 400,   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
   'princess': 400,   // 2026-11-24 THE PRINCESS
