@@ -882,6 +882,7 @@ const CODEX_LORE = {
   'trucker': 'Human. A long-haul trucker off the highway: plaid vest, grey beard, cowboy boots. Nobody gets left behind: the ones lined up behind him come along for the ride.',   // 2026-11-19 THE NEW RACES 3
   'pharaoh': 'Human + Divine. The god-king of the Nile and his queen, Cleopatra, from the Pyramids of Giza. The asp, the eye of the sun, and a tomb he raises on the field: the first time he falls he rises from it, and whoever breaks it is cursed.',
   'deep sea diver': 'Human + Tech. A deep sea diver from the wrecks off Atlantis, in a sealed glass bubble helmet. Her Depth Charge gives the Bends: every square a unit moves costs it HP, and her harpoon and shove make sure they move.',
+  'demiurge': 'Divine. The maker of the black cube, in two forms: the Armoured Demiurge (physical: shoulder serpents, a bladed tail, the cube laid like a cornerstone) and the Cosmic Demiurge (magic: void eyes, a halo, cubes in orbit).',   // 2026-11-26 THE DEMIURGE
   'bear': 'Anomaly. One bear, two coats: the Grizzly (forest, a few Nature spells) and the Polar Bear (the ice, a few Ice spells). Don\'t poke the bear: whoever hurt it last carries its Grudge, and Bear Down hits that one harder. Hibernate heals it in its sleep; leave it be and it wakes healed more, wake it and it comes up angry.',   // 2026-11-23 THE BEAR (mondo OK'd the kit)
   'abomination': 'Anomaly. Too much body: a heap of grown flesh out of the drains, three mouths down its chest, a split head ringed with eyes and a cage of bones floating by its shoulder. Its arms and back tentacles are LIMBS (it starts with 4, grows one back every turn, up to 6): a big hit tears one off instead and lands 30% smaller, Many Mouths grows one for every enemy it bites, and Unfold spends them all, one hit each through the floor. Bone Cage shuts an enemy in for Grasp and Unfold to hit harder.',   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name)
   'gladiator': 'Human. A gladiator of the Colosseum, male or female: crested bronze helmet, blue cape, net and short sword. He fights for the crowd: every hit wins Favor (up to 5), each Favor makes all his blows hit harder, and Crowd Pleaser spends it all at once.',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
@@ -941,16 +942,16 @@ function getSpriteUrl(race, gender, cls) {
   }
   return '';
 }
-function computeStats(race, cls) {
+function computeStats(race, cls, gender) {   // `gender` (2026-11-26 THE DEMIURGE): a form's own stat row (data.js RACE_GENDER_STATS)
   const s = (typeof window.computeUnitStats === 'function')
-    ? window.computeUnitStats(race || 'door agent', cls)
+    ? window.computeUnitStats(race || 'door agent', cls, undefined, gender)
     : (window.CLASS_TEMPLATES?.Vessel || {});
   return _withCritEva({ ...s });
 }
 /* `equipment` = the loadout's spell ids since THE GEAR MERGE (SPELL_LIBRARY_PLAN Phase 4): the equipped passive rows'
    `statBonus` hooks (data.js passiveIdsStatBonus); an old { accessory1, accessory2 } object still reads the retired table. */
-function computeFullStats(race, cls, secJob, equipment, ups, zodiac) {
-  const base = computeStats(race, cls);
+function computeFullStats(race, cls, secJob, equipment, ups, zodiac, gender) {
+  const base = computeStats(race, cls, gender);
   const secB = { hp:0,mp:0,atk:0,def:0,mdef:0,move:0,vision:0,crt:0,int:0,spd:0 };   // THE JOBS REMOVAL (2026-09-27): no second job
   const eqB = (Array.isArray(equipment) && typeof window.passiveIdsStatBonus === 'function') ? window.passiveIdsStatBonus(equipment, ups)   // ups: a passive row's +1 / +2 (2026-10-06)
     : (equipment && !Array.isArray(equipment) && typeof window.computeEquipBonuses === 'function') ? window.computeEquipBonuses(equipment) : { hp:0,mp:0,atk:0,def:0,mdef:0,move:0,vision:0,crt:0,int:0,spd:0 };
@@ -4009,7 +4010,7 @@ function PartyBuilder(props) {
   const unitRace = identity.race || '', unitTypes = identity.types || [];
   const unitGender = identity.gender || 'male';   // RACE_GENDER_SPELLS (2026-10-27): the Priest and the Nun learn one or two spells of their own
   const fc = PB_ACCENT;
-  const template = computeStats(unitRace, clsName);
+  const template = computeStats(unitRace, clsName, unitGender);
   const raceAbilities = getRaceAbilities(unitRace, clsName);
   const prof = window.RACE_PROFILES?.[unitRace];
   /* THE TIERS (2026-09-24): no unit has a secondary job — an old save's is dropped here, its spells by the scrub below. */
@@ -4060,7 +4061,7 @@ function PartyBuilder(props) {
     customSpells = mig;
     unitEquipment.accessory1 = null; unitEquipment.accessory2 = null;
   }
-  const { final: fullStats, delta: statDeltas } = computeFullStats(unitRace, clsName, secJob, customSpells || [], pbEffUps(unitRace, clsName, customSpells || [], st.partyMeta?.[player]?.[slot]?.spellUpgrades), identity.zodiac || 'aries');
+  const { final: fullStats, delta: statDeltas } = computeFullStats(unitRace, clsName, secJob, customSpells || [], pbEffUps(unitRace, clsName, customSpells || [], st.partyMeta?.[player]?.[slot]?.spellUpgrades), identity.zodiac || 'aries', unitGender);
   const learnedSpells = getLearnedSpells(clsName, customSpells);
   const zodiacNatal = (window.ZODIAC_EFFECTS?.[identity.zodiac || 'aries']?.natal) || null;   // the race editor's ZODIAC tab
   const unitItems = unitLoadout.items || {};
@@ -5093,7 +5094,7 @@ function PartyBuilder(props) {
   // It follows the hovered wall tile (stageEntry) like the hero does: that vessel's own types and base stats, no gear
   // deltas or zodiac arrows (those belong to the slot's unit); back to the selected unit when the hover ends.
   const qTypes = stageEntry ? (stageEntry.types || []) : unitTypes;
-  const qStats = stageEntry ? computeFullStats(stageEntry.race, stageEntry.cls, null, []).final : fullStats;
+  const qStats = stageEntry ? computeFullStats(stageEntry.race, stageEntry.cls, null, [], undefined, undefined, stageEntry.gender).final : fullStats;
   const quickCard = h('div', { className: 'pb-stage-card' },
     h('div', { style:{ display:'flex', alignItems:'baseline', gap:8, minWidth:0 } },
       h('span', { style:{ fontFamily:'Cormorant SC, serif', fontSize:15, fontWeight:600, color:'#f1e9cf', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', minWidth:0 } }, stageEntry ? stageLabel : unitName),

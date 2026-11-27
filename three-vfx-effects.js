@@ -156,6 +156,20 @@ const ThreeVFXEffects = (function () {
         }
         TR.mountUnit(p.uid, { key: R.key, vehicle: R.vehicle, ms: R.ms || 1800, lance: !!R.lance });
     }
+    /* ⬛ THE DEMIURGE (2026-11-26): his own spells pose his loose parts (three-renderer.js THE DEMIURGE, _DM_ACTS): the serpents lunge,
+       the tail draws its circle, the cube leaves the cage, the eyes push forward, the halo tilts. Looks only. Rides the windup beat
+       (the caster's `uid`), which online.js relays, so the guest sees the same. A cast of any other spell gets the plain act of
+       its animation slot (three-renderer.js _demiSlot). */
+    var _DM_SPELL_ACTS = {
+        dmSerpentStrike: ['serpent', 1400], dmCompassSweep: ['sweep', 1500], dmCornerstone: ['cube', 1700], dmGoldenSpiral: ['spiral', 1800],
+        dmVoidGaze: ['gaze', 1600], dmFractalBloom: ['bloom', 1700], dmAsAbove: ['halo', 1700], dmTesseract: ['cube', 1900]
+    };
+    function _demiWindup(spellId, p) {
+        var A = _DM_SPELL_ACTS[spellId];
+        if (!A || !p || p.uid == null) return;
+        var TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
+        if (TR && typeof TR.demiAct === 'function') TR.demiAct(p.uid, A[0], A[1]);
+    }
     function _geom3D(spellId) {
         if (_VS.on && typeof window !== 'undefined' && window.EW_PB_VFX_NO_GEOM) return null;
         return _spell3DGeometry[spellId];
@@ -3833,6 +3847,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (intent === 'windup' || intent === 'burst' || intent === 'finish') {
             _fireStage(intent, spellId, params || {});
             if (intent === 'windup') try { _rideWindup(spellId, params); } catch (e) {}   // THE HORSES
+            if (intent === 'windup') try { _demiWindup(spellId, params); } catch (e) {}   // THE DEMIURGE
             if (intent === 'windup') try { _heldStart(spellId, params); } catch (e) { console.warn('[VFX] held prop failed', spellId, e); }   // THE PROPS IN THE HAND (row 24)
             if (intent === 'windup') try { _skwWindup(spellId, params); } catch (e) { console.warn('[VFX] skinwalker face failed', spellId, e); }   // THE SKINWALKER'S FACES (2026-11-24)
             /* THE LIGHTNING PASS: every lightning damage spell marks what it hit (cage + scar) on the real hit */

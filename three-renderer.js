@@ -18225,6 +18225,7 @@ const ThreeRenderer = (function () {
         if (g.held && g.held.url) { at.held = deps.length; deps.push(g.held.url); }
         if (g.held2 && g.held2.url) { at.held2 = deps.length; deps.push(g.held2.url); }   // a second piece in the other hand (the Hacker's mouse)
         if (g.helmet && g.helmet.url) { at.helmet = deps.length; deps.push(g.helmet.url); }   // THE BUBBLE HELMET
+        if (g.demi) _DM_PARTS.forEach(function (k) { if (g.demi[k]) { at['dm_' + k] = deps.length; deps.push(g.demi[k]); } });   // THE DEMIURGE's own parts
         var fn = function (root, anims, got) { try { _gearBuild(root, g, wf, at, got || []); } catch (e) { console.warn('[3D] unit gear failed', e); } return null; };
         fn.deps = deps;
         return (_gearRigCache[url] = fn);
@@ -18313,11 +18314,12 @@ const ThreeRenderer = (function () {
         };
         _heldOne(g.held || {}, at.held, 'RightHand', 'ewGearHeld');
         if (g.held2) _heldOne(g.held2, at.held2, 'LeftHand', 'ewGearHeld2');
+        if (g.demi && _demiBuild(root, g, at, got, { bone: bone, chest: chest, head: head, H: H, box: box, cp: cp, hp: hp })) made = true;   // THE DEMIURGE
         if (made) root.userData.ewGear = true;
     }
     var _gearE = null;
     var _gearQ = null, _gearAx = null;
-    function _gearTick(S) {
+    function _gearTick(S, model, dt) {
         var G = S.gear; if (!G || !G.length) return;
         if (!_gearE) _gearE = new THREE.Euler(0, 0, 0, 'YZX');
         var t = ((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()) / 1000 + (S.gearPhase || 0);
@@ -18343,6 +18345,228 @@ const ThreeRenderer = (function () {
                 n.rotation.z = 0.025 * Math.sin(t * 1.1);
             }
         }
+        if (S.dm) _demiTick(S, model, dt, t);   // THE DEMIURGE: his parts, after the gear's own beat
+    }
+    /* ══ THE DEMIURGE (2026-11-26, mondo: "I want the staff and the cube to be 2 separate parts so the cube can be animated and spin
+       in the staff. I would want his wings and snakes to be made and animated separately too ... animate the parts to go along with
+       his spells"). His two forms are library-animated Meshy bodies wearing THE UNIT GEAR (wings, halo, the staff in the hand) plus
+       parts of his own, `gear.demi: { form, cube, snake, tail, horn, robe, eye }` (urls; bake-demiurge.js makes the files):
+         · the CUBE turns on a corner inside the staff's cage (both forms); it rises out of it, swells and spins up on a cast;
+         · ARMOURED: two SERPENTS on the shoulders and the bladed TAIL are skinned chains (bones `dmChain_0..8`) posed here every
+           frame: they sway at rest, the serpents rear and lunge, the tail whips a full circle; the HORN crest sits on the head;
+         · COSMIC: the ROBE hangs from the hips on spring bones (THE SWAY swings it), two void EYES float at the shoulders and
+           three small cubes ORBIT him; the halo tilts and spins up, the eyes swell and push forward.
+       A cast poses the parts through an ACT (_DM_ACTS: channels eased over the act's length). The board gives every cast the
+       plain act of its slot (_demiSlot); his own spells name theirs on the windup beat (three-vfx-effects.js _DM_SPELL_ACTS ->
+       ThreeRenderer.demiAct), which online.js relays like every fire(), so the guest sees the same. Looks only; nothing is state.
+       The parts' meshes carry userData.ewGear (the fit box measures the body alone). */
+    var _DM_PARTS = ['cube', 'snake', 'tail', 'horn', 'robe', 'eye'];
+    var _DM_CAGE = 0.849, _DM_CUBE = 0.085;   // the cage's middle up the staff / the cube's edge, parts of the staff's length
+    var _dmState = (typeof WeakMap === 'function') ? new WeakMap() : null;   // clone root -> { act, t0, ms, walk, slot }
+    function _dmPart(scene, name) {
+        /* a skinned part's own scene (mesh + bones) as one piece of gear */
+        scene.name = name;
+        scene.traverse(function (n) { if (n.isMesh) { n.userData.ewGear = true; n.frustumCulled = false; } });
+        return scene;
+    }
+    function _dmBox(scene) {
+        var m = _gearMesh(scene); if (!m) return null;
+        if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
+        return m.geometry.boundingBox;
+    }
+    function _demiBuild(root, g, at, got, C) {
+        var d = g.demi, H = C.H, made = false;
+        var part = function (k) { return at['dm_' + k] != null ? got[at['dm_' + k]] : null; };
+        /* the cube: one geometry, drawn in the cage and (cosmic) three times in orbit */
+        var cm = _gearMesh(part('cube')), cube = null, edge = 1;
+        if (cm) {
+            cube = _gearPlain(cm);
+            var cb = cube.geometry.boundingBox, cc = cb.getCenter(new THREE.Vector3());
+            cube.geometry.translate(-cc.x, -cc.y, -cc.z);
+            edge = Math.max(1e-6, cb.max.x - cb.min.x);
+        }
+        var held = root.getObjectByName('ewGearHeld');
+        if (cube && held && held.geometry) {
+            var hb = held.geometry.boundingBox, span = hb.max.y - hb.min.y;
+            var cage = new THREE.Group(); cage.name = 'dmCage'; cage.position.set(0, hb.min.y + span * _DM_CAGE, 0);
+            var cg = new THREE.Group(); cg.name = 'dmCube'; cg.scale.setScalar(_DM_CUBE * span / edge); cg.userData.ews = cg.scale.x; cg.userData.ewl = span;
+            cg.add(cube); cage.add(cg); held.add(cage); made = true;
+        }
+        if (d.form === 'cosmic') {
+            if (cube) {
+                var orb = new THREE.Group(); orb.name = 'dmOrbit';
+                for (var oi = 0; oi < 3; oi++) {
+                    var oc = new THREE.Mesh(cube.geometry, cube.material); oc.userData.ewGear = true; oc.name = 'dmOrbitCube';
+                    var oa = oi / 3 * Math.PI * 2;
+                    oc.position.set(Math.sin(oa) * 0.42 * H, (oi - 1) * 0.07 * H, Math.cos(oa) * 0.42 * H);
+                    oc.scale.setScalar(0.055 * H / edge);
+                    orb.add(oc);
+                }
+                _gearHang(C.chest, new THREE.Vector3(C.cp.x, C.cp.y - 0.04 * H, C.cp.z), orb, 'dmOrbitMount'); made = true;
+            }
+            var em = _gearMesh(part('eye'));
+            if (em) {
+                var e0 = _gearPlain(em), eb = e0.geometry.boundingBox, ec = eb.getCenter(new THREE.Vector3());
+                e0.geometry.translate(-ec.x, -ec.y, -ec.z);
+                var es = 0.15 * H / Math.max(1e-6, eb.max.x - eb.min.x);
+                [['L', 1], ['R', -1]].forEach(function (sd) {
+                    var ey = new THREE.Group(); ey.name = 'dmEye' + sd[0]; ey.scale.setScalar(es); ey.userData.ews = es; ey.userData.ewH = H;
+                    ey.add(sd[1] > 0 ? e0 : (function () { var m2 = new THREE.Mesh(e0.geometry, e0.material); m2.userData.ewGear = true; return m2; })());
+                    _gearHang(C.chest, new THREE.Vector3(C.cp.x + sd[1] * 0.34 * H, C.cp.y + 0.2 * H, C.cp.z + 0.02 * H), ey, 'dmEyeMount' + sd[0]);
+                });
+                made = true;
+            }
+            var rb = part('robe'), rbb = rb && _dmBox(rb), hips = C.bone('Hips');
+            if (rbb && hips) {
+                var hpos = hips.getWorldPosition(new THREE.Vector3());
+                var top = hpos.y + (d.robeLift != null ? d.robeLift : 0.03) * H;
+                var rg = new THREE.Group(); rg.name = 'dmRobe'; rg.scale.setScalar((top - C.box.min.y) / Math.max(1e-6, -rbb.min.y) * (d.robeLen || 1.0));
+                rg.add(_dmPart(rb, 'dmRobeScene'));
+                _gearHang(hips, new THREE.Vector3(hpos.x, top, hpos.z), rg, 'dmRobeMount'); made = true;
+            }
+        } else {
+            var sn = part('snake'), sbb = sn && _dmBox(sn);
+            if (sbb) {
+                var sn2 = (typeof THREE.SkeletonUtils !== 'undefined' && THREE.SkeletonUtils.clone) ? THREE.SkeletonUtils.clone(sn) : null;
+                [['L', 1, sn, 'LeftArm'], ['R', -1, sn2, 'RightArm']].forEach(function (sd) {
+                    var sb = C.bone(sd[3]); if (!sd[2] || !sb) return;
+                    var sp = sb.getWorldPosition(new THREE.Vector3());
+                    var sgp = new THREE.Group(); sgp.name = 'dmSnake' + sd[0]; sgp.scale.setScalar((d.snakeLen || 0.4) * H / Math.max(1e-6, sbb.max.y));
+                    sgp.rotation.set(0, sd[1] * 0.3, -sd[1] * 0.3, 'YXZ');   // heads turned a little out, the bodies leaning out over the pauldrons
+                    sgp.add(_dmPart(sd[2], 'dmSnakeScene'));
+                    _gearHang(C.chest, new THREE.Vector3(sp.x - sd[1] * 0.01 * H, sp.y + 0.03 * H, sp.z + 0.015 * H), sgp, 'dmSnakeMount' + sd[0]);
+                    made = true;
+                });
+            }
+            var tl = part('tail'), tbb = tl && _dmBox(tl), hp2 = C.bone('Hips');
+            if (tbb && hp2) {
+                var tp = hp2.getWorldPosition(new THREE.Vector3());
+                var tg = new THREE.Group(); tg.name = 'dmTail'; tg.scale.setScalar((d.tailLen || 0.62) * H / Math.max(1e-6, -tbb.min.z));
+                tg.add(_dmPart(tl, 'dmTailScene'));
+                _gearHang(hp2, new THREE.Vector3(tp.x, tp.y - 0.02 * H, tp.z - 0.07 * H), tg, 'dmTailMount'); made = true;
+            }
+            var hm = _gearMesh(part('horn'));
+            if (hm) {
+                var hn = _gearPlain(hm), hnb = hn.geometry.boundingBox, hnc = hnb.getCenter(new THREE.Vector3());
+                hn.geometry.translate(-hnc.x, -hnb.min.y, -hnc.z);   // the plate's underside on the mount
+                var hg = new THREE.Group(); hg.name = 'dmHorn'; hg.scale.setScalar((d.hornSize || 0.2) * H / Math.max(1e-6, hnb.max.x - hnb.min.x));
+                if (d.hornRot) hg.rotation.set(d.hornRot[0] || 0, d.hornRot[1] || 0, d.hornRot[2] || 0);
+                hg.add(hn);
+                _gearHang(C.head, new THREE.Vector3(C.hp.x, C.box.max.y + (d.hornLift != null ? d.hornLift : -0.035) * H, C.hp.z + (d.hornFwd || 0) * H), hg, 'dmHornMount'); made = true;
+            }
+        }
+        if (made) root.userData.ewDemi = d.form || 'armoured';
+        return made;
+    }
+    function _demiInit(model) {
+        var D = { form: model.userData.ewDemi, n: {}, chains: {}, spin: 0, orb: 0, halo: 0 };
+        model.traverse(function (o) {
+            var nm = o.name || '';
+            if (/^(dm(Cube|Cage|Orbit|EyeL|EyeR|SnakeL|SnakeR|Tail|Horn|Robe)|ewGear(WingL|WingR|Halo))$/.test(nm)) D.n[nm] = o;
+        });
+        ['dmSnakeL', 'dmSnakeR', 'dmTail'].forEach(function (k) {
+            var r = D.n[k]; if (!r) return;
+            var bs = [];
+            r.traverse(function (o) { var m = o.isBone && /^dmChain_(\d+)$/.exec(o.name || ''); if (m) bs[+m[1]] = o; });
+            D.chains[k] = bs;
+        });
+        return D;
+    }
+    /* an act fills the channels for u = 0 … 1 (all default 0): spread (wings wider > 0, folded < 0) · beat (extra wing beat) ·
+       cubeSpin (x the rest speed) cubeLift (parts of the staff) cubeSize · lunge (the serpents: rear < 0, strike > 0) ·
+       tailTurn (radians round him) tailCurl · halo (extra spin) haloTilt · eye (swell) eyeFwd · orbit (extra speed) orbitR (wider) */
+    var _DM_ACTS = {
+        cast:    function (u, c) { var b = _occBump(u, 0, 0.35, 1); c.spread = 0.7 * b; c.cubeSpin = 8 * b; c.cubeLift = 0.05 * b; c.cubeSize = 0.35 * b; c.halo = 5 * b; c.eye = 0.3 * b; c.orbit = 2.5 * b; c.lunge = 0.25 * b; },
+        strike:  function (u, c) { c.lunge = _occBump(u, 0.25, 0.42, 0.9) - 0.6 * _occBump(u, 0, 0.18, 0.36); c.tailCurl = 0.6 * _occBump(u, 0.1, 0.4, 0.9); c.spread = 0.3 * _occBump(u, 0, 0.3, 1); },
+        serpent: function (u, c) { c.lunge = 1.5 * _occBump(u, 0.3, 0.46, 0.95) - 0.9 * _occBump(u, 0, 0.2, 0.4); c.spread = 0.45 * _occBump(u, 0, 0.3, 1); c.cubeSpin = 3 * _occBump(u, 0, 0.3, 1); },
+        sweep:   function (u, c) { c.tailTurn = Math.PI * 2 * _occS(u, 0.12, 0.72); c.tailCurl = _occBump(u, 0.05, 0.3, 0.9); c.spread = -0.6 * _occBump(u, 0, 0.25, 0.9); c.cubeSpin = 3 * _occBump(u, 0, 0.3, 1); },
+        cube:    function (u, c) { var b = _occBump(u, 0, 0.4, 1); c.cubeLift = 0.3 * b; c.cubeSize = 1.6 * b; c.cubeSpin = 14 * b; c.spread = 0.8 * b; c.orbit = 6 * b; c.orbitR = 0.5 * b; c.halo = 6 * b; c.eye = 0.3 * b; },
+        spiral:  function (u, c) { var b = _occBump(u, 0, 0.35, 1); c.spread = 1.0 * b; c.beat = 1.2 * b; c.tailTurn = Math.PI * 2 * _occS(u, 0.2, 0.85); c.tailCurl = b; c.cubeSpin = 10 * b; c.cubeSize = 0.5 * b; c.lunge = 0.5 * b; },
+        gaze:    function (u, c) { var b = _occS(u, 0, 0.25) * (1 - _occS(u, 0.75, 1)); c.eyeFwd = b; c.eye = 0.7 * b + 0.08 * b * Math.sin(u * 60); c.spread = 0.9 * b; c.halo = -0.9 * b; c.cubeSpin = 2 * b; },
+        bloom:   function (u, c) { var b = _occBump(u, 0, 0.4, 1); c.orbit = 9 * b; c.orbitR = 0.9 * b; c.halo = 10 * b; c.cubeSpin = 8 * b; c.cubeSize = 0.4 * b; c.spread = 0.6 * b; c.eye = 0.25 * b; },
+        halo:    function (u, c) { var b = _occS(u, 0, 0.3) * (1 - _occS(u, 0.7, 1)); c.haloTilt = 1.35 * b; c.halo = 12 * b; c.eye = 0.45 * b; c.spread = 0.5 * b; c.cubeLift = 0.08 * b; c.cubeSpin = 5 * b; }
+    };
+    var _dmC = { spread: 0, beat: 0, cubeSpin: 0, cubeLift: 0, cubeSize: 0, lunge: 0, tailTurn: 0, tailCurl: 0, halo: 0, haloTilt: 0, eye: 0, eyeFwd: 0, orbit: 0, orbitR: 0 };
+    function _demiTick(S, model, dt, t) {
+        var D = S.dm, N = D.n, c = _dmC, k;
+        for (k in c) c[k] = 0;
+        var st = _dmState ? _dmState.get(model) : null, walk = !!(st && st.walk);
+        if (st && st.act) {
+            var u = (((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()) - st.t0) / (st.ms || 1400);
+            if (u >= 1 || u < 0) st.act = null; else { var fn = _DM_ACTS[st.act] || _DM_ACTS.cast; fn(u, c); }
+        }
+        dt = dt > 0 ? Math.min(dt, 0.05) : 0;
+        /* the wings: the gear's slow beat, opened or folded by the act; quicker on the move */
+        if (!_gearE) _gearE = new THREE.Euler(0, 0, 0, 'YZX');
+        var bt = (walk ? 1.7 : 1) + c.beat, wph = t * (walk ? 3.6 : 2.2);
+        for (var wi = 0; wi < 2; wi++) {
+            var wn = N[wi ? 'ewGearWingR' : 'ewGearWingL']; if (!wn) continue;
+            var sg = wi ? -1 : 1, ph = wph - (wi ? 0.25 : 0);
+            _gearE.set(0, sg * (0.55 - 0.42 * c.spread + 0.1 * bt * Math.cos(ph)), sg * (0.25 + 0.3 * c.spread + 0.22 * bt * Math.sin(ph)), 'YZX');
+            wn.quaternion.setFromEuler(_gearE);
+        }
+        /* the cube in the cage: on a corner, turning; an act lifts it out, swells it, spins it up */
+        D.spin += dt * 1.1 * (1 + c.cubeSpin);
+        var cu = N.dmCube;
+        if (cu) {
+            var L = cu.userData.ewl || 1;
+            cu.rotation.set(0.6155, D.spin, 0.7854, 'YXZ');
+            cu.position.y = L * (0.006 * Math.sin(t * 1.7) + c.cubeLift);
+            cu.scale.setScalar((cu.userData.ews || 1) * (1 + c.cubeSize));
+        }
+        /* the cosmic form's own */
+        D.halo += dt * 0.6 * (1 + c.halo);
+        var hl = N.ewGearHalo;
+        if (hl) { hl.rotation.set(c.haloTilt, D.halo, 0, 'XYZ'); }
+        D.orb += dt * 0.55 * (1 + c.orbit);
+        var ob = N.dmOrbit;
+        if (ob) {
+            ob.rotation.y = D.orb; ob.scale.setScalar(1 + c.orbitR);
+            for (var oi = 0; oi < ob.children.length; oi++) ob.children[oi].rotation.set(D.spin * 0.8 + oi, D.spin * 1.3 + oi * 2, 0);
+        }
+        for (var ei = 0; ei < 2; ei++) {
+            var ey = N[ei ? 'dmEyeR' : 'dmEyeL']; if (!ey) continue;
+            var eH = ey.userData.ewH || 2.6, eph = t * 1.3 + ei * 2.1;
+            ey.position.set((ei ? -1 : 1) * (0.012 * eH * Math.cos(eph * 0.7) - 0.1 * eH * c.eyeFwd), 0.02 * eH * Math.sin(eph) + 0.04 * eH * c.eyeFwd, 0.3 * eH * c.eyeFwd);
+            ey.scale.setScalar((ey.userData.ews || 1) * (1 + c.eye));
+        }
+        /* the serpents: a slow weave up the body; rear back, then strike forward and down */
+        for (var si = 0; si < 2; si++) {
+            var sb = D.chains[si ? 'dmSnakeR' : 'dmSnakeL']; if (!sb) continue;
+            var sph = si * 1.9, lg = c.lunge, nB = sb.length - 1;
+            for (var bi = 1; bi < sb.length; bi++) {
+                var b = sb[bi]; if (!b) continue;
+                var f = bi / nB;
+                var rx = 0.05 * Math.sin(t * 1.05 + bi * 0.55 + sph) + (bi <= 4 ? 0.2 : -0.07) * lg;
+                var rz = (0.075 + (walk ? 0.03 : 0)) * Math.sin(t * 1.45 + bi * 0.7 + sph) * (0.4 + 0.6 * f);
+                b.rotation.set(rx, 0, rz);
+            }
+        }
+        /* the tail: a swish from the root to the blade; the sweep turns it once round him, curled */
+        var tb = D.chains.dmTail, tn = N.dmTail;
+        if (tn) tn.rotation.set(-0.18, c.tailTurn, 0, 'YXZ');
+        if (tb) for (var ti = 1; ti < tb.length; ti++) {
+            var tbn = tb[ti]; if (!tbn) continue;
+            tbn.rotation.set(0.03 * Math.sin(t * 0.9 - ti * 0.4) + 0.05 * c.tailCurl, (walk ? 0.13 : 0.085) * Math.sin(t * (walk ? 2.6 : 1.25) - ti * 0.55) + 0.2 * c.tailCurl, 0);
+        }
+    }
+    /* the board's part of it: the plain act of the cast's slot, unless a spell's own act is already running */
+    function _demiSlot(entry) {
+        var r = entry._ew_sway; if (!_dmState || !r) return;
+        var cur = entry._ew_curAnim || '', st = _dmState.get(r);
+        if (!st) { st = {}; _dmState.set(r, st); }
+        st.walk = cur === 'walk' || cur === 'run' || cur === 'runCharge';
+        if (cur === st.slot) return;
+        st.slot = cur;
+        var now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+        if (/^cast/i.test(cur) && !(st.act && now < st.t0 + st.ms)) { st.act = /melee/i.test(cur) ? 'strike' : 'cast'; st.t0 = now; st.ms = 1300; }
+    }
+    function _demiAct(uid, name, ms) {
+        var ue = _getUnitEntry(uid), r = ue && ue._ew_sway;
+        if (!_dmState || !r || !r.userData || !r.userData.ewDemi || !_DM_ACTS[name]) return false;
+        var st = _dmState.get(r); if (!st) { st = {}; _dmState.set(r, st); }
+        st.act = name; st.t0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now(); st.ms = ms > 0 ? ms : 1500;
+        return true;
     }
     /* SERAPH: "a wheel in the middle of a wheel" (Ezekiel 1:16). Ring A is the model as exported (upright, eyes on both
        faces); ring B is the same mesh at SER_B scale, nested in A's hole on a gimbal: it turns with A and tumbles on A's
@@ -20472,7 +20696,7 @@ const ThreeRenderer = (function () {
             var a = byName[o.caps[ci][0]], b = byName[o.caps[ci][1]];
             if (a && b) caps.push({ a: a, b: b, k: o.caps[ci][2] });
         }
-        return { chains: chains, caps: caps, o: o, fresh: true, gear: gear, gearPhase: Math.random() * 6 };
+        return { chains: chains, caps: caps, o: o, fresh: true, gear: gear, gearPhase: Math.random() * 6, dm: (model.userData && model.userData.ewDemi) ? _demiInit(model) : null };
     }
     function _swayCapPush(p, a, b, r) {
         _swF.subVectors(b, a); var L2 = _swF.lengthSq();
@@ -20491,7 +20715,7 @@ const ThreeRenderer = (function () {
         var sKey = (opts && opts.key) || model;   // THE BLENDER CAPES: a second set of chains on the same rig keeps its own state
         var S = _swStates.get(sKey);
         if (!S) { S = _swayInit(model, opts); _swStates.set(sKey, S); }
-        if (S.gear && S.gear.length) _gearTick(S);   // THE UNIT GEAR (before the world matrices: they carry the parts' new turn)
+        if (S.gear && S.gear.length) _gearTick(S, model, dt);   // THE UNIT GEAR (before the world matrices: they carry the parts' new turn)
         if (!(dt > 0)) return;
         dt = Math.min(dt, 1 / 30);
         model.updateWorldMatrix(true, true);   // the body as the clip left it, under wherever the unit stands NOW
@@ -22956,6 +23180,7 @@ const ThreeRenderer = (function () {
             if (entry.modelDef && entry.modelDef.procRig === 'abomination') _abLimbTick(entry, uid, dt);   // 🫀 THE ABOMINATION: the limbs it has, the cage away
             if (entry.appearanceRig) { entry.model.updateMatrixWorld(true); entry.appearanceRig.tick(); }   // rev 9: the skirt against the legs
             var _hsR = _unitModelRigs.get(uid); if (_hsR && _hsR.hairSweep) _hsR.hairSweep();   // THE HAIR EVERYWHERE: the late hair
+            if (entry._ew_sway && entry._ew_sway.userData.ewDemi) _demiSlot(entry);   // THE DEMIURGE: the cast's slot poses his parts
             if (entry._ew_sway) _swayTick(entry._ew_sway, dt, entry.modelDef && entry.modelDef.sway);   // THE SWAY: the cape swings after the clip
             var act = (entry.actions && entry._ew_curAnim) ? entry.actions[entry._ew_curAnim] : null;
             if (act) _modelAnimState.set(uid, { name: entry._ew_curAnim, time: act.time });
@@ -111987,6 +112212,7 @@ const ThreeRenderer = (function () {
         /* THE HORSES (2026-10-27): a unit drawn in the saddle for o.ms (held while its body travels) — o.key = the coat
            ('horse' | 'horse_brown' | 'horse_black', else the race's / the id's); mountKeyFor(unit) = that coat */
         mountUnit: function (uid, o) { try { return _mountUnit(uid, o); } catch (e) { return false; } },
+        demiAct: function (uid, name, ms) { try { return _demiAct(uid, name, ms); } catch (e) { return false; } },   // THE DEMIURGE: a spell's own part act
         mountKeyFor: function (unit) { return _mountKeyFor(unit); },
         /* THE LOADING SCREEN (2026-09-19): how many model files are still in flight through the two GLB
            caches — the HQ load card's progress line (map.js) reads it; textures are not counted */
