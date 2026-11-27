@@ -2686,6 +2686,19 @@
                 clearStatus(unit, 'momentum');
                 delete unit._momentum;
             }
+            /* 🛻 Ram (`revsSpend`): the banked Revs land as a second blow, then they are spent */
+            if (spell.revsSpend && !unit.dead && (unit._revs || 0) > 0) {
+                const _rv = Math.min(5, unit._revs || 0);
+                if (target && !target.dead && !target._dying) {
+                    applyDamageToUnit(target, spell.revsSpend * _rv, `🛞 ${spell.name} revs (${_rv}): `, {
+                        sourceUnit: unit, damageType: spell.damageType || 'physical', consumeMarked: false,
+                        spellType: spell.spellType || null, element: classifySpellElement(spell)
+                    });
+                }
+                clearStatus(unit, 'revs');
+                delete unit._revs;
+            }
+            if (spell.crackSpend && target) _ncCrackOpen(unit, spell, target);   // 🌰 Crack Open
             if (spell.cenHopBack && target && !unit.dead) _cenHopBack(unit, spell, target);   // 🐎 THE CENTAUR: Parthian Shot
             /* ⛪ Celibacy (`summonPenalty`): N more for every summon the target's team has on the board, a second blow */
             if (spell.summonPenalty > 0 && target && !target.dead && !target._dying && !unit.dead) {
@@ -14424,6 +14437,31 @@
                is no roll. Every square walked (the trail) must sit on the line itself. */
             if (Array.isArray(trail) && trail.some(t => t && ((fx === tx && t.x !== fx) || (fy === ty && t.y !== fy)))) return;
             applyStatusPayload(unit, { id: 'momentum', duration: 2, gain: dist }, '', unit);
+        }
+        /* 🛻 THE MONSTER TRUCK (2026-11-27, mondo's living truck; data.js RACE_ABILITIES 'monster truck'): REVS. Any walk banks one
+           Rev a square it drove (STATUS_DEFS.revs adds `gain`, up to 5; the clock carries them into its next turn). Ram
+           (`revsSpend`) spends them all as a second blow (_runPostEffects); Burnout fills them (its selfStatusAfter). Host-side;
+           the unit + status state-sync to the guest. Notes: champions-combat.md "THE MONSTER TRUCK + THE NUTCRACKER". */
+        function _mtBankRevs(unit, dist) {
+            if (!unit || unit.dead || unit._dying || unit.race !== 'monster truck' || !(dist > 0)) return;
+            applyStatusPayload(unit, { id: 'revs', duration: 2, gain: Math.round(dist) }, '', unit);
+        }
+        /* 🌰 THE NUTCRACKER (2026-11-27): CRACKS. Its bites put Cracks on the enemy (STATUS_DEFS.cracked, up to 3). Crack Open
+           (`crackSpend`) lands them as a second blow, and at 3 the shell gives (Broken 1 round). Spent either way. */
+        function _ncCrackOpen(unit, spell, target) {
+            if (!target || target.dead || target._dying || unit.dead) return;
+            const n = Math.min(3, target._cracks || 0);
+            if (n <= 0) return;
+            applyDamageToUnit(target, spell.crackSpend * n, `🌰 ${spell.name} cracks (${n}): `, {
+                sourceUnit: unit, damageType: spell.damageType || 'physical', consumeMarked: false,
+                spellType: spell.spellType || null, element: classifySpellElement(spell)
+            });
+            clearStatus(target, 'cracked');
+            delete target._cracks;
+            if (n >= 3 && !target.dead && !target._dying) {
+                applyStatusPayload(target, { id: 'broken', duration: 1 }, `🌰 ${spell.name}: `, unit);
+                if (!_skipVisuals() && typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(target, '🌰 CRACKED OPEN', 'debuff', { durationMs: 1100 });
+            }
         }
         /* 🛹 THE BAIL (2026-11-16, the Skater polish): a hold that stops her rolling (_skaterBailOn: Stun, Sleep, Root, Frozen,
            Charm, Coiled, Roped; never her own Climbing) knocks her off the board and the banked Momentum is gone. The other side's answer to a big stack. */
@@ -47108,6 +47146,15 @@
                         const _sb = _popeSummonBonus(spell, target);
                         if (_sb > 0) hit(target, _sb, _sb, _sb, baseOpts(spell.damageType || 'magic', { consumeMarked: false, allowMarkBonus: false }), { tag: 'summons' });
                     }
+                    /* 🛻 Ram's Revs + 🌰 Crack Open's Cracks: their second blows (_runPostEffects), so the preview shows them too */
+                    if (spell.revsSpend && (unit._revs || 0) > 0) {
+                        const _rb = spell.revsSpend * Math.min(5, unit._revs);
+                        hit(target, _rb, _rb, _rb, baseOpts(spell.damageType || 'physical', { consumeMarked: false, allowMarkBonus: false }), { tag: 'revs' });
+                    }
+                    if (spell.crackSpend && (target._cracks || 0) > 0) {
+                        const _cb = spell.crackSpend * Math.min(3, target._cracks);
+                        hit(target, _cb, _cb, _cb, baseOpts(spell.damageType || 'physical', { consumeMarked: false, allowMarkBonus: false }), { tag: 'cracks' });
+                    }
                     /* 🛹 Board Slam: the banked Momentum lands as its second blow (_runPostEffects), so the preview shows it too */
                     if (spell.momentumSpend && (unit._momentum || 0) > 0) {
                         const _mb = spell.momentumSpend * Math.min(6, unit._momentum);
@@ -50118,6 +50165,7 @@
             _bendsWalk(unit, _originX, _originY, opts.trail);   // 🫧 THE BENDS: every square of the walk costs HP
             resolveTileArrival(unit, { via: 'move' });
             _skaterBankMove(unit, _originX, _originY, x, y, dist, opts.trail);   // 🛹 a straight roll banks Momentum
+            _mtBankRevs(unit, dist);   // 🛻 THE MONSTER TRUCK: every square driven banks a Rev
             if (unit.race === 'centaur' && dist > 0) unit._cenMovedAt = _cenTurnKey();   // 🐎 THE CENTAUR: on the run this turn
             _serpentFollow(unit, _originX, _originY, opts.trail);   // 🐍 the serpent's body follows the path
             _magicianVanish(unit);   // 🎩 Vanishing Act: an enemy ended beside a Magician with it set

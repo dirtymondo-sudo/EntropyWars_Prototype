@@ -170,6 +170,15 @@ const ThreeVFXEffects = (function () {
         var TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
         if (TR && typeof TR.demiAct === 'function') TR.demiAct(p.uid, A[0], A[1]);
     }
+    /* 🌰 THE NUTCRACKER (2026-11-27): its spells work the jaw (three-renderer.js THE JAW'S SPELL PATTERNS) on the windup beat (the
+       caster's `uid`), which online.js relays, so the guest sees the same. The truck's parts move in its own clips (animSlot). */
+    var _NC_SPELL_ACTS = { ncClack: ['clack', 1000], ncQuickMarch: ['march', 1600], ncCrackOpen: ['crack', 1200], ncNutcrackerSuite: ['suite', 2000] };
+    function _ncWindup(spellId, p) {
+        var A = _NC_SPELL_ACTS[spellId];
+        if (!A || !p || p.uid == null) return;
+        var TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
+        if (TR && typeof TR.jawAct === 'function') TR.jawAct(p.uid, A[0], A[1]);
+    }
     function _geom3D(spellId) {
         if (_VS.on && typeof window !== 'undefined' && window.EW_PB_VFX_NO_GEOM) return null;
         return _spell3DGeometry[spellId];
@@ -3848,6 +3857,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             _fireStage(intent, spellId, params || {});
             if (intent === 'windup') try { _rideWindup(spellId, params); } catch (e) {}   // THE HORSES
             if (intent === 'windup') try { _demiWindup(spellId, params); } catch (e) {}   // THE DEMIURGE
+            if (intent === 'windup') try { _ncWindup(spellId, params); } catch (e) {}   // THE NUTCRACKER's jaw
             if (intent === 'windup') try { _heldStart(spellId, params); } catch (e) { console.warn('[VFX] held prop failed', spellId, e); }   // THE PROPS IN THE HAND (row 24)
             if (intent === 'windup') try { _skwWindup(spellId, params); } catch (e) { console.warn('[VFX] skinwalker face failed', spellId, e); }   // THE SKINWALKER'S FACES (2026-11-24)
             /* THE LIGHTNING PASS: every lightning damage spell marks what it hit (cage + scar) on the real hit */
@@ -55721,6 +55731,324 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
     };
     SPELL_MAP['nrTailSweep'] = { aoe: 'gtTailSweep_aoe' };
+
+    /* ═══ THE MONSTER TRUCK + THE NUTCRACKER (2026-11-27, mondo: "wire them up ... their unique race spells and do their spell
+       animation+vfx"). FIRST PASS. The truck: black rubber, exhaust smoke, sparks off chrome, the burnout's fire; fangs that come
+       down. The nutcracker: painted wood, gold braid, splinters and walnut shell; the Suite's sugar-pink snow. The seat colour
+       (_brSeatOf) rings every hit, like the bear's. The parts on the bodies move in three-renderer.js (THE MONSTER TRUCK,
+       THE NUTCRACKER). Kill-switch window.EW_NO_MTNC_VFX. Notes: champions-combat.md "THE MONSTER TRUCK + THE NUTCRACKER". ═══ */
+    var _MT = { rubber: 0x1a1a1a, smoke: 0x6e6a66, fire: 0xff7a1a, chrome: 0xdfe4ea, fang: 0xf0e6c8, paint: 0xc0301e, spark: 0xffd27a };
+    var _NC = { wood: 0xb07a46, woodDark: 0x6a4424, gold: 0xe8c050, red: 0xc42a2a, shell: 0x8a5a30, sugar: 0xff9ad0, snow: 0xfff4fa };
+    function _mtOff() { return typeof window !== 'undefined' && !!window.EW_NO_MTNC_VFX; }
+    /* a row of fang cones along x, points down (+Y up in the group) */
+    function _mtFangRow(ts, n, len, col) {
+        var g = new THREE.Group(), mats = [];
+        for (var i = 0; i < n; i++) {
+            var big = i === 1 || i === n - 2, L = len * (big ? 1.5 : 1) * (0.8 + 0.2 * Math.sin(i * 1.7));
+            var mat = _pzSolid(col, null, { depthWrite: true }); mat.transparent = true; mats.push(mat);
+            var m = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.05 * (big ? 1.3 : 1), L, 6), mat);
+            m.position.set((i / (n - 1) - 0.5) * ts * 0.9, -L / 2, 0); m.rotation.x = Math.PI; g.add(m);
+        }
+        g.userData.mats = mats; return g;
+    }
+    function _mtSmoke(F, n, z, spread, tint) {
+        for (var i = 0; i < n; i++) {
+            if (!_canSpawn()) return;
+            _spawn({ x: F.c.x + rn(-spread, spread) * F.ts, y: F.c.y + rn(-spread, spread) * F.ts, z: F.bz + (z || 6), mode: 'billboard', sprite: 'smoke-soft', tint: tint != null ? tint : _MT.smoke,
+                vx: rn(-30, 30), vy: rn(-30, 30), vz: rn(30, 80), drag: 1.1, ml: rn(700, 1100), size0: rn(12, 18), size1: rn(30, 44), opacity0: 0.55, opacity1: 0 });
+        }
+    }
+    function _mtSparks(F, n, z) {
+        for (var i = 0; i < n; i++) {
+            if (!_canSpawn()) return;
+            _spawn({ x: F.c.x + rn(-0.15, 0.15) * F.ts, y: F.c.y + rn(-0.15, 0.15) * F.ts, z: F.bz + (z || F.ts * 0.4), mode: 'billboard', sprite: 'steel-spark', tint: _MT.spark,
+                vx: rn(-220, 220), vy: rn(-220, 220), vz: rn(60, 220), gravity: 520, drag: 0.6, ml: rn(260, 480), size0: rn(3, 5), size1: 1, opacity0: 1, opacity1: 0 });
+        }
+    }
+    /* a tyre track: a dark dashed strip on the floor from (0,0) back along the line `ln` for `len` */
+    function _mtTreadTex() {
+        return _pzTex('mtTread', 64, 256, function (g, w, h) {
+            g.fillStyle = 'rgba(255,255,255,0.55)'; g.fillRect(4, 0, w - 8, h);
+            g.fillStyle = 'rgba(255,255,255,1)';
+            for (var y = 0; y < h; y += 22) { g.beginPath(); g.moveTo(4, y); g.lineTo(w / 2, y + 10); g.lineTo(w - 4, y); g.lineTo(w - 4, y + 8); g.lineTo(w / 2, y + 18); g.lineTo(4, y + 8); g.closePath(); g.fill(); }
+        });
+    }
+    function _mtTracks(F, ln, len, ts) {
+        var out = [];
+        for (var s = -1; s <= 1; s += 2) {
+            var m = _pzMesh(new THREE.PlaneGeometry(ts * 0.22, len), _pzSolid(_MT.rubber, _mtTreadTex(), { depthWrite: false }), F.g, 0, ts * 0.025, 0);
+            m.material.transparent = true; m.rotation.x = -Math.PI / 2; m.rotation.z = Math.atan2(ln.ux, ln.uz);
+            m.position.set(ln.ux * len / 2 + ln.uz * s * ts * 0.32, ts * 0.025, ln.uz * len / 2 - ln.ux * s * ts * 0.32);
+            out.push(m);
+        }
+        return out;
+    }
+
+    /* ── CHOMP: a fanged upper jaw drops over the victim and a lower one comes up; they snap twice (the hood, three-renderer.js
+       mtChomp), sparks and blood off the bite ── */
+    EFFECTS['mtChomp_impact'] = _pzDef('mtChomp', { layers: [
+        { count: 6, sprite: 'blood-fleck', ml: [320, 560], offsetXY: 10, z: [30, 54], vxRange: 140, vyRange: 140, vzRange: [30, 140], gravity: 360, drag: 0.9, size0: [4, 7], size1: 2, delayMs: 200 },
+    ] });
+    _PZ_SIGS.mtChomp = function (p) {
+        var tx = p.tx, ty = p.ty; if (_mtOff() || tx == null || !_pzSeen(tx, ty)) return;
+        var from = _pzFrom(tx, ty, p), tr = _brUnitAt(from.x, from.y, p.casterId), seat = tr ? _brSeatOf(tr) : _gtSeatColor(from.x, from.y);
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, from, tx, ty);
+        var hold = new THREE.Group(); hold.rotation.y = Math.atan2(ln.uz, -ln.ux); F.g.add(hold);
+        var top = _mtFangRow(ts, 7, ts * 0.32, _MT.fang), bot = _mtFangRow(ts, 6, ts * 0.24, _MT.fang);
+        bot.rotation.z = Math.PI; hold.add(top); hold.add(bot);
+        var ring = _pzMesh(new THREE.RingGeometry(ts * 0.32, ts * 0.46, 32), _pzGlow(seat), F.g, 0, ts * 0.04, 0); ring.rotation.x = -Math.PI / 2;
+        var snaps = 0;
+        return _sigRunOwned(F.g, 1100, function (el) {
+            /* two bites: open 0-120, shut 120-220, open 220-380, shut 380-460, hold, fade */
+            var b = el < 120 ? 0 : el < 220 ? (el - 120) / 100 : el < 380 ? 1 - (el - 220) / 160 * 0.7 : el < 460 ? 0.3 + (el - 380) / 80 * 0.7 : 1;
+            b = _sigClamp01(b);
+            top.position.y = ts * (1.35 - 0.62 * b); bot.position.y = ts * (0.0 + 0.42 * b);
+            var op = _pzEnv(el, 0, 60, 760, 1100);
+            for (var k = 0; k < top.userData.mats.length; k++) top.userData.mats[k].opacity = op;
+            for (k = 0; k < bot.userData.mats.length; k++) bot.userData.mats[k].opacity = op;
+            ring.material.opacity = 0.6 * op;
+            var n = el >= 460 ? 2 : el >= 220 ? 1 : 0;
+            if (n > snaps) { snaps = n; try { _sigShake('light'); } catch (e) {} _mtSparks(F, 6, ts * 0.6); }
+        });
+    };
+    SPELL_MAP['mtChomp'] = { impact: 'mtChomp_impact' };
+
+    /* ── RAM: two tyre tracks burnt down the line it came, exhaust smoke along them, then the crash: chrome sparks, a heavy ring
+       in the seat colour, the board shakes ── */
+    EFFECTS['mtRam_impact'] = _pzDef('mtRam', { layers: [
+        { count: 10, sprite: 'debris', ml: [420, 700], offsetXY: 14, z: [10, 30], vxRange: 200, vyRange: 200, vzRange: [120, 280], gravity: 620, size0: [4, 8], size1: 2 },
+        { count: 4, anchor: 'floor', sprite: 'dust-puff', ml: [520, 820], offsetXY: 18, z: [2, 10], size0: [16, 24], size1: [36, 48], opacity0: 0.4 },
+    ] });
+    _PZ_SIGS.mtRam = function (p) {
+        var tx = p.tx, ty = p.ty; if (_mtOff() || tx == null || !_pzSeen(tx, ty)) return;
+        var from = _pzFrom(tx, ty, p), tr = _brUnitAt(from.x, from.y, p.casterId), seat = tr ? _brSeatOf(tr) : _gtSeatColor(from.x, from.y);
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, from, tx, ty);
+        var tracks = _mtTracks(F, ln, Math.max(ts, ln.L), ts);
+        var steps = Math.max(1, Math.round(ln.L / ts));
+        for (var i = 0; i <= steps * 2 && _canSpawn(); i++) {
+            var f = i / (steps * 2);
+            _spawn({ x: F.c.x + (from.x - tx) * F.ts * f, y: F.c.y + (from.y - ty) * F.ts * f, z: F.bz + 6, mode: 'billboard', sprite: 'smoke-soft', tint: _MT.smoke,
+                vz: rn(20, 60), drag: 1, ml: rn(700, 1000), size0: rn(12, 16), size1: rn(28, 38), opacity0: 0.45, opacity1: 0 });
+        }
+        try { _sigShake('heavy'); } catch (e) {}
+        _sigShockRing3D(tx, ty, { color: seat, r1: ts * 1.5, ms: 460, opacity: 0.7 });
+        _fxDelay(function () { if (!_suppressed()) _sigShockRing3D(tx, ty, { color: 0xffffff, r1: ts * 1.0, ms: 340, opacity: 0.35 }); }, 90);
+        _mtSparks(F, 14, ts * 0.5);
+        return _sigRunOwned(F.g, 1800, function (el) {
+            var op = _pzEnv(el, 0, 40, 1200, 1800);
+            for (var j = 0; j < tracks.length; j++) tracks[j].material.opacity = 0.75 * op;
+        });
+    };
+    SPELL_MAP['mtRam'] = { impact: 'mtRam_impact' };
+
+    /* ── HYDRAULIC SLAM: the truck lands on all four (three-renderer.js mtHop): a crack star under it, a dust ring blown out
+       across the next squares, rock off the floor, a heavy shake ── */
+    EFFECTS['mtHydraulicSlam_aoe'] = _pzDef('mtHydraulicSlam', { layers: [
+        { count: 10, sprite: 'rock-debris', ml: [420, 700], offsetXY: 30, z: [6, 18], vxRange: 220, vyRange: 220, vzRange: [140, 300], gravity: 620, size0: [5, 9], size1: 3, delayMs: 520 },
+    ] });
+    _PZ_SIGS.mtHydraulicSlam = function (p) {
+        var tx = p.cx != null ? p.cx : p.tx, ty = p.cy != null ? p.cy : p.ty; if (_mtOff() || tx == null || !_pzSeen(tx, ty)) return;
+        var tr = _brUnitAt(tx, ty, p.casterId), seat = _brSeatOf(tr);
+        var F = _nrvFrame(tx, ty), ts = F.ts, LAND = 520;
+        var dark = _pzMesh(new THREE.PlaneGeometry(ts * 2.4, ts * 2.4), _pzSolid(0x1a120c, _brCrackTex(), { depthWrite: false }), F.g, 0, ts * 0.03, 0);
+        dark.rotation.x = -Math.PI / 2; dark.material.transparent = true;
+        var glow = _pzMesh(new THREE.PlaneGeometry(ts * 2.4, ts * 2.4), _pzGlow(seat, _brCrackTex()), F.g, 0, ts * 0.035, 0); glow.rotation.x = -Math.PI / 2;
+        /* the struts' pump: a puff of hydraulic mist off each corner before the jump */
+        for (var c = 0; c < 4; c++) {
+            var ca = c * Math.PI / 2 + Math.PI / 4;
+            if (_canSpawn()) _spawn({ x: F.c.x + Math.sin(ca) * ts * 0.4, y: F.c.y + Math.cos(ca) * ts * 0.4, z: F.bz + 8, mode: 'billboard', sprite: 'smoke-soft', tint: 0xdfe8f0,
+                vx: Math.sin(ca) * 60, vy: Math.cos(ca) * 60, vz: 30, drag: 1.4, ml: 500, size0: 10, size1: 26, opacity0: 0.5, opacity1: 0 });
+        }
+        _fxDelay(function () {
+            if (_suppressed()) return;
+            try { _sigShake('heavy'); } catch (e) {}
+            _sigShockRing3D(tx, ty, { color: seat, r0: ts * 0.4, r1: ts * 1.8, ms: 480, opacity: 0.7 });
+            _sigShockRing3D(tx, ty, { color: 0xffffff, r0: ts * 0.3, r1: ts * 1.3, ms: 360, opacity: 0.3 });
+            for (var i = 0; i < 16 && _canSpawn(); i++) {
+                var a = i / 16 * Math.PI * 2;
+                _spawn({ x: F.c.x + Math.sin(a) * ts * 0.5, y: F.c.y + Math.cos(a) * ts * 0.5, z: F.bz + 4, mode: 'billboard', sprite: 'dust-puff',
+                    vx: Math.sin(a) * ts * 2.6, vy: Math.cos(a) * ts * 2.6, vz: rn(10, 30), drag: 1.6, ml: rn(600, 850), size0: rn(14, 18), size1: rn(30, 40), opacity0: 0.45, opacity1: 0 });
+            }
+        }, LAND);
+        return _sigRunOwned(F.g, LAND + 1400, function (el) {
+            var t = _sigEaseOutCubic(_sigClamp01((el - LAND) / 160));
+            dark.scale.setScalar(0.3 + 0.7 * t); glow.scale.setScalar(0.3 + 0.7 * t);
+            dark.material.opacity = 0.85 * _pzEnv(el, LAND, LAND + 40, LAND + 900, LAND + 1400);
+            glow.material.opacity = 0.8 * _pzEnv(el, LAND, LAND + 40, LAND + 300, LAND + 800);
+        });
+    };
+    SPELL_MAP['mtHydraulicSlam'] = { aoe: 'mtHydraulicSlam_aoe' };
+
+    /* ── BURNOUT: the wheels spin in place (three-renderer.js mtBurnout): a black skid circle burns into the floor, a ring of
+       fire runs round it out to two squares, thick tyre smoke pours up, the seat colour in the fire's ring ── */
+    EFFECTS['mtBurnout_aoe'] = _pzDef('mtBurnout', { layers: [
+        { count: 8, sprite: 'ember', ml: [700, 1100], offsetXY: 40, z: [6, 30], vxRange: 60, vyRange: 60, vzRange: [60, 140], size0: [3, 5], size1: 1, tint: _MT.fire, delayMs: 300 },
+    ] });
+    _PZ_SIGS.mtBurnout = function (p) {
+        var tx = p.cx != null ? p.cx : p.tx, ty = p.cy != null ? p.cy : p.ty; if (_mtOff() || tx == null || !_pzSeen(tx, ty)) return;
+        var tr = _brUnitAt(tx, ty, p.casterId), seat = _brSeatOf(tr);
+        var F = _nrvFrame(tx, ty), ts = F.ts, R = ts * 2.2;
+        var skid = _pzMesh(new THREE.RingGeometry(ts * 0.55, ts * 0.95, 48), _pzSolid(_MT.rubber, null, { depthWrite: false }), F.g, 0, ts * 0.022, 0);
+        skid.rotation.x = -Math.PI / 2; skid.material.transparent = true;
+        var fireRing = _pzMesh(new THREE.RingGeometry(R * 0.82, R, 64), _pzGlow(_MT.fire), F.g, 0, ts * 0.04, 0); fireRing.rotation.x = -Math.PI / 2;
+        var seatRing = _pzMesh(new THREE.RingGeometry(R * 0.98, R * 1.06, 64), _pzGlow(seat), F.g, 0, ts * 0.045, 0); seatRing.rotation.x = -Math.PI / 2;
+        _fxDelay(function () { if (!_suppressed()) { try { _sigShake('normal'); } catch (e) {} _sigShockRing3D(tx, ty, { color: _MT.fire, r0: ts * 0.6, r1: R, ms: 520, opacity: 0.6 }); } }, 300);
+        var t0 = 0, t1 = 0;
+        return _sigRunOwned(F.g, 2200, function (el) {
+            var grow = _sigEaseOutCubic(_sigClamp01((el - 250) / 450));
+            fireRing.scale.setScalar(0.3 + 0.7 * grow); seatRing.scale.setScalar(0.3 + 0.7 * grow);
+            fireRing.material.opacity = 0.75 * _pzEnv(el, 250, 400, 1500, 2200); seatRing.material.opacity = 0.55 * _pzEnv(el, 250, 400, 1300, 1900);
+            skid.material.opacity = 0.8 * _pzEnv(el, 0, 300, 1600, 2200);
+            /* the flames round the ring and the smoke off the wheels */
+            if (el > 300 && el < 1700 && el - t0 > 40 && _canSpawn()) {
+                t0 = el; var a = Math.random() * Math.PI * 2, rr = (0.3 + 0.7 * grow) * R * rn(0.85, 1);
+                _spawn({ x: F.c.x + Math.sin(a) * rr, y: F.c.y + Math.cos(a) * rr, z: F.bz + 4, mode: 'billboard', sprite: 'flame', tint: _MT.fire,
+                    vz: rn(60, 120), drag: 1, ml: rn(380, 600), size0: rn(10, 16), size1: rn(4, 8), opacity0: 0.95, opacity1: 0 });
+            }
+            if (el < 1800 && el - t1 > 70) { t1 = el; _mtSmoke(F, 1, ts * 0.15, 0.5); }
+        });
+    };
+    SPELL_MAP['mtBurnout'] = { aoe: 'mtBurnout_aoe' };
+
+    /* ── THE NUTCRACKER ── */
+    function _ncSplinters(F, n, z) {
+        for (var i = 0; i < n; i++) {
+            if (!_canSpawn()) return;
+            _spawn({ x: F.c.x + rn(-0.2, 0.2) * F.ts, y: F.c.y + rn(-0.2, 0.2) * F.ts, z: F.bz + (z || F.ts * 0.5), mode: 'billboard', sprite: 'debris', tint: Math.random() < 0.5 ? _NC.wood : _NC.shell,
+                vx: rn(-160, 160), vy: rn(-160, 160), vz: rn(60, 200), gravity: 520, drag: 0.7, ml: rn(380, 620), size0: rn(3, 6), size1: 2, opacity0: 1, opacity1: 0 });
+        }
+    }
+    /* a crack in a walnut shell: one jagged gold line down the middle with branches (white, the glow tints it) */
+    function _ncCrackTex() {
+        return _pzTex('ncCrack', 128, 256, function (g, w, h) {
+            g.strokeStyle = 'rgba(255,255,255,1)'; g.lineCap = 'round'; g.lineJoin = 'round';
+            var x = w / 2, pts = [[x, 6]];
+            for (var k = 1; k <= 8; k++) pts.push([w / 2 + (k % 2 ? 14 : -12) * (k < 7 ? 1 : 0.5), 6 + k * (h - 12) / 8]);
+            g.lineWidth = 9; g.beginPath(); g.moveTo(pts[0][0], pts[0][1]); for (var i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]); g.stroke();
+            g.lineWidth = 4;
+            for (i = 2; i < pts.length - 1; i += 2) { g.beginPath(); g.moveTo(pts[i][0], pts[i][1]); g.lineTo(pts[i][0] + (i % 4 ? 30 : -30), pts[i][1] + 18); g.stroke(); }
+        });
+    }
+
+    /* ── CLACK: two painted wooden jaws (red coat over gold teeth) clamp the victim from either side, twice; splinters and a
+       gold crack stamped on it ── */
+    EFFECTS['ncClack_impact'] = _pzDef('ncClack', { layers: [] });
+    function _ncJaws(F, ts, seat, ln) {
+        var hold = new THREE.Group(); hold.rotation.y = Math.atan2(ln.ux, ln.uz); hold.position.y = ts * 0.7; F.g.add(hold);
+        var jaws = [];
+        for (var s = -1; s <= 1; s += 2) {
+            var piv = new THREE.Group(); hold.add(piv);
+            var body = _pzMesh(new THREE.BoxGeometry(ts * 0.55, ts * 0.2, ts * 0.42), _pzSolid(s < 0 ? _NC.red : _NC.wood, null, { depthWrite: true }), piv, 0, s * ts * 0.1, 0);
+            var teeth = _pzMesh(new THREE.BoxGeometry(ts * 0.5, ts * 0.06, ts * 0.38), _pzSolid(0xf4ecd8, null, { depthWrite: true }), piv, 0, -s * ts * 0.01, 0);
+            body.material.transparent = true; teeth.material.transparent = true;
+            jaws.push({ piv: piv, s: s, mats: [body.material, teeth.material] });
+        }
+        var rim = _pzMesh(new THREE.RingGeometry(ts * 0.3, ts * 0.44, 32), _pzGlow(seat), F.g, 0, ts * 0.04, 0); rim.rotation.x = -Math.PI / 2;
+        return { jaws: jaws, rim: rim };
+    }
+    _PZ_SIGS.ncClack = function (p) {
+        var tx = p.tx, ty = p.ty; if (_mtOff() || tx == null || !_pzSeen(tx, ty)) return;
+        var from = _pzFrom(tx, ty, p), nc = _brUnitAt(from.x, from.y, p.casterId), seat = nc ? _brSeatOf(nc) : _gtSeatColor(from.x, from.y);
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, from, tx, ty), J = _ncJaws(F, ts, seat, ln), clacks = 0;
+        var crack = _pzSpr(_NC.gold, ts * 0.6, F.g, _ncCrackTex()); crack.position.set(0, ts * 0.7, 0); crack.material.opacity = 0;
+        return _sigRunOwned(F.g, 1100, function (el) {
+            /* clack at 160 and at 420 */
+            var c = el < 160 ? el / 160 : el < 280 ? 1 - (el - 160) / 120 * 0.8 : el < 420 ? 0.2 + (el - 280) / 140 * 0.8 : 1;
+            c = _sigClamp01(c);
+            var op = _pzEnv(el, 0, 60, 720, 1100);
+            for (var i = 0; i < J.jaws.length; i++) {
+                var jw = J.jaws[i]; jw.piv.position.y = jw.s * ts * (0.42 - 0.3 * c);
+                for (var m = 0; m < jw.mats.length; m++) jw.mats[m].opacity = op;
+            }
+            J.rim.material.opacity = 0.6 * op;
+            var n = el >= 420 ? 2 : el >= 160 ? 1 : 0;
+            if (n > clacks) { clacks = n; try { _sigShake('light'); } catch (e) {} _ncSplinters(F, 6, ts * 0.7); }
+            var ct = _sigClamp01((el - 420) / 120); crack.scale.set(ts * 0.3, ts * 0.6 * ct, 1); crack.material.opacity = 0.9 * ct * _pzEnv(el, 420, 460, 800, 1100);
+        });
+    };
+    SPELL_MAP['ncClack'] = { impact: 'ncClack_impact' };
+
+    /* ── QUICK MARCH: on each enemy it passes, a drum-beat ring in the seat colour and a gold crack; boot dust behind ── */
+    EFFECTS['ncQuickMarch_impact'] = _pzDef('ncQuickMarch', { layers: [
+        { count: 4, anchor: 'floor', sprite: 'dust-puff', ml: [420, 640], offsetXY: 14, z: [2, 8], size0: [12, 16], size1: [24, 32], opacity0: 0.35 },
+    ] });
+    _PZ_SIGS.ncQuickMarch = function (p) {
+        var tx = p.tx, ty = p.ty; if (_mtOff() || tx == null || !_pzSeen(tx, ty)) return;
+        var nc = _brUnitAt(null, null, p.casterId), seat = nc ? _brSeatOf(nc) : _gtSeatColor(tx, ty);
+        var F = _nrvFrame(tx, ty), ts = F.ts;
+        var crack = _pzSpr(_NC.gold, ts * 0.6, F.g, _ncCrackTex()); crack.position.set(0, ts * 0.7, 0);
+        try { _sigShake('light'); } catch (e) {}
+        for (var k = 0; k < 2; k++) (function (j) { _fxDelay(function () { if (!_suppressed()) _sigShockRing3D(tx, ty, { color: seat, r0: ts * 0.2, r1: ts * 0.75, ms: 260, opacity: 0.6 }); }, j * 140); })(k);
+        _ncSplinters(F, 6, ts * 0.6);
+        return _sigRunOwned(F.g, 900, function (el) {
+            var ct = _sigClamp01(el / 120); crack.scale.set(ts * 0.3, ts * 0.6 * ct, 1);
+            crack.material.opacity = 0.9 * _pzEnv(el, 0, 60, 500, 900);
+        });
+    };
+    SPELL_MAP['ncQuickMarch'] = { impact: 'ncQuickMarch_impact' };
+
+    /* ── CRACK OPEN: the jaws bite once, hard; the gold crack runs down the victim, splits into a star on the floor, and the
+       shell bursts: walnut shards and gold sparks. With 3 Cracks spent (CRACKED OPEN) it is bigger and the ring doubles ── */
+    EFFECTS['ncCrackOpen_impact'] = _pzDef('ncCrackOpen', { layers: [
+        { count: 10, sprite: 'debris', ml: [420, 700], offsetXY: 12, z: [20, 50], tint: _NC.shell, vxRange: 200, vyRange: 200, vzRange: [100, 260], gravity: 560, size0: [4, 8], size1: 2, delayMs: 220 },
+        { count: 8, sprite: 'sparkle', ml: [400, 700], offsetXY: 12, z: [30, 60], tint: _NC.gold, vxRange: 120, vyRange: 120, vzRange: [40, 160], size0: [4, 7], size1: 1, delayMs: 220 },
+    ] });
+    _PZ_SIGS.ncCrackOpen = function (p) {
+        var tx = p.tx, ty = p.ty; if (_mtOff() || tx == null || !_pzSeen(tx, ty)) return;
+        var from = _pzFrom(tx, ty, p), nc = _brUnitAt(from.x, from.y, p.casterId), seat = nc ? _brSeatOf(nc) : _gtSeatColor(from.x, from.y);
+        var vic = _brUnitAt(tx, ty, null), big = !!vic && (vic._cracks || 0) >= 3;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, from, tx, ty), J = _ncJaws(F, ts, seat, ln);
+        var crack = _pzSpr(_NC.gold, ts, F.g, _ncCrackTex()); crack.position.set(0, ts * 0.75, 0);
+        var star = _pzMesh(new THREE.PlaneGeometry(ts * 1.6, ts * 1.6), _pzGlow(_NC.gold, _brCrackTex()), F.g, 0, ts * 0.035, 0); star.rotation.x = -Math.PI / 2;
+        _fxDelay(function () {
+            if (_suppressed()) return;
+            try { _sigShake(big ? 'heavy' : 'normal'); } catch (e) {}
+            _sigShockRing3D(tx, ty, { color: seat, r1: ts * (big ? 1.8 : 1.2), ms: 420, opacity: 0.7 });
+            if (big) _fxDelay(function () { if (!_suppressed()) _sigShockRing3D(tx, ty, { color: _NC.gold, r1: ts * 2.4, ms: 520, opacity: 0.5 }); }, 120);
+            _ncSplinters(F, big ? 16 : 8, ts * 0.7);
+        }, 220);
+        return _sigRunOwned(F.g, 1400, function (el) {
+            var c = _sigClamp01(el < 200 ? el / 200 : 1);
+            var op = _pzEnv(el, 0, 60, 600, 900);
+            for (var i = 0; i < J.jaws.length; i++) { var jw = J.jaws[i]; jw.piv.position.y = jw.s * ts * (0.42 - 0.32 * _sigEaseOutCubic(c)); for (var m = 0; m < jw.mats.length; m++) jw.mats[m].opacity = op; }
+            J.rim.material.opacity = 0.6 * op;
+            var ct = _sigClamp01((el - 220) / 160);
+            crack.scale.set(ts * 0.45 * (big ? 1.4 : 1), ts * 1.1 * ct, 1); crack.material.opacity = 0.95 * _pzEnv(el, 220, 260, 900, 1400);
+            star.scale.setScalar(0.3 + 0.7 * _sigEaseOutCubic(ct) * (big ? 1.3 : 1)); star.material.opacity = 0.8 * _pzEnv(el, 300, 360, 900, 1400);
+        });
+    };
+    SPELL_MAP['ncCrackOpen'] = { impact: 'ncCrackOpen_impact' };
+
+    /* ── NUTCRACKER SUITE: a gold waltz ring turns round it out to two squares, sugar-pink snow swirls in it, and on the beats
+       (the jaw snapping in time) a ring in the seat colour goes out; wood splinters at the end ── */
+    EFFECTS['ncNutcrackerSuite_aoe'] = _pzDef('ncNutcrackerSuite', { layers: [] });
+    _PZ_SIGS.ncNutcrackerSuite = function (p) {
+        var tx = p.cx != null ? p.cx : p.tx, ty = p.cy != null ? p.cy : p.ty; if (_mtOff() || tx == null || !_pzSeen(tx, ty)) return;
+        var nc = _brUnitAt(tx, ty, p.casterId), seat = _brSeatOf(nc);
+        var F = _nrvFrame(tx, ty), ts = F.ts, R = ts * 2.2;
+        var ring = _pzMesh(new THREE.RingGeometry(R * 0.9, R, 64, 1, 0, Math.PI * 1.6), _pzGlow(_NC.gold), F.g, 0, ts * 0.04, 0); ring.rotation.x = -Math.PI / 2;
+        var inner = _pzMesh(new THREE.RingGeometry(R * 0.45, R * 0.5, 48, 1, 0, Math.PI * 1.2), _pzGlow(_NC.sugar), F.g, 0, ts * 0.045, 0); inner.rotation.x = -Math.PI / 2;
+        var beats = 0, t0 = 0;
+        return _sigRunOwned(F.g, 2000, function (el) {
+            ring.rotation.z = el / 700 * Math.PI; inner.rotation.z = -el / 520 * Math.PI;
+            var op = _pzEnv(el, 0, 200, 1500, 2000);
+            ring.material.opacity = 0.7 * op; inner.material.opacity = 0.55 * op;
+            /* the snow: sugar-pink and white flakes ride round the ring */
+            if (el < 1700 && el - t0 > 35 && _canSpawn()) {
+                t0 = el; var a = Math.random() * Math.PI * 2, rr = R * rn(0.3, 1);
+                _spawn({ x: F.c.x + Math.sin(a) * rr, y: F.c.y + Math.cos(a) * rr, z: F.bz + ts * rn(0.2, 1.4), mode: 'billboard', sprite: Math.random() < 0.6 ? 'snowflake' : 'sparkle',
+                    tint: Math.random() < 0.5 ? _NC.sugar : _NC.snow, vx: Math.cos(a) * 90, vy: -Math.sin(a) * 90, vz: rn(-20, 20), drag: 0.6, ml: rn(600, 900), size0: rn(4, 7), size1: rn(2, 4), opacity0: 0.95, opacity1: 0 });
+            }
+            /* three beats: 300, 700, 1100 */
+            var n = el >= 1100 ? 3 : el >= 700 ? 2 : el >= 300 ? 1 : 0;
+            if (n > beats) {
+                beats = n; try { _sigShake(n === 3 ? 'normal' : 'light'); } catch (e) {}
+                _sigShockRing3D(tx, ty, { color: seat, r0: ts * 0.4, r1: R, ms: 380, opacity: 0.55 });
+                if (n === 3) _ncSplinters(F, 10, ts * 0.6);
+            }
+        });
+    };
+    SPELL_MAP['ncNutcrackerSuite'] = { aoe: 'ncNutcrackerSuite_aoe' };
 
     /* ════ MUMMY — linen, sand, Egyptian gold and lapis ════ */
     EFFECTS['nbLinenBind_bolt'] = _pzDef('nbLinenBind', { pzOwn: true });
