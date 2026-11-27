@@ -3860,6 +3860,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             /* THE SEVERED PARTS (2026-10-29): the Halloween pack's body parts in the dead races' gory spells, on the hit (relayed) */
             if (intent === 'burst' && _BP_ON_BURST[spellId] && params && params.tx != null && !_catOff('spells')) try { _BP_ON_BURST[spellId](params.tx, params.ty, params); } catch (e) {}
             if (intent === 'burst' && _CHPG_ON_BURST[spellId] && params && params.tx != null && !_catOff('spells')) try { _CHPG_ON_BURST[spellId](params); } catch (e) { console.warn('[VFX] cheer/guard failed', spellId, e); }   // 📣🏀 THE CHEERLEADER + THE POINT GUARD
+            if (intent === 'windup' || intent === 'burst') try { _lmxStage(intent, spellId, params); } catch (e) {}   // 🍀🩺👽 THE LEPRECHAUN + THE MEDIC + THE MARTIAN GIRL
             return;
         }
         /* Timeline cues (Spell Lab) — same relay-riding trick as staging:
@@ -69776,6 +69777,541 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         pgBuzzerBeater: function (p) { return _PZ_SIGS.pgBuzzer(p); },
         pgSlamDunk: function (p) { return _PZ_SIGS.pgSlam(p); },
     };
+
+    /* ════ 🍀🩺👽 THE LEPRECHAUN + THE MEDIC + THE MARTIAN GIRL (2026-11-27, mondo: "Leprechaun (m and f) ... Female martian ...
+       a doctor/nurse"; spells + VFX for the new units). One look a spell, all off fire()'s staging beats (windup = the travel,
+       timed by its holdMs; burst = the hit), so online.js's relay carries them to the guest; nothing drawn on a tile the viewer
+       cannot see (_pzSeen). Side colours from the caster's seat (_psSide: own cyan, enemy pink-orange) on every rim, ring and
+       glow; the rainbow keeps its seven bands (it is a rainbow) under a rim in the side colour. No words on cards (THE CLEAN
+       READ). Every material is basic, so WebGPU draws the same. Rules: battle.js "THE LEPRECHAUN + THE MEDIC".
+       🍀 Shillelagh: the blackthorn swings across the body, clover sparks off the crack.
+       🍀 Lucky Coin: the coin spins from his thumb to them (windup), a gold flash and a ring on the hit.
+       🍀 Rainbow Road: a rainbow grows from where he stood to where he lands (windup); sparkle on the landing.
+       🍀 Fool's Gold: coins rain onto the 3x3 and bounce, a gold ring on the floor.
+       🍀 Pot of Gold: a rainbow to the spot (windup), the iron pot drops on it, coins burst out, a heavy shake.
+       🍀 Gold gained / lost (battle.js _lepOnHit / _lepOnHurt): a coin hops from the victim to him / falls off him.
+       🩺 Reflex Test: the hammer taps the knee and the leg jerks a ring out.
+       🩺 Prescription: two capsules drop on the ally and burst into a green cross.
+       🩺 Defibrillator: the paddles meet over the fallen body, the arc jumps between them, the heartbeat line runs over it.
+       🩺 Malpractice: three blades cut across the body, red and venom drip off.
+       🩺 Sedative Shot: the syringe flies (windup), sinks in, slow rings sink down the body.
+       🩺 Bedside Manner: a heart rises off the ally and a soft shell closes round it.
+       🩺 Triage: the red cross lays out on the 3x3 with four posts at its corners.
+       🩺 Code Blue: the blue light turns over her and a ring runs out; a cross rises off every ally she can see.
+       👽 Hypno Sway: the spiral turns over the target's head.
+       👽 Brain Probe: the probe beam runs from her to its head, motes stream back to her. ════ */
+    var _LMX = { gold: 0xffd27a, goldHot: 0xfff0b8, clover: 0x3fd25a, bark: 0x4a3222, iron: 0x26242a, red: 0xe8283a, white: 0xf4f6fa,
+        green: 0x5fe88a, venom: 0x9cff3a, blood: 0x9a0a1a, zap: 0x9fdcff, blue: 0x2a6aff, pink: 0xff6ab8, mars: 0x7dff6a,
+        bands: [0xff3030, 0xff8a1a, 0xffe03a, 0x3ad24a, 0x2a8aff, 0x5a3aff, 0xb04aff] };
+    function _lmxOff(p) { return !p || p.tx == null || !_pzSeen(p.tx, p.ty); }
+    function _lmxClover() {
+        return _pzTex('lmx-clover', 128, 128, function (g, w, h) {
+            g.fillStyle = '#ffffff';
+            for (var i = 0; i < 4; i++) {
+                var a = i * Math.PI / 2 + Math.PI / 4, cx = w / 2 + Math.cos(a) * 24, cy = h / 2 + Math.sin(a) * 24;
+                g.beginPath(); g.arc(cx + Math.cos(a + 1.2) * 9, cy + Math.sin(a + 1.2) * 9, 17, 0, 6.29); g.arc(cx + Math.cos(a - 1.2) * 9, cy + Math.sin(a - 1.2) * 9, 17, 0, 6.29); g.fill();
+            }
+            g.fillRect(w / 2 - 3, h / 2, 6, 52);
+        });
+    }
+    function _lmxCross() {
+        return _pzTex('lmx-cross', 128, 128, function (g, w, h) {
+            g.fillStyle = '#ffffff'; g.fillRect(w * 0.37, h * 0.1, w * 0.26, h * 0.8); g.fillRect(w * 0.1, h * 0.37, w * 0.8, h * 0.26);
+        });
+    }
+    function _lmxSpiral() {
+        return _pzTex('lmx-spiral', 256, 256, function (g, w, h) {
+            g.strokeStyle = '#ffffff'; g.lineWidth = 9; g.lineCap = 'round';
+            for (var arm = 0; arm < 2; arm++) {
+                g.beginPath();
+                for (var t = 0; t < 1; t += 0.01) { var a = arm * Math.PI + t * Math.PI * 7, r = 4 + t * 118; var x = w / 2 + Math.cos(a) * r, y = h / 2 + Math.sin(a) * r; if (t === 0) g.moveTo(x, y); else g.lineTo(x, y); }
+                g.stroke();
+            }
+        });
+    }
+    function _lmxEcg() {
+        return _pzTex('lmx-ecg', 256, 64, function (g, w, h) {
+            g.strokeStyle = '#ffffff'; g.lineWidth = 5; g.lineJoin = 'round'; g.beginPath(); g.moveTo(0, 36);
+            var P = [[70, 36], [86, 30], [98, 36], [110, 36], [118, 6], [128, 58], [138, 36], [160, 36], [176, 28], [192, 36], [256, 36]];
+            for (var i = 0; i < P.length; i++) g.lineTo(P[i][0], P[i][1]);
+            g.stroke();
+        });
+    }
+    /* a point of the caster's square in the target frame (ox, oz the floor offset, y up) */
+    function _lmxRel(F, x, y) { var w = _worldPos(x, y); return { x: w.x - F.wp.x, y: w.y - F.wp.y, z: w.z - F.wp.z }; }
+    /* the rainbow from a to b (frame-local): seven bands that grow along the arc over growMs, then fade by ms */
+    function _lmxRainbow(F, a, b, C, growMs, ms, hScale) {
+        var ts = F.ts, L = Math.max(ts, Math.hypot(b.x - a.x, b.z - a.z)), H = Math.max(ts * 1.3, L * 0.45) * (hScale || 1);
+        var bands = [], rim;
+        for (var i = 0; i < 8; i++) {
+            var off = (i - 3.5) * ts * 0.045;
+            var curve = new THREE.QuadraticBezierCurve3(new THREE.Vector3(a.x, a.y + ts * 0.3 + off, a.z), new THREE.Vector3((a.x + b.x) / 2, Math.max(a.y, b.y) + H + off, (a.z + b.z) / 2), new THREE.Vector3(b.x, b.y + ts * 0.3 + off, b.z));
+            var geo = new THREE.TubeGeometry(curve, 48, i === 7 ? ts * 0.06 : ts * 0.026, 6, false);
+            var m = _pzMesh(geo, _pzGlow(i === 7 ? C[0] : _LMX.bands[i]), F.g);
+            if (i === 7) { rim = m; m.position.y = -ts * 0.2; } else bands.push(m);
+        }
+        var all = bands.concat([rim]);
+        return function (el) {
+            var t = _sigEaseOutCubic(_sigClamp01(el / Math.max(1, growMs))), vis = _pzEnv(el, 0, 40, ms - 320, ms);
+            for (var j = 0; j < all.length; j++) {
+                var M = all[j], n = M.geometry.index ? M.geometry.index.count : 0;
+                M.geometry.setDrawRange(0, Math.max(6, Math.floor(n * t / 6) * 6));
+                M.material.opacity = (M === rim ? 0.35 : 0.78) * vis;
+            }
+        };
+    }
+    /* the leprechaun's iron pot, brimming with gold */
+    function _lmxPot(ts) {
+        var g = new THREE.Group(), mats = [];
+        var iron = _finBasic(_LMX.iron, { opacity: 0 }); mats.push(iron);
+        var body = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.3, 18, 12, 0, Math.PI * 2, Math.PI * 0.2, Math.PI * 0.8), iron); body.position.y = ts * 0.26; g.add(body);
+        var lip = new THREE.Mesh(new THREE.TorusGeometry(ts * 0.25, ts * 0.04, 8, 24), iron); lip.rotation.x = Math.PI / 2; lip.position.y = ts * 0.5; g.add(lip);
+        var gold = _finBasic(_LMX.gold, { opacity: 0, map: _finTex('gold') }); mats.push(gold);
+        var heap = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.24, 16, 8, 0, Math.PI * 2, 0, Math.PI * 0.45), gold); heap.position.y = ts * 0.44; g.add(heap);
+        for (var k = 0; k < 3; k++) { var leg = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.03, ts * 0.02, ts * 0.12, 6), iron); var a = k / 3 * Math.PI * 2; leg.position.set(Math.cos(a) * ts * 0.18, ts * 0.04, Math.sin(a) * ts * 0.18); g.add(leg); }
+        g.userData.mats = mats; return g;
+    }
+    function _lmxFade(obj, a) { var m = obj && obj.userData && obj.userData.mats; if (m) for (var i = 0; i < m.length; i++) m[i].opacity = a; }
+    /* sparks of a sprite round the frame's middle (clover leaves, motes, crosses) */
+    function _lmxSparks(F, n, map, colors, o) {
+        o = o || {}; var ts = F.ts, bits = [];
+        for (var i = 0; i < n; i++) {
+            var s = _pzSprN(colors[i % colors.length], ts * (o.size || 0.14), map || _sigGlowTex(), F.g);
+            bits.push({ s: s, a: rn(0, 6.28), r: rn(0.1, o.r || 0.6) * ts, up: rn(0.4, 1.2) * ts * (o.up || 1), d: rn(0, o.spread || 120), y0: (o.y0 != null ? o.y0 : 0.5) * ts });
+        }
+        return function (el, vis) {
+            for (var j = 0; j < bits.length; j++) {
+                var B = bits[j], t = _sigClamp01((el - B.d) / (o.ms || 700)), e = _sigEaseOutCubic(t);
+                B.s.position.set(Math.cos(B.a) * B.r * e, B.y0 + B.up * e - (o.fall ? ts * 0.8 * t * t : 0), Math.sin(B.a) * B.r * e);
+                B.s.material.opacity = el < B.d ? 0 : vis * (1 - t * 0.85);
+                B.s.material.rotation = B.a + el * 0.004;
+            }
+        };
+    }
+
+    /* ── 🍀 SHILLELAGH ── */
+    EFFECTS['lpShillelagh_fx'] = _pzDef('lpShillelagh', { pzOwn: true });
+    _PZ_SIGS.lpShillelagh = function (p) {
+        if (_lmxOff(p) || !_pzOnce('lpShillelagh', 300)) return;
+        var C = _psSide(p), F = _nrvFrame(p.tx, p.ty), ts = F.ts, cd = _nbCamDir(F);
+        var face = new THREE.Group(); face.rotation.y = Math.atan2(cd.x, cd.z); face.position.set(cd.x * ts * 0.25, ts * 0.45, cd.z * ts * 0.25); F.g.add(face);
+        var piv = new THREE.Group(); face.add(piv);
+        var stick = _pzMesh(new THREE.CylinderGeometry(ts * 0.03, ts * 0.045, ts * 0.85, 8), _finBasic(_LMX.bark, { opacity: 0 }), piv, 0, ts * 0.42, 0);
+        var knob = _pzMesh(new THREE.SphereGeometry(ts * 0.075, 10, 8), _finBasic(_LMX.bark, { opacity: 0 }), piv, 0, ts * 0.86, 0);
+        var trail = _pzMesh(new THREE.RingGeometry(ts * 0.6, ts * 0.9, 32, 1, Math.PI * 0.15, Math.PI * 0.7), _pzGlow(C[0]), face, 0, 0, -ts * 0.02);
+        var leaves = _lmxSparks(F, 10, _lmxClover(), [_LMX.clover, C[0]], { size: 0.16, r: 0.7, up: 0.6, y0: 0.55, spread: 60, ms: 700, fall: true });
+        var hit = false;
+        return _sigRunOwned(F.g, 1000, function (el) {
+            var sw = _sigEaseOutCubic(_sigClamp01(el / 200)), vis = _pzEnv(el, 0, 40, 600, 1000);
+            piv.rotation.z = 1.4 - sw * 2.6;
+            stick.material.opacity = knob.material.opacity = vis;
+            trail.material.opacity = 0.55 * _pzEnv(el, 60, 160, 260, 520); trail.rotation.z = piv.rotation.z - 1.2;
+            if (!hit && el >= 180) { hit = true; try { _sigShake('light'); } catch (e) {} _sigShockRing3D(p.tx, p.ty, { color: C[0], r0: ts * 0.15, r1: ts * 0.75, ms: 300, opacity: 0.6 }); }
+            leaves(Math.max(0, el - 180), el < 180 ? 0 : vis);
+        });
+    };
+
+    /* ── 🍀 LUCKY COIN ── the flight on the windup (it lands on the hit), the flash on the burst */
+    function _lmxCoinFly(p) {
+        if (p.sx == null || p.tx == null || (!_pzSeen(p.sx, p.sy) && !_pzSeen(p.tx, p.ty))) return;
+        var ts0 = _cfg().tileSize || 128, c = _bkCoin(ts0 * 0.16); if (!c) return;
+        _bkFade(c, 1);
+        _pzFly(p.sx, p.sy, p.tx, p.ty, c, { ms: Math.max(220, Math.min(900, (p.holdMs || 500) - 60)), arc: 0.5, h0: ts0 * 0.8, h1: ts0 * 0.6, hideOnLand: true, face: false,
+            trail: { sprite: 'spark', tint: _LMX.gold, every: 30, size: 7 },
+            spin: function (el, obj) { obj.rotation.x = el * 0.03; } });
+    }
+    EFFECTS['lpLuckyCoin_fx'] = _pzDef('lpLuckyCoin', { pzOwn: true });
+    _PZ_SIGS.lpLuckyCoin = function (p) {
+        if (_lmxOff(p) || !_pzOnce('lpLuckyCoin', 300)) return;
+        var C = _psSide(p), F = _nrvFrame(p.tx, p.ty), ts = F.ts;
+        var flash = _pzSpr(_LMX.goldHot, ts * 0.8, F.g); flash.position.y = ts * 0.55;
+        var clover = _pzSprN(C[0], ts * 0.5, _lmxClover(), F.g); clover.position.y = ts * 0.6;
+        var sparks = _lmxSparks(F, 10, null, [_LMX.gold, _LMX.goldHot, C[0]], { size: 0.08, r: 0.6, up: 0.5, y0: 0.55, spread: 40, ms: 500 });
+        _sigShockRing3D(p.tx, p.ty, { color: C[0], r0: ts * 0.1, r1: ts * 0.7, ms: 320 });
+        return _sigRunOwned(F.g, 900, function (el) {
+            var vis = _pzEnv(el, 0, 30, 500, 900), pop = _sigEaseOutBack(_sigClamp01(el / 260));
+            flash.material.opacity = 0.75 * _pzEnv(el, 0, 30, 90, 300);
+            clover.scale.set(ts * 0.5 * pop, ts * 0.5 * pop, 1); clover.material.opacity = 0.8 * vis; clover.position.y = ts * (0.6 + 0.4 * _sigClamp01(el / 900)); clover.material.rotation = el * 0.003;
+            sparks(el, vis);
+        });
+    };
+
+    /* ── 🍀 RAINBOW ROAD ── the arc on the windup (where he stood → where he lands), sparkle on the landing */
+    function _lmxRoad(p) {
+        if (p.sx == null || p.tx == null || (!_pzSeen(p.sx, p.sy) && !_pzSeen(p.tx, p.ty))) return;
+        var C = _psSide(p), F = _nrvFrame(p.tx, p.ty), a = _lmxRel(F, p.sx, p.sy), b = { x: 0, y: 0, z: 0 };
+        var hold = Math.max(400, Math.min(1400, p.holdMs || 700));
+        var bow = _lmxRainbow(F, a, b, C, hold * 0.6, hold + 1100, 0.8);
+        return _sigRunOwned(F.g, hold + 1100, function (el) { bow(el); });
+    }
+    EFFECTS['lpRainbowRoad_fx'] = _pzDef('lpRainbowRoad', { pzOwn: true });
+    _PZ_SIGS.lpRainbowRoad = function (p) {
+        if (_lmxOff(p) || !_pzOnce('lpRainbowRoad', 300)) return;
+        var C = _psSide(p), F = _nrvFrame(p.tx, p.ty), ts = F.ts;
+        var sp = _lmxSparks(F, 16, null, _LMX.bands.concat([C[0]]), { size: 0.09, r: 0.6, up: 0.9, y0: 0.1, spread: 160, ms: 800 });
+        _sigShockRing3D(p.tx, p.ty, { color: C[0], r0: ts * 0.1, r1: ts * 0.65, ms: 360 });
+        return _sigRunOwned(F.g, 1100, function (el) { sp(el, _pzEnv(el, 0, 40, 700, 1100)); });
+    };
+
+    /* ── 🍀 FOOL'S GOLD ── coins rain onto the 3x3 */
+    EFFECTS['lpFoolsGold_fx'] = _pzDef('lpFoolsGold', { pzOwn: true });
+    _PZ_SIGS.lpFoolsGold = function (p) {
+        if (_lmxOff(p) || !_pzOnce('lpFoolsGold', 400)) return;
+        var C = _psSide(p), F = _nrvFrame(p.tx, p.ty), ts = F.ts, R = ts * 1.45, coins = [];
+        var ring = _pzMesh(new THREE.RingGeometry(R * 0.92, R, 48), _pzGlow(C[0]), F.g, 0, ts * 0.05, 0); ring.rotation.x = -Math.PI / 2;
+        var glow = _bkFloor(F, _sigGlowTex(), R * 2.2, R * 2.2, _LMX.gold, true);
+        for (var i = 0; i < 22; i++) {
+            var c = _bkCoin(ts * 0.13); if (!c) break; F.g.add(c);
+            coins.push({ o: c, x: rn(-R, R) * 0.85, z: rn(-R, R) * 0.85, d: rn(0, 380), sp: rn(0.01, 0.03), h: rn(2.2, 3.2) * ts });
+        }
+        var rung = false;
+        return _sigRunOwned(F.g, 1900, function (el) {
+            var vis = _pzEnv(el, 0, 80, 1400, 1900);
+            ring.material.opacity = 0.6 * vis; glow.material.opacity = 0.3 * vis;
+            for (var j = 0; j < coins.length; j++) {
+                var K = coins[j], t = _sigClamp01((el - K.d) / 420), y;
+                if (t < 1) y = K.h * (1 - t * t); else { var b = (el - K.d - 420) / 260; y = b < 1 ? Math.sin(b * Math.PI) * ts * 0.18 : 0; }
+                K.o.position.set(K.x, y + ts * 0.03, K.z); K.o.rotation.set(el * K.sp, 0, el * K.sp * 0.7);
+                _bkFade(K.o, el < K.d ? 0 : vis);
+            }
+            if (!rung && el >= 420) { rung = true; _sigShockRing3D(p.tx, p.ty, { color: _LMX.gold, r0: ts * 0.3, r1: R, ms: 420, opacity: 0.5 }); }
+        });
+    };
+
+    /* ── 🍀 POT OF GOLD ── the rainbow on the windup, the pot drops on the burst */
+    function _lmxPotBow(p) {
+        if (p.sx == null || p.tx == null || (!_pzSeen(p.sx, p.sy) && !_pzSeen(p.tx, p.ty))) return;
+        var C = _psSide(p), F = _nrvFrame(p.tx, p.ty), a = _lmxRel(F, p.sx, p.sy);
+        var hold = Math.max(500, Math.min(1500, p.holdMs || 800));
+        var bow = _lmxRainbow(F, a, { x: 0, y: 0, z: 0 }, C, hold * 0.7, hold + 1500, 1.1);
+        return _sigRunOwned(F.g, hold + 1500, function (el) { bow(el); });
+    }
+    EFFECTS['lpPotOfGold_fx'] = _pzDef('lpPotOfGold', { pzOwn: true });
+    _PZ_SIGS.lpPotOfGold = function (p) {
+        if (_lmxOff(p) || !_pzOnce('lpPotOfGold', 500)) return;
+        var C = _psSide(p), F = _nrvFrame(p.tx, p.ty), ts = F.ts, R = ts * 1.45;
+        var pot = _lmxPot(ts); F.g.add(pot);
+        var rim = _pzMesh(new THREE.RingGeometry(R * 0.9, R, 48), _pzGlow(C[0]), F.g, 0, ts * 0.05, 0); rim.rotation.x = -Math.PI / 2;
+        var coins = [];
+        for (var i = 0; i < 18; i++) { var c = _bkCoin(ts * 0.12); if (!c) break; F.g.add(c); coins.push({ o: c, a: rn(0, 6.28), v: rn(0.6, 1.3) * R, up: rn(0.8, 1.6) * ts }); }
+        var landed = false, DROP = 260;
+        return _sigRunOwned(F.g, 2200, function (el) {
+            var vis = _pzEnv(el, 0, 60, 1700, 2200), t = _sigClamp01(el / DROP);
+            pot.position.y = ts * 3.2 * (1 - t * t); _lmxFade(pot, vis);
+            var sq = el > DROP && el < DROP + 240 ? 1 - 0.22 * Math.sin((el - DROP) / 240 * Math.PI) : 1; pot.scale.set(2 - sq, sq, 2 - sq);
+            rim.material.opacity = 0.65 * vis * (el > DROP ? 1 : 0);
+            if (!landed && el >= DROP) {
+                landed = true; try { _sigShake('heavy'); } catch (e) {}
+                _sigShockRing3D(p.tx, p.ty, { color: C[0], r0: ts * 0.2, r1: R * 1.1, ms: 460 });
+                _sigShockRing3D(p.tx, p.ty, { color: _LMX.gold, r0: ts * 0.1, r1: R * 0.8, ms: 360 });
+            }
+            for (var j = 0; j < coins.length; j++) {
+                var K = coins[j], u = _sigClamp01((el - DROP) / 700);
+                K.o.position.set(Math.cos(K.a) * K.v * u, ts * 0.5 + K.up * u - ts * 1.6 * u * u, Math.sin(K.a) * K.v * u);
+                if (K.o.position.y < ts * 0.03) K.o.position.y = ts * 0.03;
+                K.o.rotation.set(el * 0.02, 0, el * 0.015); _bkFade(K.o, el < DROP ? 0 : vis);
+            }
+        });
+    };
+
+    /* ── 🍀 THE GOLD: a coin hops from the victim into his pocket / one is knocked off him ── */
+    EFFECTS['lpGoldGain_fx'] = _pzDef('lpGoldGain', { pzOwn: true });
+    _PZ_SIGS.lpGoldGain = function (p) {
+        if (p.sx == null || p.tx == null) return;
+        _bkCoinHop({ x: p.tx, y: p.ty }, { x: p.sx, y: p.sy }, 1, { ms: 420 });
+    };
+    EFFECTS['lpGoldLoss_fx'] = _pzDef('lpGoldLoss', { pzOwn: true });
+    _PZ_SIGS.lpGoldLoss = function (p) {
+        if (_lmxOff(p)) return;
+        var F = _nrvFrame(p.tx, p.ty), ts = F.ts, c = _bkCoin(ts * 0.14); if (!c) return;
+        F.g.add(c); var a = rn(0, 6.28);
+        return _sigRunOwned(F.g, 800, function (el) {
+            var t = _sigClamp01(el / 600);
+            c.position.set(Math.cos(a) * ts * 0.5 * t, ts * 0.7 + ts * 0.5 * t - ts * 1.2 * t * t, Math.sin(a) * ts * 0.5 * t);
+            if (c.position.y < ts * 0.03) c.position.y = ts * 0.03;
+            c.rotation.set(el * 0.03, 0, el * 0.02); _bkFade(c, 1 - _sigClamp01((el - 550) / 250));
+        });
+    };
+
+    /* ── 🩺 REFLEX TEST ── the hammer taps the knee */
+    EFFECTS['mdReflexTest_fx'] = _pzDef('mdReflexTest', { pzOwn: true });
+    _PZ_SIGS.mdReflexTest = function (p) {
+        if (_lmxOff(p) || !_pzOnce('mdReflexTest', 300)) return;
+        var C = _psSide(p), F = _nrvFrame(p.tx, p.ty), ts = F.ts, cd = _nbCamDir(F);
+        var face = new THREE.Group(); face.rotation.y = Math.atan2(cd.x, cd.z); face.position.set(cd.x * ts * 0.3, ts * 0.2, cd.z * ts * 0.3); F.g.add(face);
+        var piv = new THREE.Group(); piv.position.set(ts * 0.35, ts * 0.1, 0); face.add(piv);
+        var handle = _pzMesh(new THREE.CylinderGeometry(ts * 0.012, ts * 0.012, ts * 0.4, 6), _finBasic(0xd8dce4, { opacity: 0 }), piv, -ts * 0.2, 0, 0); handle.rotation.z = Math.PI / 2;
+        var head = _pzMesh(new THREE.ConeGeometry(ts * 0.06, ts * 0.16, 3), _finBasic(_LMX.red, { opacity: 0 }), piv, -ts * 0.4, 0, 0);
+        var hit = false;
+        return _sigRunOwned(F.g, 900, function (el) {
+            var vis = _pzEnv(el, 0, 40, 600, 900), sw = el < 160 ? -0.9 * _sigClamp01(el / 160) : -0.9 + 1.3 * _sigEaseOutBack(_sigClamp01((el - 160) / 120));
+            piv.rotation.z = sw; handle.material.opacity = head.material.opacity = vis;
+            if (!hit && el >= 230) { hit = true; _sigShockRing3D(p.tx, p.ty, { color: C[0], r0: ts * 0.1, r1: ts * 0.6, ms: 260, opacity: 0.65 }); _sigShockRing3D(p.tx, p.ty, { color: 0xffffff, r0: ts * 0.05, r1: ts * 0.35, ms: 200, opacity: 0.5 }); }
+        });
+    };
+
+    /* ── 🩺 PRESCRIPTION ── two capsules drop and burst into a green cross */
+    EFFECTS['mdPrescription_fx'] = _pzDef('mdPrescription', { pzOwn: true });
+    _PZ_SIGS.mdPrescription = function (p) {
+        if (_lmxOff(p) || !_pzOnce('mdPrescription', 300)) return;
+        var C = _psSide(p), F = _nrvFrame(p.tx, p.ty), ts = F.ts, caps = [];
+        for (var i = 0; i < 2; i++) {
+            var g = new THREE.Group(), mA = _finBasic(0xffffff, { opacity: 0 }), mB = _finBasic(C[0], { opacity: 0 });
+            _pzMesh(new THREE.CylinderGeometry(ts * 0.05, ts * 0.05, ts * 0.09, 10), mA, g, 0, ts * 0.045, 0);
+            _pzMesh(new THREE.CylinderGeometry(ts * 0.05, ts * 0.05, ts * 0.09, 10), mB, g, 0, -ts * 0.045, 0);
+            _pzMesh(new THREE.SphereGeometry(ts * 0.05, 10, 6), mA, g, 0, ts * 0.09, 0); _pzMesh(new THREE.SphereGeometry(ts * 0.05, 10, 6), mB, g, 0, -ts * 0.09, 0);
+            g.userData.mats = [mA, mB]; F.g.add(g); caps.push({ o: g, x: (i ? 1 : -1) * ts * 0.18, sp: (i ? 1 : -1) * 0.012 });
+        }
+        var cross = _pzSprN(_LMX.green, ts * 0.55, _lmxCross(), F.g);
+        var halo = _pzSpr(C[0], ts * 1.0, F.g); halo.position.y = ts * 0.5;
+        var motes = _lmxSparks(F, 12, _lmxCross(), [_LMX.green, C[0]], { size: 0.08, r: 0.5, up: 1.1, y0: 0.1, spread: 300, ms: 900 });
+        var POP = 380;
+        return _sigRunOwned(F.g, 1700, function (el) {
+            var vis = _pzEnv(el, 0, 60, 1250, 1700), t = _sigClamp01(el / POP);
+            for (var j = 0; j < caps.length; j++) { var K = caps[j]; K.o.position.set(K.x * (1 - t), ts * (1.9 - 1.3 * t * t), 0); K.o.rotation.z = el * K.sp; _lmxFade(K.o, el < POP ? vis : 0); }
+            var pop = _sigEaseOutBack(_sigClamp01((el - POP) / 280));
+            cross.scale.set(ts * 0.55 * pop, ts * 0.55 * pop, 1); cross.position.y = ts * (0.75 + 0.3 * _sigClamp01((el - POP) / 1000)); cross.material.opacity = el < POP ? 0 : 0.9 * vis;
+            halo.material.opacity = el < POP ? 0 : 0.35 * vis;
+            motes(Math.max(0, el - POP), el < POP ? 0 : vis);
+        });
+    };
+
+    /* ── 🩺 DEFIBRILLATOR ── the paddles meet over the body, the arc, the heartbeat */
+    EFFECTS['mdDefibrillator_fx'] = _pzDef('mdDefibrillator', { pzOwn: true });
+    _PZ_SIGS.mdDefibrillator = function (p) {
+        if (_lmxOff(p) || !_pzOnce('mdDefibrillator', 500)) return;
+        var C = _psSide(p), F = _nrvFrame(p.tx, p.ty), ts = F.ts, cd = _nbCamDir(F), sx = -cd.z, sz = cd.x, pads = [];
+        for (var i = 0; i < 2; i++) {
+            var m = _finBasic(0x2a2c34, { opacity: 0 }), pl = _finBasic(0xd8dce4, { opacity: 0 }), g = new THREE.Group();
+            _pzMesh(new THREE.BoxGeometry(ts * 0.14, ts * 0.06, ts * 0.2), m, g, 0, 0, 0);
+            _pzMesh(new THREE.BoxGeometry(ts * 0.15, ts * 0.012, ts * 0.21), pl, g, 0, -ts * 0.034, 0);
+            g.userData.mats = [m, pl]; F.g.add(g); pads.push({ o: g, s: i ? 1 : -1 });
+        }
+        var arcs = [];
+        for (var k = 0; k < 3; k++) arcs.push(_pzMesh(new THREE.CylinderGeometry(ts * 0.012, ts * 0.012, 1, 5), _pzGlow(k ? C[0] : _LMX.zap), F.g));
+        var ecg = _pzSprN(_LMX.green, ts, _lmxEcg(), F.g); ecg.scale.set(ts * 1.2, ts * 0.3, 1);
+        var flash = _pzSpr(0xffffff, ts * 1.2, F.g); flash.position.y = ts * 0.4;
+        var MEET = 300, zapped = false;
+        return _sigRunOwned(F.g, 2000, function (el) {
+            var vis = _pzEnv(el, 0, 60, 1500, 2000), t = _sigEaseOutCubic(_sigClamp01(el / MEET)), gap = ts * (0.55 - 0.3 * t);
+            var Y = ts * (0.75 - 0.3 * t);
+            for (var j = 0; j < pads.length; j++) { var P = pads[j]; P.o.position.set(sx * gap * P.s, Y, sz * gap * P.s); P.o.rotation.y = Math.atan2(cd.x, cd.z); _lmxFade(P.o, _pzEnv(el, 0, 60, 900, 1200)); }
+            var on = el >= MEET && el < MEET + 360 && ((el / 45) | 0) % 2 === 0;
+            for (var q = 0; q < arcs.length; q++) {
+                if (on) _pzSpan(arcs[q], new THREE.Vector3(-sx * gap, Y + rn(-0.04, 0.04) * ts, -sz * gap), new THREE.Vector3(sx * gap, Y + rn(-0.04, 0.04) * ts, sz * gap));
+                arcs[q].position.y += on ? rn(-0.05, 0.05) * ts : 0; arcs[q].material.opacity = on ? 0.9 : 0;
+            }
+            if (!zapped && el >= MEET) { zapped = true; try { _sigShake('light'); } catch (e) {} _sigShockRing3D(p.tx, p.ty, { color: C[0], r0: ts * 0.15, r1: ts * 0.9, ms: 360 }); }
+            flash.material.opacity = 0.6 * _pzEnv(el, MEET, MEET + 30, MEET + 80, MEET + 260);
+            var run = _sigClamp01((el - MEET - 200) / 700);
+            ecg.position.set(0, ts * 1.6, 0); ecg.material.opacity = el < MEET + 200 ? 0 : vis; ecg.scale.set(ts * 1.2 * Math.max(0.05, run), ts * 0.3, 1);
+        });
+    };
+
+    /* ── 🩺 MALPRACTICE ── three blades cut across the body */
+    EFFECTS['mdMalpractice_fx'] = _pzDef('mdMalpractice', { pzOwn: true });
+    _PZ_SIGS.mdMalpractice = function (p) {
+        if (_lmxOff(p) || !_pzOnce('mdMalpractice', 400)) return;
+        var C = _psSide(p), F = _nrvFrame(p.tx, p.ty), ts = F.ts, cd = _nbCamDir(F);
+        var face = new THREE.Group(); face.rotation.y = Math.atan2(cd.x, cd.z); face.position.set(cd.x * ts * 0.3, ts * 0.55, cd.z * ts * 0.3); F.g.add(face);
+        var cuts = [];
+        for (var i = 0; i < 3; i++) {
+            var cut = _pzMesh(new THREE.PlaneGeometry(ts * 1.0, ts * 0.04), _pzGlow(i === 1 ? 0xffffff : C[0]), face, 0, (i - 1) * ts * 0.14, 0);
+            cut.rotation.z = (i % 2 ? -0.6 : 0.55) + rn(-0.1, 0.1); cuts.push(cut);
+        }
+        var drip = _lmxSparks(F, 14, null, [_LMX.blood, _LMX.venom, _LMX.blood], { size: 0.06, r: 0.3, up: 0.1, y0: 0.6, spread: 300, ms: 800, fall: true });
+        return _sigRunOwned(F.g, 1400, function (el) {
+            var vis = _pzEnv(el, 0, 30, 900, 1400);
+            for (var j = 0; j < cuts.length; j++) {
+                var t = _sigEaseOutCubic(_sigClamp01((el - j * 90) / 110));
+                cuts[j].scale.set(Math.max(0.01, t), 1, 1); cuts[j].material.opacity = el < j * 90 ? 0 : 0.85 * vis;
+                if (el >= j * 90 && el < j * 90 + 20) { try { _sigShake('light'); } catch (e) {} }
+            }
+            drip(Math.max(0, el - 200), el < 200 ? 0 : vis);
+        });
+    };
+
+    /* ── 🩺 SEDATIVE SHOT ── the syringe flies on the windup; slow rings sink down the body on the hit */
+    function _lmxSyringe(ts) {
+        var g = new THREE.Group(), glass = _finBasic(0xe8f4ff, { opacity: 0 }), fluid = _finBasic(_LMX.zap, { opacity: 0 }), steel = _finBasic(0xd8dce4, { opacity: 0 });
+        _pzMesh(new THREE.CylinderGeometry(ts * 0.04, ts * 0.04, ts * 0.22, 10), glass, g, 0, 0, 0);
+        _pzMesh(new THREE.CylinderGeometry(ts * 0.032, ts * 0.032, ts * 0.14, 10), fluid, g, 0, -ts * 0.03, 0);
+        _pzMesh(new THREE.CylinderGeometry(ts * 0.006, ts * 0.003, ts * 0.12, 5), steel, g, 0, -ts * 0.17, 0);
+        _pzMesh(new THREE.CylinderGeometry(ts * 0.012, ts * 0.012, ts * 0.1, 5), steel, g, 0, ts * 0.15, 0);
+        g.userData.mats = [glass, fluid, steel];
+        var hold = new THREE.Group(); g.rotation.x = -Math.PI / 2; hold.add(g); hold.userData.mats = g.userData.mats; return hold;
+    }
+    function _lmxNeedleFly(p) {
+        if (p.sx == null || p.tx == null || (!_pzSeen(p.sx, p.sy) && !_pzSeen(p.tx, p.ty))) return;
+        var ts0 = _cfg().tileSize || 128, s = _lmxSyringe(ts0); _lmxFade(s, 1);
+        _pzFly(p.sx, p.sy, p.tx, p.ty, s, { ms: Math.max(200, Math.min(800, (p.holdMs || 500) - 60)), arc: 0.18, h0: ts0 * 0.75, h1: ts0 * 0.6, hideOnLand: true,
+            trail: { sprite: 'spark', tint: _LMX.zap, every: 34, size: 5 } });
+    }
+    EFFECTS['mdSedative_fx'] = _pzDef('mdSedative', { pzOwn: true });
+    _PZ_SIGS.mdSedative = function (p) {
+        if (_lmxOff(p) || !_pzOnce('mdSedative', 300)) return;
+        var C = _psSide(p), F = _nrvFrame(p.tx, p.ty), ts = F.ts, rings = [];
+        for (var i = 0; i < 3; i++) { var r = _pzMesh(new THREE.TorusGeometry(ts * 0.28, ts * 0.014, 6, 32), _pzGlow(i % 2 ? _LMX.zap : C[0]), F.g); r.rotation.x = Math.PI / 2; rings.push(r); }
+        var puff = _pzSpr(_LMX.zap, ts * 0.5, F.g); puff.position.y = ts * 0.55;
+        return _sigRunOwned(F.g, 1500, function (el) {
+            var vis = _pzEnv(el, 0, 40, 1100, 1500);
+            puff.material.opacity = 0.6 * _pzEnv(el, 0, 30, 80, 300);
+            for (var j = 0; j < rings.length; j++) {
+                var t = ((el / 900) + j / 3) % 1;
+                rings[j].position.y = ts * (0.9 - 0.85 * t); rings[j].scale.setScalar(1 - 0.3 * t); rings[j].material.opacity = 0.7 * vis * (1 - t);
+            }
+        });
+    };
+
+    /* ── 🩺 BEDSIDE MANNER ── a heart rises, a soft shell closes round the ally */
+    EFFECTS['mdBedsideManner_fx'] = _pzDef('mdBedsideManner', { pzOwn: true });
+    _PZ_SIGS.mdBedsideManner = function (p) {
+        if (_lmxOff(p) || !_pzOnce('mdBedsideManner', 300)) return;
+        var C = _psSide(p), F = _nrvFrame(p.tx, p.ty), ts = F.ts, cd = _nbCamDir(F);
+        var heartG = new THREE.Group(); heartG.rotation.y = Math.atan2(cd.x, cd.z); F.g.add(heartG);
+        var heart = _pzMesh(new THREE.ShapeGeometry(_pzHeartShape(ts * 0.22)), _pzGlow(_LMX.pink), heartG, 0, 0, 0);
+        var heartRim = _pzMesh(new THREE.ShapeGeometry(_pzHeartShape(ts * 0.28)), _pzGlow(C[0]), heartG, 0, 0, -ts * 0.01);
+        var shell = _pzMesh(new THREE.SphereGeometry(ts * 0.5, 24, 16), _pzGlow(C[0]), F.g, 0, ts * 0.5, 0);
+        var motes = _lmxSparks(F, 10, null, [_LMX.pink, C[0]], { size: 0.07, r: 0.45, up: 0.8, y0: 0.2, spread: 400, ms: 900 });
+        return _sigRunOwned(F.g, 1800, function (el) {
+            var vis = _pzEnv(el, 0, 60, 1300, 1800), pop = _sigEaseOutBack(_sigClamp01(el / 320));
+            heartG.position.y = ts * (0.7 + 0.6 * _sigEaseOutCubic(_sigClamp01(el / 1400)));
+            heartG.scale.setScalar(Math.max(0.05, pop) * (1 + 0.08 * Math.sin(el * 0.02)));
+            heart.material.opacity = 0.85 * vis; heartRim.material.opacity = 0.45 * vis;
+            var close = _sigEaseOutCubic(_sigClamp01((el - 200) / 400));
+            shell.scale.setScalar(Math.max(0.05, 1.5 - 0.5 * close)); shell.material.opacity = 0.16 * vis * close;
+            motes(el, vis);
+        });
+    };
+
+    /* ── 🩺 TRIAGE ── the red cross on the 3x3, posts at its corners */
+    EFFECTS['mdTriage_fx'] = _pzDef('mdTriage', { pzOwn: true });
+    _PZ_SIGS.mdTriage = function (p) {
+        if (_lmxOff(p) || !_pzOnce('mdTriage', 400)) return;
+        var C = _psSide(p), F = _nrvFrame(p.tx, p.ty), ts = F.ts, R = ts * 1.45;
+        var cross = _bkFloor(F, _lmxCross(), R * 1.6, R * 1.6, _LMX.red, true);
+        var edge = _pzMesh(new THREE.RingGeometry(R * 0.93, R, 4, 1, Math.PI / 4), _pzGlow(C[0]), F.g, 0, ts * 0.05, 0); edge.rotation.x = -Math.PI / 2; edge.scale.setScalar(1.41);
+        var posts = [];
+        for (var i = 0; i < 4; i++) {
+            var px = (i % 2 ? 1 : -1) * R * 0.95, pz = (i < 2 ? 1 : -1) * R * 0.95;
+            var post = _pzMesh(new THREE.CylinderGeometry(ts * 0.02, ts * 0.02, ts * 0.7, 6), _finBasic(0xf2f2f2, { opacity: 0 }), F.g, px, ts * 0.35, pz);
+            var lamp = _pzSpr(C[0], ts * 0.3, F.g); lamp.position.set(px, ts * 0.72, pz);
+            posts.push({ m: post, l: lamp, d: i * 90 });
+        }
+        var motes = _lmxSparks(F, 14, _lmxCross(), [_LMX.green, C[0]], { size: 0.08, r: 1.3, up: 1.0, y0: 0.1, spread: 700, ms: 1000 });
+        return _sigRunOwned(F.g, 2300, function (el) {
+            var vis = _pzEnv(el, 0, 150, 1800, 2300), lay = _sigEaseOutCubic(_sigClamp01(el / 380));
+            cross.scale.setScalar(Math.max(0.05, lay)); cross.material.opacity = 0.55 * vis * (0.8 + 0.2 * Math.sin(el * 0.01));
+            edge.material.opacity = 0.6 * vis;
+            for (var j = 0; j < posts.length; j++) {
+                var P = posts[j], up = _sigEaseOutBack(_sigClamp01((el - P.d) / 260));
+                P.m.scale.set(1, Math.max(0.01, up), 1); P.m.position.y = ts * 0.35 * up; P.m.material.opacity = el < P.d ? 0 : vis;
+                P.l.material.opacity = el < P.d + 200 ? 0 : 0.8 * vis * (0.6 + 0.4 * Math.sin(el * 0.012 + j));
+            }
+            motes(Math.max(0, el - 300), el < 300 ? 0 : vis);
+        });
+    };
+
+    /* ── 🩺 CODE BLUE ── the blue light turns over her, the ring runs out, a cross rises off every ally she can see */
+    EFFECTS['mdCodeBlue_fx'] = _pzDef('mdCodeBlue', { pzOwn: true });
+    _PZ_SIGS.mdCodeBlue = function (p) {
+        var cx = p.sx != null ? p.sx : p.tx, cy = p.sx != null ? p.sy : p.ty;
+        if (cx == null || !_pzSeen(cx, cy) || !_pzOnce('mdCodeBlue', 500)) return;
+        var C = _psSide(p), F = _nrvFrame(cx, cy), ts = F.ts;
+        var lampG = new THREE.Group(); lampG.position.y = ts * 1.45; F.g.add(lampG);
+        var bulb = _pzSpr(_LMX.blue, ts * 0.4, lampG);
+        var beams = [];
+        for (var i = 0; i < 2; i++) {
+            var b = _pzMesh(new THREE.ConeGeometry(ts * 0.35, ts * 1.6, 16, 1, true), _pzGlow(_LMX.blue), lampG, 0, 0, 0);
+            b.geometry.translate(0, -ts * 0.8, 0); b.rotation.z = Math.PI / 2; beams.push(b);
+        }
+        var spin = new THREE.Group(); lampG.add(spin); spin.add(beams[0]); spin.add(beams[1]); beams[1].rotation.z = -Math.PI / 2;
+        var me = null; try { if (typeof state !== 'undefined' && state.units) for (var q = 0; q < state.units.length; q++) { var u0 = state.units[q]; if (u0 && !u0.dead && u0.x === cx && u0.y === cy) { me = u0; break; } } } catch (e) {}
+        var allies = [];
+        try {
+            if (me && state.units) for (var k = 0; k < state.units.length; k++) {
+                var u = state.units[k]; if (!u || u.dead || u.player !== me.player || !_pzSeen(u.x, u.y)) continue;
+                var rel = _lmxRel(F, u.x, u.y), s = _pzSprN(_LMX.green, ts * 0.4, _lmxCross(), F.g);
+                allies.push({ s: s, x: rel.x, y: rel.y, z: rel.z, d: Math.hypot(rel.x, rel.z) / ts * 70 });
+            }
+        } catch (e) {}
+        _sigShockRing3D(cx, cy, { color: _LMX.blue, r0: ts * 0.3, r1: ts * 5, ms: 800, opacity: 0.6 });
+        _fxDelay(function () { if (!_suppressed()) _sigShockRing3D(cx, cy, { color: C[0], r0: ts * 0.2, r1: ts * 4, ms: 700, opacity: 0.5 }); }, 220);
+        return _sigRunOwned(F.g, 2400, function (el) {
+            var vis = _pzEnv(el, 0, 80, 1900, 2400);
+            spin.rotation.y = el * 0.012; bulb.material.opacity = vis * (0.6 + 0.4 * Math.abs(Math.sin(el * 0.012)));
+            for (var j = 0; j < beams.length; j++) beams[j].material.opacity = 0.22 * vis;
+            for (var a = 0; a < allies.length; a++) {
+                var A = allies[a], t = _sigClamp01((el - 200 - A.d) / 900), pop = _sigEaseOutBack(_sigClamp01((el - 200 - A.d) / 260));
+                A.s.position.set(A.x, A.y + ts * (0.9 + 0.6 * t), A.z); A.s.scale.set(ts * 0.4 * pop, ts * 0.4 * pop, 1);
+                A.s.material.opacity = el < 200 + A.d ? 0 : 0.9 * vis * (1 - t * 0.6);
+            }
+        });
+    };
+
+    /* ── 👽 HYPNO SWAY ── the spiral turns over the target's head */
+    EFFECTS['goHypnoSway_fx'] = _pzDef('goHypnoSway', { pzOwn: true });
+    _PZ_SIGS.goHypnoSway = function (p) {
+        if (_lmxOff(p) || !_pzOnce('goHypnoSway', 300)) return;
+        var C = _psSide(p), F = _nrvFrame(p.tx, p.ty), ts = F.ts;
+        var sp = _pzSprN(_LMX.pink, ts * 0.7, _lmxSpiral(), F.g); sp.position.y = ts * 1.25;
+        var sp2 = _pzSprN(C[0], ts * 0.9, _lmxSpiral(), F.g); sp2.position.y = ts * 1.25;
+        var ring = _pzMesh(new THREE.TorusGeometry(ts * 0.3, ts * 0.012, 6, 32), _pzGlow(C[0]), F.g, 0, ts * 0.55, 0); ring.rotation.x = Math.PI / 2;
+        return _sigRunOwned(F.g, 1900, function (el) {
+            var vis = _pzEnv(el, 0, 160, 1400, 1900), pop = _sigEaseOutBack(_sigClamp01(el / 300));
+            sp.material.rotation = -el * 0.008; sp2.material.rotation = -el * 0.008 + 0.4;
+            sp.scale.set(ts * 0.7 * pop, ts * 0.7 * pop, 1); sp2.scale.set(ts * 0.9 * pop, ts * 0.9 * pop, 1);
+            sp.material.opacity = 0.85 * vis; sp2.material.opacity = 0.35 * vis;
+            ring.position.y = ts * (0.55 + 0.25 * Math.sin(el * 0.006)); ring.material.opacity = 0.6 * vis;
+        });
+    };
+
+    /* ── 👽 BRAIN PROBE ── the beam from her to its head, motes stream back to her */
+    EFFECTS['goBrainProbe_fx'] = _pzDef('goBrainProbe', { pzOwn: true });
+    _PZ_SIGS.goBrainProbe = function (p) {
+        if (_lmxOff(p) || !_pzOnce('goBrainProbe', 300)) return;
+        var C = _psSide(p), F = _nrvFrame(p.tx, p.ty), ts = F.ts, from = _pzFrom(p.tx, p.ty, p), a = _lmxRel(F, from.x, from.y);
+        var A = new THREE.Vector3(a.x, a.y + ts * 0.75, a.z), B = new THREE.Vector3(0, ts * 0.85, 0);
+        var beam = _pzMesh(new THREE.CylinderGeometry(ts * 0.05, ts * 0.05, 1, 8), _pzGlow(_LMX.mars), F.g); _pzSpan(beam, A, B);
+        var core = _pzMesh(new THREE.CylinderGeometry(ts * 0.018, ts * 0.018, 1, 6), _pzGlow(0xffffff), F.g); _pzSpan(core, A, B);
+        var crown = _pzMesh(new THREE.TorusGeometry(ts * 0.2, ts * 0.016, 6, 28), _pzGlow(C[0]), F.g, 0, ts * 0.95, 0); crown.rotation.x = Math.PI / 2;
+        var motes = [];
+        for (var i = 0; i < 10; i++) motes.push({ s: _pzSpr(i % 2 ? _LMX.mars : C[0], ts * 0.12, F.g), d: i * 90 });
+        return _sigRunOwned(F.g, 1500, function (el) {
+            var vis = _pzEnv(el, 0, 60, 1000, 1500), flick = 0.8 + 0.2 * Math.sin(el * 0.05);
+            beam.material.opacity = 0.45 * vis * flick; core.material.opacity = 0.75 * vis * flick;
+            crown.material.opacity = 0.7 * vis; crown.scale.setScalar(1 + 0.15 * Math.sin(el * 0.02));
+            for (var j = 0; j < motes.length; j++) {
+                var M = motes[j], t = ((el - M.d) % 600) / 600;
+                if (el < M.d) { M.s.material.opacity = 0; continue; }
+                M.s.position.set(B.x + (A.x - B.x) * t, B.y + (A.y - B.y) * t + Math.sin(t * Math.PI) * ts * 0.2, B.z + (A.z - B.z) * t);
+                M.s.material.opacity = 0.85 * vis * (1 - t * 0.5);
+            }
+        });
+    };
+
+    /* the plain element hit would draw over each of these (two looks on one body): the impact / aoe / aura intents are owned by a
+       quiet def, the spell's own look rides the burst below */
+    EFFECTS['lmxQuiet_fx'] = _pzDef('lmxQuiet', { pzOwn: true });
+    _PZ_SIGS.lmxQuiet = function () {};
+    ['lpShillelagh', 'lpLuckyCoin', 'lpFoolsGold', 'lpPotOfGold', 'mdReflexTest', 'mdPrescription', 'mdDefibrillator', 'mdMalpractice',
+     'mdSedative', 'mdBedsideManner', 'mdTriage', 'mdCodeBlue', 'goHypnoSway', 'goBrainProbe'].forEach(function (id) {
+        SPELL_MAP[id] = { impact: 'lmxQuiet_fx', aoe: 'lmxQuiet_fx', aura: 'lmxQuiet_fx' };
+    });
+    SPELL_MAP['lpGoldGain'] = { coin: 'lpGoldGain_fx' };
+    SPELL_MAP['lpGoldLoss'] = { coin: 'lpGoldLoss_fx' };
+    /* the travels (fire()'s windup, timed to land on the hit) and the hits (its burst) */
+    var _LMX_ON_WINDUP = { lpLuckyCoin: _lmxCoinFly, lpRainbowRoad: _lmxRoad, lpPotOfGold: _lmxPotBow, mdSedative: _lmxNeedleFly };
+    var _LMX_ON_BURST = {
+        lpShillelagh: 1, lpLuckyCoin: 1, lpRainbowRoad: 1, lpFoolsGold: 1, lpPotOfGold: 1,
+        mdReflexTest: 1, mdPrescription: 1, mdDefibrillator: 1, mdMalpractice: 1, mdSedative: 1, mdBedsideManner: 1, mdTriage: 1, mdCodeBlue: 1,
+        goHypnoSway: 1, goBrainProbe: 1,
+    };
+    function _lmxStage(intent, spellId, p) {
+        if (!p || _catOff('spells')) return;
+        if (intent === 'windup' && _LMX_ON_WINDUP[spellId] && !p.mark) { try { _LMX_ON_WINDUP[spellId](p); } catch (e) { console.warn('[VFX] leprechaun/medic travel failed', spellId, e); } }
+        if (intent === 'burst' && _LMX_ON_BURST[spellId] && _PZ_SIGS[spellId]) { try { _PZ_SIGS[spellId](p); } catch (e) { console.warn('[VFX] leprechaun/medic hit failed', spellId, e); } }
+    }
 
     /* ════ 🎛 THE MUSIC PRODUCER (2026-11-24): his moves on the board, in the caster's side colours (_psSide), all off fire()'s
        burst so the guest sees them too. The song itself is audio.js THE PRODUCER'S 4-TRACK; rules battle.js "THE MUSIC PRODUCER".
