@@ -420,6 +420,7 @@ const FINISHERS = {
     'demiurge':       { id: 'fin_demiurge', name: 'Unmade', glyph: '⬛', type: 'divine', sig: 'unmade', built: true, tagline: 'BACK INTO THE CUBE', desc: 'He made it. He can take it back. The victim is folded up, corner by corner, and put away in the black cube.' },   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms) (its own staging since 11-27: battle.js `unmade` + three-vfx-effects.js _sigUnmade3D; the name is a first pass)
     'monster truck':  { id: 'fin_monster_truck', name: 'Crushed', glyph: '🛻', type: 'tech', sig: 'hitAndRun', built: true, tagline: 'MONSTER JAM', desc: 'The hood opens like a mouth, the wheels catch, and the truck drives up and over. What is left fits in a glovebox.' },   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells") (borrows the Honda Civic's staging; the name is a first pass)
     'nutcracker':     { id: 'fin_nutcracker', name: 'Cracked', glyph: '🌰', type: 'anomaly', sig: 'joust', built: true, tagline: 'CRACK', desc: 'The lever goes down, the jaw comes up, and the shell gives. The Nutcracker salutes and marches off.' },   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells") (borrows the Knight\'s staging; the name is a first pass)
+    'origami girl':   { id: 'fin_origami_girl', name: 'Seven Folds', glyph: '🕊', type: 'anomaly', sig: 'thousandCuts', built: true, overlay: 'sevenFolds', tagline: 'NOBODY FOLDS EIGHT', desc: 'She folds the victim in half, and again, seven times, down to a square the size of a stamp, and tucks it in her sleeve.' },   // 2026-11-27 THE ORIGAMI GIRL (mondo: "build her spells and vfx and all that") (borrows the thousandCuts staging for the paper cuts; the folding is battle.js _finSevenFolds; the name is a first pass)
     'abomination':    { id: 'fin_abomination', name: 'Too Much Body', glyph: '🫀', type: 'anomaly', sig: 'blurryFootage', built: true, tagline: 'IT HAS MORE ARMS THAN YOU', desc: 'Every arm, every tentacle and every mouth it has comes down on the victim at once, and then it is a little bigger.' },   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name) (borrows the blurryFootage staging)
     'farmer':         { id: 'fin_farmer', name: 'Reap What You Sow', glyph: '🌾', type: 'human', sig: 'gardenVariety', built: true, tagline: 'HARVEST TIME', desc: 'The field comes up all at once round the victim, and the pitchfork comes down with the season.' },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) (borrows the gardenVariety staging)
     'jellyfish ufo':  { id: 'fin_jellyfish_ufo', name: 'Abyssal Glow', glyph: '🪼', type: 'anomaly', sig: 'theBloom', built: true, tagline: 'LIGHTS IN THE DEEP', desc: 'The bell lights the victim from the inside like the things that live in the dark, brighter and brighter, then everything goes dark.' },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) (borrows the theBloom staging)
@@ -4400,6 +4401,7 @@ const RACE_CLASS = {
     'demiurge': 'bruiser',   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms)
     'monster truck': 'tank',   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells")
     'nutcracker': 'bruiser',   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells")
+    'origami girl': 'specialist',   // 2026-11-27 THE ORIGAMI GIRL (mondo: "build her spells and vfx and all that"): she is the weapon, a new shape every turn
     'abomination': 'bruiser',   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name)
     'farmer': 'support',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): the field heals the team
     'lifeguard': 'support',   // 2026-11-16
@@ -4491,6 +4493,7 @@ const RACE_TERRAIN_PREFERENCE = {
     'demiurge': 'wasteland',   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms): the cosmic wraith's ground, a first pass
     'monster truck': 'wasteland',   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells"): the dirt track
     'nutcracker': 'urban',   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells")
+    'origami girl': 'urban',   // 2026-11-27 THE ORIGAMI GIRL (mondo: "build her spells and vfx and all that"): a first pass, no home invented
     'abomination': 'wasteland',   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name): the rot, the drains, the dark
     'farmer': 'grass',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): the fields
     'jellyfish ufo': 'deep_water',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): a sea creature: never drowns (map.js unitIsDeepWaterAdapted)
@@ -12111,6 +12114,42 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'cracked', duration: 3, gain: 1 }, { id: 'slow', duration: 1 }],
           desc: 'The key in its back winds all the way and it dances, the jaw snapping in time. Deals MEDIUM physical damage to All Enemies within 2, puts a Crack on each and Slows them for 1 round. Cooldown: 3 rounds.' },
     ],
+    'origami girl': [
+        /* 🕊 THE ORIGAMI GIRL (2026-11-27, mondo: "a piece of paper with actual folding animations ... weak to fire and water ...
+           Swordigami where it either turns into a sword ... Kamikaze where it folds into a paper airplane and crashes into the
+           target ... folds into that fortune game"; then "build her spells and vfx and all that"). FIRST PASS (names + numbers his
+           to change; the plan he approved: Claude Doc "Origami Girl: character plan"). She carries nothing: every spell folds her
+           own sheet into the tool (`ogFold`: three-renderer.js THE ORIGAMI IN A FIGHT really folds it, crease by crease).
+           HER RULE, THE FOLD (battle.js "THE ORIGAMI GIRL"): the shape she ends her turn in stays on the board until her next
+           turn (STATUS_DEFS foldSword / foldPlane / foldFortune / foldCrane), and each does one small thing while it stands.
+           Notes: docs/notes/champions-combat.md "THE ORIGAMI GIRL". */
+        { id: 'ogSwordigami', name: 'Swordigami', tier: 1, families: ['origami'], cost: 25, apCost: 1, spellType: 'anomaly',
+          type: 'damage', kind: 'damage', damageType: 'physical', dmg: 95, range: 1, ogFold: 'sword',
+          statusEffects: [{ id: 'bleed', duration: 2 }],
+          desc: 'She folds into a paper sword taller than herself, spins on its point and cuts. Deals WEAK physical damage to a Single Enemy next to her and makes it Bleed for 2 rounds (a paper cut). THE FOLD: she stays a sword until her next turn, +1 ATK stage, and cuts back anyone who hits her in melee from the front or side.' },
+        { id: 'ogKamikaze', name: 'Kamikaze', tier: 2, families: ['origami'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+          type: 'damage', kind: 'damage', damageType: 'physical', dmg: 90, range: 5, chargeToTarget: true, ogPerSquare: 20, selfDamagePct: 0.08, ogFold: 'plane',
+          desc: 'She folds into a paper plane, flies straight at a Single Enemy up to 5 squares away and crashes nose first: WEAK physical damage, +20 for every square flown. The crash costs her 8% of her max HP. THE FOLD: she lies crumpled where she landed until her next turn, -1 DEF stage. Cooldown: 2 rounds.' },
+        { id: 'ogPaperStar', name: 'Paper Star', tier: 2, families: ['origami'], cost: 40, apCost: 1, cooldownRounds: 1, spellType: 'anomaly',
+          type: 'damage', kind: 'damage', damageType: 'physical', dmg: 85, range: 4,
+          statusEffects: [{ id: 'bleed', duration: 1 }],
+          desc: 'She folds a four-point throwing star and flicks it. Deals WEAK physical damage to a Single Enemy within 4 and makes it Bleed for 1 round. She keeps her own shape. Cooldown: 1 round.' },
+        { id: 'ogPickANumber', name: 'Pick a Number', tier: 3, families: ['origami'], cost: 60, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+          type: 'debuff', kind: 'debuff', range: 3, procedure: true, anyTeam: true, ogFold: 'fortune',
+          statusEffects: [{ id: 'slow', duration: 2 }],
+          ogFortunes: [ { statusEffects: [{ id: 'slow', duration: 2 }], ogLabel: 'SLOWED' }, { statusEffects: [], statStageBoost: { atk: -1 }, ogLabel: 'ATK DOWN' },
+                        { statusEffects: [], statStageBoost: { def: -1 }, ogLabel: 'DEF DOWN' }, { statusEffects: [{ id: 'blind', duration: 1 }], ogLabel: 'BLIND' } ],
+          onAlly: { type: 'buff', kind: 'buff', statusEffects: [{ id: 'quickened', duration: 2 }],
+                    ogFortunes: [ { statusEffects: [{ id: 'quickened', duration: 2 }], ogLabel: 'QUICKENED' }, { statusEffects: [], statStageBoost: { atk: 1 }, ogLabel: 'ATK UP' },
+                                  { statusEffects: [], statStageBoost: { def: 1 }, ogLabel: 'DEF UP' }, { statusEffects: [{ id: 'regen', duration: 2 }], ogLabel: 'REGEN' } ] },
+          desc: 'She folds into the fortune game, snaps open and shut four times, and one coloured flap lifts. On an enemy within 3, one of four: Slowed 2 rounds (green), -1 ATK stage (red), -1 DEF stage (blue), Blind 1 round (gold). On an ally, one of four: Quickened 2 rounds (green), +1 ATK stage (red), +1 DEF stage (blue), Regen 2 rounds (gold). THE FOLD: she stays the fortune game until her next turn, +1 M.DEF stage. Cooldown: 2 rounds.' },
+        { id: 'ogPaperFan', name: 'Paper Fan', tier: 3, families: ['origami'], cost: 60, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+          element: 'wind', type: 'damage', kind: 'linePush', damageType: 'magic', dmg: 95, range: 4, lineWidth: 1, pushDistance: 2,
+          desc: 'She pleats a fan out of her sleeve and swings it once. A gust down a line of 4: WEAK magic damage to every enemy in it, and each is blown back 2 squares. She keeps her own shape. Cooldown: 2 rounds.' },
+        { id: 'ogThousandCranes', name: 'Thousand Cranes', tier: 4, families: ['origami'], cost: 90, apCost: 1, cooldownRounds: 3, spellType: 'anomaly',
+          type: 'damage', kind: 'aoe', damageType: 'physical', dmg: 110, range: 4, aoeRadius: 1, aoeAllyHeal: 70, ogFold: 'crane',
+          desc: 'She folds into the crane and rises, and a flock of small paper cranes sweeps a 3×3 within 4: MEDIUM physical damage to All Enemies in it, and every ally in it heals a little. THE FOLD: she hovers as the crane until her next turn, off the ground and over its hazards. Cooldown: 3 rounds.' },
+    ],
     'demiurge': [
         /* ⬛ THE DEMIURGE (2026-11-26, mondo: "this guy is like the original creator of the black cube, the demiurge, cosmic abilities,
            spiritual abilities, the architect, sacred geometry, fractal math, etc for his powers ... one character but with 2 forms ...
@@ -16057,6 +16096,41 @@ const STATUS_DEFS = {
             }
         },
         onRemove(unit) { delete unit._cracks; }
+    },
+    /* 🕊 THE FOLD (2026-11-27, the Origami Girl): the shape she ended her turn in. One at a time; her next turn's start opens her
+       flat again (battle.js _ogTurnStart) and a new fold replaces the old (_ogBeginCast). The shape on the board is drawn from
+       these (three-renderer.js THE ORIGAMI IN A FIGHT reads the status, so the guest sees it from the state sync). Sword: +1 ATK
+       stage and a sure counter (getCounterChance). Crumpled plane: -1 DEF stage. Fortune game: +1 M.DEF stage. Crane: she hovers
+       (grantsFlight, like Levitating). dispelProof: a cleanse does not unfold paper. */
+    foldSword: {
+        icon: '🗡', glyph: '🗡', short: 'SWD', label: 'Folded: Sword', colorText: 'folded into a sword',
+        kind: 'buff', category: 'buff', stack: 'replace', dispelProof: true, ogFold: 'sword',
+        stageMod: { atk: 1 },
+        iconSrc: createStatusIconDataUri('🗡', '#2a1418', '#fff4ee', '#c8243c')
+    },
+    foldPlane: {
+        icon: '✈', glyph: '✈', short: 'CRM', label: 'Crumpled', colorText: 'crumpled',
+        kind: 'debuff', category: 'status', stack: 'replace', dispelProof: true, ogFold: 'plane',
+        stageMod: { def: -1 },
+        iconSrc: createStatusIconDataUri('✈', '#2a1418', '#fff4ee', '#8a8480')
+    },
+    foldFortune: {
+        icon: '🔮', glyph: '🔮', short: 'FTN', label: 'Folded: Fortune Game', colorText: 'folded into the fortune game',
+        kind: 'buff', category: 'buff', stack: 'replace', dispelProof: true, ogFold: 'fortune',
+        stageMod: { mdef: 1 },
+        iconSrc: createStatusIconDataUri('🔮', '#2a1418', '#fff4ee', '#e8c050')
+    },
+    foldCrane: {
+        icon: '🕊', glyph: '🕊', short: 'CRN', label: 'Folded: Crane', colorText: 'folded into a crane',
+        kind: 'buff', category: 'buff', stack: 'replace', dispelProof: true, ogFold: 'crane',
+        grantsFlight: true,
+        iconSrc: createStatusIconDataUri('🕊', '#2a1418', '#fff4ee', '#70b8e0'),
+        onApply(unit, src, info) { if (typeof levitateUnit === 'function') levitateUnit(unit, info); },
+        onRemove(unit) {
+            unit._levitateBy = null;
+            if (unit.status && unit.status.levitating > 0) return;
+            if (typeof forceGroundUnit === 'function') forceGroundUnit(unit, { byLabel: 'as she unfolds' });
+        }
     },
     /* 🎩 TRICK SET (2026-11-16, the Magician's Sleight of Hand): which trick = unit._trick, in turn (unit._trickNext). The line
        naming it goes to his own seat only (addLog seats); everyone else reads "Trick Set". Springs once (battle.js _magician*). */
@@ -23377,6 +23451,7 @@ const RACE_TREE = {
     'demiurge':      [['dmSerpentStrike', 'dmVoidGaze'], ['dmCompassSweep', 'dmFractalBloom'], ['dmCornerstone', 'dmAsAbove'], ['dmGoldenSpiral', 'dmTesseract']],   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms): every rung is one of each form (RACE_GENDER_SPELLS)
     'monster truck': ['mtChomp', 'mtRam', 'mtHydraulicSlam', 'mtBurnout'],   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells"): its own four
     'nutcracker':    ['ncClack', 'ncQuickMarch', 'ncCrackOpen', 'ncNutcrackerSuite'],   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells"): its own four
+    'origami girl':  ['ogSwordigami', ['ogKamikaze', 'ogPaperStar'], ['ogPickANumber', 'ogPaperFan'], 'ogThousandCranes'],   // 2026-11-27 THE ORIGAMI GIRL (mondo: "build her spells and vfx and all that"): her own four + two more folds
     'abomination':   ['abGrasp', 'abManyMouths', 'abBoneCage', 'abUnfold'],   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name): its own four
     'farmer':        ['nrPitchforkJab', ['nrSowField', 'nrHayBale'], 'nrGetOffMyLand', 'nrHarvestMoon'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
     'jellyfish ufo': ['nrPincerClaw', ['nrBioLash', 'nrJetPulse'], 'nrVenomInjector', 'nrAbyssalOverload'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
@@ -25825,6 +25900,16 @@ const SPELL_FAMILIES = {
         unique: 'nutcracker',
         identity: { who: ['Nutcracker', 'Toy Soldier', 'The Captain'], adj: ['Wooden', 'Painted', 'Clacking'], look: ['a tall black shako', 'a red coat with gold frogging', 'a white beard on a jaw that drops'], vibe: ['stands to attention', 'cracks anything'] }
     },
+    origami: {   // 2026-11-27 THE ORIGAMI GIRL (mondo: "build her spells and vfx and all that") — the Origami Girl's own
+        id: 'origami',
+        name: 'Origami',
+        glyph: '🕊',
+        color: '#c8243c',
+        kind: 'signature',
+        desc: 'One sheet of paper, folded for the job: a sword, a plane, the fortune game, a crane, a throwing star, a fan.',
+        unique: 'origami girl',
+        identity: { who: ['Origami Girl', 'Paper Crane', 'The Folded One'], adj: ['Folded', 'Creased', 'Paper-thin'], look: ['a crane crest of folded paper', 'two paper wings on her back', 'white paper lined with crimson'], vibe: ['folds herself into the weapon', 'keeps the shape until her next turn'] }
+    },
     demiurgy: {   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms) — both forms' own
         id: 'demiurgy',
         name: 'Demiurgy',
@@ -28170,6 +28255,7 @@ const RACE_FAMILIES = {
     'demiurge': ['demiurgy', 'cosmic', 'fractal', 'astral', 'ancientknowledge'],   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms): mondo's themes (cosmic, spiritual, the architect, sacred geometry, fractal math)
     'monster truck': ['monstertruck', 'drivingskills', 'machinery', 'apexpredator', 'fire'],   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells"): a car, an engine, a mouth, the burnout
     'nutcracker': ['nutcracker', 'hauntedtoy', 'christmasspirit', 'militarysupport', 'swordsmanship'],   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells"): a toy come alive, the Christmas ballet, a soldier with a sabre
+    'origami girl': ['origami', 'swordsmanship', 'fortunetelling', 'ninjutsu', 'trickery'],   // 2026-11-27 THE ORIGAMI GIRL (mondo: "build her spells and vfx and all that"): paper, a blade, the fortune game, the throwing star, a trick of the hands
     'abomination': ['abomination', 'nightmares', 'cosmic', 'shadow'],   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name)
     'farmer': ['farming', 'agriculture', 'humangrit', 'teamwork'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
     'jellyfish ufo': ['bioelectric', 'jellyfish', 'lightning', 'deepsea'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
@@ -28840,6 +28926,7 @@ const CAMPAIGN_RACE_PRICES = {
   'demiurge': 900,   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms)
   'monster truck': 500,   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells")
   'nutcracker': 400,   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells")
+  'origami girl': 400,   // 2026-11-27 THE ORIGAMI GIRL (mondo: "build her spells and vfx and all that")
   'abomination': 450,   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name)
   'farmer': 350,   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
   'jellyfish ufo': 400,   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
