@@ -6800,6 +6800,36 @@ hanging, it'd be nice if the eye could move around too." The Floating Brain (`bo
   the builder is lost). Read in the live game by the probe: `lidOffset: true:MeshLambertMaterial:own`.
 - NOT DONE: in a fight the tendrils read dark, the ink outline is as wide as they are; the eye does not follow the camera or a
   target, it plays its script; no new VFX or sound for the spells.
+## THE OCCULUS: LOOSE WINGS, A LIVING EYE (2026-11-27, thread "Loosen up the Oculus eye's animations")
+mondo: "make the occulus eye similar [to the Floating Brain] and improve its wing animations, i feel like its kinda stiff". The Occulus was
+already a procRig (`occulusWings`: two rigid bat wings on hinges + the game's eyeball, no lids). NO new model, NO Meshy credits, no new R2 file:
+all of it is three-renderer.js + four `animSlot`s in data.js.
+- THE LOOSE WINGS: each bat wing is a SkinnedMesh now (`_occSkinWing`: a copy of the pair's geometry, the pair's own stays plain for the
+  creator and the spells), four bones down its span: the shoulder + `ewOccWL1..3` / `ewOccWR1..3` at `OCC_J` (1.05 / 2.1 / 3.1 of 4.3), a
+  vertex shared between two bones by how far out it sits. `_occClip` gives the joints FOLLOW-THROUGH by itself: joint j plays the hinge's
+  turn `OCC_LAG` (0.075 s) a joint late, so the tip trails every beat and whips past a stop (soft cap `OCC_BEND` 0.42 rad a joint; 0.55
+  kinked on a snap). Baked into the clips, not a live spring: the same on every screen, nothing to relay.
+- New pose fields: `lc` / `rc` (the wing curls forward round the eye), `lf` / `rf` (it folds, the tip droops), `ex` / `ey` (the eye turns
+  off where it looks), `lid` (1 open, 0 shut, up to 1.3 wide). The clips carry them on an empty node `ewOccLook` (position = ex, ey, lid).
+- THE LIVING EYE: `_procRigAttachEye` gives a holder with `userData.lids` (the Occulus only; the Seraphim's eyes stay bare) two lids on a
+  socket (`ewOccSocket`) that turns with the stare (viewer at rest, the facing while a cast holds `ewOccGaze`); `_procRigEyeTrack` turns the
+  ball inside it by the clip's look and blinks. The lids sit at 1.12 x the lid radius with polygonOffset on their own material from the
+  start (the eye is built after the board's material swap, so no tick like `_bbLidTick` is needed): the brain's flicker lesson.
+- idle is 9 s now (was 3): nine beats, a script of looks `_OCC_LOOKS`, five blinks, the wings breathing (curl + fold). Every old pose got
+  lids / curl (hit = a squint and a darting eye, death = the eye rolls up and the lids fall, guard = the wings really wrap).
+- ITS OWN SPELLS (`animSlot` + `animStrikeMs` on its rows): `occAntimagic` Antimagic Gaze (a hard blink under clapped wings, the eye
+  snaps open huge, wings locked wide, it pushes the stare down the line), `occEveryEye` Every Eye at Once (five darts of the eye, a jolt
+  and a wing flick each), `occDeathGaze` Death Gaze (wings high, lids a slit, the eye tears open, wings hook down like claws, it bears
+  down), `occOmni` Omni-Vision (the eye rolls right round twice, one slow blink). Psychic Beam / Hypnotic Pulse keep castChannel /
+  castPsychic (now with lids and a spiralling eye).
+- A CAST CANNOT WAIT FOR A LONG WIND-UP: the blow lands when the camera's source hold ends; `animStrikeMs` only starts the clip earlier
+  inside that hold (battle.js _releaseCastSprite). A 600-900 ms wind-up put the damage number before the move. So the wind-ups are short
+  (the strike 260-340 ms in) and the HOLD after it is long.
+- THE PROBE: `TAG=a SHOTS=5 GAP=800 ZOOM=6 MARKS=30,300,600 ACTS=idle,goAntimagicGaze,raceDeathGaze node playtest_occulus.js` (a real VS
+  CPU board; each picture with the rig's numbers: look, lids, hinge, joints). The cloud browser runs the game slow and a cast waits for
+  its camera, so a spell's pictures count from the moment its clip starts; `TRACE=6000` = no pictures, the eye sampled every 60 ms.
+- NOT DONE: the dock / the viewer do not run the eye's tracker, so there the lids stay open and the eye still (the wings move); no new
+  VFX or sound; from behind (a spell camera over its shoulder) you see the back of the lids.
 ## THE ORIGAMI GIRL (2026-11-27, thread "Build origami girl's spells and VFX")
 mondo 11-27: "a piece of paper with actual folding animations ... weak to fire and water ... Swordigami where it either turns into a
 sword ... Kamikaze where it folds into a paper airplane and crashes into the target ... folds into that fortune game", then "add her
