@@ -118,7 +118,7 @@ function apply(block, opt) {
     const TY = new Uint8Array(NX * NZ), ch = c => c.charCodeAt(0), at = (i, j) => (i < 0 || j < 0 || i >= NX || j >= NZ) ? '' : String.fromCharCode(TY[K(i, j)] || 32);
     const put = (i, j, c) => { if (kindAt(i, j) === 3) TY[K(i, j)] = ch(c); };
     const rect = (i0, j0, i1, j1, c, only) => { for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) if (!only || only.indexOf(at(i, j)) >= 0) put(i, j, c); };
-    const streets = [], lamps = [], trees = [], extra = [], props = [], marks = [], signals = [];
+    const streets = [], lamps = [], trees = [], extra = [], props = [], marks = [], signals = [], roadLines = [];
     rect(0, 36, 191, NZ - 1, 'G');
     const HW = 60, BL = 132, NA = 84, SA = 144, SR = 204;
     /* THE AVENUES (north and south): pavement, a carriageway of four squares, a planted middle of two, a carriageway, pavement */
@@ -314,7 +314,9 @@ function apply(block, opt) {
         /* the middle barrier and the paint */
         const c0 = Math.max(ja, J_N + 3), c1 = Math.min(jb, J_S - 3);
         if (c1 > c0) { jersey(Pp, rx, rz, HC, lz(c0), lz(c1), yAt(c0), yAt(c1)); for (let j = c0; j < c1; j++) ghost(HC, j, yAt(j), yAt(j + 1), bridge); }
-        for (const sd of [-1, 1]) { paintLine(Pp, rx, rz, HC + sd * 0.75, lz(ja), lz(jb), ya, yb, 0.16, YEL); paintLine(Pp, rx, rz, HC + sd * 7, lz(ja), lz(jb), ya, yb, 0.14, WHITE, [3.5, 7]); paintLine(Pp, rx, rz, HC + sd * 13.6, lz(ja), lz(jb), ya, yb, 0.16, WHITE); }
+        /* THE PAINT (11-27, mondo's pick "B: pack paint, lane by lane"): the deck's lines are `gen.roadLines` rows the engine draws in the streets' own
+           paint (three-renderer.js _hqBuildRoadPaint), a lane a square: a yellow line beside the middle barrier, dashed white lane lines, a white edge */
+        for (const sd of [-1, 1]) { roadLines.push([r3(HC + sd * 0.75), lz(ja), lz(jb), r3(ya), r3(yb), 'y', 0]); for (const o of [3.5, 7, 10.5]) roadLines.push([r3(HC + sd * o), lz(ja), lz(jb), r3(ya), r3(yb), 'w', 1]); roadLines.push([r3(HC + sd * 13.6), lz(ja), lz(jb), r3(ya), r3(yb), 'w', 0]); }
         if (bridge) { const L = lz(jb) - lz(ja), y = ya;
             feat({ k: 'bridge', id: 'dc:hw:deck' + si, x0: HC, z0: lz(ja), x1: HC, z1: lz(jb), w: HWID, y: r3(y), thick: TH, rails: false, hide: true, absY: true });
             Pp.push({ s: 'box', p: [0, r3(y - 0.5), 0], size: [r3(HWID + 0.8), 0.5, r3(L)], key: CONC, tint: CT, keyTop: ASPH, tintTop: 0xdcdce0, under: true, uv: 3.5 });
@@ -416,7 +418,7 @@ function apply(block, opt) {
         return o; });
     T.slope = { cells: { res: C, x0: X0, z0: Z0, nx: NX, nz: NZ, f: b64.enc(FL), d: b64.enc(Int16Array.from(H, v => Math.round(v * 100))) } };
     T.paint = Object.assign({}, T.paint, { x0: X0 + C / 2, z0: Z0 + C / 2, nx: NX, nz: NZ, d: b64.enc(P) });
-    T.gen = Object.assign({}, T.gen, { streets, lamps: (T.gen.lamps || []).map(mp).concat(lamps), open: (T.gen.open || []).map(o => (o.r != null) ? mp(o) : (() => { const a = map(o.x0, o.z0), b = map(o.x1, o.z1); return Object.assign({}, o, { x0: a[0], z0: a[1], x1: b[0], z1: b[1] }); })()) });
+    T.gen = Object.assign({}, T.gen, { streets, roadLines, lamps: (T.gen.lamps || []).map(mp).concat(lamps), open: (T.gen.open || []).map(o => (o.r != null) ? mp(o) : (() => { const a = map(o.x0, o.z0), b = map(o.x1, o.z1); return Object.assign({}, o, { x0: a[0], z0: a[1], x1: b[0], z1: b[1] }); })()) });
     T.beds = (T.beds || []).map(q => { const m = map((q[0] + q[2]) / 2, (q[1] + q[3]) / 2), dx = m[0] - (q[0] + q[2]) / 2, dz = m[1] - (q[1] + q[3]) / 2; return [r3(q[0] + dx), r3(q[1] + dz), r3(q[2] + dx), r3(q[3] + dz)].concat(q.slice(4)); });
     T.marks = (T.marks || []).map(m => m.__gridiron ? { __gridiron: Object.assign({}, m.__gridiron, { at: Object.assign({}, m.__gridiron.at, mp(m.__gridiron.at)) }) } : (typeof m.x0 === 'number' ? (() => { const a = map(m.x0, m.z0), b = map(m.x1, m.z1); return Object.assign({}, m, { x0: a[0], z0: a[1], x1: b[0], z1: b[1] }); })() : (typeof m.x === 'number' ? mp(m) : m))).concat(marks);
     T.features = OUT.concat(extra, trees);

@@ -84569,9 +84569,9 @@ const ThreeRenderer = (function () {
         paint.emissive = new THREE.Color(neon ? 0x30343c : 0x2a2924);
         var kerbTex = _hzTex(_hqRoadTexKey('kerb')), kerbMat = new THREE.MeshPhongMaterial({ map: kerbTex || null, color: neon ? 0x9a9ab0 : 0xc8c6c0, shininess: 4, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }); kerbMat.emissive = new THREE.Color(0x1a1a1a);
         var mhTex = (room && /DISASTER CITY/.test(String(room.label || ''))) ? _hqCityManholeTex() : _hzTex(_hqRoadTexKey('manhole')), mhMat = new THREE.MeshLambertMaterial({ map: mhTex || null, transparent: true, alphaTest: 0.3, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, color: 0xffffff });
-        mk(Bk, kerbMat, 2); var oldPaint = mk(Bw, paint, 3); if (mhTex) mk(Bm, mhMat, 3);
+        mk(Bk, kerbMat, 2); var oldPaint = (_hqRoadStyle() === 'old') ? mk(Bw, paint, 3) : null; if (mhTex) mk(Bm, mhMat, 3);
         /* THE ROAD PAINT TEST (2026-11-27): another style asked for (`?roads=` / ewRoads()) draws in place of the old paint; the kerbs, manholes, stains and signs stay */
-        try { var rStyle = _hqRoadStyle(); _hqRoadPaintLast = { room: room, info: info, G: G, old: oldPaint, grp: null }; if (rStyle !== 'old') { if (oldPaint) oldPaint.visible = false; _hqRoadPaintLast.grp = _hqBuildRoadPaint(room, info, G, rStyle); } } catch (e) { console.warn('[HQ] the road paint test failed', e); if (oldPaint) oldPaint.visible = true; }
+        try { var rStyle = _hqRoadStyle(); _hqRoadPaintLast = { room: room, info: info, G: G, old: oldPaint, grp: null }; _hqRoadPaintLast.grp = _hqBuildRoadPaint(room, info, G, rStyle); } catch (e) { console.warn('[HQ] the road paint test failed', e); if (oldPaint) oldPaint.visible = true; }
         if (Bs.n) { var stTex = _hzTex(_hqRoadTexKey('stain')); if (stTex) mk(Bs, new THREE.MeshLambertMaterial({ map: stTex, transparent: true, opacity: 0.85, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, color: 0xffffff }), 2); }   // under the paint and the manholes
         /* the posts: a plate on a pole, a blocker under it */
         var poleMat = new THREE.MeshPhongMaterial({ color: 0x5a5e66, shininess: 40 });
@@ -84619,7 +84619,7 @@ const ThreeRenderer = (function () {
     function _hqRoadStyle() {
         var s = null;
         try { if (typeof window !== 'undefined') { s = window.EW_ROAD_STYLE || null; if (!s && window.location && window.location.search) { var m = /[?&]roads=([a-z]+)/.exec(window.location.search); if (m) s = m[1]; } } } catch (e) {}
-        return (s === 'sheet' || s === 'pack' || s === 'clean') ? s : 'old';
+        return (s === 'sheet' || s === 'old' || s === 'clean') ? s : 'pack';   /* THE PICK (mondo 11-27, his card: "B: pack paint, lane by lane"): the pack's paint is every city room's road paint; `?roads=old | sheet | clean` = the test's other ways */
     }
     function _hqRoadPaintPlan(streets, pads, medians, style) {
         var R = HQ_ROAD2, out = [], N = streets.length, i, j;
@@ -84781,7 +84781,7 @@ const ThreeRenderer = (function () {
                 cx.putImageData(D, 0, 0); rec.cv = cv; rec.ready = true; rec.wait.forEach(function (f) { try { f(cv); } catch (e) {} }); rec.wait = [];
             } catch (e) { console.warn('[HQ] the road paint sheet could not be read', name, e); }
         };
-        im.src = url;
+        im.src = (typeof window !== 'undefined' && window._ewCorsBust) ? window._ewCorsBust(url) : url;
     }
     /* the arrows' sheet: three cells of 128 x 256 (straight · straight + left · straight + right), a cell's top = the way the lane drives */
     function _hqRoadArrowCanvas(fill) {
@@ -84805,7 +84805,7 @@ const ThreeRenderer = (function () {
         var plan = info.genPlan; if (!plan || !plan.streets || !plan.streets.length || typeof THREE === 'undefined') return null;
         var U = _hqUnits(), R = HQ_ROAD2, lift = 0.02, med = [];
         (info.arch || []).forEach(function (r) { var m = r.median; if (m && m.length >= 4) { med.push([(+r.x || 0) + m[0], (+r.z || 0) + m[1]]); med.push([(+r.x || 0) + m[2], (+r.z || 0) + m[3]]); } });
-        var prims = _hqRoadPaintPlan(plan.streets, info.pads || [], med, style);
+        var prims = style === 'old' ? [] : _hqRoadPaintPlan(plan.streets, info.pads || [], med, style);
         var hAt = function (x, z) { var y = hqTerrainHeight(info, x, z); return (y == null || y !== y) ? 0 : y; };
         var buckets = {}, bucket = function (key) { return buckets[key] || (buckets[key] = { pos: [], uv: [], idx: [], n: 0 }); };
         /* a rectangle on the ground, cut where the ground under it changes its slope (0.875 m, the lattice's step) and never drawn up a step.
@@ -84838,6 +84838,17 @@ const ThreeRenderer = (function () {
             else if (q.k === 'a') { var ci = cell[q.kind] || 0; drape(bucket('arrow'), q, function (al, ac) { return [(ci + ac) / 3, al]; }); }
             else if (q.k === 't') drape(bucket('t:' + q.sheet), q, function (al, ac) { return [q.mu ? 1 - ac : ac, al]; });
         });
+        /* THE LINES ON A DECK (the highway over the city: `terrain.gen.roadLines` rows [x, z0, z1, y0, y1, 'w' | 'y', dashed], written by the room's tool
+           where the road is not the ground, docs/disaster-city/spread.js): the same paint, the same dash a square, at the row's own heights */
+        var RL = (room.terrain && room.terrain.gen && room.terrain.gen.roadLines) || [];
+        RL.forEach(function (r) {
+            var x = r[0], za = Math.min(r[1], r[2]), zb = Math.max(r[1], r[2]), ya = r[1] <= r[2] ? r[3] : r[4], yb = r[1] <= r[2] ? r[4] : r[3], B = bucket(r[5] === 'y' ? 'y' : 'w'), hw = R.lineW / 2; if (!(zb > za)) return;
+            var seg = function (z0, z1) { var y0 = ya + (yb - ya) * (z0 - za) / (zb - za) + 0.035, y1 = ya + (yb - ya) * (z1 - za) / (zb - za) + 0.035;
+                [[x - hw, y0, z0], [x - hw, y1, z1], [x + hw, y1, z1], [x + hw, y0, z0]].forEach(function (c) { B.pos.push(c[0] * U, c[1] * U + 0.3, c[2] * U); B.uv.push(c[0] / 7, -c[2] / 7); });
+                B.idx.push(B.n, B.n + 2, B.n + 1, B.n, B.n + 3, B.n + 2); B.n += 4; };
+            if (!r[6]) { seg(za, zb); return; }
+            for (var mm = Math.ceil((za - R.dash / 2) / R.period - 0.5); ; mm++) { var zm = (mm + 0.5) * R.period; if (zm + R.dash / 2 > zb + 0.01) break; if (zm - R.dash / 2 < za - 0.01) continue; seg(zm - R.dash / 2, zm + R.dash / 2); }
+        });
         var grp = new THREE.Group(); grp._ew_hqRoadPaint = style;
         var mesh = function (key, mat, order) {
             var B = buckets[key]; if (!B || !B.n) return;
@@ -84849,6 +84860,7 @@ const ThreeRenderer = (function () {
         var decal = function (color, opacity) { var m = new THREE.MeshLambertMaterial({ color: color, transparent: true, opacity: opacity, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }); m.emissive = new THREE.Color(0x2a2924); return m; };
         var canvasTex = function (cv, rep) { var t = new THREE.CanvasTexture(cv); if (rep) { t.wrapS = THREE.RepeatWrapping; t.wrapT = THREE.RepeatWrapping; } t.anisotropy = 8; return t; };
         if (style === 'sheet') {
+            mesh('w', decal(R.white, 0.9), 3); mesh('y', decal(R.yellow, 0.92), 3);   /* a deck's lines (the sheets cover streets on the ground only) */
             var tint = (room.terrain && room.terrain.floorTint) ? new THREE.Color(room.terrain.floorTint) : new THREE.Color(0xffffff);
             Object.keys(buckets).forEach(function (key) {
                 if (key.indexOf('t:') !== 0) return;
@@ -84878,7 +84890,7 @@ const ThreeRenderer = (function () {
         var now = _hqRoadStyle();
         if (L.grp) { L.G.remove(L.grp); L.grp.traverse(function (o) { if (o.geometry) o.geometry.dispose(); if (o.material) { if (o.material.map && o.material.map.isCanvasTexture) o.material.map.dispose(); o.material.dispose(); } }); L.grp = null; }
         if (L.old) L.old.visible = now === 'old';
-        if (now !== 'old') L.grp = _hqBuildRoadPaint(L.room, L.info, L.G, now);
+        L.grp = _hqBuildRoadPaint(L.room, L.info, L.G, now);
         return 'roads: ' + now;
     }
     if (typeof window !== 'undefined') window.ewRoads = _hqRoadPaintSwitch;

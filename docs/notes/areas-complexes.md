@@ -15378,3 +15378,12 @@ as a test first so i can see and approve". **A TEST, NOTHING PICKED YET: the def
   All of that is the roll-out's work once a style is picked.
 - **Probing**: the city dies in the cloud browser about a minute after it is ready, so ONE style a run (`--pre=window.EW_ROAD_STYLE='pack';…`), five
   views at most. Pictures: project files `road-markings-test/`.
+
+- **THE PICK (mondo 11-27, his card): "B: pack paint, lane by lane".** `_hqRoadStyle` now answers `pack` for every city room; `?roads=old | sheet | clean`
+  = the test's other ways (the old paint is built only when asked at load). **THE DECK'S LINES**: the highway's fill and bridges are not streets, so
+  spread.js no longer draws their lines as arch quads: it writes `terrain.gen.roadLines` rows `[x, z0, z1, y0, y1, 'w' | 'y', dashed]` and
+  `_hqBuildRoadPaint` draws them in the streets' own paint at the rows' heights (a yellow line beside the middle barrier, dashed white at 3.5 / 7 /
+  10.5 m, a white edge: the lane lines run on from the at-grade ends). Any tool whose road is not the ground can write the same rows.
+  Every asphalt road in the city is a `gen.streets` row (the paint grid's palette has no road sheet), so nothing else was unpainted.
+  **Still its own paint**: the road OUT of a room (`_hqBuildRoadOut`'s strip, the highway standard: double yellow, white dashed 7 m in 14, flat paint).
+  Proof: project files `road-markings-test/final/`.
