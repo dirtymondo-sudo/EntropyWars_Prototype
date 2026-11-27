@@ -6929,3 +6929,52 @@ assembly, the rig, the race, the kit, the VFX. ALL NAMES AND NUMBERS ARE A FIRST
   frames of each cast; the probe now reads a male-only race's gender from RACE_SPRITE_GENDERS).
 - LEFT OUT ON PURPOSE (no lore invented): home zone, residents, NPC places, story place, codex customs row. Sources, scripts,
   concepts, sprite: project files `snowman/`. Meshy: 6 pictures (54) + 5 models (150) = 204 credits.
+
+## THE LOOSE WINGS EVERYWHERE (2026-11-27, thread "Give every winged unit expressive wings")
+mondo: "give all units with separate wings that level of expression too? Maybe they can all beat a little different. Any other units need
+separate wings or would benefit from one of their parts getting a separate animation?" The Occulus's loose wings, for every wing, at run time.
+Code: three-renderer.js "THE LOOSE WINGS EVERYWHERE" (above `_gearTick`). No Meshy credits.
+- **The bones.** `_wfSkin` skins a wing to four bones down its span (`ewLW0..3`): THE UNIT GEAR's wings (`_gearBuild`) and the Unicorn's
+  (`_uniBuild`). A body's own baked wing bones `ewwing_L/R` get three more bones at load (`_wfSplitBaked`, called from `_swayScan`).
+- **The follow-through.** `_wfTick` (in `_swayTick`, after the clip and the gear's beat) keeps a short record of each hinge's turn on the
+  wings' own clock (the frame's dt, capped at 0.05 s, so a slow frame is slow motion) and gives joint j the turn the hinge made `lag` seconds
+  a joint earlier, times `flex[j]`, soft-capped at `bend`. Whatever turns the hinge (the beat, a clip track, an act) the tip trails and whips.
+- **The beats, `_WB`.** One row a beat: rhythm (steady / heavy / glide / flutter / ruffle / butterfly), rate at rest and on the move, rest
+  sweep and raise, depths, how far the right wing runs behind, lag / flex / bend. Gear wings: `gear.beat` (left out = the wing kind).
+  Baked wing bones: `sway: { wings: '<beat>' }` on the def (left out = `butterfly`).
+  | unit | beat | reads as |
+  |---|---|---|
+  | Angel (both) | angel | slow, deep, even |
+  | Fallen Angel | raven | lower and further back, slow, a shiver down the feathers every 5.5 s |
+  | Valkyrie | valkyrie | two strong beats, then held open and high |
+  | Fairy | fairy | an insect buzz in bursts, a breath between |
+  | Dragon | dragon | heavy: quick down, slow back, the loosest tips |
+  | Demiurge armoured / cosmic | archon / aeon | heavy / very slow and in step; his acts still spread and beat them |
+  | Butterfly Girl | butterfly | as before (folds shut behind her), now bending |
+  | Unicorn | pegasus | its clips turn the hinge; only the follow-through is new |
+  | Demon (male) | demon | heavy bat beat |
+  | Gargoyle (both) | stone | slow, stiff, a shiver now and then |
+  | Mothman | moth | slow open and close, a shiver |
+  | Nephilim | grigori | great folded wings, slow |
+  | Incubus (succubus male) | imp | quick small bat beat |
+  | Monarch | mantle | the wings she wears down her back open and close a little |
+  | Cicada Brood | cicada | shut along the back, a rattle in bursts |
+  | Bee Queen | bee | a buzz in bursts |
+- **The moments.** `_wingSlot(entry)` (the board, each frame, roots flagged `userData.ewWings`) reads the slot: walk / run = quicker and
+  1.55x deeper; any cast = `flare` (wide, hard beats) or `strike` for the melee kinds (pulled back, thrown open); hit = `flinch` (clapped
+  shut, then shaken out); block / dodge = `tuck`; death = folded and still. The Demiurge keeps his own acts for casts (`_demiTick` adds
+  `c.spread` / `c.beat` to the moment). Local looks only: the guest's wings read its own copy of the slot, nothing relayed.
+- **The freed wings.** Nine units whose wings were one skin with the body got wing bones with `bake-wings.py --soft` (models-assets.md
+  "THE SOFT WINGS"): new files `..._wings_...glb` / `..._wt_...glb` beside the old ones on R2.
+- **The loose tails.** `bake-tail.py` (models-assets.md "THE LOOSE TAILS") lays one chain of THE SWAY's spring bones down a tail: Demon
+  (male), Gargoyle (both), Incubus, Draconian, Rat, Sewer Gator, Kaiju. Def: `sway: { stiffness: 2.2, gravity: 0.1, drag: 0.3, maxRoot: 35, maxBend: 22, wave: 0.5,
+  waveHz: 0.4, caps: [] }`.
+- **Looked at, no wings in the model:** Demon (female), Demon Princess, Halfdemon (both), Succubus (female: a tail under a gown), Eagleman
+  (a man in a suit), Mantid, Quetzalcoatl (two small shoulder pieces), Overlord (a cape), Dream Eater (back spines). Separate wings for
+  these = a wing file + `gear.wings` (Eagleman, Quetzalcoatl, Succubus f, Demon f are the natural ones) or new Meshy parts: his call.
+- **Probe:** `TAG=a SHOTS=3 ZOOM=4.5 ACTS=idle,walk,hit,death RACES="angel:female,dragon:male" node playtest_wings.js` (four races a run;
+  it prints each wing's hinge and joint turns). LESSON: three-renderer.js already had `_lwTick` / `_lw*` (the late look); a second
+  `function _lwTick` silently replaced it. Grep a new helper's name before using it; these are `_wf*` / `_wb*`.
+- Not done: the creator's Wings part (player-made looks) still beats stiff (`_ewWingPair` meshes, its own code); wing sounds; more tails
+  The tool was tried and NOT wired on: Dinosaur (the chain starts under a thigh: its biped rig sits wrong in a T-rex), Loch Ness (a stub),
+  Catgirl / Sharkman / Mermaid / Werewolf / Goatman (no tail piece found), Kraken / Jellyfish (many tentacles: needs one chain a tentacle).
