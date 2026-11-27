@@ -167,6 +167,7 @@ const EW_ASSET_MOVES = [
   ['Assets/Sprites/Races/origami_girl/', 'Assets/characters/races/origami_girl/'],   // 2026-11-27 THE ORIGAMI GIRL
   ['Assets/Sprites/Races/leprechaun/', 'Assets/characters/races/leprechaun/'],   // 2026-11-27 THE NEW CHARACTERS
   ['Assets/Sprites/Races/medic/', 'Assets/characters/races/medic/'],   // 2026-11-27 THE NEW CHARACTERS
+  ['Assets/Sprites/Races/actor/', 'Assets/characters/races/actor/'],   // 2026-11-27 THE ACTOR
   ['Assets/Sprites/Races/music_producer/', 'Assets/characters/races/music_producer/'],   // 2026-11-24 THE MUSIC PRODUCER
   ['Assets/Sprites/Races/librarian/', 'Assets/characters/races/librarian/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/televangelist/', 'Assets/characters/races/televangelist/'],   // 2026-11-17 THE NEW RACES 2
@@ -635,6 +636,7 @@ const RACE_SPRITE_GENDERS = {
   'origami girl': 'female',   // 2026-11-27 THE ORIGAMI GIRL
   'leprechaun': 'both',   // 2026-11-27 THE NEW CHARACTERS
   'medic': 'both',   // 2026-11-27 THE NEW CHARACTERS (one race: the male is the Doctor, the female the Nurse)
+  'actor': 'both',   // 2026-11-27 THE ACTOR (one race: the male is the Actor, the female the Actress)
   'princess': 'female',   // 2026-11-24 THE PRINCESS
   'point guard': 'male',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
   'music producer': 'male',   // 2026-11-24 THE MUSIC PRODUCER
@@ -830,6 +832,7 @@ const _CHARACTER_SPRITES = {
   'origami girl': `${_S}/Races/origami_girl/female/origami_girl_px.png`,   // 2026-11-27 THE ORIGAMI GIRL — 128x128 pixel sprite (Sprite AI restyle of a straight-on render of her model)
   'leprechaun': `${_S}/Races/leprechaun/male/leprechaun_m_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
   'medic': `${_S}/Races/medic/male/doctor_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
+  'actor': `${_S}/Races/actor/male/actor_px.png`,   // 2026-11-27 THE ACTOR — 128x128 pixel sprite (Sprite AI restyle of mondo's audition concept)
   'princess': `${_S}/Races/princess/female/princess_px.png`,   // 2026-11-24 THE PRINCESS — 128x128 pixel sprite (Sprite AI restyle of her Meshy concept)
   'point guard': `${_S}/Races/point_guard/male/point_guard_px.png`,   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — 128x128 pixel sprite (Sprite AI restyle of his Meshy concept)
   'music producer': `${_S}/Races/music_producer/male/music_producer_px.png`,   // 2026-11-24 THE MUSIC PRODUCER — 128x128 pixel sprite (Sprite AI restyle of his Meshy concept)
@@ -968,6 +971,7 @@ const _NEW_FEMALE_SPRITES = {
   'vtuber': `${_S}/Races/vtuber/female/vtuber_f_px.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of her full Meshy 3D model's front render)
   'leprechaun': `${_S}/Races/leprechaun/female/leprechaun_f_px.png`,   // 2026-11-27 THE NEW CHARACTERS
   'medic': `${_S}/Races/medic/female/nurse_px.png`,   // 2026-11-27 THE NEW CHARACTERS — the Nurse
+  'actor': `${_S}/Races/actor/female/actress_px.png`,   // 2026-11-27 THE ACTOR — the Actress
   'martian': `${_S}/Races/martian/female/martian_f_px.png`,   // 2026-11-27 THE NEW CHARACTERS — the female martian
 };
 const _NEW_MALE_SPRITES = {
@@ -998,6 +1002,7 @@ const _NEW_MALE_SPRITES = {
   'succubus': `${_S}/Races/succubus/male/incubus_px.png`,
   'leprechaun': `${_S}/Races/leprechaun/male/leprechaun_m_px.png`,   // 2026-11-27 THE NEW CHARACTERS
   'medic': `${_S}/Races/medic/male/doctor_px.png`,   // 2026-11-27 THE NEW CHARACTERS — the Doctor
+  'actor': `${_S}/Races/actor/male/actor_px.png`,   // 2026-11-27 THE ACTOR — the Actor
 };
 
 function getR2RaceSpriteUrl(race, gender, cls) {
@@ -3012,6 +3017,20 @@ const RACE_MODELS_3D = {
     }),
   },
 
+  /* 🎭 THE ACTOR (2026-11-27, mondo: "an actor/actress, i have their audition look, red carpet look, romeo and juliet, and action stars ...
+     transformations for different spells ... kinda like the time cop or aliens with their spaceships"). Eight Meshy image-to-3d + rigs from his
+     concepts (project files actor/; the action stars restyled to a look of our own). The def is the AUDITION look; overrideForms (ACTOR_LOOKS,
+     wireActorRoles below) hold the three costumes a role spell puts on. */
+  'actor': {
+    male: _mkUAL('actor', 'actor_audition', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/actor/male/Meshy_AI_actor_audition_Running.glb',
+      heightRatio: 1.0, basicAttackKind: 'physical',
+    }),
+    female: _mkUAL('actor', 'actress_audition', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/actor/female/Meshy_AI_actress_audition_Running.glb',
+      heightRatio: 0.95, basicAttackKind: 'physical',
+    }),
+  },
   'weatherman': {   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: Meshy image-to-3d + rigging from mondo's picks (Weatherman B, the strand fixed; News Anchor 3b);
                     // sources: project files unit-concepts-20261124/models/. THE UNIT GEAR holds mondo's umbrella (closed; it opens in the
                     // spells, Assets/fx/spell_props/umbrella_open.glb) and the Popstar's microphone.
@@ -7449,6 +7468,41 @@ function wireUfoForm(race) {
   return any;
 }
 
+/* 🎭 THE ACTOR'S ROLES (2026-11-27 THE ACTOR): a role spell puts the costume on (battle.js UNIT_ANIM_OVERRIDES.actor: the spell's `acRole`); an
+   Audition spell takes it off (the plain sprite url = the def itself, like the alien ships' way back). The look keys are the race sprite
+   + '#<role>' per gender; the costume swap plays THE QUICK CHANGE (three-renderer.js, `costumeFx`). */
+const _ACTOR_R2 = 'https://cdn.entropywars.net/Assets/characters/races/actor/';
+const ACTOR_ROLE_MODELS = {
+  male:   { carpet: 'male/Meshy_AI_actor_redcarpet_Running.glb', romance: 'male/Meshy_AI_actor_romeo_Running.glb', action: 'male/Meshy_AI_actor_action_Running.glb' },
+  female: { carpet: 'female/Meshy_AI_actress_redcarpet_Running.glb', romance: 'female/Meshy_AI_actress_juliet_Running.glb', action: 'female/Meshy_AI_actress_action_Running.glb' },
+};
+const ACTOR_ROLES = ['carpet', 'romance', 'action'];
+function actorBaseLook(gender) {
+  return (typeof getR2RaceSpriteUrl === 'function' && getR2RaceSpriteUrl('actor', gender === 'female' ? 'female' : 'male', 'Freelancer')) || null;
+}
+function actorRoleLook(gender, role) {
+  const base = actorBaseLook(gender);
+  if (!base) return null;
+  return (role && ACTOR_ROLES.includes(role)) ? base + '#' + role : base;
+}
+function wireActorRoles() {
+  const set = RACE_MODELS_3D.actor;
+  if (!set) return false;
+  for (const g of ['male', 'female']) {
+    const d = set[g], base = actorBaseLook(g);
+    if (!d || !base) continue;
+    d.costumeFx = true;   // THE QUICK CHANGE on every swap, the way back to the audition look too
+    d.overrideForms = d.overrideForms || {};
+    d.overrideForms[base] = d;
+    for (const r of ACTOR_ROLES) {
+      const f = _mkUAL('actor', g + '_' + r, { model: _ACTOR_R2 + ACTOR_ROLE_MODELS[g][r], heightRatio: d.heightRatio || 1, basicAttackKind: 'physical' });
+      f.costumeFx = true;
+      d.overrideForms[base + '#' + r] = f;
+    }
+  }
+  return true;
+}
+
 /* ♟ THE CHESS PIECE (2026-10-29, mondo: "a character that plays as the chess pieces, with it switching to different pieces depending
    on the spell"): each look is one BLACK piece of his chess set (Assets/world/packs/chess/Low Poly Chess Set.fbx — the set's one loader cuts the
    node out, three-renderer.js _asChessRig) on procRig 'chess<Piece>' (THE CHESS PIECE rig: a hinge at the base, a carved piece's
@@ -7927,6 +7981,7 @@ const RACE_SPRITES = {
   'origami girl': `${_S}/Races/origami_girl/female/origami_girl_px.png`,   // 2026-11-27 THE ORIGAMI GIRL — 128x128 pixel sprite (Sprite AI restyle of a straight-on render of her model)
   'leprechaun': `${_S}/Races/leprechaun/male/leprechaun_m_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
   'medic': `${_S}/Races/medic/male/doctor_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
+  'actor': `${_S}/Races/actor/male/actor_px.png`,   // 2026-11-27 THE ACTOR
   'princess': `${_S}/Races/princess/female/princess_px.png`,   // 2026-11-24 THE PRINCESS — 128x128 pixel sprite (Sprite AI restyle of her Meshy concept)
   'point guard': `${_S}/Races/point_guard/male/point_guard_px.png`,   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — 128x128 pixel sprite (Sprite AI restyle of his Meshy concept)
   'music producer': `${_S}/Races/music_producer/male/music_producer_px.png`,   // 2026-11-24 THE MUSIC PRODUCER — 128x128 pixel sprite (Sprite AI restyle of his Meshy concept)
@@ -9160,3 +9215,6 @@ if (typeof TERRAIN_SPRITES !== 'undefined') {
     }
   } catch (e) {}
 }
+
+/* 🎭 THE ACTOR'S ROLES: wired last, so the look keys are the moved sprite urls the game hands out (getR2RaceSpriteUrl above) */
+try { wireActorRoles(); } catch (e) {}

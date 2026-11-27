@@ -1000,6 +1000,19 @@
         UNIT_ANIM_OVERRIDES['chess piece'] = {
             castSprite: (_unit, spell) => (spell && spell.chessPiece && typeof chessPieceLook === 'function') ? chessPieceLook(spell.chessPiece) : null,
         };
+        /* 🎭 THE ACTOR (2026-11-27 THE ACTOR, mondo: "transformations for different spells ... kinda like the time cop or aliens with their
+           spaceships"): a row's `acRole` is the costume. A role spell puts it on as the cast begins (sprites.js actorRoleLook ->
+           overrideForms, THE QUICK CHANGE plays on the swap); an Audition row takes it off (the plain sprite url = the def itself).
+           No revertAfter: the costume stays through moves and basic attacks until the next role. A spell with no acRole leaves it.
+           The edge that comes with it is the role status (THE ACTOR below, _acAfterCast). */
+        UNIT_ANIM_OVERRIDES['actor'] = {
+            castSprite: (unit, spell) => {
+                const role = spell && spell.acRole;
+                if (!role || typeof actorRoleLook !== 'function') return null;
+                if (role === 'audition') return unit._spriteOverride ? actorRoleLook(unit.gender, null) : null;
+                return actorRoleLook(unit.gender, role);
+            },
+        };
         /* THE UFO FORM (mondo 2026-10-27): every race whose RACE_FAMILIES lists 'ufo' (the grey, the martian) turns into
            the Triangle UFO on a UFO-family cast and back into itself on a cast from any other family — the Time Cop's
            swap (sprites.js UFO_FORM_3D / wireUfoForm). No revertAfter: the look stays until the next cast. A race that
@@ -14568,6 +14581,38 @@
         function _ogTurnStart(unit) {
             if (!unit || unit.dead || unit._dying) return;
             if (_ogUnfold(unit) && typeof markDirty === 'function') markDirty('board');
+        }
+        /* ═══ 🎭 THE ACTOR (2026-11-27 THE ACTOR, mondo: "an actor/actress ... audition look, red carpet look, romeo and juliet, and action stars,
+           they should have a unique playstyle that uses transformations for different spells"). THE RULE, IN CHARACTER (data.js
+           acInCharacter): the costume worn = the role status (STATUS_DEFS roleCarpet / roleRomance / roleAction; none = the audition
+           look). A cast of the role already worn is In Character: the row is cast as a copy with x1.25 damage and healing (_acCastRow,
+           in the cast-row chain). After a cast that went through, a new role swaps the status (_acAfterCast); an Audition row clears it.
+           The look rides unit._spriteOverride (UNIT_ANIM_OVERRIDES.actor above), the status and the numbers ride the state sync, the
+           "IN CHARACTER" pop goes through showFloatingTextAtTile (relayed), so the guest sees all of it (RULE #2).
+           Notes: docs/notes/champions-combat.md "THE ACTOR". */
+        const _AC_ROLE_STATUS = { carpet: 'roleCarpet', romance: 'roleRomance', action: 'roleAction' };
+        const _AC_ROLE_NAME = { audition: 'the Audition', carpet: 'the Red Carpet', romance: 'Star-Crossed', action: 'the Action Star' };
+        const _AC_IN_CHARACTER = 1.25;
+        function _acRoleOf(unit) {
+            for (const r in _AC_ROLE_STATUS) if (unitHasStatus(unit, _AC_ROLE_STATUS[r])) return r;
+            return 'audition';
+        }
+        function _acCastRow(unit, spell) {
+            if (!unit || unit.race !== 'actor' || !spell || !spell.acRole || _acRoleOf(unit) !== spell.acRole) return spell;
+            const s = Object.assign({}, spell);
+            for (const k of ['dmg', 'healAmt', 'healPerTurn', 'collisionBonus']) if (typeof s[k] === 'number' && s[k] > 0) s[k] = Math.round(s[k] * _AC_IN_CHARACTER);
+            s._acInChar = true;
+            return s;
+        }
+        function _acAfterCast(unit, spell) {
+            if (!unit || unit.race !== 'actor' || !spell || !spell.acRole || state.phase !== 'battle') return;
+            if (spell._acInChar && !unit.dead && !_skipVisuals()) showFloatingTextForUnit(unit, '🎭 IN CHARACTER', 'buff', { durationMs: 1300, jitterY: -30 });
+            const was = _acRoleOf(unit), role = spell.acRole;
+            if (role === was || unit.dead || unit._dying) return;
+            for (const r in _AC_ROLE_STATUS) if (unitHasStatus(unit, _AC_ROLE_STATUS[r])) clearStatus(unit, _AC_ROLE_STATUS[r]);
+            if (_AC_ROLE_STATUS[role]) applyStatusPayload(unit, { id: _AC_ROLE_STATUS[role], duration: 99 }, '', unit);
+            addLog(`🎭 ${_ctName(unit)} changes into ${_AC_ROLE_NAME[role] || role}.`, undefined, undefined, { actor: unit });
+            if (typeof markDirty === 'function') markDirty('board');
         }
         /* 🛹 THE BAIL (2026-11-16, the Skater polish): a hold that stops her rolling (_skaterBailOn: Stun, Sleep, Root, Frozen,
            Charm, Coiled, Roped; never her own Climbing) knocks her off the board and the banked Momentum is gone. The other side's answer to a big stack. */
@@ -86388,6 +86433,7 @@
             /* 💉 THE PLASTIC SURGEON: a procedure becomes its ally or enemy cast (_psCastRow); his casts remember what finishAction needs */
             if (spell && spell.procedure) spell = _psCastRow(unit, spell, x, y, z);
             if (spell && spell.ogFortunes) spell = _ogCastRow(unit, spell);   // 🕊 THE ORIGAMI GIRL: Pick a Number rolls its flap (after the ally / enemy cast is picked)
+            if (spell && spell.acRole && unit && unit.race === 'actor') spell = _acCastRow(unit, spell);   // 🎭 THE ACTOR: In Character (the costume already worn)
             if (spell && spell.bpPick && _mpIs(unit) && state._bpPick != null) unit._mpPickHeld = state._bpPick;   // 🎛 THE MUSIC PRODUCER: the picker's choice rides to finishAction
             /* ☂ THE WEATHERMAN: Cold Front reads the sky, Severe Weather Warning the ground (_wnCastRow) */
             if (spell && (spell.wnSkyRead || spell.wnByGround)) spell = _wnCastRow(unit, spell, x, y);
@@ -87176,6 +87222,7 @@
                 _abAfterCast(unit, spell);   // 🫀 THE ABOMINATION: the mouths close
                 _psAfterCast(unit, spell, x, y, z);   // 💉 THE PLASTIC SURGEON: Work Done, Liposuction's shield
                 _ogAfterCast(unit, spell, x, y, z);   // 🕊 THE ORIGAMI GIRL: THE FOLD (the shape she stays in), the fortune's flap
+                _acAfterCast(unit, spell);   // 🎭 THE ACTOR: the role's status goes on (In Character)
                 _wnAfterCast(unit, spell, x, y);   // ☂📺 THE WEATHERMAN + NEWS ANCHOR: The Forecast, the strike, Fake News, The Rundown
                 _chpgAfterCast(unit, spell, x, y);   // 📣🏀 THE CHEERLEADER + THE POINT GUARD: the toss's landing, the chant, the ankles, the lob, Spirit
                 if (_mpIs(unit)) { _mpAfterCast(unit, spell, unit._mpPickHeld); unit._mpPickHeld = null; state._bpPick = null; }   // 🎛 THE MUSIC PRODUCER: the song
