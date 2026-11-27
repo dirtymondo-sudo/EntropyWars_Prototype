@@ -25,7 +25,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 1366 |
+| Meshy AI | no | 1372 |
 | Meshy AI, reworked by Claude | no | 18 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 107 |
@@ -3514,6 +3514,7 @@ These rows draw mondo's car pack (GGBot low-poly cars, Assets/vehicles/, `_CAR_P
 | handMirror (held in the hand) | `Assets/world/props/misc/hand_mirror.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
 | heartScales (Weigh the Heart ultimate prop) | `Assets/world/props/misc/heart_scales.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (ultimate spell props, concepts picked by mondo 2026-11-03: barricade U01a, flat earth U03b, scales U04a, feather U06a) |
 | jet | `Assets/fx/spell_props/Meshy_AI_f22_fighter_jett_0713025555_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| katana | `Assets/world/props/meshy/katana/katana.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5 smart-topology low poly; THE KATANA + FLORA MESHY BATCH 1, mondo OK on every piece 2026-11-20; originals in project files meshy-flora-katana-b1/) |
 | landmine | `Assets/fx/spell_props/Meshy_AI_landmine_1027232145_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | maatFeather (Weigh the Heart ultimate prop) | `Assets/world/props/misc/maat_feather.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (ultimate spell props, concepts picked by mondo 2026-11-03: barricade U01a, flat earth U03b, scales U04a, feather U06a) |
 | mic | `Assets/world/props/meshy/Meshy_AI_microphone_1027232053_texture.glb` | Meshy AI | Meshy AI (mondo) |
@@ -3778,10 +3779,12 @@ These rows draw mondo's car pack (GGBot low-poly cars, Assets/vehicles/, `_CAR_P
 | chess_queen_dark | `Assets/world/packs/chess/Low Poly Chess Set.fbx#chess_queen_dark` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
 | chess_rook | `Assets/world/packs/chess/Low Poly Chess Set.fbx#chess_rook` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
 | chess_rook_dark | `Assets/world/packs/chess/Low Poly Chess Set.fbx#chess_rook_dark` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
-| edge_rock_1 | `Assets/world/packs/afgameassets_retro_foliage/rf_rock_1.glb` | Asset pack | Retro Foliage: Pixel Art Nature Kit · AFGameAssets · bought by mondo (in a game yes, never redistributed as standalone source files); the kit's meshes and its own season leaf pictures, turned to GLB by bake-foliage.py |
-| edge_rock_2 | `Assets/world/packs/afgameassets_retro_foliage/rf_rock_2.glb` | Asset pack | Retro Foliage: Pixel Art Nature Kit · AFGameAssets · bought by mondo (in a game yes, never redistributed as standalone source files); the kit's meshes and its own season leaf pictures, turned to GLB by bake-foliage.py |
-| edge_rock_3 | `Assets/world/packs/afgameassets_retro_foliage/rf_rock_3.glb` | Asset pack | Retro Foliage: Pixel Art Nature Kit · AFGameAssets · bought by mondo (in a game yes, never redistributed as standalone source files); the kit's meshes and its own season leaf pictures, turned to GLB by bake-foliage.py |
-| edge_rock_4 | `Assets/world/packs/afgameassets_retro_foliage/rf_rock_4.glb` | Asset pack | Retro Foliage: Pixel Art Nature Kit · AFGameAssets · bought by mondo (in a game yes, never redistributed as standalone source files); the kit's meshes and its own season leaf pictures, turned to GLB by bake-foliage.py |
+| edge_rock_gran_a | `Assets/world/props/meshy/edge_rock_gran_a.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d, 900 triangles, a 512 px sheet), mondo's OK 2026-11-27: THE ROCK LINE's boulders, planted as tree kinds on the land past a room's line (originals in project files foliage-pass/rocks/) |
+| edge_rock_gran_b | `Assets/world/props/meshy/edge_rock_gran_b.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d, 900 triangles, a 512 px sheet), mondo's OK 2026-11-27: THE ROCK LINE's boulders, planted as tree kinds on the land past a room's line (originals in project files foliage-pass/rocks/) |
+| edge_rock_gran_c | `Assets/world/props/meshy/edge_rock_gran_c.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d, 900 triangles, a 512 px sheet), mondo's OK 2026-11-27: THE ROCK LINE's boulders, planted as tree kinds on the land past a room's line (originals in project files foliage-pass/rocks/) |
+| edge_rock_sand_a | `Assets/world/props/meshy/edge_rock_sand_a.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d, 900 triangles, a 512 px sheet), mondo's OK 2026-11-27: THE ROCK LINE's boulders, planted as tree kinds on the land past a room's line (originals in project files foliage-pass/rocks/) |
+| edge_rock_sand_b | `Assets/world/props/meshy/edge_rock_sand_b.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d, 900 triangles, a 512 px sheet), mondo's OK 2026-11-27: THE ROCK LINE's boulders, planted as tree kinds on the land past a room's line (originals in project files foliage-pass/rocks/) |
+| edge_rock_sand_c | `Assets/world/props/meshy/edge_rock_sand_c.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d, 900 triangles, a 512 px sheet), mondo's OK 2026-11-27: THE ROCK LINE's boulders, planted as tree kinds on the land past a room's line (originals in project files foliage-pass/rocks/) |
 | fae_bloom_tree | `Assets/world/props/meshy/ew_plant_healflower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
 | fae_bloom_tree_blue | `Assets/world/props/meshy/ew_plant_healflower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
 | fae_bloom_tree_pink | `Assets/world/props/meshy/ew_plant_healflower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |

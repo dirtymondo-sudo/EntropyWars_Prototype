@@ -83487,12 +83487,11 @@ const ThreeRenderer = (function () {
             var r = _mulberry32(0x0ed6e5), kindsF = ['pine', 'pine', 'tree_4', 'pine', 'tree', 'tree_4'], kindsM = ['pine', 'pine', 'pine_2'], kindsG = ['tree', 'tree_4', 'tree_3'], kindsS = ['xmas_snow_pine', 'xmas_snow_pine_2', 'pine'], kindsSW = ['xmas_snow_pine', 'xmas_snow_pine_2', 'xmas_snow_pine_3'];   // (a snow WOOD's own pines: no green one among them)
             var hOf = function (m) { return m * U / TM / 1.07; };   // _nrTree: target = TM × h × (0.85 … 1.3)
             /* THE ROCK LINE (2026-11-27, mondo: "i never wanna see an open field i cant walk through ... or rocks or whatever is natural and makes sense"): dry land past a
-               room's line (desert, mesa, scrub) and any side THE BELT's trees do not fit stands a line of boulders, the Retro Foliage kit's four rocks (data.js HQ_TREE_KINDS
-               edge_rock_*, planted like a tree, no wind), 1 to 3.6 m tall, sandstone on sand (`ROCK_SAND`, the sheet's grey tinted), sunk a little so none floats on a slope. Open only where a way, a road or a door leaves the room. */
-            var ROCK_SAND = 0xdcbf96;
-            var kindsR = ['edge_rock_1', 'edge_rock_3', 'edge_rock_2', 'edge_rock_4', 'edge_rock_3', 'edge_rock_1'];
-            var rockAt = function (x, z, y, q, tint) { var big = ((q * 9.7) % 1), rk = kindsR[(q * kindsR.length) | 0], wide = (rk === 'edge_rock_3' || rk === 'edge_rock_4');   // (the two wide ones stay low: a slab drawn 10 m across shows its sheet's pixels)
-                var hm = wide ? 1.0 + big * 1.3 : 1.3 + big * big * 2.3, t = plantTree(rk, hOf(hm), x, z, y * U, null, tint); if (t) { t.position.y -= hm * 0.16 * U; planted++; } return t; };
+               room's line (desert, mesa, scrub) and any side THE BELT's trees do not fit stands a line of boulders, six Meshy rocks (data.js HQ_TREE_KINDS
+               edge_rock_sand_* on sand, edge_rock_gran_* elsewhere; planted like a tree, no wind; the Retro Foliage kit's four before), 0.8 to 4.6 m tall, sunk a little so none floats on a slope. Open only where a way, a road or a door leaves the room. */
+            var kindsRS = ['edge_rock_sand_a', 'edge_rock_sand_c', 'edge_rock_sand_b', 'edge_rock_sand_c', 'edge_rock_sand_a', 'edge_rock_sand_b'], kindsRG = ['edge_rock_gran_a', 'edge_rock_gran_c', 'edge_rock_gran_b', 'edge_rock_gran_c', 'edge_rock_gran_a', 'edge_rock_gran_b'];
+            var rockAt = function (x, z, y, q, sand) { var big = ((q * 9.7) % 1), ks = sand ? kindsRS : kindsRG, rk = ks[(q * ks.length) | 0], form = rk.charAt(rk.length - 1);   // (a = round, b = tall, c = wide and low: its height is a third of its span)
+                var hm = form === 'c' ? 0.8 + big * 1.0 : form === 'b' ? 2.0 + big * big * 2.6 : 1.2 + big * big * 2.0, t = plantTree(rk, hOf(hm), x, z, y * U); if (t) { t.position.y -= hm * 0.14 * U; planted++; } return t; };
             var low = !!(typeof window !== 'undefined' && window.EW_PERF_LOW);
             var X0 = R.x0 - 62, X1 = R.x1 + 62, Z0 = R.z0 - 62, Z1 = R.z1 + 62, stp = 4.2;
             /* THE BELT (2026-11-27, mondo at Stonehenge's line: "that needs to have natural barriers like trees or something if i cant walk there. i never wanna
@@ -83533,10 +83532,10 @@ const ThreeRenderer = (function () {
                 else if ((P.W.scrub || 0) + (P.W.mesa || 0) + P.W.desert > 0.6 && P.d > 4) {   // THE DRY LAND'S PLANTS: a scrub side grows dead trees by itself; any dry side grows what its `plants: { kinds, p, h: [lo, hi] }` says (the room's own cactus runs on past its line)
                     var PL = (E[P.side] || {}).plants || E.plants || ((P.W.scrub || 0) > 0.5 ? { kinds: ['tree_5', 'tree_6', 'tree_5', 'pine_2'], p: 0.09, h: [3, 6.5] } : null);   // (`edges.plants` = every side's, the way the Desert's rooms write it: it was never read before 11-27)
                     var inBelt = beltOn && P.d < 17 && !wayGap(P.side, px, pz), hasPL = !!(PL && PL.kinds && PL.kinds.length);
-                    if (inBelt && !(hasPL && ((d2 * 3.1) % 1) < 0.3)) { if (c2 > (P.d < 10 ? 0.96 : 0.78)) continue; rockAt(px, pz, P.y, d2, ROCK_SAND); continue; }   // THE ROCK LINE: seven in ten of the belt's places are boulders, the rest the side's own plants
-                    if (!hasPL || c2 > (inBelt ? 0.9 : (PL.p || 0.08) * thin)) { if (!inBelt && P.d < 40 && c2 > 0.955) rockAt(px, pz, P.y, d2, ROCK_SAND); continue; }   // (behind the line: a lone boulder here and there)
+                    if (inBelt && !(hasPL && ((d2 * 3.1) % 1) < 0.3)) { if (c2 > (P.d < 10 ? 0.96 : 0.78)) continue; rockAt(px, pz, P.y, d2, true); continue; }   // THE ROCK LINE: seven in ten of the belt's places are boulders, the rest the side's own plants
+                    if (!hasPL || c2 > (inBelt ? 0.9 : (PL.p || 0.08) * thin)) { if (!inBelt && P.d < 40 && c2 > 0.955) rockAt(px, pz, P.y, d2, true); continue; }   // (behind the line: a lone boulder here and there)
                     var ph = PL.h || [3, 6]; plantTree(PL.kinds[(d2 * PL.kinds.length) | 0], hOf(ph[0] + ((d2 * 7.3) % 1) * (ph[1] - ph[0])), px, pz, P.y * U); planted++; }
-                else if (beltOn && P.d < 17 && (P.W.coast || 0) < 0.35 && (P.W.way || 0) < 0.35 && !(P.W.mountain > 0.5) && !wayGap(P.side, px, pz)) { if (c2 > 0.7) continue; rockAt(px, pz, P.y, d2); }   // a mixed side (half grass, half sand ...): rocks close it
+                else if (beltOn && P.d < 17 && (P.W.coast || 0) < 0.35 && (P.W.way || 0) < 0.35 && !(P.W.mountain > 0.5) && !wayGap(P.side, px, pz)) { if (c2 > 0.7) continue; rockAt(px, pz, P.y, d2, (P.W.scrub || 0) + (P.W.mesa || 0) + (P.W.desert || 0) > 0.3); }   // a mixed side (half grass, half sand ...): rocks close it
             }
         }
         /* THE HILL SIGN (2026-11-15, mondo: "the disaster city hollywood sign, there is already the mountains on one of the edges of disaster

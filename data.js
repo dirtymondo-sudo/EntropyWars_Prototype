@@ -93457,10 +93457,12 @@ const HQ_TREE_KINDS = {
     /* THE DESERT'S EDGES (2026-11-16): the saguaro (the Desert's Meshy prop `saguaro_cactus`) as a tree kind, so the land past a dry room's line can grow it
        (three-renderer.js THE DRY LAND'S PLANTS); in a room it is still placed as the prop */
     saguaro: { model: 'asset:world/props/meshy/saguaro_cactus.glb', name: 'saguaro', still: true },
-    /* THE ROCK LINE (2026-11-27, mondo: "i never wanna see an open field i cant walk through ... rocks or whatever is natural"): the Retro Foliage kit's four rocks as
-       tree kinds, so the land past a dry room's line can stand them (three-renderer.js THE ROCK LINE). `still` = no wind on it. In a room a rock is still the prop `rf_rock_*`. */
-    edge_rock_1: { model: 'asset:world/packs/afgameassets_retro_foliage/rf_rock_1.glb', name: 'rock', still: true }, edge_rock_2: { model: 'asset:world/packs/afgameassets_retro_foliage/rf_rock_2.glb', name: 'tall rock', still: true },
-    edge_rock_3: { model: 'asset:world/packs/afgameassets_retro_foliage/rf_rock_3.glb', name: 'wide rock', still: true }, edge_rock_4: { model: 'asset:world/packs/afgameassets_retro_foliage/rf_rock_4.glb', name: 'rock slab', still: true },
+    /* THE ROCK LINE (2026-11-27, mondo: "i never wanna see an open field i cant walk through ... rocks or whatever is natural" · "make those meshy rocks"): six Meshy
+       boulders (about 930 triangles, one 512 px sheet each; /mnt/project-files/foliage-pass/rocks/gen.py) as tree kinds, so the land past a room's line can stand them
+       (three-renderer.js THE ROCK LINE). sand_* = desert sandstone, gran_* = grey granite; a = round, b = tall, c = wide and low. `still` = no wind on it. */
+    edge_rock_sand_a: { model: 'asset:world/props/meshy/edge_rock_sand_a.glb', name: 'sandstone boulder', still: true }, edge_rock_sand_b: { model: 'asset:world/props/meshy/edge_rock_sand_b.glb', name: 'sandstone spire', still: true },
+    edge_rock_sand_c: { model: 'asset:world/props/meshy/edge_rock_sand_c.glb', name: 'sandstone ledges', still: true }, edge_rock_gran_a: { model: 'asset:world/props/meshy/edge_rock_gran_a.glb', name: 'granite boulder', still: true },
+    edge_rock_gran_b: { model: 'asset:world/props/meshy/edge_rock_gran_b.glb', name: 'granite spire', still: true }, edge_rock_gran_c: { model: 'asset:world/props/meshy/edge_rock_gran_c.glb', name: 'granite outcrop', still: true },
     /* THE FAIRY FOREST (2026-10-24): the misc folder's two Meshy mushrooms planted like the palm (`misc:` foliage, three-renderer.js
        _foliageUrl) — a blocker on the walk, a blocked square in a fight (a prop is only scenery on a terrain board) */
     fae_cap:     { model: 'misc:Meshy_AI_mushroom_0727200342_texture.glb', name: 'giant mushroom' },
