@@ -3704,16 +3704,21 @@ const RACE_MODELS_3D = {
   'honda civic': {
     male: (function () {
       const car = {
-        model: `${_S}/Races/hondacivic/Meshy_AI_1990s_sedan_0719015525_texture.glb`,
+        /* THE SEDAN BOT IS THE UNIT (2026-11-27, mondo: "it will replace the current sedan unit in the game"): both forms are cut from
+           the garage's transforming sedan by bake-sedan-bot.py --unit (the car = its panels + cabin + DOOR plates, no bones; the robot =
+           its rigged core with the same panels skinned to the bones). Before: Meshy_AI_1990s_sedan_0719015525_texture.glb + the
+           1990s_sedan_transform biped (both kept on R2) */
+        model: 'https://cdn.entropywars.net/Assets/characters/races/hondacivic/ew_sedan_unit_a_car.glb',
         clips: {},
         heightRatio: 0.55,        // roofline ~chest-high → ~1.7 tiles bumper-to-bumper
-        yawOffset: Math.PI / 2,   // export's long axis is X — swing the nose to +Z (sign flipped 2026-07-19: it drove tail-first)
+        yawOffset: 0,             // (the tool's car has its nose on +Z; the old export's long axis was X: Math.PI / 2)
         transformFx: true,
         drives: true,             // three-renderer.js _unitDrivesNow: its melee strike rolls in and rams, no hop (2026-10-24)
         moveTimeScale: 1, castTimeScale: 1,
         deathTimeScale: 1.9, hitTimeScale: 2.8, jumpTimeScale: 3.2,
       };
       const robot = _mkUAL('hondacivic', '1990s_sedan_transform', {
+        model: 'https://cdn.entropywars.net/Assets/characters/races/hondacivic/ew_sedan_unit_a_robot.glb',
         heightRatio: 1.45,        // 3.2m bipedal combat platform (mech is 1.5)
         basicAttackKind: 'punch', // "it stood up and punched a building"
         transformFx: true,

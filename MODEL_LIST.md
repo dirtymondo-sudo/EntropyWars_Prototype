@@ -25,7 +25,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 1361 |
+| Meshy AI | no | 1363 |
 | Meshy AI, reworked by Claude | no | 16 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 107 |
@@ -138,7 +138,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | hippie (female) | `Assets/characters/races/hippie/Meshy_AI_hippie_female_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | hollow | `Assets/characters/races/hollow/male/hollow.glb` | Meshy AI, reworked by Claude | Meshy AI parts made from mondo's horror concept (the maw ring, ONE sleeping mask made as a whole head with its back half cut off in code, ONE limb, the finger chandelier, ONE crystal; project files char-concepts-20261123/models) put together by Claude in code (project files horror-hollow/assemble.mjs): the mask used four times, the limb cut into three jointed segments and used four times, the fingers split into six bunches, each its own node, for the Hollow race's moving-parts rig (three-renderer.js THE HOLLOW) |
 | homosapien | `Assets/characters/races/homosapien/male/freelancer/Meshy_AI_normal_man_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
-| honda civic | `Assets/characters/races/hondacivic/Meshy_AI_1990s_sedan_0719015525_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| honda civic | `Assets/characters/races/hondacivic/ew_sedan_unit_a_car.glb` | Meshy AI | Meshy image-to-3D sedan + rigged core, the unit forms cut by bake-sedan-bot.py --unit |
 | ice queen (female) | `Assets/characters/races/icequeen/Meshy_AI_an_ice_queen_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | influencer (female) | `Assets/characters/races/influencer/female/Meshy_AI_influencer_f_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES 2, mondo 2026-11-17 picks from the zone characters; concepts + models in project files new-races-2/; the Boltzmann Brain is unrigged) |
 | jack o lantern | `Assets/characters/races/jackolantern/Meshy_AI_jack_o_lantern_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
@@ -3257,7 +3257,7 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| car_sedan_bot | `Assets/world/vehicles/sedan_bot/ew_sedan_bot_c.glb` | Meshy AI | Meshy image-to-3D, cut into panels + rigged core (bake-sedan-bot.py) |
+| car_sedan_bot | `Assets/world/vehicles/sedan_bot/ew_sedan_bot_d.glb` | Meshy AI | Meshy image-to-3D, cut into panels + rigged core (bake-sedan-bot.py) |
 
 ### Meshy AI parts (the cutscene's AV cart, a new wood-cased TV, the haunted remote) put together by Claude in code (project files cursed-tv/models/assemble.mjs): the casters split off the cart so each wheel spins, rabbit ears + power cable built in code; no bones, the rig is three-renderer.js THE CURSED TV (2026-11-17) — Meshy AI, reworked by Claude (1)
 
@@ -3925,6 +3925,8 @@ Found by scanning the scripts for literal model URLs that no table above lists (
 | deep_sea_diver_helmet | `Assets/characters/gear/helmets/deep_sea_diver_helmet.glb` | Meshy AI | Meshy AI prop (the diver helmet concept), dome cut out by Claude in Blender-free python (pharaoh-diver/models/cut.py); the glass dome is a three.js sphere drawn in three-renderer.js THE BUBBLE HELMET | sprites.js |
 | fairy_wing_single | `Assets/characters/gear/wings/fairy_wing_single.glb` | Meshy AI | Meshy AI part made by Claude (THE UNIT GEAR, 2026-11-18: halos cut out of the angel models, the fairy wing cut out of the old fairy, the trident + the hoodless cape made apart) | sprites.js |
 | feathered_serpent | `Assets/characters/races/aztec/feathered_serpent.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API for Quetzalcoatl's serpent body (THE NEW RACES, mondo 2026-11-16) | three-renderer.js |
+| ew_sedan_unit_a_robot | `Assets/characters/races/hondacivic/ew_sedan_unit_a_robot.glb` | Meshy AI | Meshy image-to-3D sedan + rigged core, the unit forms cut by bake-sedan-bot.py --unit | sprites.js |
+| Meshy_AI_1990s_sedan_0719015525_texture | `Assets/characters/races/hondacivic/Meshy_AI_1990s_sedan_0719015525_texture.glb` | Meshy AI | Meshy AI (mondo) | three-renderer.js |
 | Meshy_AI_ice_queen_super_Running | `Assets/characters/races/icequeen/Meshy_AI_ice_queen_super_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) | sprites.js |
 | Meshy_AI_rat_king_Running | `Assets/characters/races/rat/king/Meshy_AI_rat_king_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API from mondo's picked concepts (THE COMING RACES 2, 2026-11-23; the Bear's polar look + the Rat King are form looks; project files char-concepts-20261123/) | sprites.js |
 | ew_plant_apple | `Assets/world/props/meshy/ew_plant_apple.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) | three-renderer.js |

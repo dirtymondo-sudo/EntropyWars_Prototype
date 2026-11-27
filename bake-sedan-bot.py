@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """THE SEDAN BOT (2026-11-27): Meshy sedan + robot core + interior + steering wheel -> one GLB the game transforms.
-Run: python3 -I bake-sedan-bot.py <models dir> <out.glb> [--shots <prefix>]      (needs `pip install bpy`)
+Run: python3 -I bake-sedan-bot.py <models dir> <out.glb> [--shots <prefix>] [--unit <prefix>]      (needs `pip install bpy`)
 In : <models dir>/sedan_car.glb, sedan_interior.glb, steering_wheel.glb, robot_core_rigged.glb, robot_core_walking.glb, robot_core_running.glb
 Out: nodes  p_<part>  a car panel, its origin on its hinge, standing in car mode
             o_<part>  the same panel swung open on its hinge (an empty)
@@ -15,6 +15,7 @@ from mathutils import Matrix, Vector
 A = [a for a in sys.argv[1:] if not a.startswith('-')]
 SRC, OUT = A[0], A[1]
 SHOTS = sys.argv[sys.argv.index('--shots') + 1] if '--shots' in sys.argv else None
+UNIT = sys.argv[sys.argv.index('--unit') + 1] if '--unit' in sys.argv else None      # also write <UNIT>_car.glb (the panels as a car, no bones) + <UNIT>_robot.glb (the core with the panels skinned to its bones: a unit the shared animation library moves)
 K = 1.45                                   # the core's scale: 3.2 m rigged -> 4.64 m
 WH = {'wheelFL': (1, -1.37), 'wheelFR': (-1, -1.37), 'wheelRL': (1, 1.17), 'wheelRR': (-1, 1.17)}
 WZ, WR, WX = 0.31, 0.335, 0.80
@@ -95,6 +96,32 @@ for name, idx in groups.items():
     b = bmesh.new(); b.from_mesh(p.data); keep = set(idx)
     bmesh.ops.delete(b, geom=[f for f in b.faces if f.index not in keep], context='FACES'); b.to_mesh(p.data); b.free()
     parts[name] = p
+
+# ---------------------------------------------------------------- the plates: DOOR (mondo 11-27), a white plate with raised dark letters, on the car's own skin
+from mathutils.bvhtree import BVHTree
+def flat(name, rgb, rough=0.5):
+    m = bpy.data.materials.new(name); m.use_nodes = True
+    b = next(n for n in m.node_tree.nodes if n.type == 'BSDF_PRINCIPLED'); b.inputs['Base Color'].default_value = (*rgb, 1); b.inputs['Roughness'].default_value = rough; b.inputs['Metallic'].default_value = 0
+    return m
+M_PLATE, M_INK = flat('ew_plate', (0.92, 0.92, 0.88)), flat('ew_plate_ink', (0.02, 0.05, 0.22), 0.35)
+_bvh = BVHTree.FromObject(car, bpy.context.evaluated_depsgraph_get())
+def plate(tag, z, sy):
+    hit, nrm, _, _ = _bvh.ray_cast(Vector((0, sy * 4, z)), Vector((0, -sy, 0)))
+    n = Vector((0, nrm.y, nrm.z)).normalized(); n = n if n.y * sy > 0 else Vector((0, sy, 0))
+    right = Vector((0, 0, 1)).cross(n).normalized(); up = n.cross(right)
+    M = Matrix((( right.x, -n.x, up.x, hit.x + n.x * 0.012), (right.y, -n.y, up.y, hit.y + n.y * 0.012), (right.z, -n.z, up.z, hit.z + n.z * 0.012), (0, 0, 0, 1)))
+    bpy.ops.mesh.primitive_cube_add(size=1); pl = bpy.context.active_object; pl.data.transform(Matrix.Diagonal((0.47, 0.012, 0.21, 1))); pl.data.materials.append(M_PLATE)
+    cu = bpy.data.curves.new('t', 'FONT'); cu.body = 'DOOR'; cu.align_x = 'CENTER'; cu.align_y = 'CENTER'; cu.size = 0.15; cu.extrude = 0.004; cu.space_character = 1.12
+    to = bpy.data.objects.new('t', cu); bpy.context.scene.collection.objects.link(to); bpy.context.view_layer.update()
+    me = bpy.data.meshes.new_from_object(to.evaluated_get(bpy.context.evaluated_depsgraph_get())); bpy.data.objects.remove(to)
+    tx = bpy.data.objects.new('tm', me); bpy.context.scene.collection.objects.link(tx); me.transform(T(0, -0.008, 0.004) @ R('X', 90)); me.materials.append(M_INK)
+    bpy.ops.object.select_all(action='DESELECT'); pl.select_set(True); tx.select_set(True); bpy.context.view_layer.objects.active = pl; bpy.ops.object.join()
+    pl.data.transform(M); pl.name = 'p_' + tag
+    print('PLATE', tag, [round(v, 3) for v in hit], [round(v, 2) for v in n])
+    return pl, hit + n * 0.012
+pf, _ = plate('plateF', 0.44, -1)
+bpy.ops.object.select_all(action='DESELECT'); pf.select_set(True); parts['chest'].select_set(True); bpy.context.view_layer.objects.active = parts['chest']; bpy.ops.object.join()
+pr, PLATE_R = plate('plate', 0.75, 1); parts['plate'] = pr      # (over the plate Meshy painted between the tail lamps)
 bpy.data.objects.remove(car)
 
 # ---------------------------------------------------------------- the interior + the steering wheel
@@ -110,9 +137,9 @@ sw.data.materials[0].name = 'ew_sedan_swheel'; parts['swheel'] = sw; sw.name = '
 MIR = Matrix.Diagonal((-1, 1, 1, 1))
 PIV = {'chest': (0, -1.02, 0.95), 'roof': (0, 1.5, 1.0), 'floor': (0, 0, 0.2), 'interior': (0, 0, 0.3), 'swheel': SWP,
        'doorFL': (0.86, -0.78, 0.6), 'doorRL': (0.86, 0.17, 0.6), 'fenderL': (0.80, -1.37, 0.31), 'legL': (0.45, 1.0, 0.3),
-       'wheelFL': (WX, -1.37, WZ), 'wheelRL': (WX, 1.17, WZ)}
+       'wheelFL': (WX, -1.37, WZ), 'wheelRL': (WX, 1.17, WZ), 'plate': tuple(PLATE_R)}
 OPEN = {'chest': about(PIV['chest'], R('X', -38)), 'roof': about(PIV['roof'], R('X', -28)) @ T(0, 0, 0.05), 'floor': Matrix(),
-        'interior': Matrix(), 'swheel': Matrix(),
+        'interior': Matrix(), 'swheel': Matrix(), 'plate': Matrix(),
         'doorFL': about(PIV['doorFL'], R('Z', -68)), 'doorRL': about(PIV['doorRL'], R('Z', -62)),
         'fenderL': T(0.28, -0.05, 0.1), 'wheelFL': T(0.28, -0.05, 0.1), 'legL': T(0.16, 0.3, 0), 'wheelRL': T(0.16, 0.3, 0)}
 SH = T(1.02, 0.05, 3.95) @ R('Y', -18) @ T(-0.80, 1.37, -0.31)
@@ -125,7 +152,8 @@ ROBOT = {'chest': ('Spine', T(0, -0.34, 4.02) @ R('X', 56) @ T(0, 1.02, -0.95)),
          'fenderL': ('LeftShoulder', SH), 'wheelFL': ('LeftShoulder', SH),
          'doorFL': ('Spine', T(0.55, 0.62, 3.35) @ R('Z', -62) @ R('Y', -12) @ T(-0.84, 0.78, -0.25)),
          'doorRL': ('Hips', T(0.80, 0.10, 1.72) @ R('Y', -8) @ T(-0.84, -0.55, -0.25)),
-         'legR': ('LeftLeg', LG), 'wheelRR': ('LeftLeg', LG)}
+         'legR': ('LeftLeg', LG), 'wheelRR': ('LeftLeg', LG),
+         'plate': ('Spine01', T(0, 0.735, 3.30) @ T(-PLATE_R[0], -PLATE_R[1], -PLATE_R[2]))}      # the rear plate: high on the robot's back, on the roof's skin
 def swn(n): return n[:-1] + ('R' if n[-1] == 'L' else 'L')
 def swb(b): return b.replace('Left', '#').replace('Right', 'Left').replace('#', 'Right')
 for d in (PIV, OPEN):
@@ -183,7 +211,7 @@ if SHOTS:
         for name, p in parts.items():
             p.matrix_world = bpy.data.objects[('o_' if which == 'open' else 'r_') + name].matrix_world.copy() if which != 'car' else T(*PIV[name])
         body.hide_render = which != 'robot'
-    pose('car'); shot('car_a', (1, -1.2, .6), (0, 0, .7), 5.6); shot('car_b', (1, 0.15, .12), (0, 0, .8), 5.2); shot('car_top', (0.01, 0.3, 1), (0, 0, .7), 5.2)
+    pose('car'); shot('car_a', (1, -1.2, .6), (0, 0, .7), 5.6); shot('car_b', (1, 0.15, .12), (0, 0, .8), 5.2); shot('car_top', (0.01, 0.3, 1), (0, 0, .7), 5.2); shot('car_r', (0.35, 1, .3), (0, 0, .7), 5.2)
     pose('open'); shot('open', (1, -1.2, .8), (0, 0, .8), 6.6)
     pose('robot')
     for n, d in [('f', (0, -1, .05)), ('q', (1, -1.3, .4)), ('s', (1, 0, 0)), ('b', (-.7, 1, .3))]: shot('bot_' + n, d, (0, 0, 2.4), 6.0, (700, 900))
@@ -202,6 +230,21 @@ for clip, f in (('walk', 'robot_core_walking.glb'), ('run', 'robot_core_running.
         if act.slots: st.action_slot = act.slots[0]
     except Exception as e: print('slot', e)
 
+for m in bpy.data.materials:                     # Meshy's metal maps read black with no sky to mirror (the rooms have none): lacquer + dull steel
+    if not m.node_tree: continue
+    b = next((n for n in m.node_tree.nodes if n.type == 'BSDF_PRINCIPLED'), None)
+    if not b: continue
+    for l in list(b.inputs['Metallic'].links): m.node_tree.links.remove(l)
+    b.inputs['Metallic'].default_value = 0.2 if m.name == 'ew_sedan_core' else 0.0
+    if m.name == 'ew_sedan_paint':
+        for l in list(b.inputs['Roughness'].links): m.node_tree.links.remove(l)
+        b.inputs['Roughness'].default_value = 0.4
+    if m.name == 'ew_glass':
+        for l in list(b.inputs['Base Color'].links): m.node_tree.links.remove(l)
+        b.inputs['Base Color'].default_value = (0.62, 0.71, 0.75, 1); b.inputs['Alpha'].default_value = 0.22; b.inputs['Roughness'].default_value = 0.12
+        for l in list(b.inputs['Roughness'].links) + list(b.inputs['Normal'].links): m.node_tree.links.remove(l)
+        try: m.blend_method = 'BLEND'
+        except Exception: pass
 for im in bpy.data.images:                      # the sheets: 2K PNG a map from Meshy -> 1K WebP (the paint + the core keep 2K colour)
     if not im.size[0]: continue
     keep = any(im == n.image for m in bpy.data.materials if m.name in ('ew_sedan_paint', 'ew_glass', 'ew_sedan_core') and m.node_tree
@@ -212,3 +255,30 @@ bpy.ops.export_scene.gltf(filepath=OUT, export_format='GLB', export_animations=T
                           export_yup=True, export_apply=False, export_skins=True, export_extras=False,
                           export_image_format='WEBP', export_image_quality=82)
 print('WROTE', OUT, os.path.getsize(OUT))
+
+# ---------------------------------------------------------------- the unit's two forms (--unit): the battle unit `honda civic`
+if UNIT:
+    GL = dict(export_format='GLB', export_yup=True, export_apply=False, export_extras=False, export_image_format='WEBP', export_image_quality=82, use_selection=True)
+    def pick(obs):
+        bpy.ops.object.select_all(action='DESELECT')
+        for o in obs: o.select_set(True)
+    pick(list(parts.values()))
+    bpy.ops.export_scene.gltf(filepath=UNIT + '_car.glb', export_animations=False, export_skins=False, **GL)
+    print('WROTE', UNIT + '_car.glb', os.path.getsize(UNIT + '_car.glb'))
+    arm.animation_data_clear()
+    for pb in arm.pose.bones: pb.matrix_basis.identity()
+    bpy.context.scene.frame_set(0); bpy.context.view_layer.update()
+    worn = []
+    for name, p in parts.items():
+        if name in ('interior', 'swheel'): continue
+        p.matrix_world = bpy.data.objects['r_' + name].matrix_world.copy(); bpy.context.view_layer.update()
+        p.data.transform(p.matrix_world); p.matrix_world = Matrix()
+        if p.matrix_world.determinant() < 0: p.data.flip_normals()
+        vg = p.vertex_groups.new(name=ROBOT[name][0]); vg.add(range(len(p.data.vertices)), 1.0, 'REPLACE')
+        p.parent = arm; p.matrix_parent_inverse = arm.matrix_world.inverted()
+        md = p.modifiers.new('a', 'ARMATURE'); md.object = arm
+        worn.append(p)
+    pick(worn); bpy.context.view_layer.objects.active = worn[0]; bpy.ops.object.join(); worn[0].name = 'panels'
+    pick([arm, body, worn[0]])
+    bpy.ops.export_scene.gltf(filepath=UNIT + '_robot.glb', export_animations=False, export_skins=True, **GL)
+    print('WROTE', UNIT + '_robot.glb', os.path.getsize(UNIT + '_robot.glb'))

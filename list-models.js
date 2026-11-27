@@ -176,6 +176,7 @@ const SOURCES = [
     { re: /Assets\/misc\/ebd_burgerpiz_/, how: 'PACK', src: 'BurgerPiz · Elbolilloduro · CC0 (piece cut out in Blender)' },
     { re: /Assets\/misc\/ebd_gasstation_/, how: 'PACK', src: 'Gas station · Elbolilloduro · CC0 (piece cut out in Blender)' },
     { re: /Assets\/misc\/molten_/, how: 'PACK', src: 'Molten Maps SciFi Asset Pack · Moltenbolt · CC0' },
+    { re: /races\/hondacivic\/ew_sedan_unit_/, how: 'MESHY', src: 'Meshy image-to-3D sedan + rigged core, the unit forms cut by bake-sedan-bot.py --unit' },   // THE SEDAN BOT IS THE UNIT (2026-11-27)
     { re: /vehicles\/sedan_bot\//, how: 'MESHY', src: 'Meshy image-to-3D, cut into panels + rigged core (bake-sedan-bot.py)' },   // THE SEDAN BOT (2026-11-27)
     { re: /Assets\/vehicles\//, how: 'PACK', src: 'Low-poly cars · GGBot' },
     { re: /Assets\/stairs\/stairs_railings/, how: 'PACK', src: 'Stairs & Railings · ATD-London · CC-BY 4.0 (credit required)' },
