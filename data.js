@@ -3197,12 +3197,14 @@ const RACE_PROFILES = {
         label: 'Flower Girl',
         types: ['anomaly']
     },
-    'leprechaun': {   // 2026-11-27 THE NEW CHARACTERS (models in, kit not yet: the spell thread sets the type for good) — male + female
+    'leprechaun': {   // 2026-11-27 THE NEW CHARACTERS — male + female; THE LEPRECHAUN + THE MEDIC: the kit is Anomaly
         label: 'Leprechaun',
         types: ['anomaly']
     },
-    'medic': {   // 2026-11-27 THE NEW CHARACTERS (models in, kit not yet: the spell thread sets the type for good) — the male is the Doctor, the female the Nurse
+    'medic': {   // 2026-11-27 THE NEW CHARACTERS — the male is the Doctor, the female the Nurse; THE LEPRECHAUN + THE MEDIC: the kit is Human
         label: 'Medic',
+        labelMale: 'Doctor',
+        labelFemale: 'Nurse',
         types: ['human']
     },
     'butterfly girl': {   // 2026-11-23 THE COMING RACES 2
@@ -4170,7 +4172,7 @@ const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scie
    AVAILABLE_RACES and server.js AVAILABLE_RACES. Notes: docs/notes/champions-combat.md "THE COMING RACES". */
 /* THE WEATHERMAN's FORECAST (2026-11-24 THE WEATHERMAN + NEWS ANCHOR): the weather never hurts or soaks him (state.js applyWeatherTurnEffects + stormStrikeUnit) */
 function wnWeatherproof(u) { return !!u && u.race === 'weatherman' && (u.gender || 'male') === 'male' && unitHasPassive(u, 'wnTheForecast'); }   /* Broken = no passives = no shelter */
-const EW_COMING_RACES = ['monster truck', 'nutcracker', 'leopard girl', 'draconian', 'flower girl', 'leprechaun', 'medic'];   // 2026-11-27 THE NEW CHARACTERS (models + sprites in, kits being made by three spell threads; each moves its key into AVAILABLE_RACES here AND in server.js with its kit).   // 2026-11-23 THE COMING RACES 2 (the Mannequin was cut 11-23, mondo; the Bear, the Rat, the Butterfly Girl and the Monarch got their kits 11-23 and moved to AVAILABLE_RACES) (models in, kits not yet; one spell thread a unit). 2026-11-19: the gladiator, the farmer and the jellyfish UFO got their kits and moved to AVAILABLE_RACES
+const EW_COMING_RACES = ['monster truck', 'nutcracker', 'leopard girl', 'draconian', 'flower girl'];   // 2026-11-27 THE NEW CHARACTERS (models + sprites in, kits being made by three spell threads; each moves its key into AVAILABLE_RACES here AND in server.js with its kit).   // 2026-11-23 THE COMING RACES 2 (the Mannequin was cut 11-23, mondo; the Bear, the Rat, the Butterfly Girl and the Monarch got their kits 11-23 and moved to AVAILABLE_RACES) (models in, kits not yet; one spell thread a unit). 2026-11-19: the gladiator, the farmer and the jellyfish UFO got their kits and moved to AVAILABLE_RACES
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
    default job's kit (JOB_KITS) gave it, so ranged races stay ranged: the old Sniper races reach 4 (kit 3 + the Sniper's
