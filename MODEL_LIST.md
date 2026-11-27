@@ -25,7 +25,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 1363 |
+| Meshy AI | no | 1365 |
 | Meshy AI, reworked by Claude | no | 16 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 107 |
@@ -204,6 +204,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | nutcracker | `Assets/characters/races/nutcracker/male/Meshy_AI_nutcracker2_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | occulus | `Assets/characters/gear/wings/Meshy_AI_one_bat_wing_1027074652_texture.glb` | Meshy AI | Meshy AI (single wing, mirrored in code) |
 | orb of light (female) | `Assets/characters/races/orboflight/female/Meshy_AI_hot_girl_sentient_li_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| origami girl (female) | `Assets/characters/races/origami_girl/female/Meshy_AI_origami_girl_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | overlord | `Assets/characters/races/overlord/Meshy_AI_underworld_overlord__biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | pharaoh | `Assets/characters/races/pharaoh/male/Meshy_AI_pharaoh_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API from the approved 11-19 concepts (the Pharaoh M + Cleopatra F v3, the Deep Sea Diver F; concepts + models in project files new-char-concepts-20261119/) |
 | pharaoh (female) | `Assets/characters/races/pharaoh/female/Meshy_AI_pharaoh_f_v3_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API from the approved 11-19 concepts (the Pharaoh M + Cleopatra F v3, the Deep Sea Diver F; concepts + models in project files new-char-concepts-20261119/) |
@@ -3294,6 +3295,12 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
 | meshy_wings | `Assets/world/props/meshy/wings.glb` | Asset pack (author not recorded yet) | Angel wings pair (mondo's upload, maker not recorded): retired 2026-10-27 for the single Meshy wings |
+
+### Meshy AI, made by Claude through the Meshy API (THE ORIGAMI GIRL's paper wings, mondo's OK 2026-11-27): one Meshy wing, mirrored into one flat pair by project files origami-girl/ (wings.py) — Meshy AI (1)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| ori_wings | `Assets/characters/races/origami_girl/female/origami_wings.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE ORIGAMI GIRL's paper wings, mondo's OK 2026-11-27): one Meshy wing, mirrored into one flat pair by project files origami-girl/ (wings.py) |
 
 ### Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; the plot dungeons, mondo 2026-11-15: "Make a new lever"; originals in project files dungeons/meshy/) — Meshy AI (1)
 
