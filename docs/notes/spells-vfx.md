@@ -5692,3 +5692,6 @@ animations. Same thing with shogun and samurai slugs, use the katana model for t
 - A blade still streaming = no blade that cast (NO STAND-INS), never the master sword in its place.
 - Checked: VS CPU fight, Origami Girl Cross Slash, Shogun + Samurai Slug Dragon Slash, 0 errors; the four blades rendered side
   by side through `ThreeVFXEffects.sigBuildSword` with each race as the caster (proof /mnt/project-files/sword-swap/).
+- THE STAGE WARM (11-27, mondo: "it needs to load earlier so that they appear in the party builder when i hover over the spells
+  ... all weapons"): `VFX3D.stage.enter` starts the hero's blade + the master sword at once and every `_WPN_MODELS` file through
+  the background lane. Measured: katana + sword ready ~10 s after the stage opens (cloud).

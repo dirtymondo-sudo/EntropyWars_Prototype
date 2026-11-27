@@ -58869,6 +58869,15 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 spellGradeKick: function (amt, ms) { _vsFx('kick', { amt: amt, ms: ms }); },
                 dramaDim: function (d, ms) { _vsFx('grade', { dim: d, holdMs: ms }); },
             };
+            /* THE STAGE WARM (2026-11-27, mondo: "it needs to load earlier so that they appear in the party builder when i hover over
+               the spells ... all weapons"): the builder's stage is where he reads a spell first, so opening it starts EVERY spell
+               weapon: the hero's own blade (THE CASTER'S OWN BLADE) + the master sword now, the rest through the background lane
+               (three at a time, behind what is on screen). A cached one is skipped; a match's drip finds them loaded. */
+            try {
+                var vk = _sigBladeKey(), fg = ['sword']; if (vk !== 'sword' && vk !== 'paper') fg.unshift(vk);
+                _wpnWarm(fg, {});
+                _wpnWarm(['katana'].concat(_WPN_DRIP_FIRST, Object.keys(_WPN_MODELS)), { bg: true });
+            } catch (e) {}
             return true;
         },
         exit: function () {
