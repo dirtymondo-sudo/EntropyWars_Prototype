@@ -136,6 +136,7 @@ const CAST = (todo, repeat) => {
     const r = await page.evaluate(([l, n]) => (window.__kitCast)(l, n), [left, REPEAT]).catch(e => ({ status: 'err', e: String(e.message).slice(0, 120) }));
     if (r.status === 'cast') {
       console.log('CAST', JSON.stringify(r));
+      if (process.env.PEEK) for (const at of [80, 600]) { await sleep(at === 80 ? 80 : 520); console.log('PEEK', at, JSON.stringify(await page.evaluate(process.env.PEEK).catch(e => String(e)))); }   // PEEK='<js>': read the page right after the cast
       let _el = 0; for (let ei = 0; ei < EARLY.length; ei++) { await sleep(Math.max(0, EARLY[ei] - _el)); _el = EARLY[ei]; try { await page.screenshot({ path: `${OUT}/${TAG}_${r.spell}_e${ei}.png` }); } catch (e) {} }   // EARLY=200,500: frames inside the windup (a fold)
       await sleep(Math.max(0, 900 - _el)); try { await page.screenshot({ path: `${OUT}/${TAG}_${r.spell}_a.png` }); } catch (e) {}
       await sleep(700); try { await page.screenshot({ path: `${OUT}/${TAG}_${r.spell}_b.png` }); } catch (e) {}

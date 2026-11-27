@@ -25,7 +25,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 1364 |
+| Meshy AI | no | 1366 |
 | Meshy AI, reworked by Claude | no | 18 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 107 |
@@ -47,6 +47,8 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | race | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
 | abomination | `Assets/characters/races/abomination/male/abomination.glb` | Meshy AI, reworked by Claude | Meshy AI parts made from mondo's horror concept (the core, the head, ONE arm, ONE tentacle, the bone cage; project files char-concepts-20261123/models) seated cap first into the core's sockets by Claude in code (project files horror-plan-20261123/asm.js): the arm used twice (one mirrored) plus two small extra hands, the tentacle bent along paths into four back tentacles and the two leg tentacles, each its own node, for the Abomination race's moving-parts rig (three-renderer.js THE ABOMINATION) |
+| actor | `Assets/characters/races/actor/male/Meshy_AI_actor_audition_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| actor (female) | `Assets/characters/races/actor/female/Meshy_AI_actress_audition_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | ai (female) | `Assets/characters/races/ai/female/Meshy_AI_AI_girl_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | angel | `Assets/characters/races/angel/male/Meshy_AI_angel_m_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW LOOKS, mondo 2026-11-18 concepts round; wings / halo / cape / trident apart: THE UNIT GEAR; project files unit-concepts-20261118/) |
 | angel (female) | `Assets/characters/races/angel/female/Meshy_AI_angel_f_v2_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW LOOKS, mondo 2026-11-18 concepts round; wings / halo / cape / trident apart: THE UNIT GEAR; project files unit-concepts-20261118/) |
