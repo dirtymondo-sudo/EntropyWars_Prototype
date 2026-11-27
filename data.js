@@ -13142,22 +13142,22 @@ const RACE_ABILITIES = {
 
     'occulus': [
         /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): All-Seeing. */
-        { id: 'goAntimagicGaze', name: 'Antimagic Gaze', tier: 2, families: ['occulus'], cost: 50, apCost: 1,
+        { id: 'goAntimagicGaze', animSlot: 'occAntimagic', animStrikeMs: 260, name: 'Antimagic Gaze', tier: 2, families: ['occulus'], cost: 50, apCost: 1,
           spellType: 'alien', element: 'psychic', type: 'damage', kind: 'line', range: 4, lineWidth: 1, dmg: 70,
           damageType: 'magic', statusEffects: [{ id: 'silence', duration: 1 }],
           desc: 'The great central eye opens and magic dies in its stare. Deals WEAK magic damage to All Enemies in a line and Silences them for a round.' },
-        { id: 'goEyeStalks', name: 'Every Eye at Once', tier: 4, families: ['occulus'], cost: 100, apCost: 1,
+        { id: 'goEyeStalks', animSlot: 'occEveryEye', animStrikeMs: 270, name: 'Every Eye at Once', tier: 4, families: ['occulus'], cost: 100, apCost: 1,
           cooldownRounds: 2, spellType: 'alien', element: 'psychic', type: 'damage', kind: 'damage', range: 5, dmg: 40,   // STATS29 PASS 2026-10-30: dmg 50→40 a ray (2.06× the Tier IV median a cast in STATS29, 1.90× in STATS28; Occulus 58%)
           damageType: 'magic', randomTargets: { count: 5, scope: 'enemies', distinct: false, mult: 1 },
           bonusVsStatus: { status: 'silence', mult: 1.5 },
           desc: 'Every stalk turns and fires. 5 rays land on random enemies within 5 tiles (the same enemy can be hit again), WEAK magic damage each. Deals bonus damage to Silenced targets. Cooldown: 2 rounds.' },
-        { id: 'raceDeathGaze', spellType: 'anomaly', name: 'Death Gaze',
+        { id: 'raceDeathGaze', animSlot: 'occDeathGaze', animStrikeMs: 340, spellType: 'anomaly', name: 'Death Gaze',
           type: 'damage', tier: 4, families: ['eyesight'], cost: 50, dmg: 200, range: 4,   // STATS25 PASS 2026-10-29: dmg 180→200 (451 a cast, 0.80× the Tier IV median; Occulus 38/39%, Bligblog)
           kind: 'damage', damageType: 'magic',
           statStageBoost: { def: -1 },
           bonusVsStatus: { status: 'stun', mult: 1.5 },
           desc: 'Deals HEAVY magic damage to a Single Enemy. Lowers the target\'s DEF by 1 stage. Deals bonus damage to Stunned targets.' },
-        { id: 'raceOmniVision', tier: 2, families: ['eyesight'], spellType: 'divine', name: 'Omni-Vision',
+        { id: 'raceOmniVision', animSlot: 'occOmni', tier: 2, families: ['eyesight'], spellType: 'divine', name: 'Omni-Vision',
           type: 'utility', cost: 20, range: 5, apCost: 1,
           kind: 'scan', scanRadius: 1,
           desc: 'The all-seeing eye reveals. Reveals fog and hidden units in the 3x3 around the caster.' },
