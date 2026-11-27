@@ -362,6 +362,32 @@ before, 9,889 tufts / 148,437 after (8 % fewer), fill time the same (2.7 s in th
 carries `aBend` = `FLORA_SWAY.k` x height x min(height, cap) per corner, 0 at the root. Stop the clock: `EW_DISABLE_GRASS_WIND`.
 Checked with two frames at wind time 0 and 1.2 in the Clearing: the plants and blades move, the ground and trunks do not.
 
+**G22 · ROUND 2, THE LUSH FIELD (11-27, mondo on G20's pictures: "that grass is just not cutting it all. This does not look like a AAA
+game").** G20's tufts were right in the world but read as scratches on a flat floor: sparse, short, dark-footed. What changed, all values in
+three-renderer.js: (1) DENSITY near the walker: `HQ_GRASS.perSquare` 14, `autoN` 13 / low 9 (16 tufts a m2, 112 blades), rings to 17 / 42 /
+100 m (far ring `cell: 6`, `thick` 4.4); (2) THE COVER SPLIT IS HEIGHT, NOT HOLES: `cover.bareKeep` 0.90 (was 0.42), `bareH` 0.65, `shortH`
+0.85, `clumpH` 0.70-1.30: the ground is covered everywhere grass grows and the patches differ in height; (3) HEIGHT `HQ_GRASS.height` 1.65
+(was 1.43): shin high in a wood, never knee deep (data.js: "it was knee-deep and hid every rock and plant"); (4) BLADES `_GG3.wide` 0.85,
+`reach` 0.45; (5) THE FOOT IS THE GROUND'S COLOUR: `GGRASS.rootK` 0.70 (was 0.40), `base` 0.90 (was 0.66): no dark speckle at each root.
+**Cost, the Clearing, same spot:** 20,812 tufts / 342,198 triangles (round 1: 9,889 / 148,437; before the pass: 7,651 / 161,901). Building
+them took 840 ms of script in all in the cloud probe (40 us a tuft), sliced as before (`buildMs` 3 a tick), so nothing blocks, but a sprint
+can outrun the far field for a moment on a slow machine. Stonehenge: 16,486 / 241,992. NOT measured on his Mac. If it costs frames there:
+Settings > Video > Grass Low, or lower `perSquare` first (the near ring is most of the triangles).
+Live retune in a probe: `EW_HQ_GRASS`, `EW_GG3`, `EW_GROUND_RULES`, `EW_GGRASS`, then `EW_HQ_GRASS.flush()`; readout `_ewHqGrass.spentMs`.
+His 11-25 word ("one continuous carpet ... I'd remove some") is now answered by height and colour patches, not by thinning.
+
+**G23 · NO OPEN FIELD PAST THE LINE (11-27, mondo at Stonehenge: "why is there a clear seam here and the grass is different on one side
+than the other? That needs to be fixed everywhere" ... "that needs to have natural barriers like trees or something if i cant walk there. i
+never wanna see an open field i cant walk through ... or rocks or whatever is natural and makes sense").** The seam was the room's line: the
+blade grass stopped on it and the land past it was an empty lawn. Two parts, both in three-renderer.js, for every room with `terrain.edges`:
+(1) THE GRASS RUNS ON (`_hqGrassCell`, `HQ_GRASS.pastM` 18): past the line the blades grow on, thinning, on the land's own height
+(`_hqEdgeLandFn`), in the sheet of the room's last square, where the land is green or wooded. Off: `EW_NO_GRASS_PAST`.
+(2) THE BELT (`_hqBuildEdgeLand`): open green country's first 17 m past the line is a wood's edge, three staggered rows of trees, open
+only at a way, a road or a door on that side (`wayGap`). Dry land with plants of its own stands them thick the same way. Opt out:
+`edges.<side>.open: true`, `edges.noBelt: true`, `EW_HQ_NO_BELT`. Checked at Stonehenge (same spot before and after, the south way stays
+open). **NOT covered:** a desert / mesa side with no `plants` row still shows open sand (it needs rocks); the flora field's small plants
+still stop at the line. **The rule for every zone thread:** land the player can see and not walk is closed by something natural.
+
 **Not done in this pass (ideas, none built):** blade colour against a sunlit floor (the tufts read darker than the sheet in full
 sun); a gust that the plants and the grass share; trees were left as they are (they already sway).
 
