@@ -24,7 +24,7 @@ const room = args[0] || 'site_prebuilt_downtown_streets'; const views = JSON.par
 const EXE = fast.EXE;
 const run = async () => {
   const proxy = process.env.HTTPS_PROXY || process.env.https_proxy || null;
-  const browser = await fast.launch(chromium, { headless: true, executablePath: EXE, proxy: proxy ? { server: proxy, bypass: 'localhost,127.0.0.1' } : undefined, args: ['--no-sandbox', '--disable-dev-shm-usage', '--ignore-certificate-errors'] });   // probe-fast.js: llvmpipe when it is there, the held screenshot
+  const browser = await fast.launch(chromium, { headless: !process.env.EW_PROBE_HEADFUL, executablePath: EXE, proxy: proxy ? { server: proxy, bypass: 'localhost,127.0.0.1' } : undefined, args: ['--no-sandbox', '--disable-dev-shm-usage', '--ignore-certificate-errors'] });   // probe-fast.js: llvmpipe when it is there, the held screenshot
   const context = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: Number(flag('w', 1280)), height: Number(flag('h', 800)) } });
   const cnt = { mirror: 0, local: 0, urban: 0, cdn: 0, cache: 0, fail: 0 };
   const CACHE = process.env.EW_CDN_CACHE || path.join(REPO, 'shots/.cdn-cache'); fs.mkdirSync(CACHE, { recursive: true });
