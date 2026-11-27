@@ -111368,7 +111368,7 @@ const ThreeRenderer = (function () {
                 if (wayOut) {
                     var nk = null; try { nk = hqTerrainNodeKey(ti, x, z, y); } catch (eK) {}
                     if (nk != null && sealed.has(nk)) continue;
-                    var esc = true; try { esc = hqTerrainEscapes(ti, x, z, 8000, sealed); } catch (eW) { console.warn('[HQ] the way-out check failed', eW); }
+                    var esc = true; try { esc = hqTerrainEscapes(ti, x, z, { room: (typeof DOOR_HQ !== 'undefined' && _hq.opts && DOOR_HQ.rooms[_hq.opts.room]) || _hq.room, seen: sealed }); } catch (eW) { console.warn('[HQ] the way-out check failed', eW); }
                     if (!esc) continue;
                 }
                 if (V && V.on && V.kind === 'car') { V.x = x; V.z = z; V.y = y; V.v = 0; V.vy = 0; V.wg = null; _hq.cam.init = false; _hq.dirty = true; }

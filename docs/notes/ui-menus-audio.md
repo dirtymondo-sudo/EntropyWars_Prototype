@@ -3100,10 +3100,15 @@ because im already in the zone i want to fast travel to". Two causes, both fixed
   the exit or the way out").** The plot "Mall concourse" (P10-10) has its middle inside the mall's OUTSIDE shell in the city (the solid
   building `dc:P10-10-B1`; the inside is its own room). A solid building's walls stand only on its outline, so its middle passed every
   test of goSpot (no wall near, not the plan's mass) and the walker landed in a sealed box, seen from inside (every face culled: "see
-  through"). Now a landing must be able to walk away: data.js `hqTerrainEscapes(info, x, z, cap, seen)` is a bounded hqTerrainReach,
-  true once it meets `cap` nodes (8,000 ≈ 6,000 m², more than any sealed building), false when it runs out (the mall's shell: 3,397
-  nodes, 0.2 s in node; open ground 0.45 s). A refused pocket's nodes are kept for the rest of the search. Off:
-  `window.EW_GO_NO_WAYOUT = true`. Not touched: the city's own fill of a building interior (mondo's "see through" was the culled shell).
+  through"). Now a landing must be able to walk away: data.js `hqTerrainEscapes(info, x, z, { room, area, seen })` is a bounded
+  hqTerrainReach, true once it meets one of the room's door landings or has covered `area` m² (6,000, more than any sealed building),
+  false when it runs out (the mall's shell: 3,397 nodes, 0.2 s in node). A room with no door never refuses. A refused pocket's nodes
+  are kept for the rest of the search. Measured in the cloud browser: the Mall concourse GO lands at (188.25, 2.75), the service
+  walk on the mall's north side (was (188.25, 20.25), inside the shell), 2.2 s on llvmpipe. A survey of every plot of every zone with
+  the old rule (scratch, not kept): 68 plots landed in a sealed pocket (Disaster City's church, library, museum, gym, the mall and its
+  plaza; Camelot's towers, gate, Great Hall, stables, barracks; the Ski Lodge, the Rental Hut; the Great Pyramid, Menkaure, Khafre;
+  Hangar 18; the Haunted House, the Farmhouse, the Barn; Katana's Samurai Quarter; Heaven's cloud paths; Hell's Bowl and Plinth; ...).
+  Off: `window.EW_GO_NO_WAYOUT = true`. Proof: /mnt/project-files/fast-travel-way-out/.
 
 ### ONE MAP (2026-11-23, owner project, thread "Make the map one zoomable map")
 mondo 11-23: "i hate how zooming in makes the rest of the map disappear, its supposed to be one map with increasing detail as
