@@ -13,6 +13,14 @@ exports.dress = (c) => {
     c.P('flood_mast', 20, 41); c.P('flood_mast', 27, 41); c.P('flood_mast', 6, 21); c.P('signpost', 21, 37, { face: 0 }); c.P('signpost', 8, 23, { face: 90 });
     c.P('telescope', 14, 12, { face: 135 }); c.P('star_projector', 34, 36); c.P('escapepod', 12, 38, { face: 60 });
     c.dec('warning_tape', 20, 24); c.dec('warning_tape', 28, 24);
+    /* THE BLACK CUBE (2026-11-27, mondo: "way in should be the black cube/hexagon on saturn"): it hangs over the plateau south of the Eye, three squares a side,
+       nothing holding it; the frame under it (the way `cube_dmt`, bake-space.js CROSS) is the way into its inside. Drawn only: it hangs clear of every head. */
+    { const w = c.ways.cube_dmt; if (!w || w.sx > 47) throw new Error('H: the way cube_dmt is not on the flat map');
+      c.look('black_cube', w.sx + 0.5, w.sy + 0.5, 0, a => { const S = 10.5, Y = 3.3, h = S / 2, t = 0.14, E = { glow: 1 }, K = c.PLATE, T = 0xcdb8ff;
+          a.box(0, Y, 0, S, S, S, c.HULL, 0x050507);
+          /* its twelve edges, lit: a black cube on a black sky is not seen */
+          [[-h, -h], [h, -h], [-h, h], [h, h]].forEach(q => { a.box(q[0], Y, q[1], t, S, t, K, T, E); });
+          [Y, Y + S - t].forEach(y => { [-h, h].forEach(q => { a.box(0, y, q, S, t, t, K, T, E); a.box(q, y, 0, t, t, S, K, T, E); }); }); }); }
 };
 exports.people = (c) => {
     c.native('grey', 21, 33, 30, c.sayOf('grey', 0));             // "One ice grain in the ring is square."

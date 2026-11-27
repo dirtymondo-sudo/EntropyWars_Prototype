@@ -15341,3 +15341,15 @@ with mondo's OK.
 `--flags=EW_HQ_NO_SURVEY --wait=480000` and a `--pre` that wraps `createImageBitmap` to halve every texture over 256 x 256 (peak about 12 GB, one try:
 `EW_PROBE_TRIES=1`). Never edit a served .js while a probe runs.
 
+
+### THE INSIDE OF THE CUBE, the way in + who lives there (2026-11-27, the same day; mondo's answers are in `docs/plans/dmt-realm/PLAN.md`)
+- **THE WAY IN**: THE BLACK CUBE on Saturn. `docs/plans/world-zones/draw-space.js` saturn way `cube_dmt` (flat square 27,33, face 180, on the Hexagon's
+  plateau south of the Eye); `docs/areas/space/districts/H.js` draws the cube over it (`look` 'black_cube': 10.5 m, hanging 3.3 m up, its twelve
+  edges lit because a black cube on a black sky is not seen; drawn only, it hangs clear of every head); `bake-space.js` CROSS = a way that is a
+  plain door into ANOTHER room (not a DOOR_HQ.links row): `{ id, leaf, label, sub, action: { room, at } }`. The inside's end: bake-dmt.js DOORS
+  (`saturn`, in the middle of S's gate). After a change: `node docs/plans/world-zones/draw-space.js`, `node bake-space.js`, `node bake-dmt.js`.
+- **WHO**: bake-dmt.js `who(platform, dx, dz, race, face)` (checked: on the platform, off solid pieces, off the bridge mouths) + the same races in
+  data.js `HQ_NPC_PLACES.site_prebuilt_cube_dmt`. The room says `crowdAll: true`: without it a room that is not on plots stands ONE of a race and
+  stops at the crowd cap (5 of 16 stood). THE DEMIURGE: N, before the altar, `boss: true, stay: true`, the Cosmic form.
+- **CHECKED (probe-fast)**: the door both ways (the inside to Saturn and back, `hq.interact()`); 17 bodies; a field fight on the Demiurge starts.
+  **NOT**: the fight's camera and its arena on N; an online guest; the Mac's frame rate with 16 bodies.

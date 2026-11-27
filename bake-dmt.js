@@ -116,7 +116,7 @@ function obelisk(id, x, z, h, key) { const [mx, mz] = sqMid(x, z); solid(id, x, 
         { s: 'box', p: [0, 0, 0], size: [3.1, 0.35, 3.1], key: 'dmt_cubes', glow: 1, uv: 3.1 }]); }
 /* THE HUB: four obelisks one square in from its corners; the middle stays open (the fight) */
 [[-4, -4], [3, -4], [-4, 3], [3, 3]].forEach(([x, z]) => obelisk('hub', x, z, 11));
-/* S, THE WAY IN: a gate of ribbon on the south edge, the mandala turning in it (pass 1: it leads nowhere yet, see PLAN "the way in") */
+/* S, THE WAY IN: a gate of ribbon on the south edge, the mandala turning in it (the frame in it = THE WAY IN, below) */
 { const [mx] = mid('S'), z = sx(16.5); solid('S', -3, 16, -3, 16, 9); solid('S', 2, 16, 2, 16, 9);
   arch('S', mx, z, [{ s: 'box', p: [-8.75, 0, 0], size: [2.6, 9, 2.2], key: 'dmt_ribbon', glow: 1, uv: 2.6 }, { s: 'box', p: [8.75, 0, 0], size: [2.6, 9, 2.2], key: 'dmt_ribbon', glow: 1, uv: 2.6 },
       { s: 'box', p: [0, 9, 0], size: [21, 1.6, 2.4], key: 'dmt_cubes', glow: 1, uv: 3.2 }, { s: 'quad', p: [0, 0.2, -0.2], size: [14.6, 8.8], key: 'dmt_tunnel', glow: 1, uv: 'fit', ds: true }]); }
@@ -147,6 +147,27 @@ function obelisk(id, x, z, h, key) { const [mx, mz] = sqMid(x, z); solid(id, x, 
       { s: 'quad', p: [0, 1.7, 0], size: [7, 7], key: 'dmt_tunnel', glow: 1, uv: 'fit', ds: true }]); }
 { const x = P.NW.x + 2, z = P.NW.z + 2; solid('NW', x, z, x + 1, z + 1, 10);
   arch('NW', sx(x + 1), sx(z + 1), [{ s: 'cyl', p: [0, 0, 0], r: 3.1, h: 10, key: 'dmt_eyes', glow: 1, seg: 16 }, { s: 'dome', p: [0, 10, 0], r: 3.4, h: 2.4, key: 'dmt_weave', glow: 1, seg: 16, rings: 5 }, { s: 'cyl', p: [0, 0, 0], r: 3.4, h: 0.4, key: 'dmt_ribbon', glow: 1, seg: 16 }]); }
+
+/* ── THE WAY IN (2026-11-27, mondo: "way in should be the black cube/hexagon on saturn"): the frame in the middle of S's gate. The other end is the frame
+   under the Black Cube on Saturn's Hexagon (bake-space.js CROSS `cube_dmt`, docs/areas/space/districts/H.js). ── */
+const DOORS = [{ id: 'saturn', wall: 'free', x: 0, z: sx(16.4), y: base('S'), face: 0, leaf: 'leaf_frame_only', label: 'SATURN', sub: 'THE HEXAGON', action: { room: 'site_prebuilt_moon_plots', at: 'cube_dmt' } }];
+/* ── WHO LIVES HERE (mondo 11-27: "occulus, floating brain, orb of light, machine elves are already in the game, the hollow, the shadow entities, and the mantids";
+   "the demiurge should be the boss of the dungeon"). One on a square's middle, by platform squares (dx, dz from its north-west corner). Nobody on S: the way in
+   stays clear. THE DEMIURGE stands alone before the altar of N, the highest platform and the farthest from the way in (its Cosmic form: the female side; my pick).
+   data.js HQ_NPC_PLACES has the same races for this room: change both together. ── */
+const NPC = [];
+function who(id, dx, dz, race, face, o) { const p = P[id], x = p.x + dx, z = p.z + dz;
+    if (dx < 0 || dz < 0 || dx >= p.w || dz >= p.d) errs.push(race + ' stands off ' + id); if (solidSq.has(x + ',' + z)) errs.push(race + ' stands in a solid piece on ' + id + ' at ' + x + ',' + z);
+    if (MOUTHS.some(m => m[0] === x + ',' + z)) errs.push(race + ' stands in a bridge mouth on ' + id);
+    if (NPC.some(n => n.x === sx(x + 0.5) && n.z === sx(z + 0.5))) errs.push(race + ': the square is taken on ' + id);
+    NPC.push(Object.assign({ x: sx(x + 0.5), z: sx(z + 0.5), y: base(id), face: face || 0, race }, o || {})); }
+who('hub', 2, 6, 'machine elves', 200); who('hub', 7, 6, 'machine elves', 160); who('hub', 5, 2, 'orb of light', 180);
+who('E', 3, 2, 'machine elves', 270); who('E', 4, 5, 'boltzmann brain', 250);
+who('W', 3, 4, 'orb of light', 90); who('W', 4, 3, 'mantid', 100);
+who('NE', 2, 3, 'occulus', 200); who('NW', 1, 4, 'occulus', 140); who('N', 1, 6, 'occulus', 170); who('N', 6, 6, 'occulus', 190);
+who('SE', 3, 3, 'shadow entity', 300); who('SE', 1, 4, 'hollow', 270);
+who('SW', 1, 2, 'mantid', 60); who('SW', 4, 4, 'shadow entity', 30);
+who('N', 3, 5, 'demiurge', 180, { gender: 'female', label: 'THE DEMIURGE · BOSS', stay: true, boss: true });
 
 /* ── THE CHECK: every platform reached from the spawn over joins; no solid on a bridge mouth ── */
 { const seen = new Set(['S']); let grew = true; while (grew) { grew = false; JOINS.forEach(([a, b]) => { if (seen.has(a) !== seen.has(b)) { seen.add(a); seen.add(b); grew = true; } }); }
@@ -179,11 +200,12 @@ L.push('                features: [');
 F.concat(ARCH).forEach(f => L.push('                    ' + J(f) + ','));
 L.push('                ],');
 L.push('            },');
-L.push('            doors: [],');
+L.push('            doors: ' + J(DOORS) + ',');
 L.push('            counters: [],');
 L.push('            props: [],');
 L.push('            agents: [],');
-L.push('            npcSpots: [],');
+L.push('            crowdAll: true,   // every placed resident stands, a race more than once too (three-renderer.js _hqCrowdLedger; the hotel floors\' rule)');
+L.push('            npcSpots: ' + J(NPC) + ',');
 L.push('            onlineSpots: [],');
 L.push('            lines: [],');
 L.push('            spawn: ' + J(spawn) + ',');

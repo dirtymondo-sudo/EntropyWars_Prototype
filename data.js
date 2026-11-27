@@ -79328,11 +79328,12 @@ const DOOR_HQ = {
                     {k:'arch',id:'dmt:NW:21',x:-45.5,z:-45.5,rot:0,y:8.75,parts:[{s:'cyl',p:[0,0,0],r:3.1,h:10,key:'dmt_eyes',glow:1,seg:16},{s:'dome',p:[0,10,0],r:3.4,h:2.4,key:'dmt_weave',glow:1,seg:16,rings:5},{s:'cyl',p:[0,0,0],r:3.4,h:0.4,key:'dmt_ribbon',glow:1,seg:16}]},
                 ],
             },
-            doors: [],
+            doors: [{id:'saturn',wall:'free',x:0,z:57.4,y:7,face:0,leaf:'leaf_frame_only',label:'SATURN',sub:'THE HEXAGON',action:{room:'site_prebuilt_moon_plots',at:'cube_dmt'}}],
             counters: [],
             props: [],
             agents: [],
-            npcSpots: [],
+            crowdAll: true,   // every placed resident stands, a race more than once too (three-renderer.js _hqCrowdLedger; the hotel floors' rule)
+            npcSpots: [{x:-8.75,z:5.25,y:7,face:200,race:'machine elves'},{x:8.75,z:5.25,y:7,face:160,race:'machine elves'},{x:1.75,z:-8.75,y:7,face:180,race:'orb of light'},{x:43.75,z:-5.25,y:10.5,face:270,race:'machine elves'},{x:47.25,z:5.25,y:10.5,face:250,race:'boltzmann brain'},{x:-47.25,z:1.75,y:3.5,face:90,race:'orb of light'},{x:-43.75,z:-1.75,y:3.5,face:100,race:'mantid'},{x:43.75,z:-43.75,y:12.25,face:200,race:'occulus'},{x:-50.75,z:-40.25,y:8.75,face:140,race:'occulus'},{x:-8.75,z:-36.75,y:14,face:170,race:'occulus'},{x:8.75,z:-36.75,y:14,face:190,race:'occulus'},{x:47.25,z:47.25,y:8.75,face:300,race:'shadow entity'},{x:40.25,z:50.75,y:8.75,face:270,race:'hollow'},{x:-50.75,z:43.75,y:5.25,face:60,race:'mantid'},{x:-40.25,z:50.75,y:5.25,face:30,race:'shadow entity'},{x:-1.75,z:-40.25,y:14,face:180,race:'demiurge',gender:'female',label:'THE DEMIURGE · BOSS',stay:true,boss:true}],
             onlineSpots: [],
             lines: [],
             spawn: {x:0,z:49,face:0},
@@ -79790,6 +79791,7 @@ const DOOR_HQ = {
                     {k:'bridge',x0:383.25,z0:-276.5,x1:383.25,z1:-245,w:3.5,y:7,absY:true},
                     {k:'texbuilding',id:'spc:mars:roverbay',seed:1,x:428.75,z:-206.5,w:24.5,d:14,rot:0,storeys:1,h:5.25,skin:false,hollow:true,leaf:'leaf_bulkhead',leafDouble:true,keyIn:'urban:MetalWallRibbed1a',floorIn:'urban:MetalDiamondPlate1a'},
                     {k:'arch',id:'spc:mars:roverbay:look',x:428.75,z:-206.5,rot:0,parts:[{s:'box',p:[0,0,0],size:[24.6,5.25,14.1],top:false,faces:'blr',key:'urban:MetalWallRibbed1a',tint:14209732,uv:[3.5,1.75]},{s:'quad',p:[0,0,7.05],size:[24.6,5.25],ry:0,hole:[-0.87,1.74,2.2],key:'urban:MetalWallRibbed1a',tint:14209732,uv:[3.5,1.75]},{s:'box',p:[-1.84,0,7.1],size:[0.2,2.4,0.2],key:'urban:MetalWarningStripe1'},{s:'box',p:[0.1,0,7.1],size:[0.2,2.4,0.2],key:'urban:MetalWarningStripe1'},{s:'box',p:[-0.87,2.25,7.1],size:[2.24,0.2,0.2],key:'urban:MetalWarningStripe1'},{s:'box',p:[0,5.25,0],size:[24.9,0.02,14.4],sides:false,top:false,under:true,roof:true,ry:0,key:'urban:MetalWallRibbed1a',tint:3817030},{s:'roof',form:'barrel',p:[0,5.25,0],size:[24.9,1.6,14.4],roof:true,key:'urban:MetalCorrugatedPainted1a',tint:13222578}]},
+                    {k:'arch',id:'spc:saturn:black_cube:look',x:-71.65,z:180.29,rot:0,parts:[{s:'box',p:[0,3.3,0],size:[10.5,10.5,10.5],key:'urban:MetalWallRibbed1a',tint:328967},{s:'box',p:[-5.25,3.3,-5.25],size:[0.14,10.5,0.14],key:'urban:MetalDiamondPlate1a',tint:13482239,glow:1},{s:'box',p:[5.25,3.3,-5.25],size:[0.14,10.5,0.14],key:'urban:MetalDiamondPlate1a',tint:13482239,glow:1},{s:'box',p:[-5.25,3.3,5.25],size:[0.14,10.5,0.14],key:'urban:MetalDiamondPlate1a',tint:13482239,glow:1},{s:'box',p:[5.25,3.3,5.25],size:[0.14,10.5,0.14],key:'urban:MetalDiamondPlate1a',tint:13482239,glow:1},{s:'box',p:[0,3.3,-5.25],size:[10.5,0.14,0.14],key:'urban:MetalDiamondPlate1a',tint:13482239,glow:1},{s:'box',p:[-5.25,3.3,0],size:[0.14,0.14,10.5],key:'urban:MetalDiamondPlate1a',tint:13482239,glow:1},{s:'box',p:[0,3.3,5.25],size:[10.5,0.14,0.14],key:'urban:MetalDiamondPlate1a',tint:13482239,glow:1},{s:'box',p:[5.25,3.3,0],size:[0.14,0.14,10.5],key:'urban:MetalDiamondPlate1a',tint:13482239,glow:1},{s:'box',p:[0,13.66,-5.25],size:[10.5,0.14,0.14],key:'urban:MetalDiamondPlate1a',tint:13482239,glow:1},{s:'box',p:[-5.25,13.66,0],size:[0.14,0.14,10.5],key:'urban:MetalDiamondPlate1a',tint:13482239,glow:1},{s:'box',p:[0,13.66,5.25],size:[10.5,0.14,0.14],key:'urban:MetalDiamondPlate1a',tint:13482239,glow:1},{s:'box',p:[5.25,13.66,0],size:[0.14,0.14,10.5],key:'urban:MetalDiamondPlate1a',tint:13482239,glow:1}]},
                 ],
             },
             doors: [
@@ -79797,6 +79799,7 @@ const DOOR_HQ = {
                 {id:'bore_farside',wall:'free',x:684.25,z:124.25,face:90,leaf:'leaf_bulkhead',label:'THE BORE',sub:'THE FAR SIDE · THE BORE TO THE FACE',action:{room:'site_prebuilt_moon_plots',at:'bore_face'},secret:true},
                 {id:'frame_rim',wall:'free',x:-148.75,z:145.25,face:90,y:3.5,leaf:'leaf_frame_only',label:'THE FRAME',sub:'THE RIM WALK · THE DROP’S FRAME',action:{room:'site_prebuilt_moon_plots',at:'frame_singularity'}},
                 {id:'frame_singularity',wall:'free',x:355.25,z:204.75,face:180,leaf:'leaf_frame_only',label:'THE FRAME',sub:'THE ACCRETION RIM · THE FRAME',action:{room:'site_prebuilt_moon_plots',at:'frame_rim'}},
+                {id:'cube_dmt',wall:'free',x:-71.75,z:180.25,face:180,leaf:'leaf_frame_only',label:'THE BLACK CUBE',sub:'THE INSIDE',action:{room:'site_prebuilt_cube_dmt',at:'saturn'}},
             ],
             counters: [],
             props: [
@@ -105109,6 +105112,9 @@ const HQ_NPC_PLACES = {
     site_prebuilt_lookingglass_realm: ['occulus @S:High Thought >S,L,N', 'occulus @L:Reading >L', 'occulus @N:Stage >N', 'boltzmann brain @S:Open Sea >S,L', 'boltzmann brain @L:Not Yet Written stay', 'orb of light @S:Still Water >S,L', 'orb of light @L:Stacks >L',
         'machine elves @L:Card Catalogue stay', 'dreameater @N:The Bed >N,S', 'telepath m @S:Thought-Forms >S', 'telepath f @S:Islands >S', 'shadow entity @N:Thing Under >N', 'flesheater @N:Maw >N', 'hollow @N:The Bed >N,S night', 'succubus m @N:Bad Nights >N', 'succubus f @N:Blood >N'],
     site_prebuilt_lookingglass_waiting: ['ghost m'],
+    /* ── THE INSIDE OF THE BLACK CUBE (mondo 11-27: "occulus, floating brain, orb of light, machine elves ..., the hollow, the shadow entities, and the mantids";
+       "the demiurge should be the boss of the dungeon"). The squares are bake-dmt.js's (its WHO LIVES HERE): change both together ── */
+    site_prebuilt_cube_dmt: ['occulus x4', 'boltzmann brain', 'orb of light x2', 'machine elves x3', 'hollow', 'shadow entity x2', 'mantid x2', 'demiurge f stay'],
     /* ── OUTER SPACE (one room, four worlds: no route crosses from one world to the next) ── */
     site_prebuilt_moon_plots: ['astronaut @M:Lander >M,C', 'astronaut @M:Habitat stay', 'grey @F:Saucer >F,C x2', 'bligblog @F:Dig >F', 'reptilian @F:Bore >F', 'mantid @C:The Crater >C,F',
         'martian @Y:Face >Y,V x2', 'martian @V:The Canyon >V', 'astronaut @R:Rover Bay >R', 'grey @H >H', 'black goo @H >H', 'nordic m @G >G', 'nordic f @G >G', 'barbarella @G >G',
@@ -110671,25 +110677,30 @@ const CROP_VARY = {
         { w: 10, to: 'sunflowers', n: 3, h: [2.2, 2.9], vy: [1, 1] },  // a sunflower field
         { w: 5, to: 'sunflowers', n: 3, h: [2.0, 2.6], tint: 0xd9b878, vy: [1, 1] } ] }   // sunflowers past their best
 };
+/* the look of a listed key's field patch at (x, z); `r` = the row's own chance (0..1), a little of it moves a patch's rim so two fields meet ragged */
+function cropLookAt(key, x, z, r) {
+    const V = CROP_VARY[key]; if (!V) return null;
+    const h2 = cropHash, noise = (x, y, s) => { const xi = Math.floor(x), yi = Math.floor(y), fx = x - xi, fy = y - yi, u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy);
+        return (h2(xi, yi, s) * (1 - u) + h2(xi + 1, yi, s) * u) * (1 - v) + (h2(xi, yi + 1, s) * (1 - u) + h2(xi + 1, yi + 1, s) * u) * v; };
+    /* the patch: two octaves, stretched to 0..1 */
+    let t = noise(x / V.patch + 31.7, z / V.patch - 12.3, 5) * 0.72 + noise(x / (V.patch * 0.37), z / (V.patch * 0.37), 9) * 0.28;
+    t = Math.min(0.9999, Math.max(0, (t - 0.22) / 0.56 + ((r == null ? 0.5 : r) - 0.5) * V.edge));
+    if (V._tot === undefined) { let tot = 0; V.looks.forEach(L => { tot += L.w; }); V._tot = tot;
+        /* (the looks are dealt out of order along the noise, so a tall yellow field can stand by a young one, not always by its neighbour in the list) */
+        V._order = V.looks.map((_, k) => k).sort((a, b) => h2(a, 7, 4) - h2(b, 7, 4)); }
+    let acc = 0; for (let k = 0; k < V._order.length; k++) { acc += V.looks[V._order[k]].w / V._tot; if (t < acc) return V.looks[V._order[k]]; }
+    return V.looks[0];
+}
+function cropHash(x, y, s) { const n = Math.sin(x * 127.1 + y * 311.7 + s * 74.7) * 43758.5453; return n - Math.floor(n); }
 function cropRowsVary(room, rows) {
     if (!rows || !rows.length || (typeof window !== 'undefined' && window.EW_NO_CROP_VARY)) return rows;
-    const h2 = (x, y, s) => { let n = Math.sin(x * 127.1 + y * 311.7 + s * 74.7) * 43758.5453; return n - Math.floor(n); };
-    const noise = (x, y, s) => { const xi = Math.floor(x), yi = Math.floor(y), fx = x - xi, fy = y - yi, u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy);
-        return (h2(xi, yi, s) * (1 - u) + h2(xi + 1, yi, s) * u) * (1 - v) + (h2(xi, yi + 1, s) * (1 - u) + h2(xi + 1, yi + 1, s) * u) * v; };
-    const wd = (room && room.world) || null, ox = (wd && wd.x) || 0, oz = (wd && wd.z) || 0;   // (a room at its world place: the patches run on across a seam)
+    const h2 = cropHash;
     let out = null;
     for (let i = 0; i < rows.length; i++) {
         const p = rows[i], V = p && CROP_VARY[p.key];
         if (!V || p.vy || p.tint != null || p.x == null) { if (out) out.push(p); continue; }
         if (!out) out = rows.slice(0, i);
-        const r1 = h2(p.x, p.z, 1), r2 = h2(p.x, p.z, 2), r3 = h2(p.x, p.z, 3);
-        /* the patch: two octaves, stretched to 0..1, a little of the row's own chance at a patch's rim so two fields meet ragged */
-        let t = noise((p.x + ox) / V.patch + 31.7, (p.z + oz) / V.patch - 12.3, 5) * 0.72 + noise((p.x + ox) / (V.patch * 0.37), (p.z + oz) / (V.patch * 0.37), 9) * 0.28;
-        t = Math.min(0.9999, Math.max(0, (t - 0.22) / 0.56 + (r1 - 0.5) * V.edge));
-        let tot = 0; V.looks.forEach(L => { tot += L.w; }); let acc = 0, L = V.looks[0];
-        /* (the looks are dealt out of order along the noise, so a tall yellow field can stand by a young one, not always by its neighbour in the list) */
-        const order = V._order || (V._order = V.looks.map((_, k) => k).sort((a, b) => h2(a, 7, 4) - h2(b, 7, 4)));
-        for (let k = 0; k < order.length; k++) { acc += V.looks[order[k]].w / tot; if (t < acc) { L = V.looks[order[k]]; break; } }
+        const r1 = h2(p.x, p.z, 1), r2 = h2(p.x, p.z, 2), r3 = h2(p.x, p.z, 3), L = cropLookAt(p.key, p.x, p.z, r1);
         const vy = L.vy ? L.vy[0] + (L.vy[1] - L.vy[0]) * r2 : 1;
         if (!L.to) { const c = Object.assign({}, p, { vy: Math.round(vy * 100) / 100 }); if (L.tint != null) c.tint = L.tint; out.push(c); continue; }
         const a = (p.face || 0) * Math.PI / 180, dx = Math.cos(a), dz = -Math.sin(a), n = L.n || 3, span = 3.5;
@@ -110701,6 +110712,19 @@ function cropRowsVary(room, rows) {
     }
     return out || rows;
 }
+/* THE CROP FIELDS (2026-11-27, mondo's corn ask, the second half): the corn was ONE row thick, a line round bare ground: from over the line, through a
+   gap or from above a "field" was an empty lawn with a hedge. Now every square of the room's solid ground that lies within `near` metres of a crop row
+   (and in no tree zone) is PLANTED: drilled rows `rows` m apart, a plant every `along` m, each plant two crossed cards wearing a picture of the game's
+   own crop model (the sheet `ew_crop_cards.png`, drawn by bake-crops.js; a card = its column, `w` its width over the plant's height, `fill` the plant's
+   share of the tile's height, `h` the plant's height, `keep` the share of spots it takes). The crop, its tint and height are the patch's own
+   (cropLookAt), so the line and the field behind it are one crop. Drawn by three-renderer.js with the flora field's cells (one merged mesh a cell,
+   four triangles a plant, the wind's sway); nothing blocks, nothing is walked: the ground under it was solid already. Off: window.EW_NO_CROP_FIELDS. */
+const CROP_FIELDS = {
+    sheet: 'asset:world/nature/flora/ew_crop_cards.png', cols: 3,
+    cards: { corn: { col: 0, w: 0.6, fill: 0.833, h: [2.1, 2.5], keep: 1 }, sunflower: { col: 1, w: 0.613, fill: 0.815, h: [2.0, 2.6], keep: 0.62 }, wheat: { col: 2, w: 0.77, fill: 0.649, h: [1.0, 1.3], keep: 1 } },
+    of: { corn_row: 'corn', sunflowers: 'sunflower' },   // a crop row's key (and a look's `to`) = its card
+    rows: 0.8, along: 0.5, jitter: 0.13, near: 21, nearCell: 7, foot: 0.6, shade: [0.62, 0.84]
+};
 function zoneFloraSwap(room, rows, fallbackId) {
     if (!rows || !rows.length || (typeof window !== 'undefined' && (window.EW_NO_FLORA || window.EW_NO_FLORA_SWAP))) return rows;
     const S = ZONE_FLORA.swap, id = zoneFloraRoomId(room) || fallbackId || null; if (!S || !id) return rows;
