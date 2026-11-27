@@ -11754,6 +11754,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            assumes (Excalibur/iai flip/lay it themselves from there) */
         sword:       { file: 'Meshy_AI_master_sword_0713025949_texture.glb',      axis: 'y',
                        tweak: { rx: Math.PI } },
+        /* THE CASTER'S OWN BLADE (2026-11-27): the Shogun's and the Samurai Slug's sword effects swing the Katana Island katana
+           (kt_katana, measured: 0.96 long on x, the grip on +x, the edge along y); _sigBladeInst stands it tip up */
+        katana:      { url: 'https://cdn.entropywars.net/Assets/world/props/meshy/katana/katana.glb', axis: 'z' },
 
         /* ── 2026-07-25 batch — measured straight from the GLB scene graphs
            before wiring (bbox x/y/z noted where it matters). Guns come in
@@ -12348,6 +12351,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            and finishers share with the building warm here too — a first
            cast used to get the procedural box (the Drive-By's Cadillac) */
         for (var mk = 0; mk < _WPN_DRIP_MISC.length; mk++) _wpnDripQueue.push('misc:' + _WPN_DRIP_MISC[mk]);
+        /* THE CASTER'S OWN BLADE (2026-11-27): a Shogun or a Samurai Slug on the board streams the katana first */
+        try { if (typeof state !== 'undefined' && state && state.units && state.units.some(function (u) { return u && (u.race === 'shogun' || u.race === 'samurai slug'); }) && _wpnDripQueue.indexOf('katana') > 0) { _wpnDripQueue.splice(_wpnDripQueue.indexOf('katana'), 1); _wpnDripQueue.unshift('katana'); } } catch (e) {}
         /* THE DRAGON WING (2026-10-27): a dragon on the board warms the wing its finisher (Hoard) wears */
         try { if (typeof state !== 'undefined' && state && state.units && state.units.some(function (u) { return u && u.race === 'dragon'; })) _wpnDripQueue.push('wing:dragon'); } catch (e) {}
         /* THE REAL BODIES (2026-10-28): the props of the executions whose executioners are on the board stream first */
@@ -13740,8 +13745,58 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        ghost(mat) builds an afterimage of the same model (the slash combo's
        lagging blades). No procedural blade any more (NO STAND-INS,
        2026-10-05): _sigBuildSword hands back an empty holder until it lands. */
+    /* THE CASTER'S OWN BLADE (2026-11-27, mondo: "For origami girl her swordmanship abilities should use the paper sword instead of
+       the normal sword model for those spell animations. Same thing with shogun and samurai slugs, use the katana model"): the sword
+       a sword effect swings is the caster's own. The caster = the unit whose turn it is (the stage: its hero), the same read as
+       _sigCasterPos, so the host and the guest pick the same blade (RULE #2: the state carries _blitzActiveUnitId).
+         'paper'  = her folded paper sword (three-renderer.js THE ORIGAMI, ThreeRenderer.oriSword: the fight's own sheet, finished)
+         'katana' = the Katana Island katana (kt_katana, Assets/world/props/meshy/katana/katana.glb)
+         'sword'  = the master sword, everyone else.
+       _sigBladeInst(key, L) hands back any of them in the master sword's instance frame (tip up +y, centred, L long). A blade still
+       streaming = no blade this cast (NO STAND-INS), never the master sword in its place. */
+    var _SIG_BLADE_BY_RACE = { 'origami girl': 'paper', 'shogun': 'katana', 'samurai slug': 'katana' };
+    var _SIG_BLADE_HILT = { sword: 0.86, katana: 0.87, paper: 0.86 };   /* where the grip sits, tip → pommel */
+    function _sigCasterRace() {
+        if (_VS.on) { try { return _VS.race ? String(_VS.race() || '').toLowerCase() : ''; } catch (e) { return ''; } }
+        try {
+            if (typeof state === 'undefined' || !state || !state.units || state._blitzActiveUnitId == null) return '';
+            for (var i = 0; i < state.units.length; i++) { var u = state.units[i]; if (u && u.id === state._blitzActiveUnitId) return String(u.race || '').toLowerCase(); }
+        } catch (e) {}
+        return '';
+    }
+    function _sigBladeKey() {
+        var k = _SIG_BLADE_BY_RACE[_sigCasterRace()] || 'sword';
+        if (k === 'paper' && (typeof ThreeRenderer === 'undefined' || typeof ThreeRenderer.oriSword !== 'function')) k = 'sword';
+        return k;
+    }
+    function _sigBladeReady(key) { return key === 'paper' ? true : _wpnReady(key); }
+    function _sigBladeInst(key, L) {
+        if (key === 'paper') {
+            var S = null; try { S = ThreeRenderer.oriSword(); } catch (e) {}
+            if (!S) return null;
+            var sheet = S.group; sheet.updateMatrixWorld(true);
+            sheet.traverse(function (n) { if (n.isMesh && n.geometry) n.geometry.computeBoundingBox(); });
+            var bb = new THREE.Box3().setFromObject(sheet), c = bb.getCenter(new THREE.Vector3()), h = bb.getSize(new THREE.Vector3()).y || 1, s = L / h;
+            sheet.scale.setScalar(s); sheet.position.set(-c.x * s, -c.y * s, -c.z * s);
+            var pw = new THREE.Group(); pw.add(sheet);
+            var pm = S.mats.slice(0, 2), pl = S.mats[2], plOp = pl.opacity;
+            for (var i = 0; i < pm.length; i++) pm[i].transparent = true;
+            sheet.traverse(function (n) { if (n.isMesh) n.renderOrder = 157; });
+            return { group: pw, len: L, paper: true,
+                     setFade: function (f) { for (var j = 0; j < pm.length; j++) pm[j].opacity = f; pl.opacity = plOp * f; } };
+        }
+        if (key === 'katana') {
+            var ki = _wpnInstance('katana', L); if (!ki) return null;
+            /* the file lies along x, the grip on +x (the instance swings it onto +z): grip down, tip up, the edge leading the swing */
+            ki.group.rotation.set(Math.PI / 2, Math.PI / 2, 0, 'YXZ');
+            var kw = new THREE.Group(); kw.add(ki.group);
+            return { group: kw, len: ki.len, setFade: ki.setFade };
+        }
+        return _wpnInstance('sword', L);
+    }
     function _sigSwordMeshy(opts) {
-        if (!_wpnReady('sword')) return null;
+        var key = _sigBladeKey();
+        if (!_sigBladeReady(key)) return null;
         var len = opts.len || 260;
         var L = len * 1.27;                       /* tip → pommel, as the procedural's */
         function framed(inst) {
@@ -13760,10 +13815,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 n.renderOrder = 157;
             });
         }
-        var inst = _wpnInstance('sword', L);
+        var inst = _sigBladeInst(key, L);
         if (!inst) return null;
         var group = framed(inst);
-        var holo = !!opts.hologram;
+        var holo = !!opts.hologram && !inst.paper;   /* paper stays paper (a see-through glow would lose the fold) */
         var tint = new THREE.Color(opts.bladeColor != null ? opts.bladeColor : 0xbfe0ff);
         var mats = [];
         inst.group.traverse(function (n) {
@@ -13780,19 +13835,20 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
         /* the glow shell: the same model, additive, in the spell's colour */
         var glowMat = _sigMat(opts.glowColor != null ? opts.glowColor : 0x88bbff);
-        var shellInst = _wpnInstance('sword', L * 1.035);
+        var shellInst = _sigBladeInst(key, L * 1.035);
         var shell = null;
         if (shellInst) { shell = framed(shellInst); shell.position.y = -L * 0.0175; recolor(shell, glowMat); group.add(shell); }
         var holoBase = holo ? 0.42 : 1;
         function setFade(f, glowBoost) {
-            for (var i = 0; i < mats.length; i++) mats[i].opacity = holoBase * f;
+            if (inst.paper) inst.setFade(f);
+            else for (var i = 0; i < mats.length; i++) mats[i].opacity = holoBase * f;
             glowMat.opacity = (holo ? 0.35 : 0.16 + 0.4 * (glowBoost || 0)) * f;
         }
         setFade(0);
         return {
-            group: group, setFade: setFade, hiltY: L * 0.86, meshy: true,
+            group: group, setFade: setFade, hiltY: L * (_SIG_BLADE_HILT[key] || 0.86), meshy: true, blade: key,
             ghost: function (mat) {
-                var gi = _wpnInstance('sword', L);
+                var gi = _sigBladeInst(key, L);
                 if (!gi) return new THREE.Group();
                 var gg = framed(gi); recolor(gg, mat);
                 return gg;
@@ -16095,8 +16151,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        stroke — and only AFTER the swordsman "sheathes" does the world notice
        it has been cut (delayed flash + shock). ───────────────────────────── */
     function _sigIaiCut3D(tx, ty) {
-        var ts = _cfg().tileSize || 128;
-        if (!_wpnReady('sword')) {
+        var ts = _cfg().tileSize || 128, bladeKey = _sigBladeKey();   /* THE CASTER'S OWN BLADE */
+        if (!_sigBladeReady(bladeKey)) {
             _sigSlashCombo3D(tx, ty, {
                 glowColor: 0xddeeff, circleColor: 0x99bbee,
                 bladeTex: 'metal.png', bladeColor: 0xffffff,
@@ -16116,7 +16172,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         g.rotation.y = ((tx * 7 + ty * 13) % 8) * Math.PI / 4;
         var pivot = new THREE.Group();
         g.add(pivot);
-        var inst = _wpnInstance('sword', ts * 1.0);
+        var inst = _sigBladeInst(bladeKey, ts * 1.0);
         if (!inst) return;
         inst.group.rotation.z = -Math.PI / 2;    /* blade +Y → +X: lying flat */
         inst.group.position.x = inst.len * 0.38; /* grip near the pivot */
@@ -81772,6 +81828,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         sigNessieSurfaces3D: _sigNessieSurfaces3D,
         sigAvalanche3D: _sigAvalanche3D,
         sigSpaceDisco3D: _sigSpaceDisco3D,
+        sigBuildSword: _sigBuildSword,   /* THE CASTER'S OWN BLADE (2026-11-27): the sword the sword effects swing for whoever's turn it is (a probe reads it) */
+        sigBladeKey: _sigBladeKey,
         sigAssimilated3D: _sigAssimilated3D,
         sigEruption3D: _sigEruption3D,
         sigFlashFrozen3D: _sigFlashFrozen3D,
