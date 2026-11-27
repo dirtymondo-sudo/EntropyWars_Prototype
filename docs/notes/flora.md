@@ -418,6 +418,11 @@ whole, now 74 m out).
 512 px JPEG sheet each (95-155 KB), `Assets/world/props/meshy/edge_rock_*.glb`. Made with `/mnt/project-files/foliage-pass/rocks/gen.py` (concept nano-banana-pro ->
 image-to-3d, target 900 triangles, no PBR; the sheets shrunk from 2K by a small script). 234 credits. The kit kinds `edge_rock_1..4` are gone; the kit rocks stay as props.
 
+**G29 · THE UNDERWOOD + THE DRY SCRUB (11-27).** THE BELT's trees were all trunks at eye level: six in ten of its places also stand a sapling (the belt's own kinds,
+1.6 to 3 m). The rock line's dry places stand the graveyard pack's dead bushes between the boulders (`edge_dead_bush_1/2`, four in ten). Stonehenge: 567 -> 751 planted.
+TRIED AND DROPPED: Meshy leafy bushes (two tests, 78 credits): at 1,500 triangles a leafy shrub comes back as loose leaf shards. Not made: new logs / stumps / desert
+scrub (the game has `fallen_log`, `meshy_fallen_log`, `meshy_stump`, the kit stumps, the dead bushes, and the Woods' scenic pass already lays them).
+
 **Not done in this pass (ideas, none built):** blade colour against a sunlit floor (the tufts read darker than the sheet in full
 sun); a gust that the plants and the grass share; trees were left as they are (they already sway).
 

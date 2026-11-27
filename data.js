@@ -93460,6 +93460,7 @@ const HQ_TREE_KINDS = {
     /* THE ROCK LINE (2026-11-27, mondo: "i never wanna see an open field i cant walk through ... rocks or whatever is natural" · "make those meshy rocks"): six Meshy
        boulders (about 930 triangles, one 512 px sheet each; /mnt/project-files/foliage-pass/rocks/gen.py) as tree kinds, so the land past a room's line can stand them
        (three-renderer.js THE ROCK LINE). sand_* = desert sandstone, gran_* = grey granite; a = round, b = tall, c = wide and low. `still` = no wind on it. */
+    edge_dead_bush_1: { model: 'asset:world/packs/blendervoyage_graveyard/psxg_dead_bush_1.glb', name: 'dead bush' }, edge_dead_bush_2: { model: 'asset:world/packs/blendervoyage_graveyard/psxg_dead_bush_2.glb', name: 'dead bush, big' },   // (11-27: the graveyard pack's two dead bushes as kinds, the dry scrub between the rock line's boulders)
     edge_rock_sand_a: { model: 'asset:world/props/meshy/edge_rock_sand_a.glb', name: 'sandstone boulder', still: true }, edge_rock_sand_b: { model: 'asset:world/props/meshy/edge_rock_sand_b.glb', name: 'sandstone spire', still: true },
     edge_rock_sand_c: { model: 'asset:world/props/meshy/edge_rock_sand_c.glb', name: 'sandstone ledges', still: true }, edge_rock_gran_a: { model: 'asset:world/props/meshy/edge_rock_gran_a.glb', name: 'granite boulder', still: true },
     edge_rock_gran_b: { model: 'asset:world/props/meshy/edge_rock_gran_b.glb', name: 'granite spire', still: true }, edge_rock_gran_c: { model: 'asset:world/props/meshy/edge_rock_gran_c.glb', name: 'granite outcrop', still: true },
