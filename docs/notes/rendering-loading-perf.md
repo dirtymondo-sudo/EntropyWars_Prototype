@@ -4409,3 +4409,12 @@ Checked in the cloud (node renderer on WebGL 2 with `EW_BUN_DRY`, the check with
 `dev.teleport` across the Door Store's front, `ThreeRenderer.hq.dev.crossing()` read after): old rule "moved 6" then "moved 1 (1 LATE)"
 two frames on, his pattern; new rule "moved 8" on the swap frame, none late. Real WebGPU in the cloud (`EW_PROBE_GL=webgpu`) does
 cross with the teleport steps, but its groups re-record every frame there, so nothing is ever quiet and the bug cannot show.
+
+## THE NaN WALLS (2026-11-27, the Haunted House crash)
+mondo: a flood of `computeBoundingSphere(): Computed radius is NaN` in the Haunted House, then a crash. Cause: three-renderer.js had two
+`var HQ_DOOR_CLEAR` tables in the same scope: the arch rows' doorway clear (`cell, inZ, outZ, minX, post, ...`, THE CLEAR DOORWAYS) and the
+doorway squares' (`sq, pad, dy, cost, cell`). The second, set later at load, replaced the first, so `inZ`/`outZ` were undefined, every
+cleared doorway's box was NaN and an arch wall beside a door (the crypt's front, `est:crypt:look`) was built with NaN corners. The arch one
+is `HQ_ARCH_DOOR_CLEAR` now. Checked: all 2,593 arch rows in every room build with no NaN (headless, the real `_hqArchGeometry`), the
+Haunted House probe logs 0 NaN errors. A probe that names the owner of a NaN geometry: wrap `BufferGeometry.prototype.setAttribute`
+('position') and `computeBoundingSphere` in a `--pre` script and log the stack / the mesh's `_ew_hqArch`.
