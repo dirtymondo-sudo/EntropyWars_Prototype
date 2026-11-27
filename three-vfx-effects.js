@@ -170,6 +170,15 @@ const ThreeVFXEffects = (function () {
         var TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
         if (TR && typeof TR.demiAct === 'function') TR.demiAct(p.uid, A[0], A[1]);
     }
+    /* 🌰 THE NUTCRACKER (2026-11-27): its spells work the jaw (three-renderer.js THE JAW'S SPELL PATTERNS) on the windup beat (the
+       caster's `uid`), which online.js relays, so the guest sees the same. The truck's parts move in its own clips (animSlot). */
+    var _NC_SPELL_ACTS = { ncClack: ['clack', 1000], ncQuickMarch: ['march', 1600], ncCrackOpen: ['crack', 1200], ncNutcrackerSuite: ['suite', 2000] };
+    function _ncWindup(spellId, p) {
+        var A = _NC_SPELL_ACTS[spellId];
+        if (!A || !p || p.uid == null) return;
+        var TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
+        if (TR && typeof TR.jawAct === 'function') TR.jawAct(p.uid, A[0], A[1]);
+    }
     function _geom3D(spellId) {
         if (_VS.on && typeof window !== 'undefined' && window.EW_PB_VFX_NO_GEOM) return null;
         return _spell3DGeometry[spellId];
@@ -3848,6 +3857,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             _fireStage(intent, spellId, params || {});
             if (intent === 'windup') try { _rideWindup(spellId, params); } catch (e) {}   // THE HORSES
             if (intent === 'windup') try { _demiWindup(spellId, params); } catch (e) {}   // THE DEMIURGE
+            if (intent === 'windup') try { _ncWindup(spellId, params); } catch (e) {}   // THE NUTCRACKER's jaw
             if (intent === 'windup') try { _heldStart(spellId, params); } catch (e) { console.warn('[VFX] held prop failed', spellId, e); }   // THE PROPS IN THE HAND (row 24)
             if (intent === 'windup') try { _skwWindup(spellId, params); } catch (e) { console.warn('[VFX] skinwalker face failed', spellId, e); }   // THE SKINWALKER'S FACES (2026-11-24)
             /* THE LIGHTNING PASS: every lightning damage spell marks what it hit (cage + scar) on the real hit */

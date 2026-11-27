@@ -20405,7 +20405,7 @@ const ThreeRenderer = (function () {
             e.set(-_MT_HOOD_OPEN * Math.max(0, Math.min(1.2, f('hood'))), 0, 0, 'YXZ'); q.setFromEuler(e); hq.push(q.x, q.y, q.z, q.w);
             for (var i = 0; i < 4; i++) {
                 var w = R.wheels[i]; if (!w) continue;
-                e.set(f('spin') + (w.x > 0 ? 1 : -1) * f('lean'), 0, 0, 'YXZ'); q.setFromEuler(e); wq[i].push(q.x, q.y, q.z, q.w);
+                e.set(f('spin') + (i >= 2 ? f('spinR') : f('spinF')) + (w.x > 0 ? 1 : -1) * f('lean'), 0, 0, 'YXZ'); q.setFromEuler(e); wq[i].push(q.x, q.y, q.z, q.w);   // spinF / spinR: one axle's extra turn (the spell thread's Burnout: the back wheels only)
                 /* where the body's underside over this strut went: lift, minus the pitch at its z, minus the roll at its x */
                 var d = f('y') - w.z * Math.sin(f('rx')) - w.x * Math.sin(f('rz'));
                 var sy = Math.max(0.15, 1 + d / _MT_STRUT); ss[i].push(1, sy, 1);
@@ -20463,6 +20463,32 @@ const ThreeRenderer = (function () {
             var j = _mtBump(u, 0.0, 0.15, 0.6);
             return { y: j * 0.05, rx: -j * 0.1, rz: j * 0.06, hood: _mtBump(u, 0.05, 0.15, 0.4) * 0.5, spin: -j * 0.4 };
         }],
+        /* 🛻 THE SPELLS (2026-11-27, thread "Make monster truck and nutcracker spells"; data.js `animSlot` on each row). */
+        /* Chomp: nose up with the hood wide, lunge, SNAP; a second smaller bite, settle */
+        mtChomp: [1.2, function (u) {
+            var rear = _mtBump(u, 0.0, 0.25, 0.4), lunge = _mtBump(u, 0.3, 0.45, 0.8);
+            var hood = _mtS(u, 0.05, 0.28) * 1.1 * (1 - _mtS(u, 0.4, 0.46)) + _mtBump(u, 0.52, 0.6, 0.7) * 0.6;
+            return { y: rear * 0.1 + lunge * 0.04, rx: -rear * 0.2 + lunge * 0.16, hood: hood, spin: lunge * 2.0 };
+        }],
+        /* Ram: it squats and revs, the wheels a blur, then lunges nose down with the jaw wide and bites shut at the crash */
+        mtRam: [1.3, function (u) {
+            var rev = _mtS(u, 0.0, 0.15) * (1 - _mtS(u, 0.38, 0.45)), go = _mtBump(u, 0.4, 0.55, 0.9);
+            var shake = Math.sin(u * Math.PI * 2 * 14) * 0.012 * rev;
+            return { y: rev * 0.03 + shake, rx: -rev * 0.14 + go * 0.12, rz: shake, hood: rev * 0.7 + go * 0.45 * (1 - _mtS(u, 0.72, 0.78)),
+                     spin: u * Math.PI * 12 };
+        }],
+        /* Hydraulic Slam: the struts squat it down, it leaps on them, hangs nose up, slams on all four, bounces */
+        mtHop: [1.5, function (u) {
+            var squat = _mtBump(u, 0.0, 0.14, 0.2), air = _mtBump(u, 0.18, 0.34, 0.5), crush = _mtBump(u, 0.5, 0.55, 0.66), bounce = _mtBump(u, 0.62, 0.72, 0.85);
+            return { y: -squat * 0.12 + air * 0.9 - crush * 0.14 + bounce * 0.12, rx: -air * 0.12 + crush * 0.05, rz: air * 0.04,
+                     hood: air * 0.8 + crush * 0.3, spin: air * 1.5 };
+        }],
+        /* Burnout: the front braked, the back wheels a blur, the body shudders and squats at the back, the jaw roars open */
+        mtBurnout: [1.6, function (u) {
+            var a = _mtS(u, 0.0, 0.15) * (1 - _mtS(u, 0.85, 1.0)), sh = Math.sin(u * Math.PI * 2 * 16);
+            return { y: a * (0.04 + sh * 0.012), rx: -a * 0.1, rz: a * (sh * 0.025 + Math.sin(u * Math.PI * 3) * 0.04),
+                     hood: a * (0.8 + 0.25 * Math.abs(Math.sin(u * Math.PI * 2 * 5))), spinR: u * Math.PI * 22 * a };
+        }],
         /* death: the struts give, it slumps to its left and the jaw falls open (held) */
         death: [1.5, function (u) {
             var s = _mtS(u, 0.0, 0.7);
@@ -20488,6 +20514,17 @@ const ThreeRenderer = (function () {
        the unit loop, only for a def with `jawBone`: it clacks through a cast or an attack, snaps on a hit, hangs open in death,
        and rests shut. The spell threads can hold it open for a moment with ThreeRenderer.jawOpen(uid, amount 0 … 1, ms). */
     var _jawHolds = {};
+    /* 🌰 THE JAW'S SPELL PATTERNS (2026-11-27, thread "Make monster truck and nutcracker spells"): ThreeRenderer.jawAct(uid, pat, ms)
+       plays one of these (amount 0 … 1 by seconds since it began) instead of a plain hold. Fired on the spell's windup beat
+       (three-vfx-effects.js _NC_SPELL_ACTS), which online.js relays, so the guest sees the same. */
+    function _jawPat(pat, t) {
+        var S = function (x) { return Math.abs(Math.sin(x)); };
+        if (pat === 'clack') return t < 0.9 ? S(t * Math.PI * 3.4) * 1.1 : 0;                       // clack clack clack
+        if (pat === 'crack') return t < 0.55 ? Math.min(1.2, t / 0.45 * 1.2) : (t < 0.62 ? 0 : 0.15); // wide, wider, SNAP
+        if (pat === 'march') return 0.15 + 0.6 * S(t * Math.PI * 4);                                 // in step
+        if (pat === 'suite') return 0.2 + 0.9 * Math.pow(S(t * Math.PI * 2.5), 3);                   // on the beats
+        return 0;
+    }
     var _jawQ = null, _jawE = null;
     function _jawTick(entry, uid, now) {
         var b = entry._ew_jaw;
@@ -20500,7 +20537,7 @@ const ThreeRenderer = (function () {
         if (!b) return;
         var a = entry._ew_curAnim || '', t = now / 1000, want = 0;
         var h = _jawHolds[uid];
-        if (h && now < h.until) want = h.amt;
+        if (h && now < h.until) want = h.pat ? _jawPat(h.pat, (now - h.t0) / 1000) : h.amt;
         else if (/^death|dead/i.test(a)) want = 0.9;
         else if (/^hit/i.test(a)) want = 0.5;
         else if (/cast|attack|melee|shoot/i.test(a)) want = 0.3 + 0.7 * Math.abs(Math.sin(t * 11));
@@ -112724,6 +112761,7 @@ const ThreeRenderer = (function () {
            an existing slot is replaced. Models already built keep their clips. */
         mtPose: function (slot, dur, pose) { if (slot && typeof pose === 'function') _MT_POSES[slot] = [+dur || 1, pose]; return true; },
         /* 🥜 THE NUTCRACKER'S JAW: hold unit uid's jaw open (0 … 1) for ms, over whatever its clip does */
+        jawAct: function (uid, pat, ms) { var n = _animNow(); _jawHolds[uid] = { pat: String(pat || 'clack'), t0: n, until: n + (+ms || 900) }; return true; },   // 🌰 THE JAW'S SPELL PATTERNS
         jawOpen: function (uid, amt, ms) { _jawHolds[uid] = { amt: Math.max(0, Math.min(1.2, +amt || 0)), until: _animNow() + (+ms || 600) }; return true; },
         mountKeyFor: function (unit) { return _mountKeyFor(unit); },
         /* THE LOADING SCREEN (2026-09-19): how many model files are still in flight through the two GLB
