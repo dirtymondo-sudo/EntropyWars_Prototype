@@ -5620,12 +5620,12 @@ Every rule below holds in a live spell shot AND while its chrome lingers on the 
   until all fit, and wide beats.
 - **The push-in** (three-camera.js `_fgSolve` `BIG`, battle.js `_cineGuardPoints` -> `G.big`, api `big(pts)`): while a spell's
   hit is guarded, the guard pushes in along the gaze until the body the hit is about (the first armed victim) stands near enough
-  to fill `CINE_BIG_READ_FRAC` 0.30 of the screen height (its world height over its depth, so a steep look is not over-pushed).
+  to fill `CINE_BIG_READ_FRAC` 0.40 of the screen height (mondo 11-27: "push in even closer"; was 0.30) (its world height over its depth, so a steep look is not over-pushed).
   Every guarded body still fits if it can; if not, the main body (+ its landing) wins and the others sit at the edge. Never
-  wider than the shot was; never nearer than zMin. A look more than ~45° down (the security-cam beats) keeps its distance.
+  wider than the shot was; never nearer than zMin. A look more than ~45° down (the security-cam beats) keeps its distance. The push stops a body width + 1.2 squares short of any other body, and short of a body standing between the lens and the hit. The feet may sit lower at 40 % (`CINE_GUARD_HIT_LOW_BR` b -0.64).
 - **The head room**: with THE CLEAN READ on, a victim's HP bar may ride up to NDC 0.52 (was 0.36): the numbers step beside
   the body now, so the frame no longer backs off for the column over the head (`CINE_GUARD_*_BR`).
 - Shared code under every beat (no per-spell numbers). Looks only, each seat frames its own (RULE #2). Probe:
   `ThreeCamera.frameGuardState().big` = `{f, want, D, dropped}`. Switch: `window.EW_NO_BIG_READ = true` (also off with
   `EW_NO_CLEAN_READ`).
-- Measured after (same map, real fights): hit target median 22 % -> 31 % of screen height; hits under 20 %: 5/19 -> 2/17.
+- Measured after (same map, real fights): hit target median 22 % (19 hits) -> 31 % at 0.30 (17) -> 34 % at 0.40 (10). Bigger bodies leave less free screen, so text over a body rose a little at 0.40.

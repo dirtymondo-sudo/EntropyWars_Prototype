@@ -38773,7 +38773,7 @@
             const _br = _cineBigReadOn();
             if (primary && !asCaster) _cineBigH = h;
             out.push(asCaster || !primary ? [_cineGuardPos[0], _cineGuardPos[1] + lo, _cineGuardPos[2]]
-                : [_cineGuardPos[0], _cineGuardPos[1] + lo, _cineGuardPos[2], CINE_GUARD_HIT_LOW]);
+                : [_cineGuardPos[0], _cineGuardPos[1] + lo, _cineGuardPos[2], _br ? CINE_GUARD_HIT_LOW_BR : CINE_GUARD_HIT_LOW]);
             /* THE HEAD ROOM (2026-10-29, mondo on the 10-28 playtest: "how do we make the floating text stay on screen?
                Is that a floating text issue or a camera framing issue or both?" — both): a victim's HP bar may rise no
                higher than CINE_GUARD_HEAD_ROOM (NDC) so the number and its tags rising off it still fit under the
@@ -38793,6 +38793,7 @@
         const CINE_BIG_READ_FRAC = 0.40;
         const CINE_GUARD_HEAD_ROOM_BR = { t: 0.52 };
         const CINE_GUARD_HIT_HIGH_BR = { t: 0.52, h: 0.62 };
+        const CINE_GUARD_HIT_LOW_BR = { b: -0.64, h: 0.62 };   // (the feet may sit lower: a 40 % body needs the room)
         let _cineBigH = 0;
         function _cineBigReadOn() { return !window.EW_NO_BIG_READ && !window.EW_NO_CLEAN_READ && !!state.cinematicActionCam; }
         /* the windows (three-camera.js THE HEAD ROOM: NDC t / b / h): every victim's HP bar under the number column's room;

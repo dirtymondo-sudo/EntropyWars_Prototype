@@ -765,7 +765,41 @@ const ThreeCamera = (function () {
         if (BIG && bigFrac(D) < BIG.f) {
             let lo = -tileSize * 60, hi = D;
             for (let k = 0; k < 24; k++) { const mid = (lo + hi) / 2; if (bigFrac(mid) >= BIG.f) lo = mid; else hi = mid; }
-            const Dg = lo;
+            let Dg = lo;
+            /* (the lens never pushes into or up against another body on the way in — a caster between the lens and the
+               hit would fill the frame as a blur: it stops a body's width + ~1.2 squares short of any) */
+            if (BIG.bodies && BIG.bodies.length) {
+                const tx = pts[BIG.i0][0], tz = pts[BIG.i0][2], step = tileSize * 0.2, clr = tileSize * 1.2;
+                const ty = (pts[BIG.i0][1] + pts[BIG.i1][1]) / 2;
+                const hitBody = function (Dq) {
+                    const qx = ex - dx * Dq, qy = ey - dy * Dq, qz = ez - dz * Dq;
+                    const lx = tx - qx, ly = ty - qy, lz = tz - qz, ll = lx * lx + ly * ly + lz * lz;
+                    for (const bd of BIG.bodies) {
+                        if (Math.hypot(bd.x - tx, bd.z - tz) < tileSize * 0.45) continue;   // the hit body itself
+                        /* a big body (wings, a beast) reaches past its footprint: half its height counts too */
+                        const rr = Math.max(bd.r, (bd.top - bd.foot) * 0.4);
+                        const cy = Math.max(bd.foot, Math.min(bd.top, qy));
+                        if (Math.hypot(qx - bd.x, qy - cy, qz - bd.z) < rr + clr) return true;
+                        /* …nor up to a body standing between it and the hit (it would wall the hit off) */
+                        if (ll > 1) {
+                            const my = (bd.foot + bd.top) / 2;
+                            const t = ((bd.x - qx) * lx + (my - qy) * ly + (bd.z - qz) * lz) / ll;
+                            if (t > 0 && t < 0.85) {
+                                const px = qx + lx * t, py = qy + ly * t, pz = qz + lz * t;
+                                const cy2 = Math.max(bd.foot, Math.min(bd.top, py));
+                                if (Math.hypot(px - bd.x, py - cy2, pz - bd.z) < rr + tileSize * 0.15) return true;
+                            }
+                        }
+                    }
+                    return false;
+                };
+                if (!hitBody(D)) {
+                    let Dq = D;
+                    while (Dq - step > Dg && !hitBody(Dq - step)) Dq -= step;
+                    if (Dq - step <= Dg && !hitBody(Dg)) Dq = Dg;
+                    Dg = Dq;
+                } else Dg = D;
+            }
             let bb = box(Dg);
             if (bb) { D = Dg; b = bb; }
             else if (BIG.keep) {
@@ -846,6 +880,7 @@ const ThreeCamera = (function () {
             BIG.tv = tv;
             const a = pts[BIG.i0], b = pts[BIG.i1];
             BIG.hw = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
+            try { BIG.bodies = (typeof cam._frameGuard.bodies === 'function') ? cam._frameGuard.bodies() : null; } catch (e) { BIG.bodies = null; }
         } else BIG = null;
         let res = _fgSolve(ex, ey, ez, dx, dy, dz, B, pts, floorY, W, zMin, center, PW, H, BIG);
         if (res === 0) { _fgHold = hKey ? { key: hKey, sx: 0, sy: 0, D: 0 } : null; _frameGuardLast = { n: pts.length, framed: true }; return null; }
