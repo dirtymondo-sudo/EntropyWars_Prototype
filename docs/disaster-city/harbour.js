@@ -143,7 +143,9 @@ function lay(ctx) {
     { const bw = T.features.find(f => f.id === 'shore:boardwalk:look'), GX = -12.7;
       if (bw && GATE) { const mine = bw.parts.filter(q => Math.abs(q.p[0] - GX) < 0.3); bw.parts = bw.parts.filter(q => Math.abs(q.p[0] - GX) >= 0.3);
           if (mine.length < 8) throw new Error('THE HARBOUR: the Shore\'s gate was not found on the Boardwalk spur (' + mine.length + ' parts)');
-          T.features.push({ k: 'arch', id: 'dc:beach-gate:arch', x: GATE.x, z: GATE.z, y: GATE.y || 0, rot: GATE.rot, parts: mine.map(q => Object.assign({}, q, { p: [r3(q.p[0] - GX), q.p[1], q.p[2]] })) }); count.gate = mine.length; } }
+          T.features.push({ k: 'arch', id: 'dc:beach-gate:arch', x: GATE.x, z: GATE.z, y: GATE.y || 0, rot: GATE.rot, parts: mine.map(q => Object.assign({}, q, { p: [r3(q.p[0] - GX), q.p[1], q.p[2]] })) }); count.gate = mine.length; 
+          /* nothing stands in the gateway: a bench of the boardwalk's stood between the posts */
+          room.props = room.props.filter(p => !(Math.abs(p.x - GATE.x) < 2.2 && Math.abs(p.z - GATE.z) < 2.5)); } }
 
     /* ── 5. the room round it ── */
     room.shell = { __shell: Object.assign({}, room.shell.__shell, { w: r3(2 * XE) }) };
