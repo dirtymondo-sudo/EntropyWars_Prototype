@@ -1231,3 +1231,13 @@ EXPERIENCE rows cover it). Online, Practice and VS-CPU keep the mastery plate as
   LeftHand's frame = (-0.87, 0, 0.49), the fingers along +Y). The hold is now `pos [-0.017, 0.085, 0.009]`, `rot [-90, 0, 119]`: the
   bills' face on that normal, their length down the fingers, ~2 cm off the bone. The crossing door's leaf (`_introBuildDoor`) stood
   0.03 tile short of the lintel; it is fitted to `oh + 0.012 tile` now, its top tucked into the lintel (every crossing door).
+
+## THE SHARED POCKETS FREEZE (2026-11-27, fixed)
+mondo's crash trail: story mode, Inspect on a fallen party member's square = the tab froze and died. Cause: in a story fight
+every member's `items` IS the party's one bag (`_partyBagBind`), so battle.js `lootCorpseItems` added one to the bag and took
+one from the bag on every pass of its `while`, the count never moved, the bag's cap (9999) never came: an endless loop.
+Fix: `lootCorpseItems` returns 0 when the searcher and the body hold the same items object; the Inspect's "can't carry"
+line skips it; ai.js's loot search skips a body whose pockets are the searcher's own. Probe: `TAG=x node playtest_deadtile.js`
+(VS CPU, the story bag bound the way a story launch binds it, a P1 unit killed by a real attack, the real mouse opens the
+body's square and clicks Inspect; `BAG=0` = a plain match). Before: the Inspect click never came back (12 min). After: 26 ms.
+The trail's 4.2 GB model memory, the 3-7 s stalls (before battle) and the NaN geometry lines were not part of this freeze.
