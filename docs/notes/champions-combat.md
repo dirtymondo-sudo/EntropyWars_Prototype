@@ -6768,6 +6768,31 @@ AVAILABLE_RACES (data.js + server.js), codex lore, the VFX and the spell moves o
   ("Out of sight"), a blocked charge says "Terrain blocks the spell path": the probe's fixed squares, not the spell.
 - LEFT OUT ON PURPOSE (no lore invented): element affinity, home zone, biomes, residents, NPC temperament, story place.
 
+## THE FLOATING BRAIN'S PIECES (2026-11-27, thread "Animate the floating brain's pieces")
+mondo: "Can we make individually animated pieces for the floating brain; it feels stiff compared to the other units that have tentacles
+hanging, it'd be nice if the eye could move around too." The Floating Brain (`boltzmann brain`) was one still Meshy mesh (`clips: {}`).
+- THE FILE: `Assets/characters/races/boltzmann_brain/male/boltzmann_brain_v2.glb`, cut from the still model by the repo tool
+  `bake-brain.py` (numpy + pillow, no Blender, NO Meshy credits; a copy in project files `floating-brain/`). The old file stays on R2.
+  Nodes: `ewBbBody` (the brain, a node at its middle) > `ewBbBrain` (its mesh), `ewBbEye` (a real ball in the socket: the painted eye
+  cap, 419 triangles, is cut out and its own picture is wrapped on the ball; gaze +Z), `ewBbLidU` / `ewBbLidD` (two lids, rest = open
+  under the socket's rim, rotation.x toward 0 shuts them) and nine chains `ewsway_c<k>_<j>` (4 to 9 joints): the nerve tendrils were
+  already loose pieces of the mesh; each is skinned to its own chain and fattened x4 at the root down to x1.6 at the tip (hair thin
+  before: on the board they were one pixel). One short stub stays on the brain. The file faces +Z now (`yawOffset: 0`).
+- THE MOVES: three-renderer.js "THE FLOATING BRAIN" (procRig `brainBody`, built like the Monster Truck: `_BB_POSES`, a pose = a function
+  of u giving y z x rx ry rz s ex ey es lid). idle (9 s: hover, drift, a slow throb, the eye's script of looks `_BB_LOOKS`, four blinks),
+  walk, cast, castMelee (the stare lunge), castAOE (a whole turn), castSupport (a slow blink), castUltimate (the eye rolls right
+  round), hit (squint), death (the eye rolls up, the lids fall, it tips and sinks). Its four spells have their own (`animSlot` on the
+  rows in data.js): `bbSpike` Thought Spike, `bbDread` Existential Dread, `bbObserve` Observer Effect (it looks up at its own brain),
+  `bbCollapse` Vacuum Collapse (crushes in, bursts back). `ThreeRenderer.bbPose(slot, dur, pose)` adds or replaces one.
+- THE TENDRILS: THE SWAY swings them behind every move by itself. New in the sway for it: def `sway.wave` / `sway.waveHz` = a slow
+  wave that runs down each chain, so they drift while the brain hangs still (any swayed model can use it). Its settings are on the
+  def (sprites.js): stiffness 1.2, gravity 0.25, drag 0.3, wave 0.14. wave 0.55 + drag 0.2 threw the tips over the brain: keep it small.
+- ONLINE (RULE #2): looks only, each screen plays the clips from the synced cast, nothing new to relay.
+- THE PROBE: `TAG=a SHOTS=4 GAP=900 ZOOM=6 ACTS=idle,nrObserverEffect,hit,death node playtest_brain.js` (a real VS CPU board, the
+  camera close; each picture comes with the live rig's numbers: the eye's turn, the lids, the brain's lift / nod / throb, three
+  tendril tips against their roots). ZOOM over 6 pushes the brain off the top of the frame.
+- NOT DONE: in a fight the tendrils read dark, the ink outline is as wide as they are; the eye does not follow the camera or a
+  target, it plays its script; no new VFX or sound for the spells.
 ## THE ORIGAMI GIRL (2026-11-27, thread "Build origami girl's spells and VFX")
 mondo 11-27: "a piece of paper with actual folding animations ... weak to fire and water ... Swordigami where it either turns into a
 sword ... Kamikaze where it folds into a paper airplane and crashes into the target ... folds into that fortune game", then "add her

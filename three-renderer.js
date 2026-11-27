@@ -20548,6 +20548,143 @@ const ThreeRenderer = (function () {
         clips.attack = clips.castMelee;
         return clips;
     }
+    /* 🧠 THE FLOATING BRAIN (2026-11-27, thread "Animate the floating brain's pieces"; mondo: "individually animated pieces for
+       the floating brain; it feels stiff compared to the other units that have tentacles hanging, it'd be nice if the eye could
+       move around too"). ONE file (Assets/characters/races/boltzmann_brain/male/boltzmann_brain_v2.glb, cut from its still Meshy
+       model by the repo tool bake-brain.py): ewBbBody (the brain, a node at its middle) > ewBbEye (a real eyeball, gaze +Z),
+       ewBbLidU / ewBbLidD (the lids, rest = open under the socket's rim) and the nerve tendrils on THE SWAY's spring chains
+       (ewsway_c<k>_<j>), so they trail behind every move below by themselves. Metres, front +Z, the lowest tendril tip on y 0.
+       A clip is keyframes on those nodes like the Monster Truck's. A pose is a function of u (0 … 1) giving: y (lift over its
+       hover), z (forward), x (to its left), rx (it nods forward), ry (it turns), rz (it rolls), s (the throb: scale − 1),
+       ex / ey (the eye turns to its left / up, radians), es (the eyeball swells: scale − 1), lid (1 open … 0 shut; left out = open).
+       ThreeRenderer.bbPose(slot, dur, pose) adds or replaces a slot for every brain built after it (a spell thread's own clip). */
+    var _BB_HOVER = 0.14, _BB_LID = 54 * Math.PI / 180;
+    /* the eye's idle script: [u, to its left, up]; it holds each look, then flicks to the next in a tenth of a second */
+    var _BB_LOOKS = [[0, 0, 0], [0.07, 0.42, 0.06], [0.16, 0.42, -0.2], [0.24, -0.38, 0.1], [0.34, -0.1, 0.3], [0.41, 0, 0], [0.55, 0.3, 0.22],
+                     [0.6, -0.45, 0.02], [0.72, -0.2, -0.25], [0.8, 0.5, -0.05], [0.88, 0.12, 0.12], [0.95, 0, 0]];
+    function _bbLook(u) {
+        var a = _BB_LOOKS[0], b = a;
+        for (var i = 0; i < _BB_LOOKS.length; i++) { if (_BB_LOOKS[i][0] <= u) { a = i ? _BB_LOOKS[i - 1] : _BB_LOOKS[0]; b = _BB_LOOKS[i]; } }
+        var t = _mtS(u, b[0], b[0] + 0.013);
+        return [a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+    }
+    function _bbBlink(u, at) { return _mtBump(u, at, at + 0.007, at + 0.02); }
+    function _bbBeat(x) { var f = x - Math.floor(x); return Math.pow(Math.max(0, Math.sin(f * Math.PI)), 3); }   // one throb a whole number of x
+    function _bbClip(name, dur, pose, R) {
+        var N = Math.max(8, Math.round(dur * 30)), tt = [], bp = [], bq = [], bs = [], eq = [], es = [], lu = [], ld = [];
+        var e = new THREE.Euler(0, 0, 0, 'YXZ'), q = new THREE.Quaternion();
+        for (var k = 0; k <= N; k++) {
+            var u = k / N, p = pose(u) || {};
+            var f = function (n) { return p[n] || 0; };
+            tt.push(u * dur);
+            bp.push(R.p0.x + f('x'), R.p0.y + _BB_HOVER + f('y'), R.p0.z + f('z'));
+            e.set(f('rx'), f('ry'), -f('rz'), 'YXZ'); q.setFromEuler(e); bq.push(q.x, q.y, q.z, q.w);
+            var s = 1 + f('s'); bs.push(s, s, s);
+            e.set(-f('ey'), f('ex'), 0, 'YXZ'); q.setFromEuler(e); eq.push(q.x, q.y, q.z, q.w);
+            var z = 1 + f('es'); es.push(z, z, z);
+            var open = p.lid == null ? 1 : Math.max(0, Math.min(1.15, p.lid));
+            e.set(-_BB_LID * open, 0, 0, 'YXZ'); q.setFromEuler(e); lu.push(q.x, q.y, q.z, q.w);
+            e.set(_BB_LID * open, 0, 0, 'YXZ'); q.setFromEuler(e); ld.push(q.x, q.y, q.z, q.w);
+        }
+        var V = THREE.VectorKeyframeTrack, Q = THREE.QuaternionKeyframeTrack;
+        var out = [new V('ewBbBody.position', tt, bp), new Q('ewBbBody.quaternion', tt, bq), new V('ewBbBody.scale', tt, bs)];
+        if (R.eye) out.push(new Q('ewBbEye.quaternion', tt, eq), new V('ewBbEye.scale', tt, es));
+        if (R.lids) out.push(new Q('ewBbLidU.quaternion', tt, lu), new Q('ewBbLidD.quaternion', tt, ld));
+        return new THREE.AnimationClip(name, dur, out);
+    }
+    var _BB_POSES = {
+        /* idle (9 s loop): it hangs in the air, drifts and turns a little, throbs like a slow heart; the eye looks about and blinks */
+        idle: [9.0, function (u) {
+            var w = u * Math.PI * 2, g = _bbLook(u);
+            return { y: Math.sin(w * 4) * 0.035, x: Math.sin(w * 2 + 0.6) * 0.03, z: Math.sin(w * 3) * 0.015,
+                     rx: Math.sin(w * 4 + 0.9) * 0.05, ry: Math.sin(w * 2) * 0.16 + g[0] * 0.25, rz: Math.sin(w * 3 + 1) * 0.06,
+                     s: _bbBeat(u * 9) * 0.022, ex: g[0], ey: g[1],
+                     lid: 1 - _bbBlink(u, 0.2) - _bbBlink(u, 0.52) - _bbBlink(u, 0.545) - _bbBlink(u, 0.84) };
+        }],
+        /* walk (1.2 s loop; it never walks in a fight, a room or a cutscene may carry it): it leans into the way it goes */
+        walk: [1.2, function (u) {
+            var w = u * Math.PI * 2;
+            return { y: Math.sin(w * 2) * 0.03, rx: 0.2 + Math.sin(w * 2 + 1) * 0.04, rz: Math.sin(w) * 0.06, s: _bbBeat(u * 2) * 0.02 };
+        }],
+        /* a cast: it rises, the eye opens wide and swells, three hard throbs, a shiver */
+        cast: [1.4, function (u) {
+            var a = _mtS(u, 0.0, 0.2) * (1 - _mtS(u, 0.8, 1.0));
+            return { y: a * 0.1, rx: -a * 0.12 + _mtBump(u, 0.45, 0.6, 0.8) * 0.2, rz: Math.sin(u * Math.PI * 2 * 11) * 0.02 * a,
+                     s: a * 0.03 + _bbBeat(u * 3 + 0.2) * 0.09 * a, es: a * 0.2, lid: 1 + a * 0.15 };
+        }],
+        /* the stare (basic attack / a melee cast): it draws back, then lunges eye first, the eye bulging at the hit */
+        castMelee: [1.0, function (u) {
+            var back = _mtBump(u, 0.0, 0.25, 0.42), go = _mtBump(u, 0.36, 0.5, 0.85);
+            return { z: -back * 0.14 + go * 0.3, y: back * 0.05, rx: -back * 0.22 + go * 0.3, s: go * 0.05,
+                     es: _mtBump(u, 0.4, 0.5, 0.8) * 0.4, lid: 1 - back * 0.45 + go * 0.15 };
+        }],
+        /* the big one: one whole turn on the spot as it climbs, the tendrils flung out, throbbing; the eye holds the middle */
+        castAOE: [1.6, function (u) {
+            var a = _mtS(u, 0.0, 0.15) * (1 - _mtS(u, 0.85, 1.0)), turn = _mtS(u, 0.1, 0.8);
+            return { y: a * 0.22, ry: turn * Math.PI * 2, rx: -a * 0.1, s: a * 0.02 + _bbBeat(u * 4) * 0.08 * a, es: a * 0.15, lid: 1 + a * 0.1 };
+        }],
+        /* a support cast: a slow, kind blink, two small nods, a soft throb */
+        castSupport: [1.3, function (u) {
+            return { y: Math.sin(u * Math.PI) * 0.05, rx: Math.abs(Math.sin(u * Math.PI * 2)) * 0.12, s: _bbBeat(u * 2) * 0.04,
+                     lid: 1 - _mtBump(u, 0.15, 0.32, 0.6) * 0.9 };
+        }],
+        /* the ultimate: it sinks and shuts its eye, shaking; then shoots up, the eye snaps open huge and rolls right round, and it throbs */
+        castUltimate: [2.2, function (u) {
+            var down = _mtBump(u, 0.0, 0.2, 0.38), up = _mtS(u, 0.36, 0.46) * (1 - _mtS(u, 0.88, 1.0));
+            var roll = _mtS(u, 0.46, 0.8) * Math.PI * 4, rr = _mtBump(u, 0.46, 0.55, 0.82) * 0.5;
+            return { y: -down * 0.1 + up * 0.32, rx: down * 0.18 - up * 0.15, rz: Math.sin(u * Math.PI * 2 * 14) * 0.03 * (down + up * 0.4),
+                     s: -down * 0.06 + up * 0.04 + _bbBeat(u * 6) * 0.1 * up, ex: Math.cos(roll) * rr, ey: Math.sin(roll) * rr,
+                     es: up * 0.38, lid: 1 - down * 1.0 + up * 0.15 };
+        }],
+        /* hit: knocked back and askew, the eye screwed nearly shut, darting */
+        hit: [0.6, function (u) {
+            var j = _mtBump(u, 0.0, 0.14, 0.7);
+            return { z: -j * 0.16, y: j * 0.04, rx: -j * 0.3, rz: j * 0.16, s: -j * 0.04, lid: 1 - _mtBump(u, 0.0, 0.1, 0.55) * 0.75,
+                     ex: Math.sin(u * Math.PI * 2 * 5) * 0.25 * j, ey: -j * 0.15 };
+        }],
+        /* 🧠 ITS OWN SPELLS (data.js `animSlot` on each row of its kit) */
+        /* Thought Spike: it leans back, the eye narrowed to a slit, aiming; one hard throb as it snaps forward and the eye pops wide */
+        bbSpike: [1.1, function (u) {
+            var aim = _mtBump(u, 0.0, 0.3, 0.46), fire = _mtBump(u, 0.42, 0.5, 0.85);
+            return { z: -aim * 0.1 + fire * 0.14, rx: -aim * 0.2 + fire * 0.16, y: aim * 0.04, s: -aim * 0.03 + _mtBump(u, 0.42, 0.5, 0.66) * 0.12,
+                     es: fire * 0.3, lid: 1 - aim * 0.7 + fire * 0.15 };
+        }],
+        /* Existential Dread: the eye rolls round and round, wider each time, the lids flutter, the brain rocks and shudders */
+        bbDread: [1.7, function (u) {
+            var a = _mtS(u, 0.0, 0.15) * (1 - _mtS(u, 0.85, 1.0)), roll = u * Math.PI * 6, w = 0.2 + 0.35 * _mtS(u, 0.1, 0.7);
+            return { y: a * 0.08, rz: Math.sin(u * Math.PI * 4) * 0.2 * a, rx: Math.sin(u * Math.PI * 2 * 12) * 0.03 * a,
+                     s: _bbBeat(u * 5) * 0.07 * a, ex: Math.cos(roll) * w * a, ey: Math.sin(roll) * w * a, es: a * 0.22,
+                     lid: 1 + a * 0.1 - Math.pow(Math.max(0, Math.sin(u * Math.PI * 2 * 7)), 6) * 0.5 * a };
+        }],
+        /* Observer Effect: it looks at itself. The eye rolls up and back toward its own brain, holds, a slow blink; the brain goes still */
+        bbObserve: [1.6, function (u) {
+            var a = _mtS(u, 0.05, 0.3) * (1 - _mtS(u, 0.8, 0.95));
+            return { y: -a * 0.03, rx: -a * 0.22, ey: a * 0.75, ex: Math.sin(u * Math.PI * 2) * 0.12 * a, es: a * 0.1,
+                     lid: 1 + a * 0.12 - _mtBump(u, 0.5, 0.6, 0.72) * 1.0, s: _mtBump(u, 0.28, 0.34, 0.5) * 0.05 };
+        }],
+        /* Vacuum Collapse: the brain crushes in on itself, eye screwed shut, shaking; then bursts back out bigger, the eye huge */
+        bbCollapse: [1.9, function (u) {
+            var crush = _mtS(u, 0.0, 0.42) * (1 - _mtS(u, 0.5, 0.56)), burst = _mtBump(u, 0.5, 0.58, 0.95);
+            return { y: -crush * 0.06 + burst * 0.16, s: -crush * 0.3 + burst * 0.16, rz: Math.sin(u * Math.PI * 2 * 16) * 0.05 * crush,
+                     rx: crush * 0.15 - burst * 0.18, es: burst * 0.42, lid: 1 - crush * 0.95 + burst * 0.15 };
+        }],
+        /* death: the eye rolls up, the lids fall, it tips over and sinks until it hangs low on its tendrils (held) */
+        death: [1.7, function (u) {
+            var s = _mtS(u, 0.1, 0.8);
+            return { y: -s * 0.3 + _mtBump(u, 0.0, 0.1, 0.25) * 0.05, rz: -s * 0.55, rx: s * 0.25, s: -s * 0.05,
+                     ey: _mtS(u, 0.0, 0.4) * 0.6, lid: 1 - _mtS(u, 0.25, 0.7) * 0.97 };
+        }]
+    };
+    function _bbBuild(root) {
+        var b = root.getObjectByName('ewBbBody');
+        if (!b) return null;
+        var R = { p0: b.position.clone(), eye: !!root.getObjectByName('ewBbEye'), lids: !!(root.getObjectByName('ewBbLidU') && root.getObjectByName('ewBbLidD')) };
+        var clips = {};
+        Object.keys(_BB_POSES).forEach(function (slot) { var p = _BB_POSES[slot]; clips[slot] = _bbClip(slot, p[0], p[1], R); });
+        clips.castMagic = clips.cast; clips.castRanged = clips.cast; clips.castHeal = clips.castSupport; clips.run = clips.walk;
+        clips.attack = clips.castMelee;
+        return clips;
+    }
     /* ⛄ THE SNOWMAN (2026-11-27, thread "Add a snowman character"; mondo: "a new character, Snowman, and make all the individual
        parts for it like the carrot and the stick arms and the 3 snow ball body parts ... unique animations for its spells"). ONE file
        (Assets/characters/races/snowman/male/snowman.glb, put together from five Meshy parts by project files snowman/tools/assemble.py;
@@ -21431,6 +21568,8 @@ const ThreeRenderer = (function () {
         abomination: function (root) { return _abBuild(root); },
         /* 🛻 THE MONSTER TRUCK (above, _mtBuild): the body on its struts, the wheels, the fanged hood */
         monsterTruck: function (root) { return _mtBuild(root); },
+        /* 🧠 THE FLOATING BRAIN (above, _bbBuild): the brain's hover and throb, the eye, the lids; the tendrils ride THE SWAY */
+        brainBody: function (root) { return _bbBuild(root); },
         /* ⛄ THE SNOWMAN (above, _snBuild): three balls, two sticks, a carrot, coal, a hat and a scarf, each its own part */
         snowman: function (root) { return _snBuild(root); }
     };
@@ -21577,6 +21716,7 @@ const ThreeRenderer = (function () {
         dt = Math.min(dt, 1 / 30);
         model.updateWorldMatrix(true, true);   // the body as the clip left it, under wherever the unit stands NOW
         var o = S.o, caps = S.caps, fresh = S.fresh; S.fresh = false;
+        var _swNow = o.wave ? ((typeof performance !== 'undefined' ? performance.now() : Date.now()) / 1000) : 0;
         var capA = S._ca || (S._ca = caps.map(function () { return new THREE.Vector3(); }));
         var capB = S._cb || (S._cb = caps.map(function () { return new THREE.Vector3(); }));
         var capR = S._cr || (S._cr = []);
@@ -21599,6 +21739,7 @@ const ThreeRenderer = (function () {
                 _swM.subVectors(B.cur, B.prev).multiplyScalar(1 - o.drag);
                 _swC.copy(B.cur).add(_swM).addScaledVector(_swB, o.stiffness * dt * sc);
                 _swC.y -= o.gravity * dt * sc;
+                if (o.wave) { var _wp = _swNow * (o.waveHz || 0.5) * 6.2832 - i * 0.9 + c * 1.7; _swC.x += Math.sin(_wp) * o.wave * dt * sc; _swC.z += Math.cos(_wp * 0.83 + c) * o.wave * dt * sc; }   // 🧠 THE FLOATING BRAIN: a slow wave runs down each tendril (def sway.wave), so they drift while it hangs still
                 _swC.sub(B.head).setLength(wl).add(B.head);
                 for (var k = 0; k < caps.length; k++) _swayCapPush(_swC, capA[k], capB[k], capR[k] + o.rad * sc);
                 _swC.sub(B.head).setLength(wl).add(B.head);
@@ -114292,6 +114433,7 @@ const ThreeRenderer = (function () {
         /* 🛻 THE MONSTER TRUCK: a slot's motion for every truck built after this call (dur s, pose(u) -> { y rx rz hood spin lean });
            an existing slot is replaced. Models already built keep their clips. */
         mtPose: function (slot, dur, pose) { if (slot && typeof pose === 'function') _MT_POSES[slot] = [+dur || 1, pose]; return true; },
+        bbPose: function (slot, dur, pose) { if (slot && typeof pose === 'function') _BB_POSES[slot] = [+dur || 1, pose]; return true; },   // 🧠 THE FLOATING BRAIN: a spell's own clip
         /* ⛄ THE SNOWMAN: the same for its parts (pose(u) -> { <node>: { p, rw, r, s } }, three-renderer.js THE SNOWMAN) */
         snPose: function (slot, dur, pose) { if (slot && typeof pose === 'function') _SN_POSES[slot] = [+dur || 1, pose]; return true; },
         /* 🥜 THE NUTCRACKER'S JAW: hold unit uid's jaw open (0 … 1) for ms, over whatever its clip does */
