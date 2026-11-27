@@ -20,7 +20,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | made by | human-made? | count |
 | --- | --- | --- |
 | Asset pack | yes | 1180 |
-| Asset pack (author not recorded yet) | yes | 181 |
+| Asset pack (author not recorded yet) | yes | 182 |
 | MakeHuman community asset | yes | 546 |
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
@@ -29,9 +29,9 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | Meshy AI, reworked by Claude | no | 16 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 107 |
-| Built by Claude in code (a bake tool writes the file) | no (pack bark picture) | 15 |
+| Built by Claude in code (a bake tool writes the file) | no (pack bark picture) | 14 |
 | Motion capture (real actors), cut into loops by Claude | yes (motion) | 2 |
-| **UNSORTED** (no SOURCES row yet) | ? | 4 |
+| **UNSORTED** (no SOURCES row yet) | ? | 5 |
 
 Counts are distinct files (a pack kit cut into pieces counts each piece used; the MakeHuman count is the creator's
 picks, each a GLB per body; the code count is procedural catalogue rows).
@@ -3917,7 +3917,7 @@ Found by scanning the scripts for literal model URLs that no table above lists (
 | dm_wing_cosmic | `Assets/characters/gear/demiurge/dm_wing_cosmic.glb` | Meshy AI | Meshy AI body + Meshy AI parts made by Claude through the Meshy API from mondo's concepts (THE DEMIURGE, 2026-11-26: two forms, armoured + cosmic; wings, serpent, tail, horn crest, halo, void eye, robe, staff and cube apart so they animate with his spells); shrunk + given bones by bake-demiurge.js (project files boss-concepts/) | sprites.js |
 | angel_f_halo | `Assets/characters/gear/halos/angel_f_halo.glb` | Meshy AI | Meshy AI part made by Claude (THE UNIT GEAR, 2026-11-18: halos cut out of the angel models, the fairy wing cut out of the old fairy, the trident + the hoodless cape made apart) | sprites.js |
 | angel_m_halo | `Assets/characters/gear/halos/angel_m_halo.glb` | Meshy AI | Meshy AI part made by Claude (THE UNIT GEAR, 2026-11-18: halos cut out of the angel models, the fairy wing cut out of the old fairy, the trident + the hoodless cape made apart) | sprites.js |
-| basketball | `Assets/characters/gear/held/basketball.glb` | Built by Claude in code (a bake tool writes the file) | THE POINT GUARD's basketball (2026-11-24): a UV sphere + a painted texture (pebbled orange leather, black seams) written by Claude in code (project files cheer-guard/make_basketball.py, numpy + PIL, no Blender); his held gear and every ball he throws | three-renderer.js |
+| basketball_v3 | `Assets/characters/gear/held/basketball_v3.glb` | Asset pack (author not recorded yet) | THE POINT GUARD's basketball (2026-11-27): mondo's own ball model (inbox basketball/Baseketball.glb, maker not recorded), its two parts (orange leather, black seams) joined into one mesh by Claude in code, the two colours as a tiny texture (project files point-guard-dribble/build.py); his held gear, the ball he dribbles and every ball he throws | three-renderer.js |
 | beat_pad | `Assets/characters/gear/held/beat_pad.glb` | Meshy AI | THE MUSIC PRODUCER's beat pad (2026-11-24): Meshy AI text-to-3d, pad B (a retro grey MPC with red pads) mondo picked; texture cut to 1024 px by Claude (project files music-producer/models/) | sprites.js |
 | paparazzi_camera | `Assets/characters/gear/held/paparazzi_camera.glb` | Meshy AI | Meshy AI part made by Claude (THE UNIT GEAR, 2026-11-18: halos cut out of the angel models, the fairy wing cut out of the old fairy, the trident + the hoodless cape made apart) | sprites.js |
 | pitchfork | `Assets/characters/gear/held/pitchfork.glb` | Meshy AI | Meshy AI part made by Claude (THE UNIT GEAR, 2026-11-18: halos cut out of the angel models, the fairy wing cut out of the old fairy, the trident + the hoodless cape made apart) | sprites.js |
@@ -4714,6 +4714,7 @@ before asking for a new one (THE PACK-FIRST RULE).
 
 | name | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
+| BKB1_Blaze | `Assets/characters/animations/BKB1_Blaze.glb` | **UNSORTED** | add a SOURCES row in list-models.js |
 | skinwalker_face_a | `Assets/characters/races/skinwalker/male/faces/face_a.glb` | **UNSORTED** | add a SOURCES row in list-models.js |
 | skinwalker_face_b | `Assets/characters/races/skinwalker/male/faces/face_b.glb` | **UNSORTED** | add a SOURCES row in list-models.js |
 | skinwalker_face_c | `Assets/characters/races/skinwalker/male/faces/face_c.glb` | **UNSORTED** | add a SOURCES row in list-models.js |

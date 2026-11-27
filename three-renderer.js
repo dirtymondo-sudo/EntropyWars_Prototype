@@ -3887,7 +3887,7 @@ const ThreeRenderer = (function () {
         /* THE POINT GUARD's basketball (2026-11-24): the same ball he holds (a sphere + a painted texture, project files
            cheer-guard/make_basketball.py), a touch big so it reads across the board, turning end over end */
         'proj-basketball': {
-            url: 'https://cdn.entropywars.net/Assets/characters/gear/held/basketball.glb',
+            url: 'https://cdn.entropywars.net/Assets/characters/gear/held/basketball_v3.glb',
             lenTiles: 0.16, tumble: 7.0,
         },
         /* 2026-07-25: every gun spell's tracer is a real spinning round now
@@ -18366,12 +18366,49 @@ const ThreeRenderer = (function () {
             if (hd.rot) k.rotation.set(hd.rot[0] || 0, hd.rot[1] || 0, hd.rot[2] || 0);
             if (hd.off) k.position.set((hd.off[0] || 0) * H, (hd.off[1] || 0) * H, (hd.off[2] || 0) * H);
             _gearHang(hand, hand.getWorldPosition(new THREE.Vector3()), k, nm + 'Mount');
+            if (hd.dribble && !root.getObjectByName('ewDribble')) {   /* THE DRIBBLE: the marker the dribble clips key (_libBallTrack); x 1 / y 0 = in the hand */
+                var mk = new THREE.Group(); mk.name = 'ewDribble'; mk.position.set(1, 0, 0);
+                var rsc = root.getWorldScale(new THREE.Vector3()).y || 1;
+                k.geometry.computeBoundingSphere();
+                mk.userData = { r: k.geometry.boundingSphere.radius * ksc / rsc, floor: root.worldToLocal(new THREE.Vector3(0, box.min.y, 0)).y, hand: hd.hand || defHand, ball: nm };
+                root.add(mk);
+            }
             made = true;
         };
         _heldOne(g.held || {}, at.held, 'RightHand', 'ewGearHeld');
         if (g.held2) _heldOne(g.held2, at.held2, 'LeftHand', 'ewGearHeld2');
         if (g.demi && _demiBuild(root, g, at, got, { bone: bone, chest: chest, head: head, H: H, box: box, cp: cp, hp: hp })) made = true;   // THE DEMIURGE
         if (made) root.userData.ewGear = true;
+    }
+    /* THE DRIBBLE: the ball goes where the marker says (its keys ride the dribble clips, _libBallTrack). Worked in the body's own
+       frame: under the palm (a little past the wrist, along the forearm's line), between the floor under the feet and the palm.
+       The marker's y is the mixer's blend of "dribbling": 0 = no dribble clip plays, the ball sits in the hand as it was hung. */
+    var _drA = null, _drB = null, _drM = null, _drN = null;
+    function _dribbleTick(S, model, mk, dt) {
+        var D = S.drib;
+        if (D === undefined) {
+            var ud = mk.userData || {}, ball = model.getObjectByName(ud.ball || 'ewGearHeld'), hand = model.getObjectByName(ud.hand || 'RightHand');
+            D = S.drib = (ball && hand && hand.parent && ball.parent) ? { ball: ball, hand: hand, fore: hand.parent, base: ball.position.clone(), r: +ud.r || 0.1, floor: +ud.floor || 0, on: false } : null;
+        }
+        if (!D) return;
+        var w = mk.position.y, k = mk.position.x;
+        if (!(w > 0.003)) { if (D.on) { D.ball.position.copy(D.base); D.on = false; } return; }
+        if (!_drA) { _drA = new THREE.Vector3(); _drB = new THREE.Vector3(); _drM = new THREE.Matrix4(); _drN = new THREE.Matrix4(); }
+        D.hand.updateWorldMatrix(true, false);
+        _drN.copy(model.matrixWorld).invert();
+        _drA.setFromMatrixPosition(D.hand.matrixWorld).applyMatrix4(_drN);          // the wrist, in the body's frame
+        _drB.setFromMatrixPosition(D.fore.matrixWorld).applyMatrix4(_drN);          // the elbow
+        _drB.subVectors(_drA, _drB); _drB.y = 0;
+        var fl = _drB.length(); if (fl > 1e-6) _drA.addScaledVector(_drB, Math.min(1, D.r * 0.7 / fl) );   // the palm: a little past the wrist, level
+        var lo = D.floor + D.r, hi = Math.max(lo, _drA.y - D.r * 0.9);
+        _drA.y = lo + (hi - lo) * Math.max(0, Math.min(1, k));
+        _drA.applyMatrix4(model.matrixWorld);
+        var mount = D.ball.parent; mount.updateMatrix();
+        _drM.multiplyMatrices(D.hand.matrixWorld, mount.matrix).invert();
+        _drA.applyMatrix4(_drM);
+        if (w >= 0.997) D.ball.position.copy(_drA); else D.ball.position.lerpVectors(D.base, _drA, w);
+        if (dt > 0) D.ball.rotateX(-dt * 5 * w);   // it turns a little as it bounces
+        D.on = true;
     }
     var _gearE = null;
     var _gearQ = null, _gearAx = null;
@@ -18399,6 +18436,8 @@ const ThreeRenderer = (function () {
             } else if (nm === 'ewGearCape') {
                 n.rotation.x = 0.06 + 0.04 * Math.sin(t * 1.6);
                 n.rotation.z = 0.025 * Math.sin(t * 1.1);
+            } else if (nm === 'ewDribble') {
+                _dribbleTick(S, model, n, dt);
             }
         }
         if (S.dm) _demiTick(S, model, dt, t);   // THE DEMIURGE: his parts, after the gear's own beat
@@ -20896,7 +20935,7 @@ const ThreeRenderer = (function () {
     function _swayInit(model, opts) {
         var o = {}, k; for (k in _SW_DEF) o[k] = _SW_DEF[k]; if (opts) for (k in opts) o[k] = opts[k];
         var cols = {}, byName = {}, gear = [];
-        model.traverse(function (n) { if (/^ewGear(WingL|WingR|Halo|Cape)$/.test(n.name || '')) gear.push(n); });   // THE UNIT GEAR
+        model.traverse(function (n) { if (/^(ewGear(WingL|WingR|Halo|Cape)|ewDribble)$/.test(n.name || '')) gear.push(n); });   // THE UNIT GEAR (+ THE DRIBBLE's marker)
         model.traverse(function (n) {   // THE WING BONES (2026-11-23, bake-wings.py: the Butterfly Girl): their baked turn kept to beat from
             if (!n.isBone || !/^ewwing_[LR]$/.test(n.name || '')) return;
             if (!n.userData.ewq0) n.userData.ewq0 = [n.quaternion.x, n.quaternion.y, n.quaternion.z, n.quaternion.w];
@@ -21697,6 +21736,8 @@ const ThreeRenderer = (function () {
             var turnC = Math.cos(turnDeg * Math.PI / 180), turnS = Math.sin(turnDeg * Math.PI / 180);
             var key = libIdx + ':' + clipName + (pinHips ? ':pin' : (pinXZ ? ':pxz' : '')) + (travel ? (':tr' + ((ref && typeof ref.strikeAt === 'number') ? ref.strikeAt : '')) : '') + (trim ? (':t' + trim[0] + '-' + trim[1]) : '')
                 + (turnDeg ? ':y' + turnDeg : '') + thenList.map(function (tn) { return '+' + (tn.lib == null ? libIdx : tn.lib) + ':' + tn.clip + (tn.trim ? ':t' + tn.trim[0] + '-' + tn.trim[1] : ''); }).join('');
+            var ballRef = (ref && typeof ref === 'object' && ref.ball) || null;   // THE DRIBBLE
+            if (ballRef) key += ':ball' + (ballRef.beats || 1) + '@' + (ballRef.top || 0);
             if (cen) key += '|cen:' + _cenGroup(slot) + (/^idle./.test(slot) ? '2' : '');   // 🐎 the horse's part is the slot's
             var supSide = _LIB_SUPPORT_HAND[clipName] || null;   // THE SUPPORT HAND (a two-handed clip's off hand re-reaches the gun hand)
             if (bakedByClip[key]) { out[slot] = bakedByClip[key]; return; }
@@ -21806,6 +21847,7 @@ const ThreeRenderer = (function () {
             });
             tracks.push(new THREE.VectorKeyframeTrack('Hips.position', times, hipsPos));
             if (supSide) _libSupportCurl(setup, supSide).forEach(function (c) { tracks.push(new THREE.QuaternionKeyframeTrack(c.name + '.quaternion', [0, dur], c.q.concat(c.q))); });
+            if (ballRef) tracks.push(_libBallTrack(dur, ballRef));   // THE DRIBBLE
             if (cen) tracks = _cenMerge(cen, slot, tracks, dur);   // 🐎 THE CENTAUR
             var baked = new THREE.AnimationClip('EWLib_' + key, dur, tracks);
             if (travXZ) baked.userData = { ewTravel: _libTravelCurve(times, travXZ, (ref && typeof ref.strikeAt === 'number') ? ref.strikeAt - t0 : -1) };
@@ -21817,6 +21859,28 @@ const ThreeRenderer = (function () {
         }
         if (!only && !Object.keys(out).length) throw new Error('no library clips baked');
         return out;
+    }
+
+    /* THE DRIBBLE (2026-11-27, mondo: "make him dribble the basketball for his idle"). A slot with `ball: { beats, top }`
+       (sprites.js, the Point Guard's idle / walk / run) gets one more track on its baked clip: the marker node `ewDribble`
+       (THE UNIT GEAR hangs it on the body with the ball), position.x = how far up the ball is between the floor (0) and the
+       palm (1), position.y = 1 (the ball is being dribbled; the marker rests at y 0 = the ball sits in the hand). The mixer
+       plays, loops, scales and cross-fades it with the body's own keys, so the ball is on the clip's beat on every stage
+       that plays the clip (the board, the walk, the forge, the line-ups) with no code of its own there; _gearTick puts the
+       ball where the marker says. A beat: the hand is highest at `top`; the ball rides the palm down, leaves it 0.30 of a
+       beat later, hits the floor at 0.56 and is back in the palm at 0.84. Keyed at 120 Hz: the bounce is sharp. */
+    var _BALL_REL = 0.30, _BALL_FLOOR = 0.56, _BALL_CATCH = 0.84;
+    function _libBallTrack(dur, ref) {
+        var beats = Math.max(1, ref.beats | 0), top = +ref.top || 0;
+        var n = Math.max(8, Math.ceil(dur * 120) + 1), T = new Float32Array(n), V = new Float32Array(n * 3);
+        for (var i = 0; i < n; i++) {
+            var t = dur * i / (n - 1), ph = (t / dur) * beats - top; ph -= Math.floor(ph);
+            var k = 1, sx;
+            if (ph >= _BALL_REL && ph < _BALL_FLOOR) { sx = (ph - _BALL_REL) / (_BALL_FLOOR - _BALL_REL); k = 1 - sx * (0.75 + 0.25 * sx); }
+            else if (ph >= _BALL_FLOOR && ph < _BALL_CATCH) { sx = (ph - _BALL_FLOOR) / (_BALL_CATCH - _BALL_FLOOR); k = sx * (1.25 - 0.25 * sx); }
+            T[i] = t; V[i * 3] = k; V[i * 3 + 1] = 1; V[i * 3 + 2] = 0;
+        }
+        return new THREE.VectorKeyframeTrack('ewDribble.position', T, V);
     }
 
     /* THE TRAVEL CURVE (THE NEW CLIPS, 2026-09-25): the source hips' ground-
