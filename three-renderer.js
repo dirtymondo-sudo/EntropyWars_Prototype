@@ -22383,6 +22383,7 @@ const ThreeRenderer = (function () {
            the procedural clips or the Meshy idle), then shows a couple of frames later so the caller's own slot (a seated pose)
            is already playing. false = still waiting; the HQ load card waits on it (_hqCharsAnimReady). Off: window.EW_NO_ANIM_GATE. */
         entry._ew_animReady = false;
+        if (def.foldFx) { try { _sbotFoldWarm(unit, def); } catch (_fw) {} }   // THE FOLD IN A FIGHT: the transforming file, in before the first change
 
         // Invisible pick pillar (see contract note above). Height tracks the
         // model's rendered height (ts * UNIT_SPRITE_SIZE_RATIO * heightRatio)
@@ -22431,6 +22432,7 @@ const ThreeRenderer = (function () {
                civic forms) so werewolf day/night rebuilds stay silent. Runs
                locally on host AND guest (the swap itself is driven by the
                synced _spriteOverride), so no relay is needed. */
+            if (def.foldFx) { try { _sbotFoldStart(unit, def, ts); } catch (_fs) {} }   // THE FOLD IN A FIGHT: the sedan's real change over the swap
             if (def.transformFx && !(state && state.devAutoSim)
                 && typeof window !== 'undefined' && window.ThreeVFXEffects
                 && window.ThreeVFXEffects.sigShockRing3D) {
@@ -23303,6 +23305,7 @@ const ThreeRenderer = (function () {
         var now = _animNow();
         var dt = _modelClockPrev ? Math.min((now - _modelClockPrev) / 1000, 0.1) : 0.016;
         _modelClockPrev = now;
+        if (_sbotFoldN > 0) { try { _sbotFoldTick(dt); } catch (_ft) {} }   // THE FOLD IN A FIGHT (only while a change runs)
         var _fpHideUid = (typeof window !== 'undefined' && window._ewFpHideUid != null)
             ? window._ewFpHideUid : null;
         unitEntries.forEach(function (entry, uid) {
@@ -95519,7 +95522,7 @@ const ThreeRenderer = (function () {
            `wet` = the deepest water; `reach` = how near its side you stand to get in. THE HILL (11-22): `grade` = the steepest ground it
            stands on (rise over run), `hill` = how much of a slope's pull it feels, `steerMax` = the wheels' hardest lock (handbrake). */
         car: { v: 21, rev: 7, accel: 8.5, brake: 20, coast: 2.4, hand: 15, steer: 0.88, steerHi: 0.22, steerIn: 10, steerMax: 1.1, handSteer: 1.7, wb: 0.6, step: 0.34, clear: 0.34, drop: 0.7, grade: 0.9, wet: 0.45, hill: 0.3, bump: 0.25, lean: 0.035, squat: 0.02, reach: 1.7, exit: 0.75, camDist: 8.0, camUp: 0.9, len: 4.6, beam: 1.9,
-               bot: { morph: 2.4, walk: 4.5, run: 10, accel: 4, turn: 3.2, mouse: true, mouseK: 1.6, walkRef: 4.5, runRef: 10, camUp: 2.4, camBack: 5, jump: 9, grav: 22, seat: [0.37, 0.44, -0.02], thigh: 0.12, shin: 0.8, glass: 0.2 } },   // THE SEDAN BOT (2026-11-27)
+               bot: { morph: 2.4, walk: 4.5, run: 10, accel: 4, turn: 3.2, mouse: true, mouseK: 1.6, walkRef: 4.5, runRef: 10, camUp: 2.4, camBack: 5, jump: 9, grav: 22, fold: 2, seat: [0.37, 0.44, -0.02], thigh: 0.12, shin: 0.8, glass: 0.2 } },   // THE SEDAN BOT (2026-11-27)
         keys: { dive: 'c', rise: 'space', board: 'e' },
         labels: { boat: 'THE SKIFF', sub: 'THE BATHYSCAPHE', ship: 'THE SPACESHIP', car: 'THE CAR' },
     };
@@ -95952,7 +95955,7 @@ const ThreeRenderer = (function () {
     function _sbotModel(cat, perM, o) {
         o = o || {};
         var g = new THREE.Group(), s = perM * (o.scale || 1), tickers = (typeof _hq !== 'undefined' && _hq && _hq.tickers) ? _hq.tickers : null;
-        _asGltf(_hqModelUrl(cat), function (gltf) {
+        _asGltf(o.url || _hqModelUrl(cat), function (gltf) {   // (o.url: THE FOLD IN A FIGHT names the file itself)
             var sc = gltf.scene, by = {}, RB = _sbotRules(), body = null;
             sc.scale.setScalar(s);
             sc.traverse(function (n) {   // (once, its own nodes)
@@ -95984,10 +95987,10 @@ const ThreeRenderer = (function () {
             if (gltf.animations && gltf.animations.length && arm) {
                 B.mixer = new THREE.AnimationMixer(sc);
                 gltf.animations.forEach(function (c) { var a = B.mixer.clipAction(c); a.setEffectiveWeight(0); a.play(); B.acts[c.name] = a; });
-                try { _sbotLib(B, sc); } catch (eLb) { try { console.warn('[HQ] the sedan bot: no library clips', eLb); } catch (e2) {} }
+                if (!o.noLib) try { _sbotLib(B, sc); } catch (eLb) { try { console.warn('[HQ] the sedan bot: no library clips', eLb); } catch (e2) {} }
             }
             g.add(sc); g._ew_bot = B;
-            if (tickers) tickers.push(function (dt) { var V = _hq && _hq.vehicle; if (V && V.on && V.rec && _sbotOf(V.rec) === B) return; _sbotTick(B, dt); });   // (driven: the wheel lays its parts itself, _hqTickCar, whatever room's list this sits in)
+            if (tickers && !o.noTick) tickers.push(function (dt) { var V = _hq && _hq.vehicle; if (V && V.on && V.rec && _sbotOf(V.rec) === B) return; _sbotTick(B, dt); });   // (driven: the wheel lays its parts itself, _hqTickCar, whatever room's list this sits in)
             if (o.onDone) o.onDone(g, s, new THREE.Box3(new THREE.Vector3(-0.97, 0, -2.25), new THREE.Vector3(0.97, 1.45, 2.25)));
             if (_hq) _hq.dirty = true;
         }, function (e) { try { console.warn('[HQ] the sedan bot did not load', e); } catch (e2) {} });
@@ -96112,6 +96115,94 @@ const ThreeRenderer = (function () {
             }
         }
         B.wasOn = true; B.dirty = false;
+    }
+    /* ══ THE FOLD IN A FIGHT (2026-11-27, mondo: "yes i want the folding change in battle") ══════════════════════════════════════════
+       The battle unit `honda civic` wears two models, the car and the robot (sprites.js overrideForms), and its Transform swapped one
+       for the other with a ring. Now the swap plays the garage sedan's own change: a def with `foldFx` (the transforming file's URL;
+       `foldBot` on the robot) keeps one parsed copy of that file a unit (_sbotFoldWarm, at its first attach); when the unit's model
+       changes (_attachUnitModel, the same spot as the ring) the copy stands in the unit's group over the hidden new model and runs
+       t 0 -> 1 (car -> robot: the panels swing open and travel onto the bones while the core uncurls and grows) or 1 -> 0, over
+       `car.bot.fold` seconds, sized from the car form's height to the robot form's; then it leaves and the form's own model shows
+       (held on its last frame until that model's clips are on). RULE #2: nothing relayed and nothing on state: the swap itself is
+       the synced `_spriteOverride`, so host and guest each play it from their own rebuild, like the ring. RULE #1e: a Map of the
+       changes under way, read only while one runs. Not in a dev auto-sim. Off: window.EW_NO_FOLD. */
+    var _sbotFolds = new Map(), _sbotFoldN = 0;
+    function _sbotFoldForms() {
+        var RM = (typeof RACE_MODELS_3D !== 'undefined' && RACE_MODELS_3D) ? RACE_MODELS_3D['honda civic'] : null, car = RM && RM.male, ff = car && car.overrideForms, bot = null;
+        if (ff) for (var k in ff) if (ff[k] && ff[k] !== car) { bot = ff[k]; break; }
+        return { car: car, bot: bot };
+    }
+    function _sbotFoldWarm(unit, def) {
+        if (!def || !def.foldFx || !unit || (typeof window !== 'undefined' && window.EW_NO_FOLD)) return null;
+        var F = _sbotFolds.get(unit.id);
+        if (F) return F;
+        F = { g: _sbotModel(null, 1, { url: def.foldFx, noTick: true, noLib: true }), on: false, t: 0, dir: 0, ts: 0, hold: 0, h: {}, hr: {} };
+        F.g._ew_mover = true; F.g._ew_bunOut = true; F.g._ew_noBatch = true; F.g._ew_noInstance = true;
+        _sbotFolds.set(unit.id, F);
+        var fm = _sbotFoldForms();
+        ['car', 'bot'].forEach(function (k) {
+            if (!fm[k] || !fm[k].model) return;
+            F.hr[k] = fm[k].heightRatio || 1;
+            try { _loadUnitGLB(fm[k].model, function (res) { if (res && res.bbox) F.h[k] = (res.bbox.max.y - res.bbox.min.y) || 1; }); } catch (e) {}
+        });
+        return F;
+    }
+    function _sbotFoldStart(unit, def, ts) {
+        if (typeof state !== 'undefined' && state && state.devAutoSim) return false;
+        var F = _sbotFoldWarm(unit, def);
+        if (!F || !F.g._ew_bot || !F.h.car || !F.h.bot) return false;   // (the file is not in yet: the plain swap)
+        if (!F.on) { F.t = def.foldBot ? 0 : 1; _sbotFoldN++; }       // (turned round mid-way, it carries on from where it stands)
+        F.on = true; F.dir = def.foldBot ? 1 : -1; F.ts = ts; F.hold = 0; F.rf = 0;
+        /* THE UNIT LOOK: the copy wears what a unit model wears (_attachUnitModel's _unitSwapMat: a Lambert, its sheet read raw, its own
+           colour as the self glow, the unit pop). In the garage's MeshStandard it stood near black on a board beside the other units. */
+        var gl = 0.5, ds = 0.65, i; try { gl = _unitSelfGlowIntensity(unit); ds = _modelDiffuseScale(); } catch (eG) {}
+        if (!F.mats) {
+            F.mats = []; var seen = {};
+            F.g._ew_bot.root.traverse(function (n) {   // (once, its own nodes)
+                var sm = n.isMesh && n.material; if (!sm || Array.isArray(sm)) return;
+                var lm = seen[sm.uuid];
+                if (!lm) {
+                    var tex = sm.map || null, glass = /glass/i.test(sm.name || '');
+                    if (_ewTexSetSRGB(tex, false)) tex.needsUpdate = true;
+                    lm = new THREE.MeshLambertMaterial({ map: tex, side: THREE.DoubleSide });
+                    if (n.isSkinnedMesh) lm.skinning = true;
+                    if (sm.transparent) { lm.transparent = true; lm.opacity = sm.opacity; lm.depthWrite = false; }
+                    lm._ew_base = (tex || !sm.color) ? null : sm.color.clone();   // (a part with no sheet: the plate, the glass)
+                    if (tex) { lm.emissive = new THREE.Color(0xffffff); lm.emissiveMap = tex; } else if (lm._ew_base && !glass) lm.emissive = lm._ew_base.clone();
+                    lm.name = sm.name; _ewPopUnitMat(lm); seen[sm.uuid] = lm; F.mats.push(lm);
+                }
+                n.material = lm; n.renderOrder = 2; n.receiveShadow = false;
+            });
+        }
+        for (i = 0; i < F.mats.length; i++) { var fm = F.mats[i]; if (fm._ew_base) fm.color.copy(fm._ew_base).multiplyScalar(ds); else fm.color.setScalar(ds); fm.emissiveIntensity = fm.map ? gl : gl * 0.6; }
+        return true;
+    }
+    function _sbotFoldEnd(uid, F, e) {
+        if (F.on) { F.on = false; _sbotFoldN = Math.max(0, _sbotFoldN - 1); }
+        if (F.g.parent) F.g.parent.remove(F.g);
+        if (e && e.model) e.model.visible = true;
+    }
+    function _sbotFoldTick(dt) {
+        var RB = _sbotRules(), dur = RB.fold || 2;
+        _sbotFolds.forEach(function (F, uid) {
+            if (!F.on) return;
+            var e = unitEntries.get(uid), u = _findUnit(uid), B = F.g._ew_bot;
+            if (!e || !e.group || !e.model || !u || u.dead || !B) { _sbotFoldEnd(uid, F, e); if (!u) _sbotFolds.delete(uid); return; }
+            F.t += F.dir * dt / dur;
+            if (F.dir > 0 ? F.t >= 1 : F.t <= 0) {
+                F.t = F.dir > 0 ? 1 : 0; F.hold += dt;
+                if (e._ew_modelAttached && e._ew_animReady !== false && !e._ew_animFresh && !e.sprite) F.rf++;                                // (the form's own model, its clips on and its body shown)
+                if (F.rf >= 3 || F.hold > 10) { _sbotFoldEnd(uid, F, e); return; }
+            }
+            if (F.g.parent !== e.group) e.group.add(F.g);
+            e.model.visible = false;
+            if (e.sprite && e.sprite.visible) e.sprite.visible = false; if (e.silhouette && e.silhouette.visible) e.silhouette.visible = false;   // (the stand-in a loading form puts up)
+            var H1 = F.ts * UNIT_SPRITE_SIZE_RATIO, sC = H1 * F.hr.car / F.h.car, sB = H1 * F.hr.bot / F.h.bot, k = _sbotSeg(F.t, [0.2, 0.9]);
+            F.g.scale.setScalar(sC + (sB - sC) * k);
+            F.g.position.copy(e.model.position); F.g.rotation.y = e.model.rotation.y;
+            B.t = F.t; B.dir = 0; B.dirty = true;
+            try { _sbotTick(B, dt); } catch (eT) {}
+        });
     }
     /* ── THE VEHICLES ── */
     function _hqVehicleRegister(p, cat, grp, y, blk) {
