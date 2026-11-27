@@ -706,3 +706,11 @@ City lists its plots by district; every other multi-district room is told apart 
   also plant an `rf_*` kind directly; the rule leaves it alone.
 - The raw packs are still in R2 `dirtymondo/inbox/More Foilage/` (this cloud container has no `/mnt/project-files`, so they
   could not be moved to `asset-packs/` or logged in `_sorted-log.md`).
+
+## G30 · THE CROPS VARY (2026-11-27, mondo: "the estate and all the very repetitive corn? can we do different crops or more variety of corn plants too?")
+
+The Estate's corn was 2,775 `corn_row` rows of one model, one height, one green (the corn is a LINE of rows round each open square; nothing stands behind it).
+- data.js `CROP_VARY` + `cropRowsVary(room, rows)` (called once a room build in three-renderer.js beside `zoneFloraSwap`; copies, never the room's rows; no district file or bake touched, so it holds for every room that lays a listed key). The ground is cut in soft patches (`patch` 30 m, smooth noise on the row's spot, the same every visit) and a patch is one of `looks` by weight: green as it was, a young shoulder-high field, a tall ripening yellow one, a dry straw one, a sunflower field (`to: 'sunflowers'`, three staggered clumps a row, 2.2-2.9 m) and sunflowers past their best. Every row also takes its own height.
+- A row's `vy` = its own height (placeOne: `grp.scale.y`), a row's `tint` = its model drawn through a tinted twin of the room material (`_hqPropTintPick`, one twin per sheet + tint, shared, let go with the file). A tint list is a gain per channel and may pass 1: a multiply alone cannot turn green corn yellow.
+- Only TALL crops stand in for corn: the line is the wall the walker sees, so wheat or pumpkins there would show the bare ground behind it. Low crops (`fl_wheat_clump`, `hw_crop*`, `hw_pumpkin*`) belong on open, walked squares = district files.
+- Off: `window.EW_NO_CROP_VARY`. Not done: the squares behind the corn line are still bare ground (seen from above or through a gap); filling them is a field drawn like THE FLORA FIELD, not 10,000 more props.
