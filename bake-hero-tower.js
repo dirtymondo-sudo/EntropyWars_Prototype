@@ -255,15 +255,18 @@ for (let i = 0; i < 8; i++) shell(i);
 /* ── THE VIEW OUT: the city round the tower, as the city's own drawn rows (never an inside), set down 22.75 m, and the streets ── */
 const VIEW = { rows: [], parts: 0 };
 { const city = JSON.parse(vm.runInContext('JSON.stringify(DOOR_HQ.rooms.' + CITY + '.terrain)', D)), RAD = +(process.env.TOWER_VIEW || 72);
-  const pt = f => typeof f.x === 'number' ? [f.x, f.z] : typeof f.x0 === 'number' ? [(f.x0 + f.x1) / 2, (f.z0 + f.z1) / 2] : null;
+  /* THE SPREAD (2026-11-27, docs/disaster-city/spread.js): the city room's districts stand apart now; SP = how far the tower's band was moved.
+     A city row is read SP back, into the frame this file is written in (the compact city's metres). */
+  const SPR = JSON.parse(vm.runInContext('JSON.stringify((DOOR_HQ.rooms.' + CITY + '.dc144 || {}).spread || null)', D)), sband = (v, c) => (v > c[1] ? 2 : v > c[0] ? 1 : 0), SP = SPR ? [SPR.dx[sband(CX, SPR.cutX)], SPR.dz[sband(CZ, SPR.cutZ)]] : [0, 0];
+  const pt = f => typeof f.x === 'number' ? [f.x - SP[0], f.z - SP[1]] : typeof f.x0 === 'number' ? [(f.x0 + f.x1) / 2 - SP[0], (f.z0 + f.z1) / 2 - SP[1]] : null;
   const want = city.features.filter(f => { const q = pt(f); if (!q || !(f.k === 'arch' || (f.k === 'texbuilding' && f.skin !== false))) return false;
       if (/P06-04-B1/.test(f.id || '') || /:in(:|$)/.test(f.id || '') || /^arch:H:beds/.test(f.id || '')) return false;
       return Math.max(Math.abs(q[0] - CX), Math.abs(q[1] - CZ)) < RAD; });
   /* a row with no height of its own stands on the city's ground there: read it off the city's compiled field (a minute) */
   let hAt = null; if (want.some(f => typeof f.y !== 'number')) { const info = vm.runInContext("hqTerrainInfo('" + CITY + "')", D); hAt = (x, z) => vm.runInContext('hqTerrainHeight', D)(info, x, z); }
   want.forEach(f => { const r = JSON.parse(JSON.stringify(f)); ['hollow', 'door', 'leaf', 'inner', 'keyIn', 'floorIn'].forEach(k => delete r[k]);
-      const y = typeof f.y === 'number' ? f.y : hAt(pt(f)[0], pt(f)[1]);
-      if (typeof r.x === 'number') { r.x = r2(r.x - CX); r.z = r2(r.z - CZ); } else { r.x0 = r2(r.x0 - CX); r.x1 = r2(r.x1 - CX); r.z0 = r2(r.z0 - CZ); r.z1 = r2(r.z1 - CZ); }
+      const y = typeof f.y === 'number' ? f.y : hAt(pt(f)[0] + SP[0], pt(f)[1] + SP[1]);
+      if (typeof r.x === 'number') { r.x = r2(r.x - SP[0] - CX); r.z = r2(r.z - SP[1] - CZ); } else { r.x0 = r2(r.x0 - SP[0] - CX); r.x1 = r2(r.x1 - SP[0] - CX); r.z0 = r2(r.z0 - SP[1] - CZ); r.z1 = r2(r.z1 - SP[1] - CZ); }
       r.y = r2(y - DOWN); r.id = 'tower:view:' + (f.id || VIEW.rows.length); VIEW.parts += (r.parts || []).length; VIEW.rows.push(r); });
   /* the streets: one sheet of the city's road under it all, the plaza's stone round the tower's foot */
   VIEW.rows.push({ k: 'arch', id: 'tower:view:ground', x: 0, z: 0, y: 0, parts: [

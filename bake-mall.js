@@ -262,13 +262,16 @@ const VIEW = { rows: [], props: 0 };
   /* the city's own drawn things within reach (never an inside: a `:in` row is a walk-in's hall), and its street props */
   const city = DATA.DOOR_HQ.rooms[CITY], BX = [BOX.X0, BOX.Z0, BOX.X0 + W, BOX.Z0 + D];
   const dist = (x, z) => Math.hypot(Math.max(BX[0] - x, 0, x - BX[2]), Math.max(BX[1] - z, 0, z - BX[3]));
-  const pt = f => typeof f.x === 'number' ? [f.x, f.z] : typeof f.x0 === 'number' ? [(f.x0 + f.x1) / 2, (f.z0 + f.z1) / 2] : null;
+  /* THE SPREAD (2026-11-27, docs/disaster-city/spread.js): the city room's districts stand apart now, so the mall is not at the box's own (compact)
+     metres in it. SP = how far the mall's band was moved; a city row is read SP back, in the frame this file and box.js are written in. */
+  const SPR = city.dc144 && city.dc144.spread, sband = (v, c) => (v > c[1] ? 2 : v > c[0] ? 1 : 0), SP = SPR ? [SPR.dx[sband(CX, SPR.cutX)], SPR.dz[sband(CZ, SPR.cutZ)]] : [0, 0];
+  const pt = f => typeof f.x === 'number' ? [f.x - SP[0], f.z - SP[1]] : typeof f.x0 === 'number' ? [(f.x0 + f.x1) / 2 - SP[0], (f.z0 + f.z1) / 2 - SP[1]] : null;
   const pierLine = (x, z) => x > 255 && x < 330 && z > 0 && z < 42;
   city.terrain.features.forEach(f => { const q = pt(f); if (!q || /^dc:P10-10-B1/.test(f.id || '') || /:in(:|$)/.test(f.id || '')) return;
       if (!(dist(q[0], q[1]) < 90 || pierLine(q[0], q[1]))) return;
-      if (f.k === 'arch') { const c = L(f.x, f.z), r = JSON.parse(JSON.stringify(f)); r.x = c[0]; r.z = c[1]; if (typeof r.y !== 'number') r.y = 0; r.id = 'mall:view:' + (f.id || VIEW.rows.length); VIEW.rows.push(r); }
-      else if (f.k === 'texbuilding' && f.skin !== false) { const c = L(f.x, f.z), r = JSON.parse(JSON.stringify(f)); ['hollow', 'door', 'leaf', 'inner', 'keyIn', 'floorIn'].forEach(k => delete r[k]); r.x = c[0]; r.z = c[1]; if (typeof r.y !== 'number') r.y = 0; r.id = 'mall:view:' + (f.id || VIEW.rows.length); VIEW.rows.push(r); } });
-  city.props.forEach(q => { if (q.x >= 259 || dist(q.x, q.z) > 50 || q.floor || (q.y > 0.5 && q.y < 5) || !CAT[q.key]) return;
+      if (f.k === 'arch') { const c = L(f.x - SP[0], f.z - SP[1]), r = JSON.parse(JSON.stringify(f)); r.x = c[0]; r.z = c[1]; if (typeof r.y !== 'number') r.y = 0; r.id = 'mall:view:' + (f.id || VIEW.rows.length); VIEW.rows.push(r); }
+      else if (f.k === 'texbuilding' && f.skin !== false) { const c = L(f.x - SP[0], f.z - SP[1]), r = JSON.parse(JSON.stringify(f)); ['hollow', 'door', 'leaf', 'inner', 'keyIn', 'floorIn'].forEach(k => delete r[k]); r.x = c[0]; r.z = c[1]; if (typeof r.y !== 'number') r.y = 0; r.id = 'mall:view:' + (f.id || VIEW.rows.length); VIEW.rows.push(r); } });
+  city.props.forEach(q0 => { const q = Object.assign({}, q0, { x: q0.x - SP[0], z: q0.z - SP[1] }); if (q.x >= 259 || dist(q.x, q.z) > 50 || q.floor || (q.y > 0.5 && q.y < 5) || !CAT[q.key]) return;
       const c = L(q.x, q.z), o = JSON.parse(JSON.stringify(q)); o.x = c[0]; o.z = c[1]; props.push(o); VIEW.props++; }); }
 console.log('THE VIEW OUT', JSON.stringify({ rows: VIEW.rows.length, parts: VIEW.rows.reduce((n, r) => n + (r.parts ? r.parts.length : 0), 0), props: VIEW.props }));
 
