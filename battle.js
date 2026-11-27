@@ -2699,6 +2699,7 @@
                 delete unit._revs;
             }
             if (spell.crackSpend && target) _ncCrackOpen(unit, spell, target);   // 🌰 Crack Open
+            if (spell.ogPerSquare && target) _ogCrash(unit, spell, target);   // 🕊 Kamikaze: +N a square flown
             if (spell.cenHopBack && target && !unit.dead) _cenHopBack(unit, spell, target);   // 🐎 THE CENTAUR: Parthian Shot
             /* ⛪ Celibacy (`summonPenalty`): N more for every summon the target's team has on the board, a second blow */
             if (spell.summonPenalty > 0 && target && !target.dead && !target._dying && !unit.dead) {
@@ -14469,6 +14470,87 @@
                 if (!_skipVisuals() && typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(target, '🌰 CRACKED OPEN', 'debuff', { durationMs: 1100 });
             }
         }
+        /* ═══ 🕊 THE ORIGAMI GIRL (2026-11-27, mondo: "a piece of paper with actual folding animations ... build her spells and vfx
+           and all that") ═══ She is the weapon: a row with `ogFold` folds her own sheet into the tool (three-renderer.js THE
+           ORIGAMI IN A FIGHT, off the cast's windup beat, which online.js relays). THE FOLD: after the cast she keeps the shape
+           as a status (STATUS_DEFS foldSword / foldPlane / foldFortune / foldCrane, `_OG_FOLDS`) until her next turn starts
+           (_ogTurnStart) or she folds again (_ogBeginCast). Kamikaze hits +`ogPerSquare` a square flown (_ogCrash, in the
+           forecast too). Pick a Number is an `anyTeam` procedure row (the Plastic Surgeon's way: _psCastRow picks the ally or
+           the enemy cast) whose `ogFortunes` roll one of four (_ogCastRow, engineRng); the flap's number and colour go to both
+           screens with _ogAct. Host-side: plain numbers + statuses ride the state sync; every look rides VFX3D.fire (RULE #2).
+           Notes: docs/notes/champions-combat.md "THE ORIGAMI GIRL". */
+        const _OG_FOLDS = { sword: 'foldSword', plane: 'foldPlane', fortune: 'foldFortune', crane: 'foldCrane' };
+        const _OG_FOLD_IDS = ['foldSword', 'foldPlane', 'foldFortune', 'foldCrane'];
+        function _ogIs(u) { return !!u && u.race === 'origami girl'; }
+        /* a look for both screens: VFX3D.fire('ogact') carries who (uid), what (fx), a number (scale) and a side (owner) on the
+           keys online.js already relays */
+        function _ogAct(u, spellId, fx, tx, ty, o) {
+            if (!u || _skipVisuals() || state.phase !== 'battle') return;
+            try {
+                if (typeof window !== 'undefined' && window.VFX3D && typeof window.VFX3D.fire === 'function') {
+                    window.VFX3D.fire('ogact', spellId, Object.assign({ uid: u.id, fx: fx, tx: tx != null ? tx : u.x, ty: ty != null ? ty : u.y, sx: u.x, sy: u.y }, o || {}));
+                }
+            } catch (e) {}
+        }
+        function _ogUnfold(unit) {
+            let had = false;
+            for (const id of _OG_FOLD_IDS) if (unitHasStatus(unit, id)) { clearStatus(unit, id); had = true; }
+            delete unit._ogFolded;
+            return had;
+        }
+        function _ogFlown(fx, fy, target) {
+            if (!target) return 0;
+            return Math.max(0, Math.max(Math.abs(target.x - fx), Math.abs(target.y - fy)) - 1);
+        }
+        /* doSpell, before the gates: where the flight began (the held shape opens only once the cast went through: _ogAfterCast) */
+        function _ogBeginCast(unit, spell) {
+            if (!unit || !spell || !/^og[A-Z]/.test(spell.id || '')) return;
+            unit._ogFromX = unit.x; unit._ogFromY = unit.y;
+        }
+        /* Pick a Number: one of four, rolled once for the cast */
+        function _ogCastRow(unit, spell) {
+            const list = spell && spell.ogFortunes;
+            if (!Array.isArray(list) || !list.length) return spell;
+            const k = Math.max(0, Math.min(list.length - 1, Math.floor(engineRng() * list.length)));
+            const s = Object.assign({}, spell);
+            delete s.statusEffects; delete s.statStageBoost; delete s.ogFortunes;
+            Object.assign(s, list[k]);
+            s._ogRoll = k + 1;
+            if (Array.isArray(s.statusEffects) && !s.statusEffects.length) delete s.statusEffects;
+            return s;
+        }
+        /* _runPostEffects: the flight's own weight, a second blow */
+        function _ogCrash(unit, spell, target) {
+            if (!target || target.dead || target._dying || unit.dead) return;
+            const n = _ogFlown(unit._ogFromX != null ? unit._ogFromX : unit.x, unit._ogFromY != null ? unit._ogFromY : unit.y, target);
+            if (n <= 0) return;
+            applyDamageToUnit(target, spell.ogPerSquare * n, `✈ ${spell.name} flight (${n}): `, {
+                sourceUnit: unit, damageType: spell.damageType || 'physical', consumeMarked: false,
+                spellType: spell.spellType || null, element: classifySpellElement(spell)
+            });
+        }
+        /* finishAction: THE FOLD (the shape she stays in), the fortune's flap */
+        function _ogAfterCast(unit, spell, x, y, z) {
+            if (!unit || !spell || !/^og[A-Z]/.test(spell.id || '') || state.phase !== 'battle') return;
+            if (spell._ogRoll) {
+                let t = null;
+                try { t = unitAt(x, y, z) || unitAt(x, y); } catch (e) { t = null; }
+                const ally = !!(t && isAllyUnit(t, unit));
+                if (t && !t.dead && !_skipVisuals()) showFloatingTextForUnit(t, `🔮 ${spell._ogRoll}: ${spell.ogLabel || ''}`, ally ? 'buff' : 'debuff', { durationMs: 1500, jitterY: -34 });
+                addLog(`🔮 ${_ctSp(spell.name)}: the flap reads ${spell._ogRoll}${spell.ogLabel ? ', ' + spell.ogLabel : ''}.`);
+                _ogAct(unit, 'ogPickANumber', 'roll', x, y, { scale: spell._ogRoll, owner: ally ? 1 : 2 });
+            }
+            const id = spell.ogFold && _OG_FOLDS[spell.ogFold];
+            if (unit._ogFolded || _OG_FOLD_IDS.some(k => unitHasStatus(unit, k))) _ogUnfold(unit);   // a cast that went through opens the held shape (a refused one never does)
+            if (!id || unit.dead || unit._dying) return;
+            applyStatusPayload(unit, { id: id, duration: 2 }, `${spell.name}: `, unit);
+            if (unitHasStatus(unit, id)) unit._ogFolded = spell.ogFold;
+        }
+        /* her turn: the sheet opens flat and she stands up again */
+        function _ogTurnStart(unit) {
+            if (!unit || unit.dead || unit._dying) return;
+            if (_ogUnfold(unit) && typeof markDirty === 'function') markDirty('board');
+        }
         /* 🛹 THE BAIL (2026-11-16, the Skater polish): a hold that stops her rolling (_skaterBailOn: Stun, Sleep, Root, Frozen,
            Charm, Coiled, Roped; never her own Climbing) knocks her off the board and the banked Momentum is gone. The other side's answer to a big stack. */
         function _skaterBailOn(id) { return id === 'stun' || id === 'sleep' || id === 'root' || id === 'frozen' || id === 'charm' || id === 'coiled' || id === 'tethered'; }
@@ -20235,6 +20317,7 @@
         function getCounterChance(unit) {
             if (!unit || unit.dead) return 0;
             if (unit._climb) return 0;   // 🧗 both hands on the wall: no counter
+            if (unitHasStatus(unit, 'foldSword')) return 1;   // 🕊 THE ORIGAMI GIRL: folded into the sword, she cuts back whoever hits her (front or side, like any counter)
             /* Guard's +15% rides the Guard stance: it lasts exactly as long as the GRD badge (timing playtest 11-07 E1) */
             const _gcb = unitHasStatus(unit, 'guarding') ? (unit._guardCounterBonus || 0) : 0;
             return calcCounterChance(unitPassiveMax(unit, 'counterChance') || 0, unit.def || 0, _gcb);
@@ -22256,6 +22339,7 @@
             /* the banner: the ⚛ chrome in the finisher's TYPE theme, the
                FINISHER kicker, the execution's name + tagline */
             if (def.overlay === 'beforeAfter') _finBeforeAfter(unit, target, totalMs);   // 💉 the Plastic Surgeon's BEFORE | AFTER frame
+            if (def.overlay === 'sevenFolds' && target) _ogAct(target, 'ogSevenFolds', 'sevenfolds', target.x, target.y, { sx: unit.x, sy: unit.y, durMs: Math.round(Math.max(1200, hitAt || totalMs * 0.6)) });   // 🕊 Seven Folds: the victim is folded in half seven times (three-renderer.js oriAct)
             _ewsShowBanner(unit.player, totalMs, getEntropyStrikeType(def.type), {
                 kicker: '☠ FINISHER — ' + unitDisplayName(unit).toUpperCase(),
                 glyph: def.glyph, name: def.name, tagline: def.tagline, cls: 'ews-fin'
@@ -47487,6 +47571,11 @@
                         const _cb = spell.crackSpend * Math.min(3, target._cracks);
                         hit(target, _cb, _cb, _cb, baseOpts(spell.damageType || 'physical', { consumeMarked: false, allowMarkBonus: false }), { tag: 'cracks' });
                     }
+                    /* 🕊 Kamikaze: the squares she will fly (_ogCrash), so the preview shows them too */
+                    if (spell.ogPerSquare) {
+                        const _ob = spell.ogPerSquare * _ogFlown(unit.x, unit.y, target);
+                        if (_ob > 0) hit(target, _ob, _ob, _ob, baseOpts(spell.damageType || 'physical', { consumeMarked: false, allowMarkBonus: false }), { tag: 'flight' });
+                    }
                     /* 🛹 Board Slam: the banked Momentum lands as its second blow (_runPostEffects), so the preview shows it too */
                     if (spell.momentumSpend && (unit._momentum || 0) > 0) {
                         const _mb = spell.momentumSpend * Math.min(6, unit._momentum);
@@ -68715,6 +68804,7 @@
                 }
                 if (nextUnit.race === 'florida man' || (nextUnit.spells || []).some(sp => sp && sp.floridaHeadline)) { try { _floridaTurnStart(nextUnit); } catch (e) {} }   // 📰 today's headline
                 if (nextUnit.race === 'monk') { try { _monkTurnStart(nextUnit); } catch (e) {} }   // 📿 where his turn began (THE STILLNESS)
+                if (nextUnit.race === 'origami girl' || nextUnit._ogFolded) { try { _ogTurnStart(nextUnit); } catch (e) {} }   // 🕊 THE FOLD: her turn opens her flat again
 
                 /* 😱 Feared (CHAMP REWORK Phase 4, STATUS_DEFS fear): the
                    activation is the flight — one engine-driven move away from
@@ -82328,6 +82418,7 @@
                             durationMs: 1000
                         });
                         if (_activeCinematic?.showCounter) _activeCinematic.showCounter();
+                        if (unitHasStatus(_counterTarget, 'foldSword')) _ogAct(_counterTarget, 'ogSwordigami', 'strike', _counterAttacker.x, _counterAttacker.y);   // 🕊 the paper sword swings itself
                         _showPressFeedback(_counterAttacker, _counterPressRes);
                         // Rigged models throw the riposte swing (castMelee) —
                         // counters are d===1 melee (or the Clash gap-closer,
@@ -86277,10 +86368,12 @@
             if (spell && unit && unit.race === 'leprechaun') spell = _lepCastRow(unit, spell);
             /* 💉 THE PLASTIC SURGEON: a procedure becomes its ally or enemy cast (_psCastRow); his casts remember what finishAction needs */
             if (spell && spell.procedure) spell = _psCastRow(unit, spell, x, y, z);
+            if (spell && spell.ogFortunes) spell = _ogCastRow(unit, spell);   // 🕊 THE ORIGAMI GIRL: Pick a Number rolls its flap (after the ally / enemy cast is picked)
             if (spell && spell.bpPick && _mpIs(unit) && state._bpPick != null) unit._mpPickHeld = state._bpPick;   // 🎛 THE MUSIC PRODUCER: the picker's choice rides to finishAction
             /* ☂ THE WEATHERMAN: Cold Front reads the sky, Severe Weather Warning the ground (_wnCastRow) */
             if (spell && (spell.wnSkyRead || spell.wnByGround)) spell = _wnCastRow(unit, spell, x, y);
             _psBeginCast(unit, spell, x, y, z);
+            _ogBeginCast(unit, spell);   // 🕊 THE ORIGAMI GIRL: where the flight began
             _pgBeginCast(unit, spell);   // 🏀 THE POINT GUARD: the Crossover notes who stood next to him
             if (unit && unit.race === 'rat') unit._ratCastId = spell ? spell.id : null;   // 👑 THE RAT KING: Gnaw's bonus reads the cast
             /* Clash final authority: movement/positioning spells can never
@@ -87063,6 +87156,7 @@
                 _nr5AfterCast(unit, spell, x, y);   // 🐆🐉🌸 THE NEW RACES 5: Drag the Kill, Kneel, Sweet Perfume + Spring Awakening
                 _abAfterCast(unit, spell);   // 🫀 THE ABOMINATION: the mouths close
                 _psAfterCast(unit, spell, x, y, z);   // 💉 THE PLASTIC SURGEON: Work Done, Liposuction's shield
+                _ogAfterCast(unit, spell, x, y, z);   // 🕊 THE ORIGAMI GIRL: THE FOLD (the shape she stays in), the fortune's flap
                 _wnAfterCast(unit, spell, x, y);   // ☂📺 THE WEATHERMAN + NEWS ANCHOR: The Forecast, the strike, Fake News, The Rundown
                 _chpgAfterCast(unit, spell, x, y);   // 📣🏀 THE CHEERLEADER + THE POINT GUARD: the toss's landing, the chant, the ankles, the lob, Spirit
                 if (_mpIs(unit)) { _mpAfterCast(unit, spell, unit._mpPickHeld); unit._mpPickHeld = null; state._bpPick = null; }   // 🎛 THE MUSIC PRODUCER: the song

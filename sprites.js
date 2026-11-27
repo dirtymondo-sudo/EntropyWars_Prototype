@@ -3639,6 +3639,11 @@ const RACE_MODELS_3D = {
   // Skeleton (undead) — shambles with the zombie gait, rakes with bone claws.
   'skeleton': {
     male: _mkUAL('skeleton/male', 'skeleton', {
+      /* 2026-11-27 THE BREAKABLE BODIES (mondo: "separate individual bones to throw them ... but also rigged as a meshy character"):
+         a Meshy model of separate bones (project files breakable-bodies/, concept skel_a), rigged by Meshy; three-renderer.js THE
+         BREAKABLE BODIES cuts it into one stiff piece a bone at load and throws / scatters / piles them. The old model stays on R2. */
+      model: 'https://cdn.entropywars.net/Assets/characters/races/skeleton/male/Meshy_AI_skeleton_bones_Running.glb',
+      breakable: 'skeleton',
       heightRatio: 1.0,
       basicAttackKind: 'claw',
       lib: { idle: { clip: 'Idle_10', lib: 2 },
@@ -4054,6 +4059,11 @@ const RACE_MODELS_3D = {
   // punch basics.
   'golem': {
     male: _mkUAL('golem', 'golem_realistic', {
+      /* 2026-11-27 THE BREAKABLE BODIES: the STONE golem (mondo 11-27: "stone golem", no word on the brow), separate granite
+         rocks with glowing seams (project files breakable-bodies/, concept golem_a2); its rocks come apart (three-renderer.js
+         THE BREAKABLE BODIES). The old golem_realistic model stays on R2. */
+      model: 'https://cdn.entropywars.net/Assets/characters/races/golem/Meshy_AI_golem_stone_Running.glb',
+      breakable: 'golem',
       heightRatio: 1.35,
       basicAttackKind: 'punch',
       lib: { idle: { clip: 'Idle_10', lib: 2 } },   // monster sway
