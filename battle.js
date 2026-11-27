@@ -3667,7 +3667,7 @@
                     if (!unitHasStatus(u, 'frozen')) applyStatusEffects(u, [{ id: 'frozen', duration: 1 }], `${spell.name} flash-freeze: `, caster);
                     u._drowningStacks = 0;
                     clearStatus(u, 'drowning');
-                    showFloatingTextForUnit(u, '❄️ FROZEN!', 'debuff', { durationMs: 1100 });
+                    if (unitHasStatus(u, 'frozen')) showFloatingTextForUnit(u, '❄️ FROZEN!', 'debuff', { durationMs: 1100 });   // not on a unit Frozen cannot take (the Snowman)
                     frozenUnits++;
                 }
             }
@@ -10935,6 +10935,8 @@
                in deep water when it arrives (after the pull) — on dry ground there is nothing to drown in. map.js
                unitCanDrownHere. */
             if (payload.id === 'drowning' && typeof unitCanDrownHere === 'function' && !unitCanDrownHere(target)) return false;
+            /* ⛄ THE SNOWMAN is snow already: nothing Freezes it (its own Snow Day over a pool froze its whole team, kit probe 11-27) */
+            if (payload.id === 'frozen' && target.race === 'snowman') return false;
             // A flag carrier can't cloak — the flag stays visible no matter what.
             if (payload.id === 'invisible' && state.flags &&
                 [1, 2].some(p => state.flags[p] && state.flags[p].carriedBy === target.id)) {
@@ -14452,6 +14454,21 @@
             if (!unit || unit.dead || unit._dying || unit.race !== 'monster truck' || !(dist > 0)) return;
             applyStatusPayload(unit, { id: 'revs', duration: 2, gain: Math.round(dist) }, '', unit);
         }
+        /* ⛄ THE SNOWMAN (2026-11-27, mondo's snowman in parts; data.js RACE_ABILITIES 'snowman'): COLD SPOT. At the end of every round
+           each enemy next to it (the 8 squares) is Slowed for 2 rounds; one that already was Slowed is Frozen for 1 round instead,
+           and its Slow is spent (so it is Slow, Frozen, Slow ... for one that stays). A Frozen one is left alone. Host-side; the
+           statuses state-sync to the guest. Notes: champions-combat.md "THE SNOWMAN". */
+        function _snRoundEnd(u) {
+            if (!_nrAlive(u) || (u.status && (u.status.frozen > 0 || u.status.stun > 0))) return;
+            for (const e of (state.units || [])) {
+                if (!_nrAlive(e) || !isEnemyUnit(u, e) || !_chNear(e, u, 1)) continue;
+                if (unitHasStatus(e, 'frozen')) continue;
+                if (unitHasStatus(e, 'slow')) {
+                    clearStatus(e, 'slow');
+                    applyStatusPayload(e, { id: 'frozen', duration: 1 }, '⛄ Cold Spot: ', u);
+                } else applyStatusPayload(e, { id: 'slow', duration: 2 }, '⛄ Cold Spot: ', u);
+            }
+        }
         /* 🌰 THE NUTCRACKER (2026-11-27): CRACKS. Its bites put Cracks on the enemy (STATUS_DEFS.cracked, up to 3). Crack Open
            (`crackSpend`) lands them as a second blow, and at 3 the shell gives (Broken 1 round). Spent either way. */
         function _ncCrackOpen(unit, spell, target) {
@@ -14966,7 +14983,8 @@
                 else if (u.race === 'gladiator' || u.race === 'farmer' || u.race === 'jellyfish ufo') _crRoundEnd(u);   // 🛡🌾⚡ THE COMING RACES
                 else if (u.race === 'rat') _ratRoundEnd(u);   // 👑 THE RAT KING: a king pays his court
                 else if (u.race === 'music producer') _mpRoundEnd(u);   // 🎛 THE MUSIC PRODUCER: the song plays in his earshot
-                else if (u.race === 'leopard girl') _lgRoundEnd(u);   // 🐆 ROSETTES: a round with no hit, she fades
+                else if (u.race === 'leopard girl') _lgRoundEnd(u);
+                else if (u.race === 'snowman') _snRoundEnd(u);   // ⛄ COLD SPOT: the ones next to it Slow, then Freeze   // 🐆 ROSETTES: a round with no hit, she fades
                 if ((u.workDone | 0) > 0) _psRoundEnd(u);   // 💉 THE PLASTIC SURGEON: Work Done fades
                 if (u.status && u.status.dormant > 0) _cicadaBrood(u);
                 /* 📺 THE TAPE (the Cursed TV): this round's recording becomes last round's, the one Rewind plays back */

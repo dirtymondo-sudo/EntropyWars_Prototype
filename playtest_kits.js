@@ -10,6 +10,7 @@ const OUT = path.join(REPO, 'shots', 'kits'); fs.mkdirSync(OUT, { recursive: tru
 const TAG = process.env.TAG || 'k';
 const MAP = process.env.MAP || '';
 const MINUTES = +(process.env.MINUTES || 8);
+const PICS = (process.env.PICS || '450,1100').split(',').map(Number).filter(x => x >= 0).sort((a, b) => a - b);
 const RACES = (process.env.RACES || 'leopard girl,draconian,flower girl').split(',').map(s => s.trim()).filter(Boolean);
 const FLAGS = (process.env.FLAGS || '').split(',').filter(Boolean);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -110,7 +111,8 @@ const AFTER = (c) => {
     const st = GAME.state;
     races.forEach((r, i) => {
       if (!st.partyMeta[1][i]) return;
-      const g = (typeof RACE_SPRITE_GENDERS !== 'undefined' && RACE_SPRITE_GENDERS[r] === 'female') ? 'female' : (r === 'draconian' ? 'male' : 'female');
+      const sg = typeof RACE_SPRITE_GENDERS !== 'undefined' ? RACE_SPRITE_GENDERS[r] : null;
+      const g = sg === 'female' ? 'female' : (sg === 'male' || r === 'draconian' ? 'male' : 'female');
       st.partyMeta[1][i].race = r; st.partyMeta[1][i].gender = g;
       st.partyMeta[1][i].customSpells = (RACE_ABILITIES[r] || []).map(s => s.id);
       st.partyNames[1][i] = '';
@@ -137,8 +139,9 @@ const AFTER = (c) => {
     if (c && c.moved) { await sleep(900); continue; }
     if (c && c.spell) {
       n++;
-      await sleep(450); const pa = `${TAG}_${String(n).padStart(2, '0')}_${c.spell}_a.png`; try { await page.screenshot({ path: `${OUT}/${pa}` }); } catch (e) {}
-      await sleep(650); const pb = `${TAG}_${String(n).padStart(2, '0')}_${c.spell}_b.png`; try { await page.screenshot({ path: `${OUT}/${pb}` }); } catch (e) {}
+      /* PICS=ms,ms,… (11-27, the Snowman): more frames of a cast, named _p<ms>; the default two stay _a (450) and _b (1100) */
+      let pa, pb, tPrev = 0;
+      for (const ms of PICS) { await sleep(Math.max(0, ms - tPrev)); tPrev = ms; const nm = `${TAG}_${String(n).padStart(2, '0')}_${c.spell}_${PICS.length === 2 ? (ms === PICS[0] ? 'a' : 'b') : 'p' + ms}.png`; try { await page.screenshot({ path: `${OUT}/${nm}` }); } catch (e) {} if (!pa) pa = nm; pb = nm; }
       if (c.late) { await sleep(900); try { await page.screenshot({ path: `${OUT}/${pb.replace('_b.png', '_c.png')}` }); } catch (e) {} }
       await sleep(900);
       const a = await page.evaluate(AFTER, c).catch(e => ({ err: e.message }));
@@ -156,7 +159,7 @@ const AFTER = (c) => {
     else if (r.status === 'ai-turn') { await page.evaluate(() => { try { window.maybeTriggerComputerTurn(); } catch (e) {} }); await sleep(380); stalls = 0; }
     else { await page.evaluate(() => { try { window.maybeAdvanceTurn(); } catch (e) {} try { window.maybeTriggerComputerTurn(); } catch (e) {} }); await sleep(350); if (++stalls > 200) { console.log('stalled'); break; } }
   }
-  const tail = await page.evaluate(() => GAME.state.logEntries.slice(-400).map(e => typeof e === 'string' ? e : e.m).filter(m => /🐆|🐉|🌸|Cowed|Pollen|AMBUSH|Rosettes|Dominion/.test(m)));
+  const tail = await page.evaluate(() => GAME.state.logEntries.slice(-400).map(e => typeof e === 'string' ? e : e.m).filter(m => /🐆|🐉|🌸|⛄|Cowed|Pollen|AMBUSH|Rosettes|Dominion|Cold Spot/.test(m)));
   fs.writeFileSync(`${OUT}/${TAG}.json`, JSON.stringify({ rows, errs, ruleLog: tail }, null, 1));
   console.log('RULE LOG (last)\n  ' + tail.slice(-40).join('\n  '));
   console.log('ERRORS', errs.length, errs.slice(0, 8));

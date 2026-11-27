@@ -159,7 +159,8 @@ const EW_ASSET_MOVES = [
   ['Assets/Sprites/Races/princess/', 'Assets/characters/races/princess/'],   // 2026-11-24 THE PRINCESS
   ['Assets/Sprites/Races/point_guard/', 'Assets/characters/races/point_guard/'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
   ['Assets/Sprites/Races/monster_truck/', 'Assets/characters/races/monster_truck/'],   // 2026-11-27 THE NEW CHARACTERS
-  ['Assets/Sprites/Races/nutcracker/', 'Assets/characters/races/nutcracker/'],   // 2026-11-27 THE NEW CHARACTERS
+  ['Assets/Sprites/Races/nutcracker/', 'Assets/characters/races/nutcracker/'],
+  ['Assets/Sprites/Races/snowman/', 'Assets/characters/races/snowman/'],   // 2026-11-27 THE SNOWMAN   // 2026-11-27 THE NEW CHARACTERS
   ['Assets/Sprites/Races/leopard_girl/', 'Assets/characters/races/leopard_girl/'],   // 2026-11-27 THE NEW CHARACTERS
   ['Assets/Sprites/Races/draconian/', 'Assets/characters/races/draconian/'],   // 2026-11-27 THE NEW CHARACTERS
   ['Assets/Sprites/Races/flower_girl/', 'Assets/characters/races/flower_girl/'],   // 2026-11-27 THE NEW CHARACTERS
@@ -626,6 +627,7 @@ const RACE_SPRITE_GENDERS = {
   'centaur': 'both',   // 2026-11-24 THE CENTAUR: a male (chestnut) and a female (dapple grey), one race
   'cheerleader': 'female',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
   'monster truck': 'male',   // 2026-11-27 THE NEW CHARACTERS (one truck; the model def sits under male)
+  'snowman': 'male',   // 2026-11-27 THE SNOWMAN (one snowman; the model def sits under male)
   'nutcracker': 'male',   // 2026-11-27 THE NEW CHARACTERS
   'leopard girl': 'female',   // 2026-11-27 THE NEW CHARACTERS
   'draconian': 'male',   // 2026-11-27 THE NEW CHARACTERS
@@ -820,6 +822,7 @@ const _CHARACTER_SPRITES = {
   'centaur': `${_S}/Races/centaur/male/centaur_m_px.png`,   // 2026-11-24 THE CENTAUR — 128x128 pixel sprite (Sprite AI restyle of his built model)
   'cheerleader': `${_S}/Races/cheerleader/female/cheerleader_px.png`,   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — 128x128 pixel sprite (Sprite AI restyle of her Meshy concept)
   'monster truck': `${_S}/Races/monster_truck/male/monster_truck_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
+  'snowman': `${_S}/Races/snowman/male/snowman_px.png`,   // 2026-11-27 THE SNOWMAN — 128x128 pixel sprite (Sprite AI restyle of a render of its model)
   'nutcracker': `${_S}/Races/nutcracker/male/nutcracker_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
   'leopard girl': `${_S}/Races/leopard_girl/female/leopard_girl_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
   'draconian': `${_S}/Races/draconian/male/draconian_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
@@ -2936,6 +2939,14 @@ const RACE_MODELS_3D = {
      Front +Z, floor y 0. */
   'monster truck': {
     male: { model: 'https://cdn.entropywars.net/Assets/characters/races/monster_truck/male/monster_truck.glb', clips: {}, procRig: 'monsterTruck', heightRatio: 1.05, yawOffset: 0, basicAttackKind: 'physical',
+      moveTimeScale: 1, castTimeScale: 1, deathTimeScale: 1, hitTimeScale: 1, jumpTimeScale: 1 },
+  },
+  /* ⛄ THE SNOWMAN (2026-11-27, thread "Add a snowman character"): no bones; procRig 'snowman' (three-renderer.js THE SNOWMAN) moves its
+     parts: the base ball rolls under it, the stick arms throw, the carrot shoots out, the head and hat lift off, the scarf tails
+     swing, the coal eyes look about and blink, and it falls apart on death. One file put together from five Meshy parts (snowball,
+     carrot, stick, top hat, scarf) by project files snowman/tools/assemble.py; node names in three-renderer.js. Front +Z, floor y 0. */
+  'snowman': {
+    male: { model: 'https://cdn.entropywars.net/Assets/characters/races/snowman/male/snowman.glb', clips: {}, procRig: 'snowman', heightRatio: 1.3, yawOffset: 0, basicAttackKind: 'physical',
       moveTimeScale: 1, castTimeScale: 1, deathTimeScale: 1, hitTimeScale: 1, jumpTimeScale: 1 },
   },
   /* 🥜 THE NUTCRACKER: the Meshy rig + its own jaw, skinned to the added bone ewJaw (child of Head, pivot at the hinge:
@@ -7885,6 +7896,7 @@ const RACE_SPRITES = {
   'centaur': `${_S}/Races/centaur/male/centaur_m_px.png`,   // 2026-11-24 THE CENTAUR
   'cheerleader': `${_S}/Races/cheerleader/female/cheerleader_px.png`,   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — 128x128 pixel sprite (Sprite AI restyle of her Meshy concept)
   'monster truck': `${_S}/Races/monster_truck/male/monster_truck_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
+  'snowman': `${_S}/Races/snowman/male/snowman_px.png`,   // 2026-11-27 THE SNOWMAN — 128x128 pixel sprite (Sprite AI restyle of a render of its model)
   'nutcracker': `${_S}/Races/nutcracker/male/nutcracker_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
   'leopard girl': `${_S}/Races/leopard_girl/female/leopard_girl_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
   'draconian': `${_S}/Races/draconian/male/draconian_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)

@@ -56515,6 +56515,151 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     };
     SPELL_MAP['mtBurnout'] = { aoe: 'mtBurnout_aoe' };
 
+    /* ═══ THE SNOWMAN (2026-11-27, thread "Add a snowman character"; mondo: "a new character, Snowman ... unique animations for its
+       spells"). FIRST PASS. Packed snow, snowflakes, frost mist, the carrot's orange. The parts on the body move in three-renderer.js
+       (THE SNOWMAN: the stick throws, the carrot shoots out, the balls roll up, it comes apart); these are what leaves the body.
+       The seat colour (_brSeatOf) rings every hit, like the bear's. Kill-switch window.EW_NO_SNOWMAN_VFX.
+       Notes: champions-combat.md "THE SNOWMAN". ═══ */
+    var _SN = { snow: 0xf4f9ff, shade: 0xbcd8ee, ice: 0x9fdcff, carrot: 0xff8a1e, coal: 0x16161a };
+    function _snOff() { return typeof window !== 'undefined' && !!window.EW_NO_SNOWMAN_VFX; }
+    function _snBurst(F, n, z, v) {
+        for (var i = 0; i < n; i++) {
+            if (!_canSpawn()) return;
+            _spawn({ x: F.c.x + rn(-0.12, 0.12) * F.ts, y: F.c.y + rn(-0.12, 0.12) * F.ts, z: F.bz + (z || 30), mode: 'billboard', sprite: i % 3 ? 'snowflake' : 'frost-mist', tint: i % 3 ? _SN.snow : _SN.shade,
+                vx: rn(-v, v), vy: rn(-v, v), vz: rn(40, v), gravity: i % 3 ? 380 : 0, drag: 0.9, ml: rn(380, 720), size0: i % 3 ? rn(4, 8) : rn(12, 18), size1: i % 3 ? 2 : rn(26, 36), opacity0: i % 3 ? 1 : 0.5, opacity1: 0 });
+        }
+    }
+    function _snBallMesh(r) {
+        var m = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 1), _pzSolid(_SN.snow, null, { depthWrite: true })); m.material.opacity = 1; m.renderOrder = 158;
+        var sh = new THREE.Mesh(new THREE.IcosahedronGeometry(r * 0.96, 1), _pzSolid(_SN.shade, null, { depthWrite: true })); sh.material.opacity = 1; sh.position.set(r * 0.12, -r * 0.14, 0); m.add(sh);
+        return m;
+    }
+
+    /* ── SNOWBALL: the handful leaves the twig hand (three-renderer.js snSnowball) and flies in a flat arc, snowflakes off it; it
+       bursts on the victim: snow, a puff of frost, a ring in the seat colour ── */
+    EFFECTS['snSnowball_bolt'] = _pzDef('snSnowball', { pzOwn: true });
+    _PZ_SIGS.snSnowball = function (p) {
+        var fx = p.fromX, fy = p.fromY, tx = p.toX, ty = p.toY; if (_snOff() || tx == null || fx == null) return;
+        var ms = p.flyMs > 0 ? p.flyMs : 380, T = (_cfg().tileSize || 128);
+        var tr = _brUnitAt(fx, fy, p.casterId), seat = tr ? _brSeatOf(tr) : _gtSeatColor(fx, fy);
+        var ball = _snBallMesh(_worldPos(fx, fy).ts * 0.085);
+        _pzFly(fx, fy, tx, ty, ball, { ms: ms, arc: 0.22, h0: _worldPos(fx, fy).ts * 0.95, h1: _worldPos(tx, ty).ts * 0.6, hideOnLand: true,
+            spin: function (el, o) { o.rotation.x = el * 0.03; o.rotation.z = el * 0.011; }, trail: { sprite: 'snowflake', tint: _SN.snow, every: 22, size: 6 } });
+        _fxDelay(function () {
+            if (_suppressed() || !_pzSeen(tx, ty)) return;
+            var F = _nrvFrame(tx, ty), ts = F.ts;
+            _snBurst(F, 16, T * 0.45, 170);
+            try { _sigShake('light'); } catch (e) {}
+            _sigShockRing3D(tx, ty, { color: seat, r1: ts * 0.8, ms: 340, opacity: 0.6, height: ts * 0.55 });
+            _sigShockRing3D(tx, ty, { color: 0xffffff, r1: ts * 0.55, ms: 260, opacity: 0.4, height: ts * 0.55 });
+        }, ms);
+    };
+    SPELL_MAP['snSnowball'] = { bolt: 'snSnowball_bolt' };
+
+    /* ── CARROT JAB: the carrot shoots out of the face (three-renderer.js snCarrot): an orange streak down the line into the
+       victim, a white flash where it lands, snow shaken off the snowman ── */
+    EFFECTS['snCarrotJab_impact'] = _pzDef('snCarrotJab', { layers: [
+        { count: 5, sprite: 'blood-fleck', ml: [300, 520], offsetXY: 8, z: [40, 60], vxRange: 120, vyRange: 120, vzRange: [30, 120], gravity: 360, drag: 0.9, size0: [3, 6], size1: 2, delayMs: 40 },
+    ] });
+    _PZ_SIGS.snCarrotJab = function (p) {
+        var tx = p.tx, ty = p.ty; if (_snOff() || tx == null || !_pzSeen(tx, ty)) return;
+        var from = _pzFrom(tx, ty, p), tr = _brUnitAt(from.x, from.y, p.casterId), seat = tr ? _brSeatOf(tr) : _gtSeatColor(from.x, from.y);
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, from, tx, ty);
+        /* the streak: a long thin cone lying along the line, its point in the victim, at face height */
+        var hold = new THREE.Group(); hold.position.set(0, ts * 0.86, 0); hold.rotation.y = Math.atan2(ln.ux, ln.uz); F.g.add(hold);
+        var L = Math.max(ts * 0.6, ln.L * 0.8);
+        var cone = _pzMesh(new THREE.ConeGeometry(ts * 0.05, L, 8), _pzGlow(_SN.carrot), hold, 0, 0, L / 2); cone.rotation.x = -Math.PI / 2;
+        var core = _pzMesh(new THREE.ConeGeometry(ts * 0.022, L, 6), _pzGlow(0xfff0d0), hold, 0, 0, L / 2); core.rotation.x = -Math.PI / 2;
+        var star = _pzSpr(0xffffff, ts * 0.5, F.g); star.position.set(0, ts * 0.86, 0);
+        try { _sigShake('light'); } catch (e) {}
+        _sigShockRing3D(tx, ty, { color: seat, r1: ts * 0.7, ms: 300, opacity: 0.6, height: ts * 0.8 });
+        for (var i = 0; i < 6 && _canSpawn(); i++) {
+            _spawn({ x: F.c.x + (from.x - tx) * F.ts * 0.9 + rn(-8, 8), y: F.c.y + (from.y - ty) * F.ts * 0.9 + rn(-8, 8), z: F.bz + rn(20, 70), mode: 'billboard', sprite: 'snowflake', tint: _SN.snow,
+                vx: rn(-40, 40), vy: rn(-40, 40), vz: rn(-20, 40), gravity: 200, ml: rn(400, 700), size0: rn(4, 7), size1: 2, opacity0: 0.9, opacity1: 0 });
+        }
+        return _sigRunOwned(F.g, 520, function (el) {
+            var op = _pzEnv(el, 0, 30, 160, 420);
+            cone.material.opacity = 0.85 * op; core.material.opacity = op;
+            hold.scale.set(1, 1, 0.4 + 0.6 * _sigClamp01(el / 60));
+            star.material.opacity = 0.9 * _pzEnv(el, 0, 20, 60, 220); star.scale.setScalar(ts * (0.3 + 0.5 * _sigClamp01(el / 200)));
+        });
+    };
+    SPELL_MAP['snCarrotJab'] = { impact: 'snCarrotJab_impact' };
+
+    /* ── ROLL UP: the rolled-up snowman's track down the line it came (a pressed white strip, snow thrown up along it), then the
+       crash: a burst of packed snow and chunks, a heavy ring in the seat colour, the board shakes ── */
+    EFFECTS['snRollUp_impact'] = _pzDef('snRollUp', { layers: [
+        { count: 4, anchor: 'floor', sprite: 'frost-mist', ml: [520, 820], offsetXY: 18, z: [2, 10], size0: [16, 24], size1: [36, 48], opacity0: 0.5 },
+    ] });
+    _PZ_SIGS.snRollUp = function (p) {
+        var tx = p.tx, ty = p.ty; if (_snOff() || tx == null || !_pzSeen(tx, ty)) return;
+        var from = _pzFrom(tx, ty, p), tr = _brUnitAt(from.x, from.y, p.casterId), seat = tr ? _brSeatOf(tr) : _gtSeatColor(from.x, from.y);
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, from, tx, ty), len = Math.max(ts, ln.L);
+        var track = _pzMesh(new THREE.PlaneGeometry(ts * 0.6, len), _pzSolid(_SN.snow, null, { depthWrite: false }), F.g, 0, 0, 0);
+        track.material.transparent = true; track.rotation.x = -Math.PI / 2; track.rotation.z = Math.atan2(ln.ux, ln.uz);
+        track.position.set(ln.ux * len / 2, ts * 0.025, ln.uz * len / 2);
+        var steps = Math.max(1, Math.round(ln.L / ts));
+        for (var i = 0; i <= steps * 3 && _canSpawn(); i++) {
+            var f = i / (steps * 3);
+            _spawn({ x: F.c.x + (from.x - tx) * F.ts * f + rn(-10, 10), y: F.c.y + (from.y - ty) * F.ts * f + rn(-10, 10), z: F.bz + 6, mode: 'billboard', sprite: i % 2 ? 'snowflake' : 'frost-mist', tint: _SN.snow,
+                vx: rn(-30, 30), vy: rn(-30, 30), vz: rn(40, 110), gravity: i % 2 ? 260 : 0, drag: 1, ml: rn(600, 950), size0: i % 2 ? rn(5, 8) : rn(12, 16), size1: i % 2 ? 2 : rn(26, 34), opacity0: i % 2 ? 1 : 0.45, opacity1: 0 });
+        }
+        try { _sigShake('heavy'); } catch (e) {}
+        _sigShockRing3D(tx, ty, { color: seat, r1: ts * 1.5, ms: 460, opacity: 0.7 });
+        _fxDelay(function () { if (!_suppressed()) _sigShockRing3D(tx, ty, { color: 0xffffff, r1: ts * 1.0, ms: 340, opacity: 0.4 }); }, 90);
+        _snBurst(F, 26, ts * 0.4, 240);
+        /* chunks of the big snowball fly off the crash */
+        var chunks = [];
+        for (var c = 0; c < 6; c++) {
+            var ch = _snBallMesh(ts * rn(0.05, 0.09)); F.g.add(ch);
+            var a = rn(0, Math.PI * 2); chunks.push({ m: ch, vx: Math.cos(a) * ts * rn(0.8, 1.8), vz: Math.sin(a) * ts * rn(0.8, 1.8), vy: ts * rn(1.6, 2.8) });
+        }
+        return _sigRunOwned(F.g, 1700, function (el) {
+            track.material.opacity = 0.7 * _pzEnv(el, 0, 40, 1100, 1700);
+            var t = el / 1000;
+            for (var j = 0; j < chunks.length; j++) {
+                var C = chunks[j], y = ts * 0.4 + C.vy * t - 0.5 * ts * 7 * t * t;
+                C.m.position.set(C.vx * t, Math.max(ts * 0.04, y), C.vz * t); C.m.rotation.x = el * 0.01; C.m.rotation.z = el * 0.007;
+                C.m.visible = el < 1300; if (y < ts * 0.04) C.m.scale.setScalar(Math.max(0.01, 1 - (el - 700) / 600));
+            }
+        });
+    };
+    SPELL_MAP['snRollUp'] = { impact: 'snRollUp_impact' };
+
+    /* ── SNOW DAY: the snowman comes apart and spins (three-renderer.js snSnowDay): a blizzard winds out round it to two squares,
+       a frost sheet spreads on the floor under it, the seat colour in its edge; snow keeps falling for a beat ── */
+    EFFECTS['snSnowDay_aoe'] = _pzDef('snSnowDay', { layers: [
+        { count: 10, sprite: 'frost-crystal', ml: [700, 1100], offsetXY: 70, z: [6, 30], vxRange: 60, vyRange: 60, vzRange: [40, 120], size0: [4, 7], size1: 1, tint: _SN.ice, delayMs: 200 },
+    ] });
+    _PZ_SIGS.snSnowDay = function (p) {
+        var tx = p.cx != null ? p.cx : p.tx, ty = p.cy != null ? p.cy : p.ty; if (_snOff() || tx == null || !_pzSeen(tx, ty)) return;
+        var tr = _brUnitAt(tx, ty, p.casterId), seat = _brSeatOf(tr);
+        var F = _nrvFrame(tx, ty), ts = F.ts, R = ts * 2.4;
+        var sheet = _pzMesh(new THREE.CircleGeometry(R, 48), _pzSolid(_SN.snow, null, { depthWrite: false }), F.g, 0, ts * 0.022, 0);
+        sheet.rotation.x = -Math.PI / 2; sheet.material.transparent = true;
+        var edge = _pzMesh(new THREE.RingGeometry(R * 0.94, R * 1.02, 64), _pzGlow(seat), F.g, 0, ts * 0.04, 0); edge.rotation.x = -Math.PI / 2;
+        var frost = _pzMesh(new THREE.RingGeometry(R * 0.7, R * 0.94, 64), _pzGlow(_SN.ice), F.g, 0, ts * 0.035, 0); frost.rotation.x = -Math.PI / 2;
+        try { _sigShake('normal'); } catch (e) {}
+        _sigShockRing3D(tx, ty, { color: _SN.ice, r0: ts * 0.5, r1: R, ms: 600, opacity: 0.6 });
+        var t0 = 0, ang = 0;
+        return _sigRunOwned(F.g, 2200, function (el) {
+            var grow = _sigEaseOutCubic(_sigClamp01(el / 500));
+            sheet.scale.setScalar(0.2 + 0.8 * grow); edge.scale.setScalar(0.2 + 0.8 * grow); frost.scale.setScalar(0.2 + 0.8 * grow);
+            sheet.material.opacity = 0.42 * _pzEnv(el, 0, 200, 1500, 2200);
+            edge.material.opacity = 0.6 * _pzEnv(el, 0, 200, 1200, 1900); frost.material.opacity = 0.4 * _pzEnv(el, 0, 200, 1000, 1700);
+            /* the blizzard: three arms winding round and out */
+            if (el < 1500 && el - t0 > 22) {
+                t0 = el; ang += 0.5;
+                for (var k = 0; k < 3 && _canSpawn(); k++) {
+                    var a = ang + k * 2.094, rr = R * (0.15 + 0.85 * ((el % 700) / 700)), tang = a + Math.PI / 2;
+                    _spawn({ x: F.c.x + Math.sin(a) * rr / ts * F.ts, y: F.c.y + Math.cos(a) * rr / ts * F.ts, z: F.bz + rn(10, 90), mode: 'billboard', sprite: (k + (el | 0)) % 4 ? 'snowflake' : 'frost-mist', tint: _SN.snow,
+                        vx: Math.sin(tang) * 160, vy: Math.cos(tang) * 160, vz: rn(-10, 50), drag: 0.8, ml: rn(420, 760), size0: rn(5, 9), size1: rn(2, 14), opacity0: 0.9, opacity1: 0 });
+                }
+            }
+        });
+    };
+    SPELL_MAP['snSnowDay'] = { aoe: 'snSnowDay_aoe' };
+
     /* ── THE NUTCRACKER ── */
     function _ncSplinters(F, n, z) {
         for (var i = 0; i < n; i++) {
