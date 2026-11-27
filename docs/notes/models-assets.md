@@ -2348,6 +2348,25 @@ with UE names, 25 clips; maker: tuhinansugourav on CGTrader, mondo 11-27; credit
 - **The probe:** `ZOOM=7 ACTS=idle node playtest_dribble.js` (a real fight, the close view pinned, pictures + the marker / ball / hand /
   floor heights). Proof: project files `point-guard-dribble/`.
 
+### THE BALL IS OUT + THE TWO HANDS (2026-11-27, the polish pass)
+mondo: "The ball doesnt even move when he does chest pass. I feel like you can make his animations/abilities look much better."
+What was wrong: `unitHideHeldFor` only knew `def.hold` props, so the gear ball stayed in his hand on every throw; the thrown ball's
+file was not loaded before the first throw (a modelled projectile that is not cached flies as an empty carrier); the thrown ball
+drew dark red (the misc model's material, not the held ball's).
+- **THE BALL IS OUT** (three-renderer.js `_ballThrown` / `_ballHeldOf`, called from `startProjectileTween` for any `proj-basketball*`):
+  he has ONE ball. A basketball that leaves his square starts at the held ball's own place (his hands), wears the held ball's
+  material, hides the held ball, and when it lands a second ball hops home off the target into his hands; the held ball shows as it
+  lands. A bounce on (Chest Pass's second hit) keeps the same ball out. Worked from the projectile, so host, guest and the forge all
+  get it; nothing on `state`. Off: `window.EW_NO_BALL_RETURN`. `_gearRigFor` loads `_PROJ_MODELS[def.weaponProj]` with the body.
+- **`proj-basketball-arc`**: the same ball on a high arc with backspin (Buzzer Beater's `projectileOverride`; the Alley-Oop's lob by
+  battle.js UNIT_ANIM_OVERRIDES 'point guard', a function now). `proj-basketball-carry` = no throw at all (Slam Dunk: he carries it).
+- **THE TWO HANDS**: a slot / spell `animClip` with `ball: { hold: 'two' }` keys the marker's z to 1 for the whole clip: the ball sits
+  between the two palms (Pass, Shoot). `ball: { beats, top }` works on a spell clip too (Crossover dribbles low through SkillDash).
+  `registerSpellAnimClips` carries `ball` through.
+- **Timings:** Pass ts 0.75 strike 0.33 (full extension), Shoot ts 0.65 strike 0.40, Dunk ts 0.8 strike 0.72, SkillDash trim 0-1.0.
+- **The probe's marks:** `MARKS=a0.25,p80,p250,p600` (a = the cast clip's clock, p = ms after the ball left, c = ms after the call),
+  `CINE=0` keeps the probe's close view through a spell, `FLAGS=__pgDx=1.5` shifts it toward the target.
+
 ## THE ORIGAMI — one sheet of paper that really folds (2026-11-27, thread "Plan the origami paper character")
 mondo: "a sheet of origami crane or mantis girl, like a piece of paper with actual folding animations ... weak to fire and water ...
 Swordigami ... Kamikaze where it folds into a paper airplane ... folds into that fortune game". His later calls: no boat; on her death

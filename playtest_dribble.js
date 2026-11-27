@@ -19,12 +19,12 @@ const READ = () => {
   const P = window.__pgN; if (!P || !P.ball) return { err: 'no rig' };
   const V = new THREE.Vector3(), y = o => +o.getWorldPosition(V).y.toFixed(1), u = GAME.state.units.find(x => x.player === 1 && x.race === 'point guard');
   const bs = P.ball.geometry.boundingSphere, r = bs.radius * P.ball.getWorldScale(V).y, by = y(P.ball), root = y(P.root);
-  return { k: +P.mk.position.x.toFixed(2), w: +P.mk.position.y.toFixed(2), ball: by, r: +r.toFixed(1), hand: y(P.hand), feet: root, toes: Math.min(y(P.toe), y(P.toeL)), overFloor: +((by - r - root) / r).toFixed(2), underHand: +((y(P.hand) - by) / r).toFixed(2), vis: P.ball.visible, anim: ThreeRenderer.devUnitAnim(u.id) };
+  return { k: +P.mk.position.x.toFixed(2), w: +P.mk.position.y.toFixed(2), w2: +P.mk.position.z.toFixed(2), ball: by, r: +r.toFixed(1), hand: y(P.hand), feet: root, toes: Math.min(y(P.toe), y(P.toeL)), overFloor: +((by - r - root) / r).toFixed(2), underHand: +((y(P.hand) - by) / r).toFixed(2), vis: P.ball.visible, anim: ThreeRenderer.devUnitAnim(u.id) };
 };
 (async () => {
   const browser = await require(path.join(REPO, 'probe-fast.js')).launch(chromium, { headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 }, ignoreHTTPSErrors: true });
-  await ctx.addInitScript((flags) => { try { localStorage.setItem('ew_cinematicActionCam', '1'); } catch (e) {} for (const f of flags) { const [k, val] = f.split('='); window[k] = val === undefined ? true : (isNaN(+val) ? val : +val); } }, FLAGS);
+  await ctx.addInitScript(({ flags, cine }) => { try { localStorage.setItem('ew_cinematicActionCam', cine); } catch (e) {} for (const f of flags) { const [k, val] = f.split('='); window[k] = val === undefined ? true : (isNaN(+val) ? val : +val); } }, { flags: FLAGS, cine: process.env.CINE || '1' });
   const page = await ctx.newPage();
   page.on('console', m => { const t = m.text(); if (/animation library|PropertyBinding|unit gear|\[3D\]/.test(t) || (m.type() === 'error' && !/Raycaster/.test(t) && !/Failed to load resource|ERR_/.test(t))) console.log('CON', t.slice(0, 300)); });
   page.on('pageerror', e => console.log('PAGEERR', e.message.split('\n')[0].slice(0, 240)));
@@ -69,7 +69,7 @@ const READ = () => {
   const STAGE = (zoom) => { const st = GAME.state, P = window.__pgSpot, pg = st.units.find(u => u.player === 1 && u.race === 'point guard'); if (!pg) return 'no point guard: ' + st.units.map(u => u.race).join(',');
     const foe = st.units.find(u => u.player === 2), put = (u, x, y) => { u.x = x; u.y = y; try { u.z = getHeightAt(x, y); } catch (e) {} };
     st.units.forEach(u => { u.dead = false; u._dying = false; u.maxHp = Math.max(u.maxHp, 6000); u.hp = u.maxHp; u.status = []; });
-    put(pg, P.x - 3, P.y); put(foe, P.x, P.y); let k = 0; st.units.forEach(u => { if (u !== pg && u !== foe) put(u, u.player === 1 ? 0 : 1, k++ % 4); });
+    put(pg, P.x - 3, P.y); put(foe, P.x, P.y);  let k = 0; st.units.forEach(u => { if (u !== pg && u !== foe) put(u, u.player === 1 ? 0 : 1, k++ % 4); });
     pg.facing = 'right'; st.controllers = { 1: 'local', 2: 'local' }; st._blitzActiveUnitId = pg.id; st.aiThinking = false; st.currentPlayer = 1; st._actionExecuting = false;
     try { ThreeRenderer.invalidateUnits(); GAME.markDirty(); GAME.renderIfDirty && GAME.renderIfDirty(); } catch (e) {}
     /* the battle camera frames the board by itself: the probe holds its own close view (CAM=0 leaves the game's) */
@@ -88,21 +88,38 @@ const READ = () => {
     console.log('SHOT', name, JSON.stringify(info)); return info;
   };
   const rows = [];
-  for (const act of ACTS) {
-    if (act === 'idle') { for (let i = 0; i < N; i++) rows.push([act, i, await shot('idle_' + i, 400 + i * GAP)]); continue; }
-    console.log(await page.evaluate(STAGE, ZOOM)); await sleep(2500);
-    const r = await page.evaluate((act) => { const st = GAME.state, pg = st.units.find(u => u.player === 1 && u.race === 'point guard'), foe = st.units.find(u => u.player === 2 && u.x === window.__pgSpot.x);
-      pg.ap = 9; pg.mp = pg.maxMp = 999; pg._spellCooldowns = {}; pg._spellsUsedThisTurn = {}; pg.movesLeft = 9; pg.hasMoved = false; pg.hasAttacked = false;
+  await page.evaluate(() => { const f = ThreeRenderer.startProjectileTween; ThreeRenderer.startProjectileTween = function () { (window.__pgProj = window.__pgProj || []).push([performance.now(), arguments[4]]); return f.apply(this, arguments); }; });
+  /* one act, held at a mark: 'a0.30' = the cast clip's own clock reaches 0.30 s, 'p200' = 200 ms after the ball is thrown, 'c900' = 900 ms after the call */
+  const ACT = (act) => { const st = GAME.state, pg = st.units.find(u => u.player === 1 && u.race === 'point guard'), foe = st.units.find(u => u.player === 2 && u.x === window.__pgSpot.x), ally = st.units.find(u => u.player === 1 && u !== pg);
+      pg.ap = 9; pg.mp = pg.maxMp = 999; pg._spellCooldowns = {}; pg._spellsUsedThisTurn = {}; pg.movesLeft = 9; pg.hasMoved = false; pg.hasAttacked = false; window.__pgProj = []; window.__pgAt = performance.now();
       try {
         if (act === 'walk') { st.actionMode = 'move'; const f = GAME.doMove || window.doMove; return 'move ' + (f ? f(pg, pg.x + 2, pg.y, pg.z) : 'none'); }
-        if (act === 'attack') { pg.x = foe.x - 2; ThreeRenderer.invalidateUnits(); st.actionMode = 'attack'; const f = GAME.doAttack || window.doAttack; return 'attack ' + (f ? f(pg, foe.x, foe.y, foe.z) : 'none'); }
+        if (act === 'attack') { st.actionMode = 'attack'; const f = GAME.doAttack || window.doAttack; return 'attack ' + (f ? f(pg, foe.x, foe.y, foe.z) : 'none'); }
         const sp = JSON.parse(JSON.stringify(SPELL_BY_ID[act])); pg.spells = [sp]; pg._spellSlots = [act]; st.actionMode = 'spell'; st.selectedTool = sp.name;
-        const self = !(sp.range > 0); return 'spell ' + GAME.doSpell(pg, self ? pg.x + 2 : foe.x, self ? pg.y : foe.y, foe.z);
-      } catch (e) { return 'threw ' + e.message; } }, act);
-    console.log('ACT', act, r);
-    const marks = act === 'walk' ? [150, 300, 450, 600] : [350, 700, 1100, 1700];
-    let last = 0; for (const m of marks) { rows.push([act, m, await shot(act + '_' + m, m - last)]); last = m; }
-    await sleep(3500);
+        const self = !(sp.range > 0), T = sp.type === 'buff' ? ally : foe; if (sp.type === 'buff') { ally.x = pg.x + 2; ally.y = pg.y + 1; try { ally.z = getHeightAt(ally.x, ally.y); } catch (e) {} ThreeRenderer.invalidateUnits(); }
+        return 'spell ' + GAME.doSpell(pg, self ? pg.x + 2 : T.x, self ? pg.y : T.y, T.z);
+      } catch (e) { return 'threw ' + e.message; } };
+  const MARKS = (process.env.MARKS || 'a0.12,a0.30,p60,p300,p650,p1000').split(',');
+  for (const act of ACTS) {
+    if (act === 'idle') { for (let i = 0; i < N; i++) rows.push([act, i, await shot('idle_' + i, 400 + i * GAP)]); continue; }
+    for (const m of (act === 'walk' ? ['c150', 'c300', 'c450'] : MARKS)) {
+      console.log(await page.evaluate(STAGE, ZOOM)); await sleep(2200);
+      const r = await page.evaluate(ACT, act); console.log('ACT', act, m, r);
+      await page.evaluate((a) => { window.__pgHeld = 0; const t0 = performance.now(), pg = GAME.state.units.find(u => u.player === 1 && u.race === 'point guard');
+        const hold = () => { window.__ewHold = true; window.__pgHeld = performance.now(); };
+        const iv = setInterval(() => { const el = performance.now() - t0; let go = el > 9000;
+          if (a.k === 'c') go = go || el >= a.v;
+          if (a.k === 'a') { const d = ThreeRenderer.devUnitAnim(pg.id); go = go || !!(d && d.shot && d.at != null && d.at >= a.v); }
+          if (a.k === 'p') { const P = window.__pgProj || []; go = go || (P.length && performance.now() - P[0][0] >= a.v); }
+          if (go) { clearInterval(iv); hold(); } }, 6); }, { k: m[0], v: +m.slice(1) });
+      for (let i = 0; i < 1600; i++) { if (await page.evaluate(() => window.__pgHeld > 0).catch(() => false)) break; await sleep(25); }
+      const info = await page.evaluate(READ).catch(e => ({ err: e.message }));
+      const extra = await page.evaluate(() => ({ el: Math.round(window.__pgHeld - window.__pgAt), proj: (window.__pgProj || []).map(p => [Math.round(p[0] - window.__pgAt), p[1]]) }));
+      await hideMenu(); await page.screenshot({ path: `${OUT}/${TAG}_${act}_${m}.png` });
+      await page.evaluate(() => { if (window.__ewRelease) window.__ewRelease(); else window.__ewHold = false; });
+      console.log('SHOT', act, m, JSON.stringify(extra), JSON.stringify(info)); rows.push([act, m, info, extra]);
+      await sleep(4500);
+    }
   }
   fs.writeFileSync(`${OUT}/${TAG}.json`, JSON.stringify(rows, null, 1));
   await browser.close();
