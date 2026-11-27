@@ -5695,3 +5695,43 @@ animations. Same thing with shogun and samurai slugs, use the katana model for t
 - THE STAGE WARM (11-27, mondo: "it needs to load earlier so that they appear in the party builder when i hover over the spells
   ... all weapons"): `VFX3D.stage.enter` starts the hero's blade + the master sword at once and every `_WPN_MODELS` file through
   the background lane. Measured: katana + sword ready ~10 s after the stage opens (cloud).
+
+## THE HAND ORBIT (2026-11-27, three-camera.js + three-renderer.js + battle.js)
+mondo: "the camera will just randomly snap to different places and angles ... I just want to be able to rotate the camera around my
+character like a normal third person view and if something is in the way then it just goes invisible and the camera is able to
+phase through stuff so the angle is always good and nothing is obscured. None of this snapping up and down ... zooming in and out
+and changing angles and going to an overhead view then back to on the ground." He picked "In battles" (the walking camera is not
+touched).
+- THE AUDIT (playtest_handcam.js, real wheel + right-drags, Mount Shasta, the Ninja, 4.5x and 2x at pitch 78 and 60): the lens
+  stood 0.17x to 1.93x the distance the zoom asked for, up to 64 degrees off the hand's pitch, lifted up to 5.5 squares, with
+  one-frame moves of up to 1.1 boom lengths. At 4.5x / pitch 78 one heading had the lens on the ground behind the unit and the
+  other three had it overhead. Four rules moved the board rig's lens by themselves, each a fix for an older complaint:
+  THE CLEAR BOARD's crane (10-22, up to six squares), THE CLOSE VIEW's dolly along the boom (11-26), THE STEADY BOARD's lift over a
+  body (11-08), THE LENS FOOTPRINT's last word (11-07, a lift over every raised square under the lens).
+- THE RULE NOW: outside a spell shot the board rig is a PLAIN ORBIT (`ThreeCamera.sync`, `handOrbit`): the lens stands where the
+  pitch, the heading and the zoom put it, `baseDist / zoom` from the focal. No crane, no dolly, no body lift, no footprint lift;
+  `boardLiftAt` answers 0, so a range fit lands where it solved. Two floors are left, both smooth: the flat floor at the focal's
+  own footing, and the room's drawn GROUND (`_handOrbitLift`: `ThreeRenderer.roomGroundAt` read as a soft patch 0.7 squares
+  round the lens, 0.3 squares of air; on a board of columns only past the board's edge, eased in over one square; a true-ground
+  field everywhere). The ground is the one thing that cannot fade, so the lens rides over it.
+- THE HAND ORBIT'S FADE (three-renderer.js `_occComputeBlockers` `handAny`, `_occHandEye`, `_occHandUnits`): outside a shot the
+  sight lines to the ACTIVE unit (and the hand's focal while it pans, and a menu two-shot's target, `camera._menuShot.tgtId`)
+  read the board's columns and edge walls too and fade any on-grid piece on them. Whatever the lens stands in fades (columns
+  under its footprint that rise past it, a board object or a field piece whose box holds it), and a body the lens stands in
+  or one within 2.5 squares of the lens on the line to the active unit is ghosted. THE FADE RULES (10-14) still hold for every
+  other subject: other units keep their holograms, the board lattice opens only off-grid scenery.
+- NOT CHANGED: spell shots (their own sight line, crane, clear shot), Strike Mode, the first-person eye, the Move / Jump / Build
+  overhead read (TILE_PICK_TILT, his 11-26 choice), the turn-start frame, THE SHOT KEEPS ITS LENS (no hand input while an action
+  shot plays; the first drag after it starts from the home view), the menu slide. The walking camera.
+- KNOWN LIMITS: the ground cannot fade, so a rise between the lens and the unit hides its legs (the hologram shows them) until
+  the hand turns or lifts; a field fight's merged pieces (ground, textured buildings, instanced batches) are never raycast and
+  never fade.
+- Kill switch: `window.EW_NO_HAND_ORBIT = true` (the old crane, close view, body lift, footprint and fade rules come back).
+  Probe: `ThreeCamera.handOrbitState()`; playtest_handcam.js (PLAYTEST_NOTES "THE HAND CAMERA PROBE").
+- MEASURED, the same unit on the same square, old rig (`FLAGS=EW_NO_HAND_ORBIT`) against new, through a full turn at one zoom
+  and pitch: Mount Shasta (Bigfoot on the board's high edge, 4.5x, pitch 78) old boom 0.36x-1.39x, pitch off up to 39 degrees,
+  lift 2.1 squares, one-frame move 0.92 booms; new boom 1.00x, pitch off 0.0, lift 0. Downtown (3x, pitch 72) old boom
+  0.26x-1.06x (the close view pulled the lens into the unit's legs when two bodies stood on the boom), pitch off 9; new 1.00x,
+  0.0. The Training Room (indoors, new only): 1.00x, 0.0, the room's walls fade as before. Wheel and pan: 1.00x on all three.
+  Body hidden (real rays): 0-5 % new, 0-2 % old. Proof sheets: /mnt/project-files/handcam/. Viewer-local (camera + fade):
+  nothing to relay online.

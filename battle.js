@@ -38566,6 +38566,7 @@
                 };
             }
             camera._menuShot.key = key;
+            camera._menuShot.tgtId = (tgt.id != null) ? tgt.id : null;   // THE HAND ORBIT'S FADE (three-renderer.js): the pair's other body is kept clear too
             camera._menuShot.side = pose.side || camera._menuShot.side || 0;
             camera._menuShot.pose = pose;   // THE ATTACK HOLD tracks a leap off this pose's angle
             camera._menuAtk = null;
