@@ -52,7 +52,13 @@ const MEASURE = (p) => {
     worst = Math.max(worst, n / 36);
   }
   const pct = v => cells ? Math.round(1000 * v / cells) / 10 : 0;
-  return { bodies, bodyH: bodies ? Math.round(100 * sumH / bodies / innerHeight) : 0, pops: pct(cp), title: pct(ct), hud: pct(ch), worst: Math.round(worst * 100), popsUp: popRects.length, hudUp: hudRects.length, shot: camera._cineShotId, text: p.text };
+  const hb = id => { if (id == null) return null; try { const b = ThreeRenderer.unitScreenBox(id); return b ? Math.round(1000 * b.h / innerHeight) / 10 : null; } catch (e) { return null; } };
+  const tu = (typeof unitAt === 'function') ? unitAt(p.x, p.y) : st.units.find(u => u.x === p.x && u.y === p.y);
+  const fg = window._ewFrameGuard ? window._ewFrameGuard() : null;
+  const sg = window._shotGrammarState ? window._shotGrammarState() : null;
+  let pitch = null, ca = null; try { const c = ThreeCamera.getCamera(); const d = new THREE.Vector3(); c.getWorldDirection(d); pitch = Math.round(Math.asin(-d.y) * 57.3); ca = ThreeCamera.clearAngleState(); } catch (e) {}
+  const sz = { pitch, ca: ca ? [ca.delta, ca.tilt] : null, tgtH: hb(tu && tu.id), casH: hb(fg && fg.caster), zoom: +(camera.zoom || 0).toFixed(3), tilt: Math.round(camera.tilt || 0), phase: fg && fg.phase, dolly: fg && fg.solve && fg.solve.dolly != null ? Math.round(fg.solve.dolly) : null, nHit: fg ? fg.hit.length : 0, big: fg && fg.solve ? fg.solve.big : null, live: camera._cineShotId != null, log: sg ? sg.log.slice(-3) : null };
+  return { ...sz, bodies, bodyH: bodies ? Math.round(100 * sumH / bodies / innerHeight) : 0, pops: pct(cp), title: pct(ct), hud: pct(ch), worst: Math.round(worst * 100), popsUp: popRects.length, hudUp: hudRects.length, shot: camera._cineShotId, text: p.text };
 };
 
 (async () => {

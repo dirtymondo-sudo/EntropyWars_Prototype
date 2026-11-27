@@ -651,6 +651,7 @@ const ThreeCamera = (function () {
     const FG_MARGIN_H = 0.86;
     const FG_MARGIN_V = 0.70;
     let _frameGuardLast = null;
+    let _fgBigLast = null;   // THE BIG READ: the last push-in (probe)
     /* THE GUARD'S HAND-OFF (2026-11-07, mondo: "Healing potion action camera zooms in towards the ground at the end on
        the unit being healed"): the guard's correction lives only while the shot is live, but a shot's framing often
        outlives it — the CPU's / remote side's shot stays parked on beat 2 until the settle (600 ms+), a press-turn hold
@@ -685,7 +686,7 @@ const ThreeCamera = (function () {
        canvas for THE DEBRIEF's stage. center: dolly IN as well as out (the
        tightest D that fits) and put the bodies in the MIDDLE of the window
        instead of the least slide — a composition, not a correction. */
-    function _fgSolve(ex, ey, ez, dx, dy, dz, B, pts, floorY, W, zMin, center, PW, H) {
+    function _fgSolve(ex, ey, ez, dx, dy, dz, B, pts, floorY, W, zMin, center, PW, H, BIG) {
         const xa = W[0], xb = W[1], ya = W[2], yb = W[3];
         const n = pts.length;
         const X = new Array(n), Y = new Array(n), Z = new Array(n);
@@ -703,10 +704,26 @@ const ThreeCamera = (function () {
         }
         /* THE GUARD HOLDS ITS FRAME: H = the correction this beat already showed (null = none) */
         if (center) H = null;
-        if (fits && !center && !(H && (H.D > 0 || H.sx || H.sy))) return 0;
+        /* THE BIG READ (2026-11-27): the body the hit is about, as a share of the screen height at dolly D (its two guard
+           points, feet and crown, as the lens sees them) */
+        if (BIG && (center || !(BIG.i0 >= 0 && BIG.i1 < n && BIG.f > 0))) BIG = null;
+        /* (a look more than ~45° down — an overhead security-cam beat — keeps its distance: pushed in there, the body is
+           a foreshortened blob filling the frame) */
+        if (BIG && dy < -0.7) BIG = null;
+        /* (its world height over its depth: how near the lens stands, whatever the angle — a look straight down a body
+           foreshortens it, and pushing in to make up for that only crops it) */
+        const bigFrac = function (D) {
+            const zm = (Z[BIG.i0] + Z[BIG.i1]) / 2 + D;
+            if (zm <= 1e-3) return Infinity;
+            return (BIG.hw || 0) / (zm * 2 * (BIG.tv || 0.414));
+        };
+        if (BIG && bigFrac(0) >= BIG.f) BIG = null;
+        if (fits && !center && !BIG && !(H && (H.D > 0 || H.sx || H.sy))) return 0;
+        let keep = null;
         const box = function (D) {
             let xLo = -Infinity, xHi = Infinity, yLo = -Infinity, yHi = Infinity;
             for (let i = 0; i < n; i++) {
+                if (keep && (i < keep[0] || i >= keep[1])) continue;
                 const zz = Z[i] + D;
                 if (zz < zMin) return null;
                 const w = PW ? PW[i] : null;
@@ -741,11 +758,36 @@ const ThreeCamera = (function () {
             if (!b) { D = hi; b = box(D); }
         }
         if (!b) return fits ? 0 : null;
+        /* THE BIG READ: a hit framed so wide the body it is about reads small (a high wide beat, a dolly back to fit four
+           victims) pushes in along the gaze until that body fills BIG.f of the screen height. Every guarded body still
+           fits if it can; if not, the body the hit is about (its points BIG.keep) wins and the others may sit at the
+           edge or out of frame. Never closer than zMin; never wider than the shot already was. */
+        if (BIG && bigFrac(D) < BIG.f) {
+            let lo = -tileSize * 60, hi = D;
+            for (let k = 0; k < 24; k++) { const mid = (lo + hi) / 2; if (bigFrac(mid) >= BIG.f) lo = mid; else hi = mid; }
+            const Dg = lo;
+            let bb = box(Dg);
+            if (bb) { D = Dg; b = bb; }
+            else if (BIG.keep) {
+                keep = BIG.keep;
+                bb = box(Dg);
+                if (bb) { D = Dg; b = bb; }
+                else {
+                    /* the kept body's own window does not hold that close: the nearest dolly that holds it */
+                    let l2 = Dg, h2 = D;
+                    if (box(h2)) {
+                        for (let k = 0; k < 22; k++) { const mid = (l2 + h2) / 2; if (box(mid)) h2 = mid; else l2 = mid; }
+                        D = h2; b = box(D);
+                    } else { keep = null; b = box(D); }
+                }
+            }
+            _fgBigLast = { f: Math.round(bigFrac(D) * 100), want: Math.round(BIG.f * 100), D: Math.round(D), dropped: !!keep };
+        } else if (BIG) _fgBigLast = { f: Math.round(bigFrac(D) * 100), want: Math.round(BIG.f * 100), D: Math.round(D), dropped: false };
         /* THE GUARD HOLDS ITS FRAME: within a beat the correction only grows — the dolly back the beat already showed
            stays (a wider box), and the slide stays where it was unless a body needs it moved */
         let px = 0, py = 0;
         if (H) {
-            if (H.D > D) { const bh = box(H.D); if (bh) { D = H.D; b = bh; } }
+            if (H.D > D && !(BIG && bigFrac(H.D) < BIG.f - 0.01)) { const bh = box(H.D); if (bh) { D = H.D; b = bh; } }
             px = H.sx || 0; py = H.sy || 0;
         }
         const sx = center ? (b[0] + b[1]) / 2 : Math.min(b[1], Math.max(b[0], px));
@@ -797,7 +839,15 @@ const ThreeCamera = (function () {
            aimed one way, since the last cut) */
         const hKey = (center || (typeof window !== 'undefined' && window.EW_NO_GUARD_HOLD)) ? null : _fgBeatKey(cam);
         const H = (hKey && _fgHold && _fgHold.key === hKey) ? _fgHold : null;
-        let res = _fgSolve(ex, ey, ez, dx, dy, dz, B, pts, floorY, W, zMin, center, PW, H);
+        let BIG = null;
+        _fgBigLast = null;
+        try { BIG = (!rect && typeof cam._frameGuard.big === 'function') ? cam._frameGuard.big(pts) : null; } catch (e) { BIG = null; }
+        if (BIG && pts[BIG.i0] && pts[BIG.i1]) {
+            BIG.tv = tv;
+            const a = pts[BIG.i0], b = pts[BIG.i1];
+            BIG.hw = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
+        } else BIG = null;
+        let res = _fgSolve(ex, ey, ez, dx, dy, dz, B, pts, floorY, W, zMin, center, PW, H, BIG);
         if (res === 0) { _fgHold = hKey ? { key: hKey, sx: 0, sy: 0, D: 0 } : null; _frameGuardLast = { n: pts.length, framed: true }; return null; }
         let reaimed = false;
         if (!res) {
@@ -811,7 +861,7 @@ const ThreeCamera = (function () {
             dx = hx * hs; dy = ndy; dz = hz * hs;
             B = _fgBasis(dx, dy, dz, yawRad);
             reaimed = true;
-            res = _fgSolve(ex, ey, ez, dx, dy, dz, B, pts, floorY, W, zMin, center, PW);
+            res = _fgSolve(ex, ey, ez, dx, dy, dz, B, pts, floorY, W, zMin, center, PW, null, BIG);
             if (res === 0) res = { sx: 0, sy: 0, D: 0 };
             if (!res) { _frameGuardLast = { n: pts.length, framed: false, failed: true }; return null; }
         }
@@ -914,7 +964,7 @@ const ThreeCamera = (function () {
     }
     function guardCarryState() { return _fgCarryLast; }
     /* probe: what the guard did on the last frame */
-    function frameGuardState() { return _frameGuardLast; }
+    function frameGuardState() { return _frameGuardLast ? Object.assign({ big: _fgBigLast }, _frameGuardLast) : null; }
 
     /* ══ THE CLEAR ANGLE (2026-10-29) — see sync() ══
        mondo, after the 10-28 VS CPU playtest: "need to see target getting hit ... not sure how to make it pick the best
