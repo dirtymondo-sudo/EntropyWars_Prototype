@@ -29,8 +29,12 @@ pattern is drawn by the game's own code. Proof pictures: project files `dmt-real
 | 5 THE WAY IN AND OUT | the door from the world and back, the arrival (the tunnel rush), its place in the story | where the cube is entered from |
 | 6 SOUND + THE ARENA | music / room tone from his library (never generated), the 8 x 8 PvP arena (`bake-arenas.js`), the map picture (`bake-map.js`) | the music pick |
 
-## Open questions (asked 11-27)
-1. The way in (pass 1 has NO door: `_hqEnter({ from: 'play', room: 'site_prebuilt_cube_dmt' })` or the editor until he picks).
-2. Who lives here (existing units that fit: Occulus, Floating Brain, Orb of Light; the Demiurge as the boss).
-3. The room's name (the card reads THE BLACK CUBE · THE INSIDE).
-4. How strong the trip (pass 3).
+## His answers (mondo 11-27)
+1. The way in: "should be the black cube/hexagon on saturn". BUILT: the Black Cube hangs over the Hexagon's plateau (Saturn, district H), the frame
+   under it is the door `cube_dmt`; it lands in S's gate here (door `saturn`), and back.
+2. Who lives here: "occulus, floating brain, orb of light, machine elves are already in the game, the hollow, the shadow entities, and the mantids".
+   BUILT: 15 residents on the platforms (bake-dmt.js WHO LIVES HERE + data.js HQ_NPC_PLACES), none on S.
+3. The name (THE BLACK CUBE · THE INSIDE): "thats fine for now".
+4. How strong the trip gets (pass 2): "a steady gentle drift". No pulses, no flashes, no sudden moves; pass 2 still shows him a mock-up first.
+5. "the demiurge should be the boss of the dungeon". BUILT: he stands alone before the altar on N (the highest platform), the Cosmic form (my pick),
+   `boss: true`, at the party's level like every field fight. NOT YET: a higher set level, a shut way until he is down, a reward, his own arena.

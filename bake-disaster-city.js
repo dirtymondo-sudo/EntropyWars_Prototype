@@ -1500,6 +1500,16 @@ if (DISTRICTS.some(m => typeof m.last === 'function')) { dcRun('last'); clearSta
     squareFills(); doorwayClear(); railOnBridge();
     lines.splice(featLine, featN, ...features.filter(f => f.k !== 'gone').map(f => "                    " + J(f) + ","));
     block = lines.join('\n') + '\n'; }
+/* ── THE SPREAD (docs/disaster-city/spread.js, 2026-11-27, mondo: "it really doesn't feel that big ... more side streets and scenic routes ... the highway
+   could actually go through the city"): everything above builds the COMPACT city (12 x 12 plots, every district file in its home frame). The spread
+   sets the nine districts apart and lays the highway, Bluff Drive, the two avenues, the parkway and Desert View Drive on the new ground between
+   them; it writes the room again. A place the rows below name (a join, a marker) is a compact place: it goes through SPREAD.map first.
+   DC_COMPACT=1 = the room without it (the compact city, to compare). ── */
+const SPREAD = require('./docs/disaster-city/spread.js'), SPREAD_ON = !process.env.DC_COMPACT, spreadAt = (x, z) => SPREAD_ON ? SPREAD.map(x, z) : [x, z];
+if (SPREAD_ON) { const i = block.indexOf('site_prebuilt_downtown_streets: {'), e = block.indexOf('        /* DC144-END */');
+    const sp = SPREAD.apply(block.slice(i, e)); block = block.slice(0, i) + sp.text + block.slice(e);
+    console.log('THE SPREAD ' + JSON.stringify(sp.count)); sp.say.forEach(q => console.warn('THE SPREAD: ' + q));
+    Object.values(JOIN).forEach(o => { if (o && typeof o.x === 'number' && typeof o.z === 'number') { const m = SPREAD.map(o.x, o.z); o.x = m[0]; o.z = m[1]; } }); }
 console.log(JSON.stringify(Object.assign({ features: features.length, props: props.length, streets: streets.length, bytes: block.length }, count)));
 if (process.env.DC_DUMP) fs.writeFileSync(process.env.DC_DUMP, JSON.stringify({ C, HALF, PAL, NXP, paint: Array.from(paint), features, props, bInfo, streets, cells: Array.from({ length: 144 }, (_, cy) => Array.from({ length: 144 }, (_, cx) => cellAt(cx, cy)).join('')), plots: PLAN.plots.map(p => ({ id: p.id, x: p.x, y: p.y, d: p.d, name: p.name })), districts: Object.keys(D).map(k => ({ id: k, label: D[k].label })) }));
 if (DRY) process.exit(0);
@@ -1530,11 +1540,12 @@ sub(/(prebuilt_downtown:  \{ room: 'site_prebuilt_downtown_streets',  door: \{ i
     sub(new RegExp('(' + site + ': +\\{ room: \'site_prebuilt_downtown_streets\', +door: \\{ id: \'' + k + '\', )[^}]*\\}'), "$1wall: 'free', x: " + JOIN[k].x + ", z: " + JOIN[k].z + ", face: " + JOIN[k].face + " }", 'entry ' + site));
 /* THE DISTRICT MOVE: the residents' table (HQ_CITY_RESIDENTS, outside the markers) reads a district's block and the beach's box */
 sub(/(\n    districts: )\{[^}]*\}(,   \/\/ a district's first plot)/, "$1{ " + Object.keys(MOVE.to).map(k => k + ': [' + MOVE.to[k][0] + ', ' + MOVE.to[k][1] + ']').join(', ') + " }$2", 'residents districts');
-sub(/(\n    beach: )\[[-\d., ]+\]/, "$1[256, " + (96 + DELTA.B[1] * 42) + ", 304, " + (246 + DELTA.B[1] * 42) + "]", 'residents beach');
-const hero = pc(plotNamed('Hero plaza'));
+{ const b0 = spreadAt(256, 96 + DELTA.B[1] * 42 + 1), b1 = spreadAt(304, 246 + DELTA.B[1] * 42 - 1);
+  sub(/(\n    beach: )\[[-\d., ]+\]/, "$1[" + b0[0] + ", " + (b0[1] - 1) + ", " + b1[0] + ", " + (b1[1] + 1) + "]", 'residents beach'); }
+const hero = (h => spreadAt(h[0], h[1]))(pc(plotNamed('Hero plaza')));
 sub(/site_prebuilt_downtown_streets: \{ x: [-\d.]+, z: [-\d.]+ \},(   \/\/ DISASTER CITY: the plaza)/, "site_prebuilt_downtown_streets: { x: " + hero[0] + ", z: " + r3(hero[1] + 1.75) + " },$1", 'marker');
 sub(/city: \{ room: 'site_prebuilt_downtown_streets', x: [-\d.]+, z: [-\d.]+, face: \d+ \}/, "city: { room: 'site_prebuilt_downtown_streets', x: " + r3(hero[0] - 3.5) + ", z: " + r3(hero[1] + 1.75) + ", face: 90 }", 'hub');
-const tapeB = bInfo.find(b => b.roof && b.d === 'R') || bInfo.find(b => b.roof);
+const tapeB = (b => { const m = spreadAt(b.x, b.z); return { x: m[0], z: m[1] }; })(bInfo.find(b => b.roof && b.d === 'R') || bInfo.find(b => b.roof));
 sub(/site_prebuilt_downtown_streets: \{ tape: \{ x: [-\d.]+, z: [-\d.]+ \} \}/, "site_prebuilt_downtown_streets: { tape: { x: " + tapeB.x + ", z: " + tapeB.z + " } }", 'tape');
 src = src.replace(/prebuilt_downtown: \{ room: 'site_prebuilt_downtown_streets', x: -24\.5, z: -14, r: 2\.6 \}/, "prebuilt_downtown: { room: 'site_prebuilt_downtown_oldstreets', x: -24.5, z: -14, r: 2.6 }");
 src = src.replace(/prebuilt_downtown: \{"room":"site_prebuilt_downtown_streets"/g, 'prebuilt_downtown: {"room":"site_prebuilt_downtown_oldstreets"');
