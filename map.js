@@ -3445,8 +3445,10 @@
             caps.forEach(c => {
                 let label = c.race; try { label = (typeof getRaceLabel === 'function') ? getRaceLabel(c.race, c.gender || 'male') : c.race; } catch (e) {}
                 const fams = (typeof window.hqCaptiveFamilies === 'function') ? window.hqCaptiveFamilies(pr, c.id) : [];
-                html += `<div class="hq-cap"><div class="hq-cap-hd"><b>${_hqEsc(String(c.name || label).toUpperCase())}</b><span>${_hqEsc(String(label).toUpperCase())} · LV ${c.lvl | 0}</span></div>`
-                    + `<div class="hq-cap-opts"><div class="hq-cap-keep"><b>KEEP IN THE PARTY</b><span>Joins at level ${c.lvl | 0} with the spells its level gives it. The agent learns nothing from it.</span>`
+                /* mondo 11-27: "this captives thing needs to have their portraits" — the party card's own face (_hqPausePortrait) */
+                const po = _hqPausePortrait({ meta: { race: c.race, gender: c.gender || 'male', appearance: c.appearance || null } }, null);
+                html += `<div class="hq-cap"><span class="hq-pp-face hq-cap-face${po && po.kind === 'sprite' ? ' sprite' : ''}"${po ? ` style="background-image:url('${po.url}')"` : ''}></span><div class="hq-cap-body"><div class="hq-cap-hd"><b>${_hqEsc(String(c.name || label).toUpperCase())}</b><span>${_hqEsc(String(label).toUpperCase())} · LV ${c.lvl | 0}</span></div>`
+                    + `<div class="hq-cap-opts"><div class="hq-cap-keep"><b>KEEP IN THE PARTY</b>`
                     + `<button class="hq-btn hq-btn-sm ok" data-party-act="capkeep:${_hqEsc(c.id)}">KEEP</button></div>`
                     + `<div class="hq-cap-fams"><b>TAKE A FAMILY AND SET IT FREE</b>`;
                 if (!fams.length) html += `<span>It has no family it can teach.</span>`;
@@ -3454,7 +3456,7 @@
                     const why = F.st === 'signature' ? 'ONLY ITS OWN KIND' : F.st === 'known' ? 'YOU HAVE IT' : `${F.ids.length} SPELLS · ${String(F.firstName || F.first).toUpperCase()} NOW`;
                     html += `<button type="button" class="hq-cap-fam st-${F.st}" style="--fam:${_hqEsc(F.color)}" data-party-act="capteach:${_hqEsc(c.id)}:${_hqEsc(F.fam)}"${F.st === 'ok' ? '' : ' disabled'}><b>${_hqEsc(F.glyph)} ${_hqEsc(String(F.name).toUpperCase())}</b><em>${_hqEsc(why)}</em></button>`;
                 });
-                html += `</div></div></div>`;
+                html += `</div></div></div></div>`;
             });
             return html + `</div>`;
         }

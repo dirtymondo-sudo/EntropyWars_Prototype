@@ -1175,6 +1175,8 @@ Adaptable leaves story mode.
   at once, `taughtAt` = his level, the captive walks free; no limit on families). map.js `_hqPauseCaptivesHtml` on THE PARTY sheet
   (KEEP · `capkeep:<id>`, the families · `capteach:<id>:<fam>`); the bounty gold + `localCaptureUnit` run inside the `_hqPartyTx`
   callback. battle.js: the debrief dest CAPTIVE, the capture toast "X CAPTIVE · SEE THE PARTY". CSS `.hq-cap*` (styles-base.css).
+- **CAPTIVE PORTRAITS (11-27, mondo: "this captives thing needs to have their portraits"):** each captive card leads with the party
+  card's round face (`_hqPausePortrait`, CSS `.hq-cap-face` / `.hq-cap-body`); the KEEP explainer line is gone (no panel flavour text, 11-26).
 - **STEP 5, THE FIRST QUEST RE-CHECK (11-25):** Tapes 1 + 2 build their own fixed units (ui.js lesson board, no `storyLevel`), so the
   learning never touches them; no TUTORIAL_MECHANICS `watch` function changed. ORIENTATION's fight: the officer brings his 3 known
   spells (Swing Door, Elbow Grease, Air Mail, 4 of 5 SP); Agent Locke (level 25) and the Catgirl guest are natives built by

@@ -7965,7 +7965,9 @@ html.ew-mobile .pause-card { max-height: calc(100dvh - 16px); }
 #hqPage .hq-pp-lv.hq-learn-due { border-color: #5ee0c8; }
 /* STORY SPELL LEARNING step 4 — THE CAPTIVES on the party sheet (map.js _hqPauseCaptivesHtml) */
 #hqPage .hq-cap-list { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 10px; }
-#hqPage .hq-cap { padding: 8px 10px; border: 1px solid rgba(255,255,255,0.55); background: rgba(0,0,0,0.72); }
+#hqPage .hq-cap { padding: 8px 10px; border: 1px solid rgba(255,255,255,0.55); background: rgba(0,0,0,0.72); display: flex; gap: 12px; align-items: flex-start; }
+#hqPage .hq-cap-face { flex: 0 0 auto; }
+#hqPage .hq-cap-body { flex: 1 1 auto; min-width: 0; }
 #hqPage .hq-cap-hd { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-bottom: 6px; }
 #hqPage .hq-cap-hd b { font-family: 'Cormorant SC', serif; font-size: 15px; letter-spacing: 0.1em; color: #ece7d8; }
 #hqPage .hq-cap-hd span { font-size: 9px; letter-spacing: 0.14em; color: #b8a060; }
