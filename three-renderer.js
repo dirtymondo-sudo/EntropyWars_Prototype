@@ -20589,6 +20589,411 @@ const ThreeRenderer = (function () {
         _jawE.set(cur * (entry.modelDef.jawSwing || 0.45), 0, 0); _jawQ.setFromEuler(_jawE);   // jawSwing: radians at amount 1 (the remade nutcracker hinges far behind, so a small swing = a straight drop)
         b.quaternion.copy(entry._ew_jawRest).multiply(_jawQ);
     }
+    /* 🦴🪨 THE BREAKABLE BODIES (2026-11-27, thread "Plan breakable skeleton and golem models"; mondo: "separate individual bones to
+       throw them and do cool stuff with the animations, but also rigged as a meshy character too", the golem "made of rock pieces
+       and his rock face ... the rocks can come apart for his spell animations. And both of them would turn into a pile of
+       bones/rocks for their death animations"). ONE Meshy model a race (project files breakable-bodies/), rigged by Meshy, so it
+       walks / runs / casts on the shared library like any unit. Here, once a model at its first battle frame, its triangles are
+       made STIFF: each one follows the one bone that moves it most (Meshy blends bones at the joints; bones and rocks do not bend),
+       so every bone of the rig carries one hard piece. A def's `breakable: 'skeleton' | 'golem'` turns it on (sprites.js); the
+       stiff copy of the geometry is made once a file (cached), the other renderers of the same file (the HQ, the creator) keep
+       Meshy's blend.
+       THE PIECES MOVE after the clip, never by a whole-room read (RULE #1e: the rig's own 24 bones): a piece is pushed (dp) and
+       turned (q, about its own middle) in world space on top of the clip's pose, and every bone's local is written back from
+       the new worlds, parent first, so a piece moves alone (the hand does not follow a thrown forearm unless the act moves it).
+       THE JAW (the skeleton): the rig's unused leaf bone `headfront` is moved to the mouth's hinge and given the lower jaw (the
+       skull's triangles low and to the front); it chatters through a cast, gapes on a hit, hangs open in the pile.
+       THE ACTS: ThreeRenderer.bkAct(uid, act, ms, target) — fired on the spell's windup beat (three-vfx-effects.js _BK_SPELL_ACTS),
+       which online.js relays, so the guest sees the same. A hit jolts the pieces (the clip's own 'hit'), a death drops them into a
+       pile (the clip is ignored from the first death frame: the pieces fall from where they stood, bounce, roll, lie), a unit
+       that comes back stacks itself up out of a pile. The pile's shape comes from the unit's id: host and guest see the same.
+       Kill switch: window.EW_NO_BREAKABLE (Meshy's blend, no moves). */
+    var _BK_RACES = {
+        skeleton: { jaw: 'headfront', remap: {},
+            groups: { armR: ['RightForeArm', 'RightHand'], armL: ['LeftForeArm', 'LeftHand'], thighR: ['RightUpLeg'], skull: ['Head', 'headfront'],
+                ribs: ['LeftShoulder', 'RightShoulder'], ribL: ['LeftShoulder'], ribR: ['RightShoulder'] } },
+        golem: { jaw: null, remap: { headfront: 'Spine', Spine01: 'Spine' },
+            groups: { fistR: ['RightHand'], fistL: ['LeftHand'], fists: ['LeftHand', 'RightHand'], armR: ['RightArm', 'RightForeArm', 'RightHand'],
+                skull: ['Head'], back: ['LeftShoulder', 'RightShoulder', 'Spine'] } }
+    };
+    var _bkGeoCache = new Map();   // original geometry uuid -> { geo, jaw: { hingeGeo } }
+    var _bkDead = new Set();       // units that went to a pile (THE RISE when they come back)
+    var _bkM1 = null, _bkM2 = null, _bkM3 = null, _bkV1 = null, _bkV2 = null, _bkV3 = null, _bkQ1 = null, _bkQ2 = null, _bkS1 = null;
+    function _bkInitTmp() {
+        if (_bkM1) return;
+        _bkM1 = new THREE.Matrix4(); _bkM2 = new THREE.Matrix4(); _bkM3 = new THREE.Matrix4();
+        _bkV1 = new THREE.Vector3(); _bkV2 = new THREE.Vector3(); _bkV3 = new THREE.Vector3();
+        _bkQ1 = new THREE.Quaternion(); _bkQ2 = new THREE.Quaternion(); _bkS1 = new THREE.Vector3();
+    }
+    function _bkHash(s) { s = String(s); var h = 2166136261; for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+    function _bkRand(seed) { var x = seed >>> 0 || 1; return function () { x ^= x << 13; x ^= x >>> 17; x ^= x << 5; return ((x >>> 0) % 100000) / 100000; }; }
+    /* the stiff copy: every triangle to its strongest bone (summed over its 3 corners; `remap` folds a bone into another), a corner
+       shared by two pieces is split, and (skeleton) the jaw's triangles to the jaw bone */
+    function _bkRigidGeo(mesh, R) {
+        var g0 = mesh.geometry, hit = _bkGeoCache.get(g0.uuid);
+        if (hit) return hit;
+        var bones = mesh.skeleton.bones, nb = bones.length, byName = {};
+        for (var i = 0; i < nb; i++) byName[bones[i].name] = i;
+        var remap = new Int16Array(nb); for (var r = 0; r < nb; r++) remap[r] = r;
+        Object.keys(R.remap || {}).forEach(function (k) { if (byName[k] != null && byName[R.remap[k]] != null) remap[byName[k]] = byName[R.remap[k]]; });
+        var P = g0.attributes.position, SI = g0.attributes.skinIndex, SW = g0.attributes.skinWeight;
+        var idx = g0.index ? g0.index : null, nt = (idx ? idx.count : P.count) / 3;
+        var tb = new Int16Array(nt), acc = new Float32Array(nb);
+        var cIdx = function (k) { return idx ? idx.getX(k) : k; };
+        for (var t = 0; t < nt; t++) {
+            acc.fill(0);
+            for (var c = 0; c < 3; c++) {
+                var v = cIdx(t * 3 + c);
+                acc[remap[SI.getX(v)]] += SW.getX(v); acc[remap[SI.getY(v)]] += SW.getY(v);
+                acc[remap[SI.getZ(v)]] += SW.getZ(v); acc[remap[SI.getW(v)]] += SW.getW(v);
+            }
+            var best = 0; for (var b = 1; b < nb; b++) if (acc[b] > acc[best]) best = b;
+            tb[t] = best;
+        }
+        /* THE JAW: the skull's triangles in its lowest 27 % and front 60 % (Meshy faces +z), hinged at their top back */
+        var jawI = R.jaw != null && byName[R.jaw] != null ? byName[R.jaw] : -1, headI = byName.Head, hinge = null;
+        if (jawI >= 0 && headI != null) {
+            var y0 = 1e9, y1 = -1e9, z0 = 1e9, z1 = -1e9, cen = new Float32Array(nt * 3);
+            for (var t2 = 0; t2 < nt; t2++) {
+                var cx = 0, cy = 0, cz = 0;
+                for (var c2 = 0; c2 < 3; c2++) { var v2 = cIdx(t2 * 3 + c2); cx += P.getX(v2); cy += P.getY(v2); cz += P.getZ(v2); }
+                cen[t2 * 3] = cx / 3; cen[t2 * 3 + 1] = cy / 3; cen[t2 * 3 + 2] = cz / 3;
+                if (tb[t2] === headI) { y0 = Math.min(y0, cy / 3); y1 = Math.max(y1, cy / 3); z0 = Math.min(z0, cz / 3); z1 = Math.max(z1, cz / 3); }
+            }
+            var yCut = y0 + (y1 - y0) * 0.27, zCut = z0 + (z1 - z0) * 0.40, jy = -1e9, jz = 1e9, jn = 0;
+            for (var t3 = 0; t3 < nt; t3++) {
+                if (tb[t3] !== headI || cen[t3 * 3 + 1] > yCut || cen[t3 * 3 + 2] < zCut) continue;
+                tb[t3] = jawI; jn++; jy = Math.max(jy, cen[t3 * 3 + 1]); jz = Math.min(jz, cen[t3 * 3 + 2]);
+            }
+            if (jn > 20) hinge = new THREE.Vector3(0, jy, jz);
+            else for (var t4 = 0; t4 < nt; t4++) if (tb[t4] === jawI) tb[t4] = headI;
+        }
+        /* the new corners: a corner keeps its first piece; another piece gets a copy */
+        var owner = new Int16Array(P.count).fill(-1), copies = new Map(), src = [], newIdx = new Uint32Array(nt * 3);
+        for (var t5 = 0; t5 < nt; t5++) for (var c5 = 0; c5 < 3; c5++) {
+            var v5 = cIdx(t5 * 3 + c5), bn = tb[t5], o;
+            if (owner[v5] === -1 || owner[v5] === bn) { if (owner[v5] === -1) { owner[v5] = bn; } o = v5; }
+            else { var key = v5 * 64 + bn; o = copies.get(key); if (o === undefined) { o = P.count + src.length; src.push([v5, bn]); copies.set(key, o); } }
+            newIdx[t5 * 3 + c5] = o;
+        }
+        var nv = P.count + src.length, geo = new THREE.BufferGeometry();
+        Object.keys(g0.attributes).forEach(function (name) {
+            var a = g0.attributes[name], isz = a.itemSize, Ctor = (name === 'skinIndex') ? Uint16Array : Float32Array;
+            var arr = new Ctor(nv * isz), get = [a.getX, a.getY, a.getZ, a.getW];
+            for (var vv = 0; vv < nv; vv++) {
+                var from = vv < P.count ? vv : src[vv - P.count][0];
+                if (name === 'skinIndex') { arr[vv * 4] = vv < P.count ? Math.max(0, owner[vv]) : src[vv - P.count][1]; continue; }
+                if (name === 'skinWeight') { arr[vv * 4] = 1; continue; }
+                for (var k = 0; k < isz; k++) arr[vv * isz + k] = get[k].call(a, from);
+            }
+            geo.setAttribute(name, new THREE.BufferAttribute(arr, isz, name === 'skinIndex' ? false : !!(a.normalized && Ctor !== Float32Array)));
+        });
+        geo.setIndex(new THREE.BufferAttribute(newIdx, 1));
+        if (g0.boundingBox) geo.boundingBox = g0.boundingBox.clone();
+        if (g0.boundingSphere) geo.boundingSphere = g0.boundingSphere.clone();
+        geo.userData.ewBkRigid = true;
+        var out = { geo: geo, tb: tb, hinge: hinge, jawI: jawI, headI: headI };
+        /* each piece's middle (geometry space), for turning a piece about itself */
+        var sum = new Float32Array(nb * 4);
+        for (var t6 = 0; t6 < nt; t6++) {
+            var cx6 = 0, cy6 = 0, cz6 = 0;
+            for (var c6 = 0; c6 < 3; c6++) { var v6 = cIdx(t6 * 3 + c6); cx6 += P.getX(v6); cy6 += P.getY(v6); cz6 += P.getZ(v6); }
+            var bb = tb[t6]; sum[bb * 4] += cx6 / 3; sum[bb * 4 + 1] += cy6 / 3; sum[bb * 4 + 2] += cz6 / 3; sum[bb * 4 + 3]++;
+        }
+        out.mid = []; for (var m = 0; m < nb; m++) out.mid.push(sum[m * 4 + 3] > 0 ? new THREE.Vector3(sum[m * 4] / sum[m * 4 + 3], sum[m * 4 + 1] / sum[m * 4 + 3], sum[m * 4 + 2] / sum[m * 4 + 3]) : null);
+        _bkGeoCache.set(g0.uuid, out); _bkGeoCache.set(geo.uuid, out);   // a reused rig (its mesh already stiff) finds it too
+        return out;
+    }
+    function _bkSetup(entry) {
+        var R = _BK_RACES[entry.modelDef.breakable], mesh = null;
+        if (!R) return null;
+        entry.model.traverse(function (n) { if (!mesh && n.isSkinnedMesh && !n._ew_silhouette && n.skeleton) mesh = n; });
+        if (!mesh) return null;
+        _bkInitTmp();
+        var G = _bkRigidGeo(mesh, R), g0 = mesh.geometry;
+        if (g0 !== G.geo) {
+            mesh.geometry = G.geo;
+            mesh.traverse(function (n) { if (n !== mesh && n.geometry === g0) n.geometry = G.geo; });   // the x-ray + outline twins ride the same geometry
+        }
+        var sk = mesh.skeleton, bones = sk.bones, nb = bones.length;
+        mesh.updateMatrixWorld(true);
+        var B = { mesh: mesh, R: R, bones: bones, byName: {}, lc: [], order: [], Wa: [], Wn: [], dp: [], dq: [], on: new Uint8Array(nb),
+            act: null, jaw: null, jawAmt: 0, pieces: [] };
+        for (var i = 0; i < nb; i++) {
+            B.byName[bones[i].name] = i;
+            B.Wa.push(new THREE.Matrix4()); B.Wn.push(new THREE.Matrix4()); B.dp.push(new THREE.Vector3()); B.dq.push(new THREE.Quaternion());
+            /* the piece's middle in its bone's own frame: boneInverse · bindMatrix · middle */
+            B.lc.push(G.mid[i] ? G.mid[i].clone().applyMatrix4(mesh.bindMatrix).applyMatrix4(sk.boneInverses[i]) : new THREE.Vector3());
+            if (G.mid[i]) B.pieces.push(i);
+        }
+        /* parent first */
+        var depth = function (b) { var d = 0; while (b.parent && b.parent.isBone) { d++; b = b.parent; } return d; };
+        B.order = bones.map(function (b, i) { return i; }).sort(function (a, b) { return depth(bones[a]) - depth(bones[b]); });
+        /* THE JAW's bone: its bind at the hinge (no turn in the bind frame), its local under the head */
+        if (G.hinge && G.jawI >= 0 && G.headI != null) {
+            var J = bones[G.jawI], hb = _bkM1.copy(sk.boneInverses[G.headI]).invert();
+            var hp = G.hinge.clone().applyMatrix4(mesh.bindMatrix), jb = new THREE.Matrix4().makeTranslation(hp.x, hp.y, hp.z);
+            sk.boneInverses[G.jawI].copy(jb).invert();
+            var loc = new THREE.Matrix4().copy(hb).invert().multiply(jb);
+            B.jaw = { bone: J, p: new THREE.Vector3(), q: new THREE.Quaternion(), s: new THREE.Vector3() };
+            loc.decompose(B.jaw.p, B.jaw.q, B.jaw.s);
+            B.lc[G.jawI] = G.mid[G.jawI] ? G.mid[G.jawI].clone().applyMatrix4(mesh.bindMatrix).applyMatrix4(sk.boneInverses[G.jawI]) : new THREE.Vector3();
+        }
+        return B;
+    }
+    /* the acts a race plays: name -> { dur (s), fn(B, ctx, t, u) } where u = t / dur; fn sets B.dp / B.dq / B.on */
+    function _bkEase(x) { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); }
+    function _bkPush(B, i, x, y, z) { B.dp[i].set(x, y, z); B.on[i] = 1; }
+    function _bkTurn(B, i, ax, ay, az, ang) { _bkV3.set(ax, ay, az).normalize(); B.dq[i].setFromAxisAngle(_bkV3, ang); B.on[i] = 1; }
+    function _bkGroup(B, name) { var g = B.R.groups[name] || [], out = []; for (var i = 0; i < g.length; i++) if (B.byName[g[i]] != null) out.push(B.byName[g[i]]); return out; }
+    /* a piece's middle in the world now (the clip's pose) */
+    function _bkMid(B, i, v) { return v.copy(B.lc[i]).applyMatrix4(B.Wa[i]); }
+    /* fly a group out to the target and home: out by outU of the act, back by 0.95 (arc = height of the throw, spin = turns) */
+    function _bkFly(B, C, gname, u, outU, arc, spin, low) {
+        var ids = _bkGroup(B, gname); if (!ids.length) return;
+        var s = u < outU ? _bkEase(u / outU) : (u < outU + 0.08 ? 1 : 1 - _bkEase((u - outU - 0.08) / Math.max(0.05, 0.95 - outU - 0.08)));
+        var c0 = _bkMid(B, ids[0], _bkV1), dx = C.tx - c0.x, dy = (C.ty + C.H * (low ? 0.35 : 0.45)) - c0.y, dz = C.tz - c0.z;
+        var lift = Math.sin(Math.PI * s) * arc * C.H;
+        for (var k = 0; k < ids.length; k++) {
+            _bkPush(B, ids[k], dx * s, dy * s + lift, dz * s);
+            if (spin) _bkTurn(B, ids[k], C.rx, 0, C.rz, s * spin * Math.PI * 2);
+        }
+    }
+    var _BK_ACTS = {
+        /* 🦴 Bone Toss: the right forearm + hand, overhand, spinning, home again */
+        toss: { dur: 1.5, fn: function (B, C, t, u) { _bkFly(B, C, C.group || 'armR', u, C.outU, 0.5, 3); } },
+        /* 🦴 Bone Lance: the thigh bone like a javelin, low and flat, turned to point along the throw */
+        lance: { dur: 1.5, fn: function (B, C, t, u) {
+            _bkFly(B, C, 'thighR', u, C.outU, 0.12, 0, true);
+            var ids = _bkGroup(B, 'thighR'), s = Math.sin(Math.PI * Math.min(1, u / 0.95));
+            for (var k = 0; k < ids.length; k++) _bkTurn(B, ids[k], C.rx, 0, C.rz, -1.45 * Math.min(1, s * 2));
+        } },
+        /* 💀 Boo: the skull flies into the face (the jaw wide), and back */
+        skullFly: { dur: 1.4, fn: function (B, C, t, u) { _bkFly(B, C, 'skull', u, C.outU, 0.25, 0); B.jawWant = 1; } },
+        /* 💀 Possession: the skull floats off the neck, stares, settles */
+        skullFloat: { dur: 1.6, fn: function (B, C, t, u) {
+            var ids = _bkGroup(B, 'skull'), s = Math.sin(Math.PI * u);
+            for (var k = 0; k < ids.length; k++) { _bkPush(B, ids[k], C.fx * 0.12 * C.H * s, 0.28 * C.H * s, C.fz * 0.12 * C.H * s); _bkTurn(B, ids[k], 0, 1, 0, Math.sin(u * Math.PI * 4) * 0.35 * s); }
+            B.jawWant = 0.4 * s;
+        } },
+        /* ❄ Grave Chill / Cold Spot: the head tips back, the jaw hangs wide */
+        gape: { dur: 1.2, fn: function (B, C, t, u) {
+            var ids = _bkGroup(B, 'skull'), s = Math.sin(Math.PI * Math.min(1, u * 1.1));
+            for (var k = 0; k < ids.length; k++) _bkTurn(B, ids[k], C.rx, 0, C.rz, -0.45 * s);
+            B.jawWant = 1.15 * s;
+        } },
+        /* 🌪 Marrowstorm: the whole body a whirlwind of bones over him, the skull grinning in the middle, then whole again */
+        storm: { dur: 2.4, fn: function (B, C, t, u) {
+            var w = u < 0.2 ? _bkEase(u / 0.2) : u > 0.8 ? 1 - _bkEase((u - 0.8) / 0.2) : 1, n = B.pieces.length, cx = C.gx, cy = C.gy + C.H * 0.55, cz = C.gz;
+            for (var k = 0; k < n; k++) {
+                var i = B.pieces[k], c = _bkMid(B, i, _bkV1), isSkull = B.bones[i].name === 'Head' || B.bones[i] === (B.jaw && B.jaw.bone);
+                var a = k / n * Math.PI * 2 + t * 5.5, rad = isSkull ? 0 : C.H * (0.55 + 0.25 * Math.sin(k * 1.7)), hy = isSkull ? C.H * 0.45 : C.H * (0.2 * Math.sin(k * 2.3 + t * 3));
+                var px = cx + Math.cos(a) * rad, py = cy + hy, pz = cz + Math.sin(a) * rad;
+                _bkPush(B, i, (px - c.x) * w, (py - c.y) * w, (pz - c.z) * w);
+                if (!isSkull) _bkTurn(B, i, Math.sin(k), 1, Math.cos(k), t * 9 * w);
+            }
+            B.jawWant = 0.7;
+        } },
+        /* 🎵 Shiver Down the Spine: every bone rattles at its own speed, the jaw chatters */
+        rattle: { dur: 1.3, fn: function (B, C, t, u) {
+            var w = Math.sin(Math.PI * u) * C.H * (C.big ? 0.03 : 0.018);
+            for (var k = 0; k < B.pieces.length; k++) { var i = B.pieces[k], f = 31 + k * 7; _bkPush(B, i, Math.sin(t * f) * w, Math.abs(Math.sin(t * f * 1.3)) * w, Math.cos(t * f * 0.9) * w); _bkTurn(B, i, 1, k, 0.5, Math.sin(t * f * 1.1) * w / C.H * 4); }
+            B.jawWant = 0.5 + 0.5 * Math.abs(Math.sin(t * 24));
+        } },
+        /* 💃 Danse Macabre: on the beats, pieces pop off and back, the skull bobs off the neck */
+        dance: { dur: 2.2, fn: function (B, C, t, u) {
+            var beat = Math.floor(t / 0.3), ph = (t % 0.3) / 0.3, pop = Math.sin(Math.PI * ph) * C.H * 0.12 * (u < 0.92 ? 1 : 0);
+            for (var k = 0; k < B.pieces.length; k++) {
+                var i = B.pieces[k]; if ((k + beat) % 3) continue;
+                var c = _bkMid(B, i, _bkV1); _bkV2.set(c.x - C.gx, 0, c.z - C.gz); if (_bkV2.lengthSq() < 1e-6) _bkV2.set(C.fx, 0, C.fz); _bkV2.normalize();
+                _bkPush(B, i, _bkV2.x * pop, pop * 0.6, _bkV2.z * pop);
+            }
+            B.jawWant = 0.3 + 0.7 * Math.sin(Math.PI * ph);
+        } },
+        /* 👻 Haunt: the rib cage opens like two doors and lets the spirit out */
+        doors: { dur: 1.5, fn: function (B, C, t, u) {
+            var s = Math.sin(Math.PI * u), L = _bkGroup(B, 'ribL'), Rr = _bkGroup(B, 'ribR');
+            for (var a = 0; a < L.length; a++) { _bkTurn(B, L[a], 0, 1, 0, 0.9 * s); _bkPush(B, L[a], C.rx * C.H * 0.05 * s, 0, C.rz * C.H * 0.05 * s); }
+            for (var b = 0; b < Rr.length; b++) { _bkTurn(B, Rr[b], 0, 1, 0, -0.9 * s); _bkPush(B, Rr[b], -C.rx * C.H * 0.05 * s, 0, -C.rz * C.H * 0.05 * s); }
+            B.jawWant = 0.6 * s;
+        } },
+        /* 🦴 Reassemble: down into his pile, then up again (the spell moves him while he is bones) */
+        reassemble: { dur: 2.0, fn: function (B, C, t, u) { var w = u < 0.35 ? _bkEase(u / 0.35) : u < 0.55 ? 1 : 1 - _bkEase((u - 0.55) / 0.42); _bkPileAt(B, C, w); } },
+        /* 🪨 Stone Skin / Emet / the magic: every rock pulls in tight, then settles */
+        clench: { dur: 1.1, fn: function (B, C, t, u) {
+            var s = Math.sin(Math.PI * u) * 0.09, cy = C.gy + C.H * 0.55;
+            for (var k = 0; k < B.pieces.length; k++) { var i = B.pieces[k], c = _bkMid(B, i, _bkV1); _bkPush(B, i, (C.gx - c.x) * s, (cy - c.y) * s, (C.gz - c.z) * s); }
+        } },
+        /* 🪨 Ground Slam: both fists burst off into the ground in front, then roll home */
+        slam: { dur: 1.5, fn: function (B, C, t, u) {
+            var ids = _bkGroup(B, 'fists'), s = u < C.outU ? Math.pow(u / C.outU, 2) : u < C.outU + 0.12 ? 1 : 1 - _bkEase((u - C.outU - 0.12) / (0.95 - C.outU - 0.12));
+            for (var k = 0; k < ids.length; k++) {
+                var c = _bkMid(B, ids[k], _bkV1), side = k ? 1 : -1;
+                var px = C.gx + C.fx * C.H * 0.5 + C.rx * side * C.H * 0.18, pz = C.gz + C.fz * C.H * 0.5 + C.rz * side * C.H * 0.18, py = C.gy + C.H * 0.09;
+                _bkPush(B, ids[k], (px - c.x) * s, (py - c.y) * s, (pz - c.z) * s);
+                if (u > C.outU) _bkTurn(B, ids[k], C.rx, 0, C.rz, (1 - s) * Math.PI * 2 * side);   // rolls home
+            }
+        } },
+        /* 🪨 Quake: one stomp, the whole body lifts apart, then slams back together (the shockwave) */
+        quake: { dur: 1.4, fn: function (B, C, t, u) {
+            var s = u < 0.45 ? _bkEase(u / 0.45) : u < 0.6 ? 1 : 1 - Math.pow((u - 0.6) / 0.15, 2), cy = C.gy + C.H * 0.5;
+            if (u > 0.75) s = Math.max(0, Math.sin((u - 0.75) * 40) * 0.08 * (1 - u) * 4);
+            for (var k = 0; k < B.pieces.length; k++) { var i = B.pieces[k], c = _bkMid(B, i, _bkV1); _bkPush(B, i, (c.x - C.gx) * 0.3 * s, (c.y - cy) * 0.3 * s + C.H * 0.1 * s, (c.z - C.gz) * 0.3 * s); _bkTurn(B, i, Math.sin(k), 0.3, Math.cos(k), 0.25 * s); }
+        } },
+        /* 🪨 Clay Grip / Earthen Grasp: the arm's rocks spread into a chain to the target, the fist closes, the chain comes home */
+        chain: { dur: 1.6, fn: function (B, C, t, u) {
+            var ids = _bkGroup(B, 'armR'), s = u < C.outU ? _bkEase(u / C.outU) : u < 0.7 ? 1 : 1 - _bkEase((u - 0.7) / 0.25);
+            for (var k = 0; k < ids.length; k++) {
+                var c = _bkMid(B, ids[k], _bkV1), f = (k + 1) / ids.length;
+                var px = c.x + (C.tx - c.x) * f * 0.85, pz = c.z + (C.tz - c.z) * f * 0.85, py = c.y + (C.ty + C.H * 0.4 - c.y) * f;
+                _bkPush(B, ids[k], (px - c.x) * s, (py - c.y) * s, (pz - c.z) * s);
+            }
+        } },
+        /* 🪨 Clay Crush: both fists to the target and grind shut */
+        crush: { dur: 1.3, fn: function (B, C, t, u) {
+            var ids = _bkGroup(B, 'fists'), s = u < C.outU ? _bkEase(u / C.outU) : u < 0.75 ? 1 : 1 - _bkEase((u - 0.75) / 0.2);
+            for (var k = 0; k < ids.length; k++) {
+                var c = _bkMid(B, ids[k], _bkV1), side = k ? 1 : -1, sq = u > C.outU && u < 0.75 ? 0.05 + 0.03 * Math.sin(t * 30) : 0.16;
+                var px = C.tx + C.rx * side * C.H * sq, pz = C.tz + C.rz * side * C.H * sq, py = C.ty + C.H * 0.4;
+                _bkPush(B, ids[k], (px - c.x) * s, (py - c.y) * s, (pz - c.z) * s);
+                _bkTurn(B, ids[k], C.fx, 0, C.fz, side * 0.6 * s);
+            }
+        } },
+        /* 🪨 Rockslide / Rampart / Pyramid Protocol: the shoulder and back rocks fly up and come down on the target, then home */
+        barrage: { dur: 1.7, fn: function (B, C, t, u) { _bkFly(B, C, 'back', u, C.outU, 0.9, 1); } },
+        /* 🪨 the earth hits: the rocks shudder on the impact */
+        shudder: { dur: 0.9, fn: function (B, C, t, u) { C.big = 1; _BK_ACTS.rattle.fn(B, C, t, u); } }
+    };
+    /* THE PILE: every piece falls from where it stood (freeze = the pose at the first death frame) to the ground, close round the
+       feet, turned over to lie, the skull (or the rock face) last and on top. w 0 … 1 = how far down. */
+    function _bkPileAt(B, C, w) {
+        var rnd = _bkRand(_bkHash(C.uid + '|pile')), n = B.pieces.length;
+        for (var k = 0; k < n; k++) {
+            var i = B.pieces[k], c = _bkMid(B, i, _bkV1), top = B.bones[i].name === 'Head' || (B.jaw && B.bones[i] === B.jaw.bone);
+            var ang = rnd() * Math.PI * 2, rad = top ? C.H * 0.08 : C.H * (0.05 + 0.2 * rnd()), lie = C.H * (top ? 0.11 : 0.02 + 0.06 * rnd());
+            var px = C.gx + Math.cos(ang) * rad + C.fx * C.H * (top ? 0.12 : 0), pz = C.gz + Math.sin(ang) * rad + C.fz * C.H * (top ? 0.12 : 0), py = C.gy + lie;
+            var h = Math.max(0, c.y - py), delay = top ? 0.25 : rnd() * 0.15, ww = Math.max(0, Math.min(1, (w - delay) / (1 - delay)));
+            var fall = ww * ww, bounce = ww > 0.7 && ww < 1 ? Math.sin((ww - 0.7) / 0.3 * Math.PI) * Math.min(h, C.H * 0.3) * 0.15 : 0;
+            _bkPush(B, i, (px - c.x) * Math.min(1, ww * 1.2), (py - c.y) * fall + bounce, (pz - c.z) * Math.min(1, ww * 1.2));
+            if (!top) _bkTurn(B, i, rnd() - 0.5, 0.2, rnd() - 0.5, ww * (1.2 + rnd() * 1.6));
+            else _bkTurn(B, i, C.rx, 0, C.rz, ww * 0.3);
+        }
+        B.jawWant = 0.9 * w;
+    }
+    function _bkCtx(entry, B, uid, A) {
+        var g = entry.group, C = A && A.C ? A.C : { uid: uid };
+        if (C._made) return C;
+        g.getWorldPosition(_bkV2); C.gx = _bkV2.x; C.gy = _bkV2.y; C.gz = _bkV2.z;
+        entry.model.getWorldDirection(_bkV3); _bkV3.y = 0; if (_bkV3.lengthSq() < 1e-6) _bkV3.set(0, 0, 1); _bkV3.normalize();
+        C.fx = _bkV3.x; C.fz = _bkV3.z; C.rx = _bkV3.z; C.rz = -_bkV3.x;   // forward, and the axis across (turns about it tip forward)
+        var hi = B.byName.Head, lo = B.byName.LeftFoot;
+        C.H = (hi != null && lo != null) ? Math.max(0.2, (B.Wa[hi].elements[13] - B.Wa[lo].elements[13]) * 1.12) : 2;
+        /* the target: a world point the act flies to (default: two body lengths ahead) */
+        if (A && A.target) { C.tx = A.target.x; C.ty = A.target.y; C.tz = A.target.z; }
+        else { C.tx = C.gx + C.fx * C.H * 1.5; C.ty = C.gy; C.tz = C.gz + C.fz * C.H * 1.5; }
+        C._made = true;
+        if (A) A.C = C;
+        return C;
+    }
+    /* the pose this tick wrote is put back to the pose the clip left (B.pre), BEFORE the mixer runs: the clip then turns what it
+       turns and a bone it leaves alone is home. Done after the mixer it went wrong: a clip that started while a piece was out
+       saved that place as the bone's own and put it back there (the skeleton's thrown arm stayed out, 11-27) */
+    function _bkUndo(B) {
+        for (var w = 0; w < B.bones.length; w++) { var b = B.bones[w], P = B.pre[w]; b.position.copy(P.p); b.quaternion.copy(P.q); b.scale.copy(P.s); }
+        B.wrote = null;
+    }
+    function _bkTick(entry, uid, now) {
+        if (window.EW_NO_BREAKABLE) return;
+        var B = entry._ew_bk;
+        if (B === undefined) { try { B = entry._ew_bk = _bkSetup(entry); } catch (e) { console.warn('[breakable] setup failed', e); B = entry._ew_bk = null; } }
+        if (!B) return;
+        /* last frame's pieces were put back before the mixer ran (_bkUndo); a frame the mixer skipped is put back here */
+        if (B.wrote) _bkUndo(B);
+        var anim = entry._ew_curAnim || '', dying = _deathTweens.has(uid), u0 = null;
+        B.on.fill(0); B.jawWant = /cast|attack|melee|shoot/i.test(anim) ? 0.25 + 0.6 * Math.abs(Math.sin(now / 1000 * 11)) : /^hit/i.test(anim) ? 0.6 : 0;
+        B.mesh.parent && B.mesh.parent.updateMatrixWorld(true);
+        var bones = B.bones, nb = bones.length;
+        /* the clip's pose (or the pose at the first death frame) */
+        if (dying) {
+            if (!B.pile) {
+                B.pile = { t0: now, W0: [] };
+                for (var a = 0; a < nb; a++) B.pile.W0.push(bones[a].matrixWorld.clone());
+                B.act = null; _bkDead.add(uid);
+            }
+            for (var a2 = 0; a2 < nb; a2++) B.Wa[a2].copy(B.pile.W0[a2]);
+        } else {
+            if (B.pile) B.pile = null;
+            for (var a3 = 0; a3 < nb; a3++) B.Wa[a3].copy(bones[a3].matrixWorld);
+            if (_bkDead.has(uid)) { var uu = _findUnit(uid); if (uu && !uu.dead) { _bkDead.delete(uid); B.act = { name: 'rise', t0: now, ms: 1300 }; } }
+            if (/^hit/i.test(anim) && B.lastAnim !== anim && !B.act) B.act = { name: 'jolt', t0: now, ms: 420 };
+        }
+        B.lastAnim = anim;
+        if (dying) {
+            var C0 = _bkCtx(entry, B, uid, B.pile);
+            _bkPileAt(B, C0, Math.min(1, (now - B.pile.t0) / 900));
+        } else if (B.act) {
+            var A = B.act, el = (now - A.t0) / 1000, dur = A.ms / 1000;
+            if (el >= dur) B.act = null;
+            else {
+                var C = _bkCtx(entry, B, uid, A), u = el / dur;
+                C.outU = A.outU || 0.42; C.group = A.group;
+                if (A.name === 'rise') _bkPileAt(B, C, 1 - _bkEase(u * 1.05));
+                else if (A.name === 'jolt') {
+                    var s = Math.sin(Math.PI * u), rnd = _bkRand(_bkHash(uid + '|' + A.t0));
+                    for (var k = 0; k < B.pieces.length; k++) { var i = B.pieces[k], top = bones[i].name === 'Head'; _bkPush(B, i, (rnd() - 0.5) * C.H * 0.03 * s, (top ? 0.07 : rnd() * 0.02) * C.H * s, (rnd() - 0.5) * C.H * 0.03 * s); }
+                } else if (_BK_ACTS[A.name]) _BK_ACTS[A.name].fn(B, C, el, u);
+            }
+        }
+        /* the jaw: the clip never moves it, so it is set here every frame */
+        if (B.jaw) {
+            B.jawAmt += (Math.min(1.2, B.jawWant || 0) - B.jawAmt) * 0.3;
+            _bkQ1.setFromAxisAngle(_bkV3.set(1, 0, 0), B.jawAmt * 0.42);
+            B.jaw.bone.position.copy(B.jaw.p); B.jaw.bone.quaternion.copy(B.jaw.q).multiply(_bkQ1); B.jaw.bone.scale.copy(B.jaw.s);
+            B.jaw.bone.updateMatrix(); B.jaw.bone.matrixWorld.multiplyMatrices(B.jaw.bone.parent.matrixWorld, B.jaw.bone.matrix);
+            if (!dying) B.Wa[B.byName[B.jaw.bone.name]].copy(B.jaw.bone.matrixWorld);
+        }
+        var any = false; for (var q = 0; q < nb; q++) if (B.on[q]) { any = true; break; }
+        if (!any && !dying) return;
+        /* the new worlds: T(mid + dp) · R(dq) · T(-mid) · W, then every local from its parent's new world, parent first */
+        if (!B.pre) { B.pre = []; B.wrote0 = []; for (var z = 0; z < nb; z++) { B.pre.push({ p: new THREE.Vector3(), q: new THREE.Quaternion(), s: new THREE.Vector3() }); B.wrote0.push({ p: new THREE.Vector3(), q: new THREE.Quaternion(), s: new THREE.Vector3() }); } }
+        for (var z2 = 0; z2 < nb; z2++) { B.pre[z2].p.copy(bones[z2].position); B.pre[z2].q.copy(bones[z2].quaternion); B.pre[z2].s.copy(bones[z2].scale); }
+        for (var o = 0; o < nb; o++) {
+            var bi = B.order[o], bone = bones[bi], Wn = B.Wn[bi];
+            if (B.on[bi]) {
+                var c = _bkMid(B, bi, _bkV1);
+                _bkM1.makeTranslation(-c.x, -c.y, -c.z);
+                _bkM2.makeRotationFromQuaternion(B.dq[bi]).multiply(_bkM1);
+                _bkM3.makeTranslation(c.x + B.dp[bi].x, c.y + B.dp[bi].y, c.z + B.dp[bi].z).multiply(_bkM2);
+                Wn.multiplyMatrices(_bkM3, B.Wa[bi]);
+            } else Wn.copy(B.Wa[bi]);
+            var pw = bone.parent ? bone.parent.matrixWorld : null;
+            if (pw) _bkM1.copy(pw).invert().multiply(Wn); else _bkM1.copy(Wn);
+            _bkM1.decompose(bone.position, bone.quaternion, bone.scale);
+            bone.matrix.copy(_bkM1); bone.matrixWorld.copy(Wn);
+            B.wrote0[bi].p.copy(bone.position); B.wrote0[bi].q.copy(bone.quaternion); B.wrote0[bi].s.copy(bone.scale);
+        }
+        B.wrote = B.wrote0;
+        B.dq.forEach(function (qq) { qq.identity(); });
+    }
+    /* the spell's act: name, its length (ms), the target (a world point, or board tile { tx, ty }) */
+    function _bkAct(uid, name, ms, target, opts) {
+        var entry = _getUnitEntry(uid);
+        if (!entry || !entry.modelDef || !entry.modelDef.breakable) return false;
+        var B = entry._ew_bk; if (!B) return false;
+        var A = { name: String(name), t0: _animNow(), ms: Math.max(300, +ms || ((_BK_ACTS[name] && _BK_ACTS[name].dur * 1000) || 1200)) };
+        if (opts && opts.outMs) A.outU = Math.max(0.2, Math.min(0.6, opts.outMs / A.ms));
+        if (opts && opts.group) A.group = opts.group;
+        if (target && target.tx != null && target.x == null) {
+            var ts = CONFIG.tileSize || BASE_TILE, tu = null;
+            try { var us = state.units || []; for (var i = 0; i < us.length; i++) if (us[i] && !us[i].dead && us[i].x === target.tx && us[i].y === target.ty) { tu = us[i]; break; } } catch (e) {}
+            var te = tu ? _getUnitEntry(tu.id) : null, v = new THREE.Vector3();
+            if (te && te.group) te.group.getWorldPosition(v);
+            else { v.set(target.tx * ts + ts / 2, (typeof tileTopY === 'function' ? tileTopY(target.tx, target.ty) : 0), target.ty * ts + ts / 2); if (entry.group.parent) entry.group.parent.localToWorld(v); }
+            A.target = v;
+        } else if (target && target.x != null) A.target = new THREE.Vector3(target.x, target.y, target.z);
+        B.act = A;
+        return true;
+    }
     function _abBuild(root) {
         if (!root.getObjectByName('ewAbBody') || !root.getObjectByName('ewAbLimb0')) return null;
         var R = { n: {} };
@@ -23459,6 +23864,7 @@ const ThreeRenderer = (function () {
             else if (_wa && entry._ew_paceWalk && !_wtS) { _wa.timeScale = _wa._ew_ts0 || 1; entry._ew_paceWalk = false; }
             if (entry._ew_stSave) _straddleUndo(entry);   // the clip's own pose back first (a bone the clip leaves alone never piles up turns)
             if (entry._ew_digSave) _digUndo(entry);       // THE SHOVEL DIG: the same for the left arm's reach
+            if (entry._ew_bk && entry._ew_bk.wrote) _bkUndo(entry._ew_bk);   // 🦴🪨 THE BREAKABLE BODIES: every bone back to the clip's own pose before the clip runs
             /* THE STOP-MOTION (2026-11-17, the Haunted Doll): a def's `stepFps` advances the mixer in steps (the time banks up and is
                spent at once), so every clip jerks like a puppet filmed a frame at a time. Only the clock is stepped: the tweens
                that carry the body over the board stay smooth. */
@@ -23476,6 +23882,7 @@ const ThreeRenderer = (function () {
             if (entry.modelDef && entry.modelDef.procRig === 'abomination') _abLimbTick(entry, uid, dt);
             if (entry._ew_oriRace !== false) _oriWatch(entry, uid);   // 🕊 THE ORIGAMI IN A FIGHT: a held shape met from the state alone
             if (entry.modelDef && entry.modelDef.jawBone) _jawTick(entry, uid, now);   // 🥜 THE NUTCRACKER'S JAW: clacks after the clip   // 🫀 THE ABOMINATION: the limbs it has, the cage away
+            if (entry.modelDef && entry.modelDef.breakable) _bkTick(entry, uid, now);   // 🦴🪨 THE BREAKABLE BODIES: the pieces after the clip
             if (entry.appearanceRig) { entry.model.updateMatrixWorld(true); entry.appearanceRig.tick(); }   // rev 9: the skirt against the legs
             var _hsR = _unitModelRigs.get(uid); if (_hsR && _hsR.hairSweep) _hsR.hairSweep();   // THE HAIR EVERYWHERE: the late hair
             if (entry._ew_sway && entry._ew_sway.userData.ewDemi) _demiSlot(entry);   // THE DEMIURGE: the cast's slot poses his parts
@@ -35895,10 +36302,13 @@ const ThreeRenderer = (function () {
                 if (_dClip && _dClip.duration > 0) _landMs = Math.max(450, Math.min(2200, _dClip.duration * 1000 / _dTs));
             } catch (e) {}
         }
+        /* 🦴🪨 THE BREAKABLE BODIES: the pieces fall into a pile in 0.9 s, and the pile lies a while before it fades */
+        var _bkLie = 0;
+        if (_isModelDeath && entry.modelDef && entry.modelDef.breakable && !window.EW_NO_BREAKABLE) { _landMs = 950; _bkLie = 1700; }
         _deathTweens.set(unitId, {
             startTime: _animNow(),
-            durationMs: _isModelDeath ? (_landMs + MODEL_DEATH_LIE_MS + MODEL_DEATH_FADE_MS) : DEATH_MS,
-            fadeAtMs: _isModelDeath ? (_landMs + MODEL_DEATH_LIE_MS) : DEATH_MS * 0.3,
+            durationMs: _isModelDeath ? (_landMs + MODEL_DEATH_LIE_MS + _bkLie + MODEL_DEATH_FADE_MS) : DEATH_MS,
+            fadeAtMs: _isModelDeath ? (_landMs + MODEL_DEATH_LIE_MS + _bkLie) : DEATH_MS * 0.3,
             isModel: _isModelDeath,
             /* THE NEW CLIPS (2026-09-25): battle.js marks a heavy physical
                killing blow in state._deathStyleById (a plain id → string map,
@@ -113615,6 +114025,8 @@ const ThreeRenderer = (function () {
            ('horse' | 'horse_brown' | 'horse_black', else the race's / the id's); mountKeyFor(unit) = that coat */
         mountUnit: function (uid, o) { try { return _mountUnit(uid, o); } catch (e) { return false; } },
         demiAct: function (uid, name, ms) { try { return _demiAct(uid, name, ms); } catch (e) { return false; } },
+        bkInfo: function (uid) { var e = _getUnitEntry(uid), B = e && e._ew_bk; var sp = 0, far = null; if (B && e.group) { var gp = new THREE.Vector3(), v = new THREE.Vector3(); var rb = B.bones.filter(function (b) { return !(b.parent && b.parent.isBone); })[0]; if (rb) rb.getWorldPosition(gp); else e.group.getWorldPosition(gp); B.pieces.forEach(function (i) { v.copy(B.lc[i]).applyMatrix4(B.bones[i].matrixWorld); var dd = Math.hypot(v.x - gp.x, v.z - gp.z); if (dd > sp) { sp = dd; far = B.bones[i].name; } }); } return B ? { spread: +sp.toFixed(1), far: far, pieces: B.pieces.length, act: B.act ? B.act.name : null, pile: !!B.pile, jaw: !!B.jaw, jawAmt: +B.jawAmt.toFixed(2), stiff: !!(B.mesh.geometry.userData.ewBkRigid) } : (e ? { none: true, def: !!(e.modelDef && e.modelDef.breakable) } : null); },   // the probe's read
+        bkAct: function (uid, name, ms, target, opts) { try { return _bkAct(uid, name, ms, target, opts); } catch (e) { return false; } },   // 🦴🪨 THE BREAKABLE BODIES
         spellSky: function (type, ms, o) { try { return _spellSkySet(type, ms, o); } catch (e) { return false; } },   // THE SPELL SKY: a boss spell's own celestial event   // THE DEMIURGE: a spell's own part act
         /* 🛻 THE MONSTER TRUCK: a slot's motion for every truck built after this call (dur s, pose(u) -> { y rx rz hood spin lean });
            an existing slot is replaced. Models already built keep their clips. */

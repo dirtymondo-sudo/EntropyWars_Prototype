@@ -12843,7 +12843,7 @@ const RACE_ABILITIES = {
         /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Emet. */
         { id: 'goEmet', name: 'Emet', tier: 1, families: ['golem'], cost: 25, apCost: 1, cooldownRounds: 2,
           spellType: 'divine', element: 'earth', type: 'buff', kind: 'buff', range: 0, shield: 120, statStageBoost: { def: 1 },
-          desc: 'The word on the brow glows: truth. The golem gains a 120-point barrier and +1 DEF stage. Cooldown: 2 rounds.' },
+          desc: 'The seams blaze: truth. The golem gains a 120-point barrier and +1 DEF stage. Cooldown: 2 rounds.' },
         { id: 'goClayGrip', name: 'Clay Grip', tier: 2, families: ['golem'], cost: 50, apCost: 1, spellType: 'divine',
           element: 'earth', type: 'damage', kind: 'damage', range: 1, dmg: 95, damageType: 'physical',
           statusEffects: [{ id: 'root', duration: 2 }],
@@ -27171,7 +27171,7 @@ const SPELL_FAMILIES = {
         kind: 'signature',
         desc: 'The clay guardian with the word on its brow: it hardens, grips whoever comes close and crushes what it holds.',
         unique: 'golem',
-        identity: { who: ['Golem', 'Clay Guardian', 'Emet'], adj: ['Clay-Bodied', 'Unbreakable', 'Word-Bound'], look: ['a word carved in the brow', 'river-clay hands', 'thumbprints of its maker'], vibe: ['takes the hit so the others don\'t', 'never lets go once it grips'] }
+        identity: { who: ['Golem', 'Stone Guardian', 'Emet'], adj: ['Stone-Bodied', 'Unbreakable', 'Word-Bound'], look: ['a face cut from one rock', 'granite fists', 'light in the seams'], vibe: ['takes the hit so the others don\'t', 'never lets go once it grips'] }
     },
     grey: {
         id: 'grey',
@@ -112536,7 +112536,7 @@ const DOOR_ROSTER_LINES = {
         '“For the last time, I am not a spill. The next person who tries to mop me up is getting reported to HR.”',
     ],
     'golem': [
-        '“Clay. Not stone. Not dirt. CLAY. I want that on file.”',
+        '“Stone. Not clay. Not dirt. STONE. I want that on file.”',   // 2026-11-27 mondo: the golem is stone now (THE BREAKABLE BODIES)
     ],
     'ice queen': [
         '“Let it go? I was never holding it.”',

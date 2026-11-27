@@ -2394,3 +2394,39 @@ Race key `origami girl`, female only, in data.js `EW_COMING_RACES` until her kit
 - data.js rows (all a first pass): label + type Anomaly, role specialist, stats, height, weak to fire and water.
 - Not here (the spell thread's): spell rows, unlock lists, finisher, the girl-to-sheet swap, VFX, the wad death, online relay.
 Proof: `/mnt/project-files/origami-girl/models/in_game.png` (garage, spawnChar probe).
+
+## THE BREAKABLE BODIES — the Skeleton and the stone Golem come apart (2026-11-27)
+mondo 11-27: "separate individual bones to throw them and do cool stuff with the animations, but also rigged as a meshy character
+too? ... the golem, made of rock pieces and his rock face ... the rocks can come apart for his spell animations. And both of them
+would turn into a pile of bones/rocks for their death animations." Then: "stone golem" (the clay lore line changed), concepts A + A,
+no word on the golem's brow. Plan doc: claude.ai artifact "Skeleton and Golem: breakable bodies plan".
+- THE MODELS: Meshy image-to-3D from our own concepts (project files `breakable-bodies/`: gen.py, model.py, concepts/skel_a.png,
+  golem_a2.png = golem_a with the brow cleared by Meshy image-to-image; renders/ sheets; view.html + shot.js = a plain three.js turn
+  table for a GLB), rigged by Meshy (24 bones, walk + run). R2 `Assets/characters/races/skeleton/male/Meshy_AI_skeleton_bones_Running.glb`
+  and `Assets/characters/races/golem/Meshy_AI_golem_stone_Running.glb` (+ `.opt.glb`, ASSET_MANIFEST). sprites.js RACE_MODELS_3D
+  `model:` + `breakable: 'skeleton' | 'golem'`. The old models stay on R2 unused. Meshy fused each model into ONE surface (the
+  skeleton's bones touch), so the pieces are cut by weight, not by islands.
+- THE CUT (three-renderer.js THE BREAKABLE BODIES `_bkRigidGeo`, at the unit's first battle frame, cached a file): each triangle goes
+  to the bone with the most weight over its three corners (`remap` folds bones: the golem's `headfront` + `Spine01` into `Spine`, its
+  chest), corners shared by two pieces are split, every corner weighs 1 on its bone. 22 pieces on the skeleton (its rib cage is two
+  halves, on the shoulders: Haunt opens them like doors), about 20 on the golem. THE JAW (skeleton): the skull's lowest 27 % and front
+  60 % go to the unused leaf bone `headfront`, moved to the hinge (its boneInverse is rewritten; it rests unturned in the bind frame,
+  so its own x turns it open). Only battle units are cut; the HQ / creator keep Meshy's blend.
+- THE MOVES (`_bkTick` after the mixer, the rig's own 24 bones, no room read): a piece is pushed + turned about its own middle in
+  world space over the clip's pose; every bone's local is written back from the new worlds, parent first. Acts `_BK_ACTS`: toss,
+  lance, skullFly, skullFloat, gape, storm, rattle, dance, doors, reassemble (skeleton); clench, slam, quake, chain, crush, barrage,
+  shudder (golem). The spell -> act table is three-vfx-effects.js `_BK_SPELL_ACTS` (rides the windup beat, online.js relays it);
+  a throw reaches the target by the windup's `holdMs` (the impact). A hit jolts the pieces (the clip's `hit*`). `ThreeRenderer.bkAct
+  (uid, act, ms, {tx,ty}|{x,y,z}, {outMs, group})` plays one; `bkInfo(uid)` reads the state (pieces, act, pile, jaw, spread).
+  THE UNDO (11-27): what a tick wrote is put back to the clip's pose (`B.pre`) by `_bkUndo` right BEFORE `mixer.update` (beside
+  `_straddleUndo`). Put back after the mixer it failed: an action that starts while a piece is out saves that place as the bone's
+  "original" and restores it when it stops, so the thrown arm stayed out. `bkInfo.spread` is measured from the root bone (`far` = the
+  farthest piece).
+- THE PILE: from the first death frame the clip is ignored; the pieces fall from where they stood into a heap round the feet (0.9 s,
+  shape from the unit id: host and guest see the same), the skull / rock face last on top; startDeathTween gives a breakable body
+  1.7 s more on the floor before the fade. A unit that comes back (`_bkDead`, the Skeleton's fast respawn) stacks itself up out of a
+  pile (1.3 s). Reassemble (the spell) = down into the pile and up again.
+- NOT DONE: the sword spells (Cross Slash ...) play the library swing only (the femur-as-blade idea in the plan is not built); the
+  golem's small floating stones (the concept had none); no sound (never generate SFX); the gore still sprays blood on a skeleton.
+- Kill switch `window.EW_NO_BREAKABLE`. Probe: `RACE=skeleton|golem TAG=x ZOOM=13 FLAGS=__bkTilt=50 node playtest_breakable.js`
+  (a real VS CPU fight, every spell of the kit and a death, pictures in shots/breakable/).

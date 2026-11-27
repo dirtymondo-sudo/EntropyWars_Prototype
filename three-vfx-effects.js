@@ -179,6 +179,29 @@ const ThreeVFXEffects = (function () {
         var TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
         if (TR && typeof TR.jawAct === 'function') TR.jawAct(p.uid, A[0], A[1]);
     }
+    /* 🦴🪨 THE BREAKABLE BODIES (2026-11-27): the skeleton's bones and the stone golem's rocks come apart for their spells
+       (three-renderer.js THE BREAKABLE BODIES, _BK_ACTS). [act, length ms (0 = the act's own), group]. A row with `out` flies its
+       pieces out to the target by the spell's impact (the windup's holdMs). Rides the windup beat (the caster's `uid`), which
+       online.js relays, so the guest sees the same. bkAct does nothing on a unit that is not breakable (a giant's Boulder Hurl). */
+    var _BK_SPELL_ACTS = {
+        raceBoneToss: ['toss', 0, 'armR', 1], raceGraveChill: ['gape', 0], raceReassemble: ['reassemble', 0], raceBoneLance: ['lance', 0, null, 1],
+        raceMarrowstorm: ['storm', 0], pzShiverDownTheSpine: ['rattle', 0], pzDanseMacabre: ['dance', 0], raceHaunt: ['doors', 0],
+        raceColdSpot: ['gape', 900], racePossession: ['skullFloat', 0], raceBoo: ['skullFly', 0, null, 1], raceBoneBarrage: ['storm', 1600],
+        raceBoulderHurl: ['toss', 0, 'fistR', 1], raceStoneSkin: ['clench', 0], goEmet: ['clench', 0], groundSlam: ['slam', 0, null, 1],
+        raceQuake: ['quake', 0], goClayGrip: ['chain', 0, null, 1], raceEarthenGrasp: ['chain', 0, null, 1], goClayCrush: ['crush', 0, null, 1],
+        raceStonefall: ['shudder', 0], raceTremorStomp: ['shudder', 0], sharedFissure: ['shudder', 0], raceMudslide: ['shudder', 0],
+        raceSpikeTrap: ['shudder', 0], rampart: ['barrage', 0, null, 1], raceZigguratProtocol: ['barrage', 0, null, 1],
+        raceRockslide: ['barrage', 0, null, 1], raceAncientMagic: ['clench', 0], raceSandstoneTomb: ['clench', 0]
+    };
+    function _bkWindup(spellId, p) {
+        var A = _BK_SPELL_ACTS[spellId];
+        if (!A || !p || p.uid == null) return;
+        var TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
+        if (!TR || typeof TR.bkAct !== 'function') return;
+        var hold = Math.max(250, Math.min(1400, +p.holdMs || 600)), ms = A[1] || 0;
+        if (A[3]) ms = Math.max(ms, hold + 900);
+        TR.bkAct(p.uid, A[0], ms, p.tx != null ? { tx: p.tx, ty: p.ty } : null, { outMs: A[3] ? hold : 0, group: A[2] || null });
+    }
     function _geom3D(spellId) {
         if (_VS.on && typeof window !== 'undefined' && window.EW_PB_VFX_NO_GEOM) return null;
         return _spell3DGeometry[spellId];
@@ -3859,6 +3882,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             if (intent === 'windup') try { _rideWindup(spellId, params); } catch (e) {}   // THE HORSES
             if (intent === 'windup') try { _demiWindup(spellId, params); } catch (e) {}   // THE DEMIURGE
             if (intent === 'windup') try { _ncWindup(spellId, params); } catch (e) {}   // THE NUTCRACKER's jaw
+            if (intent === 'windup') try { _bkWindup(spellId, params); } catch (e) {}   // THE BREAKABLE BODIES (skeleton, stone golem)
             if (intent === 'windup') try { _heldStart(spellId, params); } catch (e) { console.warn('[VFX] held prop failed', spellId, e); }   // THE PROPS IN THE HAND (row 24)
             if (intent === 'windup') try { _skwWindup(spellId, params); } catch (e) { console.warn('[VFX] skinwalker face failed', spellId, e); }   // THE SKINWALKER'S FACES (2026-11-24)
             /* THE LIGHTNING PASS: every lightning damage spell marks what it hit (cage + scar) on the real hit */
