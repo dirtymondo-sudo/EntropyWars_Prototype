@@ -95519,7 +95519,7 @@ const ThreeRenderer = (function () {
            `wet` = the deepest water; `reach` = how near its side you stand to get in. THE HILL (11-22): `grade` = the steepest ground it
            stands on (rise over run), `hill` = how much of a slope's pull it feels, `steerMax` = the wheels' hardest lock (handbrake). */
         car: { v: 21, rev: 7, accel: 8.5, brake: 20, coast: 2.4, hand: 15, steer: 0.88, steerHi: 0.22, steerIn: 10, steerMax: 1.1, handSteer: 1.7, wb: 0.6, step: 0.34, clear: 0.34, drop: 0.7, grade: 0.9, wet: 0.45, hill: 0.3, bump: 0.25, lean: 0.035, squat: 0.02, reach: 1.7, exit: 0.75, camDist: 8.0, camUp: 0.9, len: 4.6, beam: 1.9,
-               bot: { morph: 2.4, walk: 4.5, run: 10, accel: 4, turn: 3.2, mouse: true, mouseK: 1.6, walkRef: 4.5, runRef: 10, camUp: 2.4, camBack: 5, seat: [0.37, 0.44, -0.02], thigh: 0.12, shin: 0.8, glass: 0.2 } },   // THE SEDAN BOT (2026-11-27)
+               bot: { morph: 2.4, walk: 4.5, run: 10, accel: 4, turn: 3.2, mouse: true, mouseK: 1.6, walkRef: 4.5, runRef: 10, camUp: 2.4, camBack: 5, jump: 9, grav: 22, seat: [0.37, 0.44, -0.02], thigh: 0.12, shin: 0.8, glass: 0.2 } },   // THE SEDAN BOT (2026-11-27)
         keys: { dive: 'c', rise: 'space', board: 'e' },
         labels: { boat: 'THE SKIFF', sub: 'THE BATHYSCAPHE', ship: 'THE SPACESHIP', car: 'THE CAR' },
     };
@@ -95700,7 +95700,7 @@ const ThreeRenderer = (function () {
                     fenderL: [0.12, 0.30], fenderR: [0.12, 0.30], wheelFL: [0.12, 0.30], wheelFR: [0.12, 0.30], legL: [0.14, 0.32], legR: [0.14, 0.32], wheelRL: [0.14, 0.32], wheelRR: [0.14, 0.32] };
     var _SBOT_B = { interior: [0.20, 0.46], swheel: [0.20, 0.46], floor: [0.30, 0.60], legL: [0.32, 0.64], legR: [0.32, 0.64], wheelRL: [0.32, 0.64], wheelRR: [0.32, 0.64],
                     chest: [0.42, 0.78], fenderL: [0.46, 0.82], fenderR: [0.46, 0.82], wheelFL: [0.46, 0.82], wheelFR: [0.46, 0.82], roof: [0.50, 0.86],
-                    doorRL: [0.55, 0.90], doorRR: [0.55, 0.90], doorFL: [0.60, 1], doorFR: [0.60, 1] };
+                    doorRL: [0.55, 0.90], doorRR: [0.55, 0.90], doorFL: [0.60, 1], doorFR: [0.60, 1], plate: [0.50, 0.86] };
     var _sbotM1 = null, _sbotM2 = null, _sbotP = null, _sbotQ = null, _sbotS = null, _sbotQ2 = null, _sbotAx = null;
     function _sbotRules() { return (_hqSeaRules().car || {}).bot || {}; }
     function _sbotOf(rec) { var g = rec && rec.grp && rec.grp._ew_botInst; return (g && g._ew_bot) || null; }
@@ -95727,7 +95727,8 @@ const ThreeRenderer = (function () {
                 if (/glass/i.test(m.name || '')) { m.map = null; m.normalMap = null; m.color.setHex(0x9fb6c0); m.roughness = 0.12; m.transparent = true; m.opacity = RB.glass != null ? RB.glass : 0.2; m.depthWrite = false; n.castShadow = false; n.renderOrder = 2; m.needsUpdate = true; }   // (Meshy paints its glass dark with reflections: a plain pale pane, the cabin seen through it)
             });
             var arm = by.Armature || null;
-            var B = { root: sc, t: 0, dir: 0, v: 0, steer: 0, spin: 0, parts: [], arm: arm, armS: arm ? arm.scale.x : 1, body: body, cur: '', acts: {}, mixer: null, dirty: true, wasOn: false, sw: null, wheels: [] };
+            var B = { root: sc, t: 0, dir: 0, v: 0, steer: 0, spin: 0, parts: [], arm: arm, armS: arm ? arm.scale.x : 1, body: body, cur: '', curA: null, acts: {}, lib: {}, rest: [], bone: {}, air: false, mixer: null, dirty: true, wasOn: false, sw: null, wheels: [] };
+            sc.traverse(function (n) { if (n.isBone) { B.rest.push([n, n.position.clone(), n.quaternion.clone()]); if (!B.bone[n.name]) B.bone[n.name] = n; } });
             Object.keys(by).forEach(function (k) {
                 if (k.indexOf('p_') !== 0) return;
                 var n = k.slice(2), nd = by[k], op = by['o_' + n] || nd;
@@ -95741,6 +95742,7 @@ const ThreeRenderer = (function () {
             if (gltf.animations && gltf.animations.length && arm) {
                 B.mixer = new THREE.AnimationMixer(sc);
                 gltf.animations.forEach(function (c) { var a = B.mixer.clipAction(c); a.setEffectiveWeight(0); a.play(); B.acts[c.name] = a; });
+                try { _sbotLib(B, sc); } catch (eLb) { try { console.warn('[HQ] the sedan bot: no library clips', eLb); } catch (e2) {} }
             }
             g.add(sc); g._ew_bot = B;
             if (tickers) tickers.push(function (dt) { var V = _hq && _hq.vehicle; if (V && V.on && V.rec && _sbotOf(V.rec) === B) return; _sbotTick(B, dt); });   // (driven: the wheel lays its parts itself, _hqTickCar, whatever room's list this sits in)
@@ -95748,6 +95750,49 @@ const ThreeRenderer = (function () {
             if (_hq) _hq.dirty = true;
         }, function (e) { try { console.warn('[HQ] the sedan bot did not load', e); } catch (e2) {} });
         return g;
+    }
+    /* THE SHARED LIBRARY ON THE CORE (mondo 11-27: "make sure it can jump and everything ... like any other character"): its frame is a
+       Meshy rig, the same one its battle unit wears (sprites.js `honda civic`, the robot form), so the unit's own library clips are
+       baked onto this copy too: idle, walk, run, jump. Its file's Meshy walk / run stay as the fallback until they land */
+    function _sbotLib(B, sc) {
+        var RM = (typeof RACE_MODELS_3D !== 'undefined' && RACE_MODELS_3D) ? RACE_MODELS_3D['honda civic'] : null, car = RM && RM.male, forms = car && car.overrideForms, rdef = null;
+        if (forms) for (var k in forms) if (forms[k] && forms[k] !== car && forms[k].libClips) { rdef = forms[k]; break; }
+        if (!rdef) return;
+        var want = ['idle', 'walk', 'run', 'jump'], lc = {};
+        want.forEach(function (sl) { if (rdef.libClips[sl]) lc[sl] = rdef.libClips[sl]; });
+        var def = Object.assign({}, rdef, { libClips: lc });
+        _animLibBakeForModel0(def, { root: sc }, function (baked) {
+            if (!baked || !B.mixer) return;
+            want.forEach(function (sl) {
+                var c = baked[sl]; if (!c) return;
+                var a = B.mixer.clipAction(c); a.setEffectiveWeight(0);
+                if (sl === 'jump') { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; }
+                B.lib[sl] = { a: a, ts: (def.libTimeScales && def.libTimeScales[sl]) || 1 };
+            });
+            if (_hq) _hq.dirty = true;
+        });
+    }
+    function _sbotAct(B, n) { return n ? ((B.lib[n] && B.lib[n].a) || B.acts[n] || null) : null; }
+    /* THE CURL (mondo 11-27: "start in the fetal position and stand upright as it's growing"): k 1 = curled up small in the cabin (knees
+       to the chest, the back and the head bowed, the arms round the shins, the hips down by the floor), k 0 = its own pose. Laid over
+       the rest pose each frame of the change (never piled up) */
+    function _sbotCurl(B, k) {
+        var i, R = B.rest, bn = B.bone;
+        for (i = 0; i < R.length; i++) { R[i][0].position.copy(R[i][1]); R[i][0].quaternion.copy(R[i][2]); }
+        if (!(k > 0) || !bn.Hips || !bn.LeftUpLeg || !bn.RightUpLeg) return;
+        if (!_stQ) { _stQ = new THREE.Quaternion(); _stA = new THREE.Vector3(); _stB = new THREE.Quaternion(); _stP = new THREE.Quaternion(); _stV = new THREE.Vector3(); _stS = new THREE.Vector3(); _stF = new THREE.Vector3(); }
+        var C = _sbotRules().curl || {};
+        B.root.updateMatrixWorld(true);
+        var left = _sbotAx.set(1, 0, 0).applyQuaternion(B.root.getWorldQuaternion(_sbotQ)).normalize().clone(), up = new THREE.Vector3(0, 1, 0).applyQuaternion(_sbotQ).normalize();
+        /* the hips come down toward the floor */
+        var hp = bn.Hips, par = hp.parent, hw = hp.getWorldPosition(_stV).clone(), rw = B.root.getWorldPosition(_stS), hh = hw.clone().sub(rw).dot(up);
+        if (par) { hw.addScaledVector(up, -hh * (C.drop != null ? C.drop : 0.62) * k); par.worldToLocal(hw); hp.position.copy(hw); hp.updateMatrixWorld(true); }
+        var T = function (name, ax, ang) { if (bn[name]) _straddleTurn(bn[name], ax, ang * k); };
+        T('Spine02', left, C.back != null ? C.back : 0.55); T('Spine01', left, C.back != null ? C.back : 0.55); T('Spine', left, 0.4); T('neck', left, 0.45); T('Head', left, 0.3);
+        T('LeftUpLeg', left, -(C.thigh != null ? C.thigh : 2.25)); T('RightUpLeg', left, -(C.thigh != null ? C.thigh : 2.25));
+        T('LeftLeg', left, C.shin != null ? C.shin : 2.35); T('RightLeg', left, C.shin != null ? C.shin : 2.35);
+        T('LeftArm', up, -(C.arm != null ? C.arm : 1.25)); T('RightArm', up, C.arm != null ? C.arm : 1.25);
+        T('LeftForeArm', up, -(C.fore != null ? C.fore : 1.3)); T('RightForeArm', up, C.fore != null ? C.fore : 1.3);
     }
     /* the driver's legs: the library's driving clip sits on a chair (feet 0.45 m under the hips, through a car's floor): the thighs
        lift a little and the shins reach forward to the pedals. After the clip, once a mixer frame (never piled up) */
@@ -95776,7 +95821,7 @@ const ThreeRenderer = (function () {
             if (B.wasOn || B.dirty) {
                 for (i = 0; i < B.parts.length; i++) { P = B.parts[i]; P.node.position.copy(P.cp); P.node.quaternion.copy(P.cq); P.node.scale.copy(P.cs); }
                 if (B.arm) B.arm.visible = false; if (B.body) B.body.visible = false;
-                if (B.cur && B.acts[B.cur]) B.acts[B.cur].setEffectiveWeight(0); B.cur = '';
+                if (B.curA) { B.curA.stop(); B.curA.setEffectiveWeight(0); } B.curA = null; B.cur = ''; _sbotCurl(B, 0);
                 B.wasOn = false; B.dirty = false; B.steer0 = null;
             }
             if (B.v || B.steer !== B.steer0) {
@@ -95794,9 +95839,22 @@ const ThreeRenderer = (function () {
         var ck = _sbotSeg(t, [0.20, 0.62]), show = t > 0.20;
         if (B.arm) { B.arm.visible = show; B.arm.scale.setScalar(B.armS * (0.3 + 0.7 * ck)); } if (B.body) B.body.visible = show;
         if (B.mixer) {
-            var sp = Math.abs(B.v), want = (t >= 1 && sp > 0.35) ? ((sp > (RB.walk || 4.5) * 1.25 && B.acts.run) ? 'run' : 'walk') : '';
-            if (want !== B.cur) { if (B.cur && B.acts[B.cur]) B.acts[B.cur].fadeOut(0.25); if (want && B.acts[want]) { B.acts[want].reset().setEffectiveWeight(1).fadeIn(0.25).play(); } B.cur = want; }
-            if (want && B.acts[want]) B.acts[want].timeScale = (B.v < 0 ? -1 : 1) * Math.max(0.3, sp / (want === 'run' ? (RB.runRef || 10) : (RB.walkRef || 4.5)));
+            var sp = Math.abs(B.v), want = '';
+            if (t >= 1) want = B.air ? 'jump' : sp > 0.35 ? ((sp > (RB.walk || 4.5) * 1.25) ? 'run' : 'walk') : 'idle';
+            if (want === 'jump' && !_sbotAct(B, 'jump')) want = sp > 0.35 ? 'walk' : 'idle';
+            var ac = _sbotAct(B, want);
+            if (ac !== B.curA) {
+                if (B.curA) { if (t >= 1) B.curA.fadeOut(0.2); else { B.curA.stop(); B.curA.setEffectiveWeight(0); } }
+                if (ac) ac.reset().setEffectiveWeight(1).fadeIn(B.curA ? 0.2 : 0.35).play();
+                B.curA = ac;
+            }
+            B.cur = want;
+            if (ac) {
+                var L = B.lib[want];
+                if (want === 'walk' || want === 'run') { var ref = want === 'run' ? (RB.runRef || 10) : (RB.walkRef || 4.5); ac.timeScale = L ? L.ts * (want === 'run' ? (RB.runTs || 0.75) : (RB.walkTs || 0.5)) * Math.max(0.5, sp / ref) : (B.v < 0 ? -1 : 1) * Math.max(0.3, sp / ref); }
+                else if (L) ac.timeScale = want === 'jump' ? L.ts * (RB.jumpTs || 0.3) : (RB.idleTs || 1);
+            }
+            if (t < 1) _sbotCurl(B, 1 - ck);   // the change: curled up small, it stands as it grows
             try { B.mixer.update(dt); } catch (eMx) {}
         }
         B.root.updateMatrixWorld(true);
@@ -96063,6 +96121,13 @@ const ThreeRenderer = (function () {
         /* THE MOUSE STEERS (mondo 11-27: "the car and the robot dont move with the direction of my mouse like other units"): the camera is
            the mouse's alone here (it does not swing with the turn). The car's front wheels turn toward where the camera looks while it
            rolls (A / D steer as before, the eye going round with them); the robot walks as the officer does: W / A / S / D by the camera, it turns to face its way */
+        /* the robot jumps (SPACE), as the officer does */
+        if (Bt) {
+            if (bw) { if (hand && !V.spWas && !(V.jy > 0)) V.jv = RB.jump || 9; V.spWas = hand; hand = false;
+                if (V.jv || V.jy > 0) { V.jv = (V.jv || 0) - (RB.grav || 22) * Math.min(dt, 0.05); V.jy = (V.jy || 0) + V.jv * Math.min(dt, 0.05); if (V.jy <= 0) { V.jy = 0; V.jv = 0; } } }
+            else { V.jy = 0; V.jv = 0; V.spWas = hand; }
+            Bt.air = (V.jy || 0) > 0.02;
+        }
         var mS = !!(Bt && RB.mouse !== false && !H.paused && H.cam), camF = mS ? Math.PI - H.cam.yaw : 0, turn0 = turn, bMv = false, bDq = 0;
         _hqWalkGridOn = true;   // the rider's grid: every ask reads its own cell's blockers (RULE #1e)
         try {
@@ -96123,7 +96188,7 @@ const ThreeRenderer = (function () {
         } finally { _hqWalkGridOn = false; }
         if (V.yaw !== yaw0 && (!mS || (!bw && turn0 !== 0))) H.cam.yaw -= (V.yaw - yaw0);   // the eye follows the turn and keeps the mouse's offset (the rider's rule)
         var grp = rec.grp;
-        grp.position.set(V.x * U, V.y * U, V.z * U);
+        grp.position.set(V.x * U, (V.y + (V.jy || 0)) * U, V.z * U);
         if (grp.rotation.order !== 'YXZ') grp.rotation.order = 'YXZ';
         grp.rotation.set(V.pitch, V.yaw, V.roll);
         rec.x = V.x; rec.z = V.z; rec.y = V.y; rec.yaw = V.yaw;
@@ -96133,7 +96198,7 @@ const ThreeRenderer = (function () {
         if (Bt) { var st = RB.seat || [0.37, 0.5, 0]; Bt.v = V.v; Bt.steer = V.steer;
             try { _sbotTick(Bt, dt); } catch (eBt) { if (!Bt.warned) { Bt.warned = true; try { console.warn('[HQ] the sedan bot tick', eBt); } catch (e2) {} } }   // (driven: its parts are laid by the wheel itself, in whatever room's list its ticker sits)
             if (seatB) { pl.x += Math.cos(V.yaw) * st[0] + Math.sin(V.yaw) * st[2]; pl.z += -Math.sin(V.yaw) * st[0] + Math.cos(V.yaw) * st[2]; pl.y = V.y; }
-            else pl.y += Bt.t * (RB.camUp || 2.4);
+            else pl.y += Bt.t * (RB.camUp || 2.4) + (V.jy || 0);
             if (V.camD0 == null) V.camD0 = H.cam.dist; H.cam.dist = V.camD0 + Bt.t * (RB.camBack || 5); }
         pl.visY = pl.y; pl.yaw = pl.targetYaw = V.yaw; pl.moving = false; pl.running = false; pl.air = false; pl.vy = 0;
         pl.velX = Math.sin(V.yaw) * V.v; pl.velZ = Math.cos(V.yaw) * V.v; pl.velY = 0; pl.pushX = 0; pl.pushZ = 0;
@@ -111923,8 +111988,13 @@ const ThreeRenderer = (function () {
             },
             /* THE SEDAN BOT, for a probe: bot() = the driven bot's state; bot(t) holds it at t (0 car … 1 robot); bot('go') = the F key; spawnProp(row) stands one more catalogue prop in the room */
             bot: function (t) { var V = _hq && _hq.vehicle, B = V && _sbotOf(V.rec); if (!B) return null; if (t === 'go') _sbotToggle(V); else if (t != null) { B.t = Math.max(0, Math.min(1, +t)); B.dir = 0; B.dirty = true; } var pe = _hq.player && _hq.player.entry; var dbg = null; try { var wp = function (o) { var e = o.matrixWorld.elements; return [Math.round(e[12]), Math.round(e[13]), Math.round(e[14])]; }, gq = V.rec.grp; dbg = { yaw: +V.yaw.toFixed(2), camF: +(Math.PI - _hq.cam.yaw).toFixed(2), x: +V.x.toFixed(1), z: +V.z.toFixed(1), root: wp(B.root), grp: wp(gq), out: gq._ew_bunOut, par: gq.parent && (gq.parent.name || gq.parent.type), parBun: !!(gq.parent && gq.parent.isBundleGroup), fz: !!(gq.parent && gq.parent._ew_fz), bun: (function (st) { return st ? { dyn: !!st.dyn, quiet: st.quiet, why: st.why } : null; })(gq.parent && gq.parent._ew_bun), parts: B.parts.filter(function (P) { return /chest|roof|doorFL|legL/.test(P.n); }).map(function (P) { return [P.n, wp(P.node), P.r ? wp(P.r) : null, P.node.matrixAutoUpdate, P.node.visible]; }) }; } catch (eD) { dbg = String(eD); }
-                return { dbg: dbg, anim: pe && pe._ew_curAnim, vis: pe && pe.group && pe.group.visible, seatOff: pe && pe.model && pe.model._ew_seatOff, py: pe && pe.group && +(pe.group.position.y / _hqUnits()).toFixed(2), t: +B.t.toFixed(3), dir: B.dir, v: +B.v.toFixed(2), parts: B.parts.length, clips: Object.keys(B.acts), cur: B.cur }; },
+                return { dbg: dbg, anim: pe && pe._ew_curAnim, vis: pe && pe.group && pe.group.visible, seatOff: pe && pe.model && pe.model._ew_seatOff, py: pe && pe.group && +(pe.group.position.y / _hqUnits()).toFixed(2), t: +B.t.toFixed(3), dir: B.dir, v: +B.v.toFixed(2), parts: B.parts.length, clips: Object.keys(B.acts), lib: Object.keys(B.lib), air: B.air, cur: B.cur }; },
             board: function (id) { return _hqBoard(id); },
+            spawnChar: function (spec) {   // a probe stands a body in the room: { id, race, gender, x, z, face }; form: 'robot' = the sedan's robot form
+                if (!_hq || !spec) return false;
+                if (spec.form === 'robot') { var RMc = RACE_MODELS_3D['honda civic'], cc = RMc && RMc.male, ff = cc && cc.overrideForms; if (ff) for (var fk in ff) if (ff[fk] && ff[fk] !== cc) { spec.def = ff[fk]; break; } }
+                try { return !!_hqSpawnCharacter(spec); } catch (eSc) { return String(eSc && eSc.stack || eSc); }
+            },
             spawnProp: function (row) { if (!_hq || !_hq._placeOne) return false; _hq._placeOne(row); _hq.dirty = true; return (_hq.boats || []).map(function (b) { return b.id; }); },
             crossing: function () { try { return _hqXcText(); } catch (e) { return null; } },   /* a probe's read: THE CROSSING CAPTURE's line */
             press: function (key, on) { if (!_hq) return false; _hq.keys[key] = !!on; return true; },   /* a probe's write: hold a walker key (a headless window blurs on every evaluate and drops real key events) */

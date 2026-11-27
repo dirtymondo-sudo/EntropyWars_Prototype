@@ -933,3 +933,25 @@ the direction of my mouse like other units and cars do"):
 - THE MOUSE STEERS (`bot.mouse`, off = the old keys): the camera is the mouse's alone in this car. Rolling, the front wheels turn
   toward where the camera looks (`bot.mouseK`); A / D steer as before with the eye going round with them. The robot walks as the
   officer does: W / A / S / D by the camera, it turns to face its way (`bot.turn` rad/s), SHIFT runs. Other cars are unchanged.
+ROUND 3 (2026-11-27, mondo: "is it using meshy animations? ... make sure it can jump and everything. This should be like any other
+character ... it will replace the current sedan unit in the game. ... start in the fetal position and stand upright as it's growing
+... the license plate say DOOR"):
+- THE SHARED LIBRARY ON THE CORE: `_sbotLib` bakes the unit's own library clips (idle, walk, run, jump: the robot form's def in
+  sprites.js `honda civic`) onto the garage bot's rig with the units' own baker (`_animLibBakeForModel0`, a `{ root }` stand-in for the
+  model entry). The file's Meshy walk / run are the fallback until they land. Standing it idles; SPACE jumps (`bot.jump` / `bot.grav`,
+  `V.jy` lifts the group and the eye; no ceiling check).
+- THE CURL: `_sbotCurl(B, k)` lays a curled pose over the REST pose each frame of the change (knees to the chest, back and head bowed,
+  arms in, hips down by `curl.drop` of their height), k = 1 - the core's growth, so it uncurls as it grows and curls up going back.
+  Numbers: `car.bot.curl { drop, back, thigh, shin, arm, fore }` (radians), defaults in the function.
+- THE PLATES: the tool builds a white plate with raised dark letters DOOR (Blender's own font, no texture) on the car's own skin by
+  a ray: the front one is joined to the hood part (it rides on the robot's chest), the rear one is its own part `plate` (over the
+  plate Meshy painted; on the robot it sits high on the back, bone Spine01). File `ew_sedan_bot_d.glb`. The tool also strips Meshy's
+  metal maps now and makes the glass a plain pane in the file.
+- THE UNIT: `bake-sedan-bot.py ... --unit <prefix>` also writes `<prefix>_car.glb` (the panels + cabin + plates as a car, no bones)
+  and `<prefix>_robot.glb` (the core with every panel SKINNED to the bone that carries it, weight 1: an ordinary Meshy-rig unit).
+  sprites.js `honda civic`: the car form's model = `ew_sedan_unit_a_car.glb` (yawOffset 0), the robot form's = `ew_sedan_unit_a_robot.glb`
+  (R2 `Assets/characters/races/hondacivic/`; the old two files stay on R2). The library moves it like every unit (45 slots baked in
+  the probe). In a fight the change is still the old pop (transformFx): the folding change is the garage car's only.
+SEEN (garage probe, WebGL): the plates on the car front and back; the core curled in the cabin at t 0.24 / 0.34 / 0.44, upright by 0.56;
+the robot idling (library idle), SPACE lifting it with the jump clip; both unit forms stood in the room by `hq.dev.spawnChar`
+(`form: 'robot'`), the robot unit idling with its panels on. NOT SEEN: the unit in a real fight (cast, hit, death with the panels).
