@@ -6622,6 +6622,7 @@ borrows pileOn (Happily Never After).
   DOOR_TEXT home Came A Lot, three roster lines. Proof: project files `princess/proof/` (probe `princess/probe_pr.js`).
 
 ## THE DEMIURGE (2026-11-26, thread "Add the Demiurge's two forms")
+- 11-27: his eight spells have their own set pieces, camera, pace and sky: spells-vfx.md "THE DEMIURGE'S CATACLYSMS" (data.js `stagePace` on his rows).
 mondo 11-26: "this guy is like the original creator of the black cube, the demiurge, cosmic abilities, spiritual abilities, the architect,
 sacred geometry, fractal math ... one character but with 2 forms, and you can pick either, kinda like the male/female split ... one is more
 physical attack and the other is more magic attack". Parts apart so they animate with his spells (cube spinning in the staff, wings, snakes).
