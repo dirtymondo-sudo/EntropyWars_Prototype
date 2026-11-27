@@ -10875,6 +10875,9 @@ floating pop, the corner title, or a HUD box (score, match line, toast, centre b
 Learned: (1) the fight runs UNDER the loading card for minutes on llvmpipe: wait for `.ls-status` / "TAP TO SKIP" to leave before
 counting; (2) plates are sprites in the canvas (THE PLATES IN THE WORLD), not DOM: judge them in the frames; (3) a pop's DOM box
 has a wide margin round its ink: use `_ewMargin*`. Notes: docs/notes/spells-vfx.md "THE CLEAN READ".
+- THE CLUTTER PROBE (11-27 addendum): each HIT row now also logs `tgtH` / `casH` (target / caster body height, % of screen),
+  `pitch` (real lens pitch, degrees down), `dolly` + `big` (frame guard push-in), `live` (shot still on). A/B the big read with
+  `FLAGS=EW_NO_BIG_READ`.
 
 ## THE DEMIURGE PROBE (2026-11-27) — playtest_demiurge.js
 `MAP=<id> SPELLS=all|id,id TIMES=c1400,h150,h700 TAG=<name> [W=800 H=450] node playtest_demiurge.js`: a real VS CPU match with both Demiurge forms on P1;

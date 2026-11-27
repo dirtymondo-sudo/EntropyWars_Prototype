@@ -4080,6 +4080,11 @@ function _hrlgStatusChips(unit) {
       title: king ? 'Rat King: +2 ATK and +1 DEF stage. Each round end costs 1 Mischief; at 0 the crown falls. Long Live the King spends it all.'
                   : 'Mischief: +1 for each hit he or his rats land, +1 when an enemy within 2 goes down. At 5 he becomes the Rat King. Stun, Frozen or Feared scatter 2.' });
   }
+  /* 🍀 POT O' GOLD (the Leprechaun, 2026-11-27): the Gold in his pocket (battle.js unit.lpGold, rides the state sync) */
+  if (unit.race === 'leprechaun' && !unit.dead) {
+    const gd = Math.max(0, Math.min(window.LP_GOLD_MAX || 5, unit.lpGold | 0));
+    chips.push({ key: 'lpgold', label: 'GOLD ' + gd + '/' + (window.LP_GOLD_MAX || 5), kind: gd > 0 ? 'up' : 'dn', title: 'Pot o\' Gold: +1 Gold for each hit he lands, -1 when an enemy hits him. Each Gold is +5% crit chance on his spells; Pot of Gold spends it all.' });
+  }
   /* 🎮 THE VIEWERS (the Streamer + the E-Girl, 2026-11-18): the crowd it banked (battle.js unit.viewers, rides the state sync) */
   if (unit.race === 'streamer' && !unit.dead) {
     const vw = Math.max(0, Math.min(window.VIEWERS_MAX || 10, unit.viewers | 0));

@@ -396,9 +396,14 @@ const FINISHERS = {
     'virus':          { id: 'fin_virus', name: 'Format C:', glyph: '🦠', type: 'anomaly', sig: 'corruptedSave', built: true, tagline: 'ALL DATA ON THIS DRIVE WILL BE LOST', desc: 'A progress bar opens over the victim and fills, file by file, and then there is nothing left to delete.' },   // 2026-11-18 THE VIRUS (mondo approved the kit) (borrows the corruptedSave staging)
     'hollow':         { id: 'fin_hollow', name: 'Lights Out', glyph: '🎭', type: 'anomaly', sig: 'devoured', built: true, tagline: 'SLEEP NOW', desc: 'A sleeping mask settles over the face, the eyes behind it close, and the maw takes what is left of the dream.' },   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name) (borrows the devoured staging)
     'weatherman':     { id: 'fin_weatherman', name: 'Severe Weather Alert', glyph: '🌪', type: 'human', sig: 'upUpAndAway', built: true, tagline: 'STAY INDOORS', desc: 'The alert tone sounds, a funnel cloud drops out of a green sky and takes the victim up, live on the six o\'clock news.' },   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR (borrows the upUpAndAway staging)
+    'leprechaun':     { id: 'fin_leprechaun', name: 'End of the Rainbow', glyph: '🍀', type: 'anomaly', sig: 'hoard', built: true, tagline: 'FINDERS KEEPERS', desc: 'A rainbow comes down on the victim, the pot of gold at its end comes down after it, and the leprechaun counts the coins.' },   // 2026-11-27 THE LEPRECHAUN + THE MEDIC (borrows the hoard staging; the name is a first pass)
+    'medic':          { id: 'fin_medic', name: 'Flatline', glyph: '🩺', type: 'human', sig: 'theDose', built: true, tagline: 'TIME OF DEATH', desc: 'The monitor beeps slower and slower, the line goes flat, and the doctor checks the clock.' },   // 2026-11-27 THE LEPRECHAUN + THE MEDIC (borrows theDose staging; the name is a first pass)
     'centaur':        { id: 'fin_centaur', name: 'Run Down', glyph: '🏹', type: 'anomaly', sig: 'splitTheArrow', built: true, tagline: 'NEVER MISSES ON THE RUN', desc: 'Hooves on the horizon, a bow drawn at a full gallop, and one arrow that has been waiting for the victim the whole ride.' },   // 2026-11-24 THE CENTAUR (borrows Robin Hood's signature)
     'cheerleader':    { id: 'fin_cheerleader', name: 'Pyramid Collapse', glyph: '📣', type: 'human', sig: 'pileOn', built: true, tagline: 'GO, FIGHT, WIN', desc: 'The whole squad runs on from the sidelines, builds the pyramid on top of the victim and holds the pose for the cameras.' },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD (borrows the pileOn staging)
     'princess':       { id: 'fin_princess', name: 'Happily Never After', glyph: '👑', type: 'divine', sig: 'pileOn', built: true, tagline: 'THE END', desc: 'The whole royal court rushes in to defend her honour and piles on, and a storybook closes over what is left.' },   // 2026-11-24 THE PRINCESS (borrows the pileOn staging)
+    'leopard girl':   { id: 'fin_leopard_girl', name: 'Up a Tree', glyph: '🐆', type: 'anomaly', sig: 'nineLives', built: true, tagline: 'SHE ALWAYS LANDS ON HER FEET', desc: 'Pounced on from nine branches at once, and dragged up the tallest tree to be eaten later.' },   // 2026-11-27 THE NEW RACES 5 (borrows the nineLives staging)
+    'draconian':      { id: 'fin_draconian', name: 'Bow Before Draco', glyph: '🐉', type: 'alien', sig: 'unmasking', built: true, tagline: 'WE WERE HERE FIRST', desc: 'The skin comes off the face of every king in history, and every one of them is him.' },   // 2026-11-27 THE NEW RACES 5 (borrows the unmasking staging)
+    'flower girl':    { id: 'fin_flower_girl', name: 'Pushing Up Daisies', glyph: '🌸', type: 'anomaly', sig: 'theBloom', built: true, tagline: 'SHE LOVES YOU NOT', desc: 'One petal at a time: loves me, loves me not. The last petal falls, and the daisies come up through what is left.' },   // 2026-11-27 THE NEW RACES 5 (borrows theBloom staging)
     'point guard':    { id: 'fin_point_guard', name: 'Posterized', glyph: '🏀', type: 'human', sig: 'motionCarries', built: true, tagline: 'AND ONE', desc: 'A hoop drops out of the sky, he takes off from the free-throw line and slams the victim through it, ball and all.' },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD (borrows the motionCarries staging)
     'music producer': { id: 'fin_music_producer', name: 'Platinum Record', glyph: '💿', type: 'human', sig: 'farewellTour', built: true, tagline: 'GOING PLATINUM', desc: 'He drops the needle on one last track. A stage stands up round the victim, the lights find them, the whole song plays its drop, and when the lights come back up a gold record hangs where they stood.' },   // 2026-11-24 THE MUSIC PRODUCER (borrows the Popstar's stage)
     'streamer':       { id: 'fin_streamer', name: 'Banned', glyph: '🎮', type: 'anomaly', sig: 'corruptedSave', built: true, tagline: 'ACCOUNT SUSPENDED', desc: 'The chat floods, the mods wake up, and ACCOUNT SUSPENDED stamps down over the victim until nothing is left on the stream.' },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit) (borrows the corruptedSave staging)
@@ -413,6 +418,8 @@ const FINISHERS = {
     'monarch':        { id: 'fin_monarch', name: 'Sweet Dreams', glyph: '🦋', type: 'anomaly', sig: 'lullaby', built: true, tagline: 'SLEEP NOW, AGENT', desc: 'The wings close round the victim like a chrysalis, the spiral turns on its shell, and when it cracks open only monarch butterflies come out.' },   // 2026-11-23 THE MONARCH (mondo OK'd the kit) (borrows the lullaby staging)
     'bear':           { id: 'fin_bear', name: 'Mauled', glyph: '🐻', type: 'anomaly', sig: 'blurryFootage', built: true, tagline: 'YOU POKED THE BEAR', desc: 'The trees part, the bear stands up to its full height, and it comes down on the victim with everything it has.' },   // 2026-11-23 THE BEAR (mondo OK'd the kit) (borrows the blurryFootage staging)
     'demiurge':       { id: 'fin_demiurge', name: 'Unmade', glyph: '⬛', type: 'divine', sig: 'heatDeath', built: true, tagline: 'BACK INTO THE CUBE', desc: 'He made it. He can take it back. The victim is folded up, corner by corner, and put away in the black cube.' },   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms) (borrows the heatDeath staging; the name is a first pass)
+    'monster truck':  { id: 'fin_monster_truck', name: 'Crushed', glyph: '🛻', type: 'tech', sig: 'hitAndRun', built: true, tagline: 'MONSTER JAM', desc: 'The hood opens like a mouth, the wheels catch, and the truck drives up and over. What is left fits in a glovebox.' },   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells") (borrows the Honda Civic's staging; the name is a first pass)
+    'nutcracker':     { id: 'fin_nutcracker', name: 'Cracked', glyph: '🌰', type: 'anomaly', sig: 'joust', built: true, tagline: 'CRACK', desc: 'The lever goes down, the jaw comes up, and the shell gives. The Nutcracker salutes and marches off.' },   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells") (borrows the Knight\'s staging; the name is a first pass)
     'abomination':    { id: 'fin_abomination', name: 'Too Much Body', glyph: '🫀', type: 'anomaly', sig: 'blurryFootage', built: true, tagline: 'IT HAS MORE ARMS THAN YOU', desc: 'Every arm, every tentacle and every mouth it has comes down on the victim at once, and then it is a little bigger.' },   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name) (borrows the blurryFootage staging)
     'farmer':         { id: 'fin_farmer', name: 'Reap What You Sow', glyph: '🌾', type: 'human', sig: 'gardenVariety', built: true, tagline: 'HARVEST TIME', desc: 'The field comes up all at once round the victim, and the pitchfork comes down with the season.' },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) (borrows the gardenVariety staging)
     'jellyfish ufo':  { id: 'fin_jellyfish_ufo', name: 'Abyssal Glow', glyph: '🪼', type: 'anomaly', sig: 'theBloom', built: true, tagline: 'LIGHTS IN THE DEEP', desc: 'The bell lights the victim from the inside like the things that live in the dark, brighter and brighter, then everything goes dark.' },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) (borrows the theBloom staging)
@@ -667,9 +674,14 @@ const RACE_ELEMENT_AFFINITY = {
     'virus': { poison: 'resist', lightning: 'resist', water: 'weak' },   // 2026-11-18 THE VIRUS (mondo approved the kit): made of poison and current; water shorts it
     'hollow': { psychic: 'resist', light: 'weak' },   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name): a dream that moves you; light wakes it
     'weatherman': { wind: 'resist', lightning: 'weak' },   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: dressed for the wind; a man with a metal umbrella in a thunderstorm
+    'leprechaun': { nature: 'resist', metal: 'weak' },   // 2026-11-27 THE LEPRECHAUN + THE MEDIC: a fae of the green hills; cold iron is the bane of the fae
+    'medic': { poison: 'resist' },   // 2026-11-27 THE LEPRECHAUN + THE MEDIC: every shot in the book, twice
     'centaur': { earth: 'resist', ice: 'weak' },   // 2026-11-24 THE CENTAUR: four hooves on the ground; a horse on ice
     'cheerleader': { sonic: 'resist', poison: 'weak' },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: she out-yells anything; a whole season of energy drinks
     'princess': { light: 'resist', poison: 'weak' },   // 2026-11-24 THE PRINCESS: blessed at her christening; one bite of the wrong apple
+    'leopard girl': { nature: 'resist', ice: 'weak' },   // 2026-11-27 THE NEW RACES 5: the long grass is home; a cat in the snow
+    'draconian': { psychic: 'resist', ice: 'weak' },   // 2026-11-27 THE NEW RACES 5: the oldest mind in the room; cold-blooded
+    'flower girl': { nature: 'resist', fire: 'weak' },   // 2026-11-27 THE NEW RACES 5: in full bloom; petals burn
     'point guard': { wind: 'resist', ice: 'weak' },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: quick on his feet; the cold gets in his knees
     'music producer': { sonic: 'resist', water: 'weak' },   // 2026-11-24 THE MUSIC PRODUCER: he lives in the loud; water and his gear do not mix
     'streamer': { sonic: 'resist', light: 'weak' },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit): the headset is on; never sees the sun
@@ -3173,6 +3185,36 @@ const RACE_PROFILES = {
         label: 'Monarch',
         types: ['human', 'anomaly']   // 2026-11-23 THE MONARCH (mondo OK'd the kit): a woman the D.U.M.B. reprogrammed
     },
+    'monster truck': {   // 2026-11-27 THE NEW CHARACTERS (models in, kit not yet: the spell thread sets the type for good) — a living truck
+        label: 'Monster Truck',
+        types: ['tech', 'anomaly']
+    },
+    'nutcracker': {   // 2026-11-27 THE NEW CHARACTERS (models in, kit not yet: the spell thread sets the type for good) — a living wooden soldier
+        label: 'Nutcracker',
+        types: ['anomaly']
+    },
+    'leopard girl': {   // 2026-11-27 THE NEW CHARACTERS (kit: THE NEW RACES 5)
+        label: 'Leopard Girl',
+        types: ['anomaly']
+    },
+    'draconian': {   // 2026-11-27 THE NEW CHARACTERS (kit: THE NEW RACES 5) — the dragon-kin of the reptilians
+        label: 'Draconian',
+        types: ['alien']
+    },
+    'flower girl': {   // 2026-11-27 THE NEW CHARACTERS (kit: THE NEW RACES 5)
+        label: 'Flower Girl',
+        types: ['anomaly']
+    },
+    'leprechaun': {   // 2026-11-27 THE NEW CHARACTERS — male + female; THE LEPRECHAUN + THE MEDIC: the kit is Anomaly
+        label: 'Leprechaun',
+        types: ['anomaly']
+    },
+    'medic': {   // 2026-11-27 THE NEW CHARACTERS — the male is the Doctor, the female the Nurse; THE LEPRECHAUN + THE MEDIC: the kit is Human
+        label: 'Medic',
+        labelMale: 'Doctor',
+        labelFemale: 'Nurse',
+        types: ['human']
+    },
     'butterfly girl': {   // 2026-11-23 THE COMING RACES 2
         label: 'Butterfly Girl',
         types: ['anomaly']   // 2026-11-23 THE BUTTERFLY GIRL: settled (her kit is Anomaly)
@@ -3926,6 +3968,18 @@ const PASSIVE_DEFS = {
         id: 'prDamsel', icon: '👑', name: 'Damsel in Distress',
         desc: 'The first time each round an enemy hits her, every ally within 3 rushes to her defence: +1 ATK stage.',
     },
+    lgRosettes: {   // 2026-11-27 THE NEW RACES 5: battle.js THE NEW RACES 5 (_lgRoundEnd, _lgAmbushCrit)
+        id: 'lgRosettes', icon: '🐆', name: 'Rosettes',
+        desc: 'A round in which she lands no hit, she fades into the grass at its end: Invisible. The first hit she lands from hiding is a sure critical hit.',
+    },
+    dcDominion: {   // 2026-11-27 THE NEW RACES 5: battle.js THE NEW RACES 5 (_dcDominion at an enemy's turn start)
+        id: 'dcDominion', icon: '🐉', name: 'Dominion',
+        desc: 'Any enemy that starts its turn within 2 of him is Cowed: -1 ATK stage for each stack, up to 3. A new stack keeps them all for 2 more rounds.',
+    },
+    fgPollinate: {   // 2026-11-27 THE NEW RACES 5: battle.js THE NEW RACES 5 (_fgPollenHit, from applyDamageToUnit)
+        id: 'fgPollinate', icon: '🌸', name: 'Pollinate',
+        desc: 'Her spells dust enemies with Pollen (up to 3). Whenever one of her allies hits an enemy carrying Pollen, that ally heals 6% of its max HP and the Pollen loses a stack.',
+    },
     pgAssist: {   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: battle.js THE CHEERLEADER + THE POINT GUARD (applyDamageToUnit)
         id: 'pgAssist', icon: '🏀', name: 'Assist',
         desc: 'Every enemy he hits with a basic attack or a spell is left Marked for 2 rounds, for his team: the next physical hit an ALLY lands on it deals bonus damage (his own hits never cash it).',
@@ -3941,6 +3995,15 @@ const PASSIVE_DEFS = {
     wnTheRundown: {   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: battle.js THE WEATHERMAN + NEWS ANCHOR
         id: 'wnTheRundown', icon: '🎙', name: 'The Rundown',
         desc: 'The News Anchor. Each of her spells runs the next segment of the show for her and every ally within 3, in order: Headlines (+1 ATK and +1 M ATK stage), Sports (+1 SPD stage), then the Weather (every weather up stays 1 round longer; under clear skies, a SMALL heal). Then back to the Headlines.',
+    },
+    lpPotOfGold: {   // 2026-11-27 THE LEPRECHAUN + THE MEDIC: battle.js THE LEPRECHAUN + THE MEDIC (_lpOnHit, _lpOnHurt, _lpCastRow)
+        id: 'lpPotOfGold', icon: '🪙', name: 'Pot o\' Gold',
+        desc: 'Every hit he lands on an enemy pockets 1 Gold (up to 5), and each Gold gives his spells +5% crit chance: the luck of the Irish. An enemy that hits him knocks 1 Gold loose.',
+    },
+    mdCriticalCare: {   // 2026-11-27 THE LEPRECHAUN + THE MEDIC: battle.js _healScaledAmount (lowHpHealBonus)
+        id: 'mdCriticalCare', icon: '🩺', name: 'Critical Care',
+        lowHpHealBonus: 0.5,
+        desc: 'The worse the patient, the harder they work: every heal the Doctor or the Nurse gives restores more the lower its target is, up to +50% on an ally close to death.',
     },
     deltaAlter: {   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
         id: 'deltaAlter', icon: '🔺', name: 'Delta Alter',
@@ -4038,9 +4101,14 @@ const RACE_PASSIVES = {
     'monarch':       ['deltaAlter'],   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
     'butterfly girl': ['flashAndVanish'],   // 2026-11-23 THE BUTTERFLY GIRL (mondo OK'd the kit) — she flies too, so the slots are full
     'weatherman':    ['wnTheForecast', 'wnTheRundown'],   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: his rule, her rule (each names who it is for)
+    'leprechaun':    ['lpPotOfGold'],   // 2026-11-27 THE LEPRECHAUN + THE MEDIC
+    'medic':         ['mdCriticalCare'],   // 2026-11-27 THE LEPRECHAUN + THE MEDIC: the Doctor's and the Nurse's
     'centaur':       ['cenHitAndRun'],   // 2026-11-24 THE CENTAUR
     'cheerleader':   ['chSpirit'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
     'princess':      ['prDamsel'],   // 2026-11-24 THE PRINCESS
+    'leopard girl':  ['lgRosettes'],   // 2026-11-27 THE NEW RACES 5
+    'draconian':     ['dcDominion'],   // 2026-11-27 THE NEW RACES 5
+    'flower girl':   ['fgPollinate'],   // 2026-11-27 THE NEW RACES 5
     'point guard':   ['pgAssist'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
     'music producer': ['mpOnLoop'],   // 2026-11-24 THE MUSIC PRODUCER
 };
@@ -4119,7 +4187,7 @@ const RACE_MERGED = { 'nun': { race: 'priest', gender: 'female' } };
 /* 👁🌑 THE REALM WINDOW: races that SEE a Shadow Realm pair on their own turns (they cannot touch it). A projecting
    spirit both sees and touches (battle.js unitSeesRealm / unitCrossesRealm). */
 const REALM_SIGHT_RACES = ['ghost', 'shadow entity'];
-const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber', 'pharaoh', 'deep sea diver', 'gambler', 'hacker', 'monk', 'shogun', 'cameraman', 'mechanic', 'janitor', 'trucker', 'gladiator', 'farmer', 'jellyfish ufo', 'bear', 'rat', 'butterfly girl', 'plastic surgeon', 'monarch', 'abomination', 'hollow', 'weatherman', 'cheerleader', 'point guard', 'centaur', 'music producer', 'princess', 'demiurge'];
+const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber', 'pharaoh', 'deep sea diver', 'gambler', 'hacker', 'monk', 'shogun', 'cameraman', 'mechanic', 'janitor', 'trucker', 'gladiator', 'farmer', 'jellyfish ufo', 'bear', 'rat', 'butterfly girl', 'plastic surgeon', 'monarch', 'abomination', 'hollow', 'weatherman', 'cheerleader', 'point guard', 'centaur', 'music producer', 'princess', 'demiurge', 'monster truck', 'nutcracker', 'leopard girl', 'draconian', 'flower girl', 'leprechaun', 'medic'];
 /* THE COMING RACES (2026-11-19, mondo: "wire them in the game at least in the relation web, give them sprite ai portraits ... my associate
    [does] their spell and combat plan on another account"): races whose model, sprite and name are in (sprites.js RACE_MODELS_3D,
    RACE_PROFILES) but whose kit is not. They are NOT playable: the Relationship Web lists them (docs/plans/story-web/build/fresh.js).
@@ -4127,7 +4195,7 @@ const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scie
    AVAILABLE_RACES and server.js AVAILABLE_RACES. Notes: docs/notes/champions-combat.md "THE COMING RACES". */
 /* THE WEATHERMAN's FORECAST (2026-11-24 THE WEATHERMAN + NEWS ANCHOR): the weather never hurts or soaks him (state.js applyWeatherTurnEffects + stormStrikeUnit) */
 function wnWeatherproof(u) { return !!u && u.race === 'weatherman' && (u.gender || 'male') === 'male' && unitHasPassive(u, 'wnTheForecast'); }   /* Broken = no passives = no shelter */
-const EW_COMING_RACES = [];   // 2026-11-23 THE COMING RACES 2 (the Mannequin was cut 11-23, mondo; the Bear, the Rat, the Butterfly Girl and the Monarch got their kits 11-23 and moved to AVAILABLE_RACES) (models in, kits not yet; one spell thread a unit). 2026-11-19: the gladiator, the farmer and the jellyfish UFO got their kits and moved to AVAILABLE_RACES
+const EW_COMING_RACES = [];   // 2026-11-27 THE NEW CHARACTERS (models + sprites in, kits being made by three spell threads; each moves its key into AVAILABLE_RACES here AND in server.js with its kit).   // 2026-11-23 THE COMING RACES 2 (the Mannequin was cut 11-23, mondo; the Bear, the Rat, the Butterfly Girl and the Monarch got their kits 11-23 and moved to AVAILABLE_RACES) (models in, kits not yet; one spell thread a unit). 2026-11-19: the gladiator, the farmer and the jellyfish UFO got their kits and moved to AVAILABLE_RACES
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
    default job's kit (JOB_KITS) gave it, so ranged races stay ranged: the old Sniper races reach 4 (kit 3 + the Sniper's
@@ -4152,6 +4220,9 @@ const RACE_KITS = {
     'centaur': { range: 4 },   // 2026-11-24 THE CENTAUR: the bow
     'cheerleader': { range: 1 },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: the basic attack is a high kick
     'princess': { range: 2 },   // 2026-11-24 THE PRINCESS: the basic attack is a flick of the wrist, a little spark
+    'leopard girl': { range: 1 },   // 2026-11-27 THE NEW RACES 5: claws
+    'draconian': { range: 1 },   // 2026-11-27 THE NEW RACES 5: talons
+    'flower girl': { range: 2 },   // 2026-11-27 THE NEW RACES 5: a puff of petals
     'point guard': { range: 3 },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: the basic attack is a chest pass with his basketball (it flies and comes back to his hands)
     'music producer': { range: 2 },   // 2026-11-24 THE MUSIC PRODUCER: the basic attack is a pad hit; the sound wave reaches
     'streamer': { range: 1 },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit): the basic attack is a keyboard slam
@@ -4301,9 +4372,14 @@ const RACE_CLASS = {
     'virus': 'specialist',   // 2026-11-18 THE VIRUS (mondo approved the kit)
     'hollow': 'specialist',   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name) (a controller)
     'weatherman': 'specialist',   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: he moves the sky, she runs the show
+    'leprechaun': 'specialist',   // 2026-11-27 THE LEPRECHAUN + THE MEDIC: the gold, the luck, the rainbow
+    'medic': 'healer',   // 2026-11-27 THE LEPRECHAUN + THE MEDIC: the Doctor and the Nurse
     'centaur': 'ranged',   // 2026-11-24 THE CENTAUR: a horse archer
     'cheerleader': 'support',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
     'princess': 'support',   // 2026-11-24 THE PRINCESS
+    'leopard girl': 'assassin',   // 2026-11-27 THE NEW RACES 5
+    'draconian': 'bruiser',   // 2026-11-27 THE NEW RACES 5
+    'flower girl': 'support',   // 2026-11-27 THE NEW RACES 5
     'point guard': 'ranged',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
     'music producer': 'specialist',   // 2026-11-24 THE MUSIC PRODUCER: he builds the song, the song does the work
     'streamer': 'specialist',   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
@@ -4322,6 +4398,8 @@ const RACE_CLASS = {
     'monarch': 'specialist',   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
     'bear': 'bruiser',   // 2026-11-23 THE BEAR (mondo OK'd the kit)
     'demiurge': 'bruiser',   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms)
+    'monster truck': 'tank',   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells")
+    'nutcracker': 'bruiser',   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells")
     'abomination': 'bruiser',   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name)
     'farmer': 'support',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): the field heals the team
     'lifeguard': 'support',   // 2026-11-16
@@ -4389,9 +4467,14 @@ const RACE_TERRAIN_PREFERENCE = {
     'virus': 'wasteland',   // 2026-11-18 THE VIRUS (mondo approved the kit)
     'hollow': 'tree',   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name) (as the Dreameater)
     'weatherman': 'urban',   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: Disaster City's news station
+    'leprechaun': 'grass',   // 2026-11-27 THE LEPRECHAUN + THE MEDIC: the green hills, a first pass
+    'medic': 'urban',   // 2026-11-27 THE LEPRECHAUN + THE MEDIC: the hospital, a first pass
     'centaur': 'grass',   // 2026-11-24 THE CENTAUR: open ground to run on
     'cheerleader': 'urban',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: Disaster City University
     'princess': 'grass',   // 2026-11-24 THE PRINCESS: the gardens of Came A Lot
+    'leopard girl': 'tree',   // 2026-11-27 THE NEW RACES 5: leopards hunt from the branches
+    'draconian': 'desert',   // 2026-11-27 THE NEW RACES 5: the pyramids
+    'flower girl': 'grass',   // 2026-11-27 THE NEW RACES 5: a meadow
     'point guard': 'urban',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: Disaster City's Sports district
     'music producer': 'urban',   // 2026-11-24 THE MUSIC PRODUCER: Disaster City (Mid Records)
     'streamer': 'urban',   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
@@ -4406,6 +4489,8 @@ const RACE_TERRAIN_PREFERENCE = {
     'monarch': 'urban',   // 2026-11-23 THE MONARCH (mondo OK'd the kit): the D.U.M.B.'s halls
     'bear': 'mountain',   // 2026-11-23 THE BEAR (mondo OK'd the kit): the grizzly's slopes, the polar's ice field
     'demiurge': 'wasteland',   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms): the cosmic wraith's ground, a first pass
+    'monster truck': 'wasteland',   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells"): the dirt track
+    'nutcracker': 'urban',   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells")
     'abomination': 'wasteland',   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name): the rot, the drains, the dark
     'farmer': 'grass',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): the fields
     'jellyfish ufo': 'deep_water',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): a sea creature: never drowns (map.js unitIsDeepWaterAdapted)
@@ -4813,9 +4898,14 @@ const RACE_BASE_STATS = {
     'virus':              { hp:  930, mp: 220, atk:  40, def:  60, mdef: 160, int: 241, vision: 3, crt: 18, spd:  90 },   // 2026-11-18 THE VIRUS (mondo approved the kit) — first pass: a frail magic specialist; LAB LOOP 11-22 PASS 2: HP 780→860, M.ATK 180→212 (34.0% over 109 games); LAB LOOP 11-23 PASS 2: HP 860→930, M.ATK 212→241 (37.1% over 135 games)
     'hollow':             { hp:  880, mp: 230, atk:  40, def:  70, mdef: 150, int: 190, vision: 4, crt: 15, spd: 100 },   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name) — first pass (the plan's numbers): a floating controller
     'weatherman':         { hp:  930, mp: 230, atk:  70, def:  80, mdef: 125, int: 160, vision: 4, crt: 18, spd: 105 },   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR — first pass on the specialist median
+    'leprechaun':         { hp:  900, mp: 210, atk:  82, def:  80, mdef: 120, int: 155, vision: 4, crt: 26, spd: 125 },   // 2026-11-27 THE LEPRECHAUN + THE MEDIC — first pass on the specialist median: small, quick and lucky
+    'medic':              { hp: 1050, mp: 220, atk:  80, def:  95, mdef: 125, int: 145, vision: 3, crt: 15, spd: 105 },   // 2026-11-27 THE LEPRECHAUN + THE MEDIC — first pass on the support median (the Doctor and the Nurse share it)
     'centaur':            { hp:  900, mp: 150, atk: 118, def:  78, mdef:  62, int:  95, vision: 5, crt: 20, spd: 128 },   // 2026-11-24 THE CENTAUR — first pass between Robin Hood (ranged) and the Unicorn (a horse's body)
     'cheerleader':        { hp: 1020, mp: 210, atk:  95, def:  85, mdef: 120, int: 140, vision: 3, crt: 20, spd: 125 },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — first pass: a quick support who kicks
     'princess':           { hp:  960, mp: 230, atk:  60, def:  75, mdef: 135, int: 150, vision: 4, crt: 15, spd: 120 },   // 2026-11-24 THE PRINCESS — first pass: a frail royal caster, magic and healing
+    'leopard girl':       { hp: 1000, mp: 120, atk: 165, def:  85, mdef:  60, int:  50, vision: 4, crt: 26, spd: 150 },   // 2026-11-27 THE NEW RACES 5: first pass on the assassin median (a stalker: fast, hits hard, thin)
+    'draconian':          { hp: 1280, mp: 140, atk: 140, def: 118, mdef:  95, int:  90, vision: 3, crt: 15, spd: 100 },   // 2026-11-27 THE NEW RACES 5: first pass on the bruiser median
+    'flower girl':        { hp:  980, mp: 230, atk:  50, def:  75, mdef: 135, int: 150, vision: 4, crt: 15, spd: 115 },   // 2026-11-27 THE NEW RACES 5: first pass on the support median
     'point guard':        { hp:  940, mp: 140, atk: 112, def:  78, mdef:  62, int:  40, vision: 4, crt: 26, spd: 150 },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — first pass on the ranged median, the fastest hands on the court
     'music producer':     { hp:  980, mp: 230, atk:  60, def:  80, mdef: 120, int: 160, vision: 3, crt: 18, spd: 105 },   // 2026-11-24 THE MUSIC PRODUCER — first pass on the specialist median
     'streamer':           { hp:  990, mp: 200, atk: 125, def:  80, mdef: 100, int: 142, vision: 3, crt: 25, spd: 110 },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit) — first pass: a skirmisher who banks a crowd; LAB LOOP 11-22 PASS 4: HP 950→990, ATK 120→125, M.ATK 130→142 (44.9% over 244 games)
@@ -4830,6 +4920,8 @@ const RACE_BASE_STATS = {
     'monarch':            { hp: 1000, mp: 210, atk:  95, def:  85, mdef: 140, int: 165, vision: 4, crt: 24, spd: 120 },   // 2026-11-23 THE MONARCH (mondo OK'd the kit) — first pass on the specialist median
     'bear':               { hp: 1320, mp: 100, atk: 147, def: 120, mdef:  60, int:  70, vision: 3, crt: 15, spd: 105 },   // 2026-11-23 THE BEAR (mondo OK'd the kit) — first pass on the bruiser median: big and slow, soft to magic; LAB LOOP 11-23 PASS 2: HP 1250→1320, ATK 125→147 (37.4% over 136 games)
     'demiurge':           { hp: 1260, mp: 130, atk: 140, def: 125, mdef:  90, int:  70, vision: 3, crt: 16, spd: 100 },   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms) — the ARMOURED form (physical), first pass on the bruiser median; the COSMIC form's row is RACE_GENDER_STATS below
+    'monster truck':      { hp: 1340, mp: 110, atk: 140, def: 150, mdef:  65, int:  40, vision: 3, crt: 12, spd:  95 },   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells") — first pass on the tank median (the Trucker's row, heavier and slower)
+    'nutcracker':         { hp: 1120, mp: 130, atk: 138, def: 135, mdef:  80, int:  60, vision: 3, crt: 16, spd: 110 },   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells") — first pass on the bruiser median (hard wood)
     'abomination':        { hp: 1250, mp: 150, atk: 144, def: 110, mdef:  90, int:  72, vision: 3, crt: 12, spd:  80 },   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name) — first pass from the plan: slow, heavy, its limbs are its shield; LAB LOOP 11-23 PASS 2: HP 1300→1250, ATK 150→144, M.ATK 90→72 (59.3% over 135 games)
     'farmer':             { hp: 1100, mp: 170, atk: 110, def: 105, mdef: 100, int: 115, vision: 3, crt: 15, spd: 100 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — first pass on the support median
     'jellyfish ufo':      { hp: 1030, mp: 150, atk: 105, def: 120, mdef: 130, int: 62, vision: 3, crt: 18, spd: 105 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — first pass: a bruiser with claws on ATK and the bell on M.ATK; LAB LOOP 11-22 PASS 1: HP 1200→1150, ATK 125→119, M.ATK 125→106 (68.6% over 49 games); LAB LOOP 11-22 PASS 2: HP 1150→1080, ATK 119→111, M.ATK 106→82 (70.1% over 62 games); LAB LOOP 11-22 PASS 4: HP 1080→1030, ATK 111→105, M.ATK 82→62 (60.3% over 131 games)
@@ -5025,9 +5117,14 @@ const RACE_PHYSIQUE = {
     'virus':               { h: 1.50, w: 30 },   // 2026-11-18 THE VIRUS (mondo approved the kit): the spiked ball hovering, tendrils down
     'hollow':              { h: 2.40, w: 60 },   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name): the maw ring hovering, the finger chandelier hanging under it
     'weatherman':          { h: 1.80, w: 76 },   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR
+    'leprechaun':          { h: 1.10, w: 34 },   // 2026-11-27 THE LEPRECHAUN + THE MEDIC
+    'medic':               { h: 1.78, w: 72 },   // 2026-11-27 THE LEPRECHAUN + THE MEDIC
     'centaur':             { h: 2.40, w: 480 },   // 2026-11-24 THE CENTAUR: a horse with a rider's body on it, head to hoof
     'cheerleader':         { h: 1.66, w: 55 },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
     'princess':            { h: 1.68, w: 52 },   // 2026-11-24 THE PRINCESS (the crown not counted)
+    'leopard girl':        { h: 1.70, w: 55 },   // 2026-11-27 THE NEW RACES 5
+    'draconian':           { h: 2.20, w: 140 },   // 2026-11-27 THE NEW RACES 5: a tall reptilian, no wings
+    'flower girl':         { h: 1.65, w: 50 },   // 2026-11-27 THE NEW RACES 5
     'point guard':         { h: 1.88, w: 84 },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
     'music producer':      { h: 1.80, w: 74 },   // 2026-11-24 THE MUSIC PRODUCER
     'streamer':            { h: 1.76, w: 70 },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
@@ -5042,6 +5139,8 @@ const RACE_PHYSIQUE = {
     'monarch':             { h: 1.72, w: 58 },   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
     'bear':                { h: 2.40, w: 360 },   // 2026-11-23 THE BEAR (mondo OK'd the kit): stood up on its hind legs
     'demiurge':            { h: 2.60, w: 180 },   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms)
+    'monster truck':       { h: 2.40, w: 4200 },   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells"): a living truck on monster wheels
+    'nutcracker':          { h: 1.90, w: 60 },   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells"): a man-sized toy soldier, hat included
     'abomination':         { h: 3.10, w: 420 },   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name): the assembled body is 3.1 m from the floor to the top of its head
     'farmer':              { h: 1.78, w: 85 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
     'jellyfish ufo':       { h: 1.90, w: 60 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — a bell over a metal body; floats
@@ -9932,6 +10031,18 @@ const RACE_ABILITIES = {
           element: 'fire', type: 'damage', kind: 'line', range: 5, lineWidth: 1, dmg: 130, damageType: 'magic',
           bonusVsStatus: { status: 'root', mult: 1.5 },
           desc: 'The fighting machine turns its hood across the field. Deals MEDIUM magic damage to All Enemies in a line. Deals bonus damage to Rooted targets.' },
+        /* 👽 THE MARTIAN GIRL (2026-11-27 THE LEPRECHAUN + THE MEDIC, mondo: "Female martian"): the female martian's own two (RACE_GENDER_SPELLS.martian.female),
+           after the Martian Girl of the 1996 film: she walks up to you and you forget what you were doing. FIRST PASS. */
+        { id: 'goHypnoSway', name: 'Hypno Sway', tier: 2, families: ['martian'], cost: 45, apCost: 1, cooldownRounds: 2, spellType: 'alien',
+          animClip: { name: 'Happy_Sway_Standing', lib: 9, ts: 1.4, trim: [0.8, 2.8], strikeAt: 1.8 },   // THE MESHY CASTS: the sway
+          element: 'psychic', type: 'debuff', kind: 'debuff', range: 3, statStageBoost: { mdef: -1 },
+          statusEffects: [{ id: 'charm', duration: 1 }],
+          desc: 'She sways, and the spiral in her eyes turns. A Single Enemy within 3 is Charmed for 1 round (it cannot move) and loses 1 M.DEF stage. Cooldown: 2 rounds.' },
+        { id: 'goBrainProbe', name: 'Brain Probe', tier: 3, families: ['martian'], cost: 70, apCost: 1, cooldownRounds: 2, spellType: 'alien',
+          animClip: { name: 'Magic_Genie', lib: 9, ts: 1.3, trim: [3.2, 5.0], strikeAt: 4.4 },   // THE MESHY CASTS: both hands reach for the mind
+          element: 'psychic', type: 'damage', kind: 'lifeDrain', damageType: 'magic', dmg: 120, range: 3, drainPct: 0.5,
+          statusEffects: [{ id: 'silence', duration: 1 }],
+          desc: 'Ack. Deals MEDIUM magic damage to a Single Enemy within 3, heals her for half of it and Silences it for 1 round. Cooldown: 2 rounds.' },
         /* 2026-07-23 beam de-duplication: no longer the 4th identical line
            spell — now a focused single-target death ray that burns. */
         { id: 'raceHeatRay', tier: 1, families: ['alientechnology'], spellType: 'alien', element: 'fire', name: 'Heat Ray',
@@ -11377,6 +11488,77 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'blind', duration: 1 }],
           desc: 'The archer in the stars draws with it. A starlit arrow falls on a 3x3 up to 7 squares away, over any wall: HEAVY magic damage to All Enemies there, and they are Blinded for 1 round. Cooldown: 4 rounds.' },
     ],
+    'leprechaun': [
+        /* 🍀 THE LEPRECHAUN (2026-11-27 THE LEPRECHAUN + THE MEDIC, mondo: "Leprechaun (m and f)"; NEW_CHARACTERS.md: Leprechaun -> Gambling; ui.js: "Hides his gold
+           and never plays fair"). FIRST PASS: names and numbers are his to change. He and she share the kit.
+           HIS RULE, POT O' GOLD (lpPotOfGold): every hit he lands on an enemy pockets 1 Gold (unit.gold, 0-5), each Gold is +5% crit
+           chance on his spells, an enemy hit on him knocks 1 loose. Pot of Gold spends it all. battle.js "THE LEPRECHAUN + THE MEDIC".
+           VFX three-vfx-effects.js "THE LEPRECHAUN + THE MEDIC". Notes: champions-combat.md "THE LEPRECHAUN + THE MEDIC". */
+        { id: 'lpShillelagh', name: 'Shillelagh', tier: 1, families: ['leprechaun'], cost: 25, apCost: 1, spellType: 'anomaly',
+          element: 'nature', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 90, range: 1,
+          statusEffects: [{ id: 'stagger', duration: 1 }],
+          desc: 'A crack of the blackthorn stick. Deals WEAK physical damage to an adjacent enemy and Staggers it for 1 round.' },
+        { id: 'lpLuckyCoin', name: 'Lucky Coin', tier: 2, families: ['leprechaun'], cost: 40, apCost: 1, cooldownRounds: 1, spellType: 'anomaly',
+          animClip: { name: 'Personalized_Gesture', lib: 9, ts: 1.15, trim: [0, 1.6], strikeAt: 0.55 },   // THE MESHY CASTS: the flick of the thumb
+          element: 'metal', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 95, range: 4, critChance: 0.5,
+          desc: 'Heads he wins, tails you lose. Flicks a gold coin at a Single Enemy within 4 for MEDIUM magic damage; it is a critical hit half the time (more with Gold in his pocket). Cooldown: 1 round.' },
+        { id: 'lpRainbowRoad', name: 'Rainbow Road', tier: 2, families: ['leprechaun'], cost: 40, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+          element: 'light', type: 'utility', kind: 'teleport', range: 5, teleportDistance: 5, leap: true,
+          arrivalStageBoost: { spd: 1 }, arrivalStageRounds: 2,
+          desc: 'Nobody ever finds the end of it. He rides a rainbow to any free square within 5, whatever its height, and lands with +1 SPD stage for 2 rounds. Cooldown: 2 rounds.' },
+        { id: 'lpFoolsGold', name: 'Fool\'s Gold', tier: 3, families: ['leprechaun'], cost: 70, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+          animClip: { name: 'Jazz_Hands_inplace', lib: 9, ts: 1.3, trim: [0.2, 2.0], strikeAt: 1.49 },   // THE MESHY CASTS: the coins thrown wide
+          element: 'metal', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 110, range: 4, aoeRadius: 1,
+          statusEffects: [{ id: 'charm', duration: 1 }],
+          desc: 'It looks like gold. Showers a 3x3 within 4 with coins: MEDIUM magic damage to All Enemies there, and they are Charmed for 1 round, too busy picking it up to move. Cooldown: 2 rounds.' },
+        { id: 'lpPotOfGold', name: 'Pot of Gold', tier: 4, families: ['leprechaun'], cost: 95, apCost: 1, cooldownRounds: 3, spellType: 'anomaly',
+          animClip: { name: 'Hop_with_Arms_Raised', lib: 9, ts: 1.3, trim: [0.4, 2.2], strikeAt: 1.1 },   // THE MESHY CASTS: the jig
+          element: 'metal', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 130, range: 4, aoeRadius: 1, goldSpend: 30,
+          desc: 'The end of the rainbow. The pot comes down on a 3x3 within 4: MEDIUM magic damage to All Enemies there, +30 for every Gold he spends (all of it, up to +150). Cooldown: 3 rounds.' },
+    ],
+    'medic': [
+        /* 🩺 THE MEDIC (2026-11-27 THE LEPRECHAUN + THE MEDIC, mondo: "a doctor/nurse"): one race, two sides on the Weatherman pattern: the male is the Doctor, the
+           female the Nurse, no spell shared (RACE_GENDER_SPELLS). FIRST PASS: names and numbers are his to change.
+           THEIR RULE, CRITICAL CARE (mdCriticalCare, lowHpHealBonus): every heal they give restores more the lower the patient is,
+           up to +50% near 0 HP (battle.js _healScaledAmount). VFX three-vfx-effects.js "THE LEPRECHAUN + THE MEDIC". */
+        /* the DOCTOR (male) */
+        { id: 'mdReflexTest', name: 'Reflex Test', tier: 1, families: ['medicine'], cost: 25, apCost: 1, spellType: 'human',
+          element: 'physical', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 85, range: 1,
+          statusEffects: [{ id: 'stagger', duration: 1 }],
+          desc: 'Just checking the reflexes. A tap of the hammer on an adjacent enemy for WEAK physical damage, and the knee jerks: Staggered for 1 round.' },
+        { id: 'mdPrescription', name: 'Prescription', tier: 2, families: ['medicine'], cost: 45, apCost: 1, cooldownRounds: 1, spellType: 'human',
+          animClip: { name: 'Checkout_Gesture', lib: 9, ts: 1.45, trim: [1.8, 3.8], strikeAt: 2.94 },   // THE MESHY CASTS: he hands over the script
+          element: 'light', type: 'heal', kind: 'heal', range: 4, healAmt: 100, cleanse: 1,
+          statusEffects: [{ id: 'regen', duration: 2 }],
+          desc: 'Take two and call me in the morning. Heals a Single Ally within 4 a MEDIUM amount, cleanses 1 debuff and gives Regen for 2 rounds. Cooldown: 1 round.' },
+        { id: 'mdDefibrillator', name: 'Defibrillator', tier: 3, families: ['medicine'], cost: 80, apCost: 2, cooldownRounds: 4, spellType: 'human',
+          animClip: { name: 'Cheer_with_Both_Hands_Up', lib: 9, ts: 1.35, strikeAt: 0.85 },   // THE MESHY CASTS: paddles up, CLEAR
+          element: 'lightning', type: 'heal', kind: 'revive', range: 2, revivePct: 0.4, oneRevivePerUnitPerMatch: true,
+          desc: 'CLEAR! Brings a fallen ally within 2 back with 40% of its HP. Works once per unit per match. Cooldown: 4 rounds.' },
+        { id: 'mdMalpractice', name: 'Malpractice', tier: 4, families: ['medicine'], cost: 95, apCost: 1, cooldownRounds: 3, spellType: 'human',
+          animClip: { name: 'Shrug', lib: 8, ts: 1.2, trim: [0.2, 1.9], strikeAt: 0.9 },   // THE MESHY CASTS: oops
+          element: 'poison', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 165, range: 3,
+          statusEffects: [{ id: 'bleed', duration: 2 }, { id: 'poison', duration: 2 }],
+          desc: 'Wrong leg. Deals HEAVY magic damage to a Single Enemy within 3, then it Bleeds and is Poisoned for 2 rounds. The bill comes later. Cooldown: 3 rounds.' },
+        /* the NURSE (female) */
+        { id: 'mdSedative', name: 'Sedative Shot', tier: 1, families: ['medicine'], cost: 25, apCost: 1, spellType: 'human',
+          element: 'poison', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 75, range: 3,
+          statusEffects: [{ id: 'slow', duration: 1 }],
+          desc: 'Just a little pinch. Throws a syringe at a Single Enemy within 3 for WEAK physical damage, and it goes heavy: Slowed for 1 round.' },
+        { id: 'mdBedsideManner', name: 'Bedside Manner', tier: 2, families: ['medicine'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          animClip: { name: 'Big_Heart_Gesture', lib: 9, ts: 1.5, trim: [0.5, 2.6], strikeAt: 1.4 },   // THE MESHY CASTS: the heart
+          element: 'light', type: 'heal', kind: 'heal', range: 3, healAmt: 110,
+          statusEffects: [{ id: 'protect', duration: 1 }],
+          desc: 'There, there. Heals a Single Ally within 3 a MEDIUM amount and Protects it: the next hit on it does nothing. Cooldown: 2 rounds.' },
+        { id: 'mdTriage', name: 'Triage', tier: 3, families: ['medicine'], cost: 70, apCost: 1, cooldownRounds: 3, spellType: 'human',
+          animClip: { name: 'Female_Crouch_Pick_Up_Place_Side', lib: 10, ts: 1.4, trim: [1.0, 3.0], strikeAt: 2.4 },   // THE MESHY CASTS: the kit goes down
+          element: 'light', type: 'utility', kind: 'zoneHeal', range: 3, aoeRadius: 1, zoneDuration: 2, healPerTurn: 80,
+          desc: 'Set up the station. Marks a 3x3 within 3 for 2 rounds: every ally standing in it heals a MEDIUM amount each round. Cooldown: 3 rounds.' },
+        { id: 'mdCodeBlue', name: 'Code Blue', tier: 4, families: ['medicine'], cost: 100, apCost: 2, cooldownRounds: 4, spellType: 'human',
+          animClip: { name: 'Wave_for_Help', lib: 10, ts: 1.4, trim: [0.3, 2.3], strikeAt: 0.92 },   // THE MESHY CASTS: the call goes out
+          element: 'light', type: 'heal', kind: 'healAll', range: 0, healAmt: 150, cleanse: 2,
+          desc: 'All hands. Heals All Allies a BIG amount and cleanses 2 debuffs from each. Cooldown: 4 rounds.' },
+    ],
     'weatherman': [
         /* THE WEATHERMAN + NEWS ANCHOR (2026-11-24, mondo: "Weatherman should have spells that summon and interact with the weather
            system ... The News Anchor can maybe use the microphone the popstar uses"). One race; no spell is shared (RACE_GENDER_SPELLS).
@@ -11465,6 +11647,88 @@ const RACE_ABILITIES = {
           animClip: { name: 'Formal_Bow', lib: 8, ts: 1.4, trim: [1.4, 3.4], strikeAt: 2.6 },   // THE MESHY CASTS (11-24): the curtsey at the end of the story
           element: 'light', type: 'buff', kind: 'aoeShield', range: 0, aoeOriginSelf: true, aoeRadius: 3, shieldHp: 170,
           desc: 'And they all lived happily ever after. Every ally within 3, and she, gets a 170-point shield. Cooldown: 4 rounds.' },
+    ],
+    'leopard girl': [
+        /* THE LEOPARD GIRL (2026-11-27 THE NEW RACES 5; mondo 11-27: "a leopard girl (more anthropomorphic)", the fur like the Cats musical). A stalker:
+           she hides, she pounces, she drags the kill away. HER RULE, ROSETTES (lgRosettes): a round in which she lands no hit, she
+           fades into the grass at its end (Invisible); the first hit she lands from hiding is a sure critical (battle.js THE NEW
+           RACES 5: _lgRoundEnd, _lgAmbushCrit). Drag the Kill (`lgDrag`) walks her back and pulls the victim along (_lgDrag). */
+        { id: 'lgRake', name: 'Rake', tier: 1, families: ['leopard'], cost: 25, apCost: 1, spellType: 'anomaly',
+          type: 'damage', kind: 'damage', damageType: 'physical', dmg: 95, range: 1,
+          statusEffects: [{ id: 'bleed', duration: 2 }],
+          desc: 'Five claws, one swipe. Deals WEAK physical damage to a Single Enemy beside her and leaves it Bleeding for 2 rounds.' },
+        _mkCharge({ id: 'lgPounce', name: 'Pounce', tier: 2, families: ['leopard'], cost: 45, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+          dmg: 125, range: 4, statusEffects: [{ id: 'stagger', duration: 1 }],
+          desc: 'From the long grass, all at once. Leaps up to 4 tiles onto a Single Enemy for MEDIUM physical damage and Staggers it for 1 round. Cooldown: 2 rounds.' }),
+        { id: 'lgDragKill', name: 'Drag the Kill', tier: 2, families: ['leopard'], cost: 45, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+          type: 'damage', kind: 'damage', damageType: 'physical', dmg: 100, range: 1, lgDrag: 2,
+          desc: 'Teeth in, and away. Deals MEDIUM physical damage to a Single Enemy beside her, then she backs up to 2 tiles and drags it along with her, away from its friends. Cooldown: 2 rounds.' },
+        { id: 'lgThroatHold', name: 'Throat Hold', tier: 3, families: ['leopard'], cost: 60, apCost: 1, cooldownRounds: 3, spellType: 'anomaly',
+          type: 'damage', kind: 'damage', damageType: 'physical', dmg: 115, range: 1,
+          statusEffects: [{ id: 'root', duration: 1 }, { id: 'silence', duration: 1 }],
+          desc: 'The hold that ends the struggle. Deals MEDIUM physical damage to a Single Enemy beside her; it is Rooted and Silenced for 1 round. Cooldown: 3 rounds.' },
+        { id: 'lgKillingBite', name: 'Killing Bite', tier: 4, families: ['leopard'], cost: 85, apCost: 1, cooldownRounds: 3, spellType: 'anomaly',
+          type: 'damage', kind: 'damage', damageType: 'physical', dmg: 170, range: 1,
+          bonusVsStatus: { status: 'bleed', mult: 1.5 }, executeBelowPct: 0.2, executeAfterHit: true,
+          desc: 'One bite, at the back of the neck. Deals HEAVY physical damage to a Single Enemy beside her, bonus damage if it is Bleeding; if it is left under 20% HP, it is finished. Cooldown: 3 rounds.' },
+    ],
+    'draconian': [
+        /* THE DRACONIAN (2026-11-27 THE NEW RACES 5; mondo 11-27: "Draconian", no wings; his canon: the Annunaki are Draconians, the Kool-Aid saucer is
+           theirs, they came for Egypt and the cats held them off). The overlord of the reptilians. HIS RULE, DOMINION (dcDominion):
+           any enemy that starts its turn within 2 of him is Cowed (`cowed`, -1 ATK stage a stack, up to 3; battle.js THE NEW RACES 5
+           _dcDominion). Talon Rend and Reptile Eye add stacks; Royal Blood feeds on the Cowed; Kneel cashes every stack in
+           (`perCowedStack` in _spellCritRoll, the Stun at 3 + the clear in _dcAfterCast). */
+        { id: 'dcTalonRend', name: 'Talon Rend', tier: 1, families: ['draconian'], cost: 25, apCost: 1, spellType: 'alien',
+          type: 'damage', kind: 'damage', damageType: 'physical', dmg: 100, range: 1,
+          statusEffects: [{ id: 'cowed', duration: 2 }],
+          desc: 'Talons older than the pyramids. Deals MEDIUM physical damage to a Single Enemy beside him and Cows it (+1 stack: -1 ATK stage).' },
+        { id: 'dcTailSweep', name: 'Tail Sweep', tier: 2, families: ['draconian'], cost: 45, apCost: 1, cooldownRounds: 2, spellType: 'alien',
+          type: 'damage', kind: 'aoe', damageType: 'physical', dmg: 85, range: 0, aoeRadius: 1, aoeOriginSelf: true, pushDistance: 1,
+          statusEffects: [{ id: 'stagger', duration: 1 }],
+          desc: 'The tail comes round. Deals WEAK physical damage to All Enemies next to him, knocks them 1 tile back and Staggers them for 1 round. Cooldown: 2 rounds.' },
+        { id: 'dcReptileEye', name: 'Reptile Eye', tier: 2, families: ['draconian'], cost: 45, apCost: 1, cooldownRounds: 3, spellType: 'alien',
+          animClip: { name: 'Talk_with_Left_Hand_Raised', lib: 9, ts: 1.45, trim: [0.8, 2.8], strikeAt: 2.1 },   // THE MESHY CASTS (11-24): the hypnotist's hand
+          element: 'psychic', type: 'debuff', kind: 'debuff', range: 3, noDamage: true,
+          statusEffects: [{ id: 'charm', duration: 1 }, { id: 'cowed', duration: 2 }],
+          desc: 'The slit pupils open wide. A Single Enemy within 3 is Charmed for 1 round and Cowed (+1 stack). Cooldown: 3 rounds.' },
+        { id: 'dcRoyalBlood', name: 'Royal Blood', tier: 3, families: ['draconian'], cost: 60, apCost: 1, cooldownRounds: 2, spellType: 'alien',
+          element: 'blood', type: 'damage', kind: 'lifeDrain', damageType: 'physical', dmg: 130, range: 1, drainPct: 0.5,
+          bonusVsStatus: { status: 'cowed', mult: 1.5 },
+          desc: 'The bloodline feeds. Deals MEDIUM physical damage to a Single Enemy beside him, bonus damage if it is Cowed, and half of it comes back to him as HP. Cooldown: 2 rounds.' },
+        { id: 'dcKneel', name: 'Kneel', tier: 4, families: ['draconian'], cost: 90, apCost: 1, cooldownRounds: 4, spellType: 'alien',
+          animClip: { name: 'Angry_Ground_Stomp', lib: 9, ts: 1.0, strikeAt: 0.45 },   // THE MESHY CASTS: the stamp that brings them down
+          element: 'psychic', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 90, range: 0, aoeRadius: 2, aoeOriginSelf: true,
+          perCowedStack: 0.4, dcKneel: 2,
+          desc: 'Kneel before your king. Deals WEAK magic damage to All Enemies within 2, +40% for each Cowed stack on the target. Every one with 3 stacks is Stunned for 1 round. Every Cowed stack within 2 is spent. Cooldown: 4 rounds.' },
+    ],
+    'flower girl': [
+        /* THE FLOWER GIRL (2026-11-27 THE NEW RACES 5; mondo 11-27: "Flower girl", fan service). A support who turns her team's hits into heals. HER RULE,
+           POLLINATE (fgPollinate): her spells dust enemies with Pollen (`pollen`, 1-3 stacks); an ally of hers that hits a Pollen
+           carrier heals 6% of its max HP and takes a stack (battle.js THE NEW RACES 5 _fgPollenHit). Spring Awakening's vines
+           (`fgVines`) Root the enemies in reach (_fgAfterCast). */
+        { id: 'fgPetalDart', name: 'Petal Dart', tier: 1, families: ['blossom'], cost: 25, apCost: 1, spellType: 'anomaly', vfxElement: 'nature',
+          element: 'nature', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 85, range: 4,
+          statusEffects: [{ id: 'pollen', duration: 3 }],
+          desc: 'A petal with an edge. Deals WEAK nature magic damage to a Single Enemy within 4 and dusts it with Pollen (+1 stack).' },
+        { id: 'fgBouquet', name: 'Bouquet', tier: 2, families: ['blossom'], cost: 40, apCost: 1, cooldownRounds: 2, spellType: 'anomaly', vfxElement: 'nature',
+          animClip: { name: 'Big_Heart_Gesture', lib: 9, ts: 1.5, trim: [0.5, 2.6], strikeAt: 1.4 },   // THE MESHY CASTS (11-24): flowers for you
+          element: 'nature', type: 'heal', kind: 'heal', range: 3, healAmt: 115,
+          statusEffects: [{ id: 'regen', duration: 2 }],
+          desc: 'Flowers, for you. Heals a Single Ally within 3 a MEDIUM amount and gives it Regen for 2 rounds. Cooldown: 2 rounds.' },
+        { id: 'fgHayFever', name: 'Hay Fever', tier: 2, families: ['blossom'], cost: 45, apCost: 1, cooldownRounds: 3, spellType: 'anomaly', vfxElement: 'nature',
+          animClip: { name: 'Jazz_Hands_inplace', lib: 9, ts: 1.3, trim: [0.2, 2.0], strikeAt: 1.49 },   // THE MESHY CASTS: she shakes the pollen loose
+          element: 'nature', type: 'debuff', kind: 'aoe', noDamage: true, aoeRadius: 1, range: 4,
+          statusEffects: [{ id: 'blind', duration: 1 }, { id: 'pollen', duration: 3 }],
+          desc: 'A cloud of pollen. Every enemy in a 3×3 within 4 is Blinded for 1 round and dusted with Pollen (+1 stack). Cooldown: 3 rounds.' },
+        { id: 'fgSweetPerfume', name: 'Sweet Perfume', tier: 3, families: ['blossom'], cost: 60, apCost: 1, cooldownRounds: 3, spellType: 'anomaly', vfxElement: 'nature',
+          animClip: { name: 'Happy_Sway_Standing', lib: 9, ts: 1.4, trim: [0.8, 2.8], strikeAt: 1.8 },   // THE MESHY CASTS: the sway that sends the scent out
+          element: 'psychic', type: 'debuff', kind: 'aoe', noDamage: true, range: 0, aoeRadius: 2, aoeOriginSelf: true, fgPerfume: { spd: 1, rounds: 2 },
+          statusEffects: [{ id: 'charm', duration: 1 }, { id: 'pollen', duration: 3 }],
+          desc: 'Everyone turns their head. All Enemies within 2 are Charmed for 1 round and dusted with Pollen (+1 stack); every ally within 2 gets +1 SPD stage for 2 rounds. Cooldown: 3 rounds.' },
+        { id: 'fgSpringAwakening', name: 'Spring Awakening', tier: 4, families: ['blossom'], cost: 90, apCost: 1, cooldownRounds: 4, spellType: 'anomaly', vfxElement: 'nature',
+          animClip: { name: 'Joyful_Dance_with_Hand_Sway', lib: 9, ts: 1.45, trim: [0, 2.0], strikeAt: 1.2 },   // THE MESHY CASTS: spring comes
+          element: 'nature', type: 'heal', kind: 'healAll', range: 0, healAmt: 130, cleanse: 1, auraRadius: 3, fgVines: 3,
+          desc: 'Everything blooms at once. Heals her and every ally within 3 a MEDIUM amount and removes 1 debuff from each; vines come up under every enemy within 3 and Root it for 1 round. Cooldown: 4 rounds.' },
     ],
     'point guard': [
         /* THE POINT GUARD (2026-11-24 THE CHEERLEADER + THE POINT GUARD; mondo 11-24: "Point Guard m (basketball)", "needs a basketball, just a sphere geometry
@@ -11791,6 +12055,57 @@ const RACE_ABILITIES = {
         { id: 'nrCrowdPleaser', name: 'Crowd Pleaser', tier: 4, families: ['gladiatorial'], cost: 90, apCost: 1, cooldownRounds: 4, spellType: 'human',
           element: 'metal', type: 'damage', kind: 'aoe', damageType: 'physical', dmg: 150, range: 0, aoeRadius: 1, aoeOriginSelf: true, favorSpend: 50,
           desc: 'For the crowd. Deals HEAVY physical damage to every enemy next to him and spends all his Favor: +50 damage for each. Cooldown: 4 rounds.' },
+    ],
+    'monster truck': [
+        /* 🛻 THE MONSTER TRUCK (2026-11-27, mondo: "a monster truck, like a literal monster that is a truck ... it's hood could be a
+           separate part and it has like fangs, and the wheels could be separate too so they could spin, maybe even hydraulics").
+           FIRST PASS (names + numbers his to change). Its rule, REVS (STATUS_DEFS revs, battle.js "THE MONSTER TRUCK"): every
+           square it drives on a walk banks 1 Rev (up to 5); they last into its next turn. Ram spends them all (+25 a Rev), Burnout
+           spins the wheels in place and fills them. Every spell moves a part of it (`animSlot` = the truck's own clips,
+           three-renderer.js THE MONSTER TRUCK): the hood jaw bites, the wheels spin, the struts pump. Notes:
+           docs/notes/champions-combat.md "THE MONSTER TRUCK + THE NUTCRACKER". */
+        { id: 'mtChomp', name: 'Chomp', tier: 1, families: ['monstertruck'], cost: 25, apCost: 1, spellType: 'tech',
+          element: 'metal', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 90, range: 1, animSlot: 'mtChomp',
+          statusEffects: [{ id: 'bleed', duration: 2 }],
+          desc: 'The hood flips up and the fangs come down. Deals WEAK physical damage to a Single Enemy next to it and makes it Bleed for 2 rounds.' },
+        { id: 'mtRam', name: 'Ram', tier: 2, families: ['monstertruck'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'tech',
+          type: 'damage', kind: 'tackle', damageType: 'physical', dmg: 105, range: 4, chargeToTarget: true, pushDistance: 2, collisionBonus: 40,
+          revsSpend: 25, animSlot: 'mtRam',
+          desc: 'Floors it. Charges a Single Enemy up to 4 squares away and drives it up to 2 squares along the line: MEDIUM physical damage, 40 more if it is crushed into a wall or a body, and +25 for every Rev, which are all spent. Cooldown: 2 rounds.' },
+        { id: 'mtHydraulicSlam', name: 'Hydraulic Slam', tier: 3, families: ['monstertruck'], cost: 75, apCost: 1, cooldownRounds: 2, spellType: 'tech',
+          element: 'earth', type: 'damage', kind: 'aoe', damageType: 'physical', dmg: 130, range: 0, aoeRadius: 1, aoeOriginSelf: true, pushDistance: 1,
+          statusEffects: [{ id: 'stagger', duration: 1 }], animSlot: 'mtHop',
+          desc: 'The struts pump it into the air and it comes down on all four. Deals MEDIUM physical damage to All Enemies next to it, pushes them 1 square away and Staggers them. Cooldown: 2 rounds.' },
+        { id: 'mtBurnout', name: 'Burnout', tier: 4, families: ['monstertruck'], cost: 90, apCost: 1, cooldownRounds: 3, spellType: 'tech',
+          vfxElement: 'fire',   /* no fire ELEMENT: that lit the grass under the truck and burnt it (kit probe 11-27) */
+          type: 'damage', kind: 'aoe', damageType: 'physical', dmg: 120, range: 0, aoeRadius: 2, aoeOriginSelf: true,
+          statusEffects: [{ id: 'burn', duration: 2 }, { id: 'blind', duration: 1 }], selfStatusAfter: [{ id: 'revs', duration: 2, gain: 5 }],
+          animSlot: 'mtBurnout',
+          desc: 'Brakes on, wheels spinning, a ring of burning rubber and smoke. Deals MEDIUM physical damage to All Enemies within 2, Burns them for 2 rounds and Blinds them for 1, and fills its Revs (5). Cooldown: 3 rounds.' },
+    ],
+    'nutcracker': [
+        /* 🌰 THE NUTCRACKER (2026-11-27, mondo: a nutcracker "which can also maybe have separate parts so its mouth can move like an
+           actual nutcracker"). FIRST PASS (names + numbers his to change). Its rule, CRACKS (STATUS_DEFS cracked, battle.js "THE
+           NUTCRACKER"): its bites and its march put Cracks on the enemy (up to 3, 3 rounds). Crack Open spends them: +45 a Crack,
+           and at 3 the shell gives (Broken 1 round: no passives). The jaw (bone `ewJaw`) clacks with every spell (three-renderer.js
+           THE NUTCRACKER, `nutAct`). Notes: docs/notes/champions-combat.md "THE MONSTER TRUCK + THE NUTCRACKER". */
+        { id: 'ncClack', name: 'Clack', tier: 1, families: ['nutcracker'], cost: 25, apCost: 1, spellType: 'anomaly',
+          element: 'earth', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 85, range: 1,
+          statusEffects: [{ id: 'cracked', duration: 3, gain: 1 }],
+          desc: 'Clack clack. Deals WEAK physical damage to a Single Enemy next to it and puts a Crack on it (up to 3).' },
+        { id: 'ncQuickMarch', name: 'Quick March', tier: 2, families: ['nutcracker'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+          type: 'damage', kind: 'dash', damageType: 'physical', dmg: 95, range: 4, dashSweep: 1,
+          statusEffects: [{ id: 'cracked', duration: 3, gain: 1 }],
+          desc: 'Left, right, left. Marches up to 4 squares in a line; every enemy on or beside the path takes WEAK physical damage and a Crack. Cooldown: 2 rounds.' },
+        { id: 'ncCrackOpen', name: 'Crack Open', tier: 3, families: ['nutcracker'], cost: 75, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+          animClip: { name: 'Angry_Ground_Stomp', lib: 9, ts: 1.0, strikeAt: 0.45 },   // the stamp that brings the lever down
+          element: 'earth', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 115, range: 1, crackSpend: 45,
+          desc: 'The lever goes down. Deals MEDIUM physical damage to a Single Enemy next to it, +45 for every Crack on it, which are all spent. At 3 Cracks the shell gives: Broken (no passives) for 1 round. Cooldown: 2 rounds.' },
+        { id: 'ncNutcrackerSuite', name: 'Nutcracker Suite', tier: 4, families: ['nutcracker'], cost: 90, apCost: 1, cooldownRounds: 3, spellType: 'anomaly',
+          animClip: { name: 'Joyful_Dance_with_Hand_Sway', lib: 9, ts: 1.45, trim: [0, 2.0], strikeAt: 1.2 },   // the dance (THE MESHY CASTS)
+          type: 'damage', kind: 'aoe', damageType: 'physical', dmg: 115, range: 0, aoeRadius: 2, aoeOriginSelf: true,
+          statusEffects: [{ id: 'cracked', duration: 3, gain: 1 }, { id: 'slow', duration: 1 }],
+          desc: 'The key in its back winds all the way and it dances, the jaw snapping in time. Deals MEDIUM physical damage to All Enemies within 2, puts a Crack on each and Slows them for 1 round. Cooldown: 3 rounds.' },
     ],
     'demiurge': [
         /* ⬛ THE DEMIURGE (2026-11-26, mondo: "this guy is like the original creator of the black cube, the demiurge, cosmic abilities,
@@ -15629,6 +15944,36 @@ const STATUS_DEFS = {
     /* 🐾 GRUDGE (2026-11-23, the Bear: DON'T POKE THE BEAR). The last enemy to hurt a Bear, or the one it grabbed with Bear Hug,
        carries its Grudge; a Bear holds one at a time, and the mark ends when that Bear goes down (_TIED_STATUS_FIELDS). Bear Down
        hits it harder (bonusVsStatus). Both sides see it. The Bear is an id on the unit (_grudgeSrcId: RULE #2). battle.js THE BEAR. */
+    /* 🐉 COWED (2026-11-27 THE NEW RACES 5, the Draconian's Dominion): -1 ATK stage a stack, up to 3. The stack is unit._cowed, the Draconian's id
+       _cowedSrcId (an id, RULE #2); a new stack refreshes the clock. battle.js THE NEW RACES 5 (getStatStageCount reads it). */
+    cowed: {
+        icon: '🐉', glyph: '🐉', short: 'COW', label: 'Cowed',
+        colorText: 'cowed by the Draconian',
+        kind: 'debuff', category: 'status', stack: 'max',
+        iconSrc: createStatusIconDataUri('🐉', '#10200e', '#e4f8c8', '#5ea83a'),
+        onApply(unit, src, info) {
+            const was = (info && info.refreshed && unit._cowed > 0) ? unit._cowed : 0;
+            unit._cowed = Math.min(3, was + 1);
+            if (src && src.id != null) unit._cowedSrcId = src.id;
+            if (typeof window !== 'undefined' && typeof window._nr5StackFloat === 'function') window._nr5StackFloat(unit, 'cowed', was);
+        },
+        onRemove(unit) { delete unit._cowed; delete unit._cowedSrcId; }
+    },
+    /* 🌸 POLLEN (2026-11-27 THE NEW RACES 5, the Flower Girl's Pollinate): 1-3 stacks in unit._pollen, her id _pollenSrcId. An ally of hers that hits
+       the carrier heals and takes a stack (battle.js THE NEW RACES 5 _fgPollenHit). */
+    pollen: {
+        icon: '🌼', glyph: '🌼', short: 'POL', label: 'Pollen',
+        colorText: 'dusted with pollen',
+        kind: 'debuff', category: 'status', stack: 'max',
+        iconSrc: createStatusIconDataUri('🌼', '#2a2008', '#fff4c0', '#e8c030'),
+        onApply(unit, src, info) {
+            const was = (info && info.refreshed && unit._pollen > 0) ? unit._pollen : 0;
+            unit._pollen = Math.min(3, was + 1);
+            if (src && src.id != null) unit._pollenSrcId = src.id;
+            if (typeof window !== 'undefined' && typeof window._nr5StackFloat === 'function') window._nr5StackFloat(unit, 'pollen', was);
+        },
+        onRemove(unit) { delete unit._pollen; delete unit._pollenSrcId; }
+    },
     grudge: {
         icon: '🐾', glyph: '🐾', short: 'GRG', label: 'Grudge',
         colorText: 'holding the Bear\'s Grudge',
@@ -15673,6 +16018,41 @@ const STATUS_DEFS = {
             }
         },
         onRemove(unit) { delete unit._momentum; }
+    },
+    /* 🛻 REVS (2026-11-27, the Monster Truck): the count lives on unit._revs (up to 5); the status is its clock and its icon. Each
+       apply adds the payload's `gain` and resets the clock to 2, so it carries into its next turn. A walk banks a Rev a square
+       (battle.js _mtBankRevs); Ram (`revsSpend`) spends them; Burnout fills them. */
+    revs: {
+        icon: '🛞', glyph: '🛞', short: 'REV', label: 'Revs',
+        colorText: 'revving',
+        kind: 'buff', category: 'buff', stack: 'replace',
+        iconSrc: createStatusIconDataUri('🛞', '#2a1410', '#ffe2d0', '#e05a2a'),
+        onApply(unit, src, info) {
+            const gain = Math.max(0, Math.round((info && info.payload && Number(info.payload.gain)) || 1));
+            const before = unit._revs || 0;
+            unit._revs = Math.min(5, before + gain);
+            if (unit._revs > before && typeof showFloatingTextForUnit === 'function') {
+                showFloatingTextForUnit(unit, `🛞 REVS ${unit._revs}`, 'buff', { durationMs: 900 });
+            }
+        },
+        onRemove(unit) { delete unit._revs; }
+    },
+    /* 🌰 CRACKED (2026-11-27, the Nutcracker): the count lives on unit._cracks (up to 3); the status is its clock and its icon.
+       Each apply adds the payload's `gain` and resets the clock. Crack Open (`crackSpend`) spends them (battle.js _ncCrackOpen). */
+    cracked: {
+        icon: '🌰', glyph: '🌰', short: 'CRK', label: 'Cracked',
+        colorText: 'cracked',
+        kind: 'debuff', category: 'status', stack: 'replace',
+        iconSrc: createStatusIconDataUri('🌰', '#2e1a10', '#ffe8d0', '#c8783a'),
+        onApply(unit, src, info) {
+            const gain = Math.max(0, Math.round((info && info.payload && Number(info.payload.gain)) || 1));
+            const before = unit._cracks || 0;
+            unit._cracks = Math.min(3, before + gain);
+            if (unit._cracks > before && typeof showFloatingTextForUnit === 'function') {
+                showFloatingTextForUnit(unit, `🌰 CRACK ${unit._cracks}`, 'debuff', { durationMs: 900 });
+            }
+        },
+        onRemove(unit) { delete unit._cracks; }
     },
     /* 🎩 TRICK SET (2026-11-16, the Magician's Sleight of Hand): which trick = unit._trick, in turn (unit._trickNext). The line
        naming it goes to his own seat only (addLog seats); everyone else reads "Trick Set". Springs once (battle.js _magician*). */
@@ -16149,6 +16529,8 @@ const STATUS_LIBRARY_DESCS = {
     debt:      'Owes the bank: when it ends (or is cleansed) the loan comes due. Pays back the loan with interest (never below 1 HP) and the lender heals that much. Going down first leaves the lender with the loss.',
     caged:     'Shut in the Abomination\'s bone cage: its Grasp and Unfold hit this unit harder. Comes with the Root of Bone Cage.',
     grudge:    'The Bear holds a grudge: it hurt the Bear last (or was grabbed in a Bear Hug). Bear Down hits it harder. Ends when that Bear goes down or picks a new grudge.',
+    cowed:     'Cowed by the Draconian: -1 ATK stage for each stack (up to 3). Kneel spends the stacks; at 3 it Stuns.',
+    pollen:    'Dusted with the Flower Girl\'s pollen (up to 3 stacks): when one of her allies hits it, that ally heals 6% of its max HP and a stack comes off.',
     shorted:   'Bet against: if this unit goes down while Shorted, the short-seller restores 75 MP and heals 20% of their max HP.',
     submerged: 'Under the surface of a liquid: hidden with Invisible until it attacks. Leaving the liquid surfaces it.',
     momentum:  'Rolling: every square walked in a straight line banks a stack (up to 6). Board Slam spends them for damage. Fades a turn after the Skater stops. Stunned, Rooted, Frozen or put to sleep, she bails and loses them all.',
@@ -22274,9 +22656,14 @@ const EW_RACE_BIOMES = {
     'virus': ['neon_city', 'astral'],   // 2026-11-18 THE VIRUS (mondo approved the kit) — The Internet's quarantine
     'hollow': ['astral'],   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name) — The Astral Realm (its nightmares)
     'weatherman': ['urban'],   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR — Disaster City (Hero Plaza's news office)
+    'leprechaun': ['forest'],   // 2026-11-27 THE LEPRECHAUN + THE MEDIC — the green, a first pass
+    'medic': ['urban'],   // 2026-11-27 THE LEPRECHAUN + THE MEDIC — the hospital, a first pass
     'centaur': ['ancient', 'forest'],   // 2026-11-24 THE CENTAUR — Mount Olympus and its woods (Claude's pick: mondo named no home)
     'cheerleader': ['urban'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — Disaster City University (the DCU Aftershocks)
     'princess': ['arthurian'],   // 2026-11-24 THE PRINCESS — Came A Lot
+    'leopard girl': ['urban', 'tropical'],   // 2026-11-27 THE NEW RACES 5 — The Strip's stage (the Cats-musical fur), the jungle (Claude's pick)
+    'draconian': ['ancient', 'desert'],   // 2026-11-27 THE NEW RACES 5 — Giza (his canon: the Draconians came for Egypt)
+    'flower girl': ['forest'],   // 2026-11-27 THE NEW RACES 5 — The Fairy Forest (Claude's pick)
     'point guard': ['urban'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — Disaster City's Sports district
     'music producer': ['urban'],   // 2026-11-24 THE MUSIC PRODUCER — Disaster City
     'streamer': ['neon_city', 'urban'],   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit) — The Internet's stage
@@ -22962,9 +23349,14 @@ const RACE_TREE = {
     'virus':         ['nrWorm', 'nrSelfReplicate', 'nrRansomware', 'nrZeroDay'],   // 2026-11-18 THE VIRUS (mondo approved the kit): its own four
     'hollow':        ['hlLull', 'hlStrings', 'hlBloom', 'hlWake'],   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name): its own four
     'weatherman':    [['wnColdFront', 'wnTopStory'], ['wnSevereWeather', 'wnExclusive'], ['wnStormTracker', 'wnFakeNews'], ['wnStormOfCentury', 'wnPrimeTime']],   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: every rung is one of each (RACE_GENDER_SPELLS): his weather, her show
+    'leprechaun':    ['lpShillelagh', ['lpLuckyCoin', 'lpRainbowRoad'], 'lpFoolsGold', 'lpPotOfGold'],   // 2026-11-27 THE LEPRECHAUN + THE MEDIC
+    'medic':         [['mdReflexTest', 'mdSedative'], ['mdPrescription', 'mdBedsideManner'], ['mdDefibrillator', 'mdTriage'], ['mdMalpractice', 'mdCodeBlue']],   // 2026-11-27 THE LEPRECHAUN + THE MEDIC: every rung is one of each (RACE_GENDER_SPELLS): the Doctor's, the Nurse's
     'centaur':       ['cenHoofStomp', 'cenParthianShot', ['cenWildHerd', 'raceRideBy'], 'cenSagittarius'],   // 2026-11-24 THE CENTAUR
     'cheerleader':   ['chHighKick', 'chReadyOk', 'chBasketToss', 'chGimme'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: her own four
     'princess':      ['prWishingStar', 'prTrueLove', 'prSpindle', 'prEverAfter'],   // 2026-11-24 THE PRINCESS: her own four
+    'leopard girl':  ['lgRake', ['lgPounce', 'lgDragKill'], 'lgThroatHold', 'lgKillingBite'],   // 2026-11-27 THE NEW RACES 5
+    'draconian':     ['dcTalonRend', ['dcTailSweep', 'dcReptileEye'], 'dcRoyalBlood', 'dcKneel'],   // 2026-11-27 THE NEW RACES 5
+    'flower girl':   ['fgPetalDart', ['fgBouquet', 'fgHayFever'], 'fgSweetPerfume', 'fgSpringAwakening'],   // 2026-11-27 THE NEW RACES 5
     'point guard':   ['pgChestPass', 'pgCrossover', 'pgAlleyOop', 'pgBuzzerBeater'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: his own four
     'music producer': ['mpLayItDown', ['mpAddChord', 'mpMelodyStyle'], 'mpDrumFill', 'mpBassDrop'],   // 2026-11-24 THE MUSIC PRODUCER (Beat Switch + Slap Bass ride RACE_DEFAULT_KIT_EXTRAS)
     'streamer':      ['nrClipIt', ['nrUwu', 'nrRageQuit'], 'nrDonationGoal', 'nrRaid'],   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit): the rung 2 pair is one of each version (RACE_GENDER_SPELLS)
@@ -22979,6 +23371,8 @@ const RACE_TREE = {
     'monarch':       ['monButterflyKiss', ['monPendulum', 'monKaleidoscopeWings'], ['monTriggerWord', 'monSleeperCell'], ['monMetamorphosis', 'monChaosTheory']],   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
     'bear':          ['brPawSwipe', ['raceBite', 'raceMaul'], ['brBearHug', 'brHibernate'], 'brBearDown'],   // 2026-11-23 THE BEAR (mondo OK'd the kit)
     'demiurge':      [['dmSerpentStrike', 'dmVoidGaze'], ['dmCompassSweep', 'dmFractalBloom'], ['dmCornerstone', 'dmAsAbove'], ['dmGoldenSpiral', 'dmTesseract']],   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms): every rung is one of each form (RACE_GENDER_SPELLS)
+    'monster truck': ['mtChomp', 'mtRam', 'mtHydraulicSlam', 'mtBurnout'],   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells"): its own four
+    'nutcracker':    ['ncClack', 'ncQuickMarch', 'ncCrackOpen', 'ncNutcrackerSuite'],   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells"): its own four
     'abomination':   ['abGrasp', 'abManyMouths', 'abBoneCage', 'abUnfold'],   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name): its own four
     'farmer':        ['nrPitchforkJab', ['nrSowField', 'nrHayBale'], 'nrGetOffMyLand', 'nrHarvestMoon'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
     'jellyfish ufo': ['nrPincerClaw', ['nrBioLash', 'nrJetPulse'], 'nrVenomInjector', 'nrAbyssalOverload'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
@@ -23626,6 +24020,14 @@ function spellFamilyGroups(ids, race) {
    one or 2 unique spells but really they are supposed to be the same"). raceGenderOffSpellIds(race, gender) → the OTHER
    gender's ids; no gender (the Spell Library, tooling) → none, the whole pool shows. */
 const RACE_GENDER_SPELLS = {
+    'medic': {   // 2026-11-27 THE LEPRECHAUN + THE MEDIC: no spell is shared
+        male:   ['mdReflexTest', 'mdPrescription', 'mdDefibrillator', 'mdMalpractice'],   // the Doctor
+        female: ['mdSedative', 'mdBedsideManner', 'mdTriage', 'mdCodeBlue'],          // the Nurse
+    },
+    'martian': {   // 2026-11-27 THE LEPRECHAUN + THE MEDIC: the female martian's own two; the rest of the kit is shared
+        male:   [],
+        female: ['goHypnoSway', 'goBrainProbe'],
+    },
     'priest': {
         male:   ['pzHolyWater', 'pzLastRites'],      // Holy Orders: the priest's sacraments
         female: ['goRulerSmack', 'goVowOfSilence'],  // the Convent: the nun's ruler and her vow
@@ -25159,6 +25561,36 @@ const SPELL_FAMILIES = {
         unique: 'cheerleader',
         identity: { who: ['Cheerleader', 'Flyer', 'Squad Captain'], adj: ['Peppy', 'Loud', 'Spirited'], look: ['a crimson DCU uniform', 'a big hair bow', 'pom-poms'], vibe: ['throws a team-mate in the air', 'leads the chant'] }
     },
+    leopard: {   // 2026-11-27 THE NEW RACES 5 — the Leopard Girl's own
+        id: 'leopard',
+        name: 'Leopard',
+        glyph: '🐆',
+        color: '#d89a3a',
+        kind: 'signature',
+        desc: 'The stalker in the long grass: a rake of the claws, a pounce from nowhere, the kill dragged away and the bite that ends it.',
+        unique: 'leopard girl',
+        identity: { who: ['Leopard Girl', 'Stalker', 'Big Cat'], adj: ['Spotted', 'Silent', 'Feline'], look: ['spotted fur', 'cat ears and whiskers', 'a long tail'], vibe: ['waits in the grass', 'drags the kill up a tree'] }
+    },
+    draconian: {   // 2026-11-27 THE NEW RACES 5 — the Draconian's own
+        id: 'draconian',
+        name: 'Draconian',
+        glyph: '🐉',
+        color: '#5ea83a',
+        kind: 'signature',
+        desc: 'The old royal bloodline of the reptilians: talons, a tail, the eye that makes you kneel and the blood that feeds on it.',
+        unique: 'draconian',
+        identity: { who: ['Draconian', 'Draco', 'Reptilian Royal'], adj: ['Ancient', 'Cold-Blooded', 'Imperious'], look: ['green-gold scales', 'a crested head', 'slit pupils'], vibe: ['makes them kneel', 'was here before the pyramids'] }
+    },
+    blossom: {   // 2026-11-27 THE NEW RACES 5 — the Flower Girl's own
+        id: 'blossom',
+        name: 'Blossom',
+        glyph: '🌸',
+        color: '#f27aa8',
+        kind: 'signature',
+        desc: 'The flower girl\'s garden: petals with an edge, a bouquet for a friend, pollen in the eyes, a perfume nobody can resist and spring all at once.',
+        unique: 'flower girl',
+        identity: { who: ['Flower Girl', 'Blossom', 'Wildflower'], adj: ['Blooming', 'Sweet', 'Sunny'], look: ['petals for clothes', 'a flower crown', 'vines up the legs'], vibe: ['hands you a bouquet', 'dusts you with pollen'] }
+    },
     fairytale: {   // 2026-11-24 THE PRINCESS — the Princess's own
         id: 'fairytale',
         name: 'Fairy Tale',
@@ -25348,6 +25780,46 @@ const SPELL_FAMILIES = {
         desc: 'Small flaps now, a twister later: every Flutter she leaves grows by itself, owl eyes that send divers running, and one flap that speeds everything up.',
         unique: 'butterfly girl',
         identity: { who: ['Butterfly Girl', 'Morpho', 'Collector'], adj: ['Iridescent', 'Fluttering', 'Chaotic'], look: ['huge blue morpho wings', 'curled antennae', 'blue to violet hair'], vibe: ['every flap she makes grows into a storm', 'gone in a blue flash'] }
+    },
+    leprechaun: {   // 2026-11-27 THE LEPRECHAUN + THE MEDIC — the leprechauns' own
+        id: 'leprechaun',
+        name: 'Luck o\' the Irish',
+        glyph: '🍀',
+        color: '#2fb84a',
+        kind: 'signature',
+        desc: 'The blackthorn stick, the lucky coin, the rainbow and the pot of gold at the end of it. Every hit pockets Gold, and Gold is luck.',
+        unique: 'leprechaun',
+        identity: { who: ['Leprechaun', 'Cobbler', 'Hoarder'], adj: ['Lucky', 'Green', 'Crooked'], look: ['a green coat and buckled hat', 'a red beard', 'a blackthorn stick'], vibe: ['hides his gold and never plays fair', 'always one step ahead of you'] }
+    },
+    medicine: {   // 2026-11-27 THE LEPRECHAUN + THE MEDIC — the Doctor's and the Nurse's own
+        id: 'medicine',
+        name: 'Medicine',
+        glyph: '🩺',
+        color: '#4ad0e0',
+        kind: 'signature',
+        desc: 'The hospital at work: the Doctor\'s hammer, script, paddles and bill; the Nurse\'s needle, bedside manner, station and Code Blue.',
+        unique: 'medic',
+        identity: { who: ['Doctor', 'Nurse', 'Medic'], adj: ['Clinical', 'Steady', 'Overworked'], look: ['a white coat and stethoscope', 'scrubs and a nurse\'s cap', 'a clipboard'], vibe: ['has seen worse', 'the bill comes later'] }
+    },
+    monstertruck: {   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells") — the Monster Truck's own
+        id: 'monstertruck',
+        name: 'Monster Truck',
+        glyph: '🛻',
+        color: '#d0402a',
+        kind: 'signature',
+        desc: 'A truck that is a monster: a fanged hood that bites, wheels that rev and ram, struts that pump it into the air.',
+        unique: 'monster truck',
+        identity: { who: ['Monster Truck', 'Big Red', 'The Crusher'], adj: ['Revving', 'Fanged', 'Mud-Caked'], look: ['a hood full of fangs', 'skull hubcaps on monster tyres', 'red coil springs over chrome struts'], vibe: ['eats cars', 'never brakes'] }
+    },
+    nutcracker: {   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells") — the Nutcracker's own
+        id: 'nutcracker',
+        name: 'Nutcracker',
+        glyph: '🌰',
+        color: '#c83a3a',
+        kind: 'signature',
+        desc: 'A toy soldier with a jaw for cracking nuts: it clacks, marches, cracks the shell open and dances the suite.',
+        unique: 'nutcracker',
+        identity: { who: ['Nutcracker', 'Toy Soldier', 'The Captain'], adj: ['Wooden', 'Painted', 'Clacking'], look: ['a tall black shako', 'a red coat with gold frogging', 'a white beard on a jaw that drops'], vibe: ['stands to attention', 'cracks anything'] }
     },
     demiurgy: {   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms) — both forms' own
         id: 'demiurgy',
@@ -27670,9 +28142,14 @@ const RACE_FAMILIES = {
     'virus': ['malware', 'computerhacking', 'glitch', 'internetaddiction'],   // 2026-11-18 THE VIRUS (mondo approved the kit)
     'hollow': ['hollow', 'nightmares', 'astral', 'fractal'],   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name)
     'weatherman': ['newsroom', 'wind', 'lightning', 'stagepresence'],   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR
+    'leprechaun': ['leprechaun', 'gambling', 'fae', 'trickery'],   // 2026-11-27 THE LEPRECHAUN + THE MEDIC (NEW_CHARACTERS.md: Leprechaun -> Gambling)
+    'medic': ['medicine', 'healingmagic', 'chemistry', 'humangrit'],   // 2026-11-27 THE LEPRECHAUN + THE MEDIC
     'centaur': ['centaur', 'archery', 'horsebackriding', 'athleticism'],   // 2026-11-24 THE CENTAUR (the idea list's own three)
     'cheerleader': ['cheer', 'teamwork', 'athleticism', 'stagepresence'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
     'princess': ['fairytale', 'royalty', 'healingmagic', 'light'],   // 2026-11-24 THE PRINCESS
+    'leopard girl': ['leopard', 'feline', 'huntingskills', 'apexpredator', 'stagepresence'],   // 2026-11-27 THE NEW RACES 5
+    'draconian': ['draconian', 'ancientknowledge', 'psychic', 'deepstate', 'blood'],   // 2026-11-27 THE NEW RACES 5
+    'flower girl': ['blossom', 'nature', 'healingmagic', 'seduction', 'fae'],   // 2026-11-27 THE NEW RACES 5
     'point guard': ['basketball', 'athleticism', 'teamwork', 'stagepresence'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
     'music producer': ['beatmaking', 'sonic', 'stagepresence', 'maincharacter'],   // 2026-11-24 THE MUSIC PRODUCER
     'streamer': ['streaming', 'stagepresence', 'computerhacking', 'internetaddiction'],   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
@@ -27687,6 +28164,8 @@ const RACE_FAMILIES = {
     'monarch': ['monarchprogramming', 'seduction', 'spygear', 'deepstate'],   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
     'bear': ['bear', 'beastabilities', 'apexpredator', 'nature', 'ice'],   // 2026-11-23 THE BEAR (mondo OK'd the kit): Nature is the grizzly's, Ice the polar bear's (RACE_GENDER_SPELLS)
     'demiurge': ['demiurgy', 'cosmic', 'fractal', 'astral', 'ancientknowledge'],   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms): mondo's themes (cosmic, spiritual, the architect, sacred geometry, fractal math)
+    'monster truck': ['monstertruck', 'drivingskills', 'machinery', 'apexpredator', 'fire'],   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells"): a car, an engine, a mouth, the burnout
+    'nutcracker': ['nutcracker', 'hauntedtoy', 'christmasspirit', 'militarysupport', 'swordsmanship'],   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells"): a toy come alive, the Christmas ballet, a soldier with a sabre
     'abomination': ['abomination', 'nightmares', 'cosmic', 'shadow'],   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name)
     'farmer': ['farming', 'agriculture', 'humangrit', 'teamwork'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
     'jellyfish ufo': ['bioelectric', 'jellyfish', 'lightning', 'deepsea'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
@@ -28333,9 +28812,14 @@ const CAMPAIGN_RACE_PRICES = {
   'virus': 450,   // 2026-11-18 THE VIRUS (mondo approved the kit)
   'hollow': 500,   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name)
   'weatherman': 400,   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR
+  'leprechaun': 400,   // 2026-11-27 THE LEPRECHAUN + THE MEDIC
+  'medic': 400,   // 2026-11-27 THE LEPRECHAUN + THE MEDIC
   'centaur': 450,   // 2026-11-24 THE CENTAUR
   'cheerleader': 400,   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
   'princess': 400,   // 2026-11-24 THE PRINCESS
+  'leopard girl': 400,   // 2026-11-27 THE NEW RACES 5
+  'draconian': 450,   // 2026-11-27 THE NEW RACES 5
+  'flower girl': 400,   // 2026-11-27 THE NEW RACES 5
   'point guard': 400,   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
   'music producer': 400,   // 2026-11-24 THE MUSIC PRODUCER
   'streamer': 400,   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
@@ -28350,6 +28834,8 @@ const CAMPAIGN_RACE_PRICES = {
   'monarch': 450,   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
   'bear': 450,   // 2026-11-23 THE BEAR (mondo OK'd the kit)
   'demiurge': 900,   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms)
+  'monster truck': 500,   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells")
+  'nutcracker': 400,   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells")
   'abomination': 450,   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name)
   'farmer': 350,   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
   'jellyfish ufo': 400,   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
@@ -30352,6 +30838,7 @@ const DOOR_TEXT = {
         'centaur': 'Mount Olympus',   // 2026-11-24 THE CENTAUR (Claude's pick: with the Cyclops and the Minotaur)
         'cheerleader': 'Downtown', 'point guard': 'Downtown',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD (University; the Sports district)
         'princess': 'Came A Lot',   // 2026-11-24 THE PRINCESS
+        'leopard girl': 'The Strip', 'draconian': 'Pyramids of Giza', 'flower girl': 'Fairy Forest',   // 2026-11-27 THE NEW RACES 5 (the Strip + the Forest are Claude's picks; Giza is his canon)
         'music producer': 'Downtown',   // 2026-11-24 THE MUSIC PRODUCER (Mid Records)
         'gambler': 'The Strip', 'hacker': 'Downtown', 'monk': 'The Bermuda Triangle', 'shogun': 'The Bermuda Triangle',   // 2026-11-19 THE NEW RACES 4 (the gambler lives in the Western Town too: HQ_AREA_ENCOUNTERS; the monk + the shogun on the Volcano Island)
         'cameraman': 'Downtown', 'mechanic': 'Downtown', 'janitor': 'Downtown', 'trucker': 'Downtown',   // 2026-11-19 THE NEW RACES 3
@@ -99411,6 +99898,42 @@ function hqTerrainReach(info, x, z) {
     }
     return seen;
 }
+/* THE WAY OUT (2026-11-27, mondo: "i fast traveled to bayside and it put me inside the mall and everything is see through and i cant find the
+   exit"): can a walker standing at (x, z) walk away from there? A bounded hqTerrainReach: true once the walk meets one of the room's door
+   landings (`o.room`'s doors, a square either side) or has covered `o.area` square metres (default 6,000: more than any sealed building);
+   false when it runs out first (a sealed pocket: the inside of a solid building such as the mall's outer shell in the city, whose walls stand
+   only on its outline, so its middle reads as free ground). A room with no door never refuses. The plot GO (three-renderer.js hq.goSpot)
+   refuses a sealed spot. `o.seen` (a Set) gets the pocket's node keys so the next candidate in the same pocket is refused without a walk. */
+function hqTerrainEscapes(info, x, z, o) {
+    o = o || {};
+    const i0 = Math.round((x - info.x0) / info.res), j0 = Math.round((z - info.z0) / info.res);
+    if (i0 < 0 || j0 < 0 || i0 >= info.nx || j0 >= info.nz) return false;
+    const y0 = hqTerrainFeet(info, info.x0 + i0 * info.res, info.z0 + j0 * info.res, null); if (y0 == null) return false;
+    const goals = new Set();
+    ((o.room && o.room.doors) || []).forEach(d => { try { const L = hqTerrainDoorLanding(o.room, d), gi = Math.round((L.x - info.x0) / info.res), gj = Math.round((L.z - info.z0) / info.res);
+        for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) goals.add((gi + a) + ',' + (gj + b)); } catch (e) {} });
+    if (!goals.size) return true;
+    const cap = Math.max(200, Math.round((o.area || 6000) / (info.res * info.res)));
+    const mine = new Set(), q = [[i0, j0, y0]], N = [[1, 0], [-1, 0], [0, 1], [0, -1]], climbLim = _hqTClimbLim(info, info.rules.climb), CE = hqTerrainClimbEdges(info);
+    const keyOf = (i, j, L) => L ? (i + ',' + j + ',' + L) : (i + ',' + j);
+    mine.add(keyOf(i0, j0, hqTerrainLayerAt(info, info.x0 + i0 * info.res, info.z0 + j0 * info.res, y0)));
+    if (goals.has(i0 + ',' + j0)) return true;
+    let head = 0;
+    while (head < q.length) {
+        if (mine.size >= cap) return true;
+        const p = q[head++];
+        const add = (i, j, y) => { const k = keyOf(i, j, hqTerrainLayerAt(info, info.x0 + i * info.res, info.z0 + j * info.res, y)); if (mine.has(k)) return false; mine.add(k); q.push([i, j, y]); return goals.has(i + ',' + j); };
+        const ce = CE.get(p[1] * info.nx + p[0]);
+        if (ce) for (const e of ce) { const ei = e.k % info.nx, ej = (e.k - ei) / info.nx; const ey = _hqTClimbLand(info, ei, ej, e.y); if (ey == null) continue; if (add(ei, ej, ey)) return true; }
+        for (const n of N) {
+            const i = p[0] + n[0], j = p[1] + n[1];
+            if (i < 0 || j < 0 || i >= info.nx || j >= info.nz) continue;
+            for (const c of _hqTNodeFeet(info, i, j, p[2], climbLim, false)) { const k = keyOf(i, j, c[1]); if (mine.has(k)) continue; mine.add(k); q.push([i, j, c[0]]); if (goals.has(i + ',' + j)) return true; }
+        }
+    }
+    if (o.seen) mine.forEach(k => o.seen.add(k));
+    return false;
+}
 /* THE TRAP CHECK (2026-09-17): the trap components of a compiled field — every cell the walker reaches from the
    door pads (with its jump) that cannot reach a pad again. A room passes when this is empty; hq-terrain.test.js
    insists on it for every terrain room and check-terrain.js prints the offenders. Each row: { cells, x, z, y }. */
@@ -101184,6 +101707,7 @@ const HQ_NPC_TEMPERS = {
         'centaur': 'territorial',   // 2026-11-24 THE CENTAUR: wild, warns once, then the hooves
         'cheerleader': 'coward', 'point guard': 'opportunist',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
         'princess': 'coward',   // 2026-11-24 THE PRINCESS: she calls for help, she does not wade in
+        'leopard girl': 'opportunist', 'draconian': 'brute', 'flower girl': 'coward',   // 2026-11-27 THE NEW RACES 5: she waits for the winner; he expects you to kneel; she runs
         'music producer': 'opportunist',   // 2026-11-24 THE MUSIC PRODUCER
         'zombie': 'brute', 'shadow entity': 'brute', 'werewolf': 'brute', 'wendigo': 'brute', 'ghoul': 'brute', 'flesheater': 'brute',
     },
@@ -111544,6 +112068,21 @@ const DOOR_ROSTER_LINES = {
         '“Somebody defend my honour. Anybody. I am right here.”',
         '“The crown is heavy. That is what the servants are for.”',
     ],
+    'leopard girl': [   // 2026-11-27 THE NEW RACES 5
+        '“Nine shows a week and a matinee. I have been on all fours since the eighties.”',
+        '“I do not chase. I wait. Then I do not have to chase.”',
+        '“Every spot is real. Do not ask about the tail.”',
+    ],
+    'draconian': [   // 2026-11-27 THE NEW RACES 5
+        '“I was building pyramids when your ancestors were still arguing about fire.”',
+        '“The cats were a setback. A temporary one.”',
+        '“Kneel. It saves time.”',
+    ],
+    'flower girl': [   // 2026-11-27 THE NEW RACES 5
+        '“He loves me. He loves me not. He is allergic.”',
+        '“Pollen season is every season if you are brave enough.”',
+        '“I water myself twice a day. Please do not stare.”',
+    ],
     'quarterback': [
         '“Back in college I could throw a pigskin over them mountains.”',
         '“I could’ve gone pro but they caught me betting on illegal Gnome fights. The world’s gone soft.”',
@@ -112127,7 +112666,7 @@ const DOOR_CAST = {
         ],
     },
     forrest: {
-        name: 'AGENT FORREST', title: 'FIELD AGENT · NO PHOTOGRAPHS', dept: 'Operations', race: 'bigfoot', gender: 'male', base: 'bigfoot',
+        name: 'AGENT FORREST', title: 'FIELD AGENT · NO PHOTOGRAPHS', dept: 'Operations', model: 'forrest', race: 'bigfoot', gender: 'male', base: 'bigfoot',   // 2026-11-27 THE NEW CHARACTERS: his own model, the bigfoot in an agent's suit (sprites.js DOOR_CAST_MODELS.forrest; mondo: "just a model swap for agent forest in story mode")
         lines: [],
         spots: [
             /* DOOR HQ 2.0 wave 3 (2026-11-26): the head of the Cryptid Division, behind his desk, facing the glass */

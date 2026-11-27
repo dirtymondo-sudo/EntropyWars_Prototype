@@ -20380,6 +20380,174 @@ const ThreeRenderer = (function () {
             return _abTens(P, u, 0.04, 1, function (j, sd) { var t = 0.1 + j * 0.08, d = drop(t); return [1.4 * d, -sd * 0.5 * d, 1, [0.1 * sd * d, -1.4 * d, -0.2 * d]]; });
         }]
     };
+    /* 🛻 THE MONSTER TRUCK (2026-11-27, thread "Make Meshy concepts for new characters"; mondo: the hood "a separate part and it
+       has like fangs, and the wheels could be separate too so they could spin, maybe even hydraulics"). ONE file
+       (Assets/characters/races/monster_truck/male/monster_truck.glb, put together from four Meshy parts by project files
+       character-concepts/truck.py): ewMtBody (the truck, > ewMtHood: the fanged hood, hinged at its back edge, rotation.x < 0
+       lifts it like a jaw), ewMtWheel0..3 (FL FR RL RR, pivot on the axle) and ewMtStrut0..3 (the hydraulic struts, pivot at the
+       axle, 0.30 m tall at rest: scale.y follows the body). Metres, front +Z, floor y 0, the truck's left = +X. A clip is
+       keyframes on those nodes like the Cursed TV's. A pose is a function of u (0 … 1) giving: y (the body's lift, m), rx (it
+       pitches nose down), rz (it rolls to its right), hood (0 shut … 1 wide open), spin (every wheel's turn, radians), lean (the
+       left / right wheels' extra turn against each other, a skid). The struts stretch to meet the body by themselves.
+       The spell threads add their own clips through ThreeRenderer.mtPose(slot, dur, pose) (below: a new or replaced slot for every truck built after it). */
+    var _MT_STRUT = 0.30, _MT_HOOD_OPEN = 0.95;
+    function _mtS(u, a, b) { var t = b > a ? Math.max(0, Math.min(1, (u - a) / (b - a))) : (u >= a ? 1 : 0); return t * t * (3 - 2 * t); }
+    function _mtBump(u, a, b, c) { return _mtS(u, a, b) * (1 - _mtS(u, b, c)); }
+    function _mtClip(name, dur, pose, R) {
+        var N = Math.max(8, Math.round(dur * 30)), tt = [], bp = [], bq = [], hq = [], wq = [[], [], [], []], ss = [[], [], [], []];
+        var e = new THREE.Euler(0, 0, 0, 'YXZ'), q = new THREE.Quaternion();
+        for (var k = 0; k <= N; k++) {
+            var u = k / N, p = pose(u) || {};
+            var f = function (n) { return p[n] || 0; };
+            tt.push(u * dur);
+            bp.push(0, f('y'), 0);
+            e.set(f('rx'), 0, -f('rz'), 'YXZ'); q.setFromEuler(e); bq.push(q.x, q.y, q.z, q.w);
+            e.set(-_MT_HOOD_OPEN * Math.max(0, Math.min(1.2, f('hood'))), 0, 0, 'YXZ'); q.setFromEuler(e); hq.push(q.x, q.y, q.z, q.w);
+            for (var i = 0; i < 4; i++) {
+                var w = R.wheels[i]; if (!w) continue;
+                e.set(f('spin') + (i >= 2 ? f('spinR') : f('spinF')) + (w.x > 0 ? 1 : -1) * f('lean'), 0, 0, 'YXZ'); q.setFromEuler(e); wq[i].push(q.x, q.y, q.z, q.w);   // spinF / spinR: one axle's extra turn (the spell thread's Burnout: the back wheels only)
+                /* where the body's underside over this strut went: lift, minus the pitch at its z, minus the roll at its x */
+                var d = f('y') - w.z * Math.sin(f('rx')) - w.x * Math.sin(f('rz'));
+                var sy = Math.max(0.15, 1 + d / _MT_STRUT); ss[i].push(1, sy, 1);
+            }
+        }
+        var V = THREE.VectorKeyframeTrack, Q = THREE.QuaternionKeyframeTrack;
+        var out = [new V('ewMtBody.position', tt, bp), new Q('ewMtBody.quaternion', tt, bq)];
+        if (R.hood) out.push(new Q('ewMtHood.quaternion', tt, hq));
+        for (var j = 0; j < 4; j++) {
+            if (!R.wheels[j]) continue;
+            out.push(new Q('ewMtWheel' + j + '.quaternion', tt, wq[j]));
+            if (R.struts[j]) out.push(new V('ewMtStrut' + j + '.scale', tt, ss[j]));
+        }
+        return new THREE.AnimationClip(name, dur, out);
+    }
+    var _MT_POSES = {
+        /* idle (3 s): the engine idles, the body shudders on the struts, the jaw breathes, a rev now and then */
+        idle: [3.0, function (u) {
+            var rev = _mtBump(u, 0.55, 0.62, 0.8);
+            return { y: Math.sin(u * Math.PI * 2 * 9) * 0.006 + rev * 0.03, rx: -rev * 0.03, hood: 0.06 + 0.05 * Math.sin(u * Math.PI * 2) + rev * 0.15,
+                     rz: Math.sin(u * Math.PI * 2 * 9 + 1) * 0.004 };
+        }],
+        /* walk (1 s loop): two turns of the wheels, the body rocks on the struts */
+        walk: [1.0, function (u) {
+            return { spin: u * Math.PI * 4, y: 0.02 + Math.abs(Math.sin(u * Math.PI * 4)) * 0.03, rx: Math.sin(u * Math.PI * 2) * 0.03,
+                     rz: Math.sin(u * Math.PI * 2 + 1) * 0.02, hood: 0.1 };
+        }],
+        /* the bite (basic attack / melee cast): it rears, lunges, the hood snaps open and bites shut */
+        castMelee: [1.1, function (u) {
+            var rear = _mtBump(u, 0.0, 0.3, 0.45), lunge = _mtBump(u, 0.35, 0.5, 0.85);
+            var hood = _mtS(u, 0.1, 0.35) * (1 - _mtS(u, 0.5, 0.58)) + _mtBump(u, 0.62, 0.7, 0.8) * 0.4;
+            return { y: rear * 0.12, rx: -rear * 0.22 + lunge * 0.12, hood: hood, spin: lunge * 2.5 };
+        }],
+        /* a cast: it revs in place, wheels spinning, nose up, the hood wide (a roar) */
+        cast: [1.4, function (u) {
+            var a = _mtS(u, 0.0, 0.25) * (1 - _mtS(u, 0.75, 1.0));
+            return { y: a * 0.06 + Math.sin(u * Math.PI * 2 * 12) * 0.008 * a, rx: -a * 0.12, hood: a * 1.0, spin: u * Math.PI * 6 * a };
+        }],
+        /* the big one: it hops on its hydraulics */
+        castAOE: [1.4, function (u) {
+            var hop = _mtBump(u, 0.15, 0.4, 0.62), squat = _mtBump(u, 0.0, 0.12, 0.2) + _mtBump(u, 0.6, 0.66, 0.85);
+            return { y: hop * 0.45 - squat * 0.08, rx: -hop * 0.1, hood: hop * 0.8, spin: u * Math.PI * 3 };
+        }],
+        /* a support cast: it bounces twice, low-rider style */
+        castSupport: [1.2, function (u) {
+            return { y: Math.abs(Math.sin(u * Math.PI * 2)) * 0.12, rz: Math.sin(u * Math.PI * 2) * 0.08, hood: 0.3 };
+        }],
+        /* the ultimate: rears up on its back wheels, roaring */
+        castUltimate: [2.0, function (u) {
+            var a = _mtS(u, 0.05, 0.35) * (1 - _mtS(u, 0.75, 0.95));
+            return { y: a * 0.2, rx: -a * 0.45, hood: a * 1.1, spin: u * Math.PI * 8 };
+        }],
+        /* hit: jolts back, the hood clacks */
+        hit: [0.6, function (u) {
+            var j = _mtBump(u, 0.0, 0.15, 0.6);
+            return { y: j * 0.05, rx: -j * 0.1, rz: j * 0.06, hood: _mtBump(u, 0.05, 0.15, 0.4) * 0.5, spin: -j * 0.4 };
+        }],
+        /* 🛻 THE SPELLS (2026-11-27, thread "Make monster truck and nutcracker spells"; data.js `animSlot` on each row). */
+        /* Chomp: nose up with the hood wide, lunge, SNAP; a second smaller bite, settle */
+        mtChomp: [1.2, function (u) {
+            var rear = _mtBump(u, 0.0, 0.25, 0.4), lunge = _mtBump(u, 0.3, 0.45, 0.8);
+            var hood = _mtS(u, 0.05, 0.28) * 1.1 * (1 - _mtS(u, 0.4, 0.46)) + _mtBump(u, 0.52, 0.6, 0.7) * 0.6;
+            return { y: rear * 0.1 + lunge * 0.04, rx: -rear * 0.2 + lunge * 0.16, hood: hood, spin: lunge * 2.0 };
+        }],
+        /* Ram: it squats and revs, the wheels a blur, then lunges nose down with the jaw wide and bites shut at the crash */
+        mtRam: [1.3, function (u) {
+            var rev = _mtS(u, 0.0, 0.15) * (1 - _mtS(u, 0.38, 0.45)), go = _mtBump(u, 0.4, 0.55, 0.9);
+            var shake = Math.sin(u * Math.PI * 2 * 14) * 0.012 * rev;
+            return { y: rev * 0.03 + shake, rx: -rev * 0.14 + go * 0.12, rz: shake, hood: rev * 0.7 + go * 0.45 * (1 - _mtS(u, 0.72, 0.78)),
+                     spin: u * Math.PI * 12 };
+        }],
+        /* Hydraulic Slam: the struts squat it down, it leaps on them, hangs nose up, slams on all four, bounces */
+        mtHop: [1.5, function (u) {
+            var squat = _mtBump(u, 0.0, 0.14, 0.2), air = _mtBump(u, 0.18, 0.34, 0.5), crush = _mtBump(u, 0.5, 0.55, 0.66), bounce = _mtBump(u, 0.62, 0.72, 0.85);
+            return { y: -squat * 0.12 + air * 0.9 - crush * 0.14 + bounce * 0.12, rx: -air * 0.12 + crush * 0.05, rz: air * 0.04,
+                     hood: air * 0.8 + crush * 0.3, spin: air * 1.5 };
+        }],
+        /* Burnout: the front braked, the back wheels a blur, the body shudders and squats at the back, the jaw roars open */
+        mtBurnout: [1.6, function (u) {
+            var a = _mtS(u, 0.0, 0.15) * (1 - _mtS(u, 0.85, 1.0)), sh = Math.sin(u * Math.PI * 2 * 16);
+            return { y: a * (0.04 + sh * 0.012), rx: -a * 0.1, rz: a * (sh * 0.025 + Math.sin(u * Math.PI * 3) * 0.04),
+                     hood: a * (0.8 + 0.25 * Math.abs(Math.sin(u * Math.PI * 2 * 5))), spinR: u * Math.PI * 22 * a };
+        }],
+        /* death: the struts give, it slumps to its left and the jaw falls open (held) */
+        death: [1.5, function (u) {
+            var s = _mtS(u, 0.0, 0.7);
+            return { y: -s * 0.2, rz: -s * 0.18, rx: s * 0.08, hood: _mtS(u, 0.2, 0.6) * 0.7 };
+        }]
+    };
+    function _mtBuild(root) {
+        var R = { wheels: [], struts: [], hood: !!root.getObjectByName('ewMtHood') };
+        if (!root.getObjectByName('ewMtBody')) return null;
+        for (var i = 0; i < 4; i++) {
+            var w = root.getObjectByName('ewMtWheel' + i);
+            R.wheels.push(w ? { x: w.position.x, z: w.position.z } : null);
+            R.struts.push(!!root.getObjectByName('ewMtStrut' + i));
+        }
+        var clips = {};
+        Object.keys(_MT_POSES).forEach(function (slot) { var p = _MT_POSES[slot]; clips[slot] = _mtClip(slot, p[0], p[1], R); });
+        clips.castMagic = clips.cast; clips.castRanged = clips.cast; clips.castHeal = clips.castSupport; clips.run = clips.walk;
+        clips.attack = clips.castMelee;
+        return clips;
+    }
+    /* 🥜 THE NUTCRACKER'S JAW (same day): the Meshy rig plays the library like any unit; its jaw (a mesh skinned to the added bone
+       ewJaw, project files character-concepts/jaw.py; rotation about its own x > 0 opens it) is set here after the clip, from
+       the unit loop, only for a def with `jawBone`: it clacks through a cast or an attack, snaps on a hit, hangs open in death,
+       and rests shut. The spell threads can hold it open for a moment with ThreeRenderer.jawOpen(uid, amount 0 … 1, ms). */
+    var _jawHolds = {};
+    /* 🌰 THE JAW'S SPELL PATTERNS (2026-11-27, thread "Make monster truck and nutcracker spells"): ThreeRenderer.jawAct(uid, pat, ms)
+       plays one of these (amount 0 … 1 by seconds since it began) instead of a plain hold. Fired on the spell's windup beat
+       (three-vfx-effects.js _NC_SPELL_ACTS), which online.js relays, so the guest sees the same. */
+    function _jawPat(pat, t) {
+        var S = function (x) { return Math.abs(Math.sin(x)); };
+        if (pat === 'clack') return t < 0.9 ? S(t * Math.PI * 3.4) * 1.1 : 0;                       // clack clack clack
+        if (pat === 'crack') return t < 0.55 ? Math.min(1.2, t / 0.45 * 1.2) : (t < 0.62 ? 0 : 0.15); // wide, wider, SNAP
+        if (pat === 'march') return 0.15 + 0.6 * S(t * Math.PI * 4);                                 // in step
+        if (pat === 'suite') return 0.2 + 0.9 * Math.pow(S(t * Math.PI * 2.5), 3);                   // on the beats
+        return 0;
+    }
+    var _jawQ = null, _jawE = null;
+    function _jawTick(entry, uid, now) {
+        var b = entry._ew_jaw;
+        if (b === undefined) {
+            b = null;
+            try { entry.model.traverse(function (n) { if (!b && n.isBone && n.name === entry.modelDef.jawBone) b = n; }); } catch (e) { b = null; }
+            entry._ew_jaw = b;
+            if (b) entry._ew_jawRest = b.quaternion.clone();
+        }
+        if (!b) return;
+        var a = entry._ew_curAnim || '', t = now / 1000, want = 0;
+        var h = _jawHolds[uid];
+        if (h && now < h.until) want = h.pat ? _jawPat(h.pat, (now - h.t0) / 1000) : h.amt;
+        else if (/^death|dead/i.test(a)) want = 0.9;
+        else if (/^hit/i.test(a)) want = 0.5;
+        else if (/cast|attack|melee|shoot/i.test(a)) want = 0.3 + 0.7 * Math.abs(Math.sin(t * 11));
+        var cur = entry._ew_jawAmt || 0;
+        cur += (want - cur) * Math.min(1, 0.35);
+        entry._ew_jawAmt = cur;
+        if (!_jawQ) { _jawQ = new THREE.Quaternion(); _jawE = new THREE.Euler(); }
+        _jawE.set(cur * 0.45, 0, 0); _jawQ.setFromEuler(_jawE);
+        b.quaternion.copy(entry._ew_jawRest).multiply(_jawQ);
+    }
     function _abBuild(root) {
         if (!root.getObjectByName('ewAbBody') || !root.getObjectByName('ewAbLimb0')) return null;
         var R = { n: {} };
@@ -20631,7 +20799,9 @@ const ThreeRenderer = (function () {
         /* 🎭 THE HOLLOW (above, _hlBuild): the maw ring, the masks, the limbs, the finger chandelier, the crystals */
         hollowBody: function (root) { _hlOn = true; return _hlBuild(root); },
         /* 🫀 THE ABOMINATION (above, _abBuild): the arms, the back tentacles, the leg tentacles, the head, the cage */
-        abomination: function (root) { return _abBuild(root); }
+        abomination: function (root) { return _abBuild(root); },
+        /* 🛻 THE MONSTER TRUCK (above, _mtBuild): the body on its struts, the wheels, the fanged hood */
+        monsterTruck: function (root) { return _mtBuild(root); }
     };
     _PROC_RIGS.unicornWings.deps = [UNI_WING_URL, UNI_HORN_URL];
     /* ♟ THE CHESS PIECE: one hinge, the same moves, for each of the six looks (sprites.js CHESS_PIECE_3D) */
@@ -23233,7 +23403,8 @@ const ThreeRenderer = (function () {
             if (_tvStatic) _tvStaticTick();   // 📺 THE CURSED TV: the shared snow moves (throttled, once a frame whoever asks)
             if (_vrCodeTex) _vrCodeTick();   // 🦠 THE VIRUS: the code runs down the tendrils
             if (_hlOn) _hlUnitTick(entry, uid, now);   // 🎭 THE HOLLOW: the masks at home, the mask a Masked unit wears
-            if (entry.modelDef && entry.modelDef.procRig === 'abomination') _abLimbTick(entry, uid, dt);   // 🫀 THE ABOMINATION: the limbs it has, the cage away
+            if (entry.modelDef && entry.modelDef.procRig === 'abomination') _abLimbTick(entry, uid, dt);
+            if (entry.modelDef && entry.modelDef.jawBone) _jawTick(entry, uid, now);   // 🥜 THE NUTCRACKER'S JAW: clacks after the clip   // 🫀 THE ABOMINATION: the limbs it has, the cage away
             if (entry.appearanceRig) { entry.model.updateMatrixWorld(true); entry.appearanceRig.tick(); }   // rev 9: the skirt against the legs
             var _hsR = _unitModelRigs.get(uid); if (_hsR && _hsR.hairSweep) _hsR.hairSweep();   // THE HAIR EVERYWHERE: the late hair
             if (entry._ew_sway && entry._ew_sway.userData.ewDemi) _demiSlot(entry);   // THE DEMIURGE: the cast's slot poses his parts
@@ -111522,11 +111693,22 @@ const ThreeRenderer = (function () {
             var pts = [];
             for (var dx = -R; dx <= R + 0.01; dx += step) for (var dz = -R; dz <= R + 0.01; dz += step) { var d = Math.hypot(dx, dz); if (d <= R + 0.01) pts.push([d, dx, dz]); }
             pts.sort(function (a, b) { return a[0] - b[0]; });
+            /* THE WAY OUT (2026-11-27, mondo: "i fast traveled to bayside and it put me inside the mall and everything is see through and i cant find
+               the exit"): a solid building's walls stand only on its outline, so its middle read as free ground and the plot GO landed inside the
+               shell (seen from inside, every face is culled). A landing must be able to walk away (data.js hqTerrainEscapes); a sealed pocket's
+               squares are remembered so the next candidate in it is skipped without a second walk. Off: window.EW_GO_NO_WAYOUT = true. */
+            var sealed = new Set(), wayOut = !!(ti && typeof hqTerrainEscapes === 'function' && !(typeof window !== 'undefined' && window.EW_GO_NO_WAYOUT));
             for (var i = 0; i < pts.length; i++) {
                 var x = cx + pts[i][1], z = cz + pts[i][2], y = free(x, z);
                 if (y === null) continue;
                 /* two more squares round it free too, so the landing is not a gap between two props */
                 if (free(x + step, z) === null && free(x - step, z) === null) continue;
+                if (wayOut) {
+                    var nk = null; try { nk = hqTerrainNodeKey(ti, x, z, y); } catch (eK) {}
+                    if (nk != null && sealed.has(nk)) continue;
+                    var esc = true; try { esc = hqTerrainEscapes(ti, x, z, { room: (typeof DOOR_HQ !== 'undefined' && _hq.opts && DOOR_HQ.rooms[_hq.opts.room]) || _hq.room, seen: sealed }); } catch (eW) { console.warn('[HQ] the way-out check failed', eW); }
+                    if (!esc) continue;
+                }
                 if (V && V.on && V.kind === 'car') { V.x = x; V.z = z; V.y = y; V.v = 0; V.vy = 0; V.wg = null; _hq.cam.init = false; _hq.dirty = true; }
                 var pl = _hq.player;
                 pl.x = x; pl.z = z; pl.y = pl.visY = y; pl.air = false; pl.vy = 0; pl.jumpT = -1; pl.moving = false;
@@ -112732,6 +112914,12 @@ const ThreeRenderer = (function () {
         mountUnit: function (uid, o) { try { return _mountUnit(uid, o); } catch (e) { return false; } },
         demiAct: function (uid, name, ms) { try { return _demiAct(uid, name, ms); } catch (e) { return false; } },
         spellSky: function (type, ms, o) { try { return _spellSkySet(type, ms, o); } catch (e) { return false; } },   // THE SPELL SKY: a boss spell's own celestial event   // THE DEMIURGE: a spell's own part act
+        /* 🛻 THE MONSTER TRUCK: a slot's motion for every truck built after this call (dur s, pose(u) -> { y rx rz hood spin lean });
+           an existing slot is replaced. Models already built keep their clips. */
+        mtPose: function (slot, dur, pose) { if (slot && typeof pose === 'function') _MT_POSES[slot] = [+dur || 1, pose]; return true; },
+        /* 🥜 THE NUTCRACKER'S JAW: hold unit uid's jaw open (0 … 1) for ms, over whatever its clip does */
+        jawAct: function (uid, pat, ms) { var n = _animNow(); _jawHolds[uid] = { pat: String(pat || 'clack'), t0: n, until: n + (+ms || 900) }; return true; },   // 🌰 THE JAW'S SPELL PATTERNS
+        jawOpen: function (uid, amt, ms) { _jawHolds[uid] = { amt: Math.max(0, Math.min(1.2, +amt || 0)), until: _animNow() + (+ms || 600) }; return true; },
         mountKeyFor: function (unit) { return _mountKeyFor(unit); },
         /* THE LOADING SCREEN (2026-09-19): how many model files are still in flight through the two GLB
            caches — the HQ load card's progress line (map.js) reads it; textures are not counted */
