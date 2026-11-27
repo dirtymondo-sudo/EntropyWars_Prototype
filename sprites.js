@@ -158,6 +158,13 @@ const EW_ASSET_MOVES = [
   ['Assets/Sprites/Races/cheerleader/', 'Assets/characters/races/cheerleader/'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
   ['Assets/Sprites/Races/princess/', 'Assets/characters/races/princess/'],   // 2026-11-24 THE PRINCESS
   ['Assets/Sprites/Races/point_guard/', 'Assets/characters/races/point_guard/'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
+  ['Assets/Sprites/Races/monster_truck/', 'Assets/characters/races/monster_truck/'],   // 2026-11-27 THE NEW CHARACTERS
+  ['Assets/Sprites/Races/nutcracker/', 'Assets/characters/races/nutcracker/'],   // 2026-11-27 THE NEW CHARACTERS
+  ['Assets/Sprites/Races/leopard_girl/', 'Assets/characters/races/leopard_girl/'],   // 2026-11-27 THE NEW CHARACTERS
+  ['Assets/Sprites/Races/draconian/', 'Assets/characters/races/draconian/'],   // 2026-11-27 THE NEW CHARACTERS
+  ['Assets/Sprites/Races/flower_girl/', 'Assets/characters/races/flower_girl/'],   // 2026-11-27 THE NEW CHARACTERS
+  ['Assets/Sprites/Races/leprechaun/', 'Assets/characters/races/leprechaun/'],   // 2026-11-27 THE NEW CHARACTERS
+  ['Assets/Sprites/Races/medic/', 'Assets/characters/races/medic/'],   // 2026-11-27 THE NEW CHARACTERS
   ['Assets/Sprites/Races/music_producer/', 'Assets/characters/races/music_producer/'],   // 2026-11-24 THE MUSIC PRODUCER
   ['Assets/Sprites/Races/librarian/', 'Assets/characters/races/librarian/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/televangelist/', 'Assets/characters/races/televangelist/'],   // 2026-11-17 THE NEW RACES 2
@@ -617,6 +624,13 @@ const RACE_SPRITE_GENDERS = {
   'weatherman': 'both',   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR (one race: the Weatherman is the male, the News Anchor the female)
   'centaur': 'both',   // 2026-11-24 THE CENTAUR: a male (chestnut) and a female (dapple grey), one race
   'cheerleader': 'female',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
+  'monster truck': 'male',   // 2026-11-27 THE NEW CHARACTERS (one truck; the model def sits under male)
+  'nutcracker': 'male',   // 2026-11-27 THE NEW CHARACTERS
+  'leopard girl': 'female',   // 2026-11-27 THE NEW CHARACTERS
+  'draconian': 'male',   // 2026-11-27 THE NEW CHARACTERS
+  'flower girl': 'female',   // 2026-11-27 THE NEW CHARACTERS
+  'leprechaun': 'both',   // 2026-11-27 THE NEW CHARACTERS
+  'medic': 'both',   // 2026-11-27 THE NEW CHARACTERS (one race: the male is the Doctor, the female the Nurse)
   'princess': 'female',   // 2026-11-24 THE PRINCESS
   'point guard': 'male',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
   'music producer': 'male',   // 2026-11-24 THE MUSIC PRODUCER
@@ -803,6 +817,13 @@ const _CHARACTER_SPRITES = {
   'weatherman': `${_S}/Races/weatherman/male/weatherman_px.png`,   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR — 128x128 pixel sprite (Sprite AI restyle of his Meshy concept)
   'centaur': `${_S}/Races/centaur/male/centaur_m_px.png`,   // 2026-11-24 THE CENTAUR — 128x128 pixel sprite (Sprite AI restyle of his built model)
   'cheerleader': `${_S}/Races/cheerleader/female/cheerleader_px.png`,   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — 128x128 pixel sprite (Sprite AI restyle of her Meshy concept)
+  'monster truck': `${_S}/Races/monster_truck/male/monster_truck_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
+  'nutcracker': `${_S}/Races/nutcracker/male/nutcracker_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
+  'leopard girl': `${_S}/Races/leopard_girl/female/leopard_girl_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
+  'draconian': `${_S}/Races/draconian/male/draconian_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
+  'flower girl': `${_S}/Races/flower_girl/female/flower_girl_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
+  'leprechaun': `${_S}/Races/leprechaun/male/leprechaun_m_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
+  'medic': `${_S}/Races/medic/male/doctor_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
   'princess': `${_S}/Races/princess/female/princess_px.png`,   // 2026-11-24 THE PRINCESS — 128x128 pixel sprite (Sprite AI restyle of her Meshy concept)
   'point guard': `${_S}/Races/point_guard/male/point_guard_px.png`,   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — 128x128 pixel sprite (Sprite AI restyle of his Meshy concept)
   'music producer': `${_S}/Races/music_producer/male/music_producer_px.png`,   // 2026-11-24 THE MUSIC PRODUCER — 128x128 pixel sprite (Sprite AI restyle of his Meshy concept)
@@ -939,6 +960,9 @@ const _NEW_FEMALE_SPRITES = {
   'cheerleader': `${_S}/Races/cheerleader/female/cheerleader_px.png`,   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
   'princess': `${_S}/Races/princess/female/princess_px.png`,   // 2026-11-24 THE PRINCESS
   'vtuber': `${_S}/Races/vtuber/female/vtuber_f_px.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of her full Meshy 3D model's front render)
+  'leprechaun': `${_S}/Races/leprechaun/female/leprechaun_f_px.png`,   // 2026-11-27 THE NEW CHARACTERS
+  'medic': `${_S}/Races/medic/female/nurse_px.png`,   // 2026-11-27 THE NEW CHARACTERS — the Nurse
+  'martian': `${_S}/Races/martian/female/martian_f_px.png`,   // 2026-11-27 THE NEW CHARACTERS — the female martian
 };
 const _NEW_MALE_SPRITES = {
   'nordic': 'https://cdn.entropywars.net/Assets/characters/races/nordic/male/nordic_m_v2_px.png',   // 2026-11-24 his new model (Sprite AI restyle of its front render)
@@ -966,6 +990,8 @@ const _NEW_MALE_SPRITES = {
   'mime': `${_S}/Races/mime/male/mime_m_px.png`,
   'mermaid': `${_S}/Races/mermaid/male/merman_px.png`,
   'succubus': `${_S}/Races/succubus/male/incubus_px.png`,
+  'leprechaun': `${_S}/Races/leprechaun/male/leprechaun_m_px.png`,   // 2026-11-27 THE NEW CHARACTERS
+  'medic': `${_S}/Races/medic/male/doctor_px.png`,   // 2026-11-27 THE NEW CHARACTERS — the Doctor
 };
 
 function getR2RaceSpriteUrl(race, gender, cls) {
@@ -2208,6 +2234,10 @@ const RACE_MODELS_3D = {
       death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting',
       castRanged: 'Cowboy_Quick_Draw_Shooting', castMagic: 'Charged_Spell_Cast',
     }, { castTimeScale: 5.0, heightRatio: 0.82 }),   // little green man
+    female: _mkUAL('martian/female', 'martian_f', {   // 2026-11-27 THE NEW CHARACTERS: the female martian (a Meshy unit from mondo's pick)
+      model: 'https://cdn.entropywars.net/Assets/characters/races/martian/female/Meshy_AI_martian_f_Running.glb',
+      heightRatio: 0.85,
+    }),
   },
   // Machine Elf (Engineer, specialist caster) — "DMT_clockwork_elf". A tiny
   // psychedelic clockwork entity: Charged_Spell_Cast is the generic/magic
@@ -2883,6 +2913,65 @@ const RACE_MODELS_3D = {
     female: _mkUAL('butterfly_girl', 'butterfly_girl', {
       model: 'https://cdn.entropywars.net/Assets/characters/races/butterfly_girl/female/Meshy_AI_butterfly_girl_wings2_Running.glb',   // 2026-11-23 THE WING BONES (bake-wings.py): the same rig + two wing bones that beat
       heightRatio: 0.95, basicAttackKind: 'magic',
+    }),
+  },
+
+  /* 2026-11-27 THE NEW CHARACTERS (thread "Make Meshy concepts for new characters"; mondo picked the concepts and said "wire them up"): Meshy
+     image-to-3d + rig by Claude, sources + scripts in project files character-concepts/ (gen.py, model.py, models/, sprites/).
+     Kits (spells, stats, the unlock) are the three spell threads' (data.js EW_COMING_RACES until then). */
+  /* 🛻 THE MONSTER TRUCK: a living truck, no bones; procRig 'monsterTruck' (three-renderer.js THE MONSTER TRUCK) bounces the body
+     on its struts, spins the wheels, snaps the fanged hood and slumps it on death. One file put together from four Meshy parts by
+     project files character-concepts/truck.py: ewMtBody (> ewMtHood, hinge at its back edge: rotation.x < 0 opens it),
+     ewMtWheel0..3 (FL FR RL RR, pivot on the axle: rotation.x spins), ewMtStrut0..3 (pivot at the axle: scale.y stretches).
+     Front +Z, floor y 0. */
+  'monster truck': {
+    male: { model: 'https://cdn.entropywars.net/Assets/characters/races/monster_truck/male/monster_truck.glb', clips: {}, procRig: 'monsterTruck', heightRatio: 1.3, yawOffset: 0, basicAttackKind: 'physical',
+      moveTimeScale: 1, castTimeScale: 1, deathTimeScale: 1, hitTimeScale: 1, jumpTimeScale: 1 },
+  },
+  /* 🥜 THE NUTCRACKER: the Meshy rig + its own jaw, skinned to the added bone ewJaw (child of Head, pivot at the hinge:
+     rotation.x > 0 opens it; project files character-concepts/jaw.py). three-renderer.js THE NUTCRACKER'S JAW clacks it (`jawBone`). */
+  'nutcracker': {
+    male: _mkUAL('nutcracker', 'nutcracker', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/nutcracker/male/Meshy_AI_nutcracker_Running.glb',
+      heightRatio: 1.05, basicAttackKind: 'physical', jawBone: 'ewJaw',
+    }),
+  },
+  'leopard girl': {
+    female: _mkUAL('leopard_girl', 'leopard_girl', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/leopard_girl/female/Meshy_AI_leopard_girl_Running.glb',
+      heightRatio: 0.97, basicAttackKind: 'claw',
+    }),
+  },
+  'draconian': {
+    male: _mkUAL('draconian', 'draconian', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/draconian/male/Meshy_AI_draconian_Running.glb',
+      heightRatio: 1.2, basicAttackKind: 'claw',
+    }),
+  },
+  'flower girl': {
+    female: _mkUAL('flower_girl', 'flower_girl', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/flower_girl/female/Meshy_AI_flower_girl_Running.glb',
+      heightRatio: 0.95, basicAttackKind: 'magic',
+    }),
+  },
+  'leprechaun': {
+    male: _mkUAL('leprechaun', 'leprechaun_m', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/leprechaun/male/Meshy_AI_leprechaun_m_Running.glb',
+      heightRatio: 0.65, basicAttackKind: 'magic',
+    }),
+    female: _mkUAL('leprechaun', 'leprechaun_f', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/leprechaun/female/Meshy_AI_leprechaun_f_Running.glb',
+      heightRatio: 0.7, basicAttackKind: 'magic',
+    }),
+  },
+  'medic': {   // the male is the Doctor, the female the Nurse
+    male: _mkUAL('medic', 'doctor', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/medic/male/Meshy_AI_doctor_Running.glb',
+      heightRatio: 1.0, basicAttackKind: 'physical',
+    }),
+    female: _mkUAL('medic', 'nurse', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/medic/female/Meshy_AI_nurse_Running.glb',
+      heightRatio: 0.94, basicAttackKind: 'magic',
     }),
   },
 
@@ -7474,6 +7563,9 @@ const DOOR_CAST_MODELS = {
   dorian:   _mkCast('Dorian_Gates', { heightRatio: 1.02 }),
   // facilities — renovations, new doors, the trap door in your closet
   otto:     _mkCast('Otto',         { heightRatio: 1.0 }),
+  // Agent Forrest (the Cryptid Division): a bigfoot in an agent's suit, his own model, not the roster bigfoot's (2026-11-27 THE NEW CHARACTERS, mondo:
+  // "just a model swap for agent forest in story mode"); the roster bigfoot keeps its look
+  forrest:  _mkCast('agent_forrest', { heightRatio: 1.4, model: 'https://cdn.entropywars.net/Assets/characters/races/bigfoot/agent_forrest/Meshy_AI_agent_forrest_Running.glb' }),
   // the director; not seen. The Janitor is the same height on purpose.
   doorman:  _mkCast('Doorman',      { heightRatio: 1.0 }),
   // $15/hour, no benefits, a key to every room; Meshy export without _biped
@@ -7751,6 +7843,13 @@ const RACE_SPRITES = {
   'weatherman': `${_S}/Races/weatherman/male/weatherman_px.png`,   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR — 128x128 pixel sprite (Sprite AI restyle of his Meshy concept)
   'centaur': `${_S}/Races/centaur/male/centaur_m_px.png`,   // 2026-11-24 THE CENTAUR
   'cheerleader': `${_S}/Races/cheerleader/female/cheerleader_px.png`,   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — 128x128 pixel sprite (Sprite AI restyle of her Meshy concept)
+  'monster truck': `${_S}/Races/monster_truck/male/monster_truck_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
+  'nutcracker': `${_S}/Races/nutcracker/male/nutcracker_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
+  'leopard girl': `${_S}/Races/leopard_girl/female/leopard_girl_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
+  'draconian': `${_S}/Races/draconian/male/draconian_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
+  'flower girl': `${_S}/Races/flower_girl/female/flower_girl_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
+  'leprechaun': `${_S}/Races/leprechaun/male/leprechaun_m_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
+  'medic': `${_S}/Races/medic/male/doctor_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
   'princess': `${_S}/Races/princess/female/princess_px.png`,   // 2026-11-24 THE PRINCESS — 128x128 pixel sprite (Sprite AI restyle of her Meshy concept)
   'point guard': `${_S}/Races/point_guard/male/point_guard_px.png`,   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — 128x128 pixel sprite (Sprite AI restyle of his Meshy concept)
   'music producer': `${_S}/Races/music_producer/male/music_producer_px.png`,   // 2026-11-24 THE MUSIC PRODUCER — 128x128 pixel sprite (Sprite AI restyle of his Meshy concept)
