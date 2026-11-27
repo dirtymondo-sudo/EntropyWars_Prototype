@@ -84563,7 +84563,8 @@ const ThreeRenderer = (function () {
             if (!B.n) return null;
             var g = new THREE.BufferGeometry();
             g.setAttribute('position', new THREE.Float32BufferAttribute(B.pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(B.uv, 2)); g.setIndex(B.idx); g.computeVertexNormals();
-            var m = new THREE.Mesh(g, mat); m.renderOrder = order || 2; m._ew_hqRoadMark = true; G.add(m); return m;
+            var m = new THREE.Mesh(g, mat); m.renderOrder = order || 2; m._ew_hqRoadMark = true; if (mat && mat.transparent) m._ew_bunOut = true;   /* THE PAINT BESIDE THE RECORDING (2026-11-27, mondo on WebGPU: "im in bayside and there's absolutely no road lines"): a see-through sheet on the ground inside the shell's render bundle was not drawn at all on WebGPU (the lines, the manholes, the stains); it is drawn beside the recording, after it, like a mover */
+            G.add(m); return m;
         };
         var paint = new THREE.MeshLambertMaterial({ color: neon ? 0xd8dce8 : 0xe8e6da, transparent: true, opacity: neon ? 0.82 : 0.9, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
         paint.emissive = new THREE.Color(neon ? 0x30343c : 0x2a2924);
@@ -84849,7 +84850,7 @@ const ThreeRenderer = (function () {
             if (!r[6]) { seg(za, zb); return; }
             for (var mm = Math.ceil((za - R.dash / 2) / R.period - 0.5); ; mm++) { var zm = (mm + 0.5) * R.period; if (zm + R.dash / 2 > zb + 0.01) break; if (zm - R.dash / 2 < za - 0.01) continue; seg(zm - R.dash / 2, zm + R.dash / 2); }
         });
-        var grp = new THREE.Group(); grp._ew_hqRoadPaint = style;
+        var grp = new THREE.Group(); grp._ew_hqRoadPaint = style; grp._ew_bunOut = true;   /* THE PAINT BESIDE THE RECORDING: see _hqBuildRoadMarkings' mk */
         var mesh = function (key, mat, order) {
             var B = buckets[key]; if (!B || !B.n) return;
             var g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(B.pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(B.uv, 2));
