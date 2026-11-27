@@ -3897,6 +3897,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             if (intent === 'burst' && _CHPG_ON_BURST[spellId] && params && params.tx != null && !_catOff('spells')) try { _CHPG_ON_BURST[spellId](params); } catch (e) { console.warn('[VFX] cheer/guard failed', spellId, e); }   // 📣🏀 THE CHEERLEADER + THE POINT GUARD
             if (intent === 'windup' || intent === 'burst') try { _lmxStage(intent, spellId, params); } catch (e) {}   // 🍀🩺👽 THE LEPRECHAUN + THE MEDIC + THE MARTIAN GIRL
             if (intent === 'windup' || intent === 'burst') try { _ogStage(intent, spellId, params); } catch (e) { console.warn('[VFX] origami failed', spellId, e); }   // 🕊 THE ORIGAMI GIRL: she folds on the windup, the shape strikes on the burst
+            if (intent === 'burst') try { _acStage(intent, spellId, params); } catch (e) { console.warn('[VFX] actor failed', spellId, e); }   // 🎭 THE ACTOR: each role's look on the hit
             return;
         }
         /* Timeline cues (Spell Lab) — same relay-riding trick as staging:
@@ -72450,6 +72451,253 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     EFFECTS['ogQuiet_fx'] = _pzDef('ogQuiet', { pzOwn: true });
     ['ogSwordigami', 'ogKamikaze', 'ogPaperStar', 'ogPickANumber', 'ogPaperFan', 'ogThousandCranes'].forEach(function (id) { SPELL_MAP[id] = { impact: 'ogQuiet_fx', aoe: 'ogQuiet_fx', aura: 'ogQuiet_fx' }; });
 
+    /* ════ 🎭 THE ACTOR (2026-11-27, mondo: "an actor/actress ... audition look, red carpet look, romeo and juliet, and action stars ...
+       transformations for different spells"). Every look rides fire()'s burst (relayed: the guest sees it), drawn in the caster's side
+       colour (_psSide) beside each role's own: the Audition's script pages, the Red Carpet's flashbulbs and gold star, Star-Crossed's
+       roses and plague mist, the Action Star's dust and the explosion nobody looks at. THE QUICK CHANGE (acQuickChange, exported) is the
+       costume swap: a red velvet curtain drops round the body and pulls open on the new costume, under a spotlight, with gold glitter;
+       three-renderer.js calls it on the swap (host and guest each, off the synced look, so it is never relayed), and the party
+       builder's stage on its own swap. Kill switch window.EW_NO_ACTOR_VFX. Notes: champions-combat.md "THE ACTOR". ════ */
+    var _AC = { gold: 0xffd36a, red: 0xd0283c, velvet: 0x8a0f22, rose: 0xff4a78, petal: 0xff9ab4, plague: 0x8ade4a, fire: 0xff7a1a, ember: 0xffc04a, smoke: 0x6a6460, page: 0xf4f0e6 };
+    function _acOff() { return typeof window !== 'undefined' && !!window.EW_NO_ACTOR_VFX; }
+    function _acStarShape(s) {
+        var sh = new THREE.Shape();
+        for (var i = 0; i < 10; i++) { var a = Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? s * 0.42 : s; if (i === 0) sh.moveTo(Math.cos(a) * r, Math.sin(a) * r); else sh.lineTo(Math.cos(a) * r, Math.sin(a) * r); }
+        sh.closePath(); return sh;
+    }
+    function _acFace(F, y) { var cd = _nbCamDir(F), g = new THREE.Group(); g.rotation.y = Math.atan2(cd.x, cd.z); g.position.y = y || 0; F.g.add(g); return g; }
+    /* a velvet curtain pair in a camera-facing frame: returns tick(open 0..1, vis) */
+    function _acCurtain(F, w, h, col) {
+        var face = _acFace(F, 0), ts = F.ts, mats = [];
+        var halves = [];
+        for (var k = 0; k < 2; k++) {
+            var side = k ? 1 : -1, hold = new THREE.Group(); face.add(hold);
+            var m = _finBasic(col || _AC.velvet, { opacity: 0, side: THREE.DoubleSide }); mats.push(m);
+            var pane = _pzMesh(new THREE.PlaneGeometry(w / 2, h, 6, 1), m, hold, side * w / 4, h / 2, ts * 0.32);
+            /* the folds: a sine bend along the width */
+            var pos = pane.geometry.attributes.position; for (var v = 0; v < pos.count; v++) pos.setZ(v, Math.sin(pos.getX(v) / (w / 2) * Math.PI * 3) * ts * 0.03); pos.needsUpdate = true;
+            var hem = _pzMesh(new THREE.PlaneGeometry(w / 2, ts * 0.05), _pzGlow(_AC.gold), hold, side * w / 4, ts * 0.03, ts * 0.33); mats.push(hem.material);
+            halves.push({ g: hold, side: side, pane: pane, hem: hem });
+        }
+        var rod = _pzMesh(new THREE.CylinderGeometry(ts * 0.025, ts * 0.025, w * 1.15, 8), _pzGlow(_AC.gold), face, 0, h + ts * 0.02, ts * 0.32); rod.rotation.z = Math.PI / 2;
+        return function (open, vis) {
+            for (var j = 0; j < halves.length; j++) {
+                var H = halves[j]; H.g.position.x = H.side * open * w * 0.55; H.g.scale.x = Math.max(0.15, 1 - 0.7 * open);
+                H.pane.material.opacity = 0.97 * vis; H.hem.material.opacity = 0.8 * vis;
+            }
+            rod.material.opacity = 0.85 * vis;
+        };
+    }
+    function _acSpot(F, r, h, col) {
+        var cone = _pzMesh(new THREE.ConeGeometry(r, h, 24, 1, true), _pzGlow(col || 0xfff2c8), F.g, 0, h / 2, 0);
+        var pool = _pzMesh(new THREE.CircleGeometry(r * 0.95, 32), _pzGlow(col || 0xfff2c8), F.g, 0, F.ts * 0.03, 0); pool.rotation.x = -Math.PI / 2;
+        return function (vis) { cone.material.opacity = 0.16 * vis; pool.material.opacity = 0.3 * vis; };
+    }
+
+    /* ── THE QUICK CHANGE: the costume swap ── */
+    function _acQuickChange(tx, ty) {
+        if (_acOff() || tx == null || !_pzSeen(tx, ty) || _catOff('spells')) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts;
+        var curtain = _acCurtain(F, ts * 0.95, ts * 1.45);
+        var spot = _acSpot(F, ts * 0.5, ts * 2.4);
+        var glitter = _lmxSparks(F, 16, null, [_AC.gold, 0xffffff, _AC.gold], { size: 0.07, r: 0.55, up: 1.1, y0: 0.1, spread: 260, ms: 760 });
+        try { _sigShockRing3D(tx, ty, { color: _AC.gold, r0: ts * 0.2, r1: ts * 0.8, ms: 380, opacity: 0.55 }); } catch (e) {}
+        return _sigRunOwned(F.g, 1000, function (el) {
+            var vis = _pzEnv(el, 0, 40, 620, 900), open = _sigEaseOutCubic(_sigClamp01((el - 180) / 420));
+            curtain(open, vis); spot(_pzEnv(el, 0, 60, 700, 1000)); glitter(Math.max(0, el - 160), el < 160 ? 0 : _pzEnv(el, 160, 220, 760, 1000));
+        });
+    }
+
+    /* ── COLD READ: the sides fly out of the hand and slap into the target, the lines on them ── */
+    function _acColdRead(p) {
+        if (p.tx == null || !_pzSeen(p.tx, p.ty)) return;
+        var C = _psSide(p), F = _nrvFrame(p.tx, p.ty), ts = F.ts, face = _acFace(F, ts * 0.75), pages = [];
+        for (var i = 0; i < 5; i++) {
+            var pg = _pzMesh(new THREE.PlaneGeometry(ts * 0.22, ts * 0.3), _finBasic(_AC.page, { opacity: 0, side: THREE.DoubleSide }), face, 0, 0, ts * 0.1);
+            for (var l = 0; l < 4; l++) _pzMesh(new THREE.PlaneGeometry(ts * 0.15, ts * 0.012), _finBasic(0x333333, { opacity: 0 }), pg, 0, ts * (0.09 - l * 0.055), ts * 0.002);
+            pages.push({ m: pg, a: rn(0, 6.28), r: rn(0.3, 0.6) * ts, sp: rn(-0.02, 0.02) });
+        }
+        var ring = _pzMesh(new THREE.TorusGeometry(ts * 0.3, ts * 0.016, 6, 32), _pzGlow(C[0]), F.g, 0, ts * 0.95, 0); ring.rotation.x = Math.PI / 2;
+        try { _sigShake('light'); } catch (e) {}
+        return _sigRunOwned(F.g, 1200, function (el) {
+            var vis = _pzEnv(el, 0, 30, 800, 1200), t = _sigEaseOutCubic(_sigClamp01(el / 700));
+            for (var j = 0; j < pages.length; j++) {
+                var P = pages[j]; P.m.position.set(Math.cos(P.a) * P.r * t, Math.sin(P.a) * P.r * t * 0.6 - ts * 0.3 * t * t, ts * 0.1);
+                P.m.rotation.z = P.a + el * P.sp; P.m.rotation.y = el * 0.006 * (j % 2 ? 1 : -1);
+                P.m.traverse(function (o) { if (o.material) o.material.opacity = vis; });
+            }
+            ring.scale.setScalar(1 + 0.8 * t); ring.material.opacity = 0.6 * vis * (1 - t * 0.7);
+        });
+    }
+
+    /* ── PHOTO OP: the flashbulbs go off round the 3x3, one after another; a seat-coloured frame on the floor ── */
+    function _acPhotoOp(p) {
+        if (p.tx == null || !_pzSeen(p.tx, p.ty)) return;
+        var C = _psSide(p), F = _nrvFrame(p.tx, p.ty), ts = F.ts, R = ts * 1.5, flashes = [];
+        var frame = _pzMesh(new THREE.RingGeometry(R * 0.93, R, 4, 1, Math.PI / 4), _pzGlow(C[0]), F.g, 0, ts * 0.05, 0); frame.rotation.x = -Math.PI / 2; frame.scale.setScalar(1.41);
+        for (var i = 0; i < 9; i++) {
+            var a = rn(0, 6.28), d = rn(0.2, 1.3) * ts, f = _pzSpr(0xffffff, ts * 0.9, F.g); f.position.set(Math.cos(a) * d, ts * rn(0.5, 1.3), Math.sin(a) * d);
+            var star = _pzSpr(0xfff6d0, ts * 0.3, F.g); star.position.copy(f.position);
+            flashes.push({ f: f, s: star, d: i * 85 + rn(0, 40) });
+        }
+        return _sigRunOwned(F.g, 1400, function (el) {
+            var vis = _pzEnv(el, 0, 60, 1000, 1400);
+            frame.material.opacity = 0.6 * vis;
+            for (var j = 0; j < flashes.length; j++) {
+                var Fl = flashes[j], e = el - Fl.d, k = _pzEnv(e, 0, 18, 40, 200);
+                Fl.f.material.opacity = 0.85 * k; Fl.f.scale.setScalar(ts * (0.4 + 0.7 * _sigClamp01(e / 120)));
+                Fl.s.material.opacity = _pzEnv(e, 0, 20, 120, 420); Fl.s.material.rotation = e * 0.01;
+                if (e >= 0 && e < 18 && j % 3 === 0) { try { _sigShake('light'); } catch (er) {} }
+            }
+        });
+    }
+
+    /* ── STAR POWER: a gold star climbs over the star, the spotlight finds them, gold runs out to two squares ── */
+    function _acStarPower(p) {
+        var cx = p.sx != null ? p.sx : p.tx, cy = p.sx != null ? p.sy : p.ty;
+        if (cx == null || !_pzSeen(cx, cy)) return;
+        var C = _psSide(p), F = _nrvFrame(cx, cy), ts = F.ts, face = _acFace(F, 0);
+        var star = _pzMesh(new THREE.ShapeGeometry(_acStarShape(ts * 0.3)), _pzGlow(_AC.gold), face, 0, 0, 0);
+        var rim = _pzMesh(new THREE.ShapeGeometry(_acStarShape(ts * 0.38)), _pzGlow(C[0]), face, 0, 0, -ts * 0.01);
+        var spot = _acSpot(F, ts * 0.6, ts * 3);
+        var glitter = _lmxSparks(F, 18, null, [_AC.gold, C[0], 0xffffff], { size: 0.08, r: 2.2, up: 0.5, y0: 0.2, spread: 400, ms: 900 });
+        _sigShockRing3D(cx, cy, { color: _AC.gold, r0: ts * 0.3, r1: ts * 2.5, ms: 700, opacity: 0.6 });
+        _fxDelay(function () { if (!_suppressed()) _sigShockRing3D(cx, cy, { color: C[0], r0: ts * 0.2, r1: ts * 2.2, ms: 600, opacity: 0.45 }); }, 180);
+        return _sigRunOwned(F.g, 1900, function (el) {
+            var vis = _pzEnv(el, 0, 80, 1400, 1900), pop = _sigEaseOutBack(_sigClamp01(el / 340));
+            star.position.y = rim.position.y = ts * (1.3 + 0.35 * _sigEaseOutCubic(_sigClamp01(el / 1200)));
+            star.scale.setScalar(Math.max(0.05, pop)); rim.scale.setScalar(Math.max(0.05, pop)); star.rotation.z = rim.rotation.z = Math.sin(el * 0.006) * 0.2;
+            star.material.opacity = 0.9 * vis; rim.material.opacity = 0.5 * vis;
+            spot(vis); glitter(el, vis);
+        });
+    }
+
+    /* ── BALCONY SCENE: rose petals fall on the ally, a heart rises in the seat colour ── */
+    function _acBalcony(p) {
+        if (p.tx == null || !_pzSeen(p.tx, p.ty)) return;
+        var C = _psSide(p), F = _nrvFrame(p.tx, p.ty), ts = F.ts, face = _acFace(F, 0);
+        var heart = _pzMesh(new THREE.ShapeGeometry(_pzHeartShape(ts * 0.2)), _pzGlow(_AC.rose), face, 0, 0, 0);
+        var rim = _pzMesh(new THREE.ShapeGeometry(_pzHeartShape(ts * 0.26)), _pzGlow(C[0]), face, 0, 0, -ts * 0.01);
+        var petals = [];
+        for (var i = 0; i < 16; i++) { var s = _pzSprN(i % 3 ? _AC.rose : _AC.petal, ts * rn(0.07, 0.11), _pzPetalTexAc(), F.g); petals.push({ s: s, x: rn(-0.5, 0.5) * ts, z: rn(-0.5, 0.5) * ts, y0: ts * rn(1.6, 2.3), d: rn(0, 500), sw: rn(0, 6.28) }); }
+        return _sigRunOwned(F.g, 2000, function (el) {
+            var vis = _pzEnv(el, 0, 80, 1500, 2000), pop = _sigEaseOutBack(_sigClamp01((el - 250) / 320));
+            heart.position.y = rim.position.y = ts * (0.75 + 0.55 * _sigEaseOutCubic(_sigClamp01((el - 250) / 1300)));
+            heart.scale.setScalar(Math.max(0.05, pop) * (1 + 0.08 * Math.sin(el * 0.02))); rim.scale.copy(heart.scale);
+            heart.material.opacity = el < 250 ? 0 : 0.85 * vis; rim.material.opacity = el < 250 ? 0 : 0.45 * vis;
+            for (var j = 0; j < petals.length; j++) {
+                var P = petals[j], t = _sigClamp01((el - P.d) / 1300);
+                P.s.position.set(P.x + Math.sin(P.sw + el * 0.006) * ts * 0.12, Math.max(ts * 0.05, P.y0 * (1 - t)), P.z);
+                P.s.material.opacity = el < P.d ? 0 : 0.9 * vis; P.s.material.rotation = P.sw + el * 0.005;
+            }
+        });
+    }
+    function _pzPetalTexAc() {
+        return _pzTex('ac-petal', 64, 64, function (g, w, h) {
+            g.fillStyle = '#ffffff'; g.beginPath(); g.ellipse(w / 2, h / 2, w * 0.24, h * 0.42, 0.5, 0, Math.PI * 2); g.fill();
+        });
+    }
+
+    /* ── A PLAGUE ON BOTH YOUR HOUSES: green mist rolls over the 3x3, bubbles rise, two masks of the stage fall into it ── */
+    function _acPlague(p) {
+        if (p.tx == null || !_pzSeen(p.tx, p.ty)) return;
+        var C = _psSide(p), F = _nrvFrame(p.tx, p.ty), ts = F.ts, R = ts * 1.5;
+        var floor = _pzMesh(new THREE.CircleGeometry(R * 1.05, 40), _pzGlow(_AC.plague), F.g, 0, ts * 0.03, 0); floor.rotation.x = -Math.PI / 2;
+        var edge = _pzMesh(new THREE.RingGeometry(R * 0.98, R * 1.06, 48), _pzGlow(C[0]), F.g, 0, ts * 0.04, 0); edge.rotation.x = -Math.PI / 2;
+        var mist = [];
+        for (var i = 0; i < 14; i++) { var m = _pzSprN(i % 4 ? _AC.plague : 0x3a6a2a, ts * rn(0.5, 0.8), _sigGlowTex(), F.g); mist.push({ s: m, a: rn(0, 6.28), r: rn(0.1, 1.2) * ts, d: rn(0, 400), y: rn(0.15, 0.5) * ts }); }
+        var bubbles = _lmxSparks(F, 14, null, [_AC.plague, 0xd4ff9a], { size: 0.06, r: 1.3, up: 1.0, y0: 0.05, spread: 900, ms: 900 });
+        try { _sigShake('light'); } catch (e) {}
+        return _sigRunOwned(F.g, 2200, function (el) {
+            var vis = _pzEnv(el, 0, 200, 1600, 2200), grow = _sigEaseOutCubic(_sigClamp01(el / 500));
+            floor.scale.setScalar(0.2 + 0.8 * grow); floor.material.opacity = 0.28 * vis; edge.scale.setScalar(0.2 + 0.8 * grow); edge.material.opacity = 0.55 * vis;
+            for (var j = 0; j < mist.length; j++) {
+                var M = mist[j], t = _sigClamp01((el - M.d) / 1600);
+                M.s.position.set(Math.cos(M.a + el * 0.0008) * M.r, M.y + ts * 0.25 * t, Math.sin(M.a + el * 0.0008) * M.r);
+                M.s.material.opacity = el < M.d ? 0 : 0.35 * vis;
+            }
+            bubbles(el, vis);
+        });
+    }
+
+    /* ── STUNT DOUBLE: dust kicked up down the run, the hit lands with a star and a ring ── */
+    function _acStunt(p) {
+        if (p.tx == null || !_pzSeen(p.tx, p.ty)) return;
+        var C = _psSide(p), F = _nrvFrame(p.tx, p.ty), ts = F.ts, face = _acFace(F, ts * 0.6);
+        var star = _pzMesh(new THREE.ShapeGeometry(_acStarShape(ts * 0.42)), _pzGlow(0xffffff), face, 0, 0, ts * 0.3);
+        var rimS = _pzMesh(new THREE.ShapeGeometry(_acStarShape(ts * 0.55)), _pzGlow(_AC.fire), face, 0, 0, ts * 0.29);
+        var dust = _lmxSparks(F, 14, null, [0xc8b090, 0x9a8a70], { size: 0.2, r: 0.9, up: 0.4, y0: 0.05, spread: 120, ms: 800 });
+        try { _sigShake('normal'); } catch (e) {}
+        _sigShockRing3D(p.tx, p.ty, { color: C[0], r1: ts * 1.1, ms: 380, opacity: 0.6 });
+        return _sigRunOwned(F.g, 1000, function (el) {
+            var vis = _pzEnv(el, 0, 20, 300, 650), pop = _sigEaseOutBack(_sigClamp01(el / 160));
+            star.scale.setScalar(Math.max(0.05, pop)); rimS.scale.setScalar(Math.max(0.05, pop)); star.rotation.z = rimS.rotation.z = el * 0.002;
+            star.material.opacity = 0.9 * vis; rimS.material.opacity = 0.7 * vis;
+            dust(el, _pzEnv(el, 0, 40, 600, 1000) * 0.8);
+        });
+    }
+
+    /* ── WALK AWAY FROM IT: the 3x3 goes up in one movie fireball (a ball that swells and rolls up into smoke), embers rain ── */
+    function _acBoom(p) {
+        if (p.tx == null || !_pzSeen(p.tx, p.ty)) return;
+        var C = _psSide(p), F = _nrvFrame(p.tx, p.ty), ts = F.ts;
+        var core = _pzMesh(new THREE.SphereGeometry(ts * 0.6, 20, 14), _pzGlow(_AC.ember), F.g, 0, ts * 0.5, 0);
+        var shell = _pzMesh(new THREE.SphereGeometry(ts * 0.8, 20, 14), _pzGlow(_AC.fire), F.g, 0, ts * 0.55, 0);
+        var smoke = [];
+        for (var i = 0; i < 12; i++) { var sm = _pzSprN(_AC.smoke, ts * rn(0.8, 1.2), _sigGlowTex(), F.g); smoke.push({ s: sm, a: rn(0, 6.28), r: rn(0.2, 1.0) * ts, d: 250 + rn(0, 300) }); }
+        var embers = _lmxSparks(F, 22, null, [_AC.ember, _AC.fire, 0xffffff], { size: 0.07, r: 1.8, up: 1.6, y0: 0.4, spread: 200, ms: 1100, fall: true });
+        var scorch = _pzMesh(new THREE.CircleGeometry(ts * 1.4, 36), _finBasic(0x1a120c, { opacity: 0 }), F.g, 0, ts * 0.025, 0); scorch.rotation.x = -Math.PI / 2;
+        try { _sigShake('heavy'); } catch (e) {}
+        _sigShockRing3D(p.tx, p.ty, { color: _AC.fire, r0: ts * 0.4, r1: ts * 2.2, ms: 520, opacity: 0.75 });
+        _fxDelay(function () { if (!_suppressed()) _sigShockRing3D(p.tx, p.ty, { color: C[0], r0: ts * 0.3, r1: ts * 1.8, ms: 460, opacity: 0.5 }); }, 120);
+        return _sigRunOwned(F.g, 2400, function (el) {
+            var blow = _sigEaseOutCubic(_sigClamp01(el / 360)), fade = _pzEnv(el, 0, 30, 380, 900);
+            core.scale.setScalar(0.2 + 0.9 * blow); core.material.opacity = 0.75 * fade;
+            shell.scale.setScalar(0.3 + 1.0 * blow); shell.position.y = ts * (0.55 + 0.6 * _sigClamp01(el / 900)); shell.material.opacity = 0.35 * _pzEnv(el, 0, 30, 350, 900);
+            for (var j = 0; j < smoke.length; j++) {
+                var S = smoke[j], t = _sigClamp01((el - S.d) / 1600);
+                S.s.position.set(Math.cos(S.a) * S.r * (1 + t), ts * (0.6 + 1.6 * t), Math.sin(S.a) * S.r * (1 + t));
+                S.s.material.opacity = el < S.d ? 0 : 0.45 * (1 - t);
+            }
+            embers(el, _pzEnv(el, 0, 40, 1500, 2200));
+            scorch.material.opacity = 0.45 * _pzEnv(el, 100, 300, 1800, 2400);
+        });
+    }
+
+    /* ── CURTAIN CALL: the big curtain over the actor, roses thrown from the dark, light runs out to every ally ── */
+    function _acCurtainCall(p) {
+        var cx = p.sx != null ? p.sx : p.tx, cy = p.sx != null ? p.sy : p.ty;
+        if (cx == null || !_pzSeen(cx, cy)) return;
+        var C = _psSide(p), F = _nrvFrame(cx, cy), ts = F.ts;
+        var curtain = _acCurtain(F, ts * 2.2, ts * 2.0, 0x9a1226);
+        var spot = _acSpot(F, ts * 0.7, ts * 3.2);
+        var roses = [];
+        for (var i = 0; i < 10; i++) { var s = _pzSprN(i % 2 ? _AC.rose : _AC.red, ts * 0.16, _pzPetalTexAc(), F.g); var a = rn(0, 6.28); roses.push({ s: s, x0: Math.cos(a) * ts * 2.5, z0: Math.sin(a) * ts * 2.5, x1: rn(-0.4, 0.4) * ts, z1: rn(-0.4, 0.4) * ts, d: 300 + i * 70 }); }
+        _sigShockRing3D(cx, cy, { color: _AC.gold, r0: ts * 0.3, r1: ts * 5, ms: 900, opacity: 0.55 });
+        _fxDelay(function () { if (!_suppressed()) _sigShockRing3D(cx, cy, { color: C[0], r0: ts * 0.2, r1: ts * 4, ms: 800, opacity: 0.45 }); }, 240);
+        return _sigRunOwned(F.g, 2400, function (el) {
+            var vis = _pzEnv(el, 0, 80, 1900, 2400), open = 1 - _sigEaseOutCubic(_sigClamp01(el / 350)) + _sigEaseOutCubic(_sigClamp01((el - 1100) / 500));
+            curtain(Math.min(1, Math.max(0, open)), vis); spot(vis);
+            for (var j = 0; j < roses.length; j++) {
+                var R = roses[j], t = _sigClamp01((el - R.d) / 600);
+                R.s.position.set(R.x0 + (R.x1 - R.x0) * t, ts * (0.1 + 1.4 * Math.sin(t * Math.PI)), R.z0 + (R.z1 - R.z0) * t);
+                R.s.material.opacity = el < R.d ? 0 : vis; R.s.material.rotation = el * 0.01 + j;
+            }
+        });
+    }
+
+    var _AC_ON_BURST = { acColdRead: _acColdRead, acPhotoOp: _acPhotoOp, acStarPower: _acStarPower, acBalconyScene: _acBalcony, acPlague: _acPlague,
+        acStuntDouble: _acStunt, acWalkAway: _acBoom, acCurtainCall: _acCurtainCall,
+        acQuickChange: function (p) { _acQuickChange(p.tx, p.ty); } };   // (the party builder's stage fires the swap by name: its own frame)
+    function _acStage(intent, spellId, p) {
+        if (intent !== 'burst' || !p || !_AC_ON_BURST[spellId] || _acOff() || _catOff('spells')) return;
+        if (!_pzOnce('ac:' + spellId, 250)) return;
+        _AC_ON_BURST[spellId](p);
+    }
+    EFFECTS['acQuiet_fx'] = _pzDef('acQuiet', { pzOwn: true });
+    _PZ_SIGS.acQuiet = function () {};
+    Object.keys(_AC_ON_BURST).forEach(function (id) { if (id === 'acQuickChange') return; SPELL_MAP[id] = { impact: 'acQuiet_fx', aoe: 'acQuiet_fx', aura: 'acQuiet_fx' }; });
+
     /* ════ 🎛 THE MUSIC PRODUCER (2026-11-24): his moves on the board, in the caster's side colours (_psSide), all off fire()'s
        burst so the guest sees them too. The song itself is audio.js THE PRODUCER'S 4-TRACK; rules battle.js "THE MUSIC PRODUCER".
        mpNotes = a pick (Lay It Down / Beat Switch / Add Chord / Melody Style): notes rise off him and the earshot ring rolls out
@@ -81360,6 +81608,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         sigMagicCircle3D: _sigMagicCircle3D,
         sigMagicOrb3D: _sigMagicOrb3D,
         sigShockRing3D: _sigShockRing3D,
+        acQuickChange: _acQuickChange,   // 🎭 THE ACTOR: the costume swap (three-renderer.js, on host and guest each)
         /* 🎛 THE MUSIC PRODUCER's earshot (3 squares) pulsing on the bar: hud.js THE 4-TRACK STRIP calls it, on each client (no relay) */
         mpEarshotPulse: function (tx, ty, color) { try { var wp = _worldPos(tx, ty); return _sigShockRing3D(tx, ty, { color: color, r0: wp.ts * 2.9, r1: wp.ts * 3.5, ms: 520, height: 4 }); } catch (e) { return null; } },
         sigSpeedBurst3D: _sigSpeedBurst3D,

@@ -167,6 +167,7 @@ const EW_ASSET_MOVES = [
   ['Assets/Sprites/Races/origami_girl/', 'Assets/characters/races/origami_girl/'],   // 2026-11-27 THE ORIGAMI GIRL
   ['Assets/Sprites/Races/leprechaun/', 'Assets/characters/races/leprechaun/'],   // 2026-11-27 THE NEW CHARACTERS
   ['Assets/Sprites/Races/medic/', 'Assets/characters/races/medic/'],   // 2026-11-27 THE NEW CHARACTERS
+  ['Assets/Sprites/Races/actor/', 'Assets/characters/races/actor/'],   // 2026-11-27 THE ACTOR
   ['Assets/Sprites/Races/music_producer/', 'Assets/characters/races/music_producer/'],   // 2026-11-24 THE MUSIC PRODUCER
   ['Assets/Sprites/Races/librarian/', 'Assets/characters/races/librarian/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/televangelist/', 'Assets/characters/races/televangelist/'],   // 2026-11-17 THE NEW RACES 2
@@ -635,6 +636,7 @@ const RACE_SPRITE_GENDERS = {
   'origami girl': 'female',   // 2026-11-27 THE ORIGAMI GIRL
   'leprechaun': 'both',   // 2026-11-27 THE NEW CHARACTERS
   'medic': 'both',   // 2026-11-27 THE NEW CHARACTERS (one race: the male is the Doctor, the female the Nurse)
+  'actor': 'both',   // 2026-11-27 THE ACTOR (one race: the male is the Actor, the female the Actress)
   'princess': 'female',   // 2026-11-24 THE PRINCESS
   'point guard': 'male',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
   'music producer': 'male',   // 2026-11-24 THE MUSIC PRODUCER
@@ -830,6 +832,7 @@ const _CHARACTER_SPRITES = {
   'origami girl': `${_S}/Races/origami_girl/female/origami_girl_px.png`,   // 2026-11-27 THE ORIGAMI GIRL — 128x128 pixel sprite (Sprite AI restyle of a straight-on render of her model)
   'leprechaun': `${_S}/Races/leprechaun/male/leprechaun_m_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
   'medic': `${_S}/Races/medic/male/doctor_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
+  'actor': `${_S}/Races/actor/male/actor_px.png`,   // 2026-11-27 THE ACTOR — 128x128 pixel sprite (Sprite AI restyle of mondo's audition concept)
   'princess': `${_S}/Races/princess/female/princess_px.png`,   // 2026-11-24 THE PRINCESS — 128x128 pixel sprite (Sprite AI restyle of her Meshy concept)
   'point guard': `${_S}/Races/point_guard/male/point_guard_px.png`,   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — 128x128 pixel sprite (Sprite AI restyle of his Meshy concept)
   'music producer': `${_S}/Races/music_producer/male/music_producer_px.png`,   // 2026-11-24 THE MUSIC PRODUCER — 128x128 pixel sprite (Sprite AI restyle of his Meshy concept)
@@ -968,6 +971,7 @@ const _NEW_FEMALE_SPRITES = {
   'vtuber': `${_S}/Races/vtuber/female/vtuber_f_px.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of her full Meshy 3D model's front render)
   'leprechaun': `${_S}/Races/leprechaun/female/leprechaun_f_px.png`,   // 2026-11-27 THE NEW CHARACTERS
   'medic': `${_S}/Races/medic/female/nurse_px.png`,   // 2026-11-27 THE NEW CHARACTERS — the Nurse
+  'actor': `${_S}/Races/actor/female/actress_px.png`,   // 2026-11-27 THE ACTOR — the Actress
   'martian': `${_S}/Races/martian/female/martian_f_px.png`,   // 2026-11-27 THE NEW CHARACTERS — the female martian
 };
 const _NEW_MALE_SPRITES = {
@@ -998,6 +1002,7 @@ const _NEW_MALE_SPRITES = {
   'succubus': `${_S}/Races/succubus/male/incubus_px.png`,
   'leprechaun': `${_S}/Races/leprechaun/male/leprechaun_m_px.png`,   // 2026-11-27 THE NEW CHARACTERS
   'medic': `${_S}/Races/medic/male/doctor_px.png`,   // 2026-11-27 THE NEW CHARACTERS — the Doctor
+  'actor': `${_S}/Races/actor/male/actor_px.png`,   // 2026-11-27 THE ACTOR — the Actor
 };
 
 function getR2RaceSpriteUrl(race, gender, cls) {
@@ -2314,7 +2319,8 @@ const RACE_MODELS_3D = {
       idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump', hit: 'Face_Punch_Reaction',
       death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
       // spare on R2: Walking, Knock_Down
-    }, { heightRatio: 1.18,      // hulking horned demon
+    }, { model: 'https://cdn.entropywars.net/Assets/characters/races/demon/male/Meshy_AI_red_demon_wt_Character_output.glb', sway: { wings: 'demon', stiffness: 2.2, gravity: 0.1, drag: 0.3, maxRoot: 35, maxBend: 22, wave: 0.5, waveHz: 0.4, caps: [] },   // 2026-11-27 THE LOOSE WINGS EVERYWHERE: the same rig + wing bones (bake-wings.py --soft; a tail's chain: bake-tail.py), its own beat
+         heightRatio: 1.18,      // hulking horned demon
          basicAttackKind: 'claw',   // basic attacks rake with talons (castClaw)
          lib: { castMelee: { clip: 'Sword_Heavy_Combo', lib: 1, ts: 3.5 } } }),
     // Female (2026-09-22 batch) — "demon_female" Character_output (Races/Demon/Female/): the she-demon,
@@ -2347,7 +2353,7 @@ const RACE_MODELS_3D = {
   'fairy': {
     female: _mkUAL('Fairy/female', 'fairy_v2', {   // 2026-11-18 THE NEW LOOKS (mondo's concepts round, Meshy made + rigged by Claude; parts apart: three-renderer.js THE UNIT GEAR)
       model: 'https://cdn.entropywars.net/Assets/characters/races/fairy/female/Meshy_AI_fairy_v2_Running.glb',
-      procRig: 'unitGear', gear: { wings: { url: 'https://cdn.entropywars.net/Assets/characters/gear/wings/fairy_wing_single.glb', root: -1, lift: 0.1 }, wingLen: 0.42 },   // her old model's wing, cut out, beating apart
+      procRig: 'unitGear', gear: { wings: { url: 'https://cdn.entropywars.net/Assets/characters/gear/wings/fairy_wing_single.glb', root: -1, lift: 0.1 }, wingLen: 0.42, beat: 'fairy' },   // her old model's wing, cut out, beating apart
       heightRatio: 0.6, basicAttackKind: 'magic' }),   // tiny winged sprite (was 'young_fairy', kept on R2)
   },
   'bigfoot': {
@@ -2563,7 +2569,7 @@ const RACE_MODELS_3D = {
   // Succubus (Psychic, support) — charm/psychic zaps.
   'succubus': {
     male: _mkUAL('succubus/male', 'incubus', {   // THE MEN 2026-11-16 (THE NEW RACES; Meshy, made + rigged by Claude)
-      model: `${_S}/Races/succubus/male/Meshy_AI_incubus_Running.glb`,
+      model: 'https://cdn.entropywars.net/Assets/characters/races/succubus/male/Meshy_AI_incubus_wt_Running.glb', sway: { wings: 'imp', stiffness: 2.2, gravity: 0.1, drag: 0.3, maxRoot: 35, maxBend: 22, wave: 0.5, waveHz: 0.4, caps: [] },   // 2026-11-27 THE LOOSE WINGS EVERYWHERE: the same rig + wing bones (bake-wings.py --soft; a tail's chain: bake-tail.py), its own beat
       heightRatio: 1.0, basicAttackKind: 'magic',
     }),
     female: _mkUAL('succubus/female', 'hot_seductive_pink_su', {
@@ -2619,6 +2625,7 @@ const RACE_MODELS_3D = {
   // Mothman (Harbinger, support) — eerie psychic zaps.
   'mothman': {
     male: _mkUAL('mothman/male', 'mothman_cryptid_gian', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/mothman/male/Meshy_AI_mothman_wings_Character_output.glb', sway: { wings: 'moth' },   // 2026-11-27 THE LOOSE WINGS EVERYWHERE: the same rig + wing bones (bake-wings.py --soft; a tail's chain: bake-tail.py), its own beat
       heightRatio: 1.15,
       basicAttackKind: 'magic',
     }),
@@ -2789,7 +2796,8 @@ const RACE_MODELS_3D = {
   },
   'sewer gator': {   // mondo's pick 11-16: concept B, the skeletal croc with a chain
     male: _mkUAL('sewer_gator', 'sewer_gator', {
-      model: `${_S}/Races/sewer_gator/male/Meshy_AI_sewer_gator_Running.glb`,
+      model: 'https://cdn.entropywars.net/Assets/characters/races/sewer_gator/male/Meshy_AI_sewer_gator_tail_Running.glb',   // 2026-11-27 THE LOOSE TAILS (bake-tail.py): the same rig + a chain of spring bones down the tail
+      sway: { stiffness: 2.2, gravity: 0.1, drag: 0.3, maxRoot: 35, maxBend: 22, wave: 0.5, waveHz: 0.4, caps: [] },
       heightRatio: 1.15,
       basicAttackKind: 'claw',
     }),
@@ -2895,7 +2903,7 @@ const RACE_MODELS_3D = {
     male: _mkUAL('demiurge/armoured', 'demiurge_armoured', {
       model: 'https://cdn.entropywars.net/Assets/characters/races/demiurge/armoured/Meshy_AI_demiurge_armoured_Running.glb',
       procRig: 'unitGear', gear: {
-        wings: { url: 'https://cdn.entropywars.net/Assets/characters/gear/demiurge/dm_wing_armoured.glb', root: 1, lift: 0.3 }, wingLen: 0.62,
+        wings: { url: 'https://cdn.entropywars.net/Assets/characters/gear/demiurge/dm_wing_armoured.glb', root: 1, lift: 0.3 }, wingLen: 0.62, beat: 'archon',
         held: { url: 'https://cdn.entropywars.net/Assets/characters/gear/demiurge/dm_staff.glb', len: 0.95, grip: 0.36 },
         demi: { form: 'armoured', cube: 'https://cdn.entropywars.net/Assets/characters/gear/demiurge/dm_cube.glb', snake: 'https://cdn.entropywars.net/Assets/characters/gear/demiurge/dm_snake.glb', tail: 'https://cdn.entropywars.net/Assets/characters/gear/demiurge/dm_tail.glb', horn: 'https://cdn.entropywars.net/Assets/characters/gear/demiurge/dm_horn.glb', hornRot: [-0.5, 0, 0], hornSize: 0.17, hornLift: -0.03, hornFwd: -0.01 } },
       heightRatio: 1.45, basicAttackKind: 'slash',
@@ -2903,7 +2911,7 @@ const RACE_MODELS_3D = {
     female: _mkUAL('demiurge/cosmic', 'demiurge_cosmic', {
       model: 'https://cdn.entropywars.net/Assets/characters/races/demiurge/cosmic/Meshy_AI_demiurge_cosmic_Running.glb',
       procRig: 'unitGear', gear: {
-        wings: { url: 'https://cdn.entropywars.net/Assets/characters/gear/demiurge/dm_wing_cosmic.glb', root: -1, lift: 0.3 }, wingLen: 0.62,
+        wings: { url: 'https://cdn.entropywars.net/Assets/characters/gear/demiurge/dm_wing_cosmic.glb', root: -1, lift: 0.3 }, wingLen: 0.62, beat: 'aeon',
         halo: 'https://cdn.entropywars.net/Assets/characters/gear/demiurge/dm_halo.glb', haloSize: 0.26, haloLift: 0.06,
         held: { url: 'https://cdn.entropywars.net/Assets/characters/gear/demiurge/dm_staff.glb', len: 0.9, grip: 0.2 },
         demi: { form: 'cosmic', cube: 'https://cdn.entropywars.net/Assets/characters/gear/demiurge/dm_cube.glb', robe: 'https://cdn.entropywars.net/Assets/characters/gear/demiurge/dm_robe.glb', eye: 'https://cdn.entropywars.net/Assets/characters/gear/demiurge/dm_eye.glb' } },
@@ -2912,13 +2920,14 @@ const RACE_MODELS_3D = {
   },
   'rat': {
     male: _mkUAL('rat', 'rat', {
-      model: 'https://cdn.entropywars.net/Assets/characters/races/rat/male/Meshy_AI_rat_Running.glb',
+      model: 'https://cdn.entropywars.net/Assets/characters/races/rat/male/Meshy_AI_rat_tail_Running.glb',   // 2026-11-27 THE LOOSE TAILS (bake-tail.py): the same rig + a chain of spring bones down the tail
+      sway: { stiffness: 2.2, gravity: 0.1, drag: 0.3, maxRoot: 35, maxBend: 22, wave: 0.5, waveHz: 0.4, caps: [] },
       heightRatio: 0.85, basicAttackKind: 'claw',
     }),
   },
   'monarch': {
     female: _mkUAL('monarch', 'monarch', {
-      model: 'https://cdn.entropywars.net/Assets/characters/races/monarch/female/Meshy_AI_monarch_Running.glb',
+      model: 'https://cdn.entropywars.net/Assets/characters/races/monarch/female/Meshy_AI_monarch_wings_Running.glb', sway: { wings: 'mantle' },   // 2026-11-27 THE LOOSE WINGS EVERYWHERE: the same rig + wing bones (bake-wings.py --soft; a tail's chain: bake-tail.py), its own beat
       heightRatio: 0.97, basicAttackKind: 'magic',
     }),
   },
@@ -2965,7 +2974,8 @@ const RACE_MODELS_3D = {
   },
   'draconian': {
     male: _mkUAL('draconian', 'draconian', {
-      model: 'https://cdn.entropywars.net/Assets/characters/races/draconian/male/Meshy_AI_draconian_Running.glb',
+      model: 'https://cdn.entropywars.net/Assets/characters/races/draconian/male/Meshy_AI_draconian_tail_Running.glb',   // 2026-11-27 THE LOOSE TAILS (bake-tail.py): the same rig + a chain of spring bones down the tail
+      sway: { stiffness: 2.2, gravity: 0.1, drag: 0.3, maxRoot: 35, maxBend: 22, wave: 0.5, waveHz: 0.4, caps: [] },
       heightRatio: 1.2, basicAttackKind: 'claw',
     }),
   },
@@ -3007,6 +3017,20 @@ const RACE_MODELS_3D = {
     }),
   },
 
+  /* 🎭 THE ACTOR (2026-11-27, mondo: "an actor/actress, i have their audition look, red carpet look, romeo and juliet, and action stars ...
+     transformations for different spells ... kinda like the time cop or aliens with their spaceships"). Eight Meshy image-to-3d + rigs from his
+     concepts (project files actor/; the action stars restyled to a look of our own). The def is the AUDITION look; overrideForms (ACTOR_LOOKS,
+     wireActorRoles below) hold the three costumes a role spell puts on. */
+  'actor': {
+    male: _mkUAL('actor', 'actor_audition', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/actor/male/Meshy_AI_actor_audition_Running.glb',
+      heightRatio: 1.0, basicAttackKind: 'physical',
+    }),
+    female: _mkUAL('actor', 'actress_audition', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/actor/female/Meshy_AI_actress_audition_Running.glb',
+      heightRatio: 0.95, basicAttackKind: 'physical',
+    }),
+  },
   'weatherman': {   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: Meshy image-to-3d + rigging from mondo's picks (Weatherman B, the strand fixed; News Anchor 3b);
                     // sources: project files unit-concepts-20261124/models/. THE UNIT GEAR holds mondo's umbrella (closed; it opens in the
                     // spells, Assets/fx/spell_props/umbrella_open.glb) and the Popstar's microphone.
@@ -3252,7 +3276,7 @@ const RACE_MODELS_3D = {
   },
   'cicada brood': {
     male: _mkUAL('cicada_brood', 'cicada_brood', {
-      model: `${_S}/Races/cicada_brood/male/Meshy_AI_cicada_brood_Running.glb`,
+      model: 'https://cdn.entropywars.net/Assets/characters/races/cicada_brood/male/Meshy_AI_cicada_brood_wings_Running.glb', sway: { wings: 'cicada' },   // 2026-11-27 THE LOOSE WINGS EVERYWHERE: the same rig + wing bones (bake-wings.py --soft; a tail's chain: bake-tail.py), its own beat
       heightRatio: 1.1,
       basicAttackKind: 'physical',
     }),
@@ -3500,7 +3524,7 @@ const RACE_MODELS_3D = {
   },
   'bee queen': {
     female: _mkUAL('beequeen', 'the_hive_queen', {
-      model: `${_S}/Races/beequeen/Meshy_AI_the_hive_queen_Running.glb`,
+      model: 'https://cdn.entropywars.net/Assets/characters/races/beequeen/Meshy_AI_the_hive_queen_wings_Running.glb', sway: { wings: 'bee' },   // 2026-11-27 THE LOOSE WINGS EVERYWHERE: the same rig + wing bones (bake-wings.py --soft; a tail's chain: bake-tail.py), its own beat
       heightRatio: 1.08, basicAttackKind: 'magic',
     }),
   },
@@ -3630,7 +3654,7 @@ const RACE_MODELS_3D = {
     }),
     female: _mkUAL('fallenangel/female', 'fallen_angel_f_v2', {   // 2026-11-18 THE NEW LOOKS (mondo's concepts round, Meshy made + rigged by Claude; parts apart: three-renderer.js THE UNIT GEAR)
       model: 'https://cdn.entropywars.net/Assets/characters/races/fallenangel/female/Meshy_AI_fallen_angel_f_v2_Running.glb',   // was 'fallen_angel_r' (kept on R2)
-      procRig: 'unitGear', gear: { wings: 'angel', wingLen: 0.62, wingTint: '#2b2730' },   // the black wings apart, beating
+      procRig: 'unitGear', gear: { wings: 'angel', wingLen: 0.62, wingTint: '#2b2730', beat: 'raven' },   // the black wings apart, beating
       heightRatio: 1.0,
       basicAttackKind: 'magic',
     }),
@@ -3670,7 +3694,8 @@ const RACE_MODELS_3D = {
   // REMODELED again 2026-09-30: the user's new "kaiju" Running export (Races/kaiju/male/Meshy_AI_kaiju_Running.glb).
   'kaiju': {
     male: _mkUAL('kaiju/male', 'kaiju', {
-      model: `${_S}/Races/kaiju/male/Meshy_AI_kaiju_Running.glb`,
+      model: 'https://cdn.entropywars.net/Assets/characters/races/kaiju/male/Meshy_AI_kaiju_tail_Running.glb',   // 2026-11-27 THE LOOSE TAILS (bake-tail.py): the same rig + a chain of spring bones down the tail
+      sway: { stiffness: 2.2, gravity: 0.1, drag: 0.3, maxRoot: 35, maxBend: 22, wave: 0.5, waveHz: 0.4, caps: [] },
       heightRatio: 1.6,
       basicAttackKind: 'claw',
       lib: { idle: { clip: 'Idle_10', lib: 2 } },   // monster sway
@@ -3779,7 +3804,7 @@ const RACE_MODELS_3D = {
   'valkraye': {
     female: _mkUAL('valkraye', 'valkraye_r2_v2', {   // 2026-11-18 THE NEW LOOKS (mondo's concepts round, Meshy made + rigged by Claude; parts apart: three-renderer.js THE UNIT GEAR)
       model: 'https://cdn.entropywars.net/Assets/characters/races/valkraye/Meshy_AI_valkraye_r2_v2_Running.glb',   // 11-18 remade with dark hair (mondo; the silver-haired one stays on R2 as valkraye_v2); was 'hot_girl_valkraye_' (kept on R2)
-      procRig: 'unitGear', gear: { wings: 'angel', wingLen: 0.62 },
+      procRig: 'unitGear', gear: { wings: 'angel', wingLen: 0.62, beat: 'valkyrie' },
       heightRatio: 0.98,
       lib: { idle: { clip: 'Sword_Idle' },
              castMelee: { clip: 'Sword_Regular_Combo', lib: 1, ts: 2.4 } },
@@ -3881,6 +3906,7 @@ const RACE_MODELS_3D = {
   // mech is 1.5, giant 1.7): brawler sway, giant-blooded haymakers.
   'nephilim': {
     male: _mkUAL('nephilim/male', 'nephilim_realistic', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/nephilim/male/Meshy_AI_nephilim_wings_Character_output.glb', sway: { wings: 'grigori' },   // 2026-11-27 THE LOOSE WINGS EVERYWHERE: the same rig + wing bones (bake-wings.py --soft; a tail's chain: bake-tail.py), its own beat
       heightRatio: 1.5,
       basicAttackKind: 'punch',
       lib: { idle: { clip: 'Idle_10', lib: 2 } },
@@ -4040,10 +4066,12 @@ const RACE_MODELS_3D = {
   // feminine idle.
   'gargoyle': {
     male: _mkUAL('gargoyle/male', 'gargoyle_m', {   // THE MEN 2026-11-16 (THE NEW RACES; Meshy, made + rigged by Claude)
-      model: `${_S}/Races/gargoyle/male/Meshy_AI_gargoyle_m_Running_v2.glb`,   // 11-18: the claw-to-wing sliver by his right hand removed (mondo: "a piece sticking out")
+      model: 'https://cdn.entropywars.net/Assets/characters/races/gargoyle/male/Meshy_AI_gargoyle_m_wt_Running.glb', sway: { wings: 'stone', stiffness: 2.2, gravity: 0.1, drag: 0.3, maxRoot: 35, maxBend: 22, wave: 0.5, waveHz: 0.4, caps: [] },   // 2026-11-27 THE LOOSE WINGS EVERYWHERE: the same rig + wing bones (bake-wings.py --soft; a tail's chain: bake-tail.py), its own beat
+      // was `${_S}/Races/gargoyle/male/Meshy_AI_gargoyle_m_Running_v2.glb`   // 11-18: the claw-to-wing sliver by his right hand removed (mondo: "a piece sticking out")
       heightRatio: 1.1, basicAttackKind: 'claw',
     }),
     female: _mkUAL('gargoyle/female', 'female_gargoyle_real', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/gargoyle/female/Meshy_AI_female_gargoyle_wt_Character_output.glb', sway: { wings: 'stone', stiffness: 2.2, gravity: 0.1, drag: 0.3, maxRoot: 35, maxBend: 22, wave: 0.5, waveHz: 0.4, caps: [] },   // 2026-11-27 THE LOOSE WINGS EVERYWHERE: the same rig + wing bones (bake-wings.py --soft; a tail's chain: bake-tail.py), its own beat
       heightRatio: 1.05,
       basicAttackKind: 'claw',
       lib: { idle: { clip: 'Idle_10', lib: 2 } },   // stone-beast sway
@@ -7440,6 +7468,41 @@ function wireUfoForm(race) {
   return any;
 }
 
+/* 🎭 THE ACTOR'S ROLES (2026-11-27 THE ACTOR): a role spell puts the costume on (battle.js UNIT_ANIM_OVERRIDES.actor: the spell's `acRole`); an
+   Audition spell takes it off (the plain sprite url = the def itself, like the alien ships' way back). The look keys are the race sprite
+   + '#<role>' per gender; the costume swap plays THE QUICK CHANGE (three-renderer.js, `costumeFx`). */
+const _ACTOR_R2 = 'https://cdn.entropywars.net/Assets/characters/races/actor/';
+const ACTOR_ROLE_MODELS = {
+  male:   { carpet: 'male/Meshy_AI_actor_redcarpet_Running.glb', romance: 'male/Meshy_AI_actor_romeo_Running.glb', action: 'male/Meshy_AI_actor_action_Running.glb' },
+  female: { carpet: 'female/Meshy_AI_actress_redcarpet_Running.glb', romance: 'female/Meshy_AI_actress_juliet_Running.glb', action: 'female/Meshy_AI_actress_action_Running.glb' },
+};
+const ACTOR_ROLES = ['carpet', 'romance', 'action'];
+function actorBaseLook(gender) {
+  return (typeof getR2RaceSpriteUrl === 'function' && getR2RaceSpriteUrl('actor', gender === 'female' ? 'female' : 'male', 'Freelancer')) || null;
+}
+function actorRoleLook(gender, role) {
+  const base = actorBaseLook(gender);
+  if (!base) return null;
+  return (role && ACTOR_ROLES.includes(role)) ? base + '#' + role : base;
+}
+function wireActorRoles() {
+  const set = RACE_MODELS_3D.actor;
+  if (!set) return false;
+  for (const g of ['male', 'female']) {
+    const d = set[g], base = actorBaseLook(g);
+    if (!d || !base) continue;
+    d.costumeFx = true;   // THE QUICK CHANGE on every swap, the way back to the audition look too
+    d.overrideForms = d.overrideForms || {};
+    d.overrideForms[base] = d;
+    for (const r of ACTOR_ROLES) {
+      const f = _mkUAL('actor', g + '_' + r, { model: _ACTOR_R2 + ACTOR_ROLE_MODELS[g][r], heightRatio: d.heightRatio || 1, basicAttackKind: 'physical' });
+      f.costumeFx = true;
+      d.overrideForms[base + '#' + r] = f;
+    }
+  }
+  return true;
+}
+
 /* ♟ THE CHESS PIECE (2026-10-29, mondo: "a character that plays as the chess pieces, with it switching to different pieces depending
    on the spell"): each look is one BLACK piece of his chess set (Assets/world/packs/chess/Low Poly Chess Set.fbx — the set's one loader cuts the
    node out, three-renderer.js _asChessRig) on procRig 'chess<Piece>' (THE CHESS PIECE rig: a hinge at the base, a carved piece's
@@ -7918,6 +7981,7 @@ const RACE_SPRITES = {
   'origami girl': `${_S}/Races/origami_girl/female/origami_girl_px.png`,   // 2026-11-27 THE ORIGAMI GIRL — 128x128 pixel sprite (Sprite AI restyle of a straight-on render of her model)
   'leprechaun': `${_S}/Races/leprechaun/male/leprechaun_m_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
   'medic': `${_S}/Races/medic/male/doctor_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
+  'actor': `${_S}/Races/actor/male/actor_px.png`,   // 2026-11-27 THE ACTOR
   'princess': `${_S}/Races/princess/female/princess_px.png`,   // 2026-11-24 THE PRINCESS — 128x128 pixel sprite (Sprite AI restyle of her Meshy concept)
   'point guard': `${_S}/Races/point_guard/male/point_guard_px.png`,   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — 128x128 pixel sprite (Sprite AI restyle of his Meshy concept)
   'music producer': `${_S}/Races/music_producer/male/music_producer_px.png`,   // 2026-11-24 THE MUSIC PRODUCER — 128x128 pixel sprite (Sprite AI restyle of his Meshy concept)
@@ -9151,3 +9215,6 @@ if (typeof TERRAIN_SPRITES !== 'undefined') {
     }
   } catch (e) {}
 }
+
+/* 🎭 THE ACTOR'S ROLES: wired last, so the look keys are the moved sprite urls the game hands out (getR2RaceSpriteUrl above) */
+try { wireActorRoles(); } catch (e) {}

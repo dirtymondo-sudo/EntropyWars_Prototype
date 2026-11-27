@@ -6929,3 +6929,85 @@ assembly, the rig, the race, the kit, the VFX. ALL NAMES AND NUMBERS ARE A FIRST
   frames of each cast; the probe now reads a male-only race's gender from RACE_SPRITE_GENDERS).
 - LEFT OUT ON PURPOSE (no lore invented): home zone, residents, NPC places, story place, codex customs row. Sources, scripts,
   concepts, sprite: project files `snowman/`. Meshy: 6 pictures (54) + 5 models (150) = 204 credits.
+
+## THE LOOSE WINGS EVERYWHERE (2026-11-27, thread "Give every winged unit expressive wings")
+mondo: "give all units with separate wings that level of expression too? Maybe they can all beat a little different. Any other units need
+separate wings or would benefit from one of their parts getting a separate animation?" The Occulus's loose wings, for every wing, at run time.
+Code: three-renderer.js "THE LOOSE WINGS EVERYWHERE" (above `_gearTick`). No Meshy credits.
+- **The bones.** `_wfSkin` skins a wing to four bones down its span (`ewLW0..3`): THE UNIT GEAR's wings (`_gearBuild`) and the Unicorn's
+  (`_uniBuild`). A body's own baked wing bones `ewwing_L/R` get three more bones at load (`_wfSplitBaked`, called from `_swayScan`).
+- **The follow-through.** `_wfTick` (in `_swayTick`, after the clip and the gear's beat) keeps a short record of each hinge's turn on the
+  wings' own clock (the frame's dt, capped at 0.05 s, so a slow frame is slow motion) and gives joint j the turn the hinge made `lag` seconds
+  a joint earlier, times `flex[j]`, soft-capped at `bend`. Whatever turns the hinge (the beat, a clip track, an act) the tip trails and whips.
+- **The beats, `_WB`.** One row a beat: rhythm (steady / heavy / glide / flutter / ruffle / butterfly), rate at rest and on the move, rest
+  sweep and raise, depths, how far the right wing runs behind, lag / flex / bend. Gear wings: `gear.beat` (left out = the wing kind).
+  Baked wing bones: `sway: { wings: '<beat>' }` on the def (left out = `butterfly`).
+  | unit | beat | reads as |
+  |---|---|---|
+  | Angel (both) | angel | slow, deep, even |
+  | Fallen Angel | raven | lower and further back, slow, a shiver down the feathers every 5.5 s |
+  | Valkyrie | valkyrie | two strong beats, then held open and high |
+  | Fairy | fairy | an insect buzz in bursts, a breath between |
+  | Dragon | dragon | heavy: quick down, slow back, the loosest tips |
+  | Demiurge armoured / cosmic | archon / aeon | heavy / very slow and in step; his acts still spread and beat them |
+  | Butterfly Girl | butterfly | as before (folds shut behind her), now bending |
+  | Unicorn | pegasus | its clips turn the hinge; only the follow-through is new |
+  | Demon (male) | demon | heavy bat beat |
+  | Gargoyle (both) | stone | slow, stiff, a shiver now and then |
+  | Mothman | moth | slow open and close, a shiver |
+  | Nephilim | grigori | great folded wings, slow |
+  | Incubus (succubus male) | imp | quick small bat beat |
+  | Monarch | mantle | the wings she wears down her back open and close a little |
+  | Cicada Brood | cicada | shut along the back, a rattle in bursts |
+  | Bee Queen | bee | a buzz in bursts |
+- **The moments.** `_wingSlot(entry)` (the board, each frame, roots flagged `userData.ewWings`) reads the slot: walk / run = quicker and
+  1.55x deeper; any cast = `flare` (wide, hard beats) or `strike` for the melee kinds (pulled back, thrown open); hit = `flinch` (clapped
+  shut, then shaken out); block / dodge = `tuck`; death = folded and still. The Demiurge keeps his own acts for casts (`_demiTick` adds
+  `c.spread` / `c.beat` to the moment). Local looks only: the guest's wings read its own copy of the slot, nothing relayed.
+- **The freed wings.** Nine units whose wings were one skin with the body got wing bones with `bake-wings.py --soft` (models-assets.md
+  "THE SOFT WINGS"): new files `..._wings_...glb` / `..._wt_...glb` beside the old ones on R2.
+- **The loose tails.** `bake-tail.py` (models-assets.md "THE LOOSE TAILS") lays one chain of THE SWAY's spring bones down a tail: Demon
+  (male), Gargoyle (both), Incubus, Draconian, Rat, Sewer Gator, Kaiju. Def: `sway: { stiffness: 2.2, gravity: 0.1, drag: 0.3, maxRoot: 35, maxBend: 22, wave: 0.5,
+  waveHz: 0.4, caps: [] }`.
+- **Looked at, no wings in the model:** Demon (female), Demon Princess, Halfdemon (both), Succubus (female: a tail under a gown), Eagleman
+  (a man in a suit), Mantid, Quetzalcoatl (two small shoulder pieces), Overlord (a cape), Dream Eater (back spines). Separate wings for
+  these = a wing file + `gear.wings` (Eagleman, Quetzalcoatl, Succubus f, Demon f are the natural ones) or new Meshy parts: his call.
+- **Probe:** `TAG=a SHOTS=3 ZOOM=4.5 ACTS=idle,walk,hit,death RACES="angel:female,dragon:male" node playtest_wings.js` (four races a run;
+  it prints each wing's hinge and joint turns). LESSON: three-renderer.js already had `_lwTick` / `_lw*` (the late look); a second
+  `function _lwTick` silently replaced it. Grep a new helper's name before using it; these are `_wf*` / `_wb*`.
+- Not done: the creator's Wings part (player-made looks) still beats stiff (`_ewWingPair` meshes, its own code); wing sounds; more tails
+  The tool was tried and NOT wired on: Dinosaur (the chain starts under a thigh: its biped rig sits wrong in a T-rex), Loch Ness (a stub),
+  Catgirl / Sharkman / Mermaid / Werewolf / Goatman (no tail piece found), Kraken / Jellyfish (many tentacles: needs one chain a tentacle).
+## THE ACTOR (2026-11-27, thread "Add actor and actress with costume transformations")
+mondo 11-27: "add an actor/actress, i have their audition look, red carpet look, romeo and juliet, and action stars, they should have a
+unique playstyle that uses transformations for different spells and stuff, kinda like the time cop or aliens with their spaceships."
+ALL NAMES AND NUMBERS ARE A FIRST PASS. No lore invented (home biome `urban` = a guess; no residents, no codex line).
+- MODELS: his five concept pictures (project files `actor/concepts/mondo/`), the pairs cut in two; the action stars were RESTYLED on Meshy
+  (text-to-image with his picture as the reference, same faces) to a look of our own, not the well-known adventure heroes his concept leaned on
+  (him: a quilted vest over a maroon henley, khaki cargos; her: a cropped biker jacket, white crop top, black cargos). Eight Meshy image-to-3d
+  + rigs (`actor/model.py all`), the `_running` export used. R2 `Assets/characters/races/actor/<male|female>/Meshy_AI_<actor|actress>_
+  <audition|redcarpet|romeo|juliet|action>_Running.glb` (+ `.opt.glb`, in ASSET_MANIFEST), sprites `actor_px.png` / `actress_px.png` (Sprite AI
+  restyle of the audition concepts). Renders: project files `actor/renders/models_sheet.jpg`. Credits: 307 (1,541 -> 1,234).
+- RACE `actor`, one race both genders (RACE_PROFILES labelMale Actor / labelFemale Actress), Human, class specialist, the kit shared.
+- THE LOOKS: sprites.js RACE_MODELS_3D.actor = the AUDITION look; `wireActorRoles()` (run at the END of sprites.js, so the keys are the moved
+  sprite urls) files the three costumes under `<race sprite url>#carpet|#romance|#action` in overrideForms, and the plain url = the def itself
+  (the alien ships' way back). battle.js UNIT_ANIM_OVERRIDES.actor castSprite reads the row's `acRole`: a role = its costume, `audition` = back
+  to the plain look, no acRole = leave it. No revertAfter (the Time Cop's rule: the costume stays through moves and basic attacks).
+- THE RULE, IN CHARACTER (data.js PASSIVE_DEFS acInCharacter; battle.js "THE ACTOR"): the costume worn = a role status (STATUS_DEFS
+  roleCarpet +1 M.DEF, roleRomance +1 M.ATK, roleAction +1 ATK +1 SPD; duration 99, dispelProof; none = the audition look). A cast of the role
+  already worn is cast as a copy x1.25 dmg / healAmt / healPerTurn / collisionBonus (`_acCastRow`, in the cast-row chain) and pops "IN
+  CHARACTER"; after a cast that went through a new role swaps the status (`_acAfterCast`), an Audition row clears it. All synced state.
+- THE KIT (RACE_TREE: every rung two different roles): Cold Read T1 (Audition, magic 80, Stagger) / Photo Op T1 (Red Carpet, 3x3 magic 65,
+  Blind) · Balcony Scene T2 (Star-Crossed, heal 110 + Regen) / Stunt Double T2 (Action, tackle 110, push 1) · Star Power T3 (Red Carpet, allies
+  within 2 +1 ATK +1 M.ATK) / A Plague on Both Your Houses T3 (Star-Crossed, 3x3 magic 100, Poison) · Curtain Call T4 (Audition, heal all 130,
+  cleanse 1) / Walk Away From It T4 (Action, 3x3 physical 140, Burn). Families `audition`, `redcarpet`, `starcrossed`, `actionhero` (signature,
+  unique actor) + Stage Presence. Finisher That's a Wrap (borrows farewellTour).
+- VFX three-vfx-effects.js "THE ACTOR" (fire()'s burst, `_acStage`; the element hits are quieted): script pages, flashbulbs, a gold star +
+  spotlight, rose petals + heart, plague mist, a stunt star + dust, a movie fireball + smoke, the big curtain + thrown roses.
+  THE QUICK CHANGE (`ThreeVFXEffects.acQuickChange`): a red velvet curtain on a gold rod drops round the body and pulls open on the new
+  costume, spotlight + gold glitter. three-renderer.js plays it on the rig swap of a def with `costumeFx` (local on host and guest, off the
+  synced look: never relayed). Kill switch EW_NO_ACTOR_VFX.
+- THE PARTY BUILDER: a role spell's preview changes the stage hero into that costume first (`_cvSetCharacter` opts.acRole, the curtain), then
+  plays the beat (three-renderer.js "THE ACTOR ON THE STAGE").
+- Probe: `UNITS=actor:male,actor:female SPELLS=acPhotoOp,... TAG=ac node playtest_kitfight.js`.
+- OPEN for mondo: names, numbers, which spells, Balance Lab not run, sound, a home zone.

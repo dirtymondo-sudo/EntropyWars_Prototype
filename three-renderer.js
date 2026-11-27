@@ -9000,13 +9000,13 @@ const ThreeRenderer = (function () {
            ground's own, its top coolK / warmK (the two tones the slow patches drift between) */
         sheets: { calm_grass: [0.252, 0.313, 0.163], calm_rockygrass: [0.270, 0.315, 0.200], calm_purplegrass: [0.324, 0.195, 0.513], calm_darkgrass: [0.213, 0.240, 0.162],
                   grass: [0.302, 0.307, 0.197], grass_dark_fantasy: [0.302, 0.307, 0.197], grass_2: [0.261, 0.519, 0.163], grass_3: [0.352, 0.673, 0.061], grass_4: [0.303, 0.276, 0.163], grass_rocky: [0.434, 0.533, 0.234], purple_grass: [0.462, 0.286, 0.557] },
-        lit: 1.0, rootK: 0.70, coolK: [1.08, 1.34, 1.28], warmK: [1.42, 1.44, 1.04],
+        lit: 1.0, rootK: 1.0 /* (11-27, mondo: "the bottom portion of the grass blades blend/tint towards the color of whatever ground it is on": the foot IS the sheet's colour now, 0.70 before) */, coolK: [1.08, 1.34, 1.28], warmK: [1.42, 1.44, 1.04],
         patchM: 1.8,        // patch size, squares
         pressR: 0.42,       // a unit lays the grass down this far round its feet (× tile)
         pressN: 4,          // press map texels per square
         fringe: 5, fringeDensity: 0.7,   // the meadow past the board's edge: squares out, tufts per square side × this
         low: { perTile: 7, width: 0.240, fringe: 2 },   // the Low setting: half the tufts, each wider, a narrow meadow
-        order: 50, shadow: true, dry: [0.42, 0.38, 0.20], dryShare: 0.10
+        order: 50, shadow: false /* (11-27, mondo: "would it help performance and look better if we didnt do shadows for the individual grass blades? looks kinda weird and unneccessary": no blade reads the shadow map; the crown's shade is in the tuft's colour already (G18). `EW_GRASS_SHADOW = true` = as before) */, dry: [0.42, 0.38, 0.20], dryShare: 0.10
     };
     try { window.EW_GGRASS = GGRASS; GGRASS.flush = function () { _ggPalCache = {}; _ggFringe = null; _lastTerrainDecoSerial = ''; }; } catch (e) {}   // flush = retune live: the next frame rebuilds
     /* a tuft's outline (x in half-widths, y in heights) + its 5 triangles, wound to face the camera.
@@ -9029,7 +9029,7 @@ const ThreeRenderer = (function () {
        tuft is built. Nothing reads the camera any more (aGgS and uGgR are gone from the shader and its WebGPU twin); the same corners and
        triangles as before, drawn from both sides. A blade that leans toward the light is a little lighter, away a little darker (sunK), so a
        tuft has a lit side. _ggFace3(r, az) fills the eight blades' headings for one tuft. */
-    var _GG3 = { DX: new Float32Array(8), DZ: new Float32Array(8), PX: new Float32Array(8), PZ: new Float32Array(8), SH: new Float32Array(8), sun: 0.9, sunK: 0.13, twist: 0.75, jit: 0.9, reach: 0.45, wide: 0.85 };   // reach: how far a blade arches out from the root (x the old fan's splay: a fan laid flat is a starfish), wide: a blade's width x
+    var _GG3 = { DX: new Float32Array(8), DZ: new Float32Array(8), PX: new Float32Array(8), PZ: new Float32Array(8), SH: new Float32Array(8), sun: 0.9, sunK: 0.07, twist: 0.75, jit: 0.9, reach: 0.45, wide: 0.85 };   // reach: how far a blade arches out from the root (x the old fan's splay: a fan laid flat is a starfish), wide: a blade's width x
     function _ggFace3(r, az) {
         var G = _GG3;
         for (var b = 0; b < 8; b++) {
@@ -9507,7 +9507,7 @@ const ThreeRenderer = (function () {
         ],
         /* G16 THE GROUNDING: a blade's root sinks this share of its height into the ground, and the foot is darker (root colour ×, over the
            lowest share of the blade) */
-        sink: 0.07, base: [0.90, 0.50],
+        sink: 0.07, base: [1.0, 0.55],   // (11-27: the foot is the ground's own colour, not darker; 0.90 / 0.50 before)
         /* G17 THE WALKER: the grass bows down and away round the walker's feet (shader; r0..r1 m, down = how far it lies), so he reads */
         walker: { r0: 0.7, r1: 2.0, down: 0.55 },
         /* G19 THE LITTER (mondo's critique, "the forest floor is missing an intermediate layer": fallen leaves, twigs, moss at roots,
@@ -9785,7 +9785,7 @@ const ThreeRenderer = (function () {
         /* THE CELL'S OWN SPHERE: the shader moves every corner (the face to the eye, the wind), so the sphere is the cell's ground + a tuft's reach, set by hand */
         geo.boundingSphere = new THREE.Sphere(new THREE.Vector3((x0 + cm / 2) * U, (yLo + yHi) / 2, (z0 + cm / 2) * U), Math.hypot(cm * 0.7072 * U, (yHi - yLo) / 2) + (1.7 * R.tall + 1.0 * R.spread) * U);
         var mesh = new THREE.Mesh(geo, R.mat), noCull = false; try { noCull = !!window.EW_HQ_GRASS_NO_CULL; } catch (e2) {}
-        mesh.frustumCulled = !noCull; mesh.name = 'ew_hq_grass'; mesh._ew_ggrass = true; mesh.renderOrder = C.order; mesh.receiveShadow = C.shadow !== false;
+        mesh.frustumCulled = !noCull; mesh.name = 'ew_hq_grass'; mesh._ew_ggrass = true; mesh.renderOrder = C.order; mesh.receiveShadow = C.shadow !== false || !!window.EW_GRASS_SHADOW;
         mesh.raycast = function () {};   // THE GRASS IS NEVER RAY-TESTED (the walk's field too)
         S.parent.add(mesh);
         return { mesh: mesh, blades: nB, tris: nB * TL / 3, cx: cx, cz: cz };
@@ -11970,7 +11970,7 @@ const ThreeRenderer = (function () {
             o.castShadow = false;
             o.receiveShadow = false;
             o._ew_shadowFlagged = true;   // preempt _flagMeshShadows re-enabling them
-            if (o._ew_ggrass) o.receiveShadow = GGRASS.shadow !== false;   // THE GRASS FIELD: the board's shadows fall across it
+            if (o._ew_ggrass) o.receiveShadow = GGRASS.shadow !== false || !!window.EW_GRASS_SHADOW;   // THE GRASS FIELD: the board's shadows fall across it
         });
 
         objectGroup.add(_terrainDecoGroup);
@@ -18343,9 +18343,10 @@ const ThreeRenderer = (function () {
                 if (g.wingTint && mat && mat.color) { mat = mat.clone(); mat.color.set(g.wingTint); }
                 var lift = g.wingLift != null ? g.wingLift : (wf.lift != null ? wf.lift : ({ angel: 0.35, bat: 0.15, dragon: -0.75 })[g.wings] || 0);   // the creator's CC_WING_LIFT
                 [['L', pair.L, 1], ['R', pair.R, -1]].forEach(function (sd) {
-                    var m = new THREE.Mesh(sd[1], mat); m.userData.ewGear = true; m.name = 'ewGearWingMesh' + sd[0];
+                    var m = _wfSkin(sd[1], mat, null, new THREE.Vector3(sd[2], 0, 0), EW_WING_LEN); m.userData.ewGear = true; m.name = 'ewGearWingMesh' + sd[0];   // THE LOOSE WINGS EVERYWHERE: four bones down the span
                     m.quaternion.setFromAxisAngle(new THREE.Vector3(0, 0, 1), sd[2] * lift);
                     var hinge = new THREE.Group(); hinge.name = 'ewGearWing' + sd[0]; hinge.scale.setScalar(ws); hinge.add(m);
+                    hinge.userData.ewBeat = g.beat || (typeof g.wings === 'string' ? g.wings : 'angel');
                     _gearHang(chest, new THREE.Vector3(cp.x + sd[2] * 0.035 * H, cp.y + 0.03 * H, cp.z - 0.07 * H), hinge, 'ewGearWingMount' + sd[0]);
                 });
                 made = true;
@@ -18445,26 +18446,283 @@ const ThreeRenderer = (function () {
         }
         D.on = true;
     }
+    /* ══ THE LOOSE WINGS EVERYWHERE (2026-11-27, mondo: "give all units with separate wings that level of expression too? Maybe
+       they can all beat a little different"). The Occulus's loose wings (below) for every wing in the game, at run time:
+         · THE BONES: a wing is skinned to a chain of four bones down its span (`ewLW0..3`, _wfSkin): THE UNIT GEAR's wings
+           (the Angels, the Fallen Angel, the Valkyrie, the Fairy, the Dragon, the Demiurge), the Unicorn's, and a body's own
+           baked wing bones `ewwing_L/R` (bake-wings.py: the Butterfly Girl and every unit cut loose since), whose vertices
+           are shared out to three more bones at load (_wfSplitBaked).
+         · THE FOLLOW-THROUGH (_wfTick, in THE SWAY's tick, after the clip): whatever turns the wing's hinge (the gear's beat,
+           a clip's track, an act), joint j plays that turn `lag` seconds a joint late, read from a short record of the hinge's
+           turns. So the tip trails every beat, whips past when the wing stops and settles. No clip knows about it.
+         · THE BEATS (_WB): each unit's own beat: its rate, depth, where the wings rest, how far out of step the two are, and a
+           RHYTHM (steady, heavy = a quick downstroke and a slow recovery, glide = two beats then held open, flutter = an insect's
+           buzz in bursts, ruffle = slow with a shiver now and then, butterfly = folding shut behind the back). A def names it
+           `gear.beat` (gear wings) or `sway: { wings: '<beat>' }` (baked wing bones); left out = the wing file's own.
+         · THE MOMENTS (_wingSlot): the wings answer the unit: quicker and deeper on the move, flared wide through a cast,
+           pulled back then thrown open on a strike, clapped shut on a hit, folded and still in death.
+       Looks only, local, nothing relayed: the guest's wings beat off the same slots. */
+    var LW_J = [0.24, 0.49, 0.72], LW_JW = 0.115;
+    function _wfSkin(geo, material, o, dir, len) {
+        var g = geo.clone(), P = g.attributes.position, n = P.count;
+        var ox = o ? o.x : 0, oy = o ? o.y : 0, oz = o ? o.z : 0;
+        var si = new Uint16Array(n * 4), sw = new Float32Array(n * 4);
+        var sm = function (x, a, b) { var t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+        for (var i = 0; i < n; i++) {
+            var x = ((P.getX(i) - ox) * dir.x + (P.getY(i) - oy) * dir.y + (P.getZ(i) - oz) * dir.z) / len;
+            var s1 = sm(x, LW_J[0] - LW_JW, LW_J[0] + LW_JW), s2 = sm(x, LW_J[1] - LW_JW, LW_J[1] + LW_JW), s3 = sm(x, LW_J[2] - LW_JW, LW_J[2] + LW_JW);
+            si[i * 4] = 0; si[i * 4 + 1] = 1; si[i * 4 + 2] = 2; si[i * 4 + 3] = 3;
+            sw[i * 4] = 1 - s1; sw[i * 4 + 1] = s1 - s2; sw[i * 4 + 2] = s2 - s3; sw[i * 4 + 3] = s3;
+        }
+        g.setAttribute('skinIndex', new THREE.BufferAttribute(si, 4));
+        g.setAttribute('skinWeight', new THREE.BufferAttribute(sw, 4));
+        g._ew_shared = true;
+        var mesh = new THREE.SkinnedMesh(g, material), bones = [], prev = 0;
+        for (var b = 0; b < 4; b++) {
+            var bone = new THREE.Bone(); bone.name = 'ewLW' + b;
+            var at = b ? len * LW_J[b - 1] : 0;
+            if (b) bone.position.set(dir.x * (at - prev), dir.y * (at - prev), dir.z * (at - prev)); else bone.position.set(ox, oy, oz);
+            prev = at;
+            if (b) bones[b - 1].add(bone);
+            bones.push(bone);
+        }
+        mesh.add(bones[0]);
+        mesh.updateMatrixWorld(true);
+        mesh.bind(new THREE.Skeleton(bones), mesh.matrixWorld);
+        mesh.frustumCulled = false;   // the box is the rest wing's: a bent wing leaves it
+        return mesh;
+    }
+    /* a body's own wings (bones ewwing_L / ewwing_R, each wing's vertices wholly on its bone): three more bones down each
+       wing and the vertices shared out along it. Once, on the cached root, before any clone. */
+    function _wfSplitBaked(root) {
+        root.updateMatrixWorld(true);
+        var did = false;
+        root.traverse(function (mesh) {
+            if (!mesh.isSkinnedMesh || !mesh.skeleton || !mesh.geometry || mesh.userData.ewLWSplit) return;
+            var sk = mesh.skeleton, geo = mesh.geometry, SI = geo.attributes.skinIndex, SW = geo.attributes.skinWeight, P = geo.attributes.position;
+            if (!SI || !SW || !P) return;
+            var added = false;
+            ['ewwing_L', 'ewwing_R'].forEach(function (nm) {
+                var bi = -1; for (var k = 0; k < sk.bones.length; k++) if (sk.bones[k] && sk.bones[k].name === nm) { bi = k; break; }
+                if (bi < 0) return;
+                var wb = sk.bones[bi];
+                for (var c0 = 0; c0 < wb.children.length; c0++) if (wb.children[c0].name === 'ewLW1') return;   // (done through another mesh)
+                var M = new THREE.Matrix4().multiplyMatrices(sk.boneInverses[bi], mesh.bindMatrix), v = new THREE.Vector3();
+                var verts = [], cx = 0, cy = 0, cz = 0;
+                for (var i = 0; i < P.count; i++) {
+                    var w = 0, solo = true;
+                    for (var s = 0; s < 4; s++) { var ws = SW.getComponent(i, s); if (ws > 0.001) { if (SI.getComponent(i, s) === bi) w += ws; else solo = false; } }
+                    if (w < 0.999 || !solo) continue;
+                    v.fromBufferAttribute(P, i).applyMatrix4(M);
+                    verts.push(i, v.x, v.y, v.z); cx += v.x; cy += v.y; cz += v.z;
+                }
+                var nV = verts.length / 4; if (nV < 12) return;
+                var dir = new THREE.Vector3(cx / nV, cy / nV, cz / nV); if (dir.lengthSq() < 1e-10) return; dir.normalize();
+                var len = 0; for (var q = 0; q < verts.length; q += 4) len = Math.max(len, verts[q + 1] * dir.x + verts[q + 2] * dir.y + verts[q + 3] * dir.z);
+                if (!(len > 1e-5)) return;
+                var base = sk.bones.length, parent = wb, prev = 0;
+                for (var b = 1; b < 4; b++) {
+                    var bone = new THREE.Bone(); bone.name = 'ewLW' + b;
+                    var at = len * LW_J[b - 1];
+                    bone.position.set(dir.x * (at - prev), dir.y * (at - prev), dir.z * (at - prev)); prev = at;
+                    parent.add(bone); parent = bone;
+                    sk.bones.push(bone);
+                    sk.boneInverses.push(new THREE.Matrix4().makeTranslation(-dir.x * at, -dir.y * at, -dir.z * at).multiply(sk.boneInverses[bi]));
+                }
+                var sm = function (x, a, e) { var t = Math.max(0, Math.min(1, (x - a) / (e - a))); return t * t * (3 - 2 * t); };
+                for (var r = 0; r < verts.length; r += 4) {
+                    var vi = verts[r], x = (verts[r + 1] * dir.x + verts[r + 2] * dir.y + verts[r + 3] * dir.z) / len;
+                    var s1 = sm(x, LW_J[0] - LW_JW, LW_J[0] + LW_JW), s2 = sm(x, LW_J[1] - LW_JW, LW_J[1] + LW_JW), s3 = sm(x, LW_J[2] - LW_JW, LW_J[2] + LW_JW);
+                    SI.setXYZW(vi, bi, base, base + 1, base + 2);
+                    SW.setXYZW(vi, 1 - s1, s1 - s2, s2 - s3, s3);
+                }
+                added = true;
+            });
+            if (added) {
+                SI.needsUpdate = true; SW.needsUpdate = true;
+                if (sk.boneTexture && sk.boneTexture.dispose) { sk.boneTexture.dispose(); sk.boneTexture = null; }
+                sk.boneMatrices = new Float32Array(sk.bones.length * 16);
+                mesh.userData.ewLWSplit = true; did = true;
+            }
+        });
+        if (did) root.updateMatrixWorld(true);
+        return did;
+    }
+    /* THE BEATS. rate = radians a second at rest, walk = on the move; sw0 / ra0 = where the wing rests (swept back / raised,
+       radians off the hinge's own rest); swA / raA / tw = the beat's depth (sweep, raise, the feathers' pitch); off = how far
+       the right wing runs behind the left; lag / flex / bend = the follow-through (seconds a joint, how much each joint
+       makes of it, the most a joint bends). */
+    var _WB = {
+        angel:     { rhythm: 'steady',  rate: 2.0, walk: 3.3, sw0: 0.55, ra0: 0.25, swA: 0.10, raA: 0.24, tw: 0.10, off: 0.25, lag: 0.111, flex: [1.6, 2.0, 2.5], bend: 0.42 },
+        raven:     { rhythm: 'ruffle',  rate: 1.45, walk: 2.6, sw0: 0.74, ra0: 0.06, swA: 0.07, raA: 0.15, tw: 0.07, off: 0.6, lag: 0.13, flex: [1.8, 2.3, 2.8], bend: 0.46 },
+        valkyrie:  { rhythm: 'glide',   rate: 3.1, walk: 4.2, sw0: 0.42, ra0: 0.38, swA: 0.12, raA: 0.3, tw: 0.14, off: 0, lag: 0.091, flex: [1.4, 1.9, 2.4], bend: 0.4 },
+        bat:       { rhythm: 'heavy',   rate: 2.6, walk: 3.8, sw0: 0.5, ra0: 0.2, swA: 0.14, raA: 0.3, tw: 0.12, off: 0.15, lag: 0.098, flex: [1.8, 2.4, 3.0], bend: 0.5 },
+        dragon:    { rhythm: 'heavy',   rate: 1.6, walk: 2.5, sw0: 0.5, ra0: 0.22, swA: 0.16, raA: 0.34, tw: 0.16, off: 0.1, lag: 0.156, flex: [2.0, 2.6, 3.2], bend: 0.55 },
+        fairy:     { rhythm: 'flutter', rate: 24, walk: 30, sw0: 0.5, ra0: 0.3, swA: 0.05, raA: 0.3, tw: 0.2, off: 0.5, lag: 0.02, flex: [0.9, 1.26, 1.62], bend: 0.3 },
+        archon:    { rhythm: 'heavy',   rate: 1.9, walk: 3.2, sw0: 0.55, ra0: 0.25, swA: 0.12, raA: 0.26, tw: 0.12, off: 0.25, lag: 0.13, flex: [1.8, 2.4, 2.9], bend: 0.5 },
+        aeon:      { rhythm: 'steady',  rate: 1.25, walk: 2.4, sw0: 0.5, ra0: 0.32, swA: 0.08, raA: 0.2, tw: 0.08, off: 0, lag: 0.169, flex: [1.8, 2.2, 2.6], bend: 0.4 },
+        /* a body's own wings (baked bones): the rest is the modelled pose */
+        butterfly: { rhythm: 'butterfly', rate: 4.4, walk: 6.2, sw0: 0.08, ra0: 0, swA: 0.95, raA: 0.05, tw: 0, off: 0.12, lag: 0.065, flex: [1.0, 1.4, 1.8], bend: 0.3 },
+        moth:      { rhythm: 'ruffle',  rate: 1.7, walk: 3.4, sw0: 0.05, ra0: 0, swA: 0.16, raA: 0.07, tw: 0.04, off: 0.3, lag: 0.091, flex: [1.2, 1.7, 2.2], bend: 0.34 },
+        bee:       { rhythm: 'flutter', rate: 34, walk: 40, sw0: 0, ra0: 0.04, swA: 0.04, raA: 0.2, tw: 0.16, off: 0.4, lag: 0.015, flex: [0.72, 0.99, 1.26], bend: 0.22 },
+        demon:     { rhythm: 'heavy',   rate: 2.0, walk: 3.2, sw0: 0.04, ra0: 0, swA: 0.12, raA: 0.17, tw: 0.08, off: 0.2, lag: 0.117, flex: [1.8, 2.4, 3.0], bend: 0.46 },
+        imp:       { rhythm: 'heavy',   rate: 3.3, walk: 4.6, sw0: 0.02, ra0: 0, swA: 0.1, raA: 0.2, tw: 0.1, off: 0.35, lag: 0.078, flex: [1.6, 2.2, 2.8], bend: 0.44 },
+        stone:     { rhythm: 'ruffle',  rate: 1.1, walk: 2.0, sw0: 0.03, ra0: 0, swA: 0.07, raA: 0.09, tw: 0.03, off: 0.5, lag: 0.143, flex: [1.0, 1.4, 1.8], bend: 0.3 },
+        eagle:     { rhythm: 'glide',   rate: 2.8, walk: 4.0, sw0: 0.03, ra0: 0.04, swA: 0.1, raA: 0.2, tw: 0.1, off: 0, lag: 0.091, flex: [1.4, 1.9, 2.4], bend: 0.4 },
+        serpent:   { rhythm: 'steady',  rate: 2.3, walk: 3.6, sw0: 0.03, ra0: 0.02, swA: 0.12, raA: 0.18, tw: 0.12, off: 0.9, lag: 0.13, flex: [1.8, 2.4, 3.0], bend: 0.46 },
+        grigori:   { rhythm: 'ruffle',  rate: 1.3, walk: 2.4, sw0: 0.02, ra0: 0, swA: 0.08, raA: 0.11, tw: 0.05, off: 0.45, lag: 0.143, flex: [1.8, 2.3, 2.8], bend: 0.44 },   // (the Nephilim: great folded wings, slow)
+        mantle:    { rhythm: 'butterfly', rate: 2.2, walk: 3.6, sw0: 0, ra0: 0, swA: 0.3, raA: 0.04, tw: 0, off: 0.2, lag: 0.091, flex: [1.2, 1.7, 2.2], bend: 0.34 },   // (the Monarch: the wings she wears down her back open and close a little)
+        cicada:    { rhythm: 'flutter', rate: 30, walk: 36, sw0: 0, ra0: 0, swA: 0.03, raA: 0.07, tw: 0.05, off: 0.3, lag: 0.02, flex: [0.72, 1.08, 1.44], bend: 0.2 },   // (shut along the back: they rattle in bursts)
+        pegasus:   { rhythm: 'steady',  rate: 2, walk: 3, sw0: 0, ra0: 0, swA: 0, raA: 0, tw: 0, off: 0, lag: 0.13, flex: [1.8, 2.4, 3.0], bend: 0.5 },   // (the Unicorn: its clips turn the hinge; only the follow-through is read)
+        baked:     { rhythm: 'steady',  rate: 2.0, walk: 3.2, sw0: 0.03, ra0: 0, swA: 0.1, raA: 0.15, tw: 0.06, off: 0.25, lag: 0.111, flex: [1.6, 2.0, 2.5], bend: 0.42 }
+    };
+    var _wbState = (typeof WeakMap === 'function') ? new WeakMap() : null;   // clone root -> { slot, walk, dead, act, t0, ms }
+    var _wbM = { spread: 0, beat: 0, fold: 0 };
+    /* the board's part: what the unit does this frame (the slot its clip plays) */
+    function _wingSlot(entry) {
+        var r = entry._ew_sway; if (!_wbState || !r) return;
+        var cur = entry._ew_curAnim || '', st = _wbState.get(r);
+        if (!st) { st = {}; _wbState.set(r, st); }
+        st.walk = cur === 'walk' || cur === 'run' || cur === 'runCharge';
+        if (cur === st.slot) return;
+        st.slot = cur;
+        var now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+        st.dead = cur === 'death';
+        if (/^cast/i.test(cur)) { st.act = /melee|kick|chop|slam|claw|punch|jab|dash|tackle|sweep|smash/i.test(cur) ? 'strike' : 'flare'; st.t0 = now; st.ms = 1300; }
+        else if (cur === 'hit') { st.act = 'flinch'; st.t0 = now; st.ms = 750; }
+        else if (cur === 'block' || cur === 'dodge' || cur === 'dodgeRoll') { st.act = 'tuck'; st.t0 = now; st.ms = 700; }
+        else if (cur === 'jump') { st.act = 'flare'; st.t0 = now; st.ms = 900; }
+        else if (cur === 'death') { st.act = null; st.t0 = now; }
+    }
+    /* this frame's moment for a model's wings -> _wbM { spread (open wide +, pulled in −), beat (harder), fold (0..1 shut) } */
+    function _wbMoment(model) {
+        var m = _wbM; m.spread = 0; m.beat = 0; m.fold = 0;
+        var st = _wbState ? _wbState.get(model) : null;
+        if (!st) return null;
+        var now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+        if (st.dead) { var d = _occS((now - st.t0) / 900, 0, 1); m.fold = d; m.spread = 0.5 * _occBump((now - st.t0) / 900, 0, 0.18, 0.6); return st; }
+        if (st.act) {
+            var u = (now - st.t0) / (st.ms || 1000);
+            if (u >= 1 || u < 0) st.act = null;
+            else if (st.act === 'flare') { var b = _occS(u, 0, 0.22) * (1 - _occS(u, 0.7, 1)); m.spread = 0.95 * b; m.beat = 1.1 * _occBump(u, 0.15, 0.4, 0.95); }
+            else if (st.act === 'strike') { m.spread = -0.55 * _occBump(u, 0, 0.16, 0.3) + 0.9 * _occBump(u, 0.2, 0.34, 0.9); m.beat = 0.6 * _occBump(u, 0.25, 0.4, 1); }
+            else if (st.act === 'flinch') { m.fold = 0.85 * _occBump(u, 0, 0.12, 0.5); m.spread = 0.45 * _occBump(u, 0.3, 0.55, 1); m.beat = 0.8 * _occBump(u, 0.4, 0.6, 1); }
+            else if (st.act === 'tuck') { m.fold = 0.7 * _occBump(u, 0, 0.2, 1); }
+        }
+        return st;
+    }
+    /* one wing's hinge this frame. n = the hinge (a gear hinge or a baked wing bone), sgn = +1 the left wing, P = its beat,
+       ph = the model's beat phase, t = seconds, m = the moment, walk = on the move */
+    function _wbHinge(n, sgn, P, ph, t, m, walk) {
+        if (!_gearE) _gearE = new THREE.Euler(0, 0, 0, 'YZX');
+        if (sgn < 0) ph -= P.off;
+        var amp = (walk ? 1.55 : 1) * (1 + m.beat) * (1 - m.fold), sw = P.sw0, ra = P.ra0, tw = 0, r = P.rhythm, s, c;
+        if (r === 'butterfly') {
+            /* folding back behind her and opening again, slow; shut = fully back */
+            var wb = 0.5 - 0.5 * Math.cos(ph);
+            sw += P.swA * (wb * wb * (1 - m.fold) + m.fold) * (1 - 0.6 * Math.max(0, m.spread)); ra += P.raA * amp * Math.sin(ph * 2) + 0.2 * m.spread;
+        } else {
+            if (r === 'heavy') ph += 0.55 * Math.cos(ph);                      // down fast, back slow
+            else if (r === 'glide') {                                             // two beats, then held open on the air
+                var cyc = ph / _OCC_T / 4; cyc = (cyc - Math.floor(cyc)) * 4;
+                var on = _occS(cyc, 0, 0.25) * (1 - _occS(cyc, 2.0, 2.4));
+                if (!walk) { amp *= 0.12 + 0.88 * on; sw -= 0.14 * (1 - on); ra += 0.16 * (1 - on) + 0.02 * (1 - on) * Math.sin(t * 2.1); }
+            } else if (r === 'flutter') {                                         // a buzz in bursts, a breath between them
+                var bu = 0.5 + 0.5 * Math.sin(t * 1.25 + (P.off * 3));
+                bu = walk ? 1 : _occS(bu, 0.3, 0.6);
+                amp *= 0.12 + 0.88 * bu; ra += 0.1 * (1 - bu) * Math.sin(t * 2.3); sw += 0.12 * (1 - bu);
+            } else if (r === 'ruffle') {                                          // slow, and a shiver down the feathers now and then
+                var rc = t / 5.5 + (sgn < 0 ? 0.04 : 0); rc -= Math.floor(rc);
+                var sh = _occBump(rc, 0.8, 0.86, 0.97);
+                tw += 0.13 * sh * Math.sin(t * 34); ra += 0.07 * sh;
+            }
+            s = Math.sin(ph); c = Math.cos(ph);
+            sw += P.swA * amp * c - 0.42 * m.spread + 0.5 * m.fold;
+            ra += P.raA * amp * s + 0.3 * m.spread - (P.ra0 + 0.4) * m.fold;
+            tw += P.tw * amp * Math.sin(ph + 0.9);
+        }
+        _gearE.set(tw, sgn * sw, sgn * ra, 'YZX');
+        var q0 = n.userData.ewq0;
+        if (q0) { if (!_gearQ) { _gearQ = new THREE.Quaternion(); _gearAx = new THREE.Vector3(0, 1, 0); } _gearQ.setFromEuler(_gearE); n.quaternion.set(q0[0], q0[1], q0[2], q0[3]).multiply(_gearQ); }
+        else n.quaternion.setFromEuler(_gearE);
+    }
+    /* the beat's phase of a model's wings, kept so a change of rate never jumps */
+    function _wbPhase(S, P, dt, walk) {
+        if (S.wbPh == null) S.wbPh = (S.gearPhase || 0) * 3;
+        var d = Math.max(0, Math.min(0.05, dt || 0));
+        S.wbT = (S.wbT == null ? (S.gearPhase || 0) * 7 : S.wbT) + d;   // the wings' own clock (the follow-through's: _wfTick), so a slow frame is slow motion for both
+        S.wbPh += d * (walk ? P.walk : P.rate);
+        return S.wbPh;
+    }
+    /* THE FOLLOW-THROUGH. S.lw = [{ hinge, j: [bone, bone, bone], fr, P, ht, hq, hi, hn }] (_swayInit) */
+    var _wfA = null, _wfB = null, _wfC = null;
+    function _wfSample(w, t, out) {
+        var n = w.hn, N = w.ht.length, i = w.hi, k, a, b;
+        if (!n) return out.set(0, 0, 0, 1);
+        for (k = 0; k < n; k++) {
+            a = (i - k + N * 2) % N;
+            if (w.ht[a] <= t) {
+                if (k === 0) return out.fromArray(w.hq, a * 4);
+                b = (a + 1) % N;
+                out.fromArray(w.hq, a * 4); _wfC.fromArray(w.hq, b * 4);
+                var span = w.ht[b] - w.ht[a];
+                return span > 1e-6 ? out.slerp(_wfC, (t - w.ht[a]) / span) : out;
+            }
+        }
+        return out.fromArray(w.hq, ((i - n + 1 + N * 2) % N) * 4);
+    }
+    function _wfTick(S, dt) {
+        /* the record runs on the wings' own clock (the frame's dt, capped): a slow frame or a hidden tab is slow motion, never a snap */
+        var W = S.lw, now = (S.lwT = (S.lwT || 0) + Math.max(0, Math.min(0.05, dt || 0)));
+        if (!_wfA) { _wfA = new THREE.Quaternion(); _wfB = new THREE.Quaternion(); _wfC = new THREE.Quaternion(); }
+        for (var i = 0; i < W.length; i++) {
+            var w = W[i], N = w.ht.length, h = w.hinge.quaternion, P = w.P;
+            if (w.hn && now - w.ht[w.hi] < 0.002) continue;                           // (no time passed: paused, or ticked twice in a frame)
+            w.hi = (w.hi + 1) % N; w.ht[w.hi] = now; h.toArray(w.hq, w.hi * 4); if (w.hn < N) w.hn++;
+            for (var j = 0; j < 3; j++) {
+                var bn = w.j[j]; if (!bn) continue;
+                _wfSample(w, now - j * P.lag, _wfA); _wfSample(w, now - (j + 1) * P.lag, _wfB);
+                _wfA.invert().multiply(_wfB);                                          // what the hinge turned by between the two moments, in its own frame
+                if (w.fr) _wfA.premultiply(w.frI).multiply(w.fr);                      // … in the bones' frame
+                if (_wfA.w < 0) { _wfA.x = -_wfA.x; _wfA.y = -_wfA.y; _wfA.z = -_wfA.z; _wfA.w = -_wfA.w; }
+                var sh = Math.sqrt(_wfA.x * _wfA.x + _wfA.y * _wfA.y + _wfA.z * _wfA.z);
+                if (sh < 1e-6) { bn.quaternion.set(0, 0, 0, 1); continue; }
+                var ang = 2 * Math.atan2(sh, _wfA.w), c = P.bend, e2 = Math.exp(2 * P.flex[j] * ang / c), na = c * (e2 - 1) / (e2 + 1), k = Math.sin(na / 2) / sh;
+                bn.quaternion.set(_wfA.x * k, _wfA.y * k, _wfA.z * k, Math.cos(na / 2));
+            }
+        }
+    }
+    function _wfInit(model, S) {
+        var out = [];
+        model.traverse(function (n) {
+            if (!n.isBone || n.name !== 'ewLW1') return;
+            var hinge = null, fr = null, p = n.parent, chain = [];
+            while (p && p !== model) { if (/^(ewGearWing[LR]|ewUniWing[LR]|ewwing_[LR])$/.test(p.name || '')) { hinge = p; break; } chain.push(p); p = p.parent; }
+            if (!hinge) return;
+            for (var c = chain.length - 1; c >= 0; c--) { if (!fr) fr = new THREE.Quaternion(); fr.multiply(chain[c].quaternion); }   // the turns between the hinge and the bones (the gear's lift)
+            if (fr && Math.abs(fr.w) > 0.99999) fr = null;
+            var j2 = null, j3 = null, i;
+            for (i = 0; i < n.children.length; i++) if (n.children[i].name === 'ewLW2') j2 = n.children[i];
+            if (j2) for (i = 0; i < j2.children.length; i++) if (j2.children[i].name === 'ewLW3') j3 = j2.children[i];
+            var bk = (hinge.userData && hinge.userData.ewBeat) || (/^ewwing_/.test(hinge.name) ? ((S.o && S.o.wings) || 'butterfly') : 'angel');
+            out.push({ hinge: hinge, j: [n, j2, j3], fr: fr, frI: fr ? fr.clone().invert() : null, P: _WB[bk] || _WB.angel, ht: new Float64Array(24), hq: new Float32Array(96), hi: 0, hn: 0 });
+        });
+        return out.length ? out : null;
+    }
     var _gearE = null;
     var _gearQ = null, _gearAx = null;
     function _gearTick(S, model, dt) {
         var G = S.gear; if (!G || !G.length) return;
         if (!_gearE) _gearE = new THREE.Euler(0, 0, 0, 'YZX');
-        var t = ((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()) / 1000 + (S.gearPhase || 0);
+        var t = ((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()) / 1000 + (S.gearPhase || 0), wst, wwalk = false, wph = 0;
         for (var i = 0; i < G.length; i++) {
             var n = G[i], nm = n.name;
-            if (nm === 'ewGearWingL' || nm === 'ewGearWingR') {
-                var sgn = nm === 'ewGearWingL' ? 1 : -1, ph = t * 2.2 - (sgn < 0 ? 0.25 : 0);
-                /* at rest swept back and a little up, a slow beat (the unicorn's) */
-                _gearE.set(0, sgn * (0.55 + 0.1 * Math.cos(ph)), sgn * (0.25 + 0.22 * Math.sin(ph)), 'YZX');
-                n.quaternion.setFromEuler(_gearE);
-            } else if (nm === 'ewwing_L' || nm === 'ewwing_R') {
-                /* THE WING BONES (2026-11-23, the Butterfly Girl): a slow butterfly beat, the two wings folding back behind her and
-                   opening again about the back's upright axis (the bone's baked frame is the chest's: +Y up), a little out of step */
-                var q0 = n.userData.ewq0, ws = nm === 'ewwing_L' ? 1 : -1, wb = 0.5 - 0.5 * Math.cos(t * 4.4 - (ws < 0 ? 0.12 : 0));
-                if (!_gearQ) { _gearQ = new THREE.Quaternion(); _gearAx = new THREE.Vector3(0, 1, 0); }
-                _gearQ.setFromAxisAngle(_gearAx, ws * (0.08 + 0.95 * wb * wb));
-                if (q0) n.quaternion.set(q0[0], q0[1], q0[2], q0[3]).multiply(_gearQ); else n.quaternion.copy(_gearQ);
+            if (nm === 'ewGearWingL' || nm === 'ewGearWingR' || nm === 'ewwing_L' || nm === 'ewwing_R') {
+                /* THE BEATS (THE LOOSE WINGS EVERYWHERE): the unit's own beat, answering what it does; the Demiurge's acts turn his own */
+                if (S.dm && nm.charAt(2) === 'G') continue;
+                var bk = n.userData.ewBeat || (nm.charAt(2) === 'w' ? ((S.o && S.o.wings) || 'butterfly') : 'angel'), WP = _WB[bk] || _WB.angel;
+                if (wst === undefined) { wst = _wbMoment(model) || null; wwalk = !!(wst && wst.walk); wph = _wbPhase(S, WP, dt, wwalk); }
+                _wbHinge(n, /L$/.test(nm) ? 1 : -1, WP, wph, S.wbT, _wbM, wwalk);
             } else if (nm === 'ewGearHalo') {
                 n.position.y = 0.014 * (n.userData.ewH || 1.7) * Math.sin(t * 1.8);   // the mount's frame is the model's: metres of the file
                 n.rotation.y = t * 0.6;
@@ -18626,14 +18884,15 @@ const ThreeRenderer = (function () {
             if (u >= 1 || u < 0) st.act = null; else { var fn = _DM_ACTS[st.act] || _DM_ACTS.cast; fn(u, c); }
         }
         dt = dt > 0 ? Math.min(dt, 0.05) : 0;
-        /* the wings: the gear's slow beat, opened or folded by the act; quicker on the move */
-        if (!_gearE) _gearE = new THREE.Euler(0, 0, 0, 'YZX');
-        var bt = (walk ? 1.7 : 1) + c.beat, wph = t * (walk ? 3.6 : 2.2);
-        for (var wi = 0; wi < 2; wi++) {
-            var wn = N[wi ? 'ewGearWingR' : 'ewGearWingL']; if (!wn) continue;
-            var sg = wi ? -1 : 1, ph = wph - (wi ? 0.25 : 0);
-            _gearE.set(0, sg * (0.55 - 0.42 * c.spread + 0.1 * bt * Math.cos(ph)), sg * (0.25 + 0.3 * c.spread + 0.22 * bt * Math.sin(ph)), 'YZX');
-            wn.quaternion.setFromEuler(_gearE);
+        /* the wings: his form's own beat (THE LOOSE WINGS EVERYWHERE), opened or folded by the act; quicker on the move */
+        var wl = N.ewGearWingL || N.ewGearWingR;
+        if (wl) {
+            var WP = _WB[wl.userData.ewBeat] || _WB.archon, wm = _wbMoment(model);
+            if (wm && (wm.act === 'flare' || wm.act === 'strike')) { _wbM.spread = 0; _wbM.beat = 0; }   // (a cast is his act's)
+            _wbM.spread += c.spread; _wbM.beat += c.beat;
+            var wph = _wbPhase(S, WP, dt, walk);
+            if (N.ewGearWingL) _wbHinge(N.ewGearWingL, 1, WP, wph, S.wbT, _wbM, walk);
+            if (N.ewGearWingR) _wbHinge(N.ewGearWingR, -1, WP, wph, S.wbT, _wbM, walk);
         }
         /* the cube in the cage: on a corner, turning; an act lifts it out, swells it, spins it up */
         D.spin += dt * 1.1 * (1 + c.cubeSpin);
@@ -19458,9 +19717,14 @@ const ThreeRenderer = (function () {
                     new THREE.Quaternion(), new THREE.Vector3(sc * side[1], sc, sc));
                 new THREE.Matrix4().multiplyMatrices(cw, W).decompose(mount.position, mount.quaternion, mount.scale);
                 var hinge = new THREE.Group(); hinge.name = 'ewUniWing' + side[0];
-                var m = wmesh.clone(); m.name = 'ewUniWingMesh' + side[0];
+                /* THE LOOSE WINGS EVERYWHERE: four bones from the shoulder to the tip; the clips turn the hinge, the rest follows late */
+                var ug = wmesh.geometry, uP = ug.attributes.position, uo = new THREE.Vector3(UNI_WING_ROOT[0], UNI_WING_ROOT[1], UNI_WING_ROOT[2]), ud = new THREE.Vector3(), uv = new THREE.Vector3(), ul = 0;
+                for (var ui = 0; ui < uP.count; ui++) { uv.fromBufferAttribute(uP, ui).sub(uo); var ull = uv.length(); if (ull > ul) { ul = ull; ud.copy(uv); } }
+                ud.normalize();
+                var m = ul > 1e-6 ? _wfSkin(ug, wmesh.material, uo, ud, ul) : wmesh.clone(); m.name = 'ewUniWingMesh' + side[0];
                 m.position.set(-UNI_WING_ROOT[0], -UNI_WING_ROOT[1], -UNI_WING_ROOT[2]);
                 m.quaternion.identity(); m.scale.set(1, 1, 1);
+                hinge.userData.ewBeat = 'pegasus';
                 hinge.add(m); mount.add(hinge); chest.add(mount);
             });
         }
@@ -21872,7 +22136,11 @@ const ThreeRenderer = (function () {
         var has = false;
         root.traverse(function (n) { if (!has && n.isBone && /^ewsway_c\d+_\d+$/.test(n.name)) has = true; });
         root.traverse(function (n) { if (!has && n.isBone && /^ewwing_[LR]$/.test(n.name)) has = true; });   // THE WING BONES (bake-wings.py): the gear tick beats them
+        if (has) { try { _wfSplitBaked(root); } catch (_le) { console.warn('[3D] wing split failed', _le); } }   // THE LOOSE WINGS EVERYWHERE: a body's own wings bend down their span
         if (root.userData.ewGear) has = true;   // THE UNIT GEAR: its parts move in the sway's tick
+        if (!has) root.traverse(function (n) { if (!has && n.isBone && n.name === 'ewLW1') has = true; });   // (the Unicorn's wings)
+        var wings = false; if (has) root.traverse(function (n) { if (!wings && n.isBone && (n.name === 'ewLW1' || /^ewwing_[LR]$/.test(n.name))) wings = true; });
+        if (wings) root.userData.ewWings = true;   // (the board feeds their moments: _wingSlot)
         root.userData.ewSway = has;
         return has;
     }
@@ -21907,7 +22175,8 @@ const ThreeRenderer = (function () {
             var a = byName[o.caps[ci][0]], b = byName[o.caps[ci][1]];
             if (a && b) caps.push({ a: a, b: b, k: o.caps[ci][2] });
         }
-        return { chains: chains, caps: caps, o: o, fresh: true, gear: gear, gearPhase: Math.random() * 6, dm: (model.userData && model.userData.ewDemi) ? _demiInit(model) : null };
+        var S0 = { chains: chains, caps: caps, o: o, fresh: true, gear: gear, gearPhase: Math.random() * 6, dm: null }, lw = _wfInit(model, S0);
+        return { chains: chains, caps: caps, o: o, fresh: true, gear: gear, gearPhase: S0.gearPhase, lw: lw, dm: (model.userData && model.userData.ewDemi) ? _demiInit(model) : null };
     }
     function _swayCapPush(p, a, b, r) {
         _swF.subVectors(b, a); var L2 = _swF.lengthSq();
@@ -21927,6 +22196,7 @@ const ThreeRenderer = (function () {
         var S = _swStates.get(sKey);
         if (!S) { S = _swayInit(model, opts); _swStates.set(sKey, S); }
         if (S.gear && S.gear.length) _gearTick(S, model, dt);   // THE UNIT GEAR (before the world matrices: they carry the parts' new turn)
+        if (S.lw) _wfTick(S, dt);   // THE LOOSE WINGS EVERYWHERE: the outer bones follow the hinge late
         if (!(dt > 0)) return;
         dt = Math.min(dt, 1 / 30);
         model.updateWorldMatrix(true, true);   // the body as the clip left it, under wherever the unit stands NOW
@@ -23380,6 +23650,11 @@ const ThreeRenderer = (function () {
                locally on host AND guest (the swap itself is driven by the
                synced _spriteOverride), so no relay is needed. */
             if (def.foldFx) { try { _sbotFoldStart(unit, def, ts); } catch (_fs) {} }   // THE FOLD IN A FIGHT: the sedan's real change over the swap
+            /* 🎭 THE ACTOR'S QUICK CHANGE (2026-11-27): a costume swap (sprites.js wireActorRoles `costumeFx`) drops a velvet curtain
+               round the body and pulls it open on the new costume (three-vfx-effects.js acQuickChange; local on both screens) */
+            if (def.costumeFx && !(state && state.devAutoSim) && typeof window !== 'undefined' && window.ThreeVFXEffects && window.ThreeVFXEffects.acQuickChange) {
+                try { window.ThreeVFXEffects.acQuickChange(unit.x, unit.y); } catch (_qc) {}
+            }
             if (def.transformFx && !(state && state.devAutoSim)
                 && typeof window !== 'undefined' && window.ThreeVFXEffects
                 && window.ThreeVFXEffects.sigShockRing3D) {
@@ -24429,6 +24704,7 @@ const ThreeRenderer = (function () {
             if (entry.appearanceRig) { entry.model.updateMatrixWorld(true); entry.appearanceRig.tick(); }   // rev 9: the skirt against the legs
             var _hsR = _unitModelRigs.get(uid); if (_hsR && _hsR.hairSweep) _hsR.hairSweep();   // THE HAIR EVERYWHERE: the late hair
             if (entry._ew_sway && entry._ew_sway.userData.ewDemi) _demiSlot(entry);   // THE DEMIURGE: the cast's slot poses his parts
+            if (entry._ew_sway && entry._ew_sway.userData.ewWings) _wingSlot(entry);   // THE LOOSE WINGS EVERYWHERE: the wings answer the slot
             if (entry._ew_sway) _swayTick(entry._ew_sway, dt, entry.modelDef && entry.modelDef.sway);   // THE SWAY: the cape swings after the clip
             var act = (entry.actions && entry._ew_curAnim) ? entry.actions[entry._ew_curAnim] : null;
             if (act) _modelAnimState.set(uid, { name: entry._ew_curAnim, time: act.time });
@@ -72512,6 +72788,8 @@ const ThreeRenderer = (function () {
             return false;
         }
         var def = res.def;
+        /* 🎭 THE ACTOR ON THE STAGE (2026-11-27): a role's spell preview dresses the hero in that costume first (opts.acRole) */
+        if (opts.acRole && def.overrideForms && typeof actorRoleLook === 'function') { var _acF = def.overrideForms[actorRoleLook(res.gender, opts.acRole === 'audition' ? null : opts.acRole)]; if (_acF) def = _acF; }
         // the accent stains the summoning circle
         if (opts.accent) { try { v.circleMat.color.set(opts.accent); } catch (_e) {} }
         var holdId = ((def.hold && def.hold.key) || '') + '|' + ((def.hold2 && def.hold2.key) || '');   // THE WEAPONS IN THE HANDS 11-22: two looks on one body differ by what they hold (pirate -> sheriff kept the cutlass)
@@ -73254,6 +73532,24 @@ const ThreeRenderer = (function () {
                 b0.timers.push(setTimeout(function () { if (_cv !== v || v.beat !== b0) return; v.oriKeep = true; try { _cvPreviewSpell(spell, Object.assign({}, opts, { _ori: true })); } finally { v.oriKeep = false; } }, _CV_ORI_FOLD_MS));
                 return _CV_ORI_FOLD_MS + 1800;
             }
+        }
+        /* 🎭 THE ACTOR ON THE STAGE: a role spell changes the costume first (the curtain), then the beat plays in it */
+        var _acReq = v.characterRequest;
+        if (spell && spell.acRole && !opts._ac && _acReq && _acReq.race === 'actor' && ((_acReq.opts && _acReq.opts.acRole) || 'audition') !== spell.acRole) {
+            _cvBeatCancel(true);
+            var _acOpts = Object.assign({}, _acReq.opts || {}, { acRole: spell.acRole });
+            _cvSetCharacter(_acReq.race, _acReq.gender, _acOpts);
+            var _acUrl = v.url, b1 = { id: spell.id, timers: [] }, _acT0 = Date.now();
+            v.beat = b1;
+            try { if (_cvStageEnter() && VFX3D.stage && VFX3D.stage.fire) VFX3D.stage.fire('burst', 'acQuickChange', { tx: 0, ty: 0, sx: 0, sy: 0 }); } catch (_eq) {}
+            var _acWait = function () {
+                if (_cv !== v || v.beat !== b1) return;
+                if (v.model && v.url === _acUrl) { b1.timers.push(setTimeout(function () { if (_cv !== v || v.beat !== b1) return; v.beat = null; _cvPreviewSpell(spell, Object.assign({}, opts, { _ac: true })); }, 450)); return; }
+                if (Date.now() - _acT0 > 8000) { v.beat = null; return; }
+                b1.timers.push(setTimeout(_acWait, 100));
+            };
+            _acWait();
+            return 2600;
         }
         if (!_cvStageEnter()) return _cvPlaySpell(spell, opts);     // Stage 2 fallback: the animation alone
         _cvBeatCancel(true);
@@ -114967,6 +115263,7 @@ const ThreeRenderer = (function () {
             else outFront[0] = NaN;
             return isFinite(outHead[0] + outHead[1] + outHead[2]);
         },
+        unitModelUrl: function (uid) { var r = _unitModelRigs.get(uid); return r ? r.url : null; },   // the body a unit wears now (probes: THE ACTOR's costume check)
         getUnitWorldPos: function (uid, out) {
             var e = _getUnitEntry(uid);
             if (!e || !e.group || e.group.visible === false) return false;
