@@ -38790,7 +38790,7 @@
            of the screen height (feet to crown); the other victims stay in frame if they can, else they sit at the edge.
            The head room shrinks too: THE CLEAN READ steps the numbers beside the body, so the HP bar may ride higher.
            Shared code under every beat. Kill switch: window.EW_NO_BIG_READ = true. */
-        const CINE_BIG_READ_FRAC = 0.30;
+        const CINE_BIG_READ_FRAC = 0.40;
         const CINE_GUARD_HEAD_ROOM_BR = { t: 0.52 };
         const CINE_GUARD_HIT_HIGH_BR = { t: 0.52, h: 0.62 };
         let _cineBigH = 0;

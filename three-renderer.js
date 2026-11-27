@@ -8995,7 +8995,7 @@ const ThreeRenderer = (function () {
            ground's own, its top coolK / warmK (the two tones the slow patches drift between) */
         sheets: { calm_grass: [0.252, 0.313, 0.163], calm_rockygrass: [0.270, 0.315, 0.200], calm_purplegrass: [0.324, 0.195, 0.513], calm_darkgrass: [0.213, 0.240, 0.162],
                   grass: [0.302, 0.307, 0.197], grass_dark_fantasy: [0.302, 0.307, 0.197], grass_2: [0.261, 0.519, 0.163], grass_3: [0.352, 0.673, 0.061], grass_4: [0.303, 0.276, 0.163], grass_rocky: [0.434, 0.533, 0.234], purple_grass: [0.462, 0.286, 0.557] },
-        lit: 1.0, rootK: 0.40, coolK: [1.08, 1.34, 1.28], warmK: [1.42, 1.44, 1.04],
+        lit: 1.0, rootK: 0.70, coolK: [1.08, 1.34, 1.28], warmK: [1.42, 1.44, 1.04],
         patchM: 1.8,        // patch size, squares
         pressR: 0.42,       // a unit lays the grass down this far round its feet (× tile)
         pressN: 4,          // press map texels per square
@@ -9024,7 +9024,7 @@ const ThreeRenderer = (function () {
        tuft is built. Nothing reads the camera any more (aGgS and uGgR are gone from the shader and its WebGPU twin); the same corners and
        triangles as before, drawn from both sides. A blade that leans toward the light is a little lighter, away a little darker (sunK), so a
        tuft has a lit side. _ggFace3(r, az) fills the eight blades' headings for one tuft. */
-    var _GG3 = { DX: new Float32Array(8), DZ: new Float32Array(8), PX: new Float32Array(8), PZ: new Float32Array(8), SH: new Float32Array(8), sun: 0.9, sunK: 0.13, twist: 0.75, jit: 0.9, reach: 0.55, wide: 0.85 };   // reach: how far a blade arches out from the root (x the old fan's splay: a fan laid flat is a starfish), wide: a blade's width x
+    var _GG3 = { DX: new Float32Array(8), DZ: new Float32Array(8), PX: new Float32Array(8), PZ: new Float32Array(8), SH: new Float32Array(8), sun: 0.9, sunK: 0.13, twist: 0.75, jit: 0.9, reach: 0.45, wide: 0.85 };   // reach: how far a blade arches out from the root (x the old fan's splay: a fan laid flat is a starfish), wide: a blade's width x
     function _ggFace3(r, az) {
         var G = _GG3;
         for (var b = 0; b < 8; b++) {
@@ -9429,17 +9429,17 @@ const ThreeRenderer = (function () {
        of the head re-sent every cell's index), and the far rings' tufts are 25 and 9 corners against 49.
        On arriving (and after a jump of 30 m+) the field fills first (fillMs a frame), then RISES out of the ground over riseS.
        Old field back, live: window.EW_HQ_GRASS_NO_RINGS = true (one ring to old.radiusM, a hard edge). No culling: window.EW_HQ_GRASS_NO_CULL. */
-    var HQ_GRASS = { cellM: 7, perSquare: 10, autoN: { high: 8, low: 6 },   /* (11-27, THE BLADES STAND IN THE WORLD: 9 / 7 / 5 before; a near tuft's blade is 3 triangles now, was 5, so more tufts for fewer triangles) */ tickMs: 100, steep: 0.55, height: 1.43,   // height: a tuft against the board's (a walker stands in it, a board's camera looks down on it)
+    var HQ_GRASS = { cellM: 7, perSquare: 14, autoN: { high: 13, low: 9 },   /* (11-27, THE BLADES STAND IN THE WORLD: 9 / 7 / 5 before; a near tuft's blade is 3 triangles now, was 5, so more tufts for fewer triangles) */ tickMs: 100, steep: 0.55, pastM: 18, height: 1.65,   /* (11-27 round 2: 1.43; shin high in a wood, never knee deep: it hid the rocks and plants) */   // height: a tuft against the board's (a walker stands in it, a board's camera looks down on it)
         /* to = where the ring ends (m from the walker) · band = it shrinks away over its last metres · lead = it grows in over this many metres, done where the ring before
            starts to shrink · pad = a cell is built this far ahead · cell = cell size × cellM (the tufts stand that much further apart) · tall = height × · blades / pts = which
            of the fan's seven blades a tuft keeps and which of a blade's seven corners (root L R, two pairs, tip) · spread / thick = how far the blades splay / how thick each is */
-        rings: [{ to: 22, band: 7, pad: 3, blades: [0, 1, 2, 3, 4, 5, 6], pts: [0, 1, 4, 5, 6] },
-                { to: 52, band: 12, lead: 6, pad: 5, cell: 2, tall: 1.06, spread: 1.15, thick: 1.5, blades: [0, 1, 3, 5, 6], pts: [0, 1, 4, 5, 6] },
-                { to: 110, band: 30, lead: 10, pad: 8, cell: 4, tall: 1.14, spread: 1.4, thick: 2.6, blades: [0, 3, 6], pts: [0, 1, 6] }],
-        low: { perSquare: 7, rings: [{ to: 16, band: 5, pad: 3, blades: [0, 1, 2, 3, 4, 5, 6], pts: [0, 1, 4, 5, 6] }, { to: 42, band: 12, lead: 5, pad: 5, cell: 2, tall: 1.08, spread: 1.2, thick: 1.8, blades: [0, 3, 6], pts: [0, 1, 4, 5, 6] }] },
+        rings: [{ to: 17, band: 5, pad: 3, blades: [0, 1, 2, 3, 4, 5, 6], pts: [0, 1, 4, 5, 6] },
+                { to: 42, band: 10, lead: 5, pad: 5, cell: 2, tall: 1.05, spread: 1.1, thick: 2.0, blades: [0, 1, 3, 5, 6], pts: [0, 1, 4, 5, 6] },
+                { to: 100, band: 28, lead: 9, pad: 8, cell: 6, tall: 1.15, spread: 1.5, thick: 4.4, blades: [0, 3, 6], pts: [0, 1, 6] }],
+        low: { perSquare: 10, rings: [{ to: 12, band: 4, pad: 3, blades: [0, 1, 2, 3, 4, 5, 6], pts: [0, 1, 4, 5, 6] }, { to: 38, band: 11, lead: 5, pad: 5, cell: 2, tall: 1.08, spread: 1.2, thick: 2.6, blades: [0, 3, 6], pts: [0, 1, 4, 5, 6] }] },
         old: { radiusM: 28, low: 16 },
         buildMs: 3, fillMs: 8, riseS: 0.9, riseWaitMs: 2500, jumpM: 30 };
-    try { window.EW_HQ_GRASS = HQ_GRASS; } catch (e) {}
+    try { window.EW_HQ_GRASS = HQ_GRASS; window.EW_GG3 = _GG3; HQ_GRASS.flush = function () { _ggPalCache = {}; _hqGrassDrop(); }; } catch (e) {}   // flush = retune live (a probe): the walked room's field is dropped and grows again with the values as they stand
     var _hqGG = null;
     function _hqGrassDrop() {
         var S = _hqGG; _hqGG = null; if (!S) return;
@@ -9462,7 +9462,7 @@ const ThreeRenderer = (function () {
        ────────────────────────────────────────────────────────────────────── */
     var GROUND_RULES = {
         clumpM: 2.6,        // G1: a clump's size (m)
-        clumpH: [0.48, 1.50],   // a clump's height, × the tuft's
+        clumpH: [0.70, 1.30],   // (11-27 round 2: 0.48-1.50; the low end read as scratches on the floor)   // a clump's height, × the tuft's
         clumpTint: 0.14,    // ± a clump's brightness step
         clumpLean: 0.65,    // how much a clump's blades lean the same way (0 own way .. 1 all one way)
         gapKeep: 0.40,      // the share of tufts kept on the seam between two clumps
@@ -9482,7 +9482,7 @@ const ThreeRenderer = (function () {
            flora.md section 0, G12-G17). G12 THE COVER SPLIT: big irregular patches (domain-warped noise, ranked so the split holds in every
            room): the lowest `q[0]` of the ground is bare (the sheet, its stones and litter show), up to `q[1]` short sward, the rest dense.
            It replaces G3's bare blobs. `band` = how soft a patch's edge is (in rank). Off: EW_NO_COVER (G3 as before). */
-        cover: { m: 11, warpM: 26, warp: 6, q: [0.24, 0.48], band: 0.05, bareKeep: 0.42, bareH: 0.46, shortKeep: 0.92, shortH: 0.70 },
+        cover: { m: 11, warpM: 26, warp: 6, q: [0.24, 0.48], band: 0.05, bareKeep: 0.90, bareH: 0.65, shortKeep: 0.95, shortH: 0.85 }   /* (11-27 round 2, mondo: "that grass is just not cutting it ... does not look like a AAA game": the thin share was 42 % kept at 0.46 height, a floor with scratches on it; the split is now a change of HEIGHT, the cover stays whole) */,
         /* G13 THE ECOLOGY: the cover rank is pushed up at a trunk's foot (canopy.m), down beside a path (path.m past its edge) and round the
            landmarks (a grand stair's foot and its approach, the room's spawn): the rank bias at the thing, fading out over its radius */
         canopy: { m: 6.5, bias: 0.45, edgeM: 3.5, edgeBias: 0.40, nearBias: 0.18, shade: [0.80, 0.90, 0.99], openM: 8, sun: [1.09, 1.05, 0.84] },   // G15: under a crown cooler and darker, in the open warmer
@@ -9502,7 +9502,7 @@ const ThreeRenderer = (function () {
         ],
         /* G16 THE GROUNDING: a blade's root sinks this share of its height into the ground, and the foot is darker (root colour ×, over the
            lowest share of the blade) */
-        sink: 0.07, base: [0.66, 0.50],
+        sink: 0.07, base: [0.90, 0.50],
         /* G17 THE WALKER: the grass bows down and away round the walker's feet (shader; r0..r1 m, down = how far it lies), so he reads */
         walker: { r0: 0.7, r1: 2.0, down: 0.55 },
         /* G19 THE LITTER (mondo's critique, "the forest floor is missing an intermediate layer": fallen leaves, twigs, moss at roots,
@@ -9660,7 +9660,8 @@ const ThreeRenderer = (function () {
     }
     function _hqGrassCell(S, R, cx, cz) {
         var info = S.info, U = S.U, C = GGRASS, cm = R.cellM, ts = 3.5 * U, n = S.n, x0 = cx * cm, z0 = cz * cm, none = { mesh: null, cx: cx, cz: cz };
-        if (x0 + cm < info.x0 || z0 + cm < info.z0 || x0 > info.x0 + (info.nx - 1) * info.res || z0 > info.z0 + (info.nz - 1) * info.res) return none;   // wholly off the room's ground
+        var eM = S.edgeF ? HQ_GRASS.pastM : 0;   // THE GRASS RUNS ON PAST THE LINE (11-27)
+        if (x0 + cm < info.x0 - eM || z0 + cm < info.z0 - eM || x0 > info.x0 + (info.nx - 1) * info.res + eM || z0 > info.z0 + (info.nz - 1) * info.res + eM) return none;   // wholly off the room's ground
         var seed = ((((cx + 4096) * 73856093) ^ ((cz + 4096) * 19349663)) + R.i * 0x2545F491) & 0x7FFFFFFF | 1;
         var rnd = function () { seed = (seed * 1103515245 + 12345) & 0x7FFFFFFF; return ((seed >> 8) & 0xFFFF) / 0xFFFF; };
         var SC = S.scratch, pos = SC.pos, col = SC.col, gg = SC.gg, gs = SC.gs, P = R.shape.P, T = R.shape.T, PL = P.length, TL = T.length, PT = info.paint, kw = S.windK;
@@ -9669,7 +9670,16 @@ const ThreeRenderer = (function () {
             var xm = x0 + (i + rnd()) / n * cm, zm = z0 + (j + rnd()) / n * cm;
             var r0 = rnd(), r1 = rnd(), r2 = rnd(), r4 = rnd(), r5 = rnd();
             var ni = Math.round((xm - info.x0) / info.res), nj = Math.round((zm - info.z0) / info.res);
-            if (ni < 1 || nj < 1 || ni >= info.nx - 1 || nj >= info.nz - 1) continue;
+            var EP = null;
+            if (ni < 1 || nj < 1 || ni >= info.nx - 1 || nj >= info.nz - 1) {
+                /* THE GRASS RUNS ON PAST THE LINE (2026-11-27, mondo at Stonehenge: "why is there a clear seam here and the grass is different on one side than the
+                   other? That needs to be fixed everywhere"): the blades stopped dead on the room's line while the ground ran on (THE SAME GROUND). Where the land
+                   past the line is green country they now grow on for pastM metres, thinning, on the land's own height, in the sheet of the room's last square. */
+                if (!S.edgeF) continue;
+                try { EP = S.edgeF.at(xm, zm); } catch (eE) { EP = null; }
+                if (!EP || !(EP.d < HQ_GRASS.pastM) || !EP.W || (EP.W.grass || 0) + (EP.W.forest || 0) + (EP.W.wood || 0) < 0.6 || r2 * r2 > 1.15 - EP.d / HQ_GRASS.pastM) continue;
+                ni = ni < 1 ? 1 : ni > info.nx - 2 ? info.nx - 2 : ni; nj = nj < 1 ? 1 : nj > info.nz - 2 ? info.nz - 2 : nj;
+            }
             var nk = nj * info.nx + ni;
             var onMass = !!(info.mask && !info.mask[nk]); if (onMass && (!S.massOk || r2 > GROUND_RULES.massKeep)) continue;   // THE GRASS EVERYWHERE: a flat MASS (a hand plan's / the woods' thicket floor) grows grass too, a city block / a hall / a cave wall none
             /* THE LAST ROW WEARS ITS NEIGHBOUR (2026-11-22): the lattice's outer ring is never painted, so a road that reaches the room's line wore the room's
@@ -9681,8 +9691,8 @@ const ThreeRenderer = (function () {
             var GRo = S.gr, GR = GROUND_RULES, edgeK = 1, gO = null;
             var inB = false, nearB = false; for (var b = 0; b < S.boxes.length; b++) { var B = S.boxes[b], dx = xm - B[0], dz = zm - B[1], lx0 = Math.abs(dx * B[4] + dz * B[5]), lz0 = Math.abs(-dx * B[5] + dz * B[4]); if (lx0 < B[2] && lz0 < B[3]) { inB = true; break; } if (GRo && lx0 < B[2] + GR.edgeM && lz0 < B[3] + GR.edgeM) nearB = true; }
             if (inB) continue;
-            if (hqTerrainFluidAt(info, xm, zm)) continue;
-            if (hqTerrainSlope(info, xm, zm) > HQ_GRASS.steep) continue;
+            if (!EP && hqTerrainFluidAt(info, xm, zm)) continue;
+            if (!EP && hqTerrainSlope(info, xm, zm) > HQ_GRASS.steep) continue;
             var pathE = Infinity;   // G13: how far past the nearest path's edge (m)
             if (S.paths.length) { var onP = false; for (var pq = 0; pq < S.paths.length; pq++) { var PP = S.paths[pq]; if (xm > PP.x0 - 3 && xm < PP.x1 + 3 && zm > PP.z0 - 3 && zm < PP.z1 + 3) { var pe = _hqTPolyDist(xm, zm, PP.pts).d - PP.w / 2; if (pe < 0.15) { onP = true; break; } if (pe < pathE) pathE = pe; } } if (onP) continue; }   // never on a path (the flora field's rule)
             var cK = 1, cD = 0, cCv = 1;
@@ -9715,7 +9725,7 @@ const ThreeRenderer = (function () {
                 else if (nearB || ndG < GR.edgeM) edgeK = GR.edgeTall;
                 else if (info.fluids && info.fluids.length && (hqTerrainFluidAt(info, xm + GR.wetM, zm) || hqTerrainFluidAt(info, xm - GR.wetM, zm) || hqTerrainFluidAt(info, xm, zm + GR.wetM) || hqTerrainFluidAt(info, xm, zm - GR.wetM))) edgeK = GR.wetTall;
             }
-            var wx = xm * U, wz = zm * U, gy = hqTerrainHeight(info, xm, zm) * U;
+            var wx = xm * U, wz = zm * U, gy = (EP ? EP.y : hqTerrainHeight(info, xm, zm)) * U;
             var clump = _ewValHash(xm / (3.5 * 0.55) + 11.3, zm / (3.5 * 0.55) + 4.7), patch = _ewValHash(xm / (3.5 * C.patchM) + 3.1, zm / (3.5 * C.patchM) + 8.9);
             var pt = Math.min(1, Math.max(0, (patch - 0.3) / 0.4)); pt = pt * pt * (3 - 2 * pt);
             var h = ts * HQ_GRASS.height * R.tall * (C.hMin + (C.hMax - C.hMin) * (0.25 + 0.75 * clump) * (0.55 + 0.45 * r1));
@@ -9812,6 +9822,7 @@ const ThreeRenderer = (function () {
                 gr: _grOn() ? { near: _grNearBucket(H.terrain, H.room), trees: _grTreeBucket(H.terrain), marks: _grMarks(H.room), o: {} } : null,   // THE GROUND RULES: the standing things, the trunks, the landmarks, read once
                 massOk: !!(H.terrain.gen && H.terrain.gen.solidMass && ['city', 'halls', 'cave'].indexOf(H.terrain.gen.kind) < 0 && !window.EW_NO_GRASS_MASS) };
             S.n = Math.max(2, Math.round(S.N * G0.cellM / 3.5));
+            try { S.edgeF = (_hqEdgeLandOn(H.room) && !window.EW_NO_GRASS_PAST) ? _hqEdgeLandFn(H.room, H.terrain) : null; } catch (eF) { S.edgeF = null; }   // THE GRASS RUNS ON PAST THE LINE
             S.right = { value: new THREE.Vector2(1, 0) };   // THE CAMERA THAT DRAWS IT: the room's own (2026-11-18: the board's camera stands still while you walk, and a front-side tuft turned to it was culled from behind)
             var kU0 = U * S.windK, maxPL = 0;
             defs.forEach(function (d, i) {
@@ -9869,7 +9880,7 @@ const ThreeRenderer = (function () {
         }
         S.busy = w < want.length;
         if (!S.t0 && (!S.busy || now - S.born > G0.riseWaitMs)) { S.t0 = now; S.fillMs = Math.round(now - S.born); }
-        try { window._ewHqGrass = { cells: cells, tufts: tufts, tris: tris, rings: per, level: _ggLevel, fillMs: S.fillMs || 0, lastBuildMs: +(performance.now() - tb).toFixed(1), built: w }; } catch (e) {}
+        try { window._ewHqGrass = { cells: cells, tufts: tufts, tris: tris, rings: per, level: _ggLevel, fillMs: S.fillMs || 0, lastBuildMs: +(performance.now() - tb).toFixed(1), built: w, spentMs: Math.round(S.spent = (S.spent || 0) + (performance.now() - tb)) }; } catch (e) {}
     }
     /* ──────────────────────────────────────────────────────────────────────
        THE FLORA FIELD (2026-11-20, mondo: "a foliage pass on every single zone ... accurate to that zone's climate"; data.js ZONE_FLORA).
@@ -31354,6 +31365,7 @@ const ThreeRenderer = (function () {
                        fades — its closed back lies right under every tile, so the
                        jittered rays below a subject's feet hit it from any angle */
                     if (hits[hi].object._ew_occSkip) continue;
+                    if (_cutHides(hits[hi].point.y)) continue;   // THE CUT: what the cut took covers nothing
                     var r = _occRootOf(hits[hi].object);
                     if (!r || roots.has(r)) continue;
                     /* a near setting's piece always takes the off-grid test (its oceans / backdrops / aprons never fade, shot or not) */
@@ -59171,6 +59183,7 @@ const ThreeRenderer = (function () {
 
         _updateEnvironment();
         _fieldGroundTick();   // THE SEAMLESS FIELD rev 3: the room's ceiling fades as the eye rises through it
+        _cutTick();           // THE CUT: a covered room is cut one storey over the fighters' heads
         _fieldCycleTick();    // THE BATTLE'S DAY AND NIGHT: an outdoor room's fight eases to the round's half
         _bfogTick();          // THE BOARD FOG: the fog is measured from the board's rim, the dome's band hugs the horizon
         _skyOpenTick();       // THE OPEN SKY SHOT: the room's fog thins while the zodiac / celestial crane looks up
@@ -81824,6 +81837,19 @@ const ThreeRenderer = (function () {
             var hOf = function (m) { return m * U / TM / 1.07; };   // _nrTree: target = TM × h × (0.85 … 1.3)
             var low = !!(typeof window !== 'undefined' && window.EW_PERF_LOW);
             var X0 = R.x0 - 62, X1 = R.x1 + 62, Z0 = R.z0 - 62, Z1 = R.z1 + 62, stp = 4.2;
+            /* THE BELT (2026-11-27, mondo at Stonehenge's line: "that needs to have natural barriers like trees or something if i cant walk there. i never wanna
+               see an open field i cant walk through ... or rocks or whatever is natural and makes sense"). Open green country past a room's line stood one tree
+               in twenty: a lawn you could see and not enter. Now the first 17 m past the line is a WOOD'S EDGE, three staggered rows of the land's own trees
+               (nine in ten lattice points near the line, six in ten behind), open only where a way or a road leaves the room. Dry land that has plants of
+               its own (`plants`, or scrub's dead trees) stands them thick along the line the same way. A side opts out with `edges.<side>.open: true`,
+               a room with `edges.noBelt: true`; `EW_HQ_NO_BELT` = as before. NOT covered: desert / mesa sides with no `plants` row (they need rocks). */
+            var kindsB = ['tree', 'tree_4', 'tree_3', 'tree', 'pine', 'tree_4'], beltOn = !(E.noBelt || (typeof window !== 'undefined' && window.EW_HQ_NO_BELT));
+            var wayGap = function (side, x, z) {
+                if ((E[side] || {}).open) return true;
+                var ws = Array.isArray(E.ways) ? E.ways : []; for (var wq = 0; wq < ws.length; wq++) { var wy = ws[wq]; if (wy && wy.side === side && Math.abs(((side === 'n' || side === 's') ? x : z) - (+wy.at || 0)) < (+wy.w || 3.5) / 2 + 4.5) return true; }
+                var ds = room.doors || []; for (var dq = 0; dq < ds.length; dq++) { var dd = ds[dq]; if (dd && dd.wall === side && Math.abs(((side === 'n' || side === 's') ? x - (+dd.x || 0) : z - (+dd.z || 0))) < (+dd.w || 3.5) / 2 + 4.5) return true; }   // any way out on this side keeps its lane
+                return false;
+            };
             var roadLanes = [];   // every road out's lane past the line (its door's place, the way out, half its width + a tree's reach)
             (room.doors || []).forEach(function (d) { if (!d || d.way !== 'road' || !d.wall) return; try { var f = _hqBoxWall(room, d.wall, d); if (f) roadLanes.push({ x: f.wx, z: f.wz, dx: -f.nx, dz: -f.nz, hw: ((+d.w || 9) / 2) + 3.5 }); } catch (e) {} });
             for (var tz = Z0; tz < Z1; tz += stp) for (var tx = X0; tx < X1; tx += stp) {
@@ -81837,11 +81863,12 @@ const ThreeRenderer = (function () {
                 var wf = P.W.forest + (P.W.wood || 0);   /* (A FOOTPATH KEEPS ITS WOOD: the forest THE WAY ON opened beside a trail) */
                 if (wf > 0.5) { if (c2 > thin * Math.min(1, wf)) continue; plantTree(kindsF[(d2 * kindsF.length) | 0], hOf(13 + d2 * 9), px, pz, P.y * U); planted++; }
                 else if (P.W.mountain > 0.5 && P.d > 5 && P.d < 46 && P.y - P.eH < 34) { if ((E[P.side] || {}).bare) continue; if (c2 > 0.13 * thin) continue; plantTree(kindsM[(d2 * kindsM.length) | 0], hOf(8 + d2 * 6), px, pz, P.y * U); planted++; }
+                else if ((P.W.grass || 0) > 0.6 && beltOn && P.d < 17 && !wayGap(P.side, px, pz)) { if (c2 > (P.d < 10 ? 0.92 : 0.6)) continue; plantTree(kindsB[(d2 * kindsB.length) | 0], hOf(6.5 + ((d2 * 5.7) % 1) * 6), px, pz, P.y * U); planted++; }   // THE BELT: no open field past the line
                 else if ((P.W.grass || 0) > 0.6 && P.d > 4) { if (c2 > 0.045 * thin) continue; plantTree(kindsG[(d2 * kindsG.length) | 0], hOf(6 + d2 * 5), px, pz, P.y * U); planted++; }   // open green country: a tree here and there
                 else if ((P.W.snow || 0) > 0.6 && P.d > (E.snowTrees ? 2.2 : 4)) { if (c2 > (+E.snowTrees || 0.03) * thin) continue;   /* `edges.snowTrees: p` (2026-11-20, the Snowy Pines three plots wide): a room in a snow WOOD, its pines run on past its line (p = how many of the lattice points grow one; 0.03 = open tundra) */ plantTree(E.snowTrees ? kindsSW[(d2 * kindsSW.length) | 0] : kindsS[(d2 * kindsS.length) | 0], hOf(5.5 + d2 * 4), px, pz, P.y * U); planted++; }   // tundra: a few snow pines
                 else if ((P.W.scrub || 0) + (P.W.mesa || 0) + P.W.desert > 0.6 && P.d > 4) {   // THE DRY LAND'S PLANTS: a scrub side grows dead trees by itself; any dry side grows what its `plants: { kinds, p, h: [lo, hi] }` says (the room's own cactus runs on past its line)
                     var PL = (E[P.side] || {}).plants || ((P.W.scrub || 0) > 0.5 ? { kinds: ['tree_5', 'tree_6', 'tree_5', 'pine_2'], p: 0.09, h: [3, 6.5] } : null);
-                    if (!PL || !PL.kinds || !PL.kinds.length || c2 > (PL.p || 0.08) * thin) continue;
+                    if (!PL || !PL.kinds || !PL.kinds.length || c2 > ((beltOn && P.d < 17 && !wayGap(P.side, px, pz)) ? 0.7 : (PL.p || 0.08) * thin)) continue;   // (THE BELT on dry land: its own plants stand thick along the line)
                     var ph = PL.h || [3, 6]; plantTree(PL.kinds[(d2 * PL.kinds.length) | 0], hOf(ph[0] + ((d2 * 7.3) % 1) * (ph[1] - ph[0])), px, pz, P.y * U); planted++; }
             }
         }
@@ -103822,6 +103849,93 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < st.ceil.mats.length; i++) { st.ceil.mats[i].opacity = op; st.ceil.mats[i].depthWrite = op > 0.5; }
         for (var j = 0; j < st.ceil.parts.length; j++) st.ceil.parts[j].visible = op > 0.04;
     }
+    /* ══ THE CUT (2026-11-27, mondo in the Sewers: "i can't see the battle at all because the ceiling is covering everything up,
+       i thought we already made it to where roofs would disappear" · "roof ceiling whatever, anything that is covering the
+       action") ══
+       What already opened: a room's flat shell ceiling (`_ew_hqPart 'ceil'`, faded by the eye's height above), a wall side, a
+       tree, a piece hanging over a unit on a sight line. What never opened: the cover of a room built on plots. The Sewers
+       (bake-labyrinth.js) are 8 x 6 plots on many levels: every closed square is a brick mass to the top of the whole room
+       (54 m), each run of passage wears a barrel vault (`hq_arch`, a texbuilding: never faded), and the shell ceiling sits 54 m
+       up. Measured 11-27 in a real fight there: every ray from the battle camera met a plan wall's top or a vault first; the
+       units were never on screen. The same holds for the D.U.M.B., the Cavern, the Catacombs, the pits and every other room
+       without open sky: anything of the room over the fighters' heads covers the board from the battle's height.
+       Now, in a fight in a room with no open sky (`_hqEnclosed`), the room's own pieces are CUT one storey (`CUT_M`, one 3.5 m
+       battle square) over the highest feet of the units the viewer can see: a world plane on the room's materials (the classic
+       clippingPlanes; WebGPU turns them into a discard, _ewNodeClip), the walked room's holder (`hq_walked`) or the copied
+       room's group, never the board, the units, the effects or the HUD. The cut height eases as units climb or fall. Shadows
+       are not cut (`clipShadows` stays off: the room keeps the light the walk had). What the cut took is not cover any more:
+       the sight-line fade skips hits above it, and the camera's blockers (THE CLEAR SHOT, THE CLOSE VIEW's tall scenery) are
+       clipped to it. Every look is given back when the fight ends. Drawn from the room and the camera: host and guest alike,
+       nothing relayed. Off: window.EW_NO_CUT = true. Height: window.EW_CUT_M (metres over the highest feet). */
+    var CUT_M = 3.5, CUT_RESCAN_MS = 20000;
+    var _cut = null;   // { roots: [Object3D], mats: Map(material → its own planes), plane, y, want, at, scanAt, s }
+    function _cutOff() { return typeof window !== 'undefined' && !!window.EW_NO_CUT; }
+    /* the fight's room is covered (no open sky): asked when the room is hung round the board */
+    function _cutWanted(R) { try { return !!(R && R.room && _hqEnclosed(R.room)) && !_cutOff(); } catch (e) { return false; } }
+    function _cutArm(root, R, ts) {
+        if (!root || !_cutWanted(R) || typeof THREE === 'undefined') return;
+        if (!_cut) _cut = { roots: [], mats: new Map(), plane: new THREE.Plane(new THREE.Vector3(0, -1, 0), 1e9), y: null, want: null, at: 0, scanAt: 0, s: ts / R.T.C };
+        if (_cut.roots.indexOf(root) < 0) _cut.roots.push(root);
+        _cut.scanAt = 0;   // read the room's looks on the next frame (the walked room's ceiling clones are made on its first draw)
+        try { if (renderer && !renderer.isWebGPURenderer) renderer.localClippingEnabled = true; } catch (e) {}
+    }
+    /* one read of the room's looks (at the arm, again every CUT_RESCAN_MS for a model that landed late): each gets the cut's plane */
+    function _cutScan(C) {
+        var planes = [C.plane], n = 0;
+        var put = function (m) {
+            if (!m || C.mats.has(m)) return;
+            C.mats.set(m, m.clippingPlanes || null);
+            m.clippingPlanes = (m.clippingPlanes && m.clippingPlanes.length) ? m.clippingPlanes.concat(planes) : planes;
+            m.needsUpdate = true; n++;
+        };
+        for (var i = 0; i < C.roots.length; i++) {
+            C.roots[i].traverse(function (o) { if (!o.material || !(o.isMesh || o.isInstancedMesh || o.isPoints || o.isLine)) return; if (Array.isArray(o.material)) o.material.forEach(put); else put(o.material); });
+        }
+        return n;
+    }
+    function _cutDrop() {
+        var C = _cut; _cut = null; if (!C) return;
+        C.mats.forEach(function (prev, m) { try { m.clippingPlanes = prev; m.needsUpdate = true; } catch (e) {} });
+        C.mats.clear(); C.roots.length = 0;
+    }
+    /* is a world point (battle px) above the cut? (the sight-line fade and the camera's blockers ask) */
+    function _cutTop() { return (_cut && _cut.y != null && active) ? _cut.y : Infinity; }
+    function _cutHides(y) { return y > _cutTop(); }
+    /* the camera's blockers (flat [x0, x1, y0, y1, z0, z1, isTree, …]) as the cut leaves them: a box over the cut is gone, one through it ends at it */
+    function _cutBoxes(A) {
+        var y = _cutTop(); if (!A || y === Infinity) return A;
+        var out = [];
+        for (var i = 0; i + 6 < A.length + 1; i += 7) { if (A[i + 2] >= y) continue; out.push(A[i], A[i + 1], A[i + 2], Math.min(A[i + 3], y), A[i + 4], A[i + 5], A[i + 6]); }
+        return out;
+    }
+    /* per frame (beside _fieldGroundTick): the highest feet the viewer can see, one storey over them, eased */
+    function _cutTick() {
+        var C = _cut; if (!C) return;
+        if (!active || _cutOff() || typeof state === 'undefined' || !state || state.phase !== 'battle') { if (C.y !== null) { C.y = null; C.plane.constant = 1e9; } return; }
+        var now = performance.now();
+        if (!C.scanAt || now - C.scanAt > CUT_RESCAN_MS) { C.scanAt = now; try { _cutScan(C); } catch (e) { console.warn('[HQ→battle] the cut could not read the room', e); } }
+        var vp = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : (state.activePlayer || 1);
+        var top = -Infinity, us = state.units || [], v = _cutV || (_cutV = new THREE.Vector3());
+        for (var i = 0; i < us.length; i++) {
+            var u = us[i]; if (!u || u.dead) continue;
+            if (u.player !== vp && state.fogOfWar && !(_fogVisibleSet && _fogVisibleSet.has(u.x + ',' + u.y))) continue;   // an enemy the viewer cannot see moves nothing
+            var e = unitEntries.get(u.id); if (!e || !e.group) continue;
+            e.group.getWorldPosition(v); if (v.y > top) top = v.y;
+        }
+        if (top === -Infinity) { if (C.y === null) return; top = C.want; }
+        var M = (typeof window !== 'undefined' && window.EW_CUT_M > 0) ? +window.EW_CUT_M : CUT_M;
+        var want = top + M * C.s; C.want = want;
+        var dt = C.at ? Math.min(0.1, (now - C.at) / 1000) : 1; C.at = now;
+        C.y = (C.y === null) ? want : C.y + (want - C.y) * Math.min(1, dt * 4);
+        if (Math.abs(C.y - want) < 0.5) C.y = want;
+        C.plane.constant = C.y;
+        /* WebGPU: a static render bundle replays its draws without asking the plane again; a moved cut records them anew */
+        if (renderer && renderer.isWebGPURenderer && _fw && _fw.H && (C.bunY == null || Math.abs(C.y - C.bunY) > 0.5) && now - (C.bunAt || 0) > 250) {
+            C.bunY = C.y; C.bunAt = now;
+            try { var bT = _ewBunTargets(_fw.H); for (var bi = 0; bi < bT.length; bi++) bT[bi]._ew_bunDirty = true; } catch (eB) {}
+        }
+    }
+    var _cutV = null;
     /* THE CLICKS: screenToTile raycasts terrainGroup — with no columns built there was nothing to hit and every click on a
        tile died. One quad per IN cell at its real top, drawn to nothing (colorWrite off), never an occluder. */
     var _fieldPickGeo = null, _fieldPickGroup = null;
@@ -105472,6 +105586,7 @@ const ThreeRenderer = (function () {
     function _fieldGroundRelease() {
         _fieldSeedRelease(); _envSnapPending = false; _fieldCycle = null;
         var st = _fieldGroundState; _fieldGroundState = null;
+        try { _cutDrop(); } catch (eCut) {}   // THE CUT
         try { if (st && st.keyLamp && st.keyLamp.parent) st.keyLamp.parent.remove(st.keyLamp); } catch (e) {}   // THE KEY LIGHT
         try { if (typeof ThreePost !== 'undefined' && ThreePost.setFieldLight) ThreePost.setFieldLight(null); } catch (e) {}
         try { if (typeof scene !== 'undefined' && scene && st) scene.fog = st.prevFog || null; } catch (e) {}
@@ -105537,6 +105652,7 @@ const ThreeRenderer = (function () {
         F.jobBox = new THREE.Vector3(R.T.W * ts / 2, _hqBattleRoomFloorY(R, ts), R.T.H * ts / 2);   // the board's middle (the sun shadow's aim)
         try { _fwWrapRender(renderer); } catch (eW) {}
         _fwMove(H.partRoot, holder, F.moved);
+        try { _cutArm(holder, R, ts); } catch (eCut) {}   // THE CUT: a covered room's cover over the board
         if (H.inst && H.inst.group) _fwMove(H.inst.group, holder, F.moved);
         /* the walk's lights that light the fight: the ones under the room (lit or not as the walk left them) */
         try {
@@ -105896,6 +106012,7 @@ const ThreeRenderer = (function () {
     /* the walked room goes home: every cut healed, every look and geometry the fight lent given back, every group where it hung */
     function _fwLeave() {
         var F = _fw; if (!F || F.leaving) return;
+        try { _cutDrop(); } catch (eCut) {}   // THE CUT: the room's own looks back
         F.leaving = true; F.on = false; F.job = null;
         var H = F.H, i;
         try { if (_occField && _occField.fw) _occFieldDrop(); } catch (e) {}
@@ -106093,6 +106210,7 @@ const ThreeRenderer = (function () {
         /* the occlusion fade reads the facility group's direct children as its roots */
         if (_facilityNearGroup) { g.children.slice().forEach(function (c) { g.remove(c); c._ew_occNear = true; _facilityNearGroup.add(c); }); }
         else { _facilityNearGroup = g; g._ew_hzNearRoot = true; _horizonGroup.add(g); }
+        if (trueGround) { try { _cutArm(_facilityNearGroup, R, ts); } catch (eCut) {} }   // THE CUT: the copied room's cover too
         var fwF = null;
         if (fwP) { try { fwF = _fwEnter(fwP, R, M, ts, HR); (fwP.H.fxPulse || []).forEach(function (p) { if (p && p.mat) _hzGlowPulse.push(p); }); } catch (eFW) { console.error('[HQ→battle] the walked room could not be hung in the fight', eFW); try { _fwLeave(); } catch (e2) {} fwF = null; } }
         if (_roomGround) _roomGround.group = _facilityNearGroup;   // THE ROOM'S GROUND lives as long as the room's group   // _ew_hzNearRoot: the room's late GLBs stay near scenery (_applyHorizonFog)
@@ -112646,7 +112764,7 @@ const ThreeRenderer = (function () {
         /* THE CLOSE VIEW (2026-11-26, see three-camera.js): noTrees leaves the trees out. A tree's box is its whole crown, a
            tower several squares wide over squares units stand on, and THE TREE FADE already opens a tree on a sight line. */
         /* THE CLEAR SHOT: flat [x0, x1, y0, y1, z0, z1, isTree, …] world px (see _shotBlockers) */
-        shotBlockers: function () { try { return _shotBlockers(); } catch (e) { return null; } },
+        shotBlockers: function () { try { return _cutBoxes(_shotBlockers()); } catch (e) { return null; } },
         tallSceneryTopAt: function (wx, wz, noTrees) {
             var C = _tallSceneryGet();
             if (!C) return -Infinity;
@@ -112655,7 +112773,7 @@ const ThreeRenderer = (function () {
                 if (noTrees && B[i + 5]) continue;
                 if (wx >= B[i] && wx <= B[i + 1] && wz >= B[i + 2] && wz <= B[i + 3] && B[i + 4] > top) top = B[i + 4];
             }
-            return top;
+            return Math.min(top, _cutTop());   // THE CUT: what stands over the cut is not drawn
         },
         /* a standing body's height in world units (heightRatio 1 = 1.75 m): THE CUTSCENES measure their shots in bodies */
         bodyUnit: function () { return (CONFIG.tileSize || BASE_TILE) * UNIT_SPRITE_SIZE_RATIO; },
