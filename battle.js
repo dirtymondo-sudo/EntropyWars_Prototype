@@ -50717,6 +50717,11 @@
 
         function lootCorpseItems(looter, corpse, taken) {
             if (!looter || !corpse || !corpse.dead || corpse.id === looter.id) return 0;
+            /* THE SHARED POCKETS (2026-11-27, story crash: Inspect on a fallen party member's square froze the tab): in a
+               story fight every member's `items` IS the party's one bag (_partyBagBind), so the body and the searcher hold
+               the same object. Each pass below added one to it and took one from it, the count never moved, the bag's
+               9999 cap never came, and the loop ran forever. Same pockets = nothing to take. */
+            if (!looter.items || !corpse.items || looter.items === corpse.items) return 0;
             let looted = 0;
             const itemOrder = Object.keys(ITEM_RULES);
             for (const itemKey of itemOrder) {
@@ -82681,7 +82686,7 @@
                     if (lootedNow > preLoot) {
                         showFloatingTextForUnit(unit, `Looted ${_lootListText(_took, 2)}`, 'pickup', { durationMs: 1800 });
                         _lootLines.push(`${_ctName(unit)} loots ${_lootListText(_took)} from the remains of ${_ctName(deadUnit)}.`);
-                    } else if (Object.keys(deadUnit.items || {}).some(k => (deadUnit.items[k] | 0) > 0)) {
+                    } else if (deadUnit.items !== unit.items && Object.keys(deadUnit.items || {}).some(k => (deadUnit.items[k] | 0) > 0)) {   // the shared bag: its items are already the searcher's
                         /* a body with items the searcher can't carry: say so, not "Nothing found here." */
                         _lootLines.push(`🎒 ${_ctName(unit)} finds items on the remains of ${_ctName(deadUnit)} but can't carry any more.`);
                     }
