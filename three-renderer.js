@@ -8939,6 +8939,26 @@ const ThreeRenderer = (function () {
         }
         return _grassBladeMat;
     }
+    /* THE SMALL PLANTS SWAY (2026-11-27, the foliage pass): the flora field's ferns, flowers and kit tufts stood stock still beside grass
+       that moves. The old tufts' wind (above) on any material: a corner's `aBend` (its travel at the top of the plant, the mesh's own units,
+       0 at the root) x two sines phased by where it stands. Vertex shader only, no draw call; the WebGPU twin is _ewNodeSway 'grass'. */
+    var FLORA_SWAY = { k: 0.055, cap: 1.1 };   // travel = k x height x min(height, cap), metres
+    function _ewBendHook(mat) {
+        mat.onBeforeCompile = function (shader) {
+            shader.uniforms.uEwGrassT = _grassWindTime;
+            shader.vertexShader = shader.vertexShader
+                .replace('#include <common>', '#include <common>\nuniform float uEwGrassT;\nattribute float aBend;')
+                .replace('#include <begin_vertex>', '#include <begin_vertex>\n' +
+                    'vec4 ewGp = modelMatrix * vec4( position, 1.0 );\n' +
+                    'float ewPh = ewGp.x * 0.013 + ewGp.z * 0.021;\n' +
+                    'float ewSw = sin( uEwGrassT * 1.6 + ewPh ) * 0.65 + sin( uEwGrassT * 3.3 + ewPh * 2.7 + 1.57 ) * 0.35;\n' +
+                    'transformed.x += ewSw * aBend;\n' +
+                    'transformed.z += ( sin( uEwGrassT * 1.1 + ewPh * 1.7 + 0.8 ) * 0.6 + sin( uEwGrassT * 2.6 + ewPh ) * 0.4 ) * 0.6 * aBend;');
+        };
+        mat.customProgramCacheKey = function () { return 'ew_bend_wind'; };
+        _ewNodeTag(mat, { k: 'grass' });
+        return mat;
+    }
     /* ══ THE GRASS FIELD (2026-11-12, mondo: "try implementing some more stylistic grass. AAA game like genshin impact", after
        github.com/fromtheghost/ghibli-grass — that repo carries no licence, so nothing of it is used: the technique is rebuilt here) ══
        A dense field of wide, soft blades on every grass square, ONE merged mesh (one draw call), lit like the ground under it
@@ -8997,6 +9017,23 @@ const ThreeRenderer = (function () {
         var sh = 0.80 + 0.32 * hsh, dry = (hsh > 1 - GGRASS.dryShare) ? (0.25 + 0.6 * f) : 0;
         return [sh * (1 - dry), sh * (1 - dry), sh * (1 - dry), dry];
     }
+    /* THE BLADES STAND IN THE WORLD (2026-11-27, mondo: "I don't like how the grass blades rotate with the direction I'm facing, it doesnt look
+       realistic"). A tuft used to be ONE flat fan whose side offset (aGgS) the shader laid along the camera's right, so every tuft in the field
+       turned its face to the eye as the camera turned. Now a tuft is a real TUSSOCK: each of its blades has its own compass heading (the golden
+       angle apart, jittered), arches outward along it, and its width lies across it with its own twist, all written into `position` when the
+       tuft is built. Nothing reads the camera any more (aGgS and uGgR are gone from the shader and its WebGPU twin); the same corners and
+       triangles as before, drawn from both sides. A blade that leans toward the light is a little lighter, away a little darker (sunK), so a
+       tuft has a lit side. _ggFace3(r, az) fills the eight blades' headings for one tuft. */
+    var _GG3 = { DX: new Float32Array(8), DZ: new Float32Array(8), PX: new Float32Array(8), PZ: new Float32Array(8), SH: new Float32Array(8), sun: 0.9, sunK: 0.13, twist: 0.75, jit: 0.9, reach: 0.55, wide: 0.85 };   // reach: how far a blade arches out from the root (x the old fan's splay: a fan laid flat is a starfish), wide: a blade's width x
+    function _ggFace3(r, az) {
+        var G = _GG3;
+        for (var b = 0; b < 8; b++) {
+            var h1 = (Math.sin((r * 71.3 + b * 9.17) * 51.7) * 43758.5453) % 1, h2 = (Math.sin((r * 33.9 + b * 5.41) * 27.3) * 43758.5453) % 1; if (h1 < 0) h1 += 1; if (h2 < 0) h2 += 1;
+            var th = az + b * 2.39996 + (h1 - 0.5) * G.jit, tw = th + 1.5708 + (h2 - 0.5) * 2 * G.twist;
+            G.DX[b] = Math.cos(th); G.DZ[b] = Math.sin(th); G.PX[b] = Math.cos(tw); G.PZ[b] = Math.sin(tw); G.SH[b] = 1 + G.sunK * Math.cos(th - G.sun);
+        }
+        return G;
+    }
     var _ggRightU = { value: new THREE.Vector2(1, 0) };   // the camera's right, flat, in the field's own frame: every tuft turns its face to the eye
     /* the setting: 'high' (default) | 'low' | 'off' */
     var _ggLevel = 'high';
@@ -9051,7 +9088,7 @@ const ThreeRenderer = (function () {
         /* no depth write + drawn last of the solid things: a blade is still hidden by whatever stands in front of it, but nothing drawn
            after (a tile highlight, a ring, a zone, blood, a spell's ground mark) is ever hidden BY a blade — they lie on the grass
            the way they lie on the ground */
-        var m = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.FrontSide, depthWrite: false });
+        var m = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide, depthWrite: false });   // both sides: a blade stands in the world, the eye walks round it
         var U = { uGgT: _grassWindTime, uGgPress: { value: G.press }, uGgB: { value: new THREE.Vector4(G.inv[0], G.inv[1], GGRASS.wind, GGRASS.sheen) }, uGgR: G.right || _ggRightU, uGgW: { value: new THREE.Vector2(GGRASS.gust, GGRASS.flutter) },
                   /* THE RINGS (2026-11-20, the walked room's field): a tuft's size by its root's distance from uGgF.xy. uGgF = centre x, z (aGg units), the
                      field's rise (0-1), aGg -> the mesh's own units; uGgD = grows in over x..y, shrinks out over z..w. The board's field: no fade (1 everywhere). */
@@ -9059,9 +9096,9 @@ const ThreeRenderer = (function () {
                   uGgP: (G.fade && G.fade.p) || { value: new THREE.Vector4(-2, -1, 0, 0) } };   // G17 THE WALKER: the grass bows down and away within x..y of uGgF.xy, z = how far
         m.onBeforeCompile = function (shader) {
             shader.uniforms.uGgM = _ggMaskU;
-            shader.uniforms.uGgT = U.uGgT; shader.uniforms.uGgPress = U.uGgPress; shader.uniforms.uGgB = U.uGgB; shader.uniforms.uGgR = U.uGgR; shader.uniforms.uGgW = U.uGgW; shader.uniforms.uGgF = U.uGgF; shader.uniforms.uGgD = U.uGgD; shader.uniforms.uGgP = U.uGgP;
+            shader.uniforms.uGgT = U.uGgT; shader.uniforms.uGgPress = U.uGgPress; shader.uniforms.uGgB = U.uGgB; shader.uniforms.uGgW = U.uGgW; shader.uniforms.uGgF = U.uGgF; shader.uniforms.uGgD = U.uGgD; shader.uniforms.uGgP = U.uGgP;
             shader.vertexShader = shader.vertexShader
-                .replace('#include <common>', '#include <common>\nattribute vec4 aGg;\nattribute float aGgS;\nuniform float uGgT;\nuniform sampler2D uGgPress;\nuniform vec4 uGgB;\nuniform vec2 uGgR;\nuniform vec2 uGgW;\nuniform vec4 uGgF;\nuniform vec4 uGgD;\nuniform vec4 uGgP;\nvarying float vGgZ;')
+                .replace('#include <common>', '#include <common>\nattribute vec4 aGg;\nuniform float uGgT;\nuniform sampler2D uGgPress;\nuniform vec4 uGgB;\nuniform vec2 uGgW;\nuniform vec4 uGgF;\nuniform vec4 uGgD;\nuniform vec4 uGgP;\nvarying float vGgZ;')
                 .replace('#include <project_vertex>', '#include <project_vertex>\nvGgZ = -mvPosition.z;')
                 .replace('#include <begin_vertex>', '#include <begin_vertex>\n' +
                     'float ggD = distance( aGg.xy, uGgF.xy );\n' +
@@ -9076,7 +9113,7 @@ const ThreeRenderer = (function () {
                     'ggG *= ggG;\n' +
                     'float ggF = sin( uGgT * 4.3 + aGg.x * 0.31 + aGg.y * 0.47 ) * uGgW.y;\n' +
                     'float ggB = ( 0.15 + 0.85 * ggG + ggF ) * uGgB.z * aGg.z * aGg.w * ( 1.0 - ggPr ) * ggS;\n' +
-                    'transformed.x += 0.86 * ggB + uGgR.x * aGgS * ggS; transformed.z += 0.50 * ggB + uGgR.y * aGgS * ggS;\n' +
+                    'transformed.x += 0.86 * ggB; transformed.z += 0.50 * ggB;\n' +
                     'transformed.y -= aGg.z * ggPr * 0.86 * ggS + ggB * 0.30 * aGg.w;\n' +
                     'vColor.rgb *= 1.0 + uGgB.w * ggG * aGg.w * ( 1.0 - ggPr );');
             shader.fragmentShader = shader.fragmentShader
@@ -9084,7 +9121,7 @@ const ThreeRenderer = (function () {
                 .replace('#include <normal_fragment_begin>', '#include <normal_fragment_begin>\nnormal = normalize( ( viewMatrix * vec4( 0.0, 1.0, 0.0, 0.0 ) ).xyz );')
                 .replace('#include <dithering_fragment>', '#include <dithering_fragment>\nif ( uGgM.x > 0.5 ) { float ggZ = clamp( log2( 1.0 + max( vGgZ, 0.0 ) ) / 20.0, 0.0, 1.0 ) * 255.0; gl_FragColor = vec4( 0.0, floor( ggZ ) / 255.0, fract( ggZ ), 1.0 ); }');   // THE GRASS TAKES NO INK: the style mask's draw
         };
-        m.customProgramCacheKey = function () { return 'ew_ggrass5'; };
+        m.customProgramCacheKey = function () { return 'ew_ggrass6'; };
         _ewNodeTag(m, { k: 'ggrass', press: G.press, inv: G.inv, right: G.right || _ggRightU, fade: G.fade || null });   // the WebGPU twin: _ewNodeGGrass
         return m;
     }
@@ -9236,22 +9273,25 @@ const ThreeRenderer = (function () {
                 var tipR = (pal.cool[0] + (pal.warm[0] - pal.cool[0]) * pt) * jit, tipG = (pal.cool[1] + (pal.warm[1] - pal.cool[1]) * pt) * jit, tipB = (pal.cool[2] + (pal.warm[2] - pal.cool[2]) * pt) * jit, RT = pal.root, MD = pal.mid;
                 if (gB) { var gLu = GROUND_RULES.lush, glu = gB.lush, gdm = gB.dry * GROUND_RULES.dryMix, ggt = gB.t, gD = GGRASS.dry;
                     tipR = (tipR * (1 + (gLu[0] - 1) * glu) * (1 - gdm) + gD[0] * 1.25 * gdm) * ggt; tipG = (tipG * (1 + (gLu[1] - 1) * glu) * (1 - gdm) + gD[1] * 1.25 * gdm) * ggt; tipB = (tipB * (1 + (gLu[2] - 1) * glu) * (1 - gdm) + gD[2] * 1.25 * gdm) * ggt; }
-                /* 7 corners, a soft rounded tongue: foot L / R, belly L / R, shoulder L / R, tip. The side offset (aGgS) is laid along
-                   the camera's right in the shader, so the tongue always shows its full face */
-                var P = _GG_SHAPES[C.shape] ? _GG_SHAPES[C.shape].P : _GG_SHAPES.crown.P, PL = P.length, bladed = P[0].length > 2;
-                if (bladed) for (var bq = 0; bq < 8; bq++) { var bh0 = (Math.sin((r1 * 91.7 + bq * 12.93) * 43.1) * 43758.5453) % 1; bh0 = bh0 < 0 ? bh0 + 1 : bh0; BS[bq] = 0.80 + 0.32 * bh0; BD[bq] = (bh0 > 1 - GGRASS.dryShare) ? 1 : 0; }   // _ggBlade, once a blade (not once a corner)
+                /* 7 corners, a soft rounded tongue: foot L / R, belly L / R, shoulder L / R, tip. (11-27: each blade's side offset is written into
+                   `position` along the blade's own heading, THE BLADES STAND IN THE WORLD; nothing turns to the camera) */
+                var SH3 = _grShapeMeta(_GG_SHAPES[C.shape] || _GG_SHAPES.crown), P = SH3.P, CM = SH3.C, PL = P.length, bladed = P[0].length > 2;
+                var az3 = r4 * 6.2832 + r2 * 3.1, G3 = _ggFace3(r1, az3), ax3 = Math.cos(az3), az3z = Math.sin(az3);
+                if (bladed) for (var bq = 0; bq < 8; bq++) { var bh0 = (Math.sin((r1 * 91.7 + bq * 12.93) * 43.1) * 43758.5453) % 1; bh0 = bh0 < 0 ? bh0 + 1 : bh0; BS[bq] = (0.80 + 0.32 * bh0) * G3.SH[bq]; BD[bq] = (bh0 > 1 - GGRASS.dryShare) ? 1 : 0; }   // _ggBlade, once a blade (not once a corner)
                 _ggNeed(pos, PL * 3); _ggNeed(col, PL * 3); _ggNeed(gg, PL * 4); _ggNeed(gs, PL); _ggNeed(roots, 2);
                 var pA = pos.a, cA = col.a, gA = gg.a, sA = gs.a;
                 for (var k = 0; k < PL; k++) {
                     var f = P[k][1], bf = f * f;
-                    pA[pos.n++] = wx + lx * bf; pA[pos.n++] = gy + h * f * (1 - 0.10 * bf); pA[pos.n++] = wz + lz * bf;
+                    var px3 = P[k][0], ox3, oz3;
+                    if (CM) { var b3 = P[k][2] & 7, c3 = CM[k], rr3 = (c3 < 0 ? -c3 : c3) * hw * G3.reach, w3 = (px3 - c3) * hw * G3.wide; ox3 = G3.DX[b3] * rr3 + G3.PX[b3] * w3; oz3 = G3.DZ[b3] * rr3 + G3.PZ[b3] * w3; }
+                    else { ox3 = ax3 * px3 * hw; oz3 = az3z * px3 * hw; }
+                    pA[pos.n++] = wx + lx * bf + ox3; pA[pos.n++] = gy + h * f * (1 - 0.10 * bf); pA[pos.n++] = wz + lz * bf + oz3;
                     var cr, cg, cb;
                     if (f < 0.42) { var a0 = f / 0.42; cr = RT[0] + (MD[0] - RT[0]) * a0; cg = RT[1] + (MD[1] - RT[1]) * a0; cb = RT[2] + (MD[2] - RT[2]) * a0; }
                     else { var a1 = (f - 0.42) / 0.58; a1 = a1 * a1 * (3 - 2 * a1); cr = MD[0] + (tipR - MD[0]) * a1; cg = MD[1] + (tipG - MD[1]) * a1; cb = MD[2] + (tipB - MD[2]) * a1; }
                     if (bladed) { var bI = P[k][2] & 7, bDry = BD[bI] ? (0.25 + 0.6 * f) : 0, bM = BS[bI] * (1 - bDry); cr = cr * bM + bDry * GGRASS.dry[0]; cg = cg * bM + bDry * GGRASS.dry[1]; cb = cb * bM + bDry * GGRASS.dry[2]; }
                     cA[col.n++] = cr; cA[col.n++] = cg; cA[col.n++] = cb;
                     gA[gg.n++] = wx; gA[gg.n++] = wz; gA[gg.n++] = h * f; gA[gg.n++] = f;
-                    sA[gs.n++] = P[k][0] * hw;
                 }
                 roots.a[roots.n++] = wx; roots.a[roots.n++] = wz;
             }
@@ -9272,7 +9312,6 @@ const ThreeRenderer = (function () {
         geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
         geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
         geo.setAttribute('aGg', new THREE.BufferAttribute(gg, 4));
-        geo.setAttribute('aGgS', new THREE.BufferAttribute(gs, 1));
         var nB = roots.length / 2, ia = new Uint32Array(nB * (_GG_SHAPES[C.shape] || _GG_SHAPES.crown).T.length);
         geo.setIndex(new THREE.BufferAttribute(ia, 1));
         var pr = _ggPressTex(W, H);
@@ -9390,14 +9429,14 @@ const ThreeRenderer = (function () {
        of the head re-sent every cell's index), and the far rings' tufts are 25 and 9 corners against 49.
        On arriving (and after a jump of 30 m+) the field fills first (fillMs a frame), then RISES out of the ground over riseS.
        Old field back, live: window.EW_HQ_GRASS_NO_RINGS = true (one ring to old.radiusM, a hard edge). No culling: window.EW_HQ_GRASS_NO_CULL. */
-    var HQ_GRASS = { cellM: 7, perSquare: 9, autoN: { high: 7, low: 5 }, tickMs: 100, steep: 0.55, height: 1.43,   // height: a tuft against the board's (a walker stands in it, a board's camera looks down on it)
+    var HQ_GRASS = { cellM: 7, perSquare: 10, autoN: { high: 8, low: 6 },   /* (11-27, THE BLADES STAND IN THE WORLD: 9 / 7 / 5 before; a near tuft's blade is 3 triangles now, was 5, so more tufts for fewer triangles) */ tickMs: 100, steep: 0.55, height: 1.43,   // height: a tuft against the board's (a walker stands in it, a board's camera looks down on it)
         /* to = where the ring ends (m from the walker) · band = it shrinks away over its last metres · lead = it grows in over this many metres, done where the ring before
            starts to shrink · pad = a cell is built this far ahead · cell = cell size × cellM (the tufts stand that much further apart) · tall = height × · blades / pts = which
            of the fan's seven blades a tuft keeps and which of a blade's seven corners (root L R, two pairs, tip) · spread / thick = how far the blades splay / how thick each is */
-        rings: [{ to: 22, band: 7, pad: 3 },
+        rings: [{ to: 22, band: 7, pad: 3, blades: [0, 1, 2, 3, 4, 5, 6], pts: [0, 1, 4, 5, 6] },
                 { to: 52, band: 12, lead: 6, pad: 5, cell: 2, tall: 1.06, spread: 1.15, thick: 1.5, blades: [0, 1, 3, 5, 6], pts: [0, 1, 4, 5, 6] },
                 { to: 110, band: 30, lead: 10, pad: 8, cell: 4, tall: 1.14, spread: 1.4, thick: 2.6, blades: [0, 3, 6], pts: [0, 1, 6] }],
-        low: { perSquare: 6, rings: [{ to: 16, band: 5, pad: 3 }, { to: 42, band: 12, lead: 5, pad: 5, cell: 2, tall: 1.08, spread: 1.2, thick: 1.8, blades: [0, 3, 6], pts: [0, 1, 4, 5, 6] }] },
+        low: { perSquare: 7, rings: [{ to: 16, band: 5, pad: 3, blades: [0, 1, 2, 3, 4, 5, 6], pts: [0, 1, 4, 5, 6] }, { to: 42, band: 12, lead: 5, pad: 5, cell: 2, tall: 1.08, spread: 1.2, thick: 1.8, blades: [0, 3, 6], pts: [0, 1, 4, 5, 6] }] },
         old: { radiusM: 28, low: 16 },
         buildMs: 3, fillMs: 8, riseS: 0.9, riseWaitMs: 2500, jumpM: 30 };
     try { window.EW_HQ_GRASS = HQ_GRASS; } catch (e) {}
@@ -9699,20 +9738,24 @@ const ThreeRenderer = (function () {
             }
             if (FM) h *= FM.hk;
             var sinkY = GRo ? h * GR.sink : 0, baseK = GRo ? GR.base[0] : 1, baseF = GRo ? GR.base[1] : 0.42, rtR = RT[0] * baseK * bR, rtG = RT[1] * baseK * bG, rtB = RT[2] * baseK * bB, side = FM && FM.side ? FM.side * (r1 < 0.5 ? -1 : 1) : 0;
+            var CM = R.shape.C, az3 = r4 * 6.2832 + r2 * 3.1, G3 = _ggFace3(r1, az3), ax3 = Math.cos(az3), az3z = Math.sin(az3);   // THE BLADES STAND IN THE WORLD
             for (var k = 0; k < PL; k++, v++) {
-                var f = P[k][1], px = P[k][0], cr, cg, cb, v3 = v * 3, v4 = v * 4;
+                var f = P[k][1], px = P[k][0], cr, cg, cb, v3 = v * 3, v4 = v * 4, cc3 = CM ? CM[k] : 0, ww3 = px - cc3, sd3 = 0;
                 if (FM) {   // G14: this tuft's own silhouette: the blade's splay and thickness, its own height, an arch, a lean to one side; a left-out blade is a point at the root
                     var bi = P[k][2] || 0, bhh = (Math.sin((r1 * 57.3 + bi * 7.77 + r3 * 3.1) * 37.9) * 43758.5453) % 1; bhh = bhh < 0 ? bhh + 1 : bhh;
-                    if (FM.drop && ((bhh * 11.3) % 1) < FM.drop && bi !== 3) { f = 0; px = R.shape.C[k] * FM.sp * 0.2; }
-                    else { var cx0 = R.shape.C[k]; f *= FM.bh[0] + (FM.bh[1] - FM.bh[0]) * bhh; px = (cx0 * FM.sp + (px - cx0) * FM.th) * (1 + FM.droop * f) + side * 2 * f * f; }
+                    if (FM.drop && ((bhh * 11.3) % 1) < FM.drop && bi !== 3) { f = 0; cc3 = R.shape.C[k] * FM.sp * 0.2; ww3 = 0; }
+                    else { var cx0 = R.shape.C[k]; f *= FM.bh[0] + (FM.bh[1] - FM.bh[0]) * bhh; cc3 = cx0 * FM.sp * (1 + FM.droop * f); ww3 = (px - cx0) * FM.th * (1 + FM.droop * f); sd3 = side * 2 * f * f; }
                 }
                 var bf = f * f, dy = h * f * (1 - (FM ? FM.droop : 0) * f) * (1 - 0.10 * bf);
-                pos[v3] = wx + lx * bf; pos[v3 + 1] = gy - sinkY + dy; pos[v3 + 2] = wz + lz * bf;
+                var ox3, oz3, b3 = CM ? (P[k][2] & 7) : 0;
+                if (CM) { var rr3 = (cc3 < 0 ? -cc3 : cc3) * hw * G3.reach, wq3 = ww3 * hw * G3.wide, sq3 = sd3 * hw * G3.reach; ox3 = G3.DX[b3] * rr3 + G3.PX[b3] * wq3 + ax3 * sq3; oz3 = G3.DZ[b3] * rr3 + G3.PZ[b3] * wq3 + az3z * sq3; }
+                else { ox3 = ax3 * px * hw; oz3 = az3z * px * hw; }
+                pos[v3] = wx + lx * bf + ox3; pos[v3 + 1] = gy - sinkY + dy; pos[v3 + 2] = wz + lz * bf + oz3;
                 if (f < baseF) { var a0 = f / baseF; cr = rtR + (MD[0] - rtR) * a0; cg = rtG + (MD[1] - rtG) * a0; cb = rtB + (MD[2] - rtB) * a0; }
                 else { var a1 = (f - baseF) / (1 - baseF); a1 = a1 * a1 * (3 - 2 * a1); cr = MD[0] + (tipR - MD[0]) * a1; cg = MD[1] + (tipG - MD[1]) * a1; cb = MD[2] + (tipB - MD[2]) * a1; }
-                if (P[k].length > 2) { var bl = _ggBlade(r1, P[k][2], f); cr = cr * bl[0] + bl[3] * GGRASS.dry[0]; cg = cg * bl[1] + bl[3] * GGRASS.dry[1]; cb = cb * bl[2] + bl[3] * GGRASS.dry[2]; }
+                if (P[k].length > 2) { var bl = _ggBlade(r1, P[k][2], f); cr = cr * bl[0] + bl[3] * GGRASS.dry[0]; cg = cg * bl[1] + bl[3] * GGRASS.dry[1]; cb = cb * bl[2] + bl[3] * GGRASS.dry[2]; var s3 = G3.SH[b3]; cr *= s3; cg *= s3; cb *= s3; }
                 col[v3] = cr; col[v3 + 1] = cg; col[v3 + 2] = cb;
-                gg[v4] = wx * kw; gg[v4 + 1] = wz * kw; gg[v4 + 2] = dy / (1 - 0.10 * bf); gg[v4 + 3] = f; gs[v] = px * hw;
+                gg[v4] = wx * kw; gg[v4 + 1] = wz * kw; gg[v4 + 2] = dy / (1 - 0.10 * bf); gg[v4 + 3] = f;
             }
             if (gy < yLo) yLo = gy; if (gy > yHi) yHi = gy;
             nB++;
@@ -9720,7 +9763,7 @@ const ThreeRenderer = (function () {
         if (!nB) return none;
         var geo = new THREE.BufferGeometry(), nor = new Float32Array(v * 3); for (var q = 1; q < nor.length; q += 3) nor[q] = 1;
         geo.setAttribute('position', new THREE.BufferAttribute(pos.slice(0, v * 3), 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
-        geo.setAttribute('color', new THREE.BufferAttribute(col.slice(0, v * 3), 3)); geo.setAttribute('aGg', new THREE.BufferAttribute(gg.slice(0, v * 4), 4)); geo.setAttribute('aGgS', new THREE.BufferAttribute(gs.slice(0, v), 1));
+        geo.setAttribute('color', new THREE.BufferAttribute(col.slice(0, v * 3), 3)); geo.setAttribute('aGg', new THREE.BufferAttribute(gg.slice(0, v * 4), 4));
         var ia = (v > 65535) ? new Uint32Array(nB * TL) : new Uint16Array(nB * TL);
         for (var t = 0; t < nB; t++) for (var e = 0; e < TL; e++) ia[t * TL + e] = t * PL + T[e];
         geo.setIndex(new THREE.BufferAttribute(ia, 1));
@@ -10013,6 +10056,7 @@ const ThreeRenderer = (function () {
                     tr0 *= fL[0]; tg0 *= fL[1]; tb0 *= fL[2];
                 }
                 for (k = 0; k < P.nv; k++) { cols[(v + k) * 3] = tr0; cols[(v + k) * 3 + 1] = tg0; cols[(v + k) * 3 + 2] = tb0; }
+                for (k = 0; k < P.nv; k++) { var by3 = pa[k * 3 + 1] * s; SC.bend[v + k] = by3 > 0 ? FLORA_SWAY.k * by3 * (by3 < FLORA_SWAY.cap ? by3 : FLORA_SWAY.cap) * U : 0; }   // THE SMALL PLANTS SWAY
                 for (k = 0; k < P.nv; k++) { k3 = k * 3; v3 = (v + k) * 3; pos[v3] = (ox + pa[k3] * co + pa[k3 + 2] * si) * U; pos[v3 + 1] = (gy + pa[k3 + 1] * s) * U; pos[v3 + 2] = (oz - pa[k3] * si + pa[k3 + 2] * co) * U; uvs[(v + k) * 2] = ua[k * 2]; uvs[(v + k) * 2 + 1] = ua[k * 2 + 1]; }
                 for (k = 0; k < P.ix.length; k++) idx[ii + k] = P.ix[k] + v;
                 v += P.nv; ii += P.ix.length; made++;
@@ -10040,6 +10084,7 @@ const ThreeRenderer = (function () {
         var geo = new THREE.BufferGeometry(), nor = new Float32Array(v * 3); for (q = 1; q < nor.length; q += 3) nor[q] = 1;   // a small plant takes the ground's light
         geo.setAttribute('position', new THREE.BufferAttribute(pos.slice(0, v * 3), 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uvs.slice(0, v * 2), 2));
         geo.setAttribute('color', new THREE.BufferAttribute(cols.slice(0, v * 3), 3));   // a plant's tint + the ground rules' patches (THE GROUND RULES, 11-25)
+        geo.setAttribute('aBend', new THREE.BufferAttribute(SC.bend.slice(0, v), 1));
         geo.setIndex(new THREE.BufferAttribute((v > 65535) ? idx.slice(0, ii) : new Uint16Array(idx.subarray(0, ii)), 1));
         geo.boundingSphere = new THREE.Sphere(new THREE.Vector3((x0 + cm / 2) * U, (yLo + yHi) / 2 * U, (z0 + cm / 2) * U), Math.hypot(cm * 0.7072 + 1.5, (yHi - yLo) / 2) * U);
         var mesh = new THREE.Mesh(geo, S.mat); mesh.name = 'ew_hq_flora'; mesh._ew_flora = true; mesh.receiveShadow = true; mesh.castShadow = false;
@@ -10076,7 +10121,7 @@ const ThreeRenderer = (function () {
                 if (!stones.length) stones = null;
                 else if (!_hqStoneMat) { _hqStoneMat = _foliageGlbMat(stoneSrcMat, null); _hqStoneMat._ew_shared = true; _hqStoneMat.color.setRGB(0.72, 0.71, 0.68); }
             }
-            if (!_hqFFMat) { _hqFFMat = _foliageGlbMat(srcMat, null); _hqFFMat._ew_shared = true; _hqFFMat._ew_hzNear = true; _hqFFMat.vertexColors = true;   // every cell carries a colour per corner (1,1,1 = the plant as drawn)
+            if (!_hqFFMat) { _hqFFMat = _foliageGlbMat(srcMat, null); _hqFFMat._ew_shared = true; _hqFFMat._ew_hzNear = true; _hqFFMat.vertexColors = true; _ewBendHook(_hqFFMat);   // THE SMALL PLANTS SWAY (every cell carries aBend)   // every cell carries a colour per corner (1,1,1 = the plant as drawn)
                 /* seen in the browser (11-20, Katana Island): a tree's leaf lift made the pale ferns and tufts glow white against the ground they stand on; a small plant takes the ground's own light */
                 _hqFFMat.color.setRGB(0.88, 0.9, 0.86); _hqFFMat.emissive.copy(_hqFFMat.color).multiplyScalar(0.05); }
             var info = H.terrain, boxes = [], paths = [], wet = false;
@@ -10093,7 +10138,7 @@ const ThreeRenderer = (function () {
                 gr: _grOn() ? { near: _grNearBucket(info, H.room), trees: _grTreeBucket(info), o: {} } : null, fields: fields, stones: stones, stoneMat: _hqStoneMat,
                 litter: (_grOn() && !window.EW_NO_LITTER && GROUND_RULES.litter && _grLitterMat()) ? { mat: _grLitterMat(), trees: _grTreeBucket(info), maxV: 9000, pos: new Float32Array(27000), uv: new Float32Array(18000), uv1: new Float32Array(18000), col: new Float32Array(27000), ix: new Uint16Array(24000), v: 0, i: 0 } : null,
                 stoneScratch: stones ? { maxV: 20000, maxI: 60000, pos: new Float32Array(60000), nor: new Float32Array(60000), uv: new Float32Array(40000), ix: new Uint16Array(60000), v: 0, i: 0, n: 0 } : null,
-                scratch: { maxV: maxV, maxI: maxV * 4, pos: new Float32Array(maxV * 3), uv: new Float32Array(maxV * 2), ix: new Uint32Array(maxV * 4), col: new Float32Array(maxV * 3) } };
+                scratch: { maxV: maxV, maxI: maxV * 4, pos: new Float32Array(maxV * 3), uv: new Float32Array(maxV * 2), ix: new Uint32Array(maxV * 4), col: new Float32Array(maxV * 3), bend: new Float32Array(maxV) } };
         }
         if (!S.busy && now - S.at < 120) return;
         S.at = now;
@@ -51975,7 +52020,7 @@ const ThreeRenderer = (function () {
     }
     /* THE GRASS FIELD on the node renderer (the GLSL is _ggMat): the gust, the flutter, the press map, the crest sheen, the normal up */
     function _ewNodeGGrass(nm, D) {
-        var T = _ewNodeU.T, P = T.positionLocal, A = T.attribute('aGg', 'vec4'), S = T.attribute('aGgS', 'float'), t = _ewNodeRef(_grassWindTime), Rt = _ewNodeRef(D.right || _ggRightU), C = GGRASS;
+        var T = _ewNodeU.T, P = T.positionLocal, A = T.attribute('aGg', 'vec4'), t = _ewNodeRef(_grassWindTime), C = GGRASS;   // (no aGgS, no camera's right: THE BLADES STAND IN THE WORLD)
         var gust = function () {
             var g = T.sin(A.x.mul(0.0105).add(A.y.mul(0.0062)).sub(t.mul(C.gust)).add(T.sin(A.x.mul(-0.0040).add(A.y.mul(0.0070)).add(t.mul(0.31))).mul(1.4))).mul(0.5).add(0.5);
             return g.mul(g);
@@ -51996,10 +52041,10 @@ const ThreeRenderer = (function () {
                     var wd = A.xy.sub(FD.f.xy).div(T.max(dd, 1e-3)), wp = A.z.mul(A.w).mul(wk).mul(0.7);
                     root.assign(root.add(T.vec3(wd.x.mul(wp), A.z.mul(A.w.mul(A.w).mul(0.10).oneMinus()).mul(wk).negate(), wd.y.mul(wp))));
                 }
-                return root.add(T.vec3(bs.mul(0.86).add(Rt.x.mul(S).mul(s)), A.z.mul(pr).mul(0.86).mul(s).add(bs.mul(0.30).mul(A.w)).negate(), bs.mul(0.50).add(Rt.y.mul(S).mul(s))));
+                return root.add(T.vec3(bs.mul(0.86), A.z.mul(pr).mul(0.86).mul(s).add(bs.mul(0.30).mul(A.w)).negate(), bs.mul(0.50)));
             }
             var b = g.mul(0.85).add(0.15).add(f).mul(C.wind).mul(A.z).mul(A.w).mul(pr.oneMinus()).toVar();
-            return P.add(T.vec3(b.mul(0.86).add(Rt.x.mul(S)), A.z.mul(pr).mul(0.86).add(b.mul(0.30).mul(A.w)).negate(), b.mul(0.50).add(Rt.y.mul(S))));
+            return P.add(T.vec3(b.mul(0.86), A.z.mul(pr).mul(0.86).add(b.mul(0.30).mul(A.w)).negate(), b.mul(0.50)));
         })();
         var sh = T.varying(gust().mul(A.w).mul(press().oneMinus()).mul(C.sheen).add(1));
         _ewNodeDiffuseMul(nm, function () { return sh; });
