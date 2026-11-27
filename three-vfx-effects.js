@@ -3848,6 +3848,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
     function fire(intent, spellId, params) {
         if (_suppressed()) return;
+        if (intent === 'ogact') { try { _ogActFx(spellId, params || {}); } catch (e) { console.warn('[VFX] origami look failed', spellId, e); } return; }   // 🕊 THE ORIGAMI GIRL: a look sent by name (battle.js _ogAct; relayed like every fire)
         /* Staging beats are resolved from spell DATA, not from SPELL_MAP —
            that's the whole point (a spell with no VFX entry still stages).
            So they're handled before the hasMapping gate, and because they
@@ -3871,6 +3872,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             if (intent === 'burst' && _BP_ON_BURST[spellId] && params && params.tx != null && !_catOff('spells')) try { _BP_ON_BURST[spellId](params.tx, params.ty, params); } catch (e) {}
             if (intent === 'burst' && _CHPG_ON_BURST[spellId] && params && params.tx != null && !_catOff('spells')) try { _CHPG_ON_BURST[spellId](params); } catch (e) { console.warn('[VFX] cheer/guard failed', spellId, e); }   // 📣🏀 THE CHEERLEADER + THE POINT GUARD
             if (intent === 'windup' || intent === 'burst') try { _lmxStage(intent, spellId, params); } catch (e) {}   // 🍀🩺👽 THE LEPRECHAUN + THE MEDIC + THE MARTIAN GIRL
+            if (intent === 'windup' || intent === 'burst') try { _ogStage(intent, spellId, params); } catch (e) { console.warn('[VFX] origami failed', spellId, e); }   // 🕊 THE ORIGAMI GIRL: she folds on the windup, the shape strikes on the burst
             return;
         }
         /* Timeline cues (Spell Lab) — same relay-riding trick as staging:
@@ -72025,6 +72027,259 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (intent === 'windup' && _LMX_ON_WINDUP[spellId] && !p.mark) { try { _LMX_ON_WINDUP[spellId](p); } catch (e) { console.warn('[VFX] leprechaun/medic travel failed', spellId, e); } }
         if (intent === 'burst' && _LMX_ON_BURST[spellId] && _PZ_SIGS[spellId]) { try { _PZ_SIGS[spellId](p); } catch (e) { console.warn('[VFX] leprechaun/medic hit failed', spellId, e); } }
     }
+
+    /* ════ 🕊 THE ORIGAMI GIRL (2026-11-27, mondo: "a piece of paper with actual folding animations ... build her spells and vfx and
+       all that"). FIRST PASS. She is the weapon: on a cast's windup beat her body folds into the shape (three-renderer.js THE
+       ORIGAMI IN A FIGHT, ThreeRenderer.oriAct: the real sheet, crease by crease); on the burst the shape strikes. Everything
+       here rides fire() (windup / burst, and the 'ogact' looks battle.js _ogAct sends: the sword's counter, Pick a Number's flap,
+       Seven Folds), which online.js relays, so the guest sees the same (RULE #2). All of it is paper: white scraps with a
+       crimson back that tumble and fall, a white cut with a red line, a flock of small paper cranes (ThreeRenderer.oriCrane), a
+       four-point throwing star, a pleated fan. Kill-switch window.EW_NO_ORIGAMI_VFX (the folding itself: EW_NO_ORIGAMI_FIGHT).
+       Notes: docs/notes/champions-combat.md "THE ORIGAMI GIRL". ════ */
+    var _OG = { paper: 0xf6f2e9, cream: 0xe6dfd0, red: 0xa5182f, redHot: 0xd8283c, ink: 0x241a14 };
+    var _OG_FOLD = { ogSwordigami: 'sword', ogKamikaze: 'plane', ogPickANumber: 'fortune', ogThousandCranes: 'crane' };
+    var _OG_FCOL = [0xa5182f, 0x3fae5a, 0xd23a32, 0x3a78d8, 0xe8b838], _OG_FCSS = ['#a5182f', '#3fae5a', '#d23a32', '#3a78d8', '#e8b838'];
+    var _ogLast = {};
+    function _ogOff() { return typeof window !== 'undefined' && !!window.EW_NO_ORIGAMI_VFX; }
+    function _ogTR() { return (typeof ThreeRenderer !== 'undefined' && ThreeRenderer && typeof ThreeRenderer.oriAct === 'function') ? ThreeRenderer : null; }
+    function _ogMat(col, o) { o = o || {}; return new THREE.MeshBasicMaterial({ color: new THREE.Color(col), transparent: true, opacity: o.opacity != null ? o.opacity : 1, side: o.side || THREE.DoubleSide, depthWrite: o.depthWrite !== false, vertexColors: !!o.vc }); }
+    /* paper scraps: n small squares thrown out of (x0, y0, z0) (frame-local), white on one face and `back` on the other, tumbling
+       and falling like paper (slow, side to side). -> tick(el) */
+    function _ogScraps(F, n, o) {
+        o = o || {};
+        var ts = F.ts, bits = [], i, ge = new THREE.PlaneGeometry(1, 1);
+        for (i = 0; i < n; i++) {
+            var s = ts * rn(0.045, 0.085) * (o.size || 1), hold = new THREE.Group();
+            var a = new THREE.Mesh(ge, _ogMat(i % 5 === 4 ? _OG.cream : _OG.paper, { side: THREE.FrontSide })), b = new THREE.Mesh(ge, _ogMat(o.back != null ? o.back : _OG.red, { side: THREE.BackSide }));
+            a.renderOrder = b.renderOrder = 159; hold.add(a); hold.add(b); hold.scale.set(s, s * rn(0.7, 1.3), s); hold.visible = false; F.g.add(hold);
+            var an = rn(0, 6.283), sp = rn(0.5, 1.5) * (o.speed || 1);
+            bits.push({ g: hold, m: [a.material, b.material], x: (o.x || 0) + rn(-0.08, 0.08) * ts, y: (o.y != null ? o.y : ts * 0.6) + rn(-0.1, 0.1) * ts, z: (o.z || 0) + rn(-0.08, 0.08) * ts,
+                vx: Math.cos(an) * sp * ts * 1.2 + (o.vx || 0), vz: Math.sin(an) * sp * ts * 1.2 + (o.vz || 0), vy: rn(0.6, 2.2) * ts * (o.up != null ? o.up : 1), d: (o.delay || 0) + rn(0, o.spread || 80),
+                r: [rn(-9, 9), rn(-9, 9), rn(-9, 9)], ph: rn(0, 6.283), life: (o.ms || 1100) * rn(0.75, 1.1) });
+        }
+        return function (el) {
+            for (var j = 0; j < bits.length; j++) {
+                var B = bits[j], t = (el - B.d) / 1000; if (t < 0) continue;
+                var k = t * 1000 / B.life; if (k >= 1) { B.g.visible = false; continue; }
+                var dr = Math.exp(-2.6 * t), px = B.x + B.vx * (1 - dr) / 2.6 + Math.sin(B.ph + t * 5) * ts * 0.05 * t, pz = B.z + B.vz * (1 - dr) / 2.6 + Math.cos(B.ph + t * 4.3) * ts * 0.05 * t;
+                var py = B.y + B.vy * (1 - dr) / 2.6 - ts * 0.75 * t * t * 0.9 - ts * 0.25 * t;
+                if (py < ts * 0.02) py = ts * 0.02;
+                B.g.visible = true; B.g.position.set(px, py, pz); B.g.rotation.set(B.r[0] * t, B.r[1] * t, B.r[2] * t);
+                var op = k > 0.7 ? (1 - k) / 0.3 : 1; B.m[0].opacity = op; B.m[1].opacity = op;
+            }
+        };
+    }
+    /* the swap: a small burst of scraps where she stood, as her body gives way to the sheet */
+    function _ogPuff(sx, sy) {
+        if (sx == null || !_pzSeen(sx, sy)) return;
+        var F = _nrvFrame(sx, sy), sc = _ogScraps(F, 9, { y: F.ts * 0.55, speed: 0.6, up: 0.8, ms: 900 });
+        _sigRunOwned(F.g, 1100, function (el) { sc(el); });
+    }
+    /* a paper cut on (tx, ty): a white crescent sweeps across the body and leaves one thin red line */
+    function _ogCut(p, o) {
+        o = o || {};
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _pzFrom(tx, ty, p), ln = _nrvLine(F, from, tx, ty);
+        var hold = new THREE.Group(); hold.position.y = ts * 0.55; hold.rotation.y = Math.atan2(ln.ux, ln.uz); F.g.add(hold);
+        var arc = new THREE.Mesh(new THREE.RingGeometry(ts * 0.42, ts * 0.56, 28, 1, 0, 2.3), _ogMat(_OG.paper, { opacity: 0, depthWrite: false })); arc.renderOrder = 160; arc.rotation.z = 0.5; hold.add(arc);
+        var edge = new THREE.Mesh(new THREE.RingGeometry(ts * 0.555, ts * 0.585, 28, 1, 0, 2.3), _ogMat(_OG.redHot, { opacity: 0, depthWrite: false })); edge.renderOrder = 161; arc.add(edge);
+        var line = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.62, ts * 0.018), _ogMat(_OG.redHot, { opacity: 0, depthWrite: false })); line.renderOrder = 161; line.rotation.z = -0.5; hold.add(line);
+        var sc = _ogScraps(F, o.scraps != null ? o.scraps : 6, { y: ts * 0.55, speed: 0.7, ms: 900, delay: 90 });
+        try { _sigShake('light'); } catch (e) {}
+        return _sigRunOwned(F.g, 1100, function (el) {
+            var sw = _sigClamp01(el / 170); arc.rotation.z = 0.5 - 2.6 * (1 - Math.pow(1 - sw, 3)) + 2.3;
+            arc.material.opacity = 0.95 * _pzEnv(el, 0, 30, 150, 330); edge.material.opacity = arc.material.opacity;
+            line.material.opacity = 0.95 * _pzEnv(el, 110, 150, 520, 900); line.scale.x = 0.2 + 0.8 * _sigClamp01((el - 110) / 90);
+            sc(el);
+        });
+    }
+    /* KAMIKAZE: the crash. A shower of scraps, a white ring on the floor, a crumple star. */
+    function _ogCrashTex() {
+        return _pzTex('ogCrash', 128, 128, function (g, w, h) {
+            g.translate(w / 2, h / 2); g.fillStyle = '#ffffff'; g.beginPath();
+            for (var i = 0; i < 18; i++) { var a = i / 18 * 6.283, r = (i % 2 ? 26 : 58) * (0.85 + 0.3 * Math.abs(Math.sin(i * 2.7))); g.lineTo(Math.cos(a) * r, Math.sin(a) * r); }
+            g.closePath(); g.fill();
+        });
+    }
+    function _ogCrash(p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _pzFrom(tx, ty, p), ln = _nrvLine(F, from, tx, ty);
+        var star = _pzSprN(_OG.paper, ts * 0.9, _ogCrashTex(), F.g); star.position.set(ln.ux * ts * 0.35, ts * 0.55, ln.uz * ts * 0.35);
+        var sc = _ogScraps(F, 26, { x: ln.ux * ts * 0.3, z: ln.uz * ts * 0.3, y: ts * 0.55, speed: 1.2, up: 1.3, vx: -ln.ux * ts * 0.8, vz: -ln.uz * ts * 0.8, ms: 1500, spread: 120 });
+        try { _sigShockRing3D(tx, ty, { color: _OG.cream, r0: ts * 0.15, r1: ts * 0.95, ms: 360 }); } catch (e) {}
+        try { _sigShake('normal'); } catch (e) {}
+        return _sigRunOwned(F.g, 1700, function (el) {
+            var pop = _sigClamp01(el / 120); star.scale.set(ts * (0.5 + 0.7 * pop), ts * (0.5 + 0.7 * pop), 1); star.material.opacity = 0.95 * _pzEnv(el, 0, 20, 110, 300); star.material.rotation = 0.4;
+            sc(el);
+        });
+    }
+    /* the plane's own wake as it flies: a few long white streaks along the line, on the windup's clock */
+    function _ogWake(p) {
+        if (p.sx == null || p.tx == null || (!_pzSeen(p.sx, p.sy) && !_pzSeen(p.tx, p.ty))) return;
+        var F = _nrvFrame(p.tx, p.ty), ts = F.ts, ln = _nrvLine(F, { x: p.sx, y: p.sy }, p.tx, p.ty), hold = Math.max(500, p.holdMs || 1200), ls = [], i;
+        if (ln.L < ts * 1.2) { _sigDisposeGroup(F.g); return; }
+        for (i = 0; i < 5; i++) {
+            var m = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.02, ln.L * rn(0.35, 0.6)), _ogMat(_OG.paper, { opacity: 0, depthWrite: false }));
+            m.renderOrder = 158; m.rotation.x = -Math.PI / 2; m.rotation.z = Math.atan2(ln.ux, ln.uz); m.position.set(ln.dx * rn(0.3, 0.7) + ln.uz * rn(-0.25, 0.25) * ts, ts * rn(0.35, 0.8), ln.dz * rn(0.3, 0.7) - ln.ux * rn(-0.25, 0.25) * ts);
+            F.g.add(m); ls.push(m);
+        }
+        _sigRunOwned(F.g, hold + 500, function (el) { for (var j = 0; j < ls.length; j++) ls[j].material.opacity = 0.55 * _pzEnv(el, hold * 0.45 + j * 40, hold * 0.6 + j * 40, hold * 0.9, hold + 420); });
+    }
+    /* PICK A NUMBER: the flap. The number in its colour rises over whoever it was read to, on a paper diamond. */
+    function _ogNumTex(n) {
+        return _pzTex('ogNum' + n, 128, 128, function (g, w, h) {
+            g.translate(w / 2, h / 2); g.rotate(Math.PI / 4); g.fillStyle = '#f6f2e9'; g.fillRect(-40, -40, 80, 80); g.fillStyle = _OG_FCSS[n] || '#a5182f'; g.fillRect(-40, -40, 80, 40);
+            g.strokeStyle = 'rgba(36,26,20,0.55)'; g.lineWidth = 3; g.strokeRect(-40, -40, 80, 80); g.beginPath(); g.moveTo(-40, 0); g.lineTo(40, 0); g.stroke();
+            g.rotate(-Math.PI / 4); g.fillStyle = '#241a14'; g.font = 'bold 58px Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(String(n), 0, 6);
+        });
+    }
+    function _ogRollFx(p) {
+        var tx = p.tx, ty = p.ty, n = Math.max(1, Math.min(4, Math.round(+p.scale || 1))); if (tx == null || !_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, col = _OG_FCOL[n];
+        var card = _pzSprN(0xffffff, ts * 0.6, _ogNumTex(n), F.g); card.position.y = ts * 1.25;
+        var ring = _pzMesh(new THREE.RingGeometry(ts * 0.34, ts * 0.46, 4), _pzGlow(col), F.g, 0, ts * 0.04, 0); ring.rotation.x = -Math.PI / 2;
+        var sc = _ogScraps(F, 8, { y: ts * 1.1, speed: 0.5, up: 0.5, back: col, ms: 1300 });
+        return _sigRunOwned(F.g, 1700, function (el) {
+            var vis = _pzEnv(el, 0, 90, 1250, 1700), pop = _sigEaseOutBack(_sigClamp01(el / 260));
+            card.scale.set(ts * 0.6 * pop, ts * 0.6 * pop, 1); card.material.opacity = vis; card.position.y = ts * (1.2 + 0.25 * _sigClamp01(el / 1700));
+            ring.material.opacity = 0.7 * vis; ring.rotation.z = el * 0.002; var rs = 0.7 + 0.5 * _sigClamp01(el / 400); ring.scale.set(rs, rs, 1);
+            sc(el);
+        });
+    }
+    /* THOUSAND CRANES: a flock of small paper cranes sweeps the 3x3 from her side to the far side, wings beating; scraps fall behind */
+    function _ogFlock(p) {
+        var tx = p.tx, ty = p.ty, TR = _ogTR(); if (tx == null || !TR || !TR.oriCrane) return;
+        if (!_pzSeen(tx, ty) && !_pzSeen(tx + 1, ty) && !_pzSeen(tx - 1, ty) && !_pzSeen(tx, ty + 1) && !_pzSeen(tx, ty - 1)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _pzFrom(tx, ty, p), ln = _nrvLine(F, from, tx, ty), fx = -ln.ux, fz = -ln.uz, birds = [], i;   // (fx, fz): away from her
+        if (Math.abs(fx) + Math.abs(fz) < 0.01) { fx = 1; fz = 0; }
+        var yaw = Math.atan2(fx, fz);
+        for (i = 0; i < 14; i++) {
+            var C = TR.oriCrane({ open: 1 }); if (!C) break;
+            var s = ts * rn(0.34, 0.5); C.group.scale.setScalar(s); C.group.rotation.order = 'YXZ'; C.group.visible = false; F.g.add(C.group);
+            for (var q = 0; q < C.mats.length; q++) { C.mats[q].transparent = true; }
+            birds.push({ C: C, side: rn(-1.5, 1.5) * ts, h: ts * rn(0.5, 1.5), d: i * 55 + rn(0, 60), ph: rn(0, 6.283), dip: rn(0.25, 0.6) * ts, ms: rn(820, 1050), wob: rn(-0.3, 0.3) });
+        }
+        var sc = _ogScraps(F, 22, { y: ts * 1.0, speed: 1.3, up: 0.3, ms: 1700, spread: 900 });
+        try { _sigShockRing3D(tx, ty, { color: _OG.cream, r0: ts * 0.3, r1: ts * 1.6, ms: 520 }); } catch (e) {}
+        return _sigRunOwned(F.g, 2100, function (el) {
+            for (var j = 0; j < birds.length; j++) {
+                var B = birds[j], t = (el - B.d) / B.ms; if (t < 0 || t > 1) { B.C.group.visible = false; continue; }
+                var al = (t - 0.5) * ts * 5.2, y = B.h - Math.sin(t * Math.PI) * B.dip, sd = B.side + Math.sin(B.ph + t * 4) * ts * 0.18;
+                B.C.group.visible = true; B.C.group.position.set(fx * al + fz * sd, y, fz * al - fx * sd);
+                B.C.group.rotation.set(Math.cos(t * Math.PI) * -0.35, yaw + B.wob * Math.sin(t * 5), Math.sin(B.ph + t * 6) * 0.25);
+                B.C.flap(Math.sin(B.ph + el * 0.03));
+                var op = t < 0.12 ? t / 0.12 : (t > 0.85 ? (1 - t) / 0.15 : 1); B.C.mats[0].opacity = op; B.C.mats[1].opacity = op;
+            }
+            sc(el);
+        });
+    }
+    /* PAPER STAR: a four-point throwing star, white with a crimson heart, spins flat from her hand to the target */
+    function _ogStarMesh(R) {
+        var p = [], c = [], i, W = [0.965, 0.95, 0.91], Rd = [0.65, 0.09, 0.18];
+        for (i = 0; i < 8; i++) {
+            var a0 = i / 8 * 6.283, a1 = (i + 1) / 8 * 6.283, r0 = i % 2 ? R * 0.34 : R, r1 = i % 2 ? R : R * 0.34;
+            p.push(0, 0, 0, Math.cos(a0) * r0, 0, Math.sin(a0) * r0, Math.cos(a1) * r1, 0, Math.sin(a1) * r1);
+            var sh = i % 2 ? 1 : 0.86; c.push(Rd[0], Rd[1], Rd[2], W[0] * sh, W[1] * sh, W[2] * sh, W[0] * sh, W[1] * sh, W[2] * sh);
+        }
+        var ge = new THREE.BufferGeometry(); ge.setAttribute('position', new THREE.BufferAttribute(new Float32Array(p), 3)); ge.setAttribute('color', new THREE.BufferAttribute(new Float32Array(c), 3));
+        var m = new THREE.Mesh(ge, _ogMat(0xffffff, { vc: true })); m.renderOrder = 160; return m;
+    }
+    function _ogStar(p) {
+        if (p.sx == null || p.tx == null || (!_pzSeen(p.sx, p.sy) && !_pzSeen(p.tx, p.ty))) return;
+        var ts0 = _cfg().tileSize || 128, hold = Math.max(420, p.holdMs || 900), fly = Math.max(200, Math.min(520, hold * 0.42));
+        _fxDelay(function () {
+            if (_suppressed()) return;
+            var star = _ogStarMesh(ts0 * 0.2); star.rotation.x = 0.35;
+            _pzFly(p.sx, p.sy, p.tx, p.ty, star, { ms: fly, arc: 0.06, h0: ts0 * 0.62, h1: ts0 * 0.55, hideOnLand: true, face: false, spin: function (el, obj) { obj.rotation.y = el * 0.045; } });
+        }, Math.max(0, hold - fly - 40));
+    }
+    /* PAPER FAN: a pleated fan opens in front of her and swings once; the gust goes down the line on the burst */
+    function _ogFanMesh(R) {
+        var p = [], c = [], n = 12, i, span = 2.6, a00 = Math.PI / 2 - span / 2;
+        for (i = 0; i < n; i++) {
+            var a0 = a00 + span * i / n, a1 = a00 + span * (i + 1) / n, z0 = (i % 2 ? 1 : -1) * R * 0.035, z1 = -z0, sh = i % 2 ? 0.97 : 0.8;
+            p.push(0, 0, 0, Math.cos(a0) * R, Math.sin(a0) * R, z0, Math.cos(a1) * R, Math.sin(a1) * R, z1);
+            c.push(0.65, 0.09, 0.18, sh, sh * 0.98, sh * 0.94, sh, sh * 0.98, sh * 0.94);
+        }
+        var ge = new THREE.BufferGeometry(); ge.setAttribute('position', new THREE.BufferAttribute(new Float32Array(p), 3)); ge.setAttribute('color', new THREE.BufferAttribute(new Float32Array(c), 3));
+        var m = new THREE.Mesh(ge, _ogMat(0xffffff, { vc: true })); m.renderOrder = 160; return m;
+    }
+    function _ogFan(p) {
+        if (p.sx == null || p.tx == null || !_pzSeen(p.sx, p.sy)) return;
+        var F = _nrvFrame(p.sx, p.sy), ts = F.ts, ln = _nrvLine(F, { x: p.tx, y: p.ty }, p.sx, p.sy), hold = Math.max(500, p.holdMs || 1100);   // (ln: from her to the aimed square)
+        var piv = new THREE.Group(); piv.position.set(ln.ux * ts * 0.34, ts * 0.42, ln.uz * ts * 0.34); piv.rotation.order = 'YXZ'; F.g.add(piv);
+        var fan = _ogFanMesh(ts * 0.62); piv.add(fan);
+        var yaw = Math.atan2(ln.ux, ln.uz);
+        _sigRunOwned(F.g, hold + 700, function (el) {
+            var open = _sigEaseOutBack(_sigClamp01(el / 260)), sw = _sigClamp01((el - hold * 0.62) / (hold * 0.3)), swing = Math.sin(sw * Math.PI);
+            fan.scale.set(0.15 + 0.85 * open, open, 1); fan.material.opacity = _pzEnv(el, 0, 60, hold + 350, hold + 700);
+            piv.rotation.set(-0.25 - swing * 0.9, yaw + (0.9 - sw * 1.8) * (el > hold * 0.62 ? 1 : 0) + (el <= hold * 0.62 ? 0.9 : 0), 0);
+        });
+    }
+    function _ogGust(p) {
+        if (p.sx == null || p.tx == null) return;
+        var dx = p.tx - p.sx, dy = p.ty - p.sy, L = Math.max(Math.abs(dx), Math.abs(dy)) || 1, ux = Math.round(dx / L), uy = Math.round(dy / L), k;
+        for (k = 1; k <= 4; k++) (function (k) {
+            var gx = p.sx + ux * k, gy = p.sy + uy * k; if (!_pzSeen(gx, gy)) return;
+            _fxDelay(function () {
+                if (_suppressed()) return;
+                var F = _nrvFrame(gx, gy), ts = F.ts, ln = _nrvLine(F, { x: p.sx, y: p.sy }, gx, gy), ls = [], i;
+                for (i = 0; i < 4; i++) { var m = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.025, ts * rn(0.5, 0.9)), _ogMat(_OG.paper, { opacity: 0, depthWrite: false })); m.renderOrder = 158; m.rotation.x = -Math.PI / 2; m.rotation.z = Math.atan2(ln.ux, ln.uz); m.position.set(rn(-0.35, 0.35) * ts, ts * rn(0.2, 0.9), rn(-0.35, 0.35) * ts); F.g.add(m); ls.push(m); }
+                var sc = _ogScraps(F, 5, { y: ts * 0.5, speed: 0.4, up: 0.5, vx: -ln.ux * ts * 2.2, vz: -ln.uz * ts * 2.2, ms: 900 });
+                _sigRunOwned(F.g, 1000, function (el) { for (var j = 0; j < ls.length; j++) { ls[j].material.opacity = 0.6 * _pzEnv(el, j * 30, 60 + j * 30, 200, 420); ls[j].position.x -= ln.ux * ts * 0.03; ls[j].position.z -= ln.uz * ts * 0.03; } sc(el); });
+            }, (k - 1) * 70);
+        })(k);
+    }
+    /* SEVEN FOLDS: a white crease flashes across the victim on every fold (sideways, then down, in turn), then the stamp */
+    function _ogSevenFx(p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, dur = Math.max(900, Math.min(4000, +p.durMs || 1800)), seg = dur / 7, ls = [], i;
+        var wt = _pzTex('ogWhite', 4, 4, function (g, w, h) { g.fillStyle = '#ffffff'; g.fillRect(0, 0, w, h); });
+        for (i = 0; i < 7; i++) { var m = _pzSprN(_OG.paper, 1, wt, F.g); m.scale.set(i % 2 ? ts * 0.9 : ts * 0.03, i % 2 ? ts * 0.03 : ts * 1.3, 1); m.position.y = ts * (i % 2 ? 0.35 : 0.6) * Math.pow(0.8, i); ls.push(m); }
+        var stamp = _pzSprN(0xffffff, ts * 0.3, _ogNumTex(0), F.g); stamp.position.y = ts * 0.3;
+        var sc = _ogScraps(F, 12, { y: ts * 0.3, speed: 0.6, up: 0.8, ms: 1200, delay: dur });
+        return _sigRunOwned(F.g, dur + 1500, function (el) {
+            for (var j = 0; j < 7; j++) { ls[j].material.opacity = 0.9 * _pzEnv(el, j * seg + seg * 0.45, j * seg + seg * 0.6, j * seg + seg * 0.7, j * seg + seg * 1.1); }
+            stamp.material.opacity = _pzEnv(el, dur, dur + 80, dur + 900, dur + 1500);
+            sc(el);
+        });
+    }
+    var _OG_ON_BURST = {
+        ogSwordigami: function (p) { _ogCut(p); },
+        ogKamikaze: function (p) { _ogCrash(p); },
+        ogThousandCranes: function (p) { _ogFlock(p); },
+        ogPaperStar: function (p) { _ogCut(p, { scraps: 3 }); },
+        ogPaperFan: function (p) { _ogGust(p); },
+    };
+    /* fire()'s windup + burst */
+    function _ogStage(intent, spellId, p) {
+        if (!p || typeof spellId !== 'string' || spellId.indexOf('og') !== 0 || _ogOff()) return;
+        var TR = _ogTR(), sh = _OG_FOLD[spellId];
+        if (intent === 'windup') {
+            if (p.mark) return;
+            if (p.uid != null) _ogLast[spellId] = p.uid;
+            if (sh && TR && p.uid != null) { if (TR.oriAct(p.uid, sh, { holdMs: p.holdMs }) && !_catOff('spells')) _ogPuff(p.sx, p.sy); }
+            if (_catOff('spells')) return;
+            if (spellId === 'ogKamikaze') _ogWake(p);
+            if (spellId === 'ogPaperStar') _ogStar(p);
+            if (spellId === 'ogPaperFan') _ogFan(p);
+            return;
+        }
+        if (intent === 'burst') {
+            if (sh && sh !== 'fortune' && TR && _ogLast[spellId] != null) TR.oriAct(_ogLast[spellId], 'strike');
+            if (!_catOff('spells') && _OG_ON_BURST[spellId] && _pzOnce('og:' + spellId, 250)) _OG_ON_BURST[spellId](p);
+        }
+    }
+    /* fire('ogact'): the looks battle.js sends by name (p.fx) */
+    function _ogActFx(spellId, p) {
+        if (!p || _ogOff()) return;
+        var TR = _ogTR();
+        if (p.fx === 'strike') { if (TR && p.uid != null) TR.oriAct(p.uid, 'strike'); if (!_catOff('spells')) _ogCut(p); }
+        else if (p.fx === 'roll') { if (TR && p.uid != null) TR.oriAct(p.uid, 'roll', { n: p.scale }); if (!_catOff('spells')) _ogRollFx(p); }
+        else if (p.fx === 'sevenfolds') { if (TR && p.uid != null) TR.oriAct(p.uid, 'sevenfolds', { durMs: p.durMs }); if (!_catOff('spells')) _ogSevenFx(p); }
+    }
+    EFFECTS['ogQuiet_fx'] = _pzDef('ogQuiet', { pzOwn: true });
+    ['ogSwordigami', 'ogKamikaze', 'ogPaperStar', 'ogPickANumber', 'ogPaperFan', 'ogThousandCranes'].forEach(function (id) { SPELL_MAP[id] = { impact: 'ogQuiet_fx', aoe: 'ogQuiet_fx', aura: 'ogQuiet_fx' }; });
 
     /* ════ 🎛 THE MUSIC PRODUCER (2026-11-24): his moves on the board, in the caster's side colours (_psSide), all off fire()'s
        burst so the guest sees them too. The song itself is audio.js THE PRODUCER'S 4-TRACK; rules battle.js "THE MUSIC PRODUCER".

@@ -6767,3 +6767,57 @@ AVAILABLE_RACES (data.js + server.js), codex lore, the VFX and the spell moves o
   board, the kit cast in a row with Revs / Cracks / HP / push read after each step. A target out of the team's sight is refused
   ("Out of sight"), a blocked charge says "Terrain blocks the spell path": the probe's fixed squares, not the spell.
 - LEFT OUT ON PURPOSE (no lore invented): element affinity, home zone, biomes, residents, NPC temperament, story place.
+
+## THE ORIGAMI GIRL (2026-11-27, thread "Build origami girl's spells and VFX")
+mondo 11-27: "a piece of paper with actual folding animations ... weak to fire and water ... Swordigami where it either turns into a
+sword ... Kamikaze where it folds into a paper airplane and crashes into the target ... folds into that fortune game", then "add her
+in the game as a unit and then start a new fable thread to build her spells and vfx and all that, dont know why youre only doing one
+tiny step at a time". The plan he approved: Claude Doc "Origami Girl: character plan" (https://claude.ai/artifact/QkgS6P3cZrjBRyCYD5RheU).
+Her BODY (race row, model, wings, stats, weakness fire + water) is the unit thread's (models-assets.md "THE ORIGAMI GIRL IS A UNIT");
+the folding sheet is three-renderer.js THE ORIGAMI (models-assets.md "THE ORIGAMI"). This thread: the kit, the rule, the fight's
+folding, the VFX, the finisher, AVAILABLE_RACES (data.js + server.js), the codex line. ALL NAMES AND NUMBERS ARE A FIRST PASS.
+- `origami girl` (specialist, family `origami`, spellType anomaly; pool origami, swordsmanship, fortunetelling, ninjutsu, trickery).
+  SHE IS THE WEAPON: a row with `ogFold` (sword / plane / fortune / crane) folds her own sheet into the tool.
+- RULE, THE FOLD: the shape she cast stays on the board until HER NEXT TURN starts (battle.js `_ogTurnStart`) or she casts again
+  (`_ogBeginCast`). It is a status (STATUS_DEFS `foldSword` +1 ATK stage and a sure counter (getCounterChance returns 1: front or
+  side, like any counter); `foldPlane` "Crumpled" -1 DEF stage; `foldFortune` +1 M.DEF stage; `foldCrane` grantsFlight: she hovers,
+  like Levitating). All four are dispelProof, duration 2 (her turn start clears them first). `unit._ogFolded` = the shape's name.
+- THE SIX ROWS (RACE_SPELLS: Swordigami, [Kamikaze | Paper Star], [Pick a Number | Paper Fan], Thousand Cranes):
+  Swordigami T1 (melee 95, Bleed 2). Kamikaze T2 (kind damage + chargeToTarget, range 5, 90 +`ogPerSquare` 20 a square flown as a
+  second blow: `_ogCrash` in _runPostEffects, in the forecast too as `tag: 'flight'`; selfDamagePct 8 %). Paper Star T2 (range 4, 85,
+  Bleed 1, no fold). Pick a Number T3 (range 3, `procedure` + `anyTeam`: the Plastic Surgeon's ally-or-enemy machinery, _psCastRow,
+  nothing of his Work Done since that is race-gated; `ogFortunes` = four casts a side, one rolled with engineRng in `_ogCastRow`:
+  enemy Slowed 2 / -1 ATK / -1 DEF / Blind 1, ally Quickened 2 / +1 ATK / +1 DEF / Regen 2; the roll's number + label float over the
+  target). Paper Fan T3 (linePush 4, 95 magic wind, push 2, no fold). Thousand Cranes T4 (aoe 3x3 within 4, 110, `aoeAllyHeal` 70).
+- Finisher `fin_origami_girl` "Seven Folds" (NOBODY FOLDS EIGHT): borrows the thousandCuts staging (paper cuts) and `overlay:
+  'sevenFolds'` folds the victim's own body in half seven times (three-renderer.js oriAct 'sevenfolds': its model's width, then its
+  height, halved in turn with the fold's snap; it stays a stamp while it dies).
+- THE ORIGAMI IN A FIGHT (three-renderer.js, after THE FOLD IN A FIGHT): `ThreeRenderer.oriAct(uid, what, o)`. A fold name hides her
+  body and folds THE ORIGAMI's sheet in her place inside the cast's own windup (`holdMs`); 'strike' = the shape's blow (the sword
+  spins on its point and chops, the plane crumples and lies where it landed, the crane beats its wings); 'roll' = the fortune game's
+  flaps turn the rolled colour (`S.setQuad`: a colour a quarter of the sheet; four colours until it is read). The held shape is
+  drawn from the unit's STATUS, so a guest sees it from the state sync alone (`_oriWatch`, one race check a unit). THE CRANE cannot
+  be made with flat folds: the sheet folds to a packet (`_ORI_RECIPES.cranePack`) and a hinged paper crane built in code
+  (`_oriCrane`: body, neck, head, tail, two wings) opens out of it (the plan's fallback; no solver). HER DEATH (mondo: "crumble up
+  into a wad of paper"): startDeathTween -> `_oriWad`: a sheet her size crushes into a ball, hangs a breath, drops, bounces, rolls.
+  Off: `EW_NO_ORIGAMI_FIGHT`. Probe read: `ThreeRenderer.oriState(uid)`.
+- VFX (three-vfx-effects.js "THE ORIGAMI GIRL", all paper): `_ogStage` rides fire()'s windup (she folds; Paper Star's star flies,
+  Paper Fan's pleated fan opens and swings, the plane's wake) and burst (the paper cut: a white crescent and one thin red line; the
+  crash: scraps, a ring, a crumple star; the flock: 14 small paper cranes from `ThreeRenderer.oriCrane` sweep the 3x3; the gust).
+  `fire('ogact', spellId, { uid, fx, scale, owner })` = a look by name from battle.js `_ogAct` (the sword's counter 'strike', the
+  flap 'roll' with its number card, 'sevenfolds'): it uses keys online.js already relays, so NOTHING was added to online.js.
+  Off: `EW_NO_ORIGAMI_VFX`.
+- RULE #2: every look rides VFX3D.fire (relayed); the statuses and `_ogFolded` / `_ogFromX` are plain values in the state sync; the
+  roll is the host's (engineRng).
+- THE KIT PROBE: `UNITS="origami girl:female,…" SPELLS=ogSwordigami,… EARLY=350,650 FRAMES=3,900 node playtest_kitfight.js`
+  (`EARLY` = frames inside the windup, added for the folds; linePush + tackle rows are aimed at an enemy now).
+- NOT DONE / HIS CALLS: Swordigami as a sword an ally holds (the plan's third way); the Wet rule (Wet knocks her out of her shape:
+  not built, looks only either way); the girl's three-move fold into a packet before the swap (the swap is a quick pop with scraps);
+  numbers printed inside the fortune game (colours only; the number floats over the target); sound (none generated, his rule); a
+  balance lab pass; affinities beyond fire + water, home zone, residents, story place (no lore invented).
+
+**After the close-up run (11-27, same PR):** the held shape opens when a cast of hers GOES THROUGH (`_ogAfterCast`), no longer before the gates
+(a refused cast used to unfold her). So a held sword's ATK +1 counts for her next cast. A new fold over a held shape opens it fast (0.016 s a step,
+the crane shuts in 0.1 s) so the plane is folded before the flight. The held plane is 1.1 (was 1.3). Probe: `KIT=ori CROP=1280x720 CLOSEZ=2.7 node playtest_kit.js`
+(her real model by the party; `CLOSEZ` = a hand zoom, the cinematic camera off; `home` / `foe1` step keys place the pair). Seen in it: sword, plane, fortune
+(four coloured flaps, the roll text), fan + gust, the crane, the wad; Seven Folds and the unfold fired with no error but the camera was not on them.

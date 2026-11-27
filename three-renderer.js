@@ -23306,6 +23306,7 @@ const ThreeRenderer = (function () {
         var dt = _modelClockPrev ? Math.min((now - _modelClockPrev) / 1000, 0.1) : 0.016;
         _modelClockPrev = now;
         if (_sbotFoldN > 0) { try { _sbotFoldTick(dt); } catch (_ft) {} }   // THE FOLD IN A FIGHT (only while a change runs)
+        if (_oriUN > 0) _oriFightTick(dt);   // 🕊 THE ORIGAMI IN A FIGHT (only while a unit is in a shape)
         var _fpHideUid = (typeof window !== 'undefined' && window._ewFpHideUid != null)
             ? window._ewFpHideUid : null;
         unitEntries.forEach(function (entry, uid) {
@@ -23473,6 +23474,7 @@ const ThreeRenderer = (function () {
             if (_vrCodeTex) _vrCodeTick();   // 🦠 THE VIRUS: the code runs down the tendrils
             if (_hlOn) _hlUnitTick(entry, uid, now);   // 🎭 THE HOLLOW: the masks at home, the mask a Masked unit wears
             if (entry.modelDef && entry.modelDef.procRig === 'abomination') _abLimbTick(entry, uid, dt);
+            if (entry._ew_oriRace !== false) _oriWatch(entry, uid);   // 🕊 THE ORIGAMI IN A FIGHT: a held shape met from the state alone
             if (entry.modelDef && entry.modelDef.jawBone) _jawTick(entry, uid, now);   // 🥜 THE NUTCRACKER'S JAW: clacks after the clip   // 🫀 THE ABOMINATION: the limbs it has, the cage away
             if (entry.appearanceRig) { entry.model.updateMatrixWorld(true); entry.appearanceRig.tick(); }   // rev 9: the skirt against the legs
             var _hsR = _unitModelRigs.get(uid); if (_hsR && _hsR.hairSweep) _hsR.hairSweep();   // THE HAIR EVERYWHERE: the late hair
@@ -35879,6 +35881,7 @@ const ThreeRenderer = (function () {
         // spin/shrink — give the clip a longer window; _updateUnitModels holds
         // the 'death' state while this tween runs.
         var _isModelDeath = !!entry.mixer;
+        try { var _oriDU = _findUnit(unitId); if (_isModelDeath && entry.model && _oriDU && _oriDU.race === 'origami girl') _oriWad(unitId, entry); } catch (_ow) {}   // 🕊 her death: she crumples into a wad of paper
         var _dStyle = (typeof state !== 'undefined' && state && state._deathStyleById
             && state._deathStyleById[unitId]) || null;
         /* When the body hits the floor: the knock-down clip's own length at its wired speed (the 'launch' style plays
@@ -95884,11 +95887,12 @@ const ThreeRenderer = (function () {
         var ml = new THREE.MeshBasicMaterial({ color: 0x241a14, transparent: true, opacity: o.line != null ? o.line : 0.3, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
         var g = new THREE.Group(), inner = new THREE.Group(), a = new THREE.Mesh(gF, mf), b = new THREE.Mesh(gB, mb), ln = new THREE.Mesh(gL, ml);
         a.frustumCulled = b.frustumCulled = ln.frustumCulled = false; a.castShadow = b.castShadow = true; inner.add(a); inner.add(b); if (o.line !== 0) inner.add(ln); g.add(inner);
-        var shadeKey = '';
+        var shadeKey = '', QC = null;   // QC: the coloured inside, a colour a quarter of the sheet (the fortune game's four flaps; S.setQuad)
         var shade = function (k, late) {   // each layer down a touch darker, on the face that looks out of the stack
             var n = B.n, kk = k < n ? k : n, ix = (k < n && late) ? k + 1 : kk, o3 = 0;
             B.F.forEach(function (f) { var fl = 0, q; for (q = 0; q < ix; q++) fl += f.mv[q] ? 1 : 0; var up = Math.min(3, f.up[ix]), dn = Math.min(3, f.dn[ix]), sF = 1 - 0.06 * ((fl & 1) ? dn : up), sB = 1 - 0.06 * ((fl & 1) ? up : dn);
-                for (q = 0; q < (f.poly.length - 2) * 9; q++) { cF[o3] = sF; cB[o3] = sB; o3++; } });
+                var qc = null; if (QC) { var cx = 0, cy = 0; for (q = 0; q < f.poly.length; q++) { cx += f.poly[q][0]; cy += f.poly[q][1]; } qc = QC[(cx >= 0 ? 0 : 1) + (cy >= 0 ? 0 : 2)]; }
+                for (q = 0; q < (f.poly.length - 2) * 9; q++) { cF[o3] = sF; cB[o3] = sB * (qc ? (q % 3 === 0 ? qc.r : (q % 3 === 1 ? qc.g : qc.b)) : 1); o3++; } });
             aCF.needsUpdate = true; aCB.needsUpdate = true;
         };
         var lines = function (tau) {   // the crease strips, laid from the pieces' own points
@@ -95917,6 +95921,7 @@ const ThreeRenderer = (function () {
             var w0 = _oriSmooth(Math.min(1, tau)), w1 = (B.pose.length || B.star) ? _oriSmooth(Math.max(0, tau - B.n)) : _oriSmooth(Math.max(0, tau - B.n + 1));
             qZ.setFromAxisAngle(zAx, -(R.frame || 0) * w0); inner.quaternion.copy(q0).slerp(qS, w1).multiply(qZ);
         };
+        S.setQuad = function (cols) { QC = cols ? cols.map(function (c) { return new THREE.Color(c); }) : null; mb.color.setHex(QC ? 0xffffff : (o.back != null ? o.back : 0xa5182f)); var kq = Math.min(Math.floor(Math.max(0, S.tau)), B.n); shade(kq, (S.tau - kq) > 0.3); };
         S.dispose = function () { gF.dispose(); gB.dispose(); gL.dispose(); mf.dispose(); mb.dispose(); ml.dispose(); if (g.parent) g.parent.remove(g); };   // (the grain sheet is shared: kept)
         S.set(0); return S;
     }
@@ -96211,6 +96216,209 @@ const ThreeRenderer = (function () {
             B.t = F.t; B.dir = 0; B.dirty = true;
             try { _sbotTick(B, dt); } catch (eT) {}
         });
+    }
+    /* ══ THE ORIGAMI IN A FIGHT (2026-11-27, mondo: "add her in the game as a unit and then ... build her spells and vfx and all that") ══
+       The Origami Girl is the weapon: a cast folds her own sheet. ThreeRenderer.oriAct(uid, what, o) is the one door, called by
+       three-vfx-effects.js off VFX3D.fire (the cast's windup / burst beats and the 'ogact' looks), which online.js relays: host and
+       guest play the same. `what`:
+         'sword' | 'plane' | 'fortune' | 'crane'  her body is hidden and THE ORIGAMI's sheet (_oriSheet) folds in her place, crease
+                    by crease, in o.holdMs (the cast's own windup). The crane cannot be made with flat folds: the sheet folds to a
+                    packet (_ORI_RECIPES.cranePack) and a hinged paper crane (_oriCrane, built here in code) opens out of it.
+         'strike'   the shape's own blow: the sword spins on its point and chops, the plane crumples on its nose and drops, the
+                    fortune game snaps, the crane beats its wings.
+         'roll'     Pick a Number's flap: the fortune game's inside turns the fortune's colour (o.n 1..4).
+         'sevenfolds' her finisher on the VICTIM uid: its body is folded in half seven times, down to a stamp (o.durMs).
+       THE FOLD (her rule): after the cast the shape STAYS while the unit wears its status (data.js STATUS_DEFS foldSword / foldPlane /
+       foldFortune / foldCrane, `_ORI_HOLD`): the status rides the state sync, so a guest (or a late joiner) sees the held shape from
+       the state alone (_oriWatch). When it ends the sheet opens flat, fast, and she stands there again. HER DEATH (mondo: "crumble
+       up into a wad of paper"): startDeathTween hands her to _oriWad: a sheet her size crushes into a ball and drops.
+       RULE #1e: a Map of the units in a shape, ticked only while one is; one race check a unit, cached on its entry. Nothing on
+       `state`. Off: window.EW_NO_ORIGAMI_FIGHT. Notes: docs/notes/champions-combat.md "THE ORIGAMI GIRL". */
+    _ORI_RECIPES.cranePack = { steps: [ { a: [0, -0.5], b: [0, 0.5], all: true }, { a: [-0.5, -0.5], b: [0.5, 0.5], m: [0.5, -0.5] }, { a: [-0.5, 0.5], b: [0, 0], m: [0.4, 0.45] } ], pose: [], stand: { rot: [0, 0, 0.7854] } };
+    var _ORI_HOLD = { foldSword: 'sword', foldPlane: 'plane', foldFortune: 'fortune', foldCrane: 'crane' };
+    var _ORI_SHEET = { sword: 'sword', plane: 'plane', fortune: 'fortune', crane: 'cranePack' };
+    var _ORI_LOOK = { sword: { size: 1.55, y: 0.78 }, plane: { size: 1.1, y: 0.56 }, fortune: { size: 1.05, y: 0.62 }, crane: { size: 1.0, y: 0.7 } };
+    var _ORI_FORTUNE_COL = [0xa5182f, 0x3fae5a, 0xd23a32, 0x3a78d8, 0xe8b838];   // (0 = her own crimson; 1 green, 2 red, 3 blue, 4 gold: the row's four fortunes)
+    var _oriU = new Map(), _oriUN = 0;
+    function _oriFightOff() { return typeof window !== 'undefined' && !!window.EW_NO_ORIGAMI_FIGHT; }
+    function _oriHeldOf(u) { var st = u && u.status, k; if (!st) return null; for (k in _ORI_HOLD) if (st[k] > 0) return _ORI_HOLD[k]; return null; }
+    function _oriPaperMat(col, side) { return new THREE.MeshStandardMaterial({ color: col, roughness: 0.93, metalness: 0, side: side, flatShading: true, map: _oriGrain(), emissive: new THREE.Color(col), emissiveMap: _oriGrain(), emissiveIntensity: 0.22 }); }
+    /* THE PAPER CRANE, by hand (the plan's way out: a crane's petal folds bend the paper, so it is posed, not folded). Nose at +z,
+       1 long. set(open): 0 = shut (neck and tail tucked down, wings pressed up together), 1 = the crane. flap(a): the wings, a in -1..1. */
+    function _oriCrane(o) {
+        o = o || {};
+        var g = new THREE.Group(), mW = _oriPaperMat(o.front != null ? o.front : 0xf6f2e9, THREE.FrontSide), mR = _oriPaperMat(o.back != null ? o.back : 0xa5182f, THREE.BackSide), geos = [];
+        var part = function (tris, parent) {
+            var p = new Float32Array(tris.length * 9), uv = new Float32Array(tris.length * 6), i, j;
+            for (i = 0; i < tris.length; i++) for (j = 0; j < 3; j++) { p[i * 9 + j * 3] = tris[i][j][0]; p[i * 9 + j * 3 + 1] = tris[i][j][1]; p[i * 9 + j * 3 + 2] = tris[i][j][2]; uv[i * 6 + j * 2] = tris[i][j][0] * 2 + 0.5; uv[i * 6 + j * 2 + 1] = tris[i][j][2] * 2 + 0.5; }
+            var ge = new THREE.BufferGeometry(); ge.setAttribute('position', new THREE.BufferAttribute(p, 3)); ge.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); ge.computeVertexNormals(); geos.push(ge);
+            var h = new THREE.Group(), a = new THREE.Mesh(ge, mW), b = new THREE.Mesh(ge, mR); a.castShadow = b.castShadow = true; a.frustumCulled = b.frustumCulled = false; h.add(a); h.add(b); (parent || g).add(h); return h;
+        };
+        var F = [0, 0.10, 0.26], Bk = [0, 0.10, -0.26], K = [0, -0.11, 0], L = [-0.10, 0.13, 0], R = [0.10, 0.13, 0];
+        part([[F, L, K], [L, Bk, K], [F, K, R], [R, K, Bk], [F, R, L], [L, R, Bk]]);                                       // the body: a little keeled boat
+        var neck = part([[[-0.035, 0, 0], [0, 0.03, -0.05], [0, 0.5, 0.2]], [[0, 0.03, -0.05], [0.035, 0, 0], [0, 0.5, 0.2]], [[0.035, 0, 0], [-0.035, 0, 0], [0, 0.5, 0.2]]]);
+        neck.position.set(0, 0.09, 0.22);
+        var head = part([[[-0.022, 0, 0], [0, 0.02, -0.03], [0, -0.07, 0.17]], [[0, 0.02, -0.03], [0.022, 0, 0], [0, -0.07, 0.17]], [[0.022, 0, 0], [-0.022, 0, 0], [0, -0.07, 0.17]]], neck);
+        head.position.set(0, 0.5, 0.2);
+        var tail = part([[[0.035, 0, 0], [0, 0.03, 0.05], [0, 0.46, -0.24]], [[0, 0.03, 0.05], [-0.035, 0, 0], [0, 0.46, -0.24]], [[-0.035, 0, 0], [0.035, 0, 0], [0, 0.46, -0.24]]]);
+        tail.position.set(0, 0.09, -0.22);
+        var wing = function (s) { var w = part(s > 0 ? [[[0, 0, 0.17], [0.6, 0.05, -0.05], [0, 0, -0.17]]] : [[[0, 0, 0.17], [0, 0, -0.17], [-0.6, 0.05, -0.05]]]); w.position.set(0.05 * s, 0.13, 0); return w; };
+        var wl = wing(-1), wr = wing(1), C = { group: g, open: -1, fa: 0 };
+        C.set = function (op) {
+            op = op < 0 ? 0 : (op > 1 ? 1 : op); C.open = op;
+            var a = _oriSmooth(Math.min(1, op / 0.55)), h2 = _oriSmooth(Math.max(0, Math.min(1, (op - 0.4) / 0.3))), w = _oriSmooth(Math.max(0, (op - 0.5) / 0.5));
+            neck.rotation.x = (1 - a) * 2.5; tail.rotation.x = -(1 - a) * 2.5; head.rotation.x = (1 - h2) * -2.2;
+            C.w = w; C.flap(C.fa);
+        };
+        C.flap = function (fa) { C.fa = fa; var up = (1 - C.w) * 1.45 + C.w * fa * 0.6; wl.rotation.z = -up; wr.rotation.z = up; };
+        C.dispose = function () { geos.forEach(function (x) { x.dispose(); }); if (!o.keepMats) { mW.dispose(); mR.dispose(); } if (g.parent) g.parent.remove(g); };
+        C.mats = [mW, mR]; C.set(o.open != null ? o.open : 1); return C;
+    }
+    function _oriRecEnd(uid, rec, e) {
+        if (rec.S) { rec.S.dispose(); rec.S = null; }
+        if (rec.C) { rec.C.dispose(); rec.C = null; }
+        if (rec.wad) { if (rec.wad.parent) rec.wad.parent.remove(rec.wad); rec.wad.geometry.dispose(); rec.wad.material.dispose(); rec.wad = null; }
+        if (rec.f7 && e && e.model) { e.model.scale.copy(rec.f7.s0); e.model.position.y = rec.f7.y0; }
+        if (e && e.model && !rec.dead) e.model.visible = true;
+        if (_oriU.get(uid) === rec) { _oriU.delete(uid); _oriUN = _oriU.size; }
+    }
+    function _oriRec(uid) {
+        var rec = _oriU.get(uid);
+        if (!rec) { rec = { uid: uid, shape: null, S: null, C: null, tau: 0, open: 0, per: 0.09, pop: 0, t: 0, actShape: null, actUntil: 0, play: 0, sk: null, st: 0, lie: 0, col: 0, yaw: null }; _oriU.set(uid, rec); _oriUN = _oriU.size; }
+        return rec;
+    }
+    function _oriAct(uid, what, o) {
+        if (_oriFightOff() || uid == null) return false;
+        if (typeof state !== 'undefined' && state && state.devAutoSim) return false;
+        o = o || {};
+        var e = unitEntries.get(uid); if (!e || !e.group) return false;
+        var now = _animNow(), rec;
+        if (_ORI_SHEET[what]) {
+            rec = _oriRec(uid);
+            var hold = Math.max(500, Math.min(2600, +o.holdMs || 1300)), n = (what === 'sword' ? 12 : what === 'plane' ? 6 : what === 'fortune' ? 11 : 5);
+            rec.actShape = what; rec.actUntil = now + hold + 4200; rec.per = Math.max(0.035, Math.min(0.11, hold * 0.00062 / n)); rec.sk = null; rec.lie = 0; rec.col = 0;
+            rec.play = what === 'fortune' ? 1 : 0;
+            return true;
+        }
+        if (what === 'strike') { rec = _oriU.get(uid); if (!rec || !rec.shape) return false; rec.sk = rec.shape; rec.st = 0; if (rec.shape === 'plane') rec.lie = 1; return true; }
+        if (what === 'roll') { rec = _oriU.get(uid); if (!rec) return false; rec.col = Math.max(0, Math.min(4, Math.round(+o.n || 0))); rec.sk = 'roll'; rec.st = 0; if (rec.S && rec.S.setQuad && rec.shape === 'fortune') { var c4 = _ORI_FORTUNE_COL[rec.col]; rec.S.setQuad([c4, c4, c4, c4]); } return true; }
+        if (what === 'sevenfolds') {
+            if (!e.model) return false;
+            rec = _oriRec(uid); if (rec.f7) return true;
+            rec.f7 = { t: 0, dur: Math.max(900, Math.min(4000, +o.durMs || 1800)) / 1000, s0: e.model.scale.clone(), y0: e.model.position.y, n: -1 };
+            return true;
+        }
+        return false;
+    }
+    /* her death: a sheet her size crushes into a wad and drops (the death tween then fades the whole group) */
+    function _oriWad(uid, entry) {
+        if (_oriFightOff() || !entry || !entry.group || !entry.model) return false;
+        var rec = _oriRec(uid); if (rec.wad) return true;
+        if (rec.S) { rec.S.dispose(); rec.S = null; } if (rec.C) { rec.C.dispose(); rec.C = null; }
+        rec.shape = null; rec.actShape = null; rec.actUntil = 0; rec.dead = true;
+        var ts = CONFIG.tileSize || BASE_TILE, H = ts * UNIT_SPRITE_SIZE_RATIO * ((entry.modelDef && entry.modelDef.heightRatio) || 1);
+        var ge = new THREE.PlaneGeometry(H * 0.62, H, 9, 13).toNonIndexed(), p = ge.attributes.position, n = p.count, from = new Float32Array(n * 3), to = new Float32Array(n * 3), dl = new Float32Array(n), col = new Float32Array(n * 3), i, sd = 7 + (String(uid).length * 131);
+        var rnd = function () { sd = (sd * 1103515245 + 12345) & 0x7fffffff; return sd / 0x7fffffff; };
+        var hsh = function (x, y) { var v = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return v - Math.floor(v); };
+        var r0 = H * 0.15;
+        for (i = 0; i < n; i++) {
+            var x = p.getX(i), y = p.getY(i), u = x / (H * 0.62) + 0.5, v = y / H + 0.5, a = u * 6.283 * 2.0 + hsh(u * 9, v * 9) * 1.2, b = (v - 0.5) * 3.0 + (hsh(u * 7 + 3, v * 7) - 0.5) * 0.9, rr = r0 * (0.62 + 0.5 * hsh(u * 13 + 1, v * 13 + 5));
+            from[i * 3] = x; from[i * 3 + 1] = y + H * 0.5; from[i * 3 + 2] = 0;
+            to[i * 3] = Math.cos(a) * Math.cos(b) * rr; to[i * 3 + 1] = r0 + Math.sin(b) * rr; to[i * 3 + 2] = Math.sin(a) * Math.cos(b) * rr;
+            dl[i] = (1 - v) * 0.25 + hsh(u * 5, v * 5) * 0.12;
+        }
+        for (i = 0; i < n; i += 3) { var red = rnd() < 0.16, sh = 0.86 + rnd() * 0.14, k; for (k = 0; k < 3; k++) { col[(i + k) * 3] = (red ? 0.66 : 0.97) * sh; col[(i + k) * 3 + 1] = (red ? 0.10 : 0.95) * sh; col[(i + k) * 3 + 2] = (red ? 0.18 : 0.91) * sh; } }
+        ge.setAttribute('color', new THREE.BufferAttribute(col, 3));
+        var m = new THREE.Mesh(ge, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide, flatShading: true, map: _oriGrain(), emissive: new THREE.Color(0x3a3634) }));
+        m.castShadow = true; m.frustumCulled = false; m.position.copy(entry.model.position); m.rotation.y = entry.model.rotation.y; m.renderOrder = 2;
+        entry.group.add(m); entry.model.visible = false;
+        rec.wad = m; rec.wd = { from: from, to: to, dl: dl, t: 0, H: H, y0: entry.model.position.y };
+        return true;
+    }
+    function _oriWadStep(rec, dt) {
+        var W = rec.wd, m = rec.wad, p = m.geometry.attributes.position, n = p.count, i; W.t += dt;
+        var cr = Math.min(1, W.t / 0.75);
+        if (cr < 1 || !W.done) {
+            for (i = 0; i < n; i++) { var u = (cr * 1.37 - W.dl[i]) / 1.0; u = u < 0 ? 0 : (u > 1 ? 1 : u); u = u * u * (3 - 2 * u); p.setXYZ(i, W.from[i * 3] + (W.to[i * 3] - W.from[i * 3]) * u, W.from[i * 3 + 1] + (W.to[i * 3 + 1] - W.from[i * 3 + 1]) * u, W.from[i * 3 + 2] + (W.to[i * 3 + 2] - W.from[i * 3 + 2]) * u); }
+            p.needsUpdate = true; m.geometry.computeVertexNormals(); if (cr >= 1) W.done = true;
+        }
+        /* it hangs a breath where her chest was, then drops, bounces twice and rolls a little */
+        var t2 = W.t - 0.75, lift = W.H * 0.42 * (cr < 1 ? cr : 1), y = lift;
+        if (t2 > 0) { var g = 9.5 * W.H, tf = Math.sqrt(2 * lift / g); if (t2 < tf) y = lift - 0.5 * g * t2 * t2; else { var tb = t2 - tf, v1 = g * tf * 0.38, t1 = 2 * v1 / g; if (tb < t1) y = v1 * tb - 0.5 * g * tb * tb; else { var tc = tb - t1, v2 = v1 * 0.4, t3 = 2 * v2 / g; y = tc < t3 ? v2 * tc - 0.5 * g * tc * tc : 0; } } m.rotation.z = Math.min(1.9, t2 * 2.4); m.rotation.x = Math.min(0.9, t2 * 1.1); }
+        m.position.y = W.y0 + y;
+    }
+    /* one unit's tick, while it is in a shape (or on the way into / out of one) */
+    function _oriStep(uid, rec, dt, now) {
+        var e = unitEntries.get(uid), u = _findUnit(uid);
+        if (!e || !e.group || !e.model) { _oriRecEnd(uid, rec, e); return; }
+        rec.t += dt;
+        if (rec.wad) { e.model.visible = false; _oriWadStep(rec, dt); if (rec.wd.t > 9) _oriRecEnd(uid, rec, e); return; }
+        if (rec.f7) {   // SEVEN FOLDS, on the victim's own body: in half, and again, seven times (sideways, then down, in turn)
+            var F7 = rec.f7; F7.t += dt;
+            var q = Math.min(7, F7.t / (F7.dur / 7)), k = Math.floor(q), fr = _oriEase(Math.min(1, (q - k) / 0.7)), sx = 1, sy = 1, j;
+            for (j = 0; j < 7; j++) { var amt = j < k ? 1 : (j === k ? fr : 0), f = 1 - 0.5 * amt; if (j % 2 === 0) sx *= f; else sy *= f; }
+            e.model.scale.set(F7.s0.x * sx, F7.s0.y * sy, F7.s0.z * Math.max(0.12, sx));
+            if (F7.t > F7.dur + 7 || !u) { e.model.scale.copy(F7.s0); rec.f7 = null; if (!rec.shape && !rec.actShape) { _oriRecEnd(uid, rec, e); return; } }   // (it stays a stamp while it dies; the body is given back its size once it is gone)
+            else if (!rec.shape && !rec.actShape) return;
+        }
+        if (u && (u.dead || u._dying) && u.race === 'origami girl') { _oriWad(uid, e); return; }
+        if (!u || u.dead || u._dying) { if (rec.S || rec.C) { if (rec.S) { rec.S.dispose(); rec.S = null; } if (rec.C) { rec.C.dispose(); rec.C = null; } rec.shape = null; } if (!rec.wad) { rec.dead = !!(u && (u.dead || u._dying)); _oriRecEnd(uid, rec, e); } return; }
+        var want = now < rec.actUntil ? rec.actShape : _oriHeldOf(u);
+        if (now >= rec.actUntil) { rec.actShape = null; rec.play = 0; }
+        if (rec.shape && rec.shape !== want) {                       // out of the old shape: the crane shuts, the sheet opens flat, fast
+            if (rec.C && rec.open > 0) { rec.open = Math.max(0, rec.open - dt / (want ? 0.1 : 0.22)); rec.C.set(rec.open); }
+            else { if (rec.C) { rec.C.dispose(); rec.C = null; if (rec.S) rec.S.group.visible = true; }
+                rec.tau -= dt / (want ? 0.016 : 0.045); if (rec.tau <= 0 || !rec.S) { if (rec.S) { rec.S.dispose(); rec.S = null; } rec.shape = null; rec.tau = 0; rec.sk = null; rec.lie = 0; } else rec.S.set(rec.tau); }
+        }
+        if (!rec.shape) {
+            if (!want) { _oriRecEnd(uid, rec, e); return; }
+            rec.S = _oriSheet(_ORI_SHEET[want], {}); if (!rec.S) { rec.actShape = null; rec.actUntil = 0; _oriRecEnd(uid, rec, e); return; }
+            rec.S.mats[0].emissive = new THREE.Color(0xffffff); rec.S.mats[0].emissiveMap = _oriGrain(); rec.S.mats[0].emissiveIntensity = 0.24;
+            rec.S.mats[1].emissive = new THREE.Color(0xa5182f); rec.S.mats[1].emissiveIntensity = 0.3;
+            if (want === 'fortune') { var fc = _ORI_FORTUNE_COL; rec.S.setQuad(rec.col ? [fc[rec.col], fc[rec.col], fc[rec.col], fc[rec.col]] : [fc[1], fc[2], fc[3], fc[4]]); rec.S.mats[1].emissive.setHex(0x554433); }   // the four flaps, four colours; the rolled one once it is read
+            rec.S.group._ew_mover = true; rec.S.group._ew_bunOut = true; rec.S.group._ew_noBatch = true; rec.S.group._ew_noInstance = true; rec.S.group.name = 'ew_origami_unit';
+            e.group.add(rec.S.group); rec.shape = want; rec.tau = 0; rec.open = 0; rec.pop = 0; rec.yaw = e.model.rotation.y;
+            if (now >= rec.actUntil) { rec.tau = rec.S.B.n + 1; rec.pop = 1; if (want === 'crane') rec.open = 0.999; if (want === 'plane') rec.lie = 1; }   // (a held shape met from the state alone: there already)
+        }
+        e.model.visible = false; if (e.sprite && e.sprite.visible) e.sprite.visible = false; if (e.silhouette && e.silhouette.visible) e.silhouette.visible = false;
+        if (rec.shape === want) {                                    // into the shape
+            var S = rec.S, top = S.B.n + 1;
+            if (rec.tau < top) { rec.tau = Math.min(top, rec.tau + dt / rec.per); S.set(rec.tau); }
+            else if (want === 'crane') {
+                if (!rec.C) { rec.C = _oriCrane({ open: 0 }); rec.C.group._ew_mover = true; rec.C.group._ew_bunOut = true; rec.C.group._ew_noBatch = true; rec.C.group._ew_noInstance = true; e.group.add(rec.C.group); S.group.visible = false; }
+                if (rec.open < 1) { rec.open = Math.min(1, rec.open + dt / 0.5); rec.C.set(rec.open); }
+            } else if (want === 'fortune' && rec.play > 0 && S.total > top) { rec.play += dt / 1.5; if (rec.play >= 2) { rec.play = 0; S.set(top); } else S.set(top + (rec.play - 1)); }
+        }
+        if (rec.pop < 1) rec.pop = Math.min(1, rec.pop + dt / 0.14);
+        /* where it stands: on her square, at her size, turned the way she faces; each shape's own idle and its blow */
+        var ts = CONFIG.tileSize || BASE_TILE, H = ts * UNIT_SPRITE_SIZE_RATIO * ((e.modelDef && e.modelDef.heightRatio) || 1), LK = _ORI_LOOK[rec.shape] || _ORI_LOOK.sword;
+        var G = rec.C && !rec.S.group.visible ? rec.C.group : rec.S.group, sc = H * LK.size * (0.25 + 0.75 * _oriSmooth(rec.pop)), yaw = e.model.rotation.y, y = H * LK.y, rx = 0, rz = 0, sz = 1, sxy = 1;
+        var k2 = rec.sk ? (rec.st += dt, rec.st) : -1;
+        if (rec.shape === 'sword') {
+            yaw = rec.yaw + rec.t * 0.9; y += Math.sin(rec.t * 2.2) * H * 0.02;
+            if (rec.sk === 'sword') { var a1 = Math.min(1, k2 / 0.55); yaw = e.model.rotation.y + Math.PI / 2 + _oriSmooth(a1) * Math.PI * 4; rx = 0; rz = -Math.sin(Math.min(1, k2 / 0.75) * Math.PI) * 1.25; if (k2 > 0.8) { rec.sk = null; rec.yaw = yaw - rec.t * 0.9; } }
+        } else if (rec.shape === 'plane') {
+            var lie = rec.lie ? Math.min(1, (rec.lieT = (rec.lieT || 0) + dt) / 0.35) : (rec.lieT = 0, 0);
+            y = H * (0.62 + Math.sin(rec.t * 5) * 0.025) * (1 - lie) + H * 0.1 * lie; rz = Math.sin(rec.t * 3.1) * 0.12 * (1 - lie) + 0.42 * lie; rx = -0.08 * (1 - lie) + 0.3 * lie; sz = 1 - 0.42 * lie; sxy = 1 - 0.1 * lie;
+            if (rec.sk === 'plane') { var c1 = Math.min(1, k2 / 0.18); sz *= 1 - 0.3 * Math.sin(c1 * Math.PI); if (k2 > 0.4) rec.sk = null; }
+        } else if (rec.shape === 'fortune') {
+            y += Math.sin(rec.t * 2.4) * H * 0.03; yaw = rec.yaw + Math.sin(rec.t * 0.8) * 0.5; rx = -0.5;
+            if (rec.sk === 'roll' || rec.sk === 'fortune') { var p1 = Math.min(1, k2 / 0.5); sxy = 1 + 0.28 * Math.sin(p1 * Math.PI); y += H * 0.12 * Math.sin(p1 * Math.PI); if (k2 > 0.5) rec.sk = null; }
+        } else if (rec.shape === 'crane') {
+            if (rec.C) { var fast = rec.sk === 'crane'; rec.C.flap(Math.sin(rec.t * (fast ? 22 : 5.5))); if (fast && k2 > 1.1) rec.sk = null; if (fast) y += H * 0.16 * Math.sin(Math.min(1, k2 / 1.1) * Math.PI); }
+            y += Math.sin(rec.t * 2.0) * H * 0.04; if (G === rec.S.group) yaw = rec.yaw;
+            if (G !== rec.S.group) sc = H * 1.55;
+        }
+        G.scale.set(sc * sxy, sc * sxy, sc * sz); G.position.set(e.model.position.x, e.model.position.y + y, e.model.position.z);
+        G.rotation.set(rx, yaw, rz, 'YXZ');
+    }
+    function _oriFightTick(dt) { var now = _animNow(); _oriU.forEach(function (rec, uid) { try { _oriStep(uid, rec, dt, now); } catch (eO) { console.warn('[origami] a shape failed', eO); _oriRecEnd(uid, rec, unitEntries.get(uid)); } }); }
+    /* a unit that wears a fold status with nobody having folded it here (a guest that joined late, a rebuilt entry): once a unit */
+    function _oriWatch(entry, uid) {
+        if (entry._ew_oriRace === undefined) { var u0 = _findUnit(uid); if (!u0) return; entry._ew_oriRace = u0.race === 'origami girl'; }
+        if (!entry._ew_oriRace || _oriU.has(uid) || _oriFightOff()) return;
+        var u = _findUnit(uid); if (!u || u.dead || u._dying || !_oriHeldOf(u)) return;
+        _oriRec(uid);
     }
     /* ── THE VEHICLES ── */
     function _hqVehicleRegister(p, cat, grp, y, blk) {
@@ -113412,6 +113620,10 @@ const ThreeRenderer = (function () {
            an existing slot is replaced. Models already built keep their clips. */
         mtPose: function (slot, dur, pose) { if (slot && typeof pose === 'function') _MT_POSES[slot] = [+dur || 1, pose]; return true; },
         /* 🥜 THE NUTCRACKER'S JAW: hold unit uid's jaw open (0 … 1) for ms, over whatever its clip does */
+        /* 🕊 THE ORIGAMI IN A FIGHT: fold unit uid into a shape, its blow, the fortune's flap, Seven Folds on a victim (see the block) */
+        oriAct: function (uid, what, o) { try { return _oriAct(uid, what, o); } catch (e) { console.warn('[origami] act failed', e); return false; } },
+        oriCrane: function (o) { try { return _oriCrane(o); } catch (e) { return null; } },   // a small paper crane for a flock (three-vfx-effects.js)
+        oriState: function (uid) { var r = _oriU.get(uid); return r ? { shape: r.shape, tau: +(+r.tau).toFixed(2), open: +(+r.open).toFixed(2), act: r.actShape, wad: !!r.wad, f7: !!r.f7, col: r.col } : null; },   // (a probe's read)
         jawAct: function (uid, pat, ms) { var n = _animNow(); _jawHolds[uid] = { pat: String(pat || 'clack'), t0: n, until: n + (+ms || 900) }; return true; },   // 🌰 THE JAW'S SPELL PATTERNS
         jawOpen: function (uid, amt, ms) { _jawHolds[uid] = { amt: Math.max(0, Math.min(1.2, +amt || 0)), until: _animNow() + (+ms || 600) }; return true; },
         mountKeyFor: function (unit) { return _mountKeyFor(unit); },
