@@ -886,3 +886,37 @@ crawling (was 3.9), 5.5 m at half speed (was 8.9), 12 m flat out (was 21). A pro
 NOT SEEN (the cloud browser crashed on three runs): the school bus, the fire truck and the ambulance moving (Meshy files with
 `turn: 90`: if one drives tail first, give its catalogue row the other turn). NOT BUILT: engine sound, turning wheel models (the pack's
 wheels are painted on the body), traffic cars cannot be taken, no damage, cars do not stay moved after leaving the room.
+
+## THE SEDAN BOT — a Meshy sedan that is driven with the driver seen, and turns into a robot (2026-11-27)
+mondo: "a more realistic meshy sedan model with separate moving parts so it can actually transform ... i want it to be a sedan and
+ideally the interior actually be able to be used to let the character sit inside and drive the car". His guide was a toy's folding
+booklet: used for the folding ORDER only; the car and the robot are our own design (no brand, no known character).
+WHAT MESHY CANNOT DO: one closed shell a model, no hinges, no inside, parts that do not fit each other. So:
+- FOUR Meshy models (image-to-3D off our own concept pictures; `/mnt/project-files/sedan-robot/` gen.py + model.py, about 190 credits
+  in all): `sedan_car`, `robot_core` (a bare frame in A-pose, Meshy rig + its walk / run), `sedan_interior`, `steering_wheel`.
+- `bake-sedan-bot.py <models dir> <out.glb> [--shots <prefix>]` (bpy) CUTS the one sedan by planes into 15 panels that fit because
+  they are one car: chest (hood + nose), roof (with windscreen + rear glass), floor, 4 doors, 2 fenders, 2 rear halves (`leg`), 4
+  wheels. Glass is found BY PLACE (Meshy paints reflections on it and a flat pane is a few big triangles: the planes cut the panes'
+  edges first), material `ew_glass`. Each panel's origin is its hinge. It writes for every part three nodes: `p_<part>` (the car),
+  `o_<part>` (swung open on the hinge), `r_<part>` (its place on the robot, a child of the bone that carries it: hood on the chest,
+  front doors as wings behind the shoulders, fenders + front wheels on the shoulders, roof on the back, rear doors at the hips, the
+  rear halves turned round onto the shins with the tail lamps to the front). The layout tables (PIV, OPEN, ROBOT) are at the top of
+  the tool: change a panel's place there, rerun, look at the `--shots` pictures, upload under a NEW file name (the CDN keeps the old).
+- three-renderer.js "THE SEDAN BOT" (before THE VEHICLES): catalogue `bot` → `_sbotModel` loads the file itself (`_asGltf`), keeps
+  the parts apart, one ticker a bot (`_sbotTick`, its own nodes only). `t` 0 = car, 1 = robot, `bot.morph` seconds; `_SBOT_A` = each
+  panel's share of t for the hinge swing, `_SBOT_B` = its share for the trip onto its bone; the core grows out of the cabin from t 0.2.
+  The interior shrinks into the back (a cheat, as in the films).
+- DRIVEN like every car (THE CAR). THE DRIVER IS DRAWN in this car only: `_sbotSeated()`; he plays `hqDrive` (Driving_Loop), his hips
+  pinned on `bot.seat`, his legs turned forward to the pedals (`_sbotDriverLegs`: the clip sits on a chair, its feet went through the
+  floor). The front wheels steer, all four roll, the steering wheel turns.
+- F AT THE WHEEL = car <-> robot (the door gun's key is free while driving). As a robot: W / S walk, SHIFT runs, A / D turn on the
+  spot; the driver is inside, not drawn; E gets out in either form. No prompt, no key list (mondo 11-22: no controls on a car).
+- Numbers: data.js `HQ_SEA_RULES.car.bot` over `HQ_SEA_DEFAULT.car.bot` (keep in step). Viewer-local (RULE #2).
+- One stands in the DOOR HQ garage (x 9.6, z 3.4, clear of the deck: the robot is 4.6 m). Any room: a row `{ key: 'car_sedan_bot' }`.
+- Meshy's metal maps read black with no sky to mirror: the tool's file keeps them, the loader drops them and lifts the colour a little.
+SEEN in the cloud browser (HEAD on 7e98a0d + this change), `penthouse_city` and `garage`: the driver at the wheel through the glass
+from four sides; t held at 0.16 / 0.30 / 0.45 / 0.60 / 0.75 / 0.9 / 1; the robot from front and back; W walks it (4.2 m/s, the walk
+clip); F back toward the car. Probe hooks: `hq.dev.spawnProp(row)`, `hq.dev.board(id)`, `hq.dev.bot()` / `bot(t)` / `bot('go')`.
+NOT DONE: no headroom check (under a 3.5 m deck the robot goes through it); the robot does not fight (not a unit); no sound (never
+generate SFX); sparks / dust on the change; the panels are sheets with no thickness and pass through each other on the way; the
+robot's idle is its rest pose; traffic and other cars are untouched; first person (V) at the wheel not looked at.
