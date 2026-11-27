@@ -95744,13 +95744,14 @@ const ThreeRenderer = (function () {
         return R;
     }
     function _oriAp(M, x, y, z) { return [M[0] * x + M[1] * y + M[2] * z + M[3], M[4] * x + M[5] * y + M[6] * z + M[7], M[8] * x + M[9] * y + M[10] * z + M[11]]; }
-    function _oriEase(u) { u = u / 0.82; u = u < 0 ? 0 : (u > 1 ? 1 : u); return u * u * (3 - 2 * u); }   // a fold swings, then rests a beat
+    function _oriEase(u) { if (u <= 0) return 0; if (u >= 1) return 1; var a = u / 0.62; if (a < 1) return a * a * (2.2 - 1.2 * a); var v = (u - 0.62) / 0.38; return 1 - 0.045 * Math.sin(Math.PI * v) * (1 - v); }   // a fold swings faster and faster, lands, springs back a hair and settles (THE SNAP)
+    function _oriSmooth(u) { u = u < 0 ? 0 : (u > 1 ? 1 : u); return u * u * (3 - 2 * u); }
     function _oriBuild(R) {
         var I = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0], fr = R.frame || 0, cf = Math.cos(fr), sf = Math.sin(fr);
         var P2 = function (p) { return [p[0] * cf - p[1] * sf, p[0] * sf + p[1] * cf]; };
-        var F = [{ poly: [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]], C: I, Cs: [I], lay: [0], mv: [], tags: {} }], steps = [];
-        var kid = function (f, poly) { var t = {}, k; for (k in f.tags) t[k] = 1; return { poly: poly, C: f.C, Cs: f.Cs.slice(), lay: f.lay.slice(), mv: f.mv.slice(), tags: t, pm: f.pm ? f.pm.slice() : null }; };
-        var cut = function (a, b, sg, only) {   // every piece the line a-b crosses becomes two; -> each piece's side (1 = the m side)
+        var F = [{ poly: [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]], C: I, Cs: [I], lay: [0], mv: [], tags: {}, ed: [-1, -1, -1, -1], up: [0], dn: [0] }], steps = [];   // ed = each edge's birth: -1 the sheet's own edge, k = the crease of fold k
+        var kid = function (f, poly, ed) { var t = {}, k; for (k in f.tags) t[k] = 1; return { ed: ed, up: f.up.slice(), dn: f.dn.slice(), poly: poly, C: f.C, Cs: f.Cs.slice(), lay: f.lay.slice(), mv: f.mv.slice(), tags: t, pm: f.pm ? f.pm.slice() : null }; };
+        var cut = function (a, b, sg, only, tag) {   // every piece the line a-b crosses becomes two; -> each piece's side (1 = the m side)
             var out = [], side = [];
             F.forEach(function (f) {
                 if (only && !f.tags[only]) { out.push(f); side.push(0); return; }
@@ -95759,9 +95760,10 @@ const ThreeRenderer = (function () {
                 if (!pos || !neg) { out.push(f); side.push(pos ? 1 : 0); return; }
                 var A = [], Bq = [];
                 for (i = 0; i < n; i++) { var j = (i + 1) % n, p = f.poly[i], q2 = f.poly[j];
-                    if (s[i] >= 0) A.push(p); if (s[i] <= 0) Bq.push(p);
-                    if ((s[i] > 0 && s[j] < 0) || (s[i] < 0 && s[j] > 0)) { var t = s[i] / (s[i] - s[j]), x = [p[0] + (q2[0] - p[0]) * t, p[1] + (q2[1] - p[1]) * t]; A.push(x); Bq.push(x); } }
-                if (A.length >= 3) { out.push(kid(f, A)); side.push(1); } if (Bq.length >= 3) { out.push(kid(f, Bq)); side.push(0); }
+                    if (s[i] >= 0) A.push({ p: p, z: s[i] === 0, t: f.ed[i] }); if (s[i] <= 0) Bq.push({ p: p, z: s[i] === 0, t: f.ed[i] });
+                    if ((s[i] > 0 && s[j] < 0) || (s[i] < 0 && s[j] > 0)) { var t = s[i] / (s[i] - s[j]), x = [p[0] + (q2[0] - p[0]) * t, p[1] + (q2[1] - p[1]) * t]; A.push({ p: x, z: true, t: f.ed[i] }); Bq.push({ p: x, z: true, t: f.ed[i] }); } }
+                var fin = function (L) { var poly = [], ed = []; L.forEach(function (v, q) { var w = L[(q + 1) % L.length]; poly.push(v.p); ed.push(v.z && w.z ? tag : v.t); }); return kid(f, poly, ed); };   // an edge along the cut is the new crease
+                if (A.length >= 3) { out.push(fin(A)); side.push(1); } if (Bq.length >= 3) { out.push(fin(Bq)); side.push(0); }
             });
             F = out; return side;
         };
@@ -95782,7 +95784,7 @@ const ThreeRenderer = (function () {
         (R.steps || []).forEach(function (st) {
             var a = P2(st.a), b = P2(st.b), sg = 1, side;
             if (st.all) side = F.map(function () { return 1; });
-            else { var m = P2(st.m); sg = ((b[0] - a[0]) * (m[1] - a[1]) - (b[1] - a[1]) * (m[0] - a[0])) > 0 ? 1 : -1; side = cut(a, b, sg, st.only); }
+            else { var m = P2(st.m); sg = ((b[0] - a[0]) * (m[1] - a[1]) - (b[1] - a[1]) * (m[0] - a[0])) > 0 ? 1 : -1; side = cut(a, b, sg, st.only, steps.length); }
             var up = st.fold !== 'mountain', ang = (up ? 1 : -1) * sg * Math.PI, Rm = _oriRot([a[0], a[1], 0], [b[0], b[1], 0], ang);
             var hi = -1e9, lo = 1e9, mh = -1e9, ml = 1e9;
             F.forEach(function (f, i) { var l = f.lay[f.lay.length - 1]; if (l > hi) hi = l; if (l < lo) lo = l; if (side[i]) { if (l > mh) mh = l; if (l < ml) ml = l; } });
@@ -95791,25 +95793,26 @@ const ThreeRenderer = (function () {
                 else { f.mv.push(0); f.lay.push(l); }
                 f.Cs.push(f.C); });
             rank(); steps.push({ a: [a[0], a[1], 0], b: [b[0], b[1], 0], ang: ang });
+            var fl2 = F.map(flat2); F.forEach(function (f, i) { var l = f.lay[f.lay.length - 1], u = 0, d = 0; for (var q = 0; q < F.length && (u < 3 || d < 3); q++) { if (q === i) continue; var lq = F[q].lay[F[q].lay.length - 1]; if (lq === l || !over(fl2[q], fl2[i])) continue; if (lq > l) u++; else d++; } f.up.push(u); f.dn.push(d); });   // how many pieces lie on it / under it (THE PAPER LOOK's shade)
         });
         var pose = [], star = null, cen = function (f) { var x = 0, y = 0; f.poly.forEach(function (p) { var q = _oriAp(f.C, p[0], p[1], 0); x += q[0]; y += q[1]; }); return [x / f.poly.length, y / f.poly.length]; };
         (R.pose || []).forEach(function (st) {
-            var a = P2(st.a), b = P2(st.b), m = P2(st.m), sg = ((b[0] - a[0]) * (m[1] - a[1]) - (b[1] - a[1]) * (m[0] - a[0])) > 0 ? 1 : -1, side = cut(a, b, sg, null);
+            var a = P2(st.a), b = P2(st.b), m = P2(st.m), sg = ((b[0] - a[0]) * (m[1] - a[1]) - (b[1] - a[1]) * (m[0] - a[0])) > 0 ? 1 : -1, side = cut(a, b, sg, null, (R.steps || []).length);
             F.forEach(function (f, i) { if (!f.pm) f.pm = []; while (f.pm.length < pose.length) f.pm.push(0); f.pm.push(side[i]); });
             pose.push({ a: [a[0], a[1], 0], b: [b[0], b[1], 0], ang: (st.fold === 'mountain' ? -1 : 1) * sg * (st.deg || 90) * Math.PI / 180, ref: -1 });
         });
         pose.forEach(function (ps, j) { var best = 1e9; F.forEach(function (f, i) { if (f.pm[j]) return; var c = cen(f), dx = ps.b[0] - ps.a[0], dy = ps.b[1] - ps.a[1], d = Math.abs(dx * (c[1] - ps.a[1]) - dy * (c[0] - ps.a[0])) / Math.sqrt(dx * dx + dy * dy); if (d < best) { best = d; ps.ref = i; } }); });
         if (R.star) {
             var c = P2(R.star.c), k;
-            for (k = 0; k < 4; k++) { var an = fr + k * Math.PI / 4; cut(c, [c[0] + Math.cos(an), c[1] + Math.sin(an)], 1, null); }
+            for (k = 0; k < 4; k++) { var an = fr + k * Math.PI / 4; cut(c, [c[0] + Math.cos(an), c[1] + Math.sin(an)], 1, null, steps.length); }
             F.forEach(function (f) { var q = cen(f), an2 = Math.atan2(q[1] - c[1], q[0] - c[0]) - fr; f.sec = ((Math.floor(an2 / (Math.PI / 4)) % 8) + 8) % 8; });
             star = { c: c, fr: fr, beta: (R.star.deg || 60) * Math.PI / 180 };
         }
-        var tri = 0, tops = []; F.forEach(function (f) { tri += f.poly.length - 2; f.lay.forEach(function (l, i) { if (!(tops[i] >= l)) tops[i] = l; }); });
-        return { F: F, steps: steps, pose: pose, star: star, n: steps.length, tri: tri, tops: tops };
+        var tri = 0, tops = [], edges = 0; F.forEach(function (f) { tri += f.poly.length - 2; edges += f.poly.length; f.lay.forEach(function (l, i) { if (!(tops[i] >= l)) tops[i] = l; }); });
+        return { F: F, steps: steps, pose: pose, star: star, n: steps.length, tri: tri, tops: tops, edges: edges };
     }
     /* every piece laid for the time tau, into out (Float32Array, 9 numbers a triangle). eps = the gap between two layers. */
-    function _oriEval(B, tau, out, eps) {
+    function _oriEval(B, tau, out, eps, PT) {
         var n = B.n, k = Math.floor(tau), u = tau - k, o = 0, F = B.F, i, j;
         if (tau <= 0) { k = 0; u = 0; } if (k > n) { k = n; u = 1; } if (k === n && !(B.pose.length || B.star)) { u = 0; }
         var e = _oriEase(u), Rk = null, P = null, SM = null;
@@ -95837,32 +95840,76 @@ const ThreeRenderer = (function () {
                 else if (SM) p = _oriAp(SM[f.sec], p[0], p[1], p[2]);
                 pts.push(p);
             }
+            if (PT) PT[i] = pts;
             for (j = 1; j < pts.length - 1; j++) { q3 = [pts[0], pts[j], pts[j + 1]]; for (var t = 0; t < 3; t++) { out[o++] = q3[t][0]; out[o++] = q3[t][1]; out[o++] = q3[t][2]; } }
         }
         return o;
     }
-    /* the sheet as a thing to draw: two faces of one geometry (white face, coloured back), flat shaded; set(tau) lays it */
+    /* THE PAPER LOOK (2026-11-27, mondo: "white on white showing as all the same"): the ink pass only lines a depth break that is
+       a colour break too, so the sheet carries its own read: (1) a thin dark line along every crease already folded and along the
+       sheet's own edge (thin strips made with the pieces, a hair off the paper on both faces), (2) each layer down a touch darker,
+       (3) a paper grain drawn once in code, (4) THE SNAP in _oriEase. */
+    var _oriGrainTex = null;
+    function _oriGrain() {
+        if (_oriGrainTex) return _oriGrainTex;
+        var c = document.createElement('canvas'), x, i, sd = 1234567, rnd = function () { sd = (sd * 1103515245 + 12345) & 0x7fffffff; return sd / 0x7fffffff; };
+        c.width = c.height = 256; x = c.getContext('2d'); x.fillStyle = '#f2f2f2'; x.fillRect(0, 0, 256, 256);
+        for (i = 0; i < 9000; i++) { var v = 205 + Math.floor(rnd() * 50); x.fillStyle = 'rgba(' + v + ',' + v + ',' + v + ',0.5)'; x.fillRect(rnd() * 256, rnd() * 256, 1 + rnd() * 1.5, 1 + rnd() * 1.5); }
+        for (i = 0; i < 520; i++) { var px = rnd() * 256, py = rnd() * 256, an = rnd() * Math.PI, ln = 5 + rnd() * 16, dk = rnd() < 0.5; x.strokeStyle = dk ? 'rgba(150,146,138,0.34)' : 'rgba(255,255,255,0.7)'; x.lineWidth = 0.6 + rnd() * 0.6; x.beginPath(); x.moveTo(px, py); x.quadraticCurveTo(px + Math.cos(an) * ln * 0.5 + (rnd() - 0.5) * 4, py + Math.sin(an) * ln * 0.5 + (rnd() - 0.5) * 4, px + Math.cos(an) * ln, py + Math.sin(an) * ln); x.stroke(); }
+        var t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4;
+        if (typeof _ewTexSetSRGB === 'function') _ewTexSetSRGB(t, true);
+        t.needsUpdate = true; _oriGrainTex = t; return t;
+    }
+    /* the sheet as a thing to draw: two faces of the same points (white face, coloured back), flat shaded; set(tau) lays it */
     function _oriSheet(name, o) {
         o = o || {};
         var R = _ORI_RECIPES[name]; if (!R) return null;
-        var B = _oriBuild(R), pos = new Float32Array(B.tri * 9), nor = new Float32Array(B.tri * 9), geo = new THREE.BufferGeometry(), eps = o.eps || 0.0022;
-        geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
-        var mf = new THREE.MeshStandardMaterial({ color: o.front != null ? o.front : 0xf3efe6, roughness: 0.93, metalness: 0, side: THREE.FrontSide });
-        var mb = new THREE.MeshStandardMaterial({ color: o.back != null ? o.back : 0xa5182f, roughness: 0.93, metalness: 0, side: THREE.BackSide });
-        var g = new THREE.Group(), inner = new THREE.Group(), a = new THREE.Mesh(geo, mf), b = new THREE.Mesh(geo, mb);
-        a.frustumCulled = b.frustumCulled = false; a.castShadow = b.castShadow = true; inner.add(a); inner.add(b); g.add(inner);
+        var B = _oriBuild(R), nv = B.tri * 9, pos = new Float32Array(nv), nor = new Float32Array(nv), uv = new Float32Array(B.tri * 6), cF = new Float32Array(nv), cB = new Float32Array(nv), eps = o.eps || 0.0022, PT = [];
+        var gF = new THREE.BufferGeometry(), gB = new THREE.BufferGeometry(), aP = new THREE.BufferAttribute(pos, 3), aN = new THREE.BufferAttribute(nor, 3), aU = new THREE.BufferAttribute(uv, 2), aCF = new THREE.BufferAttribute(cF, 3), aCB = new THREE.BufferAttribute(cB, 3), ui = 0;
+        B.F.forEach(function (f) { for (var j = 1; j < f.poly.length - 1; j++) [f.poly[0], f.poly[j], f.poly[j + 1]].forEach(function (p) { uv[ui++] = (p[0] + 0.5) * 2.5; uv[ui++] = (p[1] + 0.5) * 2.5; }); });
+        gF.setAttribute('position', aP); gF.setAttribute('normal', aN); gF.setAttribute('uv', aU); gF.setAttribute('color', aCF);
+        gB.setAttribute('position', aP); gB.setAttribute('normal', aN); gB.setAttribute('uv', aU); gB.setAttribute('color', aCB);
+        var grain = o.grain === false ? null : _oriGrain();
+        var mf = new THREE.MeshStandardMaterial({ color: o.front != null ? o.front : 0xf6f2e9, roughness: 0.93, metalness: 0, side: THREE.FrontSide, vertexColors: true, map: grain });
+        var mb = new THREE.MeshStandardMaterial({ color: o.back != null ? o.back : 0xa5182f, roughness: 0.93, metalness: 0, side: THREE.BackSide, vertexColors: true, map: grain });
+        var lp = new Float32Array(B.edges * 36), gL = new THREE.BufferGeometry(), aL = new THREE.BufferAttribute(lp, 3); gL.setAttribute('position', aL);
+        var ml = new THREE.MeshBasicMaterial({ color: 0x241a14, transparent: true, opacity: o.line != null ? o.line : 0.3, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+        var g = new THREE.Group(), inner = new THREE.Group(), a = new THREE.Mesh(gF, mf), b = new THREE.Mesh(gB, mb), ln = new THREE.Mesh(gL, ml);
+        a.frustumCulled = b.frustumCulled = ln.frustumCulled = false; a.castShadow = b.castShadow = true; inner.add(a); inner.add(b); if (o.line !== 0) inner.add(ln); g.add(inner);
+        var shadeKey = '';
+        var shade = function (k, late) {   // each layer down a touch darker, on the face that looks out of the stack
+            var n = B.n, kk = k < n ? k : n, ix = (k < n && late) ? k + 1 : kk, o3 = 0;
+            B.F.forEach(function (f) { var fl = 0, q; for (q = 0; q < ix; q++) fl += f.mv[q] ? 1 : 0; var up = Math.min(3, f.up[ix]), dn = Math.min(3, f.dn[ix]), sF = 1 - 0.06 * ((fl & 1) ? dn : up), sB = 1 - 0.06 * ((fl & 1) ? up : dn);
+                for (q = 0; q < (f.poly.length - 2) * 9; q++) { cF[o3] = sF; cB[o3] = sB; o3++; } });
+            aCF.needsUpdate = true; aCB.needsUpdate = true;
+        };
+        var lines = function (tau) {   // the crease strips, laid from the pieces' own points
+            var o3 = 0, wd = o.lineW || 0.0065, dl = eps * 0.3, i, j, t;
+            for (i = 0; i < B.F.length; i++) { var f = B.F[i], P = PT[i], n = P.length, cx = 0, cy = 0, cz = 0;
+                for (j = 0; j < n; j++) { cx += P[j][0]; cy += P[j][1]; cz += P[j][2]; } cx /= n; cy /= n; cz /= n;
+                var ux = P[1][0] - P[0][0], uy = P[1][1] - P[0][1], uz = P[1][2] - P[0][2], vx = P[2][0] - P[0][0], vy = P[2][1] - P[0][1], vz = P[2][2] - P[0][2], nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx, nl = Math.sqrt(nx * nx + ny * ny + nz * nz) || 1; nx /= nl; ny /= nl; nz /= nl;
+                for (j = 0; j < n; j++) { var p = P[j], q = P[(j + 1) % n], tg = f.ed[j], on = tg < 0 || tau >= tg + 0.45;
+                    if (!on) { for (t = 0; t < 36; t++) lp[o3++] = 0; continue; }
+                    var dx = q[0] - p[0], dy = q[1] - p[1], dz = q[2] - p[2], ix2 = ny * dz - nz * dy, iy = nz * dx - nx * dz, iz = nx * dy - ny * dx, il = Math.sqrt(ix2 * ix2 + iy * iy + iz * iz) || 1, dc = Math.abs(ix2 * (cx - p[0]) + iy * (cy - p[1]) + iz * (cz - p[2])) / il, w = Math.min(tg < 0 ? wd * 0.6 : wd, dc * 0.22) / il;   // (a narrow piece takes a narrower line: a sliver does not go black)
+                    ix2 *= w; iy *= w; iz *= w; if (ix2 * (cx - p[0]) + iy * (cy - p[1]) + iz * (cz - p[2]) < 0) { ix2 = -ix2; iy = -iy; iz = -iz; }
+                    for (var sgn = -1; sgn <= 1; sgn += 2) { var ox = nx * dl * sgn, oy = ny * dl * sgn, oz = nz * dl * sgn, Q = [[p[0] + ox, p[1] + oy, p[2] + oz], [q[0] + ox, q[1] + oy, q[2] + oz], [q[0] + ix2 + ox, q[1] + iy + oy, q[2] + iz + oz], [p[0] + ix2 + ox, p[1] + iy + oy, p[2] + iz + oz]];
+                        [0, 1, 2, 0, 2, 3].forEach(function (c) { lp[o3++] = Q[c][0]; lp[o3++] = Q[c][1]; lp[o3++] = Q[c][2]; }); } } }
+            aL.needsUpdate = true;
+        };
         var st = R.stand || {}, qS = st.basis ? new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(new THREE.Vector3().fromArray(st.basis[0]), new THREE.Vector3().fromArray(st.basis[1]), new THREE.Vector3().fromArray(st.basis[2]))) : new THREE.Quaternion().setFromEuler(new THREE.Euler((st.rot || [0, 0, 0])[0], (st.rot || [0, 0, 0])[1], (st.rot || [0, 0, 0])[2], st.order || 'XYZ')), q0 = new THREE.Quaternion(), qZ = new THREE.Quaternion(), zAx = new THREE.Vector3(0, 0, 1);
-        var S = { group: g, B: B, name: name, total: B.n + 1, tau: -1, geo: geo, mats: [mf, mb] };
+        var S = { group: g, B: B, name: name, total: B.n + 1, tau: -1, mats: [mf, mb, ml] };
         S.set = function (tau) {
             tau = tau < 0 ? 0 : (tau > S.total ? S.total : tau); if (tau === S.tau) return; S.tau = tau;
-            _oriEval(B, tau, pos, eps);
+            _oriEval(B, tau, pos, eps, PT);
+            var kq = Math.min(Math.floor(tau), B.n), late = (tau - kq) > 0.3, key = kq + (late ? 'b' : 'a'); if (key !== shadeKey) { shadeKey = key; shade(kq, late); }
+            lines(tau);
             for (var i = 0; i < pos.length; i += 9) { var ux = pos[i + 3] - pos[i], uy = pos[i + 4] - pos[i + 1], uz = pos[i + 5] - pos[i + 2], vx = pos[i + 6] - pos[i], vy = pos[i + 7] - pos[i + 1], vz = pos[i + 8] - pos[i + 2], nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx, l = Math.sqrt(nx * nx + ny * ny + nz * nz) || 1;
                 nx /= l; ny /= l; nz /= l; for (var k = 0; k < 9; k += 3) { nor[i + k] = nx; nor[i + k + 1] = ny; nor[i + k + 2] = nz; } }
-            geo.attributes.position.needsUpdate = true; geo.attributes.normal.needsUpdate = true;
-            var w0 = _oriEase(Math.min(1, tau) * 0.82), w1 = (B.pose.length || B.star) ? _oriEase(Math.max(0, tau - B.n)) : _oriEase(Math.max(0, tau - B.n + 1));
+            aP.needsUpdate = true; aN.needsUpdate = true;
+            var w0 = _oriSmooth(Math.min(1, tau)), w1 = (B.pose.length || B.star) ? _oriSmooth(Math.max(0, tau - B.n)) : _oriSmooth(Math.max(0, tau - B.n + 1));
             qZ.setFromAxisAngle(zAx, -(R.frame || 0) * w0); inner.quaternion.copy(q0).slerp(qS, w1).multiply(qZ);
         };
-        S.dispose = function () { geo.dispose(); mf.dispose(); mb.dispose(); if (g.parent) g.parent.remove(g); };
+        S.dispose = function () { gF.dispose(); gB.dispose(); gL.dispose(); mf.dispose(); mb.dispose(); ml.dispose(); if (g.parent) g.parent.remove(g); };   // (the grain sheet is shared: kept)
         S.set(0); return S;
     }
     /* a probe's sheet (hq.dev.origami): one sheet beside the officer, facing the eye. origami(shape) stands it flat; (shape, tau) holds
