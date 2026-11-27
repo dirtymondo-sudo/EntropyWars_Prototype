@@ -3179,6 +3179,34 @@ const RACE_PROFILES = {
         label: 'Monarch',
         types: ['human', 'anomaly']   // 2026-11-23 THE MONARCH (mondo OK'd the kit): a woman the D.U.M.B. reprogrammed
     },
+    'monster truck': {   // 2026-11-27 THE NEW CHARACTERS (models in, kit not yet: the spell thread sets the type for good) — a living truck
+        label: 'Monster Truck',
+        types: ['tech', 'anomaly']
+    },
+    'nutcracker': {   // 2026-11-27 THE NEW CHARACTERS (models in, kit not yet: the spell thread sets the type for good) — a living wooden soldier
+        label: 'Nutcracker',
+        types: ['anomaly']
+    },
+    'leopard girl': {   // 2026-11-27 THE NEW CHARACTERS (kit: THE NEW RACES 5)
+        label: 'Leopard Girl',
+        types: ['anomaly']
+    },
+    'draconian': {   // 2026-11-27 THE NEW CHARACTERS (kit: THE NEW RACES 5) — the dragon-kin of the reptilians
+        label: 'Draconian',
+        types: ['alien']
+    },
+    'flower girl': {   // 2026-11-27 THE NEW CHARACTERS (kit: THE NEW RACES 5)
+        label: 'Flower Girl',
+        types: ['anomaly']
+    },
+    'leprechaun': {   // 2026-11-27 THE NEW CHARACTERS (models in, kit not yet: the spell thread sets the type for good) — male + female
+        label: 'Leprechaun',
+        types: ['anomaly']
+    },
+    'medic': {   // 2026-11-27 THE NEW CHARACTERS (models in, kit not yet: the spell thread sets the type for good) — the male is the Doctor, the female the Nurse
+        label: 'Medic',
+        types: ['human']
+    },
     'butterfly girl': {   // 2026-11-23 THE COMING RACES 2
         label: 'Butterfly Girl',
         types: ['anomaly']   // 2026-11-23 THE BUTTERFLY GIRL: settled (her kit is Anomaly)
@@ -4148,7 +4176,7 @@ const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scie
    AVAILABLE_RACES and server.js AVAILABLE_RACES. Notes: docs/notes/champions-combat.md "THE COMING RACES". */
 /* THE WEATHERMAN's FORECAST (2026-11-24 THE WEATHERMAN + NEWS ANCHOR): the weather never hurts or soaks him (state.js applyWeatherTurnEffects + stormStrikeUnit) */
 function wnWeatherproof(u) { return !!u && u.race === 'weatherman' && (u.gender || 'male') === 'male' && unitHasPassive(u, 'wnTheForecast'); }   /* Broken = no passives = no shelter */
-const EW_COMING_RACES = [];   // 2026-11-23 THE COMING RACES 2 (the Mannequin was cut 11-23, mondo; the Bear, the Rat, the Butterfly Girl and the Monarch got their kits 11-23 and moved to AVAILABLE_RACES) (models in, kits not yet; one spell thread a unit). 2026-11-19: the gladiator, the farmer and the jellyfish UFO got their kits and moved to AVAILABLE_RACES
+const EW_COMING_RACES = ['monster truck', 'nutcracker', 'leprechaun', 'medic'];   // 2026-11-27 THE NEW CHARACTERS (models + sprites in, kits being made by three spell threads; each moves its key into AVAILABLE_RACES here AND in server.js with its kit).   // 2026-11-23 THE COMING RACES 2 (the Mannequin was cut 11-23, mondo; the Bear, the Rat, the Butterfly Girl and the Monarch got their kits 11-23 and moved to AVAILABLE_RACES) (models in, kits not yet; one spell thread a unit). 2026-11-19: the gladiator, the farmer and the jellyfish UFO got their kits and moved to AVAILABLE_RACES
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
    default job's kit (JOB_KITS) gave it, so ranged races stay ranged: the old Sniper races reach 4 (kit 3 + the Sniper's
@@ -112333,7 +112361,7 @@ const DOOR_CAST = {
         ],
     },
     forrest: {
-        name: 'AGENT FORREST', title: 'FIELD AGENT · NO PHOTOGRAPHS', dept: 'Operations', race: 'bigfoot', gender: 'male', base: 'bigfoot',
+        name: 'AGENT FORREST', title: 'FIELD AGENT · NO PHOTOGRAPHS', dept: 'Operations', model: 'forrest', race: 'bigfoot', gender: 'male', base: 'bigfoot',   // 2026-11-27 THE NEW CHARACTERS: his own model, the bigfoot in an agent's suit (sprites.js DOOR_CAST_MODELS.forrest; mondo: "just a model swap for agent forest in story mode")
         lines: [],
         spots: [
             /* DOOR HQ 2.0 wave 3 (2026-11-26): the head of the Cryptid Division, behind his desk, facing the glass */
