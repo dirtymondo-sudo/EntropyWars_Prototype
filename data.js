@@ -21675,6 +21675,8 @@ const HQ_ROOM_LOOKS = {
        WAITING ROOM the flat fluorescent purgatory (faded, no bloom, no night: the room before the idea); THE NIGHTMARE the green print with the
        hardest dither and the tightest vignette anywhere (the edges of the frame are what you cannot look at); THE LIBRARY the archive's amber, softer */
     astral:     { name: 'THE SEA OF POSSIBILITY', retro: { enabled: true, preset: 'dream', pixelSize: 1, ditherStrength: 0.3, grain: 0.022, tintAmount: 0.42, levels: 30 }, cin: { vignette: true, vigAmount: 0.3, vigSize: 0.6 }, nightMood: 0.35, bloom: 0.62 },
+    /* THE INSIDE OF THE CUBE (2026-11-27, the DMT realm): full colour (the dream preset barely tinted, the most levels, almost no grain or dither: the sheets are the picture), a soft wide vignette */
+    dmt:        { name: 'THE BLACK CUBE', retro: { enabled: true, preset: 'dream', pixelSize: 1, ditherStrength: 0.14, grain: 0.01, tintAmount: 0.08, levels: 32 }, cin: { vignette: true, vigAmount: 0.26, vigSize: 0.62 }, nightMood: 0.2, bloom: 0.5 },
     internet:   { name: 'THE INTERNET', retro: { enabled: true, preset: 'teal', pixelSize: 1, ditherStrength: 0.32, grain: 0.022, tintAmount: 0.36, levels: 28 }, cin: { vignette: true, vigAmount: 0.3, vigSize: 0.58 }, nightMood: 0.35, bloom: 0.5 },   // THE INTERNET (2026-11-17)
     waiting:    { name: 'THE WAITING ROOM', retro: { enabled: true, preset: 'faded', pixelSize: 1, ditherStrength: 0.42, grain: 0.05, tintAmount: 0.38, levels: 18 }, cin: { vignette: true, vigAmount: 0.3, vigSize: 0.6 }, nightMood: 0.0, bloom: 0.08, dof: 0 },
     nightmare:  { name: 'THE NIGHTMARE', retro: { enabled: true, preset: 'green', pixelSize: 1, ditherStrength: 0.58, grain: 0.06, tintAmount: 0.58, levels: 14 }, cin: { vignette: true, vigAmount: 0.72, vigSize: 0.36 }, nightMood: 0.9, bloom: 0.34, lens: { chroma: 3.0 } },
@@ -79136,6 +79138,206 @@ const DOOR_HQ = {
             spawn: { x: 63, z: -257.25, face: 180 },
         },
         /* ASTRAL36-END */
+        /* DMT-BEGIN — THE INSIDE OF THE BLACK CUBE, the DMT realm (2026-11-27): written by `node bake-dmt.js`. Never hand-edit between the markers; edit the tool's plan and rerun. */
+        site_prebuilt_cube_dmt: {
+            label: 'THE BLACK CUBE',
+            sub: 'THE INSIDE',
+            kind: 'box', site: 'prebuilt_cube', part: 'dmt',
+            shell: hqAstralShell({ w: 147, d: 147, h: 50.75, wallH: 50.75, floorColor: 0xffffff, mood: { lamp: 0xff7af0, glow: 0xc060ff, strip: 0xf0d0ff, light: 0xf0e0ff, ambient: 0.7, night: 1 }, sky: { night: 1, lock: true, tint: 0x14002a, tintAmt: 0.7, stars: 0.3, nebula: 0.6, fog: { color: 0x10001e, amount: 0.15, top: 0.06, band: 0.5, density: 0.0035 }, scenery: 'trip', density: 1, doors: false }, plate: { x: 0, z: 49, y: 10.6 }, look: HQ_ROOM_LOOKS.dmt, atmos: { kind: 'motes', n: 220, color: 0xff9af0, zones: [{ kind: 'fireflies', color: 0x7afff0, n: 90, x0: -30, z0: -30, x1: 30, z1: 30 }, { x0: -73.5, z0: -73.5, x1: 73.5, z1: 73.5, kind: 'motes', n: 260, color: 0xd0a0ff }] } }),
+            parti: 'No ground: nine platforms hang inside the cube. The hub in the middle under the black cube, four great platforms at the ends of a cross, four corners between them, a ring road of bridges round it all.',
+            typology: 'grid',
+            trip: { margin: 70, high: 260, mid: 55, hubY: 7, cubeY: 34, faces: ['dmt_eyes', 'dmt_eyes', 'dmt_tunnel', 'dmt_weave', 'dmt_cubes', 'dmt_cubes'] },   // THE INSIDE OF THE CUBE (three-renderer.js _tripBuildSky)
+            terrain: {
+                res: 0.875, floor: 'dmt_floor', cliff: 'dmt_weave', path: 'dmt_floor_b',
+                noise: { amp: 0, scale: 9 }, outer: { m: 2, keep: 0, lift: -300 },
+                void: { rock: 'dmt_cubes', glow: 0xb040ff, glowY: -26, fall: -8 },
+                paint: { pal: ['dmt_floor_b','dmt_ribbon','dmt_weave'], t: 'u8', res: 3.5, x0: -71.75, z0: -71.75, nx: 42, nz: 42, d: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAEAAQABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQABAAEAAAAAAAAAAQABAAEAAQAAAAAAAAABAAEAAQAAAAAAAAAAAAABAAEAAQAAAAAAAAABAAEAAQABAAAAAAAAAAEAAQABAAAAAAAAAAAAAAAAAQABAAEAAAAAAAAAAQABAAEAAQAAAAAAAAABAAEAAQAAAAAAAAAAAAABAAEAAQACAgICAgIBAAEAAQABAAICAgICAgEAAQABAAAAAAAAAAAAAAAAAQABAAECAgICAgIAAQABAAEAAQICAgICAgABAAEAAQAAAAAAAAAAAAABAAEAAQAAAAAAAAABAAEAAQABAAAAAAAAAAEAAQABAAAAAAAAAAAAAAAAAAICAAAAAAAAAAAAAQABAAEAAQAAAAAAAAAAAgIAAAAAAAAAAAAAAAAAAAICAAAAAAAAAAAAAAACAgAAAAAAAAAAAAAAAgIAAAAAAAAAAAAAAAAAAAICAAAAAAAAAAAAAAACAgAAAAAAAAAAAAAAAgIAAAAAAAAAAAAAAAAAAAICAAAAAAAAAAAAAAACAgAAAAAAAAAAAAAAAgIAAAAAAAAAAAAAAAAAAAICAAAAAAAAAAAAAAACAgAAAAAAAAAAAAAAAgIAAAAAAAAAAAAAAAAAAAICAAAAAAAAAAABAAEAAQABAAEAAAAAAAAAAgIAAAAAAAAAAAAAAAEAAQABAAEAAAAAAAEAAQABAAEAAQAAAAAAAQABAAEAAQAAAAAAAAAAAAABAAEAAQABAAAAAAABAAEAAQABAAEAAAAAAAEAAQABAAEAAAAAAAAAAAEAAQABAAEAAAAAAAEAAQABAAEAAQAAAAAAAQABAAEAAQAAAAAAAAAAAAABAAEAAQABAgICAgABAAEAAQABAAECAgICAAEAAQABAAEAAAAAAAAAAAEAAQABAAEAAgICAgEAAQABAAEAAQACAgICAQABAAEAAQAAAAAAAAAAAAABAAEAAQABAAAAAAABAAEAAQABAAEAAAAAAAEAAQABAAEAAAAAAAAAAAEAAQABAAEAAAAAAAEAAQABAAEAAQAAAAAAAQABAAEAAQAAAAAAAAAAAAABAAEAAQABAAAAAAABAAEAAQABAAEAAAAAAAEAAQABAAEAAAAAAAAAAAAAAAICAAAAAAAAAAEAAQABAAEAAQAAAAAAAAAAAgIAAAAAAAAAAAAAAAAAAAICAAAAAAAAAAAAAAACAgAAAAAAAAAAAAAAAgIAAAAAAAAAAAAAAAAAAAICAAAAAAAAAAAAAAACAgAAAAAAAAAAAAAAAgIAAAAAAAAAAAAAAAAAAAICAAAAAAAAAAAAAAACAgAAAAAAAAAAAAAAAgIAAAAAAAAAAAAAAAAAAAICAAAAAAAAAAAAAAACAgAAAAAAAAAAAAAAAgIAAAAAAAAAAAAAAAAAAAICAAAAAAAAAAABAAEAAQABAAAAAAAAAAAAAgIAAAAAAAAAAAAAAAAAAQABAAEAAAAAAAAAAQABAAEAAQAAAAAAAAABAAEAAQAAAAAAAAAAAAABAAEAAQAAAAAAAAABAAEAAQABAAAAAAAAAAEAAQABAAAAAAAAAAAAAAAAAQABAAECAgICAgIAAQABAAEAAQICAgICAgABAAEAAQAAAAAAAAAAAAABAAEAAQACAgICAgIBAAEAAQABAAICAgICAgEAAQABAAAAAAAAAAAAAAAAAQABAAEAAAAAAAAAAQABAAEAAQAAAAAAAAABAAEAAQAAAAAAAAAAAAABAAEAAQAAAAAAAAABAAEAAQABAAAAAAAAAAEAAQABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQABAAEAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' },
+                features: [
+                    {k:'plateau',x:0,z:0,w:35,d:35,h:7,edge:0.15,float:true,depth:10},
+                    {k:'plateau',x:0,z:45.5,w:28,d:28,h:7,edge:0.15,float:true,depth:8.6},
+                    {k:'plateau',x:45.5,z:0,w:28,d:28,h:10.5,edge:0.15,float:true,depth:8.6},
+                    {k:'plateau',x:-45.5,z:0,w:28,d:28,h:3.5,edge:0.15,float:true,depth:8.6},
+                    {k:'plateau',x:0,z:-45.5,w:28,d:28,h:14,edge:0.15,float:true,depth:8.6},
+                    {k:'plateau',x:45.5,z:-45.5,w:21,d:21,h:12.25,edge:0.15,float:true,depth:7.2},
+                    {k:'plateau',x:45.5,z:45.5,w:21,d:21,h:8.75,edge:0.15,float:true,depth:7.2},
+                    {k:'plateau',x:-45.5,z:45.5,w:21,d:21,h:5.25,edge:0.15,float:true,depth:7.2},
+                    {k:'plateau',x:-45.5,z:-45.5,w:21,d:21,h:8.75,edge:0.15,float:true,depth:7.2},
+                    {k:'plateau',x:0,z:24.5,w:7,d:14,h:7,edge:0.15,float:true,depth:1.2},
+                    {k:'plateau',x:21,z:0,w:7,d:7,h:7,edge:0.15,float:true,depth:1.2},
+                    {k:'ramp',x0:24.5,z0:0,x1:31.5,z1:0,w:7,h0:7,h1:10.5,stairs:true,float:true},
+                    {k:'plateau',x:-28,z:0,w:7,d:7,h:3.5,edge:0.15,float:true,depth:1.2},
+                    {k:'ramp',x0:-24.5,z0:0,x1:-17.5,z1:0,w:7,h0:3.5,h1:7,stairs:true,float:true},
+                    {k:'ramp',x0:0,z0:-17.5,x1:0,z1:-31.5,w:7,h0:7,h1:14,stairs:true,float:true},
+                    {k:'plateau',x:28,z:-42,w:14,d:7,h:12.25,edge:0.15,float:true,depth:1.2},
+                    {k:'ramp',x0:21,z0:-42,x1:14,z1:-42,w:7,h0:12.25,h1:14,stairs:true,float:true},
+                    {k:'plateau',x:45.5,z:-21,w:7,d:14,h:10.5,edge:0.15,float:true,depth:1.2},
+                    {k:'ramp',x0:45.5,z0:-28,x1:45.5,z1:-35,w:7,h0:10.5,h1:12.25,stairs:true,float:true},
+                    {k:'plateau',x:45.5,z:28,w:7,d:14,h:8.75,edge:0.15,float:true,depth:1.2},
+                    {k:'ramp',x0:45.5,z0:21,x1:45.5,z1:14,w:7,h0:8.75,h1:10.5,stairs:true,float:true},
+                    {k:'plateau',x:21,z:45.5,w:14,d:7,h:7,edge:0.15,float:true,depth:1.2},
+                    {k:'ramp',x0:28,z0:45.5,x1:35,z1:45.5,w:7,h0:7,h1:8.75,stairs:true,float:true},
+                    {k:'plateau',x:-28,z:45.5,w:14,d:7,h:5.25,edge:0.15,float:true,depth:1.2},
+                    {k:'ramp',x0:-21,z0:45.5,x1:-14,z1:45.5,w:7,h0:5.25,h1:7,stairs:true,float:true},
+                    {k:'plateau',x:-45.5,z:21,w:7,d:14,h:3.5,edge:0.15,float:true,depth:1.2},
+                    {k:'ramp',x0:-45.5,z0:28,x1:-45.5,z1:35,w:7,h0:3.5,h1:5.25,stairs:true,float:true},
+                    {k:'plateau',x:-45.5,z:-17.5,w:7,d:7,h:3.5,edge:0.15,float:true,depth:1.2},
+                    {k:'ramp',x0:-45.5,z0:-21,x1:-45.5,z1:-35,w:7,h0:3.5,h1:8.75,stairs:true,float:true},
+                    {k:'plateau',x:-31.5,z:-42,w:7,d:7,h:8.75,edge:0.15,float:true,depth:1.2},
+                    {k:'ramp',x0:-28,z0:-42,x1:-14,z1:-42,w:7,h0:8.75,h1:14,stairs:true,float:true},
+                    {k:'wall',absY:true,x0:-14,z0:-14,x1:-10.5,z1:-14,t:0.3,h:11,y:7,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-14,z0:-10.5,x1:-10.5,z1:-10.5,t:0.3,h:11,y:7,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-14,z0:-14,x1:-14,z1:-10.5,t:0.3,h:11,y:7,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-10.5,z0:-14,x1:-10.5,z1:-10.5,t:0.3,h:11,y:7,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:10.5,z0:-14,x1:14,z1:-14,t:0.3,h:11,y:7,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:10.5,z0:-10.5,x1:14,z1:-10.5,t:0.3,h:11,y:7,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:10.5,z0:-14,x1:10.5,z1:-10.5,t:0.3,h:11,y:7,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:14,z0:-14,x1:14,z1:-10.5,t:0.3,h:11,y:7,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-14,z0:10.5,x1:-10.5,z1:10.5,t:0.3,h:11,y:7,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-14,z0:14,x1:-10.5,z1:14,t:0.3,h:11,y:7,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-14,z0:10.5,x1:-14,z1:14,t:0.3,h:11,y:7,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-10.5,z0:10.5,x1:-10.5,z1:14,t:0.3,h:11,y:7,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:10.5,z0:10.5,x1:14,z1:10.5,t:0.3,h:11,y:7,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:10.5,z0:14,x1:14,z1:14,t:0.3,h:11,y:7,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:10.5,z0:10.5,x1:10.5,z1:14,t:0.3,h:11,y:7,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:14,z0:10.5,x1:14,z1:14,t:0.3,h:11,y:7,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-10.5,z0:56,x1:-7,z1:56,t:0.3,h:9,y:7,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-10.5,z0:59.5,x1:-7,z1:59.5,t:0.3,h:9,y:7,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-10.5,z0:56,x1:-10.5,z1:59.5,t:0.3,h:9,y:7,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-7,z0:56,x1:-7,z1:59.5,t:0.3,h:9,y:7,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:7,z0:56,x1:10.5,z1:56,t:0.3,h:9,y:7,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:7,z0:59.5,x1:10.5,z1:59.5,t:0.3,h:9,y:7,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:7,z0:56,x1:7,z1:59.5,t:0.3,h:9,y:7,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:10.5,z0:56,x1:10.5,z1:59.5,t:0.3,h:9,y:7,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-14,z0:-59.5,x1:14,z1:-59.5,t:0.3,h:12,y:14,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-14,z0:-56,x1:14,z1:-56,t:0.3,h:12,y:14,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-14,z0:-59.5,x1:-14,z1:-56,t:0.3,h:12,y:14,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:14,z0:-59.5,x1:14,z1:-56,t:0.3,h:12,y:14,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-3.5,z0:-49,x1:3.5,z1:-49,t:0.3,h:1.4,y:14,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-3.5,z0:-45.5,x1:3.5,z1:-45.5,t:0.3,h:1.4,y:14,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-3.5,z0:-49,x1:-3.5,z1:-45.5,t:0.3,h:1.4,y:14,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:3.5,z0:-49,x1:3.5,z1:-45.5,t:0.3,h:1.4,y:14,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:56,z0:-14,x1:59.5,z1:-14,t:0.3,h:8,y:10.5,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:56,z0:14,x1:59.5,z1:14,t:0.3,h:8,y:10.5,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:56,z0:-14,x1:56,z1:14,t:0.3,h:8,y:10.5,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:59.5,z0:-14,x1:59.5,z1:14,t:0.3,h:8,y:10.5,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:52.5,z0:-7,x1:56,z1:-7,t:0.3,h:5,y:10.5,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:52.5,z0:7,x1:56,z1:7,t:0.3,h:5,y:10.5,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:52.5,z0:-7,x1:52.5,z1:7,t:0.3,h:5,y:10.5,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:56,z0:-7,x1:56,z1:7,t:0.3,h:5,y:10.5,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-59.5,z0:-14,x1:-56,z1:-14,t:0.3,h:9,y:3.5,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-59.5,z0:-10.5,x1:-56,z1:-10.5,t:0.3,h:9,y:3.5,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-59.5,z0:-14,x1:-59.5,z1:-10.5,t:0.3,h:9,y:3.5,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-56,z0:-14,x1:-56,z1:-10.5,t:0.3,h:9,y:3.5,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-35,z0:-14,x1:-31.5,z1:-14,t:0.3,h:9,y:3.5,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-35,z0:-10.5,x1:-31.5,z1:-10.5,t:0.3,h:9,y:3.5,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-35,z0:-14,x1:-35,z1:-10.5,t:0.3,h:9,y:3.5,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-31.5,z0:-14,x1:-31.5,z1:-10.5,t:0.3,h:9,y:3.5,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-59.5,z0:10.5,x1:-56,z1:10.5,t:0.3,h:9,y:3.5,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-59.5,z0:14,x1:-56,z1:14,t:0.3,h:9,y:3.5,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-59.5,z0:10.5,x1:-59.5,z1:14,t:0.3,h:9,y:3.5,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-56,z0:10.5,x1:-56,z1:14,t:0.3,h:9,y:3.5,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-35,z0:10.5,x1:-31.5,z1:10.5,t:0.3,h:9,y:3.5,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-35,z0:14,x1:-31.5,z1:14,t:0.3,h:9,y:3.5,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-35,z0:10.5,x1:-35,z1:14,t:0.3,h:9,y:3.5,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-31.5,z0:10.5,x1:-31.5,z1:14,t:0.3,h:9,y:3.5,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-52.5,z0:-7,x1:-49,z1:-7,t:0.3,h:5.5,y:3.5,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-52.5,z0:-3.5,x1:-49,z1:-3.5,t:0.3,h:5.5,y:3.5,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-52.5,z0:-7,x1:-52.5,z1:-3.5,t:0.3,h:5.5,y:3.5,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-49,z0:-7,x1:-49,z1:-3.5,t:0.3,h:5.5,y:3.5,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-42,z0:-7,x1:-38.5,z1:-7,t:0.3,h:5.5,y:3.5,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-42,z0:-3.5,x1:-38.5,z1:-3.5,t:0.3,h:5.5,y:3.5,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-42,z0:-7,x1:-42,z1:-3.5,t:0.3,h:5.5,y:3.5,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-38.5,z0:-7,x1:-38.5,z1:-3.5,t:0.3,h:5.5,y:3.5,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-52.5,z0:3.5,x1:-49,z1:3.5,t:0.3,h:5.5,y:3.5,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-52.5,z0:7,x1:-49,z1:7,t:0.3,h:5.5,y:3.5,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-52.5,z0:3.5,x1:-52.5,z1:7,t:0.3,h:5.5,y:3.5,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-49,z0:3.5,x1:-49,z1:7,t:0.3,h:5.5,y:3.5,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-42,z0:3.5,x1:-38.5,z1:3.5,t:0.3,h:5.5,y:3.5,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-42,z0:7,x1:-38.5,z1:7,t:0.3,h:5.5,y:3.5,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-42,z0:3.5,x1:-42,z1:7,t:0.3,h:5.5,y:3.5,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-38.5,z0:3.5,x1:-38.5,z1:7,t:0.3,h:5.5,y:3.5,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:38.5,z0:-52.5,x1:42,z1:-52.5,t:0.3,h:7,y:12.25,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:38.5,z0:-49,x1:42,z1:-49,t:0.3,h:7,y:12.25,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:38.5,z0:-52.5,x1:38.5,z1:-49,t:0.3,h:7,y:12.25,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:42,z0:-52.5,x1:42,z1:-49,t:0.3,h:7,y:12.25,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:49,z0:-52.5,x1:52.5,z1:-52.5,t:0.3,h:7,y:12.25,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:49,z0:-49,x1:52.5,z1:-49,t:0.3,h:7,y:12.25,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:49,z0:-52.5,x1:49,z1:-49,t:0.3,h:7,y:12.25,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:52.5,z0:-52.5,x1:52.5,z1:-49,t:0.3,h:7,y:12.25,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:38.5,z0:38.5,x1:42,z1:38.5,t:0.3,h:9,y:8.75,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:38.5,z0:42,x1:42,z1:42,t:0.3,h:9,y:8.75,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:38.5,z0:38.5,x1:38.5,z1:42,t:0.3,h:9,y:8.75,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:42,z0:38.5,x1:42,z1:42,t:0.3,h:9,y:8.75,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:49,z0:42,x1:52.5,z1:42,t:0.3,h:6,y:8.75,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:49,z0:45.5,x1:52.5,z1:45.5,t:0.3,h:6,y:8.75,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:49,z0:42,x1:49,z1:45.5,t:0.3,h:6,y:8.75,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:52.5,z0:42,x1:52.5,z1:45.5,t:0.3,h:6,y:8.75,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:42,z0:49,x1:45.5,z1:49,t:0.3,h:7.5,y:8.75,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:42,z0:52.5,x1:45.5,z1:52.5,t:0.3,h:7.5,y:8.75,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:42,z0:49,x1:42,z1:52.5,t:0.3,h:7.5,y:8.75,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:45.5,z0:49,x1:45.5,z1:52.5,t:0.3,h:7.5,y:8.75,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-49,z0:49,x1:-42,z1:49,t:0.3,h:9,y:5.25,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-49,z0:52.5,x1:-42,z1:52.5,t:0.3,h:9,y:5.25,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-49,z0:49,x1:-49,z1:52.5,t:0.3,h:9,y:5.25,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-42,z0:49,x1:-42,z1:52.5,t:0.3,h:9,y:5.25,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-49,z0:-49,x1:-42,z1:-49,t:0.3,h:10,y:8.75,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-49,z0:-42,x1:-42,z1:-42,t:0.3,h:10,y:8.75,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-49,z0:-49,x1:-49,z1:-42,t:0.3,h:10,y:8.75,ghost:true,rail:false},
+                    {k:'wall',absY:true,x0:-42,z0:-49,x1:-42,z1:-42,t:0.3,h:10,y:8.75,ghost:true,rail:false},
+                    {k:'arch',id:'dmt:kerb:hub',x:0,z:0,rot:0,y:7,parts:[{s:'box',p:[-10.5,0,-17.33],size:[14,0.4,0.3],tint:16727536,glow:1},{s:'box',p:[10.5,0,-17.33],size:[14,0.4,0.3],tint:16727536,glow:1},{s:'box',p:[-10.5,0,17.33],size:[14,0.4,0.3],tint:16727536,glow:1},{s:'box',p:[10.5,0,17.33],size:[14,0.4,0.3],tint:16727536,glow:1},{s:'box',p:[-17.33,0,-10.5],size:[0.3,0.4,14],tint:16727536,glow:1},{s:'box',p:[-17.33,0,10.5],size:[0.3,0.4,14],tint:16727536,glow:1},{s:'box',p:[17.33,0,-10.5],size:[0.3,0.4,14],tint:16727536,glow:1},{s:'box',p:[17.33,0,10.5],size:[0.3,0.4,14],tint:16727536,glow:1}]},
+                    {k:'arch',id:'dmt:kerb:S',x:0,z:45.5,rot:0,y:7,parts:[{s:'box',p:[-8.75,0,-13.83],size:[10.5,0.4,0.3],tint:4063216,glow:1},{s:'box',p:[8.75,0,-13.83],size:[10.5,0.4,0.3],tint:4063216,glow:1},{s:'box',p:[0,0,13.83],size:[28,0.4,0.3],tint:4063216,glow:1},{s:'box',p:[-13.83,0,-8.75],size:[0.3,0.4,10.5],tint:4063216,glow:1},{s:'box',p:[-13.83,0,8.75],size:[0.3,0.4,10.5],tint:4063216,glow:1},{s:'box',p:[13.83,0,-8.75],size:[0.3,0.4,10.5],tint:4063216,glow:1},{s:'box',p:[13.83,0,8.75],size:[0.3,0.4,10.5],tint:4063216,glow:1}]},
+                    {k:'arch',id:'dmt:kerb:E',x:45.5,z:0,rot:0,y:10.5,parts:[{s:'box',p:[-8.75,0,-13.83],size:[10.5,0.4,0.3],tint:4040959,glow:1},{s:'box',p:[8.75,0,-13.83],size:[10.5,0.4,0.3],tint:4040959,glow:1},{s:'box',p:[-8.75,0,13.83],size:[10.5,0.4,0.3],tint:4040959,glow:1},{s:'box',p:[8.75,0,13.83],size:[10.5,0.4,0.3],tint:4040959,glow:1},{s:'box',p:[-13.83,0,-8.75],size:[0.3,0.4,10.5],tint:4040959,glow:1},{s:'box',p:[-13.83,0,8.75],size:[0.3,0.4,10.5],tint:4040959,glow:1},{s:'box',p:[13.83,0,0],size:[0.3,0.4,28],tint:4040959,glow:1}]},
+                    {k:'arch',id:'dmt:kerb:W',x:-45.5,z:0,rot:0,y:3.5,parts:[{s:'box',p:[-8.75,0,-13.83],size:[10.5,0.4,0.3],tint:9240422,glow:1},{s:'box',p:[8.75,0,-13.83],size:[10.5,0.4,0.3],tint:9240422,glow:1},{s:'box',p:[-8.75,0,13.83],size:[10.5,0.4,0.3],tint:9240422,glow:1},{s:'box',p:[8.75,0,13.83],size:[10.5,0.4,0.3],tint:9240422,glow:1},{s:'box',p:[-13.83,0,0],size:[0.3,0.4,28],tint:9240422,glow:1},{s:'box',p:[13.83,0,-8.75],size:[0.3,0.4,10.5],tint:9240422,glow:1},{s:'box',p:[13.83,0,8.75],size:[0.3,0.4,10.5],tint:9240422,glow:1}]},
+                    {k:'arch',id:'dmt:kerb:N',x:0,z:-45.5,rot:0,y:14,parts:[{s:'box',p:[0,0,-13.83],size:[28,0.4,0.3],tint:12598783,glow:1},{s:'box',p:[-8.75,0,13.83],size:[10.5,0.4,0.3],tint:12598783,glow:1},{s:'box',p:[8.75,0,13.83],size:[10.5,0.4,0.3],tint:12598783,glow:1},{s:'box',p:[-13.83,0,-7],size:[0.3,0.4,14],tint:12598783,glow:1},{s:'box',p:[-13.83,0,10.5],size:[0.3,0.4,7],tint:12598783,glow:1},{s:'box',p:[13.83,0,-7],size:[0.3,0.4,14],tint:12598783,glow:1},{s:'box',p:[13.83,0,10.5],size:[0.3,0.4,7],tint:12598783,glow:1}]},
+                    {k:'arch',id:'dmt:kerb:NE',x:45.5,z:-45.5,rot:0,y:12.25,parts:[{s:'box',p:[0,0,-10.33],size:[21,0.4,0.3],tint:16765501,glow:1},{s:'box',p:[-7,0,10.33],size:[7,0.4,0.3],tint:16765501,glow:1},{s:'box',p:[7,0,10.33],size:[7,0.4,0.3],tint:16765501,glow:1},{s:'box',p:[-10.33,0,-5.25],size:[0.3,0.4,10.5],tint:16765501,glow:1},{s:'box',p:[-10.33,0,8.75],size:[0.3,0.4,3.5],tint:16765501,glow:1},{s:'box',p:[10.33,0,0],size:[0.3,0.4,21],tint:16765501,glow:1}]},
+                    {k:'arch',id:'dmt:kerb:SE',x:45.5,z:45.5,rot:0,y:8.75,parts:[{s:'box',p:[-7,0,-10.33],size:[7,0.4,0.3],tint:16734781,glow:1},{s:'box',p:[7,0,-10.33],size:[7,0.4,0.3],tint:16734781,glow:1},{s:'box',p:[0,0,10.33],size:[21,0.4,0.3],tint:16734781,glow:1},{s:'box',p:[-10.33,0,-7],size:[0.3,0.4,7],tint:16734781,glow:1},{s:'box',p:[-10.33,0,7],size:[0.3,0.4,7],tint:16734781,glow:1},{s:'box',p:[10.33,0,0],size:[0.3,0.4,21],tint:16734781,glow:1}]},
+                    {k:'arch',id:'dmt:kerb:SW',x:-45.5,z:45.5,rot:0,y:5.25,parts:[{s:'box',p:[-7,0,-10.33],size:[7,0.4,0.3],tint:4063098,glow:1},{s:'box',p:[7,0,-10.33],size:[7,0.4,0.3],tint:4063098,glow:1},{s:'box',p:[0,0,10.33],size:[21,0.4,0.3],tint:4063098,glow:1},{s:'box',p:[-10.33,0,0],size:[0.3,0.4,21],tint:4063098,glow:1},{s:'box',p:[10.33,0,-7],size:[0.3,0.4,7],tint:4063098,glow:1},{s:'box',p:[10.33,0,7],size:[0.3,0.4,7],tint:4063098,glow:1}]},
+                    {k:'arch',id:'dmt:kerb:NW',x:-45.5,z:-45.5,rot:0,y:8.75,parts:[{s:'box',p:[0,0,-10.33],size:[21,0.4,0.3],tint:16738000,glow:1},{s:'box',p:[-7,0,10.33],size:[7,0.4,0.3],tint:16738000,glow:1},{s:'box',p:[7,0,10.33],size:[7,0.4,0.3],tint:16738000,glow:1},{s:'box',p:[-10.33,0,0],size:[0.3,0.4,21],tint:16738000,glow:1},{s:'box',p:[10.33,0,-5.25],size:[0.3,0.4,10.5],tint:16738000,glow:1},{s:'box',p:[10.33,0,8.75],size:[0.3,0.4,3.5],tint:16738000,glow:1}]},
+                    {k:'arch',id:'dmt:kerb:hub-S',x:0,z:24.5,rot:0,y:7,parts:[{s:'box',p:[-3.33,0,0],size:[0.3,0.4,14],tint:15786239,glow:1},{s:'box',p:[3.33,0,0],size:[0.3,0.4,14],tint:15786239,glow:1}]},
+                    {k:'arch',id:'dmt:kerb:hub-E',x:21,z:0,rot:0,y:7,parts:[{s:'box',p:[0,0,-3.33],size:[7,0.4,0.3],tint:15786239,glow:1},{s:'box',p:[0,0,3.33],size:[7,0.4,0.3],tint:15786239,glow:1}]},
+                    {k:'arch',id:'dmt:kerb:hub-W',x:-28,z:0,rot:0,y:3.5,parts:[{s:'box',p:[0,0,-3.33],size:[7,0.4,0.3],tint:15786239,glow:1},{s:'box',p:[0,0,3.33],size:[7,0.4,0.3],tint:15786239,glow:1}]},
+                    {k:'arch',id:'dmt:kerb:N-NE',x:28,z:-42,rot:0,y:12.25,parts:[{s:'box',p:[0,0,-3.33],size:[14,0.4,0.3],tint:15786239,glow:1},{s:'box',p:[0,0,3.33],size:[14,0.4,0.3],tint:15786239,glow:1}]},
+                    {k:'arch',id:'dmt:kerb:NE-E',x:45.5,z:-21,rot:0,y:10.5,parts:[{s:'box',p:[-3.33,0,0],size:[0.3,0.4,14],tint:15786239,glow:1},{s:'box',p:[3.33,0,0],size:[0.3,0.4,14],tint:15786239,glow:1}]},
+                    {k:'arch',id:'dmt:kerb:E-SE',x:45.5,z:28,rot:0,y:8.75,parts:[{s:'box',p:[-3.33,0,0],size:[0.3,0.4,14],tint:15786239,glow:1},{s:'box',p:[3.33,0,0],size:[0.3,0.4,14],tint:15786239,glow:1}]},
+                    {k:'arch',id:'dmt:kerb:SE-S',x:21,z:45.5,rot:0,y:7,parts:[{s:'box',p:[0,0,-3.33],size:[14,0.4,0.3],tint:15786239,glow:1},{s:'box',p:[0,0,3.33],size:[14,0.4,0.3],tint:15786239,glow:1}]},
+                    {k:'arch',id:'dmt:kerb:S-SW',x:-28,z:45.5,rot:0,y:5.25,parts:[{s:'box',p:[0,0,-3.33],size:[14,0.4,0.3],tint:15786239,glow:1},{s:'box',p:[0,0,3.33],size:[14,0.4,0.3],tint:15786239,glow:1}]},
+                    {k:'arch',id:'dmt:kerb:SW-W',x:-45.5,z:21,rot:0,y:3.5,parts:[{s:'box',p:[-3.33,0,0],size:[0.3,0.4,14],tint:15786239,glow:1},{s:'box',p:[3.33,0,0],size:[0.3,0.4,14],tint:15786239,glow:1}]},
+                    {k:'arch',id:'dmt:kerb:W-NW',x:-45.5,z:-17.5,rot:0,y:3.5,parts:[{s:'box',p:[-3.33,0,0],size:[0.3,0.4,7],tint:15786239,glow:1},{s:'box',p:[3.33,0,0],size:[0.3,0.4,7],tint:15786239,glow:1}]},
+                    {k:'arch',id:'dmt:kerb:NW-N',x:-31.5,z:-42,rot:0,y:8.75,parts:[{s:'box',p:[0,0,-3.33],size:[7,0.4,0.3],tint:15786239,glow:1},{s:'box',p:[0,0,3.33],size:[7,0.4,0.3],tint:15786239,glow:1}]},
+                    {k:'arch',id:'dmt:hub:0',x:-12.25,z:-12.25,rot:0,y:7,parts:[{s:'box',p:[0,0,0],size:[2.4,11,2.4],key:'dmt_glyph',glow:1,uv:2.4},{s:'roof',form:'pyramid',p:[0,11,0],size:[2.4,2.2,2.4],key:'dmt_ribbon',glow:1,uv:2.4},{s:'box',p:[0,0,0],size:[3.1,0.35,3.1],key:'dmt_cubes',glow:1,uv:3.1}]},
+                    {k:'arch',id:'dmt:hub:1',x:12.25,z:-12.25,rot:0,y:7,parts:[{s:'box',p:[0,0,0],size:[2.4,11,2.4],key:'dmt_glyph',glow:1,uv:2.4},{s:'roof',form:'pyramid',p:[0,11,0],size:[2.4,2.2,2.4],key:'dmt_ribbon',glow:1,uv:2.4},{s:'box',p:[0,0,0],size:[3.1,0.35,3.1],key:'dmt_cubes',glow:1,uv:3.1}]},
+                    {k:'arch',id:'dmt:hub:2',x:-12.25,z:12.25,rot:0,y:7,parts:[{s:'box',p:[0,0,0],size:[2.4,11,2.4],key:'dmt_glyph',glow:1,uv:2.4},{s:'roof',form:'pyramid',p:[0,11,0],size:[2.4,2.2,2.4],key:'dmt_ribbon',glow:1,uv:2.4},{s:'box',p:[0,0,0],size:[3.1,0.35,3.1],key:'dmt_cubes',glow:1,uv:3.1}]},
+                    {k:'arch',id:'dmt:hub:3',x:12.25,z:12.25,rot:0,y:7,parts:[{s:'box',p:[0,0,0],size:[2.4,11,2.4],key:'dmt_glyph',glow:1,uv:2.4},{s:'roof',form:'pyramid',p:[0,11,0],size:[2.4,2.2,2.4],key:'dmt_ribbon',glow:1,uv:2.4},{s:'box',p:[0,0,0],size:[3.1,0.35,3.1],key:'dmt_cubes',glow:1,uv:3.1}]},
+                    {k:'arch',id:'dmt:S:4',x:0,z:57.75,rot:0,y:7,parts:[{s:'box',p:[-8.75,0,0],size:[2.6,9,2.2],key:'dmt_ribbon',glow:1,uv:2.6},{s:'box',p:[8.75,0,0],size:[2.6,9,2.2],key:'dmt_ribbon',glow:1,uv:2.6},{s:'box',p:[0,9,0],size:[21,1.6,2.4],key:'dmt_cubes',glow:1,uv:3.2},{s:'quad',p:[0,0.2,-0.2],size:[14.6,8.8],key:'dmt_tunnel',glow:1,uv:'fit',ds:true}]},
+                    {k:'arch',id:'dmt:N:5',x:0,z:-57.75,rot:0,y:14,parts:[{s:'box',p:[0,0,0],size:[27.6,12,2.4],key:'dmt_eyes',glow:1,uv:6.9},{s:'box',p:[0,12,0],size:[28,0.8,2.9],key:'dmt_ribbon',glow:1,uv:2.9},{s:'box',p:[-10.5,12.8,0],size:[2.2,5,2.2],key:'dmt_glyph',glow:1,uv:2.2},{s:'box',p:[10.5,12.8,0],size:[2.2,5,2.2],key:'dmt_glyph',glow:1,uv:2.2},{s:'dome',p:[0,12.8,0],r:3.2,h:3.2,key:'dmt_eyes',glow:1,seg:14,rings:5}]},
+                    {k:'arch',id:'dmt:N:6',x:0,z:-47.25,rot:0,y:14,parts:[{s:'box',p:[0,0,0],size:[6.4,1.1,2.6],key:'dmt_weave',glow:1,uv:3.2},{s:'box',p:[0,1.1,0],size:[7,0.25,3.1],key:'dmt_cubes',glow:1,uv:3.2}]},
+                    {k:'arch',id:'dmt:E:7',x:57.75,z:0,rot:0,y:10.5,parts:[{s:'box',p:[0,0,-12.25],size:[3.4,3.4,3.4],key:'dmt_cubes',glow:1,uv:3.4},{s:'box',p:[0,0,-8.75],size:[3.4,3.4,3.4],key:'dmt_cubes',glow:1,uv:3.4},{s:'box',p:[0,3.5,-8.75],size:[3.4,3.4,3.4],key:'dmt_cubes',glow:1,uv:3.4},{s:'box',p:[0,0,-5.25],size:[3.4,3.4,3.4],key:'dmt_cubes',glow:1,uv:3.4},{s:'box',p:[0,3.5,-5.25],size:[3.4,3.4,3.4],key:'dmt_cubes',glow:1,uv:3.4},{s:'box',p:[0,7,-5.25],size:[3.4,3.4,3.4],key:'dmt_cubes',glow:1,uv:3.4},{s:'box',p:[0,0,-1.75],size:[3.4,3.4,3.4],key:'dmt_cubes',glow:1,uv:3.4},{s:'box',p:[0,3.5,-1.75],size:[3.4,3.4,3.4],key:'dmt_cubes',glow:1,uv:3.4},{s:'box',p:[0,7,-1.75],size:[3.4,3.4,3.4],key:'dmt_cubes',glow:1,uv:3.4},{s:'box',p:[0,10.5,-1.75],size:[3.4,3.4,3.4],key:'dmt_cubes',glow:1,uv:3.4},{s:'box',p:[0,0,1.75],size:[3.4,3.4,3.4],key:'dmt_cubes',glow:1,uv:3.4},{s:'box',p:[0,3.5,1.75],size:[3.4,3.4,3.4],key:'dmt_cubes',glow:1,uv:3.4},{s:'box',p:[0,7,1.75],size:[3.4,3.4,3.4],key:'dmt_cubes',glow:1,uv:3.4},{s:'box',p:[0,10.5,1.75],size:[3.4,3.4,3.4],key:'dmt_cubes',glow:1,uv:3.4},{s:'box',p:[0,0,5.25],size:[3.4,3.4,3.4],key:'dmt_cubes',glow:1,uv:3.4},{s:'box',p:[0,3.5,5.25],size:[3.4,3.4,3.4],key:'dmt_cubes',glow:1,uv:3.4},{s:'box',p:[0,7,5.25],size:[3.4,3.4,3.4],key:'dmt_cubes',glow:1,uv:3.4},{s:'box',p:[0,0,8.75],size:[3.4,3.4,3.4],key:'dmt_cubes',glow:1,uv:3.4},{s:'box',p:[0,3.5,8.75],size:[3.4,3.4,3.4],key:'dmt_cubes',glow:1,uv:3.4},{s:'box',p:[0,0,12.25],size:[3.4,3.4,3.4],key:'dmt_cubes',glow:1,uv:3.4},{s:'box',p:[-3.5,0,-5.25],size:[3.4,3.4,3.4],key:'dmt_weave',glow:1,uv:3.4},{s:'box',p:[-3.5,0,-1.75],size:[3.4,3.4,3.4],key:'dmt_glyph',glow:1,uv:3.4},{s:'box',p:[-3.5,3.5,-1.75],size:[3.4,3.4,3.4],key:'dmt_glyph',glow:1,uv:3.4},{s:'box',p:[-3.5,0,1.75],size:[3.4,3.4,3.4],key:'dmt_weave',glow:1,uv:3.4},{s:'box',p:[-3.5,3.5,1.75],size:[3.4,3.4,3.4],key:'dmt_weave',glow:1,uv:3.4},{s:'box',p:[-3.5,0,5.25],size:[3.4,3.4,3.4],key:'dmt_glyph',glow:1,uv:3.4},{s:'box',p:[-9,9,-7],ry:30,size:[2.2,2.2,2.2],key:'dmt_cubes',glow:1,uv:2.2},{s:'box',p:[-14,12,6],ry:30,size:[2.2,2.2,2.2],key:'dmt_cubes',glow:1,uv:2.2},{s:'box',p:[-6,15,2],ry:30,size:[2.2,2.2,2.2],key:'dmt_cubes',glow:1,uv:2.2}]},
+                    {k:'arch',id:'dmt:W:8',x:-57.75,z:-12.25,rot:0,y:3.5,parts:[{s:'cyl',p:[0,0,0],r:0.7,h:9,key:'dmt_weave',glow:1,seg:10},{s:'dome',p:[0,9,0],r:1.3,h:1.3,key:'dmt_weave',glow:1,seg:12,rings:4},{s:'cyl',p:[0,0,0],r:1.2,h:0.3,key:'dmt_cubes',glow:1,seg:10}]},
+                    {k:'arch',id:'dmt:W:9',x:-33.25,z:-12.25,rot:0,y:3.5,parts:[{s:'cyl',p:[0,0,0],r:0.7,h:9,key:'dmt_weave',glow:1,seg:10},{s:'dome',p:[0,9,0],r:1.3,h:1.3,key:'dmt_ribbon',glow:1,seg:12,rings:4},{s:'cyl',p:[0,0,0],r:1.2,h:0.3,key:'dmt_cubes',glow:1,seg:10}]},
+                    {k:'arch',id:'dmt:W:10',x:-57.75,z:12.25,rot:0,y:3.5,parts:[{s:'cyl',p:[0,0,0],r:0.7,h:9,key:'dmt_weave',glow:1,seg:10},{s:'dome',p:[0,9,0],r:1.3,h:1.3,key:'dmt_weave',glow:1,seg:12,rings:4},{s:'cyl',p:[0,0,0],r:1.2,h:0.3,key:'dmt_cubes',glow:1,seg:10}]},
+                    {k:'arch',id:'dmt:W:11',x:-33.25,z:12.25,rot:0,y:3.5,parts:[{s:'cyl',p:[0,0,0],r:0.7,h:9,key:'dmt_weave',glow:1,seg:10},{s:'dome',p:[0,9,0],r:1.3,h:1.3,key:'dmt_ribbon',glow:1,seg:12,rings:4},{s:'cyl',p:[0,0,0],r:1.2,h:0.3,key:'dmt_cubes',glow:1,seg:10}]},
+                    {k:'arch',id:'dmt:W:12',x:-50.75,z:-5.25,rot:0,y:3.5,parts:[{s:'cyl',p:[0,0,0],r:0.7,h:5.5,key:'dmt_weave',glow:1,seg:10},{s:'dome',p:[0,5.5,0],r:1.3,h:1.3,key:'dmt_weave',glow:1,seg:12,rings:4},{s:'cyl',p:[0,0,0],r:1.2,h:0.3,key:'dmt_cubes',glow:1,seg:10}]},
+                    {k:'arch',id:'dmt:W:13',x:-40.25,z:-5.25,rot:0,y:3.5,parts:[{s:'cyl',p:[0,0,0],r:0.7,h:5.5,key:'dmt_weave',glow:1,seg:10},{s:'dome',p:[0,5.5,0],r:1.3,h:1.3,key:'dmt_ribbon',glow:1,seg:12,rings:4},{s:'cyl',p:[0,0,0],r:1.2,h:0.3,key:'dmt_cubes',glow:1,seg:10}]},
+                    {k:'arch',id:'dmt:W:14',x:-50.75,z:5.25,rot:0,y:3.5,parts:[{s:'cyl',p:[0,0,0],r:0.7,h:5.5,key:'dmt_weave',glow:1,seg:10},{s:'dome',p:[0,5.5,0],r:1.3,h:1.3,key:'dmt_weave',glow:1,seg:12,rings:4},{s:'cyl',p:[0,0,0],r:1.2,h:0.3,key:'dmt_cubes',glow:1,seg:10}]},
+                    {k:'arch',id:'dmt:W:15',x:-40.25,z:5.25,rot:0,y:3.5,parts:[{s:'cyl',p:[0,0,0],r:0.7,h:5.5,key:'dmt_weave',glow:1,seg:10},{s:'dome',p:[0,5.5,0],r:1.3,h:1.3,key:'dmt_ribbon',glow:1,seg:12,rings:4},{s:'cyl',p:[0,0,0],r:1.2,h:0.3,key:'dmt_cubes',glow:1,seg:10}]},
+                    {k:'arch',id:'dmt:NE:16',x:45.5,z:-50.75,rot:0,y:12.25,parts:[{s:'cyl',p:[-5.25,0,0],r:0.9,h:7,key:'dmt_ribbon',glow:1,seg:10},{s:'cyl',p:[5.25,0,0],r:0.9,h:7,key:'dmt_ribbon',glow:1,seg:10},{s:'archw',p:[0,0,0],size:[12.4,9.5,1.2],hole:[8.6,4.6,0],key:'dmt_ribbon',glow:1,uv:3}]},
+                    {k:'arch',id:'dmt:SE:17',x:40.25,z:40.25,rot:0,y:8.75,parts:[{s:'box',p:[0,0,0],size:[2.4,9,2.4],key:'dmt_cubes',glow:1,uv:2.4},{s:'roof',form:'pyramid',p:[0,9,0],size:[2.4,2.2,2.4],key:'dmt_ribbon',glow:1,uv:2.4},{s:'box',p:[0,0,0],size:[3.1,0.35,3.1],key:'dmt_cubes',glow:1,uv:3.1}]},
+                    {k:'arch',id:'dmt:SE:18',x:50.75,z:43.75,rot:0,y:8.75,parts:[{s:'box',p:[0,0,0],size:[2.4,6,2.4],key:'dmt_cubes',glow:1,uv:2.4},{s:'roof',form:'pyramid',p:[0,6,0],size:[2.4,2.2,2.4],key:'dmt_ribbon',glow:1,uv:2.4},{s:'box',p:[0,0,0],size:[3.1,0.35,3.1],key:'dmt_cubes',glow:1,uv:3.1}]},
+                    {k:'arch',id:'dmt:SE:19',x:43.75,z:50.75,rot:0,y:8.75,parts:[{s:'box',p:[0,0,0],size:[2.4,7.5,2.4],key:'dmt_cubes',glow:1,uv:2.4},{s:'roof',form:'pyramid',p:[0,7.5,0],size:[2.4,2.2,2.4],key:'dmt_ribbon',glow:1,uv:2.4},{s:'box',p:[0,0,0],size:[3.1,0.35,3.1],key:'dmt_cubes',glow:1,uv:3.1}]},
+                    {k:'arch',id:'dmt:SW:20',x:-45.5,z:50.75,rot:0,y:5.25,parts:[{s:'box',p:[0,0,0],size:[6.6,0.5,2.6],key:'dmt_cubes',glow:1,uv:3.3},{s:'cyl',p:[0,0.5,0],r:0.5,h:1.2,key:'dmt_glyph',glow:1,seg:8},{s:'quad',p:[0,1.7,0],size:[7,7],key:'dmt_tunnel',glow:1,uv:'fit',ds:true}]},
+                    {k:'arch',id:'dmt:NW:21',x:-45.5,z:-45.5,rot:0,y:8.75,parts:[{s:'cyl',p:[0,0,0],r:3.1,h:10,key:'dmt_eyes',glow:1,seg:16},{s:'dome',p:[0,10,0],r:3.4,h:2.4,key:'dmt_weave',glow:1,seg:16,rings:5},{s:'cyl',p:[0,0,0],r:3.4,h:0.4,key:'dmt_ribbon',glow:1,seg:16}]},
+                ],
+            },
+            doors: [],
+            counters: [],
+            props: [],
+            agents: [],
+            npcSpots: [],
+            onlineSpots: [],
+            lines: [],
+            spawn: {x:0,z:49,face:0},
+        },
+        /* DMT-END */
         /* ══ THE ASTRAL REALM (THE COMPLEX CANDIDATES #10 — the user, 2026-09-19) ══
            "Let's add another complex explorable area. The Astral Realm. It can
            connect the Dream Research, the Looking Glass, the Haunted House, etc.
@@ -94487,6 +94689,7 @@ const HQ_TREE_KINDS = {
     /* THE ROCK LINE (2026-11-27, mondo: "i never wanna see an open field i cant walk through ... rocks or whatever is natural" · "make those meshy rocks"): six Meshy
        boulders (about 930 triangles, one 512 px sheet each; /mnt/project-files/foliage-pass/rocks/gen.py) as tree kinds, so the land past a room's line can stand them
        (three-renderer.js THE ROCK LINE). sand_* = desert sandstone, gran_* = grey granite; a = round, b = tall, c = wide and low. `still` = no wind on it. */
+    edge_dead_bush_1: { model: 'asset:world/packs/blendervoyage_graveyard/psxg_dead_bush_1.glb', name: 'dead bush' }, edge_dead_bush_2: { model: 'asset:world/packs/blendervoyage_graveyard/psxg_dead_bush_2.glb', name: 'dead bush, big' },   // (11-27: the graveyard pack's two dead bushes as kinds, the dry scrub between the rock line's boulders)
     edge_rock_sand_a: { model: 'asset:world/props/meshy/edge_rock_sand_a.glb', name: 'sandstone boulder', still: true }, edge_rock_sand_b: { model: 'asset:world/props/meshy/edge_rock_sand_b.glb', name: 'sandstone spire', still: true },
     edge_rock_sand_c: { model: 'asset:world/props/meshy/edge_rock_sand_c.glb', name: 'sandstone ledges', still: true }, edge_rock_gran_a: { model: 'asset:world/props/meshy/edge_rock_gran_a.glb', name: 'granite boulder', still: true },
     edge_rock_gran_b: { model: 'asset:world/props/meshy/edge_rock_gran_b.glb', name: 'granite spire', still: true }, edge_rock_gran_c: { model: 'asset:world/props/meshy/edge_rock_gran_c.glb', name: 'granite outcrop', still: true },
@@ -101218,29 +101421,44 @@ function hqTerrainReach(info, x, z) {
    refuses a sealed spot. `o.seen` (a Set) gets the pocket's node keys so the next candidate in the same pocket is refused without a walk. */
 function hqTerrainEscapes(info, x, z, o) {
     o = o || {};
-    const i0 = Math.round((x - info.x0) / info.res), j0 = Math.round((z - info.z0) / info.res);
-    if (i0 < 0 || j0 < 0 || i0 >= info.nx || j0 >= info.nz) return false;
-    const y0 = hqTerrainFeet(info, info.x0 + i0 * info.res, info.z0 + j0 * info.res, null); if (y0 == null) return false;
-    const goals = new Set();
-    ((o.room && o.room.doors) || []).forEach(d => { try { const L = hqTerrainDoorLanding(o.room, d), gi = Math.round((L.x - info.x0) / info.res), gj = Math.round((L.z - info.z0) / info.res);
-        for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) goals.add((gi + a) + ',' + (gj + b)); } catch (e) {} });
+    /* THE START SQUARE (2026-11-27, mondo: the Orchard plot GO left him inside Came A Lot Castle's Keep): the nearest lattice node can stand on
+       the far side of a wall from the body. The Keep's west wall and the west wing's east wall stand 0.3 m apart; a spot in the wing rounded to
+       the node in that slot, and the walk ran out along the slot to the court. The start is now the nearest of the four nodes round the body
+       that the body walks to in a straight line (no wall on the way, none on the node itself), or none: sealed. */
+    const ia = Math.floor((x - info.x0) / info.res), ja = Math.floor((z - info.z0) / info.res), yb = (o.y != null && isFinite(o.y)) ? o.y : hqTerrainHeight(info, x, z);
+    const clear = (nx_, nz_) => { if (hqTerrainWallAt(info, nx_, nz_, 0.2, yb + 0.3, yb + 1.8)) return false; const L = Math.hypot(nx_ - x, nz_ - z), n = Math.max(1, Math.ceil(L / 0.1));
+        for (let s = 1; s < n; s++) { const t = s / n; if (hqTerrainWallAt(info, x + (nx_ - x) * t, z + (nz_ - z) * t, 0.02, yb + 0.3, yb + 1.8)) return false; } return true; };
+    const starts = [];
+    for (const [a, b] of [[0, 0], [1, 0], [0, 1], [1, 1]]) { const i = ia + a, j = ja + b; if (i < 0 || j < 0 || i >= info.nx || j >= info.nz) continue; const px = info.x0 + i * info.res, pz = info.z0 + j * info.res; starts.push([Math.hypot(px - x, pz - z), i, j, px, pz]); }
+    starts.sort((p, q) => p[0] - q[0]);
+    const st = (isFinite(yb) && info.walls.length) ? starts.find(s => clear(s[3], s[4])) : starts[0];
+    if (!st) return false;
+    const i0 = st[1], j0 = st[2];
+    /* `o.y` = where the walker's feet really are: a body stood under the ground's top (Came A Lot Castle's spawn on level 0, inside the portal's
+       solid sill at 7 m) is in the rock, sealed whatever the ground above it reaches */
+    let y0 = hqTerrainFeet(info, info.x0 + i0 * info.res, info.z0 + j0 * info.res, (o.y != null && isFinite(o.y)) ? o.y : null); if (y0 == null) return false;
+    if (o.y != null && isFinite(o.y) && Math.abs(y0 - o.y) > 1.2) return false;
+    const goals = new Map();   // 'i,j' -> the landing's height (a landing is met only at its own height: a floor over it is not it)
+    ((o.room && o.room.doors) || []).forEach(d => { try { const L = hqTerrainDoorLanding(o.room, d), gi = Math.round((L.x - info.x0) / info.res), gj = Math.round((L.z - info.z0) / info.res), gy = isFinite(L.y) ? L.y : null;
+        for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) { const k = (gi + a) + ',' + (gj + b); (goals.get(k) || goals.set(k, []).get(k)).push(gy); } } catch (e) {} });
     if (!goals.size) return true;
+    const atGoal = (i, j, y) => { const g = goals.get(i + ',' + j); return !!g && g.some(gy => gy == null || Math.abs(gy - y) < 1.6); };
     const cap = Math.max(200, Math.round((o.area || 6000) / (info.res * info.res)));
     const mine = new Set(), q = [[i0, j0, y0]], N = [[1, 0], [-1, 0], [0, 1], [0, -1]], climbLim = _hqTClimbLim(info, info.rules.climb), CE = hqTerrainClimbEdges(info);
     const keyOf = (i, j, L) => L ? (i + ',' + j + ',' + L) : (i + ',' + j);
     mine.add(keyOf(i0, j0, hqTerrainLayerAt(info, info.x0 + i0 * info.res, info.z0 + j0 * info.res, y0)));
-    if (goals.has(i0 + ',' + j0)) return true;
+    if (atGoal(i0, j0, y0)) return true;
     let head = 0;
     while (head < q.length) {
         if (mine.size >= cap) return true;
         const p = q[head++];
-        const add = (i, j, y) => { const k = keyOf(i, j, hqTerrainLayerAt(info, info.x0 + i * info.res, info.z0 + j * info.res, y)); if (mine.has(k)) return false; mine.add(k); q.push([i, j, y]); return goals.has(i + ',' + j); };
+        const add = (i, j, y) => { const k = keyOf(i, j, hqTerrainLayerAt(info, info.x0 + i * info.res, info.z0 + j * info.res, y)); if (mine.has(k)) return false; mine.add(k); q.push([i, j, y]); return atGoal(i, j, y); };
         const ce = CE.get(p[1] * info.nx + p[0]);
         if (ce) for (const e of ce) { const ei = e.k % info.nx, ej = (e.k - ei) / info.nx; const ey = _hqTClimbLand(info, ei, ej, e.y); if (ey == null) continue; if (add(ei, ej, ey)) return true; }
         for (const n of N) {
             const i = p[0] + n[0], j = p[1] + n[1];
             if (i < 0 || j < 0 || i >= info.nx || j >= info.nz) continue;
-            for (const c of _hqTNodeFeet(info, i, j, p[2], climbLim, false)) { const k = keyOf(i, j, c[1]); if (mine.has(k)) continue; mine.add(k); q.push([i, j, c[0]]); if (goals.has(i + ',' + j)) return true; }
+            for (const c of _hqTNodeFeet(info, i, j, p[2], climbLim, false)) { const k = keyOf(i, j, c[1]); if (mine.has(k)) continue; mine.add(k); q.push([i, j, c[0]]); if (atGoal(i, j, c[0])) return true; }
         }
     }
     if (o.seen) mine.forEach(k => o.seen.add(k));
@@ -109914,6 +110132,16 @@ var CALM_TERRAIN = {   // var: the renderer and the survey worker read it, possi
         nz_purplebog:  ['nz_purplebog.png', 'purple_bog', 'Purple bog · moving'],
         nz_magma:      ['nz_magma.png', 'lava', 'Magma (red on black) · moving'],
         nz_oil:        ['nz_oil.png', 'oil', 'Oil (blue-black) · moving'],
+        /* THE TRIP SHEETS (2026-11-27, the DMT realm): drawn, never loaded (three-renderer.js _TRIP_SHEETS redraws each ten times a second); the
+           file here is the still the editor, the 2D board and the pickers show. Each plays by the holo plate's rules. */
+        dmt_floor:   ['dmt_floor.png', 'holo', 'Trip floor (mandala in a lit square) · alive'],
+        dmt_floor_b: ['dmt_floor_b.png', 'holo', 'Trip floor, the other colour · alive'],
+        dmt_eyes:    ['dmt_eyes.png', 'holo', 'Wall of eyes · alive'],
+        dmt_cubes:   ['dmt_cubes.png', 'holo', 'Cube matrix · alive'],
+        dmt_tunnel:  ['dmt_tunnel.png', 'holo', 'Mandala tunnel · alive'],
+        dmt_weave:   ['dmt_weave.png', 'holo', 'Flower of life · alive'],
+        dmt_ribbon:  ['dmt_ribbon.png', 'holo', 'Ribbons · alive'],
+        dmt_glyph:   ['dmt_glyph.png', 'holo', 'The script nobody reads · alive'],
         calm_marsdust:   ['calm_marsdust_1.png', 'moon_2', 'Mars floor dust'],   // Mars's floor: his moon_2 wore the room's tan there
         calm_moonviolet: ['calm_moonviolet_1.png', 'moon_3', 'Violet moon dust'],   // the Singularity's floor: his moon_3 wore the room's violet there
         calm_marblemint: ['calm_marblemint_1.png', 'marble_light', 'Mint marble'],   // Agartha's floor: his marble_light wore the crystal city's mint there
@@ -110428,6 +110656,51 @@ function zoneFloraRoomId(room) {
     return _zfRoomIds.get(room) || null;
 }
 /* rows in, rows out (the room's own rows are never changed: a swapped row is a copy) */
+/* THE CROPS VARY (2026-11-27, mondo: "all the very repetitive corn? can we do different crops or more variety of corn plants too?"). The Estate's corn
+   is 2,775 copies of one model, one height, one green. A row of a key listed here stands as its FIELD PATCH says: the world is cut in soft patches
+   (`patch` metres across, smooth noise on the row's own spot, so a room looks the same every visit) and each patch is one of `looks` (by weight):
+   a `tint` (the model drawn through a tinted twin of its material; a list = a gain per channel), a height range `vy` (the row's own height, the plan kept), or `to` = another
+   crop stood in its place (`n` of them along the row's 3.5 m, `h` their height range). Every row also takes its own small height off `vy`.
+   Copies, never the room's own rows; nothing blocks that did not (`noBlock` kept). Off: window.EW_NO_CROP_VARY. */
+const CROP_VARY = {
+    corn_row: { patch: 30, edge: 0.07, looks: [
+        { w: 41, vy: [0.92, 1.16] },                                   // the green corn, as it was, no two rows one height
+        { w: 14, vy: [0.58, 0.78], tint: [1.25, 1.3, 0.85] },                     // a young field, shoulder high
+        { w: 18, vy: [0.98, 1.24], tint: [1.7, 1.35, 0.72] },                   // ripening: tall and gone yellow
+        { w: 12, vy: [0.8, 1.02], tint: [2.1, 1.45, 1.0] },                    // dry, ready to cut
+        { w: 10, to: 'sunflowers', n: 3, h: [2.2, 2.9], vy: [1, 1] },  // a sunflower field
+        { w: 5, to: 'sunflowers', n: 3, h: [2.0, 2.6], tint: 0xd9b878, vy: [1, 1] } ] }   // sunflowers past their best
+};
+function cropRowsVary(room, rows) {
+    if (!rows || !rows.length || (typeof window !== 'undefined' && window.EW_NO_CROP_VARY)) return rows;
+    const h2 = (x, y, s) => { let n = Math.sin(x * 127.1 + y * 311.7 + s * 74.7) * 43758.5453; return n - Math.floor(n); };
+    const noise = (x, y, s) => { const xi = Math.floor(x), yi = Math.floor(y), fx = x - xi, fy = y - yi, u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy);
+        return (h2(xi, yi, s) * (1 - u) + h2(xi + 1, yi, s) * u) * (1 - v) + (h2(xi, yi + 1, s) * (1 - u) + h2(xi + 1, yi + 1, s) * u) * v; };
+    const wd = (room && room.world) || null, ox = (wd && wd.x) || 0, oz = (wd && wd.z) || 0;   // (a room at its world place: the patches run on across a seam)
+    let out = null;
+    for (let i = 0; i < rows.length; i++) {
+        const p = rows[i], V = p && CROP_VARY[p.key];
+        if (!V || p.vy || p.tint != null || p.x == null) { if (out) out.push(p); continue; }
+        if (!out) out = rows.slice(0, i);
+        const r1 = h2(p.x, p.z, 1), r2 = h2(p.x, p.z, 2), r3 = h2(p.x, p.z, 3);
+        /* the patch: two octaves, stretched to 0..1, a little of the row's own chance at a patch's rim so two fields meet ragged */
+        let t = noise((p.x + ox) / V.patch + 31.7, (p.z + oz) / V.patch - 12.3, 5) * 0.72 + noise((p.x + ox) / (V.patch * 0.37), (p.z + oz) / (V.patch * 0.37), 9) * 0.28;
+        t = Math.min(0.9999, Math.max(0, (t - 0.22) / 0.56 + (r1 - 0.5) * V.edge));
+        let tot = 0; V.looks.forEach(L => { tot += L.w; }); let acc = 0, L = V.looks[0];
+        /* (the looks are dealt out of order along the noise, so a tall yellow field can stand by a young one, not always by its neighbour in the list) */
+        const order = V._order || (V._order = V.looks.map((_, k) => k).sort((a, b) => h2(a, 7, 4) - h2(b, 7, 4)));
+        for (let k = 0; k < order.length; k++) { acc += V.looks[order[k]].w / tot; if (t < acc) { L = V.looks[order[k]]; break; } }
+        const vy = L.vy ? L.vy[0] + (L.vy[1] - L.vy[0]) * r2 : 1;
+        if (!L.to) { const c = Object.assign({}, p, { vy: Math.round(vy * 100) / 100 }); if (L.tint != null) c.tint = L.tint; out.push(c); continue; }
+        const a = (p.face || 0) * Math.PI / 180, dx = Math.cos(a), dz = -Math.sin(a), n = L.n || 3, span = 3.5;
+        for (let k = 0; k < n; k++) {
+            const rk = h2(p.x + k * 1.7, p.z - k * 2.3, 6), off = ((k + 0.5) / n - 0.5) * span + (rk - 0.5) * 0.3, zig = ((k & 1) ? 0.26 : -0.26);   // (the clumps stand staggered: a hedge of them, not a fence)
+            const c = { key: L.to, x: Math.round((p.x + dx * off - dz * zig) * 100) / 100, z: Math.round((p.z + dz * off + dx * zig) * 100) / 100, face: Math.round(rk * 360), noBlock: true, h: Math.round((L.h[0] + (L.h[1] - L.h[0]) * ((rk * 7.13 + r3) % 1)) * 100) / 100 };
+            if (p.y != null) c.y = p.y; if (L.tint != null) c.tint = L.tint; out.push(c);
+        }
+    }
+    return out || rows;
+}
 function zoneFloraSwap(room, rows, fallbackId) {
     if (!rows || !rows.length || (typeof window !== 'undefined' && (window.EW_NO_FLORA || window.EW_NO_FLORA_SWAP))) return rows;
     const S = ZONE_FLORA.swap, id = zoneFloraRoomId(room) || fallbackId || null; if (!S || !id) return rows;

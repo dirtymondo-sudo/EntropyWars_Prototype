@@ -15247,3 +15247,38 @@ row is drawn half its thickness past each end: the 0.9 m hedge reached 0.45 m ov
 `bake-disaster-city.js` `stairClear` (run before the features are written) pulls the end of every fence / hedge / wall row that reaches into a flight
 (crossing stair, door stoop, roof stair) back to 2 cm clear of its side; nothing is dropped, a row it cannot clear is named in the bake's output.
 First run: 117 ends pulled back, none left on a flight.
+
+## THE INSIDE OF THE CUBE (the DMT realm, pass 1; 2026-11-27, thread "Build the DMT realm inside the black cube")
+mondo 11-27: "a DMT realm dungeon map ... the 'inside' of the black cube ... totally psychadelic ... sacred geometry and fractal patterns ...
+while still being possible to do grid combat like usual ... several iterations/passes". Plan: `docs/plans/dmt-realm/PLAN.md` (six passes; pass 1
+built). His reference pictures are mood only: every pattern is drawn in code.
+- **THE ROOM** `site_prebuilt_cube_dmt` (site `prebuilt_cube`, part `dmt`; label THE BLACK CUBE · THE INSIDE, mine until he names it), 42 x 42
+  squares (147 m), the Astral Realm's machinery (`hqAstralShell`, `terrain.void` + float plateaus + float stair ramps), look `HQ_ROOM_LOOKS.dmt`.
+  Written by `node bake-dmt.js` between DMT-BEGIN / DMT-END (after ASTRAL36-END); THE PLAN is the table `P` + `JOINS` at the tool's top.
+  NINE PLATFORMS: the hub 10 x 10 (level 4 = 7 m), S / E / W / N 8 x 8 (levels 4 / 6 / 2 / 8), NE / SE / SW / NW 6 x 6 (7 / 5 / 3 / 5); twelve
+  bridges two squares wide (the cross + a ring road), a flight a square a level at the HIGH end. The tool refuses a platform no join reaches and
+  a solid piece inside a bridge's mouth. NO DOOR, NO RESIDENTS yet (his calls): enter with `_hqEnter({ from: 'play', room: ... })` or the editor.
+- **THE TRIP SHEETS** (three-renderer.js, beside THE MOVING SHEETS; data.js CALM_TERRAIN.sheets `dmt_*`, twin `holo`): texture keys whose
+  picture is DRAWN with the 2D canvas ten times a second, no file, no shader, both renderers: `dmt_floor` / `dmt_floor_b` (a mandala in a lit
+  square: ONE SHEET = ONE FIGHT SQUARE, the grid is the sheet's own edge), `dmt_eyes` (they look about and blink), `dmt_cubes` (twelve cubes a
+  sheet, dark faces, lit edges, some flip), `dmt_tunnel` (512 px, rings running outward for ever), `dmt_weave` (the flower of life),
+  `dmt_ribbon`, `dmt_glyph`, `dmt_eye_one` (a sprite's picture, not a terrain key). `_TRIP_SHEETS = { key: [draw(g, N, t, arg), size, arg] }`;
+  a new sheet = a draw function that TILES on all four sides + a row there + a CALM_TERRAIN row + an `_EMISSIVE_TERRAIN` row. Hooks: `_hzTex`
+  (rooms, arch parts, cliffs, stairs) and `getTerrainTexture` (a battle board). Drawn only while a room with a `trip` row stands or a board asked
+  for one (`_tripOn`). All are `_EMISSIVE_TERRAIN` (they light themselves); a self-lit sheet now also glows on pack stairs (`_spSheet`), floating
+  steps and an island's underside (was the floor only). Off: `window.EW_NO_TRIP_SHEETS`. Dev: `ThreeRenderer.hq.dev.trip()` (the live sheets),
+  `.tripStill(key)`. THE STILLS (the editor / 2D board's picture): `node bake-dmt.js --stills <dir>`, then `--put` each to
+  `Assets/world/terrain/calm/<key>.png`.
+  LESSON: a sheet with fine detail (the first cubes: 56 a sheet; the script at 8 columns) turns to grey noise on a 3.5 m face. Keep them BOLD
+  (a dozen shapes a sheet at most).
+- **THE INSIDE OF THE CUBE** (three-renderer.js `_tripBuildSky` / `_tripTickSky`): `sky.scenery: 'trip'` + the room's `trip: { margin, high, mid,
+  hubY, cubeY, faces: [six keys] }` = a box seen from inside (287 m here), each face a trip sheet a whole number of times across; the black cube
+  in three frames over the hub; the five solids on a slow round; two star tetrahedra; four knots of ribbon; four mandala windows; nine eye
+  SPRITES (a sprite faces the camera, so each eye looks back). 29 objects, plain MeshBasicMaterial (`_tripBars` = a solid's edges as one mesh of
+  bars: GL lines are a pixel thin). No sky roster, no lone doors.
+- **THE KERB OF LIGHT**: the walker's own rule stops him at a float platform's edge (he does not step off); the 0.4 m lit kerb round every
+  platform (open at each mouth) is what he SEES stop him. Drawn only (`arch`), a colour a platform.
+- **CHECKED (probe-fast, 11-27)**: loads, 0 page errors; nine views; the north stair climbed; a field fight on the hub (`--pre` put an Occulus
+  there for the run only: `field:site_prebuilt_cube_dmt:10,10`, round 1); `find-softlocks.js` 0 / 0 / 0.
+- **NOT YET**: passes 2-6 (depth + fractals, the screen trip, residents, the way in, sound + arena + map picture); an online guest's view of a
+  fight here; the frame rate on his Mac (the sheets cost nine small canvas draws + uploads ten times a second).

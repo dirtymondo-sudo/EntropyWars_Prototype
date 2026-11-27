@@ -418,6 +418,11 @@ whole, now 74 m out).
 512 px JPEG sheet each (95-155 KB), `Assets/world/props/meshy/edge_rock_*.glb`. Made with `/mnt/project-files/foliage-pass/rocks/gen.py` (concept nano-banana-pro ->
 image-to-3d, target 900 triangles, no PBR; the sheets shrunk from 2K by a small script). 234 credits. The kit kinds `edge_rock_1..4` are gone; the kit rocks stay as props.
 
+**G29 · THE UNDERWOOD + THE DRY SCRUB (11-27).** THE BELT's trees were all trunks at eye level: six in ten of its places also stand a sapling (the belt's own kinds,
+1.6 to 3 m). The rock line's dry places stand the graveyard pack's dead bushes between the boulders (`edge_dead_bush_1/2`, four in ten). Stonehenge: 567 -> 751 planted.
+TRIED AND DROPPED: Meshy leafy bushes (two tests, 78 credits): at 1,500 triangles a leafy shrub comes back as loose leaf shards. Not made: new logs / stumps / desert
+scrub (the game has `fallen_log`, `meshy_fallen_log`, `meshy_stump`, the kit stumps, the dead bushes, and the Woods' scenic pass already lays them).
+
 **Not done in this pass (ideas, none built):** blade colour against a sunlit floor (the tufts read darker than the sheet in full
 sun); a gust that the plants and the grass share; trees were left as they are (they already sway).
 
@@ -701,3 +706,11 @@ City lists its plots by district; every other multi-district room is told apart 
   also plant an `rf_*` kind directly; the rule leaves it alone.
 - The raw packs are still in R2 `dirtymondo/inbox/More Foilage/` (this cloud container has no `/mnt/project-files`, so they
   could not be moved to `asset-packs/` or logged in `_sorted-log.md`).
+
+## G30 · THE CROPS VARY (2026-11-27, mondo: "the estate and all the very repetitive corn? can we do different crops or more variety of corn plants too?")
+
+The Estate's corn was 2,775 `corn_row` rows of one model, one height, one green (the corn is a LINE of rows round each open square; nothing stands behind it).
+- data.js `CROP_VARY` + `cropRowsVary(room, rows)` (called once a room build in three-renderer.js beside `zoneFloraSwap`; copies, never the room's rows; no district file or bake touched, so it holds for every room that lays a listed key). The ground is cut in soft patches (`patch` 30 m, smooth noise on the row's spot, the same every visit) and a patch is one of `looks` by weight: green as it was, a young shoulder-high field, a tall ripening yellow one, a dry straw one, a sunflower field (`to: 'sunflowers'`, three staggered clumps a row, 2.2-2.9 m) and sunflowers past their best. Every row also takes its own height.
+- A row's `vy` = its own height (placeOne: `grp.scale.y`), a row's `tint` = its model drawn through a tinted twin of the room material (`_hqPropTintPick`, one twin per sheet + tint, shared, let go with the file). A tint list is a gain per channel and may pass 1: a multiply alone cannot turn green corn yellow.
+- Only TALL crops stand in for corn: the line is the wall the walker sees, so wheat or pumpkins there would show the bare ground behind it. Low crops (`fl_wheat_clump`, `hw_crop*`, `hw_pumpkin*`) belong on open, walked squares = district files.
+- Off: `window.EW_NO_CROP_VARY`. Not done: the squares behind the corn line are still bare ground (seen from above or through a gap); filling them is a field drawn like THE FLORA FIELD, not 10,000 more props.
