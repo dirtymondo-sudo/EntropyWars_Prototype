@@ -100192,29 +100192,44 @@ function hqTerrainReach(info, x, z) {
    refuses a sealed spot. `o.seen` (a Set) gets the pocket's node keys so the next candidate in the same pocket is refused without a walk. */
 function hqTerrainEscapes(info, x, z, o) {
     o = o || {};
-    const i0 = Math.round((x - info.x0) / info.res), j0 = Math.round((z - info.z0) / info.res);
-    if (i0 < 0 || j0 < 0 || i0 >= info.nx || j0 >= info.nz) return false;
-    const y0 = hqTerrainFeet(info, info.x0 + i0 * info.res, info.z0 + j0 * info.res, null); if (y0 == null) return false;
-    const goals = new Set();
-    ((o.room && o.room.doors) || []).forEach(d => { try { const L = hqTerrainDoorLanding(o.room, d), gi = Math.round((L.x - info.x0) / info.res), gj = Math.round((L.z - info.z0) / info.res);
-        for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) goals.add((gi + a) + ',' + (gj + b)); } catch (e) {} });
+    /* THE START SQUARE (2026-11-27, mondo: the Orchard plot GO left him inside Came A Lot Castle's Keep): the nearest lattice node can stand on
+       the far side of a wall from the body. The Keep's west wall and the west wing's east wall stand 0.3 m apart; a spot in the wing rounded to
+       the node in that slot, and the walk ran out along the slot to the court. The start is now the nearest of the four nodes round the body
+       that the body walks to in a straight line (no wall on the way, none on the node itself), or none: sealed. */
+    const ia = Math.floor((x - info.x0) / info.res), ja = Math.floor((z - info.z0) / info.res), yb = (o.y != null && isFinite(o.y)) ? o.y : hqTerrainHeight(info, x, z);
+    const clear = (nx_, nz_) => { if (hqTerrainWallAt(info, nx_, nz_, 0.2, yb + 0.3, yb + 1.8)) return false; const L = Math.hypot(nx_ - x, nz_ - z), n = Math.max(1, Math.ceil(L / 0.1));
+        for (let s = 1; s < n; s++) { const t = s / n; if (hqTerrainWallAt(info, x + (nx_ - x) * t, z + (nz_ - z) * t, 0.02, yb + 0.3, yb + 1.8)) return false; } return true; };
+    const starts = [];
+    for (const [a, b] of [[0, 0], [1, 0], [0, 1], [1, 1]]) { const i = ia + a, j = ja + b; if (i < 0 || j < 0 || i >= info.nx || j >= info.nz) continue; const px = info.x0 + i * info.res, pz = info.z0 + j * info.res; starts.push([Math.hypot(px - x, pz - z), i, j, px, pz]); }
+    starts.sort((p, q) => p[0] - q[0]);
+    const st = (isFinite(yb) && info.walls.length) ? starts.find(s => clear(s[3], s[4])) : starts[0];
+    if (!st) return false;
+    const i0 = st[1], j0 = st[2];
+    /* `o.y` = where the walker's feet really are: a body stood under the ground's top (Came A Lot Castle's spawn on level 0, inside the portal's
+       solid sill at 7 m) is in the rock, sealed whatever the ground above it reaches */
+    let y0 = hqTerrainFeet(info, info.x0 + i0 * info.res, info.z0 + j0 * info.res, (o.y != null && isFinite(o.y)) ? o.y : null); if (y0 == null) return false;
+    if (o.y != null && isFinite(o.y) && Math.abs(y0 - o.y) > 1.2) return false;
+    const goals = new Map();   // 'i,j' -> the landing's height (a landing is met only at its own height: a floor over it is not it)
+    ((o.room && o.room.doors) || []).forEach(d => { try { const L = hqTerrainDoorLanding(o.room, d), gi = Math.round((L.x - info.x0) / info.res), gj = Math.round((L.z - info.z0) / info.res), gy = isFinite(L.y) ? L.y : null;
+        for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) { const k = (gi + a) + ',' + (gj + b); (goals.get(k) || goals.set(k, []).get(k)).push(gy); } } catch (e) {} });
     if (!goals.size) return true;
+    const atGoal = (i, j, y) => { const g = goals.get(i + ',' + j); return !!g && g.some(gy => gy == null || Math.abs(gy - y) < 1.6); };
     const cap = Math.max(200, Math.round((o.area || 6000) / (info.res * info.res)));
     const mine = new Set(), q = [[i0, j0, y0]], N = [[1, 0], [-1, 0], [0, 1], [0, -1]], climbLim = _hqTClimbLim(info, info.rules.climb), CE = hqTerrainClimbEdges(info);
     const keyOf = (i, j, L) => L ? (i + ',' + j + ',' + L) : (i + ',' + j);
     mine.add(keyOf(i0, j0, hqTerrainLayerAt(info, info.x0 + i0 * info.res, info.z0 + j0 * info.res, y0)));
-    if (goals.has(i0 + ',' + j0)) return true;
+    if (atGoal(i0, j0, y0)) return true;
     let head = 0;
     while (head < q.length) {
         if (mine.size >= cap) return true;
         const p = q[head++];
-        const add = (i, j, y) => { const k = keyOf(i, j, hqTerrainLayerAt(info, info.x0 + i * info.res, info.z0 + j * info.res, y)); if (mine.has(k)) return false; mine.add(k); q.push([i, j, y]); return goals.has(i + ',' + j); };
+        const add = (i, j, y) => { const k = keyOf(i, j, hqTerrainLayerAt(info, info.x0 + i * info.res, info.z0 + j * info.res, y)); if (mine.has(k)) return false; mine.add(k); q.push([i, j, y]); return atGoal(i, j, y); };
         const ce = CE.get(p[1] * info.nx + p[0]);
         if (ce) for (const e of ce) { const ei = e.k % info.nx, ej = (e.k - ei) / info.nx; const ey = _hqTClimbLand(info, ei, ej, e.y); if (ey == null) continue; if (add(ei, ej, ey)) return true; }
         for (const n of N) {
             const i = p[0] + n[0], j = p[1] + n[1];
             if (i < 0 || j < 0 || i >= info.nx || j >= info.nz) continue;
-            for (const c of _hqTNodeFeet(info, i, j, p[2], climbLim, false)) { const k = keyOf(i, j, c[1]); if (mine.has(k)) continue; mine.add(k); q.push([i, j, c[0]]); if (goals.has(i + ',' + j)) return true; }
+            for (const c of _hqTNodeFeet(info, i, j, p[2], climbLim, false)) { const k = keyOf(i, j, c[1]); if (mine.has(k)) continue; mine.add(k); q.push([i, j, c[0]]); if (atGoal(i, j, c[0])) return true; }
         }
     }
     if (o.seen) mine.forEach(k => o.seen.add(k));
