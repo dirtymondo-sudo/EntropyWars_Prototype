@@ -399,6 +399,9 @@ const FINISHERS = {
     'centaur':        { id: 'fin_centaur', name: 'Run Down', glyph: '🏹', type: 'anomaly', sig: 'splitTheArrow', built: true, tagline: 'NEVER MISSES ON THE RUN', desc: 'Hooves on the horizon, a bow drawn at a full gallop, and one arrow that has been waiting for the victim the whole ride.' },   // 2026-11-24 THE CENTAUR (borrows Robin Hood's signature)
     'cheerleader':    { id: 'fin_cheerleader', name: 'Pyramid Collapse', glyph: '📣', type: 'human', sig: 'pileOn', built: true, tagline: 'GO, FIGHT, WIN', desc: 'The whole squad runs on from the sidelines, builds the pyramid on top of the victim and holds the pose for the cameras.' },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD (borrows the pileOn staging)
     'princess':       { id: 'fin_princess', name: 'Happily Never After', glyph: '👑', type: 'divine', sig: 'pileOn', built: true, tagline: 'THE END', desc: 'The whole royal court rushes in to defend her honour and piles on, and a storybook closes over what is left.' },   // 2026-11-24 THE PRINCESS (borrows the pileOn staging)
+    'leopard girl':   { id: 'fin_leopard_girl', name: 'Up a Tree', glyph: '🐆', type: 'anomaly', sig: 'nineLives', built: true, tagline: 'SHE ALWAYS LANDS ON HER FEET', desc: 'Pounced on from nine branches at once, and dragged up the tallest tree to be eaten later.' },   // 2026-11-27 THE NEW RACES 5 (borrows the nineLives staging)
+    'draconian':      { id: 'fin_draconian', name: 'Bow Before Draco', glyph: '🐉', type: 'alien', sig: 'unmasking', built: true, tagline: 'WE WERE HERE FIRST', desc: 'The skin comes off the face of every king in history, and every one of them is him.' },   // 2026-11-27 THE NEW RACES 5 (borrows the unmasking staging)
+    'flower girl':    { id: 'fin_flower_girl', name: 'Pushing Up Daisies', glyph: '🌸', type: 'anomaly', sig: 'theBloom', built: true, tagline: 'SHE LOVES YOU NOT', desc: 'One petal at a time: loves me, loves me not. The last petal falls, and the daisies come up through what is left.' },   // 2026-11-27 THE NEW RACES 5 (borrows theBloom staging)
     'point guard':    { id: 'fin_point_guard', name: 'Posterized', glyph: '🏀', type: 'human', sig: 'motionCarries', built: true, tagline: 'AND ONE', desc: 'A hoop drops out of the sky, he takes off from the free-throw line and slams the victim through it, ball and all.' },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD (borrows the motionCarries staging)
     'music producer': { id: 'fin_music_producer', name: 'Platinum Record', glyph: '💿', type: 'human', sig: 'farewellTour', built: true, tagline: 'GOING PLATINUM', desc: 'He drops the needle on one last track. A stage stands up round the victim, the lights find them, the whole song plays its drop, and when the lights come back up a gold record hangs where they stood.' },   // 2026-11-24 THE MUSIC PRODUCER (borrows the Popstar's stage)
     'streamer':       { id: 'fin_streamer', name: 'Banned', glyph: '🎮', type: 'anomaly', sig: 'corruptedSave', built: true, tagline: 'ACCOUNT SUSPENDED', desc: 'The chat floods, the mods wake up, and ACCOUNT SUSPENDED stamps down over the victim until nothing is left on the stream.' },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit) (borrows the corruptedSave staging)
@@ -672,6 +675,9 @@ const RACE_ELEMENT_AFFINITY = {
     'centaur': { earth: 'resist', ice: 'weak' },   // 2026-11-24 THE CENTAUR: four hooves on the ground; a horse on ice
     'cheerleader': { sonic: 'resist', poison: 'weak' },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: she out-yells anything; a whole season of energy drinks
     'princess': { light: 'resist', poison: 'weak' },   // 2026-11-24 THE PRINCESS: blessed at her christening; one bite of the wrong apple
+    'leopard girl': { nature: 'resist', ice: 'weak' },   // 2026-11-27 THE NEW RACES 5: the long grass is home; a cat in the snow
+    'draconian': { psychic: 'resist', ice: 'weak' },   // 2026-11-27 THE NEW RACES 5: the oldest mind in the room; cold-blooded
+    'flower girl': { nature: 'resist', fire: 'weak' },   // 2026-11-27 THE NEW RACES 5: in full bloom; petals burn
     'point guard': { wind: 'resist', ice: 'weak' },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: quick on his feet; the cold gets in his knees
     'music producer': { sonic: 'resist', water: 'weak' },   // 2026-11-24 THE MUSIC PRODUCER: he lives in the loud; water and his gear do not mix
     'streamer': { sonic: 'resist', light: 'weak' },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit): the headset is on; never sees the sun
@@ -3183,15 +3189,15 @@ const RACE_PROFILES = {
         label: 'Nutcracker',
         types: ['anomaly']
     },
-    'leopard girl': {   // 2026-11-27 THE NEW CHARACTERS (models in, kit not yet: the spell thread sets the type for good)
+    'leopard girl': {   // 2026-11-27 THE NEW CHARACTERS (kit: THE NEW RACES 5)
         label: 'Leopard Girl',
         types: ['anomaly']
     },
-    'draconian': {   // 2026-11-27 THE NEW CHARACTERS (models in, kit not yet: the spell thread sets the type for good) — the dragon-kin of the reptilians
+    'draconian': {   // 2026-11-27 THE NEW CHARACTERS (kit: THE NEW RACES 5) — the dragon-kin of the reptilians
         label: 'Draconian',
         types: ['alien']
     },
-    'flower girl': {   // 2026-11-27 THE NEW CHARACTERS (models in, kit not yet: the spell thread sets the type for good)
+    'flower girl': {   // 2026-11-27 THE NEW CHARACTERS (kit: THE NEW RACES 5)
         label: 'Flower Girl',
         types: ['anomaly']
     },
@@ -3956,6 +3962,18 @@ const PASSIVE_DEFS = {
         id: 'prDamsel', icon: '👑', name: 'Damsel in Distress',
         desc: 'The first time each round an enemy hits her, every ally within 3 rushes to her defence: +1 ATK stage.',
     },
+    lgRosettes: {   // 2026-11-27 THE NEW RACES 5: battle.js THE NEW RACES 5 (_lgRoundEnd, _lgAmbushCrit)
+        id: 'lgRosettes', icon: '🐆', name: 'Rosettes',
+        desc: 'A round in which she lands no hit, she fades into the grass at its end: Invisible. The first hit she lands from hiding is a sure critical hit.',
+    },
+    dcDominion: {   // 2026-11-27 THE NEW RACES 5: battle.js THE NEW RACES 5 (_dcDominion at an enemy's turn start)
+        id: 'dcDominion', icon: '🐉', name: 'Dominion',
+        desc: 'Any enemy that starts its turn within 2 of him is Cowed: -1 ATK stage for each stack, up to 3. A new stack keeps them all for 2 more rounds.',
+    },
+    fgPollinate: {   // 2026-11-27 THE NEW RACES 5: battle.js THE NEW RACES 5 (_fgPollenHit, from applyDamageToUnit)
+        id: 'fgPollinate', icon: '🌸', name: 'Pollinate',
+        desc: 'Her spells dust enemies with Pollen (up to 3). Whenever one of her allies hits an enemy carrying Pollen, that ally heals 6% of its max HP and the Pollen loses a stack.',
+    },
     pgAssist: {   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: battle.js THE CHEERLEADER + THE POINT GUARD (applyDamageToUnit)
         id: 'pgAssist', icon: '🏀', name: 'Assist',
         desc: 'Every enemy he hits with a basic attack or a spell is left Marked for 2 rounds, for his team: the next physical hit an ALLY lands on it deals bonus damage (his own hits never cash it).',
@@ -4071,6 +4089,9 @@ const RACE_PASSIVES = {
     'centaur':       ['cenHitAndRun'],   // 2026-11-24 THE CENTAUR
     'cheerleader':   ['chSpirit'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
     'princess':      ['prDamsel'],   // 2026-11-24 THE PRINCESS
+    'leopard girl':  ['lgRosettes'],   // 2026-11-27 THE NEW RACES 5
+    'draconian':     ['dcDominion'],   // 2026-11-27 THE NEW RACES 5
+    'flower girl':   ['fgPollinate'],   // 2026-11-27 THE NEW RACES 5
     'point guard':   ['pgAssist'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
     'music producer': ['mpOnLoop'],   // 2026-11-24 THE MUSIC PRODUCER
 };
@@ -4149,7 +4170,7 @@ const RACE_MERGED = { 'nun': { race: 'priest', gender: 'female' } };
 /* 👁🌑 THE REALM WINDOW: races that SEE a Shadow Realm pair on their own turns (they cannot touch it). A projecting
    spirit both sees and touches (battle.js unitSeesRealm / unitCrossesRealm). */
 const REALM_SIGHT_RACES = ['ghost', 'shadow entity'];
-const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber', 'pharaoh', 'deep sea diver', 'gambler', 'hacker', 'monk', 'shogun', 'cameraman', 'mechanic', 'janitor', 'trucker', 'gladiator', 'farmer', 'jellyfish ufo', 'bear', 'rat', 'butterfly girl', 'plastic surgeon', 'monarch', 'abomination', 'hollow', 'weatherman', 'cheerleader', 'point guard', 'centaur', 'music producer', 'princess', 'demiurge', 'monster truck', 'nutcracker'];
+const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber', 'pharaoh', 'deep sea diver', 'gambler', 'hacker', 'monk', 'shogun', 'cameraman', 'mechanic', 'janitor', 'trucker', 'gladiator', 'farmer', 'jellyfish ufo', 'bear', 'rat', 'butterfly girl', 'plastic surgeon', 'monarch', 'abomination', 'hollow', 'weatherman', 'cheerleader', 'point guard', 'centaur', 'music producer', 'princess', 'demiurge', 'monster truck', 'nutcracker', 'leopard girl', 'draconian', 'flower girl'];
 /* THE COMING RACES (2026-11-19, mondo: "wire them in the game at least in the relation web, give them sprite ai portraits ... my associate
    [does] their spell and combat plan on another account"): races whose model, sprite and name are in (sprites.js RACE_MODELS_3D,
    RACE_PROFILES) but whose kit is not. They are NOT playable: the Relationship Web lists them (docs/plans/story-web/build/fresh.js).
@@ -4157,7 +4178,7 @@ const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scie
    AVAILABLE_RACES and server.js AVAILABLE_RACES. Notes: docs/notes/champions-combat.md "THE COMING RACES". */
 /* THE WEATHERMAN's FORECAST (2026-11-24 THE WEATHERMAN + NEWS ANCHOR): the weather never hurts or soaks him (state.js applyWeatherTurnEffects + stormStrikeUnit) */
 function wnWeatherproof(u) { return !!u && u.race === 'weatherman' && (u.gender || 'male') === 'male' && unitHasPassive(u, 'wnTheForecast'); }   /* Broken = no passives = no shelter */
-const EW_COMING_RACES = ['leopard girl', 'draconian', 'flower girl', 'leprechaun', 'medic'];   // 2026-11-27 THE NEW CHARACTERS (models + sprites in, kits being made by three spell threads; each moves its key into AVAILABLE_RACES here AND in server.js with its kit).   // 2026-11-23 THE COMING RACES 2 (the Mannequin was cut 11-23, mondo; the Bear, the Rat, the Butterfly Girl and the Monarch got their kits 11-23 and moved to AVAILABLE_RACES) (models in, kits not yet; one spell thread a unit). 2026-11-19: the gladiator, the farmer and the jellyfish UFO got their kits and moved to AVAILABLE_RACES
+const EW_COMING_RACES = ['leprechaun', 'medic'];   // 2026-11-27 THE NEW CHARACTERS (models + sprites in, kits being made by three spell threads; each moves its key into AVAILABLE_RACES here AND in server.js with its kit).   // 2026-11-23 THE COMING RACES 2 (the Mannequin was cut 11-23, mondo; the Bear, the Rat, the Butterfly Girl and the Monarch got their kits 11-23 and moved to AVAILABLE_RACES) (models in, kits not yet; one spell thread a unit). 2026-11-19: the gladiator, the farmer and the jellyfish UFO got their kits and moved to AVAILABLE_RACES
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
    default job's kit (JOB_KITS) gave it, so ranged races stay ranged: the old Sniper races reach 4 (kit 3 + the Sniper's
@@ -4182,6 +4203,9 @@ const RACE_KITS = {
     'centaur': { range: 4 },   // 2026-11-24 THE CENTAUR: the bow
     'cheerleader': { range: 1 },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: the basic attack is a high kick
     'princess': { range: 2 },   // 2026-11-24 THE PRINCESS: the basic attack is a flick of the wrist, a little spark
+    'leopard girl': { range: 1 },   // 2026-11-27 THE NEW RACES 5: claws
+    'draconian': { range: 1 },   // 2026-11-27 THE NEW RACES 5: talons
+    'flower girl': { range: 2 },   // 2026-11-27 THE NEW RACES 5: a puff of petals
     'point guard': { range: 3 },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: the basic attack is a chest pass with his basketball (it flies and comes back to his hands)
     'music producer': { range: 2 },   // 2026-11-24 THE MUSIC PRODUCER: the basic attack is a pad hit; the sound wave reaches
     'streamer': { range: 1 },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit): the basic attack is a keyboard slam
@@ -4334,6 +4358,9 @@ const RACE_CLASS = {
     'centaur': 'ranged',   // 2026-11-24 THE CENTAUR: a horse archer
     'cheerleader': 'support',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
     'princess': 'support',   // 2026-11-24 THE PRINCESS
+    'leopard girl': 'assassin',   // 2026-11-27 THE NEW RACES 5
+    'draconian': 'bruiser',   // 2026-11-27 THE NEW RACES 5
+    'flower girl': 'support',   // 2026-11-27 THE NEW RACES 5
     'point guard': 'ranged',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
     'music producer': 'specialist',   // 2026-11-24 THE MUSIC PRODUCER: he builds the song, the song does the work
     'streamer': 'specialist',   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
@@ -4424,6 +4451,9 @@ const RACE_TERRAIN_PREFERENCE = {
     'centaur': 'grass',   // 2026-11-24 THE CENTAUR: open ground to run on
     'cheerleader': 'urban',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: Disaster City University
     'princess': 'grass',   // 2026-11-24 THE PRINCESS: the gardens of Came A Lot
+    'leopard girl': 'tree',   // 2026-11-27 THE NEW RACES 5: leopards hunt from the branches
+    'draconian': 'desert',   // 2026-11-27 THE NEW RACES 5: the pyramids
+    'flower girl': 'grass',   // 2026-11-27 THE NEW RACES 5: a meadow
     'point guard': 'urban',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: Disaster City's Sports district
     'music producer': 'urban',   // 2026-11-24 THE MUSIC PRODUCER: Disaster City (Mid Records)
     'streamer': 'urban',   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
@@ -4850,6 +4880,9 @@ const RACE_BASE_STATS = {
     'centaur':            { hp:  900, mp: 150, atk: 118, def:  78, mdef:  62, int:  95, vision: 5, crt: 20, spd: 128 },   // 2026-11-24 THE CENTAUR — first pass between Robin Hood (ranged) and the Unicorn (a horse's body)
     'cheerleader':        { hp: 1020, mp: 210, atk:  95, def:  85, mdef: 120, int: 140, vision: 3, crt: 20, spd: 125 },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — first pass: a quick support who kicks
     'princess':           { hp:  960, mp: 230, atk:  60, def:  75, mdef: 135, int: 150, vision: 4, crt: 15, spd: 120 },   // 2026-11-24 THE PRINCESS — first pass: a frail royal caster, magic and healing
+    'leopard girl':       { hp: 1000, mp: 120, atk: 165, def:  85, mdef:  60, int:  50, vision: 4, crt: 26, spd: 150 },   // 2026-11-27 THE NEW RACES 5: first pass on the assassin median (a stalker: fast, hits hard, thin)
+    'draconian':          { hp: 1280, mp: 140, atk: 140, def: 118, mdef:  95, int:  90, vision: 3, crt: 15, spd: 100 },   // 2026-11-27 THE NEW RACES 5: first pass on the bruiser median
+    'flower girl':        { hp:  980, mp: 230, atk:  50, def:  75, mdef: 135, int: 150, vision: 4, crt: 15, spd: 115 },   // 2026-11-27 THE NEW RACES 5: first pass on the support median
     'point guard':        { hp:  940, mp: 140, atk: 112, def:  78, mdef:  62, int:  40, vision: 4, crt: 26, spd: 150 },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — first pass on the ranged median, the fastest hands on the court
     'music producer':     { hp:  980, mp: 230, atk:  60, def:  80, mdef: 120, int: 160, vision: 3, crt: 18, spd: 105 },   // 2026-11-24 THE MUSIC PRODUCER — first pass on the specialist median
     'streamer':           { hp:  990, mp: 200, atk: 125, def:  80, mdef: 100, int: 142, vision: 3, crt: 25, spd: 110 },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit) — first pass: a skirmisher who banks a crowd; LAB LOOP 11-22 PASS 4: HP 950→990, ATK 120→125, M.ATK 130→142 (44.9% over 244 games)
@@ -5064,6 +5097,9 @@ const RACE_PHYSIQUE = {
     'centaur':             { h: 2.40, w: 480 },   // 2026-11-24 THE CENTAUR: a horse with a rider's body on it, head to hoof
     'cheerleader':         { h: 1.66, w: 55 },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
     'princess':            { h: 1.68, w: 52 },   // 2026-11-24 THE PRINCESS (the crown not counted)
+    'leopard girl':        { h: 1.70, w: 55 },   // 2026-11-27 THE NEW RACES 5
+    'draconian':           { h: 2.20, w: 140 },   // 2026-11-27 THE NEW RACES 5: a tall reptilian, no wings
+    'flower girl':         { h: 1.65, w: 50 },   // 2026-11-27 THE NEW RACES 5
     'point guard':         { h: 1.88, w: 84 },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
     'music producer':      { h: 1.80, w: 74 },   // 2026-11-24 THE MUSIC PRODUCER
     'streamer':            { h: 1.76, w: 70 },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
@@ -11504,6 +11540,88 @@ const RACE_ABILITIES = {
           element: 'light', type: 'buff', kind: 'aoeShield', range: 0, aoeOriginSelf: true, aoeRadius: 3, shieldHp: 170,
           desc: 'And they all lived happily ever after. Every ally within 3, and she, gets a 170-point shield. Cooldown: 4 rounds.' },
     ],
+    'leopard girl': [
+        /* THE LEOPARD GIRL (2026-11-27 THE NEW RACES 5; mondo 11-27: "a leopard girl (more anthropomorphic)", the fur like the Cats musical). A stalker:
+           she hides, she pounces, she drags the kill away. HER RULE, ROSETTES (lgRosettes): a round in which she lands no hit, she
+           fades into the grass at its end (Invisible); the first hit she lands from hiding is a sure critical (battle.js THE NEW
+           RACES 5: _lgRoundEnd, _lgAmbushCrit). Drag the Kill (`lgDrag`) walks her back and pulls the victim along (_lgDrag). */
+        { id: 'lgRake', name: 'Rake', tier: 1, families: ['leopard'], cost: 25, apCost: 1, spellType: 'anomaly',
+          type: 'damage', kind: 'damage', damageType: 'physical', dmg: 95, range: 1,
+          statusEffects: [{ id: 'bleed', duration: 2 }],
+          desc: 'Five claws, one swipe. Deals WEAK physical damage to a Single Enemy beside her and leaves it Bleeding for 2 rounds.' },
+        _mkCharge({ id: 'lgPounce', name: 'Pounce', tier: 2, families: ['leopard'], cost: 45, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+          dmg: 125, range: 4, statusEffects: [{ id: 'stagger', duration: 1 }],
+          desc: 'From the long grass, all at once. Leaps up to 4 tiles onto a Single Enemy for MEDIUM physical damage and Staggers it for 1 round. Cooldown: 2 rounds.' }),
+        { id: 'lgDragKill', name: 'Drag the Kill', tier: 2, families: ['leopard'], cost: 45, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+          type: 'damage', kind: 'damage', damageType: 'physical', dmg: 100, range: 1, lgDrag: 2,
+          desc: 'Teeth in, and away. Deals MEDIUM physical damage to a Single Enemy beside her, then she backs up to 2 tiles and drags it along with her, away from its friends. Cooldown: 2 rounds.' },
+        { id: 'lgThroatHold', name: 'Throat Hold', tier: 3, families: ['leopard'], cost: 60, apCost: 1, cooldownRounds: 3, spellType: 'anomaly',
+          type: 'damage', kind: 'damage', damageType: 'physical', dmg: 115, range: 1,
+          statusEffects: [{ id: 'root', duration: 1 }, { id: 'silence', duration: 1 }],
+          desc: 'The hold that ends the struggle. Deals MEDIUM physical damage to a Single Enemy beside her; it is Rooted and Silenced for 1 round. Cooldown: 3 rounds.' },
+        { id: 'lgKillingBite', name: 'Killing Bite', tier: 4, families: ['leopard'], cost: 85, apCost: 1, cooldownRounds: 3, spellType: 'anomaly',
+          type: 'damage', kind: 'damage', damageType: 'physical', dmg: 170, range: 1,
+          bonusVsStatus: { status: 'bleed', mult: 1.5 }, executeBelowPct: 0.2, executeAfterHit: true,
+          desc: 'One bite, at the back of the neck. Deals HEAVY physical damage to a Single Enemy beside her, bonus damage if it is Bleeding; if it is left under 20% HP, it is finished. Cooldown: 3 rounds.' },
+    ],
+    'draconian': [
+        /* THE DRACONIAN (2026-11-27 THE NEW RACES 5; mondo 11-27: "Draconian", no wings; his canon: the Annunaki are Draconians, the Kool-Aid saucer is
+           theirs, they came for Egypt and the cats held them off). The overlord of the reptilians. HIS RULE, DOMINION (dcDominion):
+           any enemy that starts its turn within 2 of him is Cowed (`cowed`, -1 ATK stage a stack, up to 3; battle.js THE NEW RACES 5
+           _dcDominion). Talon Rend and Reptile Eye add stacks; Royal Blood feeds on the Cowed; Kneel cashes every stack in
+           (`perCowedStack` in _spellCritRoll, the Stun at 3 + the clear in _dcAfterCast). */
+        { id: 'dcTalonRend', name: 'Talon Rend', tier: 1, families: ['draconian'], cost: 25, apCost: 1, spellType: 'alien',
+          type: 'damage', kind: 'damage', damageType: 'physical', dmg: 100, range: 1,
+          statusEffects: [{ id: 'cowed', duration: 2 }],
+          desc: 'Talons older than the pyramids. Deals MEDIUM physical damage to a Single Enemy beside him and Cows it (+1 stack: -1 ATK stage).' },
+        { id: 'dcTailSweep', name: 'Tail Sweep', tier: 2, families: ['draconian'], cost: 45, apCost: 1, cooldownRounds: 2, spellType: 'alien',
+          type: 'damage', kind: 'aoe', damageType: 'physical', dmg: 85, range: 0, aoeRadius: 1, aoeOriginSelf: true, pushDistance: 1,
+          statusEffects: [{ id: 'stagger', duration: 1 }],
+          desc: 'The tail comes round. Deals WEAK physical damage to All Enemies next to him, knocks them 1 tile back and Staggers them for 1 round. Cooldown: 2 rounds.' },
+        { id: 'dcReptileEye', name: 'Reptile Eye', tier: 2, families: ['draconian'], cost: 45, apCost: 1, cooldownRounds: 3, spellType: 'alien',
+          animClip: { name: 'Talk_with_Left_Hand_Raised', lib: 9, ts: 1.45, trim: [0.8, 2.8], strikeAt: 2.1 },   // THE MESHY CASTS (11-24): the hypnotist's hand
+          element: 'psychic', type: 'debuff', kind: 'debuff', range: 3, noDamage: true,
+          statusEffects: [{ id: 'charm', duration: 1 }, { id: 'cowed', duration: 2 }],
+          desc: 'The slit pupils open wide. A Single Enemy within 3 is Charmed for 1 round and Cowed (+1 stack). Cooldown: 3 rounds.' },
+        { id: 'dcRoyalBlood', name: 'Royal Blood', tier: 3, families: ['draconian'], cost: 60, apCost: 1, cooldownRounds: 2, spellType: 'alien',
+          element: 'blood', type: 'damage', kind: 'lifeDrain', damageType: 'physical', dmg: 130, range: 1, drainPct: 0.5,
+          bonusVsStatus: { status: 'cowed', mult: 1.5 },
+          desc: 'The bloodline feeds. Deals MEDIUM physical damage to a Single Enemy beside him, bonus damage if it is Cowed, and half of it comes back to him as HP. Cooldown: 2 rounds.' },
+        { id: 'dcKneel', name: 'Kneel', tier: 4, families: ['draconian'], cost: 90, apCost: 1, cooldownRounds: 4, spellType: 'alien',
+          animClip: { name: 'Angry_Ground_Stomp', lib: 9, ts: 1.0, strikeAt: 0.45 },   // THE MESHY CASTS: the stamp that brings them down
+          element: 'psychic', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 90, range: 0, aoeRadius: 2, aoeOriginSelf: true,
+          perCowedStack: 0.4, dcKneel: 2,
+          desc: 'Kneel before your king. Deals WEAK magic damage to All Enemies within 2, +40% for each Cowed stack on the target. Every one with 3 stacks is Stunned for 1 round. Every Cowed stack within 2 is spent. Cooldown: 4 rounds.' },
+    ],
+    'flower girl': [
+        /* THE FLOWER GIRL (2026-11-27 THE NEW RACES 5; mondo 11-27: "Flower girl", fan service). A support who turns her team's hits into heals. HER RULE,
+           POLLINATE (fgPollinate): her spells dust enemies with Pollen (`pollen`, 1-3 stacks); an ally of hers that hits a Pollen
+           carrier heals 6% of its max HP and takes a stack (battle.js THE NEW RACES 5 _fgPollenHit). Spring Awakening's vines
+           (`fgVines`) Root the enemies in reach (_fgAfterCast). */
+        { id: 'fgPetalDart', name: 'Petal Dart', tier: 1, families: ['blossom'], cost: 25, apCost: 1, spellType: 'anomaly', vfxElement: 'nature',
+          element: 'nature', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 85, range: 4,
+          statusEffects: [{ id: 'pollen', duration: 3 }],
+          desc: 'A petal with an edge. Deals WEAK nature magic damage to a Single Enemy within 4 and dusts it with Pollen (+1 stack).' },
+        { id: 'fgBouquet', name: 'Bouquet', tier: 2, families: ['blossom'], cost: 40, apCost: 1, cooldownRounds: 2, spellType: 'anomaly', vfxElement: 'nature',
+          animClip: { name: 'Big_Heart_Gesture', lib: 9, ts: 1.5, trim: [0.5, 2.6], strikeAt: 1.4 },   // THE MESHY CASTS (11-24): flowers for you
+          element: 'nature', type: 'heal', kind: 'heal', range: 3, healAmt: 115,
+          statusEffects: [{ id: 'regen', duration: 2 }],
+          desc: 'Flowers, for you. Heals a Single Ally within 3 a MEDIUM amount and gives it Regen for 2 rounds. Cooldown: 2 rounds.' },
+        { id: 'fgHayFever', name: 'Hay Fever', tier: 2, families: ['blossom'], cost: 45, apCost: 1, cooldownRounds: 3, spellType: 'anomaly', vfxElement: 'nature',
+          animClip: { name: 'Jazz_Hands_inplace', lib: 9, ts: 1.3, trim: [0.2, 2.0], strikeAt: 1.49 },   // THE MESHY CASTS: she shakes the pollen loose
+          element: 'nature', type: 'debuff', kind: 'aoe', noDamage: true, aoeRadius: 1, range: 4,
+          statusEffects: [{ id: 'blind', duration: 1 }, { id: 'pollen', duration: 3 }],
+          desc: 'A cloud of pollen. Every enemy in a 3×3 within 4 is Blinded for 1 round and dusted with Pollen (+1 stack). Cooldown: 3 rounds.' },
+        { id: 'fgSweetPerfume', name: 'Sweet Perfume', tier: 3, families: ['blossom'], cost: 60, apCost: 1, cooldownRounds: 3, spellType: 'anomaly', vfxElement: 'nature',
+          animClip: { name: 'Happy_Sway_Standing', lib: 9, ts: 1.4, trim: [0.8, 2.8], strikeAt: 1.8 },   // THE MESHY CASTS: the sway that sends the scent out
+          element: 'psychic', type: 'debuff', kind: 'aoe', noDamage: true, range: 0, aoeRadius: 2, aoeOriginSelf: true, fgPerfume: { spd: 1, rounds: 2 },
+          statusEffects: [{ id: 'charm', duration: 1 }, { id: 'pollen', duration: 3 }],
+          desc: 'Everyone turns their head. All Enemies within 2 are Charmed for 1 round and dusted with Pollen (+1 stack); every ally within 2 gets +1 SPD stage for 2 rounds. Cooldown: 3 rounds.' },
+        { id: 'fgSpringAwakening', name: 'Spring Awakening', tier: 4, families: ['blossom'], cost: 90, apCost: 1, cooldownRounds: 4, spellType: 'anomaly', vfxElement: 'nature',
+          animClip: { name: 'Joyful_Dance_with_Hand_Sway', lib: 9, ts: 1.45, trim: [0, 2.0], strikeAt: 1.2 },   // THE MESHY CASTS: spring comes
+          element: 'nature', type: 'heal', kind: 'healAll', range: 0, healAmt: 130, cleanse: 1, auraRadius: 3, fgVines: 3,
+          desc: 'Everything blooms at once. Heals her and every ally within 3 a MEDIUM amount and removes 1 debuff from each; vines come up under every enemy within 3 and Root it for 1 round. Cooldown: 4 rounds.' },
+    ],
     'point guard': [
         /* THE POINT GUARD (2026-11-24 THE CHEERLEADER + THE POINT GUARD; mondo 11-24: "Point Guard m (basketball)", "needs a basketball, just a sphere geometry
            and ... a good looking realistic basketball texture"). The ball is his held gear and every throw (proj-basketball). HIS RULE,
@@ -15718,6 +15836,36 @@ const STATUS_DEFS = {
     /* 🐾 GRUDGE (2026-11-23, the Bear: DON'T POKE THE BEAR). The last enemy to hurt a Bear, or the one it grabbed with Bear Hug,
        carries its Grudge; a Bear holds one at a time, and the mark ends when that Bear goes down (_TIED_STATUS_FIELDS). Bear Down
        hits it harder (bonusVsStatus). Both sides see it. The Bear is an id on the unit (_grudgeSrcId: RULE #2). battle.js THE BEAR. */
+    /* 🐉 COWED (2026-11-27 THE NEW RACES 5, the Draconian's Dominion): -1 ATK stage a stack, up to 3. The stack is unit._cowed, the Draconian's id
+       _cowedSrcId (an id, RULE #2); a new stack refreshes the clock. battle.js THE NEW RACES 5 (getStatStageCount reads it). */
+    cowed: {
+        icon: '🐉', glyph: '🐉', short: 'COW', label: 'Cowed',
+        colorText: 'cowed by the Draconian',
+        kind: 'debuff', category: 'status', stack: 'max',
+        iconSrc: createStatusIconDataUri('🐉', '#10200e', '#e4f8c8', '#5ea83a'),
+        onApply(unit, src, info) {
+            const was = (info && info.refreshed && unit._cowed > 0) ? unit._cowed : 0;
+            unit._cowed = Math.min(3, was + 1);
+            if (src && src.id != null) unit._cowedSrcId = src.id;
+            if (typeof window !== 'undefined' && typeof window._nr5StackFloat === 'function') window._nr5StackFloat(unit, 'cowed', was);
+        },
+        onRemove(unit) { delete unit._cowed; delete unit._cowedSrcId; }
+    },
+    /* 🌸 POLLEN (2026-11-27 THE NEW RACES 5, the Flower Girl's Pollinate): 1-3 stacks in unit._pollen, her id _pollenSrcId. An ally of hers that hits
+       the carrier heals and takes a stack (battle.js THE NEW RACES 5 _fgPollenHit). */
+    pollen: {
+        icon: '🌼', glyph: '🌼', short: 'POL', label: 'Pollen',
+        colorText: 'dusted with pollen',
+        kind: 'debuff', category: 'status', stack: 'max',
+        iconSrc: createStatusIconDataUri('🌼', '#2a2008', '#fff4c0', '#e8c030'),
+        onApply(unit, src, info) {
+            const was = (info && info.refreshed && unit._pollen > 0) ? unit._pollen : 0;
+            unit._pollen = Math.min(3, was + 1);
+            if (src && src.id != null) unit._pollenSrcId = src.id;
+            if (typeof window !== 'undefined' && typeof window._nr5StackFloat === 'function') window._nr5StackFloat(unit, 'pollen', was);
+        },
+        onRemove(unit) { delete unit._pollen; delete unit._pollenSrcId; }
+    },
     grudge: {
         icon: '🐾', glyph: '🐾', short: 'GRG', label: 'Grudge',
         colorText: 'holding the Bear\'s Grudge',
@@ -16273,6 +16421,8 @@ const STATUS_LIBRARY_DESCS = {
     debt:      'Owes the bank: when it ends (or is cleansed) the loan comes due. Pays back the loan with interest (never below 1 HP) and the lender heals that much. Going down first leaves the lender with the loss.',
     caged:     'Shut in the Abomination\'s bone cage: its Grasp and Unfold hit this unit harder. Comes with the Root of Bone Cage.',
     grudge:    'The Bear holds a grudge: it hurt the Bear last (or was grabbed in a Bear Hug). Bear Down hits it harder. Ends when that Bear goes down or picks a new grudge.',
+    cowed:     'Cowed by the Draconian: -1 ATK stage for each stack (up to 3). Kneel spends the stacks; at 3 it Stuns.',
+    pollen:    'Dusted with the Flower Girl\'s pollen (up to 3 stacks): when one of her allies hits it, that ally heals 6% of its max HP and a stack comes off.',
     shorted:   'Bet against: if this unit goes down while Shorted, the short-seller restores 75 MP and heals 20% of their max HP.',
     submerged: 'Under the surface of a liquid: hidden with Invisible until it attacks. Leaving the liquid surfaces it.',
     momentum:  'Rolling: every square walked in a straight line banks a stack (up to 6). Board Slam spends them for damage. Fades a turn after the Skater stops. Stunned, Rooted, Frozen or put to sleep, she bails and loses them all.',
@@ -22401,6 +22551,9 @@ const EW_RACE_BIOMES = {
     'centaur': ['ancient', 'forest'],   // 2026-11-24 THE CENTAUR — Mount Olympus and its woods (Claude's pick: mondo named no home)
     'cheerleader': ['urban'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — Disaster City University (the DCU Aftershocks)
     'princess': ['arthurian'],   // 2026-11-24 THE PRINCESS — Came A Lot
+    'leopard girl': ['urban', 'tropical'],   // 2026-11-27 THE NEW RACES 5 — The Strip's stage (the Cats-musical fur), the jungle (Claude's pick)
+    'draconian': ['ancient', 'desert'],   // 2026-11-27 THE NEW RACES 5 — Giza (his canon: the Draconians came for Egypt)
+    'flower girl': ['forest'],   // 2026-11-27 THE NEW RACES 5 — The Fairy Forest (Claude's pick)
     'point guard': ['urban'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — Disaster City's Sports district
     'music producer': ['urban'],   // 2026-11-24 THE MUSIC PRODUCER — Disaster City
     'streamer': ['neon_city', 'urban'],   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit) — The Internet's stage
@@ -23089,6 +23242,9 @@ const RACE_TREE = {
     'centaur':       ['cenHoofStomp', 'cenParthianShot', ['cenWildHerd', 'raceRideBy'], 'cenSagittarius'],   // 2026-11-24 THE CENTAUR
     'cheerleader':   ['chHighKick', 'chReadyOk', 'chBasketToss', 'chGimme'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: her own four
     'princess':      ['prWishingStar', 'prTrueLove', 'prSpindle', 'prEverAfter'],   // 2026-11-24 THE PRINCESS: her own four
+    'leopard girl':  ['lgRake', ['lgPounce', 'lgDragKill'], 'lgThroatHold', 'lgKillingBite'],   // 2026-11-27 THE NEW RACES 5
+    'draconian':     ['dcTalonRend', ['dcTailSweep', 'dcReptileEye'], 'dcRoyalBlood', 'dcKneel'],   // 2026-11-27 THE NEW RACES 5
+    'flower girl':   ['fgPetalDart', ['fgBouquet', 'fgHayFever'], 'fgSweetPerfume', 'fgSpringAwakening'],   // 2026-11-27 THE NEW RACES 5
     'point guard':   ['pgChestPass', 'pgCrossover', 'pgAlleyOop', 'pgBuzzerBeater'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: his own four
     'music producer': ['mpLayItDown', ['mpAddChord', 'mpMelodyStyle'], 'mpDrumFill', 'mpBassDrop'],   // 2026-11-24 THE MUSIC PRODUCER (Beat Switch + Slap Bass ride RACE_DEFAULT_KIT_EXTRAS)
     'streamer':      ['nrClipIt', ['nrUwu', 'nrRageQuit'], 'nrDonationGoal', 'nrRaid'],   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit): the rung 2 pair is one of each version (RACE_GENDER_SPELLS)
@@ -25284,6 +25440,36 @@ const SPELL_FAMILIES = {
         desc: 'The DCU Aftershocks\' cheer squad: high kicks, a chant for the team, and a team-mate thrown where it is needed.',
         unique: 'cheerleader',
         identity: { who: ['Cheerleader', 'Flyer', 'Squad Captain'], adj: ['Peppy', 'Loud', 'Spirited'], look: ['a crimson DCU uniform', 'a big hair bow', 'pom-poms'], vibe: ['throws a team-mate in the air', 'leads the chant'] }
+    },
+    leopard: {   // 2026-11-27 THE NEW RACES 5 — the Leopard Girl's own
+        id: 'leopard',
+        name: 'Leopard',
+        glyph: '🐆',
+        color: '#d89a3a',
+        kind: 'signature',
+        desc: 'The stalker in the long grass: a rake of the claws, a pounce from nowhere, the kill dragged away and the bite that ends it.',
+        unique: 'leopard girl',
+        identity: { who: ['Leopard Girl', 'Stalker', 'Big Cat'], adj: ['Spotted', 'Silent', 'Feline'], look: ['spotted fur', 'cat ears and whiskers', 'a long tail'], vibe: ['waits in the grass', 'drags the kill up a tree'] }
+    },
+    draconian: {   // 2026-11-27 THE NEW RACES 5 — the Draconian's own
+        id: 'draconian',
+        name: 'Draconian',
+        glyph: '🐉',
+        color: '#5ea83a',
+        kind: 'signature',
+        desc: 'The old royal bloodline of the reptilians: talons, a tail, the eye that makes you kneel and the blood that feeds on it.',
+        unique: 'draconian',
+        identity: { who: ['Draconian', 'Draco', 'Reptilian Royal'], adj: ['Ancient', 'Cold-Blooded', 'Imperious'], look: ['green-gold scales', 'a crested head', 'slit pupils'], vibe: ['makes them kneel', 'was here before the pyramids'] }
+    },
+    blossom: {   // 2026-11-27 THE NEW RACES 5 — the Flower Girl's own
+        id: 'blossom',
+        name: 'Blossom',
+        glyph: '🌸',
+        color: '#f27aa8',
+        kind: 'signature',
+        desc: 'The flower girl\'s garden: petals with an edge, a bouquet for a friend, pollen in the eyes, a perfume nobody can resist and spring all at once.',
+        unique: 'flower girl',
+        identity: { who: ['Flower Girl', 'Blossom', 'Wildflower'], adj: ['Blooming', 'Sweet', 'Sunny'], look: ['petals for clothes', 'a flower crown', 'vines up the legs'], vibe: ['hands you a bouquet', 'dusts you with pollen'] }
     },
     fairytale: {   // 2026-11-24 THE PRINCESS — the Princess's own
         id: 'fairytale',
@@ -27819,6 +28005,9 @@ const RACE_FAMILIES = {
     'centaur': ['centaur', 'archery', 'horsebackriding', 'athleticism'],   // 2026-11-24 THE CENTAUR (the idea list's own three)
     'cheerleader': ['cheer', 'teamwork', 'athleticism', 'stagepresence'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
     'princess': ['fairytale', 'royalty', 'healingmagic', 'light'],   // 2026-11-24 THE PRINCESS
+    'leopard girl': ['leopard', 'feline', 'huntingskills', 'apexpredator', 'stagepresence'],   // 2026-11-27 THE NEW RACES 5
+    'draconian': ['draconian', 'ancientknowledge', 'psychic', 'deepstate', 'blood'],   // 2026-11-27 THE NEW RACES 5
+    'flower girl': ['blossom', 'nature', 'healingmagic', 'seduction', 'fae'],   // 2026-11-27 THE NEW RACES 5
     'point guard': ['basketball', 'athleticism', 'teamwork', 'stagepresence'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
     'music producer': ['beatmaking', 'sonic', 'stagepresence', 'maincharacter'],   // 2026-11-24 THE MUSIC PRODUCER
     'streamer': ['streaming', 'stagepresence', 'computerhacking', 'internetaddiction'],   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
@@ -28484,6 +28673,9 @@ const CAMPAIGN_RACE_PRICES = {
   'centaur': 450,   // 2026-11-24 THE CENTAUR
   'cheerleader': 400,   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
   'princess': 400,   // 2026-11-24 THE PRINCESS
+  'leopard girl': 400,   // 2026-11-27 THE NEW RACES 5
+  'draconian': 450,   // 2026-11-27 THE NEW RACES 5
+  'flower girl': 400,   // 2026-11-27 THE NEW RACES 5
   'point guard': 400,   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
   'music producer': 400,   // 2026-11-24 THE MUSIC PRODUCER
   'streamer': 400,   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
@@ -30502,6 +30694,7 @@ const DOOR_TEXT = {
         'centaur': 'Mount Olympus',   // 2026-11-24 THE CENTAUR (Claude's pick: with the Cyclops and the Minotaur)
         'cheerleader': 'Downtown', 'point guard': 'Downtown',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD (University; the Sports district)
         'princess': 'Came A Lot',   // 2026-11-24 THE PRINCESS
+        'leopard girl': 'The Strip', 'draconian': 'Pyramids of Giza', 'flower girl': 'Fairy Forest',   // 2026-11-27 THE NEW RACES 5 (the Strip + the Forest are Claude's picks; Giza is his canon)
         'music producer': 'Downtown',   // 2026-11-24 THE MUSIC PRODUCER (Mid Records)
         'gambler': 'The Strip', 'hacker': 'Downtown', 'monk': 'The Bermuda Triangle', 'shogun': 'The Bermuda Triangle',   // 2026-11-19 THE NEW RACES 4 (the gambler lives in the Western Town too: HQ_AREA_ENCOUNTERS; the monk + the shogun on the Volcano Island)
         'cameraman': 'Downtown', 'mechanic': 'Downtown', 'janitor': 'Downtown', 'trucker': 'Downtown',   // 2026-11-19 THE NEW RACES 3
@@ -101332,6 +101525,7 @@ const HQ_NPC_TEMPERS = {
         'centaur': 'territorial',   // 2026-11-24 THE CENTAUR: wild, warns once, then the hooves
         'cheerleader': 'coward', 'point guard': 'opportunist',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
         'princess': 'coward',   // 2026-11-24 THE PRINCESS: she calls for help, she does not wade in
+        'leopard girl': 'opportunist', 'draconian': 'brute', 'flower girl': 'coward',   // 2026-11-27 THE NEW RACES 5: she waits for the winner; he expects you to kneel; she runs
         'music producer': 'opportunist',   // 2026-11-24 THE MUSIC PRODUCER
         'zombie': 'brute', 'shadow entity': 'brute', 'werewolf': 'brute', 'wendigo': 'brute', 'ghoul': 'brute', 'flesheater': 'brute',
     },
@@ -111690,6 +111884,21 @@ const DOOR_ROSTER_LINES = {
         '“I asked for a pony. I asked for a unicorn. They are not the same thing.”',
         '“Somebody defend my honour. Anybody. I am right here.”',
         '“The crown is heavy. That is what the servants are for.”',
+    ],
+    'leopard girl': [   // 2026-11-27 THE NEW RACES 5
+        '“Nine shows a week and a matinee. I have been on all fours since the eighties.”',
+        '“I do not chase. I wait. Then I do not have to chase.”',
+        '“Every spot is real. Do not ask about the tail.”',
+    ],
+    'draconian': [   // 2026-11-27 THE NEW RACES 5
+        '“I was building pyramids when your ancestors were still arguing about fire.”',
+        '“The cats were a setback. A temporary one.”',
+        '“Kneel. It saves time.”',
+    ],
+    'flower girl': [   // 2026-11-27 THE NEW RACES 5
+        '“He loves me. He loves me not. He is allergic.”',
+        '“Pollen season is every season if you are brave enough.”',
+        '“I water myself twice a day. Please do not stare.”',
     ],
     'quarterback': [
         '“Back in college I could throw a pigskin over them mountains.”',

@@ -5641,3 +5641,15 @@ His eight spells each have their own set piece, camera row, pace and sky. The fi
   (no difference on / off there), not on a Mac in WebGPU.
 - Probe: `MAP=prebuilt_holosim SPELLS=all TIMES=c1400,h150,h700 TAG=x node playtest_demiurge.js` (a real VS CPU match, both forms
   on P1; `cN` = N ms after the cast, `hN` = N ms after the real hit, held in the page). `FLAGS=EW_NO_DEMI_VFX` for an A/B.
+
+## THE NEW RACES 5 VFX (2026-11-27, the Leopard Girl, the Draconian, the Flower Girl)
+three-vfx-effects.js "THE NEW RACES 5" (before THE ABOMINATION; kill switch `EW_NO_NR5_VFX`). Own hues: leopard amber + rosettes,
+Draconian green-gold scales + a slit-pupil eye + a crown, flower pink petals + yellow pollen; the side colour (own cyan-blue, other
+side pink-orange, `_brSeatOf`) on every rim and ring. Spell looks = SPELL_MAP `pzSig` defs (`_PZ_SIGS.lgRake` …): Rake / Talon Rend
+= tinted claw streaks (the Bear's claw canvas); Pounce = an X of claws + rosettes thrown off; Drag the Kill / Throat Hold / Killing
+Bite / Royal Blood = fang rows that snap shut (`_n5Jaws`), Throat Hold's squeezing ring, Royal Blood's blood stream to him; Tail Sweep
+= an arc once round him at shin height; Reptile Eye = a gold eye over the victim whose slit narrows; Kneel = a crown lifts then the
+ring slams out; Petal Dart = a flower burst; Bouquet = a ring of flowers at the ally's feet; Hay Fever = a pollen cloud over the 3x3;
+Sweet Perfume = scent rings + petals circling out; Spring Awakening = three rings of flowers opening round her. Rule looks =
+fireGeometry keys from battle.js: `nr5Rosettes`, `nr5Ambush`, `nr5Drag`, `nr5Cowed` (a small crown dips over the head), `nr5Pollen`,
+`nr5PollenHeal` (motes to the healed ally + the soft heal), `nr5Vines` (three vines curl up round the rooted enemy).

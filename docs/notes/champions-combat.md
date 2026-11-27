@@ -6438,7 +6438,6 @@ glide `_iceSlideSteps`, the creep walk (u.x = cx path), and Swing Door's board p
 (`simulate` + `opts.viewer`) stops only on a trap the viewer's side can see (a capture door is always seen). Teleports and
 swaps have no path: their landing chain already covered them. Proof: shots in /mnt/project-files/forced-move-traps/.
 
-<<<<<<< Updated upstream
 ## THE NEW NORDICS + THE SKINWALKER MODEL (2026-11-24, thread "Make concepts for new and redone units")
 mondo 11-24: the Nordic man looked too short with dirty clothes, the woman not feminine enough ("unreasonably attractive like
 scandinavian models"); the Skinwalker's sprite read as a werewolf. Meshy concepts -> his picks -> image-to-3d (meshy-t2.5, a-pose)
@@ -6452,7 +6451,7 @@ scandinavian models"); the Skinwalker's sprite read as a werewolf. Meshy concept
   now playable by the 3D-only roster rule. Its four STOLEN FACES are separate props for its ability animations:
   `skinwalker/male/faces/skinwalker_face_a..d.glb` (a man, a freckled young woman, an old rancher, a chubby young man).
 - Weatherman + News Anchor models (same folder) went to their own thread.
-=======
+
 ## THE WEATHERMAN + THE NEWS ANCHOR (2026-11-24, thread "Add the Weatherman and News Anchor units"; mondo: "Weatherman should have spells that summon and interact with the weather system. I uploaded an umbrella zip ... for his abilities. The News Anchor can maybe use the microphone the popstar uses")
 ONE race `'weatherman'` (like the Streamer + E-Girl): male = the Weatherman, female = the News Anchor (`labelMale` /
 `labelFemale`). `RACE_GENDER_SPELLS` splits the eight spells, none shared; every `RACE_TREE` rung is a `[his, hers]` pair.
@@ -6646,6 +6645,39 @@ physical attack and the other is more magic attack". Parts apart so they animate
   entry, NPC temperament, his place in the story, the feral form (not modelled; Meshy had 44 credits).
 - Files: `bake-demiurge.js` (raw 10-13 MB Meshy GLBs -> 0.3-3 MB, the bones), R2 `Assets/characters/races/demiurge/{armoured,cosmic}/`,
   `Assets/characters/gear/demiurge/dm_*.glb`, portraits `demiurge_{armoured,cosmic}_px.png` (cut from his hero concepts).
+
+## THE NEW RACES 5 (2026-11-27, thread "Make leopard, draconian and flower spells"; mondo: "wire them up ... make their unique race spells and do their spell animation+vfx")
+Three of the 11-27 Meshy concepts (project files `character-concepts/`). Their models, sprites and RACE_PROFILES rows are the wiring
+thread's ("Make Meshy concepts for new characters"); the kits are here, and all three are in data.js + server.js AVAILABLE_RACES.
+Plan posted in the thread; first-pass stats on the class medians, no Balance Lab run yet. battle.js block "THE NEW RACES 5" (after
+THE BUTTERFLY GIRL), VFX three-vfx-effects.js "THE NEW RACES 5" (before THE ABOMINATION, kill switch `EW_NO_NR5_VFX`), CPU ai.js
+scoreOffensiveHit + ccDenialValue. Probe: `playtest_kits.js` (a real VS CPU fight, P1 = the three, every race spell cast, frames).
+- 🐆 **Leopard Girl** (`leopard girl`, female, assassin, home The Strip (Claude's pick: the Cats-musical fur), biomes urban + tropical,
+  terrain tree, nature resist / ice weak; family `leopard` + feline, huntingskills, apexpredator, stagepresence; finisher Up a Tree =
+  nineLives staging). RULE ROSETTES (`lgRosettes`): a round in which she lands no hit on an enemy (`_lgHitRound`), she fades at its end
+  (Invisible 2 + `_lgAmbush`); the first hit she lands from hiding is a sure critical (`_lgAmbushCrit` in rollCrit + _spellCritRoll);
+  an enemy hit on her spends it. Kit: Rake (T1, Bleed 2) · Pounce (T2, _mkCharge range 4, Stagger) | Drag the Kill (T2, `lgDrag: 2`: she
+  backs up to 2 squares straight away from the victim and it is pulled into each square she leaves, `_lgDrag`) · Throat Hold (T3, Root +
+  Silence 1) · Killing Bite (T4, ×1.5 on Bleed, execute under 20 %).
+- 🐉 **Draconian** (`draconian`, male, no wings, bruiser, home Pyramids of Giza (his canon: the Draconians came for Egypt, the cats held
+  them off; the Annunaki are Draconians), biomes ancient + desert, psychic resist / ice weak; family `draconian` + ancientknowledge,
+  psychic, deepstate, blood; finisher Bow Before Draco = unmasking staging). RULE DOMINION (`dcDominion`): an enemy whose turn starts
+  within 2 (Chebyshev) of him is Cowed (STATUS_DEFS `cowed`, stack in `_cowed` 1-3, his id `_cowedSrcId`; -1 ATK stage a stack in
+  getStatStageCount via `_dcCowedStages`). Kit: Talon Rend (T1, +1 Cowed) · Tail Sweep (T2, round him, push 1, Stagger) | Reptile Eye (T2,
+  range 3, Charm 1 + Cowed) · Royal Blood (T3, physical lifeDrain 50 %, ×1.5 on Cowed) · Kneel (T4, radius 2 round him, `perCowedStack`
+  0.4 in _spellCritRoll, `dcKneel: 2`: 3 stacks = Stun 1, then every stack within 2 is spent, `_dcAfterCast`).
+- 🌸 **Flower Girl** (`flower girl`, female, support, home Fairy Forest (Claude's pick), biome forest, nature resist / fire weak; family
+  `blossom` + nature, healingmagic, seduction, fae; finisher Pushing Up Daisies = theBloom staging). RULE POLLINATE (`fgPollinate`): her
+  spells dust enemies with Pollen (STATUS_DEFS `pollen`, `_pollen` 1-3, `_pollenSrcId`); a hit by an ally of hers (not her own, not a
+  DoT or an echo) on a carrier heals that ally 6 % of its max HP and takes a stack, once a carrier an attacker's turn (`_fgPollenHit`).
+  Kit: Petal Dart (T1, range 4, +Pollen) · Bouquet (T2, heal 115 + Regen 2) | Hay Fever (T2, 3x3 range 4, Blind 1 + Pollen) · Sweet
+  Perfume (T3, enemies within 2 Charmed 1 + Pollen, allies within 2 +1 SPD 2 rounds, `fgPerfume`) · Spring Awakening (T4, healAll 130 +
+  cleanse 1 within 3, `fgVines: 3` Roots every enemy within 3).
+- CHANGES FROM THE POSTED PLAN (for mondo to overrule): the Flower Girl's rule became Pollinate (the plan's "In Bloom" was the
+  Cheerleader's Spirit again); the Leopard's T2 alternative is Drag the Kill (the plan's Stalk was the Catgirl's Nimble Dodge again);
+  Kneel reaches 2, not 3 (Dominion's own reach).
+- Online: everything is host engine state (plain numbers + statuses) mirrored by the state sync; floats ride showFloatingTextForUnit's
+  relay, looks ride fire() / fireGeometry() (relayed).
 
 ## THE COMING RACES 3 (2026-11-27, thread "Make Meshy concepts for new characters")
 mondo picked Meshy concepts (realistic look, his rule: never cartoon) and said "wire them up. Split the work into multiple threads to make
