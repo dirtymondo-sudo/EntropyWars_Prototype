@@ -99,7 +99,7 @@ bpy.data.objects.remove(car)
 
 # ---------------------------------------------------------------- the interior + the steering wheel
 it = [o for o in imp('sedan_interior.glb') if o.type == 'MESH'][0]
-bake_xf(it, T(0, 0.05, 0.20 + 0.358 * 1.33) @ Matrix.Diagonal((1.18, 1.156, 1.33, 1)) @ R('Z', -90))
+bake_xf(it, T(0, 0.05, 0.20 + 0.358 * 1.33) @ Matrix.Diagonal((1.18, 1.156, 1.33, 1)) @ R('Z', 90))   # (the dash at the nose, its dials on the driver's side; -90 stood it back to front)
 it.data.materials[0].name = 'ew_sedan_interior'; parts['interior'] = it; it.name = 'p_interior'
 sw = [o for o in imp('steering_wheel.glb') if o.type == 'MESH'][0]
 SWP = (0.37, -0.52, 0.93)
