@@ -5630,7 +5630,7 @@ Every rule below holds in a live spell shot AND while its chrome lingers on the 
   `EW_NO_CLEAN_READ`).
 - Measured after (same map, real fights): hit target median 22 % (19 hits) -> 31 % at 0.30 (17) -> 34 % at 0.40 (10). Bigger bodies leave less free screen, so text over a body rose a little at 0.40.
 ## THE DEMIURGE'S CATACLYSMS (2026-11-27, mondo: "the VFX and spell animations for the demiurge ... the final epic boss ... impactful and apocalyptic ... cinematography, vfx, animations, sky events, background changing ... modern final fantasy esque")
-His eight spells each have their own set piece, camera row, pace and sky. The finisher "Unmade" still plays `heatDeath` (not reworked).
+His eight spells each have their own set piece, camera row, pace and sky, and so has the finisher "Unmade".
 - THE SET PIECES (three-vfx-effects.js "THE DEMIURGE'S CATACLYSMS", names `_dx*` / `_DX*`): `_DX_SPELLS[id] = { charge(L), hit(L) }`, run by
   `_dxStage` from `_fireStage`'s windup and burst (both already relayed, so the guest draws them: RULE #2). L = caster square, target
   square, footprint tiles, the charge's length. A charge builds on its OWN clock (at most 1.5 s) and reads the real hit time
@@ -5652,10 +5652,19 @@ His eight spells each have their own set piece, camera row, pace and sky. The fi
   The holds are stretched ONCE in the shot (`opts._ewPaced`); online.js marks the guest's replay so it is not stretched twice.
 - THE SPELL SKY (three-renderer.js `_spSky`, `ThreeRenderer.spellSky(type, ms, { night })`): a spell calls a blood moon or an
   eclipse for its length; eased on the clock, not per frame. Outdoor maps only show it. Switch: `window.EW_NO_SPELL_SKY = true`.
-- NOT DONE: the finisher; a void stage (background swap); sound. Frame rate measured only on the cloud's software renderer
+- THE FINISHER, UNMADE (11-27, mondo: "Go ahead and do the finisher"): its own sig `unmade` (data.js RACE_FINISHERS; battle.js
+  `_FIN_DIRECTORS.unmade`; three-vfx-effects.js `_sigUnmade3D` + `_FIN_STAGE.unmade`). The eclipse; the black cube comes down; a
+  gold cage draws round the victim edge by edge, cut to the body's height; three folds, a half each (the victim's double folds
+  with it and turns to black stone); what is left rises into the cube as it opens; the cube shuts on the hit and folds away.
+  Camera: the maker, up at the cube, the cage and folds from the SIDE (a face shot of the victim looks past the maker, and a
+  boss stands in front of the cage), then the lens at the cube's height for the shut. One caption, the end stamp.
+  Checked in the cloud at 2 fps: a whole execution cannot keep step there (the page's text runs ahead of the held frame), so
+  the folds and the lift were checked alone (`PIECE=1`), the camera in the real execution (`UNMADE=1`).
+- NOT DONE: a void stage (background swap); new sound (the finisher uses stock sounds). Frame rate measured only on the cloud's software renderer
   (no difference on / off there), not on a Mac in WebGPU.
 - Probe: `MAP=prebuilt_holosim SPELLS=all TIMES=c1400,h150,h700 TAG=x node playtest_demiurge.js` (a real VS CPU match, both forms
   on P1; `cN` = N ms after the cast, `hN` = N ms after the real hit, held in the page). `FLAGS=EW_NO_DEMI_VFX` for an A/B.
+  The finisher: `SPELLS=none UNMADE=1 TIMES=u2600,u4800,u6400` (the real doFinisher; `uN` = N ms into the set piece) or `PIECE=1` (the piece alone).
 
 ## THE NEW RACES 5 VFX (2026-11-27, the Leopard Girl, the Draconian, the Flower Girl)
 three-vfx-effects.js "THE NEW RACES 5" (before THE ABOMINATION; kill switch `EW_NO_NR5_VFX`). Own hues: leopard amber + rosettes,
