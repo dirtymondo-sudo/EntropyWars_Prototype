@@ -6853,3 +6853,42 @@ the fight's folds key on a board unit, the stage's hero is not one. A row with `
 and recipes), then the beat plays with the shape in her place (`_cvOriStep`: the sword spins on the strike, the plane flies the charge and crumples,
 the fortune game opens and shuts and shows one colour, the crane opens and flaps), is held 0.7 s (the crane 1.3 s) and opens (`_cvOriRelease`).
 Paper Star and Paper Fan have no `ogFold`: she keeps her own shape. Seen in a probe that mounts `EWCharViewer` and calls `previewSpell`.
+## THE SNOWMAN (2026-11-27, thread "Add a snowman character")
+mondo 11-27: "Can we also add a new character, Snowman, and make all the individual parts for it like the carrot and the stick arms
+and the 3 snow ball body parts, etc and give it unique animations for its spells." One thread, one pass: concepts, part models, the
+assembly, the rig, the race, the kit, the VFX. ALL NAMES AND NUMBERS ARE A FIRST PASS.
+- THE MODEL: Meshy concepts (realistic) -> image-to-3D of five parts (ONE snowball, the carrot, ONE stick arm, the top hat, the
+  scarf), put together by project files `snowman/tools/assemble.py` (bpy) into ONE file,
+  `Assets/characters/races/snowman/male/snowman.glb` (+ `.opt.glb`, in ASSET_MANIFEST): the ball three times (and once small in the
+  twig hand), the stick twice (mirrored), the scarf cut into its ring and its two tails; the coal (eyes, five mouth lumps, three
+  buttons) and the twig brows are made in the script. 26 nodes, no bones, each part's pivot where it turns: `ewSnBody` (the base
+  ball's centre) > `ewSnBase`, `ewSnTorso` > `ewSnMid`, `ewSnBtn0..2`, `ewSnArmL/R` (the stick along +Y; ArmR > `ewSnBall`),
+  `ewSnScarf` > `ewSnTailL/R`, `ewSnNeck` > `ewSnHead` > `ewSnNose`, `ewSnEyeL/R`, `ewSnBrowL/R`, `ewSnMouth0..4`, `ewSnHat`.
+  Rerun: `python3 -I assemble.py <models dir> <out.glb> [--shots <prefix>]`, then optimize, `--put`, the manifest
+  (`node manifest-assets.js <the snowman folder> --prefix Assets/characters/races/snowman/ --merge`: the prefix must be ITS folder,
+  a wider prefix drops every other row under it).
+- THE RIG: three-renderer.js "THE SNOWMAN", procRig `snowman` (`_snBuild`, `_SN_POSES`, clips made by the Abomination's `_abClip`).
+  idle (it breathes, looks left and right with its coal eyes leading, blinks, the tails swing), walk (the BASE BALL ROLLS under it,
+  the rest wobbles on top), castMelee (a stick slap), cast (both sticks up, the hat lifts and turns), castSupport (tips its hat),
+  hit (the head is nearly knocked off, the hat jumps), death (it falls apart: the head lands face down with the carrot in the
+  floor, the middle slides off, the sticks drop, the scarf slumps on the sagging base; held). `_snLive` = what always lives (tails,
+  blink, the mouth's coals: grin / scowl / "oh", the brows). `ThreeRenderer.snPose(slot, dur, pose)` adds or replaces a slot.
+- `snowman` (tank, family `snowman`, spellType anomaly; pool snowman, winter, christmasspirit, northpole; ice resist, fire weak;
+  terrain ice). RULE, COLD SPOT (battle.js `_snRoundEnd`, in the round-end loop): every enemy next to it is Slowed 2 rounds; one
+  already Slowed there is Frozen 1 round and its Slow is spent; a Frozen one is left alone; a Frozen or Stunned snowman chills nobody.
+  Snowball T1 (range 4, weak physical, ice, Slow 2; clip `snSnowball`: the right stick digs a handful out of its own base, winds
+  up and throws, the ball leaves the hand at 650 ms), Carrot Jab T2 (melee, Blind 1 + Bleed 2; `snCarrot`: the head rears back,
+  the carrot shoots out to four times its length, quivers, snaps back), Roll Up T3 (tackle 4, push 1, +40 on a crash,
+  `bonusVsStatus` frozen x1.5; `snRoll`: sticks tucked, head and middle sunk into the base, the whole of it tumbles three times
+  and springs back up, the hat last), Snow Day T4 (self 5x5 magic, Slow 2; `snSnowDay`: the base spins one way, the middle lifts
+  and spins the other with the sticks out like a rotor and the scarf flung wide, the head and the hat higher still, then the three
+  balls drop back one, two, three). Each row has `animSlot` + `animStrikeMs`.
+- Finisher `fin_snowman` "Snowed In" (borrows the Ice Queen's flashFrozen staging).
+- VFX: three-vfx-effects.js "THE SNOWMAN" (kill switch `EW_NO_SNOWMAN_VFX`): the snowball flies (`bolt`, `_pzFly`) and bursts;
+  the carrot's orange streak; Roll Up's pressed track + chunks off the crash; Snow Day's frost sheet + a three-armed blizzard.
+- ONLINE: the clips ride the cast animation and the VFX ride the spell intents like every kit's; Cold Spot is host-side and its
+  statuses state-sync. Nothing new to relay.
+- THE PROBE: `RACES='snowman,snowman,snowman,snowman' TAG=sn PICS=200,450,700,1000,1400 node playtest_kits.js` (PICS = extra
+  frames of each cast; the probe now reads a male-only race's gender from RACE_SPRITE_GENDERS).
+- LEFT OUT ON PURPOSE (no lore invented): home zone, residents, NPC places, story place, codex customs row. Sources, scripts,
+  concepts, sprite: project files `snowman/`. Meshy: 6 pictures (54) + 5 models (150) = 204 credits.

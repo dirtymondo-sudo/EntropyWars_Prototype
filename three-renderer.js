@@ -20683,6 +20683,187 @@ const ThreeRenderer = (function () {
         Object.keys(_BB_POSES).forEach(function (slot) { var p = _BB_POSES[slot]; clips[slot] = _bbClip(slot, p[0], p[1], R); });
         clips.castMagic = clips.cast; clips.castRanged = clips.cast; clips.castHeal = clips.castSupport; clips.run = clips.walk;
         clips.attack = clips.castMelee;
+    /* ⛄ THE SNOWMAN (2026-11-27, thread "Add a snowman character"; mondo: "a new character, Snowman, and make all the individual
+       parts for it like the carrot and the stick arms and the 3 snow ball body parts ... unique animations for its spells"). ONE file
+       (Assets/characters/races/snowman/male/snowman.glb, put together from five Meshy parts by project files snowman/tools/assemble.py;
+       the coal and the twig brows are made there). No bones: every part is a node with its pivot where it turns:
+       ewSnBody (pivot = the base ball's centre) > ewSnBase (the big ball), ewSnTorso (hinge on the base) > ewSnMid, ewSnBtn0..2,
+       ewSnArmL / ewSnArmR (the stick runs along the node's +Y; ArmR > ewSnBall, a snowball in the twig hand, shown only by a clip),
+       ewSnScarf > ewSnTailL / ewSnTailR, ewSnNeck > ewSnHead > ewSnNose (the carrot, it points +Z: scale.z stretches it),
+       ewSnEyeL/R, ewSnBrowL/R, ewSnMouth0..4, ewSnHat. Metres, front +Z, floor y 0, its left = +X.
+       A clip is keyframes on those nodes (_abClip: p = an offset, rw = a turn in the parent's frame, r = in its own, s = a scale on
+       its rest). The arms: rw z > 0 lifts the LEFT arm and drops the RIGHT one; rw y > 0 swings the RIGHT arm forward and the LEFT
+       one back. The spell rows name their clips with `animSlot` (snSnowball, snCarrot, snRoll, snSnowDay).
+       ThreeRenderer.snPose(slot, dur, pose) adds or replaces a slot for every snowman built after it. */
+    var _SN_NODES = ['ewSnBody', 'ewSnBase', 'ewSnTorso', 'ewSnMid', 'ewSnBtn0', 'ewSnBtn1', 'ewSnBtn2', 'ewSnArmL', 'ewSnArmR', 'ewSnBall', 'ewSnScarf',
+        'ewSnTailL', 'ewSnTailR', 'ewSnNeck', 'ewSnHead', 'ewSnNose', 'ewSnEyeL', 'ewSnEyeR', 'ewSnBrowL', 'ewSnBrowR', 'ewSnMouth0', 'ewSnMouth1',
+        'ewSnMouth2', 'ewSnMouth3', 'ewSnMouth4', 'ewSnHat'];
+    var _snS = _vrS, _snB = _vrBump;
+    function _snSin(u, hz, ph) { return Math.sin((u * hz + (ph || 0)) * Math.PI * 2); }
+    /* the things that always live: the scarf tails swing (out over the belly, never into it; `fling` 0 … 1 throws them out), the
+       eyes blink at `blink` (a u), the mouth's coals shift (`grin` -1 a scowl … 1 a wide grin), the brows (`mad` 0 … 1) */
+    function _snLive(P, u, o) {
+        o = o || {};
+        var amp = o.amp == null ? 0.1 : o.amp, hz = o.hz || 2, fl = o.fling || 0;
+        P.ewSnTailL = { rw: [-amp * (0.6 + 0.4 * _snSin(u, hz)) - 1.25 * fl, 0, amp * 0.8 * _snSin(u, hz, 0.2) + 0.5 * fl] };
+        P.ewSnTailR = { rw: [-amp * (0.6 + 0.4 * _snSin(u, hz, 0.35)) - 1.1 * fl, 0, amp * 0.8 * _snSin(u, hz, 0.55) - 0.5 * fl] };
+        var bl = o.blink != null ? _snB(u, o.blink - 0.02, o.blink, o.blink + 0.03) : 0, wide = o.wide || 0;
+        var ex = o.look || 0;
+        P.ewSnEyeL = { p: [0.012 * ex, 0, 0], s: [1 + 0.5 * wide, (1 + 0.5 * wide) * (1 - 0.9 * bl), 1] };
+        P.ewSnEyeR = { p: [0.012 * ex, 0, 0], s: [1 + 0.5 * wide, (1 + 0.5 * wide) * (1 - 0.9 * bl), 1] };
+        var g = o.grin || 0, oo = o.oh || 0;
+        for (var i = 0; i < 5; i++) {
+            var t = (i - 2) / 2;   // -1 … 1 across the mouth
+            /* a grin lifts the corners, a scowl drops them; `oh` gathers the coals into a round mouth */
+            P['ewSnMouth' + i] = { p: [-0.035 * t * oo, 0.03 * g * t * t - 0.012 * g + 0.02 * oo * (1 - 2 * Math.abs(Math.abs(t) - 0.5)) * (i === 2 ? -1 : 1), 0] };
+        }
+        var mad = o.mad || 0;
+        P.ewSnBrowL = { p: [0, -0.012 * mad, 0], r: [0, 0, 0.35 * mad] };
+        P.ewSnBrowR = { p: [0, -0.012 * mad, 0], r: [0, 0, -0.35 * mad] };
+        return P;
+    }
+    var _SN_POSES = {
+        /* idle (4 s): it breathes, the head looks one way then the other with its coal eyes leading, it blinks, the arms drift, the
+           hat settles, the tails swing */
+        idle: [4.0, function (u) {
+            var br = _snSin(u, 1), look = _snS(u, 0.15, 0.25) - _snS(u, 0.45, 0.6) * 2 + _snS(u, 0.8, 0.92);
+            var P = { ewSnTorso: { p: [0, 0.008 * br, 0], rw: [0.015 * br, 0, 0.012 * _snSin(u, 1, 0.25)] },
+                ewSnNeck: { rw: [0.03 * _snSin(u, 1, 0.4), 0.28 * look, 0.05 * look] },
+                ewSnHat: { p: [0, 0.006 * _snSin(u, 2), 0], r: [0, 0, 0.02 * _snSin(u, 1, 0.1)] },
+                ewSnArmL: { rw: [0, 0.05 * _snSin(u, 1, 0.3), 0.06 * _snSin(u, 1)] }, ewSnArmR: { rw: [0, 0.05 * _snSin(u, 1, 0.7), -0.06 * _snSin(u, 1, 0.2)] },
+                ewSnNose: { r: [0.03 * _snSin(u, 3), 0.03 * _snSin(u, 2, 0.3), 0] } };
+            return _snLive(P, u, { amp: 0.09, hz: 2, blink: 0.52, look: look, grin: 0.3 * _snSin(u, 1, 0.6) });
+        }],
+        /* walk (0.9 s loop): the base ball ROLLS under it, the rest rides on top: it wobbles side to side, the arms balance, the
+           hat hops, the tails stream */
+        walk: [0.9, function (u) {
+            var w = _snSin(u, 1), hop = Math.abs(_snSin(u, 1));
+            var P = { ewSnBase: { r: [u * Math.PI * 2, 0, 0] },
+                ewSnTorso: { p: [0, 0.02 * hop, 0], rw: [0.1, 0, 0.09 * w] },
+                ewSnNeck: { rw: [-0.06, 0, -0.07 * w], p: [0, 0.012 * hop, 0] },
+                ewSnHat: { p: [0, 0.03 * _snB(u, 0.2, 0.3, 0.45) + 0.03 * _snB(u, 0.7, 0.8, 0.95), 0], r: [0.05 * w, 0, 0] },
+                ewSnArmL: { rw: [0, 0.25 * w, 0.2 * w] }, ewSnArmR: { rw: [0, 0.25 * w, 0.2 * w] } };
+            return _snLive(P, u, { amp: 0.16, hz: 2, fling: 0.18, grin: 0.4, mad: 0.3 });
+        }],
+        /* the slap (basic attack / melee cast, 1.0 s, lands at 0.48): it twists back, the right stick whips across like a switch */
+        castMelee: [1.0, function (u) {
+            var wind = _snB(u, 0.0, 0.3, 0.42), hit = _snS(u, 0.36, 0.5) * (1 - _snS(u, 0.62, 0.95));
+            var P = { ewSnTorso: { rw: [0.12 * hit - 0.06 * wind, -0.5 * wind + 0.55 * hit, 0] },
+                ewSnNeck: { rw: [0.1 * hit, 0.2 * wind - 0.2 * hit, 0] },
+                ewSnArmR: { rw: [0, -0.9 * wind + 1.5 * hit, -0.5 * wind + 0.3 * hit] },
+                ewSnArmL: { rw: [0, -0.3 * hit, 0.2 * wind] },
+                ewSnHat: { p: [0, 0.05 * _snB(u, 0.44, 0.52, 0.7), 0] } };
+            return _snLive(P, u, { amp: 0.1, hz: 3, fling: 0.4 * hit, mad: 0.6 + 0.4 * hit, grin: -0.6 });
+        }],
+        /* a cast (1.3 s, lands at 0.55): both sticks go up, the head tips back, the hat lifts off its head, turns once and drops back */
+        cast: [1.3, function (u) {
+            var a = _snS(u, 0.0, 0.3) * (1 - _snS(u, 0.7, 1.0)), up = _snB(u, 0.2, 0.5, 0.8);
+            var P = { ewSnTorso: { p: [0, 0.03 * a, 0], rw: [-0.08 * a, 0, 0] }, ewSnNeck: { rw: [-0.3 * a, 0, 0], p: [0, 0.04 * a, 0] },
+                ewSnArmL: { rw: [0, -0.2 * a, 0.75 * a] }, ewSnArmR: { rw: [0, 0.2 * a, -0.75 * a] },
+                ewSnHat: { p: [0, 0.32 * up, 0], r: [0, _snS(u, 0.2, 0.8) * Math.PI * 2, 0] } };
+            return _snLive(P, u, { amp: 0.14, hz: 3, fling: 0.3 * a, oh: a, wide: 0.5 * a });
+        }],
+        /* a support cast (1.2 s): it tips its hat (the right stick comes up to the brim, the hat lifts and bows) */
+        castSupport: [1.2, function (u) {
+            var a = _snS(u, 0.05, 0.35) * (1 - _snS(u, 0.7, 0.95));
+            var P = { ewSnTorso: { rw: [0.18 * a, 0, 0] }, ewSnNeck: { rw: [0.22 * a, 0, 0] },
+                ewSnArmR: { rw: [0.3 * a, 0.4 * a, -0.95 * a] }, ewSnArmL: { rw: [0, 0, -0.25 * a] },
+                ewSnHat: { p: [0, 0.16 * a, 0.08 * a], r: [0.5 * a, 0, 0] } };
+            return _snLive(P, u, { amp: 0.1, hz: 2, grin: a, blink: 0.5 });
+        }],
+        /* hit (0.6 s): the head is knocked back and nearly comes off, the hat jumps, the sticks fly up, the eyes go wide */
+        hit: [0.6, function (u) {
+            var k = _snB(u, 0.0, 0.14, 0.7), k2 = _snB(u, 0.05, 0.25, 0.8);
+            var P = { ewSnTorso: { rw: [-0.14 * k, 0, 0.06 * k] }, ewSnMid: { p: [0, 0, -0.03 * k] },
+                ewSnNeck: { p: [0.03 * k, 0.05 * k, -0.11 * k], rw: [-0.45 * k, 0.15 * k, 0.1 * k] },
+                ewSnHat: { p: [0, 0.2 * k2, -0.03 * k2], r: [-0.3 * k2, 0, 0.2 * k2] },
+                ewSnArmL: { rw: [0, 0.3 * k, 0.5 * k] }, ewSnArmR: { rw: [0, -0.3 * k, -0.5 * k] },
+                ewSnNose: { r: [-0.25 * k, 0, 0] } };
+            return _snLive(P, u, { amp: 0.2, hz: 3, fling: 0.5 * k, wide: k, oh: k });
+        }],
+        /* ⛄ THE SPELLS (data.js RACE_ABILITIES snowman, `animSlot` + `animStrikeMs` on each row) */
+        /* Snowball (1.3 s, leaves the hand at 0.5 = 650 ms): the right stick digs a handful out of its own base ball, packs it,
+           winds back over the hat and throws; the base dents where it dug */
+        snSnowball: [1.3, function (u) {
+            var dig = _snB(u, 0.0, 0.16, 0.3), wind = _snS(u, 0.22, 0.4) * (1 - _snS(u, 0.42, 0.5)), thr = _snS(u, 0.42, 0.52) * (1 - _snS(u, 0.7, 1.0));
+            var held = _snS(u, 0.12, 0.2) * (1 - _snS(u, 0.49, 0.51));
+            var P = { ewSnTorso: { rw: [0.22 * dig - 0.12 * wind + 0.2 * thr, -0.25 * dig - 0.45 * wind + 0.5 * thr, -0.12 * dig] },
+                ewSnNeck: { rw: [0.2 * dig - 0.1 * wind, 0.3 * wind - 0.2 * thr, 0] },
+                ewSnBase: { s: [1 + 0.03 * dig, 1 - 0.05 * dig, 1 + 0.03 * dig] },
+                ewSnArmR: { rw: [0.35 * dig, 0.9 * dig - 1.0 * wind + 1.5 * thr, 1.25 * dig - 0.75 * wind - 0.15 * thr] },
+                ewSnArmL: { rw: [0, -0.3 * wind + 0.5 * thr, 0.3 * wind - 0.2 * thr] },
+                ewSnBall: { s: 1 + 999 * held },
+                ewSnHat: { p: [0, 0.06 * _snB(u, 0.46, 0.54, 0.7), 0] } };
+            return _snLive(P, u, { amp: 0.12, hz: 3, fling: 0.4 * thr, mad: 0.5 * wind + 0.5 * thr, grin: 0.8 * thr - 0.4 * wind });
+        }],
+        /* Carrot Jab (1.1 s, lands at 0.42 = 460 ms): the head rears back, then the whole thing lunges and the carrot shoots out
+           four times its length, quivers in the wound, and snaps back with a wobble */
+        snCarrot: [1.1, function (u) {
+            var rear = _snB(u, 0.0, 0.26, 0.38), jab = _snS(u, 0.34, 0.42) * (1 - _snS(u, 0.62, 0.78)), wob = _snB(u, 0.74, 0.82, 1.0) * _snSin(u, 9);
+            var P = { ewSnTorso: { rw: [-0.18 * rear + 0.2 * jab, 0, 0] },
+                ewSnNeck: { p: [0, 0.03 * rear, -0.06 * rear + 0.2 * jab], rw: [-0.4 * rear - 0.2 * jab, 0, 0] },   // the lunge leans the body; the head stays level so the carrot goes OUT, not down
+                ewSnNose: { s: [1 + 0.25 * jab, 1 + 0.25 * jab, 1 - 0.35 * rear + 3.2 * jab + 0.25 * wob], r: [0.05 * _snSin(u, 22) * jab + 0.2 * wob, 0.05 * _snSin(u, 19) * jab, 0] },
+                ewSnArmL: { rw: [0, 0.5 * rear - 0.7 * jab, 0.3 * rear - 0.4 * jab] }, ewSnArmR: { rw: [0, -0.5 * rear + 0.7 * jab, -0.3 * rear + 0.4 * jab] },
+                ewSnHat: { p: [0, 0.07 * _snB(u, 0.38, 0.46, 0.6), -0.04 * jab], r: [-0.2 * jab, 0, 0] } };
+            return _snLive(P, u, { amp: 0.12, hz: 3, fling: 0.6 * jab, mad: Math.max(rear, jab), grin: -0.8 * rear + 1.0 * jab });
+        }],
+        /* Roll Up (1.5 s, the crash at 0.62 = 930 ms): the sticks fold in, the head and the middle sink into the base, and the
+           whole snowman tumbles over and over like one big snowball; it springs back up after the crash, the hat last */
+        snRoll: [1.5, function (u) {
+            var tuck = _snS(u, 0.0, 0.2) * (1 - _snS(u, 0.68, 0.8)), turn = _snS(u, 0.16, 0.7), pop = _snB(u, 0.7, 0.8, 1.0);
+            var P = { ewSnBody: { p: [0, 0.1 * tuck * Math.abs(_snSin(u, 3)) + 0.12 * pop, 0], r: [turn * Math.PI * 6, 0, 0], s: 1 + 0.08 * tuck },
+                ewSnTorso: { p: [0, -0.42 * tuck + 0.05 * pop, 0] }, ewSnNeck: { p: [0, -0.3 * tuck + 0.06 * pop, 0] },
+                ewSnArmL: { rw: [0, 0, -1.15 * tuck + 0.4 * pop] }, ewSnArmR: { rw: [0, 0, 1.15 * tuck - 0.4 * pop] },
+                ewSnHat: { p: [0, -0.06 * tuck + 0.45 * pop, 0], r: [0, pop * 2, 0] },
+                ewSnNose: { s: [1, 1, 1 - 0.6 * tuck] } };
+            return _snLive(P, u, { amp: 0.1, hz: 3, fling: 0.7 * tuck, mad: tuck, wide: pop, oh: pop });
+        }],
+        /* Snow Day (2.0 s, the storm breaks at 0.5 = 1000 ms): it comes apart. The base spins one way on the floor, the middle
+           lifts off and spins the other way with the sticks out flat like a rotor and the scarf flung wide, the head rises higher
+           still and turns, the hat higher again; then the three balls drop back onto each other, one, two, three */
+        snSnowDay: [2.0, function (u) {
+            var up = _snS(u, 0.05, 0.3) * (1 - _snS(u, 0.72, 0.82)), spin = _snS(u, 0.08, 0.8), l1 = _snB(u, 0.8, 0.84, 0.92), l2 = _snB(u, 0.84, 0.88, 0.96), l3 = _snB(u, 0.88, 0.92, 1.0);
+            var P = { ewSnBase: { r: [0, -spin * Math.PI * 6, 0], s: [1 + 0.06 * l1, 1 - 0.1 * l1, 1 + 0.06 * l1] },
+                ewSnTorso: { p: [0, 0.34 * up - 0.05 * l1, 0], rw: [0, spin * Math.PI * 10, 0], s: [1 + 0.05 * l2, 1 - 0.08 * l2, 1 + 0.05 * l2] },
+                ewSnNeck: { p: [0, 0.3 * up - 0.04 * l2, 0], rw: [0.15 * up * _snSin(u, 3), -spin * Math.PI * 16, 0] },
+                ewSnArmL: { rw: [0, 0, 0.42 * up] }, ewSnArmR: { rw: [0, 0, -0.42 * up] },
+                ewSnHat: { p: [0, 0.14 * up + 0.12 * l3, 0], r: [0.15 * up, spin * Math.PI * 8, 0] },
+                ewSnNose: { s: [1, 1, 1 + 0.4 * up] } };
+            return _snLive(P, u, { amp: 0.1, hz: 4, fling: up, oh: up, wide: up, mad: 0.4 * up });
+        }],
+        /* death (2.4 s, held): it falls apart. The head tips off forward and lands face down with the carrot in the floor and the
+           hat rolled off in front; the middle slides off sideways; the sticks drop; the scarf slumps on the base, which sags */
+        death: [2.4, function (u) {
+            var a = _snS(u, 0.0, 0.18), hd = _snS(u, 0.12, 0.5), md = _snS(u, 0.3, 0.7), ar = _snS(u, 0.2, 0.6), sag = _snS(u, 0.4, 1.0);
+            var bh = Math.abs(Math.sin(hd * Math.PI * 2)) * 0.12 * (1 - hd), bm = Math.abs(Math.sin(md * Math.PI * 2)) * 0.08 * (1 - md);
+            var mp = [-0.72 * md, -0.74 * md * md + bm, 0.1 * md];
+            var P = { ewSnBody: { p: [0, -0.05 * sag, 0] }, ewSnBase: { s: [1 + 0.12 * sag, 1 - 0.2 * sag, 1 + 0.12 * sag] },
+                ewSnTorso: { rw: [0.1 * a * (1 - md), 0, -0.1 * a * (1 - md)] },
+                ewSnMid: { p: mp, r: [0, 0, 1.2 * md] },
+                ewSnBtn0: { p: [mp[0] - 0.2 * md, mp[1] - 0.42 * md, 0.25 * md], s: 1 }, ewSnBtn1: { p: [mp[0] + 0.45 * md, mp[1] - 0.18 * md, 0.32 * md] }, ewSnBtn2: { p: [mp[0] + 0.2 * md, mp[1] + 0.2 * md, 0.5 * md] },
+                ewSnNeck: { p: [0.12 * hd, -1.1 * hd * hd + bh, 0.7 * hd], rw: [1.75 * hd, 0.3 * hd, 0] },   // the head's centre swings 0.22 under the neck as it tips: -1.1 lands it on the floor
+                ewSnHat: { p: [0.1 * hd, 0.2 * hd, -0.05 * hd], r: [0.35 * hd, 0, 0.5 * hd] },
+                ewSnArmL: { p: [0.35 * ar, -1.1 * ar * ar, 0.1 * ar], rw: [0, 0.4 * ar, -0.48 * ar] },
+                ewSnArmR: { p: [-0.2 * ar, -1.1 * ar * ar, 0.35 * ar], rw: [0, 0.9 * ar, 0.48 * ar] },
+                ewSnScarf: { p: [0, -0.46 * md, 0.02 * md], rw: [0.12 * md, 0, -0.1 * md] } };
+            _snLive(P, u, { amp: 0.1 * (1 - sag), hz: 3, oh: a, wide: a * (1 - hd) });
+            P.ewSnEyeL.s = [1, 1 - 0.85 * hd, 1]; P.ewSnEyeR.s = [1, 1 - 0.85 * hd, 1];
+            return P;
+        }]
+    };
+    function _snBuild(root) {
+        if (!root.getObjectByName('ewSnBody') || !root.getObjectByName('ewSnHead')) return null;
+        var R = { n: {} };
+        var ball = root.getObjectByName('ewSnBall'); if (ball) ball.scale.setScalar(0.001);   // the handful of snow shows only in a clip
+        _SN_NODES.forEach(function (n) {
+            var o = root.getObjectByName(n);
+            if (o) R.n[n] = { p: o.position.clone(), q: o.quaternion.clone(), s: o.scale.clone() };
+        });
+        var clips = {};
+        Object.keys(_SN_POSES).forEach(function (slot) { var p = _SN_POSES[slot]; clips[slot] = _abClip(slot, p[0], p[1], R); });
+        clips.run = clips.walk; clips.attack = clips.castMelee;
+        clips.castMagic = clips.cast; clips.castRanged = clips.snSnowball; clips.castHeal = clips.castSupport;
+        clips.castAOE = clips.cast; clips.castUltimate = clips.snSnowDay;
         return clips;
     }
     /* 🥜 THE NUTCRACKER'S JAW (same day): the Meshy rig plays the library like any unit; its jaw (a mesh skinned to the added bone
@@ -21386,7 +21567,9 @@ const ThreeRenderer = (function () {
         /* 🛻 THE MONSTER TRUCK (above, _mtBuild): the body on its struts, the wheels, the fanged hood */
         monsterTruck: function (root) { return _mtBuild(root); },
         /* 🧠 THE FLOATING BRAIN (above, _bbBuild): the brain's hover and throb, the eye, the lids; the tendrils ride THE SWAY */
-        brainBody: function (root) { return _bbBuild(root); }
+        brainBody: function (root) { return _bbBuild(root); },
+        /* ⛄ THE SNOWMAN (above, _snBuild): three balls, two sticks, a carrot, coal, a hat and a scarf, each its own part */
+        snowman: function (root) { return _snBuild(root); }
     };
     _PROC_RIGS.unicornWings.deps = [UNI_WING_URL, UNI_HORN_URL];
     /* ♟ THE CHESS PIECE: one hinge, the same moves, for each of the six looks (sprites.js CHESS_PIECE_3D) */
@@ -114249,6 +114432,8 @@ const ThreeRenderer = (function () {
            an existing slot is replaced. Models already built keep their clips. */
         mtPose: function (slot, dur, pose) { if (slot && typeof pose === 'function') _MT_POSES[slot] = [+dur || 1, pose]; return true; },
         bbPose: function (slot, dur, pose) { if (slot && typeof pose === 'function') _BB_POSES[slot] = [+dur || 1, pose]; return true; },   // 🧠 THE FLOATING BRAIN: a spell's own clip
+        /* ⛄ THE SNOWMAN: the same for its parts (pose(u) -> { <node>: { p, rw, r, s } }, three-renderer.js THE SNOWMAN) */
+        snPose: function (slot, dur, pose) { if (slot && typeof pose === 'function') _SN_POSES[slot] = [+dur || 1, pose]; return true; },
         /* 🥜 THE NUTCRACKER'S JAW: hold unit uid's jaw open (0 … 1) for ms, over whatever its clip does */
         /* 🕊 THE ORIGAMI IN A FIGHT: fold unit uid into a shape, its blow, the fortune's flap, Seven Folds on a victim (see the block) */
         oriAct: function (uid, what, o) { try { return _oriAct(uid, what, o); } catch (e) { console.warn('[origami] act failed', e); return false; } },
