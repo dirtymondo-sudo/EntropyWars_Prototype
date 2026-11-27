@@ -2373,3 +2373,12 @@ NOT DONE (the plan's steps 3 to 6): she is not a unit (no race, no kit, nothing 
 (part pictures `origami-girl/concepts/b_body.png`, `b_wing.png` are made, not modelled); no girl-to-packet swap; no crane (it needs
 the saved motion, the plan says how); no wad (her death); no paper grain or crease lines (white on white reads flat in a bright room);
 the fortune game is a stiff four-point star (its pockets do not puff open); the sword's guard is small; no sound (never generated).
+
+### THE PAPER LOOK (2026-11-27, same day, mondo: "okay go for it")
+White paper on white paper read as one flat shape. The ink pass only draws a line where depth AND colour both break, so it outlines the sheet against the room but never one white layer against another. Four things in `_oriBuild` / `_oriSheet` fix it, all in code, no model and no texture file:
+- CREASE LINES: every piece's edges carry the fold that made them (`ed`: -1 = the sheet's own edge, k = fold k). `lines(tau)` lays a thin dark strip (0x241a14, 30 % strength, lighter on the sheet's edge) inside each edge once its fold is 45 % done. The strip's width is capped by the piece's size so a sliver never goes black.
+- A SHADE PER LAYER: `up` / `dn` count, per step, how many pieces lie over each piece on each side; the outward face darkens 6 % a cover, up to three. Written as vertex colours.
+- GRAIN: `_oriGrain()` draws one 256 px fibre sheet on a canvas, shared by every sheet of paper in the game.
+- THE SNAP: `_oriEase` runs a fold fast, lands it, springs back 4.5 % and settles (the pose stage keeps the smooth `_oriSmooth`).
+Proof with the ink pass ON (`playtest_city.js … --post`; the first test's pictures had it off): `/mnt/project-files/origami-girl/fold-test/ink_*_steps.png` + `ink_fold_test.gif`.
+HER MODELS (Meshy, 65 credits, balance 1,878): `/mnt/project-files/origami-girl/models/b_body.glb` (28.7 K triangles, 1.9 m), `b_body_rigged.glb` (24 bones) + walking + running, `b_wing.glb` (one wing, 6.2 K); views `b_body_views.png`, `b_wing_views.png`. Not in the game yet, not on R2.
