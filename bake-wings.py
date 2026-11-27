@@ -16,6 +16,11 @@ every bone of the rig (`--far`, part of the height, default 0.07); nothing is cu
 weights to the wing's bone over a band (`--band`, default 0.06 of the height), so the root bends like a shoulder.
 `--back` (default 0.02) = how far behind the middle of the body a wing vertex must sit, `--low` / `--high` = the height band
 (parts of the height, default 0.3 .. 1.6: tails and capes' hems stay out), `--side` (default 0.03) = how far off the middle.
+`--slab <z>` (11-27, the Nephilim): a wing that stands as one flat sheet behind the WHOLE body, heels to over the head. Far-from-a-bone
+left its feathers beside the arms and below the knee on the arms and legs (the wing tore in two). Everything behind the depth `z` (part of
+the height, from the body's middle depth; the Nephilim: -0.012) is wing; the blend runs by the distance from the middle line.
+`--sheet <band>` (11-27, the Cicada Brood): wings shut flat down the back over the legs. Their old weights were the thighs; below the
+shoulders (over `band` of the height, 0.08) the sheet goes to the wing's bone, its middle strip to the parent bone, the root sits at the top.
 
 Needs numpy (+ pillow for --debug). Upload the new file under a NEW name (assets are long-cached) and point sprites.js at it.
 """
@@ -59,6 +64,12 @@ def soft_main(j, b, G, sk, J, IBM, S, p, P, I, parent, opt, dst, src, dbg):
     zb = np.median(P[:, 2]); xm = np.median(P[:, 0])
     yy = (P[:, 1] - y0) / H
     cand = (d > (opt['far'] - 0.0) * H) & (P[:, 2] < zb - opt['back'] * H) & (yy > opt['low']) & (yy < opt['high']) & (np.abs(P[:, 0] - xm) > opt['side'] * H)
+    slab = opt.get('slab')
+    if slab is not None:
+        # THE SLAB (a wing that stands as one flat sheet behind the whole body, down to the heels: the Nephilim): everything behind one
+        # depth is wing, near a bone or not, so no feather stays on an arm or a leg; the blend runs by the distance from the middle line
+        cand = (P[:, 2] < zb + slab * H) & (yy < opt['high'])
+        d = np.abs(P[:, 0] - xm) - opt['side'] * H + opt['far'] * H   # so `far` + `band` below read as: the wing's own from `side` + `band` out
     # the pieces of the candidate skin (joined by a triangle or a shared position), a side at a time
     par = np.arange(len(P))
     def f(x):
@@ -107,7 +118,26 @@ def soft_main(j, b, G, sk, J, IBM, S, p, P, I, parent, opt, dst, src, dbg):
         newIBM.append((np.linalg.inv(Gp @ Lb) @ S).T.reshape(16))
         # the blend: from the old weights at the edge of the wing to the wing's bone a band further out
         t = np.clip((dq - far) / band, 0, 1); t = t * t * (3 - 2 * t)
-        idx = np.nonzero(m)[0]; full = 0
+        sheet = opt.get('sheet')
+        if sheet is not None:
+            # THE SHEET (wings shut flat down the back, over the legs: the Cicada Brood): the old weights hang them on the thighs, so they
+            # tore at every step. Below the shoulders the sheet leaves the old weights for the wing's bone, and its middle strip (where the
+            # two wings meet over the abdomen) for the bone the wings stand on, so the seam between them never opens.
+            ytop = np.percentile(Q[:, 1], 88)
+            ss = lambda v: np.clip(v, 0, 1) ** 2 * (3 - 2 * np.clip(v, 0, 1))
+            ty = ss((ytop - Q[:, 1]) / (sheet * H)); tx = ss((np.abs(Q[:, 0] - xm) - opt['side'] * H) / band)
+            pos = np.array([Q[Q[:, 1] > ytop - sheet * H][:, 0].mean(), ytop - sheet * H * 0.5, Q[Q[:, 1] > ytop - sheet * H][:, 2].mean()])
+            T = np.eye(4); T[:3, 3] = pos; L = np.linalg.inv(Gp) @ T
+            j['nodes'][ni]['translation'] = L[:3, 3].tolist()
+            Lb[:3, 3] = L[:3, 3]; newIBM[-1] = (np.linalg.inv(Gp @ Lb) @ S).T.reshape(16)
+            pj = J.index(pr); idx = np.nonzero(m)[0]; full = 0
+            for q, vi in enumerate(idx):
+                a_, x_ = ty[q], tx[q]
+                w = Wt[vi].copy(); jj = Ji[vi].copy(); o = np.argsort(-w)[:2]; w2 = w[o] / max(1e-9, w[o].sum()) * (1 - a_)
+                Ji[vi] = [jj[o[0]], jj[o[1]], pj, j0 + k]; Wt[vi] = [w2[0], w2[1], a_ * (1 - x_), a_ * x_]
+                if a_ * x_ >= 0.999: full += 1
+            t = np.zeros(len(Q)); full0 = full
+        idx = np.nonzero(m)[0]; full = full0 if sheet is not None else 0
         for q, vi in enumerate(idx):
             tt = t[q]
             if tt <= 0.001: continue
@@ -148,6 +178,8 @@ def main():
     soft = '--soft' in args
     if soft: args.remove('--soft')
     opt = {'far': 0.07, 'band': 0.06, 'back': 0.02, 'low': 0.3, 'high': 1.6, 'side': 0.03}
+    if '--sheet' in args: k = args.index('--sheet'); opt['sheet'] = float(args[k + 1]); del args[k:k + 2]
+    if '--slab' in args: k = args.index('--slab'); opt['slab'] = float(args[k + 1]); del args[k:k + 2]
     for k0 in list(opt):
         if '--' + k0 in args: k = args.index('--' + k0); opt[k0] = float(args[k + 1]); del args[k:k + 2]
     if len(args) != 2: print(__doc__); sys.exit(1)

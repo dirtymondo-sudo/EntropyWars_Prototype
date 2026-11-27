@@ -2462,6 +2462,20 @@ mothman/male `Meshy_AI_mothman_wings_Character_output`, nephilim/male `Meshy_AI_
 `Meshy_AI_monarch_wings_Running`, cicada_brood/male `Meshy_AI_cicada_brood_wings_Running`, beequeen `Meshy_AI_the_hive_queen_wings_Running`.
 The game shares each wing out to three more bones at load and beats it (champions-combat.md "THE LOOSE WINGS EVERYWHERE").
 
+### THE SLAB + THE SHEET (11-27, mondo: "the nephilim and cicado brood wings are messed up")
+- What broke: `--soft` takes skin FAR FROM EVERY BONE. The Nephilim's wings stand as one sheet behind the whole body, so the feathers beside
+  the arms and below the knee (`--low 0.3`) stayed on the arms and legs while the rest turned on the wing's bone: the wing tore in two.
+  The Cicada Brood's wings lie shut down the back over the thighs; most of the sheet was a half blend with the thigh bones, so it tore at
+  every step, and the general flare / tuck moments swung both units' hanging wings through the legs.
+- The fix, two new modes of the same tool: `--slab -0.012` (Nephilim: all skin behind one depth is wing, blended by the distance from the
+  middle line) and `--sheet 0.08 --low 0.12` (Cicada Brood: below the shoulders the sheet is the wing's bone, its middle strip the parent
+  bone, root at the top). Files `Meshy_AI_nephilim_wings2_Character_output.glb`, `Meshy_AI_cicada_brood_wings2_Running.glb` (the `_wings_`
+  files stay on R2, unused). Both on `--parent Spine02`.
+- Beats (three-renderer.js `_WB`): new keys `mo` (how much of a moment's spread / fold a wing takes), `tw0` (a rest lean off the back),
+  `sh` (the ruffle's shiver). grigori + cicada never turn toward the body now.
+- A wing that HANGS (root above or mid, tips down) needs these three; check a new one with the pose sheet before the game
+  (rotate the wing bone by hand about each axis, back + side view), the 1 fps probe from above does not show a tear.
+
 ## THE LOOSE TAILS (2026-11-27, bake-tail.py)
 `python3 -I bake-tail.py <in.glb> <out.glb> [--parent Hips --joints 6 --col 0 --far 0.05 --band 0.05 --high 0.62 --wide 0.5] [--debug <dir>]`
 (after bake-wings.py on a body with both). The tail = the biggest narrow piece of skin behind and below the hips that is far from every

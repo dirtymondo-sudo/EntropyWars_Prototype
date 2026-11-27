@@ -10,7 +10,7 @@ const REPO = __dirname;
 const OUT = path.join(__dirname, 'shots', 'wings'); fs.mkdirSync(OUT, { recursive: true });
 const TAG = process.env.TAG || 'run', MAP = process.env.MAP || '';
 const FLAGS = (process.env.FLAGS || '').split(',').filter(Boolean);
-const N = +(process.env.SHOTS || 8), GAP = +(process.env.GAP || 110), ZOOM = +(process.env.ZOOM || 6);
+const N = +(process.env.SHOTS || 8), GAP = +(process.env.GAP || 110), ZOOM = +(process.env.ZOOM || 6); const FACE = process.env.FACE || 'right';   // FACE=left: the unit's back to the camera (hanging wings)
 const ACTS = (process.env.ACTS || 'idle,walk,attack,hit,death').split(',');
 const RACES = (process.env.RACES || 'angel:female').split(',').map(x => x.split(':'));
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -67,11 +67,11 @@ const READ = () => {
     window.__pgSpot = best || { x: bw >> 1, y: bh >> 1 }; return JSON.stringify(window.__pgSpot);
   }));
   /* the Point Guard at the spot, one foe three squares off, everybody else in a corner */
-  const STAGE = ([zoom, race]) => { const st = GAME.state, P = window.__pgSpot, pg = st.units.find(u => u.player === 1 && u.race === race); window.__wgRace = race; if (!pg) return 'no boltzmann brain: ' + st.units.map(u => u.race).join(',');
+  const STAGE = ([zoom, race, face]) => { const st = GAME.state, P = window.__pgSpot, pg = st.units.find(u => u.player === 1 && u.race === race); window.__wgRace = race; if (!pg) return 'no boltzmann brain: ' + st.units.map(u => u.race).join(',');
     const foe = st.units.find(u => u.player === 2), put = (u, x, y) => { u.x = x; u.y = y; try { u.z = getHeightAt(x, y); } catch (e) {} };
     st.units.forEach(u => { u.dead = false; u._dying = false; u.maxHp = Math.max(u.maxHp, 6000); u.hp = u.maxHp; u.status = []; });
     put(pg, P.x - 3, P.y); put(foe, P.x, P.y); let k = 0; st.units.forEach(u => { if (u !== pg && u !== foe) put(u, u.player === 1 ? 0 : 1, k++ % 6); });
-    pg.facing = 'right'; st.controllers = { 1: 'local', 2: 'local' }; st._blitzActiveUnitId = pg.id; st.aiThinking = false; st.currentPlayer = 1; st._actionExecuting = false;
+    pg.facing = (face || 'right'); st.controllers = { 1: 'local', 2: 'local' }; st._blitzActiveUnitId = pg.id; st.aiThinking = false; st.currentPlayer = 1; st._actionExecuting = false;
     try { ThreeRenderer.invalidateUnits(); GAME.markDirty(); GAME.renderIfDirty && GAME.renderIfDirty(); } catch (e) {}
     /* the battle camera frames the board by itself: the probe holds its own close view (CAM=0 leaves the game's) */
     clearInterval(window.__pgCam);
@@ -91,11 +91,11 @@ const READ = () => {
     console.log('SHOT', name, JSON.stringify(info).slice(0, 300)); return info;
   };
   const rows = [];
-  for (const RC of RACES) { const R = RC[0], RT = R.replace(/ /g, '_'); console.log(await page.evaluate(STAGE, [ZOOM, R])); await sleep(6000);
+  for (const RC of RACES) { const R = RC[0], RT = R.replace(/ /g, '_'); console.log(await page.evaluate(STAGE, [ZOOM, R, FACE])); await sleep(6000);
   for (const act of ACTS) {
     if (act === 'idle') { for (let i = 0; i < N; i++) rows.push([act, i, await shot(RT + '_idle_' + i, 400 + i * GAP)]);
       console.log('TRACE', R, JSON.stringify(await page.evaluate((READ) => new Promise(res => { const f = eval('(' + READ + ')'), out = [], t0 = performance.now(); const iv = setInterval(() => { const r = f(); out.push(Math.round(performance.now() - t0) + ' ' + (r[0] || '')); if (out.length >= 14) { clearInterval(iv); res(out); } }, 160); }), READ.toString())).slice(0, 2400)); continue; }
-    console.log(await page.evaluate(STAGE, [ZOOM, R])); await sleep(2500);
+    console.log(await page.evaluate(STAGE, [ZOOM, R, FACE])); await sleep(2500);
     const r = await page.evaluate((act) => { const st = GAME.state, pg = st.units.find(u => u.player === 1 && u.race === window.__wgRace), foe = st.units.find(u => u.player === 2 && u.x === window.__pgSpot.x);
       pg.ap = 9; pg.mp = pg.maxMp = 999; pg._spellCooldowns = {}; pg._spellsUsedThisTurn = {}; pg.movesLeft = 9; pg.hasMoved = false; pg.hasAttacked = false;
       try {

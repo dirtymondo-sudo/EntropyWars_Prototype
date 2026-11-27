@@ -18570,9 +18570,9 @@ const ThreeRenderer = (function () {
         stone:     { rhythm: 'ruffle',  rate: 1.1, walk: 2.0, sw0: 0.03, ra0: 0, swA: 0.07, raA: 0.09, tw: 0.03, off: 0.5, lag: 0.143, flex: [1.0, 1.4, 1.8], bend: 0.3 },
         eagle:     { rhythm: 'glide',   rate: 2.8, walk: 4.0, sw0: 0.03, ra0: 0.04, swA: 0.1, raA: 0.2, tw: 0.1, off: 0, lag: 0.091, flex: [1.4, 1.9, 2.4], bend: 0.4 },
         serpent:   { rhythm: 'steady',  rate: 2.3, walk: 3.6, sw0: 0.03, ra0: 0.02, swA: 0.12, raA: 0.18, tw: 0.12, off: 0.9, lag: 0.13, flex: [1.8, 2.4, 3.0], bend: 0.46 },
-        grigori:   { rhythm: 'ruffle',  rate: 1.3, walk: 2.4, sw0: 0.02, ra0: 0, swA: 0.08, raA: 0.11, tw: 0.05, off: 0.45, lag: 0.143, flex: [1.8, 2.3, 2.8], bend: 0.44 },   // (the Nephilim: great folded wings, slow)
+        grigori:   { rhythm: 'ruffle',  rate: 1.3, walk: 2.4, sw0: 0.02, ra0: 0.05, swA: 0.06, raA: 0.07, tw: 0.03, tw0: 0.05, mo: 0.3, sh: 0.35, off: 0.45, lag: 0.143, flex: [1.8, 2.3, 2.8], bend: 0.44 },   // (the Nephilim: great folded wings, slow)
         mantle:    { rhythm: 'butterfly', rate: 2.2, walk: 3.6, sw0: 0, ra0: 0, swA: 0.3, raA: 0.04, tw: 0, off: 0.2, lag: 0.091, flex: [1.2, 1.7, 2.2], bend: 0.34 },   // (the Monarch: the wings she wears down her back open and close a little)
-        cicada:    { rhythm: 'flutter', rate: 30, walk: 36, sw0: 0, ra0: 0, swA: 0.03, raA: 0.07, tw: 0.05, off: 0.3, lag: 0.02, flex: [0.72, 1.08, 1.44], bend: 0.2 },   // (shut along the back: they rattle in bursts)
+        cicada:    { rhythm: 'flutter', rate: 30, walk: 36, sw0: 0, ra0: 0.07, swA: 0.02, raA: 0.05, tw: 0.03, tw0: 0.06, mo: 0.25, off: 0.3, lag: 0.02, flex: [0.72, 1.08, 1.44], bend: 0.2 },   // (shut along the back: they rattle in bursts)
         pegasus:   { rhythm: 'steady',  rate: 2, walk: 3, sw0: 0, ra0: 0, swA: 0, raA: 0, tw: 0, off: 0, lag: 0.13, flex: [1.8, 2.4, 3.0], bend: 0.5 },   // (the Unicorn: its clips turn the hinge; only the follow-through is read)
         baked:     { rhythm: 'steady',  rate: 2.0, walk: 3.2, sw0: 0.03, ra0: 0, swA: 0.1, raA: 0.15, tw: 0.06, off: 0.25, lag: 0.111, flex: [1.6, 2.0, 2.5], bend: 0.42 }
     };
@@ -18616,7 +18616,9 @@ const ThreeRenderer = (function () {
     function _wbHinge(n, sgn, P, ph, t, m, walk) {
         if (!_gearE) _gearE = new THREE.Euler(0, 0, 0, 'YZX');
         if (sgn < 0) ph -= P.off;
-        var amp = (walk ? 1.55 : 1) * (1 + m.beat) * (1 - m.fold), sw = P.sw0, ra = P.ra0, tw = 0, r = P.rhythm, s, c;
+        var amp = (walk ? 1.55 : 1) * (1 + m.beat) * (1 - m.fold), sw = P.sw0, ra = P.ra0, tw = P.tw0 || 0, r = P.rhythm, s, c;
+        /* `mo` (11-27, the Nephilim + the Cicada Brood: wings that HANG down the back, where a full flare or tuck swings the tips through the legs): how much of a moment's spread / fold this wing takes */
+        var mo = P.mo == null ? 1 : P.mo;
         if (r === 'butterfly') {
             /* folding back behind her and opening again, slow; shut = fully back */
             var wb = 0.5 - 0.5 * Math.cos(ph);
@@ -18630,15 +18632,15 @@ const ThreeRenderer = (function () {
             } else if (r === 'flutter') {                                         // a buzz in bursts, a breath between them
                 var bu = 0.5 + 0.5 * Math.sin(t * 1.25 + (P.off * 3));
                 bu = walk ? 1 : _occS(bu, 0.3, 0.6);
-                amp *= 0.12 + 0.88 * bu; ra += 0.1 * (1 - bu) * Math.sin(t * 2.3); sw += 0.12 * (1 - bu);
+                amp *= 0.12 + 0.88 * bu; ra += 0.1 * mo * (1 - bu) * Math.sin(t * 2.3); sw += 0.12 * mo * (1 - bu);
             } else if (r === 'ruffle') {                                          // slow, and a shiver down the feathers now and then
                 var rc = t / 5.5 + (sgn < 0 ? 0.04 : 0); rc -= Math.floor(rc);
                 var sh = _occBump(rc, 0.8, 0.86, 0.97);
-                tw += 0.13 * sh * Math.sin(t * 34); ra += 0.07 * sh;
+                tw += 0.13 * (P.sh == null ? 1 : P.sh) * sh * Math.sin(t * 34); ra += 0.07 * sh;
             }
             s = Math.sin(ph); c = Math.cos(ph);
-            sw += P.swA * amp * c - 0.42 * m.spread + 0.5 * m.fold;
-            ra += P.raA * amp * s + 0.3 * m.spread - (P.ra0 + 0.4) * m.fold;
+            sw += P.swA * amp * c - 0.42 * mo * m.spread + 0.5 * mo * m.fold;
+            ra += P.raA * amp * s + 0.3 * mo * m.spread - (P.ra0 + 0.4) * mo * m.fold;
             tw += P.tw * amp * Math.sin(ph + 0.9);
         }
         _gearE.set(tw, sgn * sw, sgn * ra, 'YZX');

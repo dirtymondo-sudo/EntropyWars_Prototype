@@ -3276,7 +3276,7 @@ const RACE_MODELS_3D = {
   },
   'cicada brood': {
     male: _mkUAL('cicada_brood', 'cicada_brood', {
-      model: 'https://cdn.entropywars.net/Assets/characters/races/cicada_brood/male/Meshy_AI_cicada_brood_wings_Running.glb', sway: { wings: 'cicada' },   // 2026-11-27 THE LOOSE WINGS EVERYWHERE: the same rig + wing bones (bake-wings.py --soft; a tail's chain: bake-tail.py), its own beat
+      model: 'https://cdn.entropywars.net/Assets/characters/races/cicada_brood/male/Meshy_AI_cicada_brood_wings2_Running.glb', sway: { wings: 'cicada' },   // 2026-11-27 THE LOOSE WINGS EVERYWHERE: the same rig + wing bones (bake-wings.py --soft; a tail's chain: bake-tail.py), its own beat
       heightRatio: 1.1,
       basicAttackKind: 'physical',
     }),
@@ -3906,7 +3906,7 @@ const RACE_MODELS_3D = {
   // mech is 1.5, giant 1.7): brawler sway, giant-blooded haymakers.
   'nephilim': {
     male: _mkUAL('nephilim/male', 'nephilim_realistic', {
-      model: 'https://cdn.entropywars.net/Assets/characters/races/nephilim/male/Meshy_AI_nephilim_wings_Character_output.glb', sway: { wings: 'grigori' },   // 2026-11-27 THE LOOSE WINGS EVERYWHERE: the same rig + wing bones (bake-wings.py --soft; a tail's chain: bake-tail.py), its own beat
+      model: 'https://cdn.entropywars.net/Assets/characters/races/nephilim/male/Meshy_AI_nephilim_wings2_Character_output.glb', sway: { wings: 'grigori' },   // 2026-11-27 THE LOOSE WINGS EVERYWHERE: the same rig + wing bones (bake-wings.py --soft; a tail's chain: bake-tail.py), its own beat
       heightRatio: 1.5,
       basicAttackKind: 'punch',
       lib: { idle: { clip: 'Idle_10', lib: 2 } },
