@@ -32701,7 +32701,7 @@ const ThreeRenderer = (function () {
     }
 
     /* Roots that block the line of sight to the caster or target this frame. */
-    function _occComputeBlockers(cam, cineActive, selUnit, focalTile, anyFade) {
+    function _occComputeBlockers(cam, cineActive, selUnit, focalTile, anyFade, handAny) {
         var roots = new Set();
         _occUnitWant = null;
         var groups = [];
@@ -32726,7 +32726,15 @@ const ThreeRenderer = (function () {
         if (fieldSet) { _occFieldRefresh(fieldSet, _occT0); fieldSet.rays = 0; fieldSet.tests = 0; }
         var facOcc = !!(_facilityNearGroup && _facilityNearGroup.parent) && !fieldSet;
         if (facOcc) groups.push(_facilityNearGroup);
-        if (!groups.length && !fieldSet) return roots;
+        /* THE HAND ORBIT'S FADE (2026-11-27, see _occHandEye): the sight lines to the active unit and the hand's focal also
+           read the board's own columns and edge walls; every other subject keeps THE FADE RULES' list */
+        var groupsAny = null;
+        if (handAny && !anyFade && (terrainGroup || wallGroup)) {
+            groupsAny = groups.slice();
+            if (terrainGroup) groupsAny.unshift(terrainGroup);
+            if (wallGroup) groupsAny.push(wallGroup);
+        }
+        if (!groups.length && !fieldSet && !groupsAny) return roots;
 
         var subs = [];   // [{P, feetY, tx, ty}] — see _occUnitPoint/_occTilePoint
         var subjectIds = null;   // cine: units that must never be ghosted as blockers
@@ -32753,7 +32761,7 @@ const ThreeRenderer = (function () {
         } else {
             // Normal play: off-grid scenery between the camera and the active unit fades (THE FADE RULES).
             var ovOn = !_occOverheadOff();   // THE OVERHEAD FADE: the units, the hovered and the panned tile see past pieces over them
-            if (selUnit) { var sp = _occUnitPoint(selUnit); if (sp) { sp.ov = ovOn; subs.push(sp); } }
+            if (selUnit) { var sp = _occUnitPoint(selUnit); if (sp) { sp.ov = ovOn; sp.any = !!handAny; subs.push(sp); } }
             /* Hand-held camera (2026-09-02): the player is orbiting/panning
                by hand, so ALSO keep whatever the camera is pointed AT clear —
                the focal tile. The camera rig no longer dodges terrain (it
@@ -32765,7 +32773,7 @@ const ThreeRenderer = (function () {
             if (focalTile && (!selUnit
                     || Math.round(selUnit.x) !== focalTile.x || Math.round(selUnit.y) !== focalTile.y)) {
                 var fp = _occTilePoint(focalTile.x, focalTile.y);
-                if (fp) { fp.ov = ovOn; subs.push(fp); }
+                if (fp) { fp.ov = ovOn; fp.any = !!handAny; subs.push(fp); }
             }
             /* THE OVERHEAD FADE: the tile under the cursor (one ray) — a crown or a deck over it opens while it is pointed at */
             if (ovOn && _lastHoverX >= 0 && _lastHoverY >= 0 && !(focalTile && focalTile.x === _lastHoverX && focalTile.y === _lastHoverY)
@@ -32790,16 +32798,17 @@ const ThreeRenderer = (function () {
                 }
             }
             /* every unit the viewer can see: off-grid scenery (above) and, on any map, a piece hanging over it (THE OVERHEAD FADE) */
-            if ((offGridSet || ovOn) && state && state.units) {
+            var _msTgt = (handAny && typeof camera !== 'undefined' && camera && camera._menuShot && camera._menuShot.tgtId != null) ? camera._menuShot.tgtId : null;
+            if ((offGridSet || ovOn || _msTgt != null) && state && state.units) {
                 for (var ui = 0; ui < state.units.length; ui++) {
                     var vu = state.units[ui];
                     if (!vu || vu.dead || (selUnit && vu.id === selUnit.id) || !_occSubjectViewerVisible(vu)) continue;
                     var vq = _occUnitPoint(vu);
-                    if (vq) { vq.one = true; vq.ov = ovOn; vq.head = vq.ov; subs.push(vq); }
+                    if (vq) { vq.one = true; vq.ov = ovOn; vq.head = vq.ov; if (handAny && _msTgt != null && vu.id === _msTgt) { vq.any = true; vq.one = false; } subs.push(vq); }   // (a menu two-shot's target: THE HAND ORBIT'S FADE)
                 }
             }
         }
-        if (!subs.length) return roots;
+        if (!subs.length && !handAny) return roots;
 
         cam.updateMatrixWorld();
         // THREE.Sprite.raycast() needs raycaster.camera set, otherwise it throws
@@ -32817,6 +32826,8 @@ const ThreeRenderer = (function () {
         for (var s = 0; s < subs.length; s++) {
             var sub = subs[s];
             var P = sub.P;
+            var subAny = anyFade || !!sub.any, subGroups = (sub.any && groupsAny) ? groupsAny : groups;
+            if (!subGroups.length && !fieldSet) continue;
             for (var q = 0, nq = sub.one ? (sub.head ? 2 : 1) : 5; q < nq; q++) {
                 // centre ray + four spread around the subject in screen space (a one-ray unit adds its head: THE TREE FADE)
                 _occVecA.copy(P);
@@ -32833,7 +32844,7 @@ const ThreeRenderer = (function () {
                 _occRaycaster.set(eye, _occDir);
                 _occRaycaster.near = 0;
                 _occRaycaster.far = dist - nearClear;
-                var hits = _occRaycaster.intersectObjects(fieldSet ? _occFieldCandidates(fieldSet, eye, _occDir, dist - nearClear, groups) : groups, true);
+                var hits = _occRaycaster.intersectObjects(fieldSet ? _occFieldCandidates(fieldSet, eye, _occDir, dist - nearClear, subGroups) : subGroups, true);
                 for (var hi = 0; hi < hits.length; hi++) {
                     /* MOVING MAPS rev 2: a hull / fuselage the board RIDES ON never
                        fades — its closed back lies right under every tile, so the
@@ -32843,7 +32854,7 @@ const ThreeRenderer = (function () {
                     var r = _occRootOf(hits[hi].object);
                     if (!r || roots.has(r)) continue;
                     /* a near setting's piece always takes the off-grid test (its oceans / backdrops / aprons never fade, shot or not) */
-                    if (_occHitFadeable(r, sub) && ((anyFade && r.parent !== _nearOccGroup) || _occRootOffGrid(r, sub))) roots.add(r);
+                    if (_occHitFadeable(r, sub) && ((subAny && r.parent !== _nearOccGroup) || _occRootOffGrid(r, sub))) roots.add(r);
                     else if (sub.ov && (_occTreeHit(r, hits[hi], sub) || _occOverheadHit(r, hits[hi], sub, _occDir))) roots.add(r);   // THE TREE FADE / THE OVERHEAD FADE
                 }
             }
@@ -32864,8 +32875,116 @@ const ThreeRenderer = (function () {
         if (cineActive && subjectIds && !(_introOccUids && _introOccUids.length)) {
             _occUnitWant = _occUnitBlockers(cam, subs, subjectIds, nearClear);
         }
+        /* THE HAND ORBIT'S FADE: what the lens itself stands in, and a body right at the lens */
+        if (handAny && !cineActive) { _occHandEye(cam, roots, selUnit, fieldSet, ts); _occUnitWant = _occHandUnits(cam, selUnit, ts); }
         if (fieldSet) _occFieldStat(fieldSet, performance.now() - _occT0);
         return roots;
+    }
+
+    /* ══ THE HAND ORBIT'S FADE (2026-11-27, three-camera.js THE HAND ORBIT) ══
+       mondo: "if something is in the way then it just goes invisible and the camera is able to phase through stuff so the
+       angle is always good and nothing is obscured". The board rig no longer cranes over a blocker or pulls in before it,
+       so outside a spell shot the fade does that work for the ACTIVE unit (and the hand's focal while it pans):
+         - its sight lines read the board's own columns and edge walls too, and anything on the grid standing on them fades
+           (THE FADE RULES kept every on-grid piece solid outside a shot; that still holds for every other subject: the
+           other units keep their holograms, the board lattice only opens off-grid scenery);
+         - whatever the lens stands IN fades: the columns under its footprint that rise past it, a board object or a
+           room piece whose box holds it;
+         - a body the lens stands in, or one right before it on the line to the active unit, is ghosted like a spell
+           shot's bystander.
+       The ground a unit stands on never fades (_occHitFadeable), and neither does what a field fight never raycasts
+       (merged batches, the ground). Runs on the fade's own cadence (OCC_RECOMPUTE_DT), reads lists that already exist (the
+       tile map, the board's object group, the field's root list): no room walk. Off with window.EW_NO_HAND_ORBIT. */
+    var OCC_HAND_FOOT = 0.4;         // tiles — the lens's footprint (three-camera's LENS_FOOT_TILES)
+    var OCC_HAND_BODY_REACH = 2.5;   // tiles — a body this near the lens on the line to the active unit is ghosted
+    var _OCC_HAND_RING = [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1], [0.7071, 0.7071], [0.7071, -0.7071], [-0.7071, 0.7071], [-0.7071, -0.7071]];
+    function _occHandBoxHolds(rec, root, eye, pad, now) {
+        if (!rec.box) rec.box = new THREE.Box3();
+        if (!rec.at || (now - rec.at) > 2000) {
+            try { root.updateMatrixWorld(true); rec.box.setFromObject(root); } catch (e) { rec.box.makeEmpty(); }
+            rec.at = now;
+        }
+        var b = rec.box;
+        if (b.isEmpty()) return false;
+        return eye.x > b.min.x - pad && eye.x < b.max.x + pad && eye.z > b.min.z - pad && eye.z < b.max.z + pad
+            && eye.y > b.min.y - pad && eye.y < b.max.y + pad * 0.5;
+    }
+    function _occHandEye(cam, roots, selUnit, fieldSet, ts) {
+        var eye = cam.position, now = performance.now();
+        var sx = selUnit ? Math.round(selUnit.x) : -9999, sy = selUnit ? Math.round(selUnit.y) : -9999;
+        /* the columns under the lens's footprint that rise past it */
+        if (terrainGroup && terrainGroup.parent && typeof window._getElevationPx === 'function') {
+            var r = ts * OCC_HAND_FOOT;
+            for (var i = 0; i < _OCC_HAND_RING.length; i++) {
+                var tx = Math.floor((eye.x + _OCC_HAND_RING[i][0] * r) / ts), ty = Math.floor((eye.z + _OCC_HAND_RING[i][1] * r) / ts);
+                if (tx === sx && ty === sy) continue;
+                var col = tileMeshes.get(tx + ',' + ty);
+                if (!col || roots.has(col) || col.parent !== terrainGroup) continue;
+                var top = window._getElevationPx(Math.max(0, col._ew_height || 0));
+                if (col._ew_hasCanopy && col._ew_occCanopyTopY != null && col._ew_occCanopyTopY > top) top = col._ew_occCanopyTopY;
+                if (top > eye.y - ts * 0.15) roots.add(col);
+            }
+        }
+        /* a board object the lens stands in (the trees, rocks and buildings on the tiles round it) */
+        if (objectGroup && objectGroup.parent) {
+            var ch = objectGroup.children, reach = ts * 3;
+            for (var j = 0; j < ch.length; j++) {
+                var o = ch[j];
+                if (!o || roots.has(o) || o.visible === false || o._ew_occSkip) continue;
+                if (Math.abs(o.position.x - eye.x) > reach || Math.abs(o.position.z - eye.z) > reach) continue;
+                if (Math.floor(o.position.x / ts) === sx && Math.floor(o.position.z / ts) === sy) continue;   // what the unit stands on
+                if (_occHandBoxHolds(o._ew_occHandB || (o._ew_occHandB = {}), o, eye, ts * 0.2, now)) roots.add(o);
+            }
+        }
+        /* a room piece the lens stands in (a field fight's own list: each holder with its measured sphere) */
+        if (fieldSet) {
+            for (var k = 0; k < fieldSet.roots.length; k++) {
+                var rec = fieldSet.roots[k];
+                if (!rec.r || roots.has(rec.o)) continue;
+                var dx = rec.c.x - eye.x, dy = rec.c.y - eye.y, dz = rec.c.z - eye.z;
+                if (dx * dx + dy * dy + dz * dz > rec.r * rec.r) continue;
+                if (rec.r > ts * 14) continue;   // a piece this wide is a setting, not an object
+                if (_occHandBoxHolds(rec.hb || (rec.hb = {}), rec.o, eye, ts * 0.2, now)) roots.add(rec.o);
+            }
+        }
+    }
+    /* the bodies the hand orbit ghosts: one the lens stands in, one right before the lens on the line to the active unit */
+    function _occHandUnits(cam, selUnit, ts) {
+        var out = null, eye = cam.position;
+        var sp = selUnit ? unitEntries.get(selUnit.id) : null, hasS = false, Sx = 0, Sy = 0, Sz = 0;
+        if (sp && sp.group) { sp.group.getWorldPosition(_occVecA); Sx = _occVecA.x; Sy = _occVecA.y + ts * 0.45; Sz = _occVecA.z; hasS = true; }
+        var lx = Sx - eye.x, ly = Sy - eye.y, lz = Sz - eye.z, len = hasS ? Math.sqrt(lx * lx + ly * ly + lz * lz) : 0;
+        var reach = Math.min(ts * OCC_HAND_BODY_REACH, len * 0.5);
+        var fpHide = (typeof window !== 'undefined' && window._ewFpHideUid != null) ? window._ewFpHideUid : null;
+        unitEntries.forEach(function (entry, uid) {
+            if (!entry.group || !entry.group.visible) return;
+            if (selUnit && uid === selUnit.id) return;
+            if (fpHide != null && fpHide === uid) return;
+            var u = _unitById.get(uid);
+            if (!u || u.dead || u._dying) return;
+            entry.group.getWorldPosition(_occVecA);
+            var ux = _occVecA.x, uz = _occVecA.z, feet = _occVecA.y - ts * 0.05;
+            var top = (entry.group._ew_spriteTopY != null) ? entry.group._ew_spriteTopY : (_occVecA.y + ts * 0.85);
+            var rad = ts * OCC_UNIT_RADIUS;
+            var inner = null, mc = entry.model ? entry.model.children : null;
+            if (mc) for (var i = 0; i < mc.length; i++) if (mc[i]._ew_fitHalf) { inner = mc[i]; break; }
+            if (inner) rad = Math.max(rad, Math.max(inner._ew_fitHalf[0] || 0, inner._ew_fitHalf[1] || 0));
+            else if (u._isBoss && u._bossSize === 2) rad *= 2.2;
+            var hit = false;
+            /* the lens in the body */
+            var ex = eye.x - ux, ez = eye.z - uz, pad = rad + ts * 0.3;
+            if (ex * ex + ez * ez <= pad * pad && eye.y > feet - ts * 0.2 && eye.y < top + ts * 0.3) hit = true;
+            /* the body on the lens end of the line */
+            if (!hit && hasS && len > ts * 0.8) {
+                var t = ((ux - eye.x) * lx + ((feet + top) * 0.5 - eye.y) * ly + (uz - eye.z) * lz) / (len * len);
+                if (t > 0 && t * len < reach) {
+                    var qx = eye.x + lx * t - ux, qz = eye.z + lz * t - uz, qy = eye.y + ly * t;
+                    if (qx * qx + qz * qz <= rad * rad && qy > feet && qy < top) hit = true;
+                }
+            }
+            if (hit) (out || (out = new Set())).add(uid);
+        });
+        return out;
     }
 
     /* Which units (other than the shot's subjects and its own victims) stand
@@ -33055,6 +33174,8 @@ const ThreeRenderer = (function () {
             _occShotGuard.id = null; _occShotGuard.set = null;
         }
 
+        /* THE HAND ORBIT'S FADE (see _occHandEye): outside a shot, the active unit's sight lines open on-grid pieces too */
+        var handAny = !!(inBattle && !cineActive && !strikeRig && !(typeof window !== 'undefined' && window.EW_NO_HAND_ORBIT));
         var active = cineActive || !!selUnit || !!focalTile
             || !!(inBattle && _facilityNearGroup && _facilityNearGroup.parent)   // facility boards: the grid is always a subject
             || !!(inBattle && _nearOccGroup && _nearOccGroup.parent)             // near settings too (THE FADE RULES)
@@ -33073,7 +33194,7 @@ const ThreeRenderer = (function () {
         var want;
         if (active) {
             if (cineActive || _occWant === null || (now - _occWantTime) >= OCC_RECOMPUTE_DT) {
-                want = _occComputeBlockers(cam, cineActive, selUnit, focalTile, cineActive || strikeRig);
+                want = _occComputeBlockers(cam, cineActive, selUnit, focalTile, cineActive || strikeRig, handAny);
                 _occWant = want;
                 _occWantTime = now;
             } else {
@@ -33121,7 +33242,7 @@ const ThreeRenderer = (function () {
         for (var d = 0; d < done.length; d++) _occFaded.delete(done[d]);
 
         /* ── Unit blockers: begin / step / restore (cine shots only) ── */
-        var wantU = (active && cineActive) ? _occUnitWant : null;
+        var wantU = (active && (cineActive || handAny)) ? _occUnitWant : null;   // (THE HAND ORBIT'S FADE: a body at the lens)
         if (wantU) {
             wantU.forEach(function (uid) {
                 if (!_occUnitFaded.has(uid)) _occUnitFaded.set(uid, { op: 1.0, group: null });
