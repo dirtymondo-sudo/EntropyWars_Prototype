@@ -39024,15 +39024,32 @@
             let _bk = 1;
             try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.bodyScale) _bk = Math.min(1, +ThreeRenderer.bodyScale() || 1); } catch (e) {}
             const hi = asCaster ? h * 1.15 : h + ts * 0.35 * _bk;
+            const _br = _cineBigReadOn();
+            if (primary && !asCaster) _cineBigH = h;
             out.push(asCaster || !primary ? [_cineGuardPos[0], _cineGuardPos[1] + lo, _cineGuardPos[2]]
-                : [_cineGuardPos[0], _cineGuardPos[1] + lo, _cineGuardPos[2], CINE_GUARD_HIT_LOW]);
+                : [_cineGuardPos[0], _cineGuardPos[1] + lo, _cineGuardPos[2], _br ? CINE_GUARD_HIT_LOW_BR : CINE_GUARD_HIT_LOW]);
             /* THE HEAD ROOM (2026-10-29, mondo on the 10-28 playtest: "how do we make the floating text stay on screen?
                Is that a floating text issue or a camera framing issue or both?" — both): a victim's HP bar may rise no
                higher than CINE_GUARD_HEAD_ROOM (NDC) so the number and its tags rising off it still fit under the
                letterbox; the guard slides / backs the frame off until it does, which frames the victim lower */
             out.push(asCaster ? [_cineGuardPos[0], _cineGuardPos[1] + hi, _cineGuardPos[2]]
-                : [_cineGuardPos[0], _cineGuardPos[1] + hi, _cineGuardPos[2], primary ? CINE_GUARD_HIT_HIGH : CINE_GUARD_HEAD_ROOM]);
+                : [_cineGuardPos[0], _cineGuardPos[1] + hi, _cineGuardPos[2], primary ? (_br ? CINE_GUARD_HIT_HIGH_BR : CINE_GUARD_HIT_HIGH)
+                    : (_br ? CINE_GUARD_HEAD_ROOM_BR : CINE_GUARD_HEAD_ROOM)]);
         }
+        /* ═══ THE BIG READ (2026-11-27, mondo: units drawn tiny in wide shots; "Build it as planned") ═══
+           Measured on Downtown (playtest_clutter.js): the body a hit is about filled ~21 % of the screen height (12 % with
+           four hit), from three causes — the frame guard backed every hit off for the number's head room, a hit on several
+           bodies dollied out until all of them fit, and high wide beats. Now, while a spell's hit is on screen, the guard
+           (three-camera.js _fgSolve BIG) pushes in along the gaze until the body the hit is about fills CINE_BIG_READ_FRAC
+           of the screen height (feet to crown); the other victims stay in frame if they can, else they sit at the edge.
+           The head room shrinks too: THE CLEAN READ steps the numbers beside the body, so the HP bar may ride higher.
+           Shared code under every beat. Kill switch: window.EW_NO_BIG_READ = true. */
+        const CINE_BIG_READ_FRAC = 0.40;
+        const CINE_GUARD_HEAD_ROOM_BR = { t: 0.52 };
+        const CINE_GUARD_HIT_HIGH_BR = { t: 0.52, h: 0.62 };
+        const CINE_GUARD_HIT_LOW_BR = { b: -0.64, h: 0.62 };   // (the feet may sit lower: a 40 % body needs the room)
+        let _cineBigH = 0;
+        function _cineBigReadOn() { return !window.EW_NO_BIG_READ && !window.EW_NO_CLEAN_READ && !!state.cinematicActionCam; }
         /* the windows (three-camera.js THE HEAD ROOM: NDC t / b / h): every victim's HP bar under the number column's room;
            the body the shot is about (the first victim) also in from the bottom and the sides — the hit is the frame's
            subject, never a body squeezed against its edge */
@@ -39113,13 +39130,25 @@
             };
             const all = G.phase === 'all';
             if (G.phase === 'cast' || all || (G.phase === 'hit' && G.keepCaster)) add(G.casterId, true);
+            G.big = null;
             if (G.phase === 'hit' || all) {
                 let first = true;
                 G.hit.forEach(id => {
                     const pr = first && (!G.armed || G.armed.has(id));
+                    const i0 = pts.length;
+                    _cineBigH = 0;
                     add(id, false, pr);
-                    if (pr) first = false;
+                    const i1 = pts.length;
                     if (!window.EW_NO_GUARD_LANDING) _cineGuardLandingPts(G, id, pts);
+                    /* THE BIG READ: the body the hit is about (its feet + crown points, and its landing) */
+                    if (pr && i1 - i0 === 2 && _cineBigH > 0 && G.cine && !all && _cineBigReadOn()) {
+                        const ts = CONFIG.tileSize || BASE_TILE;
+                        let _bk = 1;
+                        try { if (ThreeRenderer.bodyScale) _bk = Math.min(1, +ThreeRenderer.bodyScale() || 1); } catch (e) {}
+                        const span = _cineBigH * 0.88 + ts * 0.35 * _bk;
+                        G.big = { i0, i1: i0 + 1, f: CINE_BIG_READ_FRAC * span / _cineBigH, keep: [i0, pts.length] };
+                    }
+                    if (pr) first = false;
                 });
             }
             return pts.length ? pts : null;
@@ -39180,7 +39209,8 @@
             const _cc = _cineCastCtx;
             G.moves = (_cc && _cc.moves && _cc.moves.length && _cc.casterId === casterId && performance.now() - _cc.at < 6000)
                 ? new Map(_cc.moves.map(m => [m.id, m])) : null;
-            G.api = { points: () => _cineGuardPoints(G), subjects: () => _cineGuardSubjects(G), bodies: _cineGuardBodies };
+            G.api = { points: () => _cineGuardPoints(G), subjects: () => _cineGuardSubjects(G), bodies: _cineGuardBodies,
+                big: (pts) => (G.big && pts && G.big.i1 < pts.length) ? { i0: G.big.i0, i1: G.big.i1, f: G.big.f, keep: G.big.keep.slice() } : null };
             if (!o.all) {
                 const castUntil = Math.max(0, o.castUntilMs || 0);
                 const hitFrom = Math.max(castUntil, o.hitFromMs ?? castUntil);

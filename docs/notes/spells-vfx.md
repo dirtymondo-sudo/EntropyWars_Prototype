@@ -5608,12 +5608,27 @@ Every rule below holds in a live spell shot AND while its chrome lingers on the 
   map.js `_drainCenterBannerQueue` holds a centre banner until the chrome leaves.
 - **THE SWELL COUNTS** in THE SAFE FRAME (a pop at its 1.6× pop-in stays inside the screen). **THE ROLL RUNS ON THE CLOCK**
   (`_acRollDamageNum`: ~0.45 s at any frame rate; the same speed as before at 60 fps).
-- **THE EFFECTS** (three-vfx-effects.js `_crFrame` / `_crFrontK`, in `_hsTame`): every see-through signature mesh fades within two
+- **THE EFFECTS** (three-vfx-effects.js `_clrFrame` / `_clrFrontK`, in `_hsTame`): every see-through signature mesh fades within two
   squares of the lens (was fire only), and one between the lens and the shot's caster or target, over that body on screen,
-  draws at `_CR_FRONT_K` 0.4 (an aura on the body itself stays). Per signature group, never a scene walk (RULE #1e).
+  draws at `_CLR_FRONT_K` 0.4 (an aura on the body itself stays). Per signature group, never a scene walk (RULE #1e).
 - Each seat lays out its own (looks only; the shot is relayed, RULE #2). Switch: `window.EW_NO_CLEAN_READ = true` (all of it
   except the swell and the roll). Probe: `FLAGS=EW_NO_CLEAN_READ MAP=<id> TAG=A node playtest_clutter.js` vs `TAG=B`.
 
+## THE BIG READ (2026-11-27, mondo: units drawn tiny in wide shots; he picked "Build it as planned")
+- Measured first (playtest_clutter.js, Downtown VS CPU): the body a spell hit is about filled ~22 % of the screen height (12 %
+  with four hit). Causes: the frame guard backed every hit off for the number's head room, a hit on several bodies dollied out
+  until all fit, and wide beats.
+- **The push-in** (three-camera.js `_fgSolve` `BIG`, battle.js `_cineGuardPoints` -> `G.big`, api `big(pts)`): while a spell's
+  hit is guarded, the guard pushes in along the gaze until the body the hit is about (the first armed victim) stands near enough
+  to fill `CINE_BIG_READ_FRAC` 0.40 of the screen height (mondo 11-27: "push in even closer"; was 0.30) (its world height over its depth, so a steep look is not over-pushed).
+  Every guarded body still fits if it can; if not, the main body (+ its landing) wins and the others sit at the edge. Never
+  wider than the shot was; never nearer than zMin. A look more than ~45° down (the security-cam beats) keeps its distance. The push stops a body width + 1.2 squares short of any other body, and short of a body standing between the lens and the hit. The feet may sit lower at 40 % (`CINE_GUARD_HIT_LOW_BR` b -0.64).
+- **The head room**: with THE CLEAN READ on, a victim's HP bar may ride up to NDC 0.52 (was 0.36): the numbers step beside
+  the body now, so the frame no longer backs off for the column over the head (`CINE_GUARD_*_BR`).
+- Shared code under every beat (no per-spell numbers). Looks only, each seat frames its own (RULE #2). Probe:
+  `ThreeCamera.frameGuardState().big` = `{f, want, D, dropped}`. Switch: `window.EW_NO_BIG_READ = true` (also off with
+  `EW_NO_CLEAN_READ`).
+- Measured after (same map, real fights): hit target median 22 % (19 hits) -> 31 % at 0.30 (17) -> 34 % at 0.40 (10). Bigger bodies leave less free screen, so text over a body rose a little at 0.40.
 ## THE DEMIURGE'S CATACLYSMS (2026-11-27, mondo: "the VFX and spell animations for the demiurge ... the final epic boss ... impactful and apocalyptic ... cinematography, vfx, animations, sky events, background changing ... modern final fantasy esque")
 His eight spells each have their own set piece, camera row, pace and sky. The finisher "Unmade" still plays `heatDeath` (not reworked).
 - THE SET PIECES (three-vfx-effects.js "THE DEMIURGE'S CATACLYSMS", names `_dx*` / `_DX*`): `_DX_SPELLS[id] = { charge(L), hit(L) }`, run by
