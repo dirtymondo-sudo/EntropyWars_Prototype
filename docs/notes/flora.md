@@ -388,6 +388,14 @@ only at a way, a road or a door on that side (`wayGap`). Dry land with plants of
 open). **NOT covered:** a desert / mesa side with no `plants` row still shows open sand (it needs rocks); the flora field's small plants
 still stop at the line. **The rule for every zone thread:** land the player can see and not walk is closed by something natural.
 
+**G24 · THE ROCK LINE (11-27, mondo: "or rocks or whatever is natural and makes sense" · "yes continue with the rocks").** Dry land past a room's line
+(desert, mesa, scrub) stands a line of boulders within 17 m of the line: the Retro Foliage kit's four rocks as tree kinds (data.js `HQ_TREE_KINDS` `edge_rock_1..4`,
+`still: true` = no wind), 1 to 3.6 m tall, tinted sandstone on sand (`ROCK_SAND`), seven in ten of the belt's places; the other three are the side's own plants.
+A snow side stands pines and rocks; a mixed side (no ground over 0.6) stands rocks. Open where a way, a road or a door leaves. Two old faults fixed with it:
+`edges.plants` written at room level (every Desert room's saguaro row) was never read (only `edges.<side>.plants` was), and a room with no tree of its own
+never got the tree kit, so nothing at all was planted past its line (the Desert: 177 places, 0 standing). Costs: the Desert 594 planted past the line, Giza 543.
+Off: `EW_HQ_NO_BELT`, `edges.noBelt`, `edges.<side>.open`. Not done: sea / coast sides (the water is the barrier), mountain sides (the range is).
+
 **Not done in this pass (ideas, none built):** blade colour against a sunlit floor (the tufts read darker than the sheet in full
 sun); a gust that the plants and the grass share; trees were left as they are (they already sway).
 

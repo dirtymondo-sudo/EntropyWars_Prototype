@@ -46884,7 +46884,8 @@ const ThreeRenderer = (function () {
             /* THE WIND (5.1): the HQ's trees sway — the amplitude is metres at the crown, brought into the model's own units (the
                shader moves `transformed` before the scale); a world-rim tree (K._wdFog) keeps its own hooks */
             var WR = (K.hq && !K._wdFog && !_polishOff('wind', 'EW_HQ_NO_WIND')) ? (_hqLightRules().wind || null) : null;
-            var windAmp = (WR && WR.on !== false) ? ((WR.amp != null ? WR.amp : 0.055) * (K.ts / 1.75)) : 0;   // world units at the crown (the hook divides by the drawn scale)
+            var windAmp = (WR && WR.on !== false) ? ((WR.amp != null ? WR.amp : 0.055) * (K.ts / 1.75)) : 0;
+            var still = !!(typeof HQ_TREE_KINDS !== 'undefined' && HQ_TREE_KINDS[kind] && HQ_TREE_KINDS[kind].still); if (still) windAmp = 0;   // a rock, a cactus: no wind on it   // world units at the crown (the hook divides by the drawn scale)
             var share = !!(K.hq && !K._wdFog);   // THE PERF PASS: an HQ tree shares its kind's pair (a world-rim tree takes the haze per tree)
             var shared = function (k, make) { if (!share) return make(); var m = _nrTreeMats[k]; if (!m) { m = make(); m._ew_shared = true; _nrTreeMats[k] = m; } return m; };
             model.traverse(function (n) {
@@ -46893,7 +46894,7 @@ const ThreeRenderer = (function () {
                     var nm = (sm && sm.name) || '';
                     if (src._ew_glb) {   // THE RETRO TREE PACK: the file's own card / bark texture, one shared pair per (model, material, tint, wind)
                         var lf = _foliageGlbLeaf(sm);
-                        return shared('R|' + name + '|' + nm + '|' + (tint == null ? '' : tint) + '|' + windAmp, function () { var rm = _foliageGlbMat(sm, lf ? tint : null); rm._ew_hzNear = true; if (windAmp > 0) _ewWindHook(rm, modelH, lf ? windAmp : windAmp * 0.3); return rm; });
+                        return shared('R|' + name + '|' + nm + '|' + (tint == null ? '' : tint) + '|' + windAmp, function () { var rm = _foliageGlbMat(sm, (lf || still) ? tint : null); rm._ew_hzNear = true; if (windAmp > 0) _ewWindHook(rm, modelH, lf ? windAmp : windAmp * 0.3); return rm; });
                     }
                     if (nm === 'Tree_Leaves') return shared('L|' + name + '|' + leafFile + '|' + (tint == null ? '' : tint) + '|' + windAmp, function () { var lm = new THREE.MeshLambertMaterial({ map: leaf, side: THREE.DoubleSide }); if (tint != null) lm.color.setHex(tint); lm._ew_hzNear = true; if (windAmp > 0) _ewWindHook(lm, modelH, windAmp); return lm; });
                     return shared('B|' + name + '|' + windAmp, function () { var bm = new THREE.MeshLambertMaterial({ map: bark }); bm._ew_hzNear = true; if (windAmp > 0) _ewWindHook(bm, modelH, windAmp * 0.3); return bm; });
@@ -80458,15 +80459,15 @@ const ThreeRenderer = (function () {
         if (_hqSliceDue()) yield;
         /* ── THE TREES: the near kit's foliage on the ground, each a blocker; the treeline past an open edge ── */
         var TK = null;
-        if ((info.trees.length || (info.thicket && info.thicket.length) || (S.forest && S.open) || (info.lots && info.lots.length) || (info.texb && typeof hqTexbPrism === 'function' && info.texb.some(hqTexbPrism))) && typeof _nrTree === 'function' && typeof _nrKit === 'function') {   // THE LAYOUT (E5): a tree-walled plan's thicket needs the kit too
+        if ((info.trees.length || (info.thicket && info.thicket.length) || (S.forest && S.open) || (S.open && room.terrain.edges) /* (11-27: a room with no tree of its own still plants the land past its line; the Desert's saguaros and THE ROCK LINE never stood without the kit) */ || (info.lots && info.lots.length) || (info.texb && typeof hqTexbPrism === 'function' && info.texb.some(hqTexbPrism))) && typeof _nrTree === 'function' && typeof _nrKit === 'function') {   // THE LAYOUT (E5): a tree-walled plan's thicket needs the kit too
             try { TK = _nrKit(G, { ts: TM, sheet: TS, bw: Math.round(S.w / info.tile), bh: Math.round(S.d / info.tile), rng: rng, hq: { w: 0, gap: 0, B: 1, tints: null } }, {}); }
             catch (e) { console.warn('[HQ] the terrain’s tree kit failed', e); TK = null; }
         }
         if (TK && info.texb && info.texb.length) { try { _hqBuildTexPrisms(info, G, U, TK); } catch (e) { console.warn('[HQ] the prism buildings failed', e); } }
-        var plantTree = function (kind, h, px, pz, py, face) {
+        var plantTree = function (kind, h, px, pz, py, face, tint) {
             if (!TK) return null;
             var tg = null;
-            try { tg = _nrTree(TK, kind, { h: h }); } catch (e) { tg = null; }
+            try { tg = _nrTree(TK, kind, tint != null ? { h: h, tint: tint } : { h: h }); } catch (e) { tg = null; }
             if (!tg) return null;
             var spin = rng() * Math.PI * 2;   // drawn either way, so the seeded turns of the trees after it never shift
             var sinkK = (typeof HQ_TREE_KINDS !== 'undefined' && HQ_TREE_KINDS[kind] && HQ_TREE_KINDS[kind].sink) || 0;   // THE GIANT FLOWERS: a kind whose model stands on its own mound of earth is planted that deep (a share of its height)
@@ -82936,6 +82937,13 @@ const ThreeRenderer = (function () {
         if (typeof plantTree === 'function') {
             var r = _mulberry32(0x0ed6e5), kindsF = ['pine', 'pine', 'tree_4', 'pine', 'tree', 'tree_4'], kindsM = ['pine', 'pine', 'pine_2'], kindsG = ['tree', 'tree_4', 'tree_3'], kindsS = ['xmas_snow_pine', 'xmas_snow_pine_2', 'pine'], kindsSW = ['xmas_snow_pine', 'xmas_snow_pine_2', 'xmas_snow_pine_3'];   // (a snow WOOD's own pines: no green one among them)
             var hOf = function (m) { return m * U / TM / 1.07; };   // _nrTree: target = TM × h × (0.85 … 1.3)
+            /* THE ROCK LINE (2026-11-27, mondo: "i never wanna see an open field i cant walk through ... or rocks or whatever is natural and makes sense"): dry land past a
+               room's line (desert, mesa, scrub) and any side THE BELT's trees do not fit stands a line of boulders, the Retro Foliage kit's four rocks (data.js HQ_TREE_KINDS
+               edge_rock_*, planted like a tree, no wind), 1 to 3.6 m tall, sandstone on sand (`ROCK_SAND`, the sheet's grey tinted), sunk a little so none floats on a slope. Open only where a way, a road or a door leaves the room. */
+            var ROCK_SAND = 0xdcbf96;
+            var kindsR = ['edge_rock_1', 'edge_rock_3', 'edge_rock_2', 'edge_rock_4', 'edge_rock_3', 'edge_rock_1'];
+            var rockAt = function (x, z, y, q, tint) { var big = ((q * 9.7) % 1), rk = kindsR[(q * kindsR.length) | 0], wide = (rk === 'edge_rock_3' || rk === 'edge_rock_4');   // (the two wide ones stay low: a slab drawn 10 m across shows its sheet's pixels)
+                var hm = wide ? 1.0 + big * 1.3 : 1.3 + big * big * 2.3, t = plantTree(rk, hOf(hm), x, z, y * U, null, tint); if (t) { t.position.y -= hm * 0.16 * U; planted++; } return t; };
             var low = !!(typeof window !== 'undefined' && window.EW_PERF_LOW);
             var X0 = R.x0 - 62, X1 = R.x1 + 62, Z0 = R.z0 - 62, Z1 = R.z1 + 62, stp = 4.2;
             /* THE BELT (2026-11-27, mondo at Stonehenge's line: "that needs to have natural barriers like trees or something if i cant walk there. i never wanna
@@ -82966,11 +82974,14 @@ const ThreeRenderer = (function () {
                 else if (P.W.mountain > 0.5 && P.d > 5 && P.d < 46 && P.y - P.eH < 34) { if ((E[P.side] || {}).bare) continue; if (c2 > 0.13 * thin) continue; plantTree(kindsM[(d2 * kindsM.length) | 0], hOf(8 + d2 * 6), px, pz, P.y * U); planted++; }
                 else if ((P.W.grass || 0) > 0.6 && beltOn && P.d < 17 && !wayGap(P.side, px, pz)) { if (c2 > (P.d < 10 ? 0.92 : 0.6)) continue; plantTree(kindsB[(d2 * kindsB.length) | 0], hOf(6.5 + ((d2 * 5.7) % 1) * 6), px, pz, P.y * U); planted++; }   // THE BELT: no open field past the line
                 else if ((P.W.grass || 0) > 0.6 && P.d > 4) { if (c2 > 0.045 * thin) continue; plantTree(kindsG[(d2 * kindsG.length) | 0], hOf(6 + d2 * 5), px, pz, P.y * U); planted++; }   // open green country: a tree here and there
-                else if ((P.W.snow || 0) > 0.6 && P.d > (E.snowTrees ? 2.2 : 4)) { if (c2 > (+E.snowTrees || 0.03) * thin) continue;   /* `edges.snowTrees: p` (2026-11-20, the Snowy Pines three plots wide): a room in a snow WOOD, its pines run on past its line (p = how many of the lattice points grow one; 0.03 = open tundra) */ plantTree(E.snowTrees ? kindsSW[(d2 * kindsSW.length) | 0] : kindsS[(d2 * kindsS.length) | 0], hOf(5.5 + d2 * 4), px, pz, P.y * U); planted++; }   // tundra: a few snow pines
+                else if ((P.W.snow || 0) > 0.6 && P.d > (E.snowTrees ? 2.2 : 4)) { var snB = beltOn && P.d < 17 && !wayGap(P.side, px, pz); if (snB && ((d2 * 3.1) % 1) < 0.45) { if (c2 < 0.8) rockAt(px, pz, P.y, d2); continue; }   /* THE BELT in the snow: pines and rocks along the line */ if (c2 > (snB ? 0.85 : (+E.snowTrees || 0.03) * thin)) continue;   /* `edges.snowTrees: p` (2026-11-20, the Snowy Pines three plots wide): a room in a snow WOOD, its pines run on past its line (p = how many of the lattice points grow one; 0.03 = open tundra) */ plantTree(E.snowTrees ? kindsSW[(d2 * kindsSW.length) | 0] : kindsS[(d2 * kindsS.length) | 0], hOf(5.5 + d2 * 4), px, pz, P.y * U); planted++; }   // tundra: a few snow pines
                 else if ((P.W.scrub || 0) + (P.W.mesa || 0) + P.W.desert > 0.6 && P.d > 4) {   // THE DRY LAND'S PLANTS: a scrub side grows dead trees by itself; any dry side grows what its `plants: { kinds, p, h: [lo, hi] }` says (the room's own cactus runs on past its line)
-                    var PL = (E[P.side] || {}).plants || ((P.W.scrub || 0) > 0.5 ? { kinds: ['tree_5', 'tree_6', 'tree_5', 'pine_2'], p: 0.09, h: [3, 6.5] } : null);
-                    if (!PL || !PL.kinds || !PL.kinds.length || c2 > ((beltOn && P.d < 17 && !wayGap(P.side, px, pz)) ? 0.7 : (PL.p || 0.08) * thin)) continue;   // (THE BELT on dry land: its own plants stand thick along the line)
+                    var PL = (E[P.side] || {}).plants || E.plants || ((P.W.scrub || 0) > 0.5 ? { kinds: ['tree_5', 'tree_6', 'tree_5', 'pine_2'], p: 0.09, h: [3, 6.5] } : null);   // (`edges.plants` = every side's, the way the Desert's rooms write it: it was never read before 11-27)
+                    var inBelt = beltOn && P.d < 17 && !wayGap(P.side, px, pz), hasPL = !!(PL && PL.kinds && PL.kinds.length);
+                    if (inBelt && !(hasPL && ((d2 * 3.1) % 1) < 0.3)) { if (c2 > (P.d < 10 ? 0.96 : 0.78)) continue; rockAt(px, pz, P.y, d2, ROCK_SAND); continue; }   // THE ROCK LINE: seven in ten of the belt's places are boulders, the rest the side's own plants
+                    if (!hasPL || c2 > (inBelt ? 0.9 : (PL.p || 0.08) * thin)) { if (!inBelt && P.d < 40 && c2 > 0.955) rockAt(px, pz, P.y, d2, ROCK_SAND); continue; }   // (behind the line: a lone boulder here and there)
                     var ph = PL.h || [3, 6]; plantTree(PL.kinds[(d2 * PL.kinds.length) | 0], hOf(ph[0] + ((d2 * 7.3) % 1) * (ph[1] - ph[0])), px, pz, P.y * U); planted++; }
+                else if (beltOn && P.d < 17 && (P.W.coast || 0) < 0.35 && (P.W.way || 0) < 0.35 && !(P.W.mountain > 0.5) && !wayGap(P.side, px, pz)) { if (c2 > 0.7) continue; rockAt(px, pz, P.y, d2); }   // a mixed side (half grass, half sand ...): rocks close it
             }
         }
         /* THE HILL SIGN (2026-11-15, mondo: "the disaster city hollywood sign, there is already the mountains on one of the edges of disaster
