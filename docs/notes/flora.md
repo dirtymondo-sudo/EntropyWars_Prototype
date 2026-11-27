@@ -396,6 +396,11 @@ A snow side stands pines and rocks; a mixed side (no ground over 0.6) stands roc
 never got the tree kit, so nothing at all was planted past its line (the Desert: 177 places, 0 standing). Costs: the Desert 594 planted past the line, Giza 543.
 Off: `EW_HQ_NO_BELT`, `edges.noBelt`, `edges.<side>.open`. Not done: sea / coast sides (the water is the barrier), mountain sides (the range is).
 
+**G25 · THE SMALL PLANTS RUN ON PAST THE LINE + THE EDGE AUDIT (11-27).** `_hqFloraCell` grows the flowers, ferns and low bushes on past the room's line like the
+grass (G23): `HQ_GRASS.pastM` metres, thinning, on the land's own height, in the climate and sheet of the room's last square; no stones or litter out there.
+THE EDGE AUDIT: with `EW_HQ_DEBUG` the edge-land build logs `[HQ] the edge audit N stretches, M open: <side|7 m bin> ...` (a 7 m stretch within 17 m of the line
+with nothing standing on it that is not a way, a road, sea or range). Run 11-27 over 47 of the 48 outdoor rooms: 0 to 3 lone stretches a room, no run of two.
+
 **Not done in this pass (ideas, none built):** blade colour against a sunlit floor (the tufts read darker than the sheet in full
 sun); a gust that the plants and the grass share; trees were left as they are (they already sway).
 
