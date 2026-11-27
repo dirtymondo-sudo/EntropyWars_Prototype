@@ -20512,7 +20512,9 @@ const ThreeRenderer = (function () {
     /* 🥜 THE NUTCRACKER'S JAW (same day): the Meshy rig plays the library like any unit; its jaw (a mesh skinned to the added bone
        ewJaw, project files character-concepts/jaw.py; rotation about its own x > 0 opens it) is set here after the clip, from
        the unit loop, only for a def with `jawBone`: it clacks through a cast or an attack, snaps on a hit, hangs open in death,
-       and rests shut. The spell threads can hold it open for a moment with ThreeRenderer.jawOpen(uid, amount 0 … 1, ms). */
+       and rests shut. The spell threads can hold it open for a moment with ThreeRenderer.jawOpen(uid, amount 0 … 1, ms).
+       THE REMADE NUTCRACKER (11-27, mondo: "the body came out a little distorted"): a jointed wooden doll; its jaw = the lower teeth,
+       lip and beard cut free (project files character-concepts/jaw2.py), hinged 0.58 m behind the head so `jawSwing: 0.09` drops it down its slot. */
     var _jawHolds = {};
     /* 🌰 THE JAW'S SPELL PATTERNS (2026-11-27, thread "Make monster truck and nutcracker spells"): ThreeRenderer.jawAct(uid, pat, ms)
        plays one of these (amount 0 … 1 by seconds since it began) instead of a plain hold. Fired on the spell's windup beat
@@ -20545,7 +20547,7 @@ const ThreeRenderer = (function () {
         cur += (want - cur) * Math.min(1, 0.35);
         entry._ew_jawAmt = cur;
         if (!_jawQ) { _jawQ = new THREE.Quaternion(); _jawE = new THREE.Euler(); }
-        _jawE.set(cur * 0.45, 0, 0); _jawQ.setFromEuler(_jawE);
+        _jawE.set(cur * (entry.modelDef.jawSwing || 0.45), 0, 0); _jawQ.setFromEuler(_jawE);   // jawSwing: radians at amount 1 (the remade nutcracker hinges far behind, so a small swing = a straight drop)
         b.quaternion.copy(entry._ew_jawRest).multiply(_jawQ);
     }
     function _abBuild(root) {

@@ -2932,8 +2932,8 @@ const RACE_MODELS_3D = {
      rotation.x > 0 opens it; project files character-concepts/jaw.py). three-renderer.js THE NUTCRACKER'S JAW clacks it (`jawBone`). */
   'nutcracker': {
     male: _mkUAL('nutcracker', 'nutcracker', {
-      model: 'https://cdn.entropywars.net/Assets/characters/races/nutcracker/male/Meshy_AI_nutcracker_Running.glb',
-      heightRatio: 1.05, basicAttackKind: 'physical', jawBone: 'ewJaw',
+      model: 'https://cdn.entropywars.net/Assets/characters/races/nutcracker/male/Meshy_AI_nutcracker2_Running.glb',   // 11-27 remade: the jointed wooden doll (the first one tore when it walked)
+      heightRatio: 1.05, basicAttackKind: 'physical', jawBone: 'ewJaw', jawSwing: 0.09,
     }),
   },
   'leopard girl': {
