@@ -44,7 +44,8 @@ const KIT_TURN = (races) => {
     } else {
       const tiles = G.getSpellRangeTiles(unit, sp) || [];
       for (const t of tiles) {
-        const tg = sp.type === 'heal' ? allyAt(t.x, t.y) : enemyAt(t.x, t.y);
+        let tg = sp.type === 'heal' ? allyAt(t.x, t.y) : enemyAt(t.x, t.y);
+        if (tg && sp.type === 'heal' && tg.hp > tg.maxHp * 0.92) tg = null;
         if (sp.kind === 'aoe' && !tg) continue;
         if (tg && (!pick || tg.hp < pick.tg.hp)) pick = { t, tg };
       }
@@ -58,7 +59,16 @@ const KIT_TURN = (races) => {
     st.selectedTool = null; st.actionMode = null;
     if (ret === 0 || ret === false) { done[sp.id] = (done[sp.id] || 0) + 0.5; continue; }
     done[sp.id] = (done[sp.id] || 0) + 1;
-    return { spell: sp.id, name: sp.name, caster: unit.race, target: pick.tg.race, tid: pick.tg.id, at: [pick.t.x, pick.t.y], ret: String(ret), L0, before };
+    return { spell: sp.id, name: sp.name, caster: unit.race, target: pick.tg.race, tid: pick.tg.id, at: [pick.t.x, pick.t.y], ret: String(ret), L0, before, late: sp.kind === 'healAll' || sp.type === 'heal' };
+  }
+  /* nothing in reach: step next to the nearest foe once a turn so the melee kits get their casts */
+  window.__kitMoved = window.__kitMoved || {};
+  const mk = unit.id + ':' + st.round;
+  if (!window.__kitMoved[mk] && order.some(sp => (done[sp.id] || 0) < 2 && (sp.range || 1) <= 1)) {
+    window.__kitMoved[mk] = 1;
+    let best = null;
+    for (const t of (G.getMoveTiles(unit) || [])) { if (G.unitAt(t.x, t.y)) continue; const f = foes.filter(f => cheb(f, t) <= 1).length; if (f && (!best || f > best.f)) best = { t, f }; }
+    if (best) { try { G.doMove(unit, best.t.x, best.t.y, best.t.z); } catch (e) {} return { moved: 1 }; }
   }
   return null;
 };
@@ -124,10 +134,12 @@ const AFTER = (c) => {
   while (Date.now() - start < MINUTES * 60000) {
     const c = await page.evaluate(KIT_TURN, RACES).catch(e => ({ err: String(e.message).slice(0, 120) }));
     if (c && c.err) console.log('KITERR', c.err);
+    if (c && c.moved) { await sleep(900); continue; }
     if (c && c.spell) {
       n++;
       await sleep(450); const pa = `${TAG}_${String(n).padStart(2, '0')}_${c.spell}_a.png`; try { await page.screenshot({ path: `${OUT}/${pa}` }); } catch (e) {}
       await sleep(650); const pb = `${TAG}_${String(n).padStart(2, '0')}_${c.spell}_b.png`; try { await page.screenshot({ path: `${OUT}/${pb}` }); } catch (e) {}
+      if (c.late) { await sleep(900); try { await page.screenshot({ path: `${OUT}/${pb.replace('_b.png', '_c.png')}` }); } catch (e) {} }
       await sleep(900);
       const a = await page.evaluate(AFTER, c).catch(e => ({ err: e.message }));
       const row = Object.assign({ n, pics: [pa, pb], round: await page.evaluate(() => GAME.state.round) }, c, a); delete row.before;
