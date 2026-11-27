@@ -31354,6 +31354,7 @@ const ThreeRenderer = (function () {
                        fades — its closed back lies right under every tile, so the
                        jittered rays below a subject's feet hit it from any angle */
                     if (hits[hi].object._ew_occSkip) continue;
+                    if (_cutHides(hits[hi].point.y)) continue;   // THE CUT: what the cut took covers nothing
                     var r = _occRootOf(hits[hi].object);
                     if (!r || roots.has(r)) continue;
                     /* a near setting's piece always takes the off-grid test (its oceans / backdrops / aprons never fade, shot or not) */
@@ -59171,6 +59172,7 @@ const ThreeRenderer = (function () {
 
         _updateEnvironment();
         _fieldGroundTick();   // THE SEAMLESS FIELD rev 3: the room's ceiling fades as the eye rises through it
+        _cutTick();           // THE CUT: a covered room is cut one storey over the fighters' heads
         _fieldCycleTick();    // THE BATTLE'S DAY AND NIGHT: an outdoor room's fight eases to the round's half
         _bfogTick();          // THE BOARD FOG: the fog is measured from the board's rim, the dome's band hugs the horizon
         _skyOpenTick();       // THE OPEN SKY SHOT: the room's fog thins while the zodiac / celestial crane looks up
@@ -103822,6 +103824,93 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < st.ceil.mats.length; i++) { st.ceil.mats[i].opacity = op; st.ceil.mats[i].depthWrite = op > 0.5; }
         for (var j = 0; j < st.ceil.parts.length; j++) st.ceil.parts[j].visible = op > 0.04;
     }
+    /* ══ THE CUT (2026-11-27, mondo in the Sewers: "i can't see the battle at all because the ceiling is covering everything up,
+       i thought we already made it to where roofs would disappear" · "roof ceiling whatever, anything that is covering the
+       action") ══
+       What already opened: a room's flat shell ceiling (`_ew_hqPart 'ceil'`, faded by the eye's height above), a wall side, a
+       tree, a piece hanging over a unit on a sight line. What never opened: the cover of a room built on plots. The Sewers
+       (bake-labyrinth.js) are 8 x 6 plots on many levels: every closed square is a brick mass to the top of the whole room
+       (54 m), each run of passage wears a barrel vault (`hq_arch`, a texbuilding: never faded), and the shell ceiling sits 54 m
+       up. Measured 11-27 in a real fight there: every ray from the battle camera met a plan wall's top or a vault first; the
+       units were never on screen. The same holds for the D.U.M.B., the Cavern, the Catacombs, the pits and every other room
+       without open sky: anything of the room over the fighters' heads covers the board from the battle's height.
+       Now, in a fight in a room with no open sky (`_hqEnclosed`), the room's own pieces are CUT one storey (`CUT_M`, one 3.5 m
+       battle square) over the highest feet of the units the viewer can see: a world plane on the room's materials (the classic
+       clippingPlanes; WebGPU turns them into a discard, _ewNodeClip), the walked room's holder (`hq_walked`) or the copied
+       room's group, never the board, the units, the effects or the HUD. The cut height eases as units climb or fall. Shadows
+       are not cut (`clipShadows` stays off: the room keeps the light the walk had). What the cut took is not cover any more:
+       the sight-line fade skips hits above it, and the camera's blockers (THE CLEAR SHOT, THE CLOSE VIEW's tall scenery) are
+       clipped to it. Every look is given back when the fight ends. Drawn from the room and the camera: host and guest alike,
+       nothing relayed. Off: window.EW_NO_CUT = true. Height: window.EW_CUT_M (metres over the highest feet). */
+    var CUT_M = 3.5, CUT_RESCAN_MS = 20000;
+    var _cut = null;   // { roots: [Object3D], mats: Map(material → its own planes), plane, y, want, at, scanAt, s }
+    function _cutOff() { return typeof window !== 'undefined' && !!window.EW_NO_CUT; }
+    /* the fight's room is covered (no open sky): asked when the room is hung round the board */
+    function _cutWanted(R) { try { return !!(R && R.room && _hqEnclosed(R.room)) && !_cutOff(); } catch (e) { return false; } }
+    function _cutArm(root, R, ts) {
+        if (!root || !_cutWanted(R) || typeof THREE === 'undefined') return;
+        if (!_cut) _cut = { roots: [], mats: new Map(), plane: new THREE.Plane(new THREE.Vector3(0, -1, 0), 1e9), y: null, want: null, at: 0, scanAt: 0, s: ts / R.T.C };
+        if (_cut.roots.indexOf(root) < 0) _cut.roots.push(root);
+        _cut.scanAt = 0;   // read the room's looks on the next frame (the walked room's ceiling clones are made on its first draw)
+        try { if (renderer && !renderer.isWebGPURenderer) renderer.localClippingEnabled = true; } catch (e) {}
+    }
+    /* one read of the room's looks (at the arm, again every CUT_RESCAN_MS for a model that landed late): each gets the cut's plane */
+    function _cutScan(C) {
+        var planes = [C.plane], n = 0;
+        var put = function (m) {
+            if (!m || C.mats.has(m)) return;
+            C.mats.set(m, m.clippingPlanes || null);
+            m.clippingPlanes = (m.clippingPlanes && m.clippingPlanes.length) ? m.clippingPlanes.concat(planes) : planes;
+            m.needsUpdate = true; n++;
+        };
+        for (var i = 0; i < C.roots.length; i++) {
+            C.roots[i].traverse(function (o) { if (!o.material || !(o.isMesh || o.isInstancedMesh || o.isPoints || o.isLine)) return; if (Array.isArray(o.material)) o.material.forEach(put); else put(o.material); });
+        }
+        return n;
+    }
+    function _cutDrop() {
+        var C = _cut; _cut = null; if (!C) return;
+        C.mats.forEach(function (prev, m) { try { m.clippingPlanes = prev; m.needsUpdate = true; } catch (e) {} });
+        C.mats.clear(); C.roots.length = 0;
+    }
+    /* is a world point (battle px) above the cut? (the sight-line fade and the camera's blockers ask) */
+    function _cutTop() { return (_cut && _cut.y != null && active) ? _cut.y : Infinity; }
+    function _cutHides(y) { return y > _cutTop(); }
+    /* the camera's blockers (flat [x0, x1, y0, y1, z0, z1, isTree, …]) as the cut leaves them: a box over the cut is gone, one through it ends at it */
+    function _cutBoxes(A) {
+        var y = _cutTop(); if (!A || y === Infinity) return A;
+        var out = [];
+        for (var i = 0; i + 6 < A.length + 1; i += 7) { if (A[i + 2] >= y) continue; out.push(A[i], A[i + 1], A[i + 2], Math.min(A[i + 3], y), A[i + 4], A[i + 5], A[i + 6]); }
+        return out;
+    }
+    /* per frame (beside _fieldGroundTick): the highest feet the viewer can see, one storey over them, eased */
+    function _cutTick() {
+        var C = _cut; if (!C) return;
+        if (!active || _cutOff() || typeof state === 'undefined' || !state || state.phase !== 'battle') { if (C.y !== null) { C.y = null; C.plane.constant = 1e9; } return; }
+        var now = performance.now();
+        if (!C.scanAt || now - C.scanAt > CUT_RESCAN_MS) { C.scanAt = now; try { _cutScan(C); } catch (e) { console.warn('[HQ→battle] the cut could not read the room', e); } }
+        var vp = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : (state.activePlayer || 1);
+        var top = -Infinity, us = state.units || [], v = _cutV || (_cutV = new THREE.Vector3());
+        for (var i = 0; i < us.length; i++) {
+            var u = us[i]; if (!u || u.dead) continue;
+            if (u.player !== vp && state.fogOfWar && !(_fogVisibleSet && _fogVisibleSet.has(u.x + ',' + u.y))) continue;   // an enemy the viewer cannot see moves nothing
+            var e = unitEntries.get(u.id); if (!e || !e.group) continue;
+            e.group.getWorldPosition(v); if (v.y > top) top = v.y;
+        }
+        if (top === -Infinity) { if (C.y === null) return; top = C.want; }
+        var M = (typeof window !== 'undefined' && window.EW_CUT_M > 0) ? +window.EW_CUT_M : CUT_M;
+        var want = top + M * C.s; C.want = want;
+        var dt = C.at ? Math.min(0.1, (now - C.at) / 1000) : 1; C.at = now;
+        C.y = (C.y === null) ? want : C.y + (want - C.y) * Math.min(1, dt * 4);
+        if (Math.abs(C.y - want) < 0.5) C.y = want;
+        C.plane.constant = C.y;
+        /* WebGPU: a static render bundle replays its draws without asking the plane again; a moved cut records them anew */
+        if (renderer && renderer.isWebGPURenderer && _fw && _fw.H && (C.bunY == null || Math.abs(C.y - C.bunY) > 0.5) && now - (C.bunAt || 0) > 250) {
+            C.bunY = C.y; C.bunAt = now;
+            try { var bT = _ewBunTargets(_fw.H); for (var bi = 0; bi < bT.length; bi++) bT[bi]._ew_bunDirty = true; } catch (eB) {}
+        }
+    }
+    var _cutV = null;
     /* THE CLICKS: screenToTile raycasts terrainGroup — with no columns built there was nothing to hit and every click on a
        tile died. One quad per IN cell at its real top, drawn to nothing (colorWrite off), never an occluder. */
     var _fieldPickGeo = null, _fieldPickGroup = null;
@@ -105472,6 +105561,7 @@ const ThreeRenderer = (function () {
     function _fieldGroundRelease() {
         _fieldSeedRelease(); _envSnapPending = false; _fieldCycle = null;
         var st = _fieldGroundState; _fieldGroundState = null;
+        try { _cutDrop(); } catch (eCut) {}   // THE CUT
         try { if (st && st.keyLamp && st.keyLamp.parent) st.keyLamp.parent.remove(st.keyLamp); } catch (e) {}   // THE KEY LIGHT
         try { if (typeof ThreePost !== 'undefined' && ThreePost.setFieldLight) ThreePost.setFieldLight(null); } catch (e) {}
         try { if (typeof scene !== 'undefined' && scene && st) scene.fog = st.prevFog || null; } catch (e) {}
@@ -105537,6 +105627,7 @@ const ThreeRenderer = (function () {
         F.jobBox = new THREE.Vector3(R.T.W * ts / 2, _hqBattleRoomFloorY(R, ts), R.T.H * ts / 2);   // the board's middle (the sun shadow's aim)
         try { _fwWrapRender(renderer); } catch (eW) {}
         _fwMove(H.partRoot, holder, F.moved);
+        try { _cutArm(holder, R, ts); } catch (eCut) {}   // THE CUT: a covered room's cover over the board
         if (H.inst && H.inst.group) _fwMove(H.inst.group, holder, F.moved);
         /* the walk's lights that light the fight: the ones under the room (lit or not as the walk left them) */
         try {
@@ -105896,6 +105987,7 @@ const ThreeRenderer = (function () {
     /* the walked room goes home: every cut healed, every look and geometry the fight lent given back, every group where it hung */
     function _fwLeave() {
         var F = _fw; if (!F || F.leaving) return;
+        try { _cutDrop(); } catch (eCut) {}   // THE CUT: the room's own looks back
         F.leaving = true; F.on = false; F.job = null;
         var H = F.H, i;
         try { if (_occField && _occField.fw) _occFieldDrop(); } catch (e) {}
@@ -106093,6 +106185,7 @@ const ThreeRenderer = (function () {
         /* the occlusion fade reads the facility group's direct children as its roots */
         if (_facilityNearGroup) { g.children.slice().forEach(function (c) { g.remove(c); c._ew_occNear = true; _facilityNearGroup.add(c); }); }
         else { _facilityNearGroup = g; g._ew_hzNearRoot = true; _horizonGroup.add(g); }
+        if (trueGround) { try { _cutArm(_facilityNearGroup, R, ts); } catch (eCut) {} }   // THE CUT: the copied room's cover too
         var fwF = null;
         if (fwP) { try { fwF = _fwEnter(fwP, R, M, ts, HR); (fwP.H.fxPulse || []).forEach(function (p) { if (p && p.mat) _hzGlowPulse.push(p); }); } catch (eFW) { console.error('[HQ→battle] the walked room could not be hung in the fight', eFW); try { _fwLeave(); } catch (e2) {} fwF = null; } }
         if (_roomGround) _roomGround.group = _facilityNearGroup;   // THE ROOM'S GROUND lives as long as the room's group   // _ew_hzNearRoot: the room's late GLBs stay near scenery (_applyHorizonFog)
@@ -112646,7 +112739,7 @@ const ThreeRenderer = (function () {
         /* THE CLOSE VIEW (2026-11-26, see three-camera.js): noTrees leaves the trees out. A tree's box is its whole crown, a
            tower several squares wide over squares units stand on, and THE TREE FADE already opens a tree on a sight line. */
         /* THE CLEAR SHOT: flat [x0, x1, y0, y1, z0, z1, isTree, …] world px (see _shotBlockers) */
-        shotBlockers: function () { try { return _shotBlockers(); } catch (e) { return null; } },
+        shotBlockers: function () { try { return _cutBoxes(_shotBlockers()); } catch (e) { return null; } },
         tallSceneryTopAt: function (wx, wz, noTrees) {
             var C = _tallSceneryGet();
             if (!C) return -Infinity;
@@ -112655,7 +112748,7 @@ const ThreeRenderer = (function () {
                 if (noTrees && B[i + 5]) continue;
                 if (wx >= B[i] && wx <= B[i + 1] && wz >= B[i + 2] && wz <= B[i + 3] && B[i + 4] > top) top = B[i + 4];
             }
-            return top;
+            return Math.min(top, _cutTop());   // THE CUT: what stands over the cut is not drawn
         },
         /* a standing body's height in world units (heightRatio 1 = 1.75 m): THE CUTSCENES measure their shots in bodies */
         bodyUnit: function () { return (CONFIG.tileSize || BASE_TILE) * UNIT_SPRITE_SIZE_RATIO; },
