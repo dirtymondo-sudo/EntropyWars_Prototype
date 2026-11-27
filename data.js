@@ -93324,7 +93324,11 @@ const HQ_TREE_KINDS = {
     palm:    { model: 'kit:Meshy_AI_palm_tree_0910054114_texture.glb', name: 'palm' },
     /* THE DESERT'S EDGES (2026-11-16): the saguaro (the Desert's Meshy prop `saguaro_cactus`) as a tree kind, so the land past a dry room's line can grow it
        (three-renderer.js THE DRY LAND'S PLANTS); in a room it is still placed as the prop */
-    saguaro: { model: 'asset:world/props/meshy/saguaro_cactus.glb', name: 'saguaro' },
+    saguaro: { model: 'asset:world/props/meshy/saguaro_cactus.glb', name: 'saguaro', still: true },
+    /* THE ROCK LINE (2026-11-27, mondo: "i never wanna see an open field i cant walk through ... rocks or whatever is natural"): the Retro Foliage kit's four rocks as
+       tree kinds, so the land past a dry room's line can stand them (three-renderer.js THE ROCK LINE). `still` = no wind on it. In a room a rock is still the prop `rf_rock_*`. */
+    edge_rock_1: { model: 'asset:world/packs/afgameassets_retro_foliage/rf_rock_1.glb', name: 'rock', still: true }, edge_rock_2: { model: 'asset:world/packs/afgameassets_retro_foliage/rf_rock_2.glb', name: 'tall rock', still: true },
+    edge_rock_3: { model: 'asset:world/packs/afgameassets_retro_foliage/rf_rock_3.glb', name: 'wide rock', still: true }, edge_rock_4: { model: 'asset:world/packs/afgameassets_retro_foliage/rf_rock_4.glb', name: 'rock slab', still: true },
     /* THE FAIRY FOREST (2026-10-24): the misc folder's two Meshy mushrooms planted like the palm (`misc:` foliage, three-renderer.js
        _foliageUrl) — a blocker on the walk, a blocked square in a fight (a prop is only scenery on a terrain board) */
     fae_cap:     { model: 'misc:Meshy_AI_mushroom_0727200342_texture.glb', name: 'giant mushroom' },
