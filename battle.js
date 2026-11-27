@@ -7160,6 +7160,11 @@
             if (spell && spell._diceWhiff) return { dmg: 0, isCrit: false };
             if (spell && spell._diceMult > 0 && dmg > 0) dmg = Math.max(1, Math.round(dmg * spell._diceMult));
             if (unit && unit.race === 'jellyfish ufo' && dmg > 0) dmg = Math.max(1, Math.round(dmg * _crChargeMult(unit, spell)));   // ⚡ BIOELECTRIC CHARGE
+            if (spell && spell.perCowedStack > 0 && dmg > 0) dmg = Math.max(1, Math.round(dmg * _dcStackMult(spell, target)));   // 🐉 KNEEL: +40% a Cowed stack
+            if (unit && unit._lgAmbush && dmg > 0 && _lgAmbushCrit(unit, target)) {   // 🐆 ROSETTES: the first hit from hiding
+                unit._matchCrits = (unit._matchCrits || 0) + 1;
+                return { dmg: Math.floor(dmg * getCritMultiplier(unit)), isCrit: true };
+            }
             const c = (spell && typeof spell.critChance === 'number') ? spell.critChance : 0;
             if (!(c > 0) || !(dmg > 0) || (target && unitCritWarded(target)) || engineRng() >= c) return { dmg, isCrit: false };   // Foresight wards spell crits too
             if (unit) unit._matchCrits = (unit._matchCrits || 0) + 1;
@@ -10160,6 +10165,7 @@
             stages += _passiveSituationalStages(unit, stat);
             if (stat === 'def' && unit.race === 'monk' && (unit.stillness | 0) > 0) stages += Math.min(3, unit.stillness | 0);   // 📿 THE STILLNESS
             if (unit.race === 'rat' && unit.appearance && unit.appearance.form === 'king') { if (stat === 'atk') stages += 2; else if (stat === 'def') stages += 1; }   // 👑 THE RAT KING: the crown's stages
+            if ((unit._cowed | 0) > 0) stages += _dcCowedStages(unit, stat);   // 🐉 DOMINION: -1 ATK a Cowed stack
             return stages;
         }
 
@@ -14913,6 +14919,7 @@
                 else if (u.race === 'gladiator' || u.race === 'farmer' || u.race === 'jellyfish ufo') _crRoundEnd(u);   // 🛡🌾⚡ THE COMING RACES
                 else if (u.race === 'rat') _ratRoundEnd(u);   // 👑 THE RAT KING: a king pays his court
                 else if (u.race === 'music producer') _mpRoundEnd(u);   // 🎛 THE MUSIC PRODUCER: the song plays in his earshot
+                else if (u.race === 'leopard girl') _lgRoundEnd(u);   // 🐆 ROSETTES: a round with no hit, she fades
                 if ((u.workDone | 0) > 0) _psRoundEnd(u);   // 💉 THE PLASTIC SURGEON: Work Done fades
                 if (u.status && u.status.dormant > 0) _cicadaBrood(u);
                 /* 📺 THE TAPE (the Cursed TV): this round's recording becomes last round's, the one Rewind plays back */
@@ -16396,6 +16403,204 @@
             if (unitHasStatus(unit, 'invisible')) clearStatus(unit, 'invisible');
         }
         window._bfFlutterChanged = _bfFlutterChanged; window._bfEffectValue = _bfEffectValue; window._bfRoundEnd = _bfRoundEnd;
+
+        /* ═══ THE NEW RACES 5 (2026-11-27, thread "Make leopard, draconian and flower spells"; mondo: "make their unique race spells and
+           do their spell animation+vfx") ═══ THE LEOPARD GIRL, THE DRACONIAN, THE FLOWER GIRL: one rule each. Host-side: every count
+           is a plain number on the unit (_lgHitRound, _lgAmbush, _cowed + _cowedSrcId, _pollen + _pollenSrcId: ids, RULE #2) or a
+           status, so the guest mirrors it through the state sync; the texts ride showFloatingTextForUnit's relay and the looks
+           _sigVfxGeom (fireGeometry is relayed). Notes: docs/notes/champions-combat.md "THE NEW RACES 5".
+           - 🐆 ROSETTES (lgRosettes): a round in which she lands no hit on an enemy (_lgOnHit stamps _lgHitRound), she fades at its end
+             (_lgRoundEnd from _nrRoundEnd): Invisible 2 and _lgAmbush. The first hit she lands from hiding is a sure critical
+             (_lgAmbushCrit: rollCrit for basic attacks, _spellCritRoll for spells); a hit on her spends it (_lgOnHurt).
+             Drag the Kill (`lgDrag: n`, finishAction): she backs up to n squares straight away from the victim, and it is pulled
+             into each square she leaves (_lgDrag).
+           - 🐉 DOMINION (dcDominion): an enemy whose turn starts within 2 of a living hostile Draconian is Cowed (STATUS_DEFS.cowed:
+             -1 ATK stage a stack, up to 3, read by getStatStageCount). Kneel (`perCowedStack`: +40 % a stack on the hit, in
+             _spellCritRoll; `dcKneel: r`, finishAction): the enemies within r at 3 stacks are Stunned 1, then every stack within r
+             is spent (_dcAfterCast).
+           - 🌸 POLLINATE (fgPollinate): her spells dust enemies with Pollen (STATUS_DEFS.pollen, 1-3). A hit by one of her allies
+             (not her own, not a DoT, not an echo) on a carrier heals that ally 6 % of its max HP and takes a stack; once a carrier an
+             attacker's turn (_fgPollenHit, applyDamageToUnit). Sweet Perfume (`fgPerfume`) speeds the allies within 2, Spring
+             Awakening (`fgVines: r`) Roots the enemies within r (Manhattan, the heal's own reach) (_fgAfterCast). */
+        const NR5_STACK_MAX = 3, FG_POLLEN_HEAL = 0.06;
+        function _nr5Cheb(a, b) { return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y)); }
+        function _nr5Unit(id) { return id == null ? null : (state.units || []).find(u => u && u.id === id) || null; }
+        function _nr5Fx(key, u, n, extra) {
+            if (!u || state.phase !== 'battle') return;
+            _sigVfxGeom(key, u.x, u.y, n || 0, Object.assign({ uid: u.id, owner: u.player }, extra || {}));
+        }
+        /* STATUS_DEFS.cowed / pollen onApply: the stack's float + its look over the head */
+        function _nr5StackFloat(u, kind, was) {
+            if (!u || u.dead || state.phase !== 'battle') return;
+            const n = kind === 'cowed' ? (u._cowed | 0) : (u._pollen | 0);
+            if (n <= (was | 0)) return;
+            if (!_skipVisuals()) showFloatingTextForUnit(u, kind === 'cowed' ? `🐉 COWED ${n}` : `🌼 POLLEN ${n}`, 'debuff', { durationMs: 1000, jitterY: -20 });
+            const src = _nr5Unit(kind === 'cowed' ? u._cowedSrcId : u._pollenSrcId);
+            _nr5Fx(kind === 'cowed' ? 'nr5Cowed' : 'nr5Pollen', u, n, { owner: src ? src.player : null });
+        }
+        window._nr5StackFloat = _nr5StackFloat;
+
+        /* 🐆 applyDamageToUnit, a hit she landed / a hit on her */
+        function _lgOnHit(src, target, damageType, opts) {
+            if (!src || src.race !== 'leopard girl' || !target || target.id === src.id) return;
+            if (damageType === 'dot' || (opts && opts._linkEcho) || !sidesHostile(src.player, target.player)) return;
+            src._lgHitRound = state.round || 0;
+        }
+        function _lgOnHurt(target, src, damageType) {
+            if (!target || target.race !== 'leopard girl' || !target._lgAmbush || !src || !sidesHostile(src.player, target.player)) return;
+            target._lgAmbush = false;   // found: the ambush is gone
+        }
+        /* rollCrit / _spellCritRoll: the first hit from hiding */
+        function _lgAmbushCrit(unit, target) {
+            if (!unit || unit.race !== 'leopard girl' || !unit._lgAmbush) return false;
+            if (target && (unitCritWarded(target) || !sidesHostile(unit.player, target.player))) return false;
+            unit._lgAmbush = false;
+            addLog(`🐆 ${_ctName(unit)} strikes from the long grass: an AMBUSH, a sure critical hit!`);
+            _crFloat(unit, '🐆 AMBUSH', 'buff');
+            if (target) _nr5Fx('nr5Ambush', target, 0, { owner: unit.player, from: { x: unit.x, y: unit.y } });
+            return true;
+        }
+        /* _nrRoundEnd: a round with no hit of hers, she fades */
+        function _lgRoundEnd(u) {
+            if (!_nrAlive(u) || u.race !== 'leopard girl' || !unitHasPassive(u, 'lgRosettes')) return;
+            if (u._lgHitRound === (state.round || 0)) return;
+            if (unitHasStatus(u, 'broken')) return;   // passives off
+            const was = unitHasStatus(u, 'invisible');
+            if (!was) applyStatusPayload(u, { id: 'invisible', duration: 2 }, '🐆 Rosettes: ', u);
+            if (!unitHasStatus(u, 'invisible')) return;
+            if (!u._lgAmbush) {
+                u._lgAmbush = true;
+                addLog(`🐆 ${_ctName(u)} melts into the long grass (Invisible; her next hit is a sure critical).`);
+                _nr5Fx('nr5Rosettes', u, 0);
+            }
+        }
+        /* finishAction: Drag the Kill */
+        function _lgDrag(unit, spell, x, y) {
+            const n = spell && spell.lgDrag;
+            if (!(n > 0) || !_nrAlive(unit)) return;
+            const t = unitAt(x, y);
+            if (!t || t.id === unit.id || !_nrAlive(t) || !sidesHostile(unit.player, t.player)) return;
+            if (typeof _isClashMode === 'function' && _isClashMode()) return;   // Clash: nobody budges
+            if (t._isCube || t._summonStatic || _nr5Cheb(unit, t) !== 1) return;
+            let dx = Math.sign(unit.x - t.x), dy = Math.sign(unit.y - t.y);
+            if (dx && dy) { if (Math.abs(unit.x - t.x) >= Math.abs(unit.y - t.y)) dy = 0; else dx = 0; }
+            if (!dx && !dy) return;
+            const ufx = unit.x, ufy = unit.y, tfx = t.x, tfy = t.y;
+            let steps = 0;
+            for (let i = 0; i < n; i++) {
+                const nx = unit.x + dx, ny = unit.y + dy;
+                if (!isInside(nx, ny) || !canOccupy(nx, ny)) break;
+                const info = _slideStepInfo(unit, unit.x, unit.y, unit.z, dx, dy);
+                if (!info || info.kind !== 'open') break;
+                const nz = (info.nz != null) ? info.nz : ((typeof nearestWalkableZ === 'function') ? nearestWalkableZ(nx, ny, unit.z) : unit.z);
+                if (Math.abs(unit.z - nz) > 1) break;
+                const ox = unit.x, oy = unit.y, oz = unit.z;
+                unit.x = nx; unit.y = ny; unit.z = nz;
+                t.x = ox; t.y = oy; t.z = oz;   // the kill follows into the square she left
+                steps++;
+            }
+            if (!steps) return;
+            unit._trackTilesMoved = (unit._trackTilesMoved || 0) + steps;
+            animateDisplacement(unit, ufx, ufy, unit.x, unit.y, 240 * steps, {});
+            animateDisplacement(t, tfx, tfy, t.x, t.y, 240 * steps, {});
+            resolveTileArrival(unit, { via: 'self' });
+            resolveTileArrival(t, { via: 'displaced' });
+            addLog(`🐆 ${_ctName(unit)} drags ${_ctName(t)} ${steps} ${steps === 1 ? 'square' : 'squares'} away.`);
+            _sigVfxGeom('nr5Drag', t.x, t.y, steps, { owner: unit.player, from: { x: tfx, y: tfy }, uid: t.id });
+        }
+
+        /* 🐉 the blitz hand-off: an enemy's turn starts within 2 of him */
+        function _dcDominion(u) {
+            if (!_nrAlive(u) || u._isCube || u._summonStatic) return;
+            for (const dc of (state.units || [])) {
+                if (!dc || dc.race !== 'draconian' || !_nrAlive(dc) || dc.id === u.id || !sidesHostile(dc.player, u.player)) continue;
+                if (_nr5Cheb(dc, u) > 2 || !unitHasPassive(dc, 'dcDominion') || unitHasStatus(dc, 'broken')) continue;
+                if (typeof isUnitRealmShieldedFrom === 'function' && isUnitRealmShieldedFrom(u, dc)) continue;
+                applyStatusPayload(u, { id: 'cowed', duration: 2 }, '🐉 Dominion: ', dc);
+                if (unitHasStatus(u, 'cowed')) addLog(`🐉 ${_ctName(u)} stands too close to ${_ctName(dc)} and is Cowed (${u._cowed | 0} of ${NR5_STACK_MAX}).`);
+                return;
+            }
+        }
+        /* getStatStageCount: -1 ATK a stack */
+        function _dcCowedStages(u, stat) {
+            if (stat !== 'atk' || !u || !((u._cowed | 0) > 0) || !(u.status && u.status.cowed > 0)) return 0;
+            return -Math.min(NR5_STACK_MAX, u._cowed | 0);
+        }
+        /* _spellCritRoll: Kneel's +40 % a stack */
+        function _dcStackMult(spell, target) {
+            if (!spell || !(spell.perCowedStack > 0) || !target || !((target._cowed | 0) > 0) || !unitHasStatus(target, 'cowed')) return 1;
+            return 1 + spell.perCowedStack * Math.min(NR5_STACK_MAX, target._cowed | 0);
+        }
+        /* finishAction: Kneel's Stun at 3, then every stack in reach is spent */
+        function _dcAfterCast(unit, spell) {
+            const r = spell && spell.dcKneel;
+            if (!(r > 0) || !unit) return;
+            let stunned = 0, spent = 0;
+            for (const e of (state.units || []).slice()) {
+                if (!_nrAlive(e) || !sidesHostile(unit.player, e.player) || _nr5Cheb(unit, e) > r || !unitHasStatus(e, 'cowed')) continue;
+                const n = Math.min(NR5_STACK_MAX, e._cowed | 0);
+                if (n >= NR5_STACK_MAX) {
+                    applyStatusPayload(e, { id: 'stun', duration: 1 }, `${spell.name}: `, unit);
+                    if (unitHasStatus(e, 'stun')) { stunned++; _crFloat(e, '🐉 KNEEL', 'debuff'); }
+                }
+                spent += n;
+                clearStatus(e, 'cowed');
+                if (e._stHold) delete e._stHold.cowed;
+                delete e._cowed; delete e._cowedSrcId;
+                if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: e });
+            }
+            if (spent) addLog(`🐉 ${_ctName(unit)} spends ${spent} Cowed ${spent === 1 ? 'stack' : 'stacks'}${stunned ? `; ${stunned} kneel${stunned === 1 ? 's' : ''} (Stunned)` : ''}.`);
+        }
+
+        /* 🌸 applyDamageToUnit: an ally of hers hits a Pollen carrier */
+        function _fgPollenHit(target, src, damageType, opts) {
+            if (!target || !((target._pollen | 0) > 0) || !unitHasStatus(target, 'pollen')) return;
+            if (damageType === 'dot' || (opts && opts._linkEcho)) return;
+            if (!src || src.race === 'flower girl' || !_nrAlive(src) || !sidesHostile(src.player, target.player)) return;
+            const fg = _nr5Unit(target._pollenSrcId);
+            if (!fg || !sidesAllied(fg.player, src.player) || (fg.dead && fg.hp <= 0 && false)) return;
+            const key = (state.round || 0) + ':' + (state._blitzActiveUnitId || '') + ':' + target.id;
+            if (src._fgPollenAt === key) return;   // one heal off a carrier an attacker's turn (a barrage does not drain it)
+            src._fgPollenAt = key;
+            const heal = applyHealingToUnit(src, Math.max(1, Math.round((src.maxHp || 0) * FG_POLLEN_HEAL)), fg, { preScaled: true });
+            target._pollen = (target._pollen | 0) - 1;
+            if (target._pollen <= 0) {
+                clearStatus(target, 'pollen');
+                if (target._stHold) delete target._stHold.pollen;
+                delete target._pollen; delete target._pollenSrcId;
+            }
+            if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: target });
+            addLog(`🌸 ${_ctName(src)} shakes the pollen off ${_ctName(target)}${heal ? `: +${heal} HP` : ''}.`);
+            if (heal) _crFloat(src, `🌸 +${heal}`, 'heal');
+            _sigVfxGeom('nr5PollenHeal', src.x, src.y, 0, { owner: fg.player, from: { x: target.x, y: target.y }, uid: src.id });
+        }
+        /* finishAction: Sweet Perfume's speed, Spring Awakening's vines */
+        function _fgAfterCast(unit, spell) {
+            if (!unit || !spell || !_nrAlive(unit)) return;
+            if (spell.fgPerfume) {
+                const pf = spell.fgPerfume;
+                for (const a of (state.units || [])) {
+                    if (!_nrAlive(a) || !sidesAllied(a.player, unit.player) || _nr5Cheb(unit, a) > 2) continue;
+                    applyStatStageBoost(a, { spd: pf.spd || 1 }, `${spell.name}: `, unit, { rounds: pf.rounds || 2 });
+                }
+            }
+            if (spell.fgVines > 0) {
+                const r = spell.fgVines;
+                for (const e of (state.units || []).slice()) {
+                    if (!_nrAlive(e) || !sidesHostile(unit.player, e.player) || e._isCube) continue;
+                    if (Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y) > r) continue;
+                    applyStatusPayload(e, { id: 'root', duration: 1 }, `${spell.name}: `, unit);
+                    if (unitHasStatus(e, 'root')) _sigVfxGeom('nr5Vines', e.x, e.y, 0, { owner: unit.player, uid: e.id });
+                }
+            }
+        }
+        function _nr5AfterCast(unit, spell, x, y) {
+            if (!unit || !spell) return;
+            if (unit.race === 'leopard girl') _lgDrag(unit, spell, x, y);
+            else if (unit.race === 'draconian') _dcAfterCast(unit, spell);
+            else if (unit.race === 'flower girl') _fgAfterCast(unit, spell);
+        }
+        window._lgRoundEnd = _lgRoundEnd; window._dcDominion = _dcDominion;   // (a probe can run them)
 
         /* ═══ THE RAT KING (2026-11-23, thread "Plan the Rat and Rat King's spells"; mondo: "The rat can have some sort of system where
            if he gets enough stacks he becomes the rat king", plan OK'd 11-23) ═══ One new rule, MISCHIEF (a group of rats is a
@@ -18485,6 +18690,7 @@
             'shadow entity': 'magic', 'siren': 'magic', 'chosen one': 'magic', 'symbiote': 'magic',
             'voidweaver': 'throw',
             'point guard': 'throw',   // 2026-11-24 THE POINT GUARD: the chest pass (his basketball flies: UNIT_ANIM_OVERRIDES)
+            'leopard girl': 'claw', 'draconian': 'claw', 'flower girl': 'magic',   // 2026-11-27 THE NEW RACES 5
             'demon prince': 'claw', 'skinwalker': 'claw', 'bear': 'claw', 'abomination': 'claw',   // 2026-11-23 THE BEAR: the paw rakes, never the fist sprite; THE ABOMINATION's arm the same
             'cyclops': 'punch', 'juggernaut': 'punch', 'super sentai': 'punch', 'antihero': 'punch',
             'bigfoot': 'punch', 'giant': 'punch', 'werewolf': 'claw', 'catgirl': 'claw', 'ki fighter': 'punch',
@@ -19902,6 +20108,7 @@
 
         function rollCrit(unit) {
             if (unit && unit._deltaCrit) { unit._deltaCrit = false; return true; }   // 🔺 THE MONARCH: Delta Alter's sure crit (basic attacks)
+            if (unit && unit._lgAmbush && _lgAmbushCrit(unit, null)) return true;   // 🐆 ROSETTES: the first hit from hiding
             return engineRng() < getCritChance(unit) + _mpCritBonus(unit);   // 🎛 THE MUSIC PRODUCER: staccato in earshot
         }
 
@@ -45306,6 +45513,9 @@
                 }
                 if (target.race === 'bear') _bearOnHurt(target, sourceUnit, damageType, opts, _bearHib);   // 🐻🐾 THE BEAR: the Grudge, the rude awakening
                 if (sourceUnit && sourceUnit.race === 'centaur') _cenOnHit(sourceUnit, target, damageType, opts);   // 🐎 THE CENTAUR: Hit and Run
+                if (sourceUnit && sourceUnit.race === 'leopard girl') _lgOnHit(sourceUnit, target, damageType, opts);   // 🐆 ROSETTES: she landed one this round
+                if (target.race === 'leopard girl') _lgOnHurt(target, sourceUnit, damageType);   // 🐆 found: the ambush is gone
+                if ((target._pollen | 0) > 0 && target.hp > 0) _fgPollenHit(target, sourceUnit, damageType, opts);   // 🌸 POLLINATE: the hitter heals
                 /* Taking a hit blows your cover: blood spatter and the stagger of
                    impact give a hidden unit away. Any damage dealt by an enemy
                    strips Invisible — AoE sweeps, traps and turrets are the
@@ -68084,6 +68294,7 @@
                 try { cubeFocus(nextUnit); } catch (e) { console.warn('[CUBE] relay', e); }   // THE CUBE: the frame round this fighter's face
                 _popeGlassEnds(nextUnit);   // ⛪ the Popemobile's glass comes down when his next turn starts
                 _bfVanishEnds(nextUnit);   // 🦋 Flash and Vanish lasts until her next turn starts
+                _dcDominion(nextUnit);   // 🐉 DOMINION: a turn that starts within 2 of a Draconian is Cowed
                 if (_balanceSimMode) _balTurnStart(nextUnit);   // Balance Lab: turns + dry turns per race
                 _eorPhaseLabelHide();   // a unit is up: the end of round is over, its phase chip goes
                 if (typeof window !== 'undefined' && window._tutActive && typeof window._tutEvent === 'function') window._tutEvent('activation', { uid: nextUnit.id, player: nextUnit.player });
@@ -86563,6 +86774,7 @@
                 _crAfterCast(unit, spell);   // 🛡⚡ THE COMING RACES: Favor + Charge spent
                 if (unit.race === 'rat') unit._ratCastId = null;   // 👑 THE RAT KING
                 _bearAfterCast(unit, spell, x, y);   // 🐻 THE BEAR: Hibernate's sleep, Bear Hug's Root + Grudge
+                _nr5AfterCast(unit, spell, x, y);   // 🐆🐉🌸 THE NEW RACES 5: Drag the Kill, Kneel, Sweet Perfume + Spring Awakening
                 _abAfterCast(unit, spell);   // 🫀 THE ABOMINATION: the mouths close
                 _psAfterCast(unit, spell, x, y, z);   // 💉 THE PLASTIC SURGEON: Work Done, Liposuction's shield
                 _wnAfterCast(unit, spell, x, y);   // ☂📺 THE WEATHERMAN + NEWS ANCHOR: The Forecast, the strike, Fake News, The Rundown
