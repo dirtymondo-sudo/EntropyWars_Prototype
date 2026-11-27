@@ -413,6 +413,11 @@ ring 3 cell 5 / thick 10 / spread 2.4 (they read as bare lawn); pads 5 / 8 (3 / 
 46 m ahead, with no fade). Stonehenge: grass 419K -> about 470K triangles, small plants 134K at reach 74. Not done: a fade-in for the small plants (they still appear
 whole, now 74 m out).
 
+**G28 · THE MESHY ROCKS (11-27, mondo: "looks good now make those meshy rocks").** THE ROCK LINE stands six Meshy boulders in place of the kit's four:
+`edge_rock_sand_a/b/c` (desert sandstone: round, spire, ledges) on dry land, `edge_rock_gran_a/b/c` (grey granite) on snow and mixed sides. About 930 triangles and one
+512 px JPEG sheet each (95-155 KB), `Assets/world/props/meshy/edge_rock_*.glb`. Made with `/mnt/project-files/foliage-pass/rocks/gen.py` (concept nano-banana-pro ->
+image-to-3d, target 900 triangles, no PBR; the sheets shrunk from 2K by a small script). 234 credits. The kit kinds `edge_rock_1..4` are gone; the kit rocks stay as props.
+
 **Not done in this pass (ideas, none built):** blade colour against a sunlit floor (the tufts read darker than the sheet in full
 sun); a gust that the plants and the grass share; trees were left as they are (they already sway).
 

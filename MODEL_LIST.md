@@ -31,7 +31,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | Claude in code (three.js, no file) | no | 107 |
 | Built by Claude in code (a bake tool writes the file) | no (pack bark picture) | 14 |
 | Motion capture (real actors), cut into loops by Claude | yes (motion) | 2 |
-| **UNSORTED** (no SOURCES row yet) | ? | 5 |
+| **UNSORTED** (no SOURCES row yet) | ? | 11 |
 
 Counts are distinct files (a pack kit cut into pieces counts each piece used; the MakeHuman count is the creator's
 picks, each a GLB per body; the code count is procedural catalogue rows).
@@ -3514,6 +3514,7 @@ These rows draw mondo's car pack (GGBot low-poly cars, Assets/vehicles/, `_CAR_P
 | handMirror (held in the hand) | `Assets/world/props/misc/hand_mirror.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
 | heartScales (Weigh the Heart ultimate prop) | `Assets/world/props/misc/heart_scales.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (ultimate spell props, concepts picked by mondo 2026-11-03: barricade U01a, flat earth U03b, scales U04a, feather U06a) |
 | jet | `Assets/fx/spell_props/Meshy_AI_f22_fighter_jett_0713025555_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| katana | `Assets/world/props/meshy/katana/katana.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept nano-banana-pro -> image-to-3d meshy-t2.5 smart-topology low poly; THE KATANA + FLORA MESHY BATCH 1, mondo OK on every piece 2026-11-20; originals in project files meshy-flora-katana-b1/) |
 | landmine | `Assets/fx/spell_props/Meshy_AI_landmine_1027232145_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | maatFeather (Weigh the Heart ultimate prop) | `Assets/world/props/misc/maat_feather.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (ultimate spell props, concepts picked by mondo 2026-11-03: barricade U01a, flat earth U03b, scales U04a, feather U06a) |
 | mic | `Assets/world/props/meshy/Meshy_AI_microphone_1027232053_texture.glb` | Meshy AI | Meshy AI (mondo) |
@@ -3778,10 +3779,6 @@ These rows draw mondo's car pack (GGBot low-poly cars, Assets/vehicles/, `_CAR_P
 | chess_queen_dark | `Assets/world/packs/chess/Low Poly Chess Set.fbx#chess_queen_dark` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
 | chess_rook | `Assets/world/packs/chess/Low Poly Chess Set.fbx#chess_rook` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
 | chess_rook_dark | `Assets/world/packs/chess/Low Poly Chess Set.fbx#chess_rook_dark` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
-| edge_rock_1 | `Assets/world/packs/afgameassets_retro_foliage/rf_rock_1.glb` | Asset pack | Retro Foliage: Pixel Art Nature Kit · AFGameAssets · bought by mondo (in a game yes, never redistributed as standalone source files); the kit's meshes and its own season leaf pictures, turned to GLB by bake-foliage.py |
-| edge_rock_2 | `Assets/world/packs/afgameassets_retro_foliage/rf_rock_2.glb` | Asset pack | Retro Foliage: Pixel Art Nature Kit · AFGameAssets · bought by mondo (in a game yes, never redistributed as standalone source files); the kit's meshes and its own season leaf pictures, turned to GLB by bake-foliage.py |
-| edge_rock_3 | `Assets/world/packs/afgameassets_retro_foliage/rf_rock_3.glb` | Asset pack | Retro Foliage: Pixel Art Nature Kit · AFGameAssets · bought by mondo (in a game yes, never redistributed as standalone source files); the kit's meshes and its own season leaf pictures, turned to GLB by bake-foliage.py |
-| edge_rock_4 | `Assets/world/packs/afgameassets_retro_foliage/rf_rock_4.glb` | Asset pack | Retro Foliage: Pixel Art Nature Kit · AFGameAssets · bought by mondo (in a game yes, never redistributed as standalone source files); the kit's meshes and its own season leaf pictures, turned to GLB by bake-foliage.py |
 | fae_bloom_tree | `Assets/world/props/meshy/ew_plant_healflower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
 | fae_bloom_tree_blue | `Assets/world/props/meshy/ew_plant_healflower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
 | fae_bloom_tree_pink | `Assets/world/props/meshy/ew_plant_healflower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
@@ -4748,4 +4745,10 @@ before asking for a new one (THE PACK-FIRST RULE).
 | skinwalker_face_b | `Assets/characters/races/skinwalker/male/faces/face_b.glb` | **UNSORTED** | add a SOURCES row in list-models.js |
 | skinwalker_face_c | `Assets/characters/races/skinwalker/male/faces/face_c.glb` | **UNSORTED** | add a SOURCES row in list-models.js |
 | skinwalker_face_d | `Assets/characters/races/skinwalker/male/faces/face_d.glb` | **UNSORTED** | add a SOURCES row in list-models.js |
+| edge_rock_gran_a | `Assets/world/props/meshy/edge_rock_gran_a.glb` | **UNSORTED** | add a SOURCES row in list-models.js |
+| edge_rock_gran_b | `Assets/world/props/meshy/edge_rock_gran_b.glb` | **UNSORTED** | add a SOURCES row in list-models.js |
+| edge_rock_gran_c | `Assets/world/props/meshy/edge_rock_gran_c.glb` | **UNSORTED** | add a SOURCES row in list-models.js |
+| edge_rock_sand_a | `Assets/world/props/meshy/edge_rock_sand_a.glb` | **UNSORTED** | add a SOURCES row in list-models.js |
+| edge_rock_sand_b | `Assets/world/props/meshy/edge_rock_sand_b.glb` | **UNSORTED** | add a SOURCES row in list-models.js |
+| edge_rock_sand_c | `Assets/world/props/meshy/edge_rock_sand_c.glb` | **UNSORTED** | add a SOURCES row in list-models.js |
 
