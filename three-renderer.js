@@ -9977,7 +9977,9 @@ const ThreeRenderer = (function () {
     }
     function _hqFloraCell(S, cx, cz) {
         var F = ZONE_FLORA, info = S.info, U = S.U, cm = F.cellM, x0 = cx * cm, z0 = cz * cm, none = { mesh: null, cx: cx, cz: cz, n: 0, tris: 0 };
-        if (x0 + cm < info.x0 || z0 + cm < info.z0 || x0 > info.x0 + (info.nx - 1) * info.res || z0 > info.z0 + (info.nz - 1) * info.res) return none;   // wholly off the room's ground
+        if (S.edgeF === undefined) { try { S.edgeF = (_hqEdgeLandOn(S.H.room) && !window.EW_NO_GRASS_PAST) ? _hqEdgeLandFn(S.H.room, S.H.terrain) : null; } catch (eF) { S.edgeF = null; } }
+        var eM = S.edgeF ? HQ_GRASS.pastM : 0;   // THE SMALL PLANTS RUN ON PAST THE LINE (11-27, with the grass)
+        if (x0 + cm < info.x0 - eM || z0 + cm < info.z0 - eM || x0 > info.x0 + (info.nx - 1) * info.res + eM || z0 > info.z0 + (info.nz - 1) * info.res + eM) return none;   // wholly off the room's ground
         var seed = ((((cx + 4096) * 73856093) ^ ((cz + 4096) * 19349663)) + S.seed) & 0x7FFFFFFF | 1;
         var rnd = function () { seed = (seed * 1103515245 + 12345) & 0x7FFFFFFF; return ((seed >> 8) & 0xFFFF) / 0xFFFF; };
         var step = F.step, n = Math.max(2, Math.round(cm / step)), PT = info.paint, SC = S.scratch, pos = SC.pos, uvs = SC.uv, idx = SC.ix, cols = SC.col;
@@ -9988,27 +9990,37 @@ const ThreeRenderer = (function () {
         for (var j = 0; j < n && !full; j++) for (var i = 0; i < n && !full; i++) {
             var xm = x0 + (i + rnd()) * step, zm = z0 + (j + rnd()) * step;
             var ni = Math.round((xm - info.x0) / info.res), nj = Math.round((zm - info.z0) / info.res);
-            if (ni < 1 || nj < 1 || ni >= info.nx - 1 || nj >= info.nz - 1) continue;
+            var EP = null, xq = xm, zq = zm;   // (xq, zq = the place the room's own sheets are read at: the last square inside, for a plant past the line)
+            if (ni < 1 || nj < 1 || ni >= info.nx - 1 || nj >= info.nz - 1) {
+                /* THE SMALL PLANTS RUN ON PAST THE LINE (2026-11-27, with THE GRASS RUNS ON PAST THE LINE): the flowers, ferns and low bushes stopped dead on the room's
+                   line while the grass and the trees ran on. Where the land past the line is green country they grow on for HQ_GRASS.pastM metres, thinning, on the
+                   land's own height, in the climate and sheet of the room's last square. No stones, no litter out there. */
+                if (!S.edgeF) continue;
+                try { EP = S.edgeF.at(xm, zm); } catch (eE) { EP = null; }
+                if (!EP || !(EP.d < HQ_GRASS.pastM) || !EP.W || (EP.W.grass || 0) + (EP.W.forest || 0) + (EP.W.wood || 0) < 0.6 || rnd() > 1.1 - EP.d / HQ_GRASS.pastM) continue;
+                ni = ni < 1 ? 1 : ni > info.nx - 2 ? info.nx - 2 : ni; nj = nj < 1 ? 1 : nj > info.nz - 2 ? info.nz - 2 : nj;
+                xq = info.x0 + ni * info.res; zq = info.z0 + nj * info.res;
+            }
             var nk = nj * info.nx + ni;
             if (info.mask && !info.mask[nk]) continue;
             var pk0 = (PT && !PT.P[nk] && (ni < 2 || nj < 2 || ni >= info.nx - 2 || nj >= info.nz - 2) && info.nx > 5 && info.nz > 5) ? Math.min(info.nz - 3, Math.max(2, nj)) * info.nx + Math.min(info.nx - 3, Math.max(2, ni)) : nk;   // THE LAST ROW WEARS ITS NEIGHBOUR (_hqGrassCell)
-            var cls = zoneFloraSheet(_hqZoneSheet(info, xm, zm, (PT && PT.P[pk0]) ? PT.pal[PT.P[pk0] - 1] : info.floor)), fw = (S.fields && cls) ? _hqFloraInField(S, xm, zm) : 0, fieldK = 1;
+            var cls = zoneFloraSheet(_hqZoneSheet(info, xq, zq, (PT && PT.P[pk0]) ? PT.pal[PT.P[pk0] - 1] : info.floor)), fw = (S.fields && cls) ? _hqFloraInField(S, xm, zm) : 0, fieldK = 1;
             if (!cls) continue;
-            var pk = Math.floor(xm / 7) + ',' + Math.floor(zm / 7), C = S.clim[pk];   // 7 m blocks from the room's middle: every plot line (the map's, a district's) falls on one
-            if (C === undefined) C = S.clim[pk] = zoneFloraAt(S.rid, xm, zm) || null;
+            var pk = Math.floor(xq / 7) + ',' + Math.floor(zq / 7), C = S.clim[pk];   // 7 m blocks from the room's middle: every plot line (the map's, a district's) falls on one
+            if (C === undefined) C = S.clim[pk] = zoneFloraAt(S.rid, xq, zq) || null;
             if (!C) continue;
-            if (hqTerrainFluidAt(info, xm, zm)) continue;
+            if (hqTerrainFluidAt(info, xq, zq)) continue;
             var layers = C[cls];
             if (fw > 0 && rnd() < fw) { if (C.field) layers = C.field; else if (C.lawn) { layers = C.lawn; fieldK = 2; } }   // G10: inside a designed field
-            if (C.wet && S.wet && (hqTerrainFluidAt(info, xm + 2.2, zm) || hqTerrainFluidAt(info, xm - 2.2, zm) || hqTerrainFluidAt(info, xm, zm + 2.2) || hqTerrainFluidAt(info, xm, zm - 2.2))) layers = C.wet;
+            if (C.wet && S.wet && !EP && (hqTerrainFluidAt(info, xm + 2.2, zm) || hqTerrainFluidAt(info, xm - 2.2, zm) || hqTerrainFluidAt(info, xm, zm + 2.2) || hqTerrainFluidAt(info, xm, zm - 2.2))) layers = C.wet;
             if (!layers) continue;
-            if (hqTerrainSlope(info, xm, zm) > 0.55) continue;
+            if (!EP && hqTerrainSlope(info, xm, zm) > 0.55) continue;
             var inB = false; for (b = 0; b < S.boxes.length; b++) { var B = S.boxes[b], dx = xm - B[0], dz = zm - B[1], lx0 = dx * B[4] + dz * B[5], lz0 = -dx * B[5] + dz * B[4]; if (Math.abs(lx0) < B[2] && Math.abs(lz0) < B[3]) { inB = true; break; } }
             if (inB) continue;
             for (q = 0; q < near.length; q++) if (_hqTPolyDist(xm, zm, near[q].pts).d < near[q].w / 2 + 0.25) { inB = true; break; }
             if (inB) continue;
-            var gy = hqTerrainHeight(info, xm, zm), gO = S.gr ? _grAt(xm, zm, S.gr.o) : null, nd = -1, fL = null;
-            if (LS && (cls === 'floor' || cls === 'lawn' || cls === 'rough' || cls === 'dirt')) {   // G19 THE LITTER: leaves and twigs on thin ground, in the shade, a dark patch at a trunk's foot
+            var gy = EP ? EP.y : hqTerrainHeight(info, xm, zm), gO = S.gr ? _grAt(xm, zm, S.gr.o) : null, nd = -1, fL = null;
+            if (LS && !EP && (cls === 'floor' || cls === 'lawn' || cls === 'rough' || cls === 'dirt')) {   // G19 THE LITTER: leaves and twigs on thin ground, in the shade, a dark patch at a trunk's foot
                 var lk = _grLitterK(C);
                 if (lk > 0) {
                     var LT = GROUND_RULES.litter, dT2 = LS.trees ? _grNearD(LS.trees, xm, zm, 3) : Infinity, st2 = step * step, lr = rnd(), la = rnd() * 6.2832, ls = rnd();
@@ -10021,7 +10033,7 @@ const ThreeRenderer = (function () {
                 }
             }
             /* THE STONES (G6): a pebble cluster here? (a spot of a cluster blob, more on rough / dry ground) */
-            if (S.stones && SS && F.stones.on[cls] && C.stones !== 0) {
+            if (S.stones && SS && !EP && F.stones.on[cls] && C.stones !== 0) {
                 var FSt = F.stones, sc0 = FSt.clump != null ? FSt.clump : 0.45, sw = _ewSmoothNoise(xm / FSt.blobM + 71.3, zm / FSt.blobM + 23.9), sw1 = Math.max(0, (sw - sc0) / (1 - sc0));
                 var sp = FSt.on[cls] * (C.stones || 1) * step * step * Math.pow(sw1, FSt.pow || 1) * (FSt.gain || 2.2) * S.thin;
                 if (gO && gO.keep < 0.5) sp *= 1.8;   // the bare blobs show their stones
@@ -82961,13 +82973,19 @@ const ThreeRenderer = (function () {
             };
             var roadLanes = [];   // every road out's lane past the line (its door's place, the way out, half its width + a tree's reach)
             (room.doors || []).forEach(function (d) { if (!d || d.way !== 'road' || !d.wall) return; try { var f = _hqBoxWall(room, d.wall, d); if (f) roadLanes.push({ x: f.wx, z: f.wz, dx: -f.nx, dz: -f.nz, hw: ((+d.w || 9) / 2) + 3.5 }); } catch (e) {} });
+            var AUD = (typeof window !== 'undefined' && window.EW_HQ_DEBUG) ? (window._ewEdgeAud = {}) : null, audLast = null;
             for (var tz = Z0; tz < Z1; tz += stp) for (var tx = X0; tx < X1; tx += stp) {
+                if (audLast && planted > audLast.p) audLast.b.has++; audLast = null;
                 var a = r(), b2 = r(), c2 = r(), d2 = r();
                 if (tx > R.x0 - 2 && tx < R.x1 + 2 && tz > R.z0 - 2 && tz < R.z1 + 2) continue;
                 var px = tx + (a - 0.5) * 3.2, pz = tz + (b2 - 0.5) * 3.2, P = F.at(px, pz);
                 if (P.d < 1.8 || P.d > 60) continue;
+                var bq = null;   // THE EDGE AUDIT (EW_HQ_DEBUG): a 7 m stretch of a side within 17 m of the line, what it is and whether anything stands on it
+                if (AUD && P.d < 17) { var bk = P.side + '|' + Math.floor(((P.side === 'n' || P.side === 's') ? px : pz) / 7); bq = AUD[bk] || (AUD[bk] = { n: 0, has: 0, gap: 0, nat: 0 }); bq.n++;
+                    if ((P.W.coast || 0) > 0.35 || (P.W.way || 0) > 0.35 || P.W.mountain > 0.5) bq.nat++; else if (wayGap(P.side, px, pz) || (ROADS.length && onEdgeRoad(px, pz))) bq.gap++; }
                 if (ROADS.length && onEdgeRoad(px, pz)) continue;   // THE ROAD RUNS ON: no tree on it
                 if (roadLanes.length && roadLanes.some(function (L) { var qx = px - L.x, qz = pz - L.z; return (qx * L.dx + qz * L.dz) > -2 && Math.abs(qx * L.dz - qz * L.dx) < L.hw; })) continue;   // THE ROAD RUNS ON (2026-11-22): no tree on a road out's asphalt
+                if (bq) audLast = { b: bq, p: planted };
                 var thin = E.deep ? (P.d < 44 ? 1 : 0.6) : P.d < 22 ? 1 : P.d < 40 ? 0.5 : 0.28; if (low) thin *= 0.6;   /* `edges.deep: true` (2026-11-20, The Woods): a room deep in a wood, the trees past its line stay thick to the end of the planting, so no flat land shows between the trunks */
                 var wf = P.W.forest + (P.W.wood || 0);   /* (A FOOTPATH KEEPS ITS WOOD: the forest THE WAY ON opened beside a trail) */
                 if (wf > 0.5) { if (c2 > thin * Math.min(1, wf)) continue; plantTree(kindsF[(d2 * kindsF.length) | 0], hOf(13 + d2 * 9), px, pz, P.y * U); planted++; }
@@ -83062,6 +83080,7 @@ const ThreeRenderer = (function () {
             if (G === _hq.shellGroup) _hq.outer = { hx: info.halfW - 0.5, hz: info.halfD - 0.5, ext: F.reach, yAt: function (x, z) { return F.at(x, z).y; } };   // the ground past the field is this land (the walk's and the battle's ground lookups)
         }
         if (typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ] the edge land', pieces.length, 'pieces,', planted, 'trees');
+        if (typeof window !== 'undefined' && window.EW_HQ_DEBUG && window._ewEdgeAud) { var aK = Object.keys(window._ewEdgeAud), aO = aK.filter(function (k) { var q = window._ewEdgeAud[k]; return !q.has && q.gap < q.n * 0.5 && q.nat < q.n * 0.5; }); console.log('[HQ] the edge audit ' + aK.length + ' stretches, ' + aO.length + ' open: ' + aO.slice(0, 40).join(' ')); }
     }
     /* THE BACKDROP (2026-09-21 — the user: "the corners of the map don't seem to have buildings blocking the view out").
        An open city room's field ends at its shell and the outer ground runs 54 m into the fog — from any street that met
