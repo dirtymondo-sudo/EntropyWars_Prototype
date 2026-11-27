@@ -109636,25 +109636,30 @@ const CROP_VARY = {
         { w: 10, to: 'sunflowers', n: 3, h: [2.2, 2.9], vy: [1, 1] },  // a sunflower field
         { w: 5, to: 'sunflowers', n: 3, h: [2.0, 2.6], tint: 0xd9b878, vy: [1, 1] } ] }   // sunflowers past their best
 };
+/* the look of a listed key's field patch at (x, z); `r` = the row's own chance (0..1), a little of it moves a patch's rim so two fields meet ragged */
+function cropLookAt(key, x, z, r) {
+    const V = CROP_VARY[key]; if (!V) return null;
+    const h2 = cropHash, noise = (x, y, s) => { const xi = Math.floor(x), yi = Math.floor(y), fx = x - xi, fy = y - yi, u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy);
+        return (h2(xi, yi, s) * (1 - u) + h2(xi + 1, yi, s) * u) * (1 - v) + (h2(xi, yi + 1, s) * (1 - u) + h2(xi + 1, yi + 1, s) * u) * v; };
+    /* the patch: two octaves, stretched to 0..1 */
+    let t = noise(x / V.patch + 31.7, z / V.patch - 12.3, 5) * 0.72 + noise(x / (V.patch * 0.37), z / (V.patch * 0.37), 9) * 0.28;
+    t = Math.min(0.9999, Math.max(0, (t - 0.22) / 0.56 + ((r == null ? 0.5 : r) - 0.5) * V.edge));
+    if (V._tot === undefined) { let tot = 0; V.looks.forEach(L => { tot += L.w; }); V._tot = tot;
+        /* (the looks are dealt out of order along the noise, so a tall yellow field can stand by a young one, not always by its neighbour in the list) */
+        V._order = V.looks.map((_, k) => k).sort((a, b) => h2(a, 7, 4) - h2(b, 7, 4)); }
+    let acc = 0; for (let k = 0; k < V._order.length; k++) { acc += V.looks[V._order[k]].w / V._tot; if (t < acc) return V.looks[V._order[k]]; }
+    return V.looks[0];
+}
+function cropHash(x, y, s) { const n = Math.sin(x * 127.1 + y * 311.7 + s * 74.7) * 43758.5453; return n - Math.floor(n); }
 function cropRowsVary(room, rows) {
     if (!rows || !rows.length || (typeof window !== 'undefined' && window.EW_NO_CROP_VARY)) return rows;
-    const h2 = (x, y, s) => { let n = Math.sin(x * 127.1 + y * 311.7 + s * 74.7) * 43758.5453; return n - Math.floor(n); };
-    const noise = (x, y, s) => { const xi = Math.floor(x), yi = Math.floor(y), fx = x - xi, fy = y - yi, u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy);
-        return (h2(xi, yi, s) * (1 - u) + h2(xi + 1, yi, s) * u) * (1 - v) + (h2(xi, yi + 1, s) * (1 - u) + h2(xi + 1, yi + 1, s) * u) * v; };
-    const wd = (room && room.world) || null, ox = (wd && wd.x) || 0, oz = (wd && wd.z) || 0;   // (a room at its world place: the patches run on across a seam)
+    const h2 = cropHash;
     let out = null;
     for (let i = 0; i < rows.length; i++) {
         const p = rows[i], V = p && CROP_VARY[p.key];
         if (!V || p.vy || p.tint != null || p.x == null) { if (out) out.push(p); continue; }
         if (!out) out = rows.slice(0, i);
-        const r1 = h2(p.x, p.z, 1), r2 = h2(p.x, p.z, 2), r3 = h2(p.x, p.z, 3);
-        /* the patch: two octaves, stretched to 0..1, a little of the row's own chance at a patch's rim so two fields meet ragged */
-        let t = noise((p.x + ox) / V.patch + 31.7, (p.z + oz) / V.patch - 12.3, 5) * 0.72 + noise((p.x + ox) / (V.patch * 0.37), (p.z + oz) / (V.patch * 0.37), 9) * 0.28;
-        t = Math.min(0.9999, Math.max(0, (t - 0.22) / 0.56 + (r1 - 0.5) * V.edge));
-        let tot = 0; V.looks.forEach(L => { tot += L.w; }); let acc = 0, L = V.looks[0];
-        /* (the looks are dealt out of order along the noise, so a tall yellow field can stand by a young one, not always by its neighbour in the list) */
-        const order = V._order || (V._order = V.looks.map((_, k) => k).sort((a, b) => h2(a, 7, 4) - h2(b, 7, 4)));
-        for (let k = 0; k < order.length; k++) { acc += V.looks[order[k]].w / tot; if (t < acc) { L = V.looks[order[k]]; break; } }
+        const r1 = h2(p.x, p.z, 1), r2 = h2(p.x, p.z, 2), r3 = h2(p.x, p.z, 3), L = cropLookAt(p.key, p.x, p.z, r1);
         const vy = L.vy ? L.vy[0] + (L.vy[1] - L.vy[0]) * r2 : 1;
         if (!L.to) { const c = Object.assign({}, p, { vy: Math.round(vy * 100) / 100 }); if (L.tint != null) c.tint = L.tint; out.push(c); continue; }
         const a = (p.face || 0) * Math.PI / 180, dx = Math.cos(a), dz = -Math.sin(a), n = L.n || 3, span = 3.5;
@@ -109666,6 +109671,19 @@ function cropRowsVary(room, rows) {
     }
     return out || rows;
 }
+/* THE CROP FIELDS (2026-11-27, mondo's corn ask, the second half): the corn was ONE row thick, a line round bare ground: from over the line, through a
+   gap or from above a "field" was an empty lawn with a hedge. Now every square of the room's solid ground that lies within `near` metres of a crop row
+   (and in no tree zone) is PLANTED: drilled rows `rows` m apart, a plant every `along` m, each plant two crossed cards wearing a picture of the game's
+   own crop model (the sheet `ew_crop_cards.png`, drawn by bake-crops.js; a card = its column, `w` its width over the plant's height, `fill` the plant's
+   share of the tile's height, `h` the plant's height, `keep` the share of spots it takes). The crop, its tint and height are the patch's own
+   (cropLookAt), so the line and the field behind it are one crop. Drawn by three-renderer.js with the flora field's cells (one merged mesh a cell,
+   four triangles a plant, the wind's sway); nothing blocks, nothing is walked: the ground under it was solid already. Off: window.EW_NO_CROP_FIELDS. */
+const CROP_FIELDS = {
+    sheet: 'asset:world/nature/flora/ew_crop_cards.png', cols: 3,
+    cards: { corn: { col: 0, w: 0.6, fill: 0.833, h: [2.1, 2.5], keep: 1 }, sunflower: { col: 1, w: 0.613, fill: 0.815, h: [2.0, 2.6], keep: 0.62 }, wheat: { col: 2, w: 0.77, fill: 0.649, h: [1.0, 1.3], keep: 1 } },
+    of: { corn_row: 'corn', sunflowers: 'sunflower' },   // a crop row's key (and a look's `to`) = its card
+    rows: 0.8, along: 0.5, jitter: 0.13, near: 21, nearCell: 7, foot: 0.6, shade: [0.62, 0.84]
+};
 function zoneFloraSwap(room, rows, fallbackId) {
     if (!rows || !rows.length || (typeof window !== 'undefined' && (window.EW_NO_FLORA || window.EW_NO_FLORA_SWAP))) return rows;
     const S = ZONE_FLORA.swap, id = zoneFloraRoomId(room) || fallbackId || null; if (!S || !id) return rows;
