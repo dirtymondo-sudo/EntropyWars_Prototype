@@ -9000,13 +9000,13 @@ const ThreeRenderer = (function () {
            ground's own, its top coolK / warmK (the two tones the slow patches drift between) */
         sheets: { calm_grass: [0.252, 0.313, 0.163], calm_rockygrass: [0.270, 0.315, 0.200], calm_purplegrass: [0.324, 0.195, 0.513], calm_darkgrass: [0.213, 0.240, 0.162],
                   grass: [0.302, 0.307, 0.197], grass_dark_fantasy: [0.302, 0.307, 0.197], grass_2: [0.261, 0.519, 0.163], grass_3: [0.352, 0.673, 0.061], grass_4: [0.303, 0.276, 0.163], grass_rocky: [0.434, 0.533, 0.234], purple_grass: [0.462, 0.286, 0.557] },
-        lit: 1.0, rootK: 0.70, coolK: [1.08, 1.34, 1.28], warmK: [1.42, 1.44, 1.04],
+        lit: 1.0, rootK: 1.0 /* (11-27, mondo: "the bottom portion of the grass blades blend/tint towards the color of whatever ground it is on": the foot IS the sheet's colour now, 0.70 before) */, coolK: [1.08, 1.34, 1.28], warmK: [1.42, 1.44, 1.04],
         patchM: 1.8,        // patch size, squares
         pressR: 0.42,       // a unit lays the grass down this far round its feet (× tile)
         pressN: 4,          // press map texels per square
         fringe: 5, fringeDensity: 0.7,   // the meadow past the board's edge: squares out, tufts per square side × this
         low: { perTile: 7, width: 0.240, fringe: 2 },   // the Low setting: half the tufts, each wider, a narrow meadow
-        order: 50, shadow: true, dry: [0.42, 0.38, 0.20], dryShare: 0.10
+        order: 50, shadow: false /* (11-27, mondo: "would it help performance and look better if we didnt do shadows for the individual grass blades? looks kinda weird and unneccessary": no blade reads the shadow map; the crown's shade is in the tuft's colour already (G18). `EW_GRASS_SHADOW = true` = as before) */, dry: [0.42, 0.38, 0.20], dryShare: 0.10
     };
     try { window.EW_GGRASS = GGRASS; GGRASS.flush = function () { _ggPalCache = {}; _ggFringe = null; _lastTerrainDecoSerial = ''; }; } catch (e) {}   // flush = retune live: the next frame rebuilds
     /* a tuft's outline (x in half-widths, y in heights) + its 5 triangles, wound to face the camera.
@@ -9029,7 +9029,7 @@ const ThreeRenderer = (function () {
        tuft is built. Nothing reads the camera any more (aGgS and uGgR are gone from the shader and its WebGPU twin); the same corners and
        triangles as before, drawn from both sides. A blade that leans toward the light is a little lighter, away a little darker (sunK), so a
        tuft has a lit side. _ggFace3(r, az) fills the eight blades' headings for one tuft. */
-    var _GG3 = { DX: new Float32Array(8), DZ: new Float32Array(8), PX: new Float32Array(8), PZ: new Float32Array(8), SH: new Float32Array(8), sun: 0.9, sunK: 0.13, twist: 0.75, jit: 0.9, reach: 0.45, wide: 0.85 };   // reach: how far a blade arches out from the root (x the old fan's splay: a fan laid flat is a starfish), wide: a blade's width x
+    var _GG3 = { DX: new Float32Array(8), DZ: new Float32Array(8), PX: new Float32Array(8), PZ: new Float32Array(8), SH: new Float32Array(8), sun: 0.9, sunK: 0.07, twist: 0.75, jit: 0.9, reach: 0.45, wide: 0.85 };   // reach: how far a blade arches out from the root (x the old fan's splay: a fan laid flat is a starfish), wide: a blade's width x
     function _ggFace3(r, az) {
         var G = _GG3;
         for (var b = 0; b < 8; b++) {
@@ -9507,7 +9507,7 @@ const ThreeRenderer = (function () {
         ],
         /* G16 THE GROUNDING: a blade's root sinks this share of its height into the ground, and the foot is darker (root colour ×, over the
            lowest share of the blade) */
-        sink: 0.07, base: [0.90, 0.50],
+        sink: 0.07, base: [1.0, 0.55],   // (11-27: the foot is the ground's own colour, not darker; 0.90 / 0.50 before)
         /* G17 THE WALKER: the grass bows down and away round the walker's feet (shader; r0..r1 m, down = how far it lies), so he reads */
         walker: { r0: 0.7, r1: 2.0, down: 0.55 },
         /* G19 THE LITTER (mondo's critique, "the forest floor is missing an intermediate layer": fallen leaves, twigs, moss at roots,
@@ -9785,7 +9785,7 @@ const ThreeRenderer = (function () {
         /* THE CELL'S OWN SPHERE: the shader moves every corner (the face to the eye, the wind), so the sphere is the cell's ground + a tuft's reach, set by hand */
         geo.boundingSphere = new THREE.Sphere(new THREE.Vector3((x0 + cm / 2) * U, (yLo + yHi) / 2, (z0 + cm / 2) * U), Math.hypot(cm * 0.7072 * U, (yHi - yLo) / 2) + (1.7 * R.tall + 1.0 * R.spread) * U);
         var mesh = new THREE.Mesh(geo, R.mat), noCull = false; try { noCull = !!window.EW_HQ_GRASS_NO_CULL; } catch (e2) {}
-        mesh.frustumCulled = !noCull; mesh.name = 'ew_hq_grass'; mesh._ew_ggrass = true; mesh.renderOrder = C.order; mesh.receiveShadow = C.shadow !== false;
+        mesh.frustumCulled = !noCull; mesh.name = 'ew_hq_grass'; mesh._ew_ggrass = true; mesh.renderOrder = C.order; mesh.receiveShadow = C.shadow !== false || !!window.EW_GRASS_SHADOW;
         mesh.raycast = function () {};   // THE GRASS IS NEVER RAY-TESTED (the walk's field too)
         S.parent.add(mesh);
         return { mesh: mesh, blades: nB, tris: nB * TL / 3, cx: cx, cz: cz };
@@ -11970,7 +11970,7 @@ const ThreeRenderer = (function () {
             o.castShadow = false;
             o.receiveShadow = false;
             o._ew_shadowFlagged = true;   // preempt _flagMeshShadows re-enabling them
-            if (o._ew_ggrass) o.receiveShadow = GGRASS.shadow !== false;   // THE GRASS FIELD: the board's shadows fall across it
+            if (o._ew_ggrass) o.receiveShadow = GGRASS.shadow !== false || !!window.EW_GRASS_SHADOW;   // THE GRASS FIELD: the board's shadows fall across it
         });
 
         objectGroup.add(_terrainDecoGroup);
