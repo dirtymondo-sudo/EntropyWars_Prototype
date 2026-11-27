@@ -77,8 +77,20 @@ function apply(block, opt) {
             KIND[k] = 2; } }
     /* THE BAY under Industrial (the south row east of Bluff Drive): the port's south edge falls into the water */
     const SAND = T.paint.pal.indexOf('desert') + 1, GRASS = T.paint.pal.indexOf('grass_2') + 1, WALK = 1, DIRT = T.paint.pal.indexOf('dirt_2') + 1;
-    for (let j = 204; j < NZ; j++) for (let i = 144; i < 192; i++) { const k = K(i, j), s = K(i, 203), e0 = H[s * 4 + 2], e1 = H[s * 4 + 3], d = j - 204, f = t => Math.max(0, 1 - t / 2.5);
-        H[k * 4] = -3 + (e0 + 3) * f(d); H[k * 4 + 1] = -3 + (e1 + 3) * f(d); H[k * 4 + 2] = -3 + (e0 + 3) * f(d + 1); H[k * 4 + 3] = -3 + (e1 + 3) * f(d + 1); P[k] = SAND; KIND[k] = 4; }
+    /* (a shore all round it: the floor falls half a metre a square from the Bluff's foot and from the Coast Road's spit, faster from the port's quay,
+       so whoever walks or falls in walks out again) */
+    { const bayH = (ci, cj) => { const e = H[K(Math.min(191, ci), 203) * 4 + (ci > 191 ? 3 : 2)]; return Math.max(-3, e - 1.2 * (cj - 204), -0.6 - 0.5 * (ci - 144), -0.5 * (192 - ci)); };
+      for (let j = 204; j < NZ; j++) for (let i = 144; i < 192; i++) { const k = K(i, j); H[k * 4] = bayH(i, j); H[k * 4 + 1] = bayH(i + 1, j); H[k * 4 + 2] = bayH(i, j + 1); H[k * 4 + 3] = bayH(i + 1, j + 1); P[k] = SAND; KIND[k] = 4; } }
+    /* THE SHORE IN THE NEW ROWS (the beach strip's sea is not in the height sheet: rows of sunk plateaus cut it, and a new row has none, so the
+       stretch above left LAND to the room's east line there). Each new row gets its own beach: flat sand from the district's edge out to a shore
+       line that joins the coast north and south of it, then the floor falls 0.9 m a square to the sea's floor (a slope a walker comes back up).
+       The south row: the Coast Road's causeway (the quay's three columns, carried out) keeps its ground and the sea lies east of it. */
+    { const FLOOR = -3.6, shore = [[84, 95, () => 213], [144, 155, cj => 206 - 10 * (cj - 144) / 12]];
+      for (const [a, b, sc] of shore) { const w = []; for (let cj = a; cj <= b + 1; cj++) w[cj] = cj <= b ? H[K(192, cj) * 4] : H[K(192, b) * 4 + 2];
+          const hB = (ci, cj) => { const land = ci <= 192 ? w[cj] : ci >= 195 ? 0 : w[cj] * (195 - ci) / 3, c = sc(cj); return ci <= c ? land : Math.max(FLOOR, -0.9 * (ci - c)); };
+          for (let j = a; j <= b; j++) for (let i = 192; i < NX; i++) { const k = K(i, j); H[k * 4] = hB(i, j); H[k * 4 + 1] = hB(i + 1, j); H[k * 4 + 2] = hB(i, j + 1); H[k * 4 + 3] = hB(i + 1, j + 1); if (i >= 195) { P[k] = SAND; FL[k] = 0; } } }
+      const hS = ci => Math.max(FLOOR, -0.9 * (ci - 195));
+      for (let j = 204; j < NZ; j++) for (let i = 195; i < NX; i++) { const k = K(i, j); H[k * 4] = H[k * 4 + 2] = hS(i); H[k * 4 + 1] = H[k * 4 + 3] = hS(i + 1); P[k] = SAND; FL[k] = 0; } }
     /* THE NEW CITY GROUND: every other new square. Its heights are one smooth sheet hung between the edges round it (a relaxed lattice). */
     const LW = NX + 1, LAT = new Float32Array(LW * (NZ + 1)), FIX = new Uint8Array(LW * (NZ + 1)), LK = (i, j) => j * LW + i;
     for (let j = 0; j < NZ; j++) for (let i = 0; i < NX; i++) if (!KIND[K(i, j)]) KIND[K(i, j)] = 3;
@@ -260,7 +272,7 @@ function apply(block, opt) {
         P[k] = c === 'P' ? WALK : c === 'G' ? GRASS : c === 'D' ? DIRT : c === 'B' ? SAND : c === 'U' ? underSheet(j) : 0; FL[k] = 0; }
     /* Desert View Drive looks out on the desert: south of the road the grass thins to dirt and sand */
     const hash = (a, b, c) => { let h = (a * 374761393 + b * 668265263 + (c || 0) * 2147483647) | 0; h = (h ^ (h >>> 13)) * 1274126177 | 0; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
-    for (let j = 210; j < NZ; j++) for (let i = 0; i < BL; i++) { const k = K(i, j); if (at(i, j) !== 'G') continue; const v = hash(i, j, 3) + (j - 210) * 0.12; P[k] = v > 0.95 ? SAND : v > 0.55 ? DIRT : GRASS; }
+    for (let j = 210; j < NZ; j++) for (let i = 0; i < BL; i++) { const k = K(i, j); if (at(i, j) !== 'G') continue; const v = (j - 210) + Math.sin(i * 0.37) * 0.9 + Math.sin(i * 0.11 + 2) * 0.8 + hash(Math.floor(i / 3), j, 3) * 0.6; P[k] = v > 3.6 ? SAND : v > 1.5 ? DIRT : GRASS; }
 
     /* ══ 7. THE HIGHWAY's body: the bridges, the barriers, the paint, the lamps ══ */
     const CONC = 'urban:ConcretePanels1a', CT = 0xcfcbc2, CD = 0x9c988f, ASPH = 'urban:RoadGeneric1a', WHITE = 0xf0f0f0, YEL = 0xe8b830, BH = 0.9, TH = 1.5;
@@ -301,7 +313,7 @@ function apply(block, opt) {
         for (const sd of [-1, 1]) { paintLine(Pp, rx, rz, HC + sd * 0.75, lz(ja), lz(jb), ya, yb, 0.16, YEL); paintLine(Pp, rx, rz, HC + sd * 7, lz(ja), lz(jb), ya, yb, 0.14, WHITE, [3.5, 7]); paintLine(Pp, rx, rz, HC + sd * 13.6, lz(ja), lz(jb), ya, yb, 0.16, WHITE); }
         if (bridge) { const L = lz(jb) - lz(ja), y = ya;
             feat({ k: 'bridge', id: 'dc:hw:deck' + si, x0: HC, z0: lz(ja), x1: HC, z1: lz(jb), w: HWID, y: r3(y), thick: TH, rails: false, hide: true, absY: true });
-            Pp.push({ s: 'box', p: [0, r3(y - 0.5), 0], size: [r3(HWID + 0.8), 0.5, r3(L)], key: CONC, tint: CT, keyTop: ASPH, under: true, uv: 3.5 });
+            Pp.push({ s: 'box', p: [0, r3(y - 0.5), 0], size: [r3(HWID + 0.8), 0.5, r3(L)], key: CONC, tint: CT, keyTop: ASPH, tintTop: 0xdcdce0, under: true, uv: 3.5 });
             [-14, -7, 0, 7, 14].forEach(o => Pp.push({ s: 'box', p: [o, r3(y - TH), 0], size: [1.0, TH - 0.5, r3(L)], key: CONC, tint: CD, top: false, under: true, uv: 3.5 }));
             /* the pillars: a cap beam on four round columns, on the pavements and the avenue's middle, never on a carriageway */
             const lines = []; for (let j = ja; j < jb; j++) { const u = underSheet(j); if (u === WALK && (underSheet(j - 1) !== WALK)) lines.push(j + (underSheet(j + 1) === WALK ? 1 : 0.5)); else if (u === SLAB && underSheet(j - 1) !== SLAB) lines.push(j + 1); }
@@ -404,6 +416,8 @@ function apply(block, opt) {
     T.beds = (T.beds || []).map(q => { const m = map((q[0] + q[2]) / 2, (q[1] + q[3]) / 2), dx = m[0] - (q[0] + q[2]) / 2, dz = m[1] - (q[1] + q[3]) / 2; return [r3(q[0] + dx), r3(q[1] + dz), r3(q[2] + dx), r3(q[3] + dz)].concat(q.slice(4)); });
     T.marks = (T.marks || []).map(m => m.__gridiron ? { __gridiron: Object.assign({}, m.__gridiron, { at: Object.assign({}, m.__gridiron.at, mp(m.__gridiron.at)) }) } : (typeof m.x0 === 'number' ? (() => { const a = map(m.x0, m.z0), b = map(m.x1, m.z1); return Object.assign({}, m, { x0: a[0], z0: a[1], x1: b[0], z1: b[1] }); })() : (typeof m.x === 'number' ? mp(m) : m))).concat(marks);
     T.features = OUT.concat(extra, trees);
+    T.features.forEach(f => { if (f.id === 'dc:coastroad:arch') f.z = r3(-Z0 - 0.4); });   // the Coast Road's causeway past the room: it starts at the room's new south line
+
     T.traffic = traffic;
     T.signals = (T.signals || []).map(mp).concat(signals);
     T.busStops = (T.busStops || []).map(b => Object.assign(mp(b), { signs: (b.signs || []).map(mp) }));
