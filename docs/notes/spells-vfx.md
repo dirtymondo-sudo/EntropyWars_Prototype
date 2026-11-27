@@ -5677,3 +5677,21 @@ ring slams out; Petal Dart = a flower burst; Bouquet = a ring of flowers at the 
 Sweet Perfume = scent rings + petals circling out; Spring Awakening = three rings of flowers opening round her. Rule looks =
 fireGeometry keys from battle.js: `nr5Rosettes`, `nr5Ambush`, `nr5Drag`, `nr5Cowed` (a small crown dips over the head), `nr5Pollen`,
 `nr5PollenHeal` (motes to the healed ally + the soft heal), `nr5Vines` (three vines curl up round the rooted enemy).
+
+## THE CASTER'S OWN BLADE (2026-11-27)
+mondo: "For origami girl her swordmanship abilities should use the paper sword instead of the normal sword model for those spell
+animations. Same thing with shogun and samurai slugs, use the katana model for their swordsman spell animations."
+- three-vfx-effects.js `_sigBladeKey` picks the blade by the caster (the unit whose turn it is, `state._blitzActiveUnitId`; the
+  party builder stage: `_VS.race()`): `_SIG_BLADE_BY_RACE` = origami girl -> 'paper', shogun / samurai slug -> 'katana', else
+  'sword' (the master sword). `_sigBladeInst(key, L)` gives each in the master sword's instance frame (tip up, centred, L long).
+- Used by `_sigSwordMeshy` (every slash combo: Cross Slash, Dragon Slash, Blessed Blade...; Blade Waltz; parry; the stand /
+  judgment sword) and `_sigIaiCut3D`. Excalibur keeps the master sword.
+- 'paper' = three-renderer.js `ThreeRenderer.oriSword()` (her THE ORIGAMI sheet, folded to the sword, the fight's paper look);
+  paper ignores the hologram blend (stays paper). 'katana' = `_WPN_MODELS.katana` = kt_katana (Assets/world/props/meshy/katana/
+  katana.glb, 0.96 long on x, grip +x), stood tip up; the match drip streams it first when one of them is on the board.
+- A blade still streaming = no blade that cast (NO STAND-INS), never the master sword in its place.
+- Checked: VS CPU fight, Origami Girl Cross Slash, Shogun + Samurai Slug Dragon Slash, 0 errors; the four blades rendered side
+  by side through `ThreeVFXEffects.sigBuildSword` with each race as the caster (proof /mnt/project-files/sword-swap/).
+- THE STAGE WARM (11-27, mondo: "it needs to load earlier so that they appear in the party builder when i hover over the spells
+  ... all weapons"): `VFX3D.stage.enter` starts the hero's blade + the master sword at once and every `_WPN_MODELS` file through
+  the background lane. Measured: katana + sword ready ~10 s after the stage opens (cloud).

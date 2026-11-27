@@ -2449,3 +2449,37 @@ no word on the golem's brow. Plan doc: claude.ai artifact "Skeleton and Golem: b
   golem's small floating stones (the concept had none); no sound (never generate SFX); the gore still sprays blood on a skeleton.
 - Kill switch `window.EW_NO_BREAKABLE`. Probe: `RACE=skeleton|golem TAG=x ZOOM=13 FLAGS=__bkTilt=50 node playtest_breakable.js`
   (a real VS CPU fight, every spell of the kit and a death, pictures in shots/breakable/).
+
+## THE SOFT WINGS (2026-11-27, bake-wings.py --soft; THE LOOSE WINGS EVERYWHERE)
+`python3 -I bake-wings.py --soft <in.glb> <out.glb> --parent Spine02 [--far 0.07 --band 0.06 --back 0.02 --low 0.3 --high 1.6 --side 0.03] [--debug <dir>]`.
+For wings that are one skin with the body (no loose piece). A wing = the skin behind the back, out to a side, further than `far` (of the
+height) from every bone; the biggest joined piece a side. Nothing is cut: each vertex blends from its old weights to `ewwing_L/R` over
+`band`. `--debug` writes back / side / top pictures (red = wholly on the bone, yellow = the blend). It also takes capes, back spines and a
+tail as "wings" when a body has no wings (Overlord, Dream Eater, Draconian): LOOK at the picture before wiring. Files made 11-27 (R2,
+`Assets/characters/races/`): demon/male `Meshy_AI_red_demon_wt_Character_output`, gargoyle/male `Meshy_AI_gargoyle_m_wt_Running`,
+gargoyle/female `Meshy_AI_female_gargoyle_wt_Character_output`, succubus/male `Meshy_AI_incubus_wt_Running` (wt = wings + tail),
+mothman/male `Meshy_AI_mothman_wings_Character_output`, nephilim/male `Meshy_AI_nephilim_wings_Character_output`, monarch/female
+`Meshy_AI_monarch_wings_Running`, cicada_brood/male `Meshy_AI_cicada_brood_wings_Running`, beequeen `Meshy_AI_the_hive_queen_wings_Running`.
+The game shares each wing out to three more bones at load and beats it (champions-combat.md "THE LOOSE WINGS EVERYWHERE").
+
+### THE SLAB + THE SHEET (11-27, mondo: "the nephilim and cicado brood wings are messed up")
+- What broke: `--soft` takes skin FAR FROM EVERY BONE. The Nephilim's wings stand as one sheet behind the whole body, so the feathers beside
+  the arms and below the knee (`--low 0.3`) stayed on the arms and legs while the rest turned on the wing's bone: the wing tore in two.
+  The Cicada Brood's wings lie shut down the back over the thighs; most of the sheet was a half blend with the thigh bones, so it tore at
+  every step, and the general flare / tuck moments swung both units' hanging wings through the legs.
+- The fix, two new modes of the same tool: `--slab -0.012` (Nephilim: all skin behind one depth is wing, blended by the distance from the
+  middle line) and `--sheet 0.08 --low 0.12` (Cicada Brood: below the shoulders the sheet is the wing's bone, its middle strip the parent
+  bone, root at the top). Files `Meshy_AI_nephilim_wings2_Character_output.glb`, `Meshy_AI_cicada_brood_wings2_Running.glb` (the `_wings_`
+  files stay on R2, unused). Both on `--parent Spine02`.
+- Beats (three-renderer.js `_WB`): new keys `mo` (how much of a moment's spread / fold a wing takes), `tw0` (a rest lean off the back),
+  `sh` (the ruffle's shiver). grigori + cicada never turn toward the body now.
+- A wing that HANGS (root above or mid, tips down) needs these three; check a new one with the pose sheet before the game
+  (rotate the wing bone by hand about each axis, back + side view), the 1 fps probe from above does not show a tear.
+
+## THE LOOSE TAILS (2026-11-27, bake-tail.py)
+`python3 -I bake-tail.py <in.glb> <out.glb> [--parent Hips --joints 6 --col 0 --far 0.05 --band 0.05 --high 0.62 --wide 0.5] [--debug <dir>]`
+(after bake-wings.py on a body with both). The tail = the biggest narrow piece of skin behind and below the hips that is far from every
+bone; one chain `ewsway_c<col>_0..5` is laid down it by the shortest way over the skin from the root (a curled tail keeps its order), the
+vertices blend onto it. THE SWAY swings it. `--far` is the knob: 0.05 took the backs of the thighs on the Gargoyle (0.085), the Incubus
+(0.08) and the Draconian (0.1, file draconian/male `Meshy_AI_draconian_tail_Running`). A gown's hem is found as a tail (Succubus female):
+look at `<out>_tail.png` first.
