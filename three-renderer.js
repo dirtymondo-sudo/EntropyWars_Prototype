@@ -9438,9 +9438,13 @@ const ThreeRenderer = (function () {
         /* to = where the ring ends (m from the walker) · band = it shrinks away over its last metres · lead = it grows in over this many metres, done where the ring before
            starts to shrink · pad = a cell is built this far ahead · cell = cell size × cellM (the tufts stand that much further apart) · tall = height × · blades / pts = which
            of the fan's seven blades a tuft keeps and which of a blade's seven corners (root L R, two pairs, tip) · spread / thick = how far the blades splay / how thick each is */
-        rings: [{ to: 17, band: 5, pad: 3, blades: [0, 1, 2, 3, 4, 5, 6], pts: [0, 1, 4, 5, 6] },
-                { to: 42, band: 10, lead: 5, pad: 5, cell: 2, tall: 1.05, spread: 1.1, thick: 2.0, blades: [0, 1, 3, 5, 6], pts: [0, 1, 4, 5, 6] },
-                { to: 100, band: 28, lead: 9, pad: 8, cell: 6, tall: 1.15, spread: 1.5, thick: 4.4, blades: [0, 3, 6], pts: [0, 1, 6] }],
+        rings: [{ to: 17, band: 5, pad: 5, blades: [0, 1, 2, 3, 4, 5, 6], pts: [0, 1, 4, 5, 6] },   // (pad 3 / 5 before 11-27: a runner outran the build)
+                { to: 42, band: 10, lead: 5, pad: 8, cell: 2, tall: 1.1, spread: 1.4, thick: 3.4, blades: [0, 1, 3, 5, 6], pts: [0, 1, 4, 5, 6] },   // (11-27 THE FAR CLUMPS: thick 2.0, spread 1.1: a quarter of the tufts must still cover the ground)
+                { to: 100, band: 28, lead: 9, pad: 8, cell: 5, tall: 1.25, spread: 2.4, thick: 10, blades: [0, 3, 6], pts: [0, 1, 6] },   // (cell 6, thick 4.4, spread 1.5 before: it read as bare lawn from 40 m)
+                /* THE FAR CLUMPS (2026-11-27, mondo: "i can still see the grass loading in at a distance ... load like a lower res a big clump(s) of grass in the shape of the grass
+                   in the distance"): the field ended 100 m out and grew in from 72 m as he walked. The dense blades end at 17 m and the two rings behind were too thin to read (a lawn with a patch of grass
+                   round him). They are fatter now, and a fourth ring runs to 240 m: two very fat blades a tuft, one triangle each, 2.7 m apart, in 70 m cells built 20 m ahead, so the far ground already wears grass where the real blades will come up. */
+                { to: 240, band: 70, lead: 16, pad: 20, cell: 10, tall: 1.5, spread: 4, thick: 24, blades: [0, 6], pts: [0, 1, 6] }],
         low: { perSquare: 10, rings: [{ to: 12, band: 4, pad: 3, blades: [0, 1, 2, 3, 4, 5, 6], pts: [0, 1, 4, 5, 6] }, { to: 38, band: 11, lead: 5, pad: 5, cell: 2, tall: 1.08, spread: 1.2, thick: 2.6, blades: [0, 3, 6], pts: [0, 1, 4, 5, 6] }] },
         old: { radiusM: 28, low: 16 },
         buildMs: 3, fillMs: 8, riseS: 0.9, riseWaitMs: 2500, jumpM: 30 };
