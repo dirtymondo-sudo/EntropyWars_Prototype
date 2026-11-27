@@ -209,11 +209,13 @@ function buildTable(S, rasters) {
     Object.keys(Z.zones).forEach(hub => Z.zones[hub].rooms.forEach(row => { if (row.wx == null || row.wait || !at[row.layer]) return;
         const P = (H.rooms[row.room] || {}).plots || {}, has = (c, r) => Array.isArray(P.mask) ? (P.mask[r] || '').charAt(c) === '#' : row.plots ? row.plots.some(q => q[3] === c && q[4] === r) : true;
         for (let r = 0; r < row.rows; r++) for (let c = 0; c < row.cols; c++) if (has(c, r)) { const k = (row.wx + c) + ',' + (row.wy + r); if (at[row.layer][k] && at[row.layer][k] !== row.room) clash.push(k + ' ' + at[row.layer][k] + ' / ' + row.room); else at[row.layer][k] = row.room; } }));
-    /* THE SPREAD (2026-11-27): Disaster City grew by four plots across and three down and the world's plot plan (docs/plans/one-world) has not been
-       drawn again for it yet: the city's new edges lie over the first plots of the roads that arrive (they are joined by passages, so nothing in a
-       room depends on it). Until the plan is redrawn those plots are listed here and do not stop the bake. Any OTHER clash still does. */
-    const cityOver = clash.filter(c => /site_prebuilt_downtown_streets/.test(c)), hard = clash.filter(c => !/site_prebuilt_downtown_streets/.test(c));
-    if (cityOver.length) console.warn('THE SPREAD: Disaster City lies over ' + cityOver.length + ' world plot(s) of its neighbours (the One World plan is not redrawn yet): ' + cityOver.slice(0, 40).join(' | '));
+    /* DISASTER CITY IS BIGGER THAN ITS PLAN (2026-11-27, THE SPREAD + ONE BEACH, ONE ROOM): the ends of two roads lie under the city's new streets. The
+       plan names those plots (docs/plans/one-world/plots.json `cityOver`, written by after-v13.js row 11): exactly those may stand under the city. Any
+       other two rooms on one plot stop the bake, the city's too. */
+    const CO = JSON.parse(fs.readFileSync(path.join(REPO, 'docs/plans/one-world/plots.json'), 'utf8')).cityOver || { plots: [] }, okAt = {};
+    CO.plots.forEach(p => { okAt[p[0] + ',' + p[1]] = 1; });
+    const declared = clash.filter(c => okAt[c.split(' ')[0]] && c.indexOf(CO.room) >= 0), hard = clash.filter(c => declared.indexOf(c) < 0);
+    if (declared.length) console.log('the plan\'s declared plots under Disaster City: ' + declared.length + ' of ' + CO.plots.length + ' (' + (CO.routes || []).join(', ') + ')');
     if (hard.length) throw new Error('two rooms stand on one world plot:\n  ' + hard.slice(0, 12).join('\n  '));
     return Z;
 }

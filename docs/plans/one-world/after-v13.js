@@ -94,5 +94,16 @@ if (t.indexOf('{"id":"katana"') < 0) { const i = t.indexOf('    {"id":"volcano"'
 if (t.indexOf('{"id":"estT"') < 0) { const TP = require('../world-polish/plans/estate-house-trail.js'), i = t.indexOf('    {"id":"estH"'), j = t.indexOf('\n      ]}', i); if (i < 0 || j < 0) throw new Error('no estH block');
   const pl = TP.plots.map(q => ({ n: q[2], x: -20 + q[0], y: 14 + q[1] }));
   t = t.slice(0, j + 9) + ',\n    {"id":"estT","hub":"ranch","zone":"The Estate","name":"The House Trail","state":"new 11-20","layer":"surface","x":-20,"y":14,"w":7,"h":3,"shape":"band","count":' + pl.length + ',"note":"the walked way from the Lake\u2019s West Bank to the Haunted House (world polish thread 17); room site_prebuilt_skinwalker_ow_trail",\n      "plots": [\n' + pl.map(q => '        ' + JSON.stringify(q)).join(',\n') + '\n      ]}' + t.slice(j + 9); }
+/* 11. DISASTER CITY IS BIGGER THAN ITS PLAN (2026-11-27, THE SPREAD + ONE BEACH, ONE ROOM): the city's room is 22 x 18 plots at -1,-3 (the plan drew 12 x 12
+       at 0,0 with the Hills over it and the Beach beside it; the Beach's zone is the city's east side now). Its new roads lie over the first plots of two
+       routes: the Woodland Parkway over the Valley Road's last column, and North Avenue, South Avenue and Desert View Drive (three rows the city grew
+       south) over the Badlands Highway's first three rows. Both rooms are joined to the city by a passage, so nothing in play depends on it; to draw it
+       true on the map either road must be SHORTENED (the highway's first three plots hold its city-limit stretch and the ramp up, laid by hand in
+       docs/areas/routes/R9.js) or the whole south must move three plots. Until mondo picks, the plots are DECLARED here: bake-map.js lets exactly these
+       stand under the city and stops for any other two rooms on one plot. */
+{ const CO = { room: 'site_prebuilt_downtown_streets', at: [-1, -3], size: [22, 18], plots: [[-1, 4], [-1, 5], [6, 12], [7, 12], [6, 13], [7, 13], [6, 14], [7, 14]], routes: ['R6', 'R9'],
+      note: 'the ends of the Valley Road and the Badlands Highway under the bigger city (after-v13.js row 11); bake-map.js allows these and no other' };
+  const line = '  "cityOver": ' + JSON.stringify(CO) + ',\n', m = /  "cityOver": .*\n/.exec(t);
+  if (m) t = t.replace(m[0], line); else { const i = t.indexOf('  "v": '); if (i < 0) throw new Error('no v line'); t = t.slice(0, i) + line + t.slice(i); } }
 JSON.parse(t); fs.writeFileSync(FILE, t);
 [d, dW, dF, dC, dE, dR, dL].concat(MTN).forEach(d => console.log('plots.json: ' + d.name + ' ' + d.count + ' plots, ' + d.w + ' x ' + d.h + ' at ' + d.x + ',' + d.y)); console.log(n + ' ground letters changed to T');
