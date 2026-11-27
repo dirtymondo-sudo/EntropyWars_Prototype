@@ -1648,6 +1648,12 @@ const EW_ANIM_LIB_URLS = [
   // lib 11 — MAL8_Sniper.glb (2026-11-24, THE MESHY CASTS batch 3, the gun units): 6 more on the same rig (walk forward / backward
   // while shooting, prone reload, a forward reload, a rifle charge, a seated gun gesture). A NEW file: MAL7 is long-cached at its name.
   'https://cdn.entropywars.net/Assets/characters/animations/MAL8_Sniper.glb',
+  // lib 12 — BKB1_Blaze.glb (2026-11-27, THE BASKETBALL CLIPS, mondo: "use the meshy point guard from our game and use the basketball
+  // animations from the pack"): the 25 clips of the BasketballPlayer_Blaze pack he dropped in the inbox (Dribble, RunDribble,
+  // SprintDribble, Pass, Shoot, Dunk, Block, Jump, Celebrate, Defeat, ...), its skeleton + clips only (no mesh, no finger keys;
+  // the head bone renamed `Head`). A UE-named rig, in-place loops: the retarget reads it like UAL1/2. The Point Guard's own
+  // slots play it (RACE_MODELS_3D 'point guard' `lib:`), nobody else's default does.
+  'https://cdn.entropywars.net/Assets/characters/animations/BKB1_Blaze.glb',
 ];
 
 // Game slot → library clip (+ which library file) + timeScale. Durations are
@@ -1991,6 +1997,7 @@ function _ualClipRef(o) {
   if (o.then) r.then = o.then;   // THE BOW SHOT: more clips baked on the end (three-renderer.js _libBakeClips)
   if (typeof o.turn === 'number') r.turn = o.turn;
   if (typeof o.nockAt === 'number') r.nockAt = o.nockAt;
+  if (o.ball) r.ball = o.ball;   // THE DRIBBLE: the held ball bounces on this clip (three-renderer.js _libBallTrack)
   return r;
 }
 for (const _slot in UAL_SLOTS) {
@@ -3024,7 +3031,20 @@ const RACE_MODELS_3D = {
     male: _mkUAL('point_guard/male', 'point_guard', {
       model: 'https://cdn.entropywars.net/Assets/characters/races/point_guard/male/Meshy_AI_point_guard_Running.glb',
       heightRatio: 1.03, basicAttackKind: 'throw', weaponKind: 'throw', weaponProj: 'proj-basketball',
-      procRig: 'unitGear', gear: { held: { url: 'https://cdn.entropywars.net/Assets/characters/gear/held/basketball.glb', len: 0.13, grip: 0.5 } },
+      /* THE BASKETBALL CLIPS (2026-11-27, mondo: "use the basketball animations from the pack to do his animations. And can you also
+         make him dribble the basketball for his idle"): his own Meshy body, the pack's clips (lib 12) on it. He never stands still:
+         the idle is the pack's Dribble, and he dribbles as he walks and runs. `ball` = the held ball leaves the hand, hits the floor
+         and comes back on that clip (beats = bounces a loop, top = where in a bounce the hand is highest; three-renderer.js THE
+         DRIBBLE). The ball is mondo's own model (inbox Baseketball.glb: its two parts joined, the seams as vertex colours). */
+      lib: {
+        idle:      { clip: 'Dribble',       lib: 12, ts: 1.0, ball: { beats: 1, top: 0 } },
+        walk:      { clip: 'RunDribble',    lib: 12, ts: 1.6, ball: { beats: 2, top: 0.25 } },
+        run:       { clip: 'SprintDribble', lib: 12, ts: 1.3, ball: { beats: 2, top: 0.25 } },
+        runCharge: { clip: 'Sprint',        lib: 12, ts: 1.2 },
+        castThrow: { clip: 'Pass',          lib: 12, ts: 0.9, strikeAt: 0.33 },   // both hands off the chest, arms out at 0.33 s
+        block:     { clip: 'Block',         lib: 12, ts: 1.2, strikeAt: 0.30 },   // both hands up by 0.3 s
+      },
+      procRig: 'unitGear', gear: { held: { url: 'https://cdn.entropywars.net/Assets/characters/gear/held/basketball_v3.glb', len: 0.13, grip: 0.5, dribble: true } },
     }),
   },
   'music producer': {   // 2026-11-24 THE MUSIC PRODUCER: Meshy image-to-3d + rigging from mondo's own image (sources: project files

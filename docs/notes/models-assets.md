@@ -2323,3 +2323,27 @@ scaled 0.01): the first file (`..._wings_Running.glb`) used a plain -root invers
 @gltf-transform/functions@4 meshoptimizer sharp`): the two rigged bodies + ten parts from project files `boss-concepts/models/`, textures to
 WebP 1024, parts simplified, and bones written offline: the serpent and the tail get a 9-bone chain, the robe a root + 8 columns x 5 joints
 named for THE SWAY. Upload with `node sync-zip.js --put`. How they hang and move: champions-combat.md "THE DEMIURGE".
+
+## THE BASKETBALL CLIPS (2026-11-27)
+mondo: "use the meshy point guard from our game and use the basketball animations from the pack to do his animations. And can you also
+make him dribble the basketball for his idle." His inbox drop (R2 `dirtymondo` `inbox/basketball/`, copy in project files
+`asset-packs/basketball-blaze/`): `Baseketball.glb` (the better ball) and the `BasketballPlayer_Blaze` pack (a rigged player, 61 bones
+with UE names, 25 clips; MAKER + LICENCE NOT RECORDED, ask mondo before crediting).
+- **The library:** `Assets/characters/animations/BKB1_Blaze.glb` = sprites.js `EW_ANIM_LIB_URLS` lib 12: the pack's skeleton + clips only
+  (no mesh, no finger / cloth keys, `head` renamed `Head`), built by project files `point-guard-dribble/build.py`. Clips: Dribble,
+  RunDribble, SprintDribble, Pass, Shoot, Dunk, Block, Jump, Land, Run, Sprint, SkillDash, Celebrate, Defeat, Stunned, Idle, HeroWarmup,
+  HeroWave + seven soccer ones (BicycleKick, Header, SlideTackle, Tackle, SoccerKick, SoccerDribbleRun, SoccerIdleControl). All in place.
+  The feet never leave the floor in Jump / Dunk / Shoot (the board's own tween lifts him). No falling death: he keeps the shared one.
+- **The Point Guard** (sprites.js RACE_MODELS_3D `lib:`): idle Dribble, walk RunDribble, run SprintDribble, runCharge Sprint, castThrow
+  (his basic attack) Pass, block Block. Spell rows (data.js `animClip`, lib 12): Chest Pass = Pass, Buzzer Beater = Shoot, Slam Dunk =
+  Dunk, Crossover = SkillDash. Alley-Oop keeps its Meshy hop.
+- **THE DRIBBLE** (three-renderer.js `_libBallTrack` + `_dribbleTick`): a slot with `ball: { beats, top }` gets one more track on its
+  baked clip, on the marker node `ewDribble` that THE UNIT GEAR hangs on the body when `gear.held.dribble` is set: x = the ball's
+  height between the floor (0) and the palm (1), y = 1 (dribbling). The mixer loops, scales and cross-fades it with the body, so the ball
+  is on the beat on every stage that plays the clip; the gear tick puts the ball under the palm at that height. No dribble clip playing
+  = the marker rests at y 0 = the ball sits in the hand as before (casts, hits, the throw). `beats` = bounces a loop, `top` = where in a
+  bounce the hand is highest (read off the pack's hand heights: Dribble 1 / 0, the two runs 2 / 0.25).
+- **The ball:** `Assets/characters/gear/held/basketball_v3.glb` (held + `proj-basketball`). Its colours are a tiny texture, not vertex
+  colours: vertex colours drew RED on the board (read without the colour-space step). The old `basketball.glb` stays on R2.
+- **The probe:** `ZOOM=7 ACTS=idle node playtest_dribble.js` (a real fight, the close view pinned, pictures + the marker / ball / hand /
+  floor heights). Proof: project files `point-guard-dribble/`.
