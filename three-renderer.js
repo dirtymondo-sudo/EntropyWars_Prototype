@@ -95716,7 +95716,7 @@ const ThreeRenderer = (function () {
             { a: [0, -0.5], b: [0, 0.5], all: true },
             { a: [0.25, -1], b: [0.25, 1], m: [1, 0] }, { a: [-0.25, -1], b: [-0.25, 1], m: [-1, 0] },
             { a: [-1, 0.25], b: [1, 0.25], m: [0, 1] }, { a: [-1, -0.25], b: [1, -0.25], m: [0, -1] } ],
-            star: { c: [0, 0], deg: 62 }, stand: { rot: [0, 0, 0.7854] } }
+            star: { c: [0, 0], deg: 62, play: 4, swing: 26 }, stand: { rot: [0, 0, 0.7854] } }
     };
     /* THE PAPER SWORD: the sheet as a diamond, narrowed three times; the wide end is the blade (a leaf blade), the thin end is turned into the cross guard and the grip */
     _ORI_RECIPES.sword = (function () {
@@ -95806,7 +95806,7 @@ const ThreeRenderer = (function () {
             var c = P2(R.star.c), k;
             for (k = 0; k < 4; k++) { var an = fr + k * Math.PI / 4; cut(c, [c[0] + Math.cos(an), c[1] + Math.sin(an)], 1, null, steps.length); }
             F.forEach(function (f) { var q = cen(f), an2 = Math.atan2(q[1] - c[1], q[0] - c[0]) - fr; f.sec = ((Math.floor(an2 / (Math.PI / 4)) % 8) + 8) % 8; });
-            star = { c: c, fr: fr, beta: (R.star.deg || 60) * Math.PI / 180 };
+            star = { c: c, fr: fr, beta: (R.star.deg || 60) * Math.PI / 180, play: R.star.play || 0, swing: (R.star.swing || 0) * Math.PI / 180 };
         }
         var tri = 0, tops = [], edges = 0; F.forEach(function (f) { tri += f.poly.length - 2; edges += f.poly.length; f.lay.forEach(function (l, i) { if (!(tops[i] >= l)) tops[i] = l; }); });
         return { F: F, steps: steps, pose: pose, star: star, n: steps.length, tri: tri, tops: tops, edges: edges };
@@ -95822,8 +95822,16 @@ const ThreeRenderer = (function () {
             B.pose.forEach(function (ps, jj) { var Pr = P[ps.ref], a = Pr ? _oriAp(Pr, ps.a[0], ps.a[1], 0) : ps.a, b = Pr ? _oriAp(Pr, ps.b[0], ps.b[1], 0) : ps.b, Rj = _oriRot(a, b, ps.ang * e);
                 for (var q = 0; q < F.length; q++) if (F[q].pm[jj]) P[q] = P[q] ? _oriMul(Rj, P[q]) : Rj; });
         } else if (B.star) {
-            var be = B.star.beta * e, A = Math.SQRT1_2 * Math.cos(be), Bb = Math.sin(be), al = Math.atan2(Bb, A) - Math.acos(Math.min(1, Math.SQRT1_2 / Math.sqrt(A * A + Bb * Bb))), c = B.star.c;
-            var ray = function (r) { var ph = B.star.fr + r * Math.PI / 4, el = (r % 2) ? be : al; return [Math.cos(el) * Math.cos(ph), Math.cos(el) * Math.sin(ph), Math.sin(el), Math.cos(ph), Math.sin(ph)]; };
+            /* THE PLAY (mondo 11-27: "the little movement of playing the game like 3 or 4 times"): past the pose, the two pairs of
+               pockets open and shut in turn, one way then the other, `play` beats. The four pocket creases lift by pair (bx, by);
+               each crease between them is the one direction 45 degrees from both its neighbours (the low one), so the paper never stretches. */
+            var be = B.star.beta * e, bx = be, by = be, c = B.star.c, pv = B.star.play ? Math.max(0, Math.min(1, tau - (n + 1))) : 0;
+            if (pv > 0) { var bt = pv * B.star.play, bi = Math.min(B.star.play - 1, Math.floor(bt)), bu = bt - bi, sw = Math.sin(Math.PI * _oriSmooth(bu)) * B.star.swing * ((bi % 2) ? -1 : 1); bx = be + sw; by = be - sw; }
+            var odd = function (r) { var ph = B.star.fr + r * Math.PI / 4, el = (((r % 8) + 8) % 4 === 1) ? bx : by; return [Math.cos(el) * Math.cos(ph), Math.cos(el) * Math.sin(ph), Math.sin(el), Math.cos(ph), Math.sin(ph)]; };
+            var ray = function (r) { if (r % 2) return odd(r);
+                var p0 = odd(r - 1), p1 = odd(r + 1), g = p0[0] * p1[0] + p0[1] * p1[1] + p0[2] * p1[2], al = Math.SQRT1_2 / (1 + g), ph = B.star.fr + r * Math.PI / 4;
+                var cx = p0[1] * p1[2] - p0[2] * p1[1], cy = p0[2] * p1[0] - p0[0] * p1[2], cz = p0[0] * p1[1] - p0[1] * p1[0], cl = Math.sqrt(cx * cx + cy * cy + cz * cz) || 1, ga = -Math.sqrt(Math.max(0, g / (1 + g))) / cl;
+                return [al * (p0[0] + p1[0]) + ga * cx, al * (p0[1] + p1[1]) + ga * cy, al * (p0[2] + p1[2]) + ga * cz, Math.cos(ph), Math.sin(ph)]; };
             SM = [];
             for (j = 0; j < 8; j++) { var r0 = ray(j), r1 = ray(j + 1), nx = r0[1] * r1[2] - r0[2] * r1[1], ny = r0[2] * r1[0] - r0[0] * r1[2], nz = r0[0] * r1[1] - r0[1] * r1[0], nl = Math.sqrt(nx * nx + ny * ny + nz * nz);
                 var det = r0[3] * r1[4] - r0[4] * r1[3], i00 = r1[4] / det, i01 = -r1[3] / det, i10 = -r0[4] / det, i11 = r0[3] / det;   // the inverse of [e0 e1]
@@ -95897,7 +95905,7 @@ const ThreeRenderer = (function () {
             aL.needsUpdate = true;
         };
         var st = R.stand || {}, qS = st.basis ? new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(new THREE.Vector3().fromArray(st.basis[0]), new THREE.Vector3().fromArray(st.basis[1]), new THREE.Vector3().fromArray(st.basis[2]))) : new THREE.Quaternion().setFromEuler(new THREE.Euler((st.rot || [0, 0, 0])[0], (st.rot || [0, 0, 0])[1], (st.rot || [0, 0, 0])[2], st.order || 'XYZ')), q0 = new THREE.Quaternion(), qZ = new THREE.Quaternion(), zAx = new THREE.Vector3(0, 0, 1);
-        var S = { group: g, B: B, name: name, total: B.n + 1, tau: -1, mats: [mf, mb, ml] };
+        var S = { group: g, B: B, name: name, total: B.n + 1 + (B.star && B.star.play ? 1 : 0), tau: -1, mats: [mf, mb, ml] };
         S.set = function (tau) {
             tau = tau < 0 ? 0 : (tau > S.total ? S.total : tau); if (tau === S.tau) return; S.tau = tau;
             _oriEval(B, tau, pos, eps, PT);
@@ -95925,7 +95933,7 @@ const ThreeRenderer = (function () {
             S.group.rotation.set((o && o.turn) ? o.turn[0] : 0, Math.atan2(cam.position.x - S.group.position.x, cam.position.z - S.group.position.z) + ((o && o.turn) ? o.turn[1] : 0), 0, 'YXZ');
             S.group._ew_bunOut = true; S.group._ew_mover = true; S.group.name = 'ew_origami_probe'; H.scene.add(S.group);
             _oriD = { S: S, name: shape, go: 0, tau: 0 };
-            if (!H._ew_oriTk && H.tickers) { H._ew_oriTk = true; H.tickers.push(function (dt) { var D = _oriD; if (!D || !D.go) return; D.tau += D.go * Math.min(dt, 0.1) / (D.go > 0 ? 0.17 : 0.06); if (D.tau >= D.S.total) { D.tau = D.S.total; D.go = 0; } if (D.tau <= 0) { D.tau = 0; D.go = 0; } D.S.set(D.tau); if (_hq) _hq.dirty = true; }); }
+            if (!H._ew_oriTk && H.tickers) { H._ew_oriTk = true; H.tickers.push(function (dt) { var D = _oriD; if (!D || !D.go) return; D.tau += D.go * Math.min(dt, 0.1) / (D.tau > D.S.B.n + 1 || (D.tau === D.S.B.n + 1 && D.go > 0 && D.S.total > D.tau) ? 2.4 : (D.go > 0 ? 0.17 : 0.06)); if (D.tau >= D.S.total) { D.tau = D.S.total; D.go = 0; } if (D.tau <= 0) { D.tau = 0; D.go = 0; } D.S.set(D.tau); if (_hq) _hq.dirty = true; }); }
         }
         if (t === 'go') _oriD.go = 1; else if (t === 'back') _oriD.go = -1; else if (t != null) { _oriD.go = 0; _oriD.tau = +t; _oriD.S.set(+t); }
         H.dirty = true;
