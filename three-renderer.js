@@ -95686,6 +95686,201 @@ const ThreeRenderer = (function () {
         pl.entry.group.position.set(pl.x * U, pl.visY * U, pl.z * U);
         _hqSeaWayCheck(pl.x, pl.z, pl.y + 0.6);
     }
+    /* ══ THE ORIGAMI (2026-11-27, mondo: "a piece of paper with actual folding animations"). ONE square sheet, cut along the creases its
+       shape uses into stiff flat pieces; a fold turns every piece on one side of a crease round that crease (the sedan bot's cut
+       panels, on paper). A SHAPE IS A RECIPE (_ORI_RECIPES): `steps` = flat folds in order ({ a, b } the crease in the folded
+       sheet's own flat coords, `m` a point on the side that moves, `fold` valley | mountain, `all` = turn the whole sheet over,
+       `mark` / `only` = name the moved pieces / fold only the named ones), then `pose` = the folds that stay part open (a chain
+       of creases with `deg`, or `star` = the eight creases round one point). `frame` = the recipe's coords are turned (rad).
+       _oriBuild cuts the sheet once; _oriEval lays every piece for a time `tau` (0 = flat sheet, k = k folds done, n + 1 = the
+       shape). Plain numbers only (no three.js) so a tool can run it too. The sheet is 1 x 1, centred, in x y; +z is its face. */
+    var _ORI_T = Math.tan(Math.PI / 8), _ORI_S = Math.SQRT1_2;
+    var _ORI_RECIPES = {
+        /* THE PAPER PLANE (the dart), nose at +y */
+        plane: { steps: [
+            { a: [0, 0.5], b: [-0.5, 0], m: [-0.5, 0.5] },
+            { a: [0, 0.5], b: [0.5, 0], m: [0.5, 0.5] },
+            { a: [0, 0.5], b: [-_ORI_T, -0.5], m: [-0.5, -0.2] },
+            { a: [0, 0.5], b: [_ORI_T, -0.5], m: [0.5, -0.2] } ],
+            pose: [ { a: [0, -0.5], b: [0, 0.5], m: [0.3, 0], fold: 'valley', deg: 172 },
+                    { a: [0.1, -0.5], b: [0.1, 0.5], m: [0.3, 0], fold: 'mountain', deg: 86 },
+                    { a: [-0.1, -0.5], b: [-0.1, 0.5], m: [-0.3, 0], fold: 'mountain', deg: 86 } ],
+            stand: { basis: [[0, -1, 0], [0, 0, 1], [-1, 0, 0]] } },
+        /* THE FORTUNE GAME: corners to the middle, over, corners to the middle again, then the four points close and open */
+        fortune: { steps: [
+            { a: [0, 0.5], b: [0.5, 0], m: [0.5, 0.5] }, { a: [0.5, 0], b: [0, -0.5], m: [0.5, -0.5] },
+            { a: [0, -0.5], b: [-0.5, 0], m: [-0.5, -0.5] }, { a: [-0.5, 0], b: [0, 0.5], m: [-0.5, 0.5] },
+            { a: [0, -0.5], b: [0, 0.5], all: true },
+            { a: [0.25, -1], b: [0.25, 1], m: [1, 0] }, { a: [-0.25, -1], b: [-0.25, 1], m: [-1, 0] },
+            { a: [-1, 0.25], b: [1, 0.25], m: [0, 1] }, { a: [-1, -0.25], b: [1, -0.25], m: [0, -1] } ],
+            star: { c: [0, 0], deg: 62 }, stand: { rot: [0, 0, 0.7854] } }
+    };
+    /* THE PAPER SWORD: the sheet as a diamond, narrowed three times; the wide end is the blade (a leaf blade), the thin end is turned into the cross guard and the grip */
+    _ORI_RECIPES.sword = (function () {
+        var s = _ORI_S, T = [0, s], y1 = 0.05, g = 0.11, st = [{ a: [-1, 0], b: [1, 0], all: true }];
+        [22.5, 11.25, 5.625].forEach(function (d) { var r = d * Math.PI / 180, dx = Math.sin(r) * 1.6, dy = -Math.cos(r) * 1.6;
+            st.push({ a: T, b: [dx, s + dy], m: [0.45, -0.25] }); st.push({ a: T, b: [-dx, s + dy], m: [-0.45, -0.25] }); });
+        st.push({ a: [-0.5, y1 - 0.5], b: [0.5, y1 + 0.5], m: [0, 0.6], mark: 'hilt' });
+        st.push({ a: [g, -1], b: [g, 1], m: [1, 0], only: 'hilt' });
+        st.push({ a: [-g, -1], b: [-g, 1], m: [-1, 0], only: 'hilt', mark: 'grip' });
+        st.push({ a: [-0.5, y1 - 0.5], b: [0.5, y1 + 0.5], m: [0.5, -0.5], only: 'grip' });
+        return { frame: -Math.PI / 4, steps: st, pose: [], stand: { rot: [0, 0, Math.PI] } }; })();
+    (function () { var R = _ORI_RECIPES; R.plane.steps.unshift({ a: [0, -0.5], b: [0, 0.5], all: true }); R.fortune.steps.unshift({ a: [0, -0.5], b: [0, 0.5], all: true }); })();   // (turned over first: the white face ends outside)
+    function _oriMul(A, B) {
+        var o = new Array(12), r, a0, a1, a2;
+        for (r = 0; r < 3; r++) { a0 = A[r * 4]; a1 = A[r * 4 + 1]; a2 = A[r * 4 + 2];
+            o[r * 4] = a0 * B[0] + a1 * B[4] + a2 * B[8]; o[r * 4 + 1] = a0 * B[1] + a1 * B[5] + a2 * B[9];
+            o[r * 4 + 2] = a0 * B[2] + a1 * B[6] + a2 * B[10]; o[r * 4 + 3] = a0 * B[3] + a1 * B[7] + a2 * B[11] + A[r * 4 + 3]; }
+        return o;
+    }
+    function _oriRot(a, b, ang) {   // the turn round the line a -> b
+        var dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2], L = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1, c = Math.cos(ang), s = Math.sin(ang), t = 1 - c;
+        dx /= L; dy /= L; dz /= L;
+        var R = [t * dx * dx + c, t * dx * dy - s * dz, t * dx * dz + s * dy, 0, t * dx * dy + s * dz, t * dy * dy + c, t * dy * dz - s * dx, 0, t * dx * dz - s * dy, t * dy * dz + s * dx, t * dz * dz + c, 0];
+        R[3] = a[0] - (R[0] * a[0] + R[1] * a[1] + R[2] * a[2]); R[7] = a[1] - (R[4] * a[0] + R[5] * a[1] + R[6] * a[2]); R[11] = a[2] - (R[8] * a[0] + R[9] * a[1] + R[10] * a[2]);
+        return R;
+    }
+    function _oriAp(M, x, y, z) { return [M[0] * x + M[1] * y + M[2] * z + M[3], M[4] * x + M[5] * y + M[6] * z + M[7], M[8] * x + M[9] * y + M[10] * z + M[11]]; }
+    function _oriEase(u) { u = u / 0.82; u = u < 0 ? 0 : (u > 1 ? 1 : u); return u * u * (3 - 2 * u); }   // a fold swings, then rests a beat
+    function _oriBuild(R) {
+        var I = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0], fr = R.frame || 0, cf = Math.cos(fr), sf = Math.sin(fr);
+        var P2 = function (p) { return [p[0] * cf - p[1] * sf, p[0] * sf + p[1] * cf]; };
+        var F = [{ poly: [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]], C: I, Cs: [I], lay: [0], mv: [], tags: {} }], steps = [];
+        var kid = function (f, poly) { var t = {}, k; for (k in f.tags) t[k] = 1; return { poly: poly, C: f.C, Cs: f.Cs.slice(), lay: f.lay.slice(), mv: f.mv.slice(), tags: t, pm: f.pm ? f.pm.slice() : null }; };
+        var cut = function (a, b, sg, only) {   // every piece the line a-b crosses becomes two; -> each piece's side (1 = the m side)
+            var out = [], side = [];
+            F.forEach(function (f) {
+                if (only && !f.tags[only]) { out.push(f); side.push(0); return; }
+                var n = f.poly.length, s = [], i, pos = 0, neg = 0;
+                for (i = 0; i < n; i++) { var q = _oriAp(f.C, f.poly[i][0], f.poly[i][1], 0), v = ((b[0] - a[0]) * (q[1] - a[1]) - (b[1] - a[1]) * (q[0] - a[0])) * sg; if (Math.abs(v) < 1e-7) v = 0; s.push(v); if (v > 0) pos++; else if (v < 0) neg++; }
+                if (!pos || !neg) { out.push(f); side.push(pos ? 1 : 0); return; }
+                var A = [], Bq = [];
+                for (i = 0; i < n; i++) { var j = (i + 1) % n, p = f.poly[i], q2 = f.poly[j];
+                    if (s[i] >= 0) A.push(p); if (s[i] <= 0) Bq.push(p);
+                    if ((s[i] > 0 && s[j] < 0) || (s[i] < 0 && s[j] > 0)) { var t = s[i] / (s[i] - s[j]), x = [p[0] + (q2[0] - p[0]) * t, p[1] + (q2[1] - p[1]) * t]; A.push(x); Bq.push(x); } }
+                if (A.length >= 3) { out.push(kid(f, A)); side.push(1); } if (Bq.length >= 3) { out.push(kid(f, Bq)); side.push(0); }
+            });
+            F = out; return side;
+        };
+        var flat2 = function (f) { return f.poly.map(function (p) { return _oriAp(f.C, p[0], p[1], 0); }); };
+        var over = function (A, Bp) {   // do two flat pieces lie on each other (more than an edge)?
+            var ps = [A, Bp], t, i, j;
+            for (t = 0; t < 2; t++) { var Q = ps[t]; for (i = 0; i < Q.length; i++) { var p = Q[i], q = Q[(i + 1) % Q.length], nx = q[1] - p[1], ny = p[0] - q[0], a0 = 1e9, a1 = -1e9, b0 = 1e9, b1 = -1e9, d;
+                for (j = 0; j < A.length; j++) { d = A[j][0] * nx + A[j][1] * ny; if (d < a0) a0 = d; if (d > a1) a1 = d; }
+                for (j = 0; j < Bp.length; j++) { d = Bp[j][0] * nx + Bp[j][1] * ny; if (d < b0) b0 = d; if (d > b1) b1 = d; }
+                if (a1 - b0 < 1e-6 || b1 - a0 < 1e-6) return false; } }
+            return true;
+        };
+        var rank = function () {   // the layers packed: a piece sits just over the highest piece under it that it covers
+            var ord = F.map(function (f, i) { return i; }).sort(function (x, y) { return F[x].lay[F[x].lay.length - 1] - F[y].lay[F[y].lay.length - 1]; }), fl = F.map(flat2), lv = [];
+            ord.forEach(function (i, oi) { var l = 0, raw = F[i].lay[F[i].lay.length - 1]; for (var q = 0; q < oi; q++) { var g = ord[q]; if (F[g].lay[F[g].lay.length - 1] < raw && lv[g] >= l && over(fl[g], fl[i])) l = lv[g] + 1; } lv[i] = l; });
+            F.forEach(function (f, i) { f.lay[f.lay.length - 1] = lv[i]; });
+        };
+        (R.steps || []).forEach(function (st) {
+            var a = P2(st.a), b = P2(st.b), sg = 1, side;
+            if (st.all) side = F.map(function () { return 1; });
+            else { var m = P2(st.m); sg = ((b[0] - a[0]) * (m[1] - a[1]) - (b[1] - a[1]) * (m[0] - a[0])) > 0 ? 1 : -1; side = cut(a, b, sg, st.only); }
+            var up = st.fold !== 'mountain', ang = (up ? 1 : -1) * sg * Math.PI, Rm = _oriRot([a[0], a[1], 0], [b[0], b[1], 0], ang);
+            var hi = -1e9, lo = 1e9, mh = -1e9, ml = 1e9;
+            F.forEach(function (f, i) { var l = f.lay[f.lay.length - 1]; if (l > hi) hi = l; if (l < lo) lo = l; if (side[i]) { if (l > mh) mh = l; if (l < ml) ml = l; } });
+            F.forEach(function (f, i) { var l = f.lay[f.lay.length - 1];
+                if (side[i]) { f.C = _oriMul(Rm, f.C); f.mv.push(1); f.lay.push(st.all ? -l : (up ? hi + 1 + (mh - l) : lo - 1 - (l - ml))); if (st.mark) f.tags[st.mark] = 1; }
+                else { f.mv.push(0); f.lay.push(l); }
+                f.Cs.push(f.C); });
+            rank(); steps.push({ a: [a[0], a[1], 0], b: [b[0], b[1], 0], ang: ang });
+        });
+        var pose = [], star = null, cen = function (f) { var x = 0, y = 0; f.poly.forEach(function (p) { var q = _oriAp(f.C, p[0], p[1], 0); x += q[0]; y += q[1]; }); return [x / f.poly.length, y / f.poly.length]; };
+        (R.pose || []).forEach(function (st) {
+            var a = P2(st.a), b = P2(st.b), m = P2(st.m), sg = ((b[0] - a[0]) * (m[1] - a[1]) - (b[1] - a[1]) * (m[0] - a[0])) > 0 ? 1 : -1, side = cut(a, b, sg, null);
+            F.forEach(function (f, i) { if (!f.pm) f.pm = []; while (f.pm.length < pose.length) f.pm.push(0); f.pm.push(side[i]); });
+            pose.push({ a: [a[0], a[1], 0], b: [b[0], b[1], 0], ang: (st.fold === 'mountain' ? -1 : 1) * sg * (st.deg || 90) * Math.PI / 180, ref: -1 });
+        });
+        pose.forEach(function (ps, j) { var best = 1e9; F.forEach(function (f, i) { if (f.pm[j]) return; var c = cen(f), dx = ps.b[0] - ps.a[0], dy = ps.b[1] - ps.a[1], d = Math.abs(dx * (c[1] - ps.a[1]) - dy * (c[0] - ps.a[0])) / Math.sqrt(dx * dx + dy * dy); if (d < best) { best = d; ps.ref = i; } }); });
+        if (R.star) {
+            var c = P2(R.star.c), k;
+            for (k = 0; k < 4; k++) { var an = fr + k * Math.PI / 4; cut(c, [c[0] + Math.cos(an), c[1] + Math.sin(an)], 1, null); }
+            F.forEach(function (f) { var q = cen(f), an2 = Math.atan2(q[1] - c[1], q[0] - c[0]) - fr; f.sec = ((Math.floor(an2 / (Math.PI / 4)) % 8) + 8) % 8; });
+            star = { c: c, fr: fr, beta: (R.star.deg || 60) * Math.PI / 180 };
+        }
+        var tri = 0, tops = []; F.forEach(function (f) { tri += f.poly.length - 2; f.lay.forEach(function (l, i) { if (!(tops[i] >= l)) tops[i] = l; }); });
+        return { F: F, steps: steps, pose: pose, star: star, n: steps.length, tri: tri, tops: tops };
+    }
+    /* every piece laid for the time tau, into out (Float32Array, 9 numbers a triangle). eps = the gap between two layers. */
+    function _oriEval(B, tau, out, eps) {
+        var n = B.n, k = Math.floor(tau), u = tau - k, o = 0, F = B.F, i, j;
+        if (tau <= 0) { k = 0; u = 0; } if (k > n) { k = n; u = 1; } if (k === n && !(B.pose.length || B.star)) { u = 0; }
+        var e = _oriEase(u), Rk = null, P = null, SM = null;
+        if (k < n) Rk = _oriRot(B.steps[k].a, B.steps[k].b, B.steps[k].ang * e);
+        else if (B.pose.length) {
+            P = F.map(function () { return null; });
+            B.pose.forEach(function (ps, jj) { var Pr = P[ps.ref], a = Pr ? _oriAp(Pr, ps.a[0], ps.a[1], 0) : ps.a, b = Pr ? _oriAp(Pr, ps.b[0], ps.b[1], 0) : ps.b, Rj = _oriRot(a, b, ps.ang * e);
+                for (var q = 0; q < F.length; q++) if (F[q].pm[jj]) P[q] = P[q] ? _oriMul(Rj, P[q]) : Rj; });
+        } else if (B.star) {
+            var be = B.star.beta * e, A = Math.SQRT1_2 * Math.cos(be), Bb = Math.sin(be), al = Math.atan2(Bb, A) - Math.acos(Math.min(1, Math.SQRT1_2 / Math.sqrt(A * A + Bb * Bb))), c = B.star.c;
+            var ray = function (r) { var ph = B.star.fr + r * Math.PI / 4, el = (r % 2) ? be : al; return [Math.cos(el) * Math.cos(ph), Math.cos(el) * Math.sin(ph), Math.sin(el), Math.cos(ph), Math.sin(ph)]; };
+            SM = [];
+            for (j = 0; j < 8; j++) { var r0 = ray(j), r1 = ray(j + 1), nx = r0[1] * r1[2] - r0[2] * r1[1], ny = r0[2] * r1[0] - r0[0] * r1[2], nz = r0[0] * r1[1] - r0[1] * r1[0], nl = Math.sqrt(nx * nx + ny * ny + nz * nz);
+                var det = r0[3] * r1[4] - r0[4] * r1[3], i00 = r1[4] / det, i01 = -r1[3] / det, i10 = -r0[4] / det, i11 = r0[3] / det;   // the inverse of [e0 e1]
+                var M = [r0[0] * i00 + r1[0] * i10, r0[0] * i01 + r1[0] * i11, nx / nl, 0, r0[1] * i00 + r1[1] * i10, r0[1] * i01 + r1[1] * i11, ny / nl, 0, r0[2] * i00 + r1[2] * i10, r0[2] * i01 + r1[2] * i11, nz / nl, 0];
+                M[3] = c[0] - (M[0] * c[0] + M[1] * c[1]); M[7] = c[1] - (M[4] * c[0] + M[5] * c[1]); M[11] = -(M[8] * c[0] + M[9] * c[1]); SM.push(M); }
+        }
+        var kk = k < n ? k : n, m0 = B.tops[kk] * 0.5, m1 = k < n ? B.tops[k + 1] * 0.5 : m0;
+        for (i = 0; i < F.length; i++) {
+            var f = F[i], C = f.Cs[k < n ? k : n], zb = (f.lay[kk] - m0) * eps, za = k < n ? (f.lay[k + 1] - m1) * eps : zb, mv = k < n && f.mv[k], pts = [], p, q3;
+            for (j = 0; j < f.poly.length; j++) {
+                p = _oriAp(C, f.poly[j][0], f.poly[j][1], 0); p[2] += zb;
+                if (k < n) { if (mv) { p = _oriAp(Rk, p[0], p[1], p[2]); p[2] += e * (za + zb); } else p[2] += e * (za - zb); }
+                else if (P && P[i]) p = _oriAp(P[i], p[0], p[1], p[2]);
+                else if (SM) p = _oriAp(SM[f.sec], p[0], p[1], p[2]);
+                pts.push(p);
+            }
+            for (j = 1; j < pts.length - 1; j++) { q3 = [pts[0], pts[j], pts[j + 1]]; for (var t = 0; t < 3; t++) { out[o++] = q3[t][0]; out[o++] = q3[t][1]; out[o++] = q3[t][2]; } }
+        }
+        return o;
+    }
+    /* the sheet as a thing to draw: two faces of one geometry (white face, coloured back), flat shaded; set(tau) lays it */
+    function _oriSheet(name, o) {
+        o = o || {};
+        var R = _ORI_RECIPES[name]; if (!R) return null;
+        var B = _oriBuild(R), pos = new Float32Array(B.tri * 9), nor = new Float32Array(B.tri * 9), geo = new THREE.BufferGeometry(), eps = o.eps || 0.0022;
+        geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+        var mf = new THREE.MeshStandardMaterial({ color: o.front != null ? o.front : 0xf3efe6, roughness: 0.93, metalness: 0, side: THREE.FrontSide });
+        var mb = new THREE.MeshStandardMaterial({ color: o.back != null ? o.back : 0xa5182f, roughness: 0.93, metalness: 0, side: THREE.BackSide });
+        var g = new THREE.Group(), inner = new THREE.Group(), a = new THREE.Mesh(geo, mf), b = new THREE.Mesh(geo, mb);
+        a.frustumCulled = b.frustumCulled = false; a.castShadow = b.castShadow = true; inner.add(a); inner.add(b); g.add(inner);
+        var st = R.stand || {}, qS = st.basis ? new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(new THREE.Vector3().fromArray(st.basis[0]), new THREE.Vector3().fromArray(st.basis[1]), new THREE.Vector3().fromArray(st.basis[2]))) : new THREE.Quaternion().setFromEuler(new THREE.Euler((st.rot || [0, 0, 0])[0], (st.rot || [0, 0, 0])[1], (st.rot || [0, 0, 0])[2], st.order || 'XYZ')), q0 = new THREE.Quaternion(), qZ = new THREE.Quaternion(), zAx = new THREE.Vector3(0, 0, 1);
+        var S = { group: g, B: B, name: name, total: B.n + 1, tau: -1, geo: geo, mats: [mf, mb] };
+        S.set = function (tau) {
+            tau = tau < 0 ? 0 : (tau > S.total ? S.total : tau); if (tau === S.tau) return; S.tau = tau;
+            _oriEval(B, tau, pos, eps);
+            for (var i = 0; i < pos.length; i += 9) { var ux = pos[i + 3] - pos[i], uy = pos[i + 4] - pos[i + 1], uz = pos[i + 5] - pos[i + 2], vx = pos[i + 6] - pos[i], vy = pos[i + 7] - pos[i + 1], vz = pos[i + 8] - pos[i + 2], nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx, l = Math.sqrt(nx * nx + ny * ny + nz * nz) || 1;
+                nx /= l; ny /= l; nz /= l; for (var k = 0; k < 9; k += 3) { nor[i + k] = nx; nor[i + k + 1] = ny; nor[i + k + 2] = nz; } }
+            geo.attributes.position.needsUpdate = true; geo.attributes.normal.needsUpdate = true;
+            var w0 = _oriEase(Math.min(1, tau) * 0.82), w1 = (B.pose.length || B.star) ? _oriEase(Math.max(0, tau - B.n)) : _oriEase(Math.max(0, tau - B.n + 1));
+            qZ.setFromAxisAngle(zAx, -(R.frame || 0) * w0); inner.quaternion.copy(q0).slerp(qS, w1).multiply(qZ);
+        };
+        S.dispose = function () { geo.dispose(); mf.dispose(); mb.dispose(); if (g.parent) g.parent.remove(g); };
+        S.set(0); return S;
+    }
+    /* a probe's sheet (hq.dev.origami): one sheet beside the officer, facing the eye. origami(shape) stands it flat; (shape, tau) holds
+       it at a time; (shape, 'go') folds it, 'back' opens it; origami(false) takes it away. Its own nodes only, nothing while it rests. */
+    var _oriD = null;
+    function _oriDev(shape, t, o) {
+        var H = _hq; if (!H || !H.scene || !H.player || !H.player.entry) return null;
+        if (shape === false || (_oriD && shape && _oriD.name !== shape)) { if (_oriD) _oriD.S.dispose(); _oriD = null; H.dirty = true; if (shape === false) return true; }
+        if (!_oriD) {
+            var S = _oriSheet(shape, o); if (!S) return null;
+            var U = _hqUnits(), pg = H.player.entry.group.position, cam = H.camera, dx = pg.x - cam.position.x, dz = pg.z - cam.position.z, L = Math.sqrt(dx * dx + dz * dz) || 1, sz = (o && o.size) || 1.5, off = (o && o.side != null) ? o.side : 1.5;
+            S.group.scale.setScalar(sz * U); S.group.position.set(pg.x - dz / L * off * U, pg.y + ((o && o.up) || 1.3) * U, pg.z + dx / L * off * U);
+            S.group.rotation.set((o && o.turn) ? o.turn[0] : 0, Math.atan2(cam.position.x - S.group.position.x, cam.position.z - S.group.position.z) + ((o && o.turn) ? o.turn[1] : 0), 0, 'YXZ');
+            S.group._ew_bunOut = true; S.group._ew_mover = true; S.group.name = 'ew_origami_probe'; H.scene.add(S.group);
+            _oriD = { S: S, name: shape, go: 0, tau: 0 };
+            if (!H._ew_oriTk && H.tickers) { H._ew_oriTk = true; H.tickers.push(function (dt) { var D = _oriD; if (!D || !D.go) return; D.tau += D.go * Math.min(dt, 0.1) / (D.go > 0 ? 0.17 : 0.06); if (D.tau >= D.S.total) { D.tau = D.S.total; D.go = 0; } if (D.tau <= 0) { D.tau = 0; D.go = 0; } D.S.set(D.tau); if (_hq) _hq.dirty = true; }); }
+        }
+        if (t === 'go') _oriD.go = 1; else if (t === 'back') _oriD.go = -1; else if (t != null) { _oriD.go = 0; _oriD.tau = +t; _oriD.S.set(+t); }
+        H.dirty = true;
+        return { name: _oriD.name, tau: +_oriD.S.tau.toFixed(2), total: _oriD.S.total, pieces: _oriD.S.B.F.length, tris: _oriD.S.B.tri };
+    }
     /* ══ THE SEDAN BOT (2026-11-27, mondo: "a more realistic meshy sedan model with separate moving parts so it can actually transform ...
        the interior actually be able to be used to let the character sit inside and drive the car") ═══════════════════════════════
        A catalogue car with `bot` (car_sedan_bot) is ONE file made by bake-sedan-bot.py: the Meshy sedan cut into panels (`p_<part>`,
@@ -111990,6 +112185,7 @@ const ThreeRenderer = (function () {
             bot: function (t) { var V = _hq && _hq.vehicle, B = V && _sbotOf(V.rec); if (!B) return null; if (t === 'go') _sbotToggle(V); else if (t != null) { B.t = Math.max(0, Math.min(1, +t)); B.dir = 0; B.dirty = true; } var pe = _hq.player && _hq.player.entry; var dbg = null; try { var wp = function (o) { var e = o.matrixWorld.elements; return [Math.round(e[12]), Math.round(e[13]), Math.round(e[14])]; }, gq = V.rec.grp; dbg = { yaw: +V.yaw.toFixed(2), camF: +(Math.PI - _hq.cam.yaw).toFixed(2), x: +V.x.toFixed(1), z: +V.z.toFixed(1), root: wp(B.root), grp: wp(gq), out: gq._ew_bunOut, par: gq.parent && (gq.parent.name || gq.parent.type), parBun: !!(gq.parent && gq.parent.isBundleGroup), fz: !!(gq.parent && gq.parent._ew_fz), bun: (function (st) { return st ? { dyn: !!st.dyn, quiet: st.quiet, why: st.why } : null; })(gq.parent && gq.parent._ew_bun), parts: B.parts.filter(function (P) { return /chest|roof|doorFL|legL/.test(P.n); }).map(function (P) { return [P.n, wp(P.node), P.r ? wp(P.r) : null, P.node.matrixAutoUpdate, P.node.visible]; }) }; } catch (eD) { dbg = String(eD); }
                 return { dbg: dbg, anim: pe && pe._ew_curAnim, vis: pe && pe.group && pe.group.visible, seatOff: pe && pe.model && pe.model._ew_seatOff, py: pe && pe.group && +(pe.group.position.y / _hqUnits()).toFixed(2), t: +B.t.toFixed(3), dir: B.dir, v: +B.v.toFixed(2), parts: B.parts.length, clips: Object.keys(B.acts), lib: Object.keys(B.lib), air: B.air, cur: B.cur }; },
             board: function (id) { return _hqBoard(id); },
+            origami: function (shape, t, o) { return _oriDev(shape, t, o); },   /* THE ORIGAMI, for a probe: a sheet beside the officer; (shape, tau) holds it, (shape, 'go') folds it, (false) takes it away */
             spawnChar: function (spec) {   // a probe stands a body in the room: { id, race, gender, x, z, face }; form: 'robot' = the sedan's robot form
                 if (!_hq || !spec) return false;
                 if (spec.form === 'robot') { var RMc = RACE_MODELS_3D['honda civic'], cc = RMc && RMc.male, ff = cc && cc.overrideForms; if (ff) for (var fk in ff) if (ff[fk] && ff[fk] !== cc) { spec.def = ff[fk]; break; } }

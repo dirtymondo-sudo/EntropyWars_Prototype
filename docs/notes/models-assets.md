@@ -2347,3 +2347,29 @@ with UE names, 25 clips; MAKER + LICENCE NOT RECORDED, ask mondo before creditin
   colours: vertex colours drew RED on the board (read without the colour-space step). The old `basketball.glb` stays on R2.
 - **The probe:** `ZOOM=7 ACTS=idle node playtest_dribble.js` (a real fight, the close view pinned, pictures + the marker / ball / hand /
   floor heights). Proof: project files `point-guard-dribble/`.
+
+## THE ORIGAMI — one sheet of paper that really folds (2026-11-27, thread "Plan the origami paper character")
+mondo: "a sheet of origami crane or mantis girl, like a piece of paper with actual folding animations ... weak to fire and water ...
+Swordigami ... Kamikaze where it folds into a paper airplane ... folds into that fortune game". His later calls: no boat; on her death
+she crumples into a wad of paper; the look = **crane girl B** (crest on her head, wings on her back). The plan he approved (kit, Meshy
+list, build order): Claude Doc "Origami Girl: character plan" https://claude.ai/artifact/QkgS6P3cZrjBRyCYD5RheU . Concepts, part
+pictures, scripts, the fold test's pictures: project files `origami-girl/`.
+STEP 2 OF THE PLAN, BUILT (the fold test, no Meshy): three-renderer.js "THE ORIGAMI" (before THE SEDAN BOT).
+- One square sheet cut along its creases into stiff flat pieces; a fold turns every piece on one side of a crease round it. A SHAPE IS A
+  RECIPE in `_ORI_RECIPES` (`plane`, `sword`, `fortune`): `steps` = flat folds in order (`a`, `b` = the crease in the folded sheet's own
+  flat coords, `m` = a point on the side that moves, `fold: 'mountain'` or valley, `all` = turn the sheet over, `mark` / `only` = name
+  the moved pieces / fold only the named ones), then `pose` (creases that stay part open, a chain: a step whose fixed side an earlier
+  step moves comes after it) or `star` (the eight creases round one point: the fortune game's four points). `frame` turns a recipe's
+  coords (the sword is folded as a diamond). `stand` = how the finished shape is held.
+- `_oriBuild(recipe)` cuts the sheet once and packs the layers (a piece sits just over the highest piece it covers: the plane is 4
+  layers, the sword 40). `_oriEval(B, tau, out, eps)` lays every piece for a time (0 = flat sheet, k = k folds done, n + 1 = the shape).
+  Plain numbers, no three.js: a tool can run it. `_oriSheet(name, o)` = the thing drawn: one geometry, two faces (white outside,
+  crimson inside), flat shaded; `set(tau)`, `dispose()`. 26 to 136 triangles a shape; nothing runs while it rests.
+- A NEW SHAPE = A NEW RECIPE, no model. To read one: `hq.dev.origami('<shape>', tau, { turn: [pitch, yaw], side, up, size })` stands a
+  sheet beside the officer (`'go'` folds it, `'back'` opens it, `origami(false)` takes it away).
+SEEN in the cloud browser (HEAD db3a151 + this change, room `garage`): 120 frames, every quarter step of the three shapes;
+project files `origami-girl/fold-test/` (`plane_steps.png`, `sword_steps.png`, `fortune_steps.png`, `fold_test.gif`).
+NOT DONE (the plan's steps 3 to 6): she is not a unit (no race, no kit, nothing online: RULE #2 comes with the kit); no Meshy body yet
+(part pictures `origami-girl/concepts/b_body.png`, `b_wing.png` are made, not modelled); no girl-to-packet swap; no crane (it needs
+the saved motion, the plan says how); no wad (her death); no paper grain or crease lines (white on white reads flat in a bright room);
+the fortune game is a stiff four-point star (its pockets do not puff open); the sword's guard is small; no sound (never generated).
