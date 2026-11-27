@@ -25,7 +25,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 1360 |
+| Meshy AI | no | 1361 |
 | Meshy AI, reworked by Claude | no | 16 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 107 |
@@ -3252,6 +3252,12 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
 | abandoned_house | `Assets/world/packs/elbolilloduro/ebd_abandonedhouse_house.glb` | Asset pack | Abandoned House · Elbolilloduro · CC0 (the house exterior cut out in Blender, basement cut; DOOR_HQ.catalogue abandoned_house past the Haunted grounds) |
+
+### Meshy image-to-3D, cut into panels + rigged core (bake-sedan-bot.py) — Meshy AI (1)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| car_sedan_bot | `Assets/world/vehicles/sedan_bot/ew_sedan_bot_b.glb` | Meshy AI | Meshy image-to-3D, cut into panels + rigged core (bake-sedan-bot.py) |
 
 ### Meshy AI parts (the cutscene's AV cart, a new wood-cased TV, the haunted remote) put together by Claude in code (project files cursed-tv/models/assemble.mjs): the casters split off the cart so each wheel spins, rabbit ears + power cable built in code; no bones, the rig is three-renderer.js THE CURSED TV (2026-11-17) — Meshy AI, reworked by Claude (1)
 
