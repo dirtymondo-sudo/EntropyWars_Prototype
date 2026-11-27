@@ -909,7 +909,7 @@ WHAT MESHY CANNOT DO: one closed shell a model, no hinges, no inside, parts that
 - DRIVEN like every car (THE CAR). THE DRIVER IS DRAWN in this car only: `_sbotSeated()`; he plays `hqDrive` (Driving_Loop), his hips
   pinned on `bot.seat`, his legs turned forward to the pedals (`_sbotDriverLegs`: the clip sits on a chair, its feet went through the
   floor). The front wheels steer, all four roll, the steering wheel turns.
-- F AT THE WHEEL = car <-> robot (the door gun's key is free while driving). As a robot: W / S walk, SHIFT runs, A / D turn on the
+- F AT THE WHEEL = car <-> robot (the door gun's key is free while driving). As a robot (see FIXES 2: by the camera now): W / S walk, SHIFT runs, A / D turn on the
   spot; the driver is inside, not drawn; E gets out in either form. No prompt, no key list (mondo 11-22: no controls on a car).
 - Numbers: data.js `HQ_SEA_RULES.car.bot` over `HQ_SEA_DEFAULT.car.bot` (keep in step). Viewer-local (RULE #2).
 - One stands in the DOOR HQ garage (x 9.6, z 3.4, clear of the deck: the robot is 4.6 m). Any room: a row `{ key: 'car_sedan_bot' }`.
@@ -920,3 +920,16 @@ clip); F back toward the car. Probe hooks: `hq.dev.spawnProp(row)`, `hq.dev.boar
 NOT DONE: no headroom check (under a 3.5 m deck the robot goes through it); the robot does not fight (not a unit); no sound (never
 generate SFX); sparks / dust on the change; the panels are sheets with no thickness and pass through each other on the way; the
 robot's idle is its rest pose; traffic and other cars are untouched; first person (V) at the wheel not looked at.
+FIXES 2 (2026-11-27, mondo after driving it: "the seats are facing backwards and ... the front console is backwards too in the
+backseat ... I transformed and the car parts stayed on the ground and didnt transform with me. The car and the robot dont move with
+the direction of my mouse like other units and cars do"):
+- THE INTERIOR was baked back to front (the tool's turn was -90, it is +90: dash at the nose, its dials on the driver's side). New
+  file `ew_sedan_bot_c.glb` (a changed model always gets a new name).
+- THE PANELS LEFT BEHIND: not reproduced in the cloud (WebGL llvmpipe shows them fold and walk; WebGPU on SwiftShader draws black, its
+  counts read right). Two holes closed all the same: (1) its car group is `_ew_bunOut` + `_ew_mover` from the moment it is placed,
+  so on WebGPU its panels are never part of the prop group's recording (before, it went out only after the recorder had seen it
+  change three times: THE CHANGERS OUT); (2) while it is driven `_hqTickCar` lays the parts itself every frame (`_sbotTick`), the
+  room's ticker only while nobody is at the wheel, so a ticker list of a room that is no longer the walked one cannot leave them.
+- THE MOUSE STEERS (`bot.mouse`, off = the old keys): the camera is the mouse's alone in this car. Rolling, the front wheels turn
+  toward where the camera looks (`bot.mouseK`); A / D steer as before with the eye going round with them. The robot walks as the
+  officer does: W / A / S / D by the camera, it turns to face its way (`bot.turn` rad/s), SHIFT runs. Other cars are unchanged.
