@@ -111355,11 +111355,22 @@ const ThreeRenderer = (function () {
             var pts = [];
             for (var dx = -R; dx <= R + 0.01; dx += step) for (var dz = -R; dz <= R + 0.01; dz += step) { var d = Math.hypot(dx, dz); if (d <= R + 0.01) pts.push([d, dx, dz]); }
             pts.sort(function (a, b) { return a[0] - b[0]; });
+            /* THE WAY OUT (2026-11-27, mondo: "i fast traveled to bayside and it put me inside the mall and everything is see through and i cant find
+               the exit"): a solid building's walls stand only on its outline, so its middle read as free ground and the plot GO landed inside the
+               shell (seen from inside, every face is culled). A landing must be able to walk away (data.js hqTerrainEscapes); a sealed pocket's
+               squares are remembered so the next candidate in it is skipped without a second walk. Off: window.EW_GO_NO_WAYOUT = true. */
+            var sealed = new Set(), wayOut = !!(ti && typeof hqTerrainEscapes === 'function' && !(typeof window !== 'undefined' && window.EW_GO_NO_WAYOUT));
             for (var i = 0; i < pts.length; i++) {
                 var x = cx + pts[i][1], z = cz + pts[i][2], y = free(x, z);
                 if (y === null) continue;
                 /* two more squares round it free too, so the landing is not a gap between two props */
                 if (free(x + step, z) === null && free(x - step, z) === null) continue;
+                if (wayOut) {
+                    var nk = null; try { nk = hqTerrainNodeKey(ti, x, z, y); } catch (eK) {}
+                    if (nk != null && sealed.has(nk)) continue;
+                    var esc = true; try { esc = hqTerrainEscapes(ti, x, z, 8000, sealed); } catch (eW) { console.warn('[HQ] the way-out check failed', eW); }
+                    if (!esc) continue;
+                }
                 if (V && V.on && V.kind === 'car') { V.x = x; V.z = z; V.y = y; V.v = 0; V.vy = 0; V.wg = null; _hq.cam.init = false; _hq.dirty = true; }
                 var pl = _hq.player;
                 pl.x = x; pl.z = z; pl.y = pl.visY = y; pl.air = false; pl.vy = 0; pl.jumpT = -1; pl.moving = false;

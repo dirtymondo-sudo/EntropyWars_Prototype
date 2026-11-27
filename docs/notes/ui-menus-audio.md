@@ -3096,6 +3096,14 @@ because im already in the zone i want to fast travel to". Two causes, both fixed
   nothing. `_zmNodeAt` now picks the plot (zone sheet) or the place (world sheet) under the pointer whatever is drawn on top.
   The click wobble is 6 px (`HQ_MAP_CLICK_PX`, was 4: a trackpad tap on a 2x screen read as a drag).
 - A plot that cannot be travelled to says why on its card in red (`_zmWhyNot`: not built, rebuilt room, uncharted, no ground).
+- **THE WAY OUT (2026-11-27, mondo: "i fast traveled to bayside and it put me inside the mall and everything is see through and i cant find
+  the exit or the way out").** The plot "Mall concourse" (P10-10) has its middle inside the mall's OUTSIDE shell in the city (the solid
+  building `dc:P10-10-B1`; the inside is its own room). A solid building's walls stand only on its outline, so its middle passed every
+  test of goSpot (no wall near, not the plan's mass) and the walker landed in a sealed box, seen from inside (every face culled: "see
+  through"). Now a landing must be able to walk away: data.js `hqTerrainEscapes(info, x, z, cap, seen)` is a bounded hqTerrainReach,
+  true once it meets `cap` nodes (8,000 ≈ 6,000 m², more than any sealed building), false when it runs out (the mall's shell: 3,397
+  nodes, 0.2 s in node; open ground 0.45 s). A refused pocket's nodes are kept for the rest of the search. Off:
+  `window.EW_GO_NO_WAYOUT = true`. Not touched: the city's own fill of a building interior (mondo's "see through" was the culled shell).
 
 ### ONE MAP (2026-11-23, owner project, thread "Make the map one zoomable map")
 mondo 11-23: "i hate how zooming in makes the rest of the map disappear, its supposed to be one map with increasing detail as

@@ -99407,6 +99407,34 @@ function hqTerrainReach(info, x, z) {
     }
     return seen;
 }
+/* THE WAY OUT (2026-11-27, mondo: "i fast traveled to bayside and it put me inside the mall and everything is see through and i cant find the
+   exit"): can a walker standing at (x, z) walk away from there? A bounded hqTerrainReach: true once the walk has met `cap` nodes (open ground),
+   false when it runs out first (a sealed pocket: the inside of a solid building such as the mall's outer shell in the city, whose walls stand only
+   on its outline, so the middle reads as free ground). The plot GO (three-renderer.js hq.goSpot) refuses such a spot. `seen` (a Set, optional)
+   gets the pocket's node keys so the next candidate in the same pocket is refused without a second walk. */
+function hqTerrainEscapes(info, x, z, cap, seen) {
+    cap = cap || 12000;
+    const i0 = Math.round((x - info.x0) / info.res), j0 = Math.round((z - info.z0) / info.res);
+    if (i0 < 0 || j0 < 0 || i0 >= info.nx || j0 >= info.nz) return false;
+    const y0 = hqTerrainFeet(info, info.x0 + i0 * info.res, info.z0 + j0 * info.res, null); if (y0 == null) return false;
+    const mine = new Set(), q = [[i0, j0, y0]], N = [[1, 0], [-1, 0], [0, 1], [0, -1]], climbLim = _hqTClimbLim(info, info.rules.climb), CE = hqTerrainClimbEdges(info);
+    const keyOf = (i, j, L) => L ? (i + ',' + j + ',' + L) : (i + ',' + j);
+    mine.add(keyOf(i0, j0, hqTerrainLayerAt(info, info.x0 + i0 * info.res, info.z0 + j0 * info.res, y0)));
+    let head = 0;
+    while (head < q.length) {
+        if (mine.size >= cap) return true;
+        const p = q[head++];
+        const ce = CE.get(p[1] * info.nx + p[0]);
+        if (ce) for (const e of ce) { const ei = e.k % info.nx, ej = (e.k - ei) / info.nx; const ey = _hqTClimbLand(info, ei, ej, e.y); if (ey == null) continue; const ek = keyOf(ei, ej, hqTerrainLayerAt(info, info.x0 + ei * info.res, info.z0 + ej * info.res, ey)); if (mine.has(ek)) continue; mine.add(ek); q.push([ei, ej, ey]); }
+        for (const n of N) {
+            const i = p[0] + n[0], j = p[1] + n[1];
+            if (i < 0 || j < 0 || i >= info.nx || j >= info.nz) continue;
+            for (const c of _hqTNodeFeet(info, i, j, p[2], climbLim, false)) { const k = keyOf(i, j, c[1]); if (mine.has(k)) continue; mine.add(k); q.push([i, j, c[0]]); }
+        }
+    }
+    if (seen) mine.forEach(k => seen.add(k));
+    return false;
+}
 /* THE TRAP CHECK (2026-09-17): the trap components of a compiled field — every cell the walker reaches from the
    door pads (with its jump) that cannot reach a pad again. A room passes when this is empty; hq-terrain.test.js
    insists on it for every terrain room and check-terrain.js prints the offenders. Each row: { cells, x, z, y }. */
