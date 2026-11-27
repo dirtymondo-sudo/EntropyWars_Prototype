@@ -5629,3 +5629,42 @@ Every rule below holds in a live spell shot AND while its chrome lingers on the 
   `ThreeCamera.frameGuardState().big` = `{f, want, D, dropped}`. Switch: `window.EW_NO_BIG_READ = true` (also off with
   `EW_NO_CLEAN_READ`).
 - Measured after (same map, real fights): hit target median 22 % (19 hits) -> 31 % at 0.30 (17) -> 34 % at 0.40 (10). Bigger bodies leave less free screen, so text over a body rose a little at 0.40.
+## THE DEMIURGE'S CATACLYSMS (2026-11-27, mondo: "the VFX and spell animations for the demiurge ... the final epic boss ... impactful and apocalyptic ... cinematography, vfx, animations, sky events, background changing ... modern final fantasy esque")
+His eight spells each have their own set piece, camera row, pace and sky. The finisher "Unmade" still plays `heatDeath` (not reworked).
+- THE SET PIECES (three-vfx-effects.js "THE DEMIURGE'S CATACLYSMS", names `_dx*` / `_DX*`): `_DX_SPELLS[id] = { charge(L), hit(L) }`, run by
+  `_dxStage` from `_fireStage`'s windup and burst (both already relayed, so the guest draws them: RULE #2). L = caster square, target
+  square, footprint tiles, the charge's length. A charge builds on its OWN clock (at most 1.5 s) and reads the real hit time
+  (`he`): the kind of spell and the machine change how long the charge is, so nothing is keyed to an estimate.
+  Armoured: Serpent Strike (two serpents rise behind him and dive, an ouroboros shuts on the target), Compass Sweep (a
+  compass stands over him and scribes the circle), Cornerstone (a wire cube and its stone fall from the sky), Golden Spiral (the
+  golden rectangles draw from above, then the pillar). Cosmic: Void Gaze (the eye, a beam along the line), Fractal Bloom (a seed
+  that multiplies into the flower of life), As Above So Below (a seal in the sky and its twin on the floor, a column between),
+  Tesseract (a real 4D hypercube, turned in four dimensions and projected, comes down on the footprint; black stone stands up).
+- COLOUR-TRUE: a sheet lying on the floor is PAINT (`_dxFloor(..., false)`, deep tones `_DX_PAINT`) and an edge is `_pzSolid`;
+  only the soft glow round them is additive. Pale additive gold on a sunlit floor read white (seen on the Stadium).
+- Fog: every piece gates on `_pzSeen`; nothing stands on a square a body is on (`_dxTaken`); pieces ride `_sigRunOwned`, so THE
+  CLEAN READ fades them near the lens. No scene walks (RULE #1e). Switch: `window.EW_NO_DEMI_VFX = true`. `__dmxStat()` = counts.
+- THE CAMERA (battle.js `DEMI_DIRECTOR_SHOTS` + `_demiSeq`, registered in `CINE_SEQUENCES`): one row a spell on the capstones'
+  pattern, with its own beat times: up at the cube before it falls (`cineSkyWatch`), straight down on the spiral (`cineGodShot`),
+  far above for Tesseract's drop. Never a shot that ends inside the piece (two were cut for that). Slow-mo and freeze =
+  `SPELL_DIRECTOR_ROWS`. Switch: `window.EW_NO_DEMI_DIRECTOR = true`.
+- THE PACE (data.js `stagePace` on a spell row; battle.js `_stagePaceOf` + `playOffensiveActionCamera`): a boss charge is longer.
+  The holds are stretched ONCE in the shot (`opts._ewPaced`); online.js marks the guest's replay so it is not stretched twice.
+- THE SPELL SKY (three-renderer.js `_spSky`, `ThreeRenderer.spellSky(type, ms, { night })`): a spell calls a blood moon or an
+  eclipse for its length; eased on the clock, not per frame. Outdoor maps only show it. Switch: `window.EW_NO_SPELL_SKY = true`.
+- NOT DONE: the finisher; a void stage (background swap); sound. Frame rate measured only on the cloud's software renderer
+  (no difference on / off there), not on a Mac in WebGPU.
+- Probe: `MAP=prebuilt_holosim SPELLS=all TIMES=c1400,h150,h700 TAG=x node playtest_demiurge.js` (a real VS CPU match, both forms
+  on P1; `cN` = N ms after the cast, `hN` = N ms after the real hit, held in the page). `FLAGS=EW_NO_DEMI_VFX` for an A/B.
+
+## THE NEW RACES 5 VFX (2026-11-27, the Leopard Girl, the Draconian, the Flower Girl)
+three-vfx-effects.js "THE NEW RACES 5" (before THE ABOMINATION; kill switch `EW_NO_NR5_VFX`). Own hues: leopard amber + rosettes,
+Draconian green-gold scales + a slit-pupil eye + a crown, flower pink petals + yellow pollen; the side colour (own cyan-blue, other
+side pink-orange, `_brSeatOf`) on every rim and ring. Spell looks = SPELL_MAP `pzSig` defs (`_PZ_SIGS.lgRake` …): Rake / Talon Rend
+= tinted claw streaks (the Bear's claw canvas); Pounce = an X of claws + rosettes thrown off; Drag the Kill / Throat Hold / Killing
+Bite / Royal Blood = fang rows that snap shut (`_n5Jaws`), Throat Hold's squeezing ring, Royal Blood's blood stream to him; Tail Sweep
+= an arc once round him at shin height; Reptile Eye = a gold eye over the victim whose slit narrows; Kneel = a crown lifts then the
+ring slams out; Petal Dart = a flower burst; Bouquet = a ring of flowers at the ally's feet; Hay Fever = a pollen cloud over the 3x3;
+Sweet Perfume = scent rings + petals circling out; Spring Awakening = three rings of flowers opening round her. Rule looks =
+fireGeometry keys from battle.js: `nr5Rosettes`, `nr5Ambush`, `nr5Drag`, `nr5Cowed` (a small crown dips over the head), `nr5Pollen`,
+`nr5PollenHeal` (motes to the healed ally + the soft heal), `nr5Vines` (three vines curl up round the rooted enemy).

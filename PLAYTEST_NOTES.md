@@ -10878,3 +10878,8 @@ has a wide margin round its ink: use `_ewMargin*`. Notes: docs/notes/spells-vfx.
 - THE CLUTTER PROBE (11-27 addendum): each HIT row now also logs `tgtH` / `casH` (target / caster body height, % of screen),
   `pitch` (real lens pitch, degrees down), `dolly` + `big` (frame guard push-in), `live` (shot still on). A/B the big read with
   `FLAGS=EW_NO_BIG_READ`.
+
+## THE DEMIURGE PROBE (2026-11-27) — playtest_demiurge.js
+`MAP=<id> SPELLS=all|id,id TIMES=c1400,h150,h700 TAG=<name> [W=800 H=450] node playtest_demiurge.js`: a real VS CPU match with both Demiurge forms on P1;
+it stands the caster and three foes on a flat spot, casts each spell and holds the page at each mark (`cN` after the cast, `hN` after the real hit).
+Use `prebuilt_holosim` to iterate (4-6 fps here; the Stadium is 1 fps). Never park a unit on a NaN square: its body never comes back.

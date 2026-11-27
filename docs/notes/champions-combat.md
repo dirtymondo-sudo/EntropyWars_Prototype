@@ -6438,7 +6438,6 @@ glide `_iceSlideSteps`, the creep walk (u.x = cx path), and Swing Door's board p
 (`simulate` + `opts.viewer`) stops only on a trap the viewer's side can see (a capture door is always seen). Teleports and
 swaps have no path: their landing chain already covered them. Proof: shots in /mnt/project-files/forced-move-traps/.
 
-<<<<<<< Updated upstream
 ## THE NEW NORDICS + THE SKINWALKER MODEL (2026-11-24, thread "Make concepts for new and redone units")
 mondo 11-24: the Nordic man looked too short with dirty clothes, the woman not feminine enough ("unreasonably attractive like
 scandinavian models"); the Skinwalker's sprite read as a werewolf. Meshy concepts -> his picks -> image-to-3d (meshy-t2.5, a-pose)
@@ -6452,7 +6451,7 @@ scandinavian models"); the Skinwalker's sprite read as a werewolf. Meshy concept
   now playable by the 3D-only roster rule. Its four STOLEN FACES are separate props for its ability animations:
   `skinwalker/male/faces/skinwalker_face_a..d.glb` (a man, a freckled young woman, an old rancher, a chubby young man).
 - Weatherman + News Anchor models (same folder) went to their own thread.
-=======
+
 ## THE WEATHERMAN + THE NEWS ANCHOR (2026-11-24, thread "Add the Weatherman and News Anchor units"; mondo: "Weatherman should have spells that summon and interact with the weather system. I uploaded an umbrella zip ... for his abilities. The News Anchor can maybe use the microphone the popstar uses")
 ONE race `'weatherman'` (like the Streamer + E-Girl): male = the Weatherman, female = the News Anchor (`labelMale` /
 `labelFemale`). `RACE_GENDER_SPELLS` splits the eight spells, none shared; every `RACE_TREE` rung is a `[his, hers]` pair.
@@ -6622,6 +6621,7 @@ borrows pileOn (Happily Never After).
   DOOR_TEXT home Came A Lot, three roster lines. Proof: project files `princess/proof/` (probe `princess/probe_pr.js`).
 
 ## THE DEMIURGE (2026-11-26, thread "Add the Demiurge's two forms")
+- 11-27: his eight spells have their own set pieces, camera, pace and sky: spells-vfx.md "THE DEMIURGE'S CATACLYSMS" (data.js `stagePace` on his rows).
 mondo 11-26: "this guy is like the original creator of the black cube, the demiurge, cosmic abilities, spiritual abilities, the architect,
 sacred geometry, fractal math ... one character but with 2 forms, and you can pick either, kinda like the male/female split ... one is more
 physical attack and the other is more magic attack". Parts apart so they animate with his spells (cube spinning in the staff, wings, snakes).
@@ -6645,3 +6645,89 @@ physical attack and the other is more magic attack". Parts apart so they animate
   entry, NPC temperament, his place in the story, the feral form (not modelled; Meshy had 44 credits).
 - Files: `bake-demiurge.js` (raw 10-13 MB Meshy GLBs -> 0.3-3 MB, the bones), R2 `Assets/characters/races/demiurge/{armoured,cosmic}/`,
   `Assets/characters/gear/demiurge/dm_*.glb`, portraits `demiurge_{armoured,cosmic}_px.png` (cut from his hero concepts).
+
+## THE NEW RACES 5 (2026-11-27, thread "Make leopard, draconian and flower spells"; mondo: "wire them up ... make their unique race spells and do their spell animation+vfx")
+Three of the 11-27 Meshy concepts (project files `character-concepts/`). Their models, sprites and RACE_PROFILES rows are the wiring
+thread's ("Make Meshy concepts for new characters"); the kits are here, and all three are in data.js + server.js AVAILABLE_RACES.
+Plan posted in the thread; first-pass stats on the class medians, no Balance Lab run yet. battle.js block "THE NEW RACES 5" (after
+THE BUTTERFLY GIRL), VFX three-vfx-effects.js "THE NEW RACES 5" (before THE ABOMINATION, kill switch `EW_NO_NR5_VFX`), CPU ai.js
+scoreOffensiveHit + ccDenialValue. Probe: `playtest_kits.js` (a real VS CPU fight, P1 = the three, every race spell cast, frames).
+- 🐆 **Leopard Girl** (`leopard girl`, female, assassin, home The Strip (Claude's pick: the Cats-musical fur), biomes urban + tropical,
+  terrain tree, nature resist / ice weak; family `leopard` + feline, huntingskills, apexpredator, stagepresence; finisher Up a Tree =
+  nineLives staging). RULE ROSETTES (`lgRosettes`): a round in which she lands no hit on an enemy (`_lgHitRound`), she fades at its end
+  (Invisible 2 + `_lgAmbush`); the first hit she lands from hiding is a sure critical (`_lgAmbushCrit` in rollCrit + _spellCritRoll);
+  an enemy hit on her spends it. Kit: Rake (T1, Bleed 2) · Pounce (T2, _mkCharge range 4, Stagger) | Drag the Kill (T2, `lgDrag: 2`: she
+  backs up to 2 squares straight away from the victim and it is pulled into each square she leaves, `_lgDrag`) · Throat Hold (T3, Root +
+  Silence 1) · Killing Bite (T4, ×1.5 on Bleed, execute under 20 %).
+- 🐉 **Draconian** (`draconian`, male, no wings, bruiser, home Pyramids of Giza (his canon: the Draconians came for Egypt, the cats held
+  them off; the Annunaki are Draconians), biomes ancient + desert, psychic resist / ice weak; family `draconian` + ancientknowledge,
+  psychic, deepstate, blood; finisher Bow Before Draco = unmasking staging). RULE DOMINION (`dcDominion`): an enemy whose turn starts
+  within 2 (Chebyshev) of him is Cowed (STATUS_DEFS `cowed`, stack in `_cowed` 1-3, his id `_cowedSrcId`; -1 ATK stage a stack in
+  getStatStageCount via `_dcCowedStages`). Kit: Talon Rend (T1, +1 Cowed) · Tail Sweep (T2, round him, push 1, Stagger) | Reptile Eye (T2,
+  range 3, Charm 1 + Cowed) · Royal Blood (T3, physical lifeDrain 50 %, ×1.5 on Cowed) · Kneel (T4, radius 2 round him, `perCowedStack`
+  0.4 in _spellCritRoll, `dcKneel: 2`: 3 stacks = Stun 1, then every stack within 2 is spent, `_dcAfterCast`).
+- 🌸 **Flower Girl** (`flower girl`, female, support, home Fairy Forest (Claude's pick), biome forest, nature resist / fire weak; family
+  `blossom` + nature, healingmagic, seduction, fae; finisher Pushing Up Daisies = theBloom staging). RULE POLLINATE (`fgPollinate`): her
+  spells dust enemies with Pollen (STATUS_DEFS `pollen`, `_pollen` 1-3, `_pollenSrcId`); a hit by an ally of hers (not her own, not a
+  DoT or an echo) on a carrier heals that ally 6 % of its max HP and takes a stack, once a carrier an attacker's turn (`_fgPollenHit`).
+  Kit: Petal Dart (T1, range 4, +Pollen) · Bouquet (T2, heal 115 + Regen 2) | Hay Fever (T2, 3x3 range 4, Blind 1 + Pollen) · Sweet
+  Perfume (T3, enemies within 2 Charmed 1 + Pollen, allies within 2 +1 SPD 2 rounds, `fgPerfume`) · Spring Awakening (T4, healAll 130 +
+  cleanse 1 within 3, `fgVines: 3` Roots every enemy within 3).
+- CHANGES FROM THE POSTED PLAN (for mondo to overrule): the Flower Girl's rule became Pollinate (the plan's "In Bloom" was the
+  Cheerleader's Spirit again); the Leopard's T2 alternative is Drag the Kill (the plan's Stalk was the Catgirl's Nimble Dodge again);
+  Kneel reaches 2, not 3 (Dominion's own reach).
+- Online: everything is host engine state (plain numbers + statuses) mirrored by the state sync; floats ride showFloatingTextForUnit's
+  relay, looks ride fire() / fireGeometry() (relayed).
+
+## THE COMING RACES 3 (2026-11-27, thread "Make Meshy concepts for new characters")
+mondo picked Meshy concepts (realistic look, his rule: never cartoon) and said "wire them up. Split the work into multiple threads to make
+their unique race spells and do their spell animation+vfx ... The bigfoot in a suit is just a model swap for agent forest in story mode."
+IN (this PR, the COMING RACES pattern): RACE_MODELS_3D, the 128px Sprite AI sprites, RACE_SPRITE_GENDERS, RACE_PROFILES (first-guess types),
+EW_ASSET_MOVES rows, `EW_COMING_RACES` = `monster truck`, `nutcracker`, `leopard girl`, `draconian`, `flower girl`, `leprechaun` (M + F),
+`medic` (male = the Doctor, female = the Nurse). The MARTIAN got a female model + sprite (its kit is the existing one). Kits, stats, finishers
+and THE UNLOCK (into data.js + server.js AVAILABLE_RACES) are the three spell threads' ("Make monster truck and nutcracker spells",
+"Make leopard, draconian and flower spells", "Make leprechaun, martian and medic spells").
+- 🛻 THE MONSTER TRUCK: no bones; one file put together from four Meshy parts (project files character-concepts/truck.py): ewMtBody (> ewMtHood,
+  the fanged hood, hinged at its back edge, rotation.x < 0 opens it), ewMtWheel0..3 (FL FR RL RR; rotation.x spins), ewMtStrut0..3 (the hydraulics,
+  pivot at the axle, scale.y follows the body). three-renderer.js THE MONSTER TRUCK: procRig `monsterTruck`, clips are keyframes on those nodes
+  (_MT_POSES: idle, walk, castMelee bite, cast rev + roar, castAOE hop, castSupport bounce, castUltimate rear-up, hit, death);
+  `ThreeRenderer.mtPose(slot, dur, pose)` adds / replaces a slot (pose(u) -> { y rx rz hood spin lean }).
+- 🥜 THE NUTCRACKER: the Meshy rig + its own jaw mesh skinned to an added bone `ewJaw` (child of Head; project files character-concepts/jaw.py).
+  Def key `jawBone: 'ewJaw'`; three-renderer.js THE NUTCRACKER'S JAW (_jawTick, after the clip in the unit loop) clacks it through casts /
+  attacks, snaps on a hit, hangs open in death; `ThreeRenderer.jawOpen(uid, 0..1, ms)` holds it. Looks only: a spell that calls it must relay it
+  for the online guest (RULE #2).
+- AGENT FORREST (story): data.js DOOR_CAST.forrest `model: 'forrest'` -> sprites.js DOOR_CAST_MODELS.forrest (the bigfoot in an agent's suit,
+  `bigfoot/agent_forrest/Meshy_AI_agent_forrest_Running.glb`). The roster bigfoot is unchanged.
+Files: R2 `Assets/characters/races/<monster_truck|nutcracker|leopard_girl|draconian|flower_girl|leprechaun|medic>/<gender>/` (+ `.opt.glb`,
+in ASSET_MANIFEST), `martian/female/`, `bigfoot/agent_forrest/`. Sources, scripts, sheets: project files `character-concepts/`.
+## THE MONSTER TRUCK + THE NUTCRACKER (2026-11-27, thread "Make monster truck and nutcracker spells")
+mondo 11-27: "a monster truck, like a literal monster that is a truck ... it's hood could be a separate part and it has like fangs,
+and the wheels could be separate too so they could spin, maybe even hydraulics", and a Nutcracker "so its mouth can move like an
+actual nutcracker"; then "wire them up ... make their unique race spells and do their spell animation+vfx". The MODELS + their procRigs
+are the wiring thread's ("Make Meshy concepts for new characters": RACE_MODELS_3D, sprite, RACE_PROFILES, RACE_SPRITE_GENDERS,
+EW_COMING_RACES, three-renderer.js "THE MONSTER TRUCK" / the nutcracker's `ewJaw` bone). This thread: the kits, rules, stats, finishers,
+AVAILABLE_RACES (data.js + server.js), codex lore, the VFX and the spell moves of the parts. ALL NAMES AND NUMBERS ARE A FIRST PASS.
+- `monster truck` (tank, family `monstertruck`, spellType tech; pool monstertruck, drivingskills, machinery, apexpredator, fire).
+  RULE, REVS: any walk banks 1 Rev a square driven (battle.js `_mtBankRevs` in finishMoveAt, beside the Skater's bank; STATUS_DEFS
+  `revs`, count on `unit._revs`, cap 5, clock 2 so it reaches the next turn). Chomp T1 (bite, Bleed), Ram T2 (tackle 4, push 2,
+  `revsSpend: 25` a Rev, spends all), Hydraulic Slam T3 (self 3x3, push 1, Stagger), Burnout T4 (self 5x5, Burn + Blind, its
+  selfStatusAfter fills Revs to 5). `revsSpend` lands in _runPostEffects as a second blow and in the forecast (`tag: 'revs'`).
+- `nutcracker` (bruiser, family `nutcracker`, spellType anomaly; pool nutcracker, hauntedtoy, christmasspirit, militarysupport,
+  swordsmanship). RULE, CRACKS: its bites put Cracks on the enemy (STATUS_DEFS `cracked`, count on `unit._cracks`, cap 3, clock 3).
+  Clack T1, Quick March T2 (dash 4 with sweep), Crack Open T3 (`crackSpend: 45` a Crack, spends all; at 3 the target is Broken 1 round;
+  battle.js `_ncCrackOpen`), Nutcracker Suite T4 (self 5x5, Crack + Slow). Casts: Crack Open = Angry_Ground_Stomp, the Suite =
+  Joyful_Dance_with_Hand_Sway (lib 9).
+- Finishers `fin_monster_truck` "Crushed" (borrows the Honda Civic's hitAndRun staging), `fin_nutcracker` "Cracked" (borrows joust).
+- VFX: three-vfx-effects.js "THE MONSTER TRUCK + THE NUTCRACKER" (fang rows, tyre tracks + exhaust, the slam's crack + dust ring, the
+  burnout's skid circle + fire ring + smoke; wooden jaws, a gold crack, walnut shards, the Suite's gold waltz ring + sugar-pink snow).
+  Seat colour rings like the bear's. Kill switch `EW_NO_MTNC_VFX`.
+- THE PARTS MOVE (three-renderer.js): the truck's own clips in `_MT_POSES` (`animSlot` on the rows): `mtChomp` (nose up, hood wide,
+  snap, a second bite), `mtRam` (squat + rev, wheels a blur, lunge with the jaw open, shut at the crash), `mtHop` (struts squat, leap,
+  slam, bounce), `mtBurnout` (front braked, `spinR` = the back axle only, body shudders, jaw roars). `_mtClip` takes `spinF` / `spinR`
+  (one axle's extra turn) beside `spin`. The nutcracker's jaw: `ThreeRenderer.jawAct(uid, 'clack'|'crack'|'march'|'suite', ms)`
+  (`_jawPat` inside `_jawTick`), fired on the windup beat by three-vfx-effects.js `_NC_SPELL_ACTS` (online.js relays windup).
+- Burnout has `vfxElement: 'fire'`, not `element: 'fire'`: the fire element lit the grass under the truck and burnt it.
+- THE KIT PROBE `playtest_kit.js` (KIT=truck|nut|both|ram, CLOSE='{"zoom":2.6,"tilt":58,"yaw":30}', PICS=ms,...): real game, a VS CPU
+  board, the kit cast in a row with Revs / Cracks / HP / push read after each step. A target out of the team's sight is refused
+  ("Out of sight"), a blocked charge says "Terrain blocks the spell path": the probe's fixed squares, not the spell.
+- LEFT OUT ON PURPOSE (no lore invented): element affinity, home zone, biomes, residents, NPC temperament, story place.

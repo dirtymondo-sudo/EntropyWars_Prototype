@@ -5644,6 +5644,7 @@
                                     }
                                     if (_ets.length) camOpts.extraTargets = _ets;
                                 }
+                                camOpts._ewPaced = true;   // THE DEMIURGE'S CATACLYSMS: the host's holds already carry the row's stagePace
                                 if (typeof window.playOffensiveActionCamera === 'function') {
                                     window.playOffensiveActionCamera(src, tgt, camOpts);
                                 }
