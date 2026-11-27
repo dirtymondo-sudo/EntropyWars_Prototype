@@ -25,8 +25,8 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 1350 |
-| Meshy AI, reworked by Claude | no | 15 |
+| Meshy AI | no | 1360 |
+| Meshy AI, reworked by Claude | no | 16 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 107 |
 | Built by Claude in code (a bake tool writes the file) | no (pack bark picture) | 15 |
@@ -99,6 +99,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | djinn | `Assets/characters/races/djinn/male/Meshy_AI_a_djinn_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | door agent | `Assets/characters/races/maincharacters/Meshy_AI_Player_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | door agent (female) | `Assets/characters/races/maincharacters/Meshy_AI_Agent_Belle_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| draconian | `Assets/characters/races/draconian/male/Meshy_AI_draconian_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | dragon | `Assets/characters/races/dragon/male/Meshy_AI_dragon_r2_v2_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW LOOKS, mondo 2026-11-18 concepts round; wings / halo / cape / trident apart: THE UNIT GEAR; project files unit-concepts-20261118/) |
 | dreameater | `Assets/characters/races/dreameater/male/Meshy_AI_dream_eater_alien_ent_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | eagleman | `Assets/characters/races/eagleman/Meshy_AI_eagleman__Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
@@ -109,6 +110,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | firefighter | `Assets/characters/races/firefighter/Meshy_AI_firefighter_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | flesheater | `Assets/characters/races/flesheater/Meshy_AI_flesheater_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | florida man | `Assets/characters/races/florida_man/male/Meshy_AI_florida_man_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES 2, mondo 2026-11-17 picks from the zone characters; concepts + models in project files new-races-2/; the Boltzmann Brain is unrigged) |
+| flower girl (female) | `Assets/characters/races/flower_girl/female/Meshy_AI_flower_girl_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | fortune teller | `Assets/characters/races/homosapien/male/harbinger/Meshy_AI_male_fortune_teller_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | fortune teller (female) | `Assets/characters/races/homosapien/female/harbinger/Meshy_AI_fortune_teller_f_v2_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW LOOKS, mondo 2026-11-18 concepts round; wings / halo / cape / trident apart: THE UNIT GEAR; project files unit-concepts-20261118/) |
 | gambler | `Assets/characters/races/gambler/male/Meshy_AI_gambler_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES 4, mondo 2026-11-19 picks from the 11-19 concepts round; concepts + models in project files new-char-concepts-20261119/) |
@@ -155,6 +157,9 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | knight (female) | `Assets/characters/races/homosapien/female/knight/Meshy_AI_hot_attractive_female_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | kraken | `Assets/characters/races/kraken/male/Meshy_AI_kraken_realistic_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | krampus | `Assets/characters/races/krampus/Meshy_AI_krampus_v2_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW LOOKS, mondo 2026-11-18 concepts round; wings / halo / cape / trident apart: THE UNIT GEAR; project files unit-concepts-20261118/) |
+| leopard girl (female) | `Assets/characters/races/leopard_girl/female/Meshy_AI_leopard_girl_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| leprechaun | `Assets/characters/races/leprechaun/male/Meshy_AI_leprechaun_m_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| leprechaun (female) | `Assets/characters/races/leprechaun/female/Meshy_AI_leprechaun_f_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | librarian (female) | `Assets/characters/races/librarian/female/Meshy_AI_librarian_f_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES 2, mondo 2026-11-17 picks from the zone characters; concepts + models in project files new-races-2/; the Boltzmann Brain is unrigged) |
 | lifeguard | `Assets/characters/races/lifeguard/male/Meshy_AI_lifeguard_m_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES, mondo 2026-11-16 "make meshy models for the new races"; concepts in project files new-races/) |
 | lifeguard (female) | `Assets/characters/races/lifeguard/female/Meshy_AI_lifeguard_f_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES, mondo 2026-11-16 "make meshy models for the new races"; concepts in project files new-races/) |
@@ -168,9 +173,12 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | marksman | `Assets/characters/animations/Meshy_AI_sniper_biped_Animation_Idle_5_withSkin.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | marksman (female) | `Assets/characters/races/homosapien/female/sniper/Meshy_AI_sniper_female_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | martian | `Assets/characters/races/martian/male/Meshy_AI_Green_martian_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| martian (female) | `Assets/characters/races/martian/female/Meshy_AI_martian_f_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | mech | `Assets/characters/races/mech/male/Meshy_AI_mecha_mech_battle_m_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | mech (female) | `Assets/characters/races/mech/female/Meshy_AI_mech_f2_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | mechanic | `Assets/characters/races/mechanic/male/Meshy_AI_mechanic_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES 2, mondo 2026-11-17 picks from the zone characters; concepts + models in project files new-races-2/; the Boltzmann Brain is unrigged) |
+| medic | `Assets/characters/races/medic/male/Meshy_AI_doctor_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| medic (female) | `Assets/characters/races/medic/female/Meshy_AI_nurse_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | men in black — creator look also baked | `Assets/characters/races/homosapien/male/agent/Meshy_AI_men_in_black_male_ag_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | mermaid | `Assets/characters/races/mermaid/male/Meshy_AI_merman_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES, the men; mondo 2026-11-16) |
 | mermaid (female) | `Assets/characters/races/mermaid/female/Meshy_AI_mermaid_f2_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
@@ -180,6 +188,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | mole man | `Assets/characters/races/mole_man/male/Meshy_AI_mole_man_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES, mondo 2026-11-16 "make meshy models for the new races"; concepts in project files new-races/) |
 | monarch (female) | `Assets/characters/races/monarch/female/Meshy_AI_monarch_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API from mondo's picked concepts (THE COMING RACES 2, 2026-11-23; the Bear's polar look + the Rat King are form looks; project files char-concepts-20261123/) |
 | monk | `Assets/characters/races/monk/male/Meshy_AI_monk_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES 4, mondo 2026-11-19 picks from the 11-19 concepts round; concepts + models in project files new-char-concepts-20261119/) |
+| monster truck | `Assets/characters/races/monster_truck/male/monster_truck.glb` | Meshy AI, reworked by Claude | Meshy AI parts made from mondo's monster truck concept 2026-11-27 (the body with no hood or wheels, the fanged hood, ONE wheel, ONE hydraulic strut; project files character-concepts/models) put together by Claude in Blender (project files character-concepts/truck.py): the wheel and the strut each used four times, each its own node, for the Monster Truck race's moving-parts rig (three-renderer.js THE MONSTER TRUCK) |
 | mothman | `Assets/characters/races/mothman/male/Meshy_AI_mothman_cryptid_gian_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | mummy | `Assets/characters/races/mummy/male/Meshy_AI_mummy_m_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES, the men; mondo 2026-11-16) |
 | mummy (female) | `Assets/characters/races/mummy/Meshy_AI_mummy_female_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
@@ -192,6 +201,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | ninja (female) | `Assets/characters/races/ninja/female/Meshy_AI_ninja_f_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | nordic | `Assets/characters/races/nordic/male/Meshy_AI_nordic_m_v2_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW LOOKS, mondo 2026-11-18 concepts round; wings / halo / cape / trident apart: THE UNIT GEAR; project files unit-concepts-20261118/) |
 | nordic (female) | `Assets/characters/races/nordic/female/Meshy_AI_nordic_f_v2_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW LOOKS, mondo 2026-11-18 concepts round; wings / halo / cape / trident apart: THE UNIT GEAR; project files unit-concepts-20261118/) |
+| nutcracker | `Assets/characters/races/nutcracker/male/Meshy_AI_nutcracker_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | occulus | `Assets/characters/gear/wings/Meshy_AI_one_bat_wing_1027074652_texture.glb` | Meshy AI | Meshy AI (single wing, mirrored in code) |
 | orb of light (female) | `Assets/characters/races/orboflight/female/Meshy_AI_hot_girl_sentient_li_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | overlord | `Assets/characters/races/overlord/Meshy_AI_underworld_overlord__biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
@@ -293,6 +303,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | dorian | `Assets/characters/races/maincharacters/Meshy_AI_Dorian_Gates_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | elle | `Assets/characters/races/maincharacters/Meshy_AI_Elle_Vator_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | father | `Assets/characters/races/maincharacters/Meshy_AI_Father_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| forrest | `Assets/characters/races/bigfoot/agent_forrest/Meshy_AI_agent_forrest_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | frankenstein | `Assets/characters/races/homosapien/male/engineer/Meshy_AI_fankenstein_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | glass | `Assets/characters/races/maincharacters/Meshy_AI_Agent_Glass_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | janitor | `Assets/characters/races/maincharacters/Meshy_AI_Janitor_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |

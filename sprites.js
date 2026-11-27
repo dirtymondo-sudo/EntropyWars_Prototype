@@ -2925,7 +2925,7 @@ const RACE_MODELS_3D = {
      ewMtWheel0..3 (FL FR RL RR, pivot on the axle: rotation.x spins), ewMtStrut0..3 (pivot at the axle: scale.y stretches).
      Front +Z, floor y 0. */
   'monster truck': {
-    male: { model: 'https://cdn.entropywars.net/Assets/characters/races/monster_truck/male/monster_truck.glb', clips: {}, procRig: 'monsterTruck', heightRatio: 1.3, yawOffset: 0, basicAttackKind: 'physical',
+    male: { model: 'https://cdn.entropywars.net/Assets/characters/races/monster_truck/male/monster_truck.glb', clips: {}, procRig: 'monsterTruck', heightRatio: 1.05, yawOffset: 0, basicAttackKind: 'physical',
       moveTimeScale: 1, castTimeScale: 1, deathTimeScale: 1, hitTimeScale: 1, jumpTimeScale: 1 },
   },
   /* 🥜 THE NUTCRACKER: the Meshy rig + its own jaw, skinned to the added bone ewJaw (child of Head, pivot at the hinge:
