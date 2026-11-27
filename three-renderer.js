@@ -84569,7 +84569,9 @@ const ThreeRenderer = (function () {
         paint.emissive = new THREE.Color(neon ? 0x30343c : 0x2a2924);
         var kerbTex = _hzTex(_hqRoadTexKey('kerb')), kerbMat = new THREE.MeshPhongMaterial({ map: kerbTex || null, color: neon ? 0x9a9ab0 : 0xc8c6c0, shininess: 4, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }); kerbMat.emissive = new THREE.Color(0x1a1a1a);
         var mhTex = (room && /DISASTER CITY/.test(String(room.label || ''))) ? _hqCityManholeTex() : _hzTex(_hqRoadTexKey('manhole')), mhMat = new THREE.MeshLambertMaterial({ map: mhTex || null, transparent: true, alphaTest: 0.3, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, color: 0xffffff });
-        mk(Bk, kerbMat, 2); mk(Bw, paint, 3); if (mhTex) mk(Bm, mhMat, 3);
+        mk(Bk, kerbMat, 2); var oldPaint = mk(Bw, paint, 3); if (mhTex) mk(Bm, mhMat, 3);
+        /* THE ROAD PAINT TEST (2026-11-27): another style asked for (`?roads=` / ewRoads()) draws in place of the old paint; the kerbs, manholes, stains and signs stay */
+        try { var rStyle = _hqRoadStyle(); _hqRoadPaintLast = { room: room, info: info, G: G, old: oldPaint, grp: null }; if (rStyle !== 'old') { if (oldPaint) oldPaint.visible = false; _hqRoadPaintLast.grp = _hqBuildRoadPaint(room, info, G, rStyle); } } catch (e) { console.warn('[HQ] the road paint test failed', e); if (oldPaint) oldPaint.visible = true; }
         if (Bs.n) { var stTex = _hzTex(_hqRoadTexKey('stain')); if (stTex) mk(Bs, new THREE.MeshLambertMaterial({ map: stTex, transparent: true, opacity: 0.85, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, color: 0xffffff }), 2); }   // under the paint and the manholes
         /* the posts: a plate on a pole, a blocker under it */
         var poleMat = new THREE.MeshPhongMaterial({ color: 0x5a5e66, shininess: 40 });
@@ -84593,6 +84595,293 @@ const ThreeRenderer = (function () {
         });
         if (typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ] road markings', 'paint quads', Bw.n / 4, 'kerb', Bk.n / 4, 'manholes', manholes, 'stains', stains, 'signs', madeSigns.length, 'dead ends', deadEnds.length);
     }
+    /* ═══════════════════════════════════════════════════════════════════════
+       THE ROAD PAINT TEST (2026-11-27, mondo: "make sure all the decals on the road are good and consistent, as in dashed white lines,
+       yellow lines, crosswalks, arrows ... I think there is a road texture pack that has those on the roads already, i think those look
+       better than when they are painted on. Maybe do it a couple different ways as a test first so i can see and approve").
+       Three ways to mark a city room's streets, behind a switch; NOTHING changes until one is picked (the default is 'old', the paint
+       _hqBuildRoadMarkings has drawn since 09-17). The switch: the page's `?roads=<style>` or, live, `ewRoads('<style>')` in the console.
+         'sheet'  THE PACK'S ROAD SHEETS AS THEY COME: the Urban Decay pack's RoadDouble / RoadSingle sheets (asphalt + worn lines in one
+                  picture) laid as 7 m tiles down every street: dashed-line tiles, the arrow tile before a crossing, the crosswalk tile at it.
+         'pack'   THE PACK'S PAINT, LANE BY LANE: the lines are laid where a real road has them (below) and wear the pack's own worn paint
+                  (RoadGeneric1b white, RoadGeneric1c yellow) over the asphalt the streets already have (RoadGeneric1a, the same pack).
+         'clean'  the same lines in flat, fresh paint (the old paint's look, the new plan).
+       THE PLAN ('pack' and 'clean'; a lane is one battle square, 3.5 m):
+         two-way, 2 lanes: a dashed yellow middle line · two-way, 4 lanes: a double yellow middle line + a dashed white lane line each side ·
+         one-way (a street with a twin beside it: an avenue's two sides, the highway's, the frontage roads): dashed white lane lines, a
+         yellow edge on the twin's side · a solid white edge line everywhere, broken at a side street's mouth · where a street meets one as
+         wide or wider: a crosswalk, a stop bar across the lanes that drive INTO the crossing (the right-hand ones, the side the cars
+         keep) and an arrow in each of them; a narrower side street never stops the wider road's lines.
+       _hqRoadPaintPlan is the plan alone (metres, no three.js: `node` can draw it), _hqBuildRoadPaint lays it on the ground.
+       ═══════════════════════════════════════════════════════════════════════ */
+    var HQ_ROAD2 = { lane: 3.5, lineW: 0.15, edgeIn: 0.35, dbl: 0.14, dash: 1.75, period: 3.5, zebraBar: 0.5, zebraGap: 0.5, zebraLen: 2.8, zebraBack: 0.9,
+                     stopW: 0.4, stopGap: 0.6, arrowLen: 3.2, arrowW: 1.6, arrowBack: 1.3, tile: 7, yellow: 0xe2a40e, white: 0xe8e6da };
+    function _hqRoadStyle() {
+        var s = null;
+        try { if (typeof window !== 'undefined') { s = window.EW_ROAD_STYLE || null; if (!s && window.location && window.location.search) { var m = /[?&]roads=([a-z]+)/.exec(window.location.search); if (m) s = m[1]; } } } catch (e) {}
+        return (s === 'sheet' || s === 'pack' || s === 'clean') ? s : 'old';
+    }
+    function _hqRoadPaintPlan(streets, pads, medians, style) {
+        var R = HQ_ROAD2, out = [], N = streets.length, i, j;
+        var dir = function (a, b) { var dx = b[0] - a[0], dz = b[1] - a[1], L = Math.hypot(dx, dz) || 1; return { x: dx / L, z: dz / L, L: L }; };
+        /* a street's corridor with FLAT ends (a street that goes on as another row is not "inside" it): the distance across, or Infinity */
+        var corr = function (px, pz, o) {
+            var best = Infinity, P = o.pts, n = P.length;
+            for (var s = 0; s + 1 < n; s++) {
+                var ax = P[s][0], az = P[s][1], bx = P[s + 1][0] - ax, bz = P[s + 1][1] - az, l2 = bx * bx + bz * bz; if (!(l2 > 0)) continue;
+                var t = ((px - ax) * bx + (pz - az) * bz) / l2, tol = 0.05 / Math.sqrt(l2);
+                if ((t < -tol && s === 0) || (t > 1 + tol && s === n - 2)) continue;
+                t = Math.max(0, Math.min(1, t)); var dd = Math.hypot(px - ax - bx * t, pz - az - bz * t); if (dd < best) best = dd;
+            }
+            return best;
+        };
+        var inPad = function (px, pz, m) { for (var q = 0; q < pads.length; q++) if (Math.hypot(pads[q].x - px, pads[q].z - pz) < m) return true; return false; };
+        /* twins (two straight streets side by side, never crossing) + a row laid on another row (drawn once) */
+        var skip = [], twin = [], never = [];
+        for (i = 0; i < N; i++) { skip[i] = false; twin[i] = 0; never[i] = {}; }
+        for (i = 0; i < N; i++) {   /* a row laid on another row (every point of it inside one as wide): drawn once */
+            var A0 = streets[i]; if (A0.pts.length !== 2) continue; var d0 = dir(A0.pts[0], A0.pts[1]);
+            for (j = 0; j < N && !skip[i]; j++) {
+                var B0 = streets[j]; if (j === i || skip[j] || B0.w < A0.w - 0.01 || !(B0.pts.length > 2 || j < i || B0.w > A0.w + 0.01)) continue;
+                var inside = true; for (var f0 = 0; f0 <= 8 && inside; f0++) { if (corr(A0.pts[0][0] + d0.x * d0.L * f0 / 8, A0.pts[0][1] + d0.z * d0.L * f0 / 8, B0) > (B0.w - A0.w) / 2 + 0.6) inside = false; }
+                if (inside) skip[i] = true;
+            }
+        }
+        for (i = 0; i < N; i++) {   /* the twin: the nearest straight street beside this one, along at least half of it */
+            var A = streets[i]; if (skip[i] || A.pts.length !== 2) continue;
+            var dA = dir(A.pts[0], A.pts[1]), bestLat = 1e9;
+            for (j = 0; j < N; j++) {
+                var B = streets[j]; if (j === i || skip[j] || B.pts.length !== 2) continue;
+                var dB = dir(B.pts[0], B.pts[1]); if (Math.abs(dA.x * dB.x + dA.z * dB.z) < 0.995) continue;
+                var mx = (B.pts[0][0] + B.pts[1][0]) / 2 - A.pts[0][0], mz = (B.pts[0][1] + B.pts[1][1]) / 2 - A.pts[0][1], lat = mx * -dA.z + mz * dA.x;
+                if (Math.abs(lat) < (A.w + B.w) / 2 - 0.1) continue;
+                never[i][j] = true;
+                var u0 = (B.pts[0][0] - A.pts[0][0]) * dA.x + (B.pts[0][1] - A.pts[0][1]) * dA.z, u1 = (B.pts[1][0] - A.pts[0][0]) * dA.x + (B.pts[1][1] - A.pts[0][1]) * dA.z;
+                var ov = Math.min(dA.L, Math.max(u0, u1)) - Math.max(0, Math.min(u0, u1));
+                if (ov >= 0.5 * Math.max(dA.L, dB.L) && Math.abs(lat) <= 66 && Math.abs(lat) < bestLat) { bestLat = Math.abs(lat); twin[i] = lat > 0 ? 1 : -1; }
+            }
+        }
+        var rect = function (c, x, z, dx, dz, len, wid) { if (len > 0.05 && wid > 0.02) out.push({ k: 'r', c: c, x: x, z: z, dx: dx, dz: dz, len: len, wid: wid }); };
+        for (i = 0; i < N; i++) {
+            if (skip[i]) continue;
+            var st = streets[i], pts = st.pts, w = st.w, n = pts.length, lanes = Math.max(1, Math.round(w / R.lane)), ps = twin[i], oneway = ps !== 0, flow = ps === -1 ? 1 : -1;
+            var loop = n > 2 && pts[0][0] === pts[n - 1][0] && pts[0][1] === pts[n - 1][1];
+            var others = [], majors = [];
+            for (j = 0; j < N; j++) { if (j === i || skip[j] || never[i][j]) continue; others.push(streets[j]); if (streets[j].w >= w - 0.01) majors.push(streets[j]); }
+            var inList = function (px, pz, list, m) { for (var q = 0; q < list.length; q++) if (corr(px, pz, list[q]) < list[q].w / 2 + m) return true; return false; };
+            var bend = function (vi) {   /* tan(half the turn) at a vertex of this street, signed by the turn's side; 0 at an open end */
+                var hasPrev = vi > 0 || loop, hasNext = vi + 1 < n || loop; if (!hasPrev || !hasNext) return 0;
+                var ip = vi > 0 ? vi - 1 : n - 2, inx = vi + 1 < n ? vi + 1 : 1, d1 = dir(pts[ip], pts[vi]), d2 = dir(pts[vi], pts[inx]);
+                var dot = d1.x * d2.x + d1.z * d2.z; if (dot > 0.9999 || dot < -0.9) return 0;
+                var cross = d1.x * d2.z - d1.z * d2.x; return (cross > 0 ? 1 : -1) * Math.tan(Math.acos(Math.max(-1, Math.min(1, dot))) / 2);
+            };
+            for (var k = 0; k + 1 < n; k++) {
+                var d = dir(pts[k], pts[k + 1]), L = d.L, px0 = pts[k][0], pz0 = pts[k][1], nx = -d.z, nz = d.x;
+                var at = function (u, off) { return [px0 + d.x * u + nx * off, pz0 + d.z * u + nz * off]; };
+                var hasMed = false;
+                (medians || []).forEach(function (q) { var rx = q[0] - px0, rz = q[1] - pz0, al = rx * d.x + rz * d.z, of = Math.abs(rx * nx + rz * nz); if (of < 0.5 && al > -1 && al < L + 1) hasMed = true; });
+                /* the free stretches: off every crossing street as wide or wider */
+                var free = [], run = null, step = 0.25, cnt = Math.max(1, Math.round(L / step));
+                for (var q2 = 0; q2 <= cnt; q2++) { var u = L * q2 / cnt, c = at(u, 0), ok = !inList(c[0], c[1], majors, 0); if (ok) { if (!run) run = [u, u]; else run[1] = u; } else if (run) { free.push(run); run = null; } }
+                if (run) free.push(run);
+                var bA = bend(k), bB = bend(k + 1);
+                free.forEach(function (fr) {
+                    var a = fr[0], b = fr[1], jA = a > 0.2, jB = b < L - 0.2; if (b - a < 1.5) return;
+                    if (style === 'sheet') {
+                        /* THE SHEETS: columns of 7 m (a pair of lanes) across, tiles of about 7 m along */
+                        var cols = [];
+                        if (!oneway && lanes <= 2) cols.push({ off: 0, wid: w, f: 1, both: true });
+                        else if (!oneway) { var half = w / 2; cols.push({ off: half / 2, wid: half, f: 1 }); cols.push({ off: -half / 2, wid: half, f: -1 }); }
+                        else { var x0 = -w / 2; while (x0 < w / 2 - 0.1) { var cw = (w / 2 - x0 >= 6.9) ? 7 : (w / 2 - x0); cols.push({ off: x0 + cw / 2, wid: cw, f: flow }); x0 += cw; } }
+                        var m = Math.max(1, Math.round((b - a) / R.tile)), tl = (b - a) / m;
+                        for (var t = 0; t < m; t++) {
+                            var kind = 'plain';
+                            if ((jB && t === m - 1) || (jA && t === 0)) kind = 'cross'; else if (m >= 4 && ((jB && t === m - 2) || (jA && t === 1))) kind = 'arrow';
+                            var uc = a + tl * (t + 0.5);
+                            cols.forEach(function (cl) {
+                                var f = cl.f, kd2 = kind, p = at(uc, cl.off), single = cl.wid < 5;
+                                if (kd2 === 'arrow' && !cl.both && ((f > 0) !== !!(jB && t === m - 2))) kd2 = 'plain';   /* the lanes that drive away from the crossing: no arrow */
+                                if (kd2 === 'arrow' && !cl.both && !single) {   /* a pair of lanes one way: the pack has no such arrow tile, so two single-lane arrow tiles */
+                                    [-1, 1].forEach(function (sd) { var p2 = at(uc, cl.off + sd * cl.wid / 4); out.push({ k: 't', sheet: 'RoadSingle1b', x: p2[0], z: p2[1], dx: d.x * f, dz: d.z * f, len: tl, wid: cl.wid / 2 }); });
+                                    return;
+                                }
+                                var sheet = single ? (kd2 === 'cross' ? 'RoadSingle1c' : kd2 === 'arrow' ? 'RoadSingle1b' : 'RoadSingle1a') : (kd2 === 'cross' ? 'RoadDouble1e' : kd2 === 'arrow' ? 'RoadDouble1d' : 'RoadDouble1c');
+                                out.push({ k: 't', sheet: sheet, x: p[0], z: p[1], dx: d.x * f, dz: d.z * f, len: tl, wid: cl.wid, mu: !!cl.both });   /* mu: the two-way arrow tile is drawn for left-hand traffic, so it lies mirrored */
+                            });
+                        }
+                        return;
+                    }
+                    var setback = R.zebraBack + R.zebraLen + R.stopGap + R.stopW, room2 = (jA ? setback : 0) + (jB ? setback : 0);
+                    var short = (b - a) < room2 + 2, la = a + (jA && !short ? setback : 0), lb = b - (jB && !short ? setback : 0);
+                    /* a line along the street at `off`: solid runs or square-by-square dashes; an edge line breaks at any street's mouth */
+                    var line = function (off, col, dashed, edge) {
+                        var ua = la, ub = lb;
+                        if (a < 0.01 && !jA) ua = -(-bA * off);   /* the mitre at this street's own bend: trimmed inside, carried on outside */
+                        if (b > L - 0.01 && !jB) ub = L + (-bB * off);
+                        if (dashed) {
+                            var c0 = px0 * d.x + pz0 * d.z, m0 = Math.ceil((c0 + ua - R.dash / 2) / R.period - 0.5);
+                            for (var mm = m0; ; mm++) { var um = (mm + 0.5) * R.period - c0; if (um + R.dash / 2 > ub + 0.01) break; if (um - R.dash / 2 < ua - 0.01) continue; var p = at(um, off); if (inPad(p[0], p[1], 2.2)) continue; rect(col, p[0], p[1], d.x, d.z, R.dash, R.lineW); }
+                            return;
+                        }
+                        var r2 = null, flush = function () { if (r2 && r2[1] - r2[0] > 0.6) { var p = at((r2[0] + r2[1]) / 2, off); rect(col, p[0], p[1], d.x, d.z, r2[1] - r2[0], R.lineW); } r2 = null; };
+                        var cn = Math.max(1, Math.ceil((ub - ua) / 0.5));
+                        for (var s2 = 0; s2 <= cn; s2++) { var uu = ua + (ub - ua) * s2 / cn, p3 = at(uu, off), ok2 = !inPad(p3[0], p3[1], 1.9) && !(edge && inList(p3[0], p3[1], others, 0.3)); if (ok2) { if (!r2) r2 = [uu, uu]; else r2[1] = uu; } else flush(); }
+                        flush();
+                    };
+                    if (lb - la > 1) {
+                        var e = w / 2 - R.edgeIn, li;
+                        if (hasMed) { line(w / 4, 'w', true); line(-w / 4, 'w', true); }
+                        else if (oneway) { for (li = 1; li < lanes; li++) line(-w / 2 + li * R.lane, 'w', true); }
+                        else if (lanes >= 4) { line(R.dbl, 'y'); line(-R.dbl, 'y'); for (li = 1; li < lanes / 2; li++) { line(li * R.lane, 'w', true); line(-li * R.lane, 'w', true); } }
+                        else line(0, 'y', true);
+                        line(e, (oneway && ps > 0) ? 'y' : 'w', false, true); line(-e, (oneway && ps < 0) ? 'y' : 'w', false, true);
+                    }
+                    if (short) return;
+                    /* the crossing's end(s): the crosswalk, the stop bar, the arrows */
+                    [[jA, a, -1], [jB, b, 1]].forEach(function (E) {
+                        if (!E[0]) return; var eu = E[1], s = E[2];
+                        var zc = eu - s * (R.zebraBack + R.zebraLen / 2), pz2 = at(zc, 0); if (inPad(pz2[0], pz2[1], 2.4)) return;
+                        var nb = Math.max(3, Math.floor((w - 0.6) / (R.zebraBar + R.zebraGap)));
+                        for (var bi = 0; bi < nb; bi++) { var pb = at(zc, (bi - (nb - 1) / 2) * (R.zebraBar + R.zebraGap)); rect('w', pb[0], pb[1], d.x, d.z, R.zebraLen, R.zebraBar); }
+                        var su = eu - s * (R.zebraBack + R.zebraLen + R.stopGap + R.stopW / 2), into = oneway ? (flow === s) : true; if (!into) return;
+                        var sOff = oneway ? 0 : s * (w / 4 + (R.dbl - R.edgeIn) / 2), sWid = oneway ? w - 2 * R.edgeIn : w / 2 - R.edgeIn - R.dbl, psb = at(su, sOff);
+                        rect('w', psb[0], psb[1], d.x, d.z, R.stopW, sWid);
+                        if ((b - a) < room2 + (jA && jB ? 2 : 1) * (R.arrowBack + R.arrowLen) + 2) return;
+                        var au = su - s * (R.stopW / 2 + R.arrowBack + R.arrowLen / 2), nl = oneway ? lanes : Math.max(1, Math.floor(lanes / 2));
+                        for (var q3 = 0; q3 < nl; q3++) {
+                            /* q3 = 0 is the lane nearest the driver's left (the middle line, or the twin's side) */
+                            var off = oneway ? ps * (w / 2 - R.lane / 2 - q3 * R.lane) : s * (R.lane / 2 + q3 * R.lane);
+                            if (!oneway && lanes < 2) off = 0;
+                            var kd = nl === 1 ? 's' : q3 === 0 ? 'sl' : q3 === nl - 1 ? 'sr' : 's', pa = at(au, off);
+                            out.push({ k: 'a', kind: kd, x: pa[0], z: pa[1], dx: d.x * s, dz: d.z * s, len: R.arrowLen, wid: R.arrowW });
+                        }
+                    });
+                });
+            }
+        }
+        return out;
+    }
+    /* the pack's worn paint as a see-through sheet: the fill sheet's dark, worn-off patches become holes the asphalt shows through */
+    var _hqRoadPaintTexCache = {};
+    function _hqRoadPaintTex(name, onReady) {
+        var hit = _hqRoadPaintTexCache[name]; if (hit) { if (hit.ready) onReady(hit.cv); else hit.wait.push(onReady); return; }
+        var rec = _hqRoadPaintTexCache[name] = { ready: false, wait: [onReady], cv: null };
+        var url = (typeof URBAN_TEXTURES !== 'undefined') ? URBAN_TEXTURES[name] : null; if (!url || typeof Image === 'undefined') return;
+        var im = new Image(); im.crossOrigin = 'anonymous';
+        im.onload = function () {
+            try {
+                var cv = document.createElement('canvas'); cv.width = im.width; cv.height = im.height; var cx = cv.getContext('2d'); cx.drawImage(im, 0, 0);
+                var D = cx.getImageData(0, 0, cv.width, cv.height), p = D.data, n = p.length / 4, sum = 0, i;
+                for (i = 0; i < n; i++) sum += (p[i * 4] + p[i * 4 + 1] + p[i * 4 + 2]) / 765;
+                var mean = sum / n, lo = mean * 0.72, hi = mean * 0.97, gain = 0.8 / mean;
+                for (i = 0; i < n; i++) {
+                    var l = (p[i * 4] + p[i * 4 + 1] + p[i * 4 + 2]) / 765, t = Math.max(0, Math.min(1, (l - lo) / (hi - lo))); t = t * t * (3 - 2 * t);
+                    p[i * 4] = Math.min(255, p[i * 4] * gain); p[i * 4 + 1] = Math.min(255, p[i * 4 + 1] * gain); p[i * 4 + 2] = Math.min(255, p[i * 4 + 2] * gain); p[i * 4 + 3] = Math.round(255 * (0.3 + 0.7 * t));
+                }
+                cx.putImageData(D, 0, 0); rec.cv = cv; rec.ready = true; rec.wait.forEach(function (f) { try { f(cv); } catch (e) {} }); rec.wait = [];
+            } catch (e) { console.warn('[HQ] the road paint sheet could not be read', name, e); }
+        };
+        im.src = url;
+    }
+    /* the arrows' sheet: three cells of 128 x 256 (straight · straight + left · straight + right), a cell's top = the way the lane drives */
+    function _hqRoadArrowCanvas(fill) {
+        var cv = document.createElement('canvas'); cv.width = 384; cv.height = 256; var x = cv.getContext('2d');
+        var poly = function (pts) { x.beginPath(); pts.forEach(function (p, i) { if (i) x.lineTo(p[0], p[1]); else x.moveTo(p[0], p[1]); }); x.closePath(); x.fill(); };
+        x.fillStyle = '#fff';
+        var straight = function (ox, cx2) { poly([[ox + cx2 - 9, 246], [ox + cx2 + 9, 246], [ox + cx2 + 9, 96], [ox + cx2 + 30, 96], [ox + cx2, 10], [ox + cx2 - 30, 96], [ox + cx2 - 9, 96]]); };
+        var branch = function (ox, cx2, sd) {   /* a hooked arm off the shaft, its head pointing to the side */
+            var X = function (v) { return ox + cx2 + sd * v; };
+            poly([[X(0), 205], [X(34), 172], [X(34), 150], [X(60), 150], [X(60), 172], [X(0), 232]].map(function (q) { return q; }));
+            poly([[X(26), 152], [X(47), 104], [X(68), 152]]);
+        };
+        straight(0, 64);
+        straight(128, 78); branch(128, 78, -1);
+        straight(256, 50); branch(256, 50, 1);
+        if (fill) { x.globalCompositeOperation = 'source-in'; var pt = x.createPattern(fill, 'repeat'); if (pt) { x.fillStyle = pt; x.fillRect(0, 0, 384, 256); } x.globalCompositeOperation = 'source-over'; }
+        return cv;
+    }
+    var _hqRoadPaintLast = null;
+    function _hqBuildRoadPaint(room, info, G, style) {
+        var plan = info.genPlan; if (!plan || !plan.streets || !plan.streets.length || typeof THREE === 'undefined') return null;
+        var U = _hqUnits(), R = HQ_ROAD2, lift = 0.02, med = [];
+        (info.arch || []).forEach(function (r) { var m = r.median; if (m && m.length >= 4) { med.push([(+r.x || 0) + m[0], (+r.z || 0) + m[1]]); med.push([(+r.x || 0) + m[2], (+r.z || 0) + m[3]]); } });
+        var prims = _hqRoadPaintPlan(plan.streets, info.pads || [], med, style);
+        var hAt = function (x, z) { var y = hqTerrainHeight(info, x, z); return (y == null || y !== y) ? 0 : y; };
+        var buckets = {}, bucket = function (key) { return buckets[key] || (buckets[key] = { pos: [], uv: [], idx: [], n: 0 }); };
+        /* a rectangle on the ground, cut where the ground under it changes its slope (0.875 m, the lattice's step) and never drawn up a step.
+           uv(al, ac, x, z): al 0..1 along, ac 0..1 across (0 = the left of the way it points) */
+        var drape = function (B, q, uv) {
+            var nx = -q.dz, nz = q.dx, cols = Math.max(1, Math.ceil(q.wid / 1.75 - 0.01)), nS = Math.max(1, Math.ceil(q.len / 0.875 - 0.01));
+            for (var c = 0; c < cols; c++) {
+                var o0 = -q.wid / 2 + q.wid * c / cols, o1 = -q.wid / 2 + q.wid * (c + 1) / cols, hs = [], us = [];
+                for (var s = 0; s <= nS; s++) { var u = -q.len / 2 + q.len * s / nS; us.push(u); hs.push([hAt(q.x + q.dx * u + nx * o0, q.z + q.dz * u + nz * o0), hAt(q.x + q.dx * u + nx * o1, q.z + q.dz * u + nz * o1)]); }
+                var a = 0;
+                while (a < nS) {
+                    var b = a + 1;
+                    while (b < nS) {   /* carry on while every sample between lies on the straight line a .. b + 1 */
+                        var okL = true; for (var m = a + 1; m <= b && okL; m++) { var f = (us[m] - us[a]) / (us[b + 1] - us[a]); if (Math.abs(hs[a][0] + (hs[b + 1][0] - hs[a][0]) * f - hs[m][0]) > 0.012 || Math.abs(hs[a][1] + (hs[b + 1][1] - hs[a][1]) * f - hs[m][1]) > 0.012) okL = false; }
+                        if (!okL) break; b++;
+                    }
+                    var du = us[b] - us[a];
+                    if (!(b === a + 1 && Math.max(Math.abs(hs[b][0] - hs[a][0]), Math.abs(hs[b][1] - hs[a][1])) > 0.45 * du + 0.03)) {
+                        var C = [[us[a], o0, hs[a][0]], [us[b], o0, hs[b][0]], [us[b], o1, hs[b][1]], [us[a], o1, hs[a][1]]];
+                        for (var v = 0; v < 4; v++) { var wx = q.x + q.dx * C[v][0] + nx * C[v][1], wz = q.z + q.dz * C[v][0] + nz * C[v][1], t = uv((C[v][0] + q.len / 2) / q.len, (C[v][1] + q.wid / 2) / q.wid, wx, wz); B.pos.push(wx * U, (C[v][2] + lift) * U + 0.3, wz * U); B.uv.push(t[0], t[1]); }
+                        B.idx.push(B.n, B.n + 2, B.n + 1, B.n, B.n + 3, B.n + 2); B.n += 4;
+                    }
+                    a = b;
+                }
+            }
+        };
+        var planar = function (al, ac, x, z) { return [x / 7, -z / 7]; }, cell = { s: 0, sl: 1, sr: 2 };
+        prims.forEach(function (q) {
+            if (q.k === 'r') drape(bucket(q.c), q, planar);
+            else if (q.k === 'a') { var ci = cell[q.kind] || 0; drape(bucket('arrow'), q, function (al, ac) { return [(ci + ac) / 3, al]; }); }
+            else if (q.k === 't') drape(bucket('t:' + q.sheet), q, function (al, ac) { return [q.mu ? 1 - ac : ac, al]; });
+        });
+        var grp = new THREE.Group(); grp._ew_hqRoadPaint = style;
+        var mesh = function (key, mat, order) {
+            var B = buckets[key]; if (!B || !B.n) return;
+            var g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(B.pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(B.uv, 2));
+            g.setIndex(B.n > 65535 ? new THREE.Uint32BufferAttribute(B.idx, 1) : new THREE.Uint16BufferAttribute(B.idx, 1)); g.computeVertexNormals();
+            g._ew_wuvOwner = true;   /* a road tile is one picture of two lanes (7 m): THE ONE PIXEL DENSITY must not shrink it to a sheet a square */
+            var m = new THREE.Mesh(g, mat); m.renderOrder = order; m.receiveShadow = true; m._ew_hqRoadMark = true; grp.add(m);
+        };
+        var decal = function (color, opacity) { var m = new THREE.MeshLambertMaterial({ color: color, transparent: true, opacity: opacity, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }); m.emissive = new THREE.Color(0x2a2924); return m; };
+        var canvasTex = function (cv, rep) { var t = new THREE.CanvasTexture(cv); if (rep) { t.wrapS = THREE.RepeatWrapping; t.wrapT = THREE.RepeatWrapping; } t.anisotropy = 8; return t; };
+        if (style === 'sheet') {
+            var tint = (room.terrain && room.terrain.floorTint) ? new THREE.Color(room.terrain.floorTint) : new THREE.Color(0xffffff);
+            Object.keys(buckets).forEach(function (key) {
+                if (key.indexOf('t:') !== 0) return;
+                var url = (typeof URBAN_TEXTURES !== 'undefined') ? URBAN_TEXTURES[key.slice(2)] : null, tex = url ? textureLoader.load(url) : null;   /* its own copy: the room's shared sheet carries the field's repeat */
+                if (tex) { tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; tex.anisotropy = 8; }
+                var m = new THREE.MeshLambertMaterial({ map: tex || null, color: tint, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1.5, polygonOffsetUnits: -1.5 });
+                mesh(key, m, 2);
+            });
+        } else {
+            var worn = style === 'pack', mW = decal(worn ? 0xffffff : R.white, worn ? 1 : 0.9), mY = decal(worn ? 0xffffff : R.yellow, worn ? 1 : 0.92), mA = decal(worn ? 0xffffff : R.white, worn ? 1 : 0.9);
+            if (worn) {
+                mW.color.setHex(R.white); mY.color.setHex(R.yellow); mA.color.setHex(R.white);   /* flat until the pack's sheets land */
+                _hqRoadPaintTex('RoadGeneric1b', function (cv) { mW.map = canvasTex(cv, true); mW.color.setHex(0xffffff); mW.needsUpdate = true; mA.map = canvasTex(_hqRoadArrowCanvas(cv), false); mA.color.setHex(0xffffff); mA.needsUpdate = true; });
+                _hqRoadPaintTex('RoadGeneric1c', function (cv) { mY.map = canvasTex(cv, true); mY.color.setHex(0xffc24a); mY.needsUpdate = true; });   /* the pack's yellow is pale once lit: tinted deeper */
+            } else mA.map = canvasTex(_hqRoadArrowCanvas(null), false);
+            mY.emissive = new THREE.Color(0x2c2204);
+            mesh('w', mW, 3); mesh('y', mY, 3); mesh('arrow', mA, 3);
+        }
+        G.add(grp);
+        if (typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ] road paint', style, 'pieces', prims.length, 'quads', Object.keys(buckets).reduce(function (s, k) { return s + buckets[k].n / 4; }, 0));
+        return grp;
+    }
+    /* the live switch (the console): ewRoads('sheet' | 'pack' | 'clean' | 'old') redraws the room's road paint in place */
+    function _hqRoadPaintSwitch(style) {
+        var L = _hqRoadPaintLast; if (typeof window !== 'undefined') window.EW_ROAD_STYLE = style;
+        if (!L || !L.G || !L.G.parent) return 'no city room is up';
+        var now = _hqRoadStyle();
+        if (L.grp) { L.G.remove(L.grp); L.grp.traverse(function (o) { if (o.geometry) o.geometry.dispose(); if (o.material) { if (o.material.map && o.material.map.isCanvasTexture) o.material.map.dispose(); o.material.dispose(); } }); L.grp = null; }
+        if (L.old) L.old.visible = now === 'old';
+        if (now !== 'old') L.grp = _hqBuildRoadPaint(L.room, L.info, L.G, now);
+        return 'roads: ' + now;
+    }
+    if (typeof window !== 'undefined') window.ewRoads = _hqRoadPaintSwitch;
     /* THE STREET LAMPS: on the kerb of every street of the plan, alternating sides every `every` metres, clear of the doors' lanes */
     function _hqBuildStreetLamps(room, info, G, TM, rng) {
         var U = _hqUnits(), plan = (info.genPlan && info.genPlan.streets) ? info.genPlan : ((info.lamps && info.lamps.length) ? { streets: [] } : null);   /* a room with no city plan but lamps of its own (2026-11-22, the raised highway: `terrain.gen.lamps`) wears the same lamp */
