@@ -41074,6 +41074,11 @@
            flavour of their own; Phase 5 replaces them with real directors.
            ═══════════════════════════════════════════════════════════════════ */
         const SPELL_DIRECTOR_ROWS = {
+            /* ── THE LEPRECHAUN + THE MEDIC + THE MARTIAN GIRL (2026-11-27): the big hits catch a beat ── */
+            lpPotOfGold:         { slow: [0.4, 300] },
+            mdMalpractice:       { slow: [0.45, 260] },
+            mdDefibrillator:     { slow: [0.4, 300] },
+            goBrainProbe:        { slow: [0.5, 240] },
             /* ── THE DEMIURGE'S CATACLYSMS (2026-11-27): the hit's own beat: time catches, then lets go ── */
             dmSerpentStrike:     { slow: [0.45, 260] },
             dmCompassSweep:      { slow: [0.4, 300] },

@@ -106,10 +106,14 @@ const CAST = (todo) => {
   const LOADING = () => { const vis = e => e && e.offsetParent && getComputedStyle(e).opacity > 0.1; return [...document.querySelectorAll('.ls-status, .ls-hint')].some(vis) || [...document.querySelectorAll('div,span')].some(e => e.childElementCount === 0 && /TAP TO SKIP/.test(e.textContent) && vis(e)); };
   for (let i = 0; i < 480; i++) { if (!(await page.evaluate(LOADING).catch(() => true))) break; if (i % 30 === 0) console.log('loading…'); await page.evaluate(() => { try { window.maybeAdvanceTurn(); } catch (e) {} }).catch(() => {}); await sleep(1000); }
   /* every P1 unit carries its race's whole kit (a random loadout holds 4 of them): the rows go on the unit as the game builds them */
+  await page.evaluate((units) => { window.__kitUnits = units; }, UNITS);
+  await sleep(6000);
   const todo = await page.evaluate((want) => {
     const st = window.GAME.state, all = [];
+    let k = 0;
     for (const u of st.units) {
       if (u.player !== 1) continue;
+      if (window.__kitUnits && window.__kitUnits[k]) u.gender = window.__kitUnits[k].gender; k++;
       const kit = (window.RACE_ABILITIES && window.RACE_ABILITIES[u.race]) || [];
       const off = (typeof window.raceGenderOffSpellIds === 'function') ? window.raceGenderOffSpellIds(u.race, u.gender) : [];
       const mine = kit.filter(s => off.indexOf(s.id) < 0 && /^(lp|md|go(Hypno|Brain))/.test(s.id));

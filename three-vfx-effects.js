@@ -70952,7 +70952,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var heartG = new THREE.Group(); heartG.rotation.y = Math.atan2(cd.x, cd.z); F.g.add(heartG);
         var heart = _pzMesh(new THREE.ShapeGeometry(_pzHeartShape(ts * 0.22)), _pzGlow(_LMX.pink), heartG, 0, 0, 0);
         var heartRim = _pzMesh(new THREE.ShapeGeometry(_pzHeartShape(ts * 0.28)), _pzGlow(C[0]), heartG, 0, 0, -ts * 0.01);
-        var shell = _pzMesh(new THREE.SphereGeometry(ts * 0.5, 24, 16), _pzGlow(C[0]), F.g, 0, ts * 0.5, 0);
+        var shell = _pzMesh(new THREE.SphereGeometry(ts * 0.42, 24, 16), _pzGlow(C[0]), F.g, 0, ts * 0.5, 0);
         var motes = _lmxSparks(F, 10, null, [_LMX.pink, C[0]], { size: 0.07, r: 0.45, up: 0.8, y0: 0.2, spread: 400, ms: 900 });
         return _sigRunOwned(F.g, 1800, function (el) {
             var vis = _pzEnv(el, 0, 60, 1300, 1800), pop = _sigEaseOutBack(_sigClamp01(el / 320));
@@ -70960,7 +70960,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             heartG.scale.setScalar(Math.max(0.05, pop) * (1 + 0.08 * Math.sin(el * 0.02)));
             heart.material.opacity = 0.85 * vis; heartRim.material.opacity = 0.45 * vis;
             var close = _sigEaseOutCubic(_sigClamp01((el - 200) / 400));
-            shell.scale.setScalar(Math.max(0.05, 1.5 - 0.5 * close)); shell.material.opacity = 0.16 * vis * close;
+            shell.scale.setScalar(Math.max(0.05, 1.5 - 0.5 * close)); shell.material.opacity = 0.08 * vis * close;
             motes(el, vis);
         });
     };
