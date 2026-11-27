@@ -132,6 +132,7 @@ const NUT = { race: 'nutcracker', spells: ['ncClack', 'ncQuickMarch', 'ncCrackOp
   }
   await sleep(2500);
   const RAM = { race: 'monster truck', spells: ['mtRam'], at: [4, 7], foes: [[8, 7], [12, 12], [13, 12]], steps: [ { name: 'ram0', spell: 'mtRam', at: 'foe0' }, { name: 'drive', move: [5, 7] }, { name: 'ram1', spell: 'mtRam', at: 'foe0', from: [5, 7] } ] };
+  if (process.env.CLOSE) await page.evaluate((c) => { window.__kitClose = c; }, JSON.parse(process.env.CLOSE));
   const kits = KIT === 'ram' ? [RAM] : KIT === 'truck' ? [TRUCK] : KIT === 'nut' ? [NUT] : [TRUCK, NUT];
   const report = [];
   for (const K of kits) {
@@ -167,6 +168,7 @@ const NUT = { race: 'nutcracker', spells: ['ncClack', 'ncQuickMarch', 'ncCrackOp
         else if (S.at === 'foe0') { tx = foes[0].x; ty = foes[0].y; }
         else if (S.at === 'foe1near') { const f = foes[1]; f.x = c.x + 1; f.y = c.y; if (st.units.some(u => u !== f && !u.dead && u.x === f.x && u.y === f.y)) { f.x = c.x; f.y = c.y + 1; } try { f.z = getHeightAt(f.x, f.y); } catch (e) {} tx = f.x; ty = f.y; }
         else { tx = S.at[0]; ty = S.at[1]; }
+        if (window.__kitClose) { st.cinematicActionCam = false; try { camera.snap(Object.assign({ _force: true, x: c.x, y: c.y }, window.__kitClose)); } catch (e) {} }
         const sp = c.spells.find(s => s.id === S.spell);
         st.actionMode = 'spell'; st.selectedTool = sp.name;
         let why = null; try { why = (window.TargetQuery && TargetQuery.spellBlockReason) ? TargetQuery.spellBlockReason(c, sp) : null; } catch (e) { why = 'err ' + e.message; }

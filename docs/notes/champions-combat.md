@@ -6689,4 +6689,13 @@ AVAILABLE_RACES (data.js + server.js), codex lore, the VFX and the spell moves o
 - VFX: three-vfx-effects.js "THE MONSTER TRUCK + THE NUTCRACKER" (fang rows, tyre tracks + exhaust, the slam's crack + dust ring, the
   burnout's skid circle + fire ring + smoke; wooden jaws, a gold crack, walnut shards, the Suite's gold waltz ring + sugar-pink snow).
   Seat colour rings like the bear's. Kill switch `EW_NO_MTNC_VFX`.
+- THE PARTS MOVE (three-renderer.js): the truck's own clips in `_MT_POSES` (`animSlot` on the rows): `mtChomp` (nose up, hood wide,
+  snap, a second bite), `mtRam` (squat + rev, wheels a blur, lunge with the jaw open, shut at the crash), `mtHop` (struts squat, leap,
+  slam, bounce), `mtBurnout` (front braked, `spinR` = the back axle only, body shudders, jaw roars). `_mtClip` takes `spinF` / `spinR`
+  (one axle's extra turn) beside `spin`. The nutcracker's jaw: `ThreeRenderer.jawAct(uid, 'clack'|'crack'|'march'|'suite', ms)`
+  (`_jawPat` inside `_jawTick`), fired on the windup beat by three-vfx-effects.js `_NC_SPELL_ACTS` (online.js relays windup).
+- Burnout has `vfxElement: 'fire'`, not `element: 'fire'`: the fire element lit the grass under the truck and burnt it.
+- THE KIT PROBE `playtest_kit.js` (KIT=truck|nut|both|ram, CLOSE='{"zoom":2.6,"tilt":58,"yaw":30}', PICS=ms,...): real game, a VS CPU
+  board, the kit cast in a row with Revs / Cracks / HP / push read after each step. A target out of the team's sight is refused
+  ("Out of sight"), a blocked charge says "Terrain blocks the spell path": the probe's fixed squares, not the spell.
 - LEFT OUT ON PURPOSE (no lore invented): element affinity, home zone, biomes, residents, NPC temperament, story place.
