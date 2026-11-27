@@ -585,6 +585,7 @@ const RACE_SPRITE_GENDERS = {
   'farmer': 'male',   // 2026-11-19 THE COMING RACES
   'jellyfish ufo': 'male',   // 2026-11-19 THE COMING RACES
   'bear': 'both',   // 2026-11-23 THE COMING RACES 2; THE BEAR'S COATS (11-23): the grizzly is the male side, the polar bear the female side
+  'demiurge': 'both',   // 2026-11-26 THE DEMIURGE: the armoured form is the male side, the cosmic form the female side (data.js RACE_PROFILES coats)
   'rat': 'male',   // 2026-11-23 THE COMING RACES 2
   'monarch': 'female',   // 2026-11-23 THE COMING RACES 2
   'butterfly girl': 'female',   // 2026-11-23 THE COMING RACES 2
@@ -795,6 +796,7 @@ const _CHARACTER_SPRITES = {
   'farmer': `${_S}/Races/farmer/male/farmer_px.png`,   // 2026-11-19 THE COMING RACES — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'jellyfish ufo': `${_S}/Races/jellyfish_ufo/male/jellyfish_ufo_px.png`,   // 2026-11-19 THE COMING RACES — 128x128 pixel sprite (Sprite AI restyle of its 3D model's front render)
   'bear': `${_S}/Races/bear/male/bear_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'demiurge': 'https://cdn.entropywars.net/Assets/characters/races/demiurge/armoured/demiurge_armoured_px.png',   // 2026-11-26 THE DEMIURGE — 128x128 sprite (its 3D model's front render)
   'rat': `${_S}/Races/rat/male/rat_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'monarch': `${_S}/Races/monarch/female/monarch_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'butterfly girl': `${_S}/Races/butterfly_girl/female/butterfly_girl_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
@@ -930,6 +932,7 @@ const _NEW_FEMALE_SPRITES = {
   'pharaoh': `${_S}/Races/pharaoh/female/pharaoh_f_px.png`,   // 2026-11-19 — Cleopatra (Sprite AI restyle of her model's front render)
   'mech': `${_S}/Races/mech/female/mech_f2_px2.png`,   // straight-on: Sprite AI restyle of her model's front render (the concept was turned)
   'bear': `${_S}/Races/bear/polar/bear_polar_px.png`,   // 2026-11-23 THE BEAR'S COATS — the polar bear (the race's female side)
+  'demiurge': 'https://cdn.entropywars.net/Assets/characters/races/demiurge/cosmic/demiurge_cosmic_px.png',   // 2026-11-26 THE DEMIURGE — the cosmic form (the race's female side)
   'streamer': `${_S}/Races/streamer/female/egirl_f_px.png`,   // 2026-11-19 — 128x128 pixel sprite (Sprite AI restyle of the E-Girl's 3D model's front render)
   'weatherman': `${_S}/Races/weatherman/female/news_anchor_px.png`,   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR — the News Anchor (Sprite AI restyle of her Meshy concept)
   'centaur': `${_S}/Races/centaur/female/centaur_f_px.png`,   // 2026-11-24 THE CENTAUR — the female (Sprite AI restyle of her built model)
@@ -2837,6 +2840,31 @@ const RACE_MODELS_3D = {
     female: _mkUAL('bear/polar', 'bear_polar', {
       model: 'https://cdn.entropywars.net/Assets/characters/races/bear/polar/Meshy_AI_bear_polar_Running.glb',
       heightRatio: 1.3, basicAttackKind: 'claw',
+    }),
+  },
+  /* ⬛ THE DEMIURGE (2026-11-26, mondo's boss: "the original creator of the black cube"; Meshy made him in loose parts, the concepts
+     thread, project files boss-concepts/). ONE race, TWO forms picked like a gender: the ARMOURED dragon knight (male side, physical)
+     and the COSMIC god (female side, magic). Each is a library-animated Meshy body wearing THE UNIT GEAR (wings beating, the staff
+     in the hand) + his own parts (`gear.demi`, three-renderer.js THE DEMIURGE): the black cube turning in the staff's cage; the
+     armoured form's two shoulder serpents, bladed tail and horn crest; the cosmic form's halo, robe on spring bones, two void eyes
+     and three orbiting cubes. Files: bake-demiurge.js (raw 10-14 MB -> 0.3-3 MB). */
+  'demiurge': {
+    male: _mkUAL('demiurge/armoured', 'demiurge_armoured', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/demiurge/armoured/Meshy_AI_demiurge_armoured_Running.glb',
+      procRig: 'unitGear', gear: {
+        wings: { url: 'https://cdn.entropywars.net/Assets/characters/gear/demiurge/dm_wing_armoured.glb', root: 1, lift: 0.3 }, wingLen: 0.62,
+        held: { url: 'https://cdn.entropywars.net/Assets/characters/gear/demiurge/dm_staff.glb', len: 0.95, grip: 0.36 },
+        demi: { form: 'armoured', cube: 'https://cdn.entropywars.net/Assets/characters/gear/demiurge/dm_cube.glb', snake: 'https://cdn.entropywars.net/Assets/characters/gear/demiurge/dm_snake.glb', tail: 'https://cdn.entropywars.net/Assets/characters/gear/demiurge/dm_tail.glb', horn: 'https://cdn.entropywars.net/Assets/characters/gear/demiurge/dm_horn.glb', hornRot: [-0.5, 0, 0], hornSize: 0.17, hornLift: -0.03, hornFwd: -0.01 } },
+      heightRatio: 1.45, basicAttackKind: 'slash',
+    }),
+    female: _mkUAL('demiurge/cosmic', 'demiurge_cosmic', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/demiurge/cosmic/Meshy_AI_demiurge_cosmic_Running.glb',
+      procRig: 'unitGear', gear: {
+        wings: { url: 'https://cdn.entropywars.net/Assets/characters/gear/demiurge/dm_wing_cosmic.glb', root: -1, lift: 0.3 }, wingLen: 0.62,
+        halo: 'https://cdn.entropywars.net/Assets/characters/gear/demiurge/dm_halo.glb', haloSize: 0.26, haloLift: 0.06,
+        held: { url: 'https://cdn.entropywars.net/Assets/characters/gear/demiurge/dm_staff.glb', len: 0.9, grip: 0.2 },
+        demi: { form: 'cosmic', cube: 'https://cdn.entropywars.net/Assets/characters/gear/demiurge/dm_cube.glb', robe: 'https://cdn.entropywars.net/Assets/characters/gear/demiurge/dm_robe.glb', eye: 'https://cdn.entropywars.net/Assets/characters/gear/demiurge/dm_eye.glb' } },
+      heightRatio: 1.5, basicAttackKind: 'magic',
     }),
   },
   'rat': {
@@ -7716,6 +7744,7 @@ const RACE_SPRITES = {
   'farmer': `${_S}/Races/farmer/male/farmer_px.png`,   // 2026-11-19 THE COMING RACES — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'jellyfish ufo': `${_S}/Races/jellyfish_ufo/male/jellyfish_ufo_px.png`,   // 2026-11-19 THE COMING RACES — 128x128 pixel sprite (Sprite AI restyle of its 3D model's front render)
   'bear': `${_S}/Races/bear/male/bear_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
+  'demiurge': 'https://cdn.entropywars.net/Assets/characters/races/demiurge/armoured/demiurge_armoured_px.png',   // 2026-11-26 THE DEMIURGE — 128x128 sprite (its 3D model's front render)
   'rat': `${_S}/Races/rat/male/rat_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'monarch': `${_S}/Races/monarch/female/monarch_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'butterfly girl': `${_S}/Races/butterfly_girl/female/butterfly_girl_px.png`,   // 2026-11-23 THE COMING RACES 2 — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)

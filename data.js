@@ -412,6 +412,7 @@ const FINISHERS = {
     'gladiator':      { id: 'fin_gladiator', name: 'Pollice Verso', glyph: '🛡', type: 'human', sig: 'thousandCuts', built: true, tagline: 'THE CROWD HAS SPOKEN', desc: 'The sand goes quiet, every face in the stands turns to the box, and the thumb goes down.' },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) (borrows the thousandCuts staging)
     'monarch':        { id: 'fin_monarch', name: 'Sweet Dreams', glyph: '🦋', type: 'anomaly', sig: 'lullaby', built: true, tagline: 'SLEEP NOW, AGENT', desc: 'The wings close round the victim like a chrysalis, the spiral turns on its shell, and when it cracks open only monarch butterflies come out.' },   // 2026-11-23 THE MONARCH (mondo OK'd the kit) (borrows the lullaby staging)
     'bear':           { id: 'fin_bear', name: 'Mauled', glyph: '🐻', type: 'anomaly', sig: 'blurryFootage', built: true, tagline: 'YOU POKED THE BEAR', desc: 'The trees part, the bear stands up to its full height, and it comes down on the victim with everything it has.' },   // 2026-11-23 THE BEAR (mondo OK'd the kit) (borrows the blurryFootage staging)
+    'demiurge':       { id: 'fin_demiurge', name: 'Unmade', glyph: '⬛', type: 'divine', sig: 'heatDeath', built: true, tagline: 'BACK INTO THE CUBE', desc: 'He made it. He can take it back. The victim is folded up, corner by corner, and put away in the black cube.' },   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms) (borrows the heatDeath staging; the name is a first pass)
     'abomination':    { id: 'fin_abomination', name: 'Too Much Body', glyph: '🫀', type: 'anomaly', sig: 'blurryFootage', built: true, tagline: 'IT HAS MORE ARMS THAN YOU', desc: 'Every arm, every tentacle and every mouth it has comes down on the victim at once, and then it is a little bigger.' },   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name) (borrows the blurryFootage staging)
     'farmer':         { id: 'fin_farmer', name: 'Reap What You Sow', glyph: '🌾', type: 'human', sig: 'gardenVariety', built: true, tagline: 'HARVEST TIME', desc: 'The field comes up all at once round the victim, and the pitchfork comes down with the season.' },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) (borrows the gardenVariety staging)
     'jellyfish ufo':  { id: 'fin_jellyfish_ufo', name: 'Abyssal Glow', glyph: '🪼', type: 'anomaly', sig: 'theBloom', built: true, tagline: 'LIGHTS IN THE DEEP', desc: 'The bell lights the victim from the inside like the things that live in the dark, brighter and brighter, then everything goes dark.' },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) (borrows the theBloom staging)
@@ -3148,6 +3149,18 @@ const RACE_PROFILES = {
         coats: { male: '🌲', female: '❄' },
         types: ['anomaly']
     },
+    'demiurge': {   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms)
+        label: 'Demiurge',
+        /* THE TWO FORMS (mondo 11-26: "one character but with 2 forms, and you can pick either, kinda like the male/female split ...
+           both forms would have different stats, like one is more physical attack and the other is more magic attack"): the
+           armoured dragon knight is the race's male side, the cosmic god its female side (the Bear's coats pattern), so each
+           form keeps its own spells (RACE_GENDER_SPELLS), its own stats (RACE_GENDER_STATS) and its own model, and a team may
+           bring one of each. `coats` replaces the ♂ / ♀ marks. */
+        labelMale: 'Armoured Demiurge',
+        labelFemale: 'Cosmic Demiurge',
+        coats: { male: '⚔', female: '✦' },
+        types: ['divine', 'anomaly']
+    },
     'abomination': {   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name)
         label: 'Abomination',
         types: ['anomaly']
@@ -4106,7 +4119,7 @@ const RACE_MERGED = { 'nun': { race: 'priest', gender: 'female' } };
 /* 👁🌑 THE REALM WINDOW: races that SEE a Shadow Realm pair on their own turns (they cannot touch it). A projecting
    spirit both sees and touches (battle.js unitSeesRealm / unitCrossesRealm). */
 const REALM_SIGHT_RACES = ['ghost', 'shadow entity'];
-const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber', 'pharaoh', 'deep sea diver', 'gambler', 'hacker', 'monk', 'shogun', 'cameraman', 'mechanic', 'janitor', 'trucker', 'gladiator', 'farmer', 'jellyfish ufo', 'bear', 'rat', 'butterfly girl', 'plastic surgeon', 'monarch', 'abomination', 'hollow', 'weatherman', 'cheerleader', 'point guard', 'centaur', 'music producer', 'princess'];
+const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber', 'pharaoh', 'deep sea diver', 'gambler', 'hacker', 'monk', 'shogun', 'cameraman', 'mechanic', 'janitor', 'trucker', 'gladiator', 'farmer', 'jellyfish ufo', 'bear', 'rat', 'butterfly girl', 'plastic surgeon', 'monarch', 'abomination', 'hollow', 'weatherman', 'cheerleader', 'point guard', 'centaur', 'music producer', 'princess', 'demiurge'];
 /* THE COMING RACES (2026-11-19, mondo: "wire them in the game at least in the relation web, give them sprite ai portraits ... my associate
    [does] their spell and combat plan on another account"): races whose model, sprite and name are in (sprites.js RACE_MODELS_3D,
    RACE_PROFILES) but whose kit is not. They are NOT playable: the Relationship Web lists them (docs/plans/story-web/build/fresh.js).
@@ -4308,6 +4321,7 @@ const RACE_CLASS = {
     'gladiator': 'bruiser',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
     'monarch': 'specialist',   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
     'bear': 'bruiser',   // 2026-11-23 THE BEAR (mondo OK'd the kit)
+    'demiurge': 'bruiser',   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms)
     'abomination': 'bruiser',   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name)
     'farmer': 'support',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): the field heals the team
     'lifeguard': 'support',   // 2026-11-16
@@ -4391,6 +4405,7 @@ const RACE_TERRAIN_PREFERENCE = {
     'gladiator': 'desert',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): the arena's sand
     'monarch': 'urban',   // 2026-11-23 THE MONARCH (mondo OK'd the kit): the D.U.M.B.'s halls
     'bear': 'mountain',   // 2026-11-23 THE BEAR (mondo OK'd the kit): the grizzly's slopes, the polar's ice field
+    'demiurge': 'wasteland',   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms): the cosmic wraith's ground, a first pass
     'abomination': 'wasteland',   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name): the rot, the drains, the dark
     'farmer': 'grass',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): the fields
     'jellyfish ufo': 'deep_water',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): a sea creature: never drowns (map.js unitIsDeepWaterAdapted)
@@ -4814,6 +4829,7 @@ const RACE_BASE_STATS = {
     'gladiator':          { hp: 1180, mp: 120, atk: 104, def: 120, mdef:  85, int:  60, vision: 3, crt: 20, spd: 115 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — first pass on the bruiser median; LAB LOOP 11-22 PASS 2: HP 1250→1180, ATK 135→104 (64.9% over 113 games)
     'monarch':            { hp: 1000, mp: 210, atk:  95, def:  85, mdef: 140, int: 165, vision: 4, crt: 24, spd: 120 },   // 2026-11-23 THE MONARCH (mondo OK'd the kit) — first pass on the specialist median
     'bear':               { hp: 1320, mp: 100, atk: 147, def: 120, mdef:  60, int:  70, vision: 3, crt: 15, spd: 105 },   // 2026-11-23 THE BEAR (mondo OK'd the kit) — first pass on the bruiser median: big and slow, soft to magic; LAB LOOP 11-23 PASS 2: HP 1250→1320, ATK 125→147 (37.4% over 136 games)
+    'demiurge':           { hp: 1260, mp: 130, atk: 140, def: 125, mdef:  90, int:  70, vision: 3, crt: 16, spd: 100 },   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms) — the ARMOURED form (physical), first pass on the bruiser median; the COSMIC form's row is RACE_GENDER_STATS below
     'abomination':        { hp: 1250, mp: 150, atk: 144, def: 110, mdef:  90, int:  72, vision: 3, crt: 12, spd:  80 },   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name) — first pass from the plan: slow, heavy, its limbs are its shield; LAB LOOP 11-23 PASS 2: HP 1300→1250, ATK 150→144, M.ATK 90→72 (59.3% over 135 games)
     'farmer':             { hp: 1100, mp: 170, atk: 110, def: 105, mdef: 100, int: 115, vision: 3, crt: 15, spd: 100 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — first pass on the support median
     'jellyfish ufo':      { hp: 1030, mp: 150, atk: 105, def: 120, mdef: 130, int: 62, vision: 3, crt: 18, spd: 105 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — first pass: a bruiser with claws on ATK and the bell on M.ATK; LAB LOOP 11-22 PASS 1: HP 1200→1150, ATK 125→119, M.ATK 125→106 (68.6% over 49 games); LAB LOOP 11-22 PASS 2: HP 1150→1080, ATK 119→111, M.ATK 106→82 (70.1% over 62 games); LAB LOOP 11-22 PASS 4: HP 1080→1030, ATK 111→105, M.ATK 82→62 (60.3% over 131 games)
@@ -4861,6 +4877,18 @@ const RACE_BASE_STATS = {
    fall damage (×0.5 feather … ×1.5 colossal), and crash-through (feathers
    bounce off blocks, heavies also smash through stone). Armored/equipped
    races list their fighting weight, gear included. */
+/* THE FORM STATS (2026-11-26 THE DEMIURGE, mondo: "both forms would have different stats, like one is more physical attack and the
+   other is more magic attack"): a race whose two sides are different fighters gives one side its own stat row here; the other
+   side keeps RACE_BASE_STATS[race]. raceBaseStats(race, gender) is the one read; computeUnitStats takes the gender. The Balance
+   Lab and the race editor still read and write the RACE_BASE_STATS row (the first side). */
+const RACE_GENDER_STATS = {
+    'demiurge': { female: { hp: 1040, mp: 220, atk:  60, def:  85, mdef: 135, int: 172, vision: 4, crt: 18, spd:  95 } },   // the COSMIC form (magic), first pass on the caster median
+};
+function raceBaseStats(race, gender) {
+    const g = RACE_GENDER_STATS[race];
+    return (g && gender && g[gender]) || RACE_BASE_STATS[race] || RACE_BASE_STATS['door agent'];
+}
+if (typeof window !== 'undefined') { window.RACE_GENDER_STATS = RACE_GENDER_STATS; window.raceBaseStats = raceBaseStats; }
 const RACE_PHYSIQUE = {
     'homosapien':          { h: 1.75, w: 75 },
     'pirate':              { h: 1.80, w: 85 },
@@ -5013,6 +5041,7 @@ const RACE_PHYSIQUE = {
     'gladiator':           { h: 1.82, w: 88 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
     'monarch':             { h: 1.72, w: 58 },   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
     'bear':                { h: 2.40, w: 360 },   // 2026-11-23 THE BEAR (mondo OK'd the kit): stood up on its hind legs
+    'demiurge':            { h: 2.60, w: 180 },   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms)
     'abomination':         { h: 3.10, w: 420 },   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name): the assembled body is 3.1 m from the floor to the top of its head
     'farmer':              { h: 1.78, w: 85 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
     'jellyfish ufo':       { h: 1.90, w: 60 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — a bell over a metal body; floats
@@ -5113,8 +5142,8 @@ function raceJumpStat(race, spd) {
     return (spd == null ? 50 : spd) < JUMP_SPD_FROM ? 1 : 2;
 }
 
-function computeUnitStats(race, cls, zodiac) {
-    const base0 = RACE_BASE_STATS[race] || RACE_BASE_STATS['door agent'];
+function computeUnitStats(race, cls, zodiac, gender) {   // `gender` (2026-11-26 THE DEMIURGE): a form's own stat row (RACE_GENDER_STATS)
+    const base0 = raceBaseStats(race, gender);
     /* the birth sign's natal changes (ZODIAC_EFFECTS[sign].natal) ride on the base, so the level formula scales them too */
     const base = zodiac && ZODIAC_EFFECTS[zodiac] ? Object.assign({}, base0) : base0;
     if (base !== base0) ZODIAC_NATAL_KEYS.forEach(k => { const d = zodiacNatalDelta(zodiac, k); if (d) base[k] = Math.max(k === 'hp' ? 1 : 0, (base[k] || 0) + d); });
@@ -11762,6 +11791,44 @@ const RACE_ABILITIES = {
         { id: 'nrCrowdPleaser', name: 'Crowd Pleaser', tier: 4, families: ['gladiatorial'], cost: 90, apCost: 1, cooldownRounds: 4, spellType: 'human',
           element: 'metal', type: 'damage', kind: 'aoe', damageType: 'physical', dmg: 150, range: 0, aoeRadius: 1, aoeOriginSelf: true, favorSpend: 50,
           desc: 'For the crowd. Deals HEAVY physical damage to every enemy next to him and spends all his Favor: +50 damage for each. Cooldown: 4 rounds.' },
+    ],
+    'demiurge': [
+        /* ⬛ THE DEMIURGE (2026-11-26, mondo: "this guy is like the original creator of the black cube, the demiurge, cosmic abilities,
+           spiritual abilities, the architect, sacred geometry, fractal math, etc for his powers ... one character but with 2 forms ...
+           one is more physical attack and the other is more magic attack"). FIRST PASS: plain rows on rules the game already has, so
+           both forms can be played and their parts seen moving; the names and numbers are his to change, and a rule of his own
+           waits for his plan. Each rung is one of each form (RACE_GENDER_SPELLS). The loose parts move with the casts:
+           three-renderer.js THE DEMIURGE (`_DM_SPELL_ACTS`). Notes: docs/notes/champions-combat.md "THE DEMIURGE". */
+        /* the ARMOURED form (the race's male side): physical */
+        { id: 'dmSerpentStrike', name: 'Serpent Strike', tier: 1, families: ['demiurgy'], cost: 25, apCost: 1, spellType: 'divine',
+          element: 'poison', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 85, range: 2,
+          statusEffects: [{ id: 'poison', duration: 2 }],
+          desc: 'The serpents on his shoulders strike as one. Deals WEAK physical damage to a Single Enemy within 2 and Poisons it for 2 rounds.' },
+        { id: 'dmCompassSweep', name: 'Compass Sweep', tier: 2, families: ['demiurgy'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'divine',
+          element: 'metal', type: 'damage', kind: 'aoe', damageType: 'physical', dmg: 115, range: 0, aoeRadius: 1, aoeOriginSelf: true,
+          statusEffects: [{ id: 'bleed', duration: 2 }],
+          desc: 'He turns once and the bladed tail draws a perfect circle. Deals MEDIUM physical damage to every enemy next to him and makes them Bleed for 2 rounds. Cooldown: 2 rounds.' },
+        { id: 'dmCornerstone', name: 'Cornerstone', tier: 3, families: ['demiurgy'], cost: 75, apCost: 1, cooldownRounds: 2, spellType: 'divine',
+          element: 'earth', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 150, range: 4,
+          statusEffects: [{ id: 'stagger', duration: 1 }],
+          desc: 'The black cube leaves its cage and is laid on one enemy like the first stone of a temple. Deals HEAVY physical damage to a Single Enemy within 4 and Staggers it for 1 round. Cooldown: 2 rounds.' },
+        { id: 'dmGoldenSpiral', name: 'Golden Spiral', tier: 4, families: ['demiurgy'], cost: 95, apCost: 1, cooldownRounds: 3, spellType: 'divine',
+          element: 'metal', type: 'damage', kind: 'aoe', damageType: 'physical', dmg: 165, range: 3, aoeRadius: 1, statStageBoost: { def: -1 },
+          desc: 'Wings, tail and staff cut the same curve, each turn wider than the last by the golden ratio. Deals HEAVY physical damage to All Enemies in a 3×3 within 3 and lowers their DEF by 1 stage. Cooldown: 3 rounds.' },
+        /* the COSMIC form (the race's female side): magic */
+        { id: 'dmVoidGaze', name: 'Void Gaze', tier: 1, families: ['demiurgy'], cost: 25, apCost: 1, spellType: 'divine', vfxElement: 'shadow',
+          type: 'damage', kind: 'line', damageType: 'magic', dmg: 95, range: 4, lineWidth: 1,
+          statusEffects: [{ id: 'slow', duration: 1 }],
+          desc: 'The two void eyes open and look down one line. Deals WEAK magic damage to All Enemies in a 4-square line and Slows them for 1 round.' },
+        { id: 'dmFractalBloom', name: 'Fractal Bloom', tier: 2, families: ['demiurgy'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'divine', vfxElement: 'arcane',
+          type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 115, range: 4, aoeRadius: 1, statStageBoost: { mdef: -1 },
+          desc: 'A pattern that holds a smaller copy of itself, and a smaller one in that. Deals MEDIUM magic damage to All Enemies in a 3×3 within 4 and lowers their M.DEF by 1 stage. Cooldown: 2 rounds.' },
+        { id: 'dmAsAbove', name: 'As Above, So Below', tier: 3, families: ['demiurgy'], cost: 75, apCost: 1, cooldownRounds: 2, spellType: 'divine', vfxElement: 'light',
+          type: 'damage', kind: 'lifeDrain', damageType: 'magic', dmg: 130, range: 4, drainPct: 0.5,
+          desc: 'The halo tilts and what the enemy loses below, he gains above. Deals MEDIUM magic damage to a Single Enemy within 4 and heals him for half of it. Cooldown: 2 rounds.' },
+        { id: 'dmTesseract', name: 'Tesseract', tier: 4, families: ['demiurgy'], cost: 100, apCost: 2, cooldownRounds: 3, spellType: 'divine', vfxElement: 'shadow',
+          type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 170, range: 5, aoeRadius: 2, statusEffects: [{ id: 'slow', duration: 1 }],
+          desc: 'The black cube unfolds into the cube it is the shadow of. Deals HEAVY magic damage to All Enemies in a 5×5 within 5 and Slows them for 1 round. Cooldown: 3 rounds.' },
     ],
     'monarch': [
         /* 🦋 THE PROGRAMMING (2026-11-23 THE MONARCH (mondo OK'd the kit)): every spell of hers puts Programmed stacks on enemies (STATUS_DEFS programmed, up
@@ -22221,6 +22288,7 @@ const EW_RACE_BIOMES = {
     'gladiator': ['ancient', 'stadium'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — the Colosseum
     'monarch': ['underground_base', 'clandestine'],   // 2026-11-23 THE MONARCH (mondo OK'd the kit) — the D.U.M.B.
     'bear': ['forest', 'polar'],   // 2026-11-23 THE BEAR (mondo OK'd the kit) — the grizzly in the woods, the polar bear on the ice
+    'demiurge': ['space', 'astral'],   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms) — the cosmic wraith's skies, a first pass
     'abomination': ['underground_base', 'deep_sea'],   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name) — The Sewers, The Deep's Trench
     'farmer': ['ranch', 'forest'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — the Estate's Corn Fields + Ranch
     'jellyfish ufo': ['deep_sea', 'tropical'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — The Deep (the Trench)
@@ -22908,6 +22976,7 @@ const RACE_TREE = {
     'gladiator':     ['nrNetToss', ['nrSwordLunge', 'nrShieldBash'], 'nrComeAtMe', 'nrCrowdPleaser'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
     'monarch':       ['monButterflyKiss', ['monPendulum', 'monKaleidoscopeWings'], ['monTriggerWord', 'monSleeperCell'], ['monMetamorphosis', 'monChaosTheory']],   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
     'bear':          ['brPawSwipe', ['raceBite', 'raceMaul'], ['brBearHug', 'brHibernate'], 'brBearDown'],   // 2026-11-23 THE BEAR (mondo OK'd the kit)
+    'demiurge':      [['dmSerpentStrike', 'dmVoidGaze'], ['dmCompassSweep', 'dmFractalBloom'], ['dmCornerstone', 'dmAsAbove'], ['dmGoldenSpiral', 'dmTesseract']],   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms): every rung is one of each form (RACE_GENDER_SPELLS)
     'abomination':   ['abGrasp', 'abManyMouths', 'abBoneCage', 'abUnfold'],   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name): its own four
     'farmer':        ['nrPitchforkJab', ['nrSowField', 'nrHayBale'], 'nrGetOffMyLand', 'nrHarvestMoon'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
     'jellyfish ufo': ['nrPincerClaw', ['nrBioLash', 'nrJetPulse'], 'nrVenomInjector', 'nrAbyssalOverload'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
@@ -23566,6 +23635,10 @@ const RACE_GENDER_SPELLS = {
     'weatherman': {   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: no spell is shared
         male:   ['wnColdFront', 'wnSevereWeather', 'wnStormTracker', 'wnStormOfCentury'],   // the Weatherman: the sky
         female: ['wnTopStory', 'wnExclusive', 'wnFakeNews', 'wnPrimeTime'],                  // the News Anchor: the show
+    },
+    'demiurge': {   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms): no spell is shared
+        male:   ['dmSerpentStrike', 'dmCompassSweep', 'dmCornerstone', 'dmGoldenSpiral'],   // the Armoured form: the Architect's tools, physical
+        female: ['dmVoidGaze', 'dmFractalBloom', 'dmAsAbove', 'dmTesseract'],               // the Cosmic form: the eyes, the halo, the cubes, magic
     },
     'bear': {   // 2026-11-23 THE BEAR (mondo OK'd: the polar bear gets "some spells in the ice family", the grizzly "a few nature spells too")
         male:   ['raceThornlash', 'raceTreelineRetreat', 'passivePhotosynthesis'],   // the Grizzly: the forest bear
@@ -25273,6 +25346,16 @@ const SPELL_FAMILIES = {
         desc: 'Small flaps now, a twister later: every Flutter she leaves grows by itself, owl eyes that send divers running, and one flap that speeds everything up.',
         unique: 'butterfly girl',
         identity: { who: ['Butterfly Girl', 'Morpho', 'Collector'], adj: ['Iridescent', 'Fluttering', 'Chaotic'], look: ['huge blue morpho wings', 'curled antennae', 'blue to violet hair'], vibe: ['every flap she makes grows into a storm', 'gone in a blue flash'] }
+    },
+    demiurgy: {   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms) — both forms' own
+        id: 'demiurgy',
+        name: 'Demiurgy',
+        glyph: '⬛',
+        color: '#e0304a',
+        kind: 'signature',
+        desc: 'The maker of the black cube at work: serpents, compass and cornerstone in his armour; the void eyes, the halo and the cubes as a god.',
+        unique: 'demiurge',
+        identity: { who: ['Demiurge', 'Architect', 'Maker'], adj: ['Bone-White', 'Geometric', 'Patient'], look: ['bone armour seamed in red', 'a staff with a black cube turning in its cage', 'wings of starfield'], vibe: ['measured everything before he made it', 'thinks the world is his draft'] }
     },
     bear: {   // 2026-11-23 THE BEAR (mondo OK'd the kit) — both coats' own
         id: 'bear',
@@ -27601,6 +27684,7 @@ const RACE_FAMILIES = {
     'gladiator': ['gladiatorial', 'swordsmanship', 'weaponstraining', 'humangrit'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
     'monarch': ['monarchprogramming', 'seduction', 'spygear', 'deepstate'],   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
     'bear': ['bear', 'beastabilities', 'apexpredator', 'nature', 'ice'],   // 2026-11-23 THE BEAR (mondo OK'd the kit): Nature is the grizzly's, Ice the polar bear's (RACE_GENDER_SPELLS)
+    'demiurge': ['demiurgy', 'cosmic', 'fractal', 'astral', 'ancientknowledge'],   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms): mondo's themes (cosmic, spiritual, the architect, sacred geometry, fractal math)
     'abomination': ['abomination', 'nightmares', 'cosmic', 'shadow'],   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name)
     'farmer': ['farming', 'agriculture', 'humangrit', 'teamwork'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
     'jellyfish ufo': ['bioelectric', 'jellyfish', 'lightning', 'deepsea'],   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
@@ -28263,6 +28347,7 @@ const CAMPAIGN_RACE_PRICES = {
   'gladiator': 400,   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
   'monarch': 450,   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
   'bear': 450,   // 2026-11-23 THE BEAR (mondo OK'd the kit)
+  'demiurge': 900,   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms)
   'abomination': 450,   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name)
   'farmer': 350,   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
   'jellyfish ufo': 400,   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)

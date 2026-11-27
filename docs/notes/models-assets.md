@@ -2317,3 +2317,9 @@ scaled 0.01): the first file (`..._wings_Running.glb`) used a plain -root invers
   Strings (the limbs pull in), Bloom (the shards flare), Wake (the maw opens wide, all limbs reach), hit, death.
   `_hlUnitTick` (per unit, after the mixer) hides one orbit mask per mask out (units with `_maskSrcId` = the Hollow and `status.masked`)
   and seats a worn mask (`ewHlWornMask`, userData.ewGear) on each Masked unit's head bone (fallback 0.86 of its height).
+
+## THE DEMIURGE'S PARTS (2026-11-26)
+`node bake-demiurge.js <raw models dir> <out dir>` (needs `npm i --no-save @gltf-transform/core@4 @gltf-transform/extensions@4
+@gltf-transform/functions@4 meshoptimizer sharp`): the two rigged bodies + ten parts from project files `boss-concepts/models/`, textures to
+WebP 1024, parts simplified, and bones written offline: the serpent and the tail get a 9-bone chain, the robe a root + 8 columns x 5 joints
+named for THE SWAY. Upload with `node sync-zip.js --put`. How they hang and move: champions-combat.md "THE DEMIURGE".
