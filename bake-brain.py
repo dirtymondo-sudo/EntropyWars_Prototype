@@ -270,12 +270,12 @@ root = node({'name': 'ewBbRoot', 'children': []})
 body = node({'name': 'ewBbBody', 'translation': [float(x) for x in PIV], 'children': []})
 nodes[root]['children'].append(body)
 nodes[body]['children'].append(node({'name': 'ewBbBrain', 'mesh': mesh('ewBbBrain', prim_of(bodyP - PIV, N[bu], UV[bu], bi, 0))}))
-EYE_R = ER * 0.985
+EYE_R = ER * 0.95
 bp, bn, bu2, bix = ball_mesh(EYE_R)
 nodes[body]['children'].append(node({'name': 'ewBbEye', 'translation': [float(x) for x in (EC - PIV)], 'mesh': mesh('ewBbEye', prim_of(bp, bn, bu2, bix, 1))}))
-LID_OPEN = 54.0
+LID_OPEN = 60.0
 for nm, up in (('ewBbLidU', 1), ('ewBbLidD', -1)):
-    lp, ln, lu, li = lid_mesh(ER * 1.03, up)
+    lp, ln, lu, li = lid_mesh(ER * 1.10, up)   # well clear of the ball (0.95): at 1.03 over 0.985 the two flickered through each other in a blink (mondo 11-27)
     h = math.radians(-up * LID_OPEN) / 2                # rest = open: swung back under the rim
     nodes[body]['children'].append(node({'name': nm, 'translation': [float(x) for x in (EC - PIV)], 'rotation': [math.sin(h), 0, 0, math.cos(h)],
                                           'mesh': mesh(nm, prim_of(lp, ln, lu, li, 2))}))
