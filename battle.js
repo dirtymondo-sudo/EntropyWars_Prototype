@@ -8998,6 +8998,15 @@
             ultimate: { source: 1.62, target: 1.55, shot: 'lowHero' },
         };
         const _STAGE_FALLBACK = { weight: 'standard', archetype: 'arcane' };
+        /* THE DEMIURGE'S CATACLYSMS (2026-11-27, mondo: "the final epic boss ... modern final fantasy esque epic JRPG boss battle
+           spell animations"): a row may stretch its own camera holds with `stagePace` (data.js; 1.4 = the charge and the hit
+           each held 40 % longer than the weight gives), so a boss spell has the time its set piece needs. Timing only: both
+           seats read the same row, the beats and the shot are relayed as ever (RULE #2). */
+        function _stagePaceOf(spell, st) {
+            const b = _STAGE_PACE[st && st.weight] || _STAGE_PACE.standard;
+            const k = spell ? +spell.stagePace : 0;
+            return (k > 0 && k !== 1) ? { source: b.source * k, target: b.target * k, shot: b.shot } : b;
+        }
 
         function _spellStageInfo(spell) {
             if (!spell || !spell.id) return _STAGE_FALLBACK;
@@ -9259,7 +9268,7 @@
             if (state.cameraDisabled && state.devAutoSim) return;
 
             const st = _spellStageInfo(spell);
-            const pace = _STAGE_PACE[st.weight] || _STAGE_PACE.standard;
+            const pace = _stagePaceOf(spell, st);
             const profile = _animProfile(spell);
 
             // Where the payload lands. True self-casts stage on the caster;
@@ -9406,7 +9415,7 @@
             const spell = (typeof SPELL_BY_ID !== 'undefined' && SPELL_BY_ID[spellId]) || null;
             if (!spell) return { launchMs: 1250, impactMs: 1610, weight: 'standard' };
             const st = _spellStageInfo(spell);
-            const pace = _STAGE_PACE[st.weight] || _STAGE_PACE.standard;
+            const pace = _stagePaceOf(spell, st);
             const profile = _animProfile(spell);
             const offensive = profile.camera === 'offensive';
             const sourceHold = Math.round(1250 * pace.source);
@@ -41059,6 +41068,15 @@
            flavour of their own; Phase 5 replaces them with real directors.
            ═══════════════════════════════════════════════════════════════════ */
         const SPELL_DIRECTOR_ROWS = {
+            /* ── THE DEMIURGE'S CATACLYSMS (2026-11-27): the hit's own beat: time catches, then lets go ── */
+            dmSerpentStrike:     { slow: [0.45, 260] },
+            dmCompassSweep:      { slow: [0.4, 300] },
+            dmCornerstone:       { slow: [0.3, 340], freeze: 110 },
+            dmGoldenSpiral:      { slow: [0.35, 380], freeze: 110 },
+            dmVoidGaze:          { slow: [0.45, 260] },
+            dmFractalBloom:      { slow: [0.4, 320] },
+            dmAsAbove:           { slow: [0.35, 360] },
+            dmTesseract:         { slow: [0.3, 420], freeze: 140 },
             /* ── the bare capstones: a grade / an insert / a void each ── */
             empBurst:            { grade: 'terminal', gradeMs: 800, insert: ['SIGNAL LOST', 'glitch', 900] },
             requiem:             { void: 'abyss', voidMs: 1300 },
@@ -42194,6 +42212,87 @@
             const c = _spellDirCtx('capstone', { ...ctx, spell, log });
             c.own();
             _capstoneDirector(c);
+            _spellDirFlavour(c);
+            return true;
+        }
+
+        /* ═══ THE DEMIURGE'S CATACLYSMS, the camera (2026-11-27, mondo: "the final epic boss ... use cinematography, vfx, animations,
+           sky events, background changing ... modern final fantasy esque epic JRPG boss battle spell animations") ═══
+           Each of his eight spells names its own shots, on the capstones' pattern but with its own beat times: a boss charge
+           is long (data.js `stagePace`) and the set piece (three-vfx-effects.js THE DEMIURGE'S CATACLYSMS) stands in the SKY
+           or across the whole footprint, so the lens goes where the piece is: up at the cube before it falls, straight down on
+           the spiral while it draws, along the gaze. Every beat rides c.at through _cineBeatMove / _cineHardCut, so THE SHOT
+           GRAMMAR, THE CLEAR SHOT and the frame guard rule them as any shot; every shot is fog-gated (c.vis), the stock hit
+           is the fallback. d = { a caster, t target, H the charge, T the cut, I the impact, r the blast radius }.
+           Viewer-local like every director (the guest resolves the same row on the relayed shot, RULE #2).
+           Kill switch: window.EW_NO_DEMI_DIRECTOR = true (the family director, as before). */
+        const DEMI_DIRECTOR_SHOTS = {
+            // the serpents rise behind him: a low hero angle, then the strike on the body and a slow push
+            dmSerpentStrike: (c, d) => {
+                c.at(actionMs(90), () => _capFace(c, d.a, { dist: 2.7, tilt: 68 }), 'dmOpen');
+                c.at(d.T, () => c.stockHit(), 'dmPay');
+                c.at(d.I + actionMs(260), () => c.push(1.1, actionMs(520)), 'dmPush');
+            },
+            // the compass stands over him while the lens circles; the circle is read from straight above
+            dmCompassSweep: (c, d) => {
+                c.at(actionMs(90), () => _capOrbit(c, d, 24, { tilt: 82, dist: 3.4 }), 'dmOpen');
+                c.at(d.T, () => { if (!c.vis(d.a)) return c.stockHit(); cineGodShot(d.a, 5, { tilt: 26 }); c.push(1.12, actionMs(700)); }, 'dmPay');
+            },
+            // the cube leaves the cage; look UP at the stone over the target, come down with it; then the crater
+            dmCornerstone: (c, d) => {
+                c.at(actionMs(90), () => _capFace(c, d.a, { dist: 2.5, tilt: 74 }), 'dmOpen');
+                const up = Math.max(actionMs(700), d.I - actionMs(1150));
+                c.at(up, () => { if (!c.vis(d.t)) return c.stockHit(); cineSkyWatch(d.t, { ms: Math.max(actionMs(400), d.I - up + actionMs(60)), span: 5, tiltUp: 114, tiltDown: 66 }); }, 'dmSky');
+                c.at(d.I + actionMs(900), () => { if (c.vis(d.t)) cineGodShot(d.t, 5, { tilt: 28, cut: false, duration: 460 }); }, 'dmAfter');
+            },
+            // wings out; then straight down on the spiral while it draws, pushing in; the pillar from the floor
+            dmGoldenSpiral: (c, d) => {
+                c.at(actionMs(90), () => _capFace(c, d.a, { dist: 2.8, tilt: 70 }), 'dmOpen');
+                const dn = Math.max(actionMs(700), Math.round(d.H * 0.42));
+                c.at(dn, () => { if (!c.vis(d.t)) return c.stockHit(); cineGodShot(d.t, d.r * 2 + 5, { tilt: 16 }); c.push(1.16, Math.max(actionMs(300), d.I - dn)); }, 'dmDown');
+            },
+            // the eyes, close; then the gaze across the frame
+            dmVoidGaze: (c, d) => {
+                c.at(actionMs(90), () => _capFace(c, d.a, { dist: 2.2, tilt: 78 }), 'dmOpen');
+                c.at(d.T, () => { if (!c.vis(d.t)) return c.stockHit(); cineSideDolly(d.a, d.t, { mode: 'hold', tilt: 80 }); }, 'dmPay');
+            },
+            // the seed is read from above while it multiplies, the lens sinking into it
+            dmFractalBloom: (c, d) => {
+                c.at(actionMs(90), () => _capFace(c, d.a, { dist: 2.6, tilt: 76 }), 'dmOpen');
+                const dn = Math.max(actionMs(650), d.T - actionMs(650));
+                c.at(dn, () => { if (!c.vis(d.t)) return c.stockHit(); cineGodShot(d.t, d.r * 2 + 4, { tilt: 34 }); c.push(1.15, Math.max(actionMs(300), d.I - dn + actionMs(300))); }, 'dmDown');
+            },
+            // the halo tilts and the lens rises; down the column with what is taken; back to him as he is given it
+            dmAsAbove: (c, d) => {
+                c.at(actionMs(90), () => _capCrane(c, d, { tilt: 102, rise: 2.2 }), 'dmOpen');
+                const up = Math.max(actionMs(750), d.I - actionMs(1000));
+                c.at(up, () => { if (!c.vis(d.t)) return c.stockHit(); cineSkyWatch(d.t, { ms: Math.max(actionMs(400), d.I - up + actionMs(80)), span: 4, tiltUp: 112, tiltDown: 68 }); }, 'dmSky');
+                c.at(d.I + actionMs(1150), () => { const u = c.live(d.a); if (u && c.vis(u)) cineGlamCam(u, { duration: 380 }); }, 'dmAfter');
+            },
+            // the cube leaves him; look up at the hypercube turning over the field, come down as it unfolds; then all of it from above
+            dmTesseract: (c, d) => {
+                c.at(actionMs(90), () => _capFace(c, d.a, { dist: 2.6, tilt: 72 }), 'dmOpen');
+                const up = Math.max(actionMs(800), Math.round(d.H * 0.4));
+                c.at(up, () => { if (!c.vis(d.t)) return c.stockHit(); cineSkyWatch(d.t, { ms: Math.max(actionMs(500), d.I - up - actionMs(120)), span: d.r * 2 + 4, tiltUp: 116, tiltDown: 78 }); }, 'dmSky');
+                // it comes down across the whole footprint and black stone stands up out of it: that is read from far above, never from inside it
+                c.at(d.I - actionMs(60), () => { if (!c.vis(d.t)) return c.stockHit(); cineGodShot(d.t, d.r * 2 + 7, { tilt: 34 }); c.push(1.08, actionMs(1400)); }, 'dmPay');
+            }
+        };
+        function _demiSeq(ctx) {
+            if (window.EW_NO_DEMI_DIRECTOR || window.EW_DISABLE_SPELL_DIRECTOR) return false;
+            const spell = ctx.spell || _cineSpellById(ctx.spellId);
+            const row = spell && DEMI_DIRECTOR_SHOTS[spell.id];
+            if (!row) return false;
+            let log = null;
+            for (let i = SpellDirector.log.length - 1; i >= 0; i--) {
+                if (SpellDirector.log[i].seq === ctx.sequenceId) { log = SpellDirector.log[i]; break; }
+            }
+            const c = _spellDirCtx('demiurge', { ...ctx, spell, log });
+            c.own();
+            const d = { a: c.caster, t: c.target || c.caster, H: Math.max(actionMs(300), c.timings.sourceHold), T: c.cut, I: c.impact,
+                r: Math.max(1, spell.aoeRadius || spell.radius || 1) };
+            if (c.log) c.log.capstone = spell.id;
+            row(c, d);
             _spellDirFlavour(c);
             return true;
         }
@@ -43586,6 +43685,8 @@
 
         /* THE CAPSTONES (Phase 6): each ultimate's own director — one
            literal line per id (check-spell-presentation.js counts them) */
+        /* THE DEMIURGE'S CATACLYSMS (2026-11-27): his eight spells' own director */
+        Object.keys(DEMI_DIRECTOR_SHOTS).forEach(id => { CINE_SEQUENCES[id] = _demiSeq; });
         CINE_SEQUENCES.rampart = _capSeq;
         CINE_SEQUENCES.revive1 = _capSeq;
         CINE_SEQUENCES.leechSeed = _capSeq;
@@ -44183,6 +44284,18 @@
                (the guest re-resolves the same bespoke sequence locally). */
             const _cineSpellIdForShot = opts.spellId || _cineCurrentSpellId(sourceUnit);
             if (_cineSpellIdForShot && !opts.spellId) opts.spellId = _cineSpellIdForShot;
+            /* THE DEMIURGE'S CATACLYSMS (2026-11-27): a boss row's `stagePace` (data.js) stretches the shot's two holds here, once,
+               whichever kind's branch asked for the shot (each kind passes holds of its own); the branches read the holds back
+               from the shot for their hit, so the hit moves with it. The stretched holds are what the host relays, so a guest's
+               replay is marked already paced (online.js). */
+            if (!opts._ewPaced) {
+                opts._ewPaced = true;
+                const _pk = _cineSpellIdForShot ? +((_cineSpellById(_cineSpellIdForShot) || {}).stagePace) : 0;
+                if (_pk > 0 && _pk !== 1) {
+                    opts.sourceHold = Math.round((opts.sourceHold ?? 1250) * _pk);
+                    opts.targetHold = Math.round((opts.targetHold ?? 1000) * _pk);
+                }
+            }
 
             /* A bare {x, y} tile with a body standing (or FLYING) on it is
                that body. Tile-targeted casts (Call of the Deep, every

@@ -3175,6 +3175,34 @@ const RACE_PROFILES = {
         label: 'Monarch',
         types: ['human', 'anomaly']   // 2026-11-23 THE MONARCH (mondo OK'd the kit): a woman the D.U.M.B. reprogrammed
     },
+    'monster truck': {   // 2026-11-27 THE NEW CHARACTERS (models in, kit not yet: the spell thread sets the type for good) — a living truck
+        label: 'Monster Truck',
+        types: ['tech', 'anomaly']
+    },
+    'nutcracker': {   // 2026-11-27 THE NEW CHARACTERS (models in, kit not yet: the spell thread sets the type for good) — a living wooden soldier
+        label: 'Nutcracker',
+        types: ['anomaly']
+    },
+    'leopard girl': {   // 2026-11-27 THE NEW CHARACTERS (models in, kit not yet: the spell thread sets the type for good)
+        label: 'Leopard Girl',
+        types: ['anomaly']
+    },
+    'draconian': {   // 2026-11-27 THE NEW CHARACTERS (models in, kit not yet: the spell thread sets the type for good) — the dragon-kin of the reptilians
+        label: 'Draconian',
+        types: ['alien']
+    },
+    'flower girl': {   // 2026-11-27 THE NEW CHARACTERS (models in, kit not yet: the spell thread sets the type for good)
+        label: 'Flower Girl',
+        types: ['anomaly']
+    },
+    'leprechaun': {   // 2026-11-27 THE NEW CHARACTERS (models in, kit not yet: the spell thread sets the type for good) — male + female
+        label: 'Leprechaun',
+        types: ['anomaly']
+    },
+    'medic': {   // 2026-11-27 THE NEW CHARACTERS (models in, kit not yet: the spell thread sets the type for good) — the male is the Doctor, the female the Nurse
+        label: 'Medic',
+        types: ['human']
+    },
     'butterfly girl': {   // 2026-11-23 THE COMING RACES 2
         label: 'Butterfly Girl',
         types: ['anomaly']   // 2026-11-23 THE BUTTERFLY GIRL: settled (her kit is Anomaly)
@@ -4129,7 +4157,7 @@ const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scie
    AVAILABLE_RACES and server.js AVAILABLE_RACES. Notes: docs/notes/champions-combat.md "THE COMING RACES". */
 /* THE WEATHERMAN's FORECAST (2026-11-24 THE WEATHERMAN + NEWS ANCHOR): the weather never hurts or soaks him (state.js applyWeatherTurnEffects + stormStrikeUnit) */
 function wnWeatherproof(u) { return !!u && u.race === 'weatherman' && (u.gender || 'male') === 'male' && unitHasPassive(u, 'wnTheForecast'); }   /* Broken = no passives = no shelter */
-const EW_COMING_RACES = [];   // 2026-11-23 THE COMING RACES 2 (the Mannequin was cut 11-23, mondo; the Bear, the Rat, the Butterfly Girl and the Monarch got their kits 11-23 and moved to AVAILABLE_RACES) (models in, kits not yet; one spell thread a unit). 2026-11-19: the gladiator, the farmer and the jellyfish UFO got their kits and moved to AVAILABLE_RACES
+const EW_COMING_RACES = ['monster truck', 'nutcracker', 'leopard girl', 'draconian', 'flower girl', 'leprechaun', 'medic'];   // 2026-11-27 THE NEW CHARACTERS (models + sprites in, kits being made by three spell threads; each moves its key into AVAILABLE_RACES here AND in server.js with its kit).   // 2026-11-23 THE COMING RACES 2 (the Mannequin was cut 11-23, mondo; the Bear, the Rat, the Butterfly Girl and the Monarch got their kits 11-23 and moved to AVAILABLE_RACES) (models in, kits not yet; one spell thread a unit). 2026-11-19: the gladiator, the farmer and the jellyfish UFO got their kits and moved to AVAILABLE_RACES
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
    default job's kit (JOB_KITS) gave it, so ranged races stay ranged: the old Sniper races reach 4 (kit 3 + the Sniper's
@@ -11860,34 +11888,36 @@ const RACE_ABILITIES = {
            both forms can be played and their parts seen moving; the names and numbers are his to change, and a rule of his own
            waits for his plan. Each rung is one of each form (RACE_GENDER_SPELLS). The loose parts move with the casts:
            three-renderer.js THE DEMIURGE (`_DM_SPELL_ACTS`). Notes: docs/notes/champions-combat.md "THE DEMIURGE". */
+        /* THE DEMIURGE'S CATACLYSMS (2026-11-27): `stagePace` stretches a row's camera holds (battle.js _stagePaceOf): the final
+           boss's set pieces (three-vfx-effects.js THE DEMIURGE'S CATACLYSMS) get the time they need. Looks and timing only. */
         /* the ARMOURED form (the race's male side): physical */
-        { id: 'dmSerpentStrike', name: 'Serpent Strike', tier: 1, families: ['demiurgy'], cost: 25, apCost: 1, spellType: 'divine',
+        { id: 'dmSerpentStrike', stagePace: 1.15, name: 'Serpent Strike', tier: 1, families: ['demiurgy'], cost: 25, apCost: 1, spellType: 'divine',
           element: 'poison', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 85, range: 2,
           statusEffects: [{ id: 'poison', duration: 2 }],
           desc: 'The serpents on his shoulders strike as one. Deals WEAK physical damage to a Single Enemy within 2 and Poisons it for 2 rounds.' },
-        { id: 'dmCompassSweep', name: 'Compass Sweep', tier: 2, families: ['demiurgy'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'divine',
+        { id: 'dmCompassSweep', stagePace: 1.6, name: 'Compass Sweep', tier: 2, families: ['demiurgy'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'divine',
           element: 'metal', type: 'damage', kind: 'aoe', damageType: 'physical', dmg: 115, range: 0, aoeRadius: 1, aoeOriginSelf: true,
           statusEffects: [{ id: 'bleed', duration: 2 }],
           desc: 'He turns once and the bladed tail draws a perfect circle. Deals MEDIUM physical damage to every enemy next to him and makes them Bleed for 2 rounds. Cooldown: 2 rounds.' },
-        { id: 'dmCornerstone', name: 'Cornerstone', tier: 3, families: ['demiurgy'], cost: 75, apCost: 1, cooldownRounds: 2, spellType: 'divine',
+        { id: 'dmCornerstone', stagePace: 1.3, name: 'Cornerstone', tier: 3, families: ['demiurgy'], cost: 75, apCost: 1, cooldownRounds: 2, spellType: 'divine',
           element: 'earth', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 150, range: 4,
           statusEffects: [{ id: 'stagger', duration: 1 }],
           desc: 'The black cube leaves its cage and is laid on one enemy like the first stone of a temple. Deals HEAVY physical damage to a Single Enemy within 4 and Staggers it for 1 round. Cooldown: 2 rounds.' },
-        { id: 'dmGoldenSpiral', name: 'Golden Spiral', tier: 4, families: ['demiurgy'], cost: 95, apCost: 1, cooldownRounds: 3, spellType: 'divine',
+        { id: 'dmGoldenSpiral', stagePace: 1.6, name: 'Golden Spiral', tier: 4, families: ['demiurgy'], cost: 95, apCost: 1, cooldownRounds: 3, spellType: 'divine',
           element: 'metal', type: 'damage', kind: 'aoe', damageType: 'physical', dmg: 165, range: 3, aoeRadius: 1, statStageBoost: { def: -1 },
           desc: 'Wings, tail and staff cut the same curve, each turn wider than the last by the golden ratio. Deals HEAVY physical damage to All Enemies in a 3×3 within 3 and lowers their DEF by 1 stage. Cooldown: 3 rounds.' },
         /* the COSMIC form (the race's female side): magic */
-        { id: 'dmVoidGaze', name: 'Void Gaze', tier: 1, families: ['demiurgy'], cost: 25, apCost: 1, spellType: 'divine', vfxElement: 'shadow',
+        { id: 'dmVoidGaze', stagePace: 1.5, name: 'Void Gaze', tier: 1, families: ['demiurgy'], cost: 25, apCost: 1, spellType: 'divine', vfxElement: 'shadow',
           type: 'damage', kind: 'line', damageType: 'magic', dmg: 95, range: 4, lineWidth: 1,
           statusEffects: [{ id: 'slow', duration: 1 }],
           desc: 'The two void eyes open and look down one line. Deals WEAK magic damage to All Enemies in a 4-square line and Slows them for 1 round.' },
-        { id: 'dmFractalBloom', name: 'Fractal Bloom', tier: 2, families: ['demiurgy'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'divine', vfxElement: 'arcane',
+        { id: 'dmFractalBloom', stagePace: 1.6, name: 'Fractal Bloom', tier: 2, families: ['demiurgy'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'divine', vfxElement: 'arcane',
           type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 115, range: 4, aoeRadius: 1, statStageBoost: { mdef: -1 },
           desc: 'A pattern that holds a smaller copy of itself, and a smaller one in that. Deals MEDIUM magic damage to All Enemies in a 3×3 within 4 and lowers their M.DEF by 1 stage. Cooldown: 2 rounds.' },
-        { id: 'dmAsAbove', name: 'As Above, So Below', tier: 3, families: ['demiurgy'], cost: 75, apCost: 1, cooldownRounds: 2, spellType: 'divine', vfxElement: 'light',
+        { id: 'dmAsAbove', stagePace: 1.9, name: 'As Above, So Below', tier: 3, families: ['demiurgy'], cost: 75, apCost: 1, cooldownRounds: 2, spellType: 'divine', vfxElement: 'light',
           type: 'damage', kind: 'lifeDrain', damageType: 'magic', dmg: 130, range: 4, drainPct: 0.5,
           desc: 'The halo tilts and what the enemy loses below, he gains above. Deals MEDIUM magic damage to a Single Enemy within 4 and heals him for half of it. Cooldown: 2 rounds.' },
-        { id: 'dmTesseract', name: 'Tesseract', tier: 4, families: ['demiurgy'], cost: 100, apCost: 2, cooldownRounds: 3, spellType: 'divine', vfxElement: 'shadow',
+        { id: 'dmTesseract', stagePace: 2.4, name: 'Tesseract', tier: 4, families: ['demiurgy'], cost: 100, apCost: 2, cooldownRounds: 3, spellType: 'divine', vfxElement: 'shadow',
           type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 170, range: 5, aoeRadius: 2, statusEffects: [{ id: 'slow', duration: 1 }],
           desc: 'The black cube unfolds into the cube it is the shadow of. Deals HEAVY magic damage to All Enemies in a 5×5 within 5 and Slows them for 1 round. Cooldown: 3 rounds.' },
     ],
@@ -112244,7 +112274,7 @@ const DOOR_CAST = {
         ],
     },
     forrest: {
-        name: 'AGENT FORREST', title: 'FIELD AGENT · NO PHOTOGRAPHS', dept: 'Operations', race: 'bigfoot', gender: 'male', base: 'bigfoot',
+        name: 'AGENT FORREST', title: 'FIELD AGENT · NO PHOTOGRAPHS', dept: 'Operations', model: 'forrest', race: 'bigfoot', gender: 'male', base: 'bigfoot',   // 2026-11-27 THE NEW CHARACTERS: his own model, the bigfoot in an agent's suit (sprites.js DOOR_CAST_MODELS.forrest; mondo: "just a model swap for agent forest in story mode")
         lines: [],
         spots: [
             /* DOOR HQ 2.0 wave 3 (2026-11-26): the head of the Cryptid Division, behind his desk, facing the glass */

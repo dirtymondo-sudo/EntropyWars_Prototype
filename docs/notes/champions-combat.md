@@ -6622,6 +6622,7 @@ borrows pileOn (Happily Never After).
   DOOR_TEXT home Came A Lot, three roster lines. Proof: project files `princess/proof/` (probe `princess/probe_pr.js`).
 
 ## THE DEMIURGE (2026-11-26, thread "Add the Demiurge's two forms")
+- 11-27: his eight spells have their own set pieces, camera, pace and sky: spells-vfx.md "THE DEMIURGE'S CATACLYSMS" (data.js `stagePace` on his rows).
 mondo 11-26: "this guy is like the original creator of the black cube, the demiurge, cosmic abilities, spiritual abilities, the architect,
 sacred geometry, fractal math ... one character but with 2 forms, and you can pick either, kinda like the male/female split ... one is more
 physical attack and the other is more magic attack". Parts apart so they animate with his spells (cube spinning in the staff, wings, snakes).
@@ -6646,6 +6647,27 @@ physical attack and the other is more magic attack". Parts apart so they animate
 - Files: `bake-demiurge.js` (raw 10-13 MB Meshy GLBs -> 0.3-3 MB, the bones), R2 `Assets/characters/races/demiurge/{armoured,cosmic}/`,
   `Assets/characters/gear/demiurge/dm_*.glb`, portraits `demiurge_{armoured,cosmic}_px.png` (cut from his hero concepts).
 
+## THE COMING RACES 3 (2026-11-27, thread "Make Meshy concepts for new characters")
+mondo picked Meshy concepts (realistic look, his rule: never cartoon) and said "wire them up. Split the work into multiple threads to make
+their unique race spells and do their spell animation+vfx ... The bigfoot in a suit is just a model swap for agent forest in story mode."
+IN (this PR, the COMING RACES pattern): RACE_MODELS_3D, the 128px Sprite AI sprites, RACE_SPRITE_GENDERS, RACE_PROFILES (first-guess types),
+EW_ASSET_MOVES rows, `EW_COMING_RACES` = `monster truck`, `nutcracker`, `leopard girl`, `draconian`, `flower girl`, `leprechaun` (M + F),
+`medic` (male = the Doctor, female = the Nurse). The MARTIAN got a female model + sprite (its kit is the existing one). Kits, stats, finishers
+and THE UNLOCK (into data.js + server.js AVAILABLE_RACES) are the three spell threads' ("Make monster truck and nutcracker spells",
+"Make leopard, draconian and flower spells", "Make leprechaun, martian and medic spells").
+- 🛻 THE MONSTER TRUCK: no bones; one file put together from four Meshy parts (project files character-concepts/truck.py): ewMtBody (> ewMtHood,
+  the fanged hood, hinged at its back edge, rotation.x < 0 opens it), ewMtWheel0..3 (FL FR RL RR; rotation.x spins), ewMtStrut0..3 (the hydraulics,
+  pivot at the axle, scale.y follows the body). three-renderer.js THE MONSTER TRUCK: procRig `monsterTruck`, clips are keyframes on those nodes
+  (_MT_POSES: idle, walk, castMelee bite, cast rev + roar, castAOE hop, castSupport bounce, castUltimate rear-up, hit, death);
+  `ThreeRenderer.mtPose(slot, dur, pose)` adds / replaces a slot (pose(u) -> { y rx rz hood spin lean }).
+- 🥜 THE NUTCRACKER: the Meshy rig + its own jaw mesh skinned to an added bone `ewJaw` (child of Head; project files character-concepts/jaw.py).
+  Def key `jawBone: 'ewJaw'`; three-renderer.js THE NUTCRACKER'S JAW (_jawTick, after the clip in the unit loop) clacks it through casts /
+  attacks, snaps on a hit, hangs open in death; `ThreeRenderer.jawOpen(uid, 0..1, ms)` holds it. Looks only: a spell that calls it must relay it
+  for the online guest (RULE #2).
+- AGENT FORREST (story): data.js DOOR_CAST.forrest `model: 'forrest'` -> sprites.js DOOR_CAST_MODELS.forrest (the bigfoot in an agent's suit,
+  `bigfoot/agent_forrest/Meshy_AI_agent_forrest_Running.glb`). The roster bigfoot is unchanged.
+Files: R2 `Assets/characters/races/<monster_truck|nutcracker|leopard_girl|draconian|flower_girl|leprechaun|medic>/<gender>/` (+ `.opt.glb`,
+in ASSET_MANIFEST), `martian/female/`, `bigfoot/agent_forrest/`. Sources, scripts, sheets: project files `character-concepts/`.
 ## THE MONSTER TRUCK + THE NUTCRACKER (2026-11-27, thread "Make monster truck and nutcracker spells")
 mondo 11-27: "a monster truck, like a literal monster that is a truck ... it's hood could be a separate part and it has like fangs,
 and the wheels could be separate too so they could spin, maybe even hydraulics", and a Nutcracker "so its mouth can move like an
