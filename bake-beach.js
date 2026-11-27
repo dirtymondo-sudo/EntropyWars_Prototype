@@ -545,7 +545,10 @@ const WANT = [
     ["prebuilt_bermuda: { room: '" + TRI_R.id + "', door: { id: 'bay', wall: 'free', x: " + BAY_W.x + ", z: " + BAY_W.z + ", face: " + BAY.face + " } }", 'siteRooms.entry.prebuilt_bermuda'],
     ["a: { " + at(MAEL_W, 'ow_triangle') + " way: 'whirlpool',", 'link bermuda_abyss'],
     ["b: { " + at(POOL_W, 'ow_triangle'), 'link weir_bermuda'],
-    ["a: { " + at(GANG_W, 'beach'), 'link beach_dutchman'],
+    /* ONE BEACH, ONE ROOM (2026-11-27): the sea room `site_prebuilt_bermuda_beach` is RETIRED into Disaster City's room. This tool still writes it:
+       it is the SOURCE docs/disaster-city/harbour.js sets down in the city (the sea room's x + 455, z - 126), so after this tool run
+       `node bake-disaster-city.js`. A link end that stood in the sea room stands in the city's room at that place. */
+    ["a: { site: 'prebuilt_downtown', part: 'streets', wall: 'free', x: " + (GANG_W.x + 455) + ", z: " + (GANG_W.z - 126) + ", face: " + GANG_W.face + ",", 'link beach_dutchman (in the city: x + 455, z - 126)'],
     [TRI_R.id + ": { tape: { x: " + TAPE_W.x + ", z: " + TAPE_W.z + " } }", 'the tape on the Lighthouse Rock'],
 ];
 const file = path.join(REPO, 'data.js'); let src = fs.readFileSync(file, 'utf8');
