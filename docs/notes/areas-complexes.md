@@ -15331,7 +15331,7 @@ Coast Road door move in spread.js; the Coast Road's causeway arch starts at the 
 U-turn lanes, the frontage roads, slip ramps, Bluff Drive (both levels), the parkway, Desert View Drive, the bay shore, the causeway and both avenue
 beaches.
 
-**THE MAP (open).** `bake-map.js` knows the spread grid (19 x 18, `sc` / `sr`, new plot rows PK / HW / BD / NA / SA / DV, district letters Y A D P V) and
+**THE MAP, 11-27 later: see "THE WORLD MAP ROUND THE BIGGER CITY" below (the warning is an error again).** Before: **THE MAP (open).** `bake-map.js` knows the spread grid (19 x 18, `sc` / `sr`, new plot rows PK / HW / BD / NA / SA / DV, district letters Y A D P V) and
 the city stands at world -1,-3. The city is four plots wider and three taller than the One World plan gave it, and no anchor avoids its neighbours: 38
 world plots lie under both the city and R6 / R9 / the Harbour room. `bake-map.js` WARNS for city clashes (any other clash still throws). The rooms are
 joined by passages, so play is not touched; the WORLD MAP picture shows the overlap. Needs a One World re-plan (move R6 / R9 / R10 / the Beach zone out)
@@ -15405,6 +15405,18 @@ found by tools (not by eye), and where each is fixed:
   (headful, `--gpu=webgpu`); the pass changes ground heights and rows only, nothing a renderer draws its own way.
 - **NOT DONE / SEEN**: the low walk between Valley Road's bank and South Avenue rises 2 m in its last square (rows 142-144); five straddlers stand on
   ground a level off their floor (in67, in93, inM0, inM1, inM10: as in the compact city); every bake prints `THE SPREAD: straddler ...` for them.
+
+### THE WORLD MAP ROUND THE BIGGER CITY (2026-11-27, after ONE BEACH, ONE ROOM)
+The city's room is 22 x 18 plots at world -1,-3 (the plan drew 12 x 12 at 0,0, the Hills over it, the Beach beside it). With the Harbour inside the city
+the Beach room's clash is gone; what is left is 8 plots: the Valley Road's last column (-1,4 and -1,5, under the Woodland Parkway) and the Badlands
+Highway's first three rows (6..7 x 12..14, under the three rows the city grew south). No anchor clears both: the city grew in its MIDDLE (the avenues),
+so its west door fits R6 only at wy -3 and its south door fits R9 only at wy -6.
+- **Built:** `docs/plans/one-world/after-v13.js` row 11 writes `cityOver` into plots.json (the 8 plots, the two routes). `bake-map.js` lets exactly those
+  stand under the city and THROWS for any other two rooms on one plot, the city's included (the warning of THE SPREAD is gone).
+- **Not built, mondo's pick (decision card 11-27):** to draw it true, (a) shorten the roads: R6 loses one column (kit-dressed forest, easy), R9 loses
+  three plots, which hold its city-limit stretch and the ramp up, laid by hand in `docs/areas/routes/R9.js` + R9.json `raised` in squares from the room's
+  north line (a rebuild of the highway's north end); or (b) move everything south of the city three plots south. Until then the map draws the two road
+  ends under the city's edge.
 
 ### THE INSIDE OF THE CUBE, the way in + who lives there (2026-11-27, the same day; mondo's answers are in `docs/plans/dmt-realm/PLAN.md`)
 - **THE WAY IN**: THE BLACK CUBE on Saturn. `docs/plans/world-zones/draw-space.js` saturn way `cube_dmt` (flat square 27,33, face 180, on the Hexagon's

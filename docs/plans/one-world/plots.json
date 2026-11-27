@@ -1,5 +1,6 @@
 {
   "about": "One World v13: every walkable plot. Written by `node docs/plans/one-world/gen.js --plots`; never edit by hand. Read docs/plans/one-world/README.md + docs/notes/areas-complexes.md \"ONE WORLD, THE ZONE MOVES\".",
+  "cityOver": {"room":"site_prebuilt_downtown_streets","at":[-1,-3],"size":[22,18],"plots":[[-1,4],[-1,5],[6,12],[7,12],[6,13],[7,13],[6,14],[7,14]],"routes":["R6","R9"],"note":"the ends of the Valley Road and the Badlands Highway under the bigger city (after-v13.js row 11); bake-map.js allows these and no other"},
   "v": 13,
   "plot": {"squares":12,"metres":42,"square":3.5},
   "coords": "x east, y south, in plots; Disaster City’s first city plot (north-west corner) = 0,0; a plot [x, y] covers x..x+1, y..y+1",
