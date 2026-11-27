@@ -11757,12 +11757,12 @@ const RACE_ABILITIES = {
            it). Crossover (`pgAnkles`) Staggers + Marks whoever stood next to him before the escape; Alley-Oop (`pgOop`) gives the ally a
            sure critical on its next basic attack (the Monarch's `_deltaCrit`). battle.js "THE CHEERLEADER + THE POINT GUARD". */
         { id: 'pgChestPass', name: 'Chest Pass', tier: 1, families: ['basketball'], cost: 25, apCost: 1, spellType: 'human',
-          animClip: { name: 'Pass', lib: 12, ts: 0.9, strikeAt: 0.33 },   // THE BASKETBALL CLIPS (11-27): the pack's two-hand pass
+          animClip: { name: 'Pass', lib: 12, ts: 0.75, strikeAt: 0.33, ball: { hold: 'two' } },   // THE BASKETBALL CLIPS (11-27): the pack's two-hand pass
           element: 'physical', type: 'damage', kind: 'ricochet', damageType: 'physical', dmg: 80, range: 4, bounceDamage: 45, bounceRadius: 2,
           projectileOverride: 'proj-basketball',
           desc: 'Two hands, off the chest. Deals WEAK physical damage to a Single Enemy within 4, then the ball bounces to another enemy within 2 for less.' },
         { id: 'pgCrossover', name: 'Crossover', tier: 2, families: ['basketball'], cost: 35, apCost: 1, cooldownRounds: 2, spellType: 'human',
-          animClip: { name: 'SkillDash', lib: 12, ts: 1.2, trim: [0, 1.0], strikeAt: 0.4 },   // THE BASKETBALL CLIPS (11-27): drops low and drives
+          animClip: { name: 'SkillDash', lib: 12, ts: 1.0, trim: [0, 1.0], strikeAt: 0.4, ball: { beats: 3, top: 0.1 } },   // THE BASKETBALL CLIPS (11-27): drops low and drives
           element: 'wind', type: 'utility', kind: 'escape', range: 0, teleportDistance: 2, pgAnkles: true,
           desc: 'Ankle breaker. He crosses over and is gone, up to 2 squares away; every enemy that was next to him is Staggered for 1 round and left Marked. Cooldown: 2 rounds.' },
         { id: 'pgAlleyOop', name: 'Alley-Oop', tier: 3, families: ['basketball'], cost: 60, apCost: 1, cooldownRounds: 3, spellType: 'human',
@@ -11770,15 +11770,15 @@ const RACE_ABILITIES = {
           element: 'wind', type: 'buff', kind: 'buff', range: 5, statStageBoost: { atk: 2 }, pgOop: true,
           desc: 'He throws it up, they put it down. A Single Ally within 5 gets +2 ATK stages, and its next basic attack is a sure critical hit. Cooldown: 3 rounds.' },
         { id: 'pgBuzzerBeater', name: 'Buzzer Beater', tier: 4, families: ['basketball'], cost: 90, apCost: 1, cooldownRounds: 3, spellType: 'human',
-          animClip: { name: 'Shoot', lib: 12, ts: 0.8, strikeAt: 0.40 },   // THE BASKETBALL CLIPS (11-27): the jump shot, the release at the top
+          animClip: { name: 'Shoot', lib: 12, ts: 0.65, strikeAt: 0.40, ball: { hold: 'two' } },   // THE BASKETBALL CLIPS (11-27): the jump shot, the release at the top
           element: 'wind', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 165, range: 7, ignoresLineOfSight: true,
-          executeBelowPct: 0.15, executeAfterHit: true, projectileOverride: 'proj-basketball',
+          executeBelowPct: 0.15, executeAfterHit: true, projectileOverride: 'proj-basketball-arc',
           desc: 'Three, two, one... Deals HEAVY physical damage to a Single Enemy up to 7 squares away; the ball arcs over cover. If it leaves the target under 15% HP, it is out. Cooldown: 3 rounds.' },
         /* SLAM DUNK (2026-11-24, mondo: "you gotta give him a slam dunk ability too"): a charge row that LEAPS (chargeToTarget's
            vault, flat ground is fine, unlike leapStrike which needs higher ground) onto the tile beside the target and dunks on it;
            a hoop drops in over the victim (three-vfx-effects.js pgSlam). Assist marks it like any of his hits. */
         { id: 'pgSlamDunk', name: 'Slam Dunk', tier: 3, families: ['basketball'], cost: 70, apCost: 1, cooldownRounds: 2, spellType: 'human',
-          animClip: { name: 'Dunk', lib: 12, ts: 0.9, strikeAt: 0.72 },   // THE BASKETBALL CLIPS (11-27): the arm up over the rim, thrown down at 0.72 s
+          animClip: { name: 'Dunk', lib: 12, ts: 0.8, strikeAt: 0.72 },   // THE BASKETBALL CLIPS (11-27): the arm up over the rim, thrown down at 0.72 s
           element: 'physical', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 145, range: 3, chargeToTarget: true,
           statusEffects: [{ id: 'stagger', duration: 1 }],
           desc: 'Takes off from 3 squares out. Leaps onto a Single Enemy within 3 and dunks on it for MEDIUM physical damage, leaving it Staggered for 1 round. Cooldown: 2 rounds.' },

@@ -3066,7 +3066,7 @@ const RACE_MODELS_3D = {
         walk:      { clip: 'RunDribble',    lib: 12, ts: 1.6, ball: { beats: 2, top: 0.25 } },
         run:       { clip: 'SprintDribble', lib: 12, ts: 1.3, ball: { beats: 2, top: 0.25 } },
         runCharge: { clip: 'Sprint',        lib: 12, ts: 1.2 },
-        castThrow: { clip: 'Pass',          lib: 12, ts: 0.9, strikeAt: 0.33 },   // both hands off the chest, arms out at 0.33 s
+        castThrow: { clip: 'Pass',          lib: 12, ts: 0.75, strikeAt: 0.33, ball: { hold: 'two' } },   // both hands off the chest, arms out at 0.33 s; the ball between the palms
         block:     { clip: 'Block',         lib: 12, ts: 1.2, strikeAt: 0.30 },   // both hands up by 0.3 s
       },
       procRig: 'unitGear', gear: { held: { url: 'https://cdn.entropywars.net/Assets/characters/gear/held/basketball_v3.glb', len: 0.13, grip: 0.5, dribble: true } },
@@ -4165,7 +4165,7 @@ function registerSpellAnimClips(defs) {
       /* THE MESHY CASTS (2026-11-24): a row's clip may carry the slot options UAL_SLOTS rows use: `strikeAt` (the SOURCE second the
          spell lands on, so the VFX fires on that frame), `trim` [from, to] (a 2-3 s window of a 10 s dance), `pinXZ` (a dance that
          steps about stays on its square), `turn`. One setting per clip: the first row that names a clip sets it for every row. */
-      for (const _k of ['strikeAt', 'trim', 'pinXZ', 'pinHips', 'turn']) if (d.animClip[_k] != null) t.lc[slot][_k] = d.animClip[_k];
+      for (const _k of ['strikeAt', 'trim', 'pinXZ', 'pinHips', 'turn', 'ball']) if (d.animClip[_k] != null) t.lc[slot][_k] = d.animClip[_k];   // (`ball`: THE DRIBBLE / THE TWO HANDS on a spell's clip)
       if (!t.lt[slot]) t.lt[slot] = (d.animClip.ts > 0 ? d.animClip.ts : 1);   // ⛪ a row may set the clip's pace (the Pope's 5 s finger wag at 2.5×)
       isNew = true;
     }

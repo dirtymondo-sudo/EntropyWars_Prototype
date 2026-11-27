@@ -3867,7 +3867,8 @@ const ThreeRenderer = (function () {
         'proj-knife':       { url: _R2_PROJ + 'proj_knife.png',         glow: 0xc0c0cc },
 
         'proj-football':    { url: 'https://cdn.entropywars.net/Assets/loose_sprites/football.png',    glow: 0x8b5e3c },
-        'proj-basketball':  { url: 'https://cdn.entropywars.net/Assets/loose_sprites/basketball.png',  glow: 0xce561c },   // 2026-11-24 THE POINT GUARD
+        'proj-basketball':  { url: 'https://cdn.entropywars.net/Assets/loose_sprites/basketball.png',  glow: 0xce561c },
+        'proj-basketball-arc': { url: 'https://cdn.entropywars.net/Assets/loose_sprites/basketball.png', glow: 0xce561c },   // THE BALL IS OUT (11-27): the high shot   // 2026-11-24 THE POINT GUARD
     };
 
     /* Real 3D models for select projectiles — Meshy GLBs on R2
@@ -3889,6 +3890,10 @@ const ThreeRenderer = (function () {
         'proj-basketball': {
             url: 'https://cdn.entropywars.net/Assets/characters/gear/held/basketball_v3.glb',
             lenTiles: 0.16, tumble: 7.0,
+        },
+        'proj-basketball-arc': {   // the same ball on a high arc with backspin (Buzzer Beater, the Alley-Oop lob)
+            url: 'https://cdn.entropywars.net/Assets/characters/gear/held/basketball_v3.glb',
+            lenTiles: 0.16, tumble: -4.0,
         },
         /* 2026-07-25: every gun spell's tracer is a real spinning round now
            (rifling roll around the flight axis). Sprite = loading fallback. */
@@ -17695,8 +17700,12 @@ const ThreeRenderer = (function () {
         } catch (_e) {}
     }
     function unitHideHeldFor(unitId, ms) {
-        var P = _heldPrimary(unitId); if (!P || !P.base) return;
-        var h = P.base;
+        var P = _heldPrimary(unitId), h = P && P.base;
+        if (!h) {   /* THE UNIT GEAR's held piece (the Point Guard's ball) is not a `hold` prop: found on the rig by its name */
+            var ge = _getUnitEntry(unitId), gr = _unitModelRigs.get(unitId), groot = (gr && gr.inner) || (ge && ge.model) || null;
+            h = groot ? groot.getObjectByName('ewGearHeld') : null;
+        }
+        if (!h) return;
         h.visible = false;
         clearTimeout(h.userData._showT);
         h.userData._showT = setTimeout(function () { if (!(_heldSwaps.get(unitId) && _heldSwaps.get(unitId).base === h)) h.visible = true; }, Math.max(60, ms || 400));
@@ -18282,6 +18291,7 @@ const ThreeRenderer = (function () {
         if (g.held2 && g.held2.url) { at.held2 = deps.length; deps.push(g.held2.url); }   // a second piece in the other hand (the Hacker's mouse)
         if (g.helmet && g.helmet.url) { at.helmet = deps.length; deps.push(g.helmet.url); }   // THE BUBBLE HELMET
         if (g.demi) _DM_PARTS.forEach(function (k) { if (g.demi[k]) { at['dm_' + k] = deps.length; deps.push(g.demi[k]); } });   // THE DEMIURGE's own parts
+        try { var pm = def && def.weaponProj && _PROJ_MODELS[def.weaponProj]; if (pm && pm.url) _loadMiscModel(pm.url, true, function () {}); } catch (_pe) {}   // THE BALL IS OUT: the thrown ball's file is in before the first throw (an unloaded one flew as nothing)
         var fn = function (root, anims, got) { try { _gearBuild(root, g, wf, at, got || []); } catch (e) { console.warn('[3D] unit gear failed', e); } return null; };
         fn.deps = deps;
         return (_gearRigCache[url] = fn);
@@ -18383,31 +18393,44 @@ const ThreeRenderer = (function () {
     /* THE DRIBBLE: the ball goes where the marker says (its keys ride the dribble clips, _libBallTrack). Worked in the body's own
        frame: under the palm (a little past the wrist, along the forearm's line), between the floor under the feet and the palm.
        The marker's y is the mixer's blend of "dribbling": 0 = no dribble clip plays, the ball sits in the hand as it was hung. */
-    var _drA = null, _drB = null, _drM = null, _drN = null;
+    var _drA = null, _drB = null, _drM = null, _drN = null, _drC = null, _drD = null;
     function _dribbleTick(S, model, mk, dt) {
         var D = S.drib;
         if (D === undefined) {
-            var ud = mk.userData || {}, ball = model.getObjectByName(ud.ball || 'ewGearHeld'), hand = model.getObjectByName(ud.hand || 'RightHand');
-            D = S.drib = (ball && hand && hand.parent && ball.parent) ? { ball: ball, hand: hand, fore: hand.parent, base: ball.position.clone(), r: +ud.r || 0.1, floor: +ud.floor || 0, on: false } : null;
+            var ud = mk.userData || {}, ball = model.getObjectByName(ud.ball || 'ewGearHeld'), hn = ud.hand || 'RightHand', hand = model.getObjectByName(hn);
+            var other = model.getObjectByName(hn === 'RightHand' ? 'LeftHand' : 'RightHand');
+            D = S.drib = (ball && hand && hand.parent && ball.parent) ? { ball: ball, hand: hand, fore: hand.parent, other: (other && other.parent) ? other : null, base: ball.position.clone(), r: +ud.r || 0.1, floor: +ud.floor || 0, on: false } : null;
         }
         if (!D) return;
-        var w = mk.position.y, k = mk.position.x;
-        if (!(w > 0.003)) { if (D.on) { D.ball.position.copy(D.base); D.on = false; } return; }
-        if (!_drA) { _drA = new THREE.Vector3(); _drB = new THREE.Vector3(); _drM = new THREE.Matrix4(); _drN = new THREE.Matrix4(); }
+        var w = mk.position.y, k = mk.position.x, w2 = D.other ? mk.position.z : 0;
+        if (!(w > 0.003) && !(w2 > 0.003)) { if (D.on) { D.ball.position.copy(D.base); D.on = false; } return; }
+        if (D.ball.visible === false) return;   // (thrown: out of the hands)
+        if (!_drA) { _drA = new THREE.Vector3(); _drB = new THREE.Vector3(); _drM = new THREE.Matrix4(); _drN = new THREE.Matrix4(); _drC = new THREE.Vector3(); _drD = new THREE.Vector3(); }
         D.hand.updateWorldMatrix(true, false);
-        _drN.copy(model.matrixWorld).invert();
-        _drA.setFromMatrixPosition(D.hand.matrixWorld).applyMatrix4(_drN);          // the wrist, in the body's frame
-        _drB.setFromMatrixPosition(D.fore.matrixWorld).applyMatrix4(_drN);          // the elbow
-        _drB.subVectors(_drA, _drB); _drB.y = 0;
-        var fl = _drB.length(); if (fl > 1e-6) _drA.addScaledVector(_drB, Math.min(1, D.r * 0.7 / fl) );   // the palm: a little past the wrist, level
-        var lo = D.floor + D.r, hi = Math.max(lo, _drA.y - D.r * 0.9);
-        _drA.y = lo + (hi - lo) * Math.max(0, Math.min(1, k));
-        _drA.applyMatrix4(model.matrixWorld);
         var mount = D.ball.parent; mount.updateMatrix();
-        _drM.multiplyMatrices(D.hand.matrixWorld, mount.matrix).invert();
-        _drA.applyMatrix4(_drM);
-        if (w >= 0.997) D.ball.position.copy(_drA); else D.ball.position.lerpVectors(D.base, _drA, w);
-        if (dt > 0) D.ball.rotateX(-dt * 5 * w);   // it turns a little as it bounces
+        _drM.multiplyMatrices(D.hand.matrixWorld, mount.matrix).invert();   // world -> the ball's own frame
+        _drN.copy(model.matrixWorld).invert();
+        D.ball.position.copy(D.base);
+        if (w > 0.003) {
+            _drA.setFromMatrixPosition(D.hand.matrixWorld).applyMatrix4(_drN);          // the wrist, in the body's frame
+            _drB.setFromMatrixPosition(D.fore.matrixWorld).applyMatrix4(_drN);          // the elbow
+            _drB.subVectors(_drA, _drB); _drB.y = 0;
+            var fl = _drB.length(); if (fl > 1e-6) _drA.addScaledVector(_drB, Math.min(1, D.r * 0.7 / fl));   // the palm: a little past the wrist, level
+            var lo = D.floor + D.r, hi = Math.max(lo, _drA.y - D.r * 0.9);
+            _drA.y = lo + (hi - lo) * Math.max(0, Math.min(1, k));
+            _drA.applyMatrix4(model.matrixWorld).applyMatrix4(_drM);
+            D.ball.position.lerp(_drA, Math.min(1, w));
+            if (dt > 0) D.ball.rotateX(-dt * 5 * w);   // it turns a little as it bounces
+        }
+        if (w2 > 0.003) {   /* THE TWO HANDS: between the palms (each a ball's radius past its wrist along its forearm) */
+            D.other.updateWorldMatrix(true, false);
+            _drA.setFromMatrixPosition(D.hand.matrixWorld).applyMatrix4(_drN); _drB.setFromMatrixPosition(D.fore.matrixWorld).applyMatrix4(_drN);
+            _drB.subVectors(_drA, _drB).normalize(); _drA.addScaledVector(_drB, D.r * 0.9);
+            _drC.setFromMatrixPosition(D.other.matrixWorld).applyMatrix4(_drN); _drD.setFromMatrixPosition(D.other.parent.matrixWorld).applyMatrix4(_drN);
+            _drD.subVectors(_drC, _drD).normalize(); _drC.addScaledVector(_drD, D.r * 0.9);
+            _drA.add(_drC).multiplyScalar(0.5).applyMatrix4(model.matrixWorld).applyMatrix4(_drM);
+            D.ball.position.lerp(_drA, Math.min(1, w2));
+        }
         D.on = true;
     }
     var _gearE = null;
@@ -22488,7 +22511,7 @@ const ThreeRenderer = (function () {
             var key = libIdx + ':' + clipName + (pinHips ? ':pin' : (pinXZ ? ':pxz' : '')) + (travel ? (':tr' + ((ref && typeof ref.strikeAt === 'number') ? ref.strikeAt : '')) : '') + (trim ? (':t' + trim[0] + '-' + trim[1]) : '')
                 + (turnDeg ? ':y' + turnDeg : '') + thenList.map(function (tn) { return '+' + (tn.lib == null ? libIdx : tn.lib) + ':' + tn.clip + (tn.trim ? ':t' + tn.trim[0] + '-' + tn.trim[1] : ''); }).join('');
             var ballRef = (ref && typeof ref === 'object' && ref.ball) || null;   // THE DRIBBLE
-            if (ballRef) key += ':ball' + (ballRef.beats || 1) + '@' + (ballRef.top || 0);
+            if (ballRef) key += ':ball' + (ballRef.hold || '') + (ballRef.beats || 1) + '@' + (ballRef.top || 0);
             if (cen) key += '|cen:' + _cenGroup(slot) + (/^idle./.test(slot) ? '2' : '');   // 🐎 the horse's part is the slot's
             var supSide = _LIB_SUPPORT_HAND[clipName] || null;   // THE SUPPORT HAND (a two-handed clip's off hand re-reaches the gun hand)
             if (bakedByClip[key]) { out[slot] = bakedByClip[key]; return; }
@@ -22598,7 +22621,7 @@ const ThreeRenderer = (function () {
             });
             tracks.push(new THREE.VectorKeyframeTrack('Hips.position', times, hipsPos));
             if (supSide) _libSupportCurl(setup, supSide).forEach(function (c) { tracks.push(new THREE.QuaternionKeyframeTrack(c.name + '.quaternion', [0, dur], c.q.concat(c.q))); });
-            if (ballRef) tracks.push(_libBallTrack(dur, ballRef));   // THE DRIBBLE
+            if (ballRef && modelEntry && modelEntry.root && modelEntry.root.getObjectByName('ewDribble')) tracks.push(_libBallTrack(dur, ballRef));   // THE DRIBBLE (only a body that carries the ball's marker)
             if (cen) tracks = _cenMerge(cen, slot, tracks, dur);   // 🐎 THE CENTAUR
             var baked = new THREE.AnimationClip('EWLib_' + key, dur, tracks);
             if (travXZ) baked.userData = { ewTravel: _libTravelCurve(times, travXZ, (ref && typeof ref.strikeAt === 'number') ? ref.strikeAt - t0 : -1) };
@@ -22622,6 +22645,7 @@ const ThreeRenderer = (function () {
        beat later, hits the floor at 0.56 and is back in the palm at 0.84. Keyed at 120 Hz: the bounce is sharp. */
     var _BALL_REL = 0.30, _BALL_FLOOR = 0.56, _BALL_CATCH = 0.84;
     function _libBallTrack(dur, ref) {
+        if (ref.hold === 'two') return new THREE.VectorKeyframeTrack('ewDribble.position', [0, dur], [1, 0, 1, 1, 0, 1]);   // THE TWO HANDS: z 1 = the ball between both palms for the whole clip (a pass, a shot)
         var beats = Math.max(1, ref.beats | 0), top = +ref.top || 0;
         var n = Math.max(8, Math.ceil(dur * 120) + 1), T = new Float32Array(n), V = new Float32Array(n * 3);
         for (var i = 0; i < n; i++) {
@@ -36781,8 +36805,12 @@ const ThreeRenderer = (function () {
         return _PROJ_SPRITES['attack'];
     }
 
-    function startProjectileTween(fromX, fromY, toX, toY, projClass, flyMs, fromZ, toZ, origin) {
+    function startProjectileTween(fromX, fromY, toX, toY, projClass, flyMs, fromZ, toZ, origin, _ret) {
         if (!projectileGroup || !scene) return;
+        if (projClass === 'proj-basketball-carry') return;   // THE BALL IS OUT: the Slam Dunk, the ball stays in his hand
+        var _bh = null;   // THE BALL IS OUT: his own ball (it leaves his hands, in his ball's own paint, and lands in them again)
+        if (projClass && projClass.indexOf('proj-basketball') === 0) { try { _bh = _ret ? _ballHeldOf(_ballOut && _ballOut.uid) : _ballThrown(fromX, fromY, toX, toY, flyMs, toZ); } catch (_be) { _bh = null; } }
+        if (_bh && _bh.at && !_ret && !origin) origin = _bh.at;
         var ts = CONFIG.tileSize || BASE_TILE;
         var info = _getProjSpriteInfo(projClass);
 
@@ -36873,6 +36901,10 @@ const ThreeRenderer = (function () {
             mesh._ew_billboard = true;
         }
 
+        if (_bh && _bh.ball && _bh.ball.material && isModel && fadeMats && fadeMats.length) {
+            fadeMats = [];
+            mesh.traverse(function (n) { if (!n.isMesh) return; var c = _bh.ball.material.clone(); c.transparent = true; n.material = c; fadeMats.push(c); });
+        }
         var fZ = (fromZ !== undefined && fromZ !== null) ? fromZ : ((typeof getHeightAt === 'function') ? getHeightAt(Math.round(fromX), Math.round(fromY)) : 0);
         var tZ = (toZ !== undefined && toZ !== null) ? toZ : ((typeof getHeightAt === 'function') ? getHeightAt(Math.round(toX), Math.round(toY)) : 0);
 
@@ -36921,6 +36953,7 @@ const ThreeRenderer = (function () {
                      : (projClass === 'proj-handgrenade') ? ts * 0.6
                      : (projClass === 'proj-grenade') ? ts * 0.6
                      : (projClass === 'proj-football') ? ts * 0.55
+                     : (projClass === 'proj-basketball-arc') ? ts * 1.7   // THE BALL IS OUT: a jump shot's rainbow
                      : (projClass === 'proj-basketball') ? ts * 0.4 : 0,   // 2026-11-24 THE POINT GUARD: a pass with a little loft
             needsDirRot: needsDirRot,
             sizeK: _sizeK,
@@ -36928,7 +36961,49 @@ const ThreeRenderer = (function () {
             travelDY: endY - startY,
             travelDZ: endZ - startZ
         };
+        if (_ret && _bh && _bh.at) { tw.endX = _bh.at.x; tw.endY = _bh.at.y; tw.endZ = _bh.at.z; tw.travelDX = tw.endX - startX; tw.travelDY = tw.endY - startY; tw.travelDZ = tw.endZ - startZ; }   // home: into his hands
         _projTweens.push(tw);
+    }
+
+    /* THE BALL IS OUT (2026-11-27, mondo: "The ball doesnt even move when he does chest pass"). The Point Guard has ONE ball. When a
+       basketball flies off his square (his basic attack, Chest Pass, Buzzer Beater, the Alley-Oop lob) the ball in his hands is
+       hidden, and when the throw lands the ball comes back to him off the target on a short hop; it is in his hands again when
+       that lands. A bounce on (Chest Pass's second hit leaves the first target's square) keeps the same ball out and the hop
+       home starts from the last square. Worked from the projectile itself, so every path that throws one (host, guest, the
+       forge) gets it. Looks only. Off: window.EW_NO_BALL_RETURN. */
+    var _ballOut = null;
+    function _ballHeldOf(uid) {   // { ball: his held ball, at: where it is in the world } or null
+        if (uid == null) return null;
+        var ge = _getUnitEntry(uid), gr = _unitModelRigs.get(uid), groot = (gr && gr.inner) || (ge && ge.model) || null;
+        var h = groot ? groot.getObjectByName('ewGearHeld') : null; if (!h) return null;
+        var v = new THREE.Vector3(); try { h.updateWorldMatrix(true, false); h.getWorldPosition(v); } catch (e) { v = null; }
+        return { ball: h, at: (v && isFinite(v.x + v.y + v.z)) ? v : null };
+    }
+    function _ballThrown(fromX, fromY, toX, toY, flyMs, toZ) {
+        if ((typeof window !== 'undefined' && window.EW_NO_BALL_RETURN) || typeof state === 'undefined' || !state || !Array.isArray(state.units)) return;
+        var now = performance.now(), owner = null, fx = Math.round(fromX), fy = Math.round(fromY);
+        for (var i = 0; i < state.units.length; i++) {
+            var u = state.units[i]; if (!u || u.dead || u.x !== fx || u.y !== fy) continue;
+            var en = _getUnitEntry(u.id), df = en && (en.modelDef || en._ew_def);
+            if (df && df.weaponProj === 'proj-basketball') owner = u.id;
+            break;
+        }
+        var own = owner != null;
+        if (owner == null && _ballOut && now < _ballOut.until) owner = _ballOut.uid;   // a bounce on: the same ball
+        if (owner == null) return null;
+        var held = _ballHeldOf(owner); if (held && !own) held.at = null;   // (a bounce on leaves the square it hit, not his hands)
+        if (_ballOut) clearTimeout(_ballOut.t);
+        flyMs = Math.max(40, flyMs || 320);
+        var back = Math.max(300, Math.min(650, flyMs * 0.85)), B = _ballOut = { uid: owner, until: now + flyMs + back + 200 };
+        unitHideHeldFor(owner, flyMs + back + 20);
+        B.t = setTimeout(function () {
+            if (_ballOut !== B) return;
+            var ou = null; for (var k = 0; k < state.units.length; k++) if (state.units[k] && state.units[k].id === owner) ou = state.units[k];
+            var oe = _getUnitEntry(owner);
+            if (!ou || ou.dead || !oe || !oe.group || oe.group.visible === false) return;   // (a hidden thrower: no hop that gives his square away)
+            try { startProjectileTween(toX, toY, ou.x, ou.y, 'proj-basketball', back, toZ, ou.z, null, true); } catch (e) {}
+        }, flyMs);
+        return held;
     }
 
     function _updateProjectileTweens() {
