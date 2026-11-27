@@ -401,6 +401,12 @@ grass (G23): `HQ_GRASS.pastM` metres, thinning, on the land's own height, in the
 THE EDGE AUDIT: with `EW_HQ_DEBUG` the edge-land build logs `[HQ] the edge audit N stretches, M open: <side|7 m bin> ...` (a 7 m stretch within 17 m of the line
 with nothing standing on it that is not a way, a road, sea or range). Run 11-27 over 47 of the 48 outdoor rooms: 0 to 3 lone stretches a room, no run of two.
 
+**G26 · NO SHADOW MAP ON THE BLADES, THE FOOT IS THE GROUND'S COLOUR (11-27, mondo with an F3 from the Estate: "would it help performance and look better if we
+didnt do shadows for the individual grass blades? looks kinda weird and unneccessary. Also can you the bottom portion of the grass blades blend/tint towards the color
+of whatever ground it is on").** `GGRASS.shadow: false`: no blade reads the shadow map (they never cast one); a crown's shade is still in the tuft's colour (G18).
+`GGRASS.rootK` 1.0 (0.70) and `GROUND_RULES.base` [1.0, 0.55] ([0.90, 0.50]): the lower half of a blade runs from the sheet's own colour up to the tip. `_GG3.sunK` 0.07
+(0.13). Back: `EW_GRASS_SHADOW = true`. Known: grass in a building's shadow stays as bright as grass in the sun.
+
 **Not done in this pass (ideas, none built):** blade colour against a sunlit floor (the tufts read darker than the sheet in full
 sun); a gust that the plants and the grass share; trees were left as they are (they already sway).
 
