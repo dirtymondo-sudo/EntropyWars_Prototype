@@ -43999,6 +43999,7 @@ const ThreeRenderer = (function () {
         geos.slice().forEach(function (g) { (g._ew_lods || []).forEach(function (l) { if (l && geos.indexOf(l) < 0) geos.push(l); }); });
         mats.slice().forEach(function (m) {
             var pm = _hqPropMatCache.get(m.uuid); if (pm) { _hqPropMatCache.delete(m.uuid); if (mats.indexOf(pm) < 0) mats.push(pm); }
+            _hqPropTintCache.forEach(function (tm, tk) { if (tk.indexOf(m.uuid + '|') === 0) { _hqPropTintCache.delete(tk); if (mats.indexOf(tm) < 0) mats.push(tm); } });   // THE CROPS VARY: its tinted twins
         });
         mats.forEach(function (m) { for (var k in m) { var t = m[k]; if (t && t.isTexture && texs.indexOf(t) < 0) texs.push(t); } });
         texs.forEach(function (t) { var dm = _cutoutDepthMats.get(t); if (dm) { _cutoutDepthMats.delete(t); try { dm.dispose(); } catch (x) {} } try { t.dispose(); } catch (x) {} });
@@ -75481,6 +75482,18 @@ const ThreeRenderer = (function () {
         _hqPropDropPbr(sm);
         return lm;
     }
+    /* THE CROPS VARY (2026-11-27): a row's `tint` draws its model through a tinted twin of the room material, one twin per (sheet, tint),
+       shared by every row that asks (so the merge still joins them); the eviction lets them go with the file's own. */
+    var _hqPropTintCache = new Map(), _hqPropTintPicks = {};
+    function _hqPropTintPick(tint) {
+        var tk0 = String(tint);   // (a list = a gain per channel, over 1 allowed: green corn gone yellow)
+        return _hqPropTintPicks[tk0] || (_hqPropTintPicks[tk0] = function (node, sm) {
+            var lm = _hqPropMatPick(node, sm); if (!lm || !sm) return lm;
+            var k = sm.uuid + '|' + tk0, t = _hqPropTintCache.get(k);
+            if (!t) { t = lm.clone(); if (Array.isArray(tint)) { t.color.r *= tint[0]; t.color.g *= tint[1]; t.color.b *= tint[2]; } else t.color.multiply(new THREE.Color(tint)); t.onBeforeCompile = lm.onBeforeCompile; t._ew_shared = true; _hqPropTintCache.set(k, t); }
+            return t;
+        });
+    }
     /* THE UNDRAWN MAPS (2026-11-15, mondo: "Crashed inside the door main hall/lobby", his readout MEM 2047/700 MB there).
        Every Meshy prop file ships THREE 2048 x 2048 sheets (colour, normal, metal + roughness) and the loader decodes all
        three: 64 MB a file by the readout's count, on a stapler as on a couch. The room draws a prop as a matte Lambert on
@@ -90883,6 +90896,7 @@ const ThreeRenderer = (function () {
             if (p.ring && cat.wedge && !isBox) { _hqPlaceWedgeRing(p, cat, r, y0, y, target); return; }
             var grp = new THREE.Group();
             grp.userData.ewRow = p;   // THE EDITOR (EDITOR_PLAN E0): the row this prop was placed from (selection, the live drag)
+            if (p.vy) grp.scale.y = p.vy;   // THE CROPS VARY: a row's own height, the plan kept
             if (box && typeof p.wall === 'string') grp._ew_hqWall = p.wall;   // THE ROOM ROUND THE FIELD: a wall prop fades with its wall
             if (!onWall && !onCeil && !flip) grp._ew_hqProp = { key: p.key, foot: cat.foot || 0 };   // THE SINK (delivery 9): a floor prop the field's deform may carry down with a dug cell
             /* the spot: a wall point pushed in by `depth` (known now for proc props, on load for GLBs), else the free spot */
@@ -90954,7 +90968,7 @@ const ThreeRenderer = (function () {
             var instO = {
                 anim: (p.anim != null) ? p.anim : cat.anim, nose: cat.turn || 0,
                 swim: swimM ? { r: (swimM.r || 2) * U * fs, v: (swimM.v || 1) * U * fs, bob: (swimM.bob || 0) * U, dir: swimM.dir || ((Math.round(((p.x || 0) + (p.z || 0)) * 4) & 1) ? -1 : 1) } : null,
-                fit: fitSpan ? 'span' : 'height', matPick: (cat.statue != null || p.statue != null) ? _hqStatuePick(p.statue != null ? p.statue : cat.statue) : (cat.petal != null ? function (n, mm) { return _hqPetalMat(_hqPropMatPick(n, mm) || mm, cat.petal); } : _hqPropMatPick),   // THE PETAL COLOURS
+                fit: fitSpan ? 'span' : 'height', matPick: (cat.statue != null || p.statue != null) ? _hqStatuePick(p.statue != null ? p.statue : cat.statue) : (cat.petal != null ? function (n, mm) { return _hqPetalMat(_hqPropMatPick(n, mm) || mm, cat.petal); } : (p.tint != null ? _hqPropTintPick(p.tint) : _hqPropMatPick)),   // THE PETAL COLOURS
                 still: !!(cat.statue != null || p.statue != null),   // THE STATUES (2026-11-15, Chicago): a cast animal holds its pose
                 onDone: function (g, s, bb) {
                     try { _hqLampBulb(g, cat, p.key); } catch (eLB) {}   // THE LAMPS LOSE THE HALO: the lamp's own sheet is lit
@@ -91013,6 +91027,7 @@ const ThreeRenderer = (function () {
         /* THE WOODS' FERNS (2026-11-25): a row of a key in data.js ZONE_FLORA.swap stands as its climate says (the Meshy rosette off the temperate
            ground, the three-stick dead bush as the thorn bush); copies, never the room's own rows. Once a room build */
         try { if (typeof zoneFloraSwap === 'function') rows = zoneFloraSwap(room, rows, _hq.terrain && _hq.terrain.roomId); } catch (e) { console.warn('[FLORA] the swap', e); }
+        try { if (typeof cropRowsVary === 'function') rows = cropRowsVary(room, rows); } catch (e) { console.warn('[FLORA] the crops', e); }   // THE CROPS VARY (2026-11-27): copies, once a room build
         /* THE CEILING LAMPS FIRST (2026-11-09, mondo: "the inside of the mall is all black"): the room's HQ_PROP_LIGHT_MAX prop lights
            went to the first rows that asked, so the mall's two table lava lamps, two floor lamps and six slot machines took all ten and
            its nine saucers and sputniks over the atrium hung dark. When a room asks for more lights than it has left, the ceiling
