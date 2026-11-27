@@ -342,6 +342,29 @@ GROUND_RULES.light, `_grLight`): under a crown a DEEPER shade (`deep` [0.66, 0.7
 share warm and bright, `fleckSun`), and a CONTACT SHADOW at a trunk's foot (x0.52 at the bark, gone by 1.4 m) and at a rock, stump or
 prop (x0.74, gone by 0.8 m). Out in the open nothing changes. Off: EW_NO_DAPPLE. Not done: moss, roots.
 
+### 0b3. THE BLADES STAND IN THE WORLD (2026-11-27, mondo: "I don't like how the grass blades rotate with the direction I'm
+facing, it doesnt look realistic ... come up with another option ... and make them look better as well")
+
+**G20 · NO BLADE TURNS TO THE CAMERA.** A tuft was one flat fan whose side offset (`aGgS`) the shader laid along the camera's right
+(`uGgR`), so the whole field turned as the camera turned. Now a tuft is a real TUSSOCK: every blade has its own compass heading (the
+golden angle apart, jittered), arches outward along it and lies across it with its own twist, written into `position` when the tuft is
+built (`_ggFace3`, `_GG3`: `reach` 0.55 = how far a blade arches out, `wide` 0.85, `twist`, `sunK` = a tuft's lit side). `aGgS` and
+`uGgR` are gone from the GLSL (`_ggMat`, key `ew_ggrass6`) and the WebGPU twin (`_ewNodeGGrass`); the material draws both sides. Same
+code for the walked room's cells (`_hqGrassCell`), the battle board and its meadow (`_ggBuild`), so every zone and every fight has it.
+G14's six silhouettes still apply (splay, thickness, droop, lean, dropped blades), now about each blade's own heading.
+**The count:** a near tuft's blade is 3 triangles (was 5: ring 0 takes `pts: [0, 1, 4, 5, 6]`), and there are more, smaller tufts
+(`HQ_GRASS.perSquare` 10, `autoN` 8 / low 6; was 9, 7 / 5). Measured in the Clearing, same spot: 7,651 tufts / 161,901 triangles
+before, 9,889 tufts / 148,437 after (8 % fewer), fill time the same (2.7 s in the cloud probe). Frame rate on his Mac NOT measured.
+**Never again:** a grass or plant that reads the camera to turn its face. A far ring that looks thin is fixed with `thick` / `spread`.
+
+**G21 · THE SMALL PLANTS SWAY.** The flora field (ferns, flowers, kit tufts) stood still beside moving grass. Its one material takes
+`_ewBendHook` (the old tufts' wind: two sines phased by place, vertex shader only, WebGPU twin `_ewNodeSway` 'grass'); every cell
+carries `aBend` = `FLORA_SWAY.k` x height x min(height, cap) per corner, 0 at the root. Stop the clock: `EW_DISABLE_GRASS_WIND`.
+Checked with two frames at wind time 0 and 1.2 in the Clearing: the plants and blades move, the ground and trunks do not.
+
+**Not done in this pass (ideas, none built):** blade colour against a sunlit floor (the tufts read darker than the sheet in full
+sun); a gust that the plants and the grass share; trees were left as they are (they already sway).
+
 ### 0c. What each part of the game does about it (who owns what, 11-25)
 
 | Rule | Where it lives | Thread |
