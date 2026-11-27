@@ -3162,7 +3162,7 @@ const RACE_MODELS_3D = {
     /* 🧠 THE FLOATING BRAIN'S PIECES (2026-11-27, mondo: "individually animated pieces ... it'd be nice if the eye could move around too"):
        the v2 file = the same Meshy brain cut into moving pieces by bake-brain.py (the brain, a real eyeball, two lids, the tendrils on
        spring chains; faces +Z). three-renderer.js THE FLOATING BRAIN (procRig brainBody) moves them. The still file stays on R2. */
-    male: { model: 'https://cdn.entropywars.net/Assets/characters/races/boltzmann_brain/male/boltzmann_brain_v2.glb', clips: {}, procRig: 'brainBody', heightRatio: 0.7, yawOffset: 0, basicAttackKind: 'magic',
+    male: { model: 'https://cdn.entropywars.net/Assets/characters/races/boltzmann_brain/male/boltzmann_brain_v4.glb', clips: {}, procRig: 'brainBody', heightRatio: 0.7, yawOffset: 0, basicAttackKind: 'magic',
             sway: { stiffness: 1.2, gravity: 0.25, drag: 0.3, maxRoot: 50, maxBend: 26, wave: 0.14, waveHz: 0.45, caps: [] } },
   },
   /* 📺 THE CURSED TV (2026-11-17, mondo's concept): no bones; procRig 'cursedTv' (three-renderer.js THE CURSED TV) rolls the

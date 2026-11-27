@@ -20550,7 +20550,7 @@ const ThreeRenderer = (function () {
     }
     /* 🧠 THE FLOATING BRAIN (2026-11-27, thread "Animate the floating brain's pieces"; mondo: "individually animated pieces for
        the floating brain; it feels stiff compared to the other units that have tentacles hanging, it'd be nice if the eye could
-       move around too"). ONE file (Assets/characters/races/boltzmann_brain/male/boltzmann_brain_v2.glb, cut from its still Meshy
+       move around too"). ONE file (Assets/characters/races/boltzmann_brain/male/boltzmann_brain_v4.glb, cut from its still Meshy
        model by the repo tool bake-brain.py): ewBbBody (the brain, a node at its middle) > ewBbEye (a real eyeball, gaze +Z),
        ewBbLidU / ewBbLidD (the lids, rest = open under the socket's rim) and the nerve tendrils on THE SWAY's spring chains
        (ewsway_c<k>_<j>), so they trail behind every move below by themselves. Metres, front +Z, the lowest tendril tip on y 0.
@@ -20558,7 +20558,7 @@ const ThreeRenderer = (function () {
        hover), z (forward), x (to its left), rx (it nods forward), ry (it turns), rz (it rolls), s (the throb: scale − 1),
        ex / ey (the eye turns to its left / up, radians), es (the eyeball swells: scale − 1), lid (1 open … 0 shut; left out = open).
        ThreeRenderer.bbPose(slot, dur, pose) adds or replaces a slot for every brain built after it (a spell thread's own clip). */
-    var _BB_HOVER = 0.14, _BB_LID = 54 * Math.PI / 180;
+    var _BB_HOVER = 0.14, _BB_LID = 60 * Math.PI / 180;
     /* the eye's idle script: [u, to its left, up]; it holds each look, then flicks to the next in a tenth of a second */
     var _BB_LOOKS = [[0, 0, 0], [0.07, 0.42, 0.06], [0.16, 0.42, -0.2], [0.24, -0.38, 0.1], [0.34, -0.1, 0.3], [0.41, 0, 0], [0.55, 0.3, 0.22],
                      [0.6, -0.45, 0.02], [0.72, -0.2, -0.25], [0.8, 0.5, -0.05], [0.88, 0.12, 0.12], [0.95, 0, 0]];
@@ -20571,7 +20571,7 @@ const ThreeRenderer = (function () {
     function _bbBlink(u, at) { return _mtBump(u, at, at + 0.007, at + 0.02); }
     function _bbBeat(x) { var f = x - Math.floor(x); return Math.pow(Math.max(0, Math.sin(f * Math.PI)), 3); }   // one throb a whole number of x
     function _bbClip(name, dur, pose, R) {
-        var N = Math.max(8, Math.round(dur * 30)), tt = [], bp = [], bq = [], bs = [], eq = [], es = [], lu = [], ld = [];
+        var N = Math.max(8, Math.round(dur * 30)), tt = [], bp = [], bq = [], bs = [], eq = [], es = [], lu = [], ld = [], ls = [];
         var e = new THREE.Euler(0, 0, 0, 'YXZ'), q = new THREE.Quaternion();
         for (var k = 0; k <= N; k++) {
             var u = k / N, p = pose(u) || {};
@@ -20583,13 +20583,16 @@ const ThreeRenderer = (function () {
             e.set(-f('ey'), f('ex'), 0, 'YXZ'); q.setFromEuler(e); eq.push(q.x, q.y, q.z, q.w);
             var z = 1 + f('es'); es.push(z, z, z);
             var open = p.lid == null ? 1 : Math.max(0, Math.min(1.15, p.lid));
+            /* a swollen eye is bigger than its lids: they stay back under the rim and are put away until it shrinks again */
+            var away = f('es') > 0.05; if (away) open = Math.max(open, 1.1);
+            var lz = away ? 0.001 : 1; ls.push(lz, lz, lz);
             e.set(-_BB_LID * open, 0, 0, 'YXZ'); q.setFromEuler(e); lu.push(q.x, q.y, q.z, q.w);
             e.set(_BB_LID * open, 0, 0, 'YXZ'); q.setFromEuler(e); ld.push(q.x, q.y, q.z, q.w);
         }
         var V = THREE.VectorKeyframeTrack, Q = THREE.QuaternionKeyframeTrack;
         var out = [new V('ewBbBody.position', tt, bp), new Q('ewBbBody.quaternion', tt, bq), new V('ewBbBody.scale', tt, bs)];
         if (R.eye) out.push(new Q('ewBbEye.quaternion', tt, eq), new V('ewBbEye.scale', tt, es));
-        if (R.lids) out.push(new Q('ewBbLidU.quaternion', tt, lu), new Q('ewBbLidD.quaternion', tt, ld));
+        if (R.lids) out.push(new Q('ewBbLidU.quaternion', tt, lu), new Q('ewBbLidD.quaternion', tt, ld), new V('ewBbLidU.scale', tt, ls), new V('ewBbLidD.scale', tt, ls));
         return new THREE.AnimationClip(name, dur, out);
     }
     var _BB_POSES = {
@@ -20653,7 +20656,7 @@ const ThreeRenderer = (function () {
         bbDread: [1.7, function (u) {
             var a = _mtS(u, 0.0, 0.15) * (1 - _mtS(u, 0.85, 1.0)), roll = u * Math.PI * 6, w = 0.2 + 0.35 * _mtS(u, 0.1, 0.7);
             return { y: a * 0.08, rz: Math.sin(u * Math.PI * 4) * 0.2 * a, rx: Math.sin(u * Math.PI * 2 * 12) * 0.03 * a,
-                     s: _bbBeat(u * 5) * 0.07 * a, ex: Math.cos(roll) * w * a, ey: Math.sin(roll) * w * a, es: a * 0.22,
+                     s: _bbBeat(u * 5) * 0.07 * a, ex: Math.cos(roll) * w * a, ey: Math.sin(roll) * w * a, es: a * 0.04,   /* no swell here: the lids flutter over it */
                      lid: 1 + a * 0.1 - Math.pow(Math.max(0, Math.sin(u * Math.PI * 2 * 7)), 6) * 0.5 * a };
         }],
         /* Observer Effect: it looks at itself. The eye rolls up and back toward its own brain, holds, a slow blink; the brain goes still */
@@ -20675,6 +20678,23 @@ const ThreeRenderer = (function () {
                      ey: _mtS(u, 0.0, 0.4) * 0.6, lid: 1 - _mtS(u, 0.25, 0.7) * 0.97 };
         }]
     };
+    /* THE LIDS WIN (mondo 11-27: "z-fighting with the eyelids blinking"): far from the camera the depth buffer cannot tell the
+       lid from the ball a few millimetres under it. Each brain's two lids get their own copy of their material, pulled toward
+       the camera (polygonOffset). The board swaps a unit's materials for its own look after the build, so this is looked at
+       from the unit loop: one compare a frame, redone only when the material was swapped. */
+    function _bbLidTick(entry) {
+        var L = entry._ew_bbLids;
+        if (L === undefined) {
+            L = entry._ew_bbLids = [];
+            try { ['ewBbLidU', 'ewBbLidD'].forEach(function (n) { var o = entry.model.getObjectByName(n); if (o) o.traverse(function (m) { if (m.isMesh) L.push(m); }); }); } catch (e) {}
+        }
+        for (var i = 0; i < L.length; i++) {
+            var m = L[i], mat = m.material;
+            if (!mat || mat._ew_bbLid || Array.isArray(mat)) continue;
+            mat = m.material = mat.clone();
+            mat.polygonOffset = true; mat.polygonOffsetFactor = -2; mat.polygonOffsetUnits = -8; mat._ew_bbLid = true; mat.needsUpdate = true;
+        }
+    }
     function _bbBuild(root) {
         var b = root.getObjectByName('ewBbBody');
         if (!b) return null;
@@ -24207,6 +24227,7 @@ const ThreeRenderer = (function () {
             if (_hlOn) _hlUnitTick(entry, uid, now);   // 🎭 THE HOLLOW: the masks at home, the mask a Masked unit wears
             if (entry.modelDef && entry.modelDef.procRig === 'abomination') _abLimbTick(entry, uid, dt);
             if (entry._ew_oriRace !== false) _oriWatch(entry, uid);   // 🕊 THE ORIGAMI IN A FIGHT: a held shape met from the state alone
+            if (entry.modelDef && entry.modelDef.procRig === 'brainBody') _bbLidTick(entry);   // 🧠 THE FLOATING BRAIN: the lids draw over the ball
             if (entry.modelDef && entry.modelDef.jawBone) _jawTick(entry, uid, now);   // 🥜 THE NUTCRACKER'S JAW: clacks after the clip   // 🫀 THE ABOMINATION: the limbs it has, the cage away
             if (entry.modelDef && entry.modelDef.breakable) _bkTick(entry, uid, now);   // 🦴🪨 THE BREAKABLE BODIES: the pieces after the clip
             if (entry.appearanceRig) { entry.model.updateMatrixWorld(true); entry.appearanceRig.tick(); }   // rev 9: the skirt against the legs

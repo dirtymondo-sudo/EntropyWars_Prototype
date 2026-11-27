@@ -23,7 +23,7 @@ const READ = () => {
   const u = GAME.state.units.find(x => x.player === 1 && x.race === 'boltzmann brain'), d = x => +(x * 57.3).toFixed(0);
   /* a tendril's tip against its own root, in the brain's frame (model metres): it changes when the tendril swings */
   const tip = P.tips.map((t, i) => { if (!t || !P.heads[i]) return null; P.body.worldToLocal(t.getWorldPosition(V)); P.body.worldToLocal(P.heads[i].getWorldPosition(W)); return [+(V.x - W.x).toFixed(3), +(V.y - W.y).toFixed(3), +(V.z - W.z).toFixed(3)]; });
-  return { eyeLeft: d(E.y), eyeUp: d(-E.x), eyeScale: +P.eye.scale.x.toFixed(2), lidOpen: +(-L.x / 0.9425).toFixed(2), y: +P.body.position.y.toFixed(3), nod: d(B.x), turn: d(B.y), roll: d(-B.z), throb: +P.body.scale.x.toFixed(3), tip, anim: ThreeRenderer.devUnitAnim(u.id) };
+  return { eyeLeft: d(E.y), eyeUp: d(-E.x), eyeScale: +P.eye.scale.x.toFixed(2), lidOpen: +(-L.x / 1.0472).toFixed(2), lidScale: +P.lid.scale.x.toFixed(2), lidOffset: (() => { let r = null; P.lid.traverse(m => { if (m.isMesh && r == null) r = !!(m.material && m.material.polygonOffset) + ':' + (m.material && m.material.type) + ':' + (m.material === (P.eye.material || (P.eye.children[0] || {}).material) ? 'SHARED' : 'own'); }); return r; })(), cam: (() => { try { const c = ThreeCamera.getCamera(); return [+c.near.toFixed(2), Math.round(c.far), Math.round(c.position.distanceTo(P.eye.getWorldPosition(new THREE.Vector3())))]; } catch (e) { return null; } })(), gapWorld: +(0.15 * 0.0751 * P.eye.getWorldScale(new THREE.Vector3()).x).toFixed(2), y: +P.body.position.y.toFixed(3), nod: d(B.x), turn: d(B.y), roll: d(-B.z), throb: +P.body.scale.x.toFixed(3), tip, anim: ThreeRenderer.devUnitAnim(u.id) };
 };
 (async () => {
   const browser = await require(path.join(REPO, 'probe-fast.js')).launch(chromium, { headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
@@ -106,7 +106,7 @@ const READ = () => {
         const self = !(sp.range > 0); return 'spell ' + GAME.doSpell(pg, self ? pg.x + 2 : foe.x, self ? pg.y : foe.y, foe.z);
       } catch (e) { return 'threw ' + e.message; } }, act);
     console.log('ACT', act, r);
-    const marks = act === 'walk' ? [150, 300, 450, 600] : [350, 700, 1100, 1700];
+    const marks = process.env.MARKS ? process.env.MARKS.split(',').map(Number) : (act === 'walk' ? [150, 300, 450, 600] : [350, 700, 1100, 1700]);
     let last = 0; for (const m of marks) { rows.push([act, m, await shot(act + '_' + m, m - last)]); last = m; }
     await sleep(3500);
   }
