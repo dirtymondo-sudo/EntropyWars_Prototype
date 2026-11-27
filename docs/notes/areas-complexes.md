@@ -15342,6 +15342,42 @@ with mondo's OK.
 `EW_PROBE_TRIES=1`). Never edit a served .js while a probe runs.
 
 
+### THE SPREAD, THE POLISH PASS (2026-11-27, thread "Polish Disaster City after the new layout")
+mondo 11-27, from Police staging and the Street market: "a street that is all messed up bc it has this a big bump and its not connected to the next part
+of the street smoothly ... a useless staircase because of the recent disaster city pass ... there are many more things just like this". What the cuts broke,
+found by tools (not by eye), and where each is fixed:
+- **THE DEAD STAIRS (14 flights and ramps).** THE LEVELS joined two plots at different heights by a flight ON their shared line. On a line the spread
+  opens (compact x or z = -84 / 84) the two plots no longer touch: the flight went with one side and climbed into the air over the new pavement, its cut
+  stayed as a notch in the other side. `bake-disaster-city.js` THE LEVELS: on those lines no flight, no ramp, no cut (the squares are still taken, so
+  the dice fall as before); the walks go to the spread as `opt.seamWalks`.
+- **THE BANK STAIRS.** Where such a walk met Bluff Drive's WALL (the west side more than 4.5 m over the east), spread.js builds a flight up the bank
+  from the low walk to the promenade, two squares wide, on its own fill (`dc:bluff:stair<n>`, TY 'T'); the promenade's rail opens there. One today
+  (Street market / Tower service, mondo's stair). No wall = the bank is walked, no flight.
+- **THE CROSSING KEEPS THE STREET'S HEIGHT.** Bluff Drive's cross slope read the two sides AVERAGED over nine rows: at Valley Road (in a cutting,
+  4.4 m between 8.8 m blocks) the strip stood 2.4 m over both ends. A carriageway row of a crossing now reads the district's edge squares in its own
+  row (`wSq` / `eSq`); the drive and its west pavement come down to it over ten squares (`DIP`), evenly between two crossings a few rows apart
+  (`lev`); the district's edge stands over the dipped pavement as a face. THE EAST SIDE STAYS LOW: the low walk keeps the east district's height
+  (raised with the drive it stood 2 m over a walk-in's door: a trap, find-softlocks). A walk-in's row keeps its edge's exact height on either side.
+- **THE STRADDLERS (12 back-lot buildings: in67, in68, in93, inM0-5, inM8, inM10, inM13).** THE INFILL builds on the band BOTH sides of a plot line. On
+  a cut line the building went with one side and stood a square out on the new pavement; its floor's squares and half its furniture stayed behind as
+  a pit on the other side (12 m deep beside Bluff Drive at the Office court). spread.js section 0 pushes each one wholly onto ONE side before
+  anything is set apart, with everything in it and every row that carries its id; the squares it left take the ground beside them. The side: free
+  ground, then ground at its floor's height, then the side its back is to. Needs the plan's letters: `opt.cells`.
+- **A ROW GOES WITH ITS BUILDING**: a row that names a building and stands within 3 m of a cut is set down with the building (two billboards hung
+  0.2 m over the line went with the other district, 42 m from their wall).
+- **THE U-TURN LANE UNDER THE NORTH BRIDGE** was closed by the highway's middle and east barriers: the walker calls a wall hung only when its foot
+  is over the ground at BOTH ends, and a bridge's end row touches the fill's face. The hung ghost walls leave out that metre (`ghost(..., ends)`).
+- **THE HILLS' LINE**: Bluff Drive's first row is level across the road and promenade (a 1.3 m dip lay across the drive); its last row starts where the
+  row before it ends (a 0.5 m step).
+- **THE TOOL: `node find-bumps.js [room]`** walks every `gen.streets` row on the walker's feet (middle and both outer lanes) and lists STEP / BUMP /
+  DIP. Before: 27 groups. After: 1, the Hills' foot road where Entertainment's north street crosses it (5 m down and up in 25 m; it is the Hills'
+  own ground, district N, older than the spread: NOT fixed here). Run it after any change to the spread or a street.
+- **CHECKED**: find-bumps as above; `find-softlocks.js` 1 trap + 1 crevice (the Hills' old two), 17 dips, 23 slots; `find-doors.js` 335 walk-ins,
+  1 drawn door closed (as before). Pictures (classic renderer): project files `disaster-city-polish/`. The WebGPU run came out black in the cloud
+  (headful, `--gpu=webgpu`); the pass changes ground heights and rows only, nothing a renderer draws its own way.
+- **NOT DONE / SEEN**: the low walk between Valley Road's bank and South Avenue rises 2 m in its last square (rows 142-144); five straddlers stand on
+  ground a level off their floor (in67, in93, inM0, inM1, inM10: as in the compact city); every bake prints `THE SPREAD: straddler ...` for them.
+
 ### THE INSIDE OF THE CUBE, the way in + who lives there (2026-11-27, the same day; mondo's answers are in `docs/plans/dmt-realm/PLAN.md`)
 - **THE WAY IN**: THE BLACK CUBE on Saturn. `docs/plans/world-zones/draw-space.js` saturn way `cube_dmt` (flat square 27,33, face 180, on the Hexagon's
   plateau south of the Eye); `docs/areas/space/districts/H.js` draws the cube over it (`look` 'black_cube': 10.5 m, hanging 3.3 m up, its twelve

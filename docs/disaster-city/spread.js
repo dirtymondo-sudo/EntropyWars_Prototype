@@ -56,6 +56,60 @@ function apply(block, opt) {
     /* ══ 1. THE GRIDS: heights (four corners a square, cm), the walk-in flag, the painted sheet ══ */
     const oh = new Int16Array(b64.dec(T.slope.cells.d).buffer), of = b64.dec(T.slope.cells.f), op = b64.dec(T.paint.d);
     if (T.slope.cells.nx !== ONX || T.slope.cells.nz !== ONZ || T.paint.nx !== ONX || T.paint.nz !== OPZ) throw new Error('THE SPREAD: the compact room is not the size this file was written for');
+    /* ══ 0. THE STRADDLERS (11-27, the polish pass). A back-lot building the compact city stood ACROSS a line that is now cut open (half on each
+       district's edge) was torn in two: the building went with one side and stood a square out on the new pavement, its floor's squares and half
+       its furniture stayed behind as a pit on the other side. Before anything is set apart, each one is pushed wholly onto ONE side, its edge on the
+       cut line, with everything in it and every row that carries its id; the squares it leaves take the ground beside them. The side: free ground
+       (the plan's '.', '#', 'G', no other walk-in), then the side whose ground stands at its floor, then the side its back is to (its front then
+       looks onto the new road). Nothing of this touches the dice: the compact city is built as before. ══ */
+    count.straddlers = 0;
+    { const cells = opt.cells || null, letter0 = (ci, cj) => (cells && cj >= 36 && cj < 180 && ci >= 0 && ci < 144) ? cells[cj - 36][ci] : '?';
+      const esc = t => t.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+      T.features.filter(f => f && f.k === 'texbuilding').forEach(f => {
+        const turned = ((((f.rot || 0) % 180) + 180) % 180) === 90, w = turned ? f.d : f.w, d = turned ? f.w : f.d;
+        const bx0 = f.x - w / 2, bx1 = f.x + w / 2, bz0 = f.z - d / 2, bz1 = f.z + d / 2;
+        if (bz1 <= -252 + 0.01 || bx0 >= 252 - 0.01) return;
+        const cX = CUTX.find(c => bx0 < c - 0.6 && bx1 > c + 0.6), cZ = CUTZ.find(c => bz0 < c - 0.6 && bz1 > c + 0.6);
+        if (cX == null && cZ == null) return;
+        if (cX != null && cZ != null) { warn('a building over the crossing of two cuts, left as it is: ' + f.id); return; }
+        const ax = cX != null;                                                 // the cut runs north-south: the building is pushed along x
+        const i0 = Math.round((bx0 - OX0) / C), i1 = Math.round((bx1 - OX0) / C) - 1, j0 = Math.round((bz0 - OZ0) / C), j1 = Math.round((bz1 - OZ0) / C) - 1;
+        const cut = ax ? Math.round((cX - OX0) / C) : Math.round((cZ - OZ0) / C);   // the first square on the cut's high side
+        const a0 = ax ? i0 : j0, a1 = ax ? i1 : j1, b0 = ax ? j0 : i0, b1 = ax ? j1 : i1, nLo = cut - a0, nHi = a1 - cut + 1;   // a: across the cut, b: along it
+        const sk = (a, b) => ax ? (b * ONX + a) : (a * ONX + b), letter = (a, b) => ax ? letter0(a, b) : letter0(b, a);
+        const floor = oh[sk(cut, b0) * 4] / 100;
+        const side = S => { const n = S > 0 ? nLo : nHi, from = S > 0 ? a1 + 1 : a0 - n; let free = true, lv = 0, m = 0;
+            for (let a = from; a < from + n; a++) for (let b = b0; b <= b1; b++) { if ('.#G'.indexOf(letter(a, b)) < 0 || of[sk(a, b)]) free = false; for (let c = 0; c < 4; c++) { lv += oh[sk(a, b) * 4 + c] / 100; m++; } }
+            return { S, n, from, free, off: Math.abs(lv / m - floor) }; };
+        const q = (f.rot || 0) * Math.PI / 180, back = -(ax ? -Math.round(Math.sin(q)) : Math.round(Math.cos(q)));
+        const cands = [side(1), side(-1)].filter(c => c.free).sort((u, v) => ((u.off < 0.5 ? 0 : 1) - (v.off < 0.5 ? 0 : 1)) || ((u.S === back ? 0 : 1) - (v.S === back ? 0 : 1)));
+        if (!cands.length) { warn('a building across a cut with no free ground on either side, left as it is: ' + f.id); return; }
+        const pk = cands[0], S = pk.S, t = S * pk.n * C, K0 = ax ? ['x', 'x0', 'x1'] : ['z', 'z0', 'z1'], qi = ax ? 0 : 1;
+        const re = new RegExp('(^|:)' + esc(String(f.id || '').replace(/^dc:/, '')) + '($|[:\\-])');
+        const inOld = (x, z) => x > bx0 - 0.05 && x < bx1 + 0.05 && z > bz0 - 0.05 && z < bz1 + 0.05;
+        const nx0 = ax ? (S > 0 ? bx1 : bx0 - pk.n * C) : bx0, nx1 = ax ? (S > 0 ? bx1 + pk.n * C : bx0) : bx1, nz0 = ax ? bz0 : (S > 0 ? bz1 : bz0 - pk.n * C), nz1 = ax ? bz1 : (S > 0 ? bz1 + pk.n * C : bz0);
+        const inNew = (x, z) => x > nx0 + 0.1 && x < nx1 - 0.1 && z > nz0 + 0.1 && z < nz1 - 0.1;
+        const at0 = g => (typeof g.x === 'number') ? [g.x, g.z] : (typeof g.x0 === 'number') ? [(g.x0 + g.x1) / 2, (g.z0 + g.z1) / 2] : null;
+        const push = g => { K0.forEach(k => { if (typeof g[k] === 'number') g[k] = r3(g[k] + t); }); for (const k of ['quad', 'pts']) if (Array.isArray(g[k])) g[k] = g[k].map(v => { if (!Array.isArray(v)) return v; const o = v.slice(); o[qi] = r3(o[qi] + t); return o; }); };
+        const gone = {};
+        T.features = T.features.filter(g => { if (!g) return true; const p = at0(g);
+            if (g === f || (g.id && re.test(g.id)) || (p && g.k !== 'texbuilding' && inOld(p[0], p[1]))) { push(g); return true; }
+            if (p && inNew(p[0], p[1])) { gone[g.k] = (gone[g.k] || 0) + 1; return false; }
+            return true; });
+        room.props = (room.props || []).filter(g => { if (inOld(g.x, g.z)) { push(g); return true; } if (inNew(g.x, g.z)) { gone[g.key] = (gone[g.key] || 0) + 1; return false; } return true; });
+        (room.npcSpots || []).concat(Array.isArray(room.agents) ? room.agents : []).forEach(g => { if (g && typeof g.x === 'number' && inOld(g.x, g.z)) push(g); });
+        /* the ground: the building's own squares go with it, the squares it left take the edge of the ground beside them */
+        const n = pk.n, tmp = [];
+        for (let a = a0; a <= a1; a++) for (let b = b0; b <= b1; b++) { const k = sk(a, b); tmp.push([a + S * n, b, [oh[k * 4], oh[k * 4 + 1], oh[k * 4 + 2], oh[k * 4 + 3]], of[k], op[k]]); }
+        const left = []; for (let a = (S > 0 ? a0 : a1 - n + 1); a <= (S > 0 ? a0 + n - 1 : a1); a++) for (let b = b0; b <= b1; b++) left.push([a, b]);
+        const nb = S > 0 ? a0 - 1 : a1 + 1;
+        left.forEach(([a, b]) => { const k = sk(a, b), s = sk(nb, b);
+            const e = ax ? (S > 0 ? [oh[s * 4 + 1], oh[s * 4 + 1], oh[s * 4 + 3], oh[s * 4 + 3]] : [oh[s * 4], oh[s * 4], oh[s * 4 + 2], oh[s * 4 + 2]])
+                         : (S > 0 ? [oh[s * 4 + 2], oh[s * 4 + 3], oh[s * 4 + 2], oh[s * 4 + 3]] : [oh[s * 4], oh[s * 4 + 1], oh[s * 4], oh[s * 4 + 1]]);
+            for (let c = 0; c < 4; c++) oh[k * 4 + c] = e[c]; of[k] = 0; if (k < op.length) op[k] = op[s] || 1; });
+        tmp.forEach(([a, b, h, fl, pa]) => { const k = sk(a, b); for (let c = 0; c < 4; c++) oh[k * 4 + c] = h[c]; of[k] = fl; if (k < op.length) op[k] = pa; });
+        count.straddlers++; say.push('straddler ' + f.id + ' -> the ' + (ax ? (S > 0 ? 'east' : 'west') : (S > 0 ? 'south' : 'north')) + ' side' + (pk.off >= 0.5 ? ' (floor ' + floor + ', ground off by ' + r3(pk.off) + ')' : '') + (Object.keys(gone).length ? ', cleared ' + JSON.stringify(gone) : ''));
+      }); }
     const H = new Float32Array(NX * NZ * 4), FL = new Uint8Array(NX * NZ), P = new Uint8Array(NX * NZ), KIND = new Uint8Array(NX * NZ);   // KIND: 1 copied, 2 stretched nature, 3 new city ground, 4 the bay
     const K = (i, j) => j * NX + i;
     for (let j = 0; j < NZ; j++) for (let i = 0; i < NX; i++) { const oi = colOld(i), oj = rowOld(j); if (oi < 0 || oj < 0) continue;
@@ -162,6 +216,7 @@ function apply(block, opt) {
         for (const k of ['x', 'x0', 'x1']) if (typeof f[k] === 'number') f[k] = r3(f[k] + dx); for (const k of ['z', 'z0', 'z1']) if (typeof f[k] === 'number') f[k] = r3(f[k] + dz); mapQuadLike(f, dx, dz); return f; };
     const archAnchor = f => { if (f.rot || !Array.isArray(f.parts) || !f.parts.length) return [f.x, f.z]; let sx = 0, sz = 0, n = 0; f.parts.forEach(p => { if (Array.isArray(p.p)) { sx += p.p[0]; sz += p.p[2]; n++; } }); return n ? [f.x + sx / n, f.z + sz / n] : [f.x, f.z]; };
     count.dropped = 0; count.split = 0; count.stretched = 0; let westTree = 0;
+    const bOf = {}; F.forEach(g => { if (g && g.k === 'texbuilding' && g.id) bOf[String(g.id).replace(/^dc:/, '')] = [g.x, g.z]; });
     F.forEach(f0 => { const f = JSON.parse(JSON.stringify(f0));
         if (typeof f.x0 === 'number' && typeof f.x1 === 'number' && typeof f.z0 === 'number' && typeof f.z1 === 'number') {
             const lin = f.k === 'wall' || f.k === 'rail';
@@ -187,7 +242,10 @@ function apply(block, opt) {
         }
         if (typeof f.x !== 'number') { if (Array.isArray(f.pts)) f.pts = f.pts.map(v => { const m = map(v[0], v[1]); return [m[0], m[1]].concat(v.slice(2)); }); OUT.push(f); return; }
         if (f.k === 'tree' && Math.abs(f.x + 250.25) < 1 && f.z > -252) { if ((westTree++) % 3 !== 0) { count.dropped++; return; } }   // the old west tree line was a wall of trees: every third stays, as the greenway's own
-        const a = f.k === 'arch' ? archAnchor(f) : [f.x, f.z];
+        /* (a row that names a building and stands within three metres of a cut goes where its building goes: a billboard on the wall that faces the
+           cut hangs 0.2 m over the line, and went with the other district, 42 m from its wall) */
+        const own = String(f.id || '').match(/(P\d\d-\d\d-B\d+|inM?\d+)/), bld = own && bOf[own[1]], a0 = f.k === 'arch' ? archAnchor(f) : [f.x, f.z];
+        const a = (bld && (CUTX.some(c => Math.abs(a0[0] - c) < 3) || CUTZ.some(c => Math.abs(a0[1] - c) < 3))) ? bld : a0;
         OUT.push(moveBy(f, a[0], a[1]));
     });
     const PR = (room.props || []).map(p => { const q = Object.assign({}, p), m = map(p.x, p.z); q.x = m[0]; q.z = m[1]; if (Array.isArray(q.rect)) warn('a prop with a rect: ' + q.key); return q; });
@@ -244,28 +302,63 @@ function apply(block, opt) {
     { const J0 = 36, J1 = 203, W = [], E = [], Ws = [], Es = [], sAt = [];
       for (let j = J0; j <= J1 + 1; j++) { W[j] = LAT[LK(BL, j)]; E[j] = LAT[LK(BL + 12, j)]; }
       for (let j = J0; j <= J1 + 1; j++) { let a = 0, b = 0, n = 0; for (let q = -4; q <= 4; q++) { const jj = Math.max(J0, Math.min(J1 + 1, j + q)); a += W[jj]; b += E[jj]; n++; } Ws[j] = a / n; Es[j] = b / n; if (Es[j] > Ws[j]) Es[j] = Ws[j] = (Es[j] + Ws[j]) / 2; }
-      const crossRow = j => j < J0 || j > J1 ? false : at(BL + 8, j) !== 'G';
-      for (let j = J0; j <= J1 + 1; j++) { let d = j === J0 ? 0 : 99; for (let q = -7; q <= 7; q++) if (crossRow(j + q) || crossRow(j + q - 1)) d = Math.min(d, Math.abs(q)); sAt[j] = Math.max(0, Math.min(1, 1 - (d - 0.5) / 6)); if (d === 0) sAt[j] = 1; }
+      const crossRow = j => j < J0 || j > J1 ? false : 'RU'.indexOf(at(BL + 8, j)) >= 0;                                  // a row of a crossing street's carriageway
+      /* THE CROSSING KEEPS THE STREET'S OWN HEIGHT (11-27, the polish pass; mondo at Police staging: "a big bump ... not connected to the next part of the
+         street smoothly"). The slope across the strip ran between the two sides' heights AVERAGED over nine rows, so where a street lies in a cutting
+         (4.4 m between 8.8 m blocks) the strip stood 2.4 m over both of its ends: up, down and up again in forty metres. A crossing's square now
+         reads the district's edge squares in its own row on both sides (`wSq`, `eSq`), and the drive comes down to that level over ten squares. */
+      const wIn = [], wSq = (j, c) => H[K(BL - 1, j) * 4 + (c ? 3 : 1)], eSq = (j, c) => H[K(BL + 12, j) * 4 + (c ? 2 : 0)], lev = [], DIP = 10;
+      for (let j = J0; j <= J1 + 1; j++) { let up = null, dn = null;      // the nearest crossing south of this line and north of it: [squares away, west height, east height]
+          for (let q = 0; q <= DIP + 1 && !up; q++) if (crossRow(j + q)) up = [q, wSq(j + q, 0), eSq(j + q, 0)];
+          for (let q = 0; q <= DIP + 1 && !dn; q++) if (crossRow(j - 1 - q)) dn = [q, wSq(j - 1 - q, 1), eSq(j - 1 - q, 1)];
+          const d = Math.min(up ? up[0] : 99, dn ? dn[0] : 99, j === J0 ? 0 : 99), t = d <= 1 ? 1 : Math.max(0, Math.min(1, 1 - (d - 1) / DIP)); sAt[j] = t * t * (3 - 2 * t);
+          /* (between two crossings a few rows apart, the cross street and the south avenue, the level runs evenly from one to the other) */
+          if (up && dn) { const n = up[0] + dn[0], a = n ? dn[0] / n : 0.5; lev[j] = [up[1] * a + dn[1] * (1 - a), up[2] * a + dn[2] * (1 - a)]; }
+          else lev[j] = up ? [up[1], up[2]] : dn ? [dn[1], dn[2]] : [W[j], E[j]];
+          /* THE EAST SIDE STAYS LOW: only the drive comes down to a crossing. The low walk keeps the east district's own height right up to the street
+             (which stands on its own bank there, as it does inside the district): raised with the drive, it stood 2 m over the door of a walk-in on
+             the district's edge, a pit nobody walked out of (find-softlocks). A walk-in's row on either edge keeps that edge's exact height. */
+          if (FL[K(BL + 12, Math.min(J1, j))] || FL[K(BL + 12, Math.max(J0, j - 1))]) Es[j] = E[j];
+          wIn[j] = !!(FL[K(BL - 1, Math.min(J1, j))] || FL[K(BL - 1, Math.max(J0, j - 1))]);
+          if (d > 1) lev[j][1] = Es[j]; }
       /* the height at lattice column u (0..12) of lattice row j; `side` -1 / 1 = just west / east of the wall's line (u 6) */
-      const hB = (u, j, side) => { if (u <= 0) return W[j]; if (u >= 12) return E[j]; const D = Ws[j] - Es[j], s = sAt[j];
-          const cross = Ws[j] - D * Math.max(0, Math.min(1, (u - 1) / 10));
+      /* (the strip's two outer lines come down to the street with the drive: the district's edge then stands over the pavement as a face, the way its
+         own blocks stand over the street in the cutting; a pavement square is never the bank) */
+      const hB = (u, j, side) => { const D = Ws[j] - Es[j], s = sAt[j]; if (u <= 0) return wIn[j] ? W[j] : W[j] + (lev[j][0] - W[j]) * s; if (u >= 12) return s >= 1 ? lev[j][1] : E[j];
+          const cross = lev[j][0] + (lev[j][1] - lev[j][0]) * Math.max(0, Math.min(1, (u - 1) / 10));
           const bank = Math.min(D, 4.5), wall = D - bank, terr = (u < 6 || (u === 6 && side < 0)) ? Ws[j] : (u >= 11 ? Es[j] : Ws[j] - wall - bank * (u - 6) / 5);
           return terr + (cross - terr) * s; };
+      /* (the strip's first line, on the Hills' foot: the drive and its promenade start level at the west height, where the road down from the Hills
+         lands; only the bank east of the wall line takes the cross slope that joins the Hills' stretched ground. The whole line sloped: a 1.3 m dip
+         lay across the drive at the Hills' line) */
+      const hT = (u, j, side) => (j === J0 && (u < 6 || (u === 6 && side < 0))) ? (u <= 0 ? W[j] : Ws[j]) : hB(u, j, side);
+      const xAt = (u, j, c) => { const w = wSq(j, c), e = eSq(j, c); return w + (e - w) * Math.max(0, Math.min(1, (u - 1) / 10)); };
       for (let j = J0; j <= J1; j++) for (let u = 0; u < 12; u++) { const k = K(BL + u, j); if (KIND[k] !== 3) continue;
-          H[k * 4] = hB(u, j, 1); H[k * 4 + 1] = hB(u + 1, j, -1); H[k * 4 + 2] = hB(u, j + 1, 1); H[k * 4 + 3] = hB(u + 1, j + 1, -1); }
+          if (crossRow(j)) { H[k * 4] = xAt(u, j, 0); H[k * 4 + 1] = xAt(u + 1, j, 0); H[k * 4 + 2] = xAt(u, j, 1); H[k * 4 + 3] = xAt(u + 1, j, 1); continue; }
+          H[k * 4] = hT(u, j, 1); H[k * 4 + 1] = hT(u + 1, j, -1); H[k * 4 + 2] = hB(u, j + 1, 1); H[k * 4 + 3] = hB(u + 1, j + 1, -1); }
+      /* THE BANK STAIRS (11-27): where the compact city joined two plots across this line by a flight (the city tool's `seamWalks`) and the drive now
+         stands on a wall over the east side, a flight runs up the bank from the low walk to the promenade, two squares wide, on its own fill */
+      (opt.seamWalks || []).filter(sw => sw.x && Math.abs(sw.line - CUTX[1]) < 0.01).forEach((sw, n) => { const zm = map(sw.line + 1, (sw.a + sw.b) / 2)[1], jm = Math.round((zm - Z0) / C), ja = Math.max(J0 + 1, jm - 1), jb = ja + 1;
+          if (crossRow(ja) || crossRow(jb) || sAt[ja] > 0.01 || sAt[jb + 1] > 0.01) return;
+          const top = jl => hB(6, jl, -1), bot = jl => hB(11, jl, 1); if (top(ja) - hB(6, ja, 1) < 0.3) return;                // no wall here: the bank is walked
+          const y = (u, jl) => top(jl) + (bot(jl) - top(jl)) * (u - 6) / 5;
+          for (let j = ja; j <= jb; j++) for (let u = 6; u <= 10; u++) { const k = K(BL + u, j); H[k * 4] = y(u, j); H[k * 4 + 1] = y(u + 1, j); H[k * 4 + 2] = y(u, j + 1); H[k * 4 + 3] = y(u + 1, j + 1); TY[k] = ch('T'); }
+          extra.push({ k: 'ramp', id: 'dc:bluff:stair' + n, absY: true, x0: lx(BL + 11), z0: lz(jb), x1: lx(BL + 6), z1: lz(jb), w: 2 * C, h0: r3((bot(ja) + bot(jb + 1)) / 2), h1: r3((top(ja) + top(jb + 1)) / 2), stairs: true, model: 'concrete', edge: 0.01 });
+          count.bankStairs = (count.bankStairs || 0) + 1; });
       /* the promenade's rail over the wall, the bank's trees, benches looking out to sea */
       let run = null; const flush = () => { if (run && run[1] - run[0] >= 1) extra.push({ k: 'rail', x0: r3(lx(BL + 6) - 0.3), z0: lz(run[0]), x1: r3(lx(BL + 6) - 0.3), z1: lz(run[1] + 1), model: 'balusters_b' }); run = null; };
-      for (let j = J0; j <= J1; j++) { const drop = Math.min(hB(6, j, -1) - hB(6, j, 1), hB(6, j + 1, -1) - hB(6, j + 1, 1)); if (drop > 0.55 && at(BL + 5, j) === 'P') { if (!run) run = [j, j]; else run[1] = j; } else flush(); } flush();
+      for (let j = J0; j <= J1; j++) { const drop = Math.min(hB(6, j, -1) - hB(6, j, 1), hB(6, j + 1, -1) - hB(6, j + 1, 1)); if (drop > 0.55 && at(BL + 5, j) === 'P' && at(BL + 6, j) !== 'T') { if (!run) run = [j, j]; else run[1] = j; } else flush(); } flush();
     }
     /* the south row near the bay: the land keeps its head over the water as far as the drive's end */
     for (let j = SR; j < NZ; j++) for (let i = BL; i <= BL + 8; i++) { const k = K(i, j); for (let q = 0; q < 4; q++) if (H[k * 4 + q] < 0.9) H[k * 4 + q] = 0.9; }
+    for (let i = BL; i <= BL + 8; i++) { const k = K(i, SR), u = K(i, SR - 1); H[k * 4] = H[u * 4 + 2]; H[k * 4 + 1] = H[u * 4 + 3]; }   // (the drive's last row starts at the height the row before it ends on: a half-metre step lay across the road)
     for (let j = SR; j < NZ; j++) for (let i = BL + 9; i <= BL + 11; i++) { const k = K(i, j), a = Math.max(-0.6, 0.9 - (i - BL - 9) * 0.5), b = Math.max(-0.6, 0.9 - (i - BL - 8) * 0.5); H[k * 4] = H[k * 4 + 2] = a; H[k * 4 + 1] = H[k * 4 + 3] = b; TY[k] = ch('B'); }
 
     /* THE WAYS UP INTO THE HILLS (the Hills' own squares, stretched ground): the parkway climbs a cutting to the Hills' west road, Bluff Drive runs up to
        the road along the Hills' foot. A road square there: asphalt, a box out of the Hills' ground zone, heights in one even ramp between its two ends. */
     const outHills = [];
     const hillRoad = (i0, i1, jTop, jBot) => { for (let i = i0; i <= i1; i++) for (let j = jTop; j < jBot; j++) { const k = K(i, j);
-            const top = c => H[K(i, jTop - 1) * 4 + 2 + c], bot = c => (kindAt(i, jBot) === 3 ? LAT[LK(i + c, jBot)] : H[K(i, jBot) * 4 + c]), y = (c, jl) => top(c) + (bot(c) - top(c)) * (jl - jTop) / (jBot - jTop);
+            const top = c => H[K(i, jTop - 1) * 4 + 2 + c], bot = c => H[K(i, jBot) * 4 + c], y = (c, jl) => top(c) + (bot(c) - top(c)) * (jl - jTop) / (jBot - jTop);
             H[k * 4] = y(0, j); H[k * 4 + 1] = y(1, j); H[k * 4 + 2] = y(0, j + 1); H[k * 4 + 3] = y(1, j + 1); P[k] = 0; FL[k] = 0; TY[k] = ch('R'); }
         outHills.push([lx(i0), lz(jTop), lx(i1 + 1), lz(jBot)]); };
     hillRoad(5, 6, 19, 36); hillRoad(BL + 1, BL + 4, 34, 36);
@@ -273,7 +366,7 @@ function apply(block, opt) {
 
     /* ══ 6. the sheets of the new ground ══ */
     for (let j = 0; j < NZ; j++) for (let i = 0; i < NX; i++) { const k = K(i, j); if (KIND[k] !== 3) continue; const c = at(i, j);
-        P[k] = c === 'P' ? WALK : c === 'G' ? GRASS : c === 'D' ? DIRT : c === 'B' ? SAND : c === 'U' ? underSheet(j) : 0; FL[k] = 0; }
+        P[k] = (c === 'P' || c === 'T') ? WALK : c === 'G' ? GRASS : c === 'D' ? DIRT : c === 'B' ? SAND : c === 'U' ? underSheet(j) : 0; FL[k] = 0; }
     /* Desert View Drive looks out on the desert: south of the road the grass thins to dirt and sand */
     const hash = (a, b, c) => { let h = (a * 374761393 + b * 668265263 + (c || 0) * 2147483647) | 0; h = (h ^ (h >>> 13)) * 1274126177 | 0; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
     for (let j = 210; j < NZ; j++) for (let i = 0; i < BL; i++) { const k = K(i, j); if (at(i, j) !== 'G') continue; const v = (j - 210) + Math.sin(i * 0.37) * 0.9 + Math.sin(i * 0.11 + 2) * 0.8 + hash(Math.floor(i / 3), j, 3) * 0.6; P[k] = v > 3.6 ? SAND : v > 1.5 ? DIRT : GRASS; }
@@ -289,7 +382,9 @@ function apply(block, opt) {
         if (!dash) { Pp.push(Object.assign({ s: 'quad', flat: true, p: [r3(x - rx), r3(y0), r3((za + zb) / 2 - rz)], ry, size: [w, r3(L)], tint: color }, rise > 0.001 ? { shear: [r3(rise), r3(L)] } : null)); return; }
         const per = dash[0] + dash[1], n = Math.floor((L - dash[0]) / per) + 1, k = rise / L; if (n < 1) return;
         Pp.push(Object.assign({ s: 'quad', flat: true, p: [r3(x - rx), r3(y0), r3(lo + dir * dash[0] / 2 - rz)], ry, size: [w, dash[0]], tint: color, n, step: [0, r3(k * per), r3(dir * per)] }, rise > 0.001 ? { shear: [r3(k * dash[0]), dash[0]] } : null)); };
-    const ghost = (x, j, ya, yb, hung) => feat(Object.assign({ k: 'wall', ghost: true, x0: r3(x), z0: lz(j), x1: r3(x), z1: lz(j + 1), t: 0.6, h: BH, absY: true },
+    /* (`ends`: a hung wall's first and last metre on a bridge are left out. The walker calls a wall hung only when its foot is over the ground at BOTH
+       its ends, and a bridge's end row touches the fill's face: the barrier there stood from the street up, across the U-turn lane under the bridge) */
+    const ghost = (x, j, ya, yb, hung, ends) => feat(Object.assign({ k: 'wall', ghost: true, x0: r3(x), z0: r3(lz(j) + (ends && ends[0] ? 1.2 : 0)), x1: r3(x), z1: r3(lz(j + 1) - (ends && ends[1] ? 1.2 : 0)), t: 0.6, h: BH, absY: true },
         hung ? { y0: r3(ya), y: r3(ya + BH) } : Object.assign({ y: r3(Math.max(ya, yb) + BH) }, Math.abs(ya - yb) > 0.01 ? { rail: [r3(ya + BH), r3(yb + BH)] } : null)));
     const isBridgeRow = j => BRIDGES.some(b => j >= b[0] && j <= b[1]);
     const J_N = RAMP_N[0], J_S = RAMP_S[1];                                   // the highway stands over the ground between these lattice rows
@@ -309,11 +404,11 @@ function apply(block, opt) {
             const close = j => { if (run != null) { jersey(Pp, rx, rz, x, lz(run), lz(j), yAt(run), yAt(j)); run = null; } };
             for (let j = ja; j < jb; j++) { const s = slipAt(sd, j), i0 = sd < 0 ? HW + 6 : HW + 17, beside = s ? Math.min(slipH(s, i0, j), slipH(s, i0, j + 1)) : Math.min(sideGround(sd, j), sideGround(sd, j + 1));
                 const need = bridge || (Math.max(yAt(j), yAt(j + 1)) - beside > 0.5);
-                if (need) { if (run == null) run = j; ghost(x, j, yAt(j), yAt(j + 1), bridge); } else close(j); }
+                if (need) { if (run == null) run = j; ghost(x, j, yAt(j), yAt(j + 1), bridge, bridge && [j === ja, j === jb - 1]); } else close(j); }
             close(jb); }
         /* the middle barrier and the paint */
         const c0 = Math.max(ja, J_N + 3), c1 = Math.min(jb, J_S - 3);
-        if (c1 > c0) { jersey(Pp, rx, rz, HC, lz(c0), lz(c1), yAt(c0), yAt(c1)); for (let j = c0; j < c1; j++) ghost(HC, j, yAt(j), yAt(j + 1), bridge); }
+        if (c1 > c0) { jersey(Pp, rx, rz, HC, lz(c0), lz(c1), yAt(c0), yAt(c1)); for (let j = c0; j < c1; j++) ghost(HC, j, yAt(j), yAt(j + 1), bridge, bridge && [j === ja, j === jb - 1]); }
         /* THE PAINT (11-27, mondo's pick "B: pack paint, lane by lane"): the deck's lines are `gen.roadLines` rows the engine draws in the streets' own
            paint (three-renderer.js _hqBuildRoadPaint), a lane a square: a yellow line beside the middle barrier, dashed white lane lines, a white edge */
         for (const sd of [-1, 1]) { roadLines.push([r3(HC + sd * 0.75), lz(ja), lz(jb), r3(ya), r3(yb), 'y', 0]); for (const o of [3.5, 7, 10.5]) roadLines.push([r3(HC + sd * o), lz(ja), lz(jb), r3(ya), r3(yb), 'w', 1]); roadLines.push([r3(HC + sd * 13.6), lz(ja), lz(jb), r3(ya), r3(yb), 'w', 0]); }
