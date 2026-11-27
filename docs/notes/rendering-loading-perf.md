@@ -4418,3 +4418,15 @@ cleared doorway's box was NaN and an arch wall beside a door (the crypt's front,
 is `HQ_ARCH_DOOR_CLEAR` now. Checked: all 2,593 arch rows in every room build with no NaN (headless, the real `_hqArchGeometry`), the
 Haunted House probe logs 0 NaN errors. A probe that names the owner of a NaN geometry: wrap `BufferGeometry.prototype.setAttribute`
 ('position') and `computeBoundingSphere` in a `--pre` script and log the stack / the mesh's `_ew_hqArch`.
+
+## THE DEPTH FIT (2026-11-27): no ground flicker zoomed out in battle
+mondo: "during battle, when i zoom out of the map there is a lot of flickering on the ground that isnt there when i am zoomed in
+closer". The battle lens (three-camera.js) had its near plane fixed at 1 unit (a square is 128). A depth buffer's step at distance
+d is about d² / (near × 2^24): wheeled all the way out (zoom 0.3, the lens ~5,800 units from the board) that is ~2 units, and every
+layer laid half a unit over the ground (tile overlays, paths, decals, pads, grass cards) fought the ground and flickered as the
+camera's damp drifted. Now `_fitNear` sets the near plane to 1 % of the lens-to-focal distance each frame (never under 1; a spell
+shot caps it at 0.08 of a square, its lens may sit at a shoulder; the first-person eye keeps 1; a 2 % dead band, so no projection
+rebuild every frame). Zoomed out it is ~47 units: the step at the board is ~0.04 units. The fight in a walked room copies the lens
+(three-renderer.js `_fwCamOf`), the post passes read `cam.near` each frame. Kill switch `window.EW_NO_DEPTH_FIT = true`; probe
+`ThreeCamera.depthFit()`; the A/B probe `playtest_flicker.js` (same match, same camera, old then new; it prints the lens and saves
+the pictures to shots/flicker/).

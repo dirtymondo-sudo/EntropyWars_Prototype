@@ -1561,6 +1561,7 @@ const ThreeCamera = (function () {
             }
             threeCamera.position.set(_smoothPosX, _smoothPosY, _smoothPosZ);
             threeCamera.lookAt(_smoothLookX, _smoothLookY, _smoothLookZ);
+            _fitNear(0);   // THE DEPTH FIT: the first-person eye keeps the near plane at NEAR
             return;
         }
         /* ══ WHO OWNS THE CAMERA THIS FRAME ══
@@ -2085,7 +2086,30 @@ const ThreeCamera = (function () {
         }
         threeCamera.position.set(_smoothPosX, _smoothPosY, _smoothPosZ);
         threeCamera.lookAt(_smoothLookX, _smoothLookY, _smoothLookZ);
+        _fitNear(Math.hypot(_smoothLookX - _smoothPosX, _smoothLookY - _smoothPosY, _smoothLookZ - _smoothPosZ), cam._cineShotId != null || !!cam._cineTps);
     }
+    /* ══ THE DEPTH FIT (2026-11-27) ══
+       mondo: "when i zoom out of the map there is a lot of flickering on the ground that isnt there when i am zoomed in".
+       The lens's near plane was fixed at 1 unit (a tile is 128), so the depth buffer's steps grow with the square of the
+       distance: wheeled out, a step at the board was several units, and every layer laid a hair over the ground (tile
+       overlays, decals, paths, grass cards, half a unit up) fought the ground under it and flickered as the camera drifted.
+       The near plane now follows the boom: NEAR_SHARE of the lens-to-focal distance (never under NEAR), so a step at the
+       board stays a small fraction of a unit at every zoom. Nothing stands that close to a board lens (the lens floor keeps
+       0.2 squares of clear air and the boom is at least 0.9 squares); a spell shot, whose lens may stand at a shoulder
+       while it looks far past it, caps it at NEAR_CINE_TILES of a square. The first-person eye keeps NEAR. Camera only, each
+       viewer's own (host and guest run the same rig). Kill switch: window.EW_NO_DEPTH_FIT = true. Probe: ThreeCamera.depthFit(). */
+    const NEAR_SHARE = 0.01;
+    const NEAR_CINE_TILES = 0.08;
+    function _fitNear(boom, cine) {
+        if (!threeCamera) return;
+        let n = NEAR;
+        if (!(typeof window !== 'undefined' && window.EW_NO_DEPTH_FIT) && Number.isFinite(boom) && boom > 0) { n = boom * NEAR_SHARE; if (cine) n = Math.min(n, tileSize * NEAR_CINE_TILES); n = Math.max(NEAR, n); }
+        const cur = threeCamera.near;
+        if (n === cur || (n !== NEAR && Math.abs(n - cur) < cur * 0.02)) return;   // (a 2 % dead band: no projection rebuild every frame of a glide)
+        threeCamera.near = n;
+        threeCamera.updateProjectionMatrix();
+    }
+    function depthFit() { return threeCamera ? { near: +threeCamera.near.toFixed(2), far: Math.round(threeCamera.far), share: NEAR_SHARE } : null; }
     /* THE LEVEL HORIZON (2026-10-18, the death handoff): while the swoop runs, the gaze is the seed's blending into the
        board's, not the one the tilt/yaw up vector above was built for, so that up would roll the frame (the close-up's
        last frame came back tipped on its side). World up is the same vector once the gaze is the board's own, so the
@@ -2389,6 +2413,7 @@ const ThreeCamera = (function () {
         create,
         resize,
         sync,
+        depthFit,
         screenToTile,
         screenToTileAll,
         seedHold,

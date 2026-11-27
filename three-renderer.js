@@ -4302,6 +4302,7 @@ const ThreeRenderer = (function () {
 
     function getTerrainTexture(k) {
         if (typeof _NZ_MOVE !== 'undefined' && _NZ_MOVE[k]) { var mv = _nzMoveTex(k); if (mv) return mv; }   // THE MOVING SHEETS
+        if (typeof _TRIP_SHEETS !== 'undefined' && _TRIP_SHEETS[k]) { var trp = _tripTex(k); if (trp) { _tripBoard = true; return trp; } }   // THE TRIP SHEETS
         var url = (typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[k]) ? _ewSandUrl(k, TERRAIN_SPRITES[k][0]) : null;   // THE TWO SANDS
         return url ? getTexture(url) : null;
     }
@@ -4392,6 +4393,9 @@ const ThreeRenderer = (function () {
         holo:     { color: 0x7fe8ff, intensity: 0.95 },
         holo_red: { color: 0xff6a78, intensity: 0.95 },
         light60:  { color: 0xfff4e2, intensity: 0.5 },   // THE SIXTIES REFIT (2026-11-26): DOOR HQ's lit ceiling panels glow (2001's ceilings)
+        /* THE TRIP SHEETS (2026-11-27): the inside of the cube lights itself */
+        dmt_floor: { color: 0xffffff, intensity: 0.9 }, dmt_floor_b: { color: 0xffffff, intensity: 0.9 }, dmt_eyes: { color: 0xffffff, intensity: 0.8 }, dmt_cubes: { color: 0xffffff, intensity: 0.8 },
+        dmt_tunnel: { color: 0xffffff, intensity: 1 }, dmt_weave: { color: 0xffffff, intensity: 0.9 }, dmt_ribbon: { color: 0xffffff, intensity: 0.8 }, dmt_glyph: { color: 0xffffff, intensity: 1 },
     };
     function _emissiveTerrainMat(mat, key, tex) {
         var em = _EMISSIVE_TERRAIN[key];
@@ -9910,7 +9914,7 @@ const ThreeRenderer = (function () {
     }
     function _hqFloraCellDrop(c) {
         if (!c) return;
-        [c.mesh, c.stones, c.litter].forEach(function (m) { if (m) { if (m.parent) m.parent.remove(m); try { m.geometry.dispose(); } catch (e) {} } });
+        [c.mesh, c.stones, c.litter, c.crops].forEach(function (m) { if (m) { if (m.parent) m.parent.remove(m); try { m.geometry.dispose(); } catch (e) {} } });
     }
     /* THE GROUND RULES, the flora field's share (flora.md section 0): G6 THE STONES = pebbles and small stones of the kit's four rocks, cut to ankle
        height, walked through, in clusters, more on rough / dry / dirt ground; G5 `near` = a layer that grows by standing things (ferns, bushes at
@@ -9983,6 +9987,70 @@ const ThreeRenderer = (function () {
         }
         for (j = 0; j < 2; j++) for (i = 0; i < 2; i++) { var a0 = v0 + j * 3 + i; L.ix[L.i++] = a0; L.ix[L.i++] = a0 + 3; L.ix[L.i++] = a0 + 1; L.ix[L.i++] = a0 + 1; L.ix[L.i++] = a0 + 3; L.ix[L.i++] = a0 + 4; }
         return true;
+    }
+    /* THE CROP FIELDS (2026-11-27, data.js CROP_FIELDS): the solid ground behind a line of crop rows is planted, a pair of crossed cards a plant.
+       The room is read ONCE (its crop rows into a coarse grid of "a row is near"); a cell's plants are one merged mesh on the card sheet. */
+    var _hqCropMat = null;
+    function _hqCropSetup(H, info) {
+        var CF = (typeof CROP_FIELDS !== 'undefined') ? CROP_FIELDS : null; if (!CF || !info || !info.mask || window.EW_NO_CROP_FIELDS || typeof cropLookAt !== 'function') return null;
+        var g = CF.nearCell, R = Math.ceil(CF.near / g), near = new Set(), rows = (H.room && H.room.props) || [], key0 = null, n = 0;
+        for (var i = 0; i < rows.length; i++) { var p = rows[i]; if (!p || !CF.of[p.key] || !CROP_VARY[p.key] || p.x == null) continue; key0 = key0 || p.key; n++;
+            var gi = Math.floor(p.x / g), gj = Math.floor(p.z / g);
+            for (var dj = -R; dj <= R; dj++) for (var di = -R; di <= R; di++) if (di * di + dj * dj <= R * R + 1) near.add((gi + di + 4096) * 8192 + (gj + dj + 4096)); }
+        if (!n) return null;
+        if (!_hqCropMat) {
+            var tl = new THREE.TextureLoader(); if (tl.setCrossOrigin) tl.setCrossOrigin('anonymous');
+            var tex = tl.load(_foliageUrl(CF.sheet), function (t) { if (_ewTexSetSRGB(t, false)) t.needsUpdate = true; if (typeof _hq !== 'undefined' && _hq) _hq.dirty = true; });
+            _hqCropMat = new THREE.MeshLambertMaterial({ map: tex, alphaTest: 0.45, side: THREE.FrontSide, vertexColors: true });
+            _hqCropMat._ew_shared = true; _hqCropMat._ew_hzNear = true; _hqCropMat.name = 'ew_crop_cards'; _ewBendHook(_hqCropMat);
+            _hqCropMat.color.setRGB(0.88, 0.9, 0.86); _hqCropMat.emissive.copy(_hqCropMat.color).multiplyScalar(0.05);   // (the small plants' own light)
+        }
+        var gen = (H.room.terrain && H.room.terrain.gen) || null, mv = 6400;
+        return { mat: _hqCropMat, near: near, key: key0, zones: (gen && Array.isArray(gen.zones)) ? gen.zones : null,
+                 maxV: mv, pos: new Float32Array(mv * 3), uv: new Float32Array(mv * 2), col: new Float32Array(mv * 3), bend: new Float32Array(mv), ix: new Uint16Array(mv * 3) };
+    }
+    function _hqCropCell(S, x0, z0, cm) {
+        var CF = CROP_FIELDS, K = S.crops, info = S.info, U = S.U, g = CF.nearCell, v = 0, ii = 0, n = 0, yLo = Infinity, yHi = -Infinity, q;
+        var rs = CF.rows, al = CF.along, jit = CF.jitter, zs = K.zones;
+        for (var zr = Math.ceil(z0 / rs) * rs; zr < z0 + cm; zr += rs) for (var xa = Math.ceil(x0 / al) * al; xa < x0 + cm; xa += al) {
+            var r1 = _ewValHash(xa * 3.17 + 1.3, zr * 5.71), r2 = _ewValHash(xa * 7.3, zr * 2.9 + 4.1), xm = xa + (r1 - 0.5) * 2 * jit, zm = zr + (r2 - 0.5) * jit;
+            var ni = Math.round((xm - info.x0) / info.res), nj = Math.round((zm - info.z0) / info.res);
+            if (ni < 0 || nj < 0 || ni >= info.nx || nj >= info.nz || info.mask[nj * info.nx + ni]) continue;   // only the solid ground: never a walked square
+            if (!K.near.has((Math.floor(xm / g) + 4096) * 8192 + (Math.floor(zm / g) + 4096))) continue;          // no crop row near: not a field
+            if (zs) { var zq = null; for (q = 0; q < zs.length; q++) if (xm >= zs[q].x0 && xm < zs[q].x1 && zm >= zs[q].z0 && zm < zs[q].z1) { zq = zs[q]; break; } if (zq && !zq.none) continue; }   // a tree zone is a wood
+            var inB = false; for (q = 0; q < S.boxes.length; q++) { var B = S.boxes[q], dx = xm - B[0], dz = zm - B[1]; if (Math.abs(dx * B[4] + dz * B[5]) < B[2] && Math.abs(-dx * B[5] + dz * B[4]) < B[3]) { inB = true; break; } }
+            if (inB || hqTerrainFluidAt(info, xm, zm)) continue;
+            var L = cropLookAt(K.key, xm, zm, r1); if (!L) continue;
+            var cd = CF.cards[CF.of[L.to || K.key]]; if (!cd) continue;
+            var r3 = _ewValHash(xa * 1.9 + 7.7, zr * 9.1), r4 = _ewValHash(xa * 4.3, zr * 1.7 + 2.2), r5 = _ewValHash(xa * 11.1 + 0.4, zr * 6.3);
+            if (cd.keep < 1 && r5 > cd.keep) continue;
+            if (v + 8 > K.maxV) break;
+            var vy = L.vy ? L.vy[0] + (L.vy[1] - L.vy[0]) * r3 : 1, h = (cd.h[0] + (cd.h[1] - cd.h[0]) * r4) * vy, ch = h / cd.fill, hw = h * cd.w / 2;
+            var T = L.tint, tr = 1, tg = 1, tb = 1; if (Array.isArray(T)) { tr = T[0]; tg = T[1]; tb = T[2]; } else if (T != null) { tr = ((T >> 16) & 255) / 255; tg = ((T >> 8) & 255) / 255; tb = (T & 255) / 255; }
+            var sh = CF.shade[0] + (CF.shade[1] - CF.shade[0]) * r5; tr *= sh; tg *= sh; tb *= sh;
+            var gy = hqTerrainHeight(info, xm, zm), u0 = (cd.col + 0.004) / CF.cols, u1 = (cd.col + 0.996) / CF.cols, an = r4 * Math.PI, bd = FLORA_SWAY.k * h * (h < FLORA_SWAY.cap ? h : FLORA_SWAY.cap) * U;
+            for (var c = 0; c < 2; c++) {
+                var co = Math.cos(an + c * 1.5708) * hw, si = Math.sin(an + c * 1.5708) * hw, fl = (r3 > 0.5) !== (c === 1);   // (a card is its own mirror half the time)
+                for (var k = 0; k < 4; k++) {
+                    var sx = (k & 1) ? 1 : -1, top = k > 1, v3 = v * 3;
+                    K.pos[v3] = (xm + sx * co) * U; K.pos[v3 + 1] = (gy + (top ? ch : 0)) * U; K.pos[v3 + 2] = (zm + sx * si) * U;
+                    K.uv[v * 2] = ((sx > 0) !== fl) ? u1 : u0; K.uv[v * 2 + 1] = top ? 1 : 0;
+                    var f = top ? 1 : CF.foot; K.col[v3] = tr * f; K.col[v3 + 1] = tg * f; K.col[v3 + 2] = tb * f; K.bend[v] = top ? bd : 0; v++;
+                }
+                K.ix[ii++] = v - 4; K.ix[ii++] = v - 3; K.ix[ii++] = v - 2; K.ix[ii++] = v - 3; K.ix[ii++] = v - 1; K.ix[ii++] = v - 2;
+                K.ix[ii++] = v - 4; K.ix[ii++] = v - 2; K.ix[ii++] = v - 3; K.ix[ii++] = v - 3; K.ix[ii++] = v - 2; K.ix[ii++] = v - 1;   // …and its other face, wound the other way: both faces wear the normal straight up (a two-sided card's back flips it and draws black)
+            }
+            n++; if (gy < yLo) yLo = gy; if (gy + ch > yHi) yHi = gy + ch;
+        }
+        if (!n) return null;
+        var geo = new THREE.BufferGeometry(), nor = new Float32Array(v * 3); for (q = 1; q < nor.length; q += 3) nor[q] = 1;   // a crop takes the ground's light
+        geo.setAttribute('position', new THREE.BufferAttribute(K.pos.slice(0, v * 3), 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(K.uv.slice(0, v * 2), 2));
+        geo.setAttribute('color', new THREE.BufferAttribute(K.col.slice(0, v * 3), 3)); geo.setAttribute('aBend', new THREE.BufferAttribute(K.bend.slice(0, v), 1));
+        geo.setIndex(new THREE.BufferAttribute(K.ix.slice(0, ii), 1));
+        geo.boundingSphere = new THREE.Sphere(new THREE.Vector3((x0 + cm / 2) * U, (yLo + yHi) / 2 * U, (z0 + cm / 2) * U), Math.hypot(cm * 0.7072 + 1.5, (yHi - yLo) / 2) * U);
+        var mesh = new THREE.Mesh(geo, K.mat); mesh.name = 'ew_hq_crops'; mesh._ew_flora = true; mesh.receiveShadow = true; mesh.castShadow = false; mesh.raycast = function () {};
+        mesh._ew_cropN = n; S.parent.add(mesh);
+        return mesh;
     }
     function _hqFloraCell(S, cx, cz) {
         var F = ZONE_FLORA, info = S.info, U = S.U, cm = F.cellM, x0 = cx * cm, z0 = cz * cm, none = { mesh: null, cx: cx, cz: cz, n: 0, tris: 0 };
@@ -10112,7 +10180,9 @@ const ThreeRenderer = (function () {
             litter = new THREE.Mesh(lg, LS.mat); litter.name = 'ew_hq_litter'; litter._ew_flora = true; litter.receiveShadow = true; litter.castShadow = false; litter.raycast = function () {}; litter.renderOrder = -1;
             S.parent.add(litter);
         }
-        if (!made) return (stones || litter) ? { mesh: null, stones: stones, litter: litter, cx: cx, cz: cz, n: 0, tris: (stones ? SS.i / 3 : 0) + (litter ? LS.i / 3 : 0) } : none;
+        var crops = null; if (S.crops) { try { crops = _hqCropCell(S, x0, z0, cm); } catch (eC) { crops = null; if (!S._cropWarned) { S._cropWarned = true; console.warn('[HQ] the crop fields', eC); } } }   // THE CROP FIELDS
+        var cropT = crops ? crops._ew_cropN * 8 : 0;
+        if (!made) return (stones || litter || crops) ? { mesh: null, stones: stones, litter: litter, crops: crops, cx: cx, cz: cz, n: 0, tris: (stones ? SS.i / 3 : 0) + (litter ? LS.i / 3 : 0) + cropT } : none;
         var geo = new THREE.BufferGeometry(), nor = new Float32Array(v * 3); for (q = 1; q < nor.length; q += 3) nor[q] = 1;   // a small plant takes the ground's light
         geo.setAttribute('position', new THREE.BufferAttribute(pos.slice(0, v * 3), 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uvs.slice(0, v * 2), 2));
         geo.setAttribute('color', new THREE.BufferAttribute(cols.slice(0, v * 3), 3));   // a plant's tint + the ground rules' patches (THE GROUND RULES, 11-25)
@@ -10121,7 +10191,7 @@ const ThreeRenderer = (function () {
         geo.boundingSphere = new THREE.Sphere(new THREE.Vector3((x0 + cm / 2) * U, (yLo + yHi) / 2 * U, (z0 + cm / 2) * U), Math.hypot(cm * 0.7072 + 1.5, (yHi - yLo) / 2) * U);
         var mesh = new THREE.Mesh(geo, S.mat); mesh.name = 'ew_hq_flora'; mesh._ew_flora = true; mesh.receiveShadow = true; mesh.castShadow = false;
         S.parent.add(mesh);
-        return { mesh: mesh, stones: stones, litter: litter, cx: cx, cz: cz, n: made, tris: ii / 3 + (stones ? SS.i / 3 : 0) + (litter ? LS.i / 3 : 0) };
+        return { mesh: mesh, stones: stones, litter: litter, crops: crops, cx: cx, cz: cz, n: made, tris: ii / 3 + (stones ? SS.i / 3 : 0) + (litter ? LS.i / 3 : 0) + cropT };
     }
     var _hqStoneMat = null;
     function _hqFloraTick() {
@@ -10166,7 +10236,7 @@ const ThreeRenderer = (function () {
             try { (T.floraFields || []).forEach(function (f) { if (!f || !f.pts || f.pts.length < 3) return; var a0 = Infinity, a1 = -Infinity, b0 = Infinity, b1 = -Infinity; f.pts.forEach(function (q) { if (q[0] < a0) a0 = q[0]; if (q[0] > a1) a1 = q[0]; if (q[1] < b0) b0 = q[1]; if (q[1] > b1) b1 = q[1]; }); (fields = fields || []).push({ pts: f.pts, fade: (f.fade != null) ? f.fade : 4, x0: a0, x1: a1, z0: b0, z1: b1 }); }); } catch (e) { fields = null; }
             S = _hqFF = { H: H, rid: rid, low: LOW, info: info, U: _hqUnits(), plants: plants, mat: _hqFFMat, cells: new Map(), boxes: boxes, paths: paths, wet: wet, clim: {},
                 seed: ((typeof hqHash === 'function') ? hqHash('flora|' + rid) : 7) & 0x3FFFFFFF, reach: LOW ? F.low.reach : F.reach, thin: LOW ? F.low.thin : 1, grassOn: !!(_hqGrassWanted(T, rid) && _ggOn() && !window.EW_NO_HQ_GRASS),
-                at: 0, busy: true, born: now, filled: false, parent: (H.propGroup && H.propGroup.parent) || scene,
+                at: 0, busy: true, born: now, filled: false, parent: (H.propGroup && H.propGroup.parent) || scene, crops: (function () { try { return _hqCropSetup(H, info); } catch (eCS) { console.warn('[HQ] the crop fields', eCS); return null; } })(),
                 gr: _grOn() ? { near: _grNearBucket(info, H.room), trees: _grTreeBucket(info), o: {} } : null, fields: fields, stones: stones, stoneMat: _hqStoneMat,
                 litter: (_grOn() && !window.EW_NO_LITTER && GROUND_RULES.litter && _grLitterMat()) ? { mat: _grLitterMat(), trees: _grTreeBucket(info), maxV: 9000, pos: new Float32Array(27000), uv: new Float32Array(18000), uv1: new Float32Array(18000), col: new Float32Array(27000), ix: new Uint16Array(24000), v: 0, i: 0 } : null,
                 stoneScratch: stones ? { maxV: 20000, maxI: 60000, pos: new Float32Array(60000), nor: new Float32Array(60000), uv: new Float32Array(40000), ix: new Uint16Array(60000), v: 0, i: 0, n: 0 } : null,
@@ -10182,7 +10252,7 @@ const ThreeRenderer = (function () {
         S.cells.forEach(function (c, key) {   // its own cells only (never the room's objects)
             var d = Math.hypot(Math.max(c.cx * cm, Math.min(px, c.cx * cm + cm)) - px, Math.max(c.cz * cm, Math.min(pz, c.cz * cm + cm)) - pz);
             if (d > R + cm) { _hqFloraCellDrop(c); S.cells.delete(key); }
-            else if (c.mesh || c.stones || c.litter) { cells++; n += c.n; tris += c.tris; }
+            else if (c.mesh || c.stones || c.litter || c.crops) { cells++; n += c.n; tris += c.tris; }
         });
         want.sort(function (a, b) { return a[0] - b[0]; });
         var tb = performance.now(), budget = S.filled ? F.buildMs : F.fillMs, w = 0;
@@ -10193,7 +10263,7 @@ const ThreeRenderer = (function () {
             if (made.mesh || made.stones) { cells++; n += made.n; tris += made.tris; }
         }
         S.busy = w < want.length; if (!S.busy) S.filled = true;
-        try { window._ewHqFlora = { room: rid, cells: cells, plants: n, tris: tris, reach: R, low: S.low, lastBuildMs: +(performance.now() - tb).toFixed(1), built: w, kinds: Object.keys(S.plants).length, litter: (function () { var k = 0; S.cells.forEach(function (c) { if (c.litter) k += c.litter.geometry.attributes.position.count / 9; }); return k; })(), litterOn: !!S.litter }; } catch (e) {}
+        try { window._ewHqFlora = { room: rid, cells: cells, plants: n, tris: tris, reach: R, low: S.low, lastBuildMs: +(performance.now() - tb).toFixed(1), built: w, kinds: Object.keys(S.plants).length, crops: (function () { var k = 0; S.cells.forEach(function (c) { if (c.crops) k += c.crops._ew_cropN; }); return k; })(), litter: (function () { var k = 0; S.cells.forEach(function (c) { if (c.litter) k += c.litter.geometry.attributes.position.count / 9; }); return k; })(), litterOn: !!S.litter }; } catch (e) {}
     }
     function _buildGrassTuft3D(x, y) {
         if (!GRASS.enabled) return null;
@@ -42488,8 +42558,202 @@ const ThreeRenderer = (function () {
         return tex;
     }
 
+    /* ═══ THE TRIP SHEETS (2026-11-27, mondo: "a DMT realm dungeon map ... the inside of the black cube ... totally psychadelic ...
+       sacred geometry and fractal patterns ... I want it to feel like the player is on DMT"; plan docs/plans/dmt-realm/PLAN.md).
+       A trip sheet is a texture key like a moving sheet (data.js CALM_TERRAIN.sheets `dmt_*`: it plays by its twin's rules), but
+       nothing of it is a file: its picture is DRAWN, ten times a second, with the 2D canvas (eyes that look about and blink, a
+       matrix of cubes that turns colour in waves, a mandala tunnel that never arrives, the flower of life, ribbons, a script
+       nobody reads). The canvas IS the sheet, so every surface that wears the key is alive (a room's floor, a cliff, an `arch`
+       part, a board's squares, the cube's own walls) on BOTH renderers, with no shader of its own. They are drawn only while a
+       room with `trip` stands (or a board asked for one). Each sheet tiles on all four sides.
+       Off switch: window.EW_NO_TRIP_SHEETS (the sheets stand still). ═══ */
+    function _tripH(h, s, l, a) { h = ((h % 360) + 360) % 360; return 'hsla(' + (h | 0) + ',' + s + '%,' + l + '%,' + (a == null ? 1 : a) + ')'; }
+    /* one eye: an almond, an iris of its own colour, a pupil that looks (lx, ly), a lid that shuts (open 0..1) */
+    function _tripEye(g, x, y, ew, eh, open, lx, ly, hue) {
+        var o = Math.max(0.04, open);
+        g.beginPath(); g.moveTo(x - ew, y); g.quadraticCurveTo(x, y - eh * 2 * o, x + ew, y); g.quadraticCurveTo(x, y + eh * 2 * o, x - ew, y); g.closePath();
+        var sg = g.createRadialGradient(x, y, eh * 0.2, x, y, ew);
+        sg.addColorStop(0, '#fbf4ff'); sg.addColorStop(1, _tripH(hue + 200, 50, 62));
+        g.fillStyle = sg; g.fill();
+        g.save(); g.clip();
+        var ir = eh * 0.98, ig = g.createRadialGradient(x + lx, y + ly, ir * 0.2, x + lx, y + ly, ir);
+        ig.addColorStop(0, _tripH(hue + 40, 100, 70)); ig.addColorStop(0.55, _tripH(hue, 95, 48)); ig.addColorStop(1, _tripH(hue - 50, 90, 16));
+        g.fillStyle = ig; g.beginPath(); g.arc(x + lx, y + ly, ir, 0, 6.2832); g.fill();
+        g.strokeStyle = _tripH(hue + 150, 100, 78, 0.8); g.lineWidth = Math.max(1, ir * 0.06);
+        for (var k = 0; k < 12; k++) { var a = k * 0.5236; g.beginPath(); g.moveTo(x + lx + Math.cos(a) * ir * 0.45, y + ly + Math.sin(a) * ir * 0.45); g.lineTo(x + lx + Math.cos(a) * ir * 0.92, y + ly + Math.sin(a) * ir * 0.92); g.stroke(); }
+        g.fillStyle = '#05010a'; g.beginPath(); g.arc(x + lx, y + ly, ir * 0.42, 0, 6.2832); g.fill();
+        g.fillStyle = 'rgba(255,255,255,0.9)'; g.beginPath(); g.arc(x + lx - ir * 0.22, y + ly - ir * 0.24, ir * 0.13, 0, 6.2832); g.fill();
+        g.restore();
+        g.strokeStyle = _tripH(hue + 100, 90, 70); g.lineWidth = Math.max(1.5, eh * 0.12);
+        g.beginPath(); g.moveTo(x - ew, y); g.quadraticCurveTo(x, y - eh * 2 * o, x + ew, y); g.quadraticCurveTo(x, y + eh * 2 * o, x - ew, y); g.stroke();
+    }
+    function _tripFloor(g, N, t, v) {
+        var c = N / 2, hue = t * 14 + (v ? 150 : 0), TAU = 6.2832;
+        g.globalCompositeOperation = 'source-over'; g.fillStyle = v ? '#0c0520' : '#070312'; g.fillRect(0, 0, N, N);
+        g.globalCompositeOperation = 'lighter';
+        var ns = [8, 12, 16];
+        for (var r = 0; r < 3; r++) {
+            var n = ns[r], rad = N * (0.13 + 0.105 * r) * (1 + 0.07 * Math.sin(t * 0.7 + r * 1.3)), rot = t * (r % 2 ? -0.11 : 0.08) + r;
+            g.strokeStyle = _tripH(hue + r * 55, 95, 40 - r * 5, 0.6); g.lineWidth = 2;
+            for (var k = 0; k < n; k++) { var a = rot + k * TAU / n; g.beginPath(); g.ellipse(c + Math.cos(a) * rad, c + Math.sin(a) * rad, N * 0.075, N * 0.027, a, 0, TAU); g.stroke(); }
+        }
+        g.strokeStyle = _tripH(hue + 200, 100, 55, 0.7); g.lineWidth = 1.5;
+        for (var q = 0; q < 3; q++) { g.beginPath(); g.arc(c, c, N * (0.035 + 0.03 * q) * (1 + 0.15 * Math.sin(t * 1.1 + q)), 0, TAU); g.stroke(); }
+        /* the square's own edge: the fight grid, always lit (two sheets meet on a line: the stroke's two halves) */
+        g.globalCompositeOperation = 'source-over';
+        g.strokeStyle = _tripH(hue + 180, 100, 62); g.lineWidth = 7; g.strokeRect(0, 0, N, N);
+        g.strokeStyle = _tripH(hue + 60, 100, 55, 0.55); g.lineWidth = 1.5; g.strokeRect(9, 9, N - 18, N - 18);
+        g.fillStyle = _tripH(hue + 300, 100, 70);
+        [[0, 0], [N, 0], [0, N], [N, N]].forEach(function (p) { g.beginPath(); g.moveTo(p[0] - 11, p[1]); g.lineTo(p[0], p[1] - 11); g.lineTo(p[0] + 11, p[1]); g.lineTo(p[0], p[1] + 11); g.closePath(); g.fill(); });
+    }
+    function _tripEyes(g, N, t) {
+        g.globalCompositeOperation = 'source-over'; g.fillStyle = '#1c0a38'; g.fillRect(0, 0, N, N);
+        var ew = N * 0.2, eh = N * 0.1, E = [[N * 0.25, N * 0.25, 0], [N * 0.75, N * 0.25, 1], [0, N * 0.75, 2], [N * 0.5, N * 0.75, 3], [N, N * 0.75, 2]];
+        /* the web between the lids (each eye's corners to the rows over and under it) */
+        g.strokeStyle = _tripH(275 + 20 * Math.sin(t * 0.3), 70, 46); g.lineWidth = 5;
+        for (var j = -1; j < 3; j++) for (var i = -1; i < 3; i++) {
+            var cx = (i + (j & 1 ? 0 : 0.5)) * N * 0.5 - N * 0.25 + N * 0.5, cy = j * N * 0.5 + N * 0.25;
+            g.beginPath(); g.moveTo(cx - ew, cy); g.lineTo(cx - N * 0.25 + ew, cy + N * 0.5); g.moveTo(cx + ew, cy); g.lineTo(cx + N * 0.25 - ew, cy + N * 0.5);
+            g.moveTo(cx - ew, cy); g.lineTo(cx - N * 0.5 + ew, cy); g.stroke();
+        }
+        for (var e = 0; e < E.length; e++) {
+            var id = E[e][2], ph = (t * 0.19 + id * 0.37) % 1, open = ph > 0.93 ? Math.abs((ph - 0.965) / 0.035) : 1;
+            _tripEye(g, E[e][0], E[e][1], ew, eh, open, Math.sin(t * 0.5 + id * 1.7) * ew * 0.3, Math.cos(t * 0.37 + id) * eh * 0.3, t * 22 + id * 80 + 250);
+        }
+    }
+    function _tripCubes(g, N, t) {
+        /* twelve cubes a sheet (3 across, 4 rows), dark faces under lit edges: the colours stay between green and magenta, a few burn orange */
+        g.globalCompositeOperation = 'source-over'; g.fillStyle = '#000'; g.fillRect(0, 0, N, N);
+        g.save(); g.scale(N / (3 * 1.7320508), N / 6);
+        var V = [[0, -1], [-0.866, -0.5], [-0.866, 0.5], [0, 1], [0.866, 0.5], [0.866, -0.5]], F = [[5, 0, 1], [1, 2, 3], [3, 4, 5]];
+        g.lineJoin = 'round';
+        for (var j = -1; j <= 4; j++) for (var i = -1; i <= 3; i++) {
+            var x = i * 1.7320508 + ((j & 1) ? 0.866 : 0), y = j * 1.5, wi = ((i % 3) + 3) % 3, wj = ((j % 4) + 4) % 4;
+            var w = Math.sin(t * 0.6 + wi * 1.9 + wj * 1.3), hot = Math.sin(t * 0.23 + wi * 2.7 + wj * 4.1) > 0.8;
+            var hue = hot ? 28 + 14 * w : 215 + 95 * Math.sin(t * 0.17 + wi * 1.1 + wj * 0.8) + 18 * w, flip = Math.sin(t * 0.35 + wi * 2.1 - wj * 1.3) > 0.72;
+            var L = flip ? [7, 17, 34] : [34, 17, 7];
+            for (var f = 0; f < 3; f++) {
+                g.fillStyle = _tripH(hue + f * 22, 92, L[f]);
+                g.beginPath(); g.moveTo(x, y); for (var k = 0; k < 3; k++) g.lineTo(x + V[F[f][k]][0], y + V[F[f][k]][1]); g.closePath(); g.fill();
+                /* the face's own mark: a smaller face inside it, lit */
+                var cx = (V[F[f][0]][0] + V[F[f][2]][0]) / 2, cyy = (V[F[f][0]][1] + V[F[f][2]][1]) / 2;
+                g.strokeStyle = _tripH(hue + 150 + f * 40, 100, 58, 0.55 + 0.35 * Math.sin(t * 1.3 + f * 2 + wi + wj)); g.lineWidth = 0.035;
+                g.beginPath(); g.moveTo(x + (0 - cx) * 0.45 + cx, y + (0 - cyy) * 0.45 + cyy); for (var k2 = 0; k2 < 3; k2++) g.lineTo(x + cx + (V[F[f][k2]][0] - cx) * 0.45, y + cyy + (V[F[f][k2]][1] - cyy) * 0.45); g.closePath(); g.stroke();
+            }
+            g.strokeStyle = _tripH(hue + 170, 100, 62); g.lineWidth = 0.06;
+            g.beginPath(); for (var e = 0; e < 6; e++) { if (e) g.lineTo(x + V[e][0], y + V[e][1]); else g.moveTo(x + V[0][0], y + V[0][1]); } g.closePath();
+            g.moveTo(x, y); g.lineTo(x + V[1][0], y + V[1][1]); g.moveTo(x, y); g.lineTo(x + V[3][0], y + V[3][1]); g.moveTo(x, y); g.lineTo(x + V[5][0], y + V[5][1]); g.stroke();
+        }
+        g.restore();
+    }
+    function _tripTunnel(g, N, t) {
+        var c = N / 2, K = 10, sp = t * 0.22, f = sp % 1, base = Math.floor(sp), TAU = 6.2832;
+        g.globalCompositeOperation = 'source-over'; g.fillStyle = '#020006'; g.fillRect(0, 0, N, N);
+        g.globalCompositeOperation = 'lighter';
+        g.strokeStyle = 'rgba(190,120,255,0.16)'; g.lineWidth = N / 256;
+        for (var s = 0; s < 24; s++) { var sa = s * TAU / 24 + t * 0.05; g.beginPath(); g.moveTo(c, c); g.lineTo(c + Math.cos(sa) * N * 0.47, c + Math.sin(sa) * N * 0.47); g.stroke(); }
+        for (var k = 0; k < K; k++) {
+            var u = (k + f) / K, r = N * 0.49 * Math.pow(u, 1.55), id = k - base, lob = 12, al = Math.min(1, u * 2.2) * (1 - Math.pow(u, 7));
+            g.strokeStyle = _tripH(id * 37 + t * 9, 100, 56, al); g.lineWidth = (1 + 5 * u) * N / 256;
+            g.beginPath();
+            for (var q = 0; q <= 96; q++) { var a = q * TAU / 96, rr = r * (1 + 0.13 * Math.cos(lob * a + id * 1.3 + t * 0.4)); if (q) g.lineTo(c + Math.cos(a) * rr, c + Math.sin(a) * rr); else g.moveTo(c + rr, c); }
+            g.closePath(); g.stroke();
+            g.fillStyle = _tripH(id * 37 + t * 9 + 180, 100, 62, al * 0.9);
+            for (var d = 0; d < lob; d++) { var da = d * TAU / lob + id * 0.26 - (id * 1.3 + t * 0.4) / lob, dr = r * 1.13; g.beginPath(); g.arc(c + Math.cos(da) * dr, c + Math.sin(da) * dr, (0.6 + 3.2 * u) * N / 256, 0, TAU); g.fill(); }
+        }
+        var cg = g.createRadialGradient(c, c, 0, c, c, N * 0.14);
+        cg.addColorStop(0, 'rgba(255,255,255,1)'); cg.addColorStop(0.35, 'rgba(230,200,255,0.75)'); cg.addColorStop(1, 'rgba(120,60,255,0)');
+        g.fillStyle = cg; g.beginPath(); g.arc(c, c, N * 0.14, 0, TAU); g.fill();
+    }
+    function _tripWeave(g, N, t) {
+        var d = N / 5, rh = N / 6, TAU = 6.2832;
+        g.globalCompositeOperation = 'source-over'; g.fillStyle = '#050212'; g.fillRect(0, 0, N, N);
+        g.globalCompositeOperation = 'lighter'; g.lineWidth = 2.6;
+        for (var j = -1; j <= 7; j++) for (var i = -1; i <= 6; i++) {
+            var wi = ((i % 5) + 5) % 5, wj = ((j % 6) + 6) % 6;
+            g.strokeStyle = _tripH(t * 18 + (wi + wj) * 26 + 30 * Math.sin(t * 0.8 + wi), 100, 50, 0.46 + 0.22 * Math.sin(t * 0.9 + wj * 1.1 + wi * 0.5));
+            g.beginPath(); g.arc(i * d + ((j & 1) ? d / 2 : 0), j * rh, d, 0, TAU); g.stroke();
+        }
+    }
+    function _tripRibbon(g, N, t) {
+        var B = 12, w = N / B, S = 16;
+        g.globalCompositeOperation = 'source-over'; g.fillStyle = '#000'; g.fillRect(0, 0, N, N);
+        var X = function (k, s) { var y = s / S; return k * w + N * 0.035 * Math.sin(6.2832 * 2 * y + t * 1.3 + (((k % B) + B) % B) * 0.5236) + N * 0.02 * Math.sin(6.2832 * 3 * y - t * 0.9); };
+        for (var k = -1; k <= B; k++) {
+            var kk = ((k % B) + B) % B;
+            g.fillStyle = _tripH(t * 30 + kk * 30, 96, (kk & 1) ? 54 : 34);
+            g.beginPath(); g.moveTo(X(k, 0), 0);
+            for (var s = 1; s <= S; s++) g.lineTo(X(k, s), s * N / S);
+            for (var s2 = S; s2 >= 0; s2--) g.lineTo(X(k + 1, s2) + 0.6, s2 * N / S);
+            g.closePath(); g.fill();
+        }
+    }
+    function _tripGlyph(g, N, t) {
+        var C = 6, cw = N / C;
+        g.globalCompositeOperation = 'source-over'; g.fillStyle = '#04020a'; g.fillRect(0, 0, N, N);
+        g.globalCompositeOperation = 'lighter'; g.lineCap = 'round';
+        for (var col = 0; col < C; col++) {
+            var spd = 9 + ((col * 7) % 5) * 5, dir = (col & 1) ? -1 : 1, off = ((dir * t * spd) % N + N) % N;
+            for (var row = 0; row < C; row++) {
+                var h = ((col * 73856093) ^ (row * 19349663)) >>> 0, y0 = (row * cw + off) % N, x0 = col * cw;
+                g.strokeStyle = _tripH(t * 25 + col * 45 + row * 9, 100, 58, 0.6 + 0.4 * Math.sin(t * 2 + (h & 7))); g.lineWidth = 3.6;
+                for (var pass = 0; pass < 2; pass++) {
+                    var yy = y0 - pass * N; if (pass && y0 + cw <= N) break;
+                    g.beginPath();
+                    for (var b = 0; b < 6; b++) { if (!((h >> (b * 3)) & 1)) continue; var p = (h >> (b * 4 + 3)) % 9, q = (h >> (b * 4 + 7)) % 9; if (p === q) q = (q + 4) % 9;
+                        g.moveTo(x0 + cw * (0.22 + 0.28 * (p % 3)), yy + cw * (0.22 + 0.28 * ((p / 3) | 0))); g.lineTo(x0 + cw * (0.22 + 0.28 * (q % 3)), yy + cw * (0.22 + 0.28 * ((q / 3) | 0))); }
+                    g.stroke();
+                }
+            }
+        }
+    }
+    /* the one eye (a sprite's picture, on nothing: it turns to whoever looks, so it is always looking back) */
+    function _tripEyeOne(g, N, t) {
+        g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, N, N);
+        var c = N / 2, ph = (t * 0.13) % 1, open = ph > 0.95 ? Math.abs((ph - 0.975) / 0.025) : 1;
+        g.globalCompositeOperation = 'lighter';
+        for (var k = 0; k < 16; k++) { var a = k * 0.3927 + t * 0.07; g.strokeStyle = _tripH(t * 30 + k * 22, 100, 60, 0.5); g.lineWidth = 3;
+            g.beginPath(); g.moveTo(c + Math.cos(a) * N * 0.3, c + Math.sin(a) * N * 0.19); g.lineTo(c + Math.cos(a) * N * (0.42 + 0.05 * Math.sin(t * 2 + k)), c + Math.sin(a) * N * (0.3 + 0.05 * Math.sin(t * 2 + k))); g.stroke(); }
+        g.globalCompositeOperation = 'source-over';
+        _tripEye(g, c, c, N * 0.34, N * 0.13, open, Math.sin(t * 0.4) * N * 0.05, Math.cos(t * 0.31) * N * 0.02, t * 26 + 180);
+    }
+    /* [draw, size, the argument] */
+    var _TRIP_SHEETS = {
+        dmt_floor: [_tripFloor, 256, 0], dmt_floor_b: [_tripFloor, 256, 1], dmt_eyes: [_tripEyes, 256], dmt_cubes: [_tripCubes, 256], dmt_tunnel: [_tripTunnel, 512],
+        dmt_weave: [_tripWeave, 256], dmt_ribbon: [_tripRibbon, 256], dmt_glyph: [_tripGlyph, 256], dmt_eye_one: [_tripEyeOne, 256]
+    };
+    var _tripLive = {}, _tripLoop = false, _tripBoard = false;
+    function _tripOn() { return _tripBoard || !!(_hq && _hq.room && _hq.room.trip); }
+    function _tripTickLoop() {
+        var last = 0;
+        (function loop(now) {
+            requestAnimationFrame(loop);
+            if (now - last < 95 || (typeof document !== 'undefined' && document.hidden)) return;
+            last = now;
+            var still = (typeof window !== 'undefined' && window.EW_NO_TRIP_SHEETS);
+            if (!still && !_tripOn()) return;
+            for (var k in _tripLive) { var E = _tripLive[k]; if (still && E.drawn) continue; try { E.row[0](E.g, E.n, still ? 0 : now / 1000, E.row[2]); } catch (e) {} E.drawn = true; E.tex.needsUpdate = true; }
+        })(0);
+    }
+    function _tripTex(key) {
+        var E = _tripLive[key]; if (E) return E.tex;
+        var R = _TRIP_SHEETS[key]; if (!R || typeof document === 'undefined') return null;
+        var N = R[1], c = document.createElement('canvas'); c.width = c.height = N;
+        var g = c.getContext('2d');
+        try { R[0](g, N, 0, R[2]); } catch (e) { console.warn('[trip sheet] the first draw failed', key, e); }
+        var tex = new THREE.CanvasTexture(c);
+        tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+        tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.generateMipmaps = true;
+        try { tex.anisotropy = Math.min(8, (renderer && renderer.capabilities && renderer.capabilities.getMaxAnisotropy) ? (renderer.capabilities.getMaxAnisotropy() || 1) : 1); } catch (e3) {}
+        tex._ew_trip = key;
+        _tripLive[key] = { tex: tex, g: g, n: N, row: R, drawn: true };
+        if (!_tripLoop) { _tripLoop = true; _tripTickLoop(); }
+        return tex;
+    }
+
     function _hzTex(terrainKey) {
         if (_NZ_MOVE[terrainKey]) { var _mvT = _nzMoveTex(terrainKey); if (_mvT) return _mvT; }   // THE MOVING SHEETS
+        if (_TRIP_SHEETS[terrainKey]) { var _trT = _tripTex(terrainKey); if (_trT) return _trT; }   // THE TRIP SHEETS
         var calmUrl = _calmSheet(terrainKey);   // THE CALM GROUND: the realistic sheet in place of the pixel sheet (its own cache entry)
         var ck = (calmUrl ? 'calm|' : '') + terrainKey + _ewSandPart(terrainKey);   // THE TWO SANDS: the beach's desert caches apart
         if (_hzTexCache[ck] !== undefined) { var hit = _hzTexCache[ck]; if (hit) _alJoin(hit._ew_alRec); return hit; }   // THE ASSET LEDGER: a sheet still streaming is waited for again
@@ -43922,6 +44186,7 @@ const ThreeRenderer = (function () {
         geos.slice().forEach(function (g) { (g._ew_lods || []).forEach(function (l) { if (l && geos.indexOf(l) < 0) geos.push(l); }); });
         mats.slice().forEach(function (m) {
             var pm = _hqPropMatCache.get(m.uuid); if (pm) { _hqPropMatCache.delete(m.uuid); if (mats.indexOf(pm) < 0) mats.push(pm); }
+            _hqPropTintCache.forEach(function (tm, tk) { if (tk.indexOf(m.uuid + '|') === 0) { _hqPropTintCache.delete(tk); if (mats.indexOf(tm) < 0) mats.push(tm); } });   // THE CROPS VARY: its tinted twins
         });
         mats.forEach(function (m) { for (var k in m) { var t = m[k]; if (t && t.isTexture && texs.indexOf(t) < 0) texs.push(t); } });
         texs.forEach(function (t) { var dm = _cutoutDepthMats.get(t); if (dm) { _cutoutDepthMats.delete(t); try { dm.dispose(); } catch (x) {} } try { t.dispose(); } catch (x) {} });
@@ -75404,6 +75669,18 @@ const ThreeRenderer = (function () {
         _hqPropDropPbr(sm);
         return lm;
     }
+    /* THE CROPS VARY (2026-11-27): a row's `tint` draws its model through a tinted twin of the room material, one twin per (sheet, tint),
+       shared by every row that asks (so the merge still joins them); the eviction lets them go with the file's own. */
+    var _hqPropTintCache = new Map(), _hqPropTintPicks = {};
+    function _hqPropTintPick(tint) {
+        var tk0 = String(tint);   // (a list = a gain per channel, over 1 allowed: green corn gone yellow)
+        return _hqPropTintPicks[tk0] || (_hqPropTintPicks[tk0] = function (node, sm) {
+            var lm = _hqPropMatPick(node, sm); if (!lm || !sm) return lm;
+            var k = sm.uuid + '|' + tk0, t = _hqPropTintCache.get(k);
+            if (!t) { t = lm.clone(); if (Array.isArray(tint)) { t.color.r *= tint[0]; t.color.g *= tint[1]; t.color.b *= tint[2]; } else t.color.multiply(new THREE.Color(tint)); t.onBeforeCompile = lm.onBeforeCompile; t._ew_shared = true; _hqPropTintCache.set(k, t); }
+            return t;
+        });
+    }
     /* THE UNDRAWN MAPS (2026-11-15, mondo: "Crashed inside the door main hall/lobby", his readout MEM 2047/700 MB there).
        Every Meshy prop file ships THREE 2048 x 2048 sheets (colour, normal, metal + roughness) and the loader decodes all
        three: 64 MB a file by the readout's count, on a stapler as on a couch. The room draws a prop as a matte Lambert on
@@ -78181,7 +78458,9 @@ const ThreeRenderer = (function () {
         var col = tex ? 0xffffff : (look === 'wood' ? 0x7a5634 : look === 'stone' ? 0xb8b4ac : 0x8d939a);
         var mt = new THREE.MeshPhongMaterial({ map: tex || null, color: col, shininess: look === 'steel' ? 60 : 12, specular: look === 'steel' ? 0x444448 : 0x111111, side: THREE.DoubleSide });
         if (tint != null) mt.color.multiply(new THREE.Color(tint));
-        mt.emissive = new THREE.Color(0x121212); return mt;
+        mt.emissive = new THREE.Color(0x121212);
+        if (tex && key && _EMISSIVE_TERRAIN[key]) _emissiveTerrainMat(mt, key, tex);   // a self-lit sheet (the holo plates, THE TRIP SHEETS) glows on a stair as on the floor
+        return mt;
     }
     function _spIsGlass(mat) { var c = mat && mat.color; return !!mat && ((mat.transparent && mat.opacity < 0.9) || (!!c && c.b > c.r + 0.25 && c.g > c.r + 0.1)); }
     /* a fitted soup into the role buckets (world units): fnW(x, y, z) → [x, y, z] metres in the room, fnWN(nx, ny, nz, z) the normal's
@@ -78453,7 +78732,9 @@ const ThreeRenderer = (function () {
     function _hqBuildFloats(room, info, G, TM, rng, floats) {
         var U = _hqUnits(), S = room.shell, res = info.res;
         var puffMat = new THREE.MeshPhongMaterial({ map: _hzTex(info.cliff) || null, color: 0xf8f6ff, shininess: 4 }); puffMat.emissive = new THREE.Color(0x2a2a34);
+        if (puffMat.map && _EMISSIVE_TERRAIN[info.cliff]) { _emissiveTerrainMat(puffMat, info.cliff, puffMat.map); puffMat.emissiveIntensity *= 0.7; }
         var treadMat = new THREE.MeshPhongMaterial({ map: _hzTex(info.path) || null, color: 0xfff8e8, shininess: 14 }); treadMat.emissive = new THREE.Color(0x1c1a14);
+        if (treadMat.map && _EMISSIVE_TERRAIN[info.path]) _emissiveTerrainMat(treadMat, info.path, treadMat.map);   // a self-lit path sheet (THE TRIP SHEETS): the floating steps glow like the floor
         var puffGeo = new THREE.SphereGeometry(1, 12, 9);
         var puff = function (x, y, z, r, sy, sx, sz) {
             var m = new THREE.Mesh(puffGeo, puffMat); m.position.set(x * U, y * U, z * U); m.scale.set(r * (sx || 1) * U, r * (sy || 0.62) * U, r * (sz || 1) * U); m.rotation.y = rng() * Math.PI * 2; m.castShadow = false; G.add(m); return m;
@@ -78503,6 +78784,7 @@ const ThreeRenderer = (function () {
         var U = _hqUnits(), V = (room.terrain && room.terrain.void) || {};
         var rkey = f.rock || V.rock || info.cliff, fkey = f.top || info.floor;
         var rockMat = new THREE.MeshPhongMaterial({ map: _hzTex(rkey) || null, color: 0xffffff, shininess: 6, flatShading: true }); rockMat.emissive = new THREE.Color(0x1a1024);
+        if (rockMat.map && _EMISSIVE_TERRAIN[rkey]) { _emissiveTerrainMat(rockMat, rkey, rockMat.map); rockMat.emissiveIntensity *= 0.7; }   // a self-lit sheet under an island (THE TRIP SHEETS: the inside of the cube)
         var capMat = new THREE.MeshPhongMaterial({ map: _hzTex(fkey) || null, color: (room.shell && room.shell.floorColor != null) ? room.shell.floorColor : 0xffffff, shininess: 4 }); capMat.emissive = new THREE.Color(0x120c1c);
         var seed = Math.abs(Math.round(f.x * 73.1 + f.z * 19.7 + f.h * 7.3)) + 11, rng = function () { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
         var round = !!f.r, rx = round ? f.r : f.w / 2, rz = round ? (f.rz || f.r) : f.d / 2, rot = (f.rot || 0) * Math.PI / 180, c = Math.cos(rot), sn = Math.sin(rot);
@@ -85113,6 +85395,104 @@ const ThreeRenderer = (function () {
         var need = base + cam.position.length();
         if (cam.far < need * 0.95) { cam.far = need * 1.1; cam.updateProjectionMatrix(); }
     }
+    /* ═══ THE INSIDE OF THE CUBE (2026-11-27, the DMT realm; plan docs/plans/dmt-realm/PLAN.md): a room whose sky is `scenery: 'trip'`
+       stands INSIDE a cube. Its six faces wear trip sheets (walls of eyes, the cube matrix, the mandala overhead, the flower of
+       life far below); between the room and the faces hang the black cube in its nested frames, the five solids, two star
+       tetrahedra, knots of ribbon, mandala windows and eyes that always look back. All of it plain three.js materials (both
+       renderers), under 70 draws, turned by _tripTickSky off the wall clock. The room's `trip` row: { margin (m from the room's
+       edge to a face), high, mid (the cube's height and its middle's y), hubY (the middle platform's level), faces: [six keys,
+       +x -x +y -y +z -z] }. ═══ */
+    function _tripBars(edgePos, thick) {
+        var n = edgePos.length / 6, out = new Float32Array(n * 108), box = new THREE.BoxGeometry(1, 1, 1).toNonIndexed(), bp = box.attributes.position.array;
+        var a = new THREE.Vector3(), b = new THREE.Vector3(), d = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0), q = new THREE.Quaternion(), m = new THREE.Matrix4(), s = new THREE.Vector3(), v = new THREE.Vector3();
+        for (var i = 0; i < n; i++) {
+            a.set(edgePos[i * 6], edgePos[i * 6 + 1], edgePos[i * 6 + 2]); b.set(edgePos[i * 6 + 3], edgePos[i * 6 + 4], edgePos[i * 6 + 5]);
+            d.subVectors(b, a); var len = d.length(); if (len < 1e-6) continue; q.setFromUnitVectors(up, d.clone().normalize());
+            s.set(thick, len + thick, thick); m.compose(a.clone().add(b).multiplyScalar(0.5), q, s);
+            for (var k = 0; k < 36; k++) { v.set(bp[k * 3], bp[k * 3 + 1], bp[k * 3 + 2]).applyMatrix4(m); out[i * 108 + k * 3] = v.x; out[i * 108 + k * 3 + 1] = v.y; out[i * 108 + k * 3 + 2] = v.z; }
+        }
+        box.dispose();
+        var g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(out, 3)); return g;
+    }
+    function _tripBuildSky(H, room, sky) {
+        var U = _hqUnits(), S = room.shell, T = room.trip || {}, G = new THREE.Group(); G.name = 'hqTripSky';
+        var half = Math.max(S.w || 120, S.d || 120) / 2, Lx = half * 2 + (T.margin != null ? T.margin : 70) * 2, Ly = T.high || 260, cy = (T.mid != null) ? T.mid : 55, hubY = T.hubY || 0;
+        var items = [], rng = _mulberry32(0xd317);
+        var mat = function (key, o) {
+            o = o || {};
+            var m = new THREE.MeshBasicMaterial({ map: key ? _tripTex(key) : null, color: (o.color != null) ? o.color : 0xffffff, side: o.side || THREE.FrontSide, fog: false, transparent: !!o.add || o.opacity != null, depthWrite: !o.add && o.opacity == null, opacity: (o.opacity != null) ? o.opacity : 1 });
+            if (o.add) m.blending = THREE.AdditiveBlending;
+            return m;
+        };
+        var add = function (o, x, y, z, spin, orb) { o.position.set(x * U, y * U, z * U); G.add(o); items.push({ o: o, s: spin || null, orb: orb || null }); return o; };
+        /* THE CUBE: six faces from the inside, each sheet a whole number of times across */
+        var faces = T.faces || ['dmt_eyes', 'dmt_eyes', 'dmt_tunnel', 'dmt_weave', 'dmt_cubes', 'dmt_cubes'], per = { dmt_eyes: 44, dmt_cubes: 36, dmt_weave: 40, dmt_ribbon: 30, dmt_glyph: 36, dmt_floor: 28 };
+        var bg = new THREE.BoxGeometry(Lx * U, Ly * U, Lx * U), uv = bg.attributes.uv;
+        for (var f = 0; f < 6; f++) {
+            var pm = per[faces[f]] || 0, su = pm ? Math.max(1, Math.round(Lx / pm)) : 1, sv = pm ? Math.max(1, Math.round(((f === 2 || f === 3) ? Lx : Ly) / pm)) : 1;
+            for (var vi = 0; vi < 4; vi++) uv.setXY(f * 4 + vi, uv.getX(f * 4 + vi) * su, uv.getY(f * 4 + vi) * sv);
+        }
+        var cube = new THREE.Mesh(bg, faces.map(function (k) { return mat(k, { side: THREE.BackSide, color: 0x9a9a9a }); }));
+        cube.position.y = cy * U; cube.frustumCulled = false; cube.renderOrder = -900; G.add(cube);
+        /* THE BLACK CUBE over the middle, in three frames that each turn their own way */
+        var frame = function (size, thick, color) { var eg = new THREE.EdgesGeometry(new THREE.BoxGeometry(size * U, size * U, size * U)); var m = new THREE.Mesh(_tripBars(eg.attributes.position.array, thick * U), mat(null, { color: color })); eg.dispose(); return m; };
+        var topY = hubY + (T.cubeY || 34);
+        add(new THREE.Mesh(new THREE.BoxGeometry(7 * U, 7 * U, 7 * U), mat(null, { color: 0x000000 })), 0, topY, 0, [0.21, 0.33, 0.13]);
+        add(frame(7.2, 0.22, 0xff3df0), 0, topY, 0, [0.21, 0.33, 0.13]);
+        add(frame(13, 0.26, 0x3dfff0), 0, topY, 0, [-0.17, 0.12, 0.24]);
+        add(frame(21, 0.3, 0xfff03d), 0, topY, 0, [0.09, -0.19, -0.11]);
+        /* THE FIVE SOLIDS on a slow round of the room: lit bars, faces of light */
+        var R1 = half + Math.min(26, (T.margin != null ? T.margin : 70) * 0.45);
+        var solids = [[new THREE.TetrahedronGeometry(8 * U), 0xff5a3d, 'dmt_weave'], [new THREE.OctahedronGeometry(8 * U), 0x3dff7a, 'dmt_ribbon'], [new THREE.BoxGeometry(11 * U, 11 * U, 11 * U), 0x3da8ff, 'dmt_cubes'],
+                      [new THREE.DodecahedronGeometry(8.5 * U), 0xc03dff, 'dmt_weave'], [new THREE.IcosahedronGeometry(8.5 * U), 0xffd23d, 'dmt_glyph']];
+        solids.forEach(function (sd, i) {
+            var grp = new THREE.Group(), eg = new THREE.EdgesGeometry(sd[0]);
+            grp.add(new THREE.Mesh(_tripBars(eg.attributes.position.array, 0.24 * U), mat(null, { color: sd[1] }))); eg.dispose();
+            grp.add(new THREE.Mesh(sd[0], mat(sd[2], { add: true, opacity: 0.55, side: THREE.DoubleSide })));
+            var a0 = i * 1.2566 + 0.4, yy = hubY + 12 + ((i * 17) % 40);
+            add(grp, Math.cos(a0) * R1, yy, Math.sin(a0) * R1, [0.1 + rng() * 0.2, 0.12 + rng() * 0.2, rng() * 0.15], { r: R1, a: a0, w: 0.012, y: yy, amp: 3, f: 0.2 + rng() * 0.2 });
+        });
+        /* TWO STAR TETRAHEDRA (two tetrahedra through each other, turning against each other) */
+        [[-1, 0xffe066, 0x66f0ff], [1, 0xff66d0, 0x8cff66]].forEach(function (st, i) {
+            var grp = new THREE.Group(), tg = new THREE.TetrahedronGeometry(9 * U), eg = new THREE.EdgesGeometry(tg), bars = _tripBars(eg.attributes.position.array, 0.26 * U);
+            var t1 = new THREE.Mesh(bars, mat(null, { color: st[1] })), t2 = new THREE.Mesh(bars, mat(null, { color: st[2] })); t2.rotation.x = Math.PI / 2;   // the tetrahedron's twin: the same corners of the cube's other half
+            grp.add(t1); grp.add(t2); eg.dispose(); tg.dispose();
+            add(grp, st[0] * (half * 0.55), hubY + 40 + i * 6, (i ? -1 : 1) * half * 0.55, [0.07, 0.25, 0.05], null);
+        });
+        /* KNOTS OF RIBBON high in the corners */
+        [[1, 1, 2, 3], [-1, 1, 3, 4], [-1, -1, 2, 5], [1, -1, 3, 5]].forEach(function (kn, i) {
+            var kg = new THREE.TorusKnotGeometry(11 * U, 1.7 * U, 110, 8, kn[2], kn[3]), ku = kg.attributes.uv;
+            for (var q = 0; q < ku.count; q++) ku.setXY(q, ku.getX(q) * 10, ku.getY(q));
+            add(new THREE.Mesh(kg, mat('dmt_ribbon')), kn[0] * (half + 18), hubY + 62 + i * 9, kn[1] * (half + 18), [0.05 + i * 0.01, 0.09, 0.04], null);
+        });
+        /* THE MANDALA WINDOWS: one before each wall, turning in its own plane */
+        var Rw = half + (T.margin != null ? T.margin : 70) * 0.72;
+        for (var w = 0; w < 4; w++) {
+            var wa = w * Math.PI / 2, pl = new THREE.Mesh(new THREE.PlaneGeometry(64 * U, 64 * U), mat('dmt_tunnel', { add: true, side: THREE.DoubleSide }));
+            pl.rotation.y = -wa - Math.PI / 2; pl.rotation.order = 'YXZ';
+            add(pl, Math.cos(wa) * Rw, hubY + 30, Math.sin(wa) * Rw, [0, 0, (w & 1) ? -0.06 : 0.06], null);
+        }
+        /* THE EYES: sprites, so each one faces whoever looks at it */
+        var eyeMat = new THREE.SpriteMaterial({ map: _tripTex('dmt_eye_one'), transparent: true, depthWrite: false, fog: false });
+        for (var e = 0; e < 9; e++) {
+            var ea = e * 0.698 + 0.2, er = half + 14 + rng() * ((T.margin != null ? T.margin : 70) * 0.5), ey = hubY - 6 + rng() * 80, sz = 16 + rng() * 16;
+            var sp = new THREE.Sprite(eyeMat); sp.scale.set(sz * U, sz * U, 1);
+            add(sp, Math.cos(ea) * er, ey, Math.sin(ea) * er, null, { r: er, a: ea, w: (e & 1 ? -1 : 1) * 0.006, y: ey, amp: 4, f: 0.15 + rng() * 0.2 });
+        }
+        H.scene.add(G);
+        H.sky.group = G; H.sky.trip = { items: items, last: 0, U: U };
+        H.sky.farBase = Math.sqrt(Lx * Lx * 2 + Ly * Ly) * U * 1.1;
+        console.log('[HQ] sky: trip (the inside of the cube) —', G.children.length, 'bodies, the cube', Math.round(Lx), 'm');
+    }
+    function _tripTickSky(TR, t) {
+        var dt = TR.last ? Math.min(0.1, Math.max(0, t - TR.last)) : 0; TR.last = t;
+        if (typeof window !== 'undefined' && window.EW_NO_TRIP_SHEETS) return;
+        for (var i = 0; i < TR.items.length; i++) {
+            var it = TR.items[i], o = it.o;
+            if (it.s) { o.rotation.x += it.s[0] * dt; o.rotation.y += it.s[1] * dt; o.rotation.z += it.s[2] * dt; }
+            if (it.orb) { var a = it.orb.a + it.orb.w * t; o.position.set(Math.cos(a) * it.orb.r * TR.U, (it.orb.y + Math.sin(t * it.orb.f + it.orb.a) * it.orb.amp) * TR.U, Math.sin(a) * it.orb.r * TR.U); }
+        }
+    }
     function _hqBuildSky(room, Hx) {
         /* Hx: the record to build into (the main menu scene, 2026-09-08); default the live visit */
         var S = room.shell, sky = S.sky, H = Hx || _hq;
@@ -85138,6 +85518,7 @@ const ThreeRenderer = (function () {
         if (rid && typeof hqRoomLandmarks === 'function') { try { lms = hqRoomLandmarks(rid); } catch (e) { lms = null; } }
         if (Array.isArray(lms) && lms.length) { try { _hqBuildLandmarks(H, lms, 6000); } catch (e) { console.warn('[HQ] landmarks failed', e); } }
         else if (Array.isArray(sky.landmarks) && sky.landmarks.length) { try { _hqBuildLandmarks(H, sky.landmarks, 6000); } catch (e) { console.warn('[HQ] landmarks failed', e); } }
+        if (theme === 'trip') { try { _tripBuildSky(H, room, sky); } catch (e) { console.warn('[HQ] the trip sky failed', e); } return; }   // THE INSIDE OF THE CUBE (2026-11-27)
         if (theme === 'none') return;
         var roster = _hzThemeRoster(theme) || _hzCosmicRoster();
         var dens = (sky.density != null) ? sky.density : 1;
@@ -85268,6 +85649,7 @@ const ThreeRenderer = (function () {
             var vdt = VY.last ? Math.min(0.05, Math.max(0, t - VY.last)) : 0; VY.last = t; VY.dist += VY.speed * vdt;
             u.uSkyFlow.value = VY.sky * VY.dist / (60 * 128);
         }
+        if (sk.trip) _tripTickSky(sk.trip, t);   // THE INSIDE OF THE CUBE
         for (var i = 0; i < sk.floaters.length; i++) {
             var f = sk.floaters[i];
             f.obj.position.y = f.baseY + Math.sin(t * f.spd + f.phase) * f.amp;
@@ -90701,6 +91083,7 @@ const ThreeRenderer = (function () {
             if (p.ring && cat.wedge && !isBox) { _hqPlaceWedgeRing(p, cat, r, y0, y, target); return; }
             var grp = new THREE.Group();
             grp.userData.ewRow = p;   // THE EDITOR (EDITOR_PLAN E0): the row this prop was placed from (selection, the live drag)
+            if (p.vy) grp.scale.y = p.vy;   // THE CROPS VARY: a row's own height, the plan kept
             if (box && typeof p.wall === 'string') grp._ew_hqWall = p.wall;   // THE ROOM ROUND THE FIELD: a wall prop fades with its wall
             if (!onWall && !onCeil && !flip) grp._ew_hqProp = { key: p.key, foot: cat.foot || 0 };   // THE SINK (delivery 9): a floor prop the field's deform may carry down with a dug cell
             /* the spot: a wall point pushed in by `depth` (known now for proc props, on load for GLBs), else the free spot */
@@ -90772,7 +91155,7 @@ const ThreeRenderer = (function () {
             var instO = {
                 anim: (p.anim != null) ? p.anim : cat.anim, nose: cat.turn || 0,
                 swim: swimM ? { r: (swimM.r || 2) * U * fs, v: (swimM.v || 1) * U * fs, bob: (swimM.bob || 0) * U, dir: swimM.dir || ((Math.round(((p.x || 0) + (p.z || 0)) * 4) & 1) ? -1 : 1) } : null,
-                fit: fitSpan ? 'span' : 'height', matPick: (cat.statue != null || p.statue != null) ? _hqStatuePick(p.statue != null ? p.statue : cat.statue) : (cat.petal != null ? function (n, mm) { return _hqPetalMat(_hqPropMatPick(n, mm) || mm, cat.petal); } : _hqPropMatPick),   // THE PETAL COLOURS
+                fit: fitSpan ? 'span' : 'height', matPick: (cat.statue != null || p.statue != null) ? _hqStatuePick(p.statue != null ? p.statue : cat.statue) : (cat.petal != null ? function (n, mm) { return _hqPetalMat(_hqPropMatPick(n, mm) || mm, cat.petal); } : (p.tint != null ? _hqPropTintPick(p.tint) : _hqPropMatPick)),   // THE PETAL COLOURS
                 still: !!(cat.statue != null || p.statue != null),   // THE STATUES (2026-11-15, Chicago): a cast animal holds its pose
                 onDone: function (g, s, bb) {
                     try { _hqLampBulb(g, cat, p.key); } catch (eLB) {}   // THE LAMPS LOSE THE HALO: the lamp's own sheet is lit
@@ -90831,6 +91214,7 @@ const ThreeRenderer = (function () {
         /* THE WOODS' FERNS (2026-11-25): a row of a key in data.js ZONE_FLORA.swap stands as its climate says (the Meshy rosette off the temperate
            ground, the three-stick dead bush as the thorn bush); copies, never the room's own rows. Once a room build */
         try { if (typeof zoneFloraSwap === 'function') rows = zoneFloraSwap(room, rows, _hq.terrain && _hq.terrain.roomId); } catch (e) { console.warn('[FLORA] the swap', e); }
+        try { if (typeof cropRowsVary === 'function') rows = cropRowsVary(room, rows); } catch (e) { console.warn('[FLORA] the crops', e); }   // THE CROPS VARY (2026-11-27): copies, once a room build
         /* THE CEILING LAMPS FIRST (2026-11-09, mondo: "the inside of the mall is all black"): the room's HQ_PROP_LIGHT_MAX prop lights
            went to the first rows that asked, so the mall's two table lava lamps, two floor lamps and six slot machines took all ten and
            its nine saucers and sputniks over the atrium hung dark. When a room asks for more lights than it has left, the ceiling
@@ -105528,7 +105912,26 @@ const ThreeRenderer = (function () {
         if (capped && G && !G.idle()) { try { console.warn('[HQ] the load card gave up after ' + Math.round(still / 1000) + ' s without progress (' + Math.round((now - H.t0) / 1000) + ' s in all) — still in flight:', G.list().map(function (r) { return r.url; })); } catch (e) {} }
         if (G) { var failed = G.failed(); if (failed.length) { try { console.warn('[HQ] ' + failed.length + ' file(s) of this room never landed (missing from the bucket? a frozen 404? — window._ewAssetFailures):', failed); } catch (e) {} } try { _hqBookWrite(H.opts && H.opts.room, G); } catch (e) {} G.close(); }
         try { var S1 = H.settle; if (S1) console.log('[HQ] ' + (H.opts && H.opts.room) + ' landed in ' + Math.round((H.landedAt || now) - H.t0) + ' ms and settled in ' + Math.round(now - (H.landedAt || now)) + ' ms more (warmed ' + (S1.mats + (S1.warm ? S1.warm.mats : 0)) + ' material(s) + ' + (S1.texN + (S1.warm ? S1.warm.texN : 0)) + ' sheet(s) under the card' + (S1.warm && S1.warm.real ? ', ' + S1.warm.real + ' drawn the real way' + (S1.warm.realFail ? ' (' + S1.warm.realFail + ' failed)' : '') + (S1.warm.restarts ? ', ' + S1.warm.restarts + ' restart(s) for a new light list' : '') : '') + '; ' + S1.steps.join(', ') + ')'); } catch (e) {}
+        try { _hqWayOutOnArrive(H); } catch (eWO) { console.warn('[HQ] the way-out check on arrival failed', eWO); }
         if (H.opts.onReady) { try { H.opts.onReady(); } catch (e) {} }
+    }
+    /* THE WAY OUT ON ARRIVAL (2026-11-27, mondo: "camelot castle has the same problem as the mall where i fast travel to it and im inside and
+       all the walls are invisible and i cant get out"): a GO from the map with no door to land at puts the walker on the room's `spawn`, and
+       Came A Lot Castle's spawn (0, 18.55) is a sealed brick pit under its courtyard. A save's spot can be one too. Once, when the room stands:
+       if the walker cannot walk to any of the room's ways in (data.js hqTerrainEscapes), they are stood at the nearest way in they can walk from
+       (hq.goSpot round each door's landing). Off: window.EW_GO_NO_WAYOUT = true. */
+    function _hqWayOutOnArrive(H) {
+        if (!H || H !== _hq || !H.player || !H.terrain || typeof hqTerrainEscapes !== 'function' || (typeof window !== 'undefined' && window.EW_GO_NO_WAYOUT)) return;
+        var room = (typeof DOOR_HQ !== 'undefined' && H.opts && DOOR_HQ.rooms[H.opts.room]) || H.room; if (!room || !(room.doors || []).length) return;
+        var pl = H.player; if (hqTerrainEscapes(H.terrain, pl.x, pl.z, { room: room, y: pl.y })) return;
+        var from = { x: pl.x, z: pl.z }, L = [];
+        room.doors.forEach(function (d) { try { if (d.sealed || d.hidden) return; var q = hqTerrainDoorLanding(room, d); if (q && isFinite(q.x) && isFinite(q.z)) L.push({ x: q.x, z: q.z, d: Math.hypot(q.x - pl.x, q.z - pl.z), id: d.id }); } catch (e) {} });
+        L.sort(function (a, b) { return a.d - b.d; });
+        for (var i = 0; i < L.length; i++) {
+            var r = ThreeRenderer.hq.goSpot(L[i].x, L[i].z, 8);
+            if (r && r.ok) { console.log('[HQ] THE WAY OUT: the arrival (' + from.x.toFixed(1) + ', ' + from.z.toFixed(1) + ') was sealed; stood at door ' + L[i].id + ' (' + r.x.toFixed(1) + ', ' + r.z.toFixed(1) + ')'); return; }
+        }
+        console.warn('[HQ] THE WAY OUT: the arrival is sealed and no way in had ground to stand on');
     }
 
     /* ── lifecycle ─────────────────────────────────────────────────────── */
@@ -113946,6 +114349,9 @@ const ThreeRenderer = (function () {
            the screenshot probe drives the cast placement with these. Not
            used by the game. */
         dev: {
+            /* THE TRIP SHEETS: the live sheets, what one redraw of each costs (ms, the mean of n), a sheet's picture as a PNG data URL (the stills) */
+            trip: function (n) { var o = {}; n = n || 10; for (var k in _tripLive) { var E = _tripLive[k], t0 = performance.now(); for (var i = 0; i < n; i++) E.row[0](E.g, E.n, t0 / 1000 + i * 0.1, E.row[2]); o[k] = +((performance.now() - t0) / n).toFixed(2); } return { on: _tripOn(), ms: o }; },
+            tripStill: function (key, t) { var tx = _tripTex(key), E = _tripLive[key]; if (!tx || !E) return null; E.row[0](E.g, E.n, t || 7, E.row[2]); return E.g.canvas.toDataURL('image/png'); },
             /* THE ONE AIR: the rules, and the frame's values as _hqFogHold would write them */
             air: function () { var H = _hq, h = H ? _hqFogHold(H) : null, f = H && H.scene ? H.scene.fog : null; var o = { rules: EW_AIR, on: _ewSceneFogOn(), shape: _ewFogShape(), fog: f ? { hex: f.color.getHexString(), perMetre: +(f.density * _hqUnits()).toFixed(5) } : null, mist: { z: _EW_HFOG.z, hM: +(1 / (_EW_HFOG.y * _hqUnits())).toFixed(2) }, sun: { x: +_EW_AIR.x.toFixed(2), z: +_EW_AIR.y.toFixed(2), warm: +_EW_AIR.z.toFixed(2) }, dome: (_envUni && _envUni.uAir) ? _envUni.uAir.value.toArray().map(function (v) { return +v.toFixed(3); }) : null, domeC: _envUni ? _envUni.uFogColor.value.toArray().map(function (v) { return +v.toFixed(2); }) : null, band: _envUni ? _envUni.uFogAmount.value : null }; _hqFogBack(h); return o; },
             /* the live scene graph (repo probes: playtest_maps.js PROBE) */
