@@ -30509,6 +30509,8 @@
             /* the turn clock (hud.js TurnColumn) steps aside for the shot and comes back when the chrome leaves
                (mondo 2026-10-17: "let's hide the turn clock during spell animations") */
             document.body.classList.add('ew-spell-shot');
+            /* THE CLEAN READ (2026-11-27): the score, the match line and a toast step out of the shot too (hud.js) */
+            document.body.classList.toggle('ew-shot-clean', !window.EW_NO_CLEAN_READ);
         }
 
         const AC_BARS_CAM_WAIT_MS = 1600;
@@ -30557,7 +30559,7 @@
             const _lingers = !!(st && st.heavy && st.total > 0 && !_skipVisuals() && _acChromeEl);
             /* the turn clock stays aside until the corner total is GONE — it sits where the readout
                lingers (mondo 2026-10-18: "it should stay hidden until the damage number goes away") */
-            if (!_lingers) document.body.classList.remove('ew-spell-shot');
+            if (!_lingers) document.body.classList.remove('ew-spell-shot', 'ew-shot-clean');
             if (!_acChromeEl) return;
             // Snap the counter to the true final total before it leaves.
             if (st && st.total > 0) {
@@ -30576,7 +30578,7 @@
                     chromeEl.classList.remove('dmg-linger');
                     _acLingerTimer = setTimeout(() => {
                         _acLingerTimer = null;
-                        document.body.classList.remove('ew-spell-shot');
+                        document.body.classList.remove('ew-spell-shot', 'ew-shot-clean');
                     }, AC_TALLY_FADE_MS);
                 }, AC_TALLY_LINGER_MS);
             }
@@ -30785,6 +30787,19 @@
                 if (!r || r.right <= o.left || r.left >= o.right || r.bottom <= o.top || r.top >= o.bottom) return;
                 R.walls.push([r.left - o.left - pad, r.top - o.top - pad, r.right - o.left + pad, r.bottom - o.top + pad]);
             });
+            /* THE CLEAN READ (2026-11-27): the shot's corner (the spell name, TOTAL DMG, the AP lines) is a wall too, so a
+               hit's number steps round it instead of fading the total out from under the reader (THE NUMBERS WIN stays the
+               fallback). Read at any opacity: a yielded corner is still where it is. Each line's own box (the AP lines'
+               values reach past the total's plate). */
+            if (!window.EW_NO_CLEAN_READ && _acChromeEl && _acChromeEl.isConnected
+                && (_acChromeEl.classList.contains('active') || _acChromeEl.classList.contains('dmg-linger'))) {
+                _acChromeEl.querySelectorAll('.acam-title > *').forEach(el => {
+                    if (getComputedStyle(el).display === 'none') return;
+                    const r = el.getBoundingClientRect();
+                    if (!(r.width > 0 && r.height > 0) || r.bottom <= o.top || r.top >= o.bottom) return;
+                    R.walls.push([r.left - o.left - pad, r.top - o.top - pad, r.right - o.left + pad, r.bottom - o.top + pad]);
+                });
+            }
             return (_floatSafe = R);
         };
 
@@ -30837,9 +30852,14 @@
             const num = _acChromeEl.querySelector('.acam-dmg-num');
             if (!num) return;
             if (st.rollRaf) cancelAnimationFrame(st.rollRaf);
+            /* THE CLEAN READ (2026-11-27): the roll runs on the clock, not per frame (on a slow frame rate the corner
+               still read 0 while the hit's number stood over the target): about 0.45 s to land at any frame rate */
+            let last = performance.now();
             const step = () => {
                 if (_acChromeState !== st) return;   // superseded by a new shot
                 const diff = st.total - st.shown;
+                const now = performance.now(), dt = Math.min(250, now - last);
+                last = now;
                 if (diff <= 0) {
                     st.rollRaf = null;
                     // the roll lands: one bright settle pulse on the final figure
@@ -30848,7 +30868,7 @@
                     num.classList.add('land');
                     return;
                 }
-                st.shown = Math.min(st.total, st.shown + Math.max(1, Math.round(diff * 0.16)));
+                st.shown = Math.min(st.total, st.shown + Math.max(1, Math.round(diff * (1 - Math.exp(-dt / 90)))));
                 num.textContent = st.shown.toLocaleString();
                 st.rollRaf = requestAnimationFrame(step);
             };

@@ -23816,6 +23816,8 @@ const ThreeRenderer = (function () {
                 '  color: #7fd8a0; opacity: 0.85;',
                 '  text-shadow: 0 0 4px rgba(60,160,100,0.6), 0 1px 2px #000;',
                 '}',
+                /* THE CLEAN READ: a hit body's plate in a live spell shot = its bars only */
+                '.tp-wrap.tp-shot .tp-name, .tp-wrap.tp-shot .tp-types, .tp-wrap.tp-shot .tp-status-row, .tp-wrap.tp-shot .tp-side-line { display: none !important; }',
                 /* Diagonal slash across the eye when hidden (a real <i>, not ::after: THE PLATES IN THE WORLD paint
                    the plate's own boxes, and a pseudo-element has none to read). */
                 '.tp-wrap .tp-eye .tp-eye-slash { display: none; }',
@@ -25701,6 +25703,7 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < _decoyPlates.length; i++) fix(_decoyPlates[i]);
     }
 
+    var _crShotKeep = null;   // THE CLEAN READ: { caster, target, set } of the live shot, kept through its linger
     function _updatePlateVisibility() {
 
         var targetSet = window._ewTargetableUnitIds || null;
@@ -25712,7 +25715,7 @@ const ThreeRenderer = (function () {
            set above, and self-expires (state._actionExecuting extends the
            hold through longer animations) so enemy actions, which never set
            a local actionMode, release the filter on their own. */
-        var _af = window._ewActionPlateFocus || null;
+        var _af = window._ewActionPlateFocus || null, _afLive = false;
         if (_af) {
             var _afBusy = false;
             try { _afBusy = !!(typeof state !== 'undefined' && state && state._actionExecuting); } catch (e) {}
@@ -25720,9 +25723,23 @@ const ThreeRenderer = (function () {
                 window._ewActionPlateFocus = null;
             } else if (_af.set) {
                 targetSet = _af.set;
+                _afLive = true;
             }
         }
 
+        /* THE CLEAN READ: the shot (and its chrome lingering on the last hit) keeps the shot's own focus, caster and
+           target after the action's plate hold has run out (Air Mail's linger brought back three plates over the frame) */
+        var shotNow = _floatShotLive();
+        if (!shotNow) _crShotKeep = null;
+        else if (camera._cineShotId != null) {
+            _crShotKeep = _crShotKeep || {};
+            _crShotKeep.caster = camera._cineShotUnitId;
+            _crShotKeep.target = camera._cineShotTarget ? camera._cineShotTarget.id : null;
+            if (_afLive) _crShotKeep.set = _af.set;
+        }
+        var shotCaster = _crShotKeep ? _crShotKeep.caster : null;
+        var shotTarget = _crShotKeep ? _crShotKeep.target : null;
+        if (_crShotKeep && _crShotKeep.set && !_afLive) targetSet = _crShotKeep.set;
         for (var entry of _plateObjs) {
             var uid = entry[0], po = entry[1];
             var vis = true;
@@ -25755,6 +25772,17 @@ const ThreeRenderer = (function () {
             }
             /* ghosted as an action-cam blocker (see _occSetUnitGhost) */
             if (vis && po._ew_occHid) vis = false;
+
+            /* THE CLEAN READ (2026-11-27): in a live spell shot the caster's own plate goes (unless the spell lands on it:
+               a self-cast keeps it), and a hit body's plate keeps only its bars (tp-shot: no name, level, race tags or
+               status row), so the plate never sits on the target's head beside its number. The bar still reads the
+               drain; the names are in the shot's log line. Back the moment the shot ends. */
+            var _crShot = shotNow && vis;
+            if (_crShot && uid === shotCaster && uid !== shotTarget) vis = false;
+            if (po.el && po.el.classList) {
+                var _crOn = !!(_crShot && vis);
+                if (po._ewCrShot !== _crOn) { po._ewCrShot = _crOn; po.el.classList.toggle('tp-shot', _crOn); }
+            }
 
             po.css2d.visible = vis;
         }
@@ -36959,6 +36987,69 @@ const ThreeRenderer = (function () {
        crop of it a setViewOffset lens draws); fullH = the height of the WHOLE screen that lens stands for (the size
        maths: world → px and the smallest / biggest on-screen size are shares of it); pane = the death close-up lens. */
     var _floatProjVec2 = (typeof THREE !== 'undefined') ? new THREE.Vector3() : null;
+    /* ── THE CLEAN READ (2026-11-27, mondo: "fix the text and effect clutter ... AAA polish ... easy to read and also keep the
+       action easy to read"; the clear-shot captures: the hit's number, LAST STAND!, the caster's plate and the race tag
+       piled on the target's head). In a live spell shot the bodies the shot is about are SOFT WALLS for the pops: a unit's
+       stack steps beside its body (the way THE HUD WALLS step it round a HUD box), never over the head or the chest, and
+       never over the caster or the target. A spot clear of every body wins; with none (a body that fills the frame) the
+       spot over the least of them. Screen px of the float layer, read per frame from the models (a few projections).
+       window.EW_NO_CLEAN_READ = true → as before. Each viewer lays out its own pops (RULE #2: a look needs no relay). */
+    var FLOAT_BODY_W = 0.46;        // a body's width on screen as a share of its drawn height (narrower than its arms)
+    var FLOAT_BODY_MIN_W = 0.32;
+    var FLOAT_BODY_REACH = 0.24;    // the farthest a body step takes a stack, as a share of the frame    // never narrower than this share of a square's width at its depth (a car, a beast)
+    var _floatBodyIds = [], _floatBodyBoxes = [], _floatShotKeep = [null, null];
+    function _floatShotLive() {
+        try {
+            /* the shot, or its chrome still lingering over the last hit (the numbers outlive the lens by a beat) */
+            return !window.EW_NO_CLEAN_READ && typeof state !== 'undefined' && state && state.cinematicActionCam && state.phase === 'battle'
+                && ((typeof camera !== 'undefined' && camera && camera._cineShotId != null) || document.body.classList.contains('ew-spell-shot'));
+        } catch (e) { return false; }
+    }
+    /* a body's box on the float layer [l, t, r, b], or null (no live model, behind the lens) */
+    function _floatBodyBox(uid, cam, viewW, viewH) {
+        var e = unitEntries.get(uid);
+        if (!e || !e.group || !e.group.parent || e.group.visible === false || !_floatProjVec2) return null;
+        var p = e.group.position, ts = CONFIG.tileSize || BASE_TILE;
+        var h = ts * UNIT_SPRITE_SIZE_RATIO * ((e.modelDef && e.modelDef.heightRatio) || 1);
+        _floatProjVec2.set(p.x, p.y, p.z).project(cam);
+        if (_floatProjVec2.z > 1) return null;
+        var fx = (_floatProjVec2.x * 0.5 + 0.5) * viewW, fy = (-_floatProjVec2.y * 0.5 + 0.5) * viewH;
+        _floatProjVec2.set(p.x, p.y + h, p.z).project(cam);
+        if (_floatProjVec2.z > 1) return null;
+        var hx = (_floatProjVec2.x * 0.5 + 0.5) * viewW, hy = (-_floatProjVec2.y * 0.5 + 0.5) * viewH;
+        var sh = Math.hypot(hx - fx, hy - fy);
+        var d = Math.max(1, Math.hypot(p.x - cam.position.x, p.y + h / 2 - cam.position.y, p.z - cam.position.z));
+        var tilePx = ts * viewH / (2 * d * Math.tan(cam.fov * Math.PI / 360));
+        var w = Math.max(sh * FLOAT_BODY_W, tilePx * FLOAT_BODY_MIN_W);
+        var cx = (fx + hx) / 2;
+        return [cx - w / 2, Math.min(fy, hy), cx + w / 2, Math.max(fy, hy)];
+    }
+    /* the shot's bodies this frame: the caster, the target and every unit a pop is riding */
+    function _floatShotBodies(live, cam, viewW, viewH) {
+        var ids = _floatBodyIds, out = _floatBodyBoxes;
+        ids.length = 0; out.length = 0;
+        if (!cam || !_floatShotLive()) { _floatShotKeep[0] = _floatShotKeep[1] = null; return out; }
+        var add = function (id) { if (id != null && ids.indexOf(id) < 0) ids.push(id); };
+        if (camera._cineShotId != null) {   // the live shot's two; kept through the chrome's linger
+            _floatShotKeep[0] = camera._cineShotUnitId;
+            _floatShotKeep[1] = camera._cineShotTarget && camera._cineShotTarget.id != null ? camera._cineShotTarget.id : null;
+        }
+        add(_floatShotKeep[0]); add(_floatShotKeep[1]);
+        for (var i = 0; i < live.length; i++) add(live[i].follow);
+        /* and every other body the viewer can see (a hit's number landed on the body behind its target): fog-safe, a
+           hidden enemy is never a wall (a pop stepping round it would point at it) */
+        try {
+            var vp = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : (state.activePlayer || 1);
+            for (var u = 0; u < state.units.length; u++) {
+                var su = state.units[u];
+                if (!su || su.dead || ids.indexOf(su.id) >= 0) continue;
+                if (su.player !== vp && state.fogOfWar && !(_fogVisibleSet && _fogVisibleSet.has(su.x + ',' + su.y))) continue;
+                add(su.id);
+            }
+        } catch (e) {}
+        for (var j = 0; j < ids.length; j++) { var b = _floatBodyBox(ids[j], cam, viewW, viewH); if (b) out.push(b); }
+        return out;
+    }
     function _floatStep(ctx, cam, viewW, viewH, fullH, pane) {
         var L = _floatLook();
         var now = ctx.now();
@@ -36981,6 +37072,7 @@ const ThreeRenderer = (function () {
         var bunch = lay !== 'stack';
         var driftK = _floatNum(L.drift, 0, 0, 4), tiltK = _floatNum(L.tilt, 0, 0, 45), lifeK = _floatNum(L.life, 1, 0.3, 5);
         var hopPath = L.path === 'hop' || L.path === 'bounce';
+        var shotLive = !pane && !ctx.keepIn && _floatShotLive();
         var live = ctx.live;
         live.length = 0;
         var tweens = ctx.tweens;
@@ -37088,7 +37180,9 @@ const ThreeRenderer = (function () {
                         /* a word is a caption, never the size of a big number (playtest 2026-11-05 E6: up close in a spell
                            shot "★ ZODIAC +10%" on the caster, nearer the lens, drew taller than the hit's own number and
                            buried the unit): up close a word stops growing at FLOAT_MAX_TAG_H of the screen */
-                        else if (!tw.hero && !_FLOAT_SOLO_KINDS[tw.kind] && ink0 * settledK > fullH * Math.max(minTag, Math.min(maxHero * FLOAT_TAG_SCALE, FLOAT_MAX_TAG_H)))
+                        /* THE CLEAN READ: in a spell shot a "whole moment" word (LAST STAND!) is a caption too: the number
+                           is the moment there, and the log line names the word */
+                        else if (!tw.hero && (!_FLOAT_SOLO_KINDS[tw.kind] || shotLive) && ink0 * settledK > fullH * Math.max(minTag, Math.min(maxHero * FLOAT_TAG_SCALE, FLOAT_MAX_TAG_H)))
                             settledK = fullH * Math.max(minTag, Math.min(maxHero * FLOAT_TAG_SCALE, FLOAT_MAX_TAG_H)) / ink0;
                     }
                     // the look's size (and the kind's own) rides on top of the clamps, so it shows at every zoom;
@@ -37121,6 +37215,9 @@ const ThreeRenderer = (function () {
             for (var ck in cols) delete cols[ck];
             for (var si = 0; si < live.length; si++) {
                 var sw = live[si], sb = _floatBox(sw);
+                /* THE CLEAN READ: the pop-in swell counts (HEATING UP! at its 1.6× slam was cut by the screen's edge) */
+                var swl = (sw._kr > 0 && sw._k > sw._kr) ? sw._k / sw._kr : 1;
+                if (swl > 1) sb = { hw: sb.hw * swl, cx: sb.cx * swl, up: sb.up * swl, dn: sb.dn * swl };
                 var scx = sw._sx + (sw.layDx || 0) + sb.cx, scy = sw._sy + sw.layDy + (sw._pathDy || 0);
                 var lo2 = SF.l + sb.hw - sb.cx, hi2 = SF.r - sb.hw - sb.cx, sx0 = scx - sb.cx;
                 sw._sfDx = lo2 > hi2 ? 0 : Math.max(lo2, Math.min(hi2, sx0)) - sx0;
@@ -37139,27 +37236,57 @@ const ThreeRenderer = (function () {
                 sw._sfKey = key;
             }
             var walls = SF.walls && SF.walls.length ? SF.walls : null;
+            var soft = _floatShotBodies(live, cam, viewW, viewH);   // THE CLEAN READ: the shot's bodies
+            if (!soft.length) soft = null;
+            /* THE CLEAN READ: in a shot each unit's stack, once placed, is a wall for the next (Empty the Clip's three
+               numbers stepped off their bodies onto each other: "-407346") */
+            if (soft) walls = walls ? walls.slice() : [];
             for (var gk in cols) {
                 var G = cols[gk];
                 G.dy = G.d > 0 ? G.d : G.u;
                 G.wx = 0; G.wy = 0;
-                if (!walls) continue;
+                if (!walls && !soft) continue;
                 var gl = G.l, gt = G.t + G.dy, gr = G.r, gb = G.b + G.dy;
                 var hits = function (ox, oy) {
+                    if (!walls) return false;
                     for (var wi = 0; wi < walls.length; wi++) {
                         var w = walls[wi];
                         if (gr + ox > w[0] && gl + ox < w[2] && gb + oy > w[1] && gt + oy < w[3]) return true;
                     }
                     return false;
                 };
-                if (!hits(0, 0)) continue;
+                /* the share of the stack's box over the shot's bodies (0 = clear; summed over bodies) */
+                var gA = Math.max(1, (gr - gl) * (gb - gt));
+                var over = function (ox, oy) {
+                    if (!soft) return 0;
+                    var a = 0;
+                    for (var bi = 0; bi < soft.length; bi++) {
+                        var B = soft[bi];
+                        var ow = Math.min(gr + ox, B[2]) - Math.max(gl + ox, B[0]), oh = Math.min(gb + oy, B[3]) - Math.max(gt + oy, B[1]);
+                        if (ow > 0 && oh > 0) a += ow * oh;
+                    }
+                    return a / gA;
+                };
+                if (!hits(0, 0) && !(over(0, 0) > 0)) { if (soft) walls.push([gl - 2, gt - 2, gr + 2, gb + 2]); continue; }
                 // the steps: clear of each wall's every side, alone and two at once (a corner)
                 var dxs = [0], dys = [0];
-                for (var wj = 0; wj < walls.length; wj++) {
+                for (var wj = 0; walls && wj < walls.length; wj++) {
                     var W = walls[wj];
                     dxs.push(W[0] - gr, W[2] - gl);
                     dys.push(W[1] - gb, W[3] - gt);
                 }
+                for (var bj = 0; soft && bj < soft.length; bj++) {
+                    var SB = soft[bj], gapS = 6;
+                    dxs.push(SB[0] - gr - gapS, SB[2] - gl + gapS);
+                    dys.push(SB[1] - gb - gapS, SB[3] - gt + gapS);
+                }
+                // a body's cover costs more than the longest step across the screen: clear wins, then the least covered.
+                // A body step never takes a stack farther than FLOAT_BODY_REACH of the frame from its unit (mondo 10-21:
+                // the pops stay "clearly on that enemy"); a HUD wall still may (it must).
+                var overK = (SF.r - SF.l) + (SF.b - SF.t);
+                var reachX = soft ? Math.max((gr - gl) * 1.2, (SF.r - SF.l) * FLOAT_BODY_REACH) : Infinity;
+                var reachY = soft ? Math.max((gb - gt) * 1.2, (SF.b - SF.t) * FLOAT_BODY_REACH) : Infinity;
+                var hardHere = hits(0, 0);
                 var bestC = Infinity, bx2 = 0, by2 = 0, px = G.px != null ? G.px : 0, py = G.px != null ? G.py : 0, hasPrev = G.px != null;
                 for (var xi = 0; xi < dxs.length; xi++) {
                     var ox = dxs[xi];
@@ -37168,11 +37295,15 @@ const ThreeRenderer = (function () {
                         var oy = dys[yi2];
                         if (gt + oy < SF.t - 0.5 || gb + oy > SF.b + 0.5) continue;
                         var cst = Math.sqrt(ox * ox + oy * oy) + (hasPrev ? 0.35 * Math.sqrt((ox - px) * (ox - px) + (oy - py) * (oy - py)) : 0);
+                        if (cst >= bestC) continue;
+                        if (!hardHere && (Math.abs(ox) > reachX || Math.abs(oy) > reachY)) continue;
+                        if (soft) cst += over(ox, oy) * overK;
                         if (cst >= bestC || hits(ox, oy)) continue;
                         bestC = cst; bx2 = ox; by2 = oy;
                     }
                 }
                 if (bestC < Infinity) { G.wx = bx2; G.wy = by2; }
+                if (soft) walls.push([gl + G.wx - 2, gt + G.wy - 2, gr + G.wx + 2, gb + G.wy + 2]);
             }
             for (var sj = 0; sj < live.length; sj++) {
                 var C2 = cols[live[sj]._sfKey];

@@ -19793,7 +19793,10 @@
         function _drainCenterBannerQueue() {
             if (_centerBannerActive || _centerBannerQueue.length === 0) return;
 
-            if (typeof isCinematicActive === 'function' && isCinematicActive()) {
+            /* THE CLEAN READ (2026-11-27): a banner waits for the spell shot's chrome to leave too ("Auto Attack!" stood
+               on the target in the middle of the frame while the shot's last hit was still being read) */
+            if ((typeof isCinematicActive === 'function' && isCinematicActive())
+                || (!window.EW_NO_CLEAN_READ && document.body.classList.contains('ew-spell-shot'))) {
                 setTimeout(_drainCenterBannerQueue, 400);
                 return;
             }
