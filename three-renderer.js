@@ -20683,6 +20683,8 @@ const ThreeRenderer = (function () {
         Object.keys(_BB_POSES).forEach(function (slot) { var p = _BB_POSES[slot]; clips[slot] = _bbClip(slot, p[0], p[1], R); });
         clips.castMagic = clips.cast; clips.castRanged = clips.cast; clips.castHeal = clips.castSupport; clips.run = clips.walk;
         clips.attack = clips.castMelee;
+        return clips;
+    }
     /* ⛄ THE SNOWMAN (2026-11-27, thread "Add a snowman character"; mondo: "a new character, Snowman, and make all the individual
        parts for it like the carrot and the stick arms and the 3 snow ball body parts ... unique animations for its spells"). ONE file
        (Assets/characters/races/snowman/male/snowman.glb, put together from five Meshy parts by project files snowman/tools/assemble.py;
