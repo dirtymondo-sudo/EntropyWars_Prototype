@@ -6821,3 +6821,10 @@ folding, the VFX, the finisher, AVAILABLE_RACES (data.js + server.js), the codex
 the crane shuts in 0.1 s) so the plane is folded before the flight. The held plane is 1.1 (was 1.3). Probe: `KIT=ori CROP=1280x720 CLOSEZ=2.7 node playtest_kit.js`
 (her real model by the party; `CLOSEZ` = a hand zoom, the cinematic camera off; `home` / `foe1` step keys place the pair). Seen in it: sword, plane, fortune
 (four coloured flaps, the roll text), fan + gust, the crane, the wad; Seven Folds and the unfold fired with no error but the camera was not on them.
+
+**THE ORIGAMI ON THE STAGE (11-27, mondo: "im not seeing the folding animations ... in the party builder when i hover over those spells, she's
+supposed to actually turn into the sword not swing a sword"):** the party builder's preview (three-renderer.js `_cvPreviewSpell`) never ran the fold:
+the fight's folds key on a board unit, the stage's hero is not one. A row with `ogFold` now folds her first (`_cvOriStart`, 0.95 s, the same sheet
+and recipes), then the beat plays with the shape in her place (`_cvOriStep`: the sword spins on the strike, the plane flies the charge and crumples,
+the fortune game opens and shuts and shows one colour, the crane opens and flaps), is held 0.7 s (the crane 1.3 s) and opens (`_cvOriRelease`).
+Paper Star and Paper Fan have no `ogFold`: she keeps her own shape. Seen in a probe that mounts `EWCharViewer` and calls `previewSpell`.
