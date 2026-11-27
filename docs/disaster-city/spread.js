@@ -88,9 +88,13 @@ function apply(block, opt) {
     { const FLOOR = -3.6, shore = [[84, 95, () => 213], [144, 155, cj => 206 - 10 * (cj - 144) / 12]];
       for (const [a, b, sc] of shore) { const w = []; for (let cj = a; cj <= b + 1; cj++) w[cj] = cj <= b ? H[K(192, cj) * 4] : H[K(192, b) * 4 + 2];
           const hB = (ci, cj) => { const land = ci <= 192 ? w[cj] : ci >= 195 ? 0 : w[cj] * (195 - ci) / 3, c = sc(cj); return ci <= c ? land : Math.max(FLOOR, -0.9 * (ci - c)); };
-          for (let j = a; j <= b; j++) for (let i = 192; i < NX; i++) { const k = K(i, j); H[k * 4] = hB(i, j); H[k * 4 + 1] = hB(i + 1, j); H[k * 4 + 2] = hB(i, j + 1); H[k * 4 + 3] = hB(i + 1, j + 1); if (i >= 195) { P[k] = SAND; FL[k] = 0; } } }
+          for (let j = a; j <= b; j++) for (let i = 192; i < NX; i++) { const k = K(i, j); H[k * 4] = hB(i, j); H[k * 4 + 1] = hB(i + 1, j); H[k * 4 + 2] = hB(i, j + 1); H[k * 4 + 3] = hB(i + 1, j + 1); if (i >= 195) { P[k] = SAND; FL[k] = 0; } }
+          /* (the squares just north and south of the new row take its heights on the shared line: a line between two squares reads the HIGHER side, and
+             the old squares' sheet there is the district's level, cut down only by the beach's sunk rows, which stop at the line: a 5 m rim stood on it) */
+          for (let i = 192; i < NX; i++) { const u = K(i, a - 1), d = K(i, b + 1); H[u * 4 + 2] = hB(i, a); H[u * 4 + 3] = hB(i + 1, a); H[d * 4] = hB(i, b + 1); H[d * 4 + 1] = hB(i + 1, b + 1); } }
       const hS = ci => Math.max(FLOOR, -0.9 * (ci - 195));
-      for (let j = 204; j < NZ; j++) for (let i = 195; i < NX; i++) { const k = K(i, j); H[k * 4] = H[k * 4 + 2] = hS(i); H[k * 4 + 1] = H[k * 4 + 3] = hS(i + 1); P[k] = SAND; FL[k] = 0; } }
+      for (let j = 204; j < NZ; j++) for (let i = 195; i < NX; i++) { const k = K(i, j); H[k * 4] = H[k * 4 + 2] = hS(i); H[k * 4 + 1] = H[k * 4 + 3] = hS(i + 1); P[k] = SAND; FL[k] = 0; }
+      for (let i = 195; i < NX; i++) { const u = K(i, 203); H[u * 4 + 2] = hS(i); H[u * 4 + 3] = hS(i + 1); } }
     /* THE NEW CITY GROUND: every other new square. Its heights are one smooth sheet hung between the edges round it (a relaxed lattice). */
     const LW = NX + 1, LAT = new Float32Array(LW * (NZ + 1)), FIX = new Uint8Array(LW * (NZ + 1)), LK = (i, j) => j * LW + i;
     for (let j = 0; j < NZ; j++) for (let i = 0; i < NX; i++) if (!KIND[K(i, j)]) KIND[K(i, j)] = 3;

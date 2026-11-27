@@ -106646,18 +106646,44 @@ const ThreeRenderer = (function () {
     function _cutOff() { return typeof window !== 'undefined' && !!window.EW_NO_CUT; }
     /* the fight's room is covered (no open sky): asked when the room is hung round the board */
     function _cutWanted(R) { try { return !!(R && R.room && _hqEnclosed(R.room)) && !_cutOff(); } catch (e) { return false; } }
+    /* THE CUT UNDER A DECK (2026-11-27, Disaster City's highway bridges; mondo: "anything that is covering the action"): a room under open sky
+       is not cut, but a fight under a drawn deck (a road bridge, a roof crossing: a `bridge` row over a board square, 2 m or more over its ground)
+       had the deck's top on screen and the fighters under it. There the cut is a BOX: the same height, only over the board and CUT_BOX_PAD squares
+       round it (the eye looks in at a slant), so the city beside the fight keeps its roofs (`clipIntersection`: cut only where every plane cuts).
+       The sight-line fade and the camera's blockers do not read a box cut (_cutTop). → [x0, x1, z0, z1] in battle px, or null. */
+    var CUT_BOX_PAD = 4;
+    function _cutDeckOver(R, ts) {
+        try {
+            var id = R && (R.roomId || (R.room && R.room.id)); if (!id || !R.T || !R.room || !R.room.terrain || typeof hqTerrainInfo !== 'function' || typeof hqTerrainBridgesAt !== 'function') return null;
+            var info = hqTerrainInfo(id); if (!info || !info.bridges || !info.bridges.length) return null;
+            var T = R.T, C = T.C;
+            for (var j = 0; j < T.H; j++) for (var i = 0; i < T.W; i++) {
+                var x = T.x0 + (i + 0.5) * C, z = T.z0 + (j + 0.5) * C, B = hqTerrainBridgesAt(info, x, z, 0.3); if (!B || !B.length) continue;
+                var g = hqTerrainHeight(info, x, z);
+                for (var b = 0; b < B.length; b++) if (B[b] && !B[b].hide && B[b].y > g + 2) { var m = CUT_BOX_PAD * ts; return [-m, T.W * ts + m, -m, T.H * ts + m]; }
+            }
+        } catch (e) {}
+        return null;
+    }
     function _cutArm(root, R, ts) {
-        if (!root || !_cutWanted(R) || typeof THREE === 'undefined') return;
-        if (!_cut) _cut = { roots: [], mats: new Map(), plane: new THREE.Plane(new THREE.Vector3(0, -1, 0), 1e9), y: null, want: null, at: 0, scanAt: 0, s: ts / R.T.C };
+        if (!root || _cutOff() || typeof THREE === 'undefined') return;
+        var box = null; if (!_cutWanted(R)) { box = (_cut && _cut.box) || _cutDeckOver(R, ts); if (!box) return; }
+        if (!_cut) { _cut = { roots: [], mats: new Map(), plane: new THREE.Plane(new THREE.Vector3(0, -1, 0), 1e9), y: null, want: null, at: 0, scanAt: 0, s: ts / R.T.C, box: box, planes: null };
+            if (box) _cut.planes = [_cut.plane, new THREE.Plane(new THREE.Vector3(-1, 0, 0), box[0]), new THREE.Plane(new THREE.Vector3(1, 0, 0), -box[1]), new THREE.Plane(new THREE.Vector3(0, 0, -1), box[2]), new THREE.Plane(new THREE.Vector3(0, 0, 1), -box[3])]; }
         if (_cut.roots.indexOf(root) < 0) _cut.roots.push(root);
         _cut.scanAt = 0;   // read the room's looks on the next frame (the walked room's ceiling clones are made on its first draw)
         try { if (renderer && !renderer.isWebGPURenderer) renderer.localClippingEnabled = true; } catch (e) {}
     }
     /* one read of the room's looks (at the arm, again every CUT_RESCAN_MS for a model that landed late): each gets the cut's plane */
     function _cutScan(C) {
-        var planes = [C.plane], n = 0;
+        var planes = C.planes || [C.plane], n = 0;
         var put = function (m) {
             if (!m || C.mats.has(m)) return;
+            if (C.box) {   // the box cut: a look with planes of its own is left as it is (two rules cannot share one list)
+                if (m.clippingPlanes && m.clippingPlanes.length) return;
+                C.mats.set(m, { p: m.clippingPlanes || null, ci: !!m.clipIntersection });
+                m.clippingPlanes = planes; m.clipIntersection = true; m.needsUpdate = true; n++; return;
+            }
             C.mats.set(m, m.clippingPlanes || null);
             m.clippingPlanes = (m.clippingPlanes && m.clippingPlanes.length) ? m.clippingPlanes.concat(planes) : planes;
             m.needsUpdate = true; n++;
@@ -106669,11 +106695,11 @@ const ThreeRenderer = (function () {
     }
     function _cutDrop() {
         var C = _cut; _cut = null; if (!C) return;
-        C.mats.forEach(function (prev, m) { try { m.clippingPlanes = prev; m.needsUpdate = true; } catch (e) {} });
+        C.mats.forEach(function (prev, m) { try { if (C.box) { m.clippingPlanes = prev.p; m.clipIntersection = prev.ci; } else m.clippingPlanes = prev; m.needsUpdate = true; } catch (e) {} });
         C.mats.clear(); C.roots.length = 0;
     }
     /* is a world point (battle px) above the cut? (the sight-line fade and the camera's blockers ask) */
-    function _cutTop() { return (_cut && _cut.y != null && active) ? _cut.y : Infinity; }
+    function _cutTop() { return (_cut && !_cut.box && _cut.y != null && active) ? _cut.y : Infinity; }
     function _cutHides(y) { return y > _cutTop(); }
     /* the camera's blockers (flat [x0, x1, y0, y1, z0, z1, isTree, …]) as the cut leaves them: a box over the cut is gone, one through it ends at it */
     function _cutBoxes(A) {

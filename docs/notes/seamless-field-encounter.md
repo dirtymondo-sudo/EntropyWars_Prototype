@@ -1272,3 +1272,14 @@ builds; it is JS only, no pipeline.
 - Off: `window.EW_NO_CUT = true`; height: `window.EW_CUT_M` (metres). Drawn per viewer, nothing relayed.
 - Proof (cloud WebGL, real fights via playtest_handover.js's strike): /mnt/project-files/battle-cut/ (Sewers before/after, a spell, an enemy
   attack, the close view; the D.U.M.B. before/after: its ceiling lamp panels hung over the board).
+
+## THE CUT UNDER A DECK (2026-11-27, thread "Redesign Disaster City roads and layout")
+Disaster City's highway now crosses North and South Avenue on bridges (areas-complexes.md "DISASTER CITY, THE SPREAD"). A fight on the avenue under a
+bridge showed the deck's top and a ghost of the fighters under it: THE CUT only arms in a room with no open sky (`_hqEnclosed`), and the city has one.
+three-renderer.js `_cutDeckOver(R, ts)`: in an open-sky room, when a DRAWN `bridge` row (not `hide`: roof slabs and stair landings are left out) hangs
+2 m or more over the ground of any board square, the cut arms as a BOX: the same plane 3.5 m over the highest visible feet, but only over the board and
+`CUT_BOX_PAD` (4) squares round it (four side planes + `clipIntersection`), so the buildings beside the fight keep their tops. A look that already has
+clipping planes of its own is left alone. `_cutTop()` answers Infinity for a box cut, so the sight-line fade and the camera's blockers work as in any
+open room. Units on the deck: the cut follows the highest feet, so the deck stays. Same switches: `EW_NO_CUT`, `EW_CUT_M`. Drawn from the room and the
+camera on both sides: nothing relayed (RULE #2).
+

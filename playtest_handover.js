@@ -19,7 +19,7 @@ const NPM_MIRROR = [
 ];
 const CT = { '.js': 'application/javascript', '.css': 'text/css' };
 const args = process.argv.slice(2).filter(a => !a.startsWith('--')), flags = process.argv.slice(2).filter(a => a.startsWith('--'));
-const flag = (k, d) => { const f = flags.find(x => x === '--' + k || x.startsWith('--' + k + '=')); if (!f) return d; const v = f.split('=')[1]; return v === undefined ? true : v; };
+const flag = (k, d) => { const f = flags.find(x => x === '--' + k || x.startsWith('--' + k + '=')); if (!f) return d; const i = f.indexOf('='); return i < 0 ? true : f.slice(i + 1); };   // (2026-11-27: the value keeps its own '=' signs, as in playtest_city.js: a --pre script has them)
 const room = args[0] || 'site_prebuilt_downtown_streets'; const views = JSON.parse(args[1] || '[]'); const noGltf = !!flag('nogltf', false); const WAIT = Number(flag('wait', 22000));
 const RACE = String(flag('race', 'dinosaur'));
 const EXE = fast.EXE;

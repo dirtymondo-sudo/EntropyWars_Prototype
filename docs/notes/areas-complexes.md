@@ -15282,3 +15282,62 @@ built). His reference pictures are mood only: every pattern is drawn in code.
   there for the run only: `field:site_prebuilt_cube_dmt:10,10`, round 1); `find-softlocks.js` 0 / 0 / 0.
 - **NOT YET**: passes 2-6 (depth + fractals, the screen trip, residents, the way in, sound + arena + map picture); an online guest's view of a
   fight here; the frame rate on his Mac (the sheets cost nine small canvas draws + uploads ten times a second).
+
+## DISASTER CITY, THE SPREAD (2026-11-27, thread "Redesign Disaster City roads and layout")
+mondo 11-27: "it really doesn't feel that big. The shape of the whole city does not have to be a perfect square. There should be more side streets and
+scenic routes. I do not think we need any more buildings, if anything there can be more space in between buildings ... the highway could actually go
+through the city and there could be an underpass with a U-turn". On plan v1: "why dont any of the roads connect? youre cutting off side of the city
+completely from the other". So: NO new building; the nine districts are cut apart and new ROAD ground is laid between them, and every new road joins the
+old streets on both sides.
+
+**What it is.** `docs/disaster-city/spread.js` (repo tooling, called at the end of `bake-disaster-city.js`; `DC_COMPACT=1 node bake-disaster-city.js`
+writes the old compact room). The district files still write the compact 12 x 12 city in their home squares; the spread reads the finished compact room,
+cuts it at compact x = -84, 84 and z = -84, 84, moves each band out (`map(x, z)`: DX = [-98, -14, 28], DZ = [0, 42, 84]) and builds the new ground. Every
+new strip is a whole number of plots (12 squares), so the room is still a 42 m plot grid on 3.5 m battle squares: 224 x 216 squares (784 x 756 m, was
+616 x 756), 19 plots across, 18 down. `room.dc144.spread = { x0, z0, cutX, cutZ, dx, dz }`; data.js `hqCitySpread(room, x, z)` gives a compact point's
+shift (the residents' plot squares and fronts use it; bake-mall.js and bake-hero-tower.js THE VIEW OUT read the city through it).
+
+**The columns** (squares): 0..11 WOODLAND PARKWAY · 12..59 the west districts · 60..83 THE HIGHWAY's corridor · 84..131 the middle districts ·
+132..143 BLUFF DRIVE · 144..191 the east districts · 192..223 the beach strip. **The rows:** 0..35 the Hills · 36..83 north districts · 84..95 NORTH
+AVENUE · 96..143 middle · 144..155 SOUTH AVENUE · 156..203 south · 204..215 DESERT VIEW DRIVE (west of Bluff Drive) and THE BAY (under Industrial).
+The road names are mine (ideas, not mondo's): rename freely.
+
+**The new roads.**
+- THE HIGHWAY (corridor x -182..-98, centre -140): it comes in from the Desert Highway's door on the south line, climbs a fill between rows 162..192,
+  runs level on a deck through the city and comes down between rows 56..76 into the Hills' foot. TWO BRIDGES (level arch slabs with girders, pier rows,
+  jersey barriers): over North Avenue (rows 82..97) and over the cross street + South Avenue (rows 135..157). Under each bridge the avenue passes AND a
+  U-TURN lane joins the two frontage roads (cols HW+1..4 and HW+19..22, one way each side). Four slip ramps, 18 squares long, on the verges.
+  The pattern is the desert highway's (`bake-desert.js`): fill in the height sheet, `bridge` rows for the level spans, ghost walls under the barriers.
+- NORTH AVENUE + SOUTH AVENUE: four lanes with a planted median, crossing the whole city under the highway and across Bluff Drive to the beach.
+- BLUFF DRIVE: the scenic road on the step between the middle and the east districts: road + promenade at the west height, a retaining wall and a planted
+  bank down to the east height, rail, trees, benches; every old cross street crosses it on an even slope.
+- WOODLAND PARKWAY: a winding two-lane road down the west edge under trees (polyline `PK`), from the Hills' west road to Desert View Drive.
+- DESERT VIEW DRIVE: the south row west of Bluff Drive, grass to dirt to sand toward the desert edge.
+- THE BAY: the south row under Industrial is water with a shore; the Coast Road's causeway (the quay's three columns carried out) runs between the bay
+  and the sea to the south door.
+
+**The ground kinds** (`KIND`): 1 copied square · 2 stretched (the Hills over a new column, the beach strip in a new row) · 3 new city ground, one relaxed
+lattice hung between the edges round it · 4 the bay. **THE SHORE IN THE NEW ROWS:** the beach strip's sea is NOT in the height sheet (rows of sunk
+plateaus cut it), so a new row has no sea by itself: the first bake left land to the room's east line and a 3.6 m drop into deep sea with no way back
+(find-softlocks: a 16,905 m2 trap). spread.js now lays its own beach there (flat sand to a shore line that joins the coast north and south, then 0.9 m a
+square down to the floor). Any later new row or column over a plateau-cut area needs the same.
+
+**The joins.** Links `downtown_desert` (x -140, z 373.6, w 28) and `valley_city` (x -389.4) moved by hand in data.js; the Hills' west road door and the
+Coast Road door move in spread.js; the Coast Road's causeway arch starts at the new south line. JOIN rows, residents (`beach`, `hero`, `tapeB`) go through
+`spreadAt` in the city tool.
+
+**The checks (11-27).** `find-softlocks.js`: 1 trap + 1 crevice, both the Hills' old ones (main has the same two), 16 dips, 23 slots (main 16 / 25).
+`find-doors.js`: 335 walk-ins, 1 drawn door closed (the same one as on main). The walker's reach from the 18 pads covers the highway's ramp tops, both
+U-turn lanes, the frontage roads, slip ramps, Bluff Drive (both levels), the parkway, Desert View Drive, the bay shore, the causeway and both avenue
+beaches.
+
+**THE MAP (open).** `bake-map.js` knows the spread grid (19 x 18, `sc` / `sr`, new plot rows PK / HW / BD / NA / SA / DV, district letters Y A D P V) and
+the city stands at world -1,-3. The city is four plots wider and three taller than the One World plan gave it, and no anchor avoids its neighbours: 38
+world plots lie under both the city and R6 / R9 / the Harbour room. `bake-map.js` WARNS for city clashes (any other clash still throws). The rooms are
+joined by passages, so play is not touched; the WORLD MAP picture shows the overlap. Needs a One World re-plan (move R6 / R9 / R10 / the Beach zone out)
+with mondo's OK.
+
+**Probing the city in the cloud.** The cloud browser runs out of memory on the city (also on main). Run playtest_city.js with
+`--flags=EW_HQ_NO_SURVEY --wait=480000` and a `--pre` that wraps `createImageBitmap` to halve every texture over 256 x 256 (peak about 12 GB, one try:
+`EW_PROBE_TRIES=1`). Never edit a served .js while a probe runs.
+
