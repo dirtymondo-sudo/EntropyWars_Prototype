@@ -6727,6 +6727,15 @@ and THE UNLOCK (into data.js + server.js AVAILABLE_RACES) are the three spell th
   `bigfoot/agent_forrest/Meshy_AI_agent_forrest_Running.glb`). The roster bigfoot is unchanged.
 Files: R2 `Assets/characters/races/<monster_truck|nutcracker|leopard_girl|draconian|flower_girl|leprechaun|medic>/<gender>/` (+ `.opt.glb`,
 in ASSET_MANIFEST), `martian/female/`, `bigfoot/agent_forrest/`. Sources, scripts, sheets: project files `character-concepts/`.
+
+THE NUTCRACKER REMADE (same day, mondo: "the nutcracker body came out a little distorted"): the first model's long coat tails and
+square shoulders tore when it walked (a rig can't fix that), so it was regenerated as a jointed wooden doll (short jacket, ball
+joints; concept `character-concepts/concepts/nutcracker_body_v2a.png`) and rigged. Its jaw = the lower teeth, lip and beard cut
+free of the body by `character-concepts/jaw2.py` (skinned to `ewJaw`, a dark mouth plate behind on Head); the bone hinges 0.58 m
+behind the head, so sprites.js `jawSwing: 0.09` (radians at amount 1, three-renderer.js `_jawTick`, default 0.45) makes it DROP
+down its chest slot like a real nutcracker. File `Meshy_AI_nutcracker2_Running.glb` (+ .opt); the old one stays on R2 unused.
+Before / after: project files `character-concepts/nutcracker_before_after.jpg`. The 128 px sprite is still the first concept.
+
 ## THE MONSTER TRUCK + THE NUTCRACKER (2026-11-27, thread "Make monster truck and nutcracker spells")
 mondo 11-27: "a monster truck, like a literal monster that is a truck ... it's hood could be a separate part and it has like fangs,
 and the wheels could be separate too so they could spin, maybe even hydraulics", and a Nutcracker "so its mouth can move like an
