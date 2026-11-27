@@ -357,6 +357,58 @@ const ThreeCamera = (function () {
         return Math.min(need, ey + tileSize * BOARD_MAX_LIFT_TILES);
     }
 
+    /* ══ THE HAND ORBIT (2026-11-27) ══
+       mondo: "the camera will just randomly snap to different places and angles ... I just want to be able to rotate the
+       camera around my character like a normal third person view and if something is in the way then it just goes
+       invisible and the camera is able to phase through stuff so the angle is always good and nothing is obscured. None of
+       this snapping up and down ... zooming in and out and changing angles and going to an overhead view then back to on
+       the ground." Measured with real right-drags on Mount Shasta (playtest_handcam.js), 4.5x at pitch 78: at one heading
+       the lens stood on the ground behind the Ninja, a quarter turn on it stood several squares up looking down on its
+       head, and the boom's length changed with every tree, step and body it swept past. Four rules moved the board rig's
+       lens on their own: THE CLEAR BOARD's crane (up to six squares), THE CLOSE VIEW's dolly in along the boom, THE STEADY
+       BOARD's lift over a body, and THE LENS FOOTPRINT's last word (a lift over every raised square under the lens).
+       The board rig outside a spell shot is now a PLAIN ORBIT: the lens stands exactly where the pitch, the heading and
+       the zoom put it, `dist` from the focal. Nothing cranes it, pulls it in or lifts it. What stands between the lens and
+       the unit, and whatever the lens is inside, FADES (three-renderer.js THE HAND ORBIT'S FADE) and the boom passes
+       through it. Two floors are left, both smooth: the flat floor at the focal's own footing (the lens never dives under
+       the ground its unit stands on), and the room's drawn GROUND (a hillside is no object: nothing can fade it, so the
+       lens rides over it; read as a soft patch, so a ledge is a ramp, never a step). On a board of columns the room's
+       ground counts only past the board's edge, eased in over a square (a column the lens is inside fades).
+       Spell shots, Strike Mode and the first-person eye keep their own rules. Kill switch: window.EW_NO_HAND_ORBIT = true
+       (the old crane, close view, body lift and footprint come back). Probe: ThreeCamera.handOrbitState(). */
+    const HAND_FLOOR_CLEAR_TILES = 0.3;   // the lens this far over the room's ground
+    const HAND_FLOOR_SOFT_TILES = 0.7;    // the patch of ground read round the lens (a ledge becomes a ramp this wide)
+    const HAND_FLOOR_EDGE_TILES = 1.0;    // a board of columns: the room's ground eases in over this far past the edge
+    let _hoLast = null;                   // probe
+    function _handOrbitOn() { return !(typeof window !== 'undefined' && window.EW_NO_HAND_ORBIT); }
+    /* how far the hand orbit's lens at (ex, ey, ez) must rise to ride over the room's ground (0 = it stands clear) */
+    function _handOrbitLift(ex, ey, ez) {
+        if (typeof ThreeRenderer === 'undefined' || typeof ThreeRenderer.roomGroundAt !== 'function') return 0;
+        let w = 1, field = false;
+        try { field = !!(ThreeRenderer.fieldGroundLive && ThreeRenderer.fieldGroundLive()); } catch (e) { field = false; }
+        if (!field) {
+            const W = (typeof bw === 'function') ? bw() : 0, H = (typeof bh === 'function') ? bh() : 0;
+            if (!(W > 0 && H > 0)) return 0;
+            const ox = Math.max(-ex, ex - W * tileSize, 0), oz = Math.max(-ez, ez - H * tileSize, 0);
+            w = Math.min(1, Math.hypot(ox, oz) / (tileSize * HAND_FLOOR_EDGE_TILES));
+            if (!(w > 0)) return 0;
+        }
+        let sum = 0, n = 0;
+        try {
+            const r = tileSize * HAND_FLOOR_SOFT_TILES;
+            const c = ThreeRenderer.roomGroundAt(ex, ez);
+            if (!Number.isFinite(c)) return 0;
+            sum = c * 2; n = 2;
+            for (let i = 0; i < _LENS_RING.length; i++) {
+                const g = ThreeRenderer.roomGroundAt(ex + _LENS_RING[i][0] * r, ez + _LENS_RING[i][1] * r);
+                if (Number.isFinite(g)) { sum += g; n++; }
+            }
+        } catch (e) { return 0; }
+        const need = sum / n + tileSize * HAND_FLOOR_CLEAR_TILES;
+        return need > ey ? (need - ey) * w : 0;
+    }
+    function handOrbitState() { return _hoLast; }
+
     /* ══ THE CLOSE VIEW (2026-11-26) ══
        mondo: "i cant zoom in close behind my player like for a normal third person view without the camera getting forced
        to an over the top view ... getting snapped to a bird's eye view". Measured on Mount Shasta, Bigfoot beside a pine,
@@ -498,6 +550,7 @@ const ThreeCamera = (function () {
        squares higher (the Hell arena's rock spires: ~1.5x further out than it solved). Read-only. */
     function boardLiftAt(cx, cy, fy, dist, tiltDeg, yawDeg) {
         if (typeof window !== 'undefined' && window.EW_NO_CLEAR_BOARD) return 0;
+        if (_handOrbitOn()) return 0;   // THE HAND ORBIT: nothing cranes the board rig, a fit lands where it solved
         const ts = tileSize, clear = ts * 0.35;
         const fx = cx * ts + ts / 2, fz = cy * ts + ts / 2;
         const tr = tiltDeg * DEG2RAD, yr = yawDeg * DEG2RAD;
@@ -1718,8 +1771,17 @@ const ThreeCamera = (function () {
            wall or a model, or look at its subject through a wall, cranes UP until it clears (_boardSightFloor). The gaze
            stays on the focal, so the shot only grows steeper; it never dollies in. Spell shots keep their own sight line
            (above) and the occlusion fade; a look past the horizon keeps its head turn. Kill switch: EW_NO_CLEAR_BOARD. */
-        if (!isTps && !headTurn && dirY < -0.02 && cam._cineShotId == null
+        /* THE HAND ORBIT (2026-11-27, see _handOrbitOn): outside a spell shot the board rig is a plain orbit. No crane, no
+           dolly, no body lift: what is in the way fades, and the lens only rides over the room's own ground. */
+        const handOrbit = !isTps && cam._cineShotId == null && _handOrbitOn();
+        if (handOrbit) {
+            _cvLast = null; if (_sb) _sbReset();
+            const hl = _handOrbitLift(eyeX, eyeY, eyeZ);
+            if (hl > 0.5) eyeY += hl;
+            _hoLast = { lift: Math.round(hl), dist: Math.round(dist) };
+        } else if (!isTps && !headTurn && dirY < -0.02 && cam._cineShotId == null
             && !(typeof window !== 'undefined' && window.EW_NO_CLEAR_BOARD)) {
+            _hoLast = null;
             const steady = _steadyOn();
             if (_closeViewIs(cam, dist, dirY)) {
                 /* THE CLOSE VIEW (see _closeViewEye): a close or low view dollies in front of a blocker; it is never craned
@@ -1737,7 +1799,7 @@ const ThreeCamera = (function () {
                 if (lift > 0.5) eyeY += lift;
             } else if (_sb) _sbReset();
             }
-        } else { _cvLast = null; if (_sb) _sbReset(); }
+        } else { _cvLast = null; _hoLast = null; if (_sb) _sbReset(); }
         /* ── SKY-GAZE LIFT (cinematic board shots only) ──
            The flat floor parks a sky-gazing eye a mere ⅓ tile over the
            ground, so a programmatic look UP at the sky (the zodiac/celestial
@@ -2011,7 +2073,10 @@ const ThreeCamera = (function () {
            subject keeps its place and the shot only grows a little steeper. The battle board only (other screens have no
            board columns), never the first-person eye or Strike Mode's own boom collision. Kill switch:
            window.EW_NO_LENS_FLOOR = true. */
-        if (!cam._fpEye && !cam._tpsCollide && typeof state !== 'undefined' && state && state.phase === 'battle'
+        /* THE HAND ORBIT: the board rig's own lens is not lifted over the squares under it (they fade); a glide or a swoop
+           still coming home from a shot keeps the last word until it lands */
+        const _hoFree = handOrbit && !seeded && !_seedFrom && !(now < _seedUntil);
+        if (!_hoFree && !cam._fpEye && !cam._tpsCollide && typeof state !== 'undefined' && state && state.phase === 'battle'
             && !(typeof window !== 'undefined' && window.EW_NO_LENS_FLOOR)) {
             const hard = cam._cineTps && !handHeld && _steadyCraneOn();   // THE STEADY CRANE: the shot's ring is the crane's
             _tallNoTrees = _cvLast != null;   // THE CLOSE VIEW: its lens stands under a crown, not on top of it
@@ -2376,6 +2441,7 @@ const ThreeCamera = (function () {
         guardCutState,
         steadyBoardState,
         closeViewState,
+        handOrbitState,
         steadyCraneState,
         boardLiftAt,
         FOV,

@@ -10879,6 +10879,17 @@ has a wide margin round its ink: use `_ewMargin*`. Notes: docs/notes/spells-vfx.
   `pitch` (real lens pitch, degrees down), `dolly` + `big` (frame guard push-in), `live` (shot still on). A/B the big read with
   `FLAGS=EW_NO_BIG_READ`.
 
+## THE HAND CAMERA PROBE (2026-11-27) — playtest_handcam.js
+`MAP=<id> TAG=<name> [ZOOMS=4.5,2 PITCHES=78,60 SPOT=x,y FLAGS=EW_NO_HAND_ORBIT] node playtest_handcam.js`: a real VS CPU fight, both seats
+local so no turn takes the camera, then the REAL mouse: the wheel to each zoom, a right-drag to each pitch, a full turn in twelve 30 degree
+right-drags released between (a picture every 90 degrees), a pitch sweep to the top and to level, the wheel through its range, a left-drag
+pan. Every drawn frame logs the real lens (place, direction), the controller's pose and real rays from the lens to the active body.
+REPORT lines per step: `boom x` = lens distance / (base distance / zoom) (1.00 = the plain orbit), `pitch off` = real pitch less the
+hand's, `lift` in squares, `jump` = the worst one-frame move as a share of the boom, `hidden` = share of body rays that met something
+solid, and by what. `FLAGS=EW_NO_HAND_ORBIT` = the old rig for an A/B. Learned: (1) a full run is about 12 minutes on llvmpipe, 6 for one
+zoom; (2) a faded piece (transparent, no depth write, under half there) is not cover; a back face of a one-sided piece is not drawn.
+Notes: docs/notes/spells-vfx.md "THE HAND ORBIT".
+
 ## THE DEMIURGE PROBE (2026-11-27) — playtest_demiurge.js
 `MAP=<id> SPELLS=all|id,id TIMES=c1400,h150,h700 TAG=<name> [W=800 H=450] node playtest_demiurge.js`: a real VS CPU match with both Demiurge forms on P1;
 it stands the caster and three foes on a flat spot, casts each spell and holds the page at each mark (`cN` after the cast, `hN` after the real hit).
