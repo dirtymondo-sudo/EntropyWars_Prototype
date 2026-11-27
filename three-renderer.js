@@ -105725,7 +105725,26 @@ const ThreeRenderer = (function () {
         if (capped && G && !G.idle()) { try { console.warn('[HQ] the load card gave up after ' + Math.round(still / 1000) + ' s without progress (' + Math.round((now - H.t0) / 1000) + ' s in all) — still in flight:', G.list().map(function (r) { return r.url; })); } catch (e) {} }
         if (G) { var failed = G.failed(); if (failed.length) { try { console.warn('[HQ] ' + failed.length + ' file(s) of this room never landed (missing from the bucket? a frozen 404? — window._ewAssetFailures):', failed); } catch (e) {} } try { _hqBookWrite(H.opts && H.opts.room, G); } catch (e) {} G.close(); }
         try { var S1 = H.settle; if (S1) console.log('[HQ] ' + (H.opts && H.opts.room) + ' landed in ' + Math.round((H.landedAt || now) - H.t0) + ' ms and settled in ' + Math.round(now - (H.landedAt || now)) + ' ms more (warmed ' + (S1.mats + (S1.warm ? S1.warm.mats : 0)) + ' material(s) + ' + (S1.texN + (S1.warm ? S1.warm.texN : 0)) + ' sheet(s) under the card' + (S1.warm && S1.warm.real ? ', ' + S1.warm.real + ' drawn the real way' + (S1.warm.realFail ? ' (' + S1.warm.realFail + ' failed)' : '') + (S1.warm.restarts ? ', ' + S1.warm.restarts + ' restart(s) for a new light list' : '') : '') + '; ' + S1.steps.join(', ') + ')'); } catch (e) {}
+        try { _hqWayOutOnArrive(H); } catch (eWO) { console.warn('[HQ] the way-out check on arrival failed', eWO); }
         if (H.opts.onReady) { try { H.opts.onReady(); } catch (e) {} }
+    }
+    /* THE WAY OUT ON ARRIVAL (2026-11-27, mondo: "camelot castle has the same problem as the mall where i fast travel to it and im inside and
+       all the walls are invisible and i cant get out"): a GO from the map with no door to land at puts the walker on the room's `spawn`, and
+       Came A Lot Castle's spawn (0, 18.55) is a sealed brick pit under its courtyard. A save's spot can be one too. Once, when the room stands:
+       if the walker cannot walk to any of the room's ways in (data.js hqTerrainEscapes), they are stood at the nearest way in they can walk from
+       (hq.goSpot round each door's landing). Off: window.EW_GO_NO_WAYOUT = true. */
+    function _hqWayOutOnArrive(H) {
+        if (!H || H !== _hq || !H.player || !H.terrain || typeof hqTerrainEscapes !== 'function' || (typeof window !== 'undefined' && window.EW_GO_NO_WAYOUT)) return;
+        var room = (typeof DOOR_HQ !== 'undefined' && H.opts && DOOR_HQ.rooms[H.opts.room]) || H.room; if (!room || !(room.doors || []).length) return;
+        var pl = H.player; if (hqTerrainEscapes(H.terrain, pl.x, pl.z, { room: room, y: pl.y })) return;
+        var from = { x: pl.x, z: pl.z }, L = [];
+        room.doors.forEach(function (d) { try { if (d.sealed || d.hidden) return; var q = hqTerrainDoorLanding(room, d); if (q && isFinite(q.x) && isFinite(q.z)) L.push({ x: q.x, z: q.z, d: Math.hypot(q.x - pl.x, q.z - pl.z), id: d.id }); } catch (e) {} });
+        L.sort(function (a, b) { return a.d - b.d; });
+        for (var i = 0; i < L.length; i++) {
+            var r = ThreeRenderer.hq.goSpot(L[i].x, L[i].z, 8);
+            if (r && r.ok) { console.log('[HQ] THE WAY OUT: the arrival (' + from.x.toFixed(1) + ', ' + from.z.toFixed(1) + ') was sealed; stood at door ' + L[i].id + ' (' + r.x.toFixed(1) + ', ' + r.z.toFixed(1) + ')'); return; }
+        }
+        console.warn('[HQ] THE WAY OUT: the arrival is sealed and no way in had ground to stand on');
     }
 
     /* ── lifecycle ─────────────────────────────────────────────────────── */
