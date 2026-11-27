@@ -9914,7 +9914,7 @@ const ThreeRenderer = (function () {
     }
     function _hqFloraCellDrop(c) {
         if (!c) return;
-        [c.mesh, c.stones, c.litter].forEach(function (m) { if (m) { if (m.parent) m.parent.remove(m); try { m.geometry.dispose(); } catch (e) {} } });
+        [c.mesh, c.stones, c.litter, c.crops].forEach(function (m) { if (m) { if (m.parent) m.parent.remove(m); try { m.geometry.dispose(); } catch (e) {} } });
     }
     /* THE GROUND RULES, the flora field's share (flora.md section 0): G6 THE STONES = pebbles and small stones of the kit's four rocks, cut to ankle
        height, walked through, in clusters, more on rough / dry / dirt ground; G5 `near` = a layer that grows by standing things (ferns, bushes at
@@ -9987,6 +9987,70 @@ const ThreeRenderer = (function () {
         }
         for (j = 0; j < 2; j++) for (i = 0; i < 2; i++) { var a0 = v0 + j * 3 + i; L.ix[L.i++] = a0; L.ix[L.i++] = a0 + 3; L.ix[L.i++] = a0 + 1; L.ix[L.i++] = a0 + 1; L.ix[L.i++] = a0 + 3; L.ix[L.i++] = a0 + 4; }
         return true;
+    }
+    /* THE CROP FIELDS (2026-11-27, data.js CROP_FIELDS): the solid ground behind a line of crop rows is planted, a pair of crossed cards a plant.
+       The room is read ONCE (its crop rows into a coarse grid of "a row is near"); a cell's plants are one merged mesh on the card sheet. */
+    var _hqCropMat = null;
+    function _hqCropSetup(H, info) {
+        var CF = (typeof CROP_FIELDS !== 'undefined') ? CROP_FIELDS : null; if (!CF || !info || !info.mask || window.EW_NO_CROP_FIELDS || typeof cropLookAt !== 'function') return null;
+        var g = CF.nearCell, R = Math.ceil(CF.near / g), near = new Set(), rows = (H.room && H.room.props) || [], key0 = null, n = 0;
+        for (var i = 0; i < rows.length; i++) { var p = rows[i]; if (!p || !CF.of[p.key] || !CROP_VARY[p.key] || p.x == null) continue; key0 = key0 || p.key; n++;
+            var gi = Math.floor(p.x / g), gj = Math.floor(p.z / g);
+            for (var dj = -R; dj <= R; dj++) for (var di = -R; di <= R; di++) if (di * di + dj * dj <= R * R + 1) near.add((gi + di + 4096) * 8192 + (gj + dj + 4096)); }
+        if (!n) return null;
+        if (!_hqCropMat) {
+            var tl = new THREE.TextureLoader(); if (tl.setCrossOrigin) tl.setCrossOrigin('anonymous');
+            var tex = tl.load(_foliageUrl(CF.sheet), function (t) { if (_ewTexSetSRGB(t, false)) t.needsUpdate = true; if (typeof _hq !== 'undefined' && _hq) _hq.dirty = true; });
+            _hqCropMat = new THREE.MeshLambertMaterial({ map: tex, alphaTest: 0.45, side: THREE.FrontSide, vertexColors: true });
+            _hqCropMat._ew_shared = true; _hqCropMat._ew_hzNear = true; _hqCropMat.name = 'ew_crop_cards'; _ewBendHook(_hqCropMat);
+            _hqCropMat.color.setRGB(0.88, 0.9, 0.86); _hqCropMat.emissive.copy(_hqCropMat.color).multiplyScalar(0.05);   // (the small plants' own light)
+        }
+        var gen = (H.room.terrain && H.room.terrain.gen) || null, mv = 6400;
+        return { mat: _hqCropMat, near: near, key: key0, zones: (gen && Array.isArray(gen.zones)) ? gen.zones : null,
+                 maxV: mv, pos: new Float32Array(mv * 3), uv: new Float32Array(mv * 2), col: new Float32Array(mv * 3), bend: new Float32Array(mv), ix: new Uint16Array(mv * 3) };
+    }
+    function _hqCropCell(S, x0, z0, cm) {
+        var CF = CROP_FIELDS, K = S.crops, info = S.info, U = S.U, g = CF.nearCell, v = 0, ii = 0, n = 0, yLo = Infinity, yHi = -Infinity, q;
+        var rs = CF.rows, al = CF.along, jit = CF.jitter, zs = K.zones;
+        for (var zr = Math.ceil(z0 / rs) * rs; zr < z0 + cm; zr += rs) for (var xa = Math.ceil(x0 / al) * al; xa < x0 + cm; xa += al) {
+            var r1 = _ewValHash(xa * 3.17 + 1.3, zr * 5.71), r2 = _ewValHash(xa * 7.3, zr * 2.9 + 4.1), xm = xa + (r1 - 0.5) * 2 * jit, zm = zr + (r2 - 0.5) * jit;
+            var ni = Math.round((xm - info.x0) / info.res), nj = Math.round((zm - info.z0) / info.res);
+            if (ni < 0 || nj < 0 || ni >= info.nx || nj >= info.nz || info.mask[nj * info.nx + ni]) continue;   // only the solid ground: never a walked square
+            if (!K.near.has((Math.floor(xm / g) + 4096) * 8192 + (Math.floor(zm / g) + 4096))) continue;          // no crop row near: not a field
+            if (zs) { var zq = null; for (q = 0; q < zs.length; q++) if (xm >= zs[q].x0 && xm < zs[q].x1 && zm >= zs[q].z0 && zm < zs[q].z1) { zq = zs[q]; break; } if (zq && !zq.none) continue; }   // a tree zone is a wood
+            var inB = false; for (q = 0; q < S.boxes.length; q++) { var B = S.boxes[q], dx = xm - B[0], dz = zm - B[1]; if (Math.abs(dx * B[4] + dz * B[5]) < B[2] && Math.abs(-dx * B[5] + dz * B[4]) < B[3]) { inB = true; break; } }
+            if (inB || hqTerrainFluidAt(info, xm, zm)) continue;
+            var L = cropLookAt(K.key, xm, zm, r1); if (!L) continue;
+            var cd = CF.cards[CF.of[L.to || K.key]]; if (!cd) continue;
+            var r3 = _ewValHash(xa * 1.9 + 7.7, zr * 9.1), r4 = _ewValHash(xa * 4.3, zr * 1.7 + 2.2), r5 = _ewValHash(xa * 11.1 + 0.4, zr * 6.3);
+            if (cd.keep < 1 && r5 > cd.keep) continue;
+            if (v + 8 > K.maxV) break;
+            var vy = L.vy ? L.vy[0] + (L.vy[1] - L.vy[0]) * r3 : 1, h = (cd.h[0] + (cd.h[1] - cd.h[0]) * r4) * vy, ch = h / cd.fill, hw = h * cd.w / 2;
+            var T = L.tint, tr = 1, tg = 1, tb = 1; if (Array.isArray(T)) { tr = T[0]; tg = T[1]; tb = T[2]; } else if (T != null) { tr = ((T >> 16) & 255) / 255; tg = ((T >> 8) & 255) / 255; tb = (T & 255) / 255; }
+            var sh = CF.shade[0] + (CF.shade[1] - CF.shade[0]) * r5; tr *= sh; tg *= sh; tb *= sh;
+            var gy = hqTerrainHeight(info, xm, zm), u0 = (cd.col + 0.004) / CF.cols, u1 = (cd.col + 0.996) / CF.cols, an = r4 * Math.PI, bd = FLORA_SWAY.k * h * (h < FLORA_SWAY.cap ? h : FLORA_SWAY.cap) * U;
+            for (var c = 0; c < 2; c++) {
+                var co = Math.cos(an + c * 1.5708) * hw, si = Math.sin(an + c * 1.5708) * hw, fl = (r3 > 0.5) !== (c === 1);   // (a card is its own mirror half the time)
+                for (var k = 0; k < 4; k++) {
+                    var sx = (k & 1) ? 1 : -1, top = k > 1, v3 = v * 3;
+                    K.pos[v3] = (xm + sx * co) * U; K.pos[v3 + 1] = (gy + (top ? ch : 0)) * U; K.pos[v3 + 2] = (zm + sx * si) * U;
+                    K.uv[v * 2] = ((sx > 0) !== fl) ? u1 : u0; K.uv[v * 2 + 1] = top ? 1 : 0;
+                    var f = top ? 1 : CF.foot; K.col[v3] = tr * f; K.col[v3 + 1] = tg * f; K.col[v3 + 2] = tb * f; K.bend[v] = top ? bd : 0; v++;
+                }
+                K.ix[ii++] = v - 4; K.ix[ii++] = v - 3; K.ix[ii++] = v - 2; K.ix[ii++] = v - 3; K.ix[ii++] = v - 1; K.ix[ii++] = v - 2;
+                K.ix[ii++] = v - 4; K.ix[ii++] = v - 2; K.ix[ii++] = v - 3; K.ix[ii++] = v - 3; K.ix[ii++] = v - 2; K.ix[ii++] = v - 1;   // …and its other face, wound the other way: both faces wear the normal straight up (a two-sided card's back flips it and draws black)
+            }
+            n++; if (gy < yLo) yLo = gy; if (gy + ch > yHi) yHi = gy + ch;
+        }
+        if (!n) return null;
+        var geo = new THREE.BufferGeometry(), nor = new Float32Array(v * 3); for (q = 1; q < nor.length; q += 3) nor[q] = 1;   // a crop takes the ground's light
+        geo.setAttribute('position', new THREE.BufferAttribute(K.pos.slice(0, v * 3), 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(K.uv.slice(0, v * 2), 2));
+        geo.setAttribute('color', new THREE.BufferAttribute(K.col.slice(0, v * 3), 3)); geo.setAttribute('aBend', new THREE.BufferAttribute(K.bend.slice(0, v), 1));
+        geo.setIndex(new THREE.BufferAttribute(K.ix.slice(0, ii), 1));
+        geo.boundingSphere = new THREE.Sphere(new THREE.Vector3((x0 + cm / 2) * U, (yLo + yHi) / 2 * U, (z0 + cm / 2) * U), Math.hypot(cm * 0.7072 + 1.5, (yHi - yLo) / 2) * U);
+        var mesh = new THREE.Mesh(geo, K.mat); mesh.name = 'ew_hq_crops'; mesh._ew_flora = true; mesh.receiveShadow = true; mesh.castShadow = false; mesh.raycast = function () {};
+        mesh._ew_cropN = n; S.parent.add(mesh);
+        return mesh;
     }
     function _hqFloraCell(S, cx, cz) {
         var F = ZONE_FLORA, info = S.info, U = S.U, cm = F.cellM, x0 = cx * cm, z0 = cz * cm, none = { mesh: null, cx: cx, cz: cz, n: 0, tris: 0 };
@@ -10116,7 +10180,9 @@ const ThreeRenderer = (function () {
             litter = new THREE.Mesh(lg, LS.mat); litter.name = 'ew_hq_litter'; litter._ew_flora = true; litter.receiveShadow = true; litter.castShadow = false; litter.raycast = function () {}; litter.renderOrder = -1;
             S.parent.add(litter);
         }
-        if (!made) return (stones || litter) ? { mesh: null, stones: stones, litter: litter, cx: cx, cz: cz, n: 0, tris: (stones ? SS.i / 3 : 0) + (litter ? LS.i / 3 : 0) } : none;
+        var crops = null; if (S.crops) { try { crops = _hqCropCell(S, x0, z0, cm); } catch (eC) { crops = null; if (!S._cropWarned) { S._cropWarned = true; console.warn('[HQ] the crop fields', eC); } } }   // THE CROP FIELDS
+        var cropT = crops ? crops._ew_cropN * 8 : 0;
+        if (!made) return (stones || litter || crops) ? { mesh: null, stones: stones, litter: litter, crops: crops, cx: cx, cz: cz, n: 0, tris: (stones ? SS.i / 3 : 0) + (litter ? LS.i / 3 : 0) + cropT } : none;
         var geo = new THREE.BufferGeometry(), nor = new Float32Array(v * 3); for (q = 1; q < nor.length; q += 3) nor[q] = 1;   // a small plant takes the ground's light
         geo.setAttribute('position', new THREE.BufferAttribute(pos.slice(0, v * 3), 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uvs.slice(0, v * 2), 2));
         geo.setAttribute('color', new THREE.BufferAttribute(cols.slice(0, v * 3), 3));   // a plant's tint + the ground rules' patches (THE GROUND RULES, 11-25)
@@ -10125,7 +10191,7 @@ const ThreeRenderer = (function () {
         geo.boundingSphere = new THREE.Sphere(new THREE.Vector3((x0 + cm / 2) * U, (yLo + yHi) / 2 * U, (z0 + cm / 2) * U), Math.hypot(cm * 0.7072 + 1.5, (yHi - yLo) / 2) * U);
         var mesh = new THREE.Mesh(geo, S.mat); mesh.name = 'ew_hq_flora'; mesh._ew_flora = true; mesh.receiveShadow = true; mesh.castShadow = false;
         S.parent.add(mesh);
-        return { mesh: mesh, stones: stones, litter: litter, cx: cx, cz: cz, n: made, tris: ii / 3 + (stones ? SS.i / 3 : 0) + (litter ? LS.i / 3 : 0) };
+        return { mesh: mesh, stones: stones, litter: litter, crops: crops, cx: cx, cz: cz, n: made, tris: ii / 3 + (stones ? SS.i / 3 : 0) + (litter ? LS.i / 3 : 0) + cropT };
     }
     var _hqStoneMat = null;
     function _hqFloraTick() {
@@ -10170,7 +10236,7 @@ const ThreeRenderer = (function () {
             try { (T.floraFields || []).forEach(function (f) { if (!f || !f.pts || f.pts.length < 3) return; var a0 = Infinity, a1 = -Infinity, b0 = Infinity, b1 = -Infinity; f.pts.forEach(function (q) { if (q[0] < a0) a0 = q[0]; if (q[0] > a1) a1 = q[0]; if (q[1] < b0) b0 = q[1]; if (q[1] > b1) b1 = q[1]; }); (fields = fields || []).push({ pts: f.pts, fade: (f.fade != null) ? f.fade : 4, x0: a0, x1: a1, z0: b0, z1: b1 }); }); } catch (e) { fields = null; }
             S = _hqFF = { H: H, rid: rid, low: LOW, info: info, U: _hqUnits(), plants: plants, mat: _hqFFMat, cells: new Map(), boxes: boxes, paths: paths, wet: wet, clim: {},
                 seed: ((typeof hqHash === 'function') ? hqHash('flora|' + rid) : 7) & 0x3FFFFFFF, reach: LOW ? F.low.reach : F.reach, thin: LOW ? F.low.thin : 1, grassOn: !!(_hqGrassWanted(T, rid) && _ggOn() && !window.EW_NO_HQ_GRASS),
-                at: 0, busy: true, born: now, filled: false, parent: (H.propGroup && H.propGroup.parent) || scene,
+                at: 0, busy: true, born: now, filled: false, parent: (H.propGroup && H.propGroup.parent) || scene, crops: (function () { try { return _hqCropSetup(H, info); } catch (eCS) { console.warn('[HQ] the crop fields', eCS); return null; } })(),
                 gr: _grOn() ? { near: _grNearBucket(info, H.room), trees: _grTreeBucket(info), o: {} } : null, fields: fields, stones: stones, stoneMat: _hqStoneMat,
                 litter: (_grOn() && !window.EW_NO_LITTER && GROUND_RULES.litter && _grLitterMat()) ? { mat: _grLitterMat(), trees: _grTreeBucket(info), maxV: 9000, pos: new Float32Array(27000), uv: new Float32Array(18000), uv1: new Float32Array(18000), col: new Float32Array(27000), ix: new Uint16Array(24000), v: 0, i: 0 } : null,
                 stoneScratch: stones ? { maxV: 20000, maxI: 60000, pos: new Float32Array(60000), nor: new Float32Array(60000), uv: new Float32Array(40000), ix: new Uint16Array(60000), v: 0, i: 0, n: 0 } : null,
@@ -10186,7 +10252,7 @@ const ThreeRenderer = (function () {
         S.cells.forEach(function (c, key) {   // its own cells only (never the room's objects)
             var d = Math.hypot(Math.max(c.cx * cm, Math.min(px, c.cx * cm + cm)) - px, Math.max(c.cz * cm, Math.min(pz, c.cz * cm + cm)) - pz);
             if (d > R + cm) { _hqFloraCellDrop(c); S.cells.delete(key); }
-            else if (c.mesh || c.stones || c.litter) { cells++; n += c.n; tris += c.tris; }
+            else if (c.mesh || c.stones || c.litter || c.crops) { cells++; n += c.n; tris += c.tris; }
         });
         want.sort(function (a, b) { return a[0] - b[0]; });
         var tb = performance.now(), budget = S.filled ? F.buildMs : F.fillMs, w = 0;
@@ -10197,7 +10263,7 @@ const ThreeRenderer = (function () {
             if (made.mesh || made.stones) { cells++; n += made.n; tris += made.tris; }
         }
         S.busy = w < want.length; if (!S.busy) S.filled = true;
-        try { window._ewHqFlora = { room: rid, cells: cells, plants: n, tris: tris, reach: R, low: S.low, lastBuildMs: +(performance.now() - tb).toFixed(1), built: w, kinds: Object.keys(S.plants).length, litter: (function () { var k = 0; S.cells.forEach(function (c) { if (c.litter) k += c.litter.geometry.attributes.position.count / 9; }); return k; })(), litterOn: !!S.litter }; } catch (e) {}
+        try { window._ewHqFlora = { room: rid, cells: cells, plants: n, tris: tris, reach: R, low: S.low, lastBuildMs: +(performance.now() - tb).toFixed(1), built: w, kinds: Object.keys(S.plants).length, crops: (function () { var k = 0; S.cells.forEach(function (c) { if (c.crops) k += c.crops._ew_cropN; }); return k; })(), litter: (function () { var k = 0; S.cells.forEach(function (c) { if (c.litter) k += c.litter.geometry.attributes.position.count / 9; }); return k; })(), litterOn: !!S.litter }; } catch (e) {}
     }
     function _buildGrassTuft3D(x, y) {
         if (!GRASS.enabled) return null;
@@ -105725,7 +105791,26 @@ const ThreeRenderer = (function () {
         if (capped && G && !G.idle()) { try { console.warn('[HQ] the load card gave up after ' + Math.round(still / 1000) + ' s without progress (' + Math.round((now - H.t0) / 1000) + ' s in all) — still in flight:', G.list().map(function (r) { return r.url; })); } catch (e) {} }
         if (G) { var failed = G.failed(); if (failed.length) { try { console.warn('[HQ] ' + failed.length + ' file(s) of this room never landed (missing from the bucket? a frozen 404? — window._ewAssetFailures):', failed); } catch (e) {} } try { _hqBookWrite(H.opts && H.opts.room, G); } catch (e) {} G.close(); }
         try { var S1 = H.settle; if (S1) console.log('[HQ] ' + (H.opts && H.opts.room) + ' landed in ' + Math.round((H.landedAt || now) - H.t0) + ' ms and settled in ' + Math.round(now - (H.landedAt || now)) + ' ms more (warmed ' + (S1.mats + (S1.warm ? S1.warm.mats : 0)) + ' material(s) + ' + (S1.texN + (S1.warm ? S1.warm.texN : 0)) + ' sheet(s) under the card' + (S1.warm && S1.warm.real ? ', ' + S1.warm.real + ' drawn the real way' + (S1.warm.realFail ? ' (' + S1.warm.realFail + ' failed)' : '') + (S1.warm.restarts ? ', ' + S1.warm.restarts + ' restart(s) for a new light list' : '') : '') + '; ' + S1.steps.join(', ') + ')'); } catch (e) {}
+        try { _hqWayOutOnArrive(H); } catch (eWO) { console.warn('[HQ] the way-out check on arrival failed', eWO); }
         if (H.opts.onReady) { try { H.opts.onReady(); } catch (e) {} }
+    }
+    /* THE WAY OUT ON ARRIVAL (2026-11-27, mondo: "camelot castle has the same problem as the mall where i fast travel to it and im inside and
+       all the walls are invisible and i cant get out"): a GO from the map with no door to land at puts the walker on the room's `spawn`, and
+       Came A Lot Castle's spawn (0, 18.55) is a sealed brick pit under its courtyard. A save's spot can be one too. Once, when the room stands:
+       if the walker cannot walk to any of the room's ways in (data.js hqTerrainEscapes), they are stood at the nearest way in they can walk from
+       (hq.goSpot round each door's landing). Off: window.EW_GO_NO_WAYOUT = true. */
+    function _hqWayOutOnArrive(H) {
+        if (!H || H !== _hq || !H.player || !H.terrain || typeof hqTerrainEscapes !== 'function' || (typeof window !== 'undefined' && window.EW_GO_NO_WAYOUT)) return;
+        var room = (typeof DOOR_HQ !== 'undefined' && H.opts && DOOR_HQ.rooms[H.opts.room]) || H.room; if (!room || !(room.doors || []).length) return;
+        var pl = H.player; if (hqTerrainEscapes(H.terrain, pl.x, pl.z, { room: room, y: pl.y })) return;
+        var from = { x: pl.x, z: pl.z }, L = [];
+        room.doors.forEach(function (d) { try { if (d.sealed || d.hidden) return; var q = hqTerrainDoorLanding(room, d); if (q && isFinite(q.x) && isFinite(q.z)) L.push({ x: q.x, z: q.z, d: Math.hypot(q.x - pl.x, q.z - pl.z), id: d.id }); } catch (e) {} });
+        L.sort(function (a, b) { return a.d - b.d; });
+        for (var i = 0; i < L.length; i++) {
+            var r = ThreeRenderer.hq.goSpot(L[i].x, L[i].z, 8);
+            if (r && r.ok) { console.log('[HQ] THE WAY OUT: the arrival (' + from.x.toFixed(1) + ', ' + from.z.toFixed(1) + ') was sealed; stood at door ' + L[i].id + ' (' + r.x.toFixed(1) + ', ' + r.z.toFixed(1) + ')'); return; }
+        }
+        console.warn('[HQ] THE WAY OUT: the arrival is sealed and no way in had ground to stand on');
     }
 
     /* ── lifecycle ─────────────────────────────────────────────────────── */

@@ -3109,6 +3109,16 @@ because im already in the zone i want to fast travel to". Two causes, both fixed
   plaza; Camelot's towers, gate, Great Hall, stables, barracks; the Ski Lodge, the Rental Hut; the Great Pyramid, Menkaure, Khafre;
   Hangar 18; the Haunted House, the Farmhouse, the Barn; Katana's Samurai Quarter; Heaven's cloud paths; Hell's Bowl and Plinth; ...).
   Off: `window.EW_GO_NO_WAYOUT = true`. Proof: /mnt/project-files/fast-travel-way-out/.
+- **THE WAY OUT, PASS 2 (2026-11-27, mondo: "camelot castle has the same problem ... in the orchard").** The Orchard plot (P02-02 of
+  `site_prebuilt_camelot_kingdom`) has its middle inside the Keep, a solid block (ghost walls on its outline, base 6.7, top 21.45). Pass
+  1 refused (-21.75, -21.75) and took (-25.25, -21.75): inside the west wing. The wing's east wall and the Keep's west wall stand 0.3 m
+  apart, the start rounded to the lattice node IN that slot, and the walk ran out along it to the court. Three fixes in
+  `hqTerrainEscapes`: THE START SQUARE (the nearest of the four nodes round the body that it walks to in a straight line, no wall on the
+  way and none within 0.2 m of the node; none = sealed), `o.y` (the body's real feet: one under the ground's top is in the rock), and a
+  door landing counts only at its own height (±1.6 m). Now the whole palace block (Keep + wings) reads sealed and the Orchard GO lands on
+  the open court north of the Keep. THE ARRIVAL RESCUE: three-renderer.js `_hqWayOutOnArrive(H)` runs when a room is ready; a player stood
+  sealed (any way in: the room GO, a spawn, a door) is moved to the nearest door landing with ground (`goSpot(x, z, 8)`), logged
+  `[HQ] THE WAY OUT: the arrival ... was sealed`. Every terrain box room's spawn checked at its ground's top: none sealed.
 
 ### ONE MAP (2026-11-23, owner project, thread "Make the map one zoomable map")
 mondo 11-23: "i hate how zooming in makes the rest of the map disappear, its supposed to be one map with increasing detail as

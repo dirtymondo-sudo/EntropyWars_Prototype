@@ -100397,29 +100397,44 @@ function hqTerrainReach(info, x, z) {
    refuses a sealed spot. `o.seen` (a Set) gets the pocket's node keys so the next candidate in the same pocket is refused without a walk. */
 function hqTerrainEscapes(info, x, z, o) {
     o = o || {};
-    const i0 = Math.round((x - info.x0) / info.res), j0 = Math.round((z - info.z0) / info.res);
-    if (i0 < 0 || j0 < 0 || i0 >= info.nx || j0 >= info.nz) return false;
-    const y0 = hqTerrainFeet(info, info.x0 + i0 * info.res, info.z0 + j0 * info.res, null); if (y0 == null) return false;
-    const goals = new Set();
-    ((o.room && o.room.doors) || []).forEach(d => { try { const L = hqTerrainDoorLanding(o.room, d), gi = Math.round((L.x - info.x0) / info.res), gj = Math.round((L.z - info.z0) / info.res);
-        for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) goals.add((gi + a) + ',' + (gj + b)); } catch (e) {} });
+    /* THE START SQUARE (2026-11-27, mondo: the Orchard plot GO left him inside Came A Lot Castle's Keep): the nearest lattice node can stand on
+       the far side of a wall from the body. The Keep's west wall and the west wing's east wall stand 0.3 m apart; a spot in the wing rounded to
+       the node in that slot, and the walk ran out along the slot to the court. The start is now the nearest of the four nodes round the body
+       that the body walks to in a straight line (no wall on the way, none on the node itself), or none: sealed. */
+    const ia = Math.floor((x - info.x0) / info.res), ja = Math.floor((z - info.z0) / info.res), yb = (o.y != null && isFinite(o.y)) ? o.y : hqTerrainHeight(info, x, z);
+    const clear = (nx_, nz_) => { if (hqTerrainWallAt(info, nx_, nz_, 0.2, yb + 0.3, yb + 1.8)) return false; const L = Math.hypot(nx_ - x, nz_ - z), n = Math.max(1, Math.ceil(L / 0.1));
+        for (let s = 1; s < n; s++) { const t = s / n; if (hqTerrainWallAt(info, x + (nx_ - x) * t, z + (nz_ - z) * t, 0.02, yb + 0.3, yb + 1.8)) return false; } return true; };
+    const starts = [];
+    for (const [a, b] of [[0, 0], [1, 0], [0, 1], [1, 1]]) { const i = ia + a, j = ja + b; if (i < 0 || j < 0 || i >= info.nx || j >= info.nz) continue; const px = info.x0 + i * info.res, pz = info.z0 + j * info.res; starts.push([Math.hypot(px - x, pz - z), i, j, px, pz]); }
+    starts.sort((p, q) => p[0] - q[0]);
+    const st = (isFinite(yb) && info.walls.length) ? starts.find(s => clear(s[3], s[4])) : starts[0];
+    if (!st) return false;
+    const i0 = st[1], j0 = st[2];
+    /* `o.y` = where the walker's feet really are: a body stood under the ground's top (Came A Lot Castle's spawn on level 0, inside the portal's
+       solid sill at 7 m) is in the rock, sealed whatever the ground above it reaches */
+    let y0 = hqTerrainFeet(info, info.x0 + i0 * info.res, info.z0 + j0 * info.res, (o.y != null && isFinite(o.y)) ? o.y : null); if (y0 == null) return false;
+    if (o.y != null && isFinite(o.y) && Math.abs(y0 - o.y) > 1.2) return false;
+    const goals = new Map();   // 'i,j' -> the landing's height (a landing is met only at its own height: a floor over it is not it)
+    ((o.room && o.room.doors) || []).forEach(d => { try { const L = hqTerrainDoorLanding(o.room, d), gi = Math.round((L.x - info.x0) / info.res), gj = Math.round((L.z - info.z0) / info.res), gy = isFinite(L.y) ? L.y : null;
+        for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) { const k = (gi + a) + ',' + (gj + b); (goals.get(k) || goals.set(k, []).get(k)).push(gy); } } catch (e) {} });
     if (!goals.size) return true;
+    const atGoal = (i, j, y) => { const g = goals.get(i + ',' + j); return !!g && g.some(gy => gy == null || Math.abs(gy - y) < 1.6); };
     const cap = Math.max(200, Math.round((o.area || 6000) / (info.res * info.res)));
     const mine = new Set(), q = [[i0, j0, y0]], N = [[1, 0], [-1, 0], [0, 1], [0, -1]], climbLim = _hqTClimbLim(info, info.rules.climb), CE = hqTerrainClimbEdges(info);
     const keyOf = (i, j, L) => L ? (i + ',' + j + ',' + L) : (i + ',' + j);
     mine.add(keyOf(i0, j0, hqTerrainLayerAt(info, info.x0 + i0 * info.res, info.z0 + j0 * info.res, y0)));
-    if (goals.has(i0 + ',' + j0)) return true;
+    if (atGoal(i0, j0, y0)) return true;
     let head = 0;
     while (head < q.length) {
         if (mine.size >= cap) return true;
         const p = q[head++];
-        const add = (i, j, y) => { const k = keyOf(i, j, hqTerrainLayerAt(info, info.x0 + i * info.res, info.z0 + j * info.res, y)); if (mine.has(k)) return false; mine.add(k); q.push([i, j, y]); return goals.has(i + ',' + j); };
+        const add = (i, j, y) => { const k = keyOf(i, j, hqTerrainLayerAt(info, info.x0 + i * info.res, info.z0 + j * info.res, y)); if (mine.has(k)) return false; mine.add(k); q.push([i, j, y]); return atGoal(i, j, y); };
         const ce = CE.get(p[1] * info.nx + p[0]);
         if (ce) for (const e of ce) { const ei = e.k % info.nx, ej = (e.k - ei) / info.nx; const ey = _hqTClimbLand(info, ei, ej, e.y); if (ey == null) continue; if (add(ei, ej, ey)) return true; }
         for (const n of N) {
             const i = p[0] + n[0], j = p[1] + n[1];
             if (i < 0 || j < 0 || i >= info.nx || j >= info.nz) continue;
-            for (const c of _hqTNodeFeet(info, i, j, p[2], climbLim, false)) { const k = keyOf(i, j, c[1]); if (mine.has(k)) continue; mine.add(k); q.push([i, j, c[0]]); if (goals.has(i + ',' + j)) return true; }
+            for (const c of _hqTNodeFeet(info, i, j, p[2], climbLim, false)) { const k = keyOf(i, j, c[1]); if (mine.has(k)) continue; mine.add(k); q.push([i, j, c[0]]); if (atGoal(i, j, c[0])) return true; }
         }
     }
     if (o.seen) mine.forEach(k => o.seen.add(k));
@@ -109627,25 +109642,30 @@ const CROP_VARY = {
         { w: 10, to: 'sunflowers', n: 3, h: [2.2, 2.9], vy: [1, 1] },  // a sunflower field
         { w: 5, to: 'sunflowers', n: 3, h: [2.0, 2.6], tint: 0xd9b878, vy: [1, 1] } ] }   // sunflowers past their best
 };
+/* the look of a listed key's field patch at (x, z); `r` = the row's own chance (0..1), a little of it moves a patch's rim so two fields meet ragged */
+function cropLookAt(key, x, z, r) {
+    const V = CROP_VARY[key]; if (!V) return null;
+    const h2 = cropHash, noise = (x, y, s) => { const xi = Math.floor(x), yi = Math.floor(y), fx = x - xi, fy = y - yi, u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy);
+        return (h2(xi, yi, s) * (1 - u) + h2(xi + 1, yi, s) * u) * (1 - v) + (h2(xi, yi + 1, s) * (1 - u) + h2(xi + 1, yi + 1, s) * u) * v; };
+    /* the patch: two octaves, stretched to 0..1 */
+    let t = noise(x / V.patch + 31.7, z / V.patch - 12.3, 5) * 0.72 + noise(x / (V.patch * 0.37), z / (V.patch * 0.37), 9) * 0.28;
+    t = Math.min(0.9999, Math.max(0, (t - 0.22) / 0.56 + ((r == null ? 0.5 : r) - 0.5) * V.edge));
+    if (V._tot === undefined) { let tot = 0; V.looks.forEach(L => { tot += L.w; }); V._tot = tot;
+        /* (the looks are dealt out of order along the noise, so a tall yellow field can stand by a young one, not always by its neighbour in the list) */
+        V._order = V.looks.map((_, k) => k).sort((a, b) => h2(a, 7, 4) - h2(b, 7, 4)); }
+    let acc = 0; for (let k = 0; k < V._order.length; k++) { acc += V.looks[V._order[k]].w / V._tot; if (t < acc) return V.looks[V._order[k]]; }
+    return V.looks[0];
+}
+function cropHash(x, y, s) { const n = Math.sin(x * 127.1 + y * 311.7 + s * 74.7) * 43758.5453; return n - Math.floor(n); }
 function cropRowsVary(room, rows) {
     if (!rows || !rows.length || (typeof window !== 'undefined' && window.EW_NO_CROP_VARY)) return rows;
-    const h2 = (x, y, s) => { let n = Math.sin(x * 127.1 + y * 311.7 + s * 74.7) * 43758.5453; return n - Math.floor(n); };
-    const noise = (x, y, s) => { const xi = Math.floor(x), yi = Math.floor(y), fx = x - xi, fy = y - yi, u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy);
-        return (h2(xi, yi, s) * (1 - u) + h2(xi + 1, yi, s) * u) * (1 - v) + (h2(xi, yi + 1, s) * (1 - u) + h2(xi + 1, yi + 1, s) * u) * v; };
-    const wd = (room && room.world) || null, ox = (wd && wd.x) || 0, oz = (wd && wd.z) || 0;   // (a room at its world place: the patches run on across a seam)
+    const h2 = cropHash;
     let out = null;
     for (let i = 0; i < rows.length; i++) {
         const p = rows[i], V = p && CROP_VARY[p.key];
         if (!V || p.vy || p.tint != null || p.x == null) { if (out) out.push(p); continue; }
         if (!out) out = rows.slice(0, i);
-        const r1 = h2(p.x, p.z, 1), r2 = h2(p.x, p.z, 2), r3 = h2(p.x, p.z, 3);
-        /* the patch: two octaves, stretched to 0..1, a little of the row's own chance at a patch's rim so two fields meet ragged */
-        let t = noise((p.x + ox) / V.patch + 31.7, (p.z + oz) / V.patch - 12.3, 5) * 0.72 + noise((p.x + ox) / (V.patch * 0.37), (p.z + oz) / (V.patch * 0.37), 9) * 0.28;
-        t = Math.min(0.9999, Math.max(0, (t - 0.22) / 0.56 + (r1 - 0.5) * V.edge));
-        let tot = 0; V.looks.forEach(L => { tot += L.w; }); let acc = 0, L = V.looks[0];
-        /* (the looks are dealt out of order along the noise, so a tall yellow field can stand by a young one, not always by its neighbour in the list) */
-        const order = V._order || (V._order = V.looks.map((_, k) => k).sort((a, b) => h2(a, 7, 4) - h2(b, 7, 4)));
-        for (let k = 0; k < order.length; k++) { acc += V.looks[order[k]].w / tot; if (t < acc) { L = V.looks[order[k]]; break; } }
+        const r1 = h2(p.x, p.z, 1), r2 = h2(p.x, p.z, 2), r3 = h2(p.x, p.z, 3), L = cropLookAt(p.key, p.x, p.z, r1);
         const vy = L.vy ? L.vy[0] + (L.vy[1] - L.vy[0]) * r2 : 1;
         if (!L.to) { const c = Object.assign({}, p, { vy: Math.round(vy * 100) / 100 }); if (L.tint != null) c.tint = L.tint; out.push(c); continue; }
         const a = (p.face || 0) * Math.PI / 180, dx = Math.cos(a), dz = -Math.sin(a), n = L.n || 3, span = 3.5;
@@ -109657,6 +109677,19 @@ function cropRowsVary(room, rows) {
     }
     return out || rows;
 }
+/* THE CROP FIELDS (2026-11-27, mondo's corn ask, the second half): the corn was ONE row thick, a line round bare ground: from over the line, through a
+   gap or from above a "field" was an empty lawn with a hedge. Now every square of the room's solid ground that lies within `near` metres of a crop row
+   (and in no tree zone) is PLANTED: drilled rows `rows` m apart, a plant every `along` m, each plant two crossed cards wearing a picture of the game's
+   own crop model (the sheet `ew_crop_cards.png`, drawn by bake-crops.js; a card = its column, `w` its width over the plant's height, `fill` the plant's
+   share of the tile's height, `h` the plant's height, `keep` the share of spots it takes). The crop, its tint and height are the patch's own
+   (cropLookAt), so the line and the field behind it are one crop. Drawn by three-renderer.js with the flora field's cells (one merged mesh a cell,
+   four triangles a plant, the wind's sway); nothing blocks, nothing is walked: the ground under it was solid already. Off: window.EW_NO_CROP_FIELDS. */
+const CROP_FIELDS = {
+    sheet: 'asset:world/nature/flora/ew_crop_cards.png', cols: 3,
+    cards: { corn: { col: 0, w: 0.6, fill: 0.833, h: [2.1, 2.5], keep: 1 }, sunflower: { col: 1, w: 0.613, fill: 0.815, h: [2.0, 2.6], keep: 0.62 }, wheat: { col: 2, w: 0.77, fill: 0.649, h: [1.0, 1.3], keep: 1 } },
+    of: { corn_row: 'corn', sunflowers: 'sunflower' },   // a crop row's key (and a look's `to`) = its card
+    rows: 0.8, along: 0.5, jitter: 0.13, near: 21, nearCell: 7, foot: 0.6, shade: [0.62, 0.84]
+};
 function zoneFloraSwap(room, rows, fallbackId) {
     if (!rows || !rows.length || (typeof window !== 'undefined' && (window.EW_NO_FLORA || window.EW_NO_FLORA_SWAP))) return rows;
     const S = ZONE_FLORA.swap, id = zoneFloraRoomId(room) || fallbackId || null; if (!S || !id) return rows;
