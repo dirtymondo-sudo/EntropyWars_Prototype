@@ -71897,7 +71897,7 @@ const ThreeRenderer = (function () {
             _cv.stage.remove(_cv.model);
             // clones share the cached base GLB's geometry AND materials — never
             // dispose them here; just drop the references.
-            _cv.model = null;
+            _cvOriEnd(_cv); _cv.model = null;
         }
         // Viewer-owned material/texture CLONES (built in the mount traverse
         // when the board had already re-tagged the shared map) ARE ours to
@@ -71951,6 +71951,7 @@ const ThreeRenderer = (function () {
         if (v.sway && v.model) _swayTick(v.sway, dt, v.swayDef);   // THE SWAY: the cape in the viewer too
         if (v.yawTween) _cvYawTweenStep(v, dt);          // the preview turn (§5.3)
         if (v.moveTween) _cvMoveTweenStep(v, dt);        // the charge / dash / blink (2026-09-09)
+        if (v.ori) { try { _cvOriStep(v, dt); } catch (_eO) { _cvOriEnd(v); } }   // THE ORIGAMI ON THE STAGE
         if (v.staged && window.ThreeVFX && ThreeVFX.tick) { try { ThreeVFX.tick(dt); } catch (_e) {} }
         // no auto-spin: yaw belongs to the player's drag alone
         if (v.model) v.model.rotation.y = v.yaw;
@@ -72668,6 +72669,7 @@ const ThreeRenderer = (function () {
         var b = v.beat;
         v.beat = null;
         if (b) for (var i = 0; i < b.timers.length; i++) clearTimeout(b.timers[i]);
+        if (v.ori && !v.oriKeep) _cvOriEnd(v);   // (THE ORIGAMI ON THE STAGE: a cut beat gives her back)
         if (v.model) v.model.visible = !(v.dressWait && v.dressWait === _cvToken);   // (THE DRESSED REVEAL: a body still dressing stays hidden)              // a blink cut short never leaves the hero gone
         v.frameTo = null;                                  // the camera eases home
         if (!b) return;
@@ -72767,10 +72769,82 @@ const ThreeRenderer = (function () {
         } catch (_e) {}
         return false;
     }
+    /* THE ORIGAMI ON THE STAGE (mondo 11-27: "im not seeing the folding animations like for the sword and the airplane ... in the party
+       builder when i hover over those spells, she's supposed to actually turn into the sword not swing a sword"): a spell row with
+       `ogFold` folds her first (the same sheet and recipes as the fight, THE ORIGAMI IN A FIGHT), then the beat plays with the
+       shape in her place: the sword spins through the cut, the plane flies the charge and crumples, the fortune game opens and
+       shuts and shows the flap it read, the crane opens its wings. The beat's end opens the sheet and she stands again. */
+    var _CV_ORI_FOLD_MS = 950;
+    function _cvOriEnd(v) {
+        var o = v && v.ori; if (!o) return;
+        v.ori = null;
+        try { if (o.S) { if (o.S.group.parent) o.S.group.parent.remove(o.S.group); o.S.dispose(); } if (o.C) { if (o.C.group.parent) o.C.group.parent.remove(o.C.group); o.C.dispose(); } } catch (_e) {}
+        if (v.model) v.model.visible = !(v.dressWait && v.dressWait === _cvToken);
+    }
+    function _cvOriStart(v, what) {
+        _cvOriEnd(v);
+        if (!_ORI_SHEET[what] || (typeof window !== 'undefined' && window.EW_NO_ORIGAMI_FIGHT)) return false;
+        var S = _oriSheet(_ORI_SHEET[what], {}); if (!S) return false;
+        S.mats[0].emissive = new THREE.Color(0xffffff); S.mats[0].emissiveMap = _oriGrain(); S.mats[0].emissiveIntensity = 0.24;
+        S.mats[1].emissive = new THREE.Color(0xa5182f); S.mats[1].emissiveIntensity = 0.3;
+        if (what === 'fortune') { var fc = _ORI_FORTUNE_COL; S.setQuad([fc[1], fc[2], fc[3], fc[4]]); S.mats[1].emissive.setHex(0x554433); }
+        v.stage.add(S.group);
+        var top = S.B.n + 1;
+        v.ori = { what: what, S: S, C: null, tau: 0, top: top, per: (_CV_ORI_FOLD_MS / 1000) * 0.86 / top, open: 0, t: 0, pop: 0, sk: 0, st: 0, lie: 0, lieT: 0, play: what === 'fortune' ? 1 : 0, out: false, yaw0: v.yaw };
+        return true;
+    }
+    function _cvOriStrike(v) { var o = v && v.ori; if (!o || o.out) return; o.sk = 1; o.st = 0; if (o.what === 'plane') o.lie = 1; if (o.what === 'fortune' && o.S.setQuad) { var c = _ORI_FORTUNE_COL[1 + Math.floor(Math.random() * 4)]; o.S.setQuad([c, c, c, c]); } }
+    function _cvOriRelease(v) { var o = v && v.ori; if (o && !o.outAt) o.outAt = o.t + (o.what === 'crane' ? 1.3 : 0.7); }   // (the shape is held a moment so it is read)
+    function _cvOriStep(v, dt) {
+        var o = v.ori; if (!o) return;
+        if (!v.model) { _cvOriEnd(v); return; }
+        v.model.visible = false; o.t += dt;
+        var S = o.S;
+        if (o.outAt && o.t >= o.outAt) o.out = true;
+        if (o.out) {                                                  // the beat is over: the crane shuts, the sheet opens, she stands
+            if (o.C && o.open > 0) { o.open = Math.max(0, o.open - dt / 0.2); o.C.set(o.open); }
+            else { if (o.C) { if (o.C.group.parent) o.C.group.parent.remove(o.C.group); o.C.dispose(); o.C = null; S.group.visible = true; }
+                o.tau -= dt / 0.035; if (o.tau <= 0) { _cvOriEnd(v); return; } S.set(Math.min(o.top, o.tau)); }
+        } else if (o.tau < o.top) { o.tau = Math.min(o.top, o.tau + dt / o.per); S.set(o.tau); }
+        else if (o.what === 'crane') {
+            if (!o.C) { o.C = _oriCrane({ open: 0 }); v.stage.add(o.C.group); S.group.visible = false; }
+            if (o.open < 1) { o.open = Math.min(1, o.open + dt / 0.5); o.C.set(o.open); }
+        } else if (o.what === 'fortune' && o.play > 0 && S.total > o.top) { o.play += dt / 1.5; if (o.play >= 2) { o.play = 0; S.set(o.top); } else S.set(o.top + (o.play - 1)); }
+        if (o.pop < 1) o.pop = Math.min(1, o.pop + dt / 0.14);
+        var H = v.h || 1, LK = _ORI_LOOK[o.what] || _ORI_LOOK.sword, G = (o.C && !S.group.visible) ? o.C.group : S.group;
+        var sc = H * LK.size * (o.what === 'sword' ? 0.8 : 1) * (0.25 + 0.75 * _oriSmooth(o.pop)), yaw = v.yaw, y = H * LK.y * (o.what === 'sword' ? 0.8 : 1), rx = 0, rz = 0, sz = 1, sxy = 1, k2 = o.sk ? (o.st += dt, o.st) : -1;
+        if (o.what === 'sword') {
+            yaw = o.yaw0 + o.t * 0.9; y += Math.sin(o.t * 2.2) * H * 0.02;
+            if (o.sk) { var a1 = Math.min(1, k2 / 0.55); yaw = v.yaw + Math.PI / 2 + _oriSmooth(a1) * Math.PI * 4; rz = -Math.sin(Math.min(1, k2 / 0.75) * Math.PI) * 1.25; if (k2 > 0.8) { o.sk = 0; o.yaw0 = yaw - o.t * 0.9; } }
+        } else if (o.what === 'plane') {
+            var lie = o.lie ? Math.min(1, (o.lieT += dt) / 0.35) : 0;
+            y = H * (0.62 + Math.sin(o.t * 5) * 0.025) * (1 - lie) + H * 0.1 * lie; rz = Math.sin(o.t * 3.1) * 0.12 * (1 - lie) + 0.42 * lie; rx = -0.08 * (1 - lie) + 0.3 * lie; sz = 1 - 0.42 * lie; sxy = 1 - 0.1 * lie;
+            if (o.sk) { var c1 = Math.min(1, k2 / 0.18); sz *= 1 - 0.3 * Math.sin(c1 * Math.PI); if (k2 > 0.4) o.sk = 0; }
+        } else if (o.what === 'fortune') {
+            y += Math.sin(o.t * 2.4) * H * 0.03; yaw = v.yaw + Math.sin(o.t * 0.8) * 0.5; rx = -0.5;
+            if (o.sk) { var p1 = Math.min(1, k2 / 0.5); sxy = 1 + 0.28 * Math.sin(p1 * Math.PI); y += H * 0.12 * Math.sin(p1 * Math.PI); if (k2 > 0.5) o.sk = 0; }
+        } else if (o.what === 'crane') {
+            if (o.C) { var fast = !!o.sk; o.C.flap(Math.sin(o.t * (fast ? 22 : 5.5))); if (fast && k2 > 1.1) o.sk = 0; if (fast) y += H * 0.16 * Math.sin(Math.min(1, k2 / 1.1) * Math.PI); }
+            y += Math.sin(o.t * 2.0) * H * 0.04;
+            if (G !== S.group) sc = H * 1.55;
+        }
+        G.scale.set(sc * sxy, sc * sxy, sc * sz); G.position.set(v.model.position.x, v.model.position.y + y, v.model.position.z);
+        G.rotation.set(rx, yaw, rz, 'YXZ');
+    }
     function _cvPreviewSpell(spell, opts) {
         var v = _cv;
         opts = opts || {};
         if (!v || !v.model) return 0;
+        if (spell && spell.ogFold && !opts._ori && v.stage && _cvStageEnter()) {   // THE ORIGAMI ON THE STAGE: the fold first, then the beat
+            _cvBeatCancel(true);
+            if (_cvOriStart(v, spell.ogFold)) {
+                if (v.yawHome == null) v.yawHome = v.yaw;
+                _cvYawTo(_CV_STAGE_YAW, 200, false);
+                var b0 = { id: spell.id, timers: [] }; v.beat = b0;
+                b0.timers.push(setTimeout(function () { if (_cv !== v || v.beat !== b0) return; v.oriKeep = true; try { _cvPreviewSpell(spell, Object.assign({}, opts, { _ori: true })); } finally { v.oriKeep = false; } }, _CV_ORI_FOLD_MS));
+                return _CV_ORI_FOLD_MS + 1800;
+            }
+        }
         if (!_cvStageEnter()) return _cvPlaySpell(spell, opts);     // Stage 2 fallback: the animation alone
         _cvBeatCancel(true);
         try { if (window.ThreeVFX && ThreeVFX.clear) ThreeVFX.clear(); } catch (_e) {}   // one preview at a time
@@ -72810,6 +72884,7 @@ const ThreeRenderer = (function () {
             return p;
         };
         var fireMapped = function (cx) {
+            if (v.ori) _cvOriStrike(v);
             try { if (S.caster) S.caster(cx || 0, 0); } catch (_e) {}
             var base = params(cx);
             S.fire('burst', id, base);
@@ -72826,6 +72901,7 @@ const ThreeRenderer = (function () {
             // the strike's tail, the finish, then the walk home + the turn back
             later(function () { S.fire('finish', id, params(casterX)); }, strikeAt + clipMs);
             later(function () {
+                if (v.ori) _cvOriRelease(v);
                 v.beat = null;
                 v.frameTo = null;
                 if (v.heroX !== 0) _cvMoveTo(0, 360, { ease: 'out' });
