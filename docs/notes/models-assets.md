@@ -2328,7 +2328,7 @@ named for THE SWAY. Upload with `node sync-zip.js --put`. How they hang and move
 mondo: "use the meshy point guard from our game and use the basketball animations from the pack to do his animations. And can you also
 make him dribble the basketball for his idle." His inbox drop (R2 `dirtymondo` `inbox/basketball/`, copy in project files
 `asset-packs/basketball-blaze/`): `Baseketball.glb` (the better ball) and the `BasketballPlayer_Blaze` pack (a rigged player, 61 bones
-with UE names, 25 clips; MAKER + LICENCE NOT RECORDED, ask mondo before crediting).
+with UE names, 25 clips; maker: tuhinansugourav on CGTrader, mondo 11-27; credited in data.js EW_CREDITS; the licence is the one on its CGTrader page, not read by Claude).
 - **The library:** `Assets/characters/animations/BKB1_Blaze.glb` = sprites.js `EW_ANIM_LIB_URLS` lib 12: the pack's skeleton + clips only
   (no mesh, no finger / cloth keys, `head` renamed `Head`), built by project files `point-guard-dribble/build.py`. Clips: Dribble,
   RunDribble, SprintDribble, Pass, Shoot, Dunk, Block, Jump, Land, Run, Sprint, SkillDash, Celebrate, Defeat, Stunned, Idle, HeroWarmup,
