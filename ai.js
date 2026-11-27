@@ -9087,7 +9087,7 @@
         /* THE FULL LIST — LOOT (2026-11-01): Inspect also loots the items on a fallen body (battle.js lootCorpseItems, friend
            or foe); the CPU only ever inspected for Keys. A fallen body in sight with a pack on it is worth a search. */
         if (!window.EW_AI_NO_LOOT && typeof g.getInspectFootprint === 'function') {
-            const corpses = (g.state.units || []).filter(u => u && u.dead && !u._benched && u.items
+            const corpses = (g.state.units || []).filter(u => u && u.dead && !u._benched && u.items && u.items !== unit.items   // the shared story bag: nothing to take
                 && Object.keys(u.items).some(k => (u.items[k] || 0) > 0)
                 && (!v.visTiles || v.visTiles.has(g.posKey(u.x, u.y))));
             if (corpses.length) {
