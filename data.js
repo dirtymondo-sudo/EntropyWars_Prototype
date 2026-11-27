@@ -682,6 +682,7 @@ const RACE_ELEMENT_AFFINITY = {
     'leopard girl': { nature: 'resist', ice: 'weak' },   // 2026-11-27 THE NEW RACES 5: the long grass is home; a cat in the snow
     'draconian': { psychic: 'resist', ice: 'weak' },   // 2026-11-27 THE NEW RACES 5: the oldest mind in the room; cold-blooded
     'flower girl': { nature: 'resist', fire: 'weak' },   // 2026-11-27 THE NEW RACES 5: in full bloom; petals burn
+    'origami girl': { fire: 'weak', water: 'weak' },   // 2026-11-27 THE ORIGAMI GIRL (mondo: "weak to fire and water"): paper burns, paper soaks
     'point guard': { wind: 'resist', ice: 'weak' },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: quick on his feet; the cold gets in his knees
     'music producer': { sonic: 'resist', water: 'weak' },   // 2026-11-24 THE MUSIC PRODUCER: he lives in the loud; water and his gear do not mix
     'streamer': { sonic: 'resist', light: 'weak' },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit): the headset is on; never sees the sun
@@ -3205,6 +3206,10 @@ const RACE_PROFILES = {
         label: 'Flower Girl',
         types: ['anomaly']
     },
+    'origami girl': {// 2026-11-27 THE ORIGAMI GIRL (body in, kit = her spell thread) — a girl of folded paper, a crane's crest and wings (mondo picked crane girl b)
+        label: 'Origami Girl',
+        types: ['anomaly']
+    },
     'leprechaun': {   // 2026-11-27 THE NEW CHARACTERS — male + female; THE LEPRECHAUN + THE MEDIC: the kit is Anomaly
         label: 'Leprechaun',
         types: ['anomaly']
@@ -4195,7 +4200,7 @@ const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scie
    AVAILABLE_RACES and server.js AVAILABLE_RACES. Notes: docs/notes/champions-combat.md "THE COMING RACES". */
 /* THE WEATHERMAN's FORECAST (2026-11-24 THE WEATHERMAN + NEWS ANCHOR): the weather never hurts or soaks him (state.js applyWeatherTurnEffects + stormStrikeUnit) */
 function wnWeatherproof(u) { return !!u && u.race === 'weatherman' && (u.gender || 'male') === 'male' && unitHasPassive(u, 'wnTheForecast'); }   /* Broken = no passives = no shelter */
-const EW_COMING_RACES = [];   // 2026-11-27 THE NEW CHARACTERS (models + sprites in, kits being made by three spell threads; each moves its key into AVAILABLE_RACES here AND in server.js with its kit).   // 2026-11-23 THE COMING RACES 2 (the Mannequin was cut 11-23, mondo; the Bear, the Rat, the Butterfly Girl and the Monarch got their kits 11-23 and moved to AVAILABLE_RACES) (models in, kits not yet; one spell thread a unit). 2026-11-19: the gladiator, the farmer and the jellyfish UFO got their kits and moved to AVAILABLE_RACES
+const EW_COMING_RACES = ['origami girl'];   // 2026-11-27 THE ORIGAMI GIRL: her body is in, her kit is her spell thread's (it moves her to AVAILABLE_RACES here AND in server.js).     // 2026-11-27 THE NEW CHARACTERS (models + sprites in, kits being made by three spell threads; each moves its key into AVAILABLE_RACES here AND in server.js with its kit).   // 2026-11-23 THE COMING RACES 2 (the Mannequin was cut 11-23, mondo; the Bear, the Rat, the Butterfly Girl and the Monarch got their kits 11-23 and moved to AVAILABLE_RACES) (models in, kits not yet; one spell thread a unit). 2026-11-19: the gladiator, the farmer and the jellyfish UFO got their kits and moved to AVAILABLE_RACES
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
    default job's kit (JOB_KITS) gave it, so ranged races stay ranged: the old Sniper races reach 4 (kit 3 + the Sniper's
@@ -4380,6 +4385,7 @@ const RACE_CLASS = {
     'leopard girl': 'assassin',   // 2026-11-27 THE NEW RACES 5
     'draconian': 'bruiser',   // 2026-11-27 THE NEW RACES 5
     'flower girl': 'support',   // 2026-11-27 THE NEW RACES 5
+    'origami girl': 'specialist',   // 2026-11-27 THE ORIGAMI GIRL (body in, kit = her spell thread): a first pass
     'point guard': 'ranged',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
     'music producer': 'specialist',   // 2026-11-24 THE MUSIC PRODUCER: he builds the song, the song does the work
     'streamer': 'specialist',   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
@@ -4906,6 +4912,7 @@ const RACE_BASE_STATS = {
     'leopard girl':       { hp: 1000, mp: 120, atk: 165, def:  85, mdef:  60, int:  50, vision: 4, crt: 26, spd: 150 },   // 2026-11-27 THE NEW RACES 5: first pass on the assassin median (a stalker: fast, hits hard, thin)
     'draconian':          { hp: 1280, mp: 140, atk: 140, def: 118, mdef:  95, int:  90, vision: 3, crt: 15, spd: 100 },   // 2026-11-27 THE NEW RACES 5: first pass on the bruiser median
     'flower girl':        { hp:  980, mp: 230, atk:  50, def:  75, mdef: 135, int: 150, vision: 4, crt: 15, spd: 115 },   // 2026-11-27 THE NEW RACES 5: first pass on the support median
+    'origami girl':       { hp:  880, mp: 220, atk:  95, def:  60, mdef: 110, int: 140, vision: 4, crt: 22, spd: 130 },   // 2026-11-27 THE ORIGAMI GIRL (body in, kit = her spell thread) — a first pass: light, quick, thin as paper
     'point guard':        { hp:  940, mp: 140, atk: 112, def:  78, mdef:  62, int:  40, vision: 4, crt: 26, spd: 150 },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — first pass on the ranged median, the fastest hands on the court
     'music producer':     { hp:  980, mp: 230, atk:  60, def:  80, mdef: 120, int: 160, vision: 3, crt: 18, spd: 105 },   // 2026-11-24 THE MUSIC PRODUCER — first pass on the specialist median
     'streamer':           { hp:  990, mp: 200, atk: 125, def:  80, mdef: 100, int: 142, vision: 3, crt: 25, spd: 110 },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit) — first pass: a skirmisher who banks a crowd; LAB LOOP 11-22 PASS 4: HP 950→990, ATK 120→125, M.ATK 130→142 (44.9% over 244 games)
@@ -5125,6 +5132,7 @@ const RACE_PHYSIQUE = {
     'leopard girl':        { h: 1.70, w: 55 },   // 2026-11-27 THE NEW RACES 5
     'draconian':           { h: 2.20, w: 140 },   // 2026-11-27 THE NEW RACES 5: a tall reptilian, no wings
     'flower girl':         { h: 1.65, w: 50 },   // 2026-11-27 THE NEW RACES 5
+    'origami girl':        { h: 1.68, w: 2 },   // 2026-11-27 THE ORIGAMI GIRL (body in, kit = her spell thread): paper
     'point guard':         { h: 1.88, w: 84 },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
     'music producer':      { h: 1.80, w: 74 },   // 2026-11-24 THE MUSIC PRODUCER
     'streamer':            { h: 1.76, w: 70 },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
@@ -95005,6 +95013,7 @@ const HQ_CATALOGUE_ALL = {
        separate"): eleven hand weapons, Meshy from Claude's concepts (project files weapon-hands/). All lie along X (tip at -X, handle at +X)
        but the sickle and the spray can (upright, Y). The grip each unit closes on them is sprites.js RACE_CREATOR_LOOK_DEFS. */
     wp_war_fan: { file: 'world/props/meshy/weapons/war_fan.glb', base: 'asset', span: 0.5, foot: 0, group: 'Meshy props · Weapons' },   // the Shogun's iron war fan, open, upright (the pivot low in the middle, a tassel under it)
+    ori_wings: { file: 'characters/races/origami_girl/female/origami_wings.glb', base: 'asset', span: 1.3, foot: 0, group: 'Meshy props · Weapons' },   // 2026-11-27 THE ORIGAMI GIRL's two paper wings, one flat pair (upright, the root low in the middle); she wears them on her back (sprites.js hold2)
     wp_cutlass: { file: 'world/props/meshy/weapons/cutlass.glb', base: 'asset', span: 0.8, foot: 0, group: 'Meshy props · Weapons' },   // the Pirate's
     wp_shuriken: { file: 'world/props/meshy/weapons/shuriken.glb', base: 'asset', span: 0.12, foot: 0, group: 'Meshy props · Weapons' },   // the Ninja's star, flat in X/Y
     wp_gladiator_net: { file: 'world/props/meshy/weapons/gladiator_net.glb', base: 'asset', span: 1.6, foot: 0, group: 'Meshy props · Weapons' },   // the Gladiator's net, spread flat

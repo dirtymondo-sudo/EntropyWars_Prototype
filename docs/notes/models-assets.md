@@ -2385,3 +2385,12 @@ HER MODELS (Meshy, 65 credits, balance 1,878): `/mnt/project-files/origami-girl/
 
 ### THE FORTUNE TELLER PLAYS (2026-11-27, mondo: "needs to actually do the little movement of playing the game like 3 or 4 times")
 `_ORI_RECIPES.fortune.star` takes `play: 4, swing: 26`: after the pose (tau n + 1) one more unit of time (to n + 2) is THE PLAY. The two pairs of pockets open and shut in turn, one way then the other, four beats. In `_oriEval` the four pocket creases lift by pair (`bx`, `by` = the pose angle plus / minus the swing); each crease between two of them is solved as the one direction 45 degrees from both, the low branch, so no piece stretches. A sheet's `total` is n + 2 when its star plays; the probe's 'go' runs the play at 2.4 s. Proof (ink on): `/mnt/project-files/origami-girl/fold-test/ink_fortune_play.png` + `.gif`.
+
+### THE ORIGAMI GIRL IS A UNIT (2026-11-27, mondo: "add her in the game as a unit")
+Race key `origami girl`, female only, in data.js `EW_COMING_RACES` until her kit lands (the spell thread moves her to AVAILABLE_RACES here and in server.js).
+- BODY: `Assets/characters/races/origami_girl/female/Meshy_AI_origami_girl_Running.glb` (Meshy image-to-3d from concept crane girl b, 28.7 K triangles, 24 bones; the shared animation libraries drive her). sprites.js RACE_MODELS_3D, heightRatio 0.97.
+- WINGS: `origami_wings.glb` in the same folder = the one Meshy wing mirrored into a flat pair (project files `origami-girl/wings.py`, textures cut to 1024, 1 MB). Catalogue row `ori_wings`; worn on her back by `hold2` on Spine02 with `open: true` (no grip). `hold` is left free on purpose: `unitHeldInfo` reads it as the weapon a basic attack leaves from.
+- SPRITE: `origami_girl_px.png` (128 px, Sprite AI restyle of a straight-on render with the wings; `origami-girl/spr.py`).
+- data.js rows (all a first pass): label + type Anomaly, role specialist, stats, height, weak to fire and water.
+- Not here (the spell thread's): spell rows, unlock lists, finisher, the girl-to-sheet swap, VFX, the wad death, online relay.
+Proof: `/mnt/project-files/origami-girl/models/in_game.png` (garage, spawnChar probe).
