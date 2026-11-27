@@ -1158,6 +1158,20 @@
         }
         /* 🦋 THE MONARCH (2026-11-23): Programmed is stacks toward the Trigger Word (2 = it hits its own side, 3 = and sleeps):
            worth more the closer the target gets to 2 and 3, nearly nothing past the cap */
+        /* 🐉🌸 THE NEW RACES 5 (2026-11-27): a Cowed stack is -1 ATK (more on a hitter, Kneel cashes them); Pollen heals the
+           Flower Girl's side when they hit it (worth more with allies near it) */
+        if (id === 'cowed') {
+            const cur = Math.max(0, Math.min(3, tg._cowed | 0));
+            if (cur >= 3) return 8;
+            return 30 + 15 * cur + Math.min(50, 0.1 * unitThreatOutput(g, tg, unit));
+        }
+        if (id === 'pollen') {
+            const cur = Math.max(0, Math.min(3, tg._pollen | 0));
+            if (cur >= 3) return 5;
+            const near = (g.state.units || []).filter(a => a && !a.dead && _sidesAllied(a.player, unit.player) && a.id !== unit.id
+                && Math.abs(a.x - tg.x) + Math.abs(a.y - tg.y) <= 4).length;
+            return 25 + 15 * Math.min(3, near);
+        }
         if (id === 'programmed') {
             const cur = Math.max(0, Math.min(3, Number(tg.status && tg.status.programmed) | 0));
             if (cur >= 3) return 10;
@@ -4969,6 +4983,17 @@
             if (tg._hibernate && tg.status && tg.status.sleep > 0) val += 0.2 * (tg.maxHp || 0) - 50;   // the heal stopped, the bear angry
         }
         if (sp && sp.bearHug && !(tg.status && tg.status.grudge > 0 && tg._grudgeSrcId === unit.id)) val += 30;
+        /* 🐆🐉🌸 THE NEW RACES 5 (2026-11-27): the Leopard Girl's ambush is a sure crit (half again on the blow); Kneel is worth its
+           +40% a Cowed stack and the Stun at 3; a hit on a Pollen carrier of an allied Flower Girl heals the hitter 6% */
+        if (unit.race === 'leopard girl' && unit._lgAmbush && est < effHp(tg)) val += 0.5 * est;
+        if (sp && sp.perCowedStack > 0 && (tg._cowed | 0) > 0) {
+            const _cw = Math.min(3, tg._cowed | 0);
+            val += est * sp.perCowedStack * _cw * 0.8 + (_cw >= 3 && est < effHp(tg) ? 0.6 * unitThreatOutput(g, tg, unit) + 40 : 0);
+        }
+        if ((tg._pollen | 0) > 0 && unit.race !== 'flower girl' && unit.hp < unit.maxHp) {
+            const _pf = (g.state.units || []).find(a => a && a.id === tg._pollenSrcId);
+            if (_pf && _sidesAllied(_pf.player, unit.player)) val += Math.min(unit.maxHp - unit.hp, 0.06 * unit.maxHp) * 0.6;
+        }
         return { est, val };
     }
 
