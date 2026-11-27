@@ -26,7 +26,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
 | Meshy AI | no | 1365 |
-| Meshy AI, reworked by Claude | no | 16 |
+| Meshy AI, reworked by Claude | no | 17 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 107 |
 | Built by Claude in code (a bake tool writes the file) | no (pack bark picture) | 14 |
@@ -253,6 +253,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | skater (female) | `Assets/characters/races/skater/female/Meshy_AI_skater_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES, mondo 2026-11-16 "make meshy models for the new races"; concepts in project files new-races/) |
 | skeleton | `Assets/characters/races/skeleton/male/Meshy_AI_skeleton_bones_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | skinwalker | `Assets/characters/races/skinwalker/male/Meshy_AI_skinwalker_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| snowman | `Assets/characters/races/snowman/male/snowman.glb` | Meshy AI, reworked by Claude | Meshy AI parts made from Claude's snowman concepts 2026-11-27 on mondo's order (ONE snowball, the carrot, ONE stick arm, the top hat, the scarf; project files snowman/models) put together by Claude in Blender (project files snowman/tools/assemble.py): the snowball used three times + once small in the twig hand, the stick twice, the scarf cut into its ring and two tails, coal lumps and twig brows made in the script, every part its own node, for the Snowman race's moving-parts rig (three-renderer.js THE SNOWMAN) |
 | spy (female) | `Assets/characters/races/spy/Meshy_AI_spy_female_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | starfish | `Assets/characters/races/starfish/Meshy_AI_sentient_starfish_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | streamer — creator look also baked | `Assets/characters/races/streamer/male/Meshy_AI_streamer_m_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API from the approved concepts (the Streamer + the E-Girl, mondo 2026-11-18: the Meshy look is the default, the MPFB look stays pickable) |

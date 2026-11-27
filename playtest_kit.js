@@ -88,6 +88,16 @@ const NUT = { race: 'nutcracker', spells: ['ncClack', 'ncQuickMarch', 'ncCrackOp
   { name: 'crackopen', spell: 'ncCrackOpen', at: 'foe0' },
   { name: 'suite', spell: 'ncNutcrackerSuite', at: 'self' },
 ] };
+/* ⛄ THE SNOWMAN (11-27): KIT=snow. `die` = the caster takes a killing blow (its falling-apart), `hurt` = a small one (its hit) */
+const SNOW = { race: 'snowman', spells: ['snSnowball', 'snCarrotJab', 'snRollUp', 'snSnowDay'], at: [4, 7], foes: [[10, 7], [8, 8], [7, 6]], steps: [
+  { name: 'walk', move: [6, 7] },
+  { name: 'snowball', spell: 'snSnowball', at: 'foe0' },
+  { name: 'carrot', spell: 'snCarrotJab', at: 'foe1near' },
+  { name: 'roll', spell: 'snRollUp', at: 'foe0' },
+  { name: 'snowday', spell: 'snSnowDay', at: 'self' },
+  { name: 'hurt', hurt: 40 },
+  { name: 'die', hurt: 99999 },
+] };
 /* THE ORIGAMI GIRL (KIT=ori): every fold in a row, the held shape, the unfold at her turn, the wad (`do`: a line run in the page) */
 const ORI = { race: 'origami girl', flat: true, spells: ['ogSwordigami', 'ogKamikaze', 'ogPaperStar', 'ogPickANumber', 'ogPaperFan', 'ogThousandCranes'], at: [4, 7], foes: [[1, 2], [3, 0], [5, 2]], steps: [
   { name: 'sword', spell: 'ogSwordigami', at: 'foe1', home: true, foe1: [1, 0] },
@@ -147,7 +157,7 @@ const ORI = { race: 'origami girl', flat: true, spells: ['ogSwordigami', 'ogKami
   const RAM = { race: 'monster truck', spells: ['mtRam'], at: [4, 7], foes: [[8, 7], [12, 12], [13, 12]], steps: [ { name: 'ram0', spell: 'mtRam', at: 'foe0' }, { name: 'drive', move: [5, 7] }, { name: 'ram1', spell: 'mtRam', at: 'foe0', from: [5, 7] } ] };
   if (process.env.CLOSE) await page.evaluate((c) => { window.__kitClose = c; }, JSON.parse(process.env.CLOSE));
   if (process.env.CLOSEZ) await page.evaluate(() => { window.__kitNoCine = true; try { localStorage.setItem('ew_cinematicActionCam', '0'); } catch (e) {} });
-  const kits = KIT === 'ram' ? [RAM] : KIT === 'truck' ? [TRUCK] : KIT === 'nut' ? [NUT] : KIT === 'ori' ? [ORI] : [TRUCK, NUT];
+  const kits = KIT === 'snow' ? [SNOW] : KIT === 'ram' ? [RAM] : KIT === 'truck' ? [TRUCK] : KIT === 'nut' ? [NUT] : KIT === 'ori' ? [ORI] : [TRUCK, NUT];
   const report = [];
   for (const K of kits) {
     const staged = await page.evaluate((K) => {
@@ -179,6 +189,9 @@ const ORI = { race: 'origami girl', flat: true, spells: ['ogSwordigami', 'ogKami
         if (S.from) { c.x = S.from[0]; c.y = S.from[1]; try { c.z = getHeightAt(c.x, c.y); } catch (e) {} }
         c.ap = 9; c.maxAp = Math.max(c.maxAp || 0, 9); c.mp = 9999; c._spellCooldowns = {}; c._spellsUsedThisTurn = {}; c._movedThisTurn = false; c.hasMoved = false; c.moveUsed = 0;
         st._blitzActiveUnitId = c.id; st.activePlayer = 1; st.selectedUnitId = c.id;
+        if (window.__kitClose && (S.move || S.hurt)) { st.cinematicActionCam = false; try { camera.snap(Object.assign({ _force: true, x: c.x, y: c.y }, window.__kitClose)); } catch (e) {} }
+        if (S.hurt >= 9999) { const al = st.units.find(u => u.player === c.player && u !== c); if (al) { al.dead = false; al._dying = false; al.hp = al.maxHp = 9999; al.x = 1; al.y = 1; } }   // an ally stands so the fall is not the match's end
+        if (S.hurt) { try { const fn = (typeof applyDamageToUnit === 'function' && applyDamageToUnit) || GAME.applyDamageToUnit; fn(c, S.hurt, 'probe: ', { sourceUnit: foes[0], damageType: 'physical' }); return 'hurt ' + S.hurt + ' -> hp ' + c.hp; } catch (e) { return 'hurt threw ' + e.message; } }
         if (S.do) { if (window.__kitClose) { st.cinematicActionCam = false; try { camera.snap(Object.assign({ _force: true, x: c.x, y: c.y }, window.__kitClose)); } catch (e) {} } try { return 'do ' + eval(S.do); } catch (e) { return 'do threw ' + e.message; } }
         if (S.move) { try { return 'move ' + GAME.doMove(c, S.move[0], S.move[1], getHeightAt(S.move[0], S.move[1])); } catch (e) { return 'move threw ' + e.message; } }
         let tx, ty;

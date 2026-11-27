@@ -419,6 +419,7 @@ const FINISHERS = {
     'bear':           { id: 'fin_bear', name: 'Mauled', glyph: '🐻', type: 'anomaly', sig: 'blurryFootage', built: true, tagline: 'YOU POKED THE BEAR', desc: 'The trees part, the bear stands up to its full height, and it comes down on the victim with everything it has.' },   // 2026-11-23 THE BEAR (mondo OK'd the kit) (borrows the blurryFootage staging)
     'demiurge':       { id: 'fin_demiurge', name: 'Unmade', glyph: '⬛', type: 'divine', sig: 'unmade', built: true, tagline: 'BACK INTO THE CUBE', desc: 'He made it. He can take it back. The victim is folded up, corner by corner, and put away in the black cube.' },   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms) (its own staging since 11-27: battle.js `unmade` + three-vfx-effects.js _sigUnmade3D; the name is a first pass)
     'monster truck':  { id: 'fin_monster_truck', name: 'Crushed', glyph: '🛻', type: 'tech', sig: 'hitAndRun', built: true, tagline: 'MONSTER JAM', desc: 'The hood opens like a mouth, the wheels catch, and the truck drives up and over. What is left fits in a glovebox.' },   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells") (borrows the Honda Civic's staging; the name is a first pass)
+    'snowman':        { id: 'fin_snowman', name: 'Snowed In', glyph: '⛄', type: 'anomaly', sig: 'flashFrozen', built: true, tagline: 'SCHOOL IS CANCELLED', lines: [['🧊 FLASH FROZEN', '⛄ SNOWED IN']], desc: 'The victim is packed in snow mid-scream, admired from three angles, and given a carrot.' },   // 2026-11-27 THE SNOWMAN (mondo: "a new character, Snowman ... unique animations for its spells") (borrows the Ice Queen's staging; the name is a first pass)
     'nutcracker':     { id: 'fin_nutcracker', name: 'Cracked', glyph: '🌰', type: 'anomaly', sig: 'joust', built: true, tagline: 'CRACK', desc: 'The lever goes down, the jaw comes up, and the shell gives. The Nutcracker salutes and marches off.' },   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells") (borrows the Knight\'s staging; the name is a first pass)
     'origami girl':   { id: 'fin_origami_girl', name: 'Seven Folds', glyph: '🕊', type: 'anomaly', sig: 'thousandCuts', built: true, overlay: 'sevenFolds', tagline: 'NOBODY FOLDS EIGHT', desc: 'She folds the victim in half, and again, seven times, down to a square the size of a stamp, and tucks it in her sleeve.' },   // 2026-11-27 THE ORIGAMI GIRL (mondo: "build her spells and vfx and all that") (borrows the thousandCuts staging for the paper cuts; the folding is battle.js _finSevenFolds; the name is a first pass)
     'abomination':    { id: 'fin_abomination', name: 'Too Much Body', glyph: '🫀', type: 'anomaly', sig: 'blurryFootage', built: true, tagline: 'IT HAS MORE ARMS THAN YOU', desc: 'Every arm, every tentacle and every mouth it has comes down on the victim at once, and then it is a little bigger.' },   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name) (borrows the blurryFootage staging)
@@ -606,6 +607,7 @@ function statusAffinityElement(statusId, hitElement) {
 const RACE_ELEMENT_AFFINITY = {
     // ── polar ──
     'yeti':              { ice: 'resist', fire: 'weak' },
+    'snowman':           { ice: 'resist', fire: 'weak' },   // 2026-11-27 THE SNOWMAN (mondo: "a new character, Snowman ... unique animations for its spells"): snow
     'ice queen':         { ice: 'immune', fire: 'weak' },
     'santa clause':      { ice: 'resist' },
     'loch ness monster': { ice: 'resist', water: 'resist', lightning: 'weak' },
@@ -3191,6 +3193,10 @@ const RACE_PROFILES = {
         label: 'Monster Truck',
         types: ['tech', 'anomaly']
     },
+    'snowman': {   // 2026-11-27 THE SNOWMAN (mondo: "a new character, Snowman ... unique animations for its spells") — a living snowman in parts
+        label: 'Snowman',
+        types: ['anomaly']
+    },
     'nutcracker': {   // 2026-11-27 THE NEW CHARACTERS (models in, kit not yet: the spell thread sets the type for good) — a living wooden soldier
         label: 'Nutcracker',
         types: ['anomaly']
@@ -4193,7 +4199,7 @@ const RACE_MERGED = { 'nun': { race: 'priest', gender: 'female' } };
 /* 👁🌑 THE REALM WINDOW: races that SEE a Shadow Realm pair on their own turns (they cannot touch it). A projecting
    spirit both sees and touches (battle.js unitSeesRealm / unitCrossesRealm). */
 const REALM_SIGHT_RACES = ['ghost', 'shadow entity'];
-const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber', 'pharaoh', 'deep sea diver', 'gambler', 'hacker', 'monk', 'shogun', 'cameraman', 'mechanic', 'janitor', 'trucker', 'gladiator', 'farmer', 'jellyfish ufo', 'bear', 'rat', 'butterfly girl', 'plastic surgeon', 'monarch', 'abomination', 'hollow', 'weatherman', 'cheerleader', 'point guard', 'centaur', 'music producer', 'princess', 'demiurge', 'monster truck', 'nutcracker', 'leopard girl', 'draconian', 'flower girl', 'leprechaun', 'medic', 'origami girl'];
+const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber', 'pharaoh', 'deep sea diver', 'gambler', 'hacker', 'monk', 'shogun', 'cameraman', 'mechanic', 'janitor', 'trucker', 'gladiator', 'farmer', 'jellyfish ufo', 'bear', 'rat', 'butterfly girl', 'plastic surgeon', 'monarch', 'abomination', 'hollow', 'weatherman', 'cheerleader', 'point guard', 'centaur', 'music producer', 'princess', 'demiurge', 'monster truck', 'nutcracker', 'leopard girl', 'draconian', 'flower girl', 'leprechaun', 'medic', 'origami girl', 'snowman'];
 /* THE COMING RACES (2026-11-19, mondo: "wire them in the game at least in the relation web, give them sprite ai portraits ... my associate
    [does] their spell and combat plan on another account"): races whose model, sprite and name are in (sprites.js RACE_MODELS_3D,
    RACE_PROFILES) but whose kit is not. They are NOT playable: the Relationship Web lists them (docs/plans/story-web/build/fresh.js).
@@ -4406,6 +4412,7 @@ const RACE_CLASS = {
     'bear': 'bruiser',   // 2026-11-23 THE BEAR (mondo OK'd the kit)
     'demiurge': 'bruiser',   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms)
     'monster truck': 'tank',   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells")
+    'snowman': 'tank',   // 2026-11-27 THE SNOWMAN (mondo: "a new character, Snowman ... unique animations for its spells"): it holds a spot and the cold does the rest
     'nutcracker': 'bruiser',   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells")
     'abomination': 'bruiser',   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name)
     'farmer': 'support',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): the field heals the team
@@ -4497,6 +4504,7 @@ const RACE_TERRAIN_PREFERENCE = {
     'bear': 'mountain',   // 2026-11-23 THE BEAR (mondo OK'd the kit): the grizzly's slopes, the polar's ice field
     'demiurge': 'wasteland',   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms): the cosmic wraith's ground, a first pass
     'monster truck': 'wasteland',   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells"): the dirt track
+    'snowman': 'ice',   // 2026-11-27 THE SNOWMAN (mondo: "a new character, Snowman ... unique animations for its spells")
     'nutcracker': 'urban',   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells")
     'origami girl': 'urban',   // 2026-11-27 THE ORIGAMI GIRL (mondo: "build her spells and vfx and all that"): a first pass, no home invented
     'abomination': 'wasteland',   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name): the rot, the drains, the dark
@@ -4930,6 +4938,7 @@ const RACE_BASE_STATS = {
     'bear':               { hp: 1320, mp: 100, atk: 147, def: 120, mdef:  60, int:  70, vision: 3, crt: 15, spd: 105 },   // 2026-11-23 THE BEAR (mondo OK'd the kit) — first pass on the bruiser median: big and slow, soft to magic; LAB LOOP 11-23 PASS 2: HP 1250→1320, ATK 125→147 (37.4% over 136 games)
     'demiurge':           { hp: 1260, mp: 130, atk: 140, def: 125, mdef:  90, int:  70, vision: 3, crt: 16, spd: 100 },   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms) — the ARMOURED form (physical), first pass on the bruiser median; the COSMIC form's row is RACE_GENDER_STATS below
     'monster truck':      { hp: 1340, mp: 110, atk: 140, def: 150, mdef:  65, int:  40, vision: 3, crt: 12, spd:  95 },   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells") — first pass on the tank median (the Trucker's row, heavier and slower)
+    'snowman':            { hp: 1180, mp: 150, atk: 118, def: 128, mdef: 102, int:  92, vision: 3, crt: 10, spd:  72 },   // 2026-11-27 THE SNOWMAN (mondo: "a new character, Snowman ... unique animations for its spells") — first pass on the tank median (the Yeti's row, slower: it rolls on a ball)
     'nutcracker':         { hp: 1120, mp: 130, atk: 138, def: 135, mdef:  80, int:  60, vision: 3, crt: 16, spd: 110 },   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells") — first pass on the bruiser median (hard wood)
     'abomination':        { hp: 1250, mp: 150, atk: 144, def: 110, mdef:  90, int:  72, vision: 3, crt: 12, spd:  80 },   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name) — first pass from the plan: slow, heavy, its limbs are its shield; LAB LOOP 11-23 PASS 2: HP 1300→1250, ATK 150→144, M.ATK 90→72 (59.3% over 135 games)
     'farmer':             { hp: 1100, mp: 170, atk: 110, def: 105, mdef: 100, int: 115, vision: 3, crt: 15, spd: 100 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — first pass on the support median
@@ -5150,6 +5159,7 @@ const RACE_PHYSIQUE = {
     'bear':                { h: 2.40, w: 360 },   // 2026-11-23 THE BEAR (mondo OK'd the kit): stood up on its hind legs
     'demiurge':            { h: 2.60, w: 180 },   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms)
     'monster truck':       { h: 2.40, w: 4200 },   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells"): a living truck on monster wheels
+    'snowman':             { h: 2.10, w: 380 },   // 2026-11-27 THE SNOWMAN (mondo: "a new character, Snowman ... unique animations for its spells"): three balls of packed snow and a top hat
     'nutcracker':          { h: 1.90, w: 60 },   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells"): a man-sized toy soldier, hat included
     'abomination':         { h: 3.10, w: 420 },   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name): the assembled body is 3.1 m from the floor to the top of its head
     'farmer':              { h: 1.78, w: 85 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
@@ -12096,6 +12106,31 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'burn', duration: 2 }, { id: 'blind', duration: 1 }], selfStatusAfter: [{ id: 'revs', duration: 2, gain: 5 }],
           animSlot: 'mtBurnout',
           desc: 'Brakes on, wheels spinning, a ring of burning rubber and smoke. Deals MEDIUM physical damage to All Enemies within 2, Burns them for 2 rounds and Blinds them for 1, and fills its Revs (5). Cooldown: 3 rounds.' },
+    ],
+    'snowman': [
+        /* ⛄ THE SNOWMAN (2026-11-27, mondo: "a new character, Snowman, and make all the individual parts for it like the carrot and
+           the stick arms and the 3 snow ball body parts, etc and give it unique animations for its spells"). FIRST PASS (names +
+           numbers his to change). Its rule, COLD SPOT (battle.js "THE SNOWMAN", _snRoundEnd): at the end of every round each enemy
+           next to it is Slowed, and one that was already Slowed there is Frozen for a round instead. So its ice Slows, standing by
+           it Freezes, and Roll Up breaks what is Frozen (x1.5). Every spell moves its own parts (`animSlot` = the snowman's own
+           clips, three-renderer.js THE SNOWMAN): the stick digs snow out of the base ball and throws it, the carrot shoots out,
+           the three balls roll up as one, the whole thing comes apart and spins. Notes: docs/notes/champions-combat.md "THE SNOWMAN". */
+        { id: 'snSnowball', name: 'Snowball', tier: 1, families: ['snowman'], cost: 25, apCost: 1, spellType: 'anomaly',
+          element: 'ice', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 85, range: 4, animSlot: 'snSnowball', animStrikeMs: 650,
+          statusEffects: [{ id: 'slow', duration: 2 }],
+          desc: 'Digs a handful out of its own base and throws it. Deals WEAK physical damage to a Single Enemy up to 4 squares away and Slows it for 2 rounds.' },
+        { id: 'snCarrotJab', name: 'Carrot Jab', tier: 2, families: ['snowman'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+          type: 'damage', kind: 'damage', damageType: 'physical', dmg: 125, range: 1, animSlot: 'snCarrot', animStrikeMs: 460,
+          statusEffects: [{ id: 'blind', duration: 1 }, { id: 'bleed', duration: 2 }],
+          desc: 'Rears back and the carrot shoots out to four times its length, straight in the eye. Deals MEDIUM physical damage to a Single Enemy next to it, Blinds it for 1 round and makes it Bleed for 2. Cooldown: 2 rounds.' },
+        { id: 'snRollUp', name: 'Roll Up', tier: 3, families: ['snowman'], cost: 75, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+          element: 'ice', type: 'damage', kind: 'tackle', damageType: 'physical', dmg: 125, range: 4, chargeToTarget: true, pushDistance: 1, collisionBonus: 40,
+          bonusVsStatus: { status: 'frozen', mult: 1.5 }, animSlot: 'snRoll', animStrikeMs: 930,
+          desc: 'Tucks in its sticks and rolls the whole of itself up as one big snowball. Charges a Single Enemy up to 4 squares away and knocks it back 1 square: MEDIUM physical damage, 40 more if it hits a wall or a body, and half as much again against a Frozen target. Cooldown: 2 rounds.' },
+        { id: 'snSnowDay', name: 'Snow Day', tier: 4, families: ['snowman'], cost: 90, apCost: 1, cooldownRounds: 3, spellType: 'anomaly',
+          element: 'ice', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 120, range: 0, aoeRadius: 2, aoeOriginSelf: true,
+          statusEffects: [{ id: 'slow', duration: 2 }], animSlot: 'snSnowDay', animStrikeMs: 1000,
+          desc: 'Comes apart: the three balls lift off each other and spin, the sticks out flat, and a blizzard goes round it. Deals MEDIUM magic damage to All Enemies within 2 and Slows them for 2 rounds. Cooldown: 3 rounds.' },
     ],
     'nutcracker': [
         /* 🌰 THE NUTCRACKER (2026-11-27, mondo: a nutcracker "which can also maybe have separate parts so its mouth can move like an
@@ -23457,6 +23492,7 @@ const RACE_TREE = {
     'bear':          ['brPawSwipe', ['raceBite', 'raceMaul'], ['brBearHug', 'brHibernate'], 'brBearDown'],   // 2026-11-23 THE BEAR (mondo OK'd the kit)
     'demiurge':      [['dmSerpentStrike', 'dmVoidGaze'], ['dmCompassSweep', 'dmFractalBloom'], ['dmCornerstone', 'dmAsAbove'], ['dmGoldenSpiral', 'dmTesseract']],   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms): every rung is one of each form (RACE_GENDER_SPELLS)
     'monster truck': ['mtChomp', 'mtRam', 'mtHydraulicSlam', 'mtBurnout'],   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells"): its own four
+    'snowman':       ['snSnowball', 'snCarrotJab', 'snRollUp', 'snSnowDay'],   // 2026-11-27 THE SNOWMAN (mondo: "a new character, Snowman ... unique animations for its spells"): its own four
     'nutcracker':    ['ncClack', 'ncQuickMarch', 'ncCrackOpen', 'ncNutcrackerSuite'],   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells"): its own four
     'origami girl':  ['ogSwordigami', ['ogKamikaze', 'ogPaperStar'], ['ogPickANumber', 'ogPaperFan'], 'ogThousandCranes'],   // 2026-11-27 THE ORIGAMI GIRL (mondo: "build her spells and vfx and all that"): her own four + two more folds
     'abomination':   ['abGrasp', 'abManyMouths', 'abBoneCage', 'abUnfold'],   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name): its own four
@@ -25897,6 +25933,16 @@ const SPELL_FAMILIES = {
         unique: 'monster truck',
         identity: { who: ['Monster Truck', 'Big Red', 'The Crusher'], adj: ['Revving', 'Fanged', 'Mud-Caked'], look: ['a hood full of fangs', 'skull hubcaps on monster tyres', 'red coil springs over chrome struts'], vibe: ['eats cars', 'never brakes'] }
     },
+    snowman: {   // 2026-11-27 THE SNOWMAN (mondo: "a new character, Snowman ... unique animations for its spells") — the Snowman's own
+        id: 'snowman',
+        name: 'Snowman',
+        glyph: '⛄',
+        color: '#bfe6ff',
+        kind: 'signature',
+        desc: 'A snowman that uses what it is made of: it throws its own snow, stabs with its carrot, rolls up into one ball and comes apart into a storm.',
+        unique: 'snowman',
+        identity: { who: ['Snowman', 'Old Coal Eyes', 'The Third Ball'], adj: ['Packed', 'Frostbitten', 'Hand-Rolled'], look: ['a carrot for a nose', 'two dead branches for arms', 'a battered top hat and a striped scarf'], vibe: ['never blinks first', 'gets colder the longer you stand there'] }
+    },
     nutcracker: {   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells") — the Nutcracker's own
         id: 'nutcracker',
         name: 'Nutcracker',
@@ -28261,6 +28307,7 @@ const RACE_FAMILIES = {
     'bear': ['bear', 'beastabilities', 'apexpredator', 'nature', 'ice'],   // 2026-11-23 THE BEAR (mondo OK'd the kit): Nature is the grizzly's, Ice the polar bear's (RACE_GENDER_SPELLS)
     'demiurge': ['demiurgy', 'cosmic', 'fractal', 'astral', 'ancientknowledge'],   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms): mondo's themes (cosmic, spiritual, the architect, sacred geometry, fractal math)
     'monster truck': ['monstertruck', 'drivingskills', 'machinery', 'apexpredator', 'fire'],   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells"): a car, an engine, a mouth, the burnout
+    'snowman': ['snowman', 'winter', 'christmasspirit', 'northpole'],   // 2026-11-27 THE SNOWMAN (mondo: "a new character, Snowman ... unique animations for its spells"): snow, the season, the holiday
     'nutcracker': ['nutcracker', 'hauntedtoy', 'christmasspirit', 'militarysupport', 'swordsmanship'],   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells"): a toy come alive, the Christmas ballet, a soldier with a sabre
     'origami girl': ['origami', 'swordsmanship', 'fortunetelling', 'ninjutsu', 'trickery'],   // 2026-11-27 THE ORIGAMI GIRL (mondo: "build her spells and vfx and all that"): paper, a blade, the fortune game, the throwing star, a trick of the hands
     'abomination': ['abomination', 'nightmares', 'cosmic', 'shadow'],   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name)
@@ -28932,6 +28979,7 @@ const CAMPAIGN_RACE_PRICES = {
   'bear': 450,   // 2026-11-23 THE BEAR (mondo OK'd the kit)
   'demiurge': 900,   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms)
   'monster truck': 500,   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells")
+  'snowman': 400,   // 2026-11-27 THE SNOWMAN (mondo: "a new character, Snowman ... unique animations for its spells")
   'nutcracker': 400,   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells")
   'origami girl': 400,   // 2026-11-27 THE ORIGAMI GIRL (mondo: "build her spells and vfx and all that")
   'abomination': 450,   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name)
