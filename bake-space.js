@@ -417,6 +417,12 @@ const PIECES = PLAN.rooms.map(R => R.flat ? toBall(bakeWorld(Object.assign({}, R
         const d = { id: q[0], wall: 'free', x: w.x, z: w.z, face: w.face }; if (Math.abs(w.y) > 0.3) d.y = w.y;
         Object.assign(d, { leaf: q[2], label: q[4] ? 'THE BORE' : 'THE FRAME', sub: q[3], action: { room: SYS.room, at: q[1] } }); if (q[4]) d.secret = true;
         roomDoors.push(d); delete ways[k]; });
+    /* THE WAYS INTO ANOTHER ROOM that are no link of DOOR_HQ.links (a plain door with the other room's door id). THE BLACK CUBE (2026-11-27, mondo: "way in should be
+       the black cube/hexagon on saturn"): the frame under the cube on the Hexagon's plateau, into the inside of the cube (bake-dmt.js, its door `saturn`). */
+    const CROSS = { 'cube_dmt@saturn': { id: 'cube_dmt', leaf: 'leaf_frame_only', label: 'THE BLACK CUBE', sub: 'THE INSIDE', action: { room: 'site_prebuilt_cube_dmt', at: 'saturn' } } };
+    Object.keys(CROSS).forEach(k => { const w = ways[k], q = CROSS[k]; if (!w) throw new Error('no way ' + k);
+        const d = { id: q.id, wall: 'free', x: w.x, z: w.z, face: w.face }; if (Math.abs(w.y) > 0.3) d.y = w.y;
+        roomDoors.push(Object.assign(d, { leaf: q.leaf, label: q.label, sub: q.sub, action: q.action })); delete ways[k]; });
     const L = BLOCK;
     L.push("        /* SPACE72-BEGIN — OUTER SPACE, THE SOLAR SYSTEM (2026-11-17; was four rooms on plots, 2026-11-16): written by `node bake-space.js` from docs/areas/space/layout.json + districts/<LETTER>.js. Never hand-edit between the markers; edit the tool, the plan script (docs/plans/world-zones/draw-space.js) or a district file and rerun. */");
     L.push("        " + SYS.room + ": {");
