@@ -15353,3 +15353,28 @@ with mondo's OK.
   stops at the crowd cap (5 of 16 stood). THE DEMIURGE: N, before the altar, `boss: true, stay: true`, the Cosmic form.
 - **CHECKED (probe-fast)**: the door both ways (the inside to Saturn and back, `hq.interact()`); 17 bodies; a field fight on the Demiurge starts.
   **NOT**: the fight's camera and its arena on N; an online guest; the Mac's frame rate with 16 bodies.
+
+
+## THE ROAD PAINT TEST (2026-11-27, thread "Test road marking styles in Disaster City")
+mondo 11-27: "make sure all the decals on the road are good and consistent, as in dashed white lines, yellow lines, crosswalks, arrows ... I think there
+is a road texture pack that has those on the roads already, i think those look better than when they are painted on. Maybe do it a couple different ways
+as a test first so i can see and approve". **A TEST, NOTHING PICKED YET: the default is still the old paint.**
+- **The switch**: the page's `?roads=sheet | pack | clean` or, live in the console, `ewRoads('<style>')` (`'old'` = back). three-renderer.js
+  `_hqRoadStyle`, `_hqRoadPaintPlan` (the plan alone, metres, no three.js: node can draw it), `_hqBuildRoadPaint` (lays it on the ground),
+  called at the end of `_hqBuildRoadMarkings`; the kerbs, manholes, stains and signs stay as they are.
+- **A, `sheet`**: the Urban Decay pack's RoadDouble / RoadSingle sheets whole (asphalt + worn lines in one picture), 7 m tiles. What the test showed:
+  the pack has white OR yellow sets (no yellow middle with white edges), no tile of two lanes one way with arrows, a dark worn seam down every
+  tile's edge (so down the middle of a four-lane street), nothing for a crossing's middle, and a tile is 256 px over 7 m = HALF the game's one
+  sheet a square (the tiles must be kept off THE ONE PIXEL DENSITY with `geometry._ew_wuvOwner`, or they shrink to 3.5 m).
+- **B, `pack`**: the lines laid lane by lane (the plan below) in the pack's own worn paint (RoadGeneric1b white, RoadGeneric1c yellow, their dark
+  patches keyed to holes) over the asphalt the streets already wear (RoadGeneric1a, the same pack). **C, `clean`**: the same plan in flat paint.
+- **THE PLAN (B and C; a lane = one battle square)**: two-way 2 lanes = a dashed yellow middle; two-way 4 lanes = a double yellow middle + dashed
+  white lane lines; one-way (a straight street with a twin beside it along half its length: the avenues' two sides, the highway's, the frontage
+  roads) = dashed white lane lines + a yellow edge on the twin's side; solid white edges, broken at a side street's mouth; where a street meets
+  one as wide or wider: a crosswalk, a stop bar across the lanes that drive INTO the crossing, an arrow in each. Dashes sit one a square.
+- **FOUND**: the old paint's stop bars lie on the LEFT half (the cars keep right: `_hqLaneAt` offsets by (-dz, dx)); the old paint has no yellow and
+  no arrows; a row laid on another row (the U-turn lanes on the old cross streets) was painted twice; the highway deck's lines are the bake's own
+  `terrain.marks` rows (white), so they do not follow the streets' paint; only 37 `gen.streets` rows carry paint, the districts' own roads none.
+  All of that is the roll-out's work once a style is picked.
+- **Probing**: the city dies in the cloud browser about a minute after it is ready, so ONE style a run (`--pre=window.EW_ROAD_STYLE='pack';…`), five
+  views at most. Pictures: project files `road-markings-test/`.
