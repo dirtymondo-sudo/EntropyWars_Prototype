@@ -19462,6 +19462,7 @@
                 unit._spriteOverride = null;
                 unit._spriteFlipX = false;
             }
+            if (unit.race === 'leprechaun') unit.lpGold = 0;   // 🍀 THE LEPRECHAUN (2026-11-27): a fresh life has an empty pot
             delete unit._chessPiece;   // ♟ THE CHESS PIECE: a fresh life starts as the pawn again (battle.js chessPieceOf)
             /* 👑 THE RAT KING (2026-11-23): a fresh life is the Rat, no Mischief (battle.js _ratOnDown does this on a fall by damage;
                this catches every other road off the board). The King's rows go back to the Rat's slots. */

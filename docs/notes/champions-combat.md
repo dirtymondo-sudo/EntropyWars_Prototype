@@ -6646,6 +6646,33 @@ physical attack and the other is more magic attack". Parts apart so they animate
 - Files: `bake-demiurge.js` (raw 10-13 MB Meshy GLBs -> 0.3-3 MB, the bones), R2 `Assets/characters/races/demiurge/{armoured,cosmic}/`,
   `Assets/characters/gear/demiurge/dm_*.glb`, portraits `demiurge_{armoured,cosmic}_px.png` (cut from his hero concepts).
 
+## THE LEPRECHAUN + THE MEDIC (2026-11-27, thread "Make leprechaun, martian and medic spells")
+mondo 11-27: Meshy concepts for a Leprechaun (m and f), a female martian, a doctor/nurse; then "wire them up ... make their unique race
+spells and do their spell animation+vfx (do it in multiple passes if necessary)". The models are wired by the thread "Make Meshy concepts
+for new characters" (race keys `leprechaun`, `medic`; the martian gets a female model). This thread = kits, rules, casts, VFX.
+ALL NAMES, NUMBERS AND FINISHERS ARE A FIRST PASS for mondo to rename / rebalance.
+- LEPRECHAUN (`leprechaun`, specialist, Anomaly by the wiring, he and she share the kit; nature resist, metal weak = cold iron).
+  RULE, POT O' GOLD (passive `lpPotOfGold`): a hit he lands on an enemy pockets 1 Gold (`unit.lpGold`, 0-5; NEVER `unit.gold`, that is
+  the kill bounty), each Gold = +5% crit chance on his damage spells (battle.js `_lepCastRow` raises the cast copy's `critChance`, the
+  only way a spell crits), an enemy hit on him knocks 1 loose (`_lepOnHurt`). HUD chip `GOLD n/5` (hud.js). A fresh life = 0 (map.js).
+  Kit (family `leprechaun`, signature "Luck o' the Irish"; pool + gambling, fae, trickery): Shillelagh T1 (melee, Stagger), Lucky Coin
+  T2 (`critChance: 0.5`), Rainbow Road T2 (teleport 5, +1 SPD), Fool's Gold T3 (3x3, Charm 1), Pot of Gold T4 (3x3, `goldSpend: 30`,
+  spends all: `_lepAfterCast`). Finisher `fin_leprechaun` "End of the Rainbow" (borrows hoard).
+- MEDIC (`medic`, healer, Human; male = the DOCTOR, female = the NURSE, no spell shared, RACE_GENDER_SPELLS; poison resist).
+  RULE, CRITICAL CARE (passive `mdCriticalCare`, field `lowHpHealBonus: 0.5`, read in battle.js `_healScaledAmount`, any passive may use
+  it): a heal restores up to +50% more, scaled by the share of the patient's bar that is missing. Family `medicine` (signature); pool +
+  healingmagic, chemistry, humangrit. Doctor: Reflex Test T1 (melee, Stagger), Prescription T2 (heal, cleanse 1, Regen), Defibrillator
+  T3 (revive 40%, once a unit a match, 2 AP), Malpractice T4 (heavy magic, Bleed + Poison). Nurse: Sedative Shot T1 (Slow), Bedside
+  Manner T2 (heal + Protect), Triage T3 (zoneHeal 3x3, 2 rounds), Code Blue T4 (healAll + cleanse 2, 2 AP). Finisher "Flatline" (theDose).
+- THE MARTIAN GIRL: the female martian keeps the martian kit and gets two of her own (RACE_GENDER_SPELLS.martian.female, family
+  `martian`): Hypno Sway T2 (Charm 1, -1 M.DEF) and Brain Probe T3 (lifeDrain, Silence). After the 1996 film's Martian Girl.
+- CASTS: THE MESHY CASTS rows (`animClip`, settings copied from rows that already use each clip: one setting per clip name).
+- VFX: three-vfx-effects.js block "THE LEPRECHAUN + THE MEDIC + THE MARTIAN GIRL": every look rides fire()'s staging beats (`_lmxStage`:
+  windup = the travel timed by holdMs for Lucky Coin, Rainbow Road, Pot of Gold, Sedative Shot; burst = the hit), so the guest sees them;
+  the impact / aoe / aura intents of these rows map to a quiet def (`lmxQuiet_fx`) so the plain element hit does not draw over them.
+  The Gold's coin hop / loss: battle.js fires intent `coin` (`lpGoldGain` / `lpGoldLoss`). No words on cards (THE CLEAN READ).
+- LEFT OUT ON PURPOSE (no lore invented): point of entry / home zone, residents, rarity, temper, the AI's read of Gold.
+- Probe: `playtest_kitfight.js` (UNITS=race:gender,... SPELLS=... ; a real VS CPU fight, P1 casts its own kit, two frames a cast).
 ## THE NEW RACES 5 (2026-11-27, thread "Make leopard, draconian and flower spells"; mondo: "wire them up ... make their unique race spells and do their spell animation+vfx")
 Three of the 11-27 Meshy concepts (project files `character-concepts/`). Their models, sprites and RACE_PROFILES rows are the wiring
 thread's ("Make Meshy concepts for new characters"); the kits are here, and all three are in data.js + server.js AVAILABLE_RACES.

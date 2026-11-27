@@ -396,6 +396,8 @@ const FINISHERS = {
     'virus':          { id: 'fin_virus', name: 'Format C:', glyph: '🦠', type: 'anomaly', sig: 'corruptedSave', built: true, tagline: 'ALL DATA ON THIS DRIVE WILL BE LOST', desc: 'A progress bar opens over the victim and fills, file by file, and then there is nothing left to delete.' },   // 2026-11-18 THE VIRUS (mondo approved the kit) (borrows the corruptedSave staging)
     'hollow':         { id: 'fin_hollow', name: 'Lights Out', glyph: '🎭', type: 'anomaly', sig: 'devoured', built: true, tagline: 'SLEEP NOW', desc: 'A sleeping mask settles over the face, the eyes behind it close, and the maw takes what is left of the dream.' },   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name) (borrows the devoured staging)
     'weatherman':     { id: 'fin_weatherman', name: 'Severe Weather Alert', glyph: '🌪', type: 'human', sig: 'upUpAndAway', built: true, tagline: 'STAY INDOORS', desc: 'The alert tone sounds, a funnel cloud drops out of a green sky and takes the victim up, live on the six o\'clock news.' },   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR (borrows the upUpAndAway staging)
+    'leprechaun':     { id: 'fin_leprechaun', name: 'End of the Rainbow', glyph: '🍀', type: 'anomaly', sig: 'hoard', built: true, tagline: 'FINDERS KEEPERS', desc: 'A rainbow comes down on the victim, the pot of gold at its end comes down after it, and the leprechaun counts the coins.' },   // 2026-11-27 THE LEPRECHAUN + THE MEDIC (borrows the hoard staging; the name is a first pass)
+    'medic':          { id: 'fin_medic', name: 'Flatline', glyph: '🩺', type: 'human', sig: 'theDose', built: true, tagline: 'TIME OF DEATH', desc: 'The monitor beeps slower and slower, the line goes flat, and the doctor checks the clock.' },   // 2026-11-27 THE LEPRECHAUN + THE MEDIC (borrows theDose staging; the name is a first pass)
     'centaur':        { id: 'fin_centaur', name: 'Run Down', glyph: '🏹', type: 'anomaly', sig: 'splitTheArrow', built: true, tagline: 'NEVER MISSES ON THE RUN', desc: 'Hooves on the horizon, a bow drawn at a full gallop, and one arrow that has been waiting for the victim the whole ride.' },   // 2026-11-24 THE CENTAUR (borrows Robin Hood's signature)
     'cheerleader':    { id: 'fin_cheerleader', name: 'Pyramid Collapse', glyph: '📣', type: 'human', sig: 'pileOn', built: true, tagline: 'GO, FIGHT, WIN', desc: 'The whole squad runs on from the sidelines, builds the pyramid on top of the victim and holds the pose for the cameras.' },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD (borrows the pileOn staging)
     'princess':       { id: 'fin_princess', name: 'Happily Never After', glyph: '👑', type: 'divine', sig: 'pileOn', built: true, tagline: 'THE END', desc: 'The whole royal court rushes in to defend her honour and piles on, and a storybook closes over what is left.' },   // 2026-11-24 THE PRINCESS (borrows the pileOn staging)
@@ -672,6 +674,8 @@ const RACE_ELEMENT_AFFINITY = {
     'virus': { poison: 'resist', lightning: 'resist', water: 'weak' },   // 2026-11-18 THE VIRUS (mondo approved the kit): made of poison and current; water shorts it
     'hollow': { psychic: 'resist', light: 'weak' },   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name): a dream that moves you; light wakes it
     'weatherman': { wind: 'resist', lightning: 'weak' },   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: dressed for the wind; a man with a metal umbrella in a thunderstorm
+    'leprechaun': { nature: 'resist', metal: 'weak' },   // 2026-11-27 THE LEPRECHAUN + THE MEDIC: a fae of the green hills; cold iron is the bane of the fae
+    'medic': { poison: 'resist' },   // 2026-11-27 THE LEPRECHAUN + THE MEDIC: every shot in the book, twice
     'centaur': { earth: 'resist', ice: 'weak' },   // 2026-11-24 THE CENTAUR: four hooves on the ground; a horse on ice
     'cheerleader': { sonic: 'resist', poison: 'weak' },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: she out-yells anything; a whole season of energy drinks
     'princess': { light: 'resist', poison: 'weak' },   // 2026-11-24 THE PRINCESS: blessed at her christening; one bite of the wrong apple
@@ -3201,12 +3205,14 @@ const RACE_PROFILES = {
         label: 'Flower Girl',
         types: ['anomaly']
     },
-    'leprechaun': {   // 2026-11-27 THE NEW CHARACTERS (models in, kit not yet: the spell thread sets the type for good) — male + female
+    'leprechaun': {   // 2026-11-27 THE NEW CHARACTERS — male + female; THE LEPRECHAUN + THE MEDIC: the kit is Anomaly
         label: 'Leprechaun',
         types: ['anomaly']
     },
-    'medic': {   // 2026-11-27 THE NEW CHARACTERS (models in, kit not yet: the spell thread sets the type for good) — the male is the Doctor, the female the Nurse
+    'medic': {   // 2026-11-27 THE NEW CHARACTERS — the male is the Doctor, the female the Nurse; THE LEPRECHAUN + THE MEDIC: the kit is Human
         label: 'Medic',
+        labelMale: 'Doctor',
+        labelFemale: 'Nurse',
         types: ['human']
     },
     'butterfly girl': {   // 2026-11-23 THE COMING RACES 2
@@ -3990,6 +3996,15 @@ const PASSIVE_DEFS = {
         id: 'wnTheRundown', icon: '🎙', name: 'The Rundown',
         desc: 'The News Anchor. Each of her spells runs the next segment of the show for her and every ally within 3, in order: Headlines (+1 ATK and +1 M ATK stage), Sports (+1 SPD stage), then the Weather (every weather up stays 1 round longer; under clear skies, a SMALL heal). Then back to the Headlines.',
     },
+    lpPotOfGold: {   // 2026-11-27 THE LEPRECHAUN + THE MEDIC: battle.js THE LEPRECHAUN + THE MEDIC (_lpOnHit, _lpOnHurt, _lpCastRow)
+        id: 'lpPotOfGold', icon: '🪙', name: 'Pot o\' Gold',
+        desc: 'Every hit he lands on an enemy pockets 1 Gold (up to 5), and each Gold gives his spells +5% crit chance: the luck of the Irish. An enemy that hits him knocks 1 Gold loose.',
+    },
+    mdCriticalCare: {   // 2026-11-27 THE LEPRECHAUN + THE MEDIC: battle.js _healScaledAmount (lowHpHealBonus)
+        id: 'mdCriticalCare', icon: '🩺', name: 'Critical Care',
+        lowHpHealBonus: 0.5,
+        desc: 'The worse the patient, the harder they work: every heal the Doctor or the Nurse gives restores more the lower its target is, up to +50% on an ally close to death.',
+    },
     deltaAlter: {   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
         id: 'deltaAlter', icon: '🔺', name: 'Delta Alter',
         desc: 'Her killer programming, buried deep. The first time each battle she drops under half HP it switches on: +2 ATK stages for 2 rounds, and her next basic attack is a sure critical hit.',
@@ -4086,6 +4101,8 @@ const RACE_PASSIVES = {
     'monarch':       ['deltaAlter'],   // 2026-11-23 THE MONARCH (mondo OK'd the kit)
     'butterfly girl': ['flashAndVanish'],   // 2026-11-23 THE BUTTERFLY GIRL (mondo OK'd the kit) — she flies too, so the slots are full
     'weatherman':    ['wnTheForecast', 'wnTheRundown'],   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: his rule, her rule (each names who it is for)
+    'leprechaun':    ['lpPotOfGold'],   // 2026-11-27 THE LEPRECHAUN + THE MEDIC
+    'medic':         ['mdCriticalCare'],   // 2026-11-27 THE LEPRECHAUN + THE MEDIC: the Doctor's and the Nurse's
     'centaur':       ['cenHitAndRun'],   // 2026-11-24 THE CENTAUR
     'cheerleader':   ['chSpirit'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
     'princess':      ['prDamsel'],   // 2026-11-24 THE PRINCESS
@@ -4170,7 +4187,7 @@ const RACE_MERGED = { 'nun': { race: 'priest', gender: 'female' } };
 /* 👁🌑 THE REALM WINDOW: races that SEE a Shadow Realm pair on their own turns (they cannot touch it). A projecting
    spirit both sees and touches (battle.js unitSeesRealm / unitCrossesRealm). */
 const REALM_SIGHT_RACES = ['ghost', 'shadow entity'];
-const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber', 'pharaoh', 'deep sea diver', 'gambler', 'hacker', 'monk', 'shogun', 'cameraman', 'mechanic', 'janitor', 'trucker', 'gladiator', 'farmer', 'jellyfish ufo', 'bear', 'rat', 'butterfly girl', 'plastic surgeon', 'monarch', 'abomination', 'hollow', 'weatherman', 'cheerleader', 'point guard', 'centaur', 'music producer', 'princess', 'demiurge', 'monster truck', 'nutcracker', 'leopard girl', 'draconian', 'flower girl'];
+const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber', 'pharaoh', 'deep sea diver', 'gambler', 'hacker', 'monk', 'shogun', 'cameraman', 'mechanic', 'janitor', 'trucker', 'gladiator', 'farmer', 'jellyfish ufo', 'bear', 'rat', 'butterfly girl', 'plastic surgeon', 'monarch', 'abomination', 'hollow', 'weatherman', 'cheerleader', 'point guard', 'centaur', 'music producer', 'princess', 'demiurge', 'monster truck', 'nutcracker', 'leopard girl', 'draconian', 'flower girl', 'leprechaun', 'medic'];
 /* THE COMING RACES (2026-11-19, mondo: "wire them in the game at least in the relation web, give them sprite ai portraits ... my associate
    [does] their spell and combat plan on another account"): races whose model, sprite and name are in (sprites.js RACE_MODELS_3D,
    RACE_PROFILES) but whose kit is not. They are NOT playable: the Relationship Web lists them (docs/plans/story-web/build/fresh.js).
@@ -4178,7 +4195,7 @@ const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scie
    AVAILABLE_RACES and server.js AVAILABLE_RACES. Notes: docs/notes/champions-combat.md "THE COMING RACES". */
 /* THE WEATHERMAN's FORECAST (2026-11-24 THE WEATHERMAN + NEWS ANCHOR): the weather never hurts or soaks him (state.js applyWeatherTurnEffects + stormStrikeUnit) */
 function wnWeatherproof(u) { return !!u && u.race === 'weatherman' && (u.gender || 'male') === 'male' && unitHasPassive(u, 'wnTheForecast'); }   /* Broken = no passives = no shelter */
-const EW_COMING_RACES = ['leprechaun', 'medic'];   // 2026-11-27 THE NEW CHARACTERS (models + sprites in, kits being made by three spell threads; each moves its key into AVAILABLE_RACES here AND in server.js with its kit).   // 2026-11-23 THE COMING RACES 2 (the Mannequin was cut 11-23, mondo; the Bear, the Rat, the Butterfly Girl and the Monarch got their kits 11-23 and moved to AVAILABLE_RACES) (models in, kits not yet; one spell thread a unit). 2026-11-19: the gladiator, the farmer and the jellyfish UFO got their kits and moved to AVAILABLE_RACES
+const EW_COMING_RACES = [];   // 2026-11-27 THE NEW CHARACTERS (models + sprites in, kits being made by three spell threads; each moves its key into AVAILABLE_RACES here AND in server.js with its kit).   // 2026-11-23 THE COMING RACES 2 (the Mannequin was cut 11-23, mondo; the Bear, the Rat, the Butterfly Girl and the Monarch got their kits 11-23 and moved to AVAILABLE_RACES) (models in, kits not yet; one spell thread a unit). 2026-11-19: the gladiator, the farmer and the jellyfish UFO got their kits and moved to AVAILABLE_RACES
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
    default job's kit (JOB_KITS) gave it, so ranged races stay ranged: the old Sniper races reach 4 (kit 3 + the Sniper's
@@ -4355,6 +4372,8 @@ const RACE_CLASS = {
     'virus': 'specialist',   // 2026-11-18 THE VIRUS (mondo approved the kit)
     'hollow': 'specialist',   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name) (a controller)
     'weatherman': 'specialist',   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: he moves the sky, she runs the show
+    'leprechaun': 'specialist',   // 2026-11-27 THE LEPRECHAUN + THE MEDIC: the gold, the luck, the rainbow
+    'medic': 'healer',   // 2026-11-27 THE LEPRECHAUN + THE MEDIC: the Doctor and the Nurse
     'centaur': 'ranged',   // 2026-11-24 THE CENTAUR: a horse archer
     'cheerleader': 'support',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
     'princess': 'support',   // 2026-11-24 THE PRINCESS
@@ -4448,6 +4467,8 @@ const RACE_TERRAIN_PREFERENCE = {
     'virus': 'wasteland',   // 2026-11-18 THE VIRUS (mondo approved the kit)
     'hollow': 'tree',   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name) (as the Dreameater)
     'weatherman': 'urban',   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: Disaster City's news station
+    'leprechaun': 'grass',   // 2026-11-27 THE LEPRECHAUN + THE MEDIC: the green hills, a first pass
+    'medic': 'urban',   // 2026-11-27 THE LEPRECHAUN + THE MEDIC: the hospital, a first pass
     'centaur': 'grass',   // 2026-11-24 THE CENTAUR: open ground to run on
     'cheerleader': 'urban',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: Disaster City University
     'princess': 'grass',   // 2026-11-24 THE PRINCESS: the gardens of Came A Lot
@@ -4877,6 +4898,8 @@ const RACE_BASE_STATS = {
     'virus':              { hp:  930, mp: 220, atk:  40, def:  60, mdef: 160, int: 241, vision: 3, crt: 18, spd:  90 },   // 2026-11-18 THE VIRUS (mondo approved the kit) — first pass: a frail magic specialist; LAB LOOP 11-22 PASS 2: HP 780→860, M.ATK 180→212 (34.0% over 109 games); LAB LOOP 11-23 PASS 2: HP 860→930, M.ATK 212→241 (37.1% over 135 games)
     'hollow':             { hp:  880, mp: 230, atk:  40, def:  70, mdef: 150, int: 190, vision: 4, crt: 15, spd: 100 },   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name) — first pass (the plan's numbers): a floating controller
     'weatherman':         { hp:  930, mp: 230, atk:  70, def:  80, mdef: 125, int: 160, vision: 4, crt: 18, spd: 105 },   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR — first pass on the specialist median
+    'leprechaun':         { hp:  900, mp: 210, atk:  82, def:  80, mdef: 120, int: 155, vision: 4, crt: 26, spd: 125 },   // 2026-11-27 THE LEPRECHAUN + THE MEDIC — first pass on the specialist median: small, quick and lucky
+    'medic':              { hp: 1050, mp: 220, atk:  80, def:  95, mdef: 125, int: 145, vision: 3, crt: 15, spd: 105 },   // 2026-11-27 THE LEPRECHAUN + THE MEDIC — first pass on the support median (the Doctor and the Nurse share it)
     'centaur':            { hp:  900, mp: 150, atk: 118, def:  78, mdef:  62, int:  95, vision: 5, crt: 20, spd: 128 },   // 2026-11-24 THE CENTAUR — first pass between Robin Hood (ranged) and the Unicorn (a horse's body)
     'cheerleader':        { hp: 1020, mp: 210, atk:  95, def:  85, mdef: 120, int: 140, vision: 3, crt: 20, spd: 125 },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — first pass: a quick support who kicks
     'princess':           { hp:  960, mp: 230, atk:  60, def:  75, mdef: 135, int: 150, vision: 4, crt: 15, spd: 120 },   // 2026-11-24 THE PRINCESS — first pass: a frail royal caster, magic and healing
@@ -5094,6 +5117,8 @@ const RACE_PHYSIQUE = {
     'virus':               { h: 1.50, w: 30 },   // 2026-11-18 THE VIRUS (mondo approved the kit): the spiked ball hovering, tendrils down
     'hollow':              { h: 2.40, w: 60 },   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name): the maw ring hovering, the finger chandelier hanging under it
     'weatherman':          { h: 1.80, w: 76 },   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR
+    'leprechaun':          { h: 1.10, w: 34 },   // 2026-11-27 THE LEPRECHAUN + THE MEDIC
+    'medic':               { h: 1.78, w: 72 },   // 2026-11-27 THE LEPRECHAUN + THE MEDIC
     'centaur':             { h: 2.40, w: 480 },   // 2026-11-24 THE CENTAUR: a horse with a rider's body on it, head to hoof
     'cheerleader':         { h: 1.66, w: 55 },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
     'princess':            { h: 1.68, w: 52 },   // 2026-11-24 THE PRINCESS (the crown not counted)
@@ -10006,6 +10031,18 @@ const RACE_ABILITIES = {
           element: 'fire', type: 'damage', kind: 'line', range: 5, lineWidth: 1, dmg: 130, damageType: 'magic',
           bonusVsStatus: { status: 'root', mult: 1.5 },
           desc: 'The fighting machine turns its hood across the field. Deals MEDIUM magic damage to All Enemies in a line. Deals bonus damage to Rooted targets.' },
+        /* 👽 THE MARTIAN GIRL (2026-11-27 THE LEPRECHAUN + THE MEDIC, mondo: "Female martian"): the female martian's own two (RACE_GENDER_SPELLS.martian.female),
+           after the Martian Girl of the 1996 film: she walks up to you and you forget what you were doing. FIRST PASS. */
+        { id: 'goHypnoSway', name: 'Hypno Sway', tier: 2, families: ['martian'], cost: 45, apCost: 1, cooldownRounds: 2, spellType: 'alien',
+          animClip: { name: 'Happy_Sway_Standing', lib: 9, ts: 1.4, trim: [0.8, 2.8], strikeAt: 1.8 },   // THE MESHY CASTS: the sway
+          element: 'psychic', type: 'debuff', kind: 'debuff', range: 3, statStageBoost: { mdef: -1 },
+          statusEffects: [{ id: 'charm', duration: 1 }],
+          desc: 'She sways, and the spiral in her eyes turns. A Single Enemy within 3 is Charmed for 1 round (it cannot move) and loses 1 M.DEF stage. Cooldown: 2 rounds.' },
+        { id: 'goBrainProbe', name: 'Brain Probe', tier: 3, families: ['martian'], cost: 70, apCost: 1, cooldownRounds: 2, spellType: 'alien',
+          animClip: { name: 'Magic_Genie', lib: 9, ts: 1.3, trim: [3.2, 5.0], strikeAt: 4.4 },   // THE MESHY CASTS: both hands reach for the mind
+          element: 'psychic', type: 'damage', kind: 'lifeDrain', damageType: 'magic', dmg: 120, range: 3, drainPct: 0.5,
+          statusEffects: [{ id: 'silence', duration: 1 }],
+          desc: 'Ack. Deals MEDIUM magic damage to a Single Enemy within 3, heals her for half of it and Silences it for 1 round. Cooldown: 2 rounds.' },
         /* 2026-07-23 beam de-duplication: no longer the 4th identical line
            spell — now a focused single-target death ray that burns. */
         { id: 'raceHeatRay', tier: 1, families: ['alientechnology'], spellType: 'alien', element: 'fire', name: 'Heat Ray',
@@ -11450,6 +11487,77 @@ const RACE_ABILITIES = {
           element: 'light', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 140, range: 7, aoeRadius: 1, ignoresLineOfSight: true,
           statusEffects: [{ id: 'blind', duration: 1 }],
           desc: 'The archer in the stars draws with it. A starlit arrow falls on a 3x3 up to 7 squares away, over any wall: HEAVY magic damage to All Enemies there, and they are Blinded for 1 round. Cooldown: 4 rounds.' },
+    ],
+    'leprechaun': [
+        /* 🍀 THE LEPRECHAUN (2026-11-27 THE LEPRECHAUN + THE MEDIC, mondo: "Leprechaun (m and f)"; NEW_CHARACTERS.md: Leprechaun -> Gambling; ui.js: "Hides his gold
+           and never plays fair"). FIRST PASS: names and numbers are his to change. He and she share the kit.
+           HIS RULE, POT O' GOLD (lpPotOfGold): every hit he lands on an enemy pockets 1 Gold (unit.gold, 0-5), each Gold is +5% crit
+           chance on his spells, an enemy hit on him knocks 1 loose. Pot of Gold spends it all. battle.js "THE LEPRECHAUN + THE MEDIC".
+           VFX three-vfx-effects.js "THE LEPRECHAUN + THE MEDIC". Notes: champions-combat.md "THE LEPRECHAUN + THE MEDIC". */
+        { id: 'lpShillelagh', name: 'Shillelagh', tier: 1, families: ['leprechaun'], cost: 25, apCost: 1, spellType: 'anomaly',
+          element: 'nature', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 90, range: 1,
+          statusEffects: [{ id: 'stagger', duration: 1 }],
+          desc: 'A crack of the blackthorn stick. Deals WEAK physical damage to an adjacent enemy and Staggers it for 1 round.' },
+        { id: 'lpLuckyCoin', name: 'Lucky Coin', tier: 2, families: ['leprechaun'], cost: 40, apCost: 1, cooldownRounds: 1, spellType: 'anomaly',
+          animClip: { name: 'Personalized_Gesture', lib: 9, ts: 1.15, trim: [0, 1.6], strikeAt: 0.55 },   // THE MESHY CASTS: the flick of the thumb
+          element: 'metal', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 95, range: 4, critChance: 0.5,
+          desc: 'Heads he wins, tails you lose. Flicks a gold coin at a Single Enemy within 4 for MEDIUM magic damage; it is a critical hit half the time (more with Gold in his pocket). Cooldown: 1 round.' },
+        { id: 'lpRainbowRoad', name: 'Rainbow Road', tier: 2, families: ['leprechaun'], cost: 40, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+          element: 'light', type: 'utility', kind: 'teleport', range: 5, teleportDistance: 5, leap: true,
+          arrivalStageBoost: { spd: 1 }, arrivalStageRounds: 2,
+          desc: 'Nobody ever finds the end of it. He rides a rainbow to any free square within 5, whatever its height, and lands with +1 SPD stage for 2 rounds. Cooldown: 2 rounds.' },
+        { id: 'lpFoolsGold', name: 'Fool\'s Gold', tier: 3, families: ['leprechaun'], cost: 70, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+          animClip: { name: 'Jazz_Hands_inplace', lib: 9, ts: 1.3, trim: [0.2, 2.0], strikeAt: 1.49 },   // THE MESHY CASTS: the coins thrown wide
+          element: 'metal', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 110, range: 4, aoeRadius: 1,
+          statusEffects: [{ id: 'charm', duration: 1 }],
+          desc: 'It looks like gold. Showers a 3x3 within 4 with coins: MEDIUM magic damage to All Enemies there, and they are Charmed for 1 round, too busy picking it up to move. Cooldown: 2 rounds.' },
+        { id: 'lpPotOfGold', name: 'Pot of Gold', tier: 4, families: ['leprechaun'], cost: 95, apCost: 1, cooldownRounds: 3, spellType: 'anomaly',
+          animClip: { name: 'Hop_with_Arms_Raised', lib: 9, ts: 1.3, trim: [0.4, 2.2], strikeAt: 1.1 },   // THE MESHY CASTS: the jig
+          element: 'metal', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 130, range: 4, aoeRadius: 1, goldSpend: 30,
+          desc: 'The end of the rainbow. The pot comes down on a 3x3 within 4: MEDIUM magic damage to All Enemies there, +30 for every Gold he spends (all of it, up to +150). Cooldown: 3 rounds.' },
+    ],
+    'medic': [
+        /* 🩺 THE MEDIC (2026-11-27 THE LEPRECHAUN + THE MEDIC, mondo: "a doctor/nurse"): one race, two sides on the Weatherman pattern: the male is the Doctor, the
+           female the Nurse, no spell shared (RACE_GENDER_SPELLS). FIRST PASS: names and numbers are his to change.
+           THEIR RULE, CRITICAL CARE (mdCriticalCare, lowHpHealBonus): every heal they give restores more the lower the patient is,
+           up to +50% near 0 HP (battle.js _healScaledAmount). VFX three-vfx-effects.js "THE LEPRECHAUN + THE MEDIC". */
+        /* the DOCTOR (male) */
+        { id: 'mdReflexTest', name: 'Reflex Test', tier: 1, families: ['medicine'], cost: 25, apCost: 1, spellType: 'human',
+          element: 'physical', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 85, range: 1,
+          statusEffects: [{ id: 'stagger', duration: 1 }],
+          desc: 'Just checking the reflexes. A tap of the hammer on an adjacent enemy for WEAK physical damage, and the knee jerks: Staggered for 1 round.' },
+        { id: 'mdPrescription', name: 'Prescription', tier: 2, families: ['medicine'], cost: 45, apCost: 1, cooldownRounds: 1, spellType: 'human',
+          animClip: { name: 'Checkout_Gesture', lib: 9, ts: 1.45, trim: [1.8, 3.8], strikeAt: 2.94 },   // THE MESHY CASTS: he hands over the script
+          element: 'light', type: 'heal', kind: 'heal', range: 4, healAmt: 100, cleanse: 1,
+          statusEffects: [{ id: 'regen', duration: 2 }],
+          desc: 'Take two and call me in the morning. Heals a Single Ally within 4 a MEDIUM amount, cleanses 1 debuff and gives Regen for 2 rounds. Cooldown: 1 round.' },
+        { id: 'mdDefibrillator', name: 'Defibrillator', tier: 3, families: ['medicine'], cost: 80, apCost: 2, cooldownRounds: 4, spellType: 'human',
+          animClip: { name: 'Cheer_with_Both_Hands_Up', lib: 9, ts: 1.35, strikeAt: 0.85 },   // THE MESHY CASTS: paddles up, CLEAR
+          element: 'lightning', type: 'heal', kind: 'revive', range: 2, revivePct: 0.4, oneRevivePerUnitPerMatch: true,
+          desc: 'CLEAR! Brings a fallen ally within 2 back with 40% of its HP. Works once per unit per match. Cooldown: 4 rounds.' },
+        { id: 'mdMalpractice', name: 'Malpractice', tier: 4, families: ['medicine'], cost: 95, apCost: 1, cooldownRounds: 3, spellType: 'human',
+          animClip: { name: 'Shrug', lib: 8, ts: 1.2, trim: [0.2, 1.9], strikeAt: 0.9 },   // THE MESHY CASTS: oops
+          element: 'poison', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 165, range: 3,
+          statusEffects: [{ id: 'bleed', duration: 2 }, { id: 'poison', duration: 2 }],
+          desc: 'Wrong leg. Deals HEAVY magic damage to a Single Enemy within 3, then it Bleeds and is Poisoned for 2 rounds. The bill comes later. Cooldown: 3 rounds.' },
+        /* the NURSE (female) */
+        { id: 'mdSedative', name: 'Sedative Shot', tier: 1, families: ['medicine'], cost: 25, apCost: 1, spellType: 'human',
+          element: 'poison', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 75, range: 3,
+          statusEffects: [{ id: 'slow', duration: 1 }],
+          desc: 'Just a little pinch. Throws a syringe at a Single Enemy within 3 for WEAK physical damage, and it goes heavy: Slowed for 1 round.' },
+        { id: 'mdBedsideManner', name: 'Bedside Manner', tier: 2, families: ['medicine'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'human',
+          animClip: { name: 'Big_Heart_Gesture', lib: 9, ts: 1.5, trim: [0.5, 2.6], strikeAt: 1.4 },   // THE MESHY CASTS: the heart
+          element: 'light', type: 'heal', kind: 'heal', range: 3, healAmt: 110,
+          statusEffects: [{ id: 'protect', duration: 1 }],
+          desc: 'There, there. Heals a Single Ally within 3 a MEDIUM amount and Protects it: the next hit on it does nothing. Cooldown: 2 rounds.' },
+        { id: 'mdTriage', name: 'Triage', tier: 3, families: ['medicine'], cost: 70, apCost: 1, cooldownRounds: 3, spellType: 'human',
+          animClip: { name: 'Female_Crouch_Pick_Up_Place_Side', lib: 10, ts: 1.4, trim: [1.0, 3.0], strikeAt: 2.4 },   // THE MESHY CASTS: the kit goes down
+          element: 'light', type: 'utility', kind: 'zoneHeal', range: 3, aoeRadius: 1, zoneDuration: 2, healPerTurn: 80,
+          desc: 'Set up the station. Marks a 3x3 within 3 for 2 rounds: every ally standing in it heals a MEDIUM amount each round. Cooldown: 3 rounds.' },
+        { id: 'mdCodeBlue', name: 'Code Blue', tier: 4, families: ['medicine'], cost: 100, apCost: 2, cooldownRounds: 4, spellType: 'human',
+          animClip: { name: 'Wave_for_Help', lib: 10, ts: 1.4, trim: [0.3, 2.3], strikeAt: 0.92 },   // THE MESHY CASTS: the call goes out
+          element: 'light', type: 'heal', kind: 'healAll', range: 0, healAmt: 150, cleanse: 2,
+          desc: 'All hands. Heals All Allies a BIG amount and cleanses 2 debuffs from each. Cooldown: 4 rounds.' },
     ],
     'weatherman': [
         /* THE WEATHERMAN + NEWS ANCHOR (2026-11-24, mondo: "Weatherman should have spells that summon and interact with the weather
@@ -22548,6 +22656,8 @@ const EW_RACE_BIOMES = {
     'virus': ['neon_city', 'astral'],   // 2026-11-18 THE VIRUS (mondo approved the kit) — The Internet's quarantine
     'hollow': ['astral'],   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name) — The Astral Realm (its nightmares)
     'weatherman': ['urban'],   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR — Disaster City (Hero Plaza's news office)
+    'leprechaun': ['forest'],   // 2026-11-27 THE LEPRECHAUN + THE MEDIC — the green, a first pass
+    'medic': ['urban'],   // 2026-11-27 THE LEPRECHAUN + THE MEDIC — the hospital, a first pass
     'centaur': ['ancient', 'forest'],   // 2026-11-24 THE CENTAUR — Mount Olympus and its woods (Claude's pick: mondo named no home)
     'cheerleader': ['urban'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — Disaster City University (the DCU Aftershocks)
     'princess': ['arthurian'],   // 2026-11-24 THE PRINCESS — Came A Lot
@@ -23239,6 +23349,8 @@ const RACE_TREE = {
     'virus':         ['nrWorm', 'nrSelfReplicate', 'nrRansomware', 'nrZeroDay'],   // 2026-11-18 THE VIRUS (mondo approved the kit): its own four
     'hollow':        ['hlLull', 'hlStrings', 'hlBloom', 'hlWake'],   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name): its own four
     'weatherman':    [['wnColdFront', 'wnTopStory'], ['wnSevereWeather', 'wnExclusive'], ['wnStormTracker', 'wnFakeNews'], ['wnStormOfCentury', 'wnPrimeTime']],   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR: every rung is one of each (RACE_GENDER_SPELLS): his weather, her show
+    'leprechaun':    ['lpShillelagh', ['lpLuckyCoin', 'lpRainbowRoad'], 'lpFoolsGold', 'lpPotOfGold'],   // 2026-11-27 THE LEPRECHAUN + THE MEDIC
+    'medic':         [['mdReflexTest', 'mdSedative'], ['mdPrescription', 'mdBedsideManner'], ['mdDefibrillator', 'mdTriage'], ['mdMalpractice', 'mdCodeBlue']],   // 2026-11-27 THE LEPRECHAUN + THE MEDIC: every rung is one of each (RACE_GENDER_SPELLS): the Doctor's, the Nurse's
     'centaur':       ['cenHoofStomp', 'cenParthianShot', ['cenWildHerd', 'raceRideBy'], 'cenSagittarius'],   // 2026-11-24 THE CENTAUR
     'cheerleader':   ['chHighKick', 'chReadyOk', 'chBasketToss', 'chGimme'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: her own four
     'princess':      ['prWishingStar', 'prTrueLove', 'prSpindle', 'prEverAfter'],   // 2026-11-24 THE PRINCESS: her own four
@@ -23908,6 +24020,14 @@ function spellFamilyGroups(ids, race) {
    one or 2 unique spells but really they are supposed to be the same"). raceGenderOffSpellIds(race, gender) → the OTHER
    gender's ids; no gender (the Spell Library, tooling) → none, the whole pool shows. */
 const RACE_GENDER_SPELLS = {
+    'medic': {   // 2026-11-27 THE LEPRECHAUN + THE MEDIC: no spell is shared
+        male:   ['mdReflexTest', 'mdPrescription', 'mdDefibrillator', 'mdMalpractice'],   // the Doctor
+        female: ['mdSedative', 'mdBedsideManner', 'mdTriage', 'mdCodeBlue'],          // the Nurse
+    },
+    'martian': {   // 2026-11-27 THE LEPRECHAUN + THE MEDIC: the female martian's own two; the rest of the kit is shared
+        male:   [],
+        female: ['goHypnoSway', 'goBrainProbe'],
+    },
     'priest': {
         male:   ['pzHolyWater', 'pzLastRites'],      // Holy Orders: the priest's sacraments
         female: ['goRulerSmack', 'goVowOfSilence'],  // the Convent: the nun's ruler and her vow
@@ -25660,6 +25780,26 @@ const SPELL_FAMILIES = {
         desc: 'Small flaps now, a twister later: every Flutter she leaves grows by itself, owl eyes that send divers running, and one flap that speeds everything up.',
         unique: 'butterfly girl',
         identity: { who: ['Butterfly Girl', 'Morpho', 'Collector'], adj: ['Iridescent', 'Fluttering', 'Chaotic'], look: ['huge blue morpho wings', 'curled antennae', 'blue to violet hair'], vibe: ['every flap she makes grows into a storm', 'gone in a blue flash'] }
+    },
+    leprechaun: {   // 2026-11-27 THE LEPRECHAUN + THE MEDIC — the leprechauns' own
+        id: 'leprechaun',
+        name: 'Luck o\' the Irish',
+        glyph: '🍀',
+        color: '#2fb84a',
+        kind: 'signature',
+        desc: 'The blackthorn stick, the lucky coin, the rainbow and the pot of gold at the end of it. Every hit pockets Gold, and Gold is luck.',
+        unique: 'leprechaun',
+        identity: { who: ['Leprechaun', 'Cobbler', 'Hoarder'], adj: ['Lucky', 'Green', 'Crooked'], look: ['a green coat and buckled hat', 'a red beard', 'a blackthorn stick'], vibe: ['hides his gold and never plays fair', 'always one step ahead of you'] }
+    },
+    medicine: {   // 2026-11-27 THE LEPRECHAUN + THE MEDIC — the Doctor's and the Nurse's own
+        id: 'medicine',
+        name: 'Medicine',
+        glyph: '🩺',
+        color: '#4ad0e0',
+        kind: 'signature',
+        desc: 'The hospital at work: the Doctor\'s hammer, script, paddles and bill; the Nurse\'s needle, bedside manner, station and Code Blue.',
+        unique: 'medic',
+        identity: { who: ['Doctor', 'Nurse', 'Medic'], adj: ['Clinical', 'Steady', 'Overworked'], look: ['a white coat and stethoscope', 'scrubs and a nurse\'s cap', 'a clipboard'], vibe: ['has seen worse', 'the bill comes later'] }
     },
     monstertruck: {   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells") — the Monster Truck's own
         id: 'monstertruck',
@@ -28002,6 +28142,8 @@ const RACE_FAMILIES = {
     'virus': ['malware', 'computerhacking', 'glitch', 'internetaddiction'],   // 2026-11-18 THE VIRUS (mondo approved the kit)
     'hollow': ['hollow', 'nightmares', 'astral', 'fractal'],   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name)
     'weatherman': ['newsroom', 'wind', 'lightning', 'stagepresence'],   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR
+    'leprechaun': ['leprechaun', 'gambling', 'fae', 'trickery'],   // 2026-11-27 THE LEPRECHAUN + THE MEDIC (NEW_CHARACTERS.md: Leprechaun -> Gambling)
+    'medic': ['medicine', 'healingmagic', 'chemistry', 'humangrit'],   // 2026-11-27 THE LEPRECHAUN + THE MEDIC
     'centaur': ['centaur', 'archery', 'horsebackriding', 'athleticism'],   // 2026-11-24 THE CENTAUR (the idea list's own three)
     'cheerleader': ['cheer', 'teamwork', 'athleticism', 'stagepresence'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
     'princess': ['fairytale', 'royalty', 'healingmagic', 'light'],   // 2026-11-24 THE PRINCESS
@@ -28670,6 +28812,8 @@ const CAMPAIGN_RACE_PRICES = {
   'virus': 450,   // 2026-11-18 THE VIRUS (mondo approved the kit)
   'hollow': 500,   // 2026-11-23 THE HOLLOW (mondo approved the plan + the name)
   'weatherman': 400,   // 2026-11-24 THE WEATHERMAN + NEWS ANCHOR
+  'leprechaun': 400,   // 2026-11-27 THE LEPRECHAUN + THE MEDIC
+  'medic': 400,   // 2026-11-27 THE LEPRECHAUN + THE MEDIC
   'centaur': 450,   // 2026-11-24 THE CENTAUR
   'cheerleader': 400,   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
   'princess': 400,   // 2026-11-24 THE PRINCESS

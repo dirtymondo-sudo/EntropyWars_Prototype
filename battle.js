@@ -15810,6 +15810,47 @@
             if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit });
         }
         window._psMakeoverSwap = _psMakeoverSwap; window._psRoundEnd = _psRoundEnd;
+        /* ═══ THE LEPRECHAUN + THE MEDIC (2026-11-27, mondo: "Leprechaun (m and f) ... a doctor/nurse"). Host-side, plain numbers on
+           the unit (`lpGold`, rides the state sync; never `gold`, that is the kill bounty); texts through the log, the looks through
+           ThreeVFXEffects.fire (relayed). Notes: docs/notes/champions-combat.md "THE LEPRECHAUN + THE MEDIC".
+           🍀 POT O' GOLD (data.js lpPotOfGold): a hit he lands on an enemy pockets 1 Gold (0-5); each Gold is +5% crit chance on his
+           spells (_lepCastRow bakes it into the cast's critChance, the only way a spell crits); an enemy hit on him knocks 1 loose;
+           Pot of Gold (`goldSpend`) bakes +N a Gold into its damage and spends it all.
+           🩺 CRITICAL CARE (data.js mdCriticalCare, `lowHpHealBonus`): read in _healScaledAmount, no code here. */
+        const LP_GOLD_MAX = 5, LP_GOLD_CRIT = 0.05;
+        function _lepIs(u) { return !!u && u.race === 'leprechaun'; }
+        function _lepFx(phase, id, p) { try { if (!_skipVisuals() && window.ThreeVFXEffects && ThreeVFXEffects.fire) ThreeVFXEffects.fire(phase, id, p); } catch (e) {} }
+        function _lepOnHit(src, target, opts) {
+            if (!_lepIs(src) || !target || src.id === target.id || !sidesHostile(src.player, target.player)) return;
+            if (target._isCube || target._summonStatic || (opts && (opts._linkEcho || opts.damageType === 'dot'))) return;
+            if (state.phase !== 'battle' || (src.lpGold | 0) >= LP_GOLD_MAX) return;
+            src.lpGold = (src.lpGold | 0) + 1;
+            if (src.lpGold >= LP_GOLD_MAX) addLog(`🪙 ${_ctName(src)}'s pot is full: ${LP_GOLD_MAX} Gold.`);
+            _lepFx('coin', 'lpGoldGain', { tx: target.x, ty: target.y, sx: src.x, sy: src.y, casterId: src.id, n: src.lpGold });
+        }
+        function _lepOnHurt(target, src, opts) {
+            if (!_lepIs(target) || !src || src.id === target.id || !sidesHostile(src.player, target.player) || !((target.lpGold | 0) > 0)) return;
+            if (opts && (opts._linkEcho || opts.damageType === 'dot')) return;
+            target.lpGold = (target.lpGold | 0) - 1;
+            addLog(`🪙 ${_ctName(src)} knocks a Gold loose from ${_ctName(target)}: ${target.lpGold} left.`);
+            _lepFx('coin', 'lpGoldLoss', { tx: target.x, ty: target.y, casterId: target.id, n: target.lpGold });
+        }
+        /* the cast's own copy (doSpell): the luck rides every damaging spell of his, Pot of Gold bakes its spend */
+        function _lepCastRow(unit, spell) {
+            if (!_lepIs(unit) || !spell) return spell;
+            const g = Math.max(0, Math.min(LP_GOLD_MAX, unit.lpGold | 0));
+            if (!(g > 0) || spell.type !== 'damage') return spell;
+            const s = Object.assign({}, spell);
+            s.critChance = Math.min(1, (typeof spell.critChance === 'number' ? spell.critChance : 0) + LP_GOLD_CRIT * g);
+            if (spell.goldSpend) s.dmg = (spell.dmg || 0) + spell.goldSpend * g;
+            return s;
+        }
+        function _lepAfterCast(unit, spell) {
+            if (!_lepIs(unit) || !spell || !spell.goldSpend || !((unit.lpGold | 0) > 0)) return;
+            addLog(`🪙 ${_ctName(unit)} empties the pot: ${unit.lpGold} Gold spent.`);
+            unit.lpGold = 0;
+        }
+        window.LP_GOLD_MAX = LP_GOLD_MAX;
         /* ═══ THE WEATHERMAN + NEWS ANCHOR (2026-11-24, mondo: "Weatherman should have spells that summon and interact with the
            weather system ... The News Anchor can maybe use the microphone the popstar uses for her abilities"). One race
            ('weatherman'): the male is the Weatherman, the female the News Anchor, no spell shared (data.js RACE_GENDER_SPELLS).
@@ -19996,6 +20037,9 @@
             // scaled. Self-heals count — it is her faith, not the recipient's.
             const _devout = (sourceUnit && typeof unitPassiveValue === 'function') ? unitPassiveValue(sourceUnit, 'healMult') : undefined;
             if (_devout && _devout !== 1) _amt *= _devout;
+            /* 🩺 Critical Care (the Medic, 2026-11-27): `lowHpHealBonus` = the bonus at 0 HP, scaled by how much of the bar is missing */
+            const _lowHp = (sourceUnit && typeof unitPassiveValue === 'function') ? unitPassiveValue(sourceUnit, 'lowHpHealBonus') : undefined;
+            if (_lowHp > 0 && target && target.maxHp > 0) _amt *= 1 + _lowHp * Math.max(0, Math.min(1, 1 - (target.hp || 0) / target.maxHp));
             // 🛢️ Gooed / Grievous Wound (STATUS_DEFS healTakenMult): the
             // recipient's healing is scaled — every heal source, regen too.
             const _healTaken = getActiveStatusKeys(target).reduce((m, k) => m * (STATUS_DEFS[k]?.healTakenMult ?? 1), 1);
@@ -41305,6 +41349,11 @@
            flavour of their own; Phase 5 replaces them with real directors.
            ═══════════════════════════════════════════════════════════════════ */
         const SPELL_DIRECTOR_ROWS = {
+            /* ── THE LEPRECHAUN + THE MEDIC + THE MARTIAN GIRL (2026-11-27): the big hits catch a beat ── */
+            lpPotOfGold:         { slow: [0.4, 300] },
+            mdMalpractice:       { slow: [0.45, 260] },
+            mdDefibrillator:     { slow: [0.4, 300] },
+            goBrainProbe:        { slow: [0.5, 240] },
             /* ── THE DEMIURGE'S CATACLYSMS (2026-11-27): the hit's own beat: time catches, then lets go ── */
             dmSerpentStrike:     { slow: [0.45, 260] },
             dmCompassSweep:      { slow: [0.4, 300] },
@@ -45669,6 +45718,8 @@
                 if (sourceUnit && sourceUnit.race === 'wendigo' && sidesHostile(sourceUnit.player, target.player)) sourceUnit._fedRound = state.round || 0;   // 🦌 it fed
                 if (sourceUnit && sourceUnit.race === 'cameraman' && target.hp > 0) _camFilm(sourceUnit, target);   // 🎥 THE FOOTAGE
                 if (sourceUnit && (sourceUnit.race === 'gladiator' || sourceUnit.race === 'jellyfish ufo')) _crOnHit(sourceUnit, target, opts);
+                if (sourceUnit && sourceUnit.race === 'leprechaun') _lepOnHit(sourceUnit, target, opts);   // 🍀 POT O' GOLD: a Gold pocketed
+                if (target.race === 'leprechaun' && target.hp > 0) _lepOnHurt(target, sourceUnit, opts);   // 🍀 a Gold knocked loose
                 if (sourceUnit && sourceUnit.race === 'rat') _ratOnHit(sourceUnit, target, opts, _ratHadBleed);   // 👑 THE RAT KING: Mischief
                 if (target.hp <= 0 && _ratHpWas > 0 && (target.race === 'rat' || _ratOnBoard())) _ratOnDown(target);   // 👑 the scavenger, the fallen crown
                 if (target.race === 'monarch') _monDeltaCheck(target);   // 🔺 THE MONARCH: Delta Alter
@@ -86181,6 +86232,8 @@
             if (spell && (spell.diceRoll || spell.stillnessSpend)) spell = _nr4CastRow(unit, spell);
             /* 🛡⚡ THE COMING RACES: Crowd Pleaser / Abyssal Overload bake their spend, Venom Injector its Stun (_crCastRow) */
             if (spell && (spell.favorSpend || spell.chargeSpend || spell.chargeStunAt)) spell = _crCastRow(unit, spell);
+            /* 🍀 THE LEPRECHAUN: the Gold's luck in the cast's crit chance, Pot of Gold's spend (_lepCastRow) */
+            if (spell && unit && unit.race === 'leprechaun') spell = _lepCastRow(unit, spell);
             /* 💉 THE PLASTIC SURGEON: a procedure becomes its ally or enemy cast (_psCastRow); his casts remember what finishAction needs */
             if (spell && spell.procedure) spell = _psCastRow(unit, spell, x, y, z);
             if (spell && spell.bpPick && _mpIs(unit) && state._bpPick != null) unit._mpPickHeld = state._bpPick;   // 🎛 THE MUSIC PRODUCER: the picker's choice rides to finishAction
@@ -86963,6 +87016,7 @@
                 if (spell.viewersGain > 0) _viewersAdd(unit, spell.viewersGain, 'gets hearts in the chat');
                 _nr4AfterCast(unit, spell);   // 🎲📿🔒 THE NEW RACES 4: the streak, the stillness, the ransom
                 _crAfterCast(unit, spell);   // 🛡⚡ THE COMING RACES: Favor + Charge spent
+                _lepAfterCast(unit, spell);   // 🍀 THE LEPRECHAUN: Pot of Gold spends the Gold
                 if (unit.race === 'rat') unit._ratCastId = null;   // 👑 THE RAT KING
                 _bearAfterCast(unit, spell, x, y);   // 🐻 THE BEAR: Hibernate's sleep, Bear Hug's Root + Grudge
                 _nr5AfterCast(unit, spell, x, y);   // 🐆🐉🌸 THE NEW RACES 5: Drag the Kill, Kneel, Sweet Perfume + Spring Awakening
