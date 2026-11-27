@@ -1339,6 +1339,12 @@
      "face": 90,
      "kind": "the Drop's frame: to the Singularity"
     },
+    "cube_dmt": {
+     "sx": 243,
+     "sy": 153,
+     "face": 180,
+     "kind": "the Black Cube over the plateau: the frame under it, into the inside of the cube (mondo 11-27)"
+    },
     "hexagon_derelict": {
      "sx": 231,
      "sy": 148,

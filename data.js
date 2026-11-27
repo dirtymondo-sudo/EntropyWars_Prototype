@@ -78301,11 +78301,12 @@ const DOOR_HQ = {
                     {k:'arch',id:'dmt:NW:21',x:-45.5,z:-45.5,rot:0,y:8.75,parts:[{s:'cyl',p:[0,0,0],r:3.1,h:10,key:'dmt_eyes',glow:1,seg:16},{s:'dome',p:[0,10,0],r:3.4,h:2.4,key:'dmt_weave',glow:1,seg:16,rings:5},{s:'cyl',p:[0,0,0],r:3.4,h:0.4,key:'dmt_ribbon',glow:1,seg:16}]},
                 ],
             },
-            doors: [],
+            doors: [{id:'saturn',wall:'free',x:0,z:57.4,y:7,face:0,leaf:'leaf_frame_only',label:'SATURN',sub:'THE HEXAGON',action:{room:'site_prebuilt_moon_plots',at:'cube_dmt'}}],
             counters: [],
             props: [],
             agents: [],
-            npcSpots: [],
+            crowdAll: true,   // every placed resident stands, a race more than once too (three-renderer.js _hqCrowdLedger; the hotel floors' rule)
+            npcSpots: [{x:-8.75,z:5.25,y:7,face:200,race:'machine elves'},{x:8.75,z:5.25,y:7,face:160,race:'machine elves'},{x:1.75,z:-8.75,y:7,face:180,race:'orb of light'},{x:43.75,z:-5.25,y:10.5,face:270,race:'machine elves'},{x:47.25,z:5.25,y:10.5,face:250,race:'boltzmann brain'},{x:-47.25,z:1.75,y:3.5,face:90,race:'orb of light'},{x:-43.75,z:-1.75,y:3.5,face:100,race:'mantid'},{x:43.75,z:-43.75,y:12.25,face:200,race:'occulus'},{x:-50.75,z:-40.25,y:8.75,face:140,race:'occulus'},{x:-8.75,z:-36.75,y:14,face:170,race:'occulus'},{x:8.75,z:-36.75,y:14,face:190,race:'occulus'},{x:47.25,z:47.25,y:8.75,face:300,race:'shadow entity'},{x:40.25,z:50.75,y:8.75,face:270,race:'hollow'},{x:-50.75,z:43.75,y:5.25,face:60,race:'mantid'},{x:-40.25,z:50.75,y:5.25,face:30,race:'shadow entity'},{x:-1.75,z:-40.25,y:14,face:180,race:'demiurge',gender:'female',label:'THE DEMIURGE · BOSS',stay:true,boss:true}],
             onlineSpots: [],
             lines: [],
             spawn: {x:0,z:49,face:0},
@@ -78763,6 +78764,7 @@ const DOOR_HQ = {
                     {k:'bridge',x0:383.25,z0:-276.5,x1:383.25,z1:-245,w:3.5,y:7,absY:true},
                     {k:'texbuilding',id:'spc:mars:roverbay',seed:1,x:428.75,z:-206.5,w:24.5,d:14,rot:0,storeys:1,h:5.25,skin:false,hollow:true,leaf:'leaf_bulkhead',leafDouble:true,keyIn:'urban:MetalWallRibbed1a',floorIn:'urban:MetalDiamondPlate1a'},
                     {k:'arch',id:'spc:mars:roverbay:look',x:428.75,z:-206.5,rot:0,parts:[{s:'box',p:[0,0,0],size:[24.6,5.25,14.1],top:false,faces:'blr',key:'urban:MetalWallRibbed1a',tint:14209732,uv:[3.5,1.75]},{s:'quad',p:[0,0,7.05],size:[24.6,5.25],ry:0,hole:[-0.87,1.74,2.2],key:'urban:MetalWallRibbed1a',tint:14209732,uv:[3.5,1.75]},{s:'box',p:[-1.84,0,7.1],size:[0.2,2.4,0.2],key:'urban:MetalWarningStripe1'},{s:'box',p:[0.1,0,7.1],size:[0.2,2.4,0.2],key:'urban:MetalWarningStripe1'},{s:'box',p:[-0.87,2.25,7.1],size:[2.24,0.2,0.2],key:'urban:MetalWarningStripe1'},{s:'box',p:[0,5.25,0],size:[24.9,0.02,14.4],sides:false,top:false,under:true,roof:true,ry:0,key:'urban:MetalWallRibbed1a',tint:3817030},{s:'roof',form:'barrel',p:[0,5.25,0],size:[24.9,1.6,14.4],roof:true,key:'urban:MetalCorrugatedPainted1a',tint:13222578}]},
+                    {k:'arch',id:'spc:saturn:black_cube:look',x:-71.65,z:180.29,rot:0,parts:[{s:'box',p:[0,3.3,0],size:[10.5,10.5,10.5],key:'urban:MetalWallRibbed1a',tint:328967},{s:'box',p:[-5.25,3.3,-5.25],size:[0.14,10.5,0.14],key:'urban:MetalDiamondPlate1a',tint:13482239,glow:1},{s:'box',p:[5.25,3.3,-5.25],size:[0.14,10.5,0.14],key:'urban:MetalDiamondPlate1a',tint:13482239,glow:1},{s:'box',p:[-5.25,3.3,5.25],size:[0.14,10.5,0.14],key:'urban:MetalDiamondPlate1a',tint:13482239,glow:1},{s:'box',p:[5.25,3.3,5.25],size:[0.14,10.5,0.14],key:'urban:MetalDiamondPlate1a',tint:13482239,glow:1},{s:'box',p:[0,3.3,-5.25],size:[10.5,0.14,0.14],key:'urban:MetalDiamondPlate1a',tint:13482239,glow:1},{s:'box',p:[-5.25,3.3,0],size:[0.14,0.14,10.5],key:'urban:MetalDiamondPlate1a',tint:13482239,glow:1},{s:'box',p:[0,3.3,5.25],size:[10.5,0.14,0.14],key:'urban:MetalDiamondPlate1a',tint:13482239,glow:1},{s:'box',p:[5.25,3.3,0],size:[0.14,0.14,10.5],key:'urban:MetalDiamondPlate1a',tint:13482239,glow:1},{s:'box',p:[0,13.66,-5.25],size:[10.5,0.14,0.14],key:'urban:MetalDiamondPlate1a',tint:13482239,glow:1},{s:'box',p:[-5.25,13.66,0],size:[0.14,0.14,10.5],key:'urban:MetalDiamondPlate1a',tint:13482239,glow:1},{s:'box',p:[0,13.66,5.25],size:[10.5,0.14,0.14],key:'urban:MetalDiamondPlate1a',tint:13482239,glow:1},{s:'box',p:[5.25,13.66,0],size:[0.14,0.14,10.5],key:'urban:MetalDiamondPlate1a',tint:13482239,glow:1}]},
                 ],
             },
             doors: [
@@ -78770,6 +78772,7 @@ const DOOR_HQ = {
                 {id:'bore_farside',wall:'free',x:684.25,z:124.25,face:90,leaf:'leaf_bulkhead',label:'THE BORE',sub:'THE FAR SIDE · THE BORE TO THE FACE',action:{room:'site_prebuilt_moon_plots',at:'bore_face'},secret:true},
                 {id:'frame_rim',wall:'free',x:-148.75,z:145.25,face:90,y:3.5,leaf:'leaf_frame_only',label:'THE FRAME',sub:'THE RIM WALK · THE DROP’S FRAME',action:{room:'site_prebuilt_moon_plots',at:'frame_singularity'}},
                 {id:'frame_singularity',wall:'free',x:355.25,z:204.75,face:180,leaf:'leaf_frame_only',label:'THE FRAME',sub:'THE ACCRETION RIM · THE FRAME',action:{room:'site_prebuilt_moon_plots',at:'frame_rim'}},
+                {id:'cube_dmt',wall:'free',x:-71.75,z:180.25,face:180,leaf:'leaf_frame_only',label:'THE BLACK CUBE',sub:'THE INSIDE',action:{room:'site_prebuilt_cube_dmt',at:'saturn'}},
             ],
             counters: [],
             props: [
@@ -104074,6 +104077,9 @@ const HQ_NPC_PLACES = {
     site_prebuilt_lookingglass_realm: ['occulus @S:High Thought >S,L,N', 'occulus @L:Reading >L', 'occulus @N:Stage >N', 'boltzmann brain @S:Open Sea >S,L', 'boltzmann brain @L:Not Yet Written stay', 'orb of light @S:Still Water >S,L', 'orb of light @L:Stacks >L',
         'machine elves @L:Card Catalogue stay', 'dreameater @N:The Bed >N,S', 'telepath m @S:Thought-Forms >S', 'telepath f @S:Islands >S', 'shadow entity @N:Thing Under >N', 'flesheater @N:Maw >N', 'hollow @N:The Bed >N,S night', 'succubus m @N:Bad Nights >N', 'succubus f @N:Blood >N'],
     site_prebuilt_lookingglass_waiting: ['ghost m'],
+    /* ── THE INSIDE OF THE BLACK CUBE (mondo 11-27: "occulus, floating brain, orb of light, machine elves ..., the hollow, the shadow entities, and the mantids";
+       "the demiurge should be the boss of the dungeon"). The squares are bake-dmt.js's (its WHO LIVES HERE): change both together ── */
+    site_prebuilt_cube_dmt: ['occulus x4', 'boltzmann brain', 'orb of light x2', 'machine elves x3', 'hollow', 'shadow entity x2', 'mantid x2', 'demiurge f stay'],
     /* ── OUTER SPACE (one room, four worlds: no route crosses from one world to the next) ── */
     site_prebuilt_moon_plots: ['astronaut @M:Lander >M,C', 'astronaut @M:Habitat stay', 'grey @F:Saucer >F,C x2', 'bligblog @F:Dig >F', 'reptilian @F:Bore >F', 'mantid @C:The Crater >C,F',
         'martian @Y:Face >Y,V x2', 'martian @V:The Canyon >V', 'astronaut @R:Rover Bay >R', 'grey @H >H', 'black goo @H >H', 'nordic m @G >G', 'nordic f @G >G', 'barbarella @G >G',
