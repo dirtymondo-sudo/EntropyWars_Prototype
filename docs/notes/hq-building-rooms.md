@@ -1910,3 +1910,18 @@ Ring's (its own `_hqPassJ*` passage) and the crossing into it happens there. `_h
 its floor (the crossing then loads it).
 Reproduced first in the browser: with the Ring held back, the walker stopped at z 25.6 for 120 s. After the fix, with the Ring held back
 the walker crossed at z 25.4 and the Ring loaded; with the Ring loaded it crossed at z 25.3 into the corridor with no card.
+
+## THE LANDING AT THE FEET (2026-11-28, mondo: "in the door hq lobby, when jumping on the 2nd deck, i fall straight through the floor ... on foot and on skateboard")
+- ROOT: every airborne landing (the walker's jump / fall, the board's air, `_hqRideAirLeft`, the door gun's `_hqPortalSurf`) asked the floor as
+  a FREE query (`_hqSurface(x, z, null)`). Every layered reader answers a free query with its LOWEST layer: DOOR HQ 2.0 hung the Lobby's deck
+  over a floor (`underGal`, mezz.inner well inside the drum), so the free answer under the deck became the floor 7.1 m down, and
+  `_hqBlockerFloor` (which had the box gallery and the terrain bridges patched in one by one) knew nothing of the deck. Same hole: the third
+  ring (no room has one now), the round join's gallery rooms.
+- FIX (three-renderer.js, before `_hqSurface`): `_hqLandY(x, z, feetY)` asks AT THE FEET (`_hqLandMode` turns the step rule off, the
+  body's height picks the layer), kept when at or under the feet and above the free answer; else the free answer. Used by all four
+  landings + `_hqStuckFree` (a stuck body is freed onto its own floor first, never the one under it). Off: `window.EW_HQ_LAND_FREE`.
+- RULE for new multi-floor shapes: a layer reader picks its layer from `curY`; never add another layer to `_hqBlockerFloor` by hand.
+- PROOF (real SPACE / W through the walker's keys, llvmpipe probe): Lobby deck r 21, old code foot 7.1 -> 0 and board 7.1 -> 0, new code
+  lands 7.1 both ways. Sweep with the new code (terrain rooms land through `hqTerrainBridgeBelow`, they never had the hole): Bayside
+  Mall deck 5.25 (foot + board), Superhero Tower floor 10.5, Camelot palace 7.0 (foot), the city Highway deck 17.5 (foot; board coming down).
+  Probe: the cloud renderer is 0.3-2 fps in the castle, so a held key needs 600 ms+ and an air window of 70 s.
