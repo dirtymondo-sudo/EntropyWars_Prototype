@@ -22351,7 +22351,7 @@ const ThreeRenderer = (function () {
         var now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
         var dead = !!(st && st.dead), act = st && st.act, u = act ? (now - st.t0) / (st.ms || 1000) : 2;
         T.ph += dt * 6.2832 * (0.45 + 1.15 * T.swim);
-        var amp = (5 + 11 * T.swim) * Math.PI / 180, side = 3 * Math.PI / 180;
+        var amp = (7 + 12 * T.swim) * Math.PI / 180, side = 3 * Math.PI / 180;
         var limp = dead ? _occS((now - st.t0) / 1200, 0, 1) : 0;
         /* the hips' side line (left thigh root minus right) and her front: the kick turns about the first, the sway about the second */
         if (T.L && T.R) { _mtAx.setFromMatrixPosition(T.L.matrixWorld).sub(_mtSd.setFromMatrixPosition(T.R.matrixWorld)); }
