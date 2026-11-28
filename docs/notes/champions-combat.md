@@ -7082,6 +7082,15 @@ models and pieces for them and custom animations for their spells/abilities". Th
   `GPU=webgpu` with `EW_PROBE_HEADFUL=1 EW_PROBE_GL=webgpu xvfb-run -a`). Its vision is 2: the probe stands the foe 2 squares off.
 - NOT DONE: no new sound; the eyes do not move (they are part of the head); the finisher (The Lure, the Bloom's staging) is as it was;
   rules and numbers untouched. Meshy: 16 pictures + 5 models. Sources, scripts, concepts: project files `deep-sea-fish/`.
+- v2, THE SERPENT TAIL (same day, mondo: "that tail is not working, clipping inside its jaw and not connected properly. cant you
+  make it not curl up like that? make it more serpent like"): the same five parts, `assemble.py` changed, no new Meshy spend. The
+  tail no longer hooks down and forward under the jaw: it trails BACK and down behind the head in one long S (`TAIL_HEAD`, never
+  past 72 degrees from straight back; 2.45 m, was 1.75) and ends lifting off the floor. THE NECK: the tail now starts INSIDE the
+  skull (`T0` at the head's widest, its open end hidden there) and is as wide as the skull where it comes out (`fatx` / `fatz`),
+  so there is no ring and no gap behind the head. The whole fish stands 0.42 m forward (`BACK`) so the square's middle is under
+  its body. File `deep_sea_fish_v2.glb` (+ `.opt.glb`; v1 stays on R2; manifest rows added BY HAND, `--merge --prefix` drops the
+  folder's other rows). The rig: a tail joint's x < 0 now hooks it down under the fish, x > 0 lifts it out behind; `_dfLive`'s
+  wave is a serpent's (bigger, 0.14 of a turn a joint, a little up and down with the side to side); the casts' `curl` values retuned.
 ## THE OCTOPUS GIRL (2026-11-28, mondo: "the octopus girl with her tentacles separately moving")
 - A NEW race, `'octopus girl'` (female only), from mondo's own Meshy model (R2 `dirtymondo` inbox/Meshy_AI_Octopus_girl_20261128_texture_remesh_tri.glb).
   Her tentacles are her HAIR (she has legs). Meshy rigged her (1.7 m); `bake-writhe.py --hair --locks 1 --cols 16 --min 0.06 --smooth 24` hangs one
