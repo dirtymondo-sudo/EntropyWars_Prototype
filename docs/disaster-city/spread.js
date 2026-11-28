@@ -524,6 +524,11 @@ function apply(block, opt) {
     T.busStops = (T.busStops || []).map(b => Object.assign(mp(b), { signs: (b.signs || []).map(mp) }));
     count.features = T.features.length; count.props = room.props.length; count.lamps = T.gen.lamps.length; count.trees = trees.length; count.streets = streets.length;
 
+    /* THE HILLS REJOINED (2026-11-28, docs/disaster-city/hills-pass.js): the sign one word about Bluff Drive's line, THE SIGN VIEW, the shell at the Highway's
+       north end, the canyon mouth's road on one grade, brush on the Hills' two strips. It works on the finished room (`DC_NO_HILLS_PASS=1` = without it). */
+    if (!process.env.DC_NO_HILLS_PASS) { require('./hills-pass.js').lay({ room, T, H, P, TY, NX, NZ, X0, Z0, C, count, say });
+        T.slope.cells.d = b64.enc(Int16Array.from(H, v => Math.round(v * 100))); T.paint.d = b64.enc(P); count.features = T.features.length; count.props = room.props.length; }
+
     /* THE HARBOUR IN THE CITY'S ROOM (2026-11-27, docs/disaster-city/harbour.js): the room grows 40 squares east over the water and the Beach zone's
        Harbour is set down on it. Nothing above this line knows: X0, NX, DX, DZ are the city's own, as before (`DC_NO_HARBOUR=1` = without it). */
     const HB = process.env.DC_NO_HARBOUR ? null : require('./harbour.js').lay({ room, T, H, FL, P, NX, NZ, X0, Z0, b64, count, say });
