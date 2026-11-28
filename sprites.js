@@ -3593,7 +3593,7 @@ const RACE_MODELS_3D = {
      (three-renderer.js THE DEEP SEA FISH IN PIECES) moves the jaw, the lure, the fans and the tail; THE SWAY swings the lure's
      stalk and the two barbels. Front +Z, floor y 0. The old model (Meshy_AI_alien_fish_Running.glb) stays on R2. */
   'deep sea fish': {
-    male: { model: 'https://cdn.entropywars.net/Assets/characters/races/deepseafish/male/deep_sea_fish_v1.glb', clips: {}, procRig: 'deepFish', heightRatio: 1.3, yawOffset: 0, basicAttackKind: 'claw',
+    male: { model: 'https://cdn.entropywars.net/Assets/characters/races/deepseafish/male/deep_sea_fish_v2.glb', clips: {}, procRig: 'deepFish', heightRatio: 1.3, yawOffset: 0, basicAttackKind: 'claw',
       moveTimeScale: 1, castTimeScale: 1, deathTimeScale: 1, hitTimeScale: 1, jumpTimeScale: 1,
       sway: { stiffness: 3.2, gravity: 0.12, drag: 0.34, maxRoot: 40, maxBend: 30, wave: 0.08, waveHz: 0.5, caps: [] } },
   },
