@@ -374,11 +374,7 @@ def main():
     if not args or args[0] not in ('--arms', '--hair'): print(__doc__); sys.exit(1)
     mode = args.pop(0)[2:]
     opt = {'min': 0.15, 'joints': 6 if mode == 'arms' else 5, 'band': 0.05, 'col': 0, 'cols': 10, 'root': 0.04, 'fade': 0.08,
-<<<<<<< HEAD
-           'sat': 0.15, 'val': 0.72, 'debug': None, 'reach': 0.08, 'mirror': 0, 'locks': 0, 'apart': 0.04, 'smooth': 0, 'parent': '', 'free': '', 'rg': -10.0}
-=======
-           'sat': 0.15, 'val': 0.72, 'debug': None, 'reach': 0.08, 'mirror': 0, 'locks': 0, 'apart': 0.04, 'smooth': 0, 'parent': '', 'free': '', 'persist': 0, 'cut': 0}
->>>>>>> origin/main
+           'sat': 0.15, 'val': 0.72, 'debug': None, 'reach': 0.08, 'mirror': 0, 'locks': 0, 'apart': 0.04, 'smooth': 0, 'parent': '', 'free': '', 'persist': 0, 'cut': 0, 'rg': -10.0}
     for k0 in list(opt):
         if '--' + k0 in args:
             k = args.index('--' + k0); v = args[k + 1]; del args[k:k + 2]
