@@ -2534,3 +2534,8 @@ reference, model.py = image-to-3D (+ Meshy rig for her), krig.py = the kraken's 
   branch the watershed keeps (its suckers and curls made 63 false tips); the spine bones are never freed (the mantle had gone with the
   arms). 10 chains of 6 joints.
 Credits: concepts 3 pictures, two models, one rig.
+
+- v3 (same day, his "can we make her more curvy and her boobs bigger, more similar to the first one"): five more Meshy concepts kept
+  coming out no curvier, so the rigged model itself is reshaped in bind space (project files `octopus-girl/curvy.py <in> <out> 0.75
+  0.16`: each breast grows 75 % about a point inside it, hips + thighs 16 % wider, the waist 5 % in; hair and arms untouched, the
+  weights untouched, normals made again where it moved). `Meshy_AI_octopus_girl_v3_writhe.glb`.

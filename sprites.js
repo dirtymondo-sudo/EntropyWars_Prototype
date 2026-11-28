@@ -2977,11 +2977,11 @@ const RACE_MODELS_3D = {
   /* 🐙 THE OCTOPUS GIRL (2026-11-28; mondo: "remake the models you need in meshy": a NEW Meshy model from his own (inbox
      Meshy_AI_Octopus_girl_20261128_texture_remesh_tri.glb), feet apart, every tentacle of her hair hanging free of her back): Meshy's rig
      (1.75 m) + one spring chain down each of the 14 locks, hung on her Head (bake-writhe.py --hair --locks 1 --cols 16 --min 0.06 --smooth 24
-     --cut 0.857: under that line her hair hangs free of the body, so the hair is every piece that is not the body). The library animates her body; THE SWAY swings every lock after the clip and its wave makes them
+     --cut 0.857: under that line her hair hangs free of the body, so the hair is every piece that is not the body); v3 = his "more curvy and her boobs bigger, more similar to the first one": bust +75 % and hips / thighs +16 % moved in bind space, project files octopus-girl/curvy.py). The library animates her body; THE SWAY swings every lock after the clip and its wave makes them
      writhe on their own, a phase a lock (a softer sway than a cape: more and the locks fold into each other). */
   'octopus girl': {
     female: _mkUAL('octopus_girl/female', 'octopus_girl', {
-      model: 'https://cdn.entropywars.net/Assets/characters/races/octopus_girl/female/Meshy_AI_octopus_girl_v2_writhe.glb',
+      model: 'https://cdn.entropywars.net/Assets/characters/races/octopus_girl/female/Meshy_AI_octopus_girl_v3_writhe.glb',
       sway: { stiffness: 3.0, gravity: 0.45, drag: 0.42, maxRoot: 14, maxBend: 15, wave: 0.18, waveHz: 0.3, caps: [] },
       heightRatio: 0.97, basicAttackKind: 'claw',
     }),
