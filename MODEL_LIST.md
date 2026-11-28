@@ -25,7 +25,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 1372 |
+| Meshy AI | no | 1374 |
 | Meshy AI, reworked by Claude | no | 18 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 107 |
@@ -135,6 +135,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | hacker | `Assets/characters/races/hacker/male/Meshy_AI_hacker_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES 4, mondo 2026-11-19 picks from the 11-19 concepts round; concepts + models in project files new-char-concepts-20261119/) |
 | halfdemon — creator look also baked | `Assets/characters/races/halfdemon/male/Meshy_AI_rich_business_man_wit_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | halfdemon (female) — creator look also baked | `Assets/characters/races/halfdemon/female/Meshy_AI_hot_fancy_rich_girl_w_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| harpy (female) | `Assets/characters/races/harpy/female/Meshy_AI_harpy_v2_Running.glb` | Meshy AI | Meshy AI, mondo's own model (2026-11-28, inbox Meshy_AI_Harpy_girl / moth_queen_alien _20261128_texture.glb); wings cut off, the body rigged by Meshy, the wings put back on ewwing_L/R by Claude (bake-winged.py; project files harpy-moth/) |
 | haunted doll (female) | `Assets/characters/races/haunted_doll/female/Meshy_AI_haunted_doll_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES 2, mondo 2026-11-17 picks from the zone characters; concepts + models in project files new-races-2/; the Boltzmann Brain is unrigged) |
 | hippie | `Assets/characters/races/hippie/Meshy_AI_hippie_male_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | hippie (female) | `Assets/characters/races/hippie/Meshy_AI_hippie_female_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
@@ -191,6 +192,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | monarch (female) | `Assets/characters/races/monarch/female/Meshy_AI_monarch_wings_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API from mondo's picked concepts (THE COMING RACES 2, 2026-11-23; the Bear's polar look + the Rat King are form looks; project files char-concepts-20261123/) |
 | monk | `Assets/characters/races/monk/male/Meshy_AI_monk_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES 4, mondo 2026-11-19 picks from the 11-19 concepts round; concepts + models in project files new-char-concepts-20261119/) |
 | monster truck | `Assets/characters/races/monster_truck/male/monster_truck.glb` | Meshy AI, reworked by Claude | Meshy AI parts made from mondo's monster truck concept 2026-11-27 (the body with no hood or wheels, the fanged hood, ONE wheel, ONE hydraulic strut; project files character-concepts/models) put together by Claude in Blender (project files character-concepts/truck.py): the wheel and the strut each used four times, each its own node, for the Monster Truck race's moving-parts rig (three-renderer.js THE MONSTER TRUCK) |
+| moth queen (female) | `Assets/characters/races/moth_queen/female/Meshy_AI_moth_queen_v2_Running.glb` | Meshy AI | Meshy AI, mondo's own model (2026-11-28, inbox Meshy_AI_Harpy_girl / moth_queen_alien _20261128_texture.glb); wings cut off, the body rigged by Meshy, the wings put back on ewwing_L/R by Claude (bake-winged.py; project files harpy-moth/) |
 | mothman | `Assets/characters/races/mothman/male/Meshy_AI_mothman_wings_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | mummy | `Assets/characters/races/mummy/male/Meshy_AI_mummy_m_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES, the men; mondo 2026-11-16) |
 | mummy (female) | `Assets/characters/races/mummy/Meshy_AI_mummy_female_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
