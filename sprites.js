@@ -958,6 +958,7 @@ const FOOTBALL_SPRITE = `${_S}/football.png`;
 // 2026-11-17 (mondo: female nordic + siren): their own 128x128 sprites, Sprite AI restyles of each new Meshy model's front render.
 // The mermaid woman keeps her blue sprite: her new model was made to match it.
 const _NEW_FEMALE_SPRITES = {
+  'succubus': 'https://cdn.entropywars.net/Assets/characters/races/succubus/female/succubus_f_px2.png',   // 2026-11-28 THE SUCCUBUS REMAKE (Sprite AI restyle of her v3 model's front render)
   'jellyfish': 'https://cdn.entropywars.net/Assets/characters/races/jellyfish/female/jellyfish_f_px.png',   // 2026-11-24 THE JELLYFISH, MALE + FEMALE (Sprite AI restyle of her model's front render)
   'gladiator': `${_S}/Races/gladiator/female/gladiator_f_px.png`,   // 2026-11-19 THE COMING RACES — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'nordic': 'https://cdn.entropywars.net/Assets/characters/races/nordic/female/nordic_f_v2_px.png',   // 2026-11-24 her new model (Sprite AI restyle of its front render)
@@ -2529,7 +2530,7 @@ const RACE_MODELS_3D = {
     // the centaurs do it". Meshy's skeleton (from the f2 file) refitted to her, the legs left in but weighing nothing, a chain
     // ewtail_0..6 down the tail (three-renderer.js THE MERMAID'S TAIL swims it after the clip). The f2 model stays on R2.
     female: _mkUAL('mermaid/female', 'mermaid_f', {
-      model: 'https://cdn.entropywars.net/Assets/characters/races/mermaid/female/mermaid_tail_v1.glb',
+      model: 'https://cdn.entropywars.net/Assets/characters/races/mermaid/female/mermaid_tail_v2.glb',   // 11-28 v2: a NEW Meshy woman (concept A, starfish top) + a Meshy tail piece, joined by bake-mermaid.py (v1, cut from his model, stays on R2)
       heightRatio: 0.95,
       basicAttackKind: 'magic',
       // (2026-11-17: no swim idle any more — the swim loop lowers the hips, and with the tail bound to the hips she sank into the floor)

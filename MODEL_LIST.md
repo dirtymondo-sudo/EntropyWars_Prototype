@@ -184,7 +184,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | medic (female) | `Assets/characters/races/medic/female/Meshy_AI_nurse_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | men in black — creator look also baked | `Assets/characters/races/homosapien/male/agent/Meshy_AI_men_in_black_male_ag_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | mermaid | `Assets/characters/races/mermaid/male/Meshy_AI_merman_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES, the men; mondo 2026-11-16) |
-| mermaid (female) | `Assets/characters/races/mermaid/female/mermaid_tail_v1.glb` | Meshy AI | Meshy AI, mondo's own model (2026-11-28, inbox Meshy_AI_mermaid_girl_20261128_texture.glb), rigged by Claude in cloud Blender (bake-mermaid.py: Meshy's skeleton refitted, legs weigh nothing, a swimming tail chain ewtail_0..6) |
+| mermaid (female) | `Assets/characters/races/mermaid/female/mermaid_tail_v2.glb` | Meshy AI | Meshy AI: v1 = mondo's own model (2026-11-28) rigged in cloud Blender; v2 = a Meshy rigged woman (Claude's concept from his model, his pick A) + a Meshy tail piece, joined by bake-mermaid.py (legs cut, a swimming tail chain ewtail_0..6) |
 | mime | `Assets/characters/races/mime/male/Meshy_AI_mime_m_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES, the men; mondo 2026-11-16) |
 | mime (female) | `Assets/characters/races/mime/Meshy_AI_mime_female_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | minotaur | `Assets/characters/races/minotaur/Meshy_AI_minotaur_realistic_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |

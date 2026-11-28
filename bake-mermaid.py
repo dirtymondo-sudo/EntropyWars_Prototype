@@ -1,115 +1,125 @@
 #!/usr/bin/env python3
-# bake-mermaid.py -- THE MERMAID'S TAIL (2026-11-28, mondo: "I want the mermaid tail to be animated separately from her upper body
-# so she can still have the meshy animations like how the centaurs do it").
-# Rigs an UNRIGGED Meshy mermaid (a T-pose, tail straight down) with Meshy's own skeleton taken from a rigged Meshy file (the old
-# mermaid f2: same bone names, so the shared animation library retargets onto it), every joint refitted to the new body, the legs
-# left in the file but weighing nothing (use_deform off) and a chain ewtail_0..6 laid down the tail under the Hips
-# (three-renderer.js THE MERMAID'S TAIL swims it after the clip). Blender's heat weights fail on Meshy's open mesh, so the weights
-# are the nearest bones' (1/d^4, the four strongest), gated by region: arms only out at the side and not behind the back (the
-# hair never rides an arm), tail bones only below the frill, head + neck only above the shoulders.
-# The joint heights below are the 2026-11-28 model's (measured from slices, height scaled to 1.75 m); another mermaid needs them
-# measured again. Needs `pip install bpy`.
-#   python3 -I bake-mermaid.py -- <new mermaid texture.glb> <rigged Meshy file for the skeleton> <out.glb>
-# Then node optimize-assets.js <dir> (the .opt.glb), sync-zip.js --put both, ASSET_MANIFEST.json rows. Notes: champions-combat.md
-# "THE MERMAID'S TAIL".
-# THE MERMAID'S TAIL build: Meshy's own skeleton (from the old mermaid file) refitted to mondo's new mesh, a chain of tail bones
-# down the tail, the legs left in the file but weighing nothing. Blender's heat weights.
-import bpy,sys,mathutils
+# bake-mermaid.py -- THE MERMAID IN TWO PARTS (2026-11-28, mondo: "use meshy to make a new model", the tail "animated separately
+# from her upper body so she can still have the meshy animations like how the centaurs do it").
+# Joins a Meshy RIGGED woman (concept: the mermaid on human legs, A-pose) and a Meshy TAIL piece (no body) into one file:
+#   the bust a little fuller (a soft swell about a point inside each breast; BUST), the legs cut below the skirt's hem (HEM) and
+#   what is left of them weighed onto the Hips, the tail scaled to the hips (TW half width, LEN length, TD depth, TY nudge back),
+#   its top up inside the skirt (TOPZ), the body lifted so the fluke stands on the floor, a chain ewtail_0..6 down the tail under
+#   the Hips (nearest-bone weights, the top RIM fraction blended into the Hips), the leg bones kept but weighing nothing.
+# three-renderer.js THE MERMAID'S TAIL swims the chain after the library clip. Needs `pip install bpy`.
+#   BUST=0.28 TY=0.012 HEM=0.67 TW=0.155 LEN=1.25 python3 -I bake-mermaid.py -- <body_rigged.glb> <tail.glb> <out.glb>
+# (the 11-28 build: project files mermaid-tail/models/body_rigged.glb + tail.glb -> mermaid_tail_v2.glb). Then optimize-assets.js,
+# sync-zip.js --put, ASSET_MANIFEST.json rows. Notes: champions-combat.md "THE MERMAID'S TAIL".
+import bpy,sys,os,numpy as np,mathutils,bmesh
 A=sys.argv[sys.argv.index('--')+1:]
-NEW,OLD,OUT=A[0],A[1],A[2]
+BODY,TAIL,OUT=A[0],A[1],A[2]
+K=float(os.environ.get('BUST','0.32'))
 bpy.ops.wm.read_factory_settings(use_empty=True)
 def imp(p):
-    before=set(bpy.data.objects); bpy.ops.import_scene.gltf(filepath=p); return [o for o in bpy.data.objects if o not in before]
-O=imp(OLD)
-arm=[o for o in O if o.type=='ARMATURE'][0]
-for o in O:
-    if o.type=='MESH': bpy.data.objects.remove(o,do_unlink=True)
-bpy.context.view_layer.objects.active=arm; arm.select_set(True)
+    b=set(bpy.data.objects); bpy.ops.import_scene.gltf(filepath=p); return [o for o in bpy.data.objects if o not in b]
+B=imp(BODY)
+arm=[o for o in B if o.type=='ARMATURE'][0]
+for o in B:
+    if o.type=='MESH' and o.name.startswith('Icosphere'): bpy.data.objects.remove(o,do_unlink=True)
+if arm.animation_data: arm.animation_data.action=None
+for pb in arm.pose.bones: pb.location=(0,0,0); pb.rotation_quaternion=(1,0,0,0); pb.scale=(1,1,1)
+bpy.context.view_layer.objects.active=arm
+for o in bpy.data.objects: o.select_set(o==arm)
 bpy.ops.object.transform_apply(location=True,rotation=True,scale=True)
-N=imp(NEW)
-mesh=[o for o in N if o.type=='MESH'][0]
-bpy.context.view_layer.objects.active=mesh
-for o in bpy.data.objects: o.select_set(o==mesh)
+body=[o for o in bpy.data.objects if o.type=='MESH' and o.parent==arm][0]
+for o in bpy.data.objects: o.select_set(o==body)
+bpy.context.view_layer.objects.active=body
 bpy.ops.object.transform_apply(location=True,rotation=True,scale=True)
-zs=[v.co.z for v in mesh.data.vertices]; z0=min(zs); H=max(zs)-z0; s=1.75/H
-for v in mesh.data.vertices: v.co=mathutils.Vector(((v.co.x)*s,(v.co.y)*s,(v.co.z-z0)*s))
-mesh.data.update()
-mesh.name='char1'
-V=lambda x,y,z:mathutils.Vector((x,y,z))
-# (glTF x, y up, z front) -> Blender (x, -z, y)
-G=lambda x,y,z:V(x,-z,y)
-J={'Hips':(G(0,1.17,-0.02),G(0,1.25,-0.02)),'Spine02':(G(0,1.25,-0.02),G(0,1.32,-0.02)),'Spine01':(G(0,1.32,-0.02),G(0,1.40,-0.02)),
-   'Spine':(G(0,1.40,-0.02),G(0,1.52,-0.01)),'neck':(G(0,1.52,-0.01),G(0,1.585,0.0)),'Head':(G(0,1.585,0.0),G(0,1.75,0.01)),
-   'LeftShoulder':(G(0.03,1.47,-0.01),G(0.12,1.495,0.0)),'LeftArm':(G(0.12,1.495,0.0),G(0.31,1.495,0.0)),
-   'LeftForeArm':(G(0.31,1.495,0.0),G(0.49,1.49,0.0)),'LeftHand':(G(0.49,1.49,0.0),G(0.58,1.49,0.0)),
-   'LeftUpLeg':(G(0.07,1.09,-0.02),G(0.07,0.75,-0.02)),'LeftLeg':(G(0.07,0.75,-0.02),G(0.07,0.35,-0.03)),
-   'LeftFoot':(G(0.07,0.35,-0.03),G(0.07,0.30,0.06)),'LeftToeBase':(G(0.07,0.30,0.06),G(0.07,0.30,0.14))}
-for k in list(J):
-    if k.startswith('Left'):
-        a,b=J[k]; J['Right'+k[4:]]=(V(-a.x,a.y,a.z),V(-b.x,b.y,b.z))
+me=body.data; vg={g.name:g.index for g in body.vertex_groups}
+def wsum(v,names):
+    ids={vg[n] for n in names if n in vg}; return sum(g.weight for g in v.groups if g.group in ids)
+ARMS=[n for n in vg if any(k in n for k in ('Arm','Hand','Shoulder'))]
+LEGS=[n for n in vg if any(k in n for k in ('UpLeg','Leg','Foot','Toe'))]
+# 1. the bust, fuller: a soft swell about a point inside each breast (the starfish and the pearls ride along)
+P=np.array([v.co[:] for v in me.vertices])
+for sx in (1,-1):
+    C=np.array([0.08*sx,-0.05,1.255]); R=0.15
+    d=np.linalg.norm(P-C,axis=1); t=np.clip((R-d)/(R*0.45),0,1); w=t*t*(3-2*t)
+    for i in np.nonzero(w>0)[0]:
+        v=me.vertices[i]
+        if P[i,1]>-0.02 or P[i,0]*sx<-0.01 or wsum(v,ARMS)>0.3: continue
+        v.co=mathutils.Vector(C+(P[i]-C)*(1+K*w[i]))
+P=np.array([v.co[:] for v in me.vertices])
+# 2. the skirt's hem: the lowest z where the outline is still wider than the thighs
+rad=lambda s:np.abs(P[s,0]).max() if s.any() else 0
+hem=None
+for z in np.arange(0.95,0.55,-0.01):
+    s=(np.abs(P[:,2]-z)<0.006)&(np.abs(P[:,0])<0.3)&(np.abs(P[:,1])<0.25)
+    print('slice %.2f |x|max %.3f'%(z,rad(s)))
+hem=float(os.environ.get('HEM','0.74'))
+bm=bmesh.new(); bm.from_mesh(me); bm.verts.ensure_lookup_table(); dl=bm.verts.layers.deform.active
+legi={vg[n] for n in LEGS}
+kill=[v for v in bm.verts if v.co.z<hem and sum(w for g,w in v[dl].items() if g in legi)>0.5]
+bmesh.ops.delete(bm,geom=kill,context='VERTS'); bm.to_mesh(me); bm.free()
+print('legs cut',len(kill))
+hg=body.vertex_groups['Hips']
+for v in me.vertices:
+    w=wsum(v,LEGS)
+    if w>0:
+        for n in LEGS: body.vertex_groups[n].remove([v.index])
+        hg.add([v.index],w,'ADD')
+# 3. the tail: top width to the hips, its top up inside the skirt
+T=[o for o in imp(TAIL) if o.type=='MESH'][0]
+for o in bpy.data.objects: o.select_set(o==T)
+bpy.context.view_layer.objects.active=T
+bpy.ops.object.transform_apply(location=True,rotation=True,scale=True)
+Q=np.array([v.co[:] for v in T.data.vertices]); top=Q[:,2].max(); bot=Q[:,2].min(); L0=top-bot
+tw=np.abs(Q[Q[:,2]>top-0.03*L0,0]).max()
+s=float(os.environ.get('TW','0.135'))/tw
+TOPZ=float(os.environ.get('TOPZ','0.93'))
+cx=(Q[:,0].max()+Q[:,0].min())/2; cy=np.median(Q[Q[:,2]>top-0.05*L0,1])
+sz=float(os.environ.get('LEN','1.25'))/L0; L=L0*sz; lift=max(0.0,L-TOPZ)
+print('tail length',L,'lift',lift)
+for v in T.data.vertices:
+    v.co=mathutils.Vector(((v.co.x-cx)*s,(v.co.y-cy)*s*float(os.environ.get('TD','1.0'))+float(os.environ.get('TY','0.0')),(v.co.z-top)*sz+TOPZ))
+T.data.update()
+# the body + bones up by `lift` so the fluke stands on the floor
+for v in me.vertices: v.co.z+=lift
 bpy.context.view_layer.objects.active=arm
 for o in bpy.data.objects: o.select_set(o==arm)
 bpy.ops.object.mode_set(mode='EDIT')
 eb=arm.data.edit_bones
-for n,(h,t) in J.items():
-    e=eb[n]; r=e.roll; e.use_connect=False; e.head=h; e.tail=t; e.roll=r
-for n in ('head_end','headfront'):
-    if n in eb:
-        e=eb[n]; d=e.tail-e.head
-        if n=='head_end': e.head=G(0,1.75,0.01); e.tail=e.head+V(0,0,0.05)
-        else: e.head=G(0,1.585,0.0); e.tail=G(0,1.585,0.12)
-TL=[(1.10,-0.02),(0.93,0.0),(0.77,-0.02),(0.61,-0.035),(0.46,-0.04),(0.31,-0.055),(0.16,-0.055),(-0.02,-0.055)]
+for e in eb: e.head.z+=lift; e.tail.z+=lift
+for v in T.data.vertices: v.co.z+=lift
+# the chain down the tail's middle
+Q=np.array([v.co[:] for v in T.data.vertices]); zt=Q[:,2].max(); zb=Q[:,2].min()
+N=7; zs=[zt-0.04*(zt-zb)]+[zt-(zt-zb)*(0.04+0.96*k/N) for k in range(1,N+1)]
+def mid(z):
+    s=np.abs(Q[:,2]-z)<0.02*(zt-zb); s&=np.abs(Q[:,0])<0.06
+    if not s.any(): s=np.abs(Q[:,2]-z)<0.04*(zt-zb)
+    return mathutils.Vector((0,float((Q[s,1].max()+Q[s,1].min())/2),z))
+pts=[mid(z) for z in zs]; pts[-1].z=zb
 prev=eb['Hips']
-for i in range(len(TL)-1):
-    e=eb.new('ewtail_%d'%i); e.head=G(0,TL[i][0],TL[i][1]); e.tail=G(0,TL[i+1][0],TL[i+1][1]); e.parent=prev; e.use_connect=(i>0); e.roll=0; prev=e
+for i in range(N):
+    e=eb.new('ewtail_%d'%i); e.head=pts[i]; e.tail=pts[i+1]; e.parent=prev; e.use_connect=(i>0); e.roll=0; prev=e
 bpy.ops.object.mode_set(mode='OBJECT')
 for b in arm.data.bones:
-    if 'Leg' in b.name or 'Foot' in b.name or 'Toe' in b.name or b.name in ('head_end','headfront'): b.use_deform=False
-# heat weights fail on Meshy's open mesh (40 pieces): weights by the nearest bones, gated by region (the hair never on an arm)
-import numpy as np
-for o in bpy.data.objects: o.select_set(o in (mesh,arm))
-bpy.context.view_layer.objects.active=arm
-bpy.ops.object.parent_set(type='ARMATURE_NAME')
-P=np.array([v.co[:] for v in mesh.data.vertices])
-gx,gy,gz=P[:,0],P[:,2],-P[:,1]   # glTF frame
-DB=[b for b in arm.data.bones if b.use_deform]
-W=np.zeros((len(P),len(DB)))
-for k,bn in enumerate(DB):
-    h=np.array(bn.head_local[:]); t=np.array(bn.tail_local[:]); d=t-h; L2=d.dot(d)
-    u=np.clip(((P-h)@d)/L2,0,1); q=h+u[:,None]*d; dist=np.linalg.norm(P-q,axis=1)
-    n=bn.name
-    if any(x in n for x in ('Shoulder','Arm','Hand')):
-        ok=(np.abs(gx)>0.085)&(gz>-0.065)&(gy>1.40)&(np.sign(gx)==(1 if n.startswith('Left') else -1))
-        if 'Shoulder' not in n: ok&=(np.abs(gx)>0.11)
-    elif n.startswith('ewtail_'): ok=gy<1.13
-    elif n in ('Head','neck'): ok=gy>1.44
-    else: ok=gy>0.98
-    W[:,k]=np.where(ok,1.0/(dist+0.012)**4,0)
-# keep the 4 strongest
-idx=np.argsort(-W,axis=1)[:,:4]
-for i in range(len(P)):
-    ws=W[i,idx[i]]; t=ws.sum()
-    if t<=0: continue
-    for k,w in zip(idx[i],ws/t):
-        if w>0.01: mesh.vertex_groups[DB[k].name].add([i],float(w),'REPLACE') if DB[k].name in mesh.vertex_groups else mesh.vertex_groups.new(name=DB[k].name).add([i],float(w),'REPLACE')
-# no vertex left without a weight
-vg={g.index:g.name for g in mesh.vertex_groups}
-bad=[v.index for v in mesh.data.vertices if sum(g.weight for g in v.groups)<1e-4]
-print('UNWEIGHTED',len(bad),'of',len(mesh.data.vertices))
-if bad:
-    # nearest weighted vertex's weights
-    from mathutils import kdtree
-    good=[v for v in mesh.data.vertices if sum(g.weight for g in v.groups)>=1e-4]
-    kd=kdtree.KDTree(len(good))
-    for i,v in enumerate(good): kd.insert(v.co,i)
-    kd.balance()
-    for bi in bad:
-        v=mesh.data.vertices[bi]; co,i,d=kd.find(v.co)
-        for g in good[i].groups: mesh.vertex_groups[g.group].add([bi],g.weight,'REPLACE')
-cnt={}
-for v in mesh.data.vertices:
-    if v.groups:
-        g=max(v.groups,key=lambda g:g.weight); cnt[mesh.vertex_groups[g.group].name]=cnt.get(mesh.vertex_groups[g.group].name,0)+1
-print('TOP BONE COUNTS',sorted(cnt.items(),key=lambda x:-x[1]))
+    if b.name in LEGS or any(k in b.name for k in ('UpLeg','Leg','Foot','Toe')): b.use_deform=False
+# tail weights: nearest chain bones (1/d^4, top two), the top rim blended into the Hips
+DB=[arm.data.bones['ewtail_%d'%i] for i in range(N)]
+for b in DB+[arm.data.bones['Hips']]: T.vertex_groups.new(name=b.name)
+Q=np.array([v.co[:] for v in T.data.vertices])
+W=np.zeros((len(Q),N))
+for k,b in enumerate(DB):
+    h=np.array(b.head_local[:]); t=np.array(b.tail_local[:]); d=t-h
+    u=np.clip(((Q-h)@d)/d.dot(d),0,1); dist=np.linalg.norm(Q-(h+u[:,None]*d),axis=1); W[:,k]=1/(dist+0.01)**4
+W/=W.sum(1,keepdims=True)
+RIM=float(os.environ.get('RIM','0.2')); rim=np.clip((Q[:,2]-(zt-RIM*(zt-zb)))/(0.1*(zt-zb)),0,1)
+for i in range(len(Q)):
+    o=np.argsort(-W[i])[:2]; ws=W[i,o]/W[i,o].sum()*(1-rim[i])
+    for k,w in zip(o,ws):
+        if w>0.01: T.vertex_groups[DB[k].name].add([i],float(w),'REPLACE')
+    if rim[i]>0.01: T.vertex_groups['Hips'].add([i],float(rim[i]),'REPLACE')
+# one skinned mesh
+for o in bpy.data.objects: o.select_set(o in (body,T))
+bpy.context.view_layer.objects.active=body
+bpy.ops.object.join()
+body.name='char1'
+print('verts',len(body.data.vertices))
 bpy.ops.export_scene.gltf(filepath=OUT,export_format='GLB',export_animations=False,export_yup=True,export_image_format='AUTO',export_skins=True,export_def_bones=False)
 print('WROTE',OUT)
