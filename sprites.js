@@ -505,7 +505,7 @@ const RACE_SPRITE_GENDERS = {
   'door agent': 'both',
   'police officer': 'male',   // 2026-09-21 — the regular cops are male rigs; the female is the CYBERPUNK skin (RACE_MODEL_SKINS), Cyberpunk City only
   'time cop': 'male',   // 2026-10-24 — the sheriff and the cop are male rigs only
-  'jellyfish': 'both',        // 2026-09-21 — the jellyfish king; 2026-11-24 + the jellyfish queen (her own model + sprite)
+  'jellyfish': 'both',        // 2026-11-28 THE COATS: the lion's mane (male side) + the sea nettle (female side)
   'cult leader': 'male',      // 2026-09-21
   'popstar': 'female',        // 2026-09-22 — the headliner
   'starfish': 'male',   // 2026-09-30
@@ -596,7 +596,7 @@ const RACE_SPRITE_GENDERS = {
   'trucker': 'male',   // 2026-11-19 THE NEW RACES 3
   'gladiator': 'both',   // 2026-11-19 THE COMING RACES
   'farmer': 'male',   // 2026-11-19 THE COMING RACES
-  'jellyfish ufo': 'male',   // 2026-11-19 THE COMING RACES
+  'jellyfish ufo': 'both',   // 2026-11-19 THE COMING RACES; 2026-11-28 THE COATS: the deep sea crown is its female side
   'bear': 'both',   // 2026-11-23 THE COMING RACES 2; THE BEAR'S COATS (11-23): the grizzly is the male side, the polar bear the female side
   'demiurge': 'both',   // 2026-11-26 THE DEMIURGE: the armoured form is the male side, the cosmic form the female side (data.js RACE_PROFILES coats)
   'rat': 'male',   // 2026-11-23 THE COMING RACES 2
@@ -788,7 +788,7 @@ const _CHARACTER_SPRITES = {
   'goblin': `${_CS}/gremlin.png`,
   'ice queen': `${_CS}/icequeen.png`,
   'jack o lantern': `${_CS}/jackolantern.png`,
-  'jellyfish': `${_CS}/jellyfish.png`,
+  'jellyfish': 'https://cdn.entropywars.net/Assets/characters/races/jellyfish/male/jellyfish_mane_px.png',   // 2026-11-28 THE JELLYFISH, A REAL ONE (Sprite AI restyle of the lion's mane's render)
   'kaiju': `${_CS}/kaiju.png`,
   'krampus': `${_CS}/krampus.png`,
   'mushroom girl': `${_CS}/mushroomgirl.png`,
@@ -962,7 +962,8 @@ const FOOTBALL_SPRITE = `${_S}/football.png`;
 // The mermaid woman keeps her blue sprite: her new model was made to match it.
 const _NEW_FEMALE_SPRITES = {
   'succubus': 'https://cdn.entropywars.net/Assets/characters/races/succubus/female/succubus_f_px2.png',   // 2026-11-28 THE SUCCUBUS REMAKE (Sprite AI restyle of her v3 model's front render)
-  'jellyfish': 'https://cdn.entropywars.net/Assets/characters/races/jellyfish/female/jellyfish_f_px.png',   // 2026-11-24 THE JELLYFISH, MALE + FEMALE (Sprite AI restyle of her model's front render)
+  'jellyfish': 'https://cdn.entropywars.net/Assets/characters/races/jellyfish/male/jellyfish_nettle_px.png',   // 2026-11-28 THE COATS: the sea nettle (the race's female side)
+  'jellyfish ufo': 'https://cdn.entropywars.net/Assets/characters/races/jellyfish/male/jellyfish_crown_px.png',   // 2026-11-28 THE COATS: the deep sea crown (the UFO's female side)
   'gladiator': `${_S}/Races/gladiator/female/gladiator_f_px.png`,   // 2026-11-19 THE COMING RACES — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'nordic': 'https://cdn.entropywars.net/Assets/characters/races/nordic/female/nordic_f_v2_px.png',   // 2026-11-24 her new model (Sprite AI restyle of its front render)
   'siren': `${_S}/Races/siren/female/siren_f_px2.png`,
@@ -2710,18 +2711,14 @@ const RACE_MODELS_3D = {
        enough. Just need to stylize it a little bit"; his picks: the lion's mane and the deep sea crown): no body, no rig of bones to walk
        on: a Meshy bell + a Meshy oral arm hung six times + thin tentacles made in code, every arm and tentacle on THE SWAY's spring
        chains (bake-jelly.py, preset `mane`). three-renderer.js THE JELLYFISH, A REAL ONE (procRig jellyBody) swims it: the bell pulses.
-       The deep sea crown = `male/jellyfish_crown_v1.glb` (same tool, preset `crown`). The 11-24 biped (…_m_v4_Running.glb) stays on R2. */
+       The sea nettle (preset `nettle`) is the female side below; the deep sea crown (preset `crown`) is the Jellyfish UFO's. The 11-24 biped (…_m_v4_Running.glb) stays on R2. */
     male: { model: 'https://cdn.entropywars.net/Assets/characters/races/jellyfish/male/jellyfish_mane_v2.glb', clips: {}, procRig: 'jellyBody', heightRatio: 0.95, yawOffset: 0, basicAttackKind: 'magic',
             sway: { stiffness: 1.4, gravity: 0.8, drag: 0.3, maxRoot: 40, maxBend: 12, wave: 0.06, waveHz: 0.4, caps: [] } },
-    /* THE JELLYFISH, MALE + FEMALE (2026-11-24, mondo on the v2: "looks more like a female ... it needs boobs"; the old one's look is
-       "basically how i want it to look like ... make one like that as the male version and another one for a female version"): v3 male =
-       the old bell + tentacle arms and legs, remade (no T-bars) (v4: the 10 hanging tentacles taken off, mondo: "they don't look attached correctly"); the female = the v2 idea with a
-       figure, 12 tentacles at the hips. Both on THE SWAY chains (bake-tentacles.py). One race, the same spells for both. */
-    female: _mkUAL('jellyfish/female', 'jellyfish_f', {
-      model: 'https://cdn.entropywars.net/Assets/characters/races/jellyfish/female/Meshy_AI_jellyfish_f_v2_Running.glb',   // v2 (2026-11-28, mondo's pick "female 1", blue): a jelly woman under a moon jelly's bell; her hair of oral arms on 12 spring chains (bake-writhe.py --hair --rg -0.13 --root -0.1)
-      sway: { stiffness: 3.0, gravity: 0.45, drag: 0.42, maxRoot: 14, maxBend: 15, wave: 0.18, waveHz: 0.3, caps: [] },
-      heightRatio: 0.95, basicAttackKind: 'magic',
-    }),
+    /* THE COATS (2026-11-28, mondo: "ditch the female one and have the lions mane and sea nettle be variations for the jellyfish, while the
+       deep sea crown can be a variation of the jellyfish UFO"): like the Bear's coats, the second species sits on the race's female side
+       (data.js RACE_PROFILES `coats`). The 11-24 woman and the 11-28 blue woman (…_f_v2_Running.glb) stay on R2, unused. */
+    female: { model: 'https://cdn.entropywars.net/Assets/characters/races/jellyfish/male/jellyfish_nettle_v2.glb', clips: {}, procRig: 'jellyBody', heightRatio: 0.95, yawOffset: 0, basicAttackKind: 'magic',
+              sway: { stiffness: 1.4, gravity: 0.8, drag: 0.3, maxRoot: 40, maxBend: 12, wave: 0.06, waveHz: 0.4, caps: [] } },
   },
   // Cult Leader (Harbinger, support) — Bohemian Grove's voice. Idles mid-sermon; the family (DOOR_CAST_MODELS
   // cult1–5) stands round him in the grove.
@@ -2894,7 +2891,10 @@ const RACE_MODELS_3D = {
   },
   'jellyfish ufo': {
     male: { model: `${_S}/Races/jellyfish_ufo/male/jellyfish_ufo_v2.glb`, clips: { idle: `${_S}/Races/jellyfish_ufo/male/jellyfish_ufo_v2.glb`, walk: `${_S}/Races/jellyfish_ufo/male/jellyfish_ufo_v2.glb` },   // v2 (2026-11-24): the 12 tentacle sockets under the bell's rim cut out (the tentacles hang from the waist)
-      heightRatio: 1.1, yawOffset: 0, basicAttackKind: 'physical' },
+      heightRatio: 1.5, yawOffset: 0, basicAttackKind: 'physical' },   // 1.5 (mondo 11-28: "make the jellyfish UFO bigger? It seems small"; was 1.1)
+    /* THE COATS (2026-11-28, mondo): the deep sea crown, a real jellyfish in moving pieces (bake-jelly.py preset `crown`, procRig jellyBody), is the UFO's other look */
+    female: { model: 'https://cdn.entropywars.net/Assets/characters/races/jellyfish/male/jellyfish_crown_v2.glb', clips: {}, procRig: 'jellyBody', heightRatio: 1.3, yawOffset: 0, basicAttackKind: 'physical',
+              sway: { stiffness: 1.4, gravity: 0.8, drag: 0.3, maxRoot: 40, maxBend: 12, wave: 0.06, waveHz: 0.4, caps: [] } },
   },
   /* THE COMING RACES 2 (2026-11-23, mondo's picks in thread "Make concept art for new characters"): models only, no kits: they are in
      data.js EW_COMING_RACES until their spell threads finish (one thread a unit). Meshy image-to-3d (meshy-t2.5, a-pose) + Meshy
@@ -7972,7 +7972,7 @@ const RACE_SPRITES = {
   'door agent': `${_S}/homosapien.png`,
   'police officer': `${_S}/character_sprites/policeofficer.png`,   // 2026-10-04 — his own sprite
   'time cop': `${_S}/Races/police/timecop_px2.png`,   // 2026-11-17 — its own 128x128 future-cop pixel sprite (Sprite AI, from the model)
-  'jellyfish': `${_S}/character_sprites/jellyfish.png`,   // 2026-10-04 — his own sprite
+  'jellyfish': 'https://cdn.entropywars.net/Assets/characters/races/jellyfish/male/jellyfish_mane_px.png',   // 2026-11-28 THE JELLYFISH, A REAL ONE (was his own 10-04 sprite character_sprites/jellyfish.png, still on R2)
   'cult leader': `${_S}/character_sprites/cultleader.png`,   // 2026-10-04 — his own sprite
   'popstar': `${_S}/Races/popstar/popstar_female.png`,   // 2026-09-22 — her own sheet (the VFX pass)
   'starfish': `${_S}/character_sprites/starfish.png`,   // 2026-10-04 — his own sprite
