@@ -4430,3 +4430,13 @@ rebuild every frame). Zoomed out it is ~47 units: the step at the board is ~0.04
 (three-renderer.js `_fwCamOf`), the post passes read `cam.near` each frame. Kill switch `window.EW_NO_DEPTH_FIT = true`; probe
 `ThreeCamera.depthFit()`; the A/B probe `playtest_flicker.js` (same match, same camera, old then new; it prints the lens and saves
 the pictures to shots/flicker/).
+
+## THE STYLE LAYERS (2026-11-28)
+mondo: "can i have an option for just ink? Or just checkboxes for the shaders (grade, ink, vhs)". Settings > Video > Entropy Style is
+now three checkboxes, any mix: **Grade** (the Entropy palette), **VHS Tape** (the VHS palette; both on = the two palettes met
+halfway), **Ink** (the five light bands + the depth line). The old Palette row is gone (VHS is its own box). three-post.js
+`_style.gOn / vOn / iOn` (stored in `ew_style`; an old save's Off / Grade / Grade + Ink pick is read into them once);
+`ThreePost.setStyleLayer('grade'|'vhs'|'ink', on)`. `_styleMode()`: 0 off, 1 a grade, 2 a grade + ink, 3 THE INK ALONE (the
+picture's own colours banded and lined, no grade: both the GLSL pass and the TSL `_ngStyle`; with no depth texture it draws
+nothing). `_style.mode` / `palette` are still written from the boxes for old callers (`setStyle('off'|'grade'|'ink'|'line')`).
+Proof: classic + WebGPU (headful xvfb) runs of the Woods Clearing with each box alone and combined.
