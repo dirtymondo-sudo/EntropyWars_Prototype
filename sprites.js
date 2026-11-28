@@ -781,7 +781,7 @@ const _CHARACTER_SPRITES = {
   'clown': `${_CS}/clown.png`,
   'crystal guardian': `${_CS}/crystalguardian.png`,
   'cult leader': `${_CS}/cultleader.png`,
-  'deep sea fish': `${_CS}/deepseacreature.png`,
+  'deep sea fish': `${_S}/Races/deepseafish/male/deep_sea_fish_px.png`,   // 2026-11-28 THE DEEP SEA FISH IN PIECES: 128x128 pixel sprite (Sprite AI restyle of a render of the new model; his old deepseacreature.png stays on R2)
   'firefighter': `${_CS}/firefighter.png`,
   'goblin': `${_CS}/gremlin.png`,
   'ice queen': `${_CS}/icequeen.png`,
@@ -3568,11 +3568,15 @@ const RACE_MODELS_3D = {
       heightRatio: 0.97, basicAttackKind: 'magic',
     }),
   },
+  /* 🐟 THE DEEP SEA FISH IN PIECES (2026-11-28, mondo: "new meshy models and pieces ... and custom animations for their spells"; he
+     picked look C: an eel body, a gulper jaw, a jellyfish on the lure). One file put together from five Meshy parts (head, lower
+     jaw, lure jellyfish, eel tail, side fan) by project files deep-sea-fish/tools/assemble.py, on ONE skeleton: procRig 'deepFish'
+     (three-renderer.js THE DEEP SEA FISH IN PIECES) moves the jaw, the lure, the fans and the tail; THE SWAY swings the lure's
+     stalk and the two barbels. Front +Z, floor y 0. The old model (Meshy_AI_alien_fish_Running.glb) stays on R2. */
   'deep sea fish': {
-    male: _mkUAL('deepseafish', 'alien_fish', {
-      model: `${_S}/Races/deepseafish/Meshy_AI_alien_fish_Running.glb`,
-      heightRatio: 1.03, basicAttackKind: 'claw',
-    }),
+    male: { model: 'https://cdn.entropywars.net/Assets/characters/races/deepseafish/male/deep_sea_fish_v1.glb', clips: {}, procRig: 'deepFish', heightRatio: 1.3, yawOffset: 0, basicAttackKind: 'claw',
+      moveTimeScale: 1, castTimeScale: 1, deathTimeScale: 1, hitTimeScale: 1, jumpTimeScale: 1,
+      sway: { stiffness: 3.2, gravity: 0.12, drag: 0.34, maxRoot: 40, maxBend: 30, wave: 0.08, waveHz: 0.5, caps: [] } },
   },
   // AI (Gunslinger, ranged; flies — map.js SKY_RACES) — "AI_girl" Character_output (Races/ai/female/).
   'ai': {
@@ -7960,7 +7964,7 @@ const RACE_SPRITES = {
   'ringmaster': `${_S}/character_sprites/ringmaster.png`,   // 2026-10-04 — his own sprite
   'bee queen': `${_S}/character_sprites/beequeen.png`,   // 2026-10-04 — his own sprite
   'professor': `${_S}/character_sprites/professor.png`,   // 2026-10-04 — his own sprite
-  'deep sea fish': `${_S}/character_sprites/deepseacreature.png`,   // 2026-10-04 — his own sprite
+  'deep sea fish': `${_S}/Races/deepseafish/male/deep_sea_fish_px.png`,   // 2026-11-28 THE DEEP SEA FISH IN PIECES — 128x128 pixel sprite (Sprite AI restyle of a render of the new model; his 10-04 sprite deepseacreature.png stays on R2)
   'clown': `${_S}/character_sprites/clown.png`,   // 2026-10-04 — his own sprite
   'bunny girl': `${_S}/Races/bunnygirl/bunnygirl.png`,   // 2026-10-27 — her own sprite
   'sharkman': `${_S}/character_sprites/sharkman.png`,   // 2026-10-04 — his own sprite

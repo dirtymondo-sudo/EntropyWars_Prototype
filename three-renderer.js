@@ -21395,6 +21395,173 @@ const ThreeRenderer = (function () {
         clips.castAOE = clips.cast; clips.castUltimate = clips.snSnowDay;
         return clips;
     }
+    /* 🐟 THE DEEP SEA FISH IN PIECES (2026-11-28, thread "Remake the deep sea fish with moving parts"; mondo: "the deep sea fish ...
+       would benefit from individually animated parts too, can you make new meshy models and pieces ... and custom animations for
+       their spells", look C of three: an eel body, a gulper jaw, a jellyfish on the lure). ONE file
+       (Assets/characters/races/deepseafish/male/deep_sea_fish_v1.glb, put together from five Meshy parts by project files
+       deep-sea-fish/tools/assemble.py; the stalk and the two barbels are made there). ONE skeleton and every joint's rest turn is
+       identity, so on any joint x = nod (x > 0 tips its front down), y = yaw (y > 0 turns to its left), z = roll:
+       ewDfBody (the neck's middle: the whole fish) > ewDfHead > ewDfJaw (x > 0 opens; the rest is open 0.23, so -0.23 shuts it),
+       ewDfHead > ewDfLure (the stalk's root: x > 0 casts the lure out ahead) > ewsway_c0_0..5 (THE SWAY swings the stalk) >
+       ewDfJelly (the lure jellyfish's bell) > ewDfJellyArms; ewDfJaw > ewsway_c1_*, ewsway_c2_* (the barbels, THE SWAY);
+       ewDfBody > ewDfFinL / ewDfFinR (the fans: y < 0 spreads the LEFT one, y > 0 the RIGHT one) and ewDfTail0..9 (the eel tail,
+       curled at rest: x < 0 on a joint curls it tighter, x > 0 lets it out, y is the swimming wave). Metres, front +Z, floor y 0.
+       A clip is keyframes on those joints (_abClip). The two spells name their clips with `animSlot` (dfLure, dfJaws).
+       ThreeRenderer.dfPose(slot, dur, pose) adds or replaces a slot for every fish built after it. */
+    var _DF_NODES = ['ewDfBody', 'ewDfHead', 'ewDfJaw', 'ewDfLure', 'ewDfJelly', 'ewDfJellyArms', 'ewDfFinL', 'ewDfFinR',
+        'ewDfTail0', 'ewDfTail1', 'ewDfTail2', 'ewDfTail3', 'ewDfTail4', 'ewDfTail5', 'ewDfTail6', 'ewDfTail7', 'ewDfTail8', 'ewDfTail9'];
+    var _dfS = _vrS, _dfB = _vrBump, _DF_SHUT = -0.227;
+    function _dfSin(u, hz, ph) { return Math.sin((u * hz + (ph || 0)) * Math.PI * 2); }
+    /* the things that always live. o: wave / hz = the swimming wave down the tail (it grows to the fluke), curl = every tail joint
+       curled (< 0) or let out (> 0), lash = a whip at the tail's end; fan = the fins spread (0 … 1, -1 folded), flut = their flutter;
+       pulse / phz = the jellyfish's beat, glow = it swells (0 … 1); jaw = the jaw (added to a slow gulp `gulp`) */
+    function _dfLive(P, u, o) {
+        o = o || {};
+        var w = o.wave == null ? 0.06 : o.wave, hz = o.hz || 2, curl = o.curl || 0, lash = o.lash || 0, i;
+        for (i = 0; i < 10; i++) {
+            var k = i / 9, g = 0.35 + 0.65 * k;
+            P['ewDfTail' + i] = { rw: [curl * (0.6 + 0.4 * k) + lash * k * k * 0.5, w * g * _dfSin(u, hz, -i * 0.11) + (o.sweep || 0) * 0.5, 0] };
+        }
+        var fan = o.fan || 0, fl = o.flut == null ? 0.08 : o.flut, fhz = o.fhz || hz * 2;
+        P.ewDfFinL = { rw: [0.5 * fl * _dfSin(u, fhz, 0.2), -0.45 * fan - fl * _dfSin(u, fhz), 0.25 * fan] };
+        P.ewDfFinR = { rw: [0.5 * fl * _dfSin(u, fhz, 0.7), 0.45 * fan + fl * _dfSin(u, fhz, 0.5), -0.25 * fan] };
+        var pu = o.pulse == null ? 0.07 : o.pulse, ph = _dfSin(u, o.phz || hz * 2), gl = o.glow || 0, js = 1 + 0.75 * gl;
+        P.ewDfJelly = { s: [js * (1 + pu * ph), js * (1 - pu * 0.8 * ph), js * (1 + pu * ph)] };
+        P.ewDfJellyArms = { s: [1 - pu * 0.9 * ph, 1 + pu * 1.6 * ph, 1 - pu * 0.9 * ph] };
+        if (!P.ewDfJaw) P.ewDfJaw = { rw: [(o.jaw || 0) + (o.gulp == null ? 0.05 : o.gulp) * (0.5 + 0.5 * _dfSin(u, o.ghz || 2, 0.1)), 0, 0] };
+        return P;
+    }
+    var _DF_POSES = {
+        /* idle (6 s): it hangs in the water. A slow bob, the head looks one way then the other, the gills gulp, the tail's wave
+           never stops, the fans flutter, the lure nods and its jellyfish beats */
+        idle: [6.0, function (u) {
+            var look = _dfS(u, 0.1, 0.22) - 2 * _dfS(u, 0.42, 0.58) + _dfS(u, 0.8, 0.94), b = _dfSin(u, 2);
+            var P = { ewDfBody: { p: [0, 0.035 * b, 0], rw: [0.03 * _dfSin(u, 2, 0.25), 0.05 * look, 0.025 * _dfSin(u, 1)] },
+                ewDfHead: { rw: [0.03 * _dfSin(u, 2, 0.4), 0.14 * look, 0.03 * look] },
+                ewDfLure: { rw: [0.07 * _dfSin(u, 2, 0.15), 0.1 * _dfSin(u, 1, 0.3) - 0.1 * look, 0] } };
+            return _dfLive(P, u, { wave: 0.07, hz: 3, flut: 0.07, fhz: 6, pulse: 0.08, phz: 7, gulp: 0.07, ghz: 3, fan: 0.1 * _dfSin(u, 1) });
+        }],
+        /* the swim (1.2 s): it leans into it, the tail lets out behind and drives hard, the fans sweep back, the lure streams back */
+        walk: [1.2, function (u) {
+            var w = _dfSin(u, 2);
+            var P = { ewDfBody: { p: [0.02 * w, 0.02 * _dfSin(u, 2, 0.25), 0], rw: [0.16, 0.05 * w, -0.04 * w] },
+                ewDfHead: { rw: [-0.1, -0.08 * w, 0] }, ewDfLure: { rw: [-0.4, 0.08 * w, 0] }, ewDfJaw: { rw: [-0.12, 0, 0] } };
+            return _dfLive(P, u, { wave: 0.2, hz: 2, curl: 0.1, flut: 0.05, fhz: 4, fan: -0.7, pulse: 0.05, phz: 4 });
+        }],
+        /* the bite (1.0 s, the basic attack + any melee cast): it rears, the jaw drops, it darts in and snaps shut */
+        castMelee: [1.0, function (u) {
+            var rear = _dfB(u, 0.0, 0.3, 0.44), go = _dfB(u, 0.36, 0.5, 0.86), open = _dfS(u, 0.05, 0.34) * (1 - _dfS(u, 0.47, 0.52)), shut = _dfB(u, 0.47, 0.52, 0.9);
+            var P = { ewDfBody: { p: [0, 0.05 * rear, -0.16 * rear + 0.5 * go], rw: [-0.14 * rear + 0.2 * go, 0, 0] },
+                ewDfHead: { rw: [-0.32 * open + 0.12 * shut, 0, 0] }, ewDfJaw: { rw: [0.85 * open + _DF_SHUT * shut, 0, 0] },
+                ewDfLure: { rw: [-0.55 * rear - 0.3 * go, 0, 0] } };
+            return _dfLive(P, u, { wave: 0.08, hz: 2, curl: -0.07 * rear + 0.13 * go, lash: 0.5 * go, fan: rear - 0.6 * go, pulse: 0.05 });
+        }],
+        /* a plain cast (1.2 s): the lure swings out ahead and its jellyfish swells and beats fast, the fans spread wide */
+        cast: [1.2, function (u) {
+            var a = _dfS(u, 0.08, 0.36) * (1 - _dfS(u, 0.72, 0.96)), fl = _dfB(u, 0.36, 0.46, 0.7);
+            var P = { ewDfBody: { p: [0, 0.05 * a, -0.06 * a], rw: [-0.1 * a, 0, 0] }, ewDfHead: { rw: [0.14 * a, 0, 0] },
+                ewDfLure: { rw: [0.62 * a + 0.12 * fl, 0.12 * a * _dfSin(u, 4), 0] }, ewDfJaw: { rw: [0.22 * a, 0, 0] } };
+            return _dfLive(P, u, { wave: 0.06, hz: 2, fan: a, flut: 0.05 + 0.1 * a, fhz: 6, glow: 0.5 * a + 0.5 * fl, pulse: 0.07 + 0.1 * a, phz: 10 });
+        }],
+        /* a kind cast (1.3 s): the lure lifts high over it like a lamp, a slow soft beat, the tail curls in */
+        castSupport: [1.3, function (u) {
+            var a = _dfS(u, 0.08, 0.34) * (1 - _dfS(u, 0.74, 0.96));
+            var P = { ewDfBody: { p: [0, 0.06 * a, 0], rw: [-0.06 * a, 0, 0] }, ewDfHead: { rw: [-0.2 * a, 0, 0] },
+                ewDfLure: { rw: [-0.5 * a, 0, 0] }, ewDfJaw: { rw: [-0.15 * a, 0, 0] } };
+            return _dfLive(P, u, { wave: 0.05, hz: 2, curl: -0.05 * a, fan: 0.5 * a, glow: 0.7 * a, pulse: 0.1, phz: 4 });
+        }],
+        /* a wide cast (1.4 s): it whirls once on the spot, the tail flung out, the fans wide, the lure trailing a ring of light */
+        castAOE: [1.4, function (u) {
+            var a = _dfS(u, 0.05, 0.3) * (1 - _dfS(u, 0.8, 0.98)), sp = _dfS(u, 0.18, 0.82);
+            var P = { ewDfBody: { p: [0, 0.1 * a, 0], rw: [0.08 * a, sp * Math.PI * 2, 0.1 * a] },
+                ewDfLure: { rw: [0.2 * a, -0.5 * a, 0] }, ewDfJaw: { rw: [0.4 * a, 0, 0] } };
+            return _dfLive(P, u, { wave: 0.1, hz: 3, curl: 0.12 * a, lash: 0.3 * a, fan: a, glow: a, pulse: 0.12, phz: 12 });
+        }],
+        /* the big one (1.4 s): it rises, the tail lets right out under it, the jaw unhinges, the jellyfish flares; then all snaps home */
+        castUltimate: [1.4, function (u) {
+            var a = _dfS(u, 0.05, 0.4) * (1 - _dfS(u, 0.72, 0.8)), snap = _dfB(u, 0.72, 0.78, 0.98);
+            var P = { ewDfBody: { p: [0, 0.3 * a, -0.05 * a], rw: [-0.22 * a + 0.15 * snap, 0, 0.03 * a * _dfSin(u, 14)] },
+                ewDfHead: { rw: [-0.3 * a + 0.2 * snap, 0, 0] }, ewDfJaw: { rw: [1.15 * a + _DF_SHUT * snap, 0, 0] },
+                ewDfLure: { rw: [0.5 * a - 0.3 * snap, 0, 0] } };
+            return _dfLive(P, u, { wave: 0.05 + 0.08 * a, hz: 4, curl: 0.17 * a, fan: a, flut: 0.05 + 0.12 * a, fhz: 12, glow: a, pulse: 0.14, phz: 14, lash: 0.4 * snap });
+        }],
+        /* struck (0.6 s): it is knocked back, the head snaps up, the jaw flaps open, the fans fold, the tail clenches */
+        hit: [0.6, function (u) {
+            var k = _dfB(u, 0.0, 0.16, 0.9), k2 = _dfB(u, 0.0, 0.1, 0.5);
+            var P = { ewDfBody: { p: [0, 0.04 * k, -0.2 * k], rw: [-0.22 * k, 0.1 * k * _dfSin(u, 3), 0.12 * k2] },
+                ewDfHead: { rw: [-0.3 * k2, 0, 0.1 * k] }, ewDfJaw: { rw: [0.5 * k2 - 0.1 * k, 0, 0] }, ewDfLure: { rw: [-0.7 * k2 + 0.3 * k, 0, 0] } };
+            return _dfLive(P, u, { wave: 0.05, hz: 3, curl: -0.1 * k, fan: -k, pulse: 0.03, glow: -0.4 * k });
+        }],
+        /* death (1.9 s): the light goes out. It rolls onto its side and sinks to the floor, the jaw falls open, the lure flops
+           down ahead of it, the tail lets out limp, the jellyfish shrivels (held) */
+        death: [1.9, function (u) {
+            var s = _dfS(u, 0.08, 0.7), lie = _dfS(u, 0.3, 0.85), jolt = _dfB(u, 0.0, 0.08, 0.2), settle = _dfB(u, 0.82, 0.88, 1.0);
+            var P = { ewDfBody: { p: [0.25 * lie, -1.0 * lie + 0.05 * jolt + 0.03 * settle, 0], rw: [0.1 * s, 0.2 * s, -1.45 * lie] },
+                ewDfHead: { rw: [0.15 * s, 0, 0] }, ewDfJaw: { rw: [0.7 * s, 0, 0] }, ewDfLure: { rw: [1.1 * s, 0.3 * s, 0] } };
+            _dfLive(P, u, { wave: 0.05 * (1 - s), hz: 3, curl: 0.09 * s, fan: -0.8 * s, flut: 0.06 * (1 - s), pulse: 0.07 * (1 - s) });
+            var d = 1 - 0.6 * _dfS(u, 0.2, 0.9); P.ewDfJelly = { s: [d, d * 0.8, d] }; P.ewDfJellyArms = { s: [1, 1, 1] };
+            return P;
+        }],
+        /* LURE (1.4 s, the board's cap for a cast; the pull lands near 750 ms): the head goes down and the lure swings right out ahead; it dangles the
+           jellyfish and jiggles it, the light beating, the mouth slowly opening behind the light; as the victim is drawn in it
+           backs off, reeling, and the jaw comes up hungry */
+        dfLure: [1.4, function (u) {
+            var out = _dfS(u, 0.04, 0.26) * (1 - _dfS(u, 0.78, 0.97)), jig = _dfS(u, 0.2, 0.3) * (1 - _dfS(u, 0.5, 0.58)), reel = _dfS(u, 0.5, 0.74) * (1 - _dfS(u, 0.84, 1.0));
+            var P = { ewDfBody: { p: [0, -0.06 * out + 0.05 * reel, 0.08 * out - 0.26 * reel], rw: [0.12 * out - 0.2 * reel, 0, 0] },
+                ewDfHead: { rw: [0.22 * out - 0.3 * reel, 0, 0] },
+                ewDfLure: { rw: [0.95 * out - 0.35 * reel + 0.1 * jig * _dfSin(u, 9, 0.25), 0.28 * jig * _dfSin(u, 9), 0], s: 1 + 0.22 * out },
+                ewDfJaw: { rw: [0.25 * out + 0.6 * reel, 0, 0] } };
+            return _dfLive(P, u, { wave: 0.05, hz: 3, curl: -0.05 * out + 0.06 * reel, fan: 0.6 * out, flut: 0.04, glow: 0.4 * out + 0.6 * jig, pulse: 0.08 + 0.12 * jig, phz: 17 });
+        }],
+        /* ABYSS JAWS (1.4 s; the bite lands near 770 ms): the light was attached to something. The lure whips back out of the
+           way, it coils low, the jaw unhinges far too wide, it strikes up and forward, CLAMPS, shakes its catch side to side,
+           gulps, and hangs back in its place */
+        dfJaws: [1.4, function (u) {
+            var coil = _dfB(u, 0.0, 0.26, 0.44), gape = _dfS(u, 0.1, 0.4) * (1 - _dfS(u, 0.53, 0.57)), go = _dfS(u, 0.42, 0.55) * (1 - _dfS(u, 0.86, 1.0));
+            var bite = _dfS(u, 0.53, 0.57) * (1 - _dfS(u, 0.88, 1.0)), shake = _dfS(u, 0.57, 0.62) * (1 - _dfS(u, 0.8, 0.86)), gulp = _dfB(u, 0.8, 0.87, 0.95);
+            var sh = shake * _dfSin(u, 11);
+            var P = { ewDfBody: { p: [0.05 * sh, -0.12 * coil + 0.14 * go, -0.2 * coil + 0.55 * go], rw: [0.15 * coil - 0.25 * go, 0.16 * sh, 0.1 * sh] },
+                ewDfHead: { rw: [-0.6 * gape + 0.1 * bite, 0.3 * sh, 0.12 * sh] },
+                ewDfJaw: { rw: [1.25 * gape + _DF_SHUT * bite + 0.12 * gulp, 0, 0], s: [1, 1 + 0.15 * gulp, 1] },
+                ewDfLure: { rw: [-0.75 * _dfS(u, 0.05, 0.25) * (1 - _dfS(u, 0.85, 1.0)), 0.3 * sh, 0] } };
+            return _dfLive(P, u, { wave: 0.06, hz: 3, curl: -0.13 * coil + 0.16 * go, lash: 0.6 * _dfB(u, 0.42, 0.52, 0.7), sweep: 0.12 * sh, fan: coil - go + 0.8 * shake, flut: 0.05, pulse: 0.04, glow: -0.3 * gape });
+        }]
+    };
+    /* THE LURE GIVES LIGHT: the lure jellyfish's material shines by its own picture and beats. The board swaps a unit's
+       materials for its own look after the build (see _bbLidTick), so this is looked at from the unit loop: one compare a
+       frame, the copy remade only when the material was swapped. The light swells with the jellyfish (a cast) and goes out
+       with it (death). */
+    function _dfGlowTick(entry, now) {
+        var L = entry._ew_dfGlow;
+        if (L === undefined) {
+            L = entry._ew_dfGlow = { m: [], j: null };
+            try { entry.model.traverse(function (o) { if ((o.isMesh || o.isSkinnedMesh) && /^ewDfJellyMesh/.test(o.name || '')) L.m.push(o); }); L.j = entry.model.getObjectByName('ewDfJelly') || null; } catch (e) {}
+        }
+        var sw = L.j ? L.j.scale.x : 1, k = Math.max(0.05, Math.min(2.2, (sw - 0.35) * 1.5)) * (0.8 + 0.2 * Math.sin((now || 0) * 0.006));
+        for (var i = 0; i < L.m.length; i++) {
+            var m = L.m[i], mat = m.material;
+            if (!mat || Array.isArray(mat)) continue;
+            if (!mat._ew_dfGlow) {
+                mat = m.material = mat.clone(); mat._ew_dfGlow = true;
+                if (mat.emissive) { mat.emissive.setHex(0xff7dff); if (mat.map) mat.emissiveMap = mat.map; }
+                mat.needsUpdate = true;
+            }
+            if (mat.emissive) mat.emissiveIntensity = 0.75 * k;
+        }
+    }
+    function _dfBuild(root) {
+        if (!root.getObjectByName('ewDfBody') || !root.getObjectByName('ewDfJaw')) return null;
+        var R = { n: {} };
+        _DF_NODES.forEach(function (n) {
+            var o = root.getObjectByName(n);
+            if (o) R.n[n] = { p: o.position.clone(), q: o.quaternion.clone(), s: o.scale.clone() };
+        });
+        var clips = {};
+        Object.keys(_DF_POSES).forEach(function (slot) { var p = _DF_POSES[slot]; clips[slot] = _abClip(slot, p[0], p[1], R); });
+        clips.run = clips.walk; clips.attack = clips.castMelee;
+        clips.castMagic = clips.cast; clips.castRanged = clips.cast; clips.castHeal = clips.castSupport;
+        return clips;
+    }
     /* 🥜 THE NUTCRACKER'S JAW (same day): the Meshy rig plays the library like any unit; its jaw (a mesh skinned to the added bone
        ewJaw, project files character-concepts/jaw.py; rotation about its own x > 0 opens it) is set here after the clip, from
        the unit loop, only for a def with `jawBone`: it clacks through a cast or an attack, snaps on a hit, hangs open in death,
@@ -22105,7 +22272,9 @@ const ThreeRenderer = (function () {
         /* 🧠 THE FLOATING BRAIN (above, _bbBuild): the brain's hover and throb, the eye, the lids; the tendrils ride THE SWAY */
         brainBody: function (root) { return _bbBuild(root); },
         /* ⛄ THE SNOWMAN (above, _snBuild): three balls, two sticks, a carrot, coal, a hat and a scarf, each its own part */
-        snowman: function (root) { return _snBuild(root); }
+        snowman: function (root) { return _snBuild(root); },
+        /* 🐟 THE DEEP SEA FISH IN PIECES (above, _dfBuild): the jaw, the lure and its jellyfish, the fans, the eel tail */
+        deepFish: function (root) { return _dfBuild(root); }
     };
     _PROC_RIGS.unicornWings.deps = [UNI_WING_URL, UNI_HORN_URL];
     /* ♟ THE CHESS PIECE: one hinge, the same moves, for each of the six looks (sprites.js CHESS_PIECE_3D) */
@@ -24838,6 +25007,7 @@ const ThreeRenderer = (function () {
             if (_hlOn) _hlUnitTick(entry, uid, now);   // 🎭 THE HOLLOW: the masks at home, the mask a Masked unit wears
             if (entry.modelDef && entry.modelDef.procRig === 'abomination') _abLimbTick(entry, uid, dt);
             if (entry._ew_oriRace !== false) _oriWatch(entry, uid);   // 🕊 THE ORIGAMI IN A FIGHT: a held shape met from the state alone
+            if (entry.modelDef && entry.modelDef.procRig === 'deepFish') _dfGlowTick(entry, now);   // 🐟 THE DEEP SEA FISH: the lure jellyfish gives light
             if (entry.modelDef && entry.modelDef.procRig === 'brainBody') _bbLidTick(entry);   // 🧠 THE FLOATING BRAIN: the lids draw over the ball
             if (entry.modelDef && entry.modelDef.jawBone) _jawTick(entry, uid, now);   // 🥜 THE NUTCRACKER'S JAW: clacks after the clip   // 🫀 THE ABOMINATION: the limbs it has, the cage away
             if (entry.modelDef && entry.modelDef.breakable) _bkTick(entry, uid, now);   // 🦴🪨 THE BREAKABLE BODIES: the pieces after the clip
@@ -115967,6 +116137,8 @@ const ThreeRenderer = (function () {
         bbPose: function (slot, dur, pose) { if (slot && typeof pose === 'function') _BB_POSES[slot] = [+dur || 1, pose]; return true; },   // 🧠 THE FLOATING BRAIN: a spell's own clip
         /* ⛄ THE SNOWMAN: the same for its parts (pose(u) -> { <node>: { p, rw, r, s } }, three-renderer.js THE SNOWMAN) */
         snPose: function (slot, dur, pose) { if (slot && typeof pose === 'function') _SN_POSES[slot] = [+dur || 1, pose]; return true; },
+        /* 🐟 THE DEEP SEA FISH: the same for its joints (three-renderer.js THE DEEP SEA FISH IN PIECES) */
+        dfPose: function (slot, dur, pose) { if (slot && typeof pose === 'function') _DF_POSES[slot] = [+dur || 1, pose]; return true; },
         /* 🥜 THE NUTCRACKER'S JAW: hold unit uid's jaw open (0 … 1) for ms, over whatever its clip does */
         /* 🕊 THE ORIGAMI IN A FIGHT: fold unit uid into a shape, its blow, the fortune's flap, Seven Folds on a victim (see the block) */
         oriAct: function (uid, what, o) { try { return _oriAct(uid, what, o); } catch (e) { console.warn('[origami] act failed', e); return false; } },
