@@ -2523,7 +2523,7 @@ const RACE_MODELS_3D = {
     // the centaurs do it". Meshy's skeleton (from the f2 file) refitted to her, the legs left in but weighing nothing, a chain
     // ewtail_0..6 down the tail (three-renderer.js THE MERMAID'S TAIL swims it after the clip). The f2 model stays on R2.
     female: _mkUAL('mermaid/female', 'mermaid_f', {
-      model: 'https://cdn.entropywars.net/Assets/characters/races/mermaid/female/mermaid_tail_v1.glb',
+      model: 'https://cdn.entropywars.net/Assets/characters/races/mermaid/female/mermaid_tail_v2.glb',   // 11-28 v2: a NEW Meshy woman (concept A, starfish top) + a Meshy tail piece, joined by bake-mermaid.py (v1, cut from his model, stays on R2)
       heightRatio: 0.95,
       basicAttackKind: 'magic',
       // (2026-11-17: no swim idle any more — the swim loop lowers the hips, and with the tail bound to the hips she sank into the floor)
