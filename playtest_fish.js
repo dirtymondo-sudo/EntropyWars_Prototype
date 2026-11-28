@@ -27,7 +27,7 @@ const READ = () => {
     bodyY: +P.body.position.y.toFixed(3), bodyZ: +P.body.position.z.toFixed(3), bodyRoll: E(P.body, 'z'), lureTip: rel(P.tip, P.s0), barbelTip: rel(P.b6, P.b0), mats, hp: u && Math.round(u.hp), dead: u && !!u.dead };
 };
 (async () => {
-  const browser = await require(path.join(REPO, 'probe-fast.js')).launch(chromium, { headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
+  const browser = await require(path.join(REPO, 'probe-fast.js')).launch(chromium, { headless: !process.env.EW_PROBE_HEADFUL, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 }, ignoreHTTPSErrors: true });
   await ctx.addInitScript((flags) => { try { localStorage.setItem('ew_cinematicActionCam', '1'); } catch (e) {} for (const f of flags) { const [k, val] = f.split('='); window[k] = val === undefined ? true : (isNaN(+val) ? val : +val); } }, FLAGS);
   const page = await ctx.newPage();
