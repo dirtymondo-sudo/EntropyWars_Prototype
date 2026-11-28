@@ -161,6 +161,7 @@ const EW_ASSET_MOVES = [
   ['Assets/Sprites/Races/monster_truck/', 'Assets/characters/races/monster_truck/'],   // 2026-11-27 THE NEW CHARACTERS
   ['Assets/Sprites/Races/nutcracker/', 'Assets/characters/races/nutcracker/'],
   ['Assets/Sprites/Races/snowman/', 'Assets/characters/races/snowman/'],   // 2026-11-27 THE SNOWMAN   // 2026-11-27 THE NEW CHARACTERS
+  ['Assets/Sprites/Races/octopus_girl/', 'Assets/characters/races/octopus_girl/'],   // 2026-11-28 THE OCTOPUS GIRL
   ['Assets/Sprites/Races/leopard_girl/', 'Assets/characters/races/leopard_girl/'],   // 2026-11-27 THE NEW CHARACTERS
   ['Assets/Sprites/Races/draconian/', 'Assets/characters/races/draconian/'],   // 2026-11-27 THE NEW CHARACTERS
   ['Assets/Sprites/Races/flower_girl/', 'Assets/characters/races/flower_girl/'],   // 2026-11-27 THE NEW CHARACTERS
@@ -631,6 +632,7 @@ const RACE_SPRITE_GENDERS = {
   'cheerleader': 'female',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
   'monster truck': 'male',   // 2026-11-27 THE NEW CHARACTERS (one truck; the model def sits under male)
   'snowman': 'male',   // 2026-11-27 THE SNOWMAN (one snowman; the model def sits under male)
+  'octopus girl': 'female',   // 2026-11-28 THE OCTOPUS GIRL
   'nutcracker': 'male',   // 2026-11-27 THE NEW CHARACTERS
   'leopard girl': 'female',   // 2026-11-27 THE NEW CHARACTERS
   'draconian': 'male',   // 2026-11-27 THE NEW CHARACTERS
@@ -829,6 +831,7 @@ const _CHARACTER_SPRITES = {
   'cheerleader': `${_S}/Races/cheerleader/female/cheerleader_px.png`,   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — 128x128 pixel sprite (Sprite AI restyle of her Meshy concept)
   'monster truck': `${_S}/Races/monster_truck/male/monster_truck_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
   'snowman': `${_S}/Races/snowman/male/snowman_px.png`,   // 2026-11-27 THE SNOWMAN — 128x128 pixel sprite (Sprite AI restyle of a render of its model)
+  'octopus girl': `${_S}/Races/octopus_girl/female/octopus_girl_px.png`,   // 2026-11-28 THE OCTOPUS GIRL — 128x128 pixel sprite (Sprite AI restyle of a render of her model)
   'nutcracker': `${_S}/Races/nutcracker/male/nutcracker_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
   'leopard girl': `${_S}/Races/leopard_girl/female/leopard_girl_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
   'draconian': `${_S}/Races/draconian/male/draconian_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
@@ -2967,6 +2970,18 @@ const RACE_MODELS_3D = {
      parts: the base ball rolls under it, the stick arms throw, the carrot shoots out, the head and hat lift off, the scarf tails
      swing, the coal eyes look about and blink, and it falls apart on death. One file put together from five Meshy parts (snowball,
      carrot, stick, top hat, scarf) by project files snowman/tools/assemble.py; node names in three-renderer.js. Front +Z, floor y 0. */
+  /* 🐙 THE OCTOPUS GIRL (2026-11-28; mondo: "remake the models you need in meshy": a NEW Meshy model from his own (inbox
+     Meshy_AI_Octopus_girl_20261128_texture_remesh_tri.glb), feet apart, every tentacle of her hair hanging free of her back): Meshy's rig
+     (1.75 m) + one spring chain down each of the 14 locks, hung on her Head (bake-writhe.py --hair --locks 1 --cols 16 --min 0.06 --smooth 24
+     --cut 0.857: under that line her hair hangs free of the body, so the hair is every piece that is not the body). The library animates her body; THE SWAY swings every lock after the clip and its wave makes them
+     writhe on their own, a phase a lock (a softer sway than a cape: more and the locks fold into each other). */
+  'octopus girl': {
+    female: _mkUAL('octopus_girl/female', 'octopus_girl', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/octopus_girl/female/Meshy_AI_octopus_girl_v2_writhe.glb',
+      sway: { stiffness: 3.0, gravity: 0.45, drag: 0.42, maxRoot: 14, maxBend: 15, wave: 0.18, waveHz: 0.3, caps: [] },
+      heightRatio: 0.97, basicAttackKind: 'claw',
+    }),
+  },
   'snowman': {
     male: { model: 'https://cdn.entropywars.net/Assets/characters/races/snowman/male/snowman.glb', clips: {}, procRig: 'snowman', heightRatio: 1.3, yawOffset: 0, basicAttackKind: 'physical',
       moveTimeScale: 1, castTimeScale: 1, deathTimeScale: 1, hitTimeScale: 1, jumpTimeScale: 1 },
@@ -3989,7 +4004,14 @@ const RACE_MODELS_3D = {
   // rendered in the colossal tier under kong/kaiju. Tentacle strikes rake
   // via the claw basics; Tidal Surge/Maelstrom fire their mapped water VFX.
   'kraken': {
+    /* 2026-11-28 THE WRITHING TENTACLES (mondo: "redo the kraken with separate moving tentacles" + "remake the models you need in meshy"):
+       a NEW Meshy squid made for it (arms splayed apart, none touching), rigged in code (Meshy's 24 bone names: the spine up the mantle, the
+       limbs unweighted) + one spring chain down each of its ten arms on its Hips (bake-writhe.py --arms --persist 1 --smooth 4 --parent Hips).
+       THE SWAY swings them after every clip and its wave makes them writhe on their own. Was Meshy_AI_kraken_writhe_Character_output.glb
+       (the old model, its arms fused). */
     male: _mkUAL('kraken/male', 'kraken_realistic', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/kraken/male/Meshy_AI_kraken_v2_writhe.glb',
+      sway: { stiffness: 1.7, gravity: 0.12, drag: 0.28, maxRoot: 32, maxBend: 24, wave: 0.9, waveHz: 0.32, caps: [] },
       heightRatio: 1.55,
       basicAttackKind: 'claw',
       lib: { idle: { clip: 'Idle_10', lib: 2 } },   // monster sway
@@ -7993,6 +8015,7 @@ const RACE_SPRITES = {
   'cheerleader': `${_S}/Races/cheerleader/female/cheerleader_px.png`,   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — 128x128 pixel sprite (Sprite AI restyle of her Meshy concept)
   'monster truck': `${_S}/Races/monster_truck/male/monster_truck_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
   'snowman': `${_S}/Races/snowman/male/snowman_px.png`,   // 2026-11-27 THE SNOWMAN — 128x128 pixel sprite (Sprite AI restyle of a render of its model)
+  'octopus girl': `${_S}/Races/octopus_girl/female/octopus_girl_px.png`,   // 2026-11-28 THE OCTOPUS GIRL — 128x128 pixel sprite (Sprite AI restyle of a render of her model)
   'nutcracker': `${_S}/Races/nutcracker/male/nutcracker_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
   'leopard girl': `${_S}/Races/leopard_girl/female/leopard_girl_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
   'draconian': `${_S}/Races/draconian/male/draconian_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)

@@ -7046,6 +7046,20 @@ animations like how the centaurs do it".
   tail under it on the chain and lifts her so the fluke stands on the floor -> `mermaid_tail_v2.glb`. v1 stays on R2.
 - Any other tailed body (a siren, a naga) can use it: name the chain `ewtail_0..N` under the Hips; nothing else to wire.
 
+## THE OCTOPUS GIRL (2026-11-28, mondo: "the octopus girl with her tentacles separately moving")
+- A NEW race, `'octopus girl'` (female only), from mondo's own Meshy model (R2 `dirtymondo` inbox/Meshy_AI_Octopus_girl_20261128_texture_remesh_tri.glb).
+  Her tentacles are her HAIR (she has legs). Meshy rigged her (1.7 m); `bake-writhe.py --hair --locks 1 --cols 16 --min 0.06 --smooth 24` hangs one
+  spring chain off her Head down each of her 15 hanging locks and moves the hair onto them (models-assets.md "THE WRITHING TENTACLES"). THE SWAY swings every lock after the
+  library clip and its wave (sprites.js `sway.wave`) makes them writhe on their own, a phase a lock.
+- Kit (data.js RACE_ABILITIES 'octopus girl', family `octopusgirl`, FIRST PASS, names and numbers his): a grappler that casts. Basic attack
+  reaches 2 (her hair). Hair Lash (T1, WEAK physical within 2 + Slow), Reel In (T2 pull 3 + Root), Ink Cloud (T3 zone Blind 2 rounds),
+  Eight-Armed Embrace (T4 HEAVY physical drain within 2 + Stun, bonus vs Rooted). Specialist, deep_water (never drowns), water resist /
+  lightning weak. Finisher "Hair Day" borrows the Kraken's built set piece (`releaseTheKraken`).
+- No new battle.js rule and no new VFX yet: the spells use the shared kinds. OPEN for mondo: names, numbers, her own VFX, a home zone, Balance Lab.
+- THE KRAKEN (same day): the same tool, `--arms --mirror 1 --smooth 4 --parent Hips --free LeftArm,RightArm`, ten chains, one down each
+  arm, all on its Hips: the biped's legs and arms no longer bend its arms (models-assets.md). Its kit and stats are unchanged.
+- Probes: `playtest_writhe_stage.js` (the party builder's stage, close up, no match) and `playtest_writhe.js` (in a battle).
+
 ## THE VOIDWEAVER, IN MOVING PARTS (2026-11-28, thread "Remake the voidweaver with moving parts")
 mondo 11-28: "the deep sea fish and voidweaver would benefit from individually animated parts too, can you make new meshy models and
 pieces for them and custom animations for their spells/abilities". He picked look A of three (the black widow with deep space in its abdomen).
