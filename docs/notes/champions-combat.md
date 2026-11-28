@@ -7191,3 +7191,13 @@ blue / purple ("nettle 2"), and the blue jelly woman ("female 1").
 - THE PROBE: `TAG=a SHOTS=2 GAP=1200 ZOOM=7 FLAGS=__pgTilt=72,__pgDy=-0.6 ACTS=idle,raceJellyBloom node playtest_jelly.js` (MODEL=<url>
   swaps the male's file, `FLAGS=__pgGender=female` plays her, `TRACE=5000` = no pictures, the bell / body sampled every 50 ms).
 - Sources: project files `jellyfish-redesign/` (gen.py = the concepts and the part pictures, model.py, models/).
+- **THE COATS (same day, mondo 13:13Z):** "let's ditch the female one and have the lions mane and sea nettle be variations for the
+  jellyfish, while the deep sea crown can be a variation of the jellyfish UFO. Can we also make the jellyfish UFO bigger? It seems small".
+  Done the Bear's way (a second look = the race's FEMALE side, data.js RACE_PROFILES `coats` + `labelMale` / `labelFemale`):
+  `jellyfish` = Lion's Mane (male side) + Sea Nettle (female side, `jellyfish_nettle_v2.glb`), same spells, both procRig `jellyBody`;
+  `jellyfish ufo` = the UFO (male side, heightRatio 1.1 -> 1.5) + Deep Sea Crown (female side, `jellyfish_crown_v2.glb`, jellyBody,
+  heightRatio 1.3; RACE_SPRITE_GENDERS now `both`). The crown plays the UFO's kit on jellyBody's cast clips (no claws of its own).
+  The blue woman (`female/Meshy_AI_jellyfish_f_v2_Running.glb`) is unwired, on R2. New 128 px sprites (Sprite AI restyles of the
+  models' renders; say the colours in the prompt, a bare restyle turned the mane blue and the nettle orange):
+  `male/jellyfish_mane_px.png` (the race's sprite; his 10-04 `character_sprites/jellyfish.png` stays on R2), `jellyfish_nettle_px.png`,
+  `jellyfish_crown_px.png` (both in `_NEW_FEMALE_SPRITES`). Probe: `FLAGS=__pgRace=jellyfish ufo,__pgGender=female`.
