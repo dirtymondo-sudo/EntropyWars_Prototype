@@ -2483,3 +2483,27 @@ bone; one chain `ewsway_c<col>_0..5` is laid down it by the shortest way over th
 vertices blend onto it. THE SWAY swings it. `--far` is the knob: 0.05 took the backs of the thighs on the Gargoyle (0.085), the Incubus
 (0.08) and the Draconian (0.1, file draconian/male `Meshy_AI_draconian_tail_Running`). A gown's hem is found as a tail (Succubus female):
 look at `<out>_tail.png` first.
+
+## THE WRITHING TENTACLES (2026-11-28, bake-writhe.py)
+mondo 11-28: "the octopus girl with her tentacles separately moving, also want to redo the kraken with separate moving tentacles too".
+`bake-writhe.py` lays ONE chain of THE SWAY's spring bones (`ewsway_c<col>_<j>`) down each tentacle of a rigged Meshy GLB and blends the
+tentacle's skin onto it from its old weights at the root; nothing is cut and the rig's own bones, rest pose and binds stay byte for byte
+(like bake-tail.py). The race's `sway` row in sprites.js sets the feel; `wave` + `waveHz` is what makes them move on their own.
+- `--arms` (the Kraken: a squid rigged as a biped): the arms are the long branches of the skin measured from the top of the head (a
+  persistence watershed finds where they start; a branch under `--min` of the height is a bump). Each tip's shortest way back over the
+  skin is its arm's line; every vertex goes with the nearest line. Two arms fused at the tips share one tip, so `--mirror 1` gives the
+  hidden one its twin's line, mirrored. Each chain hangs on the rig bone that carries most of its root (a leg's arm still strides, an
+  arm's arm still swings with the cast). Kraken: 10 chains x 6 joints, `Meshy_AI_kraken_writhe_Character_output.glb` (+ .opt.glb).
+- `--hair` (the Octopus Girl's hair of tentacles): the hair is found by its colour in the base texture (more purple and darker than the
+  skin, smoothed over the mesh) and only where it joins the scalp. Plain `--hair`: columns round the head by angle (a sheet, like a cape).
+  `--locks 1` (hers): the way over the hair from the scalp finds each hanging lock's tip, its way back is the lock's line, every hair
+  vertex goes with the nearest line: one chain a lock (15 on her). `Meshy_AI_octopus_girl_writhe_Running.glb` (+ .opt.glb).
+- `--smooth N` spreads the chain weights over the skin N times: locks / arms fused along their length part with a soft seam, not a
+  tear (without it her locks tore apart at the back). `--parent Hips` + `--free <bones>` (the Kraken): every arm on one bone, and the
+  skin still on the biped's limb bones goes to its nearest arm; hung on the legs, its idle swung the leg-arms out and webbed them.
+- The feel is the race's sway row: hair softer than a cape (stiffness 3, maxRoot 14, maxBend 15, wave 0.18): more and the locks fold
+  into each other. The Kraken: stiffness 1.7, wave 0.9. Probe: `playtest_writhe_stage.js` (the builder's stage, close up; the stage is
+  always WebGL) + `playtest_writhe.js` (a battle; `GPU=webgpu` for the node renderer).
+- `--debug <dir>` writes a front / side / back picture of which vertex went to which chain.
+- Rigging her: Meshy's rig (the credits ran out for a while and a Blender bone-heat rig on a copy of a Meshy skeleton also worked; Meshy's
+  was kept as the standard).

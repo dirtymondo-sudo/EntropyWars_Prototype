@@ -437,6 +437,7 @@ const FINISHERS = {
     'ghoul':          { id: 'fin_ghoul', name: 'Grave Robbery', glyph: '⚰', type: 'unholy', sig: 'graveRobbery', built: true, tagline: 'THE PLOT WAS PRE-DUG', desc: 'The tile opens into a grave, the victim goes in, and the headstone already has the date on it.' },
     'gnome':          { id: 'fin_gnome', name: 'Garden Variety', glyph: '🍄', type: 'anomaly', sig: 'gardenVariety', built: true, tagline: 'A LOVELY LAWN ORNAMENT', desc: 'The victim is painted ceramic, placed in a garden, and hit by a lawnmower.' },
     'kraken':         { id: 'fin_kraken', name: 'Release the Kraken', glyph: '🐙', type: 'anomaly', sig: 'releaseTheKraken', built: true, tagline: 'THE WHOLE THING', desc: 'Eight arms come up through the board round one unit, and the ninth thing is the beak.' },
+    'octopus girl':   { id: 'fin_octopus_girl', name: 'Hair Day', glyph: '🐙', type: 'anomaly', sig: 'releaseTheKraken', built: true, tagline: 'ALL EIGHT', desc: 'Her hair lets go of her head and goes into the board, and every lock comes up round the victim at once.' },   // 2026-11-28 THE OCTOPUS GIRL (mondo: "the octopus girl with her tentacles separately moving"): the Kraken's set piece, her own name (a first pass)
     'loch ness monster': { id: 'fin_loch_ness_monster', name: 'Nessie Surfaces', glyph: '🦕', type: 'anomaly', sig: 'nessieSurfaces', built: true, tagline: 'ONE BLURRY PHOTO', desc: 'The loch rises through the map, the neck comes up under the victim, and the only evidence is out of focus.' },
     'yeti':           { id: 'fin_yeti', name: 'Avalanche', glyph: '🏔', type: 'anomaly', sig: 'avalanche', built: true, tagline: 'THE MOUNTAIN CAME TO YOU', desc: 'A mountain\'s worth of snow arrives from off the map and stops exactly on the victim.' },
     'barbarella':     { id: 'fin_barbarella', name: 'Space Disco', glyph: '🪩', type: 'tech', sig: 'spaceDisco', built: true, tagline: 'THE FINALE', desc: 'Every aerial shell at once, the mirror ball the size of a moon, and the victim has the worst seat in the house.' },
@@ -617,6 +618,7 @@ const RACE_ELEMENT_AFFINITY = {
     'mermaid':           { water: 'resist', lightning: 'weak', sonic: 'resist' },
     'atlantean':         { water: 'resist', lightning: 'weak' },
     'kraken':            { water: 'resist', lightning: 'weak' },
+    'octopus girl':      { water: 'resist', lightning: 'weak' },   // 2026-11-28 THE OCTOPUS GIRL (mondo: "the octopus girl with her tentacles separately moving")
     // ── infernal ──
     'demon':             { fire: 'resist', poison: 'resist', ice: 'weak' },
     'demon prince':      { fire: 'resist', ice: 'weak' },
@@ -3198,6 +3200,10 @@ const RACE_PROFILES = {
         label: 'Snowman',
         types: ['anomaly']
     },
+    'octopus girl': {   // 2026-11-28 THE OCTOPUS GIRL (mondo: "the octopus girl with her tentacles separately moving") — a sea girl whose hair is eight living tentacles
+        label: 'Octopus Girl',
+        types: ['anomaly']
+    },
     'nutcracker': {   // 2026-11-27 THE NEW CHARACTERS (models in, kit not yet: the spell thread sets the type for good) — a living wooden soldier
         label: 'Nutcracker',
         types: ['anomaly']
@@ -4211,7 +4217,7 @@ const RACE_MERGED = { 'nun': { race: 'priest', gender: 'female' } };
 /* 👁🌑 THE REALM WINDOW: races that SEE a Shadow Realm pair on their own turns (they cannot touch it). A projecting
    spirit both sees and touches (battle.js unitSeesRealm / unitCrossesRealm). */
 const REALM_SIGHT_RACES = ['ghost', 'shadow entity'];
-const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber', 'pharaoh', 'deep sea diver', 'gambler', 'hacker', 'monk', 'shogun', 'cameraman', 'mechanic', 'janitor', 'trucker', 'gladiator', 'farmer', 'jellyfish ufo', 'bear', 'rat', 'butterfly girl', 'plastic surgeon', 'monarch', 'abomination', 'hollow', 'weatherman', 'cheerleader', 'point guard', 'centaur', 'music producer', 'princess', 'demiurge', 'monster truck', 'nutcracker', 'leopard girl', 'draconian', 'flower girl', 'leprechaun', 'medic', 'origami girl', 'snowman', 'actor'];
+const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber', 'pharaoh', 'deep sea diver', 'gambler', 'hacker', 'monk', 'shogun', 'cameraman', 'mechanic', 'janitor', 'trucker', 'gladiator', 'farmer', 'jellyfish ufo', 'bear', 'rat', 'butterfly girl', 'plastic surgeon', 'monarch', 'abomination', 'hollow', 'weatherman', 'cheerleader', 'point guard', 'centaur', 'music producer', 'princess', 'demiurge', 'monster truck', 'nutcracker', 'leopard girl', 'draconian', 'flower girl', 'leprechaun', 'medic', 'origami girl', 'snowman', 'actor', 'octopus girl'];
 /* THE COMING RACES (2026-11-19, mondo: "wire them in the game at least in the relation web, give them sprite ai portraits ... my associate
    [does] their spell and combat plan on another account"): races whose model, sprite and name are in (sprites.js RACE_MODELS_3D,
    RACE_PROFILES) but whose kit is not. They are NOT playable: the Relationship Web lists them (docs/plans/story-web/build/fresh.js).
@@ -4254,6 +4260,7 @@ const RACE_KITS = {
     'gambler': { range: 2 },   // 2026-11-19 THE NEW RACES 4: the basic attack is a flicked casino chip
     'hacker': { range: 2 },   // 2026-11-19 THE NEW RACES 4: the basic attack is a zap off the keyboard (magic)
     'abomination': { range: 2 },   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name): the basic attack is an arm lashing out, and it reaches
+    'octopus girl': { range: 2 },   // 2026-11-28 THE OCTOPUS GIRL (mondo: "the octopus girl with her tentacles separately moving"): the basic attack is a lock of her hair lashing out, and it reaches
 };
 function raceKit(race) {
     const k = RACE_KITS[race] || {};
@@ -4426,6 +4433,7 @@ const RACE_CLASS = {
     'demiurge': 'bruiser',   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms)
     'monster truck': 'tank',   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells")
     'snowman': 'tank',   // 2026-11-27 THE SNOWMAN (mondo: "a new character, Snowman ... unique animations for its spells"): it holds a spot and the cold does the rest
+    'octopus girl': 'specialist',   // 2026-11-28 THE OCTOPUS GIRL (mondo: "the octopus girl with her tentacles separately moving"): she reels them in and holds them
     'nutcracker': 'bruiser',   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells")
     'abomination': 'bruiser',   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name)
     'farmer': 'support',   // 2026-11-19 THE COMING RACES (mondo OK'd the kits): the field heals the team
@@ -4519,6 +4527,7 @@ const RACE_TERRAIN_PREFERENCE = {
     'demiurge': 'wasteland',   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms): the cosmic wraith's ground, a first pass
     'monster truck': 'wasteland',   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells"): the dirt track
     'snowman': 'ice',   // 2026-11-27 THE SNOWMAN (mondo: "a new character, Snowman ... unique animations for its spells")
+    'octopus girl': 'deep_water',   // 2026-11-28 THE OCTOPUS GIRL (mondo: "the octopus girl with her tentacles separately moving"): a sea creature (never drowns, like the Kraken)
     'nutcracker': 'urban',   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells")
     'origami girl': 'urban',   // 2026-11-27 THE ORIGAMI GIRL (mondo: "build her spells and vfx and all that"): a first pass, no home invented
     'abomination': 'wasteland',   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name): the rot, the drains, the dark
@@ -4954,6 +4963,7 @@ const RACE_BASE_STATS = {
     'demiurge':           { hp: 1260, mp: 130, atk: 140, def: 125, mdef:  90, int:  70, vision: 3, crt: 16, spd: 100 },   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms) — the ARMOURED form (physical), first pass on the bruiser median; the COSMIC form's row is RACE_GENDER_STATS below
     'monster truck':      { hp: 1340, mp: 110, atk: 140, def: 150, mdef:  65, int:  40, vision: 3, crt: 12, spd:  95 },   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells") — first pass on the tank median (the Trucker's row, heavier and slower)
     'snowman':            { hp: 1180, mp: 150, atk: 118, def: 128, mdef: 102, int:  92, vision: 3, crt: 10, spd:  72 },   // 2026-11-27 THE SNOWMAN (mondo: "a new character, Snowman ... unique animations for its spells") — first pass on the tank median (the Yeti's row, slower: it rolls on a ball)
+    'octopus girl':       { hp:  960, mp: 200, atk: 118, def:  92, mdef: 112, int: 120, vision: 3, crt: 16, spd: 100 },   // 2026-11-28 THE OCTOPUS GIRL (mondo: "the octopus girl with her tentacles separately moving") — first pass on the specialist median: a grappler that casts
     'nutcracker':         { hp: 1120, mp: 130, atk: 138, def: 135, mdef:  80, int:  60, vision: 3, crt: 16, spd: 110 },   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells") — first pass on the bruiser median (hard wood)
     'abomination':        { hp: 1250, mp: 150, atk: 144, def: 110, mdef:  90, int:  72, vision: 3, crt: 12, spd:  80 },   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name) — first pass from the plan: slow, heavy, its limbs are its shield; LAB LOOP 11-23 PASS 2: HP 1300→1250, ATK 150→144, M.ATK 90→72 (59.3% over 135 games)
     'farmer':             { hp: 1100, mp: 170, atk: 110, def: 105, mdef: 100, int: 115, vision: 3, crt: 15, spd: 100 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits) — first pass on the support median
@@ -5176,6 +5186,7 @@ const RACE_PHYSIQUE = {
     'demiurge':            { h: 2.60, w: 180 },   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms)
     'monster truck':       { h: 2.40, w: 4200 },   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells"): a living truck on monster wheels
     'snowman':             { h: 2.10, w: 380 },   // 2026-11-27 THE SNOWMAN (mondo: "a new character, Snowman ... unique animations for its spells"): three balls of packed snow and a top hat
+    'octopus girl':        { h: 1.75, w: 68 },   // 2026-11-28 THE OCTOPUS GIRL (mondo: "the octopus girl with her tentacles separately moving")
     'nutcracker':          { h: 1.90, w: 60 },   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells"): a man-sized toy soldier, hat included
     'abomination':         { h: 3.10, w: 420 },   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name): the assembled body is 3.1 m from the floor to the top of its head
     'farmer':              { h: 1.78, w: 85 },   // 2026-11-19 THE COMING RACES (mondo OK'd the kits)
@@ -12098,6 +12109,28 @@ const RACE_ABILITIES = {
         _mkCharge({ id: 'brBearDown', name: 'Bear Down', tier: 3, families: ['bear'], cost: 75, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
           dmg: 160, range: 3, bonusVsStatus: { status: 'grudge', mult: 1.5 },
           desc: 'Thirty-five miles an hour of bear. Charges up to 3 tiles at a Single Enemy and slams it for HEAVY physical damage. Deals bonus damage to the Bear\'s Grudge. Cooldown: 2 rounds.' }),
+    ],
+    'octopus girl': [
+        /* 🐙 THE OCTOPUS GIRL (2026-11-28, mondo's Meshy model: "the octopus girl with her tentacles separately moving"). Her hair is eight
+           tentacles on their own spring chains (bake-writhe.py --hair; three-renderer.js THE SWAY writhes them). Her style: a grappler that
+           casts. She reaches 2 squares with her hair, reels a foe in, wraps it and drinks from it, and hides in ink. FIRST PASS: names and
+           numbers are his to change. Notes: champions-combat.md "THE OCTOPUS GIRL". */
+        { id: 'ocHairLash', name: 'Hair Lash', tier: 1, families: ['octopusgirl'], cost: 25, apCost: 1, spellType: 'anomaly',
+          element: 'water', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 85, range: 2,
+          statusEffects: [{ id: 'slow', duration: 1 }],
+          desc: 'Three locks of her hair snap out like whips. Deals WEAK physical damage to a Single Enemy within 2 and Slows it for 1 round.' },
+        { id: 'ocReelIn', name: 'Reel In', tier: 2, families: ['octopusgirl'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'anomaly',
+          element: 'water', type: 'damage', kind: 'pull', damageType: 'physical', dmg: 70, range: 4, pullDistance: 3, lineOfSight: true,
+          statusEffects: [{ id: 'root', duration: 1 }],
+          desc: 'A tentacle of hair wraps a Single Enemy within 4 and drags it up to 3 tiles toward her: WEAK physical damage, and it is Rooted where it lands for 1 round. Cooldown: 2 rounds.' },
+        { id: 'ocInkCloud', name: 'Ink Cloud', tier: 3, families: ['octopusgirl'], cost: 75, apCost: 1, cooldownRounds: 3, spellType: 'anomaly',
+          type: 'debuff', kind: 'zoneDebuff', range: 3, aoeRadius: 1, zoneDuration: 2,
+          statusEffects: [{ id: 'blind', duration: 2 }],
+          desc: 'She squirts a cloud of black ink over a 3x3 within 3 that hangs for 2 rounds. Enemies inside are Blinded for 2 rounds. Cooldown: 3 rounds.' },
+        { id: 'ocEmbrace', name: 'Eight-Armed Embrace', tier: 4, families: ['octopusgirl'], cost: 95, apCost: 1, cooldownRounds: 3, spellType: 'anomaly',
+          element: 'water', type: 'damage', kind: 'lifeDrain', damageType: 'physical', dmg: 160, range: 2, drainPct: 0.5,
+          statusEffects: [{ id: 'stun', duration: 1 }], bonusVsStatus: { status: 'root', mult: 1.3 },
+          desc: 'All eight tentacles close round a Single Enemy within 2 and squeeze. Deals HEAVY physical damage, heals her half of it and Stuns the target for 1 round. Deals bonus damage to a Rooted target. Cooldown: 3 rounds.' },
     ],
     'abomination': [
         /* THE LIMBS (2026-11-23, the Abomination; mondo OK'd the kit and named it; plan https://claude.ai/artifact/QYFEt8LpeEnqzhViCt1zME):
@@ -23585,6 +23618,7 @@ const RACE_TREE = {
     'demiurge':      [['dmSerpentStrike', 'dmVoidGaze'], ['dmCompassSweep', 'dmFractalBloom'], ['dmCornerstone', 'dmAsAbove'], ['dmGoldenSpiral', 'dmTesseract']],   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms): every rung is one of each form (RACE_GENDER_SPELLS)
     'monster truck': ['mtChomp', 'mtRam', 'mtHydraulicSlam', 'mtBurnout'],   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells"): its own four
     'snowman':       ['snSnowball', 'snCarrotJab', 'snRollUp', 'snSnowDay'],   // 2026-11-27 THE SNOWMAN (mondo: "a new character, Snowman ... unique animations for its spells"): its own four
+    'octopus girl':  ['ocHairLash', 'ocReelIn', 'ocInkCloud', 'ocEmbrace'],   // 2026-11-28 THE OCTOPUS GIRL (mondo: "the octopus girl with her tentacles separately moving"): her own four
     'nutcracker':    ['ncClack', 'ncQuickMarch', 'ncCrackOpen', 'ncNutcrackerSuite'],   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells"): its own four
     'origami girl':  ['ogSwordigami', ['ogKamikaze', 'ogPaperStar'], ['ogPickANumber', 'ogPaperFan'], 'ogThousandCranes'],   // 2026-11-27 THE ORIGAMI GIRL (mondo: "build her spells and vfx and all that"): her own four + two more folds
     'abomination':   ['abGrasp', 'abManyMouths', 'abBoneCage', 'abUnfold'],   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name): its own four
@@ -26115,6 +26149,16 @@ const SPELL_FAMILIES = {
         unique: 'bear',
         identity: { who: ['Grizzly', 'Polar Bear', 'Bruin'], adj: ['Shaggy', 'Territorial', 'Half-Asleep'], look: ['a hump of muscle over the shoulders', 'claws like garden forks', 'a coat of brown or white'], vibe: ['wants to be left alone', 'holds a grudge'] }
     },
+    octopusgirl: {   // 2026-11-28 THE OCTOPUS GIRL (mondo: "the octopus girl with her tentacles separately moving") — the Octopus Girl's own
+        id: 'octopusgirl',
+        name: 'Octopus Girl',
+        glyph: '🐙',
+        color: '#b48cd8',
+        kind: 'signature',
+        desc: 'A sea girl whose hair is eight living tentacles: it lashes, reels them in, holds them and drinks, and she hides in her ink.',
+        unique: 'octopus girl',
+        identity: { who: ['Octopus Girl', 'The Tidepool', 'Eight Locks'], adj: ['Inky', 'Clinging', 'Brine-Soaked'], look: ['hair of eight living tentacles', 'a crown of shell and gold', 'a sea-glass skirt in ribbons'], vibe: ['holds on and does not let go', 'more arms than manners'] }
+    },
     abomination: {   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name) — its own
         id: 'abomination',
         name: 'Abomination',
@@ -28441,6 +28485,7 @@ const RACE_FAMILIES = {
     'demiurge': ['demiurgy', 'cosmic', 'fractal', 'astral', 'ancientknowledge'],   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms): mondo's themes (cosmic, spiritual, the architect, sacred geometry, fractal math)
     'monster truck': ['monstertruck', 'drivingskills', 'machinery', 'apexpredator', 'fire'],   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells"): a car, an engine, a mouth, the burnout
     'snowman': ['snowman', 'winter', 'christmasspirit', 'northpole'],   // 2026-11-27 THE SNOWMAN (mondo: "a new character, Snowman ... unique animations for its spells"): snow, the season, the holiday
+    'octopus girl': ['octopusgirl', 'tentacleappendages', 'water', 'deepsea'],   // 2026-11-28 THE OCTOPUS GIRL (mondo: "the octopus girl with her tentacles separately moving")
     'nutcracker': ['nutcracker', 'hauntedtoy', 'christmasspirit', 'militarysupport', 'swordsmanship'],   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells"): a toy come alive, the Christmas ballet, a soldier with a sabre
     'origami girl': ['origami', 'swordsmanship', 'fortunetelling', 'ninjutsu', 'trickery'],   // 2026-11-27 THE ORIGAMI GIRL (mondo: "build her spells and vfx and all that"): paper, a blade, the fortune game, the throwing star, a trick of the hands
     'abomination': ['abomination', 'nightmares', 'cosmic', 'shadow'],   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name)
@@ -29114,6 +29159,7 @@ const CAMPAIGN_RACE_PRICES = {
   'demiurge': 900,   // 2026-11-26 THE DEMIURGE (mondo: the creator of the black cube, two forms)
   'monster truck': 500,   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells")
   'snowman': 400,   // 2026-11-27 THE SNOWMAN (mondo: "a new character, Snowman ... unique animations for its spells")
+  'octopus girl': 400,   // 2026-11-28 THE OCTOPUS GIRL (mondo: "the octopus girl with her tentacles separately moving")
   'nutcracker': 400,   // 2026-11-27 THE MONSTER TRUCK + THE NUTCRACKER (mondo: "wire them up ... their unique race spells")
   'origami girl': 400,   // 2026-11-27 THE ORIGAMI GIRL (mondo: "build her spells and vfx and all that")
   'abomination': 450,   // 2026-11-23 THE ABOMINATION (mondo OK'd the kit + the name)

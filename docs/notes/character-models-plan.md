@@ -692,3 +692,10 @@ hip before rigging (`rig.py`: Meshy rigging by data URI). Use the same trick on 
 Then (11-28 morning) his second take replaced it: `Meshy_AI_mushroom_girl_v4_Running.glb`, same leg spread + rig.
 Mermaid (F), 11-28: mondo's own Meshy model replaced the f2: `mermaid_tail_v1.glb`, rigged in the cloud (Meshy out of credits) by
 `bake-mermaid.py` with the legs weighing nothing and a swimming tail chain. Notes champions-combat.md "THE MERMAID'S TAIL".
+
+## THE OCTOPUS GIRL + THE KRAKEN'S ARMS (2026-11-28)
+mondo's own Meshy model (R2 `dirtymondo` inbox/Meshy_AI_Octopus_girl_20261128_texture_remesh_tri.glb, left in the inbox) = the new race
+'octopus girl': Meshy rig (1.7 m, 5 credits) + `bake-writhe.py --hair --locks 1` -> `Assets/characters/races/octopus_girl/female/
+Meshy_AI_octopus_girl_writhe_Running.glb` (+ .opt.glb); sprite `octopus_girl_px.png` (Sprite AI restyle of a render). The Kraken's
+model is now `Meshy_AI_kraken_writhe_Character_output.glb` (the old file stays on R2). Notes: models-assets.md "THE WRITHING TENTACLES",
+champions-combat.md "THE OCTOPUS GIRL".
