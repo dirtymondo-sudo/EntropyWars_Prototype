@@ -22214,6 +22214,8 @@ const ThreeRenderer = (function () {
         root.traverse(function (n) { if (!has && n.isBone && /^ewwing_[LR]$/.test(n.name)) has = true; });   // THE WING BONES (bake-wings.py): the gear tick beats them
         if (has) { try { _wfSplitBaked(root); } catch (_le) { console.warn('[3D] wing split failed', _le); } }   // THE LOOSE WINGS EVERYWHERE: a body's own wings bend down their span
         if (root.userData.ewGear) has = true;   // THE UNIT GEAR: its parts move in the sway's tick
+        var _mtail = false; root.traverse(function (n) { if (!_mtail && n.isBone && n.name === 'ewtail_0') _mtail = true; });
+        if (_mtail) { has = true; root.userData.ewTail = true; }   // 🧜 THE MERMAID'S TAIL: its chain swims in the sway's tick
         if (!has) root.traverse(function (n) { if (!has && n.isBone && n.name === 'ewLW1') has = true; });   // (the Unicorn's wings)
         var wings = false; if (has) root.traverse(function (n) { if (!wings && n.isBone && (n.name === 'ewLW1' || /^ewwing_[LR]$/.test(n.name))) wings = true; });
         if (wings) root.userData.ewWings = true;   // (the board feeds their moments: _wingSlot)
@@ -22252,7 +22254,13 @@ const ThreeRenderer = (function () {
             if (a && b) caps.push({ a: a, b: b, k: o.caps[ci][2] });
         }
         var S0 = { chains: chains, caps: caps, o: o, fresh: true, gear: gear, gearPhase: Math.random() * 6, dm: null }, lw = _wfInit(model, S0);
-        return { chains: chains, caps: caps, o: o, fresh: true, gear: gear, gearPhase: S0.gearPhase, lw: lw, dm: (model.userData && model.userData.ewDemi) ? _demiInit(model) : null };
+        var tail = null;   // 🧜 THE MERMAID'S TAIL: ewtail_0..N under the Hips, their baked turns kept
+        if (model.userData && model.userData.ewTail) {
+            tail = { bones: [], q0: [], ph: Math.random() * 6, swim: 0, prev: null, kick: 0, L: byName.LeftUpLeg || null, R: byName.RightUpLeg || null };
+            for (var ti = 0; byName['ewtail_' + ti]; ti++) { tail.bones.push(byName['ewtail_' + ti]); tail.q0.push(byName['ewtail_' + ti].quaternion.clone()); }
+            if (!tail.bones.length) tail = null;
+        }
+        return { chains: chains, caps: caps, o: o, fresh: true, gear: gear, gearPhase: S0.gearPhase, lw: lw, tail: tail, dm: (model.userData && model.userData.ewDemi) ? _demiInit(model) : null };
     }
     function _swayCapPush(p, a, b, r) {
         _swF.subVectors(b, a); var L2 = _swF.lengthSq();
@@ -22276,6 +22284,7 @@ const ThreeRenderer = (function () {
         if (!(dt > 0)) return;
         dt = Math.min(dt, 1 / 30);
         model.updateWorldMatrix(true, true);   // the body as the clip left it, under wherever the unit stands NOW
+        if (S.tail) _mermTail(S.tail, model, dt);   // 🧜 THE MERMAID'S TAIL
         var o = S.o, caps = S.caps, fresh = S.fresh; S.fresh = false;
         var _swNow = o.wave ? ((typeof performance !== 'undefined' ? performance.now() : Date.now()) / 1000) : 0;
         var capA = S._ca || (S._ca = caps.map(function () { return new THREE.Vector3(); }));
@@ -22316,6 +22325,58 @@ const ThreeRenderer = (function () {
                 _swQ.multiply(_swQ2); _swQ2.invert(); _swQ.premultiply(_swQ2);   // parent⁻¹ · turn · parent
                 j.quaternion.premultiply(_swQ); j.updateWorldMatrix(false, false);
             }
+        }
+    }
+
+    /* 🧜 THE MERMAID'S TAIL (2026-11-28, mondo: "I want the mermaid tail to be animated separately from her upper body so she can
+       still have the meshy animations like how the centaurs do it"). Her file (built from his own model: Meshy's skeleton refitted,
+       the legs left in but weighing nothing) carries a chain `ewtail_0..6` down the tail under the Hips. The library clips pose
+       the body as for anyone; after the clip this swims the chain: a dolphin kick (a wave down the tail about the hips' side to
+       side line, bigger to the fluke), slow and small standing, fast and full when she moves (her speed over the ground, so it
+       works on every stage), plus a slight side sway. In a fight the slot adds a beat (_wingSlot's record): a flick when she is
+       hit, a curl and lash on a cast, a hard whip on a strike, and the tail goes limp and settles when she dies. Cosmetic and
+       local (each screen swims its own), nothing relayed. */
+    var _mtA = null, _mtB = null, _mtQ = null, _mtQ2 = null, _mtQ3 = null, _mtAx = null, _mtSd = null;
+    function _mermTail(T, model, dt) {
+        if (!_mtA) { _mtA = new THREE.Vector3(); _mtB = new THREE.Vector3(); _mtQ = new THREE.Quaternion(); _mtQ2 = new THREE.Quaternion(); _mtQ3 = new THREE.Quaternion(); _mtAx = new THREE.Vector3(); _mtSd = new THREE.Vector3(); }
+        dt = Math.min(Math.max(dt || 0, 0), 1 / 20);
+        /* her speed over the ground, in her own metres (the model's world scale taken out) */
+        _mtA.setFromMatrixPosition(model.matrixWorld);
+        var sc = _mtB.setFromMatrixScale(model.matrixWorld).x || 1, v = 0;
+        if (T.prev && dt > 0) { var dx = _mtA.x - T.prev.x, dz = _mtA.z - T.prev.z; v = Math.sqrt(dx * dx + dz * dz) / sc / dt; }
+        if (!T.prev) T.prev = new THREE.Vector3(); T.prev.copy(_mtA);
+        var st = _wbState ? _wbState.get(model) : null;
+        var go = Math.max(Math.min(1, v / 1.2), st && st.walk ? 1 : 0);
+        T.swim += (go - T.swim) * Math.min(1, dt * 3);
+        var now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+        var dead = !!(st && st.dead), act = st && st.act, u = act ? (now - st.t0) / (st.ms || 1000) : 2;
+        T.ph += dt * 6.2832 * (0.45 + 1.15 * T.swim);
+        var amp = (5 + 11 * T.swim) * Math.PI / 180, side = 3 * Math.PI / 180;
+        var limp = dead ? _occS((now - st.t0) / 1200, 0, 1) : 0;
+        /* the hips' side line (left thigh root minus right) and her front: the kick turns about the first, the sway about the second */
+        if (T.L && T.R) { _mtAx.setFromMatrixPosition(T.L.matrixWorld).sub(_mtSd.setFromMatrixPosition(T.R.matrixWorld)); }
+        else _mtAx.set(1, 0, 0).transformDirection(model.matrixWorld);
+        if (_mtAx.lengthSq() < 1e-10) _mtAx.set(1, 0, 0);
+        _mtAx.normalize();
+        _mtSd.set(0, 0, 1).transformDirection(model.matrixWorld); _mtSd.addScaledVector(_mtAx, -_mtSd.dot(_mtAx)); if (_mtSd.lengthSq() < 1e-10) _mtSd.set(0, 0, 1); _mtSd.normalize();
+        var n = T.bones.length;
+        for (var i = 0; i < n; i++) {
+            var j = T.bones[i], f = i / Math.max(1, n - 1);
+            var k = Math.sin(T.ph - i * 0.8) * amp * (0.35 + 0.9 * f);
+            var sw = Math.sin(T.ph * 0.5 - i * 0.6) * side * (0.3 + f);
+            if (act && u >= 0 && u < 1) {
+                if (act === 'flinch') k += 0.5 * _occBump(u, 0, 0.12, 0.7) * (i < 2 ? -1 : 1.4);
+                else if (act === 'flare') k += -0.32 * _occBump(u, 0.05, 0.3, 0.9) * f + 0.35 * _occBump(u, 0.4, 0.55, 0.85) * f;
+                else if (act === 'strike') k += 0.55 * Math.sin(u * 9.4) * (1 - u) * (0.3 + f);
+                else if (act === 'tuck') k += -0.28 * _occBump(u, 0, 0.2, 0.9) * (0.3 + f);
+            }
+            if (limp) { k = k * (1 - limp) + limp * 0.06 * Math.sin(i * 1.3); sw *= 1 - limp; }
+            j.quaternion.copy(T.q0[i]);
+            if (window.EW_DISABLE_SWAY) { j.updateWorldMatrix(false, false); continue; }
+            _mtQ.setFromAxisAngle(_mtAx, k); _mtQ2.setFromAxisAngle(_mtSd, sw); _mtQ.multiply(_mtQ2);   // the turn in the world
+            j.parent.getWorldQuaternion(_mtQ2);
+            _mtQ.premultiply(_mtQ3.copy(_mtQ2).invert()).multiply(_mtQ2);   // parent⁻¹ · turn · parent
+            j.quaternion.premultiply(_mtQ); j.updateWorldMatrix(false, false);
         }
     }
 
@@ -24780,7 +24841,7 @@ const ThreeRenderer = (function () {
             if (entry.appearanceRig) { entry.model.updateMatrixWorld(true); entry.appearanceRig.tick(); }   // rev 9: the skirt against the legs
             var _hsR = _unitModelRigs.get(uid); if (_hsR && _hsR.hairSweep) _hsR.hairSweep();   // THE HAIR EVERYWHERE: the late hair
             if (entry._ew_sway && entry._ew_sway.userData.ewDemi) _demiSlot(entry);   // THE DEMIURGE: the cast's slot poses his parts
-            if (entry._ew_sway && entry._ew_sway.userData.ewWings) _wingSlot(entry);   // THE LOOSE WINGS EVERYWHERE: the wings answer the slot
+            if (entry._ew_sway && (entry._ew_sway.userData.ewWings || entry._ew_sway.userData.ewTail)) _wingSlot(entry);   // THE LOOSE WINGS EVERYWHERE: the wings answer the slot (🧜 and the mermaid's tail)
             if (entry._ew_sway) _swayTick(entry._ew_sway, dt, entry.modelDef && entry.modelDef.sway);   // THE SWAY: the cape swings after the clip
             var act = (entry.actions && entry._ew_curAnim) ? entry.actions[entry._ew_curAnim] : null;
             if (act) _modelAnimState.set(uid, { name: entry._ew_curAnim, time: act.time });
