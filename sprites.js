@@ -2578,7 +2578,7 @@ const RACE_MODELS_3D = {
     }),
     female: _mkUAL('succubus/female', 'hot_seductive_pink_su', {   // 2026-11-28 THE SUCCUBUS REMAKE (mondo's picture): a wingless Meshy body + one Meshy
       // wing hung on each side of the back on ewwing_L/R (bake-wing-part.py), the spade tail on a spring chain (bake-tail.py --narrow), her own beat
-      model: 'https://cdn.entropywars.net/Assets/characters/races/succubus/female/Meshy_AI_succubus_v2_Running.glb', sway: { wings: 'succubus', stiffness: 2.2, gravity: 0.1, drag: 0.3, maxRoot: 35, maxBend: 22, wave: 0.5, waveHz: 0.4, caps: [] },
+      model: 'https://cdn.entropywars.net/Assets/characters/races/succubus/female/Meshy_AI_succubus_v3_Running.glb', sway: { wings: 'succubus', stiffness: 2.2, gravity: 0.1, drag: 0.3, maxRoot: 35, maxBend: 22, wave: 0.5, waveHz: 0.4, caps: [] },
       heightRatio: 0.98,
       basicAttackKind: 'magic',
     }),

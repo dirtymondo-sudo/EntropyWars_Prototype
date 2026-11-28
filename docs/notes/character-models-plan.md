@@ -694,5 +694,5 @@ Mermaid (F), 11-28: mondo's own Meshy model replaced the f2: `mermaid_tail_v1.gl
 `bake-mermaid.py` with the legs weighing nothing and a swimming tail chain. Notes champions-combat.md "THE MERMAID'S TAIL".
 Succubus (F), 11-28: remade from mondo's picture (pink demon, ram horns, black lace + harness, stockings, platform heels, spade tail):
 a WINGLESS Meshy body + ONE Meshy bat wing modelled on its own, hung on each side of the back by `bake-wing-part.py` (bones
-`ewwing_L/R`, beat `succubus`); the tail swings on `bake-tail.py --narrow 0.028,0.45`. `Meshy_AI_succubus_v2_Running.glb`. Concepts,
+`ewwing_L/R`, beat `succubus`); the tail swings on `bake-tail.py --narrow 0.028,0.45`. `Meshy_AI_succubus_v3_Running.glb` (v3 11-28: his "scale down her wings a little", `--span 0.69`, was 0.86). Concepts,
 scripts and the raw models: project files `succubus/`. Notes models-assets.md "THE WING PART".
