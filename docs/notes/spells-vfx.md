@@ -5754,3 +5754,5 @@ the plain element hit does not draw over them. The rule looks are fireGeometry k
   reach goes night-dark and shafts of moonlight come down.
 - No words on cards (THE CLEAN READ). No sound.
 
+
+**THE WING SPELL PROBE (11-28):** `MAP=prebuilt_training RACE="moth queen" ACTS=<spell ids> FX=burst:<id>,self:<id>,windup:<id>,geom:<key> POSE=<wing move>@<yaw> FYAW=270 FLAGS=NOCINE TAG=x node playtest_wingspells.js` (repo root, needs `npm start`) sets a winged unit on a real VS CPU board with a foe and a friend, casts each spell through doSpell (ACTS), fires one look alone (FX) or one wing move alone (POSE), and pictures each with its own close camera. Use the flat Training Room (`MAP=prebuilt_training`): on a random map a tree stands in the view. `QUERY='?ew_gpu=webgpu' EW_PROBE_GL=webgpu` runs it on WebGPU, but in the cloud container the device is lost at boot, so that run proves the casts, not the picture.

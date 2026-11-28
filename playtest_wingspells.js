@@ -31,7 +31,7 @@ const READ = () => {
   const page = await ctx.newPage();
   page.on('console', m => { const t = m.text(); if (/animation library|PropertyBinding|unit gear|\[3D\]/.test(t) || (m.type() === 'error' && !/Raycaster/.test(t) && !/Failed to load resource|ERR_/.test(t))) console.log('CON', t.slice(0, 300)); });
   page.on('pageerror', e => console.log('PAGEERR', e.message.split('\n')[0].slice(0, 240)));
-  await page.goto('http://localhost:3000/', { waitUntil: 'load', timeout: 120000 });
+  await page.goto('http://localhost:3000/' + (process.env.QUERY || ''), { waitUntil: 'load', timeout: 120000 });
   for (let i = 0; i < 120; i++) { if (await page.evaluate(() => typeof window._goToVsCpu === 'function' && !!window.GAME).catch(() => false)) break; await sleep(1000); }
   await sleep(4000);
   console.log('build', await page.evaluate(() => JSON.stringify(window.EW_BUILD || null)));
