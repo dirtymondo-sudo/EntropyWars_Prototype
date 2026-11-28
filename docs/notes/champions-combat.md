@@ -7025,3 +7025,19 @@ wings". Both are NEW races, female only, IN as COMING RACES (body + wings + spri
 - Files `Assets/characters/races/harpy/female/Meshy_AI_harpy_v2_Running.glb` + `harpy_px.png`, `…/moth_queen/female/Meshy_AI_moth_queen_v2_Running.glb`
   + `moth_queen_px.png` (128px Sprite AI restyles of a front render). The v1 files (same, rigged in code by bake-winged.py without --rigged,
   when Meshy had no credits) stay on R2 unused. Project files `harpy-moth/` = sources, renders, proof.
+
+## THE MERMAID'S TAIL (2026-11-28)
+mondo 11-28 (inbox `Meshy_AI_mermaid_girl_20261128_texture.glb`, his own Meshy model, unrigged): "the mermaid which is just replacing
+the current model ... I want the mermaid tail to be animated separately from her upper body so she can still have the meshy
+animations like how the centaurs do it".
+- THE FILE: `Assets/characters/races/mermaid/female/mermaid_tail_v1.glb` (+ `.opt.glb`), built by `bake-mermaid.py` (repo root,
+  cloud Blender). Meshy's rigging API was out of credits, so the skeleton is Meshy's own (taken from the old f2 file, so the shared
+  library retargets as on every Meshy unit), each joint refitted to her T-pose; the legs stay in the file but weigh nothing; a
+  chain `ewtail_0..6` runs down the tail under the Hips. Weights = nearest bones gated by region (heat weights fail on Meshy's
+  open mesh, 40 pieces). The f2 model stays on R2.
+- THE GAME (three-renderer.js "THE MERMAID'S TAIL", `_mermTail`): `_swayScan` marks a root with `ewtail_0` (`userData.ewTail`) so
+  THE SWAY's tick runs on every stage (fight, HQ cast, viewers); after the clip it swims the chain: a dolphin kick about the hips'
+  side line (left thigh root minus right), a wave down the tail growing to the fluke, slow and small standing, fast and full when
+  she moves (speed over the ground, or the fight's walk slot), a slight side sway. In a fight `_wingSlot` feeds the slot: hit = a
+  flick, cast = curl + lash, strike = a hard whip, block = a tuck, death = the tail goes limp. `EW_DISABLE_SWAY` holds it still.
+- Any other tailed body (a siren, a naga) can use it: name the chain `ewtail_0..N` under the Hips; nothing else to wire.

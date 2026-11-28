@@ -183,7 +183,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | medic (female) | `Assets/characters/races/medic/female/Meshy_AI_nurse_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | men in black — creator look also baked | `Assets/characters/races/homosapien/male/agent/Meshy_AI_men_in_black_male_ag_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | mermaid | `Assets/characters/races/mermaid/male/Meshy_AI_merman_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES, the men; mondo 2026-11-16) |
-| mermaid (female) | `Assets/characters/races/mermaid/female/Meshy_AI_mermaid_f2_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| mermaid (female) | `Assets/characters/races/mermaid/female/mermaid_tail_v1.glb` | Meshy AI | Meshy AI, mondo's own model (2026-11-28, inbox Meshy_AI_mermaid_girl_20261128_texture.glb), rigged by Claude in cloud Blender (bake-mermaid.py: Meshy's skeleton refitted, legs weigh nothing, a swimming tail chain ewtail_0..6) |
 | mime | `Assets/characters/races/mime/male/Meshy_AI_mime_m_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES, the men; mondo 2026-11-16) |
 | mime (female) | `Assets/characters/races/mime/Meshy_AI_mime_female_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | minotaur | `Assets/characters/races/minotaur/Meshy_AI_minotaur_realistic_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
@@ -4586,7 +4586,7 @@ stand-ins (`keypad` carries the sticky-note code, `monitor_stack` its live feeds
 `lost_shelf`, `shag_rug`, `planter`, `false_window` are built to their rooms; a single pack model would drop those parts). Any of
 these can still go: mondo names it and how it should look.
 
-## 13. EVERY MODEL FILE ON R2 — the ones not named in the tables above (3549 of 6112, bucket `ewmusicsfx`, listed 2026-11-20)
+## 13. EVERY MODEL FILE ON R2 — the ones not named in the tables above (3550 of 6112, bucket `ewmusicsfx`, listed 2026-11-20)
 
 THE R2 AUDIT (2026-11-04, mondo: "You are supposed to document every single model"). Every model file in the bucket that the
 game tables above do not name, grouped by folder and why it is there. `node list-models.js --r2` re-lists the bucket into
@@ -4671,7 +4671,7 @@ before asking for a new one (THE PACK-FIRST RULE).
 | `Assets/characters/races/machineelves/male` | on R2, the game does not load it | Meshy AI · Meshy AI rigged character (mondo) | 2: Meshy_AI_DMT_clockwork_elf_biped_Character_output.glb, Meshy_AI_dmt_elf_Walking.glb | 15.0 |
 | `Assets/characters/races/martian/male` | animation clip file (the shared library replaced per-character clips; kept for the fallback / a re-consolidate) | Meshy AI · Meshy AI rigged character (mondo) | 10: Meshy_AI_Green_martian_biped_Animation_Charged_Spell_Cast_withSkin.glb, Meshy_AI_Green_martian_biped_Animation_Cowboy_Quick_Draw_Shooting_withSkin.glb, Meshy_AI_Green_martian_biped_Animation_Dead_withSkin.glb, Meshy_AI_Green_martian_biped_Animation_Face_Punch_Reaction_withSkin.glb, Meshy_AI_Green_martian_biped_Animation_Idle_03_withSkin.glb, Meshy_AI_Green_martian_biped_Animation_Idle_11_withSkin.glb, Meshy_AI_Green_martian_biped_Animation_Knock_Down_withSkin.glb, Meshy_AI_Green_martian_biped_Animation_Regular_Jump_withSkin.glb, Meshy_AI_Green_martian_biped_Animation_Running_withSkin.glb, Meshy_AI_Green_martian_biped_Animation_Walking_withSkin.glb | 81.3 |
 | `Assets/characters/races/martian/male` | on R2, the game does not load it | Meshy AI · Meshy AI (mondo) | 1: Meshy_AI_Green_martian_biped_Meshy_AI_Meshy_Merged_Animations.glb | 8.6 |
-| `Assets/characters/races/mermaid/female` | animation clip file (the shared library replaced per-character clips; kept for the fallback / a re-consolidate) | Meshy AI · Meshy AI rigged character (mondo) | 1: Meshy_AI_mermaid_f_Running.glb | 4.8 |
+| `Assets/characters/races/mermaid/female` | animation clip file (the shared library replaced per-character clips; kept for the fallback / a re-consolidate) | Meshy AI · Meshy AI rigged character (mondo) | 2: Meshy_AI_mermaid_f2_Running.glb, Meshy_AI_mermaid_f_Running.glb | 9.2 |
 | `Assets/characters/races/mermaid/female` | on R2, the game does not load it | Meshy AI · Meshy AI rigged character (mondo) | 1: Meshy_AI_hot_mermaid_girl_biped_Character_output.glb | 8.6 |
 | `Assets/characters/races/mothman/male` | on R2, the game does not load it | Meshy AI · Meshy AI rigged character (mondo) | 1: Meshy_AI_mothman_cryptid_gian_biped_Character_output.glb | 8.8 |
 | `Assets/characters/races/mushroomgirl` | animation clip file (the shared library replaced per-character clips; kept for the fallback / a re-consolidate) | Meshy AI · Meshy AI rigged character (mondo) | 1: Meshy_AI_mushroom_girl_Running.glb | 7.0 |

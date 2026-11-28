@@ -2524,8 +2524,12 @@ const RACE_MODELS_3D = {
     // 2026-11-17 (mondo: "the current mermaid model looks too much like the female atlantean (red hair), so make it match the sprite")
     // — new Meshy model in the sprite's navy blue (hair, corset, tail with glowing spots); tail = hips only, like the siren's.
     // Was _mkUAL('mermaid/female', 'hot_mermaid_girl', …) (files kept on R2).
+    // 🧜 2026-11-28 mondo's OWN model (inbox Meshy_AI_mermaid_girl_20261128_texture.glb: pale blue hair, shell top, lilac fluke):
+    // "I want the mermaid tail to be animated separately from her upper body so she can still have the meshy animations like how
+    // the centaurs do it". Meshy's skeleton (from the f2 file) refitted to her, the legs left in but weighing nothing, a chain
+    // ewtail_0..6 down the tail (three-renderer.js THE MERMAID'S TAIL swims it after the clip). The f2 model stays on R2.
     female: _mkUAL('mermaid/female', 'mermaid_f', {
-      model: `${_S}/Races/mermaid/female/Meshy_AI_mermaid_f2_Running.glb`,
+      model: 'https://cdn.entropywars.net/Assets/characters/races/mermaid/female/mermaid_tail_v1.glb',
       heightRatio: 0.95,
       basicAttackKind: 'magic',
       // (2026-11-17: no swim idle any more — the swim loop lowers the hips, and with the tail bound to the hips she sank into the floor)
