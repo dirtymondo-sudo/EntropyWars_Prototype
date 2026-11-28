@@ -47,6 +47,12 @@
 'use strict';
 const fs = require('fs'), path = require('path');
 const LAY = JSON.parse(fs.readFileSync(path.join(__dirname, '../hills-layout.json'), 'utf8'));
+/* THE HILLS CLIMB HIGHER (2026-11-28, mondo: "maybe the hills need to climb higher and the sign needs to be higher"). The plan's levels stay in the layout
+   file; this table lifts them: the ridge 12 m (the Peak stands 56 m over the sea, the city's north line at 11 to 23), the middle of the slope row 3.5 m, so the
+   ridge trails still climb (9 levels in 28 m at the steepest). The foot row and the west end (the River Road's seam) keep their heights. HILLS_OLD_LEVELS = as before. */
+const RISE = { 'H01-00': 1, 'H02-00': 3, 'H03-00': 4, 'H04-00': 7, 'H05-00': 7, 'H06-00': 7, 'H07-00': 7, 'H08-00': 7, 'H09-00': 7, 'H10-00': 5, 'H11-00': 2,
+    'H04-01': 2, 'H05-01': 2, 'H06-01': 2, 'H07-01': 2, 'H08-01': 2, 'H09-01': 2, 'H10-01': 2 };
+if (!process.env.HILLS_OLD_LEVELS) LAY.plots.forEach(p => { p.level += RISE[p.id] || 0; });
 const N = 12, C = 3.5, LEVEL = 1.75, PW = LAY.cols, PH = LAY.rows, W = PW * N, H = PH * N, X0 = -252, Z0 = -252 - H * C;
 const SEED = 39, ROCK_CAP = 16, SEA_BED = -4.2, SEA_SHORE = -1.9, SEA_FALL = 10, SHELF = -1.05, DEEP = -3.6;   // (the city's sea stands at -1.45, its sand shelf at -1.05: districts/B.js)
 const MASS = { r: 1, t: 1, z: 1 };
@@ -67,6 +73,9 @@ const MTN = 'site_prebuilt_shasta_mountains';
    line), a crescent of sand runs on north under the cliff from the boardwalk's end, and a ROCK HEADLAND (`head`: its crest line, metres) springs from the
    cliff and hooks round the bay's north and east, so the cove is closed but for a mouth to the south-east. Sea stacks stand off its point. */
 const COVE = exports.cove = { x: 310, z: -262, r: 32, bank: 12, head: [[259, -303], [285, -306], [310, -311], [334, -305], [349, -292], [356, -277]] };
+/* THE SIGN's plan: twelve letters `lw` x `lh` m, `pitch` m apart, `gap` m more between the two words; off(n) = letter n's middle from the word's middle (m).
+   row = the Hills' row of squares the letters stand on the north line of. clear = [sx0, sx1, sy0]: the compact squares no tree grows on (before the letters). */
+exports.sign = { lw: 10.7, lh: 15.5, pitch: 11.9, gap: 4.5, row: 8, off: n => (n - 5.5) * 11.9 + (n >= 8 ? 2.25 : -2.25), clear: [70, 122, 6] };
 exports.room = { north: H, zone: { floor: 'grass_rocky', cliff: 'rocks_5', path: 'dirt_2', pal: ['rocks_5', 'dirt_2', 'calm_flagstone', 'urban:ConcreteSlab2a', 'marble_light', 'desert', 'obsidian', 'grass_2'] } };
 /* (the roads: the old room painted them in the roof bitumen sheet; seen on screen beside the city's own road that was a pale band across the mountain road at the
    city's line, so the Hills' roads wear the city's asphalt sheet now: one road from the Casino court to the canyon) */
@@ -375,8 +384,8 @@ function hillsDressing(ctx) {
        cover). Rocks come in clusters (one big, smaller ones beside it; the graveyard pack's grey stones, as the Woods' islands: the ocean rocks read black on the dry grass), cactus at a rock's foot, bushes one or two to a square in mixed sizes, one species to
        a patch (leafy chaparral, the thorn bush in the burn). No new kind; fewer pieces than before. HILLS_OLD_SCATTER = the old dice. */
     const cand = [], old = { brush: 0, rocks: 0, cactus: 0 }, treeSq = [];
-    R.plots.forEach(p => { if (process.env.HILLS_NO_SCATTER) return; const m = MIX[KIND[p.id] || (p.ly === 0 ? 'ridge' : p.ly === 1 ? 'slope' : 'foot')];
-        for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) { const sx = p.lx * N + lx, sy = p.ly * N + ly, u = rnd(), w = rnd();
+    R.plots.forEach(p => { if (process.env.HILLS_NO_SCATTER) return; const m0 = MIX[KIND[p.id] || (p.ly === 0 ? 'ridge' : p.ly === 1 ? 'slope' : 'foot')], SC = exports.sign.clear;
+        for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) { const sx = p.lx * N + lx, sy = p.ly * N + ly, u = rnd(), w = rnd(), m = (p.ly === 0 && sx >= SC[0] && sx < SC[1] && sy >= SC[2]) ? MIX.sign : m0;   // (no tree before the letters on the ridge)
             if (cell[sy][sx] !== 'g' || R.taken.has(sx + ':' + sy) || near(sx, sy)) continue;
             const roadside = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(d => R.inR(sx + d[0], sy + d[1]) && 'Yp'.indexOf(cell[sy + d[1]][sx + d[0]]) >= 0);
             if (m.t && !roadside && u < m.t && process.env.HILLS_NO_TREES) continue;
@@ -499,14 +508,20 @@ function hillsModels(ctx) {
 const content = {};
 content.apply = ctx => {
     const R = ctx, { put, dec, tree, native, building, look, flat, cabin, say, S, mx, mz, gx, gz, props, feat, cell, N, C, r2, U, WD, WD2, SHG, FLR, GLS, DOORWORDS } = ctx;
-  /* ── THE SIGN: twelve letters, each a standing plane cut from the typeface (the city's own sign's font), two legs behind it; you walk under and behind them ── */
-  { const WORD = 'DISASTERCITY', LW = 9.4, LH = 13.6, STEEL = U('MetalWallRibbed1a');
-    ['H06-01', 'H07-01', 'H08-01', 'H09-01'].forEach((id, pi) => [2, 6, 10].forEach((lx, li) => { const ch = WORD[pi * 3 + li], q = S(id, lx, 5), n = pi * 3 + li, lift = [0, 0, 0, 0, 0, 0, 0, 0, -1.2, 0, 0, -2.2][n], tilt = [0, 0, 5, 0, 0, 0, -4, 0, 0, 0, 0, 7][n];
-        look('sign' + n, gx(q[0]), gz(q[1]), a => { a.quad(0, 1.2 + lift, 0, LW, LH, 'txt:' + ch + '|#f6f4ec||' + r2(LW / LH) + '||anton', null, Object.assign({ uv: 'fit', kind: 'over', ds: true, glow: 0.92 }, tilt ? { rz: tilt } : {}));   // (`glow`, pass 4: the letters shine by night; by day a white unlit letter reads as it did)
-            for (const fx of [-2.2, 2.2]) { a.box(fx, 0, 2.2, 0.5, 0.3, 0.4, STEEL, 0x3a3c40); a.box(fx, 0.3, 2.1, 0.42, 0.2, 0.26, null, 0xfff4d0, { glow: 1.5 }); }
-            for (const sx of [-1, 1]) { a.box(sx * 2.6, 0, -0.9, 0.36, 10.5 + lift, 0.36, STEEL, 0x8a8e94); a.box(sx * 2.6, 6 + lift, -0.45, 0.2, 0.2, 0.9, STEEL, 0x8a8e94); }
-            a.box(0, 3.2 + lift, -0.9, 5.6, 0.2, 0.2, STEEL, 0x8a8e94); });
-        for (const d of [-1, 0]) R.taken.add((q[0] + d) + ':' + q[1]); })); }
+  /* ── THE SIGN: twelve letters, each a standing plane cut from the typeface (the city's own sign's font), two legs behind it; you walk under and behind them.
+     ONE WORD ON THE RIDGE (2026-11-28, mondo: "disaster city in the hills is split apart ... at least one area where you can see the whole sign"): the letters
+     stood three to a plot on the slope row, 14 m apart, and THE SPREAD's cut at x 84 opened 42 m between DISAST and ERCITY. Now they stand on the ridge's south
+     edge (row 8: the last level squares before the fall, the ridge trail right behind them, the mast to the west), 11.9 m apart with a word gap, a seventh
+     bigger. Here they are laid as one word about the compact city's x 84; in the spread room `docs/disaster-city/hills-pass.js` sets them down again about
+     Bluff Drive's line (three of them stand on ground that is only in the spread room), so the drive runs straight at the sign. `exports.sign` = the plan. ── */
+  { const WORD = 'DISASTERCITY', SG = exports.sign, LW = SG.lw, LH = SG.lh, STEEL = U('MetalWallRibbed1a'), z = gz(SG.row);
+    for (let n = 0; n < 12; n++) { const ch = WORD[n], x = r2(84 + SG.off(n)), lift = 1.4 + [0, 0, 0, 0, 0, 0, 0, 0, -1.2, 0, 0, -2.2][n], tilt = [0, 0, 5, 0, 0, 0, -4, 0, 0, 0, 0, 7][n];
+        look('sign' + n, x, z, a => { a.quad(0, 1.2 + lift, 0, LW, LH, 'txt:' + ch + '|#f6f4ec||' + r2(LW / LH) + '||anton', null, Object.assign({ uv: 'fit', kind: 'over', ds: true, glow: 0.92 }, tilt ? { rz: tilt } : {}));   // (`glow`, pass 4: the letters shine by night; by day a white unlit letter reads as it did)
+            for (const fx of [-2.5, 2.5]) { a.box(fx, -2.2, 1.3, 0.22, 2.3, 0.22, STEEL, 0x3a3c40); a.box(fx, 0, 1.3, 0.5, 0.3, 0.4, STEEL, 0x3a3c40); a.box(fx, 0.3, 1.2, 0.42, 0.2, 0.26, null, 0xfff4d0, { glow: 1.5 }); }   // the floods, each on a post (the ground falls away south of the letters' line)
+            for (const sx of [-1, 1]) { a.box(sx * 3, 0, -0.9, 0.36, 12 + lift, 0.36, STEEL, 0x8a8e94); a.box(sx * 3, 7 + lift, -0.45, 0.2, 0.2, 0.9, STEEL, 0x8a8e94); }
+            a.box(0, 3.6 + lift, -0.9, 6.4, 0.2, 0.2, STEEL, 0x8a8e94); a.box(0, 9.6 + lift, -0.9, 6.4, 0.2, 0.2, STEEL, 0x8a8e94); }); }
+    /* the letters' line is kept clear in the compact city too: no bench, bush or tree on the two rows they stand on */
+    for (let sx = Math.floor((84 + SG.off(0) - LW / 2 - X0) / C); sx <= Math.floor((84 + SG.off(11) + LW / 2 - X0) / C); sx++) for (const sy of [SG.row - 1, SG.row]) R.taken.add(sx + ':' + sy); }
   /* ── THE THREE BUILDINGS (mondo 11-16: "do exteriors and interiors of the buildings"). Each is a walk-in `texbuilding` (its walls, its doorway, its
      swinging leaf) wearing an `arch` look. Parts frame: the building's middle, x along the front (east), +z out of the front (south, the city), y up
      from its floor. THE SQUARES: a thing that blocks stands on the middle of a whole 3.5 m square (the square middles are in each block's comment);
@@ -693,7 +708,7 @@ content.build = ctx => {
         for (let i = 0; i < 6; i++) a.box(0, i * 5, 0, 0.9 - i * 0.1, 5, 0.9 - i * 0.1, ST, i % 2 ? 0xf0f0f0 : 0xc83030); for (const y of [9, 19, 27]) a.box(0, y, 0, 3.2, 0.14, 0.14, ST, 0x8a8e94);
         a.box(0, 30, 0, 0.3, 0.3, 0.3, null, 0xff3020, { glow: 1 }); a.box(0, 0, 0, 3.4, 0.5, 3.4, 'rocks_5', 0x9a9aa0); });
     for (const d of [[-1, -1], [0, -1], [-1, 0], [0, 0]]) R.taken.add((q[0] + d[0]) + ':' + (q[1] + d[1])); }
-  put('H06-00', 'park_bench', 5, 7, { face: 180 }); dec('H07-00', 'cave_stone', 8, 8); put('H08-00', 'signpost', 5, 3, { face: 180 }); dec('H08-00', 'eagle', 7, 2, { y: 0.02 }); dec('H09-00', 'cave_stone', 4, 8);
+  put('H06-00', 'park_bench', 5, 10, { face: 180 }); dec('H07-00', 'cave_stone', 8, 10); put('H08-00', 'signpost', 5, 3, { face: 180 }); dec('H08-00', 'eagle', 7, 2, { y: 0.02 }); dec('H09-00', 'cave_stone', 4, 10);
   put('H10-00', 'water_tower_west', 4, 2); put('H11-00', 'telescope', 8, 4, { face: 180 }); put('H11-00', 'park_bench', 7, 7, { face: 180 });
 
   /* ── THE LETTERS' SLOPE (row 1) ── */
