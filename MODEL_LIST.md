@@ -207,7 +207,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | nordic (female) | `Assets/characters/races/nordic/female/Meshy_AI_nordic_f_v2_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW LOOKS, mondo 2026-11-18 concepts round; wings / halo / cape / trident apart: THE UNIT GEAR; project files unit-concepts-20261118/) |
 | nutcracker | `Assets/characters/races/nutcracker/male/Meshy_AI_nutcracker2_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | occulus | `Assets/characters/gear/wings/Meshy_AI_one_bat_wing_1027074652_texture.glb` | Meshy AI | Meshy AI (single wing, mirrored in code) |
-| octopus girl (female) | `Assets/characters/races/octopus_girl/female/Meshy_AI_octopus_girl_v2_writhe.glb` | Meshy AI | Meshy AI (mondo) |
+| octopus girl (female) | `Assets/characters/races/octopus_girl/female/Meshy_AI_octopus_girl_v3_writhe.glb` | Meshy AI | Meshy AI (mondo) |
 | orb of light (female) | `Assets/characters/races/orboflight/female/Meshy_AI_hot_girl_sentient_li_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | origami girl (female) | `Assets/characters/races/origami_girl/female/Meshy_AI_origami_girl_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | overlord | `Assets/characters/races/overlord/Meshy_AI_underworld_overlord__biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
