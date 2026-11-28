@@ -18640,6 +18640,7 @@ const ThreeRenderer = (function () {
         moth:      { rhythm: 'ruffle',  rate: 1.7, walk: 3.4, sw0: 0.05, ra0: 0, swA: 0.16, raA: 0.07, tw: 0.04, off: 0.3, lag: 0.091, flex: [1.2, 1.7, 2.2], bend: 0.34 },
         bee:       { rhythm: 'flutter', rate: 34, walk: 40, sw0: 0, ra0: 0.04, swA: 0.04, raA: 0.2, tw: 0.16, off: 0.4, lag: 0.015, flex: [0.72, 0.99, 1.26], bend: 0.22 },
         demon:     { rhythm: 'heavy',   rate: 2.0, walk: 3.2, sw0: 0.04, ra0: 0, swA: 0.12, raA: 0.17, tw: 0.08, off: 0.2, lag: 0.117, flex: [1.8, 2.4, 3.0], bend: 0.46 },
+        succubus:  { rhythm: 'heavy',   rate: 2.4, walk: 3.7, sw0: 0.04, ra0: 0, swA: 0.14, raA: 0.22, tw: 0.1, off: 0.3, lag: 0.1, flex: [1.8, 2.4, 3.0], bend: 0.5 },   // (the Succubus remake 11-28: her bat wings, slower than the imp)
         imp:       { rhythm: 'heavy',   rate: 3.3, walk: 4.6, sw0: 0.02, ra0: 0, swA: 0.1, raA: 0.2, tw: 0.1, off: 0.35, lag: 0.078, flex: [1.6, 2.2, 2.8], bend: 0.44 },
         stone:     { rhythm: 'ruffle',  rate: 1.1, walk: 2.0, sw0: 0.03, ra0: 0, swA: 0.07, raA: 0.09, tw: 0.03, off: 0.5, lag: 0.143, flex: [1.0, 1.4, 1.8], bend: 0.3 },
         eagle:     { rhythm: 'glide',   rate: 2.8, walk: 4.0, sw0: 0.03, ra0: 0.04, swA: 0.1, raA: 0.2, tw: 0.1, off: 0, lag: 0.091, flex: [1.4, 1.9, 2.4], bend: 0.4 },
@@ -18648,6 +18649,8 @@ const ThreeRenderer = (function () {
         mantle:    { rhythm: 'butterfly', rate: 2.2, walk: 3.6, sw0: 0, ra0: 0, swA: 0.3, raA: 0.04, tw: 0, off: 0.2, lag: 0.091, flex: [1.2, 1.7, 2.2], bend: 0.34 },   // (the Monarch: the wings she wears down her back open and close a little)
         cicada:    { rhythm: 'flutter', rate: 30, walk: 36, sw0: 0, ra0: 0.07, swA: 0.02, raA: 0.05, tw: 0.03, tw0: 0.06, mo: 0.25, off: 0.3, lag: 0.02, flex: [0.72, 1.08, 1.44], bend: 0.2 },   // (shut along the back: they rattle in bursts)
         pegasus:   { rhythm: 'steady',  rate: 2, walk: 3, sw0: 0, ra0: 0, swA: 0, raA: 0, tw: 0, off: 0, lag: 0.13, flex: [1.8, 2.4, 3.0], bend: 0.5 },   // (the Unicorn: its clips turn the hinge; only the follow-through is read)
+        harpy:     { rhythm: 'heavy',   rate: 1.9, walk: 3.0, sw0: 0.02, ra0: 0.04, swA: 0.10, raA: 0.26, tw: 0.08, off: 0.12, mo: 0.6, lag: 0.12, flex: [1.7, 2.2, 2.8], bend: 0.46 },   // (2026-11-28 the Harpy: long feathered wings hung to her shins, a slow hawk's beat, the tips trailing)
+        mothqueen: { rhythm: 'ruffle',  rate: 1.25, walk: 2.3, sw0: 0, ra0: 0.03, swA: 0.07, raA: 0.2, tw: 0.04, sh: 0.5, off: 0.06, mo: 0.5, lag: 0.1, flex: [1.0, 1.4, 1.8], bend: 0.3 },   // (2026-11-28 the Moth Queen: two broad wing sheets that open and close together, slow, a shiver now and then)
         baked:     { rhythm: 'steady',  rate: 2.0, walk: 3.2, sw0: 0.03, ra0: 0, swA: 0.1, raA: 0.15, tw: 0.06, off: 0.25, lag: 0.111, flex: [1.6, 2.0, 2.5], bend: 0.42 }
     };
     var _wbState = (typeof WeakMap === 'function') ? new WeakMap() : null;   // clone root -> { slot, walk, dead, act, t0, ms }

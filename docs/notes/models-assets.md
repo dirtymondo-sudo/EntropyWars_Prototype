@@ -2476,6 +2476,21 @@ The game shares each wing out to three more bones at load and beats it (champion
 - A wing that HANGS (root above or mid, tips down) needs these three; check a new one with the pose sheet before the game
   (rotate the wing bone by hand about each axis, back + side view), the 1 fps probe from above does not show a tear.
 
+## THE WING PART (2026-11-28, bake-wing-part.py; the Succubus remake)
+
+mondo 11-28: a new Meshy succubus like his picture, "separate animated wings of course". A wing that Meshy models INTO a body
+comes out fused (bake-wings.py --soft then has to guess it). Instead: the body concept is drawn with NO wings, and one wing is
+its own Meshy part (the left wing, spread flat facing the camera: root at -x, tip at +x).
+`python3 -I bake-wing-part.py <body rigged.glb> <wing.glb> <out.glb> [--parent Spine] [--span 0.86] [--trim 0.17] [--up 20] [--back 25] [--at x,y,z] [--tex 1024]`
+cuts the wing's root stump off (`--trim`, part of its length), scales it to `--span` metres, raises the tip `--up` degrees,
+sweeps it back `--back` degrees, and hangs it and its mirror behind the chest on two new bones `ewwing_L/R` (children of
+`--parent`, every wing vertex wholly on its bone) as a second primitive of the body's mesh with the wing's own material
+(pictures shrunk to `--tex`). The body's bytes, rest pose and inverse binds are untouched; the skin gains two joints at its
+end. three-renderer.js _wfSplitBaked + `sway: { wings: '<beat>' }` then bend and beat them like any baked wing. Run
+bake-tail.py AFTER it (it leaves ewwing_ vertices alone).
+bake-tail.py `--narrow w,y` (same day): above the height y (part of the height) a tail vertex lies within w of the middle
+line, so a round seat far from every bone is not taken for the tail's root (the succubus's took both buttocks without it).
+
 ## THE LOOSE TAILS (2026-11-27, bake-tail.py)
 `python3 -I bake-tail.py <in.glb> <out.glb> [--parent Hips --joints 6 --col 0 --far 0.05 --band 0.05 --high 0.62 --wide 0.5] [--debug <dir>]`
 (after bake-wings.py on a body with both). The tail = the biggest narrow piece of skin behind and below the hips that is far from every

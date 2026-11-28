@@ -169,6 +169,8 @@ const EW_ASSET_MOVES = [
   ['Assets/Sprites/Races/leprechaun/', 'Assets/characters/races/leprechaun/'],   // 2026-11-27 THE NEW CHARACTERS
   ['Assets/Sprites/Races/medic/', 'Assets/characters/races/medic/'],   // 2026-11-27 THE NEW CHARACTERS
   ['Assets/Sprites/Races/actor/', 'Assets/characters/races/actor/'],   // 2026-11-27 THE ACTOR
+  ['Assets/Sprites/Races/harpy/', 'Assets/characters/races/harpy/'],   // 2026-11-28 THE HARPY + THE MOTH QUEEN
+  ['Assets/Sprites/Races/moth_queen/', 'Assets/characters/races/moth_queen/'],
   ['Assets/Sprites/Races/music_producer/', 'Assets/characters/races/music_producer/'],   // 2026-11-24 THE MUSIC PRODUCER
   ['Assets/Sprites/Races/librarian/', 'Assets/characters/races/librarian/'],   // 2026-11-17 THE NEW RACES 2
   ['Assets/Sprites/Races/televangelist/', 'Assets/characters/races/televangelist/'],   // 2026-11-17 THE NEW RACES 2
@@ -636,6 +638,8 @@ const RACE_SPRITE_GENDERS = {
   'draconian': 'male',   // 2026-11-27 THE NEW CHARACTERS
   'flower girl': 'female',   // 2026-11-27 THE NEW CHARACTERS
   'origami girl': 'female',   // 2026-11-27 THE ORIGAMI GIRL
+  'harpy': 'female',   // 2026-11-28 THE HARPY + THE MOTH QUEEN
+  'moth queen': 'female',
   'leprechaun': 'both',   // 2026-11-27 THE NEW CHARACTERS
   'medic': 'both',   // 2026-11-27 THE NEW CHARACTERS (one race: the male is the Doctor, the female the Nurse)
   'actor': 'both',   // 2026-11-27 THE ACTOR (one race: the male is the Actor, the female the Actress)
@@ -833,6 +837,8 @@ const _CHARACTER_SPRITES = {
   'draconian': `${_S}/Races/draconian/male/draconian_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
   'flower girl': `${_S}/Races/flower_girl/female/flower_girl_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
   'origami girl': `${_S}/Races/origami_girl/female/origami_girl_px.png`,   // 2026-11-27 THE ORIGAMI GIRL — 128x128 pixel sprite (Sprite AI restyle of a straight-on render of her model)
+  'harpy': `${_S}/Races/harpy/female/harpy_px.png`,   // 2026-11-28 THE HARPY — 128x128 pixel sprite (Sprite AI restyle of a straight-on render of her model)
+  'moth queen': `${_S}/Races/moth_queen/female/moth_queen_px.png`,   // 2026-11-28 THE MOTH QUEEN — 128x128 pixel sprite (Sprite AI restyle of a straight-on render of her model)
   'leprechaun': `${_S}/Races/leprechaun/male/leprechaun_m_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
   'medic': `${_S}/Races/medic/male/doctor_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
   'actor': `${_S}/Races/actor/male/actor_px.png`,   // 2026-11-27 THE ACTOR — 128x128 pixel sprite (Sprite AI restyle of mondo's audition concept)
@@ -955,6 +961,7 @@ const FOOTBALL_SPRITE = `${_S}/football.png`;
 // 2026-11-17 (mondo: female nordic + siren): their own 128x128 sprites, Sprite AI restyles of each new Meshy model's front render.
 // The mermaid woman keeps her blue sprite: her new model was made to match it.
 const _NEW_FEMALE_SPRITES = {
+  'succubus': 'https://cdn.entropywars.net/Assets/characters/races/succubus/female/succubus_f_px2.png',   // 2026-11-28 THE SUCCUBUS REMAKE (Sprite AI restyle of her v3 model's front render)
   'jellyfish': 'https://cdn.entropywars.net/Assets/characters/races/jellyfish/female/jellyfish_f_px.png',   // 2026-11-24 THE JELLYFISH, MALE + FEMALE (Sprite AI restyle of her model's front render)
   'gladiator': `${_S}/Races/gladiator/female/gladiator_f_px.png`,   // 2026-11-19 THE COMING RACES — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'nordic': 'https://cdn.entropywars.net/Assets/characters/races/nordic/female/nordic_f_v2_px.png',   // 2026-11-24 her new model (Sprite AI restyle of its front render)
@@ -2526,7 +2533,7 @@ const RACE_MODELS_3D = {
     // the centaurs do it". Meshy's skeleton (from the f2 file) refitted to her, the legs left in but weighing nothing, a chain
     // ewtail_0..6 down the tail (three-renderer.js THE MERMAID'S TAIL swims it after the clip). The f2 model stays on R2.
     female: _mkUAL('mermaid/female', 'mermaid_f', {
-      model: 'https://cdn.entropywars.net/Assets/characters/races/mermaid/female/mermaid_tail_v1.glb',
+      model: 'https://cdn.entropywars.net/Assets/characters/races/mermaid/female/mermaid_tail_v2.glb',   // 11-28 v2: a NEW Meshy woman (concept A, starfish top) + a Meshy tail piece, joined by bake-mermaid.py (v1, cut from his model, stays on R2)
       heightRatio: 0.95,
       basicAttackKind: 'magic',
       // (2026-11-17: no swim idle any more — the swim loop lowers the hips, and with the tail bound to the hips she sank into the floor)
@@ -2579,7 +2586,9 @@ const RACE_MODELS_3D = {
       model: 'https://cdn.entropywars.net/Assets/characters/races/succubus/male/Meshy_AI_incubus_wt_Running.glb', sway: { wings: 'imp', stiffness: 2.2, gravity: 0.1, drag: 0.3, maxRoot: 35, maxBend: 22, wave: 0.5, waveHz: 0.4, caps: [] },   // 2026-11-27 THE LOOSE WINGS EVERYWHERE: the same rig + wing bones (bake-wings.py --soft; a tail's chain: bake-tail.py), its own beat
       heightRatio: 1.0, basicAttackKind: 'magic',
     }),
-    female: _mkUAL('succubus/female', 'hot_seductive_pink_su', {
+    female: _mkUAL('succubus/female', 'hot_seductive_pink_su', {   // 2026-11-28 THE SUCCUBUS REMAKE (mondo's picture): a wingless Meshy body + one Meshy
+      // wing hung on each side of the back on ewwing_L/R (bake-wing-part.py), the spade tail on a spring chain (bake-tail.py --narrow), her own beat
+      model: 'https://cdn.entropywars.net/Assets/characters/races/succubus/female/Meshy_AI_succubus_v3_Running.glb', sway: { wings: 'succubus', stiffness: 2.2, gravity: 0.1, drag: 0.3, maxRoot: 35, maxBend: 22, wave: 0.5, waveHz: 0.4, caps: [] },
       heightRatio: 0.98,
       basicAttackKind: 'magic',
     }),
@@ -3012,6 +3021,23 @@ const RACE_MODELS_3D = {
       model: 'https://cdn.entropywars.net/Assets/characters/races/origami_girl/female/Meshy_AI_origami_girl_Running.glb',
       heightRatio: 0.97, basicAttackKind: 'slash',
       hold2: { key: 'ori_wings', bone: 'Spine02', open: true, pos: [0, -0.35, -0.16], rot: [0, 0, 0], h: 0.95 },
+    }),
+  },
+  /* 🪶 THE HARPY + 🦋 THE MOTH QUEEN (2026-11-28, mondo: "redo them with more separate parts animating ... the harpie needs the naturally
+     flapping wings ... the moth queen with wings"): his own Meshy models (R2 dirtymondo inbox/), the wings cut off as their own pieces and the
+     body rigged IN CODE by repo tool bake-winged.py (Meshy's 24 bone names, so every library clip plays; Meshy had no credits), the wings
+     put back on `ewwing_L/R`: THE LOOSE WINGS EVERYWHERE bends them down their span (_wfSplitBaked) to their own beat (_WB harpy / mothqueen).
+     Kits are not in: data.js EW_COMING_RACES. */
+  'harpy': {
+    female: _mkUAL('harpy', 'harpy', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/harpy/female/Meshy_AI_harpy_v2_Running.glb',
+      heightRatio: 0.97, basicAttackKind: 'claw', sway: { wings: 'harpy' },
+    }),
+  },
+  'moth queen': {
+    female: _mkUAL('moth_queen', 'moth_queen', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/moth_queen/female/Meshy_AI_moth_queen_v2_Running.glb',
+      heightRatio: 1.08, basicAttackKind: 'magic', sway: { wings: 'mothqueen' },
     }),
   },
   'leprechaun': {
@@ -8004,6 +8030,8 @@ const RACE_SPRITES = {
   'draconian': `${_S}/Races/draconian/male/draconian_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
   'flower girl': `${_S}/Races/flower_girl/female/flower_girl_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
   'origami girl': `${_S}/Races/origami_girl/female/origami_girl_px.png`,   // 2026-11-27 THE ORIGAMI GIRL — 128x128 pixel sprite (Sprite AI restyle of a straight-on render of her model)
+  'harpy': `${_S}/Races/harpy/female/harpy_px.png`,   // 2026-11-28 THE HARPY — 128x128 pixel sprite (Sprite AI restyle of a straight-on render of her model)
+  'moth queen': `${_S}/Races/moth_queen/female/moth_queen_px.png`,   // 2026-11-28 THE MOTH QUEEN — 128x128 pixel sprite (Sprite AI restyle of a straight-on render of her model)
   'leprechaun': `${_S}/Races/leprechaun/male/leprechaun_m_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
   'medic': `${_S}/Races/medic/male/doctor_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
   'actor': `${_S}/Races/actor/male/actor_px.png`,   // 2026-11-27 THE ACTOR

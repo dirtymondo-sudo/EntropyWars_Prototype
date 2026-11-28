@@ -699,3 +699,7 @@ mondo's own Meshy model (R2 `dirtymondo` inbox/Meshy_AI_Octopus_girl_20261128_te
 Meshy_AI_octopus_girl_writhe_Running.glb` (+ .opt.glb); sprite `octopus_girl_px.png` (Sprite AI restyle of a render). The Kraken's
 model is now `Meshy_AI_kraken_writhe_Character_output.glb` (the old file stays on R2). Notes: models-assets.md "THE WRITHING TENTACLES",
 champions-combat.md "THE OCTOPUS GIRL".
+Succubus (F), 11-28: remade from mondo's picture (pink demon, ram horns, black lace + harness, stockings, platform heels, spade tail):
+a WINGLESS Meshy body + ONE Meshy bat wing modelled on its own, hung on each side of the back by `bake-wing-part.py` (bones
+`ewwing_L/R`, beat `succubus`); the tail swings on `bake-tail.py --narrow 0.028,0.45`. `Meshy_AI_succubus_v3_Running.glb` (v3 11-28: his "scale down her wings a little", `--span 0.69`, was 0.86). Concepts,
+scripts and the raw models: project files `succubus/`. Notes models-assets.md "THE WING PART". Her map sprite (same day): `succubus_f_px2.png`, a Sprite AI restyle of the v3 front render (px2: figure 124 px tall, brighter front light, the face prompted; px had a small, flat face).
