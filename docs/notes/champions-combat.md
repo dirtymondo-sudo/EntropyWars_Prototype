@@ -7026,4 +7026,8 @@ animations like how the centaurs do it".
   side line (left thigh root minus right), a wave down the tail growing to the fluke, slow and small standing, fast and full when
   she moves (speed over the ground, or the fight's walk slot), a slight side sway. In a fight `_wingSlot` feeds the slot: hit = a
   flick, cast = curl + lash, strike = a hard whip, block = a tuck, death = the tail goes limp. `EW_DISABLE_SWAY` holds it still.
+- v2, same day (mondo: "i wanted you to use meshy to make a new model not cut from this one"): two Meshy pieces from concepts
+  made off a render of his model (project files mermaid-tail/: gen.py, concepts/, models/): a rigged woman on legs (his pick A,
+  starfish top) and a tail piece. `bake-mermaid.py` (rewritten) makes the bust fuller, cuts the legs below the skirt, hangs the
+  tail under it on the chain and lifts her so the fluke stands on the floor -> `mermaid_tail_v2.glb`. v1 stays on R2.
 - Any other tailed body (a siren, a naga) can use it: name the chain `ewtail_0..N` under the Hips; nothing else to wire.
