@@ -3758,27 +3758,16 @@ const RACE_MODELS_3D = {
       basicAttackKind: 'magic',
     }),
   },
-  // Voidweaver — giant spider on a QUADRUPED Meshy rig (tail/backleg/head
-  // bones): the biped animation libraries cannot retarget onto it, so no
-  // animLib fields. Its one per-character export is the custom Walking clip —
-  // note the `_quadruped_model_Animation_` stem (not the biped
-  // `_biped_Animation_` convention), hence explicit URLs instead of _mk3d.
-  // Idle = static rest pose; casts/hits fall back to the engine lunge/glow
-  // tweens, and its projectiles already fly as spiders (UNIT_ANIM_OVERRIDES).
+  /* 🕷 THE VOIDWEAVER (2026-11-28, thread "Remake the voidweaver with moving parts"): the black widow with deep space in its abdomen.
+     No bones; procRig 'voidweaver' (three-renderer.js THE VOIDWEAVER) moves its parts: eight legs of three joints that REACH for
+     the floor (the feet stay planted while the body breathes, rears and lunges; a step is a foot lifted and set down), two
+     fangs, two feelers of two joints, the abdomen on its waist. One file put together from five Meshy parts (head-chest,
+     abdomen, ONE leg cut in three, fang, feeler) by project files voidweaver/tools/assemble.py. Front +Z, floor y 0.
+     Its projectiles still fly as spiders (battle.js UNIT_ANIM_OVERRIDES). The old one-piece Meshy spider (a quadruped rig with
+     one Walking clip) = Meshy_AI_giant_spider_realisti_quadruped_Character_output.glb in the same folder, no longer loaded. */
   'voidweaver': {
-    male: {
-      model: `${_VOID_3D}/Meshy_AI_giant_spider_realisti_quadruped_Character_output.glb`,
-      clips: {
-        walk: `${_VOID_3D}/Meshy_AI_giant_spider_realisti_quadruped_model_Animation_Walking_withSkin.glb`,
-      },
-      heightRatio: 0.85,     // low-slung — the legspan spreads well past a tile
-      yawOffset: 0,          // head sits +Z of the tail at rest, like the bipeds
-      moveTimeScale: 2.0,    // Walking 1.0s → ~0.5s/cycle at board pace
-      castTimeScale: 2.0,
-      deathTimeScale: 1.9,
-      hitTimeScale: 2.8,
-      jumpTimeScale: 3.2,
-    },
+    male: { model: 'https://cdn.entropywars.net/Assets/characters/races/voidweaver/male/voidweaver_v2.glb', clips: {}, procRig: 'voidweaver', heightRatio: 0.85, yawOffset: 0,
+      moveTimeScale: 1, castTimeScale: 1, deathTimeScale: 1, hitTimeScale: 1, jumpTimeScale: 1 },
   },
   // Honda Civic — the transformer. TWO models: the boneless sedan
   // (texture-stage GLB — a static mesh is exactly right for a parked car)
@@ -8091,7 +8080,7 @@ const RACE_SPRITES = {
   'mermaid': `${_S}/Races/mermaid/female/mermaid_female.png`,
   'nephilim': `${_S}/Races/nephilim/male/nephilim_male.png`,
   'vampire': `${_S}/Races/vampire/female/vampire_female.png`,
-  'voidweaver': `${_S}/Races/voidweaver/male/voidweaver_male.png`,
+  'voidweaver': `${_S}/Races/voidweaver/male/voidweaver_px.png`,   // 2026-11-28 THE VOIDWEAVER remake: Sprite AI restyle of a render of the new model
   'cosmic wraith': `${_S}/Races/cosmicwraith/male/cosmicwraith_male.png`,
   'superhero': `${_S}/Races/superhero/male/superhero_male.png`,
 

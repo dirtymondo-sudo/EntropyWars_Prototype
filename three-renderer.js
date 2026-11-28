@@ -20821,6 +20821,7 @@ const ThreeRenderer = (function () {
                 v.copy(B.p); if (d.p) v.set(B.p.x + (d.p[0] || 0), B.p.y + (d.p[1] || 0), B.p.z + (d.p[2] || 0));
                 A.p.push(v.x, v.y, v.z);
                 q.copy(B.q);
+                if (d.qa) q.set(d.qa[0], d.qa[1], d.qa[2], d.qa[3]);   // 🕷 THE VOIDWEAVER: the joint's turn outright (a solved leg)
                 if (d.rw) { e.set(d.rw[0] || 0, d.rw[1] || 0, d.rw[2] || 0); dq.setFromEuler(e); q.premultiply(dq); }   // in the parent's frame
                 if (d.r) { e.set(d.r[0] || 0, d.r[1] || 0, d.r[2] || 0); dq.setFromEuler(e); q.multiply(dq); }           // in its own frame
                 A.q.push(q.x, q.y, q.z, q.w);
@@ -21393,6 +21394,225 @@ const ThreeRenderer = (function () {
         clips.run = clips.walk; clips.attack = clips.castMelee;
         clips.castMagic = clips.cast; clips.castRanged = clips.snSnowball; clips.castHeal = clips.castSupport;
         clips.castAOE = clips.cast; clips.castUltimate = clips.snSnowDay;
+        return clips;
+    }
+    /* 🕷 THE VOIDWEAVER (2026-11-28, thread "Remake the voidweaver with moving parts"; mondo: "the deep sea fish and voidweaver would
+       benefit from individually animated parts too ... new meshy models and pieces for them and custom animations for their
+       spells/abilities"). ONE file (Assets/characters/races/voidweaver/male/voidweaver_v2.glb, put together from five Meshy parts
+       by project files voidweaver/tools/assemble.py). No bones: every part is a node with its pivot where it turns:
+       ewVwBody (the head-chest's centre) > ewVwCeph, ewVwAbd (pivot = the waist; rw x > 0 lifts its rear, < 0 tucks it under)
+       > ewVwSpin, ewVwFangL / R (r x < 0 lifts the fang forward, > 0 stabs; r z spreads: + for L, - for R), ewVwPalpL / R >
+       ewVwPalpL2 / R2 (r x < 0 lifts), and EIGHT LEGS of three joints: ewVwL0..3 / ewVwR0..3 (front to back; the hip) > …b (the
+       knee) > …c (the ankle) > …t (the needle tip). Metres, front +Z, floor y 0, its left = +X.
+       THE LEGS REACH: a clip never turns a leg joint by hand. A pose says where the BODY is (p, r, s) and where each FOOT stands
+       in the world (`feet(k, F)`: k 0..3 = L0..3, 4..7 = R0..3; F = its rest spot; null = stays), and _vwLegs solves the three
+       joints so the foot is there (a two-bone reach + the last joint's slope `tar`): the feet stay planted while the body
+       breathes, rears, lunges, and a step is a foot lifted and set down. `qa` on a node = its turn outright (_abClip).
+       The spell rows name their clips with `animSlot` (vwBite, vwSnare, vwWeave, vwFold).
+       ThreeRenderer.vwPose(slot, dur, pose) adds or replaces a slot for every voidweaver built after it. */
+    var _VW_NODES = ['ewVwBody', 'ewVwCeph', 'ewVwAbd', 'ewVwFangL', 'ewVwFangR', 'ewVwPalpL', 'ewVwPalpR', 'ewVwPalpL2', 'ewVwPalpR2'];
+    var _VW_LEGS = ['ewVwL0', 'ewVwL1', 'ewVwL2', 'ewVwL3', 'ewVwR0', 'ewVwR1', 'ewVwR2', 'ewVwR3'];
+    _VW_LEGS.forEach(function (n) { _VW_NODES.push(n, n + 'b', n + 'c'); });
+    var _VW_TAR = -1.19;   // the last joint's slope at rest (radians from level, in the body's frame)
+    var _vwS = _vrS, _vwB = _vrBump, _vwSin = _abSin;
+    var _vwQb = new THREE.Quaternion(), _vwQi = new THREE.Quaternion(), _vwE = new THREE.Euler(), _vwV = new THREE.Vector3(), _vwQ = new THREE.Quaternion();
+    function _vwLerp(a, b, t) { return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]; }
+    /* o: p, r (the body's offset + turn, r as rw), s (its scale), feet(k, F) -> [x, y, z] in the world, tar(k) -> a slope or
+       [slope, m] (m 0 … 1 lays the last joint in line with the leg: a stiff straight leg), knee(k) -> -1 folds the knee the other way */
+    function _vwLegs(P, R, o) {
+        var B = R.n.ewVwBody, bp = o.p || [0, 0, 0], br = o.r || [0, 0, 0], bs = o.s == null ? 1 : o.s;
+        P.ewVwBody = { p: bp, rw: br, s: bs };
+        _vwE.set(br[0] || 0, br[1] || 0, br[2] || 0, 'XYZ'); _vwQb.setFromEuler(_vwE).multiply(B.q); _vwQi.copy(_vwQb).invert();
+        for (var k = 0; k < 8; k++) {
+            var nm = _VW_LEGS[k], H = R.n[nm]; if (!H) continue;
+            var F = R.foot[k], f = (o.feet && o.feet(k, F)) || F;
+            _vwV.set(f[0] - B.p.x - (bp[0] || 0), f[1] - B.p.y - (bp[1] || 0), f[2] - B.p.z - (bp[2] || 0)).applyQuaternion(_vwQi).multiplyScalar(1 / Math.max(0.02, bs));
+            var dx = _vwV.x - H.p.x, dy = _vwV.y - H.p.y, dz = _vwV.z - H.p.z, d = Math.sqrt(dx * dx + dz * dz), th = Math.atan2(-dz, dx);
+            var A = R.len[k][0], Bl = R.len[k][1], C = R.len[k][2];
+            var t = o.tar ? o.tar(k) : _VW_TAR, line = Math.atan2(dy, d);
+            if (t && t.length) t = t[0] * (1 - t[1]) + line * t[1]; else if (t == null) t = _VW_TAR;
+            var ax = d - C * Math.cos(t), ay = dy - C * Math.sin(t), L0 = Math.sqrt(ax * ax + ay * ay) || 1e-4;
+            var L = Math.max(Math.abs(A - Bl) + 1e-3, Math.min(A + Bl - 1e-3, L0)); ax *= L / L0; ay *= L / L0;
+            var kn = o.knee ? o.knee(k) : 1;
+            var a1 = Math.atan2(ay, ax) + kn * Math.acos(Math.max(-1, Math.min(1, (A * A + L * L - Bl * Bl) / (2 * A * L))));
+            var a2w = Math.atan2(ay - A * Math.sin(a1), ax - A * Math.cos(a1));
+            _vwE.set(0, th, a1, 'YZX'); _vwQ.setFromEuler(_vwE); P[nm] = { qa: [_vwQ.x, _vwQ.y, _vwQ.z, _vwQ.w] };
+            P[nm + 'b'] = { qa: [0, 0, Math.sin((a2w - a1) / 2), Math.cos((a2w - a1) / 2)] };
+            P[nm + 'c'] = { qa: [0, 0, Math.sin((t - a2w) / 2), Math.cos((t - a2w) / 2)] };
+        }
+        return P;
+    }
+    /* the small parts: fang (lift 0 … 1 raises both fangs to strike, stab 0 … 1 drives them down and in, spread 0 … 1 opens them),
+       palp (lift) + their own fiddling (`fid` 0 … 1 at `hz`), the abdomen (ab: lift (+) / tuck (-) radians, yaw, swell) */
+    function _vwLive(P, u, o) {
+        o = o || {};
+        var lift = o.lift || 0, stab = o.stab || 0, sp = o.spread || 0, fid = o.fid == null ? 1 : o.fid, hz = o.hz || 6;
+        var tw = 0.05 * fid * _vwSin(u, hz * 0.5, 0.1);
+        P.ewVwFangL = { r: [-0.95 * lift + 0.55 * stab, 0, 0.5 * sp + tw] };
+        P.ewVwFangR = { r: [-0.95 * lift + 0.55 * stab, 0, -0.5 * sp - tw] };
+        var pl = o.palp || 0, fl = 0.22 * fid * Math.max(0, _vwSin(u, hz)), fr = 0.22 * fid * Math.max(0, _vwSin(u, hz, 0.5));
+        P.ewVwPalpL = { r: [-0.7 * pl - fl, 0, 0] }; P.ewVwPalpL2 = { r: [0.4 * pl - 1.2 * fl, 0, 0] };
+        P.ewVwPalpR = { r: [-0.7 * pl - fr, 0, 0] }; P.ewVwPalpR2 = { r: [0.4 * pl - 1.2 * fr, 0, 0] };
+        var sw = o.swell || 0;
+        P.ewVwAbd = { rw: [o.ab || 0, o.abYaw || 0, 0], s: [1 + sw, 1 + sw, 1 + sw * 0.8] };
+        return P;
+    }
+    function _vwSide(k) { return k < 4 ? 1 : -1; }
+    var _VW_POSES = {
+        /* idle (4 s): it breathes on planted feet (every leg flexes), the abdomen swells, the feelers fiddle; one front leg reaches
+           out and feels the air, the other taps the floor twice */
+        idle: [4.0, function (u, R) {
+            var br = _vwSin(u, 2), feel = _vwB(u, 0.12, 0.22, 0.36), tap = _vwB(u, 0.58, 0.62, 0.66) + _vwB(u, 0.69, 0.73, 0.77);
+            var P = _vwLegs({}, R, { p: [0.008 * _vwSin(u, 1), 0.02 * br, 0.01 * _vwSin(u, 1, 0.3)], r: [0.02 * _vwSin(u, 1, 0.2), 0.03 * _vwSin(u, 1), 0],
+                feet: function (k, F) {
+                    if (k === 4) return [F[0] * (1 - 0.25 * feel), 0.34 * feel + 0.04 * feel * _vwSin(u, 9), F[2] + 0.2 * feel];
+                    if (k === 0) return [F[0], 0.13 * tap, F[2] + 0.04 * tap];
+                    return null;
+                } });
+            return _vwLive(P, u, { fid: 1, hz: 6, ab: 0.05 * br, abYaw: 0.04 * _vwSin(u, 1, 0.3), swell: 0.02 * _vwSin(u, 2, 0.25), spread: 0.12 * _vwB(u, 0.4, 0.45, 0.52) });
+        }],
+        /* walk (0.7 s loop): four feet step while four stand (L0 R1 L2 R3, then R0 L1 R2 L3), each foot lifted, carried forward and
+           set down; the body barely bobs, the abdomen swings behind */
+        walk: [0.7, function (u, R) {
+            var st = 0.36;
+            var P = _vwLegs({}, R, { p: [0, 0.012 * _vwSin(u, 2), 0], r: [0.015 * _vwSin(u, 2, 0.2), 0.035 * _vwSin(u, 1, 0.25), 0.025 * _vwSin(u, 1)],
+                feet: function (k, F) {
+                    var ph = (u + ((k === 0 || k === 5 || k === 2 || k === 7) ? 0 : 0.5)) % 1;
+                    if (ph < 0.4) { var t = ph / 0.4; return [F[0], 0.17 * Math.sin(Math.PI * t), F[2] + st * (_vwS(t, 0, 1) - 0.5)]; }
+                    return [F[0], 0, F[2] + st * (0.5 - (ph - 0.4) / 0.6)];
+                } });
+            return _vwLive(P, u, { fid: 0.5, hz: 4, ab: 0.05 * _vwSin(u, 2, 0.4), abYaw: -0.09 * _vwSin(u, 1, 0.3) });
+        }],
+        /* the bite (basic attack / melee cast, 1.0 s, lands at 0.48): it rears with the front legs high and the fangs wide, then
+           drops forward on the target and the fangs drive in */
+        castMelee: [1.0, function (u, R) {
+            var wind = _vwB(u, 0.0, 0.3, 0.42), hit = _vwS(u, 0.36, 0.5) * (1 - _vwS(u, 0.62, 0.95));
+            var P = _vwLegs({}, R, { p: [0, 0.12 * wind - 0.09 * hit, -0.12 * wind + 0.3 * hit], r: [-0.38 * wind + 0.3 * hit, 0, 0],
+                feet: function (k, F) {
+                    var i = k % 4;
+                    if (i === 0) return [F[0] * (1 - 0.35 * wind - 0.3 * hit), 0.9 * wind + 0.04 * hit, F[2] + 0.05 * wind + 0.32 * hit];
+                    if (i === 1) return [F[0], 0.3 * wind, F[2] + 0.12 * hit];
+                    return null;
+                } });
+            return _vwLive(P, u, { fid: 0, lift: wind, stab: hit, spread: wind, palp: wind, ab: 0.28 * wind - 0.15 * hit });
+        }],
+        /* a cast (1.3 s, lands at 0.55): it rears, and the two front pairs of legs knit the air while the abdomen works under it */
+        cast: [1.3, function (u, R) {
+            var a = _vwS(u, 0.0, 0.28) * (1 - _vwS(u, 0.7, 1.0));
+            var P = _vwLegs({}, R, { p: [0, 0.14 * a, -0.1 * a], r: [-0.45 * a, 0, 0],
+                feet: function (k, F) {
+                    var i = k % 4, sd = _vwSide(k); if (i > 1) return null;
+                    var w = _vwSin(u, 5, (sd > 0 ? 0 : 0.5) + i * 0.25), w2 = _vwSin(u, 5, (sd > 0 ? 0.25 : 0.75) + i * 0.25);
+                    return _vwLerp(F, [sd * (0.3 + 0.14 * i) + 0.06 * w2, 1.0 - 0.3 * i + 0.14 * w, 0.75 - 0.22 * i + 0.08 * w2], a);
+                } });
+            return _vwLive(P, u, { fid: a, hz: 10, spread: 0.4 * a, palp: 0.6 * a, ab: -0.3 * a, abYaw: 0.1 * a * _vwSin(u, 3), swell: 0.05 * a * _vwSin(u, 6) });
+        }],
+        /* the shot (a ranged cast, 1.2 s, fires at 0.5): it stands up on its four back legs with the front four thrown wide, swings
+           the abdomen under itself to point at the target, and the abdomen kicks as the thread leaves */
+        castRanged: [1.2, function (u, R) {
+            var a = _vwS(u, 0.0, 0.26) * (1 - _vwS(u, 0.72, 1.0)), fire = _vwB(u, 0.4, 0.5, 0.64);
+            var P = _vwLegs({}, R, { p: [0, 0.42 * a, -0.12 * a - 0.07 * fire], r: [-0.8 * a - 0.06 * fire, 0, 0],
+                feet: function (k, F) {
+                    var i = k % 4, sd = _vwSide(k);
+                    if (i > 1) return [F[0] * (1 - 0.15 * a), 0, F[2] + 0.1 * a];
+                    return _vwLerp(F, [sd * (0.8 + 0.12 * i), 1.45 - 0.35 * i, 0.5 - 0.25 * i], a);
+                } });
+            return _vwLive(P, u, { fid: 0, spread: 0.7 * a, lift: 0.4 * a, palp: a, ab: -1.75 * a + 0.12 * fire, swell: 0.14 * fire - 0.05 * _vwB(u, 0.3, 0.4, 0.5) });
+        }],
+        /* a support cast (1.2 s): it bows low, the front legs and the feelers come together in front of its face, the abdomen lifts and glows */
+        castSupport: [1.2, function (u, R) {
+            var a = _vwS(u, 0.05, 0.35) * (1 - _vwS(u, 0.7, 0.95));
+            var P = _vwLegs({}, R, { p: [0, -0.12 * a, 0.05 * a], r: [0.16 * a, 0, 0],
+                feet: function (k, F) { return k % 4 === 0 ? _vwLerp(F, [_vwSide(k) * 0.1, 0.42 + 0.04 * _vwSin(u, 6, k * 0.1), 1.0], a) : null; } });
+            return _vwLive(P, u, { fid: a, hz: 8, palp: 0.7 * a, ab: 0.4 * a, swell: 0.06 * a * (1 + _vwSin(u, 5)) });
+        }],
+        /* the great cast (1.8 s, lands at 0.6): it rises to the tips of all eight needles, shaking, the abdomen swells with what is
+           inside it, and it drops as the thing lets go */
+        castUltimate: [1.8, function (u, R) {
+            var a = _vwS(u, 0.0, 0.3) * (1 - _vwS(u, 0.62, 0.74)), sw = _vwS(u, 0.1, 0.58) * (1 - _vwS(u, 0.6, 0.7)), drop = _vwB(u, 0.62, 0.72, 0.95);
+            var P = _vwLegs({}, R, { p: [0.012 * a * _vwSin(u, 26), 0.42 * a - 0.14 * drop, 0.012 * a * _vwSin(u, 31, 0.2)], r: [0.1 * a - 0.1 * drop, 0, 0],
+                feet: function (k, F) { return [F[0] * (1 - 0.42 * a + 0.12 * drop), 0, F[2] * (1 - 0.42 * a + 0.12 * drop)]; },
+                tar: function () { return _VW_TAR - 0.3 * a; } });
+            return _vwLive(P, u, { fid: a, hz: 14, spread: a, lift: 0.5 * a, palp: a, ab: 0.55 * a - 0.2 * drop, swell: 0.4 * sw + 0.05 * sw * _vwSin(u, 12) });
+        }],
+        /* hit (0.6 s): it is knocked back and down on its legs, the front pair flies up, the abdomen whips */
+        hit: [0.6, function (u, R) {
+            var k1 = _vwB(u, 0.0, 0.14, 0.7), k2 = _vwB(u, 0.05, 0.25, 0.8);
+            var P = _vwLegs({}, R, { p: [0, -0.17 * k1, -0.16 * k1], r: [-0.22 * k1, 0, 0.1 * k1],
+                feet: function (k, F) { return k % 4 === 0 ? [F[0] * (1 + 0.1 * k1), 0.38 * k1, F[2] - 0.05 * k1] : null; } });
+            return _vwLive(P, u, { fid: 0, spread: 0.8 * k1, palp: k1, ab: 0.35 * k2, abYaw: 0.2 * k2 });
+        }],
+        /* death (2.4 s, held): the legs shoot out stiff, it goes over on its back, and the eight legs curl in over the belly, twitch, and stop */
+        death: [2.4, function (u, R) {
+            var stiff = _vwS(u, 0.0, 0.16), fl = _vwS(u, 0.14, 0.5), cu = _vwS(u, 0.5, 0.9), tw = (1 - _vwS(u, 0.82, 1.0)) * cu;
+            var bx = 0.22 * fl, by = 0.26 * Math.sin(Math.PI * fl) - 0.03 * fl;
+            var P = _vwLegs({}, R, { p: [bx, by + 0.06 * stiff * (1 - fl), 0], r: [0, 0.35 * fl, Math.PI * fl],
+                knee: function () { return fl < 0.5 ? 1 : -1; },
+                tar: function () { return cu > 0 ? [2.2 + 0 * cu, 1 - cu] : [_VW_TAR, stiff]; },
+                feet: function (k, F) {
+                    var out = [F[0] * 2.2 + bx, 0.5 + by + (F[1] - 0.5) * (1 - 2 * fl), F[2] * 2.2];   // far out, level with the body: a stiff straight leg
+                    var a = _vwLerp(F, out, stiff);
+                    var curl = [bx - F[0] * 0.16, 0.5 + by + 0.36 + 0.035 * tw * _vwSin(u, 11, k * 0.13), F[2] * 0.3];
+                    return _vwLerp(a, curl, cu);
+                } });
+            return _vwLive(P, u, { fid: 0, spread: 0.6 * stiff * (1 - cu) + 0.25, palp: stiff * (1 - cu) - 0.5 * cu, ab: -0.25 * cu });
+        }],
+        /* 🕷 THE SPELLS (data.js RACE_ABILITIES voidweaver, `animSlot` + `animStrikeMs` on each row) */
+        /* VENOM FANG (1.2 s, the fangs land at 0.42): it crouches, POUNCES a body length with the front four legs wrapping the
+           target, the fangs go in, and it pumps: the fangs work and the abdomen squeezes three times before it hops back */
+        vwBite: [1.2, function (u, R) {
+            var cr = _vwB(u, 0.0, 0.18, 0.3), air = _vwB(u, 0.24, 0.33, 0.42), on = _vwS(u, 0.26, 0.4) * (1 - _vwS(u, 0.78, 0.98));
+            var pump = on * _vwS(u, 0.42, 0.46) * Math.max(0, _vwSin((u - 0.44) / 0.34, 3));
+            var P = _vwLegs({}, R, { p: [0, -0.15 * cr + 0.16 * air - 0.1 * on, -0.12 * cr + 0.62 * on], r: [-0.12 * cr + 0.3 * on + 0.04 * pump, 0, 0],
+                feet: function (k, F) {
+                    var i = k % 4;
+                    if (i < 2) return [F[0] * (1 - (0.5 - 0.2 * i) * on), 0.3 * air + (i === 0 ? 0.22 : 0.08) * on, F[2] + (0.62 - 0.1 * i) * on];
+                    return [F[0], 0.14 * air, F[2] + 0.3 * on];
+                } });
+            return _vwLive(P, u, { fid: 0, lift: _vwS(u, 0.08, 0.3) * (1 - _vwS(u, 0.38, 0.43)), stab: _vwS(u, 0.38, 0.43) * (1 - _vwS(u, 0.8, 0.95)) * (0.75 + 0.25 * pump),
+                spread: _vwB(u, 0.08, 0.3, 0.43) + 0.2 * pump, palp: on, ab: 0.4 * on, swell: -0.1 * pump + 0.05 * on });
+        }],
+        /* WEB SNARE = the shot (castRanged), named so the row keeps it whatever its kind becomes */
+        /* DIMENSIONAL WEB (1.5 s, the web is laid at 0.6): reared up, it turns from side to side and all four front legs knit fast,
+           hand over hand, pulling thread off the spinnerets of an abdomen held high and wagging */
+        vwWeave: [1.5, function (u, R) {
+            var a = _vwS(u, 0.0, 0.22) * (1 - _vwS(u, 0.74, 1.0)), turn = 0.3 * a * _vwSin(u, 2);
+            var P = _vwLegs({}, R, { p: [0, 0.2 * a, -0.08 * a], r: [-0.5 * a, turn, 0],
+                feet: function (k, F) {
+                    var i = k % 4, sd = _vwSide(k); if (i > 1) return null;
+                    var ph = (sd > 0 ? 0 : 0.5) + i * 0.25, w = _vwSin(u, 9, ph), w2 = _vwSin(u, 9, ph + 0.25);
+                    return _vwLerp(F, [sd * (0.22 + 0.16 * i) + 0.1 * w2 + 0.5 * turn, 1.05 - 0.28 * i + 0.2 * w, 0.8 - 0.2 * i + 0.12 * w2], a);
+                } });
+            return _vwLive(P, u, { fid: a, hz: 14, spread: 0.3 * a, palp: 0.5 * a, ab: 0.75 * a, abYaw: 0.28 * a * _vwSin(u, 6), swell: 0.05 * a * _vwSin(u, 9) });
+        }],
+        /* DIMENSIONAL FOLD (1.0 s, the swap at 0.45): it folds: the legs snap in under it, the whole spider turns once and shrinks
+           to a dot, and unfolds again (the swap happens while it is a dot) */
+        vwFold: [1.0, function (u, R) {
+            var f = _vwS(u, 0.0, 0.4) * (1 - _vwS(u, 0.52, 0.85)), sn = _vwS(u, 0.0, 0.22) * (1 - _vwS(u, 0.7, 0.95));
+            var P = _vwLegs({}, R, { p: [0, -0.2 * f + 0.1 * _vwB(u, 0.5, 0.6, 0.8), 0], r: [0, _vwS(u, 0.05, 0.9) * Math.PI * 2, 0], s: 1 - 0.94 * f,
+                feet: function (k, F) { return [F[0] * (1 - 0.8 * sn), 0, F[2] * (1 - 0.8 * sn)]; },
+                tar: function () { return _VW_TAR - 0.3 * sn; } });
+            return _vwLive(P, u, { fid: 0, spread: sn, palp: -0.5 * sn, ab: -0.5 * sn });
+        }]
+    };
+    function _vwBuild(root) {
+        var body = root.getObjectByName('ewVwBody'); if (!body || !root.getObjectByName('ewVwL0t')) return null;
+        var R = { n: {}, foot: [], len: [] };
+        _VW_NODES.forEach(function (n) {
+            var o = root.getObjectByName(n);
+            if (o) R.n[n] = { p: o.position.clone(), q: o.quaternion.clone(), s: o.scale.clone() };
+        });
+        root.updateMatrixWorld(true);
+        var par = body.parent || root, v = new THREE.Vector3();
+        _VW_LEGS.forEach(function (n, k) {
+            var b = root.getObjectByName(n + 'b'), c = root.getObjectByName(n + 'c'), t = root.getObjectByName(n + 't');
+            R.len[k] = [b.position.x, c.position.x, t.position.x];
+            t.getWorldPosition(v); par.worldToLocal(v); R.foot[k] = [v.x, 0, v.z];
+        });
+        var clips = {};
+        Object.keys(_VW_POSES).forEach(function (slot) { var p = _VW_POSES[slot]; clips[slot] = _abClip(slot, p[0], p[1], R); });
+        clips.run = clips.walk; clips.attack = clips.castMelee; clips.vwSnare = clips.castRanged;
+        clips.castMagic = clips.cast; clips.castHeal = clips.castSupport; clips.castAOE = clips.cast;
         return clips;
     }
     /* 🥜 THE NUTCRACKER'S JAW (same day): the Meshy rig plays the library like any unit; its jaw (a mesh skinned to the added bone
@@ -22105,7 +22325,9 @@ const ThreeRenderer = (function () {
         /* 🧠 THE FLOATING BRAIN (above, _bbBuild): the brain's hover and throb, the eye, the lids; the tendrils ride THE SWAY */
         brainBody: function (root) { return _bbBuild(root); },
         /* ⛄ THE SNOWMAN (above, _snBuild): three balls, two sticks, a carrot, coal, a hat and a scarf, each its own part */
-        snowman: function (root) { return _snBuild(root); }
+        snowman: function (root) { return _snBuild(root); },
+        /* 🕷 THE VOIDWEAVER (above, _vwBuild): head-chest, abdomen, fangs, feelers and eight legs of three joints that reach for the floor */
+        voidweaver: function (root) { return _vwBuild(root); }
     };
     _PROC_RIGS.unicornWings.deps = [UNI_WING_URL, UNI_HORN_URL];
     /* ♟ THE CHESS PIECE: one hinge, the same moves, for each of the six looks (sprites.js CHESS_PIECE_3D) */
@@ -115967,6 +116189,7 @@ const ThreeRenderer = (function () {
         bbPose: function (slot, dur, pose) { if (slot && typeof pose === 'function') _BB_POSES[slot] = [+dur || 1, pose]; return true; },   // 🧠 THE FLOATING BRAIN: a spell's own clip
         /* ⛄ THE SNOWMAN: the same for its parts (pose(u) -> { <node>: { p, rw, r, s } }, three-renderer.js THE SNOWMAN) */
         snPose: function (slot, dur, pose) { if (slot && typeof pose === 'function') _SN_POSES[slot] = [+dur || 1, pose]; return true; },
+        vwPose: function (slot, dur, pose) { if (slot && typeof pose === 'function') _VW_POSES[slot] = [+dur || 1, pose]; return true; },   // 🕷 THE VOIDWEAVER: a spell's own clip
         /* 🥜 THE NUTCRACKER'S JAW: hold unit uid's jaw open (0 … 1) for ms, over whatever its clip does */
         /* 🕊 THE ORIGAMI IN A FIGHT: fold unit uid into a shape, its blow, the fortune's flap, Seven Folds on a victim (see the block) */
         oriAct: function (uid, what, o) { try { return _oriAct(uid, what, o); } catch (e) { console.warn('[origami] act failed', e); return false; } },
