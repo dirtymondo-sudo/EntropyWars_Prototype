@@ -140,8 +140,12 @@ def arms(R, opt):
         lab[v] = main
     if not basev: return [None] * len(R.P), np.zeros(len(R.P)), np.full(nU, -1)
     base0 = float(np.median(list(basev.values())))
+    if opt['persist']: print('  arm base at %.2f of the height down the skin, %d branches' % (base0 / H, len(basev)))
     # 2. the tips: the far ends of the skin (two arms that touch along their length still keep two tips)
-    tips = [v for v in range(nU) if d[v] - base0 > minL and all(d[v] >= d[c] for c, _ in R.adj[v])]
+    if opt['persist']:   # --persist 1: one tip per branch the watershed kept (the new kraken's suckers and curls made many false tips)
+        tips = [r for r in basev] + [f(int(order[0]))]
+        tips = [v for v in tips if d[v] - base0 > minL]
+    else: tips = [v for v in range(nU) if d[v] - base0 > minL and all(d[v] >= d[c] for c, _ in R.adj[v])]
     tips.sort(key=lambda v: -d[v]); keep = []
     for v in tips:
         if all(np.linalg.norm(PU[v] - PU[k]) > 0.06 * H for k in keep): keep.append(v)
@@ -186,7 +190,8 @@ def arms(R, opt):
     nJ = len(R.J); mass = np.zeros(nJ); moved = np.zeros(nJ); big = blend > 0.5
     for q in range(4): np.add.at(mass, R.Ji[:, q], R.Wt[:, q]); np.add.at(moved, R.Ji[big, q], R.Wt[big, q])
     parents = {R.names.index(pp) for _, _, pp in made.values()}
-    freed = [k for k in range(nJ) if (mass[k] > 0 and moved[k] / mass[k] > 0.5 and k not in parents) or R.names[k] in opt['free'].split(',')]
+    axial = lambda n: n in ('Hips', 'Spine02', 'Spine01', 'Spine', 'neck', 'Head')   # the body's own column is never freed (the new kraken's mantle went with its arms)
+    freed = [k for k in range(nJ) if (mass[k] > 0 and moved[k] / mass[k] > 0.5 and k not in parents and not axial(R.names[k])) or R.names[k] in opt['free'].split(',')]
     left = 0; byc = {ii: cc for cc, (ii, _, _) in made.items()}
     for v in range(len(R.P)):
         fw = sum(R.Wt[v, q] for q in range(4) if R.Ji[v, q] in freed)
@@ -221,6 +226,19 @@ def hair(R, opt):
         for c, _ in R.adj[a]:
             if hv[c] and not reach[c]: reach[c] = True; st.append(c)
     hairv = reach & (PU[:, 1] < y0)
+    if opt['cut']:   # --cut <part of the height> (the remade Octopus Girl, 11-28: her hair's colour is her skin's): below that line the hair
+        # hangs free of the body, so the hair = every piece of the skin under the line that is not the biggest (the body)
+        y0 = opt['cut'] * H; below = PU[:, 1] < y0; pr = np.arange(nU)
+        def fr(x):
+            while pr[x] != x: pr[x] = pr[pr[x]]; x = pr[x]
+            return x
+        for a, c in R.E:
+            if below[a] and below[c]:
+                ra, rc = fr(a), fr(c)
+                if ra != rc: pr[ra] = rc
+        rt = np.array([fr(v) for v in range(nU)]); u_, cn = np.unique(rt[below], return_counts=True); body = u_[np.argmax(cn)]
+        hairv = below & (rt != body); reach = hairv | ~below
+        print('  the cut at %.2f m: %d hair vertices in %d pieces' % (y0, int(hairv.sum()), len(u_) - 1))
     if opt['locks']: return locks(R, opt, reach, hairv, head, y0)
     th = np.arctan2(PU[:, 0] - head[0], PU[:, 2] - head[2])          # 0 = the face, +-pi = the back
     NC = opt['cols']; NJ = opt['joints']
@@ -355,11 +373,11 @@ def main():
     if not args or args[0] not in ('--arms', '--hair'): print(__doc__); sys.exit(1)
     mode = args.pop(0)[2:]
     opt = {'min': 0.15, 'joints': 6 if mode == 'arms' else 5, 'band': 0.05, 'col': 0, 'cols': 10, 'root': 0.04, 'fade': 0.08,
-           'sat': 0.15, 'val': 0.72, 'debug': None, 'reach': 0.08, 'mirror': 0, 'locks': 0, 'apart': 0.04, 'smooth': 0, 'parent': '', 'free': ''}
+           'sat': 0.15, 'val': 0.72, 'debug': None, 'reach': 0.08, 'mirror': 0, 'locks': 0, 'apart': 0.04, 'smooth': 0, 'parent': '', 'free': '', 'persist': 0, 'cut': 0}
     for k0 in list(opt):
         if '--' + k0 in args:
             k = args.index('--' + k0); v = args[k + 1]; del args[k:k + 2]
-            opt[k0] = v if k0 in ('debug', 'parent', 'free') else (int(v) if k0 in ('joints', 'col', 'cols', 'mirror', 'locks', 'smooth') else float(v))
+            opt[k0] = v if k0 in ('debug', 'parent', 'free') else (int(v) if k0 in ('joints', 'col', 'cols', 'mirror', 'locks', 'smooth', 'persist') else float(v))
     if len(args) != 2: print(__doc__); sys.exit(1)
     src, dst = args
     R = Rig(src)

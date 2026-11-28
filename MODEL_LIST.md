@@ -158,7 +158,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | king kong | `Assets/characters/races/kingkong/Meshy_AI_evil_gorilla_monster__biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | knight | `Assets/characters/races/knight/male/Meshy_AI_knight_m_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES, the men; mondo 2026-11-16) |
 | knight (female) | `Assets/characters/races/homosapien/female/knight/Meshy_AI_hot_attractive_female_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
-| kraken | `Assets/characters/races/kraken/male/Meshy_AI_kraken_writhe_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| kraken | `Assets/characters/races/kraken/male/Meshy_AI_kraken_v2_writhe.glb` | Meshy AI | Meshy AI (mondo) |
 | krampus | `Assets/characters/races/krampus/Meshy_AI_krampus_v2_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW LOOKS, mondo 2026-11-18 concepts round; wings / halo / cape / trident apart: THE UNIT GEAR; project files unit-concepts-20261118/) |
 | leopard girl (female) | `Assets/characters/races/leopard_girl/female/Meshy_AI_leopard_girl_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | leprechaun | `Assets/characters/races/leprechaun/male/Meshy_AI_leprechaun_m_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
@@ -207,7 +207,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | nordic (female) | `Assets/characters/races/nordic/female/Meshy_AI_nordic_f_v2_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW LOOKS, mondo 2026-11-18 concepts round; wings / halo / cape / trident apart: THE UNIT GEAR; project files unit-concepts-20261118/) |
 | nutcracker | `Assets/characters/races/nutcracker/male/Meshy_AI_nutcracker2_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | occulus | `Assets/characters/gear/wings/Meshy_AI_one_bat_wing_1027074652_texture.glb` | Meshy AI | Meshy AI (single wing, mirrored in code) |
-| octopus girl (female) | `Assets/characters/races/octopus_girl/female/Meshy_AI_octopus_girl_writhe_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| octopus girl (female) | `Assets/characters/races/octopus_girl/female/Meshy_AI_octopus_girl_v2_writhe.glb` | Meshy AI | Meshy AI (mondo) |
 | orb of light (female) | `Assets/characters/races/orboflight/female/Meshy_AI_hot_girl_sentient_li_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | origami girl (female) | `Assets/characters/races/origami_girl/female/Meshy_AI_origami_girl_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | overlord | `Assets/characters/races/overlord/Meshy_AI_underworld_overlord__biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |

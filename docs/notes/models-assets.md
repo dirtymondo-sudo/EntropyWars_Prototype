@@ -2522,3 +2522,15 @@ tentacle's skin onto it from its old weights at the root; nothing is cut and the
 - `--debug <dir>` writes a front / side / back picture of which vertex went to which chain.
 - Rigging her: Meshy's rig (the credits ran out for a while and a Blender bone-heat rig on a copy of a Meshy skeleton also worked; Meshy's
   was kept as the standard).
+
+### THE REMAKE (2026-11-28, same day; mondo: "her feet are kinda close together and mess up with the animations. I wanted you to remake the models you need in meshy, not use these old models")
+Both are NEW Meshy models now (project files `octopus-girl/`: gen.py = concepts on nano-banana-pro with the old model's render as the
+reference, model.py = image-to-3D (+ Meshy rig for her), krig.py = the kraken's rig in code; proof `proof/v2_*`).
+- Octopus Girl `Meshy_AI_octopus_girl_v2_writhe.glb`: a-pose, feet at shoulder width, twelve-odd tentacles hanging FREE of her back.
+  Her hair's colour is her skin's, so the colour mask fails: `--cut 0.857` = under that line the hair hangs free of the body, so the
+  hair is every piece of the skin under the line that is not the biggest. 14 locks.
+- Kraken `Meshy_AI_kraken_v2_writhe.glb`: an upright squid with ten arms splayed apart. Meshy rigging is for people, so krig.py fits
+  Meshy's 24 bone names in code (Hips at 0.30 of the height, the spine up the mantle, limbs unweighted). `--persist 1` = one tip per
+  branch the watershed keeps (its suckers and curls made 63 false tips); the spine bones are never freed (the mantle had gone with the
+  arms). 10 chains of 6 joints.
+Credits: concepts 3 pictures, two models, one rig.
