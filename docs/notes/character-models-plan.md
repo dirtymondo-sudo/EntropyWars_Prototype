@@ -686,3 +686,6 @@ mondo 11-28: a new Meshy mushroom girl from his references, more fan service. Co
 His pick `pink_fs` (pink hair, frill bandeau + mini skirt, glossy dripping cap) is the race's model now: sprites.js RACE_MODELS_3D
 'mushroom girl' -> `Assets/characters/races/mushroomgirl/female/Meshy_AI_mushroom_girl_fs_Running.glb` (+ .opt.glb, in ASSET_MANIFEST).
 The first model stays on R2; the sprite, portrait and the remade creator look are unchanged. Proof: project files mushroom-girl/proof/.
+Then (same day) mondo's OWN Meshy model replaced it: `Meshy_AI_mushroom_girl_v3_Running.glb` (brown bob, frill growths). Meshy's
+auto-rig tore its feet (the legs stood ~1 cm apart), so project files `mushroom-girl/spread.mjs` turns each leg 8 deg out about the
+hip before rigging (`rig.py`: Meshy rigging by data URI). Use the same trick on any model whose legs or feet touch.
