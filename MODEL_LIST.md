@@ -194,7 +194,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | mothman | `Assets/characters/races/mothman/male/Meshy_AI_mothman_wings_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | mummy | `Assets/characters/races/mummy/male/Meshy_AI_mummy_m_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES, the men; mondo 2026-11-16) |
 | mummy (female) | `Assets/characters/races/mummy/Meshy_AI_mummy_female_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
-| mushroom girl (female) | `Assets/characters/races/mushroomgirl/female/Meshy_AI_mushroom_girl_v3_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| mushroom girl (female) | `Assets/characters/races/mushroomgirl/female/Meshy_AI_mushroom_girl_v4_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | music producer | `Assets/characters/races/music_producer/male/Meshy_AI_music_producer_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API from mondo's own Music Producer image (THE MUSIC PRODUCER, 2026-11-24; project files unit-concepts-20261124b/) |
 | necromancer | `Assets/characters/races/necromancer/male/Meshy_AI_necromancer_m_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW RACES, the men; mondo 2026-11-16) |
 | necromancer (female) | `Assets/characters/races/necromancer/female/Meshy_AI_necromancer_f_v2_Running.glb` | Meshy AI | Meshy AI, made + rigged by Claude through the Meshy API (THE NEW LOOKS, mondo 2026-11-18 concepts round; wings / halo / cape / trident apart: THE UNIT GEAR; project files unit-concepts-20261118/) |
