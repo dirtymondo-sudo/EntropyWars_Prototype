@@ -4575,21 +4575,41 @@ const ThreePost = (function () {
                     or a grass sheet gets no lines. Thin = about one screen pixel; Medium (1.6) is the default (the Ink Lines row).
        A bright saturated pixel (a spell, a team outline, a zone wash: own cyan-blue / enemy pink-orange) keeps its colour
        and takes no ink. No bloom, no fog, no texture touched; the HUD is DOM and never passes through here. Viewer-local.
-       Settings > Video > Entropy Style: Off / Grade / Grade + Ink. Stored ew_style. Off live: window.EW_NO_ENTROPY_STYLE. */
+       Settings > Video > Entropy Style: Grade / VHS Tape / Ink checkboxes, any mix (THE STYLE LAYERS, 11-28). Stored ew_style. Off live: window.EW_NO_ENTROPY_STYLE. */
     /* THE PALETTES (2026-11-22, mondo, on the six palette mock-ups: "let's just add the vhs tape as an option"): the grade's two
        colours, the shadows' lean and the lights' lean, are a pick. 0 = Entropy (indigo shadows, warm parchment lights; the default),
        1 = VHS Tape (violet-magenta shadows, cool cyan lights). Settings > Video > Palette; `_style.palette`. */
     var _STYLE_PALETTES = [{ sh: [0.10, 0.13, 0.26], hi: [1.0, 0.93, 0.80] }, { sh: [0.20, 0.06, 0.30], hi: [0.82, 1.0, 0.98] }];
-    function _stylePal() { return _STYLE_PALETTES[Math.round(+_style.palette || 0)] || _STYLE_PALETTES[0]; }
-    var _style = { mode: 'ink', inkWidth: 1.6, ink: 0.8, bands: 0.7, amount: 1, unitBold: 1.9, palette: 0 };   // Medium lines: mondo 11-12 "i like it with the lines on medium"
+    /* THE STYLE LAYERS (2026-11-28, mondo: "can i have an option for just ink? Or just checkboxes for the shaders (grade, ink,
+       vhs)"): three switches, any mix. gOn = the Entropy grade, vOn = the VHS Tape grade (both on = the two palettes met halfway),
+       iOn = the ink (bands + line). _styleMode: 0 off, 1 a grade alone, 2 a grade + ink, 3 the ink alone (no grade: the picture's
+       own colours, banded and lined). `mode` / `palette` are written from the switches for the old callers. */
+    function _stylePal() {
+        if (_style.gOn && _style.vOn) { var a = _STYLE_PALETTES[0], b = _STYLE_PALETTES[1]; return { sh: [0, 1, 2].map(function (i) { return (a.sh[i] + b.sh[i]) / 2; }), hi: [0, 1, 2].map(function (i) { return (a.hi[i] + b.hi[i]) / 2; }) }; }
+        return _style.vOn ? _STYLE_PALETTES[1] : _STYLE_PALETTES[0];
+    }
+    var _style = { mode: 'ink', inkWidth: 1.6, ink: 0.8, bands: 0.7, amount: 1, unitBold: 1.9, palette: 0, gOn: 1, iOn: 1, vOn: 0 };   // Medium lines: mondo 11-12 "i like it with the lines on medium"
     try {
         var _styleSaved = (typeof localStorage !== 'undefined') ? JSON.parse(localStorage.getItem('ew_style') || 'null') : null;
-        if (_styleSaved && typeof _styleSaved === 'object') { for (var _sk in _style) { if (_styleSaved[_sk] !== undefined) _style[_sk] = _styleSaved[_sk]; } }
+        if (_styleSaved && typeof _styleSaved === 'object') {
+            for (var _sk in _style) { if (_styleSaved[_sk] !== undefined) _style[_sk] = _styleSaved[_sk]; }
+            if (_styleSaved.gOn === undefined) {   // a pick from the old Off / Grade / Grade + Ink row
+                var _sg = _style.mode === 'grade' || _style.mode === 'ink', _sv = Math.round(+_style.palette || 0) === 1;
+                _style.gOn = (_sg && !_sv) ? 1 : 0; _style.vOn = (_sg && _sv) ? 1 : 0; _style.iOn = _style.mode === 'ink' ? 1 : 0;
+            }
+        }
     } catch (e) {}
+    function _styleMirror() {
+        var g = !!(_style.gOn || _style.vOn), i = !!_style.iOn;
+        _style.mode = g ? (i ? 'ink' : 'grade') : (i ? 'line' : 'off');
+        _style.palette = (_style.gOn && _style.vOn) ? 2 : (_style.vOn ? 1 : 0);
+    }
+    _styleMirror();
     var _stylePass = null;
     function _styleMode() {
         if (typeof window !== 'undefined' && window.EW_NO_ENTROPY_STYLE) return 0;
-        return _style.mode === 'ink' ? 2 : (_style.mode === 'grade' ? 1 : 0);
+        var g = !!(_style.gOn || _style.vOn), i = !!_style.iOn;
+        return g ? (i ? 2 : 1) : (i ? 3 : 0);
     }
     function _styleInkPx() {
         var r = 1; try { r = (_renderer && _renderer.getPixelRatio) ? _renderer.getPixelRatio() : 1; } catch (e) {}
@@ -4632,7 +4652,7 @@ const ThreePost = (function () {
     /* the classic chains' uniforms, written at the pass's own draw */
     function _styleSync(u, w, h, cam, depthTex) {
         var m = _styleMode();
-        if (m > 1 && (!depthTex || !cam)) m = 1;   // no depth to read: the grade alone
+        if (m > 1 && (!depthTex || !cam)) m = (m === 3) ? 0 : 1;   // no depth to read: the grade alone (the ink alone: nothing)
         u.uMode.value = m; u.tDepth.value = depthTex || null;
         u.uRes.value.set(Math.max(1, w), Math.max(1, h));
         u.uInkW.value = _styleInkPx(); var _smt = _styleMaskTex(); u.tMask.value = _smt; u.uUnitK.value = _smt ? _styleUnitK() : 1; u.uGrass.value = (_smt && _styleGrassU()) ? 1 : 0; u.uInk.value = +_style.ink || 0; u.uBands.value = +_style.bands || 0; u.uAmount.value = (_style.amount === undefined) ? 1 : +_style.amount; _stylePalSync(u);
@@ -4643,18 +4663,32 @@ const ThreePost = (function () {
         var on = _styleMode() > 0;
         if (_stylePass) _stylePass.enabled = on;
     }
+    function _styleSave(persist) { _styleMirror(); _styleApply(); if (persist !== false) { try { localStorage.setItem('ew_style', JSON.stringify(_style)); } catch (e) {} } }
+    /* the old row's picks: 'off' / 'grade' (the grade(s) on, no ink) / 'ink' (grade + ink) / 'line' (the ink alone) */
     function setStyle(mode, persist) {
-        _style.mode = (mode === 'ink' || mode === 'grade') ? mode : 'off';
-        _styleApply();
-        if (persist !== false) { try { localStorage.setItem('ew_style', JSON.stringify(_style)); } catch (e) {} }
+        var keepV = !!_style.vOn && !_style.gOn;
+        if (mode === 'grade' || mode === 'ink') { if (!_style.gOn && !_style.vOn) { _style.gOn = keepV ? 0 : 1; } _style.iOn = mode === 'ink' ? 1 : 0; }
+        else if (mode === 'line') { _style.gOn = 0; _style.vOn = 0; _style.iOn = 1; }
+        else { _style.gOn = 0; _style.vOn = 0; _style.iOn = 0; }
+        _styleSave(persist);
+    }
+    /* THE STYLE LAYERS: one switch, 'grade' | 'ink' | 'vhs' */
+    function setStyleLayer(which, on, persist) {
+        var k = which === 'grade' ? 'gOn' : which === 'ink' ? 'iOn' : which === 'vhs' ? 'vOn' : null;
+        if (!k) return;
+        _style[k] = on ? 1 : 0;
+        _styleSave(persist);
     }
     function setStyleParam(key, value, persist) {
         if (!(key in _style) || key === 'mode') return;
         var v = parseFloat(value); if (isNaN(v)) return;
-        _style[key] = v;
-        if (persist !== false) { try { localStorage.setItem('ew_style', JSON.stringify(_style)); } catch (e) {} }
+        if (key === 'palette') {   // the old Palette row: 0 Entropy, 1 VHS Tape, 2 both
+            var r = Math.round(v); if (_style.gOn || _style.vOn) { _style.gOn = (r === 0 || r === 2) ? 1 : 0; _style.vOn = r >= 1 ? 1 : 0; }
+        } else if (key === 'gOn' || key === 'iOn' || key === 'vOn') _style[key] = v ? 1 : 0;
+        else _style[key] = v;
+        _styleSave(persist);
     }
-    function getStyle() { return { mode: _style.mode, palette: Math.round(+_style.palette || 0), unitBold: (_style.unitBold === undefined) ? 1.9 : +_style.unitBold, inkWidth: _style.inkWidth, ink: _style.ink, bands: _style.bands, amount: _style.amount, live: _styleMode() }; }
+    function getStyle() { return { mode: _style.mode, grade: !!_style.gOn, ink: !!_style.iOn, vhs: !!_style.vOn, palette: Math.round(+_style.palette || 0), unitBold: (_style.unitBold === undefined) ? 1.9 : +_style.unitBold, inkWidth: _style.inkWidth, inkStrength: _style.ink, bands: _style.bands, amount: _style.amount, live: _styleMode() }; }
     var _StyleShader = {
         uniforms: {
             'tDiffuse': { value: null }, 'tDepth': { value: null },
@@ -4733,7 +4767,7 @@ const ThreePost = (function () {
             '    float cd = max(max(length(texture2D(tDiffuse, vUv + vec2(px.x, 0.0)).rgb - c), length(texture2D(tDiffuse, vUv - vec2(px.x, 0.0)).rgb - c)), max(length(texture2D(tDiffuse, vUv + vec2(0.0, px.y)).rgb - c), length(texture2D(tDiffuse, vUv - vec2(0.0, px.y)).rgb - c)));',
             '    edge *= smoothstep(0.03, 0.10, cd) * (1.0 - gm);',
             '  }',
-            '  g = mix(c, mix(sGrade(g), g, k * 0.8), uAmount);',
+            '  g = uMode < 2.5 ? mix(c, mix(sGrade(g), g, k * 0.8), uAmount) : mix(c, g, uAmount);   // 3 = the ink alone: no grade',
             '  g = mix(g, vec3(0.07, 0.06, 0.13), edge * uInk * (1.0 - k));',
             '  gl_FragColor = vec4(g, s4.a);',
             '}'
@@ -4795,7 +4829,7 @@ const ThreePost = (function () {
                 var cd = T.max(T.max(cdf(V2(px.x, 0)), cdf(V2(px.x.negate(), 0))), T.max(cdf(V2(0, px.y)), cdf(V2(0, px.y.negate()))));
                 edge.assign(eDepth.mul(T.smoothstep(0.03, 0.10, cd)).mul(gm.oneMinus()));
             });
-            g.assign(T.mix(c, T.mix(grade(g), g, k.mul(0.8)), S.amount));
+            g.assign(T.select(S.mode.lessThan(2.5), T.mix(c, T.mix(grade(g), g, k.mul(0.8)), S.amount), T.mix(c, g, S.amount)));   // 3 = the ink alone: no grade
             g.assign(T.mix(g, V3(0.07, 0.06, 0.13), edge.mul(S.ink).mul(F(1).sub(k))));
             return T.vec4(g, s4.a);
         })();
@@ -5170,6 +5204,7 @@ const ThreePost = (function () {
         setRenderScale: setRenderScale,
         setStyle: setStyle,
         setStyleParam: setStyleParam,
+        setStyleLayer: setStyleLayer,
         getStyle: getStyle,
         getRenderScale: getRenderScale,
         syncLighting: syncLighting,
