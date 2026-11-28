@@ -952,6 +952,7 @@ const FOOTBALL_SPRITE = `${_S}/football.png`;
 // 2026-11-17 (mondo: female nordic + siren): their own 128x128 sprites, Sprite AI restyles of each new Meshy model's front render.
 // The mermaid woman keeps her blue sprite: her new model was made to match it.
 const _NEW_FEMALE_SPRITES = {
+  'succubus': 'https://cdn.entropywars.net/Assets/characters/races/succubus/female/succubus_f_px2.png',   // 2026-11-28 THE SUCCUBUS REMAKE (Sprite AI restyle of her v3 model's front render)
   'jellyfish': 'https://cdn.entropywars.net/Assets/characters/races/jellyfish/female/jellyfish_f_px.png',   // 2026-11-24 THE JELLYFISH, MALE + FEMALE (Sprite AI restyle of her model's front render)
   'gladiator': `${_S}/Races/gladiator/female/gladiator_f_px.png`,   // 2026-11-19 THE COMING RACES — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept)
   'nordic': 'https://cdn.entropywars.net/Assets/characters/races/nordic/female/nordic_f_v2_px.png',   // 2026-11-24 her new model (Sprite AI restyle of its front render)
