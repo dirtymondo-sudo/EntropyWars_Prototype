@@ -2974,13 +2974,14 @@ const RACE_MODELS_3D = {
      parts: the base ball rolls under it, the stick arms throw, the carrot shoots out, the head and hat lift off, the scarf tails
      swing, the coal eyes look about and blink, and it falls apart on death. One file put together from five Meshy parts (snowball,
      carrot, stick, top hat, scarf) by project files snowman/tools/assemble.py; node names in three-renderer.js. Front +Z, floor y 0. */
-  /* 🐙 THE OCTOPUS GIRL (2026-11-28, mondo's own Meshy model, inbox Meshy_AI_Octopus_girl_20261128_texture_remesh_tri.glb): Meshy's rig
-     (1.7 m) + one spring chain down each of the 15 hanging locks of her hair of tentacles, hung on her Head (bake-writhe.py --hair --locks 1
-     --cols 16 --min 0.06 --smooth 24). The library animates her body; THE SWAY swings every lock after the clip and its wave makes them
+  /* 🐙 THE OCTOPUS GIRL (2026-11-28; mondo: "remake the models you need in meshy": a NEW Meshy model from his own (inbox
+     Meshy_AI_Octopus_girl_20261128_texture_remesh_tri.glb), feet apart, every tentacle of her hair hanging free of her back): Meshy's rig
+     (1.75 m) + one spring chain down each of the 14 locks, hung on her Head (bake-writhe.py --hair --locks 1 --cols 16 --min 0.06 --smooth 24
+     --cut 0.857: under that line her hair hangs free of the body, so the hair is every piece that is not the body). The library animates her body; THE SWAY swings every lock after the clip and its wave makes them
      writhe on their own, a phase a lock (a softer sway than a cape: more and the locks fold into each other). */
   'octopus girl': {
     female: _mkUAL('octopus_girl/female', 'octopus_girl', {
-      model: 'https://cdn.entropywars.net/Assets/characters/races/octopus_girl/female/Meshy_AI_octopus_girl_writhe_Running.glb',
+      model: 'https://cdn.entropywars.net/Assets/characters/races/octopus_girl/female/Meshy_AI_octopus_girl_v2_writhe.glb',
       sway: { stiffness: 3.0, gravity: 0.45, drag: 0.42, maxRoot: 14, maxBend: 15, wave: 0.18, waveHz: 0.3, caps: [] },
       heightRatio: 0.97, basicAttackKind: 'claw',
     }),
@@ -3776,27 +3777,16 @@ const RACE_MODELS_3D = {
       basicAttackKind: 'magic',
     }),
   },
-  // Voidweaver — giant spider on a QUADRUPED Meshy rig (tail/backleg/head
-  // bones): the biped animation libraries cannot retarget onto it, so no
-  // animLib fields. Its one per-character export is the custom Walking clip —
-  // note the `_quadruped_model_Animation_` stem (not the biped
-  // `_biped_Animation_` convention), hence explicit URLs instead of _mk3d.
-  // Idle = static rest pose; casts/hits fall back to the engine lunge/glow
-  // tweens, and its projectiles already fly as spiders (UNIT_ANIM_OVERRIDES).
+  /* 🕷 THE VOIDWEAVER (2026-11-28, thread "Remake the voidweaver with moving parts"): the black widow with deep space in its abdomen.
+     No bones; procRig 'voidweaver' (three-renderer.js THE VOIDWEAVER) moves its parts: eight legs of three joints that REACH for
+     the floor (the feet stay planted while the body breathes, rears and lunges; a step is a foot lifted and set down), two
+     fangs, two feelers of two joints, the abdomen on its waist. One file put together from five Meshy parts (head-chest,
+     abdomen, ONE leg cut in three, fang, feeler) by project files voidweaver/tools/assemble.py. Front +Z, floor y 0.
+     Its projectiles still fly as spiders (battle.js UNIT_ANIM_OVERRIDES). The old one-piece Meshy spider (a quadruped rig with
+     one Walking clip) = Meshy_AI_giant_spider_realisti_quadruped_Character_output.glb in the same folder, no longer loaded. */
   'voidweaver': {
-    male: {
-      model: `${_VOID_3D}/Meshy_AI_giant_spider_realisti_quadruped_Character_output.glb`,
-      clips: {
-        walk: `${_VOID_3D}/Meshy_AI_giant_spider_realisti_quadruped_model_Animation_Walking_withSkin.glb`,
-      },
-      heightRatio: 0.85,     // low-slung — the legspan spreads well past a tile
-      yawOffset: 0,          // head sits +Z of the tail at rest, like the bipeds
-      moveTimeScale: 2.0,    // Walking 1.0s → ~0.5s/cycle at board pace
-      castTimeScale: 2.0,
-      deathTimeScale: 1.9,
-      hitTimeScale: 2.8,
-      jumpTimeScale: 3.2,
-    },
+    male: { model: 'https://cdn.entropywars.net/Assets/characters/races/voidweaver/male/voidweaver_v2.glb', clips: {}, procRig: 'voidweaver', heightRatio: 0.85, yawOffset: 0,
+      moveTimeScale: 1, castTimeScale: 1, deathTimeScale: 1, hitTimeScale: 1, jumpTimeScale: 1 },
   },
   // Honda Civic — the transformer. TWO models: the boneless sedan
   // (texture-stage GLB — a static mesh is exactly right for a parked car)
@@ -4018,12 +4008,13 @@ const RACE_MODELS_3D = {
   // rendered in the colossal tier under kong/kaiju. Tentacle strikes rake
   // via the claw basics; Tidal Surge/Maelstrom fire their mapped water VFX.
   'kraken': {
-    /* 2026-11-28 THE WRITHING TENTACLES (mondo: "redo the kraken with separate moving tentacles"): the same rig + one spring chain down each
-       of its ten arms, all hung on its Hips (bake-writhe.py --arms --mirror 1 --smooth 4 --parent Hips --free LeftArm,RightArm: the biped's
-       legs and arms no longer bend its arms, the idle had swung the leg-arms out and webbed them). THE SWAY swings them after every clip and
-       its wave makes them writhe on their own. */
+    /* 2026-11-28 THE WRITHING TENTACLES (mondo: "redo the kraken with separate moving tentacles" + "remake the models you need in meshy"):
+       a NEW Meshy squid made for it (arms splayed apart, none touching), rigged in code (Meshy's 24 bone names: the spine up the mantle, the
+       limbs unweighted) + one spring chain down each of its ten arms on its Hips (bake-writhe.py --arms --persist 1 --smooth 4 --parent Hips).
+       THE SWAY swings them after every clip and its wave makes them writhe on their own. Was Meshy_AI_kraken_writhe_Character_output.glb
+       (the old model, its arms fused). */
     male: _mkUAL('kraken/male', 'kraken_realistic', {
-      model: 'https://cdn.entropywars.net/Assets/characters/races/kraken/male/Meshy_AI_kraken_writhe_Character_output.glb',
+      model: 'https://cdn.entropywars.net/Assets/characters/races/kraken/male/Meshy_AI_kraken_v2_writhe.glb',
       sway: { stiffness: 1.7, gravity: 0.12, drag: 0.28, maxRoot: 32, maxBend: 24, wave: 0.9, waveHz: 0.32, caps: [] },
       heightRatio: 1.55,
       basicAttackKind: 'claw',
@@ -8116,7 +8107,7 @@ const RACE_SPRITES = {
   'mermaid': `${_S}/Races/mermaid/female/mermaid_female.png`,
   'nephilim': `${_S}/Races/nephilim/male/nephilim_male.png`,
   'vampire': `${_S}/Races/vampire/female/vampire_female.png`,
-  'voidweaver': `${_S}/Races/voidweaver/male/voidweaver_male.png`,
+  'voidweaver': `${_S}/Races/voidweaver/male/voidweaver_px.png`,   // 2026-11-28 THE VOIDWEAVER remake: Sprite AI restyle of a render of the new model
   'cosmic wraith': `${_S}/Races/cosmicwraith/male/cosmicwraith_male.png`,
   'superhero': `${_S}/Races/superhero/male/superhero_male.png`,
 
