@@ -15406,6 +15406,44 @@ found by tools (not by eye), and where each is fixed:
 - **NOT DONE / SEEN**: the low walk between Valley Road's bank and South Avenue rises 2 m in its last square (rows 142-144); five straddlers stand on
   ground a level off their floor (in67, in93, inM0, inM1, inM10: as in the compact city); every bake prints `THE SPREAD: straddler ...` for them.
 
+### THE HILLS REJOINED (2026-11-28, thread "Rework the Hills with a scenic sign view")
+mondo 11-28: "you didnt catch or fix how disaster city in the hills is split apart now? I think that whole area needs a pass, ideally the disaster city
+letters can be placed in a way where there's at least one area where you can see the whole sign for a scenic view. So maybe the hills need to climb higher
+and the sign needs to be higher. Or some tall buildings in the way of the view need to move ... What are in the actual hollywood hills that are missing".
+**What was wrong.** THE SPREAD's two cuts run through the Hills too; there the ground is stretched across each strip and nothing stands on it. The sign's
+letters stood three to a plot on the slope row: DISAST and ERCITY ended 42 m apart either side of Bluff Drive's strip, and Bluff Drive's bank trees hid
+half of them. A seven-square rock outcrop at the canyon mouth became a 42 m grey slab at the head of the drive. The Highway's strip was 84 m of bare ramp.
+**What is built.**
+- **THE RIDGE IS HIGHER** (`districts/N.js` `RISE`, a table over the layout's levels; `HILLS_OLD_LEVELS=1` = before): the ridge from The Lookout Rock to
+  Behind the Letters +7 levels (12.25 m), easing to the west end and the Headland; the middle of the slope row +2. The Peak is 56 m (the city's north line
+  11 to 23 m), the ground's highest point 66 m (was 52). The foot row, the west end (the River Road's seam) and the Cove keep their heights. The bake's
+  own walk check passes (the ridge trails climb 9 levels in 28 m at the steepest).
+- **THE SIGN, ONE WORD, ON THE RIDGE** (`N.js` THE SIGN + `exports.sign`: 10.7 x 15.5 m letters, 11.9 m apart, a 4.5 m word gap, 146 m in all): on the
+  ridge's south edge (row 8), the ridge trail and the mast behind it, the old letters' plots the bare slope before it. N.js lays the word about compact
+  x 84; `hills-pass.js` sets it down about x 91 in the spread room (three letters stand on ground only the spread room has). Its feet are at 52.5 m
+  (were 33). Floods on posts; no bench, bush or tree on its line, no tree before it on the ridge (`sign.clear`).
+- **THE SIGN VIEW** (`hills-pass.js` `VIEW`): a flagstone terrace off Bluff Drive's promenade (bank squares BL+6..8, rows 42..46; x 91..101.5,
+  z -231..-213.5), a low wall on three sides, three coin telescopes, benches, a lamp. 124 m from the letters: the word is 60 degrees of the walk's 82.
+  The bank's trees from the terrace north to the Hills' line are gone, and any tree whose crown rose into the sight cone (12 in all).
+- **THE CANYON MOUTH**: the foot road from the Canyon Road to the mountain road's junction is one grade (22.75 m to 13.56 m in 77 m; it ran down 4 m,
+  level for 42 m, down 4 m more). The grey slab is a grass saddle (a relaxed lattice between its edges). find-bumps: the DIP there 5.03 m -> 1.88 m (the
+  road's last 14 m rise to the Stilt House's plot; left).
+- **THE SHELL** (`BOWL`): a white band shell at the Highway's north end, on the park's axis (x -140), its back in the hill: five half-round ribs
+  (`roof` barrels turned 90, each smaller and starting 2.1 m further back, all running to the back) and an apse (`dome`, arc 180), drawn with `glow`
+  (a lit vault's inside is its dark side: it drew near black from the Highway). Twelve squares of the Hills' last three rows are levelled to the park
+  (marble stage, concrete aprons); whole-square ghost blocks under the ribs' feet and the back; 36 benches on the lawn; the park's trees off the axis.
+  NO NAME ON IT (a name is mondo's; branding.md).
+- **THE STRIPS' BRUSH**: chaparral, grey rocks, agave, trees on the two strips' grass from a hash (104 props, 14 trees); none before the letters.
+**Checked.** `find-softlocks.js`: traps 0, crevices 0 (main: 1 + 1, both in the Hills), dips 17, slots 22. `find-bumps.js`: 2 groups, the DIP above and a
+STEP at the room's west line on the Shasta Road (x -391.5; on main too since ONE BEACH, not this pass's). `bake-mall.js`, `bake-hero-tower.js`,
+`bake-map.js` rerun. Pictures (classic renderer): project files `hills-pass/`. **The WebGPU run in the cloud drew no Hills ground and no buildings at all
+(SwiftShader), so there is NO WebGPU proof**; everything added is a row kind the Hills already used (arch quads with `glow`, `roof`, `dome`, walls, props, paint).
+**Probe.** `--pre` halving textures as in THE SPREAD's note; a view from the air over the city kills the cloud browser, ground views are fine (~300 s to ready).
+**What the real Hollywood Hills have that this one still lacks** (ideas for the next pass, each an original take): a winding ridge drive with pull-out
+overlooks; switchbacks with guard rails and retaining walls (the roads here go straight up the slope); stone gate towers at the canyon foot; rows of
+gated houses, stilt boxes and Spanish villas along the canyon roads (there are six houses); a castle hotel; a canyon store; a quarry cave tunnel; a
+reservoir walk with the sign in the water; skinny palms, cypress and eucalyptus rows; hikers and riders (nobody lives here yet); a billboard or two.
+
 ### THE WORLD MAP ROUND THE BIGGER CITY (2026-11-27, after ONE BEACH, ONE ROOM)
 The city's room is 22 x 18 plots at world -1,-3 (the plan drew 12 x 12 at 0,0, the Hills over it, the Beach beside it). With the Harbour inside the city
 the Beach room's clash is gone; what is left is 8 plots: the Valley Road's last column (-1,4 and -1,5, under the Woodland Parkway) and the Badlands
