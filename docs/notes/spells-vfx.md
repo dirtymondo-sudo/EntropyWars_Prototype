@@ -5735,3 +5735,24 @@ touched).
   0.0. The Training Room (indoors, new only): 1.00x, 0.0, the room's walls fade as before. Wheel and pan: 1.00x on all three.
   Body hidden (real rays): 0-5 % new, 0-2 % old. Proof sheets: /mnt/project-files/handcam/. Viewer-local (camera + fade):
   nothing to relay online.
+
+## THE HARPY + THE MOTH QUEEN VFX (2026-11-28, thread "Make Harpy and Moth Queen spells")
+three-vfx-effects.js "THE HARPY + THE MOTH QUEEN" (after the Leprechaun / Medic block; kill switches `EW_NO_HM_VFX`, the wing moves
+`EW_NO_HM_WINGS`). FIRST PASS. `_hmStage` rides fire()'s windup (the caster's wing move `_HM_WING` -> ThreeRenderer.wingAct, and the
+travels `_HM_ON_WINDUP`) and its burst (`_PZ_SIGS[spellId]`); the impact / aoe / aura intents of the ten rows go to `lmxQuiet_fx` so
+the plain element hit does not draw over them. The rule looks are fireGeometry keys sent by battle.js. All relayed (RULE #2).
+- Harpy (tawny feathers `_hmFeathers`, bone-white talon rakes with a red line `_hmRakes`, storm teal): Snatch = three rakes;
+  Shriek = four jagged rings tearing out along the floor from her + rings rising off her mouth; Quill Storm = quills arc from her on
+  the windup (`_hmQuillFly`), then come down point first across the 3x3 and stick; Carry Off = two talon sets close, feathers, and
+  the drop `hmCarry` (an arc of wind from where it stood, feathers, a dust ring on landing); Feeding Frenzy = six fast rakes from
+  both sides, blood, red motes back to her. `hmSnatch` = the stolen MP as blue motes from the victim into her.
+- Moth Queen (moon silver, lilac, glowing dust, night blue): Scale Dust = a drift of dust off her wings on the windup
+  (`_hmDustFly`), it settles and a crescent hangs over the head (`_hmMoonMark`, the Moonstruck mark); Moth-Eaten = small moths
+  circle the body and dark holes open on it; Royal Silk = threads wind up into a pale cocoon; Porch Light `hmPorch` = a bulb
+  flickers on over her, a cone of light and a pool with the side's rim; `hmDrawn` = a thread of moonlight from the pulled unit to her
+  + the crescent; Total Eclipse = a moon over her, a dark disc slides across it, at totality the halo flares, the floor within her
+  reach goes night-dark and shafts of moonlight come down.
+- No words on cards (THE CLEAN READ). No sound.
+
+
+**THE WING SPELL PROBE (11-28):** `MAP=prebuilt_training RACE="moth queen" ACTS=<spell ids> FX=burst:<id>,self:<id>,windup:<id>,geom:<key> POSE=<wing move>@<yaw> FYAW=270 FLAGS=NOCINE TAG=x node playtest_wingspells.js` (repo root, needs `npm start`) sets a winged unit on a real VS CPU board with a foe and a friend, casts each spell through doSpell (ACTS), fires one look alone (FX) or one wing move alone (POSE), and pictures each with its own close camera. Use the flat Training Room (`MAP=prebuilt_training`): on a random map a tree stands in the view. `QUERY='?ew_gpu=webgpu' EW_PROBE_GL=webgpu` runs it on WebGPU, but in the cloud container the device is lost at boot, so that run proves the casts, not the picture.

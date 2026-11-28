@@ -41,6 +41,7 @@ const CAST = (todo, repeat) => {
     const tiles = G.getSpellRangeTiles(unit, spell) || [];
     let pick = null;
     if (spell.kind === 'healAll' || spell.kind === 'transform' || (spell.kind === 'buff' && !spell.range)) pick = { x: unit.x, y: unit.y, z: unit.z };
+    else if (spell.aoeOriginSelf) { if (st.units.some(e => e.player !== unit.player && !e.dead && D(e, unit) <= (spell.aoeRadius || 1))) pick = { x: unit.x, y: unit.y, z: unit.z }; }   // (round the caster: only with somebody in it)
     else if (spell.kind === 'revive') {
       const dead = st.units.find(u => u.player === unit.player && u.dead && D(u, unit) <= (spell.range || 1) + 3);
       if (!dead) continue; pick = { x: dead.x, y: dead.y, z: dead.z };

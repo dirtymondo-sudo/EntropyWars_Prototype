@@ -7026,6 +7026,42 @@ wings". Both are NEW races, female only, IN as COMING RACES (body + wings + spri
   + `moth_queen_px.png` (128px Sprite AI restyles of a front render). The v1 files (same, rigged in code by bake-winged.py without --rigged,
   when Meshy had no credits) stay on R2 unused. Project files `harpy-moth/` = sources, renders, proof.
 
+## THE HARPY + THE MOTH QUEEN, THE KITS (2026-11-28, thread "Make Harpy and Moth Queen spells")
+mondo 11-28: "start a thread on fable 5.2 to make their spells and choose their animations/vfx". ALL NAMES, NUMBERS AND FINISHERS ARE A
+FIRST PASS for him to rename / rebalance (the plan was posted in the thread; nothing waited on him). Both are in data.js + server.js
+AVAILABLE_RACES (`EW_COMING_RACES` is empty), both FLY (map.js SKY_RACES + ui.js _CODEX_SKY_RACES). No Balance Lab run yet: stats sit on
+the class medians. battle.js block "THE HARPY + THE MOTH QUEEN, THE KITS" (after THE NEW RACES 5).
+- 🪶 **Harpy** (`harpy`, female, assassin, anomaly; wind resist / lightning weak; family `harpy` "Snatcher" + wind, sonic, thievery,
+  apexpredator; finisher Snatched = upUpAndAway staging). RULE SNATCH (`hpSnatch`): every hit she lands on an enemy steals 12 MP for
+  herself (`_hpOnHit`, applyDamageToUnit; a cast row's `hpSteal` says more, kept on `unit._hpCastSteal` for the cast).
+  Kit: Snatch (T1, melee 95, steals 24) · Shriek (T2, Silence 1 within 2, `hpShriekMp: 15` each) | Quill Storm (T2, 3x3 within 4,
+  physical 80, Bleed 2) · Carry Off (T3, _mkCharge range 4, 115, Stagger; `hpCarry`: `_hpBeginCast` notes the square she dives from,
+  `_hpCarry` in finishAction flies her back to it and sets the victim on the free square beside it nearest where it stood; nothing in
+  Clash, on a cube or a static summon, or if she never left her square) · Feeding Frenzy (T4, lifeDrain 165 / 50 %, `hpStarve: { mp:
+  30, mult: 1.5 }` read by `_hpStarveMult` in _spellCritRoll: NOT in the damage forecast).
+- 🌙 **Moth Queen** (`moth queen`, female, caster, alien; psychic resist / fire weak; family `moonmoth` "Moonlight" + insectoid,
+  psychic, light, royalty; finisher Into the Light = intoTheSun staging). RULE DRAWN TO THE LIGHT (`mqDrawn`): her spells leave
+  enemies MOONSTRUCK (STATUS_DEFS `moonstruck`, her id `unit._moonSrcId`, no stacks); a Moonstruck unit whose turn starts is drawn 1
+  square toward her (`_mqDrawn` at the blitz hand-off, `_mqStep`: the longer axis first, the walker's own step rule; not in Clash).
+  Kit: Scale Dust (T1, range 4, 85, Moonstruck 2) · Moth-Eaten (T2, range 3, 100, -1 DEF and -1 M.DEF stage, Moonstruck) | Royal Silk
+  (T2, heal 70 + Protect 1 + Regen 2 + cleanse 1) · Porch Light (T3, `mqPorch: { reach: 5, pull: 3 }`: every Moonstruck enemy within 5
+  is dragged up to 3 squares to her, nearest first, the ones that end beside her Stunned 1; refused with none in reach; the buff
+  branch, `_mqPorch`) · Total Eclipse (T4, radius 2 round her, 150, Blind 1, bonusVsStatus moonstruck ×1.4).
+- THE WING MOVES OF A SPELL (three-renderer.js, beside THE LOOSE WINGS EVERYWHERE): `_WB_ACTS` = named moves of the wings over a
+  length u 0..1 (mantle, scream, buffet, dive, frenzy / dust, flick, wrap, beacon, eclipse), three new channels of the moment besides
+  spread / beat / fold: `fwd` (the wings swing forward round what is in front), `lift` (raised), `shiver` (a fast tremble). A spell's
+  move outranks the slot's plain flare / strike while it runs. `ThreeRenderer.wingAct(uid, name, ms)`; three-vfx-effects.js `_HM_WING`
+  names each spell's move on the cast's windup beat (relayed, so the guest sees it). ANY winged unit on THE BEATS can be given one:
+  add its spell to a table like _HM_WING. A beat row may set `fwd` (0..1) to tame the forward swing for wings that hang.
+- CASTS: THE MESHY CASTS rows (`animClip`, each clip with the setting its other rows use): Zombie_Scream (Shriek),
+  Cheer_with_Both_Hands_Up (Quill Storm, Porch Light), Talk_with_Hands_Open (Scale Dust), Dont_You_Dare (Moth-Eaten),
+  Big_Heart_Gesture (Royal Silk), Magic_Genie (Total Eclipse); Snatch / Carry Off / Feeding Frenzy keep the melee slot.
+- VFX: spells-vfx.md "THE HARPY + THE MOTH QUEEN VFX". CPU: ai.js scores Porch Light by the Moonstruck in reach (window._mqPorchTargets).
+- LEFT OUT ON PURPOSE (no lore invented): home zone / point of entry, residents, rarity, temper, quotes; the biomes + terrain are
+  Claude's picks, marked in data.js. NOT DONE: sound, the AI's read of Snatch / Moonstruck, Feeding Frenzy's bonus in the forecast.
+- Probe: `UNITS="harpy:female,moth queen:female,..." SPELLS=... EARLY=300,650 node playtest_kitfight.js` (it casts a spell round the
+  caster only with somebody in it now).
+
 ## THE MERMAID'S TAIL (2026-11-28)
 mondo 11-28 (inbox `Meshy_AI_mermaid_girl_20261128_texture.glb`, his own Meshy model, unrigged): "the mermaid which is just replacing
 the current model ... I want the mermaid tail to be animated separately from her upper body so she can still have the meshy
