@@ -677,6 +677,7 @@ more bones. Answers, measured on the MPFB2 checkout (HEAD 6ff1eb35) and the pack
 - 2026-11-16 — THE NEW RACES (thread cmsg_01XWpxyTn3nnw98znVzKdFjsDBJn8bnEMtiLUUxL1w51CS): Meshy units made + rigged by Claude (Sewer Gator B, Skater F, Banker, Mole Man, Tech CEO, Magician, feathered serpent prop; female politician / professor / clown / lifeguard; 15 male variants under way), files /mnt/project-files/new-races/. Banker wired first (champions-combat.md "THE NEW RACES").
 - 2026-11-17 — THE NEW RACES 2 (thread cmsg_01XWpxyTn3nnw98znVzKdFjsDHFgcJVn5weGXFasUcmtg6): 11 Meshy units made + rigged by Claude from mondo's zone-character picks (Delivery Boy, Librarian F, Televangelist, Influencer F, Referee, Florida Man, Boltzmann Brain (unrigged), Wendigo, Karate Frog, Samurai Slug, Cicada Brood), files /mnt/project-files/new-races-2/; all wired as races (champions-combat.md "THE NEW RACES 2").
 - 2026-11-19 — THE NEW RACES 3: 4 Meshy units from the 11-19 concepts (Cameraman = R2 folder `paparazzi` + held DSLR `gear/held/paparazzi_camera.glb`, Mechanic, Janitor, Trucker `_v2`), files /mnt/project-files/new-char-concepts-20261119/models/; Sprite AI 128 px sprites; wired as races (champions-combat.md "THE NEW RACES 3"). Other picks of that thread (gambler, hacker, pharaohs, monk, shogun, diver, supers) are not wired here.
+- 2026-11-28 — THE DEEP SEA FISH IN PIECES (thread "Remake the deep sea fish with moving parts"): Meshy concepts (three looks, mondo picked C) -> five part models (jawless head, gulper jaw, lure jellyfish, eel tail, side fan) put together by Claude (project files deep-sea-fish/tools/assemble.py) on one 38-joint skeleton, procRig `deepFish`; its own clips for Lure and Abyss Jaws. Notes champions-combat.md "THE DEEP SEA FISH IN PIECES". Waits his look.
 - 2026-11-27 — THE SNOWMAN (thread "Add a snowman character"): Meshy concepts -> five part models (snowball, carrot, stick, top hat, scarf) put together by Claude (project files snowman/tools/assemble.py) into one 26-node file, procRig `snowman`; wired as a race with its kit (champions-combat.md "THE SNOWMAN").
 - 2026-11-27 — THE COMING RACES 3 (thread "Make Meshy concepts for new characters"): Meshy concepts (realistic) -> image-to-3d + rig by Claude: monster truck (4 parts, assembled), nutcracker (+ jaw bone), leopard girl, draconian, flower girl, leprechaun M/F, doctor + nurse (race `medic`), female martian, Agent Forrest (story cast model); files project files character-concepts/; wired as coming races (champions-combat.md "THE COMING RACES 3").
 
@@ -692,7 +693,26 @@ hip before rigging (`rig.py`: Meshy rigging by data URI). Use the same trick on 
 Then (11-28 morning) his second take replaced it: `Meshy_AI_mushroom_girl_v4_Running.glb`, same leg spread + rig.
 Mermaid (F), 11-28: mondo's own Meshy model replaced the f2: `mermaid_tail_v1.glb`, rigged in the cloud (Meshy out of credits) by
 `bake-mermaid.py` with the legs weighing nothing and a swimming tail chain. Notes champions-combat.md "THE MERMAID'S TAIL".
+
+## THE OCTOPUS GIRL + THE KRAKEN'S ARMS (2026-11-28)
+mondo's own Meshy model (R2 `dirtymondo` inbox/Meshy_AI_Octopus_girl_20261128_texture_remesh_tri.glb, left in the inbox) = the new race
+'octopus girl': Meshy rig (1.7 m, 5 credits) + `bake-writhe.py --hair --locks 1` -> `Assets/characters/races/octopus_girl/female/
+Meshy_AI_octopus_girl_writhe_Running.glb` (+ .opt.glb); sprite `octopus_girl_px.png` (Sprite AI restyle of a render). The Kraken's
+model is now `Meshy_AI_kraken_writhe_Character_output.glb` (the old file stays on R2). Notes: models-assets.md "THE WRITHING TENTACLES",
+champions-combat.md "THE OCTOPUS GIRL".
 Succubus (F), 11-28: remade from mondo's picture (pink demon, ram horns, black lace + harness, stockings, platform heels, spade tail):
 a WINGLESS Meshy body + ONE Meshy bat wing modelled on its own, hung on each side of the back by `bake-wing-part.py` (bones
 `ewwing_L/R`, beat `succubus`); the tail swings on `bake-tail.py --narrow 0.028,0.45`. `Meshy_AI_succubus_v3_Running.glb` (v3 11-28: his "scale down her wings a little", `--span 0.69`, was 0.86). Concepts,
 scripts and the raw models: project files `succubus/`. Notes models-assets.md "THE WING PART". Her map sprite (same day): `succubus_f_px2.png`, a Sprite AI restyle of the v3 front render (px2: figure 124 px tall, brighter front light, the face prompted; px had a small, flat face).
+
+### THE REMAKE (2026-11-28, same day; mondo: "her feet are kinda close together and mess up with the animations. I wanted you to remake the models you need in meshy, not use these old models")
+Both are NEW Meshy models now (project files `octopus-girl/`: gen.py = concepts on nano-banana-pro with the old model's render as the
+reference, model.py = image-to-3D (+ Meshy rig for her), krig.py = the kraken's rig in code; proof `proof/v2_*`).
+- Octopus Girl `Meshy_AI_octopus_girl_v2_writhe.glb`: a-pose, feet at shoulder width, twelve-odd tentacles hanging FREE of her back.
+  Her hair's colour is her skin's, so the colour mask fails: `--cut 0.857` = under that line the hair hangs free of the body, so the
+  hair is every piece of the skin under the line that is not the biggest. 14 locks.
+- Kraken `Meshy_AI_kraken_v2_writhe.glb`: an upright squid with ten arms splayed apart. Meshy rigging is for people, so krig.py fits
+  Meshy's 24 bone names in code (Hips at 0.30 of the height, the spine up the mantle, limbs unweighted). `--persist 1` = one tip per
+  branch the watershed keeps (its suckers and curls made 63 false tips); the spine bones are never freed (the mantle had gone with the
+  arms). 10 chains of 6 joints.
+Credits: concepts 3 pictures, two models, one rig.

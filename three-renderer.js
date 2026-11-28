@@ -20865,6 +20865,7 @@ const ThreeRenderer = (function () {
                 v.copy(B.p); if (d.p) v.set(B.p.x + (d.p[0] || 0), B.p.y + (d.p[1] || 0), B.p.z + (d.p[2] || 0));
                 A.p.push(v.x, v.y, v.z);
                 q.copy(B.q);
+                if (d.qa) q.set(d.qa[0], d.qa[1], d.qa[2], d.qa[3]);   // 🕷 THE VOIDWEAVER: the joint's turn outright (a solved leg)
                 if (d.rw) { e.set(d.rw[0] || 0, d.rw[1] || 0, d.rw[2] || 0); dq.setFromEuler(e); q.premultiply(dq); }   // in the parent's frame
                 if (d.r) { e.set(d.r[0] || 0, d.r[1] || 0, d.r[2] || 0); dq.setFromEuler(e); q.multiply(dq); }           // in its own frame
                 A.q.push(q.x, q.y, q.z, q.w);
@@ -21256,6 +21257,128 @@ const ThreeRenderer = (function () {
         clips.attack = clips.castMelee;
         return clips;
     }
+    /* 🪼 THE JELLYFISH, A REAL ONE (2026-11-28, thread "Redesign the jellyfish race"; mondo: "a real jellyfish is already alien
+       looking enough. Just need to stylize it a little bit"). ONE file a species (bake-jelly.py: a Meshy bell, a Meshy oral arm
+       hung several times, thin tentacles made in code): ewJfBody (a node at the bell's middle) > ewJfBell (the bell's mesh: its
+       scale is the PULSE), ewJfRim (the ring the thin tentacles hang from: it closes and opens with the bell), ewJfCore (the
+       oral arms' ring). Every arm and tentacle is a chain of THE SWAY's spring bones (ewsway_c<k>_<j>), so they trail, whip
+       and settle behind every move below by themselves. Metres, front +Z, the longest tentacle's tip on y 0.
+       A pose is a function of u (0 … 1) giving: y (lift), z (forward), x (to its left), rx (it tips forward), ry (it turns),
+       rz (it rolls), s (whole scale − 1), p (the pulse: 1 = the bell squeezed shut, 0 = at rest, below 0 = flared open),
+       sp (the tentacle ring spreads: scale − 1). ThreeRenderer.jfPose(slot, dur, pose) adds or replaces a slot. */
+    var _JF_HOVER = 0.1;
+    /* one swimming stroke over a whole number of x: a quick squeeze (the first fifth), a slow opening */
+    function _jfStroke(x) { var f = x - Math.floor(x); return f < 0.2 ? _mtS(f, 0, 0.2) : 1 - _mtS(f, 0.2, 0.95); }
+    /* the lift a stroke gives: it comes a beat after the squeeze and is lost again by the next */
+    function _jfLift(x) { var f = x - Math.floor(x); return _mtBump(f, 0.08, 0.38, 1.0); }
+    function _jfClip(name, dur, pose, R) {
+        var N = Math.max(8, Math.round(dur * 30)), tt = [], bp = [], bq = [], bs = [], ls = [], rs = [], cs = [];
+        var e = new THREE.Euler(0, 0, 0, 'YXZ'), q = new THREE.Quaternion();
+        for (var k = 0; k <= N; k++) {
+            var u = k / N, p = pose(u) || {};
+            var f = function (n) { return p[n] || 0; };
+            tt.push(u * dur);
+            bp.push(R.p0.x + f('x'), R.p0.y + _JF_HOVER + f('y'), R.p0.z + f('z'));
+            e.set(f('rx'), f('ry'), -f('rz'), 'YXZ'); q.setFromEuler(e); bq.push(q.x, q.y, q.z, q.w);
+            var s = 1 + f('s'); bs.push(s, s, s);
+            var pu = Math.max(-1, Math.min(1.2, f('p')));
+            var w = 1 - pu * 0.2, h = 1 + pu * 0.16;          // squeezed = narrower and taller, flared = wider and flatter
+            ls.push(w, h, w);
+            var rw = (1 - pu * 0.3) * (1 + f('sp')); rs.push(rw, 1, rw);
+            var cw = 1 - pu * 0.12; cs.push(cw, 1 + pu * 0.05, cw);
+        }
+        var V = THREE.VectorKeyframeTrack, Q = THREE.QuaternionKeyframeTrack;
+        var out = [new V('ewJfBody.position', tt, bp), new Q('ewJfBody.quaternion', tt, bq), new V('ewJfBody.scale', tt, bs), new V('ewJfBell.scale', tt, ls)];
+        if (R.rim) out.push(new V('ewJfRim.scale', tt, rs));
+        if (R.core) out.push(new V('ewJfCore.scale', tt, cs));
+        return new THREE.AnimationClip(name, dur, out);
+    }
+    var _JF_POSES = {
+        /* idle (8 s loop): four slow strokes. Each squeeze lifts it, it sinks back as the bell opens; it drifts and turns a little */
+        idle: [8.0, function (u) {
+            var w = u * Math.PI * 2;
+            return { p: _jfStroke(u * 4) * 0.55, y: _jfLift(u * 4) * 0.07 + Math.sin(w) * 0.015, x: Math.sin(w + 0.6) * 0.03,
+                     rx: Math.sin(w * 2 + 0.9) * 0.05, ry: Math.sin(w) * 0.14, rz: Math.sin(w * 2 + 1) * 0.05 };
+        }],
+        /* walk (1.4 s loop): it tips into the way it goes and swims: two hard strokes, the tentacles streaming behind */
+        walk: [1.4, function (u) {
+            return { p: _jfStroke(u * 2) * 0.85, y: _jfLift(u * 2) * 0.06, z: _jfLift(u * 2) * 0.04, rx: 0.42 + _jfStroke(u * 2) * 0.08, rz: Math.sin(u * Math.PI * 2) * 0.05 };
+        }],
+        /* a cast: the bell flares wide and trembles, the ring of tentacles spreads, then one hard squeeze */
+        cast: [1.4, function (u) {
+            var a = _mtS(u, 0.0, 0.25) * (1 - _mtS(u, 0.42, 0.5)), fire = _mtBump(u, 0.42, 0.52, 0.9);
+            return { p: -a * 0.7 + fire * 1.0, sp: a * 0.35, y: a * 0.08 + fire * 0.1, rx: -a * 0.18 + fire * 0.22,
+                     rz: Math.sin(u * Math.PI * 2 * 12) * 0.02 * a };
+        }],
+        /* the sting (basic attack / a melee cast): it rears back so the tentacles swing under it, then whips forward and through */
+        castMelee: [1.0, function (u) {
+            var back = _mtBump(u, 0.0, 0.26, 0.42), go = _mtBump(u, 0.36, 0.5, 0.88);
+            return { z: -back * 0.16 + go * 0.34, y: back * 0.1 - go * 0.04, rx: -back * 0.75 + go * 0.95, p: -back * 0.5 + go * 0.9, sp: back * 0.2 };
+        }],
+        /* the big one: it climbs, turning a whole turn, the tentacles flung out in a wheel, pulsing fast */
+        castAOE: [1.6, function (u) {
+            var a = _mtS(u, 0.0, 0.15) * (1 - _mtS(u, 0.85, 1.0)), turn = _mtS(u, 0.1, 0.82);
+            return { y: a * 0.24, ry: turn * Math.PI * 2, rx: -a * 0.1, p: _jfStroke(u * 5) * 0.8 * a - a * 0.15, sp: a * 0.5 };
+        }],
+        /* a support cast: two slow soft strokes, a gentle nod */
+        castSupport: [1.3, function (u) {
+            return { y: Math.sin(u * Math.PI) * 0.06, rx: Math.sin(u * Math.PI * 2) * 0.1, p: _jfStroke(u * 2) * 0.5, sp: Math.sin(u * Math.PI) * 0.15 };
+        }],
+        /* the ultimate: it squeezes to a knot and sinks, shaking; then bursts open huge and hangs there, flared, throbbing */
+        castUltimate: [2.2, function (u) {
+            var down = _mtBump(u, 0.0, 0.22, 0.4), up = _mtS(u, 0.36, 0.46) * (1 - _mtS(u, 0.88, 1.0));
+            return { y: -down * 0.12 + up * 0.34, p: down * 1.1 - up * 0.8 + _jfStroke(u * 7) * 0.5 * up, sp: -down * 0.3 + up * 0.6,
+                     s: -down * 0.06 + up * 0.08, rz: Math.sin(u * Math.PI * 2 * 14) * 0.035 * down, rx: down * 0.15 - up * 0.12 };
+        }],
+        /* hit: knocked back and askew, the bell clenched */
+        hit: [0.6, function (u) {
+            var j = _mtBump(u, 0.0, 0.14, 0.7);
+            return { z: -j * 0.18, y: j * 0.04, rx: -j * 0.4, rz: j * 0.2, p: _mtBump(u, 0.0, 0.1, 0.6) * 0.9 };
+        }],
+        /* 🪼 ITS OWN SPELLS (data.js `animSlot` on each row of its kit) */
+        /* Sting: one tentacle flick. It turns half side on, dips a shoulder of the bell, snaps back upright: the tentacles whip across */
+        jfSting: [1.0, function (u) {
+            var wind = _mtBump(u, 0.0, 0.24, 0.38), snap = _mtBump(u, 0.32, 0.42, 0.8);
+            return { ry: -wind * 0.9 + snap * 0.5, rz: -wind * 0.45 + snap * 0.6, rx: snap * 0.35, z: snap * 0.16, y: wind * 0.06, p: snap * 0.8, sp: wind * 0.25 };
+        }],
+        /* Bloom: a thousand of them. It rises and beats fast, flaring wider on every stroke, the ring spread like a flower */
+        jfBloom: [1.7, function (u) {
+            var a = _mtS(u, 0.0, 0.15) * (1 - _mtS(u, 0.85, 1.0));
+            return { y: a * 0.2, p: (_jfStroke(u * 6) * 0.9 - 0.45 * _mtS(u, 0.1, 0.7)) * a, sp: a * (0.2 + 0.5 * _mtS(u, 0.1, 0.7)), ry: Math.sin(u * Math.PI * 2) * 0.3 * a,
+                     s: a * 0.05 };
+        }],
+        /* Ocean Current: the bell folds shut to a spindle and it shoots up and away; it opens again as it lands */
+        jfDrift: [1.0, function (u) {
+            var fold = _mtS(u, 0.0, 0.25) * (1 - _mtS(u, 0.7, 0.95));
+            return { p: fold * 1.15, sp: -fold * 0.45, y: fold * 0.3, rx: fold * 0.3, s: -fold * 0.12 };
+        }],
+        /* Nematocyst Net: the skirt opens as wide as it goes over the target, hangs a beat, then slams shut and drags down */
+        jfNet: [1.5, function (u) {
+            var open = _mtS(u, 0.0, 0.3) * (1 - _mtS(u, 0.5, 0.56)), shut = _mtBump(u, 0.5, 0.58, 0.95);
+            return { y: open * 0.22 - shut * 0.08, z: open * 0.1 + shut * 0.12, rx: open * 0.3 + shut * 0.2, p: -open * 0.9 + shut * 1.1, sp: open * 0.8 - shut * 0.35 };
+        }],
+        /* Immortal Cycle: the bell collapses back to a polyp (small, shut, sunk), holds, and grows again in three swelling strokes */
+        jfRebirth: [2.2, function (u) {
+            var gone = _mtS(u, 0.0, 0.3) * (1 - _mtS(u, 0.5, 0.9)), grow = _mtS(u, 0.5, 0.9) * (1 - _mtS(u, 0.92, 1.0));
+            return { s: -gone * 0.6, p: gone * 1.1 + _jfStroke(u * 7.5) * 0.5 * grow, sp: -gone * 0.5, y: -gone * 0.35 + grow * 0.1,
+                     ry: _mtS(u, 0.5, 0.9) * Math.PI * 2 };
+        }],
+        /* death: one last weak stroke, then it goes slack, tips over and sinks, the bell fallen open (held) */
+        death: [1.9, function (u) {
+            var s = _mtS(u, 0.2, 0.85);
+            return { y: _mtBump(u, 0.0, 0.12, 0.3) * 0.06 - s * 0.42, rz: -s * 1.1, rx: s * 0.3, p: _mtBump(u, 0.0, 0.1, 0.3) * 0.7 - s * 0.6, sp: s * 0.3, s: -s * 0.06 };
+        }]
+    };
+    function _jfBuild(root) {
+        var b = root.getObjectByName('ewJfBody');
+        if (!b || !root.getObjectByName('ewJfBell')) return null;
+        var R = { p0: b.position.clone(), rim: !!root.getObjectByName('ewJfRim'), core: !!root.getObjectByName('ewJfCore') };
+        var clips = {};
+        Object.keys(_JF_POSES).forEach(function (slot) { var p = _JF_POSES[slot]; clips[slot] = _jfClip(slot, p[0], p[1], R); });
+        clips.castMagic = clips.cast; clips.castRanged = clips.cast; clips.castHeal = clips.castSupport; clips.run = clips.walk;
+        clips.attack = clips.castMelee;
+        return clips;
+    }
     /* ⛄ THE SNOWMAN (2026-11-27, thread "Add a snowman character"; mondo: "a new character, Snowman, and make all the individual
        parts for it like the carrot and the stick arms and the 3 snow ball body parts ... unique animations for its spells"). ONE file
        (Assets/characters/races/snowman/male/snowman.glb, put together from five Meshy parts by project files snowman/tools/assemble.py;
@@ -21437,6 +21560,392 @@ const ThreeRenderer = (function () {
         clips.run = clips.walk; clips.attack = clips.castMelee;
         clips.castMagic = clips.cast; clips.castRanged = clips.snSnowball; clips.castHeal = clips.castSupport;
         clips.castAOE = clips.cast; clips.castUltimate = clips.snSnowDay;
+        return clips;
+    }
+    /* 🐟 THE DEEP SEA FISH IN PIECES (2026-11-28, thread "Remake the deep sea fish with moving parts"; mondo: "the deep sea fish ...
+       would benefit from individually animated parts too, can you make new meshy models and pieces ... and custom animations for
+       their spells", look C of three: an eel body, a gulper jaw, a jellyfish on the lure). ONE file
+       (Assets/characters/races/deepseafish/male/deep_sea_fish_v1.glb, put together from five Meshy parts by project files
+       deep-sea-fish/tools/assemble.py; the stalk and the two barbels are made there). ONE skeleton and every joint's rest turn is
+       identity, so on any joint x = nod (x > 0 tips its front down), y = yaw (y > 0 turns to its left), z = roll:
+       ewDfBody (the neck's middle: the whole fish) > ewDfHead > ewDfJaw (x > 0 opens; the rest is open 0.23, so -0.23 shuts it),
+       ewDfHead > ewDfLure (the stalk's root: x > 0 casts the lure out ahead) > ewsway_c0_0..5 (THE SWAY swings the stalk) >
+       ewDfJelly (the lure jellyfish's bell) > ewDfJellyArms; ewDfJaw > ewsway_c1_*, ewsway_c2_* (the barbels, THE SWAY);
+       ewDfBody > ewDfFinL / ewDfFinR (the fans: y < 0 spreads the LEFT one, y > 0 the RIGHT one) and ewDfTail0..9 (the eel tail,
+       curled at rest: x < 0 on a joint curls it tighter, x > 0 lets it out, y is the swimming wave). Metres, front +Z, floor y 0.
+       A clip is keyframes on those joints (_abClip). The two spells name their clips with `animSlot` (dfLure, dfJaws).
+       ThreeRenderer.dfPose(slot, dur, pose) adds or replaces a slot for every fish built after it. */
+    var _DF_NODES = ['ewDfBody', 'ewDfHead', 'ewDfJaw', 'ewDfLure', 'ewDfJelly', 'ewDfJellyArms', 'ewDfFinL', 'ewDfFinR',
+        'ewDfTail0', 'ewDfTail1', 'ewDfTail2', 'ewDfTail3', 'ewDfTail4', 'ewDfTail5', 'ewDfTail6', 'ewDfTail7', 'ewDfTail8', 'ewDfTail9'];
+    var _dfS = _vrS, _dfB = _vrBump, _DF_SHUT = -0.227;
+    function _dfSin(u, hz, ph) { return Math.sin((u * hz + (ph || 0)) * Math.PI * 2); }
+    /* the things that always live. o: wave / hz = the swimming wave down the tail (it grows to the fluke), curl = every tail joint
+       curled (< 0) or let out (> 0), lash = a whip at the tail's end; fan = the fins spread (0 … 1, -1 folded), flut = their flutter;
+       pulse / phz = the jellyfish's beat, glow = it swells (0 … 1); jaw = the jaw (added to a slow gulp `gulp`) */
+    function _dfLive(P, u, o) {
+        o = o || {};
+        var w = o.wave == null ? 0.06 : o.wave, hz = o.hz || 2, curl = o.curl || 0, lash = o.lash || 0, i;
+        for (i = 0; i < 10; i++) {
+            var k = i / 9, g = 0.35 + 0.65 * k;
+            P['ewDfTail' + i] = { rw: [curl * (0.6 + 0.4 * k) + lash * k * k * 0.5, w * g * _dfSin(u, hz, -i * 0.11) + (o.sweep || 0) * 0.5, 0] };
+        }
+        var fan = o.fan || 0, fl = o.flut == null ? 0.08 : o.flut, fhz = o.fhz || hz * 2;
+        P.ewDfFinL = { rw: [0.5 * fl * _dfSin(u, fhz, 0.2), -0.45 * fan - fl * _dfSin(u, fhz), 0.25 * fan] };
+        P.ewDfFinR = { rw: [0.5 * fl * _dfSin(u, fhz, 0.7), 0.45 * fan + fl * _dfSin(u, fhz, 0.5), -0.25 * fan] };
+        var pu = o.pulse == null ? 0.07 : o.pulse, ph = _dfSin(u, o.phz || hz * 2), gl = o.glow || 0, js = 1 + 0.75 * gl;
+        P.ewDfJelly = { s: [js * (1 + pu * ph), js * (1 - pu * 0.8 * ph), js * (1 + pu * ph)] };
+        P.ewDfJellyArms = { s: [1 - pu * 0.9 * ph, 1 + pu * 1.6 * ph, 1 - pu * 0.9 * ph] };
+        if (!P.ewDfJaw) P.ewDfJaw = { rw: [(o.jaw || 0) + (o.gulp == null ? 0.05 : o.gulp) * (0.5 + 0.5 * _dfSin(u, o.ghz || 2, 0.1)), 0, 0] };
+        return P;
+    }
+    var _DF_POSES = {
+        /* idle (6 s): it hangs in the water. A slow bob, the head looks one way then the other, the gills gulp, the tail's wave
+           never stops, the fans flutter, the lure nods and its jellyfish beats */
+        idle: [6.0, function (u) {
+            var look = _dfS(u, 0.1, 0.22) - 2 * _dfS(u, 0.42, 0.58) + _dfS(u, 0.8, 0.94), b = _dfSin(u, 2);
+            var P = { ewDfBody: { p: [0, 0.035 * b, 0], rw: [0.03 * _dfSin(u, 2, 0.25), 0.05 * look, 0.025 * _dfSin(u, 1)] },
+                ewDfHead: { rw: [0.03 * _dfSin(u, 2, 0.4), 0.14 * look, 0.03 * look] },
+                ewDfLure: { rw: [0.07 * _dfSin(u, 2, 0.15), 0.1 * _dfSin(u, 1, 0.3) - 0.1 * look, 0] } };
+            return _dfLive(P, u, { wave: 0.07, hz: 3, flut: 0.07, fhz: 6, pulse: 0.08, phz: 7, gulp: 0.07, ghz: 3, fan: 0.1 * _dfSin(u, 1) });
+        }],
+        /* the swim (1.2 s): it leans into it, the tail lets out behind and drives hard, the fans sweep back, the lure streams back */
+        walk: [1.2, function (u) {
+            var w = _dfSin(u, 2);
+            var P = { ewDfBody: { p: [0.02 * w, 0.02 * _dfSin(u, 2, 0.25), 0], rw: [0.16, 0.05 * w, -0.04 * w] },
+                ewDfHead: { rw: [-0.1, -0.08 * w, 0] }, ewDfLure: { rw: [-0.4, 0.08 * w, 0] }, ewDfJaw: { rw: [-0.12, 0, 0] } };
+            return _dfLive(P, u, { wave: 0.2, hz: 2, curl: 0.1, flut: 0.05, fhz: 4, fan: -0.7, pulse: 0.05, phz: 4 });
+        }],
+        /* the bite (1.0 s, the basic attack + any melee cast): it rears, the jaw drops, it darts in and snaps shut */
+        castMelee: [1.0, function (u) {
+            var rear = _dfB(u, 0.0, 0.3, 0.44), go = _dfB(u, 0.36, 0.5, 0.86), open = _dfS(u, 0.05, 0.34) * (1 - _dfS(u, 0.47, 0.52)), shut = _dfB(u, 0.47, 0.52, 0.9);
+            var P = { ewDfBody: { p: [0, 0.05 * rear, -0.16 * rear + 0.5 * go], rw: [-0.14 * rear + 0.2 * go, 0, 0] },
+                ewDfHead: { rw: [-0.32 * open + 0.12 * shut, 0, 0] }, ewDfJaw: { rw: [0.85 * open + _DF_SHUT * shut, 0, 0] },
+                ewDfLure: { rw: [-0.55 * rear - 0.3 * go, 0, 0] } };
+            return _dfLive(P, u, { wave: 0.08, hz: 2, curl: -0.07 * rear + 0.13 * go, lash: 0.5 * go, fan: rear - 0.6 * go, pulse: 0.05 });
+        }],
+        /* a plain cast (1.2 s): the lure swings out ahead and its jellyfish swells and beats fast, the fans spread wide */
+        cast: [1.2, function (u) {
+            var a = _dfS(u, 0.08, 0.36) * (1 - _dfS(u, 0.72, 0.96)), fl = _dfB(u, 0.36, 0.46, 0.7);
+            var P = { ewDfBody: { p: [0, 0.05 * a, -0.06 * a], rw: [-0.1 * a, 0, 0] }, ewDfHead: { rw: [0.14 * a, 0, 0] },
+                ewDfLure: { rw: [0.62 * a + 0.12 * fl, 0.12 * a * _dfSin(u, 4), 0] }, ewDfJaw: { rw: [0.22 * a, 0, 0] } };
+            return _dfLive(P, u, { wave: 0.06, hz: 2, fan: a, flut: 0.05 + 0.1 * a, fhz: 6, glow: 0.5 * a + 0.5 * fl, pulse: 0.07 + 0.1 * a, phz: 10 });
+        }],
+        /* a kind cast (1.3 s): the lure lifts high over it like a lamp, a slow soft beat, the tail curls in */
+        castSupport: [1.3, function (u) {
+            var a = _dfS(u, 0.08, 0.34) * (1 - _dfS(u, 0.74, 0.96));
+            var P = { ewDfBody: { p: [0, 0.06 * a, 0], rw: [-0.06 * a, 0, 0] }, ewDfHead: { rw: [-0.2 * a, 0, 0] },
+                ewDfLure: { rw: [-0.5 * a, 0, 0] }, ewDfJaw: { rw: [-0.15 * a, 0, 0] } };
+            return _dfLive(P, u, { wave: 0.05, hz: 2, curl: -0.05 * a, fan: 0.5 * a, glow: 0.7 * a, pulse: 0.1, phz: 4 });
+        }],
+        /* a wide cast (1.4 s): it whirls once on the spot, the tail flung out, the fans wide, the lure trailing a ring of light */
+        castAOE: [1.4, function (u) {
+            var a = _dfS(u, 0.05, 0.3) * (1 - _dfS(u, 0.8, 0.98)), sp = _dfS(u, 0.18, 0.82);
+            var P = { ewDfBody: { p: [0, 0.1 * a, 0], rw: [0.08 * a, sp * Math.PI * 2, 0.1 * a] },
+                ewDfLure: { rw: [0.2 * a, -0.5 * a, 0] }, ewDfJaw: { rw: [0.4 * a, 0, 0] } };
+            return _dfLive(P, u, { wave: 0.1, hz: 3, curl: 0.12 * a, lash: 0.3 * a, fan: a, glow: a, pulse: 0.12, phz: 12 });
+        }],
+        /* the big one (1.4 s): it rises, the tail lets right out under it, the jaw unhinges, the jellyfish flares; then all snaps home */
+        castUltimate: [1.4, function (u) {
+            var a = _dfS(u, 0.05, 0.4) * (1 - _dfS(u, 0.72, 0.8)), snap = _dfB(u, 0.72, 0.78, 0.98);
+            var P = { ewDfBody: { p: [0, 0.3 * a, -0.05 * a], rw: [-0.22 * a + 0.15 * snap, 0, 0.03 * a * _dfSin(u, 14)] },
+                ewDfHead: { rw: [-0.3 * a + 0.2 * snap, 0, 0] }, ewDfJaw: { rw: [1.15 * a + _DF_SHUT * snap, 0, 0] },
+                ewDfLure: { rw: [0.5 * a - 0.3 * snap, 0, 0] } };
+            return _dfLive(P, u, { wave: 0.05 + 0.08 * a, hz: 4, curl: 0.17 * a, fan: a, flut: 0.05 + 0.12 * a, fhz: 12, glow: a, pulse: 0.14, phz: 14, lash: 0.4 * snap });
+        }],
+        /* struck (0.6 s): it is knocked back, the head snaps up, the jaw flaps open, the fans fold, the tail clenches */
+        hit: [0.6, function (u) {
+            var k = _dfB(u, 0.0, 0.16, 0.9), k2 = _dfB(u, 0.0, 0.1, 0.5);
+            var P = { ewDfBody: { p: [0, 0.04 * k, -0.2 * k], rw: [-0.22 * k, 0.1 * k * _dfSin(u, 3), 0.12 * k2] },
+                ewDfHead: { rw: [-0.3 * k2, 0, 0.1 * k] }, ewDfJaw: { rw: [0.5 * k2 - 0.1 * k, 0, 0] }, ewDfLure: { rw: [-0.7 * k2 + 0.3 * k, 0, 0] } };
+            return _dfLive(P, u, { wave: 0.05, hz: 3, curl: -0.1 * k, fan: -k, pulse: 0.03, glow: -0.4 * k });
+        }],
+        /* death (1.9 s): the light goes out. It rolls onto its side and sinks to the floor, the jaw falls open, the lure flops
+           down ahead of it, the tail lets out limp, the jellyfish shrivels (held) */
+        death: [1.9, function (u) {
+            var s = _dfS(u, 0.08, 0.7), lie = _dfS(u, 0.3, 0.85), jolt = _dfB(u, 0.0, 0.08, 0.2), settle = _dfB(u, 0.82, 0.88, 1.0);
+            var P = { ewDfBody: { p: [0.25 * lie, -1.0 * lie + 0.05 * jolt + 0.03 * settle, 0], rw: [0.1 * s, 0.2 * s, -1.45 * lie] },
+                ewDfHead: { rw: [0.15 * s, 0, 0] }, ewDfJaw: { rw: [0.7 * s, 0, 0] }, ewDfLure: { rw: [1.1 * s, 0.3 * s, 0] } };
+            _dfLive(P, u, { wave: 0.05 * (1 - s), hz: 3, curl: 0.09 * s, fan: -0.8 * s, flut: 0.06 * (1 - s), pulse: 0.07 * (1 - s) });
+            var d = 1 - 0.6 * _dfS(u, 0.2, 0.9); P.ewDfJelly = { s: [d, d * 0.8, d] }; P.ewDfJellyArms = { s: [1, 1, 1] };
+            return P;
+        }],
+        /* LURE (1.4 s, the board's cap for a cast; the pull lands near 750 ms): the head goes down and the lure swings right out ahead; it dangles the
+           jellyfish and jiggles it, the light beating, the mouth slowly opening behind the light; as the victim is drawn in it
+           backs off, reeling, and the jaw comes up hungry */
+        dfLure: [1.4, function (u) {
+            var out = _dfS(u, 0.04, 0.26) * (1 - _dfS(u, 0.78, 0.97)), jig = _dfS(u, 0.2, 0.3) * (1 - _dfS(u, 0.5, 0.58)), reel = _dfS(u, 0.5, 0.74) * (1 - _dfS(u, 0.84, 1.0));
+            var P = { ewDfBody: { p: [0, -0.06 * out + 0.05 * reel, 0.08 * out - 0.26 * reel], rw: [0.12 * out - 0.2 * reel, 0, 0] },
+                ewDfHead: { rw: [0.22 * out - 0.3 * reel, 0, 0] },
+                ewDfLure: { rw: [0.95 * out - 0.35 * reel + 0.1 * jig * _dfSin(u, 9, 0.25), 0.28 * jig * _dfSin(u, 9), 0], s: 1 + 0.22 * out },
+                ewDfJaw: { rw: [0.25 * out + 0.6 * reel, 0, 0] } };
+            return _dfLive(P, u, { wave: 0.05, hz: 3, curl: -0.05 * out + 0.06 * reel, fan: 0.6 * out, flut: 0.04, glow: 0.4 * out + 0.6 * jig, pulse: 0.08 + 0.12 * jig, phz: 17 });
+        }],
+        /* ABYSS JAWS (1.4 s; the bite lands near 770 ms): the light was attached to something. The lure whips back out of the
+           way, it coils low, the jaw unhinges far too wide, it strikes up and forward, CLAMPS, shakes its catch side to side,
+           gulps, and hangs back in its place */
+        dfJaws: [1.4, function (u) {
+            var coil = _dfB(u, 0.0, 0.26, 0.44), gape = _dfS(u, 0.1, 0.4) * (1 - _dfS(u, 0.53, 0.57)), go = _dfS(u, 0.42, 0.55) * (1 - _dfS(u, 0.86, 1.0));
+            var bite = _dfS(u, 0.53, 0.57) * (1 - _dfS(u, 0.88, 1.0)), shake = _dfS(u, 0.57, 0.62) * (1 - _dfS(u, 0.8, 0.86)), gulp = _dfB(u, 0.8, 0.87, 0.95);
+            var sh = shake * _dfSin(u, 11);
+            var P = { ewDfBody: { p: [0.05 * sh, -0.12 * coil + 0.14 * go, -0.2 * coil + 0.55 * go], rw: [0.15 * coil - 0.25 * go, 0.16 * sh, 0.1 * sh] },
+                ewDfHead: { rw: [-0.6 * gape + 0.1 * bite, 0.3 * sh, 0.12 * sh] },
+                ewDfJaw: { rw: [1.25 * gape + _DF_SHUT * bite + 0.12 * gulp, 0, 0], s: [1, 1 + 0.15 * gulp, 1] },
+                ewDfLure: { rw: [-0.75 * _dfS(u, 0.05, 0.25) * (1 - _dfS(u, 0.85, 1.0)), 0.3 * sh, 0] } };
+            return _dfLive(P, u, { wave: 0.06, hz: 3, curl: -0.13 * coil + 0.16 * go, lash: 0.6 * _dfB(u, 0.42, 0.52, 0.7), sweep: 0.12 * sh, fan: coil - go + 0.8 * shake, flut: 0.05, pulse: 0.04, glow: -0.3 * gape });
+        }]
+    };
+    /* THE LURE GIVES LIGHT: the lure jellyfish's material shines by its own picture and beats. The board swaps a unit's
+       materials for its own look after the build (see _bbLidTick), so this is looked at from the unit loop: one compare a
+       frame, the copy remade only when the material was swapped. The light swells with the jellyfish (a cast) and goes out
+       with it (death). */
+    function _dfGlowTick(entry, now) {
+        var L = entry._ew_dfGlow;
+        if (L === undefined) {
+            L = entry._ew_dfGlow = { m: [], j: null };
+            try { entry.model.traverse(function (o) { if ((o.isMesh || o.isSkinnedMesh) && /^ewDfJellyMesh/.test(o.name || '')) L.m.push(o); }); L.j = entry.model.getObjectByName('ewDfJelly') || null; } catch (e) {}
+        }
+        var sw = L.j ? L.j.scale.x : 1, k = Math.max(0.05, Math.min(2.2, (sw - 0.35) * 1.5)) * (0.8 + 0.2 * Math.sin((now || 0) * 0.006));
+        for (var i = 0; i < L.m.length; i++) {
+            var m = L.m[i], mat = m.material;
+            if (!mat || Array.isArray(mat)) continue;
+            if (!mat._ew_dfGlow) {
+                mat = m.material = mat.clone(); mat._ew_dfGlow = true;
+                if (mat.emissive) { mat.emissive.setHex(0xff7dff); if (mat.map) mat.emissiveMap = mat.map; }
+                mat.needsUpdate = true;
+            }
+            if (mat.emissive) mat.emissiveIntensity = 0.75 * k;
+        }
+    }
+    function _dfBuild(root) {
+        if (!root.getObjectByName('ewDfBody') || !root.getObjectByName('ewDfJaw')) return null;
+        var R = { n: {} };
+        _DF_NODES.forEach(function (n) {
+            var o = root.getObjectByName(n);
+            if (o) R.n[n] = { p: o.position.clone(), q: o.quaternion.clone(), s: o.scale.clone() };
+        });
+        var clips = {};
+        Object.keys(_DF_POSES).forEach(function (slot) { var p = _DF_POSES[slot]; clips[slot] = _abClip(slot, p[0], p[1], R); });
+        clips.run = clips.walk; clips.attack = clips.castMelee;
+        clips.castMagic = clips.cast; clips.castRanged = clips.cast; clips.castHeal = clips.castSupport;
+        return clips;
+    }
+    /* 🕷 THE VOIDWEAVER (2026-11-28, thread "Remake the voidweaver with moving parts"; mondo: "the deep sea fish and voidweaver would
+       benefit from individually animated parts too ... new meshy models and pieces for them and custom animations for their
+       spells/abilities"). ONE file (Assets/characters/races/voidweaver/male/voidweaver_v2.glb, put together from five Meshy parts
+       by project files voidweaver/tools/assemble.py). No bones: every part is a node with its pivot where it turns:
+       ewVwBody (the head-chest's centre) > ewVwCeph, ewVwAbd (pivot = the waist; rw x > 0 lifts its rear, < 0 tucks it under)
+       > ewVwSpin, ewVwFangL / R (r x < 0 lifts the fang forward, > 0 stabs; r z spreads: + for L, - for R), ewVwPalpL / R >
+       ewVwPalpL2 / R2 (r x < 0 lifts), and EIGHT LEGS of three joints: ewVwL0..3 / ewVwR0..3 (front to back; the hip) > …b (the
+       knee) > …c (the ankle) > …t (the needle tip). Metres, front +Z, floor y 0, its left = +X.
+       THE LEGS REACH: a clip never turns a leg joint by hand. A pose says where the BODY is (p, r, s) and where each FOOT stands
+       in the world (`feet(k, F)`: k 0..3 = L0..3, 4..7 = R0..3; F = its rest spot; null = stays), and _vwLegs solves the three
+       joints so the foot is there (a two-bone reach + the last joint's slope `tar`): the feet stay planted while the body
+       breathes, rears, lunges, and a step is a foot lifted and set down. `qa` on a node = its turn outright (_abClip).
+       The spell rows name their clips with `animSlot` (vwBite, vwSnare, vwWeave, vwFold).
+       ThreeRenderer.vwPose(slot, dur, pose) adds or replaces a slot for every voidweaver built after it. */
+    var _VW_NODES = ['ewVwBody', 'ewVwCeph', 'ewVwAbd', 'ewVwFangL', 'ewVwFangR', 'ewVwPalpL', 'ewVwPalpR', 'ewVwPalpL2', 'ewVwPalpR2'];
+    var _VW_LEGS = ['ewVwL0', 'ewVwL1', 'ewVwL2', 'ewVwL3', 'ewVwR0', 'ewVwR1', 'ewVwR2', 'ewVwR3'];
+    _VW_LEGS.forEach(function (n) { _VW_NODES.push(n, n + 'b', n + 'c'); });
+    var _VW_TAR = -1.19;   // the last joint's slope at rest (radians from level, in the body's frame)
+    var _vwS = _vrS, _vwB = _vrBump, _vwSin = _abSin;
+    var _vwQb = new THREE.Quaternion(), _vwQi = new THREE.Quaternion(), _vwE = new THREE.Euler(), _vwV = new THREE.Vector3(), _vwQ = new THREE.Quaternion();
+    function _vwLerp(a, b, t) { return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]; }
+    /* o: p, r (the body's offset + turn, r as rw), s (its scale), feet(k, F) -> [x, y, z] in the world, tar(k) -> a slope or
+       [slope, m] (m 0 … 1 lays the last joint in line with the leg: a stiff straight leg), knee(k) -> -1 folds the knee the other way */
+    function _vwLegs(P, R, o) {
+        var B = R.n.ewVwBody, bp = o.p || [0, 0, 0], br = o.r || [0, 0, 0], bs = o.s == null ? 1 : o.s;
+        P.ewVwBody = { p: bp, rw: br, s: bs };
+        _vwE.set(br[0] || 0, br[1] || 0, br[2] || 0, 'XYZ'); _vwQb.setFromEuler(_vwE).multiply(B.q); _vwQi.copy(_vwQb).invert();
+        for (var k = 0; k < 8; k++) {
+            var nm = _VW_LEGS[k], H = R.n[nm]; if (!H) continue;
+            var F = R.foot[k], f = (o.feet && o.feet(k, F)) || F;
+            _vwV.set(f[0] - B.p.x - (bp[0] || 0), f[1] - B.p.y - (bp[1] || 0), f[2] - B.p.z - (bp[2] || 0)).applyQuaternion(_vwQi).multiplyScalar(1 / Math.max(0.02, bs));
+            var dx = _vwV.x - H.p.x, dy = _vwV.y - H.p.y, dz = _vwV.z - H.p.z, d = Math.sqrt(dx * dx + dz * dz), th = Math.atan2(-dz, dx);
+            var A = R.len[k][0], Bl = R.len[k][1], C = R.len[k][2];
+            var t = o.tar ? o.tar(k) : _VW_TAR, line = Math.atan2(dy, d);
+            if (t && t.length) t = t[0] * (1 - t[1]) + line * t[1]; else if (t == null) t = _VW_TAR;
+            var ax = d - C * Math.cos(t), ay = dy - C * Math.sin(t), L0 = Math.sqrt(ax * ax + ay * ay) || 1e-4;
+            var L = Math.max(Math.abs(A - Bl) + 1e-3, Math.min(A + Bl - 1e-3, L0)); ax *= L / L0; ay *= L / L0;
+            var kn = o.knee ? o.knee(k) : 1;
+            var a1 = Math.atan2(ay, ax) + kn * Math.acos(Math.max(-1, Math.min(1, (A * A + L * L - Bl * Bl) / (2 * A * L))));
+            var a2w = Math.atan2(ay - A * Math.sin(a1), ax - A * Math.cos(a1));
+            _vwE.set(0, th, a1, 'YZX'); _vwQ.setFromEuler(_vwE); P[nm] = { qa: [_vwQ.x, _vwQ.y, _vwQ.z, _vwQ.w] };
+            P[nm + 'b'] = { qa: [0, 0, Math.sin((a2w - a1) / 2), Math.cos((a2w - a1) / 2)] };
+            P[nm + 'c'] = { qa: [0, 0, Math.sin((t - a2w) / 2), Math.cos((t - a2w) / 2)] };
+        }
+        return P;
+    }
+    /* the small parts: fang (lift 0 … 1 raises both fangs to strike, stab 0 … 1 drives them down and in, spread 0 … 1 opens them),
+       palp (lift) + their own fiddling (`fid` 0 … 1 at `hz`), the abdomen (ab: lift (+) / tuck (-) radians, yaw, swell) */
+    function _vwLive(P, u, o) {
+        o = o || {};
+        var lift = o.lift || 0, stab = o.stab || 0, sp = o.spread || 0, fid = o.fid == null ? 1 : o.fid, hz = o.hz || 6;
+        var tw = 0.05 * fid * _vwSin(u, hz * 0.5, 0.1);
+        P.ewVwFangL = { r: [-0.95 * lift + 0.55 * stab, 0, 0.5 * sp + tw] };
+        P.ewVwFangR = { r: [-0.95 * lift + 0.55 * stab, 0, -0.5 * sp - tw] };
+        var pl = o.palp || 0, fl = 0.22 * fid * Math.max(0, _vwSin(u, hz)), fr = 0.22 * fid * Math.max(0, _vwSin(u, hz, 0.5));
+        P.ewVwPalpL = { r: [-0.7 * pl - fl, 0, 0] }; P.ewVwPalpL2 = { r: [0.4 * pl - 1.2 * fl, 0, 0] };
+        P.ewVwPalpR = { r: [-0.7 * pl - fr, 0, 0] }; P.ewVwPalpR2 = { r: [0.4 * pl - 1.2 * fr, 0, 0] };
+        var sw = o.swell || 0;
+        P.ewVwAbd = { rw: [o.ab || 0, o.abYaw || 0, 0], s: [1 + sw, 1 + sw, 1 + sw * 0.8] };
+        return P;
+    }
+    function _vwSide(k) { return k < 4 ? 1 : -1; }
+    var _VW_POSES = {
+        /* idle (4 s): it breathes on planted feet (every leg flexes), the abdomen swells, the feelers fiddle; one front leg reaches
+           out and feels the air, the other taps the floor twice */
+        idle: [4.0, function (u, R) {
+            var br = _vwSin(u, 2), feel = _vwB(u, 0.12, 0.22, 0.36), tap = _vwB(u, 0.58, 0.62, 0.66) + _vwB(u, 0.69, 0.73, 0.77);
+            var P = _vwLegs({}, R, { p: [0.008 * _vwSin(u, 1), 0.02 * br, 0.01 * _vwSin(u, 1, 0.3)], r: [0.02 * _vwSin(u, 1, 0.2), 0.03 * _vwSin(u, 1), 0],
+                feet: function (k, F) {
+                    if (k === 4) return [F[0] * (1 - 0.25 * feel), 0.34 * feel + 0.04 * feel * _vwSin(u, 9), F[2] + 0.2 * feel];
+                    if (k === 0) return [F[0], 0.13 * tap, F[2] + 0.04 * tap];
+                    return null;
+                } });
+            return _vwLive(P, u, { fid: 1, hz: 6, ab: 0.05 * br, abYaw: 0.04 * _vwSin(u, 1, 0.3), swell: 0.02 * _vwSin(u, 2, 0.25), spread: 0.12 * _vwB(u, 0.4, 0.45, 0.52) });
+        }],
+        /* walk (0.7 s loop): four feet step while four stand (L0 R1 L2 R3, then R0 L1 R2 L3), each foot lifted, carried forward and
+           set down; the body barely bobs, the abdomen swings behind */
+        walk: [0.7, function (u, R) {
+            var st = 0.36;
+            var P = _vwLegs({}, R, { p: [0, 0.012 * _vwSin(u, 2), 0], r: [0.015 * _vwSin(u, 2, 0.2), 0.035 * _vwSin(u, 1, 0.25), 0.025 * _vwSin(u, 1)],
+                feet: function (k, F) {
+                    var ph = (u + ((k === 0 || k === 5 || k === 2 || k === 7) ? 0 : 0.5)) % 1;
+                    if (ph < 0.4) { var t = ph / 0.4; return [F[0], 0.17 * Math.sin(Math.PI * t), F[2] + st * (_vwS(t, 0, 1) - 0.5)]; }
+                    return [F[0], 0, F[2] + st * (0.5 - (ph - 0.4) / 0.6)];
+                } });
+            return _vwLive(P, u, { fid: 0.5, hz: 4, ab: 0.05 * _vwSin(u, 2, 0.4), abYaw: -0.09 * _vwSin(u, 1, 0.3) });
+        }],
+        /* the bite (basic attack / melee cast, 1.0 s, lands at 0.48): it rears with the front legs high and the fangs wide, then
+           drops forward on the target and the fangs drive in */
+        castMelee: [1.0, function (u, R) {
+            var wind = _vwB(u, 0.0, 0.3, 0.42), hit = _vwS(u, 0.36, 0.5) * (1 - _vwS(u, 0.62, 0.95));
+            var P = _vwLegs({}, R, { p: [0, 0.12 * wind - 0.09 * hit, -0.12 * wind + 0.3 * hit], r: [-0.38 * wind + 0.3 * hit, 0, 0],
+                feet: function (k, F) {
+                    var i = k % 4;
+                    if (i === 0) return [F[0] * (1 - 0.35 * wind - 0.3 * hit), 0.9 * wind + 0.04 * hit, F[2] + 0.05 * wind + 0.32 * hit];
+                    if (i === 1) return [F[0], 0.3 * wind, F[2] + 0.12 * hit];
+                    return null;
+                } });
+            return _vwLive(P, u, { fid: 0, lift: wind, stab: hit, spread: wind, palp: wind, ab: 0.28 * wind - 0.15 * hit });
+        }],
+        /* a cast (1.3 s, lands at 0.55): it rears, and the two front pairs of legs knit the air while the abdomen works under it */
+        cast: [1.3, function (u, R) {
+            var a = _vwS(u, 0.0, 0.28) * (1 - _vwS(u, 0.7, 1.0));
+            var P = _vwLegs({}, R, { p: [0, 0.14 * a, -0.1 * a], r: [-0.45 * a, 0, 0],
+                feet: function (k, F) {
+                    var i = k % 4, sd = _vwSide(k); if (i > 1) return null;
+                    var w = _vwSin(u, 5, (sd > 0 ? 0 : 0.5) + i * 0.25), w2 = _vwSin(u, 5, (sd > 0 ? 0.25 : 0.75) + i * 0.25);
+                    return _vwLerp(F, [sd * (0.3 + 0.14 * i) + 0.06 * w2, 1.0 - 0.3 * i + 0.14 * w, 0.75 - 0.22 * i + 0.08 * w2], a);
+                } });
+            return _vwLive(P, u, { fid: a, hz: 10, spread: 0.4 * a, palp: 0.6 * a, ab: -0.3 * a, abYaw: 0.1 * a * _vwSin(u, 3), swell: 0.05 * a * _vwSin(u, 6) });
+        }],
+        /* the shot (a ranged cast, 1.2 s, fires at 0.5): it stands up on its four back legs with the front four thrown wide, swings
+           the abdomen under itself to point at the target, and the abdomen kicks as the thread leaves */
+        castRanged: [1.2, function (u, R) {
+            var a = _vwS(u, 0.0, 0.26) * (1 - _vwS(u, 0.72, 1.0)), fire = _vwB(u, 0.4, 0.5, 0.64);
+            var P = _vwLegs({}, R, { p: [0, 0.42 * a, -0.12 * a - 0.07 * fire], r: [-0.8 * a - 0.06 * fire, 0, 0],
+                feet: function (k, F) {
+                    var i = k % 4, sd = _vwSide(k);
+                    if (i > 1) return [F[0] * (1 - 0.15 * a), 0, F[2] + 0.1 * a];
+                    return _vwLerp(F, [sd * (0.8 + 0.12 * i), 1.45 - 0.35 * i, 0.5 - 0.25 * i], a);
+                } });
+            return _vwLive(P, u, { fid: 0, spread: 0.7 * a, lift: 0.4 * a, palp: a, ab: -1.75 * a + 0.12 * fire, swell: 0.14 * fire - 0.05 * _vwB(u, 0.3, 0.4, 0.5) });
+        }],
+        /* a support cast (1.2 s): it bows low, the front legs and the feelers come together in front of its face, the abdomen lifts and glows */
+        castSupport: [1.2, function (u, R) {
+            var a = _vwS(u, 0.05, 0.35) * (1 - _vwS(u, 0.7, 0.95));
+            var P = _vwLegs({}, R, { p: [0, -0.12 * a, 0.05 * a], r: [0.16 * a, 0, 0],
+                feet: function (k, F) { return k % 4 === 0 ? _vwLerp(F, [_vwSide(k) * 0.1, 0.42 + 0.04 * _vwSin(u, 6, k * 0.1), 1.0], a) : null; } });
+            return _vwLive(P, u, { fid: a, hz: 8, palp: 0.7 * a, ab: 0.4 * a, swell: 0.06 * a * (1 + _vwSin(u, 5)) });
+        }],
+        /* the great cast (1.8 s, lands at 0.6): it rises to the tips of all eight needles, shaking, the abdomen swells with what is
+           inside it, and it drops as the thing lets go */
+        castUltimate: [1.8, function (u, R) {
+            var a = _vwS(u, 0.0, 0.3) * (1 - _vwS(u, 0.62, 0.74)), sw = _vwS(u, 0.1, 0.58) * (1 - _vwS(u, 0.6, 0.7)), drop = _vwB(u, 0.62, 0.72, 0.95);
+            var P = _vwLegs({}, R, { p: [0.012 * a * _vwSin(u, 26), 0.42 * a - 0.14 * drop, 0.012 * a * _vwSin(u, 31, 0.2)], r: [0.1 * a - 0.1 * drop, 0, 0],
+                feet: function (k, F) { return [F[0] * (1 - 0.42 * a + 0.12 * drop), 0, F[2] * (1 - 0.42 * a + 0.12 * drop)]; },
+                tar: function () { return _VW_TAR - 0.3 * a; } });
+            return _vwLive(P, u, { fid: a, hz: 14, spread: a, lift: 0.5 * a, palp: a, ab: 0.55 * a - 0.2 * drop, swell: 0.4 * sw + 0.05 * sw * _vwSin(u, 12) });
+        }],
+        /* hit (0.6 s): it is knocked back and down on its legs, the front pair flies up, the abdomen whips */
+        hit: [0.6, function (u, R) {
+            var k1 = _vwB(u, 0.0, 0.14, 0.7), k2 = _vwB(u, 0.05, 0.25, 0.8);
+            var P = _vwLegs({}, R, { p: [0, -0.17 * k1, -0.16 * k1], r: [-0.22 * k1, 0, 0.1 * k1],
+                feet: function (k, F) { return k % 4 === 0 ? [F[0] * (1 + 0.1 * k1), 0.38 * k1, F[2] - 0.05 * k1] : null; } });
+            return _vwLive(P, u, { fid: 0, spread: 0.8 * k1, palp: k1, ab: 0.35 * k2, abYaw: 0.2 * k2 });
+        }],
+        /* death (2.4 s, held): the legs shoot out stiff, it goes over on its back, and the eight legs curl in over the belly, twitch, and stop */
+        death: [2.4, function (u, R) {
+            var stiff = _vwS(u, 0.0, 0.16), fl = _vwS(u, 0.14, 0.5), cu = _vwS(u, 0.5, 0.9), tw = (1 - _vwS(u, 0.82, 1.0)) * cu;
+            var bx = 0.22 * fl, by = 0.26 * Math.sin(Math.PI * fl) - 0.03 * fl;
+            var P = _vwLegs({}, R, { p: [bx, by + 0.06 * stiff * (1 - fl), 0], r: [0, 0.35 * fl, Math.PI * fl],
+                knee: function () { return fl < 0.5 ? 1 : -1; },
+                tar: function () { return cu > 0 ? [2.2 + 0 * cu, 1 - cu] : [_VW_TAR, stiff]; },
+                feet: function (k, F) {
+                    var out = [F[0] * 2.2 + bx, 0.5 + by + (F[1] - 0.5) * (1 - 2 * fl), F[2] * 2.2];   // far out, level with the body: a stiff straight leg
+                    var a = _vwLerp(F, out, stiff);
+                    var curl = [bx - F[0] * 0.16, 0.5 + by + 0.36 + 0.035 * tw * _vwSin(u, 11, k * 0.13), F[2] * 0.3];
+                    return _vwLerp(a, curl, cu);
+                } });
+            return _vwLive(P, u, { fid: 0, spread: 0.6 * stiff * (1 - cu) + 0.25, palp: stiff * (1 - cu) - 0.5 * cu, ab: -0.25 * cu });
+        }],
+        /* 🕷 THE SPELLS (data.js RACE_ABILITIES voidweaver, `animSlot` + `animStrikeMs` on each row) */
+        /* VENOM FANG (1.2 s, the fangs land at 0.42): it crouches, POUNCES a body length with the front four legs wrapping the
+           target, the fangs go in, and it pumps: the fangs work and the abdomen squeezes three times before it hops back */
+        vwBite: [1.2, function (u, R) {
+            var cr = _vwB(u, 0.0, 0.18, 0.3), air = _vwB(u, 0.24, 0.33, 0.42), on = _vwS(u, 0.26, 0.4) * (1 - _vwS(u, 0.78, 0.98));
+            var pump = on * _vwS(u, 0.42, 0.46) * Math.max(0, _vwSin((u - 0.44) / 0.34, 3));
+            var P = _vwLegs({}, R, { p: [0, -0.15 * cr + 0.16 * air - 0.1 * on, -0.12 * cr + 0.62 * on], r: [-0.12 * cr + 0.3 * on + 0.04 * pump, 0, 0],
+                feet: function (k, F) {
+                    var i = k % 4;
+                    if (i < 2) return [F[0] * (1 - (0.5 - 0.2 * i) * on), 0.3 * air + (i === 0 ? 0.22 : 0.08) * on, F[2] + (0.62 - 0.1 * i) * on];
+                    return [F[0], 0.14 * air, F[2] + 0.3 * on];
+                } });
+            return _vwLive(P, u, { fid: 0, lift: _vwS(u, 0.08, 0.3) * (1 - _vwS(u, 0.38, 0.43)), stab: _vwS(u, 0.38, 0.43) * (1 - _vwS(u, 0.8, 0.95)) * (0.75 + 0.25 * pump),
+                spread: _vwB(u, 0.08, 0.3, 0.43) + 0.2 * pump, palp: on, ab: 0.4 * on, swell: -0.1 * pump + 0.05 * on });
+        }],
+        /* WEB SNARE = the shot (castRanged), named so the row keeps it whatever its kind becomes */
+        /* DIMENSIONAL WEB (1.5 s, the web is laid at 0.6): reared up, it turns from side to side and all four front legs knit fast,
+           hand over hand, pulling thread off the spinnerets of an abdomen held high and wagging */
+        vwWeave: [1.5, function (u, R) {
+            var a = _vwS(u, 0.0, 0.22) * (1 - _vwS(u, 0.74, 1.0)), turn = 0.3 * a * _vwSin(u, 2);
+            var P = _vwLegs({}, R, { p: [0, 0.2 * a, -0.08 * a], r: [-0.5 * a, turn, 0],
+                feet: function (k, F) {
+                    var i = k % 4, sd = _vwSide(k); if (i > 1) return null;
+                    var ph = (sd > 0 ? 0 : 0.5) + i * 0.25, w = _vwSin(u, 9, ph), w2 = _vwSin(u, 9, ph + 0.25);
+                    return _vwLerp(F, [sd * (0.22 + 0.16 * i) + 0.1 * w2 + 0.5 * turn, 1.05 - 0.28 * i + 0.2 * w, 0.8 - 0.2 * i + 0.12 * w2], a);
+                } });
+            return _vwLive(P, u, { fid: a, hz: 14, spread: 0.3 * a, palp: 0.5 * a, ab: 0.75 * a, abYaw: 0.28 * a * _vwSin(u, 6), swell: 0.05 * a * _vwSin(u, 9) });
+        }],
+        /* DIMENSIONAL FOLD (1.0 s, the swap at 0.45): it folds: the legs snap in under it, the whole spider turns once and shrinks
+           to a dot, and unfolds again (the swap happens while it is a dot) */
+        vwFold: [1.0, function (u, R) {
+            var f = _vwS(u, 0.0, 0.4) * (1 - _vwS(u, 0.52, 0.85)), sn = _vwS(u, 0.0, 0.22) * (1 - _vwS(u, 0.7, 0.95));
+            var P = _vwLegs({}, R, { p: [0, -0.2 * f + 0.1 * _vwB(u, 0.5, 0.6, 0.8), 0], r: [0, _vwS(u, 0.05, 0.9) * Math.PI * 2, 0], s: 1 - 0.94 * f,
+                feet: function (k, F) { return [F[0] * (1 - 0.8 * sn), 0, F[2] * (1 - 0.8 * sn)]; },
+                tar: function () { return _VW_TAR - 0.3 * sn; } });
+            return _vwLive(P, u, { fid: 0, spread: sn, palp: -0.5 * sn, ab: -0.5 * sn });
+        }]
+    };
+    function _vwBuild(root) {
+        var body = root.getObjectByName('ewVwBody'); if (!body || !root.getObjectByName('ewVwL0t')) return null;
+        var R = { n: {}, foot: [], len: [] };
+        _VW_NODES.forEach(function (n) {
+            var o = root.getObjectByName(n);
+            if (o) R.n[n] = { p: o.position.clone(), q: o.quaternion.clone(), s: o.scale.clone() };
+        });
+        root.updateMatrixWorld(true);
+        var par = body.parent || root, v = new THREE.Vector3();
+        _VW_LEGS.forEach(function (n, k) {
+            var b = root.getObjectByName(n + 'b'), c = root.getObjectByName(n + 'c'), t = root.getObjectByName(n + 't');
+            R.len[k] = [b.position.x, c.position.x, t.position.x];
+            t.getWorldPosition(v); par.worldToLocal(v); R.foot[k] = [v.x, 0, v.z];
+        });
+        var clips = {};
+        Object.keys(_VW_POSES).forEach(function (slot) { var p = _VW_POSES[slot]; clips[slot] = _abClip(slot, p[0], p[1], R); });
+        clips.run = clips.walk; clips.attack = clips.castMelee; clips.vwSnare = clips.castRanged;
+        clips.castMagic = clips.cast; clips.castHeal = clips.castSupport; clips.castAOE = clips.cast;
         return clips;
     }
     /* 🥜 THE NUTCRACKER'S JAW (same day): the Meshy rig plays the library like any unit; its jaw (a mesh skinned to the added bone
@@ -22148,8 +22657,14 @@ const ThreeRenderer = (function () {
         monsterTruck: function (root) { return _mtBuild(root); },
         /* 🧠 THE FLOATING BRAIN (above, _bbBuild): the brain's hover and throb, the eye, the lids; the tendrils ride THE SWAY */
         brainBody: function (root) { return _bbBuild(root); },
+        /* 🪼 THE JELLYFISH, A REAL ONE (above, _jfBuild): the bell's pulse and swim; the arms and tentacles ride THE SWAY */
+        jellyBody: function (root) { return _jfBuild(root); },
         /* ⛄ THE SNOWMAN (above, _snBuild): three balls, two sticks, a carrot, coal, a hat and a scarf, each its own part */
-        snowman: function (root) { return _snBuild(root); }
+        snowman: function (root) { return _snBuild(root); },
+        /* 🐟 THE DEEP SEA FISH IN PIECES (above, _dfBuild): the jaw, the lure and its jellyfish, the fans, the eel tail */
+        deepFish: function (root) { return _dfBuild(root); },
+        /* 🕷 THE VOIDWEAVER (above, _vwBuild): head-chest, abdomen, fangs, feelers and eight legs of three joints that reach for the floor */
+        voidweaver: function (root) { return _vwBuild(root); }
     };
     _PROC_RIGS.unicornWings.deps = [UNI_WING_URL, UNI_HORN_URL];
     /* ♟ THE CHESS PIECE: one hinge, the same moves, for each of the six looks (sprites.js CHESS_PIECE_3D) */
@@ -24882,6 +25397,7 @@ const ThreeRenderer = (function () {
             if (_hlOn) _hlUnitTick(entry, uid, now);   // 🎭 THE HOLLOW: the masks at home, the mask a Masked unit wears
             if (entry.modelDef && entry.modelDef.procRig === 'abomination') _abLimbTick(entry, uid, dt);
             if (entry._ew_oriRace !== false) _oriWatch(entry, uid);   // 🕊 THE ORIGAMI IN A FIGHT: a held shape met from the state alone
+            if (entry.modelDef && entry.modelDef.procRig === 'deepFish') _dfGlowTick(entry, now);   // 🐟 THE DEEP SEA FISH: the lure jellyfish gives light
             if (entry.modelDef && entry.modelDef.procRig === 'brainBody') _bbLidTick(entry);   // 🧠 THE FLOATING BRAIN: the lids draw over the ball
             if (entry.modelDef && entry.modelDef.jawBone) _jawTick(entry, uid, now);   // 🥜 THE NUTCRACKER'S JAW: clacks after the clip   // 🫀 THE ABOMINATION: the limbs it has, the cage away
             if (entry.modelDef && entry.modelDef.breakable) _bkTick(entry, uid, now);   // 🦴🪨 THE BREAKABLE BODIES: the pieces after the clip
@@ -116010,9 +116526,13 @@ const ThreeRenderer = (function () {
         /* 🛻 THE MONSTER TRUCK: a slot's motion for every truck built after this call (dur s, pose(u) -> { y rx rz hood spin lean });
            an existing slot is replaced. Models already built keep their clips. */
         mtPose: function (slot, dur, pose) { if (slot && typeof pose === 'function') _MT_POSES[slot] = [+dur || 1, pose]; return true; },
+        jfPose: function (slot, dur, pose) { if (slot && typeof pose === 'function') _JF_POSES[slot] = [+dur || 1, pose]; return true; },   // 🪼 THE JELLYFISH: a spell's own clip
         bbPose: function (slot, dur, pose) { if (slot && typeof pose === 'function') _BB_POSES[slot] = [+dur || 1, pose]; return true; },   // 🧠 THE FLOATING BRAIN: a spell's own clip
         /* ⛄ THE SNOWMAN: the same for its parts (pose(u) -> { <node>: { p, rw, r, s } }, three-renderer.js THE SNOWMAN) */
         snPose: function (slot, dur, pose) { if (slot && typeof pose === 'function') _SN_POSES[slot] = [+dur || 1, pose]; return true; },
+        /* 🐟 THE DEEP SEA FISH: the same for its joints (three-renderer.js THE DEEP SEA FISH IN PIECES) */
+        dfPose: function (slot, dur, pose) { if (slot && typeof pose === 'function') _DF_POSES[slot] = [+dur || 1, pose]; return true; },
+        vwPose: function (slot, dur, pose) { if (slot && typeof pose === 'function') _VW_POSES[slot] = [+dur || 1, pose]; return true; },   // 🕷 THE VOIDWEAVER: a spell's own clip
         /* 🥜 THE NUTCRACKER'S JAW: hold unit uid's jaw open (0 … 1) for ms, over whatever its clip does */
         /* 🕊 THE ORIGAMI IN A FIGHT: fold unit uid into a shape, its blow, the fortune's flap, Seven Folds on a victim (see the block) */
         oriAct: function (uid, what, o) { try { return _oriAct(uid, what, o); } catch (e) { console.warn('[origami] act failed', e); return false; } },

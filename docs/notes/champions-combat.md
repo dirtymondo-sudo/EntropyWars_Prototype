@@ -7081,3 +7081,113 @@ animations like how the centaurs do it".
   starfish top) and a tail piece. `bake-mermaid.py` (rewritten) makes the bust fuller, cuts the legs below the skirt, hangs the
   tail under it on the chain and lifts her so the fluke stands on the floor -> `mermaid_tail_v2.glb`. v1 stays on R2.
 - Any other tailed body (a siren, a naga) can use it: name the chain `ewtail_0..N` under the Hips; nothing else to wire.
+
+## THE DEEP SEA FISH IN PIECES (2026-11-28, thread "Remake the deep sea fish with moving parts")
+mondo 11-28: "i think the deep sea fish and voidweaver would benefit from individually animated parts too, can you make new meshy
+models and pieces for them and custom animations for their spells/abilities". Three looks were shown (project files
+`deep-sea-fish/concepts/sheet_heroes.jpg`); he picked C: an eel body, a gulper jaw, a jellyfish on the lure. The old model had no lure.
+- THE MODEL: Meshy concepts -> image-to-3D of five parts (the head WITHOUT its lower jaw, the lower jaw, the lure jellyfish, the
+  eel tail drawn straight, ONE side fan), put together by project files `deep-sea-fish/tools/assemble.py` (bpy; rerun:
+  `python3 -I assemble.py <models dir> <out.glb>`) into ONE file, `Assets/characters/races/deepseafish/male/deep_sea_fish_v1.glb`
+  (+ `.opt.glb`, in ASSET_MANIFEST; 52,000 triangles, colour pictures only). The old `Meshy_AI_alien_fish_Running.glb` stays on R2.
+  ONE skeleton, 38 joints, every joint's rest turn identity (x = nod, y = yaw, z = roll on any joint): `ewDfBody` > `ewDfHead` >
+  `ewDfJaw` (x > 0 opens; the rest is open 0.23) and `ewDfLure` > `ewsway_c0_0..5` (the stalk) > `ewDfJelly` > `ewDfJellyArms`;
+  `ewDfJaw` > `ewsway_c1_*`, `ewsway_c2_*` (two whip barbels); `ewDfBody` > `ewDfFinL` / `ewDfFinR` and `ewDfTail0..9` (the straight
+  Meshy tail bent along a curve in the script and skinned down the chain; the fluke rides Tail9). The stalk and the barbels are
+  tubes made in the script. A change of the file = a NEW name (v2): R2 files are cached for good.
+- THE RIG: three-renderer.js "THE DEEP SEA FISH IN PIECES", procRig `deepFish` (`_dfBuild`, `_DF_POSES`, clips made by the
+  Abomination's `_abClip`; `_dfLive` = what always lives: the tail's swimming wave, the fans' flutter, the jellyfish's beat, the
+  gulping jaw). idle (6 s), walk (the swim: tail let out and driving, fans swept back, lure streaming), castMelee (the bite: rear,
+  dart, snap), cast (the lure swings out, the jellyfish swells), castSupport (the lure lifted like a lamp), castAOE (one whirl),
+  castUltimate (it rises, the jaw unhinges), hit, death (it rolls onto its side on the floor, jaw open, lure flopped, the
+  jellyfish shrivels; held). THE SWAY swings the stalk and the barbels behind every move (def `sway`: stiffness 3.2, gravity 0.12,
+  wave 0.08). `_dfGlowTick` (the unit loop): the jellyfish's material shines by its own picture and beats; brighter as it swells,
+  out as it shrivels. `ThreeRenderer.dfPose(slot, dur, pose)` adds or replaces a slot.
+- THE SPELLS (data.js `animSlot` + `animStrikeMs` on its two rows; a cast clip is cut at 1.4 s on the board, `_maybeStartModelAnim`,
+  so both are 1.4 s): Lure = `dfLure` (750 ms: the head goes down, the lure swings right out ahead and grows, it jiggles the
+  jellyfish, then backs off reeling with the jaw coming up), Abyss Jaws = `dfJaws` (770 ms: the lure whips back, it coils low, the
+  jaw opens 72 degrees with the head thrown up, it strikes forward, clamps, shakes its catch, gulps). The passive Abyss Eyes has no move.
+- THE EFFECTS (three-vfx-effects.js `_afLure3D`, `_afJaws3D`): a caster that has the bone `ewDfJelly` / `ewDfJaw` IS the
+  anglerfish. Lure: no stand-in fish and no built stalk, the glow and the light's line ride its own jellyfish. Abyss Jaws: no
+  second anglerfish under the victim, only the great teeth. Any other caster of those rows keeps the stand-ins.
+- THE SPRITE: `Assets/characters/races/deepseafish/male/deep_sea_fish_px.png` (Sprite AI restyle of a render, hue set back to
+  teal); mondo's 10-04 `deepseacreature.png` stays on R2.
+- ONLINE (RULE #2): looks only. The clips ride the synced cast and the effects ride the spell intents; nothing new to relay.
+- THE PROBE: `TAG=a ZOOM=6 ACTS=idle,slot:dfLure,slot:dfJaws,sigLure,sigAbyssJaws,death node playtest_fish.js` (`slot:<clip>` plays
+  a clip straight on the live fish; a real cast starts seconds late on the cloud's software GPU: `MARKS=2500,3200,3900`;
+  `GPU=webgpu` with `EW_PROBE_HEADFUL=1 EW_PROBE_GL=webgpu xvfb-run -a`). Its vision is 2: the probe stands the foe 2 squares off.
+- NOT DONE: no new sound; the eyes do not move (they are part of the head); the finisher (The Lure, the Bloom's staging) is as it was;
+  rules and numbers untouched. Meshy: 16 pictures + 5 models. Sources, scripts, concepts: project files `deep-sea-fish/`.
+## THE OCTOPUS GIRL (2026-11-28, mondo: "the octopus girl with her tentacles separately moving")
+- A NEW race, `'octopus girl'` (female only), from mondo's own Meshy model (R2 `dirtymondo` inbox/Meshy_AI_Octopus_girl_20261128_texture_remesh_tri.glb).
+  Her tentacles are her HAIR (she has legs). Meshy rigged her (1.7 m); `bake-writhe.py --hair --locks 1 --cols 16 --min 0.06 --smooth 24` hangs one
+  spring chain off her Head down each of her 15 hanging locks and moves the hair onto them (models-assets.md "THE WRITHING TENTACLES"). THE SWAY swings every lock after the
+  library clip and its wave (sprites.js `sway.wave`) makes them writhe on their own, a phase a lock.
+- Kit (data.js RACE_ABILITIES 'octopus girl', family `octopusgirl`, FIRST PASS, names and numbers his): a grappler that casts. Basic attack
+  reaches 2 (her hair). Hair Lash (T1, WEAK physical within 2 + Slow), Reel In (T2 pull 3 + Root), Ink Cloud (T3 zone Blind 2 rounds),
+  Eight-Armed Embrace (T4 HEAVY physical drain within 2 + Stun, bonus vs Rooted). Specialist, deep_water (never drowns), water resist /
+  lightning weak. Finisher "Hair Day" borrows the Kraken's built set piece (`releaseTheKraken`).
+- No new battle.js rule and no new VFX yet: the spells use the shared kinds. OPEN for mondo: names, numbers, her own VFX, a home zone, Balance Lab.
+- THE KRAKEN (same day): the same tool, `--arms --mirror 1 --smooth 4 --parent Hips --free LeftArm,RightArm`, ten chains, one down each
+  arm, all on its Hips: the biped's legs and arms no longer bend its arms (models-assets.md). Its kit and stats are unchanged.
+- Probes: `playtest_writhe_stage.js` (the party builder's stage, close up, no match) and `playtest_writhe.js` (in a battle).
+
+## THE VOIDWEAVER, IN MOVING PARTS (2026-11-28, thread "Remake the voidweaver with moving parts")
+mondo 11-28: "the deep sea fish and voidweaver would benefit from individually animated parts too, can you make new meshy models and
+pieces for them and custom animations for their spells/abilities". He picked look A of three (the black widow with deep space in its abdomen).
+- THE MODEL: Meshy concepts (a hero picture, then five part pictures made from it) -> image-to-3D of five parts (head-chest, abdomen,
+  ONE leg laid out straight, ONE fang, ONE feeler), put together by project files `voidweaver/tools/assemble.py` (bpy) into ONE file,
+  `Assets/characters/races/voidweaver/male/voidweaver_v2.glb` (+ `.opt.glb`, in ASSET_MANIFEST by hand: the manifest tool's `--merge
+  --prefix` would drop the folder's old rows). 42 nodes, no bones: `ewVwBody` (the head-chest's centre) > `ewVwCeph`, `ewVwAbd` (pivot =
+  the waist) > `ewVwSpin`, `ewVwFangL/R`, `ewVwPalpL/R` > `ewVwPalpL2/R2`, and eight legs `ewVwL0..3` / `ewVwR0..3` (front to back) >
+  `…b` > `…c` > `…t` (the needle tip, an empty). The leg is the one Meshy leg cut in three at its seams, eight times (four lengths);
+  the right fang and feeler are mirrored. The file's rest is a standing pose (the game measures the unit's height from it).
+  Rerun: `python3 -I assemble.py <models dir> <out.glb> [--shots <prefix>]`, optimize, `--put` under a NEW file name, the manifest rows.
+- THE RIG: three-renderer.js "THE VOIDWEAVER", procRig `voidweaver` (`_vwBuild`, `_VW_POSES`, clips by `_abClip`, which now takes `qa` =
+  a joint's turn outright). THE LEGS REACH: a pose never turns a leg joint. It says where the body is and where each foot stands in the
+  world (`feet(k, F)`), and `_vwLegs` solves hip, knee and ankle (a two-bone reach + the last joint's slope `tar`; `knee: -1` folds the
+  other way). So the feet stay planted while the body breathes, rears and lunges. `_vwLive` = fangs (lift, stab, spread), feelers,
+  the abdomen (lift / tuck, yaw, swell). Clips: idle (breathes on planted feet, one front leg feels the air, the other taps twice),
+  walk (four feet step while four stand), castMelee (rears, front legs and fangs high, drops on the target), cast (reared, two front
+  pairs knit the air), castRanged (stands up on the back four legs, swings the abdomen under itself and shoots), castSupport (bows,
+  front legs and feelers together), castUltimate (up on all eight needle tips, shaking, the abdomen swells, it drops), hit, death
+  (legs shoot out stiff, over on its back, the legs curl in over the belly, twitch, stop; held).
+  `ThreeRenderer.vwPose(slot, dur, pose)` adds or replaces a slot.
+- THE SPELLS (data.js RACE_ABILITIES voidweaver, `animSlot` + `animStrikeMs`): Venom Fang `vwBite` (crouch, pounce a body length,
+  the front four legs wrap the target, fangs in, three pumps), Web Snare `vwSnare` (= castRanged), Dimensional Web `vwWeave` (reared,
+  turning side to side, four front legs knit fast, the abdomen high and wagging), Dimensional Fold `vwFold` (legs snap in, one turn,
+  it shrinks to a dot at the swap, unfolds). Fractal Needle / Poison Swamp / Black Hole are shared rows: they play the kind's clip
+  (the shot, the cast, the great cast). No new VFX or sound; no rule or number changed.
+- Sprite: `voidweaver_px.png` (Sprite AI restyle of a render). The old one-piece spider's files stay on R2, no longer loaded.
+- Tools in project files `voidweaver/`: gen.py (concepts), model.py (Meshy), tools/assemble.py, tools/clips-view.js + strip.py (every
+  clip as a strip of 8 frames, the game's own pose code on the model), tools/shot.py (the sprite's render).
+- Meshy: 8 pictures (72) + 5 models (150) = 222 credits.
+## THE JELLYFISH, A REAL ONE (2026-11-28, thread "Redesign the jellyfish race")
+mondo: "I want a jellyfish redesign, not really feeling its current one. It's supposed to be an advanced underwater ancient alien species,
+kinda scary, but like a real jellyfish. While the female one should be hot." Round 1 of concepts (armour plates, a brain in the bell, a
+humanoid torso) he threw out whole: "a real jellyfish is already alien looking enough. Just need to stylize it a little bit". So the MALE
+is a real species with a light glow, no body, no face, no metal. His picks: the lion's mane, the deep sea crown, the sea nettle in
+blue / purple ("nettle 2"), and the blue jelly woman ("female 1").
+- THE FILES (R2 `Assets/characters/races/jellyfish/`): `male/jellyfish_mane_v2.glb`, `male/jellyfish_crown_v2.glb`,
+  `male/jellyfish_nettle_v2.glb`, `female/Meshy_AI_jellyfish_f_v2_Running.glb`. The 11-24 bipeds stay on R2.
+- THE MALE'S PIECES (repo tool `bake-jelly.py <preset> <bell.glb> <arm.glb> <out.glb>`, numpy + pillow): two Meshy parts a species (the
+  bell alone, ONE oral arm alone; Meshy cannot model hair-thin tentacles or a bell with everything hanging). Nodes: `ewJfBody` (at the
+  bell's middle) > `ewJfBell` (the mesh; the crown's ring of blue lights is part of it), `ewJfCore` (the oral arms' ring: the one arm
+  drawn 4 to 6 times), `ewJfRim` (the thin tentacles' ring: 20 to 28 tapered tubes made in the tool). Every arm and tentacle is its own
+  chain of THE SWAY's bones (`ewsway_c<k>_<j>`). A species = a row of the tool's `PRESETS` (sizes, counts, the tentacles' colour).
+- THE MOVES: three-renderer.js "THE JELLYFISH, A REAL ONE" (procRig `jellyBody`, built like the Floating Brain: `_JF_POSES`, a pose = a
+  function of u giving y z x rx ry rz s + `p` the PULSE (1 = the bell squeezed, below 0 = flared) + `sp` (the tentacle ring spreads)).
+  The pulse scales the bell (narrower and taller), the rim ring closes with it, so the tentacles are drawn in and let go. idle (8 s,
+  four slow strokes, each lifts it), walk (it tips over and swims), cast, castMelee (the sting: rears back, whips through), castAOE,
+  castSupport, castUltimate, hit, death. Its spells have their own (`animSlot` on the rows): `jfSting`, `jfBloom`, `jfDrift` (Ocean
+  Current: the bell folds to a spindle), `jfNet` (the skirt opens wide, slams shut), `jfRebirth` (Immortal Cycle: it shrinks to a polyp
+  and grows back). `ThreeRenderer.jfPose(slot, dur, pose)` adds one. The female has no such slots: the chain falls to her library clips.
+- THE SWAY on the def: stiffness 1.4, gravity 0.8, drag 0.3, maxRoot 40, maxBend 12, wave 0.06. maxBend 30 + wave 0.12 curled every
+  tentacle into a spring: keep the bend small, they are 7 to 8 joints long.
+- THE FEMALE: one Meshy body (image-to-3d a-pose + Meshy rig), her hair of oral arms on 12 chains by `bake-writhe.py --hair --cols 12
+  --joints 6 --rg -0.13 --root -0.1` (new flag `--rg`: hair found by red over green, lilac frills on aqua skin; `--root` under the
+  Head joint because her bell covers the scalp). Sway as the Octopus Girl's.
+- ONLINE (RULE #2): looks only; each screen plays the clip of the synced cast. Nothing new to relay.
+- THE PROBE: `TAG=a SHOTS=2 GAP=1200 ZOOM=7 FLAGS=__pgTilt=72,__pgDy=-0.6 ACTS=idle,raceJellyBloom node playtest_jelly.js` (MODEL=<url>
+  swaps the male's file, `FLAGS=__pgGender=female` plays her, `TRACE=5000` = no pictures, the bell / body sampled every 50 ms).
+- Sources: project files `jellyfish-redesign/` (gen.py = the concepts and the part pictures, model.py, models/).

@@ -46208,7 +46208,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* THE ANGLERFISH (2026-10-27, mondo's Anglerfish_Lure_Lit.glb): the anglerfish hangs in the water before the caster, nose to the
            victim, and the light is ITS lure (the built stalk stands in while the file streams). Its lure sits 0.43 of its length ahead of
            its centre and 0.2 up (measured off the file). */
-        var AL = ts * 1.0, A = _oceanPiece('Anglerfish_Lure_Lit.glb', AL, { nose: -90, lift: 0.35 }), aYaw = Math.atan2(dir.x, dir.z);
+        /* 🐟 THE DEEP SEA FISH IN PIECES (2026-11-28): a caster with its own lure (the bone ewDfJelly: the remade Deep Sea Fish) IS the
+           anglerfish. No stand-in fish and no built stalk: the glow and the light's line ride its own jellyfish, wherever its clip
+           (dfLure) swings it. Any other caster of the row keeps the stand-in. */
+        var _ownUid = _sigUnitIdAt(from.x, from.y), _own = null;
+        try { if (_ownUid != null && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.unitBoneWorld) _own = ThreeRenderer.unitBoneWorld(_ownUid, 'ewDfJelly', true); } catch (_oe) { _own = null; }
+        var AL = ts * 1.0, A = _own ? null : _oceanPiece('Anglerfish_Lure_Lit.glb', AL, { nose: -90, lift: 0.35 }), aYaw = Math.atan2(dir.x, dir.z);
+        if (_own) { stalk.visible = false; bulb.scale.multiplyScalar(0.8); }
         if (A) { A.position.set(dir.x * ts * 0.15, ts * 1.25, dir.z * ts * 0.15); A.rotation.y = aYaw; F.g.add(A); stalk.visible = false; bulb.scale.multiplyScalar(0.7); }
         return _sigRunOwned(F.g, total, function (el) {
             var k = _afEnv(el, 0, 200, 1300, total), sway = Math.sin(el * 0.006) * ts * 0.06;
@@ -46218,6 +46224,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 A.position.set(dir.x * (ts * 0.15 - pull), ts * 1.25 + bob, dir.z * (ts * 0.15 - pull)); A.rotation.z = Math.sin(el * 0.005) * 0.06;
                 _oceanFade(A, k);
                 bulb.position.set(A.position.x + dir.x * AL * 0.43, A.position.y + AL * 0.2, A.position.z + dir.z * AL * 0.43);
+            }
+            if (_own) {
+                var _jw = null; try { _jw = ThreeRenderer.unitBoneWorld(_ownUid, 'ewDfJelly', true); } catch (_je) {}
+                if (_jw) _own = _jw;
+                bulb.position.set(_own.x - F.g.position.x, _own.y - F.g.position.y - ts * 0.06, _own.z - F.g.position.z);
             }
             core.position.copy(bulb.position);
             bulb.material.opacity = 0.9 * k * (0.75 + 0.25 * Math.sin(el * 0.012)); core.material.opacity = 0.95 * k;
@@ -46248,7 +46259,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var shut = 330, total = 1300;
         /* THE ANGLERFISH (2026-10-27, mondo's Anglerfish_Jaws_Open.glb): the anglerfish itself comes up out of the black water under the
            victim, mouth open, as the jaws rise, and sinks back once they shut */
-        var A = _oceanPiece('Anglerfish_Jaws_Open.glb', ts * 1.5, { nose: -90, lift: 0.35 });
+        /* 🐟 THE DEEP SEA FISH IN PIECES (2026-11-28): a caster with its own jaw (the bone ewDfJaw) bites with it (its clip dfJaws);
+           no second anglerfish comes up under the victim, only the great teeth out of the black water */
+        var _jcp = null, _jown = null;
+        try { _jcp = _sigCasterPos(tx, ty); var _ju = _jcp ? _sigUnitIdAt(_jcp.x, _jcp.y) : null; if (_ju != null && ThreeRenderer.unitBoneWorld) _jown = ThreeRenderer.unitBoneWorld(_ju, 'ewDfJaw', true); } catch (_jwe) { _jown = null; }
+        var A = _jown ? null : _oceanPiece('Anglerfish_Jaws_Open.glb', ts * 1.5, { nose: -90, lift: 0.35 });
         if (A) { A.rotation.x = -1.1; A.rotation.y = Math.random() * Math.PI * 2; F.g.add(A); }
         return _sigRunOwned(F.g, total, function (el) {
             var k = _afEnv(el, 0, 80, 900, total); toothM.opacity = gumM.opacity = k;

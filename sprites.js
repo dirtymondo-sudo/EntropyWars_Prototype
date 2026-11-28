@@ -161,6 +161,7 @@ const EW_ASSET_MOVES = [
   ['Assets/Sprites/Races/monster_truck/', 'Assets/characters/races/monster_truck/'],   // 2026-11-27 THE NEW CHARACTERS
   ['Assets/Sprites/Races/nutcracker/', 'Assets/characters/races/nutcracker/'],
   ['Assets/Sprites/Races/snowman/', 'Assets/characters/races/snowman/'],   // 2026-11-27 THE SNOWMAN   // 2026-11-27 THE NEW CHARACTERS
+  ['Assets/Sprites/Races/octopus_girl/', 'Assets/characters/races/octopus_girl/'],   // 2026-11-28 THE OCTOPUS GIRL
   ['Assets/Sprites/Races/leopard_girl/', 'Assets/characters/races/leopard_girl/'],   // 2026-11-27 THE NEW CHARACTERS
   ['Assets/Sprites/Races/draconian/', 'Assets/characters/races/draconian/'],   // 2026-11-27 THE NEW CHARACTERS
   ['Assets/Sprites/Races/flower_girl/', 'Assets/characters/races/flower_girl/'],   // 2026-11-27 THE NEW CHARACTERS
@@ -631,6 +632,7 @@ const RACE_SPRITE_GENDERS = {
   'cheerleader': 'female',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
   'monster truck': 'male',   // 2026-11-27 THE NEW CHARACTERS (one truck; the model def sits under male)
   'snowman': 'male',   // 2026-11-27 THE SNOWMAN (one snowman; the model def sits under male)
+  'octopus girl': 'female',   // 2026-11-28 THE OCTOPUS GIRL
   'nutcracker': 'male',   // 2026-11-27 THE NEW CHARACTERS
   'leopard girl': 'female',   // 2026-11-27 THE NEW CHARACTERS
   'draconian': 'male',   // 2026-11-27 THE NEW CHARACTERS
@@ -781,7 +783,7 @@ const _CHARACTER_SPRITES = {
   'clown': `${_CS}/clown.png`,
   'crystal guardian': `${_CS}/crystalguardian.png`,
   'cult leader': `${_CS}/cultleader.png`,
-  'deep sea fish': `${_CS}/deepseacreature.png`,
+  'deep sea fish': `${_S}/Races/deepseafish/male/deep_sea_fish_px.png`,   // 2026-11-28 THE DEEP SEA FISH IN PIECES: 128x128 pixel sprite (Sprite AI restyle of a render of the new model; his old deepseacreature.png stays on R2)
   'firefighter': `${_CS}/firefighter.png`,
   'goblin': `${_CS}/gremlin.png`,
   'ice queen': `${_CS}/icequeen.png`,
@@ -829,6 +831,7 @@ const _CHARACTER_SPRITES = {
   'cheerleader': `${_S}/Races/cheerleader/female/cheerleader_px.png`,   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — 128x128 pixel sprite (Sprite AI restyle of her Meshy concept)
   'monster truck': `${_S}/Races/monster_truck/male/monster_truck_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
   'snowman': `${_S}/Races/snowman/male/snowman_px.png`,   // 2026-11-27 THE SNOWMAN — 128x128 pixel sprite (Sprite AI restyle of a render of its model)
+  'octopus girl': `${_S}/Races/octopus_girl/female/octopus_girl_px.png`,   // 2026-11-28 THE OCTOPUS GIRL — 128x128 pixel sprite (Sprite AI restyle of a render of her model)
   'nutcracker': `${_S}/Races/nutcracker/male/nutcracker_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
   'leopard girl': `${_S}/Races/leopard_girl/female/leopard_girl_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
   'draconian': `${_S}/Races/draconian/male/draconian_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
@@ -2703,17 +2706,21 @@ const RACE_MODELS_3D = {
      library clip plays as before; 12 tentacles hang from the waist, each on its own chain of THE SWAY's spring bones, so they swing
      behind every walk, cast and hit (bake-tentacles.py; sources project files jellyfish-remake/). The old rig stays on R2. */
   'jellyfish': {
-    male: _mkUAL('jellyfish', 'a_jellyfish_king', {
-      model: 'https://cdn.entropywars.net/Assets/characters/races/jellyfish/male/Meshy_AI_jellyfish_m_v4_Running.glb',   // v4 (mondo 11-24): no hanging tentacles under the bell
-      heightRatio: 0.92, basicAttackKind: 'magic',
-    }),
+    /* 🪼 THE JELLYFISH, A REAL ONE (2026-11-28, mondo: "not really feeling its current one ... a real jellyfish is already alien looking
+       enough. Just need to stylize it a little bit"; his picks: the lion's mane and the deep sea crown): no body, no rig of bones to walk
+       on: a Meshy bell + a Meshy oral arm hung six times + thin tentacles made in code, every arm and tentacle on THE SWAY's spring
+       chains (bake-jelly.py, preset `mane`). three-renderer.js THE JELLYFISH, A REAL ONE (procRig jellyBody) swims it: the bell pulses.
+       The deep sea crown = `male/jellyfish_crown_v1.glb` (same tool, preset `crown`). The 11-24 biped (…_m_v4_Running.glb) stays on R2. */
+    male: { model: 'https://cdn.entropywars.net/Assets/characters/races/jellyfish/male/jellyfish_mane_v2.glb', clips: {}, procRig: 'jellyBody', heightRatio: 0.95, yawOffset: 0, basicAttackKind: 'magic',
+            sway: { stiffness: 1.4, gravity: 0.8, drag: 0.3, maxRoot: 40, maxBend: 12, wave: 0.06, waveHz: 0.4, caps: [] } },
     /* THE JELLYFISH, MALE + FEMALE (2026-11-24, mondo on the v2: "looks more like a female ... it needs boobs"; the old one's look is
        "basically how i want it to look like ... make one like that as the male version and another one for a female version"): v3 male =
        the old bell + tentacle arms and legs, remade (no T-bars) (v4: the 10 hanging tentacles taken off, mondo: "they don't look attached correctly"); the female = the v2 idea with a
        figure, 12 tentacles at the hips. Both on THE SWAY chains (bake-tentacles.py). One race, the same spells for both. */
     female: _mkUAL('jellyfish/female', 'jellyfish_f', {
-      model: 'https://cdn.entropywars.net/Assets/characters/races/jellyfish/female/Meshy_AI_jellyfish_f_Running.glb',
-      heightRatio: 0.92, basicAttackKind: 'magic',
+      model: 'https://cdn.entropywars.net/Assets/characters/races/jellyfish/female/Meshy_AI_jellyfish_f_v2_Running.glb',   // v2 (2026-11-28, mondo's pick "female 1", blue): a jelly woman under a moon jelly's bell; her hair of oral arms on 12 spring chains (bake-writhe.py --hair --rg -0.13 --root -0.1)
+      sway: { stiffness: 3.0, gravity: 0.45, drag: 0.42, maxRoot: 14, maxBend: 15, wave: 0.18, waveHz: 0.3, caps: [] },
+      heightRatio: 0.95, basicAttackKind: 'magic',
     }),
   },
   // Cult Leader (Harbinger, support) — Bohemian Grove's voice. Idles mid-sermon; the family (DOOR_CAST_MODELS
@@ -2967,6 +2974,18 @@ const RACE_MODELS_3D = {
      parts: the base ball rolls under it, the stick arms throw, the carrot shoots out, the head and hat lift off, the scarf tails
      swing, the coal eyes look about and blink, and it falls apart on death. One file put together from five Meshy parts (snowball,
      carrot, stick, top hat, scarf) by project files snowman/tools/assemble.py; node names in three-renderer.js. Front +Z, floor y 0. */
+  /* 🐙 THE OCTOPUS GIRL (2026-11-28; mondo: "remake the models you need in meshy": a NEW Meshy model from his own (inbox
+     Meshy_AI_Octopus_girl_20261128_texture_remesh_tri.glb), feet apart, every tentacle of her hair hanging free of her back): Meshy's rig
+     (1.75 m) + one spring chain down each of the 14 locks, hung on her Head (bake-writhe.py --hair --locks 1 --cols 16 --min 0.06 --smooth 24
+     --cut 0.857: under that line her hair hangs free of the body, so the hair is every piece that is not the body); v3 = his "more curvy and her boobs bigger, more similar to the first one": bust +75 % and hips / thighs +16 % moved in bind space, project files octopus-girl/curvy.py). The library animates her body; THE SWAY swings every lock after the clip and its wave makes them
+     writhe on their own, a phase a lock (a softer sway than a cape: more and the locks fold into each other). */
+  'octopus girl': {
+    female: _mkUAL('octopus_girl/female', 'octopus_girl', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/octopus_girl/female/Meshy_AI_octopus_girl_v3_writhe.glb',
+      sway: { stiffness: 3.0, gravity: 0.45, drag: 0.42, maxRoot: 14, maxBend: 15, wave: 0.18, waveHz: 0.3, caps: [] },
+      heightRatio: 0.97, basicAttackKind: 'claw',
+    }),
+  },
   'snowman': {
     male: { model: 'https://cdn.entropywars.net/Assets/characters/races/snowman/male/snowman.glb', clips: {}, procRig: 'snowman', heightRatio: 1.3, yawOffset: 0, basicAttackKind: 'physical',
       moveTimeScale: 1, castTimeScale: 1, deathTimeScale: 1, hitTimeScale: 1, jumpTimeScale: 1 },
@@ -3568,11 +3587,15 @@ const RACE_MODELS_3D = {
       heightRatio: 0.97, basicAttackKind: 'magic',
     }),
   },
+  /* 🐟 THE DEEP SEA FISH IN PIECES (2026-11-28, mondo: "new meshy models and pieces ... and custom animations for their spells"; he
+     picked look C: an eel body, a gulper jaw, a jellyfish on the lure). One file put together from five Meshy parts (head, lower
+     jaw, lure jellyfish, eel tail, side fan) by project files deep-sea-fish/tools/assemble.py, on ONE skeleton: procRig 'deepFish'
+     (three-renderer.js THE DEEP SEA FISH IN PIECES) moves the jaw, the lure, the fans and the tail; THE SWAY swings the lure's
+     stalk and the two barbels. Front +Z, floor y 0. The old model (Meshy_AI_alien_fish_Running.glb) stays on R2. */
   'deep sea fish': {
-    male: _mkUAL('deepseafish', 'alien_fish', {
-      model: `${_S}/Races/deepseafish/Meshy_AI_alien_fish_Running.glb`,
-      heightRatio: 1.03, basicAttackKind: 'claw',
-    }),
+    male: { model: 'https://cdn.entropywars.net/Assets/characters/races/deepseafish/male/deep_sea_fish_v1.glb', clips: {}, procRig: 'deepFish', heightRatio: 1.3, yawOffset: 0, basicAttackKind: 'claw',
+      moveTimeScale: 1, castTimeScale: 1, deathTimeScale: 1, hitTimeScale: 1, jumpTimeScale: 1,
+      sway: { stiffness: 3.2, gravity: 0.12, drag: 0.34, maxRoot: 40, maxBend: 30, wave: 0.08, waveHz: 0.5, caps: [] } },
   },
   // AI (Gunslinger, ranged; flies — map.js SKY_RACES) — "AI_girl" Character_output (Races/ai/female/).
   'ai': {
@@ -3758,27 +3781,16 @@ const RACE_MODELS_3D = {
       basicAttackKind: 'magic',
     }),
   },
-  // Voidweaver — giant spider on a QUADRUPED Meshy rig (tail/backleg/head
-  // bones): the biped animation libraries cannot retarget onto it, so no
-  // animLib fields. Its one per-character export is the custom Walking clip —
-  // note the `_quadruped_model_Animation_` stem (not the biped
-  // `_biped_Animation_` convention), hence explicit URLs instead of _mk3d.
-  // Idle = static rest pose; casts/hits fall back to the engine lunge/glow
-  // tweens, and its projectiles already fly as spiders (UNIT_ANIM_OVERRIDES).
+  /* 🕷 THE VOIDWEAVER (2026-11-28, thread "Remake the voidweaver with moving parts"): the black widow with deep space in its abdomen.
+     No bones; procRig 'voidweaver' (three-renderer.js THE VOIDWEAVER) moves its parts: eight legs of three joints that REACH for
+     the floor (the feet stay planted while the body breathes, rears and lunges; a step is a foot lifted and set down), two
+     fangs, two feelers of two joints, the abdomen on its waist. One file put together from five Meshy parts (head-chest,
+     abdomen, ONE leg cut in three, fang, feeler) by project files voidweaver/tools/assemble.py. Front +Z, floor y 0.
+     Its projectiles still fly as spiders (battle.js UNIT_ANIM_OVERRIDES). The old one-piece Meshy spider (a quadruped rig with
+     one Walking clip) = Meshy_AI_giant_spider_realisti_quadruped_Character_output.glb in the same folder, no longer loaded. */
   'voidweaver': {
-    male: {
-      model: `${_VOID_3D}/Meshy_AI_giant_spider_realisti_quadruped_Character_output.glb`,
-      clips: {
-        walk: `${_VOID_3D}/Meshy_AI_giant_spider_realisti_quadruped_model_Animation_Walking_withSkin.glb`,
-      },
-      heightRatio: 0.85,     // low-slung — the legspan spreads well past a tile
-      yawOffset: 0,          // head sits +Z of the tail at rest, like the bipeds
-      moveTimeScale: 2.0,    // Walking 1.0s → ~0.5s/cycle at board pace
-      castTimeScale: 2.0,
-      deathTimeScale: 1.9,
-      hitTimeScale: 2.8,
-      jumpTimeScale: 3.2,
-    },
+    male: { model: 'https://cdn.entropywars.net/Assets/characters/races/voidweaver/male/voidweaver_v2.glb', clips: {}, procRig: 'voidweaver', heightRatio: 0.85, yawOffset: 0,
+      moveTimeScale: 1, castTimeScale: 1, deathTimeScale: 1, hitTimeScale: 1, jumpTimeScale: 1 },
   },
   // Honda Civic — the transformer. TWO models: the boneless sedan
   // (texture-stage GLB — a static mesh is exactly right for a parked car)
@@ -4000,7 +4012,14 @@ const RACE_MODELS_3D = {
   // rendered in the colossal tier under kong/kaiju. Tentacle strikes rake
   // via the claw basics; Tidal Surge/Maelstrom fire their mapped water VFX.
   'kraken': {
+    /* 2026-11-28 THE WRITHING TENTACLES (mondo: "redo the kraken with separate moving tentacles" + "remake the models you need in meshy"):
+       a NEW Meshy squid made for it (arms splayed apart, none touching), rigged in code (Meshy's 24 bone names: the spine up the mantle, the
+       limbs unweighted) + one spring chain down each of its ten arms on its Hips (bake-writhe.py --arms --persist 1 --smooth 4 --parent Hips).
+       THE SWAY swings them after every clip and its wave makes them writhe on their own. Was Meshy_AI_kraken_writhe_Character_output.glb
+       (the old model, its arms fused). */
     male: _mkUAL('kraken/male', 'kraken_realistic', {
+      model: 'https://cdn.entropywars.net/Assets/characters/races/kraken/male/Meshy_AI_kraken_v2_writhe.glb',
+      sway: { stiffness: 1.7, gravity: 0.12, drag: 0.28, maxRoot: 32, maxBend: 24, wave: 0.9, waveHz: 0.32, caps: [] },
       heightRatio: 1.55,
       basicAttackKind: 'claw',
       lib: { idle: { clip: 'Idle_10', lib: 2 } },   // monster sway
@@ -7960,7 +7979,7 @@ const RACE_SPRITES = {
   'ringmaster': `${_S}/character_sprites/ringmaster.png`,   // 2026-10-04 — his own sprite
   'bee queen': `${_S}/character_sprites/beequeen.png`,   // 2026-10-04 — his own sprite
   'professor': `${_S}/character_sprites/professor.png`,   // 2026-10-04 — his own sprite
-  'deep sea fish': `${_S}/character_sprites/deepseacreature.png`,   // 2026-10-04 — his own sprite
+  'deep sea fish': `${_S}/Races/deepseafish/male/deep_sea_fish_px.png`,   // 2026-11-28 THE DEEP SEA FISH IN PIECES — 128x128 pixel sprite (Sprite AI restyle of a render of the new model; his 10-04 sprite deepseacreature.png stays on R2)
   'clown': `${_S}/character_sprites/clown.png`,   // 2026-10-04 — his own sprite
   'bunny girl': `${_S}/Races/bunnygirl/bunnygirl.png`,   // 2026-10-27 — her own sprite
   'sharkman': `${_S}/character_sprites/sharkman.png`,   // 2026-10-04 — his own sprite
@@ -8004,6 +8023,7 @@ const RACE_SPRITES = {
   'cheerleader': `${_S}/Races/cheerleader/female/cheerleader_px.png`,   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — 128x128 pixel sprite (Sprite AI restyle of her Meshy concept)
   'monster truck': `${_S}/Races/monster_truck/male/monster_truck_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
   'snowman': `${_S}/Races/snowman/male/snowman_px.png`,   // 2026-11-27 THE SNOWMAN — 128x128 pixel sprite (Sprite AI restyle of a render of its model)
+  'octopus girl': `${_S}/Races/octopus_girl/female/octopus_girl_px.png`,   // 2026-11-28 THE OCTOPUS GIRL — 128x128 pixel sprite (Sprite AI restyle of a render of her model)
   'nutcracker': `${_S}/Races/nutcracker/male/nutcracker_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
   'leopard girl': `${_S}/Races/leopard_girl/female/leopard_girl_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
   'draconian': `${_S}/Races/draconian/male/draconian_px.png`,   // 2026-11-27 THE NEW CHARACTERS — 128x128 pixel sprite (Sprite AI restyle of its Meshy concept / model render)
@@ -8091,7 +8111,7 @@ const RACE_SPRITES = {
   'mermaid': `${_S}/Races/mermaid/female/mermaid_female.png`,
   'nephilim': `${_S}/Races/nephilim/male/nephilim_male.png`,
   'vampire': `${_S}/Races/vampire/female/vampire_female.png`,
-  'voidweaver': `${_S}/Races/voidweaver/male/voidweaver_male.png`,
+  'voidweaver': `${_S}/Races/voidweaver/male/voidweaver_px.png`,   // 2026-11-28 THE VOIDWEAVER remake: Sprite AI restyle of a render of the new model
   'cosmic wraith': `${_S}/Races/cosmicwraith/male/cosmicwraith_male.png`,
   'superhero': `${_S}/Races/superhero/male/superhero_male.png`,
 
