@@ -679,3 +679,10 @@ more bones. Answers, measured on the MPFB2 checkout (HEAD 6ff1eb35) and the pack
 - 2026-11-19 — THE NEW RACES 3: 4 Meshy units from the 11-19 concepts (Cameraman = R2 folder `paparazzi` + held DSLR `gear/held/paparazzi_camera.glb`, Mechanic, Janitor, Trucker `_v2`), files /mnt/project-files/new-char-concepts-20261119/models/; Sprite AI 128 px sprites; wired as races (champions-combat.md "THE NEW RACES 3"). Other picks of that thread (gambler, hacker, pharaohs, monk, shogun, diver, supers) are not wired here.
 - 2026-11-27 — THE SNOWMAN (thread "Add a snowman character"): Meshy concepts -> five part models (snowball, carrot, stick, top hat, scarf) put together by Claude (project files snowman/tools/assemble.py) into one 26-node file, procRig `snowman`; wired as a race with its kit (champions-combat.md "THE SNOWMAN").
 - 2026-11-27 — THE COMING RACES 3 (thread "Make Meshy concepts for new characters"): Meshy concepts (realistic) -> image-to-3d + rig by Claude: monster truck (4 parts, assembled), nutcracker (+ jaw bone), leopard girl, draconian, flower girl, leprechaun M/F, doctor + nurse (race `medic`), female martian, Agent Forrest (story cast model); files project files character-concepts/; wired as coming races (champions-combat.md "THE COMING RACES 3").
+
+## THE MUSHROOM GIRL'S NEW MODEL (2026-11-28)
+mondo 11-28: a new Meshy mushroom girl from his references, more fan service. Concepts + models in project files `mushroom-girl/`
+(gen.py text-only prompts, model.py; four covered variants classic/pink/ghost/glow + two fan-service ones classic_fs/pink_fs).
+His pick `pink_fs` (pink hair, frill bandeau + mini skirt, glossy dripping cap) is the race's model now: sprites.js RACE_MODELS_3D
+'mushroom girl' -> `Assets/characters/races/mushroomgirl/female/Meshy_AI_mushroom_girl_fs_Running.glb` (+ .opt.glb, in ASSET_MANIFEST).
+The first model stays on R2; the sprite, portrait and the remade creator look are unchanged. Proof: project files mushroom-girl/proof/.

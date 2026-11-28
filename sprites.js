@@ -3462,9 +3462,9 @@ const RACE_MODELS_3D = {
       heightRatio: 1.0, basicAttackKind: 'punch',
     }),
   },
-  'mushroom girl': {
+  'mushroom girl': {   // 2026-11-28 mondo: his new fan-service Meshy model (pink hair, frill bandeau + mini skirt; project files mushroom-girl/, pink_fs)
     female: _mkUAL('mushroomgirl', 'mushroom_girl', {
-      model: `${_S}/Races/mushroomgirl/Meshy_AI_mushroom_girl_Running.glb`,
+      model: 'https://cdn.entropywars.net/Assets/characters/races/mushroomgirl/female/Meshy_AI_mushroom_girl_fs_Running.glb',   // the first one stays on R2
       heightRatio: 0.92, basicAttackKind: 'magic',
     }),
   },
