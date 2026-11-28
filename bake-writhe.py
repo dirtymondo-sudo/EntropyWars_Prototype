@@ -19,7 +19,7 @@ inverse binds are kept as they are (like bake-tail.py, bake-sway.py, bake-wings.
   clips turn those bones far: the Kraken's idle swung its leg-arms out and webbed them to their neighbours; --free names more
   bones whose skin goes to the nearest arm); --band = how far (of the height) it blends in.
 --hair (tentacle hair): the hair is found by its colour (darker and more purple than the skin, smoothed over the skin) and
-  hangs from the Head bone in --cols columns round the head, each column a chain from --root (m) above the Head joint down to
+  hangs from the Head bone (--rg <x> finds it by red over green instead: lilac hair on aqua skin) in --cols columns round the head, each column a chain from --root (m) above the Head joint down to
   the lowest hair in it; a vertex rides the two nearest columns (by its angle round the head) so the locks part cleanly.
 
 Give the race `sway: { stiffness, gravity, drag, maxRoot, maxBend, wave, waveHz, caps: [] }` (sprites.js; the Kraken's and the
@@ -212,6 +212,7 @@ def hair(R, opt):
     cnt = np.bincount(R.inv, minlength=nU); CU = np.stack([np.bincount(R.inv, C[:, k], nU) / cnt for k in range(3)], 1)
     mx = CU.max(1); sat = (mx - CU.min(1)) / np.maximum(mx, 1e-3)
     f = np.clip((sat - opt['sat']) / 0.08, 0, 1) * np.clip((opt['val'] - mx) / 0.08, 0, 1)
+    if opt['rg'] > -9: f = np.clip((CU[:, 0] - CU[:, 1] - opt['rg']) / 0.05, 0, 1)   # --rg: hair redder than the skin by this much (the Jellyfish woman: lilac frills on aqua skin)
     E = np.concatenate([R.E, R.E[:, ::-1]]); deg = np.bincount(E[:, 0], minlength=nU)
     for _ in range(8): f = 0.5 * f + 0.5 * np.bincount(E[:, 0], f[E[:, 1]], nU) / np.maximum(deg, 1)
     head = R.G[R.node('Head')][:3, 3]; y0 = head[1] + opt['root']
@@ -355,7 +356,7 @@ def main():
     if not args or args[0] not in ('--arms', '--hair'): print(__doc__); sys.exit(1)
     mode = args.pop(0)[2:]
     opt = {'min': 0.15, 'joints': 6 if mode == 'arms' else 5, 'band': 0.05, 'col': 0, 'cols': 10, 'root': 0.04, 'fade': 0.08,
-           'sat': 0.15, 'val': 0.72, 'debug': None, 'reach': 0.08, 'mirror': 0, 'locks': 0, 'apart': 0.04, 'smooth': 0, 'parent': '', 'free': ''}
+           'sat': 0.15, 'val': 0.72, 'debug': None, 'reach': 0.08, 'mirror': 0, 'locks': 0, 'apart': 0.04, 'smooth': 0, 'parent': '', 'free': '', 'rg': -10.0}
     for k0 in list(opt):
         if '--' + k0 in args:
             k = args.index('--' + k0); v = args[k + 1]; del args[k:k + 2]

@@ -2711,15 +2711,16 @@ const RACE_MODELS_3D = {
        on: a Meshy bell + a Meshy oral arm hung six times + thin tentacles made in code, every arm and tentacle on THE SWAY's spring
        chains (bake-jelly.py, preset `mane`). three-renderer.js THE JELLYFISH, A REAL ONE (procRig jellyBody) swims it: the bell pulses.
        The deep sea crown = `male/jellyfish_crown_v1.glb` (same tool, preset `crown`). The 11-24 biped (…_m_v4_Running.glb) stays on R2. */
-    male: { model: 'https://cdn.entropywars.net/Assets/characters/races/jellyfish/male/jellyfish_mane_v1.glb', clips: {}, procRig: 'jellyBody', heightRatio: 0.95, yawOffset: 0, basicAttackKind: 'magic',
-            sway: { stiffness: 0.9, gravity: 0.45, drag: 0.22, maxRoot: 65, maxBend: 30, wave: 0.12, waveHz: 0.4, caps: [] } },
+    male: { model: 'https://cdn.entropywars.net/Assets/characters/races/jellyfish/male/jellyfish_mane_v2.glb', clips: {}, procRig: 'jellyBody', heightRatio: 0.95, yawOffset: 0, basicAttackKind: 'magic',
+            sway: { stiffness: 1.4, gravity: 0.8, drag: 0.3, maxRoot: 40, maxBend: 12, wave: 0.06, waveHz: 0.4, caps: [] } },
     /* THE JELLYFISH, MALE + FEMALE (2026-11-24, mondo on the v2: "looks more like a female ... it needs boobs"; the old one's look is
        "basically how i want it to look like ... make one like that as the male version and another one for a female version"): v3 male =
        the old bell + tentacle arms and legs, remade (no T-bars) (v4: the 10 hanging tentacles taken off, mondo: "they don't look attached correctly"); the female = the v2 idea with a
        figure, 12 tentacles at the hips. Both on THE SWAY chains (bake-tentacles.py). One race, the same spells for both. */
     female: _mkUAL('jellyfish/female', 'jellyfish_f', {
-      model: 'https://cdn.entropywars.net/Assets/characters/races/jellyfish/female/Meshy_AI_jellyfish_f_Running.glb',
-      heightRatio: 0.92, basicAttackKind: 'magic',
+      model: 'https://cdn.entropywars.net/Assets/characters/races/jellyfish/female/Meshy_AI_jellyfish_f_v2_Running.glb',   // v2 (2026-11-28, mondo's pick "female 1", blue): a jelly woman under a moon jelly's bell; her hair of oral arms on 12 spring chains (bake-writhe.py --hair --rg -0.13 --root -0.1)
+      sway: { stiffness: 3.0, gravity: 0.45, drag: 0.42, maxRoot: 14, maxBend: 15, wave: 0.18, waveHz: 0.3, caps: [] },
+      heightRatio: 0.95, basicAttackKind: 'magic',
     }),
   },
   // Cult Leader (Harbinger, support) — Bohemian Grove's voice. Idles mid-sermon; the family (DOOR_CAST_MODELS

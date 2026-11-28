@@ -7059,3 +7059,33 @@ animations like how the centaurs do it".
 - THE KRAKEN (same day): the same tool, `--arms --mirror 1 --smooth 4 --parent Hips --free LeftArm,RightArm`, ten chains, one down each
   arm, all on its Hips: the biped's legs and arms no longer bend its arms (models-assets.md). Its kit and stats are unchanged.
 - Probes: `playtest_writhe_stage.js` (the party builder's stage, close up, no match) and `playtest_writhe.js` (in a battle).
+
+## THE JELLYFISH, A REAL ONE (2026-11-28, thread "Redesign the jellyfish race")
+mondo: "I want a jellyfish redesign, not really feeling its current one. It's supposed to be an advanced underwater ancient alien species,
+kinda scary, but like a real jellyfish. While the female one should be hot." Round 1 of concepts (armour plates, a brain in the bell, a
+humanoid torso) he threw out whole: "a real jellyfish is already alien looking enough. Just need to stylize it a little bit". So the MALE
+is a real species with a light glow, no body, no face, no metal. His picks: the lion's mane, the deep sea crown, the sea nettle in
+blue / purple ("nettle 2"), and the blue jelly woman ("female 1").
+- THE FILES (R2 `Assets/characters/races/jellyfish/`): `male/jellyfish_mane_v2.glb`, `male/jellyfish_crown_v2.glb`,
+  `male/jellyfish_nettle_v2.glb`, `female/Meshy_AI_jellyfish_f_v2_Running.glb`. The 11-24 bipeds stay on R2.
+- THE MALE'S PIECES (repo tool `bake-jelly.py <preset> <bell.glb> <arm.glb> <out.glb>`, numpy + pillow): two Meshy parts a species (the
+  bell alone, ONE oral arm alone; Meshy cannot model hair-thin tentacles or a bell with everything hanging). Nodes: `ewJfBody` (at the
+  bell's middle) > `ewJfBell` (the mesh; the crown's ring of blue lights is part of it), `ewJfCore` (the oral arms' ring: the one arm
+  drawn 4 to 6 times), `ewJfRim` (the thin tentacles' ring: 20 to 28 tapered tubes made in the tool). Every arm and tentacle is its own
+  chain of THE SWAY's bones (`ewsway_c<k>_<j>`). A species = a row of the tool's `PRESETS` (sizes, counts, the tentacles' colour).
+- THE MOVES: three-renderer.js "THE JELLYFISH, A REAL ONE" (procRig `jellyBody`, built like the Floating Brain: `_JF_POSES`, a pose = a
+  function of u giving y z x rx ry rz s + `p` the PULSE (1 = the bell squeezed, below 0 = flared) + `sp` (the tentacle ring spreads)).
+  The pulse scales the bell (narrower and taller), the rim ring closes with it, so the tentacles are drawn in and let go. idle (8 s,
+  four slow strokes, each lifts it), walk (it tips over and swims), cast, castMelee (the sting: rears back, whips through), castAOE,
+  castSupport, castUltimate, hit, death. Its spells have their own (`animSlot` on the rows): `jfSting`, `jfBloom`, `jfDrift` (Ocean
+  Current: the bell folds to a spindle), `jfNet` (the skirt opens wide, slams shut), `jfRebirth` (Immortal Cycle: it shrinks to a polyp
+  and grows back). `ThreeRenderer.jfPose(slot, dur, pose)` adds one. The female has no such slots: the chain falls to her library clips.
+- THE SWAY on the def: stiffness 1.4, gravity 0.8, drag 0.3, maxRoot 40, maxBend 12, wave 0.06. maxBend 30 + wave 0.12 curled every
+  tentacle into a spring: keep the bend small, they are 7 to 8 joints long.
+- THE FEMALE: one Meshy body (image-to-3d a-pose + Meshy rig), her hair of oral arms on 12 chains by `bake-writhe.py --hair --cols 12
+  --joints 6 --rg -0.13 --root -0.1` (new flag `--rg`: hair found by red over green, lilac frills on aqua skin; `--root` under the
+  Head joint because her bell covers the scalp). Sway as the Octopus Girl's.
+- ONLINE (RULE #2): looks only; each screen plays the clip of the synced cast. Nothing new to relay.
+- THE PROBE: `TAG=a SHOTS=2 GAP=1200 ZOOM=7 FLAGS=__pgTilt=72,__pgDy=-0.6 ACTS=idle,raceJellyBloom node playtest_jelly.js` (MODEL=<url>
+  swaps the male's file, `FLAGS=__pgGender=female` plays her, `TRACE=5000` = no pictures, the bell / body sampled every 50 ms).
+- Sources: project files `jellyfish-redesign/` (gen.py = the concepts and the part pictures, model.py, models/).

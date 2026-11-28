@@ -50,7 +50,7 @@ const READ = () => {
   await sleep(2500);
   const START = () => { const st = GAME.state; try { window.applyPartyBuild(false); } catch (e) {}
     st.partyMeta[1] = st.partyMeta[1] || [];
-    st.partyMeta[1][0] = Object.assign({}, st.partyMeta[1][0], { race: 'jellyfish', gender: 'male' }); delete st.partyMeta[1][0].customSpells; delete st.partyMeta[1][0].appearance;
+    st.partyMeta[1][0] = Object.assign({}, st.partyMeta[1][0], { race: 'jellyfish', gender: window.__pgGender || 'male' }); delete st.partyMeta[1][0].customSpells; delete st.partyMeta[1][0].appearance;
     st.teamLockedIn = true; try { window.startMatch(); } catch (e) { return 'err ' + e.message; } return 'started'; };
   console.log('start', await page.evaluate(START));
   for (let i = 0; i < 60; i++) { if (await page.evaluate(() => window.GAME?.state?.phase) === 'battle') break; await sleep(1000); }
@@ -73,7 +73,7 @@ const READ = () => {
   const STAGE = (zoom) => { const st = GAME.state, P = window.__pgSpot, pg = st.units.find(u => u.player === 1 && u.race === 'jellyfish'); if (!pg) return 'no jellyfish: ' + st.units.map(u => u.race).join(',');
     const foe = st.units.find(u => u.player === 2), put = (u, x, y) => { u.x = x; u.y = y; try { u.z = getHeightAt(x, y); } catch (e) {} };
     st.units.forEach(u => { u.dead = false; u._dying = false; u.maxHp = Math.max(u.maxHp, 6000); u.hp = u.maxHp; u.status = []; });
-    put(pg, P.x - 3, P.y); put(foe, P.x, P.y); let k = 0; st.units.forEach(u => { if (u !== pg && u !== foe) put(u, u.player === 1 ? 0 : 1, k++ % 4); });
+    put(pg, P.x - (window.__pgDist || 2), P.y); put(foe, P.x, P.y); let k = 0; st.units.forEach(u => { if (u !== pg && u !== foe) put(u, u.player === 1 ? 0 : 1, k++ % 4); });
     pg.facing = 'right'; st.controllers = { 1: 'local', 2: 'local' }; st._blitzActiveUnitId = pg.id; st.aiThinking = false; st.currentPlayer = 1; st._actionExecuting = false;
     try { ThreeRenderer.invalidateUnits(); GAME.markDirty(); GAME.renderIfDirty && GAME.renderIfDirty(); } catch (e) {}
     /* the battle camera frames the board by itself: the probe holds its own close view (CAM=0 leaves the game's) */
@@ -106,6 +106,13 @@ const READ = () => {
         const self = !(sp.range > 0); return 'spell ' + GAME.doSpell(pg, self ? pg.x + 2 : foe.x, self ? pg.y : foe.y, foe.z);
       } catch (e) { return 'threw ' + e.message; } }, act);
     console.log('ACT', act, r);
+    if (process.env.TRACE) {   // no pictures: the bell and the body sampled every 50 ms for TRACE ms
+      const tr = await page.evaluate((ms) => new Promise(res => { const P = window.__jfN, out = [], t0 = performance.now(); if (!P) return res([]);
+        const E = new THREE.Euler(); const iv = setInterval(() => { const t = performance.now() - t0; E.setFromQuaternion(P.body.quaternion, 'YXZ'); out.push([Math.round(t), +P.bell.scale.x.toFixed(2), +(E.x * 57.3).toFixed(0), +P.body.position.y.toFixed(2), +P.body.scale.x.toFixed(2), P.rim ? +P.rim.scale.x.toFixed(2) : 0]); if (t > ms) { clearInterval(iv); res(out); } }, 50); }), +process.env.TRACE);
+      const bw = tr.map(x => x[1]), nod = tr.map(x => x[2]), sc = tr.map(x => x[4]), rim = tr.map(x => x[5]);
+      console.log('TRACE', act, 'bellW', Math.min(...bw), Math.max(...bw), 'nod', Math.min(...nod), Math.max(...nod), 'scale', Math.min(...sc), Math.max(...sc), 'rim', Math.min(...rim), Math.max(...rim));
+      await sleep(2500); continue;
+    }
     const marks = process.env.MARKS ? process.env.MARKS.split(',').map(Number) : (act === 'walk' ? [150, 300, 450, 600] : [350, 700, 1100, 1700]);
     let last = 0; for (const m of marks) { rows.push([act, m, await shot(act + '_' + m, m - last)]); last = m; }
     await sleep(3500);

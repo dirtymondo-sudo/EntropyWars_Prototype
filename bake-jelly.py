@@ -23,12 +23,12 @@ PRESETS = {
     # lights (optional) = a ring of little glowing beads round the rim (part of the bell: they pulse with it)
     # tent: n, len [min, max], r (root radius, m), ring (of the bell's radius), lean (m out at the tip), colour, glow
     'mane':   dict(bell=1.0, arms=dict(n=6, len=0.95, ring=0.22, wide=1.25, joints=6, up=0.10),
-                   tent=dict(n=28, len=[0.75, 1.25], r=0.016, ring=0.80, lean=0.10, col=[0.45, 0.08, 0.2], glow=[0.10, 0.0, 0.06], joints=8, up=0.06)),
+                   tent=dict(n=28, len=[0.75, 1.25], r=0.02, ring=0.80, lean=0.10, col=[0.85, 0.25, 0.5], glow=[0.3, 0.05, 0.15], joints=8, up=0.06)),
     'crown':  dict(bell=0.95, arms=dict(n=4, len=1.25, ring=0.16, wide=1.0, joints=7, up=0.10),
-                   tent=dict(n=20, len=[0.55, 0.85], r=0.016, ring=0.90, lean=0.28, col=[0.35, 0.03, 0.05], glow=[0.08, 0.0, 0.0], joints=7, up=0.05),
+                   tent=dict(n=20, len=[0.55, 0.85], r=0.02, ring=0.90, lean=0.28, col=[0.8, 0.12, 0.12], glow=[0.3, 0.02, 0.02], joints=7, up=0.05),
                    lights=dict(n=30, r=0.022, col=[0.25, 0.55, 1.0], glow=[0.5, 1.1, 2.0], out=0.985, up=0.0)),
-    'nettle': dict(bell=0.9, arms=dict(n=4, len=1.15, ring=0.18, wide=1.2, joints=7, up=0.10),
-                   tent=dict(n=24, len=[0.9, 1.35], r=0.015, ring=0.88, lean=0.06, col=[0.16, 0.10, 0.45], glow=[0.02, 0.02, 0.10], joints=8, up=0.05)),
+    'nettle': dict(bell=0.9, arms=dict(n=4, len=1.15, ring=0.14, wide=1.0, joints=7, up=0.10),
+                   tent=dict(n=24, len=[0.9, 1.35], r=0.02, ring=0.88, lean=0.06, col=[0.3, 0.3, 0.9], glow=[0.08, 0.08, 0.3], joints=8, up=0.05)),
 }
 preset, BELL, ARM, OUT = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
 C = PRESETS[preset]
