@@ -92187,7 +92187,7 @@ const ThreeRenderer = (function () {
        the highest furniture top at or below the ray. null = no surface
        (a wall, rock, outside the room, a stair mass). */
     function _hqPortalSurf(x, z, ry) {
-        var base = _hqSurface(x, z, null, true);
+        var base = _hqLandY(x, z, ry);   // THE LANDING AT THE FEET: the ray's height picks the layer (a free query when ry is null)
         if (base === null) return null;
         /* THE BRIDGE LAYER (2026-09-19): a free query is the ground's — the ray falling onto a bridge's deck lands on the DECK */
         if (_hq.terrain && _hq.terrain.bridges && _hq.terrain.bridges.length && typeof hqTerrainBridgeBelow === 'function' && ry != null) { var bb = hqTerrainBridgeBelow(_hq.terrain, x, z, ry); if (bb && bb.y > base) base = bb.y; }
@@ -94216,6 +94216,25 @@ const ThreeRenderer = (function () {
         if (s < F.s0 || s > F.s1) return false;
         return py > F.h - F.thick - 0.1 && py < F.h + 0.22;
     }
+    /* ══ THE LANDING AT THE FEET (2026-11-28, mondo: "in the door hq lobby, when jumping on the 2nd deck, i fall straight through the floor ...
+       on foot and on skateboard ... could be a game wide issue") ══════════════════════════════════════════════════════════════════════════
+       Every airborne landing (the walker's jump / fall, the board's air, the ride's air-time guess, the door gun's ray) asked the ground as a
+       FREE query (_hqSurface(x, z, null)), and every layered reader answers a free query with its LOWEST layer: the Lobby's deck (DOOR HQ 2.0
+       hung it over a floor, `underGal`), the third ring, a box gallery's slab, the round join's gallery rooms. Each layer then had to be patched
+       back into _hqBlockerFloor one by one (the gallery, the terrain bridges); the Lobby's deck never was, so a jump on it came down on the
+       floor 7 m below. The landing now asks AT THE FEET: the layer the body's height picks, with the step rule off (a body coming down takes
+       any drop), kept only when it is at or under the feet and above the free answer; else the free answer, as before. One rule for every
+       room with floors over floors. Off: window.EW_HQ_LAND_FREE (the old free query). */
+    var _hqLandMode = false;
+    function _hqLandY(x, z, feetY) {
+        var free = _hqSurface(x, z, null, true);
+        if (feetY == null || !isFinite(feetY) || (typeof window !== 'undefined' && window.EW_HQ_LAND_FREE)) return free;
+        var lay = null, was = _hqLandMode;
+        _hqLandMode = true;
+        try { lay = _hqSurface(x, z, feetY + 0.05, true); } catch (e) { lay = null; } finally { _hqLandMode = was; }
+        if (lay !== null && lay !== undefined && isFinite(lay) && lay <= feetY + 0.06 && (free === null || lay > free)) return lay;
+        return free;
+    }
     function _hqSurface(x, z, curY, ignoreBlockers) {
         var room = _hq.room, S = room.shell;
         var r = Math.hypot(x, z);
@@ -94321,7 +94340,7 @@ const ThreeRenderer = (function () {
            gravity's job (the walker steps off edges up to HQ_DROP_MAX and
            falls; anything taller is a balcony, and balconies have railings:
            the 4.2 m mezzanine stays railed from every edge) */
-        if (curY != null) {
+        if (curY != null && !_hqLandMode) {   // (THE LANDING AT THE FEET: a falling body's ask picks the layer by its height, no step rule)
             /* on a site board a step is one Δ level (the jump-1 rule); a pit is a drop the walker takes */
             var siteL = _hq.site ? (_hq.site.L || _hq.site.C) : 0;   // one Δ level (a site board: the tile; a cave: HQ_CAVE_LEVEL, half of it)
             var floorTol = (_hq.site && (_hqSiteCellAt(x, z) || curY < -0.5)) ? Math.max(HQ_STEP_TOL, siteL + 0.06) : HQ_STEP_TOL;   // out of a pit — or the moat — onto the walkway is one level too
@@ -96860,7 +96879,7 @@ const ThreeRenderer = (function () {
     function _hqRideAirLeft(pl) {
         if (!pl || !pl.air) return 0;
         var land = null;
-        try { land = _hqSurface(pl.x, pl.z, null, true); } catch (e) { land = null; }
+        try { land = _hqLandY(pl.x, pl.z, pl.y); } catch (e) { land = null; }   // THE LANDING AT THE FEET
         if (land === null || land === undefined) land = 0;
         try { var bfl = _hqBlockerFloor(pl.x, pl.z, pl.y); if (bfl !== null && bfl > land) land = bfl; } catch (e) {}   // THE BRIDGE LAYER: a span under the rider is the ground the air ends on
         var h = Math.max(0, pl.y - land), vy = pl.vy || 0, g = HQ_GRAV;
@@ -97057,6 +97076,7 @@ const ThreeRenderer = (function () {
         var T = H.terrain, best = null;
         var spot = function (cx, cz, strict) {
             var fy = _hqSurface(cx, cz, null, false);
+            var fl = _hqLandY(cx, cz, pl.y + 0.5); if (fl !== null && isFinite(fl) && (fy === null || fy === undefined || fl > fy) && _hqSurface(cx, cz, fl, false) !== null) fy = fl;   // THE LANDING AT THE FEET: an upper floor's own spot first, never the floor under it
             if (fy === null || fy === undefined || _hqSurface(cx, cz, fy, false) === null) return null;
             if (strict) {
                 if (fy > pl.y + 0.5 || fy < pl.y - 2.5) return null;   // its own level: not up on the fence's top, not down a cliff
@@ -97500,7 +97520,7 @@ const ThreeRenderer = (function () {
                     return;
                 }
             }
-            var land = _hqSurface(pl.x, pl.z, null, true);
+            var land = _hqLandY(pl.x, pl.z, pl.y);   // THE LANDING AT THE FEET
             if (land === null || land > pl.y + 0.01) { var lc = _hq.site ? _hqSiteCellAt(pl.x, pl.z) : null; land = _hq.terrain ? hqTerrainHeight(_hq.terrain, pl.x, pl.z) : (_hq.site && _hq.site.cave) ? (lc ? _hqSiteFloorY(lc, pl.x, pl.z) : 0) : ((lc && lc.top < 0) ? lc.top : 0); }
             var bf = _hqBlockerFloor(pl.x, pl.z, pl.y);
             if (bf !== null && bf > land) land = bf;
@@ -102367,7 +102387,7 @@ const ThreeRenderer = (function () {
             pl.vy -= HQ_GRAV * dt;
             var ny = pl.y + pl.vy * dt;
             if (pl.vy < 0) {
-                var land = _hqSurface(pl.x, pl.z, null, true);
+                var land = _hqLandY(pl.x, pl.z, pl.y);   // THE LANDING AT THE FEET
                 if (land === null || land > pl.y + 0.01) { var lc = _hq.site ? _hqSiteCellAt(pl.x, pl.z) : null; land = _hq.terrain ? hqTerrainHeight(_hq.terrain, pl.x, pl.z) : (_hq.site && _hq.site.cave) ? (lc ? _hqSiteFloorY(lc, pl.x, pl.z) : 0) : ((lc && lc.top < 0) ? lc.top : 0); }   // over a band edge: the ground breaks the fall (a site pit: its floor; a cave cell: its feet)
                 /* a furniture top under the feet is a floor too (2026-09-05) */
                 var bf = _hqBlockerFloor(pl.x, pl.z, pl.y);
