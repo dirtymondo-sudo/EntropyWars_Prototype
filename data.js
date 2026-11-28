@@ -3218,6 +3218,14 @@ const RACE_PROFILES = {
         label: 'Origami Girl',
         types: ['anomaly']
     },
+    'harpy': {   // 2026-11-28 THE HARPY (body in, kit not yet: EW_COMING_RACES) — a bird woman, feathered wings to her shins, talons
+        label: 'Harpy',
+        types: ['anomaly']
+    },
+    'moth queen': {   // 2026-11-28 THE MOTH QUEEN (body in, kit not yet: EW_COMING_RACES) — a pale alien moth, crescent-moon eyes on her wings
+        label: 'Moth Queen',
+        types: ['alien']
+    },
     'leprechaun': {   // 2026-11-27 THE NEW CHARACTERS — male + female; THE LEPRECHAUN + THE MEDIC: the kit is Anomaly
         label: 'Leprechaun',
         types: ['anomaly']
@@ -4219,7 +4227,7 @@ const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scie
    AVAILABLE_RACES and server.js AVAILABLE_RACES. Notes: docs/notes/champions-combat.md "THE COMING RACES". */
 /* THE WEATHERMAN's FORECAST (2026-11-24 THE WEATHERMAN + NEWS ANCHOR): the weather never hurts or soaks him (state.js applyWeatherTurnEffects + stormStrikeUnit) */
 function wnWeatherproof(u) { return !!u && u.race === 'weatherman' && (u.gender || 'male') === 'male' && unitHasPassive(u, 'wnTheForecast'); }   /* Broken = no passives = no shelter */
-const EW_COMING_RACES = [];   // 2026-11-27 THE ORIGAMI GIRL: her body is in, her kit is her spell thread's (it moves her to AVAILABLE_RACES here AND in server.js).     // 2026-11-27 THE NEW CHARACTERS (models + sprites in, kits being made by three spell threads; each moves its key into AVAILABLE_RACES here AND in server.js with its kit).   // 2026-11-23 THE COMING RACES 2 (the Mannequin was cut 11-23, mondo; the Bear, the Rat, the Butterfly Girl and the Monarch got their kits 11-23 and moved to AVAILABLE_RACES) (models in, kits not yet; one spell thread a unit). 2026-11-19: the gladiator, the farmer and the jellyfish UFO got their kits and moved to AVAILABLE_RACES
+const EW_COMING_RACES = ['harpy', 'moth queen'];   // 2026-11-28 THE HARPY + THE MOTH QUEEN: bodies + flapping wings in, kits not yet (mondo names the moves).   // 2026-11-27 THE ORIGAMI GIRL: her body is in, her kit is her spell thread's (it moves her to AVAILABLE_RACES here AND in server.js).     // 2026-11-27 THE NEW CHARACTERS (models + sprites in, kits being made by three spell threads; each moves its key into AVAILABLE_RACES here AND in server.js with its kit).   // 2026-11-23 THE COMING RACES 2 (the Mannequin was cut 11-23, mondo; the Bear, the Rat, the Butterfly Girl and the Monarch got their kits 11-23 and moved to AVAILABLE_RACES) (models in, kits not yet; one spell thread a unit). 2026-11-19: the gladiator, the farmer and the jellyfish UFO got their kits and moved to AVAILABLE_RACES
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
    default job's kit (JOB_KITS) gave it, so ranged races stay ranged: the old Sniper races reach 4 (kit 3 + the Sniper's

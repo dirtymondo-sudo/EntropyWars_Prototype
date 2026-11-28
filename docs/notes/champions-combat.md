@@ -7012,6 +7012,20 @@ ALL NAMES AND NUMBERS ARE A FIRST PASS. No lore invented (home biome `urban` = a
 - Probe: `UNITS=actor:male,actor:female SPELLS=acPhotoOp,... TAG=ac node playtest_kitfight.js`.
 - OPEN for mondo: names, numbers, which spells, Balance Lab not run, sound, a home zone.
 
+## THE HARPY + THE MOTH QUEEN (2026-11-28, thread "Add harpy and moth queen with flapping wings")
+mondo dropped his own Meshy models (R2 `dirtymondo` inbox/`Meshy_AI_Harpy_girl_20261128_texture.glb`, `…_moth_queen_alien_…`): "they would
+all be new characters ... redo them with more separate parts animating ... the harpie needs the naturally flapping wings ... the moth queen with
+wings". Both are NEW races, female only, IN as COMING RACES (body + wings + sprite + RACE_PROFILES; data.js `EW_COMING_RACES` = `harpy`,
+`moth queen`); kits, stats and THE UNLOCK are a spell thread's (mondo names the moves).
+- THE WINGS: in both files the wings are loose pieces of the mesh, so repo tool `bake-winged.py` cut them off, the body alone went to Meshy
+  rigging (`--body-out`), and the wings were put back on Meshy's rig (`--rigged`), each wholly on `ewwing_L` / `ewwing_R` on Spine. THE LOOSE
+  WINGS EVERYWHERE does the rest: _wfSplitBaked shares each wing down three more bones, _WB beats `harpy` (heavy, a slow hawk's beat, `mo` 0.6
+  since the wings hang to her shins) and `mothqueen` (ruffle: two broad sheets that open and close slowly, a shiver now and then).
+  The leg + wrist feather cuffs stay on the body (small pieces count as wing only past 0.14 of the height off the middle).
+- Files `Assets/characters/races/harpy/female/Meshy_AI_harpy_v2_Running.glb` + `harpy_px.png`, `…/moth_queen/female/Meshy_AI_moth_queen_v2_Running.glb`
+  + `moth_queen_px.png` (128px Sprite AI restyles of a front render). The v1 files (same, rigged in code by bake-winged.py without --rigged,
+  when Meshy had no credits) stay on R2 unused. Project files `harpy-moth/` = sources, renders, proof.
+
 ## THE MERMAID'S TAIL (2026-11-28)
 mondo 11-28 (inbox `Meshy_AI_mermaid_girl_20261128_texture.glb`, his own Meshy model, unrigged): "the mermaid which is just replacing
 the current model ... I want the mermaid tail to be animated separately from her upper body so she can still have the meshy
