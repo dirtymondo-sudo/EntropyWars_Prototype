@@ -7046,6 +7046,42 @@ animations like how the centaurs do it".
   tail under it on the chain and lifts her so the fluke stands on the floor -> `mermaid_tail_v2.glb`. v1 stays on R2.
 - Any other tailed body (a siren, a naga) can use it: name the chain `ewtail_0..N` under the Hips; nothing else to wire.
 
+## THE DEEP SEA FISH IN PIECES (2026-11-28, thread "Remake the deep sea fish with moving parts")
+mondo 11-28: "i think the deep sea fish and voidweaver would benefit from individually animated parts too, can you make new meshy
+models and pieces for them and custom animations for their spells/abilities". Three looks were shown (project files
+`deep-sea-fish/concepts/sheet_heroes.jpg`); he picked C: an eel body, a gulper jaw, a jellyfish on the lure. The old model had no lure.
+- THE MODEL: Meshy concepts -> image-to-3D of five parts (the head WITHOUT its lower jaw, the lower jaw, the lure jellyfish, the
+  eel tail drawn straight, ONE side fan), put together by project files `deep-sea-fish/tools/assemble.py` (bpy; rerun:
+  `python3 -I assemble.py <models dir> <out.glb>`) into ONE file, `Assets/characters/races/deepseafish/male/deep_sea_fish_v1.glb`
+  (+ `.opt.glb`, in ASSET_MANIFEST; 52,000 triangles, colour pictures only). The old `Meshy_AI_alien_fish_Running.glb` stays on R2.
+  ONE skeleton, 38 joints, every joint's rest turn identity (x = nod, y = yaw, z = roll on any joint): `ewDfBody` > `ewDfHead` >
+  `ewDfJaw` (x > 0 opens; the rest is open 0.23) and `ewDfLure` > `ewsway_c0_0..5` (the stalk) > `ewDfJelly` > `ewDfJellyArms`;
+  `ewDfJaw` > `ewsway_c1_*`, `ewsway_c2_*` (two whip barbels); `ewDfBody` > `ewDfFinL` / `ewDfFinR` and `ewDfTail0..9` (the straight
+  Meshy tail bent along a curve in the script and skinned down the chain; the fluke rides Tail9). The stalk and the barbels are
+  tubes made in the script. A change of the file = a NEW name (v2): R2 files are cached for good.
+- THE RIG: three-renderer.js "THE DEEP SEA FISH IN PIECES", procRig `deepFish` (`_dfBuild`, `_DF_POSES`, clips made by the
+  Abomination's `_abClip`; `_dfLive` = what always lives: the tail's swimming wave, the fans' flutter, the jellyfish's beat, the
+  gulping jaw). idle (6 s), walk (the swim: tail let out and driving, fans swept back, lure streaming), castMelee (the bite: rear,
+  dart, snap), cast (the lure swings out, the jellyfish swells), castSupport (the lure lifted like a lamp), castAOE (one whirl),
+  castUltimate (it rises, the jaw unhinges), hit, death (it rolls onto its side on the floor, jaw open, lure flopped, the
+  jellyfish shrivels; held). THE SWAY swings the stalk and the barbels behind every move (def `sway`: stiffness 3.2, gravity 0.12,
+  wave 0.08). `_dfGlowTick` (the unit loop): the jellyfish's material shines by its own picture and beats; brighter as it swells,
+  out as it shrivels. `ThreeRenderer.dfPose(slot, dur, pose)` adds or replaces a slot.
+- THE SPELLS (data.js `animSlot` + `animStrikeMs` on its two rows; a cast clip is cut at 1.4 s on the board, `_maybeStartModelAnim`,
+  so both are 1.4 s): Lure = `dfLure` (750 ms: the head goes down, the lure swings right out ahead and grows, it jiggles the
+  jellyfish, then backs off reeling with the jaw coming up), Abyss Jaws = `dfJaws` (770 ms: the lure whips back, it coils low, the
+  jaw opens 72 degrees with the head thrown up, it strikes forward, clamps, shakes its catch, gulps). The passive Abyss Eyes has no move.
+- THE EFFECTS (three-vfx-effects.js `_afLure3D`, `_afJaws3D`): a caster that has the bone `ewDfJelly` / `ewDfJaw` IS the
+  anglerfish. Lure: no stand-in fish and no built stalk, the glow and the light's line ride its own jellyfish. Abyss Jaws: no
+  second anglerfish under the victim, only the great teeth. Any other caster of those rows keeps the stand-ins.
+- THE SPRITE: `Assets/characters/races/deepseafish/male/deep_sea_fish_px.png` (Sprite AI restyle of a render, hue set back to
+  teal); mondo's 10-04 `deepseacreature.png` stays on R2.
+- ONLINE (RULE #2): looks only. The clips ride the synced cast and the effects ride the spell intents; nothing new to relay.
+- THE PROBE: `TAG=a ZOOM=6 ACTS=idle,slot:dfLure,slot:dfJaws,sigLure,sigAbyssJaws,death node playtest_fish.js` (`slot:<clip>` plays
+  a clip straight on the live fish; a real cast starts seconds late on the cloud's software GPU: `MARKS=2500,3200,3900`;
+  `GPU=webgpu` with `EW_PROBE_HEADFUL=1 EW_PROBE_GL=webgpu xvfb-run -a`). Its vision is 2: the probe stands the foe 2 squares off.
+- NOT DONE: no new sound; the eyes do not move (they are part of the head); the finisher (The Lure, the Bloom's staging) is as it was;
+  rules and numbers untouched. Meshy: 16 pictures + 5 models. Sources, scripts, concepts: project files `deep-sea-fish/`.
 ## THE OCTOPUS GIRL (2026-11-28, mondo: "the octopus girl with her tentacles separately moving")
 - A NEW race, `'octopus girl'` (female only), from mondo's own Meshy model (R2 `dirtymondo` inbox/Meshy_AI_Octopus_girl_20261128_texture_remesh_tri.glb).
   Her tentacles are her HAIR (she has legs). Meshy rigged her (1.7 m); `bake-writhe.py --hair --locks 1 --cols 16 --min 0.06 --smooth 24` hangs one

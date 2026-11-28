@@ -9951,11 +9951,11 @@ const RACE_ABILITIES = {
     'deep sea fish': [
         /* THE SIGNATURE FAMILY (2026-10-23): The Lure, this race's own. */
         { id: 'sigLure', name: 'Lure', tier: 1, families: ['anglerlure'], cost: 25, apCost: 1, spellType: 'anomaly', vfxElement: 'light',
-          type: 'damage', kind: 'pull', damageType: 'magic', dmg: 115, range: 4, pullDistance: 3,   // STATS24 PASS 2026-10-29: dmg 50→80 (0.49× the Tier I median); STATS28 PASS 2026-10-29: dmg 80→95 (still 0.67×; Deep Sea Fish 41%); STATS32 PASS 2026-10-30: dmg 95→115 (0.74× in STATS32, 0.69× in STATS31; Deep Sea Fish 40%)
+          type: 'damage', kind: 'pull', damageType: 'magic', dmg: 115, range: 4, pullDistance: 3, animSlot: 'dfLure', animStrikeMs: 750,   // STATS24 PASS 2026-10-29: dmg 50→80 (0.49× the Tier I median); STATS28 PASS 2026-10-29: dmg 80→95 (still 0.67×; Deep Sea Fish 41%); STATS32 PASS 2026-10-30: dmg 95→115 (0.74× in STATS32, 0.69× in STATS31; Deep Sea Fish 40%)
           statusEffects: [{ id: 'charm', duration: 1 }],
           desc: 'Such a pretty light, down where there is none. Deals MEDIUM magic damage to a Single Enemy within 4 tiles, draws it 3 tiles toward you and Charms it for a round.' },
         { id: 'sigAbyssJaws', name: 'Abyss Jaws', tier: 3, families: ['anglerlure'], cost: 75, apCost: 1, spellType: 'anomaly',
-          element: 'water', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 115, range: 1, onKillHealPct: 0.25,
+          element: 'water', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 115, range: 1, onKillHealPct: 0.25, animSlot: 'dfJaws', animStrikeMs: 770,
           bonusVsStatus: { status: 'charm', mult: 1.5 },
           desc: 'The light was attached to something. Deals HEAVY physical damage to an adjacent enemy; a kill heals 25% of max HP. Charmed targets take it worse.' },
     ],
