@@ -3464,7 +3464,7 @@ const RACE_MODELS_3D = {
   },
   'mushroom girl': {   // 2026-11-28 mondo: HIS OWN Meshy model (brown bob, frill growths), legs spread 8 deg before the auto-rig so the feet stay apart (project files mushroom-girl/spread.mjs; the pink one before it stays on R2)
     female: _mkUAL('mushroomgirl', 'mushroom_girl', {
-      model: 'https://cdn.entropywars.net/Assets/characters/races/mushroomgirl/female/Meshy_AI_mushroom_girl_v3_Running.glb',
+      model: 'https://cdn.entropywars.net/Assets/characters/races/mushroomgirl/female/Meshy_AI_mushroom_girl_v4_Running.glb',   // 11-28 his second take (v3 before it stays on R2)
       heightRatio: 0.92, basicAttackKind: 'magic',
     }),
   },

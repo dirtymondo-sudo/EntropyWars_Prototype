@@ -689,3 +689,4 @@ The first model stays on R2; the sprite, portrait and the remade creator look ar
 Then (same day) mondo's OWN Meshy model replaced it: `Meshy_AI_mushroom_girl_v3_Running.glb` (brown bob, frill growths). Meshy's
 auto-rig tore its feet (the legs stood ~1 cm apart), so project files `mushroom-girl/spread.mjs` turns each leg 8 deg out about the
 hip before rigging (`rig.py`: Meshy rigging by data URI). Use the same trick on any model whose legs or feet touch.
+Then (11-28 morning) his second take replaced it: `Meshy_AI_mushroom_girl_v4_Running.glb`, same leg spread + rig.
