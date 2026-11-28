@@ -3009,13 +3009,13 @@ const RACE_MODELS_3D = {
      Kits are not in: data.js EW_COMING_RACES. */
   'harpy': {
     female: _mkUAL('harpy', 'harpy', {
-      model: 'https://cdn.entropywars.net/Assets/characters/races/harpy/female/Meshy_AI_harpy_v1_Running.glb',
+      model: 'https://cdn.entropywars.net/Assets/characters/races/harpy/female/Meshy_AI_harpy_v2_Running.glb',
       heightRatio: 0.97, basicAttackKind: 'claw', sway: { wings: 'harpy' },
     }),
   },
   'moth queen': {
     female: _mkUAL('moth_queen', 'moth_queen', {
-      model: 'https://cdn.entropywars.net/Assets/characters/races/moth_queen/female/Meshy_AI_moth_queen_v1_Running.glb',
+      model: 'https://cdn.entropywars.net/Assets/characters/races/moth_queen/female/Meshy_AI_moth_queen_v2_Running.glb',
       heightRatio: 1.08, basicAttackKind: 'magic', sway: { wings: 'mothqueen' },
     }),
   },
