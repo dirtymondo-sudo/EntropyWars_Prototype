@@ -21212,6 +21212,128 @@ const ThreeRenderer = (function () {
         clips.attack = clips.castMelee;
         return clips;
     }
+    /* 🪼 THE JELLYFISH, A REAL ONE (2026-11-28, thread "Redesign the jellyfish race"; mondo: "a real jellyfish is already alien
+       looking enough. Just need to stylize it a little bit"). ONE file a species (bake-jelly.py: a Meshy bell, a Meshy oral arm
+       hung several times, thin tentacles made in code): ewJfBody (a node at the bell's middle) > ewJfBell (the bell's mesh: its
+       scale is the PULSE), ewJfRim (the ring the thin tentacles hang from: it closes and opens with the bell), ewJfCore (the
+       oral arms' ring). Every arm and tentacle is a chain of THE SWAY's spring bones (ewsway_c<k>_<j>), so they trail, whip
+       and settle behind every move below by themselves. Metres, front +Z, the longest tentacle's tip on y 0.
+       A pose is a function of u (0 … 1) giving: y (lift), z (forward), x (to its left), rx (it tips forward), ry (it turns),
+       rz (it rolls), s (whole scale − 1), p (the pulse: 1 = the bell squeezed shut, 0 = at rest, below 0 = flared open),
+       sp (the tentacle ring spreads: scale − 1). ThreeRenderer.jfPose(slot, dur, pose) adds or replaces a slot. */
+    var _JF_HOVER = 0.1;
+    /* one swimming stroke over a whole number of x: a quick squeeze (the first fifth), a slow opening */
+    function _jfStroke(x) { var f = x - Math.floor(x); return f < 0.2 ? _mtS(f, 0, 0.2) : 1 - _mtS(f, 0.2, 0.95); }
+    /* the lift a stroke gives: it comes a beat after the squeeze and is lost again by the next */
+    function _jfLift(x) { var f = x - Math.floor(x); return _mtBump(f, 0.08, 0.38, 1.0); }
+    function _jfClip(name, dur, pose, R) {
+        var N = Math.max(8, Math.round(dur * 30)), tt = [], bp = [], bq = [], bs = [], ls = [], rs = [], cs = [];
+        var e = new THREE.Euler(0, 0, 0, 'YXZ'), q = new THREE.Quaternion();
+        for (var k = 0; k <= N; k++) {
+            var u = k / N, p = pose(u) || {};
+            var f = function (n) { return p[n] || 0; };
+            tt.push(u * dur);
+            bp.push(R.p0.x + f('x'), R.p0.y + _JF_HOVER + f('y'), R.p0.z + f('z'));
+            e.set(f('rx'), f('ry'), -f('rz'), 'YXZ'); q.setFromEuler(e); bq.push(q.x, q.y, q.z, q.w);
+            var s = 1 + f('s'); bs.push(s, s, s);
+            var pu = Math.max(-1, Math.min(1.2, f('p')));
+            var w = 1 - pu * 0.2, h = 1 + pu * 0.16;          // squeezed = narrower and taller, flared = wider and flatter
+            ls.push(w, h, w);
+            var rw = (1 - pu * 0.3) * (1 + f('sp')); rs.push(rw, 1, rw);
+            var cw = 1 - pu * 0.12; cs.push(cw, 1 + pu * 0.05, cw);
+        }
+        var V = THREE.VectorKeyframeTrack, Q = THREE.QuaternionKeyframeTrack;
+        var out = [new V('ewJfBody.position', tt, bp), new Q('ewJfBody.quaternion', tt, bq), new V('ewJfBody.scale', tt, bs), new V('ewJfBell.scale', tt, ls)];
+        if (R.rim) out.push(new V('ewJfRim.scale', tt, rs));
+        if (R.core) out.push(new V('ewJfCore.scale', tt, cs));
+        return new THREE.AnimationClip(name, dur, out);
+    }
+    var _JF_POSES = {
+        /* idle (8 s loop): four slow strokes. Each squeeze lifts it, it sinks back as the bell opens; it drifts and turns a little */
+        idle: [8.0, function (u) {
+            var w = u * Math.PI * 2;
+            return { p: _jfStroke(u * 4) * 0.55, y: _jfLift(u * 4) * 0.07 + Math.sin(w) * 0.015, x: Math.sin(w + 0.6) * 0.03,
+                     rx: Math.sin(w * 2 + 0.9) * 0.05, ry: Math.sin(w) * 0.14, rz: Math.sin(w * 2 + 1) * 0.05 };
+        }],
+        /* walk (1.4 s loop): it tips into the way it goes and swims: two hard strokes, the tentacles streaming behind */
+        walk: [1.4, function (u) {
+            return { p: _jfStroke(u * 2) * 0.85, y: _jfLift(u * 2) * 0.06, z: _jfLift(u * 2) * 0.04, rx: 0.42 + _jfStroke(u * 2) * 0.08, rz: Math.sin(u * Math.PI * 2) * 0.05 };
+        }],
+        /* a cast: the bell flares wide and trembles, the ring of tentacles spreads, then one hard squeeze */
+        cast: [1.4, function (u) {
+            var a = _mtS(u, 0.0, 0.25) * (1 - _mtS(u, 0.42, 0.5)), fire = _mtBump(u, 0.42, 0.52, 0.9);
+            return { p: -a * 0.7 + fire * 1.0, sp: a * 0.35, y: a * 0.08 + fire * 0.1, rx: -a * 0.18 + fire * 0.22,
+                     rz: Math.sin(u * Math.PI * 2 * 12) * 0.02 * a };
+        }],
+        /* the sting (basic attack / a melee cast): it rears back so the tentacles swing under it, then whips forward and through */
+        castMelee: [1.0, function (u) {
+            var back = _mtBump(u, 0.0, 0.26, 0.42), go = _mtBump(u, 0.36, 0.5, 0.88);
+            return { z: -back * 0.16 + go * 0.34, y: back * 0.1 - go * 0.04, rx: -back * 0.75 + go * 0.95, p: -back * 0.5 + go * 0.9, sp: back * 0.2 };
+        }],
+        /* the big one: it climbs, turning a whole turn, the tentacles flung out in a wheel, pulsing fast */
+        castAOE: [1.6, function (u) {
+            var a = _mtS(u, 0.0, 0.15) * (1 - _mtS(u, 0.85, 1.0)), turn = _mtS(u, 0.1, 0.82);
+            return { y: a * 0.24, ry: turn * Math.PI * 2, rx: -a * 0.1, p: _jfStroke(u * 5) * 0.8 * a - a * 0.15, sp: a * 0.5 };
+        }],
+        /* a support cast: two slow soft strokes, a gentle nod */
+        castSupport: [1.3, function (u) {
+            return { y: Math.sin(u * Math.PI) * 0.06, rx: Math.sin(u * Math.PI * 2) * 0.1, p: _jfStroke(u * 2) * 0.5, sp: Math.sin(u * Math.PI) * 0.15 };
+        }],
+        /* the ultimate: it squeezes to a knot and sinks, shaking; then bursts open huge and hangs there, flared, throbbing */
+        castUltimate: [2.2, function (u) {
+            var down = _mtBump(u, 0.0, 0.22, 0.4), up = _mtS(u, 0.36, 0.46) * (1 - _mtS(u, 0.88, 1.0));
+            return { y: -down * 0.12 + up * 0.34, p: down * 1.1 - up * 0.8 + _jfStroke(u * 7) * 0.5 * up, sp: -down * 0.3 + up * 0.6,
+                     s: -down * 0.06 + up * 0.08, rz: Math.sin(u * Math.PI * 2 * 14) * 0.035 * down, rx: down * 0.15 - up * 0.12 };
+        }],
+        /* hit: knocked back and askew, the bell clenched */
+        hit: [0.6, function (u) {
+            var j = _mtBump(u, 0.0, 0.14, 0.7);
+            return { z: -j * 0.18, y: j * 0.04, rx: -j * 0.4, rz: j * 0.2, p: _mtBump(u, 0.0, 0.1, 0.6) * 0.9 };
+        }],
+        /* 🪼 ITS OWN SPELLS (data.js `animSlot` on each row of its kit) */
+        /* Sting: one tentacle flick. It turns half side on, dips a shoulder of the bell, snaps back upright: the tentacles whip across */
+        jfSting: [1.0, function (u) {
+            var wind = _mtBump(u, 0.0, 0.24, 0.38), snap = _mtBump(u, 0.32, 0.42, 0.8);
+            return { ry: -wind * 0.9 + snap * 0.5, rz: -wind * 0.45 + snap * 0.6, rx: snap * 0.35, z: snap * 0.16, y: wind * 0.06, p: snap * 0.8, sp: wind * 0.25 };
+        }],
+        /* Bloom: a thousand of them. It rises and beats fast, flaring wider on every stroke, the ring spread like a flower */
+        jfBloom: [1.7, function (u) {
+            var a = _mtS(u, 0.0, 0.15) * (1 - _mtS(u, 0.85, 1.0));
+            return { y: a * 0.2, p: (_jfStroke(u * 6) * 0.9 - 0.45 * _mtS(u, 0.1, 0.7)) * a, sp: a * (0.2 + 0.5 * _mtS(u, 0.1, 0.7)), ry: Math.sin(u * Math.PI * 2) * 0.3 * a,
+                     s: a * 0.05 };
+        }],
+        /* Ocean Current: the bell folds shut to a spindle and it shoots up and away; it opens again as it lands */
+        jfDrift: [1.0, function (u) {
+            var fold = _mtS(u, 0.0, 0.25) * (1 - _mtS(u, 0.7, 0.95));
+            return { p: fold * 1.15, sp: -fold * 0.45, y: fold * 0.3, rx: fold * 0.3, s: -fold * 0.12 };
+        }],
+        /* Nematocyst Net: the skirt opens as wide as it goes over the target, hangs a beat, then slams shut and drags down */
+        jfNet: [1.5, function (u) {
+            var open = _mtS(u, 0.0, 0.3) * (1 - _mtS(u, 0.5, 0.56)), shut = _mtBump(u, 0.5, 0.58, 0.95);
+            return { y: open * 0.22 - shut * 0.08, z: open * 0.1 + shut * 0.12, rx: open * 0.3 + shut * 0.2, p: -open * 0.9 + shut * 1.1, sp: open * 0.8 - shut * 0.35 };
+        }],
+        /* Immortal Cycle: the bell collapses back to a polyp (small, shut, sunk), holds, and grows again in three swelling strokes */
+        jfRebirth: [2.2, function (u) {
+            var gone = _mtS(u, 0.0, 0.3) * (1 - _mtS(u, 0.5, 0.9)), grow = _mtS(u, 0.5, 0.9) * (1 - _mtS(u, 0.92, 1.0));
+            return { s: -gone * 0.6, p: gone * 1.1 + _jfStroke(u * 7.5) * 0.5 * grow, sp: -gone * 0.5, y: -gone * 0.35 + grow * 0.1,
+                     ry: _mtS(u, 0.5, 0.9) * Math.PI * 2 };
+        }],
+        /* death: one last weak stroke, then it goes slack, tips over and sinks, the bell fallen open (held) */
+        death: [1.9, function (u) {
+            var s = _mtS(u, 0.2, 0.85);
+            return { y: _mtBump(u, 0.0, 0.12, 0.3) * 0.06 - s * 0.42, rz: -s * 1.1, rx: s * 0.3, p: _mtBump(u, 0.0, 0.1, 0.3) * 0.7 - s * 0.6, sp: s * 0.3, s: -s * 0.06 };
+        }]
+    };
+    function _jfBuild(root) {
+        var b = root.getObjectByName('ewJfBody');
+        if (!b || !root.getObjectByName('ewJfBell')) return null;
+        var R = { p0: b.position.clone(), rim: !!root.getObjectByName('ewJfRim'), core: !!root.getObjectByName('ewJfCore') };
+        var clips = {};
+        Object.keys(_JF_POSES).forEach(function (slot) { var p = _JF_POSES[slot]; clips[slot] = _jfClip(slot, p[0], p[1], R); });
+        clips.castMagic = clips.cast; clips.castRanged = clips.cast; clips.castHeal = clips.castSupport; clips.run = clips.walk;
+        clips.attack = clips.castMelee;
+        return clips;
+    }
     /* ⛄ THE SNOWMAN (2026-11-27, thread "Add a snowman character"; mondo: "a new character, Snowman, and make all the individual
        parts for it like the carrot and the stick arms and the 3 snow ball body parts ... unique animations for its spells"). ONE file
        (Assets/characters/races/snowman/male/snowman.glb, put together from five Meshy parts by project files snowman/tools/assemble.py;
@@ -22104,6 +22226,8 @@ const ThreeRenderer = (function () {
         monsterTruck: function (root) { return _mtBuild(root); },
         /* 🧠 THE FLOATING BRAIN (above, _bbBuild): the brain's hover and throb, the eye, the lids; the tendrils ride THE SWAY */
         brainBody: function (root) { return _bbBuild(root); },
+        /* 🪼 THE JELLYFISH, A REAL ONE (above, _jfBuild): the bell's pulse and swim; the arms and tentacles ride THE SWAY */
+        jellyBody: function (root) { return _jfBuild(root); },
         /* ⛄ THE SNOWMAN (above, _snBuild): three balls, two sticks, a carrot, coal, a hat and a scarf, each its own part */
         snowman: function (root) { return _snBuild(root); }
     };
@@ -115964,6 +116088,7 @@ const ThreeRenderer = (function () {
         /* 🛻 THE MONSTER TRUCK: a slot's motion for every truck built after this call (dur s, pose(u) -> { y rx rz hood spin lean });
            an existing slot is replaced. Models already built keep their clips. */
         mtPose: function (slot, dur, pose) { if (slot && typeof pose === 'function') _MT_POSES[slot] = [+dur || 1, pose]; return true; },
+        jfPose: function (slot, dur, pose) { if (slot && typeof pose === 'function') _JF_POSES[slot] = [+dur || 1, pose]; return true; },   // 🪼 THE JELLYFISH: a spell's own clip
         bbPose: function (slot, dur, pose) { if (slot && typeof pose === 'function') _BB_POSES[slot] = [+dur || 1, pose]; return true; },   // 🧠 THE FLOATING BRAIN: a spell's own clip
         /* ⛄ THE SNOWMAN: the same for its parts (pose(u) -> { <node>: { p, rw, r, s } }, three-renderer.js THE SNOWMAN) */
         snPose: function (slot, dur, pose) { if (slot && typeof pose === 'function') _SN_POSES[slot] = [+dur || 1, pose]; return true; },

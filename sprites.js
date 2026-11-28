@@ -2703,10 +2703,13 @@ const RACE_MODELS_3D = {
      library clip plays as before; 12 tentacles hang from the waist, each on its own chain of THE SWAY's spring bones, so they swing
      behind every walk, cast and hit (bake-tentacles.py; sources project files jellyfish-remake/). The old rig stays on R2. */
   'jellyfish': {
-    male: _mkUAL('jellyfish', 'a_jellyfish_king', {
-      model: 'https://cdn.entropywars.net/Assets/characters/races/jellyfish/male/Meshy_AI_jellyfish_m_v4_Running.glb',   // v4 (mondo 11-24): no hanging tentacles under the bell
-      heightRatio: 0.92, basicAttackKind: 'magic',
-    }),
+    /* 🪼 THE JELLYFISH, A REAL ONE (2026-11-28, mondo: "not really feeling its current one ... a real jellyfish is already alien looking
+       enough. Just need to stylize it a little bit"; his picks: the lion's mane and the deep sea crown): no body, no rig of bones to walk
+       on: a Meshy bell + a Meshy oral arm hung six times + thin tentacles made in code, every arm and tentacle on THE SWAY's spring
+       chains (bake-jelly.py, preset `mane`). three-renderer.js THE JELLYFISH, A REAL ONE (procRig jellyBody) swims it: the bell pulses.
+       The deep sea crown = `male/jellyfish_crown_v1.glb` (same tool, preset `crown`). The 11-24 biped (…_m_v4_Running.glb) stays on R2. */
+    male: { model: 'https://cdn.entropywars.net/Assets/characters/races/jellyfish/male/jellyfish_mane_v1.glb', clips: {}, procRig: 'jellyBody', heightRatio: 0.95, yawOffset: 0, basicAttackKind: 'magic',
+            sway: { stiffness: 0.9, gravity: 0.45, drag: 0.22, maxRoot: 65, maxBend: 30, wave: 0.12, waveHz: 0.4, caps: [] } },
     /* THE JELLYFISH, MALE + FEMALE (2026-11-24, mondo on the v2: "looks more like a female ... it needs boobs"; the old one's look is
        "basically how i want it to look like ... make one like that as the male version and another one for a female version"): v3 male =
        the old bell + tentacle arms and legs, remade (no T-bars) (v4: the 10 hanging tentacles taken off, mondo: "they don't look attached correctly"); the female = the v2 idea with a
