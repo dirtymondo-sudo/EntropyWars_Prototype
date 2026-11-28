@@ -7189,6 +7189,7 @@
             if (spell && spell._diceMult > 0 && dmg > 0) dmg = Math.max(1, Math.round(dmg * spell._diceMult));
             if (unit && unit.race === 'jellyfish ufo' && dmg > 0) dmg = Math.max(1, Math.round(dmg * _crChargeMult(unit, spell)));   // ⚡ BIOELECTRIC CHARGE
             if (spell && spell.perCowedStack > 0 && dmg > 0) dmg = Math.max(1, Math.round(dmg * _dcStackMult(spell, target)));   // 🐉 KNEEL: +40% a Cowed stack
+            if (spell && spell.hpStarve && dmg > 0) dmg = Math.max(1, Math.round(dmg * _hpStarveMult(spell, target)));   // 🪶 FEEDING FRENZY: a starved target
             if (unit && unit._lgAmbush && dmg > 0 && _lgAmbushCrit(unit, target)) {   // 🐆 ROSETTES: the first hit from hiding
                 unit._matchCrits = (unit._matchCrits || 0) + 1;
                 return { dmg: Math.floor(dmg * getCritMultiplier(unit)), isCrit: true };
@@ -16836,6 +16837,173 @@
         }
         window._lgRoundEnd = _lgRoundEnd; window._dcDominion = _dcDominion;   // (a probe can run them)
 
+        /* ═══ THE HARPY + THE MOTH QUEEN, THE KITS (2026-11-28, thread "Make Harpy and Moth Queen spells"; mondo: "make their spells and
+           choose their animations/vfx") ═══ FIRST PASS, one rule each. Host-side like THE NEW RACES 5: plain numbers / ids on the unit
+           (_hpFx/_hpFy/_hpFz, _hpCastSteal, _moonSrcId: RULE #2) and a status, mirrored by the state sync; texts ride
+           showFloatingTextForUnit's relay, looks _sigVfxGeom (fireGeometry, relayed), moves animateDisplacement (relayed).
+           Notes: docs/notes/champions-combat.md "THE HARPY + THE MOTH QUEEN, THE KITS".
+           - 🪶 SNATCH (hpSnatch): every hit she lands on an enemy (not a DoT, not an echo) steals MP for herself: 12, or the cast
+             row's `hpSteal` (_hpOnHit, applyDamageToUnit). Shriek (`hpShriekMp`) empties the pockets it Silences (_hpAfterCast).
+             Carry Off (`hpCarry`): _hpBeginCast notes the square she dives from; after the hit she flies back to it and the victim
+             is set down on the free square beside it nearest where it stood (_hpCarry). Feeding Frenzy (`hpStarve`): ×mult on a
+             target with less than `mp` MP (_hpStarveMult, _spellCritRoll).
+           - 🌙 DRAWN TO THE LIGHT (mqDrawn): STATUS_DEFS.moonstruck carries her id (_moonSrcId). A Moonstruck unit whose turn
+             starts is drawn 1 square toward her (_mqDrawn, the blitz hand-off). Porch Light (`mqPorch`): every Moonstruck enemy
+             of hers within reach is dragged up to `pull` squares to her, nearest first; the ones that end beside her are Stunned
+             1 (_mqPorch, the buff branch; refused with none in reach). */
+        const HP_SNATCH_MP = 12;
+        function _hmFx(key, u, n, extra) {
+            if (!u || state.phase !== 'battle') return;
+            _sigVfxGeom(key, u.x, u.y, n || 0, Object.assign({ uid: u.id, owner: u.player }, extra || {}));
+        }
+        function _hmStatic(u) { return !u || u._isCube || u._summonStatic || (typeof _isClashMode === 'function' && _isClashMode()); }
+        /* 🪶 applyDamageToUnit: a hit she landed */
+        function _hpOnHit(src, target, damageType, opts) {
+            if (!src || src.race !== 'harpy' || !target || target.id === src.id || !_nrAlive(src)) return;
+            if (damageType === 'dot' || (opts && opts._linkEcho) || !sidesHostile(src.player, target.player)) return;
+            if (!unitHasPassive(src, 'hpSnatch') || unitHasStatus(src, 'broken')) return;
+            const want = src._hpCastSteal > 0 ? src._hpCastSteal : HP_SNATCH_MP;
+            const took = Math.min(Math.max(0, target.mp || 0), want);
+            if (!(took > 0)) return;
+            target.mp -= took;
+            const was = src.mp || 0;
+            src.mp = Math.min(src.maxMp || (was + took), was + took);
+            if (!_skipVisuals()) showFloatingTextForUnit(target, `-${took} MP`, 'debuff', { durationMs: 900, jitterY: -18 });
+            if (src.mp > was) _crFloat(src, `🪶 +${src.mp - was} MP`, 'heal');
+            addLog(`🪶 ${_ctName(src)} snatches ${took} MP from ${_ctName(target)}.`);
+            _hmFx('hmSnatch', src, took, { from: { x: target.x, y: target.y } });
+            markDirty('teams', 'selectedUnit', 'hud');
+        }
+        /* _spellCritRoll: Feeding Frenzy on a starved target */
+        function _hpStarveMult(spell, target) {
+            const st = spell && spell.hpStarve;
+            if (!st || !target || (target.maxMp || 0) <= 0) return 1;
+            return (target.mp || 0) < (st.mp || 30) ? (st.mult || 1.5) : 1;
+        }
+        function _hpBeginCast(unit, spell) {
+            if (!unit || unit.race !== 'harpy') return;
+            unit._hpCastSteal = (spell && spell.hpSteal > 0) ? spell.hpSteal : 0;
+            if (spell && spell.hpCarry) { unit._hpFx = unit.x; unit._hpFy = unit.y; unit._hpFz = unit.z; }
+            else { delete unit._hpFx; delete unit._hpFy; delete unit._hpFz; }
+        }
+        /* finishAction: Carry Off. She goes back to the square she dived from; the victim comes with her. */
+        function _hpCarry(unit, spell, x, y) {
+            const fx = unit._hpFx, fy = unit._hpFy, fz = unit._hpFz;
+            delete unit._hpFx; delete unit._hpFy; delete unit._hpFz;
+            if (!spell || !spell.hpCarry || fx == null || !_nrAlive(unit)) return;
+            const t = unitAt(x, y);
+            if (!t || t.id === unit.id || !_nrAlive(t) || !sidesHostile(unit.player, t.player) || _hmStatic(t)) return;
+            if (_nr5Cheb(unit, t) !== 1 || (unit.x === fx && unit.y === fy)) return;   // (she never left: the victim stood beside her already)
+            if (!isInside(fx, fy) || !canOccupy(fx, fy)) return;
+            /* the drop: the free square beside her start nearest to where the victim stood */
+            let best = null, bd = 1e9;
+            for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
+                if (!dx && !dy) continue;
+                const nx = fx + dx, ny = fy + dy;
+                if (!isInside(nx, ny) || !canOccupy(nx, ny)) continue;
+                const d = Math.abs(nx - t.x) + Math.abs(ny - t.y) + ((dx && dy) ? 0.4 : 0);
+                if (d < bd) { bd = d; best = { x: nx, y: ny }; }
+            }
+            if (!best) return;
+            const ux = unit.x, uy = unit.y, tx0 = t.x, ty0 = t.y;
+            const nz = (v, px, py) => (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(px, py, v) : v;
+            unit.x = fx; unit.y = fy; unit.z = nz(fz != null ? fz : unit.z, fx, fy);
+            t.x = best.x; t.y = best.y; t.z = nz(unit.z, best.x, best.y);
+            const far = Math.max(1, Math.abs(ux - fx) + Math.abs(uy - fy)), ms = Math.min(900, 300 + 130 * far);
+            animateDisplacement(unit, ux, uy, unit.x, unit.y, ms, { leap: true });
+            animateDisplacement(t, tx0, ty0, t.x, t.y, ms + 60, { leap: true });
+            faceStrikeTarget(unit, t);
+            resolveTileArrival(unit, { via: 'self' });
+            resolveTileArrival(t, { via: 'displaced' });
+            addLog(`🪶 ${_ctName(unit)} carries ${_ctName(t)} off to ${coordLabel(t.x, t.y)} and drops it.`);
+            _crFloat(t, '🪶 CARRIED OFF', 'debuff');
+            _sigVfxGeom('hmCarry', t.x, t.y, far, { owner: unit.player, from: { x: tx0, y: ty0 }, uid: t.id, ms: ms });
+        }
+        function _hpAfterCast(unit, spell, x, y) {
+            if (spell.hpShriekMp > 0 && _nrAlive(unit)) {
+                const r = spell.aoeRadius || 2;
+                for (const e of (state.units || [])) {
+                    if (!_nrAlive(e) || !sidesHostile(unit.player, e.player) || e._isCube || _nr5Cheb(unit, e) > r) continue;
+                    const lost = Math.min(Math.max(0, e.mp || 0), spell.hpShriekMp);
+                    if (!(lost > 0)) continue;
+                    e.mp -= lost;
+                    if (!_skipVisuals()) showFloatingTextForUnit(e, `-${lost} MP`, 'debuff', { durationMs: 900, jitterY: -18 });
+                }
+                markDirty('teams', 'selectedUnit', 'hud');
+            }
+            _hpCarry(unit, spell, x, y);
+            unit._hpCastSteal = 0;
+        }
+
+        /* 🌙 one square toward (qx, qy), the longer way first; false if nothing gives */
+        function _mqStep(u, qx, qy) {
+            const ddx = Math.sign(qx - u.x), ddy = Math.sign(qy - u.y);
+            const tries = Math.abs(qx - u.x) >= Math.abs(qy - u.y) ? [[ddx, 0], [0, ddy]] : [[0, ddy], [ddx, 0]];
+            for (const [dx, dy] of tries) {
+                if (!dx && !dy) continue;
+                const nx = u.x + dx, ny = u.y + dy;
+                if (!isInside(nx, ny) || !canOccupy(nx, ny)) continue;
+                const info = _slideStepInfo(u, u.x, u.y, u.z, dx, dy);
+                if (!info || info.kind !== 'open') continue;
+                const nz = (info.nz != null) ? info.nz : ((typeof nearestWalkableZ === 'function') ? nearestWalkableZ(nx, ny, u.z) : u.z);
+                if (Math.abs(u.z - nz) > 1) continue;
+                u.x = nx; u.y = ny; u.z = nz;
+                return true;
+            }
+            return false;
+        }
+        function _mqQueenOf(u) {
+            if (!u || !unitHasStatus(u, 'moonstruck')) return null;
+            const q = _nr5Unit(u._moonSrcId);
+            return (q && _nrAlive(q) && q.race === 'moth queen' && sidesHostile(q.player, u.player)) ? q : null;
+        }
+        function _mqPull(u, q, n) {
+            const fx = u.x, fy = u.y;
+            let steps = 0;
+            for (let i = 0; i < n; i++) { if (_nr5Cheb(u, q) <= 1 || !_mqStep(u, q.x, q.y)) break; steps++; }
+            if (!steps) return 0;
+            u._trackTilesMoved = (u._trackTilesMoved || 0) + steps;
+            animateDisplacement(u, fx, fy, u.x, u.y, 260 * steps, {});
+            resolveTileArrival(u, { via: 'displaced' });
+            _sigVfxGeom('hmDrawn', u.x, u.y, steps, { owner: q.player, from: { x: fx, y: fy }, uid: u.id, qx: q.x, qy: q.y });
+            return steps;
+        }
+        /* the blitz hand-off: a Moonstruck unit's turn starts */
+        function _mqDrawn(u) {
+            if (!_nrAlive(u) || !u._moonSrcId || _hmStatic(u)) return;
+            const q = _mqQueenOf(u);
+            if (!q || !unitHasPassive(q, 'mqDrawn') || unitHasStatus(q, 'broken')) return;
+            if (typeof isUnitRealmShieldedFrom === 'function' && isUnitRealmShieldedFrom(u, q)) return;
+            if (_mqPull(u, q, 1)) {
+                addLog(`🌙 ${_ctName(u)} cannot look away: drawn 1 square toward ${_ctName(q)}.`);
+                _crFloat(u, '🌙 DRAWN', 'debuff');
+            }
+        }
+        function _mqPorchTargets(unit, spell) {
+            const R = (spell.mqPorch && spell.mqPorch.reach) || 5;
+            return (state.units || []).filter(e => _nrAlive(e) && !e._isCube && sidesHostile(unit.player, e.player) && unitHasStatus(e, 'moonstruck') && _nr5Cheb(unit, e) <= R)
+                .sort((a, b) => _nr5Cheb(unit, a) - _nr5Cheb(unit, b));
+        }
+        /* the buff branch: Porch Light */
+        function _mqPorch(unit, spell) {
+            const n = (spell.mqPorch && spell.mqPorch.pull) || 3;
+            let moved = 0, stunned = 0;
+            _hmFx('hmPorch', unit, 0);
+            for (const e of _mqPorchTargets(unit, spell)) {
+                if (!_hmStatic(e)) moved += _mqPull(e, unit, n) ? 1 : 0;
+                if (_nrAlive(e) && _nr5Cheb(unit, e) <= 1) {
+                    applyStatusPayload(e, { id: 'stun', duration: 1 }, `${spell.name}: `, unit);
+                    if (unitHasStatus(e, 'stun')) { stunned++; _crFloat(e, '🌙 DAZZLED', 'debuff'); }
+                }
+            }
+            addLog(`🌙 ${_ctName(unit)} turns the light on: ${moved} drawn in${stunned ? `, ${stunned} Stunned at the bulb` : ''}.`);
+        }
+        function _hmAfterCast(unit, spell, x, y) {
+            if (!unit || !spell) return;
+            if (unit.race === 'harpy') _hpAfterCast(unit, spell, x, y);
+        }
+        window._mqDrawn = _mqDrawn; window._mqPorchTargets = _mqPorchTargets;   // (a probe / the CPU can read them)
+
         /* ═══ THE RAT KING (2026-11-23, thread "Plan the Rat and Rat King's spells"; mondo: "The rat can have some sort of system where
            if he gets enough stacks he becomes the rat king", plan OK'd 11-23) ═══ One new rule, MISCHIEF (a group of rats is a
            mischief), host-side like THE COMING RACES: plain numbers and the unit's own appearance / spell rows, all riding the state
@@ -18925,6 +19093,7 @@
             'voidweaver': 'throw',
             'point guard': 'throw',   // 2026-11-24 THE POINT GUARD: the chest pass (his basketball flies: UNIT_ANIM_OVERRIDES)
             'leopard girl': 'claw', 'draconian': 'claw', 'flower girl': 'magic',   // 2026-11-27 THE NEW RACES 5
+            'harpy': 'claw', 'moth queen': 'magic',   // 2026-11-28 THE HARPY + THE MOTH QUEEN
             'demon prince': 'claw', 'skinwalker': 'claw', 'bear': 'claw', 'abomination': 'claw',   // 2026-11-23 THE BEAR: the paw rakes, never the fist sprite; THE ABOMINATION's arm the same
             'cyclops': 'punch', 'juggernaut': 'punch', 'super sentai': 'punch', 'antihero': 'punch',
             'bigfoot': 'punch', 'giant': 'punch', 'werewolf': 'claw', 'catgirl': 'claw', 'ki fighter': 'punch',
@@ -45938,6 +46107,7 @@
                 if (sourceUnit && sourceUnit.race === 'leopard girl') _lgOnHit(sourceUnit, target, damageType, opts);   // 🐆 ROSETTES: she landed one this round
                 if (target.race === 'leopard girl') _lgOnHurt(target, sourceUnit, damageType);   // 🐆 found: the ambush is gone
                 if ((target._pollen | 0) > 0 && target.hp > 0) _fgPollenHit(target, sourceUnit, damageType, opts);   // 🌸 POLLINATE: the hitter heals
+                if (sourceUnit && sourceUnit.race === 'harpy') _hpOnHit(sourceUnit, target, damageType, opts);   // 🪶 SNATCH: she takes its MP
                 /* Taking a hit blows your cover: blood spatter and the stagger of
                    impact give a hidden unit away. Any damage dealt by an enemy
                    strips Invisible — AoE sweeps, traps and turrets are the
@@ -68737,6 +68907,7 @@
                 _popeGlassEnds(nextUnit);   // ⛪ the Popemobile's glass comes down when his next turn starts
                 _bfVanishEnds(nextUnit);   // 🦋 Flash and Vanish lasts until her next turn starts
                 _dcDominion(nextUnit);   // 🐉 DOMINION: a turn that starts within 2 of a Draconian is Cowed
+                if (nextUnit._moonSrcId) { try { _mqDrawn(nextUnit); } catch (e) { console.warn('[MOTH QUEEN] drawn', e); } }   // 🌙 DRAWN TO THE LIGHT: a Moonstruck unit steps toward her
                 if (_balanceSimMode) _balTurnStart(nextUnit);   // Balance Lab: turns + dry turns per race
                 _eorPhaseLabelHide();   // a unit is up: the end of round is over, its phase chip goes
                 if (typeof window !== 'undefined' && window._tutActive && typeof window._tutEvent === 'function') window._tutEvent('activation', { uid: nextUnit.id, player: nextUnit.player });
@@ -86445,6 +86616,7 @@
             if (spell && (spell.wnSkyRead || spell.wnByGround)) spell = _wnCastRow(unit, spell, x, y);
             _psBeginCast(unit, spell, x, y, z);
             _ogBeginCast(unit, spell);   // 🕊 THE ORIGAMI GIRL: where the flight began
+            _hpBeginCast(unit, spell);   // 🪶 THE HARPY: the square she dives from, the cast's steal
             _pgBeginCast(unit, spell);   // 🏀 THE POINT GUARD: the Crossover notes who stood next to him
             if (unit && unit.race === 'rat') unit._ratCastId = spell ? spell.id : null;   // 👑 THE RAT KING: Gnaw's bonus reads the cast
             /* Clash final authority: movement/positioning spells can never
@@ -87225,6 +87397,7 @@
                 if (unit.race === 'rat') unit._ratCastId = null;   // 👑 THE RAT KING
                 _bearAfterCast(unit, spell, x, y);   // 🐻 THE BEAR: Hibernate's sleep, Bear Hug's Root + Grudge
                 _nr5AfterCast(unit, spell, x, y);   // 🐆🐉🌸 THE NEW RACES 5: Drag the Kill, Kneel, Sweet Perfume + Spring Awakening
+                _hmAfterCast(unit, spell, x, y);   // 🪶🌙 THE HARPY + THE MOTH QUEEN: Shriek's pockets, Carry Off
                 _abAfterCast(unit, spell);   // 🫀 THE ABOMINATION: the mouths close
                 _psAfterCast(unit, spell, x, y, z);   // 💉 THE PLASTIC SURGEON: Work Done, Liposuction's shield
                 _ogAfterCast(unit, spell, x, y, z);   // 🕊 THE ORIGAMI GIRL: THE FOLD (the shape she stays in), the fortune's flap
@@ -87579,6 +87752,10 @@
                     if (!_silentReject) { addLog(`${_ctSp(spell.name)}: nothing to clean within ${spell.mopUp.radius || 2}.`, _clickSeat()); playErrorSfx(); }
                     return 0;
                 }
+                if (spell.mqPorch && !_mqPorchTargets(unit, spell).length) {   // 🌙 nobody to draw in
+                    if (!_silentReject) { addLog(`${_ctSp(spell.name)}: no Moonstruck enemy within ${spell.mqPorch.reach || 5}.`, _clickSeat()); playErrorSfx(); }
+                    return 0;
+                }
                 if (spell.butterflyEffect && !_bfCarriers(unit.player).length) {   // 🦋 nothing to speed up
                     if (!_silentReject) { addLog(`${_ctSp(spell.name)}: no Flutter of her side's on the board.`, _clickSeat()); playErrorSfx(); }
                     return 0;
@@ -87714,6 +87891,7 @@
                     if (spell.comeAtMe && !unit.dead) _crComeAtMe(unit, spell);   // 🛡 Come At Me
                     if (spell.harvestMoon && !unit.dead) _crHarvestMoon(unit, spell);   // 🌾 Harvest Moon
                     if (spell.butterflyEffect && !unit.dead) _bfEffect(unit, spell);   // 🦋 Butterfly Effect
+                    if (spell.mqPorch && !unit.dead) _mqPorch(unit, spell);   // 🌙 Porch Light
                     if (spell.longLiveKing && !unit.dead) _ratLongLive(unit, spell);   // 👑 Long Live the King
                     if (spell.filterSwap && !_bt.dead) _influencerFilter(unit, _bt, spell);   // 🤳 Filter
                     if (spell.slimeRing && !unit.dead) { _sigVfxGeom('nrSaltProof:ring', unit.x, unit.y, 1, { owner: unit.player }); _slugRing(unit, spell); }   // 🐌 Salt-Proof Stance

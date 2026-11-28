@@ -3896,6 +3896,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             if (intent === 'burst' && _BP_ON_BURST[spellId] && params && params.tx != null && !_catOff('spells')) try { _BP_ON_BURST[spellId](params.tx, params.ty, params); } catch (e) {}
             if (intent === 'burst' && _CHPG_ON_BURST[spellId] && params && params.tx != null && !_catOff('spells')) try { _CHPG_ON_BURST[spellId](params); } catch (e) { console.warn('[VFX] cheer/guard failed', spellId, e); }   // 📣🏀 THE CHEERLEADER + THE POINT GUARD
             if (intent === 'windup' || intent === 'burst') try { _lmxStage(intent, spellId, params); } catch (e) {}   // 🍀🩺👽 THE LEPRECHAUN + THE MEDIC + THE MARTIAN GIRL
+            if (intent === 'windup' || intent === 'burst') try { _hmStage(intent, spellId, params); } catch (e) { console.warn('[VFX] harpy/moth failed', spellId, e); }   // 🪶🌙 THE HARPY + THE MOTH QUEEN: the wing move on the windup, the look on the hit
             if (intent === 'windup' || intent === 'burst') try { _ogStage(intent, spellId, params); } catch (e) { console.warn('[VFX] origami failed', spellId, e); }   // 🕊 THE ORIGAMI GIRL: she folds on the windup, the shape strikes on the burst
             if (intent === 'burst') try { _acStage(intent, spellId, params); } catch (e) { console.warn('[VFX] actor failed', spellId, e); }   // 🎭 THE ACTOR: each role's look on the hit
             return;
@@ -72261,6 +72262,370 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (!p || _catOff('spells')) return;
         if (intent === 'windup' && _LMX_ON_WINDUP[spellId] && !p.mark) { try { _LMX_ON_WINDUP[spellId](p); } catch (e) { console.warn('[VFX] leprechaun/medic travel failed', spellId, e); } }
         if (intent === 'burst' && _LMX_ON_BURST[spellId] && _PZ_SIGS[spellId]) { try { _PZ_SIGS[spellId](p); } catch (e) { console.warn('[VFX] leprechaun/medic hit failed', spellId, e); } }
+    }
+
+    /* ════ 🪶 THE HARPY + 🌙 THE MOTH QUEEN (2026-11-28, thread "Make Harpy and Moth Queen spells"; mondo: "make their spells and choose
+       their animations/vfx"). FIRST PASS. Every cast names a move of the caster's own WINGS (_HM_WING -> ThreeRenderer.wingAct,
+       three-renderer.js THE WING MOVES OF A SPELL) on the windup beat; the look rides the windup (the travels) and the burst (the
+       hits) of fire(), and the rule looks ride fireGeometry (hmSnatch / hmCarry / hmDrawn / hmPorch from battle.js): online.js
+       relays all of it, so the guest sees the same (RULE #2). The Harpy is tawny feathers, bone talons and a storm-teal wind;
+       the Moth Queen is moon silver, lilac and glowing dust on a night-blue dark. The side reads on every ring (_psSide).
+       Kill switch window.EW_NO_HM_VFX (the wing moves: EW_NO_HM_WINGS). Notes: docs/notes/spells-vfx.md "THE HARPY + THE MOTH QUEEN VFX". ════ */
+    var _HM = { tawny: 0xc89a5a, bronze: 0x8a5a2a, cream: 0xf2e6cc, talon: 0xfff2d0, blood: 0xb01428, wind: 0x8fd8e0, mp: 0x58a8ff,
+        moon: 0xdfe6ff, lilac: 0xb9a6f0, dust: 0xfff0b8, night: 0x070a1c, silk: 0xf4f0ff };
+    var _HM_WING = {
+        hpSnatch: ['mantle', 1300], hpShriek: ['scream', 2000], hpQuillStorm: ['buffet', 1900], hpCarryOff: ['dive', 2100], hpFeedingFrenzy: ['frenzy', 2000],
+        mqScaleDust: ['dust', 1900], mqMothEaten: ['flick', 1700], mqRoyalSilk: ['wrap', 2100], mqPorchLight: ['beacon', 2600], mqTotalEclipse: ['eclipse', 2800]
+    };
+    function _hmOff() { return _catOff('spells') || (typeof window !== 'undefined' && !!window.EW_NO_HM_VFX); }
+    function _hmGone(p) { return !p || p.tx == null || !_pzSeen(p.tx, p.ty); }
+    function _hmSeat(owner) {
+        try { var vp = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1; return (owner == null || owner === vp) ? _GT.rimAlly : _GT.rimEnemy; } catch (e) { return 0x66ccff; }
+    }
+    function _hmCrescentTex() {
+        return _pzTex('hm-crescent', 128, 128, function (g, w, h) {
+            g.fillStyle = '#ffffff'; g.beginPath(); g.arc(w / 2, h / 2, 50, 0, 6.29); g.fill();
+            g.globalCompositeOperation = 'destination-out'; g.beginPath(); g.arc(w / 2 + 22, h / 2 - 8, 44, 0, 6.29); g.fill();
+        });
+    }
+    function _hmDiscTex() {
+        return _pzTex('hm-disc', 128, 128, function (g, w, h) { g.fillStyle = '#ffffff'; g.beginPath(); g.arc(w / 2, h / 2, 60, 0, 6.29); g.fill(); });
+    }
+    function _hmMothTex() {
+        return _pzTex('hm-moth', 128, 96, function (g, w, h) {
+            g.fillStyle = '#ffffff';
+            for (var s = -1; s <= 1; s += 2) {
+                g.beginPath(); g.moveTo(w / 2, h * 0.45); g.quadraticCurveTo(w / 2 + s * 30, -6, w / 2 + s * 58, h * 0.22); g.quadraticCurveTo(w / 2 + s * 52, h * 0.6, w / 2, h * 0.58); g.fill();
+                g.beginPath(); g.moveTo(w / 2, h * 0.55); g.quadraticCurveTo(w / 2 + s * 44, h * 0.62, w / 2 + s * 34, h * 0.95); g.quadraticCurveTo(w / 2 + s * 10, h * 0.9, w / 2, h * 0.62); g.fill();
+            }
+            g.fillRect(w / 2 - 3, h * 0.3, 6, h * 0.45);
+        });
+    }
+    function _hmJagTex() {
+        return _pzTex('hm-jag', 256, 256, function (g, w, h) {
+            g.strokeStyle = '#ffffff'; g.lineWidth = 9; g.lineJoin = 'miter'; g.beginPath();
+            for (var i = 0; i <= 36; i++) { var a = i / 36 * 6.2832, r = i % 2 ? 118 : 92; g.lineTo(w / 2 + Math.cos(a) * r, h / 2 + Math.sin(a) * r); }
+            g.closePath(); g.stroke();
+        });
+    }
+    /* loose feathers thrown out of (x, y, z) (frame-local): they tumble and float down. -> tick(el) */
+    function _hmFeathers(F, n, o) {
+        o = o || {};
+        var ts = F.ts, bits = [], cols = o.cols || [_HM.tawny, _HM.bronze, _HM.cream], tex = _pzFeatherTex();
+        for (var i = 0; i < n; i++) {
+            var s = _pzSprN(cols[i % cols.length], ts * 0.2, tex, F.g), L = ts * rn(0.16, 0.3) * (o.size || 1), an = rn(0, 6.283), sp = rn(0.4, 1.3) * (o.speed || 1);
+            s.scale.set(L * 0.3, L, 1); s.visible = false;
+            bits.push({ s: s, x: (o.x || 0), y: (o.y != null ? o.y : ts * 0.7), z: (o.z || 0), vx: Math.cos(an) * sp * ts + (o.vx || 0), vz: Math.sin(an) * sp * ts + (o.vz || 0),
+                vy: rn(0.5, 1.8) * ts * (o.up != null ? o.up : 1), d: (o.delay || 0) + rn(0, o.spread || 120), r: rn(-5, 5), r0: rn(0, 6.28), ph: rn(0, 6.28), life: (o.ms || 1300) * rn(0.75, 1.1) });
+        }
+        return function (el) {
+            for (var j = 0; j < bits.length; j++) {
+                var B = bits[j], t = (el - B.d) / 1000; if (t < 0) continue;
+                var k = t * 1000 / B.life; if (k >= 1) { B.s.visible = false; continue; }
+                var dr = Math.exp(-2.4 * t), py = B.y + B.vy * (1 - dr) / 2.4 - ts * 0.55 * t * t - ts * 0.15 * t;
+                B.s.visible = true;
+                B.s.position.set(B.x + B.vx * (1 - dr) / 2.4 + Math.sin(B.ph + t * 4.5) * ts * 0.07, Math.max(ts * 0.03, py), B.z + B.vz * (1 - dr) / 2.4 + Math.cos(B.ph + t * 3.7) * ts * 0.07);
+                B.s.material.rotation = B.r0 + B.r * t; B.s.material.opacity = (k > 0.7 ? (1 - k) / 0.3 : 1) * 0.95;
+            }
+        };
+    }
+    /* small lights that fly from a to b (frame-local points) on a low arc, one after another. -> tick(el) */
+    function _hmMotes(F, a, b, n, col, o) {
+        o = o || {};
+        var ts = F.ts, ms = o.ms || 600, gap = o.gap || 60, M = [];
+        for (var i = 0; i < n; i++) M.push({ s: _pzSpr(Array.isArray(col) ? col[i % col.length] : col, ts * (o.size || 0.13), F.g), d: (o.delay || 0) + i * gap, sd: rn(-0.2, 0.2) * ts, up: rn(0.15, 0.5) * ts });
+        return function (el) {
+            for (var j = 0; j < M.length; j++) {
+                var m = M[j], t = (el - m.d) / ms;
+                if (t < 0 || t > 1) { m.s.material.opacity = 0; continue; }
+                var e = t * t * (3 - 2 * t), hop = Math.sin(t * Math.PI);
+                m.s.position.set(a.x + (b.x - a.x) * e + m.sd * hop, a.y + (b.y - a.y) * e + m.up * hop, a.z + (b.z - a.z) * e - m.sd * hop);
+                m.s.material.opacity = 0.9 * Math.min(1, hop * 3);
+            }
+        };
+    }
+    /* talon rakes: n thin bone-white cuts across the body, side by side, drawn one after another. -> tick(el) */
+    function _hmRakes(F, n, o) {
+        o = o || {};
+        var ts = F.ts, hold = new THREE.Group(), cuts = [];
+        hold.position.y = o.y != null ? o.y : ts * 0.6; hold.rotation.y = o.yaw || 0; hold.rotation.z = o.tilt != null ? o.tilt : -0.6; F.g.add(hold);
+        for (var i = 0; i < n; i++) {
+            var m = _pzMesh(new THREE.PlaneGeometry(ts * 0.035, ts * (o.len || 0.7)), _pzGlow(o.col || _HM.talon), hold, (i - (n - 1) / 2) * ts * 0.13, 0, 0);
+            var r = _pzMesh(new THREE.PlaneGeometry(ts * 0.012, ts * (o.len || 0.7) * 0.9), _pzGlow(_HM.blood), hold, (i - (n - 1) / 2) * ts * 0.13, 0, ts * 0.004);
+            m.renderOrder = r.renderOrder = 162; cuts.push({ m: m, r: r, d: (o.delay || 0) + i * 45 });
+        }
+        return function (el) {
+            for (var j = 0; j < cuts.length; j++) {
+                var C = cuts[j], k = _sigClamp01((el - C.d) / 110);
+                C.m.scale.y = C.r.scale.y = Math.max(0.01, k); C.m.position.y = C.r.position.y = ts * (o.len || 0.7) * 0.5 * (1 - k);
+                C.m.material.opacity = 0.95 * _pzEnv(el, C.d, C.d + 30, C.d + 160, C.d + 420); C.r.material.opacity = 0.9 * _pzEnv(el, C.d + 90, C.d + 150, C.d + 520, C.d + 900);
+            }
+        };
+    }
+    function _hmYaw(F, p) { var ln = _nrvLine(F, _pzFrom(p.tx, p.ty, p), p.tx, p.ty); return { ln: ln, yaw: Math.atan2(ln.ux, ln.uz) }; }
+
+    /* ── 🪶 SNATCH ── three talons rake down the body, a few feathers */
+    _PZ_SIGS.hpSnatch = function (p) {
+        if (_hmGone(p)) return;
+        var C = _psSide(p), F = _nrvFrame(p.tx, p.ty), ts = F.ts, Y = _hmYaw(F, p);
+        var rk = _hmRakes(F, 3, { yaw: Y.yaw }), fe = _hmFeathers(F, 5, { speed: 0.6, up: 0.7, ms: 1000, delay: 80 });
+        _sigShockRing3D(p.tx, p.ty, { color: C[0], r0: ts * 0.1, r1: ts * 0.6, ms: 300 });
+        try { _sigShake('light'); } catch (e) {}
+        return _sigRunOwned(F.g, 1300, function (el) { rk(el); fe(el); });
+    };
+    /* ── 🪶 SHRIEK ── jagged rings of sound tear out from her mouth along the floor, the air shivers */
+    _PZ_SIGS.hpShriek = function (p) {
+        if (_hmGone(p)) return;
+        var C = _psSide(p), src = _pzFrom(p.tx, p.ty, p), F = _nrvFrame(src.x, src.y), ts = F.ts, rings = [], i;
+        for (i = 0; i < 4; i++) {
+            var m = _pzMesh(new THREE.PlaneGeometry(1, 1), _pzGlow(i % 2 ? C[0] : _HM.wind, _hmJagTex()), F.g, 0, ts * (0.08 + i * 0.02), 0);
+            m.rotation.x = -Math.PI / 2; rings.push(m);
+        }
+        var cone = [];
+        for (i = 0; i < 3; i++) { var a = _pzMesh(new THREE.TorusGeometry(ts * 0.2, ts * 0.014, 5, 24), _pzGlow(_HM.cream), F.g, 0, ts * 1.2, 0); cone.push(a); }
+        try { _sigShake('normal'); } catch (e) {}
+        return _sigRunOwned(F.g, 1500, function (el) {
+            for (var j = 0; j < rings.length; j++) {
+                var t = _sigClamp01((el - j * 170) / 700), s = ts * (0.5 + 5.0 * _sigEaseOutCubic(t));
+                rings[j].scale.set(s, s, 1); rings[j].rotation.z = j * 0.4 + el * 0.0015 * (j % 2 ? 1 : -1);
+                rings[j].material.opacity = (el < j * 170) ? 0 : 0.5 * (1 - t);
+            }
+            for (var q = 0; q < cone.length; q++) {
+                var u = ((el - q * 140) % 420) / 420, vis = _pzEnv(el, 0, 60, 800, 1100);
+                cone[q].position.y = ts * (1.2 + 0.5 * u); cone[q].scale.setScalar(0.5 + 2.2 * u); cone[q].rotation.x = Math.PI / 2;
+                cone[q].material.opacity = el < q * 140 ? 0 : 0.6 * vis * (1 - u);
+            }
+        });
+    };
+    /* ── 🪶 QUILL STORM ── the windup: her wings throw a flight of quills that arcs to the 3x3; the hit: they come down point first and stick */
+    function _hmQuillFly(p) {
+        if (p.sx == null || p.tx == null || (!_pzSeen(p.sx, p.sy) && !_pzSeen(p.tx, p.ty))) return;
+        var F = _nrvFrame(p.tx, p.ty), ts = F.ts, a = _lmxRel(F, p.sx, p.sy), hold = Math.max(450, (p.holdMs || 900)), qs = [], tex = _pzFeatherTex();
+        for (var i = 0; i < 12; i++) {
+            var s = _pzSprN(i % 3 ? _HM.tawny : _HM.cream, ts * 0.2, tex, F.g); s.scale.set(ts * 0.07, ts * 0.3, 1);
+            qs.push({ s: s, d: hold * 0.35 + i * 22, ox: rn(-0.9, 0.9) * ts, oz: rn(-0.9, 0.9) * ts, h: ts * rn(1.6, 2.6), ms: hold * 0.6 });
+        }
+        _sigRunOwned(F.g, hold + 200, function (el) {
+            for (var j = 0; j < qs.length; j++) {
+                var Q = qs[j], t = (el - Q.d) / Q.ms; if (t < 0 || t > 1) { Q.s.material.opacity = 0; continue; }
+                Q.s.position.set(a.x + (Q.ox - a.x) * t, a.y + ts * 0.9 + (ts * 0.3 - ts * 0.9 - a.y) * t + Math.sin(t * Math.PI) * Q.h, a.z + (Q.oz - a.z) * t);
+                Q.s.material.rotation = el * 0.02 + j; Q.s.material.opacity = 0.9;
+            }
+        });
+    }
+    _PZ_SIGS.hpQuillStorm = function (p) {
+        if (_hmGone(p)) return;
+        var C = _psSide(p), F = _nrvFrame(p.tx, p.ty), ts = F.ts, qs = [], tex = _pzFeatherTex(), i;
+        for (i = 0; i < 16; i++) {
+            var hold = new THREE.Group(), gx = ((i % 4) - 1.5) * 0.7 + rn(-0.2, 0.2), gz = (Math.floor(i / 4) - 1.5) * 0.7 + rn(-0.2, 0.2);
+            hold.position.set(gx * ts, 0, gz * ts); hold.rotation.set(rn(-0.3, 0.3), rn(0, 6.28), rn(-0.3, 0.3)); F.g.add(hold);
+            var m = _pzMesh(new THREE.PlaneGeometry(ts * 0.09, ts * 0.42), _finBasic(i % 3 ? _HM.tawny : _HM.cream, { opacity: 0, side: THREE.DoubleSide, map: tex, depthWrite: false }), hold, 0, ts * 0.21, 0);
+            var m2 = m.clone(); m2.rotation.y = Math.PI / 2; hold.add(m2);
+            qs.push({ g: hold, m: m, d: i * 28 + rn(0, 40) });
+        }
+        var fe = _hmFeathers(F, 10, { speed: 1.2, up: 0.9, ms: 1400, delay: 200, spread: 300 });
+        _sigShockRing3D(p.tx, p.ty, { color: C[0], r0: ts * 0.3, r1: ts * 1.7, ms: 520 });
+        try { _sigShake('light'); } catch (e) {}
+        return _sigRunOwned(F.g, 1700, function (el) {
+            for (var j = 0; j < qs.length; j++) {
+                var Q = qs[j], t = _sigClamp01((el - Q.d) / 130), y = ts * 2.2 * (1 - t * t);
+                Q.g.position.y = y; Q.m.material.opacity = el < Q.d ? 0 : 0.95 * _pzEnv(el, Q.d, Q.d + 30, 1200, 1650);
+            }
+            fe(el);
+        });
+    };
+    /* ── 🪶 CARRY OFF ── the grab: two sets of talons close on the body, feathers; the drop (hmCarry) is its own look ── */
+    _PZ_SIGS.hpCarryOff = function (p) {
+        if (_hmGone(p)) return;
+        var C = _psSide(p), F = _nrvFrame(p.tx, p.ty), ts = F.ts, Y = _hmYaw(F, p);
+        var a = _hmRakes(F, 3, { yaw: Y.yaw, tilt: 0.75, y: ts * 0.75, len: 0.55 }), b = _hmRakes(F, 3, { yaw: Y.yaw, tilt: -0.75, y: ts * 0.75, len: 0.55, delay: 60 });
+        var fe = _hmFeathers(F, 9, { speed: 0.9, up: 1.4, ms: 1300 });
+        _sigShockRing3D(p.tx, p.ty, { color: C[0], r0: ts * 0.15, r1: ts * 0.9, ms: 360 });
+        try { _sigShake('normal'); } catch (e) {}
+        return _sigRunOwned(F.g, 1500, function (el) { a(el); b(el); fe(el); });
+    };
+    /* ── 🪶 FEEDING FRENZY ── six fast rakes from both sides, blood, feathers, and the red comes back to her ── */
+    _PZ_SIGS.hpFeedingFrenzy = function (p) {
+        if (_hmGone(p)) return;
+        var C = _psSide(p), F = _nrvFrame(p.tx, p.ty), ts = F.ts, Y = _hmYaw(F, p), from = _pzFrom(p.tx, p.ty, p), sr = _lmxRel(F, from.x, from.y), rk = [], i;
+        for (i = 0; i < 6; i++) rk.push(_hmRakes(F, 3, { yaw: Y.yaw + rn(-0.3, 0.3), tilt: (i % 2 ? 1 : -1) * rn(0.4, 1.0), y: ts * rn(0.45, 0.85), len: 0.6, delay: i * 120 }));
+        var drops = [];
+        for (i = 0; i < 14; i++) drops.push({ s: _pzSpr(_HM.blood, ts * rn(0.06, 0.11), F.g), a: rn(0, 6.28), v: rn(0.5, 1.4), d: rn(0, 650), up: rn(0.6, 1.6) });
+        var fe = _hmFeathers(F, 8, { speed: 1.0, up: 1.0, ms: 1500, spread: 600 });
+        var back = _hmMotes(F, new THREE.Vector3(0, ts * 0.7, 0), new THREE.Vector3(sr.x, sr.y + ts * 0.7, sr.z), 8, [_HM.blood, 0xff5a6a], { ms: 520, gap: 70, delay: 520 });
+        _sigShockRing3D(p.tx, p.ty, { color: C[0], r0: ts * 0.15, r1: ts * 0.85, ms: 420 });
+        try { _sigShake('normal'); } catch (e) {}
+        return _sigRunOwned(F.g, 1900, function (el) {
+            for (var j = 0; j < rk.length; j++) rk[j](el);
+            for (var q = 0; q < drops.length; q++) {
+                var D = drops[q], t = (el - D.d) / 1000; if (t < 0 || t > 0.7) { D.s.material.opacity = 0; continue; }
+                D.s.position.set(Math.cos(D.a) * D.v * ts * t, ts * 0.65 + D.up * ts * t - ts * 3.2 * t * t, Math.sin(D.a) * D.v * ts * t); D.s.material.opacity = 0.9 * (1 - t / 0.7);
+            }
+            fe(el); back(el);
+        });
+    };
+    /* ── 🪶 the rule's looks (fireGeometry) ── SNATCH: its blue MP flies from the victim into her; CARRY OFF: the drop ── */
+    function _hmSnatch3D(tx, ty, r, o) {
+        if (_hmOff() || _afFogHides(tx, ty)) return null;
+        o = o || {};
+        var F = _nrvFrame(tx, ty), ts = F.ts, a = o.from ? _lmxRel(F, o.from.x, o.from.y) : { x: ts, y: 0, z: 0 };
+        var mo = _hmMotes(F, new THREE.Vector3(a.x, a.y + ts * 0.7, a.z), new THREE.Vector3(0, ts * 0.75, 0), 5, [_HM.mp, 0xbfe0ff], { ms: 420, gap: 55 });
+        return _sigRunOwned(F.g, 800, function (el) { mo(el); });
+    }
+    function _hmCarry3D(tx, ty, r, o) {
+        if (_hmOff() || _afFogHides(tx, ty)) return null;
+        o = o || {};
+        var F = _nrvFrame(tx, ty), ts = F.ts, seat = _hmSeat(o.owner), ms = Math.max(300, o.ms || 500), a = o.from ? _lmxRel(F, o.from.x, o.from.y) : { x: ts, y: 0, z: 0 };
+        /* the wind of the flight: a pale arc from where it stood, feathers falling along it; then the thump */
+        var arc = [], i;
+        for (i = 0; i < 9; i++) { var s = _pzSpr(i % 2 ? _HM.wind : _HM.cream, ts * 0.16, F.g), t = i / 8; s.position.set(a.x * (1 - t), a.y * (1 - t) + ts * 0.5 + Math.sin(t * Math.PI) * ts * 1.3, a.z * (1 - t)); arc.push(s); }
+        var fe = _hmFeathers(F, 8, { x: a.x * 0.5, z: a.z * 0.5, y: ts * 1.5, speed: 0.6, up: 0.2, ms: 1500, spread: ms });
+        var ring = _pzMesh(new THREE.RingGeometry(ts * 0.3, ts * 0.42, 28), _pzGlow(seat), F.g, 0, ts * 0.04, 0); ring.rotation.x = -Math.PI / 2;
+        var dust = [];
+        for (i = 0; i < 8; i++) dust.push({ s: _pzSpr(0xcbb89a, ts * 0.3, F.g), a: i / 8 * 6.283 });
+        _fxDelay(function () { if (!_suppressed()) try { _sigShake('normal'); } catch (e) {} }, ms);
+        return _sigRunOwned(F.g, ms + 900, function (el) {
+            for (var j = 0; j < arc.length; j++) arc[j].material.opacity = 0.6 * _pzEnv(el, j * ms / 10, j * ms / 10 + 60, j * ms / 10 + 200, j * ms / 10 + 480);
+            var k = _sigClamp01((el - ms) / 380);
+            ring.scale.setScalar(0.6 + 1.6 * _sigEaseOutCubic(k)); ring.material.opacity = el < ms ? 0 : 0.8 * (1 - k);
+            for (var q = 0; q < dust.length; q++) { var D = dust[q]; D.s.position.set(Math.cos(D.a) * ts * 0.9 * k, ts * (0.1 + 0.25 * k), Math.sin(D.a) * ts * 0.9 * k); D.s.material.opacity = el < ms ? 0 : 0.5 * (1 - k); }
+            fe(el);
+        });
+    }
+
+    /* ── 🌙 SCALE DUST ── the windup: a drift of glowing dust off her wings to the target; the hit: it settles, and a crescent hangs over it ── */
+    function _hmDustFly(p) {
+        if (p.sx == null || p.tx == null || (!_pzSeen(p.sx, p.sy) && !_pzSeen(p.tx, p.ty))) return;
+        var F = _nrvFrame(p.tx, p.ty), ts = F.ts, a = _lmxRel(F, p.sx, p.sy), hold = Math.max(450, p.holdMs || 900);
+        var mo = _hmMotes(F, new THREE.Vector3(a.x, a.y + ts * 1.0, a.z), new THREE.Vector3(0, ts * 0.8, 0), 16, [_HM.dust, _HM.lilac, _HM.moon], { ms: hold * 0.6, gap: hold * 0.02, delay: hold * 0.3, size: 0.1 });
+        _sigRunOwned(F.g, hold + 150, function (el) { mo(el); });
+    }
+    /* the Moonstruck mark: a small crescent that rises over the head and holds a moment */
+    function _hmMoonMark(F, col, y) {
+        var ts = F.ts, c = _pzSprN(col || _HM.moon, ts * 0.42, _hmCrescentTex(), F.g), g = _pzSpr(_HM.lilac, ts * 0.8, F.g);
+        return function (el, d0) {
+            var t = el - (d0 || 0), pop = _sigEaseOutBack(_sigClamp01(t / 260)), vis = _pzEnv(t, 0, 80, 900, 1300);
+            c.position.y = g.position.y = (y || ts * 1.3) + ts * 0.1 * _sigClamp01(t / 1300); c.scale.set(ts * 0.42 * pop, ts * 0.42 * pop, 1); c.material.opacity = t < 0 ? 0 : vis; g.material.opacity = t < 0 ? 0 : 0.3 * vis;
+        };
+    }
+    function _hmSparkle(F, n, cols, o) {
+        o = o || {};
+        var ts = F.ts, S = [];
+        for (var i = 0; i < n; i++) S.push({ s: _pzSpr(cols[i % cols.length], ts * rn(0.05, 0.11), F.g), x: rn(-1, 1) * ts * (o.r || 0.35), z: rn(-1, 1) * ts * (o.r || 0.35), y0: ts * rn(o.y0 || 0.9, o.y1 || 1.5), d: rn(0, o.spread || 500), f: rn(0.6, 1.2) });
+        return function (el) {
+            for (var j = 0; j < S.length; j++) {
+                var P = S[j], t = (el - P.d) / (900 * P.f); if (t < 0 || t > 1) { P.s.material.opacity = 0; continue; }
+                P.s.position.set(P.x, P.y0 - ts * 0.9 * t * (o.fall != null ? o.fall : 1), P.z); P.s.material.opacity = 0.9 * Math.sin(t * Math.PI) * (0.6 + 0.4 * Math.sin(el * 0.03 + j));
+            }
+        };
+    }
+    _PZ_SIGS.mqScaleDust = function (p) {
+        if (_hmGone(p)) return;
+        var C = _psSide(p), F = _nrvFrame(p.tx, p.ty), ts = F.ts;
+        var sp = _hmSparkle(F, 18, [_HM.dust, _HM.moon, _HM.lilac], { spread: 500 }), mk = _hmMoonMark(F, _HM.moon);
+        _sigShockRing3D(p.tx, p.ty, { color: C[0], r0: ts * 0.1, r1: ts * 0.65, ms: 380 });
+        return _sigRunOwned(F.g, 1700, function (el) { sp(el); mk(el, 250); });
+    };
+    /* ── 🌙 MOTH-EATEN ── her little ones swarm the body and leave holes in it ── */
+    _PZ_SIGS.mqMothEaten = function (p) {
+        if (_hmGone(p)) return;
+        var C = _psSide(p), F = _nrvFrame(p.tx, p.ty), ts = F.ts, moths = [], holes = [], i, tex = _hmMothTex();
+        for (i = 0; i < 12; i++) { var s = _pzSprN(i % 3 ? _HM.silk : _HM.lilac, ts * 0.16, tex, F.g); moths.push({ s: s, a: rn(0, 6.28), w: rn(3, 6) * (i % 2 ? 1 : -1), r: rn(0.22, 0.48) * ts, y: rn(0.3, 1.1) * ts, f: rn(22, 34), sz: ts * rn(0.12, 0.2) }); }
+        for (i = 0; i < 6; i++) { var h = _pzSprN(_HM.night, ts * 0.12, _hmDiscTex(), F.g); h.position.set(rn(-0.2, 0.2) * ts, rn(0.35, 1.0) * ts, rn(-0.2, 0.2) * ts); h.renderOrder = 163; holes.push({ s: h, d: 300 + i * 110, sz: ts * rn(0.08, 0.15) }); }
+        var mk = _hmMoonMark(F, _HM.moon);
+        _sigShockRing3D(p.tx, p.ty, { color: C[0], r0: ts * 0.1, r1: ts * 0.7, ms: 380 });
+        return _sigRunOwned(F.g, 1900, function (el) {
+            var vis = _pzEnv(el, 0, 150, 1200, 1600), t = el / 1000;
+            for (var j = 0; j < moths.length; j++) {
+                var M = moths[j], a = M.a + M.w * t, fl = 0.35 + 0.65 * Math.abs(Math.sin(t * M.f));
+                M.s.position.set(Math.cos(a) * M.r, M.y + Math.sin(t * 3 + j) * ts * 0.08, Math.sin(a) * M.r); M.s.scale.set(M.sz * fl, M.sz * 0.75, 1); M.s.material.opacity = 0.95 * vis;
+            }
+            for (var q = 0; q < holes.length; q++) { var H = holes[q], k = _sigEaseOutCubic(_sigClamp01((el - H.d) / 200)); H.s.scale.set(H.sz * k, H.sz * k, 1); H.s.material.opacity = el < H.d ? 0 : 0.85 * _pzEnv(el, H.d, H.d + 80, 1400, 1850); }
+            mk(el, 500);
+        });
+    };
+    /* ── 🌙 ROYAL SILK ── threads wind up round a friend into a pale cocoon that glows and lets go ── */
+    _PZ_SIGS.mqRoyalSilk = function (p) {
+        if (_hmGone(p)) return;
+        var C = _psSide(p), F = _nrvFrame(p.tx, p.ty), ts = F.ts, rings = [], i;
+        for (i = 0; i < 9; i++) { var r = _pzMesh(new THREE.TorusGeometry(ts * (0.26 + 0.1 * Math.sin((i + 0.5) / 9 * Math.PI)), ts * 0.012, 5, 28), _finBasic(i % 3 ? _HM.silk : C[0], { opacity: 0, depthWrite: false }), F.g, 0, ts * (0.12 + i * 0.13), 0); r.rotation.x = Math.PI / 2 + rn(-0.18, 0.18); r.rotation.y = rn(-0.18, 0.18); rings.push(r); }
+        var shell = _pzMesh(new THREE.SphereGeometry(ts * 0.42, 16, 12), _pzGlow(_HM.lilac), F.g, 0, ts * 0.66, 0); shell.scale.set(1, 1.55, 1);
+        var sp = _hmSparkle(F, 10, [_HM.silk, _HM.moon], { y0: 0.2, y1: 1.3, fall: -0.4, spread: 900 });
+        return _sigRunOwned(F.g, 1900, function (el) {
+            var out = 1 - _sigClamp01((el - 1350) / 500);
+            for (var j = 0; j < rings.length; j++) { var k = _sigClamp01((el - j * 70) / 220); rings[j].scale.setScalar(Math.max(0.01, k) * (1 + (1 - out) * 0.5)); rings[j].rotation.z = el * 0.006 * (j % 2 ? 1 : -1); rings[j].material.opacity = 0.75 * k * out; }
+            shell.material.opacity = 0.1 * _pzEnv(el, 500, 800, 1300, 1800); sp(el);
+        });
+    };
+    /* ── 🌙 PORCH LIGHT (fireGeometry hmPorch, at her) ── a hard pale light comes on over her head: a cone of it to the floor, rays, a pool ── */
+    function _hmPorch3D(tx, ty, r, o) {
+        if (_hmOff() || _afFogHides(tx, ty)) return null;
+        o = o || {};
+        var F = _nrvFrame(tx, ty), ts = F.ts, seat = _hmSeat(o.owner), rays = [], i;
+        var bulb = _pzSpr(0xfffbe0, ts * 1.3, F.g); bulb.position.y = ts * 1.95;
+        var core = _pzSpr(0xffffff, ts * 0.5, F.g); core.position.y = ts * 1.95;
+        var cone = _pzMesh(new THREE.ConeGeometry(ts * 1.5, ts * 1.9, 24, 1, true), _pzGlow(_HM.dust), F.g, 0, ts * 0.98, 0);
+        var pool = _pzMesh(new THREE.CircleGeometry(ts * 1.5, 32), _pzGlow(_HM.dust), F.g, 0, ts * 0.03, 0); pool.rotation.x = -Math.PI / 2;
+        var rim = _pzMesh(new THREE.RingGeometry(ts * 1.44, ts * 1.54, 40), _pzGlow(seat), F.g, 0, ts * 0.035, 0); rim.rotation.x = -Math.PI / 2;
+        for (i = 0; i < 8; i++) { var m = _pzMesh(new THREE.PlaneGeometry(ts * 0.03, ts * 1.1), _pzGlow(0xfffbe0), F.g, 0, ts * 1.95, 0); m.rotation.z = i / 8 * Math.PI; rays.push(m); }
+        var moths = _hmSparkle(F, 14, [_HM.silk, _HM.dust], { r: 0.8, y0: 1.5, y1: 2.3, fall: 0.2, spread: 1400 });
+        return _sigRunOwned(F.g, 2300, function (el) {
+            var vis = _pzEnv(el, 0, 120, 1700, 2300), fl = el < 260 ? (Math.sin(el * 0.09) > 0 ? 1 : 0.25) : 1;   // (it flickers on, like a bulb)
+            bulb.material.opacity = 0.85 * vis * fl; core.material.opacity = vis * fl; cone.material.opacity = 0.16 * vis * fl; pool.material.opacity = 0.2 * vis * fl; rim.material.opacity = 0.6 * vis;
+            for (var j = 0; j < rays.length; j++) { rays[j].material.opacity = 0.35 * vis * fl * (0.6 + 0.4 * Math.sin(el * 0.01 + j)); rays[j].rotation.z = j / 8 * Math.PI + el * 0.0006; }
+            moths(el);
+        });
+    }
+    /* ── 🌙 DRAWN (fireGeometry hmDrawn, at the square the carrier was pulled to) ── a thread of moonlight to her, a crescent over its head ── */
+    function _hmDrawn3D(tx, ty, r, o) {
+        if (_hmOff() || _afFogHides(tx, ty)) return null;
+        o = o || {};
+        var F = _nrvFrame(tx, ty), ts = F.ts, q = (o.qx != null) ? _lmxRel(F, o.qx, o.qy) : null, mk = _hmMoonMark(F, _HM.moon), mo = null, beam = null;
+        if (q) {
+            var A = new THREE.Vector3(0, ts * 0.8, 0), B = new THREE.Vector3(q.x, q.y + ts * 1.1, q.z);
+            beam = _pzMesh(new THREE.CylinderGeometry(ts * 0.012, ts * 0.012, 1, 5), _pzGlow(_HM.moon), F.g); _pzSpan(beam, A, B);
+            mo = _hmMotes(F, A, B, 6, [_HM.moon, _HM.lilac], { ms: 520, gap: 80, size: 0.09 });
+        }
+        return _sigRunOwned(F.g, 1400, function (el) { mk(el, 0); if (mo) mo(el); if (beam) beam.material.opacity = 0.5 * _pzEnv(el, 0, 80, 600, 1000); });
+    }
+    /* ── 🌙 TOTAL ECLIPSE ── a pale moon hangs over her; a dark disc slides across it; at totality the corona flares, the floor round her goes night-dark and the ring goes out ── */
+    _PZ_SIGS.mqTotalEclipse = function (p) {
+        if (_hmGone(p)) return;
+        var C = _psSide(p), src = _pzFrom(p.tx, p.ty, p), F = _nrvFrame(src.x, src.y), ts = F.ts, R = ts * 2.5, i;
+        var moon = _pzSprN(_HM.moon, ts * 1.2, _hmDiscTex(), F.g); moon.position.y = ts * 2.4;
+        var halo = _pzSpr(_HM.lilac, ts * 2.6, F.g); halo.position.y = ts * 2.4;
+        var dark = _pzSprN(_HM.night, ts * 1.16, _hmDiscTex(), F.g); dark.position.y = ts * 2.4; dark.renderOrder = 164;
+        var shade = _pzMesh(new THREE.CircleGeometry(R, 40), _finBasic(_HM.night, { opacity: 0, side: THREE.DoubleSide, depthWrite: false }), F.g, 0, ts * 0.03, 0); shade.rotation.x = -Math.PI / 2;
+        var rim = _pzMesh(new THREE.RingGeometry(R * 0.96, R, 48), _pzGlow(C[0]), F.g, 0, ts * 0.04, 0); rim.rotation.x = -Math.PI / 2;
+        var beams = [];
+        for (i = 0; i < 10; i++) { var a = i / 10 * 6.283, b = _pzMesh(new THREE.CylinderGeometry(ts * 0.02, ts * 0.09, ts * 2.3, 6, 1, true), _pzGlow(i % 2 ? _HM.moon : _HM.lilac), F.g, Math.cos(a) * R * rn(0.35, 0.9), ts * 1.15, Math.sin(a) * R * rn(0.35, 0.9)); beams.push({ m: b, d: 760 + i * 35 }); }
+        var sp = _hmSparkle(F, 22, [_HM.moon, _HM.lilac, _HM.dust], { r: 2.2, y0: 0.4, y1: 2.0, spread: 900 });
+        _fxDelay(function () { if (_suppressed()) return; try { _sigShake('heavy'); } catch (e) {} _sigShockRing3D(src.x, src.y, { color: C[0], r0: ts * 0.3, r1: R * 1.05, ms: 520, opacity: 0.8 }); }, 760);
+        return _sigRunOwned(F.g, 2400, function (el) {
+            var vis = _pzEnv(el, 0, 200, 1900, 2400), k = _sigClamp01(el / 760), cov = _sigEaseOutCubic(k), tot = _pzEnv(el, 700, 800, 1500, 2000);
+            moon.material.opacity = vis; dark.position.x = ts * 1.3 * (1 - cov); dark.material.opacity = vis;
+            halo.material.opacity = vis * (0.35 + 0.65 * tot); halo.scale.setScalar(ts * (2.6 + 1.6 * tot));
+            shade.material.opacity = 0.62 * tot; rim.material.opacity = 0.85 * _pzEnv(el, 100, 400, 1700, 2300);
+            for (var j = 0; j < beams.length; j++) beams[j].m.material.opacity = 0.55 * _pzEnv(el, beams[j].d, beams[j].d + 90, beams[j].d + 260, beams[j].d + 800);
+            sp(el);
+        });
+    };
+    /* the plain element hit would draw over each of these: the impact / aoe / aura intents go to the quiet def, the look rides the burst */
+    ['hpSnatch', 'hpShriek', 'hpQuillStorm', 'hpCarryOff', 'hpFeedingFrenzy', 'mqScaleDust', 'mqMothEaten', 'mqRoyalSilk', 'mqPorchLight', 'mqTotalEclipse'].forEach(function (id) {
+        SPELL_MAP[id] = { impact: 'lmxQuiet_fx', aoe: 'lmxQuiet_fx', aura: 'lmxQuiet_fx' };
+    });
+    Object.assign(_spell3DGeometry, { hmSnatch: _hmSnatch3D, hmCarry: _hmCarry3D, hmPorch: _hmPorch3D, hmDrawn: _hmDrawn3D });
+    var _HM_ON_WINDUP = { hpQuillStorm: _hmQuillFly, mqScaleDust: _hmDustFly };
+    function _hmStage(intent, spellId, p) {
+        if (!p || typeof spellId !== 'string' || !_HM_WING[spellId]) return;
+        if (intent === 'windup') {
+            if (p.mark) return;
+            var W = _HM_WING[spellId], TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
+            if (p.uid != null && TR && typeof TR.wingAct === 'function' && !(typeof window !== 'undefined' && window.EW_NO_HM_WINGS)) TR.wingAct(p.uid, W[0], Math.max(W[1], (p.holdMs || 0) + 900));
+            if (!_hmOff() && _HM_ON_WINDUP[spellId]) { try { _HM_ON_WINDUP[spellId](p); } catch (e) { console.warn('[VFX] harpy/moth travel failed', spellId, e); } }
+            return;
+        }
+        if (intent === 'burst' && !_hmOff() && _PZ_SIGS[spellId] && _pzOnce('hm:' + spellId, 300)) { try { _PZ_SIGS[spellId](p); } catch (e) { console.warn('[VFX] harpy/moth hit failed', spellId, e); } }
     }
 
     /* ════ 🕊 THE ORIGAMI GIRL (2026-11-27, mondo: "a piece of paper with actual folding animations ... build her spells and vfx and

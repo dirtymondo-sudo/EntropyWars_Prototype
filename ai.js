@@ -6706,6 +6706,11 @@
         }
         /* 🦋 THE BUTTERFLY GIRL (2026-11-23): Butterfly Effect is worth the twisters it sets off now (the bodies under each) and a
            little for every Flutter it pushes along; nothing with no Flutter of her side's on the board (the engine refuses it) */
+        /* 🌙 THE MOTH QUEEN (2026-11-28): Porch Light is worth the Moonstruck enemies it drags to her (the engine refuses it with none) */
+        if (kind === 'buff' && spell.mqPorch) {
+            const _pl = (typeof window._mqPorchTargets === 'function') ? window._mqPorchTargets(unit, spell) : [];
+            return _pl.length ? 70 + 80 * _pl.length : 0;
+        }
         if (kind === 'buff' && spell.butterflyEffect) {
             const _be = (typeof window._bfEffectValue === 'function') ? window._bfEffectValue(unit) : null;
             if (!_be || !_be.carriers) return 0;

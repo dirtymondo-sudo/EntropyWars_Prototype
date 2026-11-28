@@ -404,6 +404,8 @@ const FINISHERS = {
     'leopard girl':   { id: 'fin_leopard_girl', name: 'Up a Tree', glyph: '🐆', type: 'anomaly', sig: 'nineLives', built: true, tagline: 'SHE ALWAYS LANDS ON HER FEET', desc: 'Pounced on from nine branches at once, and dragged up the tallest tree to be eaten later.' },   // 2026-11-27 THE NEW RACES 5 (borrows the nineLives staging)
     'draconian':      { id: 'fin_draconian', name: 'Bow Before Draco', glyph: '🐉', type: 'alien', sig: 'unmasking', built: true, tagline: 'WE WERE HERE FIRST', desc: 'The skin comes off the face of every king in history, and every one of them is him.' },   // 2026-11-27 THE NEW RACES 5 (borrows the unmasking staging)
     'flower girl':    { id: 'fin_flower_girl', name: 'Pushing Up Daisies', glyph: '🌸', type: 'anomaly', sig: 'theBloom', built: true, tagline: 'SHE LOVES YOU NOT', desc: 'One petal at a time: loves me, loves me not. The last petal falls, and the daisies come up through what is left.' },   // 2026-11-27 THE NEW RACES 5 (borrows theBloom staging)
+    'harpy':          { id: 'fin_harpy', name: 'Snatched', glyph: '🪶', type: 'anomaly', sig: 'upUpAndAway', built: true, tagline: 'THE HOUNDS OF ZEUS', lines: [['🪶 SNATCHED', '🪶 TALONS IN'], ['AND AWAY', 'HIGHER'], ['AND THEN DOWN', 'AND THEN SHE LETS GO'], ['THE LANDING.', 'DROPPED.']], desc: 'She takes the victim off its feet the way she took the food off the blind king\'s table, carries it up above the weather, and lets go.' },   // 2026-11-28 THE HARPY + THE MOTH QUEEN (borrows the upUpAndAway staging)
+    'moth queen':     { id: 'fin_moth_queen', name: 'Into the Light', glyph: '🌙', type: 'alien', sig: 'intoTheSun', built: true, tagline: 'LIKE A MOTH TO A FLAME', desc: 'She shows the victim the brightest light it has ever seen. It cannot look away, it cannot stop walking, and it is a great deal hotter than a porch light.' },   // 2026-11-28 THE HARPY + THE MOTH QUEEN (borrows the intoTheSun staging)
     'point guard':    { id: 'fin_point_guard', name: 'Posterized', glyph: '🏀', type: 'human', sig: 'motionCarries', built: true, tagline: 'AND ONE', desc: 'A hoop drops out of the sky, he takes off from the free-throw line and slams the victim through it, ball and all.' },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD (borrows the motionCarries staging)
     'music producer': { id: 'fin_music_producer', name: 'Platinum Record', glyph: '💿', type: 'human', sig: 'farewellTour', built: true, tagline: 'GOING PLATINUM', desc: 'He drops the needle on one last track. A stage stands up round the victim, the lights find them, the whole song plays its drop, and when the lights come back up a gold record hangs where they stood.' },   // 2026-11-24 THE MUSIC PRODUCER (borrows the Popstar's stage)
     'streamer':       { id: 'fin_streamer', name: 'Banned', glyph: '🎮', type: 'anomaly', sig: 'corruptedSave', built: true, tagline: 'ACCOUNT SUSPENDED', desc: 'The chat floods, the mods wake up, and ACCOUNT SUSPENDED stamps down over the victim until nothing is left on the stream.' },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit) (borrows the corruptedSave staging)
@@ -686,6 +688,8 @@ const RACE_ELEMENT_AFFINITY = {
     'leopard girl': { nature: 'resist', ice: 'weak' },   // 2026-11-27 THE NEW RACES 5: the long grass is home; a cat in the snow
     'draconian': { psychic: 'resist', ice: 'weak' },   // 2026-11-27 THE NEW RACES 5: the oldest mind in the room; cold-blooded
     'flower girl': { nature: 'resist', fire: 'weak' },   // 2026-11-27 THE NEW RACES 5: in full bloom; petals burn
+    'harpy': { wind: 'resist', lightning: 'weak' },   // 2026-11-28 THE HARPY + THE MOTH QUEEN: a storm spirit rides the wind; Zeus's own hounds answer to the thunderbolt
+    'moth queen': { psychic: 'resist', fire: 'weak' },   // 2026-11-28 THE HARPY + THE MOTH QUEEN: nothing gets into her head; a moth and a flame
     'origami girl': { fire: 'weak', water: 'weak' },   // 2026-11-27 THE ORIGAMI GIRL (mondo: "weak to fire and water"): paper burns, paper soaks
     'point guard': { wind: 'resist', ice: 'weak' },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: quick on his feet; the cold gets in his knees
     'music producer': { sonic: 'resist', water: 'weak' },   // 2026-11-24 THE MUSIC PRODUCER: he lives in the loud; water and his gear do not mix
@@ -3218,11 +3222,11 @@ const RACE_PROFILES = {
         label: 'Origami Girl',
         types: ['anomaly']
     },
-    'harpy': {   // 2026-11-28 THE HARPY (body in, kit not yet: EW_COMING_RACES) — a bird woman, feathered wings to her shins, talons
+    'harpy': {   // 2026-11-28 THE HARPY (kit: THE HARPY + THE MOTH QUEEN, THE KITS) — a bird woman, feathered wings to her shins, talons
         label: 'Harpy',
         types: ['anomaly']
     },
-    'moth queen': {   // 2026-11-28 THE MOTH QUEEN (body in, kit not yet: EW_COMING_RACES) — a pale alien moth, crescent-moon eyes on her wings
+    'moth queen': {   // 2026-11-28 THE MOTH QUEEN (kit: THE HARPY + THE MOTH QUEEN, THE KITS) — a pale alien moth, crescent-moon eyes on her wings
         label: 'Moth Queen',
         types: ['alien']
     },
@@ -4003,6 +4007,14 @@ const PASSIVE_DEFS = {
         id: 'dcDominion', icon: '🐉', name: 'Dominion',
         desc: 'Any enemy that starts its turn within 2 of him is Cowed: -1 ATK stage for each stack, up to 3. A new stack keeps them all for 2 more rounds.',
     },
+    hpSnatch: {   // 2026-11-28 THE HARPY + THE MOTH QUEEN: battle.js THE HARPY + THE MOTH QUEEN (_hpOnHit, from applyDamageToUnit)
+        id: 'hpSnatch', icon: '🪶', name: 'Snatch',
+        desc: 'She takes the food off your plate: every hit she lands on an enemy steals 12 MP from it for herself (Snatch itself steals 24).',
+    },
+    mqDrawn: {   // 2026-11-28 THE HARPY + THE MOTH QUEEN: battle.js THE HARPY + THE MOTH QUEEN (_mqDrawn, the blitz hand-off)
+        id: 'mqDrawn', icon: '🌙', name: 'Drawn to the Light',
+        desc: 'Her spells leave enemies Moonstruck. A Moonstruck enemy is drawn 1 tile toward her at the start of each of its turns, like a moth to a flame.',
+    },
     fgPollinate: {   // 2026-11-27 THE NEW RACES 5: battle.js THE NEW RACES 5 (_fgPollenHit, from applyDamageToUnit)
         id: 'fgPollinate', icon: '🌸', name: 'Pollinate',
         desc: 'Her spells dust enemies with Pollen (up to 3). Whenever one of her allies hits an enemy carrying Pollen, that ally heals 6% of its max HP and the Pollen loses a stack.',
@@ -4141,6 +4153,8 @@ const RACE_PASSIVES = {
     'leopard girl':  ['lgRosettes'],   // 2026-11-27 THE NEW RACES 5
     'draconian':     ['dcDominion'],   // 2026-11-27 THE NEW RACES 5
     'flower girl':   ['fgPollinate'],   // 2026-11-27 THE NEW RACES 5
+    'harpy':         ['hpSnatch'],   // 2026-11-28 THE HARPY + THE MOTH QUEEN (she flies too)
+    'moth queen':    ['mqDrawn'],   // 2026-11-28 THE HARPY + THE MOTH QUEEN (she flies too)
     'point guard':   ['pgAssist'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
     'music producer': ['mpOnLoop'],   // 2026-11-24 THE MUSIC PRODUCER
 };
@@ -4219,7 +4233,7 @@ const RACE_MERGED = { 'nun': { race: 'priest', gender: 'female' } };
 /* 👁🌑 THE REALM WINDOW: races that SEE a Shadow Realm pair on their own turns (they cannot touch it). A projecting
    spirit both sees and touches (battle.js unitSeesRealm / unitCrossesRealm). */
 const REALM_SIGHT_RACES = ['ghost', 'shadow entity'];
-const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber', 'pharaoh', 'deep sea diver', 'gambler', 'hacker', 'monk', 'shogun', 'cameraman', 'mechanic', 'janitor', 'trucker', 'gladiator', 'farmer', 'jellyfish ufo', 'bear', 'rat', 'butterfly girl', 'plastic surgeon', 'monarch', 'abomination', 'hollow', 'weatherman', 'cheerleader', 'point guard', 'centaur', 'music producer', 'princess', 'demiurge', 'monster truck', 'nutcracker', 'leopard girl', 'draconian', 'flower girl', 'leprechaun', 'medic', 'origami girl', 'snowman', 'actor'];
+const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece', 'banker', 'sewer gator', 'skater', 'tech ceo', 'magician', 'mole man', 'quetzalcoatl', 'lifeguard', 'delivery boy', 'librarian', 'televangelist', 'influencer', 'referee', 'florida man', 'boltzmann brain', 'wendigo', 'karate frog', 'samurai slug', 'cicada brood', 'haunted doll', 'ninja', 'pope', 'cursed tv', 'virus', 'streamer', 'vtuber', 'pharaoh', 'deep sea diver', 'gambler', 'hacker', 'monk', 'shogun', 'cameraman', 'mechanic', 'janitor', 'trucker', 'gladiator', 'farmer', 'jellyfish ufo', 'bear', 'rat', 'butterfly girl', 'plastic surgeon', 'monarch', 'abomination', 'hollow', 'weatherman', 'cheerleader', 'point guard', 'centaur', 'music producer', 'princess', 'demiurge', 'monster truck', 'nutcracker', 'leopard girl', 'draconian', 'flower girl', 'harpy', 'moth queen', 'leprechaun', 'medic', 'origami girl', 'snowman', 'actor'];
 /* THE COMING RACES (2026-11-19, mondo: "wire them in the game at least in the relation web, give them sprite ai portraits ... my associate
    [does] their spell and combat plan on another account"): races whose model, sprite and name are in (sprites.js RACE_MODELS_3D,
    RACE_PROFILES) but whose kit is not. They are NOT playable: the Relationship Web lists them (docs/plans/story-web/build/fresh.js).
@@ -4227,7 +4241,7 @@ const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scie
    AVAILABLE_RACES and server.js AVAILABLE_RACES. Notes: docs/notes/champions-combat.md "THE COMING RACES". */
 /* THE WEATHERMAN's FORECAST (2026-11-24 THE WEATHERMAN + NEWS ANCHOR): the weather never hurts or soaks him (state.js applyWeatherTurnEffects + stormStrikeUnit) */
 function wnWeatherproof(u) { return !!u && u.race === 'weatherman' && (u.gender || 'male') === 'male' && unitHasPassive(u, 'wnTheForecast'); }   /* Broken = no passives = no shelter */
-const EW_COMING_RACES = ['harpy', 'moth queen'];   // 2026-11-28 THE HARPY + THE MOTH QUEEN: bodies + flapping wings in, kits not yet (mondo names the moves).   // 2026-11-27 THE ORIGAMI GIRL: her body is in, her kit is her spell thread's (it moves her to AVAILABLE_RACES here AND in server.js).     // 2026-11-27 THE NEW CHARACTERS (models + sprites in, kits being made by three spell threads; each moves its key into AVAILABLE_RACES here AND in server.js with its kit).   // 2026-11-23 THE COMING RACES 2 (the Mannequin was cut 11-23, mondo; the Bear, the Rat, the Butterfly Girl and the Monarch got their kits 11-23 and moved to AVAILABLE_RACES) (models in, kits not yet; one spell thread a unit). 2026-11-19: the gladiator, the farmer and the jellyfish UFO got their kits and moved to AVAILABLE_RACES
+const EW_COMING_RACES = [];   // 2026-11-28 THE HARPY + THE MOTH QUEEN: their kits are in (thread "Make Harpy and Moth Queen spells"), both are AVAILABLE_RACES now.   // 2026-11-27 THE ORIGAMI GIRL: her body is in, her kit is her spell thread's (it moves her to AVAILABLE_RACES here AND in server.js).     // 2026-11-27 THE NEW CHARACTERS (models + sprites in, kits being made by three spell threads; each moves its key into AVAILABLE_RACES here AND in server.js with its kit).   // 2026-11-23 THE COMING RACES 2 (the Mannequin was cut 11-23, mondo; the Bear, the Rat, the Butterfly Girl and the Monarch got their kits 11-23 and moved to AVAILABLE_RACES) (models in, kits not yet; one spell thread a unit). 2026-11-19: the gladiator, the farmer and the jellyfish UFO got their kits and moved to AVAILABLE_RACES
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
    default job's kit (JOB_KITS) gave it, so ranged races stay ranged: the old Sniper races reach 4 (kit 3 + the Sniper's
@@ -4255,6 +4269,8 @@ const RACE_KITS = {
     'leopard girl': { range: 1 },   // 2026-11-27 THE NEW RACES 5: claws
     'draconian': { range: 1 },   // 2026-11-27 THE NEW RACES 5: talons
     'flower girl': { range: 2 },   // 2026-11-27 THE NEW RACES 5: a puff of petals
+    'harpy': { range: 1 },   // 2026-11-28 THE HARPY + THE MOTH QUEEN: talons
+    'moth queen': { range: 3 },   // 2026-11-28 THE HARPY + THE MOTH QUEEN: a flick of scale dust
     'point guard': { range: 3 },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: the basic attack is a chest pass with his basketball (it flies and comes back to his hands)
     'music producer': { range: 2 },   // 2026-11-24 THE MUSIC PRODUCER: the basic attack is a pad hit; the sound wave reaches
     'streamer': { range: 1 },   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit): the basic attack is a keyboard slam
@@ -4413,6 +4429,8 @@ const RACE_CLASS = {
     'leopard girl': 'assassin',   // 2026-11-27 THE NEW RACES 5
     'draconian': 'bruiser',   // 2026-11-27 THE NEW RACES 5
     'flower girl': 'support',   // 2026-11-27 THE NEW RACES 5
+    'harpy': 'assassin',   // 2026-11-28 THE HARPY + THE MOTH QUEEN: a snatcher, in and out
+    'moth queen': 'caster',   // 2026-11-28 THE HARPY + THE MOTH QUEEN: she pulls the board to her
     'origami girl': 'specialist',   // 2026-11-27 THE ORIGAMI GIRL (body in, kit = her spell thread): a first pass
     'point guard': 'ranged',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
     'music producer': 'specialist',   // 2026-11-24 THE MUSIC PRODUCER: he builds the song, the song does the work
@@ -4511,6 +4529,8 @@ const RACE_TERRAIN_PREFERENCE = {
     'leopard girl': 'tree',   // 2026-11-27 THE NEW RACES 5: leopards hunt from the branches
     'draconian': 'desert',   // 2026-11-27 THE NEW RACES 5: the pyramids
     'flower girl': 'grass',   // 2026-11-27 THE NEW RACES 5: a meadow
+    'harpy': 'mountain',   // 2026-11-28 THE HARPY + THE MOTH QUEEN: the crags (Claude's pick)
+    'moth queen': 'tree',   // 2026-11-28 THE HARPY + THE MOTH QUEEN: like the mothman (Claude's pick)
     'point guard': 'urban',   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: Disaster City's Sports district
     'music producer': 'urban',   // 2026-11-24 THE MUSIC PRODUCER: Disaster City (Mid Records)
     'streamer': 'urban',   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
@@ -4945,6 +4965,8 @@ const RACE_BASE_STATS = {
     'leopard girl':       { hp: 1000, mp: 120, atk: 165, def:  85, mdef:  60, int:  50, vision: 4, crt: 26, spd: 150 },   // 2026-11-27 THE NEW RACES 5: first pass on the assassin median (a stalker: fast, hits hard, thin)
     'draconian':          { hp: 1280, mp: 140, atk: 140, def: 118, mdef:  95, int:  90, vision: 3, crt: 15, spd: 100 },   // 2026-11-27 THE NEW RACES 5: first pass on the bruiser median
     'flower girl':        { hp:  980, mp: 230, atk:  50, def:  75, mdef: 135, int: 150, vision: 4, crt: 15, spd: 115 },   // 2026-11-27 THE NEW RACES 5: first pass on the support median
+    'harpy':              { hp:  940, mp: 140, atk: 150, def:  75, mdef:  70, int:  55, vision: 5, crt: 26, spd: 155 },   // 2026-11-28 THE HARPY + THE MOTH QUEEN: first pass on the assassin median (quick, thin, sees far)
+    'moth queen':         { hp:  860, mp: 240, atk:  30, def:  65, mdef: 140, int: 155, vision: 4, crt: 18, spd: 125 },   // 2026-11-28 THE HARPY + THE MOTH QUEEN: first pass on the caster median
     'origami girl':       { hp:  880, mp: 220, atk:  95, def:  60, mdef: 110, int: 140, vision: 4, crt: 22, spd: 130 },   // 2026-11-27 THE ORIGAMI GIRL (body in, kit = her spell thread) — a first pass: light, quick, thin as paper
     'point guard':        { hp:  940, mp: 140, atk: 112, def:  78, mdef:  62, int:  40, vision: 4, crt: 26, spd: 150 },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — first pass on the ranged median, the fastest hands on the court
     'music producer':     { hp:  980, mp: 230, atk:  60, def:  80, mdef: 120, int: 160, vision: 3, crt: 18, spd: 105 },   // 2026-11-24 THE MUSIC PRODUCER — first pass on the specialist median
@@ -5167,6 +5189,8 @@ const RACE_PHYSIQUE = {
     'leopard girl':        { h: 1.70, w: 55 },   // 2026-11-27 THE NEW RACES 5
     'draconian':           { h: 2.20, w: 140 },   // 2026-11-27 THE NEW RACES 5: a tall reptilian, no wings
     'flower girl':         { h: 1.65, w: 50 },   // 2026-11-27 THE NEW RACES 5
+    'harpy':               { h: 1.68, w: 48 },   // 2026-11-28 THE HARPY + THE MOTH QUEEN: hollow bones
+    'moth queen':          { h: 1.85, w: 60 },   // 2026-11-28 THE HARPY + THE MOTH QUEEN
     'origami girl':        { h: 1.68, w: 2 },   // 2026-11-27 THE ORIGAMI GIRL (body in, kit = her spell thread): paper
     'point guard':         { h: 1.88, w: 84 },   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
     'music producer':      { h: 1.80, w: 74 },   // 2026-11-24 THE MUSIC PRODUCER
@@ -11825,6 +11849,65 @@ const RACE_ABILITIES = {
           element: 'nature', type: 'heal', kind: 'healAll', range: 0, healAmt: 130, cleanse: 1, auraRadius: 3, fgVines: 3,
           desc: 'Everything blooms at once. Heals her and every ally within 3 a MEDIUM amount and removes 1 debuff from each; vines come up under every enemy within 3 and Root it for 1 round. Cooldown: 4 rounds.' },
     ],
+    'harpy': [
+        /* THE HARPY (2026-11-28 THE HARPY + THE MOTH QUEEN, THE KITS; mondo: "make their spells and choose their animations/vfx"). FIRST PASS: every
+           name and number is his to change. The snatchers of the old stories (they took the food off the blind king's table and
+           carried people off). HER RULE, SNATCH (hpSnatch): every hit she lands on an enemy steals MP for herself (12, a row's
+           `hpSteal` says more; battle.js THE HARPY + THE MOTH QUEEN _hpOnHit). Carry Off (`hpCarry`): she flies the victim back to
+           the square she dived from and drops it beside her (_hpCarry). Feeding Frenzy (`hpStarve`): harder on a target with next to
+           no MP left (_hpStarveMult in _spellCritRoll). Each row's wing move: three-vfx-effects.js _HM_WING. */
+        { id: 'hpSnatch', name: 'Snatch', tier: 1, families: ['harpy'], cost: 20, apCost: 1, spellType: 'anomaly',
+          type: 'damage', kind: 'damage', damageType: 'physical', dmg: 95, range: 1, hpSteal: 24,
+          desc: 'Talons first. Deals WEAK physical damage to a Single Enemy beside her and steals 24 MP from it.' },
+        { id: 'hpShriek', name: 'Shriek', tier: 2, families: ['harpy'], cost: 40, apCost: 1, cooldownRounds: 3, spellType: 'anomaly', vfxElement: 'sonic',
+          animClip: { name: 'Zombie_Scream', lib: 8, ts: 1.4, trim: [0.3, 2.3], strikeAt: 1.1 },   // THE MESHY CASTS: head back, the scream
+          element: 'sonic', type: 'debuff', kind: 'aoe', noDamage: true, range: 0, aoeRadius: 2, aoeOriginSelf: true, hpShriekMp: 15,
+          statusEffects: [{ id: 'silence', duration: 1 }],
+          desc: 'Nobody can hear themselves think. All Enemies within 2 are Silenced for 1 round and lose 15 MP. Cooldown: 3 rounds.' },
+        { id: 'hpQuillStorm', name: 'Quill Storm', tier: 2, families: ['harpy'], cost: 45, apCost: 1, cooldownRounds: 2, spellType: 'anomaly', vfxElement: 'wind',
+          animClip: { name: 'Cheer_with_Both_Hands_Up', lib: 9, ts: 1.35, strikeAt: 0.85 },   // THE MESHY CASTS: arms up, the wings beat the feathers loose
+          element: 'wind', type: 'damage', kind: 'aoe', damageType: 'physical', dmg: 80, range: 4, aoeRadius: 1,
+          statusEffects: [{ id: 'bleed', duration: 2 }],
+          desc: 'Three beats of her wings throw a hail of quills. Deals WEAK physical damage to All Enemies in a 3×3 within 4 and leaves them Bleeding for 2 rounds. Cooldown: 2 rounds.' },
+        _mkCharge({ id: 'hpCarryOff', name: 'Carry Off', tier: 3, families: ['harpy'], cost: 65, apCost: 1, cooldownRounds: 3, spellType: 'anomaly',
+          dmg: 115, range: 4, hpCarry: true, statusEffects: [{ id: 'stagger', duration: 1 }],
+          desc: 'She dives on a Single Enemy up to 4 tiles away for MEDIUM physical damage, then flies it back to where she started and drops it beside her, Staggered for 1 round. Cooldown: 3 rounds.' }),
+        { id: 'hpFeedingFrenzy', name: 'Feeding Frenzy', tier: 4, families: ['harpy'], cost: 85, apCost: 1, cooldownRounds: 3, spellType: 'anomaly',
+          element: 'blood', type: 'damage', kind: 'lifeDrain', damageType: 'physical', dmg: 165, range: 1, drainPct: 0.5, hpStarve: { mp: 30, mult: 1.5 },
+          desc: 'She eats. Deals HEAVY physical damage to a Single Enemy beside her and half of it comes back to her as HP; bonus damage if the target has less than 30 MP left. Cooldown: 3 rounds.' },
+    ],
+    'moth queen': [
+        /* THE MOTH QUEEN (2026-11-28 THE HARPY + THE MOTH QUEEN, THE KITS). FIRST PASS: every name and number is mondo's to change. A pale
+           alien moth with a crescent moon on each wing. HER RULE, DRAWN TO THE LIGHT (mqDrawn): her spells leave enemies MOONSTRUCK
+           (STATUS_DEFS `moonstruck`, her id in unit._moonSrcId); a Moonstruck enemy is drawn 1 tile toward her when its turn starts
+           (battle.js THE HARPY + THE MOTH QUEEN _mqDrawn). Porch Light (`mqPorch`) drags every Moonstruck enemy in reach to her
+           and Stuns the ones that arrive (_mqAfterCast). Each row's wing move: three-vfx-effects.js _HM_WING. */
+        { id: 'mqScaleDust', name: 'Scale Dust', tier: 1, families: ['moonmoth'], cost: 25, apCost: 1, spellType: 'alien', vfxElement: 'psychic',
+          animClip: { name: 'Talk_with_Hands_Open', lib: 9, ts: 1.5, trim: [0, 2.2], strikeAt: 0.9 },   // THE MESHY CASTS: hands open, the wings shake the dust loose
+          element: 'psychic', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 85, range: 4,
+          statusEffects: [{ id: 'moonstruck', duration: 2 }],
+          desc: 'A shiver of her wings, and the dust glows. Deals WEAK psychic magic damage to a Single Enemy within 4 and leaves it Moonstruck for 2 rounds.' },
+        { id: 'mqMothEaten', name: 'Moth-Eaten', tier: 2, families: ['moonmoth'], cost: 45, apCost: 1, cooldownRounds: 2, spellType: 'alien', vfxElement: 'psychic',
+          animClip: { name: 'Dont_You_Dare', lib: 9, ts: 1.4, trim: [0.8, 2.8], strikeAt: 1.64 },   // THE MESHY CASTS: the pointed finger: eat
+          element: 'psychic', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 100, range: 3, statStageBoost: { def: -1, mdef: -1 },
+          statusEffects: [{ id: 'moonstruck', duration: 2 }],
+          desc: 'Her little ones get into the wardrobe. Deals MEDIUM psychic magic damage to a Single Enemy within 3, eats holes in its armour (-1 DEF and -1 M.DEF stage) and leaves it Moonstruck for 2 rounds. Cooldown: 2 rounds.' },
+        { id: 'mqRoyalSilk', name: 'Royal Silk', tier: 2, families: ['moonmoth'], cost: 45, apCost: 1, cooldownRounds: 3, spellType: 'alien', vfxElement: 'psychic',
+          animClip: { name: 'Big_Heart_Gesture', lib: 9, ts: 1.5, trim: [0.5, 2.6], strikeAt: 1.4 },   // THE MESHY CASTS: the wings close round a friend
+          element: 'psychic', type: 'heal', kind: 'heal', range: 3, healAmt: 70, cleanse: 1,
+          statusEffects: [{ id: 'protect', duration: 1 }, { id: 'regen', duration: 2 }],
+          desc: 'Spun for a queen. Wraps a Single Ally within 3 in silk: heals it a SMALL amount, the next hit on it does nothing, 1 debuff comes off and it has Regen for 2 rounds. Cooldown: 3 rounds.' },
+        { id: 'mqPorchLight', name: 'Porch Light', tier: 3, families: ['moonmoth'], cost: 65, apCost: 1, cooldownRounds: 3, spellType: 'alien', vfxElement: 'psychic',
+          animClip: { name: 'Cheer_with_Both_Hands_Up', lib: 9, ts: 1.35, strikeAt: 0.85 },   // THE MESHY CASTS: arms up, the wings open wide and light up
+          element: 'psychic', type: 'debuff', kind: 'buff', range: 0, noDamage: true, mqPorch: { reach: 5, pull: 3 },
+          desc: 'She turns the light on. Every Moonstruck enemy within 5 is dragged up to 3 tiles toward her; the ones that end beside her are Stunned for 1 round. No Moonstruck enemy in reach: refused. Cooldown: 3 rounds.' },
+        { id: 'mqTotalEclipse', name: 'Total Eclipse', tier: 4, families: ['moonmoth'], cost: 95, apCost: 1, cooldownRounds: 4, spellType: 'alien', vfxElement: 'psychic',
+          animClip: { name: 'Magic_Genie', lib: 9, ts: 1.3, trim: [3.2, 5.0], strikeAt: 4.4 },   // THE MESHY CASTS: the arms come up and over, the wings shut out the light
+          element: 'psychic', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 150, range: 0, aoeRadius: 2, aoeOriginSelf: true,
+          bonusVsStatus: { status: 'moonstruck', mult: 1.4 },
+          statusEffects: [{ id: 'blind', duration: 1 }],
+          desc: 'The two moons on her wings slide over the light. Deals HEAVY psychic magic damage to All Enemies within 2 and Blinds them for 1 round; bonus damage to the Moonstruck. Cooldown: 4 rounds.' },
+    ],
     'point guard': [
         /* THE POINT GUARD (2026-11-24 THE CHEERLEADER + THE POINT GUARD; mondo 11-24: "Point Guard m (basketball)", "needs a basketball, just a sphere geometry
            and ... a good looking realistic basketball texture"). The ball is his held gear and every throw (proj-basketball). HIS RULE,
@@ -16134,6 +16217,16 @@ const STATUS_DEFS = {
         },
         onRemove(unit) { delete unit._pollen; delete unit._pollenSrcId; }
     },
+    /* 🌙 MOONSTRUCK (2026-11-28 THE HARPY + THE MOTH QUEEN, the Moth Queen's Drawn to the Light): her id in unit._moonSrcId. The carrier is drawn 1 tile
+       toward her when its turn starts; Porch Light drags it to her, Total Eclipse hits it harder (battle.js THE HARPY + THE MOTH QUEEN). */
+    moonstruck: {
+        icon: '🌙', glyph: '🌙', short: 'MNS', label: 'Moonstruck',
+        colorText: 'moonstruck, drawn to the Moth Queen',
+        kind: 'debuff', category: 'status', stack: 'replace',
+        iconSrc: createStatusIconDataUri('🌙', '#141a2e', '#e8ecff', '#9fb0e8'),
+        onApply(unit, src) { unit._moonSrcId = src ? src.id : null; },
+        onRemove(unit) { delete unit._moonSrcId; }
+    },
     grudge: {
         icon: '🐾', glyph: '🐾', short: 'GRG', label: 'Grudge',
         colorText: 'holding the Bear\'s Grudge',
@@ -16747,6 +16840,7 @@ const STATUS_LIBRARY_DESCS = {
     grudge:    'The Bear holds a grudge: it hurt the Bear last (or was grabbed in a Bear Hug). Bear Down hits it harder. Ends when that Bear goes down or picks a new grudge.',
     cowed:     'Cowed by the Draconian: -1 ATK stage for each stack (up to 3). Kneel spends the stacks; at 3 it Stuns.',
     pollen:    'Dusted with the Flower Girl\'s pollen (up to 3 stacks): when one of her allies hits it, that ally heals 6% of its max HP and a stack comes off.',
+    moonstruck: 'Cannot look away from the Moth Queen: drawn 1 tile toward her at the start of each of its turns. Porch Light drags it all the way; Total Eclipse hits it harder.',
     shorted:   'Bet against: if this unit goes down while Shorted, the short-seller restores 75 MP and heals 20% of their max HP.',
     submerged: 'Under the surface of a liquid: hidden with Invisible until it attacks. Leaving the liquid surfaces it.',
     momentum:  'Rolling: every square walked in a straight line banks a stack (up to 6). Board Slam spends them for damage. Fades a turn after the Skater stops. Stunned, Rooted, Frozen or put to sleep, she bails and loses them all.',
@@ -22883,6 +22977,8 @@ const EW_RACE_BIOMES = {
     'leopard girl': ['urban', 'tropical'],   // 2026-11-27 THE NEW RACES 5 — The Strip's stage (the Cats-musical fur), the jungle (Claude's pick)
     'draconian': ['ancient', 'desert'],   // 2026-11-27 THE NEW RACES 5 — Giza (his canon: the Draconians came for Egypt)
     'flower girl': ['forest'],   // 2026-11-27 THE NEW RACES 5 — The Fairy Forest (Claude's pick)
+    'harpy': ['ancient'],   // 2026-11-28 THE HARPY + THE MOTH QUEEN — the old world's ruins (Claude's pick, no home zone set)
+    'moth queen': ['space'],   // 2026-11-28 THE HARPY + THE MOTH QUEEN — an alien (Claude's pick, no home zone set)
     'point guard': ['urban'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD — Disaster City's Sports district
     'music producer': ['urban'],   // 2026-11-24 THE MUSIC PRODUCER — Disaster City
     'streamer': ['neon_city', 'urban'],   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit) — The Internet's stage
@@ -23577,6 +23673,8 @@ const RACE_TREE = {
     'leopard girl':  ['lgRake', ['lgPounce', 'lgDragKill'], 'lgThroatHold', 'lgKillingBite'],   // 2026-11-27 THE NEW RACES 5
     'draconian':     ['dcTalonRend', ['dcTailSweep', 'dcReptileEye'], 'dcRoyalBlood', 'dcKneel'],   // 2026-11-27 THE NEW RACES 5
     'flower girl':   ['fgPetalDart', ['fgBouquet', 'fgHayFever'], 'fgSweetPerfume', 'fgSpringAwakening'],   // 2026-11-27 THE NEW RACES 5
+    'harpy':         ['hpSnatch', ['hpShriek', 'hpQuillStorm'], 'hpCarryOff', 'hpFeedingFrenzy'],   // 2026-11-28 THE HARPY + THE MOTH QUEEN
+    'moth queen':    ['mqScaleDust', ['mqMothEaten', 'mqRoyalSilk'], 'mqPorchLight', 'mqTotalEclipse'],   // 2026-11-28 THE HARPY + THE MOTH QUEEN
     'point guard':   ['pgChestPass', 'pgCrossover', 'pgAlleyOop', 'pgBuzzerBeater'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD: his own four
     'music producer': ['mpLayItDown', ['mpAddChord', 'mpMelodyStyle'], 'mpDrumFill', 'mpBassDrop'],   // 2026-11-24 THE MUSIC PRODUCER (Beat Switch + Slap Bass ride RACE_DEFAULT_KIT_EXTRAS)
     'streamer':      ['nrClipIt', ['nrUwu', 'nrRageQuit'], 'nrDonationGoal', 'nrRaid'],   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit): the rung 2 pair is one of each version (RACE_GENDER_SPELLS)
@@ -25802,6 +25900,26 @@ const SPELL_FAMILIES = {
         desc: 'The old royal bloodline of the reptilians: talons, a tail, the eye that makes you kneel and the blood that feeds on it.',
         unique: 'draconian',
         identity: { who: ['Draconian', 'Draco', 'Reptilian Royal'], adj: ['Ancient', 'Cold-Blooded', 'Imperious'], look: ['green-gold scales', 'a crested head', 'slit pupils'], vibe: ['makes them kneel', 'was here before the pyramids'] }
+    },
+    harpy: {   // 2026-11-28 THE HARPY + THE MOTH QUEEN — the Harpy's own
+        id: 'harpy',
+        name: 'Snatcher',
+        glyph: '🪶',
+        color: '#b8894a',
+        kind: 'signature',
+        desc: 'The harpy\'s table manners: talons in the purse, a shriek nobody can think through, a hail of quills, a flight you did not ask for and a meal.',
+        unique: 'harpy',
+        identity: { who: ['Harpy', 'Snatcher', 'Storm Hag'], adj: ['Screeching', 'Grasping', 'Ravenous'], look: ['feathered wings to the shins', 'talons for feet', 'feather cuffs'], vibe: ['takes the food off your plate', 'carries you off'] }
+    },
+    moonmoth: {   // 2026-11-28 THE HARPY + THE MOTH QUEEN — the Moth Queen's own
+        id: 'moonmoth',
+        name: 'Moonlight',
+        glyph: '🌙',
+        color: '#9fb0e8',
+        kind: 'signature',
+        desc: 'The moth queen\'s court: dust that glows, holes in your armour, silk for her friends, a light nobody can walk away from and two moons that put it out.',
+        unique: 'moth queen',
+        identity: { who: ['Moth Queen', 'Luna', 'Pale Empress'], adj: ['Pale', 'Dusted', 'Moonlit'], look: ['a crescent moon on each wing', 'a fur collar', 'feathered antennae'], vibe: ['you cannot look away', 'eats holes in your coat'] }
     },
     blossom: {   // 2026-11-27 THE NEW RACES 5 — the Flower Girl's own
         id: 'blossom',
@@ -28433,6 +28551,8 @@ const RACE_FAMILIES = {
     'leopard girl': ['leopard', 'feline', 'huntingskills', 'apexpredator', 'stagepresence'],   // 2026-11-27 THE NEW RACES 5
     'draconian': ['draconian', 'ancientknowledge', 'psychic', 'deepstate', 'blood'],   // 2026-11-27 THE NEW RACES 5
     'flower girl': ['blossom', 'nature', 'healingmagic', 'seduction', 'fae'],   // 2026-11-27 THE NEW RACES 5
+    'harpy': ['harpy', 'wind', 'sonic', 'thievery', 'apexpredator'],   // 2026-11-28 THE HARPY + THE MOTH QUEEN
+    'moth queen': ['moonmoth', 'insectoid', 'psychic', 'light', 'royalty'],   // 2026-11-28 THE HARPY + THE MOTH QUEEN
     'point guard': ['basketball', 'athleticism', 'teamwork', 'stagepresence'],   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
     'music producer': ['beatmaking', 'sonic', 'stagepresence', 'maincharacter'],   // 2026-11-24 THE MUSIC PRODUCER
     'streamer': ['streaming', 'stagepresence', 'computerhacking', 'internetaddiction'],   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)
@@ -29106,6 +29226,8 @@ const CAMPAIGN_RACE_PRICES = {
   'leopard girl': 400,   // 2026-11-27 THE NEW RACES 5
   'draconian': 450,   // 2026-11-27 THE NEW RACES 5
   'flower girl': 400,   // 2026-11-27 THE NEW RACES 5
+  'harpy': 400,   // 2026-11-28 THE HARPY + THE MOTH QUEEN
+  'moth queen': 400,   // 2026-11-28 THE HARPY + THE MOTH QUEEN
   'point guard': 400,   // 2026-11-24 THE CHEERLEADER + THE POINT GUARD
   'music producer': 400,   // 2026-11-24 THE MUSIC PRODUCER
   'streamer': 400,   // 2026-11-18 THE STREAMER + E-GIRL (mondo approved the kit)

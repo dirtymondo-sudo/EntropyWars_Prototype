@@ -18649,12 +18649,46 @@ const ThreeRenderer = (function () {
         mantle:    { rhythm: 'butterfly', rate: 2.2, walk: 3.6, sw0: 0, ra0: 0, swA: 0.3, raA: 0.04, tw: 0, off: 0.2, lag: 0.091, flex: [1.2, 1.7, 2.2], bend: 0.34 },   // (the Monarch: the wings she wears down her back open and close a little)
         cicada:    { rhythm: 'flutter', rate: 30, walk: 36, sw0: 0, ra0: 0.07, swA: 0.02, raA: 0.05, tw: 0.03, tw0: 0.06, mo: 0.25, off: 0.3, lag: 0.02, flex: [0.72, 1.08, 1.44], bend: 0.2 },   // (shut along the back: they rattle in bursts)
         pegasus:   { rhythm: 'steady',  rate: 2, walk: 3, sw0: 0, ra0: 0, swA: 0, raA: 0, tw: 0, off: 0, lag: 0.13, flex: [1.8, 2.4, 3.0], bend: 0.5 },   // (the Unicorn: its clips turn the hinge; only the follow-through is read)
-        harpy:     { rhythm: 'heavy',   rate: 1.9, walk: 3.0, sw0: 0.02, ra0: 0.04, swA: 0.10, raA: 0.26, tw: 0.08, off: 0.12, mo: 0.6, lag: 0.12, flex: [1.7, 2.2, 2.8], bend: 0.46 },   // (2026-11-28 the Harpy: long feathered wings hung to her shins, a slow hawk's beat, the tips trailing)
-        mothqueen: { rhythm: 'ruffle',  rate: 1.25, walk: 2.3, sw0: 0, ra0: 0.03, swA: 0.07, raA: 0.2, tw: 0.04, sh: 0.5, off: 0.06, mo: 0.5, lag: 0.1, flex: [1.0, 1.4, 1.8], bend: 0.3 },   // (2026-11-28 the Moth Queen: two broad wing sheets that open and close together, slow, a shiver now and then)
+        harpy:     { rhythm: 'heavy',   rate: 1.9, walk: 3.0, sw0: 0.02, ra0: 0.04, swA: 0.10, raA: 0.26, tw: 0.08, off: 0.12, mo: 0.6, fwd: 1.5, lag: 0.12, flex: [1.7, 2.2, 2.8], bend: 0.46 },   // (2026-11-28 the Harpy: long feathered wings hung to her shins, a slow hawk's beat, the tips trailing)
+        mothqueen: { rhythm: 'ruffle',  rate: 1.25, walk: 2.3, sw0: 0, ra0: 0.03, swA: 0.07, raA: 0.2, tw: 0.04, sh: 0.5, off: 0.06, mo: 0.5, fwd: 1.3, lag: 0.1, flex: [1.0, 1.4, 1.8], bend: 0.3 },   // (2026-11-28 the Moth Queen: two broad wing sheets that open and close together, slow, a shiver now and then)
         baked:     { rhythm: 'steady',  rate: 2.0, walk: 3.2, sw0: 0.03, ra0: 0, swA: 0.1, raA: 0.15, tw: 0.06, off: 0.25, lag: 0.111, flex: [1.6, 2.0, 2.5], bend: 0.42 }
     };
     var _wbState = (typeof WeakMap === 'function') ? new WeakMap() : null;   // clone root -> { slot, walk, dead, act, t0, ms }
-    var _wbM = { spread: 0, beat: 0, fold: 0 };
+    var _wbM = { spread: 0, beat: 0, fold: 0, fwd: 0, lift: 0, shiver: 0 };
+    /* THE WING MOVES OF A SPELL (2026-11-28, the Harpy + the Moth Queen; mondo: "choose their animations/vfx"): a spell names a move of
+       the wings for its caster (three-vfx-effects.js _HM_WING, on the cast's windup beat, which online.js relays -> ThreeRenderer.wingAct).
+       A move poses the moment's channels over its length u 0..1 and outranks the slot's plain flare / strike while it runs:
+       spread (open wide), beat (harder), fold (shut), and three of its own: fwd (the wings swing forward round what is in front
+       of her), lift (raised high), shiver (a fast tremble down the span). Any unit with wings on THE BEATS can be given one. */
+    var _WB_ACTS = {
+        /* 🪶 Snatch: pulled back, then thrown forward round the victim (a hawk mantling its catch) */
+        mantle:  function (u, m) { var h = _occBump(u, 0.2, 0.34, 0.92); m.spread = -0.5 * _occBump(u, 0, 0.12, 0.26) + 0.9 * h; m.fwd = 1.0 * h; m.lift = 0.3 * h; m.beat = 0.8 * _occBump(u, 0.5, 0.65, 0.95); },
+        /* 🪶 Shriek: thrown wide and high, trembling with the scream */
+        scream:  function (u, m) { var b = _occS(u, 0.06, 0.24) * (1 - _occS(u, 0.82, 1)); m.spread = 1.25 * b; m.lift = 0.3 * b; m.shiver = 1.2 * _occBump(u, 0.18, 0.3, 0.9); },
+        /* 🪶 Quill Storm: three hard beats forward that throw the feathers */
+        buffet:  function (u, m) { var b = _occS(u, 0.04, 0.16) * (1 - _occS(u, 0.86, 1)), w = Math.sin(Math.max(0, Math.min(1, (u - 0.14) / 0.66)) * Math.PI * 6); m.spread = 0.8 * b; m.lift = 0.2 * b + 0.2 * b * Math.max(0, -w); m.fwd = 0.85 * b * Math.max(0, w); },
+        /* 🪶 Carry Off: tucked for the dive, thrown open to brake, then rowing hard with the weight */
+        dive:    function (u, m) { m.fold = 0.9 * _occBump(u, 0, 0.1, 0.3); m.spread = 1.2 * _occBump(u, 0.26, 0.36, 0.95); m.lift = 0.25 * _occBump(u, 0.3, 0.4, 0.9); m.beat = 1.8 * _occBump(u, 0.4, 0.55, 0.95); },
+        /* 🪶 Feeding Frenzy: mantled over the meal, beating and shaking */
+        frenzy:  function (u, m) { var b = _occS(u, 0.05, 0.2) * (1 - _occS(u, 0.85, 1)); m.fwd = 0.85 * b; m.spread = 0.7 * b; m.lift = 0.25 * b; m.beat = 2.4 * b; m.shiver = 0.7 * b; },
+        /* 🌙 Scale Dust: half open, a long shiver that shakes the dust off */
+        dust:    function (u, m) { var b = _occS(u, 0.05, 0.22) * (1 - _occS(u, 0.8, 1)); m.spread = 0.6 * b; m.lift = 0.5 * b; m.shiver = 1.5 * _occBump(u, 0.15, 0.3, 0.85); },
+        /* 🌙 Moth-Eaten: one sharp flick forward */
+        flick:   function (u, m) { m.spread = 0.4 * _occBump(u, 0, 0.2, 0.9); m.lift = 0.35 * _occBump(u, 0, 0.2, 0.9); m.fwd = 0.9 * _occBump(u, 0.24, 0.34, 0.6); m.shiver = 0.5 * _occBump(u, 0.34, 0.4, 0.7); },
+        /* 🌙 Royal Silk: the wings close slowly forward, a cocoon round a friend */
+        wrap:    function (u, m) { var b = _occS(u, 0.05, 0.4) * (1 - _occS(u, 0.82, 1)); m.fwd = 1.0 * b; m.lift = 0.3 * b; },
+        /* 🌙 Porch Light: opened slowly as wide and high as they go, and held, glowing */
+        beacon:  function (u, m) { var b = _occS(u, 0.04, 0.34) * (1 - _occS(u, 0.88, 1)); m.spread = 1.35 * b; m.lift = 1.1 * b; m.shiver = 0.3 * b * (0.5 + 0.5 * Math.sin(u * 40)); },
+        /* 🌙 Total Eclipse: wide open, then the two moons clap shut in front of her and stay shut */
+        eclipse: function (u, m) { var open = _occS(u, 0, 0.26) * (1 - _occS(u, 0.4, 0.52)), shut = _occS(u, 0.4, 0.52) * (1 - _occS(u, 0.88, 1)); m.spread = 1.3 * open; m.lift = 1.1 * open + 0.45 * shut; m.fwd = 1.25 * shut; m.shiver = 0.5 * _occBump(u, 0.5, 0.56, 0.75); }
+    };
+    function _wingAct(uid, name, ms) {
+        var ue = _getUnitEntry(uid), r = ue && ue._ew_sway;
+        if (!_wbState || !r || !r.userData || !r.userData.ewWings || !_WB_ACTS[name]) return false;
+        var st = _wbState.get(r); if (!st) { st = {}; _wbState.set(r, st); }
+        st.sAct = name; st.sT0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now(); st.sMs = ms > 0 ? ms : 1600;
+        return true;
+    }
     /* the board's part: what the unit does this frame (the slot its clip plays) */
     function _wingSlot(entry) {
         var r = entry._ew_sway; if (!_wbState || !r) return;
@@ -18673,11 +18707,16 @@ const ThreeRenderer = (function () {
     }
     /* this frame's moment for a model's wings -> _wbM { spread (open wide +, pulled in −), beat (harder), fold (0..1 shut) } */
     function _wbMoment(model) {
-        var m = _wbM; m.spread = 0; m.beat = 0; m.fold = 0;
+        var m = _wbM; m.spread = 0; m.beat = 0; m.fold = 0; m.fwd = 0; m.lift = 0; m.shiver = 0;
         var st = _wbState ? _wbState.get(model) : null;
         if (!st) return null;
         var now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
         if (st.dead) { var d = _occS((now - st.t0) / 900, 0, 1); m.fold = d; m.spread = 0.5 * _occBump((now - st.t0) / 900, 0, 0.18, 0.6); return st; }
+        if (st.sAct) {   // a spell's own move outranks the slot's (THE WING MOVES OF A SPELL)
+            var su = (now - st.sT0) / (st.sMs || 1600);
+            if (su >= 1 || su < 0 || !_WB_ACTS[st.sAct]) st.sAct = null;
+            else { _WB_ACTS[st.sAct](su, m); return st; }
+        }
         if (st.act) {
             var u = (now - st.t0) / (st.ms || 1000);
             if (u >= 1 || u < 0) st.act = null;
@@ -18719,6 +18758,11 @@ const ThreeRenderer = (function () {
             sw += P.swA * amp * c - 0.42 * mo * m.spread + 0.5 * mo * m.fold;
             ra += P.raA * amp * s + 0.3 * mo * m.spread - (P.ra0 + 0.4) * mo * m.fold;
             tw += P.tw * amp * Math.sin(ph + 0.9);
+        }
+        if (m.fwd || m.lift || m.shiver) {   // THE WING MOVES OF A SPELL
+            var wf = P.fwd == null ? 1 : P.fwd;
+            sw -= 0.85 * wf * m.fwd; ra += 0.9 * m.lift;
+            tw += 0.15 * m.shiver * Math.sin(t * 38 + (sgn < 0 ? 1.3 : 0)); ra += 0.035 * m.shiver * Math.sin(t * 31);
         }
         _gearE.set(tw, sgn * sw, sgn * ra, 'YZX');
         var q0 = n.userData.ewq0;
@@ -115958,6 +116002,8 @@ const ThreeRenderer = (function () {
            ('horse' | 'horse_brown' | 'horse_black', else the race's / the id's); mountKeyFor(unit) = that coat */
         mountUnit: function (uid, o) { try { return _mountUnit(uid, o); } catch (e) { return false; } },
         demiAct: function (uid, name, ms) { try { return _demiAct(uid, name, ms); } catch (e) { return false; } },
+        wingAct: function (uid, name, ms) { try { return _wingAct(uid, name, ms); } catch (e) { return false; } },   // 🪶🌙 THE WING MOVES OF A SPELL
+
         bkInfo: function (uid) { var e = _getUnitEntry(uid), B = e && e._ew_bk; var sp = 0, far = null; if (B && e.group) { var gp = new THREE.Vector3(), v = new THREE.Vector3(); var rb = B.bones.filter(function (b) { return !(b.parent && b.parent.isBone); })[0]; if (rb) rb.getWorldPosition(gp); else e.group.getWorldPosition(gp); B.pieces.forEach(function (i) { v.copy(B.lc[i]).applyMatrix4(B.bones[i].matrixWorld); var dd = Math.hypot(v.x - gp.x, v.z - gp.z); if (dd > sp) { sp = dd; far = B.bones[i].name; } }); } return B ? { spread: +sp.toFixed(1), far: far, pieces: B.pieces.length, act: B.act ? B.act.name : null, pile: !!B.pile, jaw: !!B.jaw, jawAmt: +B.jawAmt.toFixed(2), stiff: !!(B.mesh.geometry.userData.ewBkRigid) } : (e ? { none: true, def: !!(e.modelDef && e.modelDef.breakable) } : null); },   // the probe's read
         bkAct: function (uid, name, ms, target, opts) { try { return _bkAct(uid, name, ms, target, opts); } catch (e) { return false; } },   // 🦴🪨 THE BREAKABLE BODIES
         spellSky: function (type, ms, o) { try { return _spellSkySet(type, ms, o); } catch (e) { return false; } },   // THE SPELL SKY: a boss spell's own celestial event   // THE DEMIURGE: a spell's own part act
