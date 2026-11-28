@@ -692,3 +692,7 @@ hip before rigging (`rig.py`: Meshy rigging by data URI). Use the same trick on 
 Then (11-28 morning) his second take replaced it: `Meshy_AI_mushroom_girl_v4_Running.glb`, same leg spread + rig.
 Mermaid (F), 11-28: mondo's own Meshy model replaced the f2: `mermaid_tail_v1.glb`, rigged in the cloud (Meshy out of credits) by
 `bake-mermaid.py` with the legs weighing nothing and a swimming tail chain. Notes champions-combat.md "THE MERMAID'S TAIL".
+Succubus (F), 11-28: remade from mondo's picture (pink demon, ram horns, black lace + harness, stockings, platform heels, spade tail):
+a WINGLESS Meshy body + ONE Meshy bat wing modelled on its own, hung on each side of the back by `bake-wing-part.py` (bones
+`ewwing_L/R`, beat `succubus`); the tail swings on `bake-tail.py --narrow 0.028,0.45`. `Meshy_AI_succubus_v2_Running.glb`. Concepts,
+scripts and the raw models: project files `succubus/`. Notes models-assets.md "THE WING PART".
