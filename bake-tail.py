@@ -10,11 +10,12 @@ the chain. Nothing is cut and everything else in the file is kept byte for byte,
 after bake-wings.py on a body that has both).
 
     python3 -I bake-tail.py <in.glb> <out.glb> [--parent Hips] [--joints 6] [--col 0] [--far 0.05] [--band 0.05]
-                            [--back 0.0] [--high 0.62] [--wide 0.5] [--debug <dir>]
+                            [--back 0.0] [--high 0.62] [--wide 0.5] [--narrow w,y] [--debug <dir>]
 
 --far / --band: how far from the bones the tail starts and over what distance it blends in (parts of the height);
 --back: how far behind the middle of the body a tail vertex must sit; --high: the top of the height band; --wide: the
-widest a tail may be (a gown's hem is not a tail). Needs numpy (+ pillow for --debug). Upload under a NEW name and give
+widest a tail may be (a gown's hem is not a tail); --narrow w,y (11-28): above the height y (part of the height) a
+tail vertex lies within w (part of the height) of the middle line, so a round seat far from the bones stays on the hips. Needs numpy (+ pillow for --debug). Upload under a NEW name and give
 the race `sway: { stiffness: 2.2, gravity: 0.1, drag: 0.3, maxRoot: 35, maxBend: 22, wave: 0.5, waveHz: 0.4, caps: [] }`.
 """
 import heapq, importlib.util, os, sys
@@ -27,11 +28,11 @@ bs = importlib.util.module_from_spec(_spec); _spec.loader.exec_module(bs)
 
 def main():
     args = sys.argv[1:]
-    opt = {'parent': 'Hips', 'joints': 6, 'col': 0, 'far': 0.05, 'band': 0.05, 'back': 0.0, 'high': 0.62, 'wide': 0.5, 'debug': None, 'low': -1.0, 'reach': 0.1}
+    opt = {'parent': 'Hips', 'joints': 6, 'col': 0, 'far': 0.05, 'band': 0.05, 'back': 0.0, 'high': 0.62, 'wide': 0.5, 'debug': None, 'low': -1.0, 'reach': 0.1, 'narrow': None}
     for k0 in list(opt):
         if '--' + k0 in args:
             k = args.index('--' + k0); v = args[k + 1]; del args[k:k + 2]
-            opt[k0] = v if k0 in ('parent', 'debug') else (int(v) if k0 in ('joints', 'col') else float(v))
+            opt[k0] = v if k0 in ('parent', 'debug') else [float(t) for t in v.split(',')] if k0 == 'narrow' else (int(v) if k0 in ('joints', 'col') else float(v))
     if len(args) != 2: print(__doc__); sys.exit(1)
     src, dst = args
     j, b = bs.read(src); G = bs.globals_(j)
@@ -58,6 +59,8 @@ def main():
     zb = np.median(P[:, 2]); xm = np.median(P[:, 0]); yy = (P[:, 1] - y0) / H
     hips = G[next(k for k, n in enumerate(j['nodes']) if n['name'] == opt['parent'])][:3, 3]
     cand = (d > opt['far'] * H) & (P[:, 2] < zb - opt['back'] * H) & (yy < opt['high']) & (yy > opt['low']) & ~taken
+    if opt['narrow']:   # (11-28, the Succubus: a round seat far from every bone is not a tail) above that height a tail is that narrow
+        cand &= ~((yy > opt['narrow'][1]) & (np.abs(P[:, 0] - xm) > opt['narrow'][0] * H))
     par = np.arange(len(P))
     def f(x):
         r = x
