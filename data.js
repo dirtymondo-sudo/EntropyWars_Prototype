@@ -10692,23 +10692,23 @@ const RACE_ABILITIES = {
     'voidweaver': [
         { id: 'raceWebSnare', element: 'nature', tier: 2, families: ['arachnid'], spellType: 'alien', name: 'Web Snare',
           type: 'damage', cost: 25, dmg: 100, range: 4,
-          kind: 'aoe', damageType: 'magic', aoeRadius: 1,
+          kind: 'aoe', damageType: 'magic', aoeRadius: 1, animSlot: 'vwSnare', animStrikeMs: 600,   // 🕷 THE VOIDWEAVER (11-28): it stands up on its back legs and shoots from the abdomen
           projectileOverride: 'proj-spiderweb',
           statusEffects: [{ id: 'root', duration: 1 }],
           desc: 'Deals MEDIUM magic damage to All Enemies in an AOE. Applies Rooted.' },
         { id: 'raceVenomFang', tier: 1, families: ['insectoid'], element: 'poison', spellType: 'alien', name: 'Venom Fang',
           type: 'damage', cost: 30, dmg: 100, range: 1,
-          kind: 'damage', damageType: 'physical',
+          kind: 'damage', damageType: 'physical', animSlot: 'vwBite', animStrikeMs: 500,   // 🕷 THE VOIDWEAVER (11-28): the pounce, the fangs in, three pumps (another race's model has no such clip and plays its own)
           statusEffects: [{ id: 'poison', duration: 3 }],
           desc: 'Deals MEDIUM physical damage to a Single Enemy and Poisons them.' },
         { id: 'raceDimensionalWeb', tier: 3, families: ['arachnid'], spellType: 'alien', name: 'Dimensional Web',
           type: 'utility', cost: 30, range: 4, apCost: 1,
-          kind: 'zoneDebuff', aoeRadius: 1, zoneDuration: 2,
+          kind: 'zoneDebuff', aoeRadius: 1, zoneDuration: 2, animSlot: 'vwWeave', animStrikeMs: 900,   // 🕷 THE VOIDWEAVER (11-28): four front legs knit the air
           statusEffects: [{ id: 'root', duration: 1 }],
           desc: 'Weave a web between dimensions over a 3×3 for 2 rounds. Enemies standing in it are Rooted. Whatever stands in it cannot leave.' },
         { id: 'raceDimensionalFold', tier: 1, families: ['fractal'], spellType: 'alien', vfxElement: 'arcane', name: 'Dimensional Fold',
           type: 'utility', cost: 25, range: 3, apCost: 1,
-          kind: 'swap', requiresLineOfSight: true,
+          kind: 'swap', requiresLineOfSight: true, animSlot: 'vwFold', animStrikeMs: 450,   // 🕷 THE VOIDWEAVER (11-28): it folds to a dot and unfolds
           desc: 'Swaps positions with a Single Enemy within 3 tiles you can see.' },
         SHARED_POISON_SWAMP,
         SHARED_BLACK_HOLE,

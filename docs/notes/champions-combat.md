@@ -7059,3 +7059,34 @@ animations like how the centaurs do it".
 - THE KRAKEN (same day): the same tool, `--arms --mirror 1 --smooth 4 --parent Hips --free LeftArm,RightArm`, ten chains, one down each
   arm, all on its Hips: the biped's legs and arms no longer bend its arms (models-assets.md). Its kit and stats are unchanged.
 - Probes: `playtest_writhe_stage.js` (the party builder's stage, close up, no match) and `playtest_writhe.js` (in a battle).
+
+## THE VOIDWEAVER, IN MOVING PARTS (2026-11-28, thread "Remake the voidweaver with moving parts")
+mondo 11-28: "the deep sea fish and voidweaver would benefit from individually animated parts too, can you make new meshy models and
+pieces for them and custom animations for their spells/abilities". He picked look A of three (the black widow with deep space in its abdomen).
+- THE MODEL: Meshy concepts (a hero picture, then five part pictures made from it) -> image-to-3D of five parts (head-chest, abdomen,
+  ONE leg laid out straight, ONE fang, ONE feeler), put together by project files `voidweaver/tools/assemble.py` (bpy) into ONE file,
+  `Assets/characters/races/voidweaver/male/voidweaver_v2.glb` (+ `.opt.glb`, in ASSET_MANIFEST by hand: the manifest tool's `--merge
+  --prefix` would drop the folder's old rows). 42 nodes, no bones: `ewVwBody` (the head-chest's centre) > `ewVwCeph`, `ewVwAbd` (pivot =
+  the waist) > `ewVwSpin`, `ewVwFangL/R`, `ewVwPalpL/R` > `ewVwPalpL2/R2`, and eight legs `ewVwL0..3` / `ewVwR0..3` (front to back) >
+  `…b` > `…c` > `…t` (the needle tip, an empty). The leg is the one Meshy leg cut in three at its seams, eight times (four lengths);
+  the right fang and feeler are mirrored. The file's rest is a standing pose (the game measures the unit's height from it).
+  Rerun: `python3 -I assemble.py <models dir> <out.glb> [--shots <prefix>]`, optimize, `--put` under a NEW file name, the manifest rows.
+- THE RIG: three-renderer.js "THE VOIDWEAVER", procRig `voidweaver` (`_vwBuild`, `_VW_POSES`, clips by `_abClip`, which now takes `qa` =
+  a joint's turn outright). THE LEGS REACH: a pose never turns a leg joint. It says where the body is and where each foot stands in the
+  world (`feet(k, F)`), and `_vwLegs` solves hip, knee and ankle (a two-bone reach + the last joint's slope `tar`; `knee: -1` folds the
+  other way). So the feet stay planted while the body breathes, rears and lunges. `_vwLive` = fangs (lift, stab, spread), feelers,
+  the abdomen (lift / tuck, yaw, swell). Clips: idle (breathes on planted feet, one front leg feels the air, the other taps twice),
+  walk (four feet step while four stand), castMelee (rears, front legs and fangs high, drops on the target), cast (reared, two front
+  pairs knit the air), castRanged (stands up on the back four legs, swings the abdomen under itself and shoots), castSupport (bows,
+  front legs and feelers together), castUltimate (up on all eight needle tips, shaking, the abdomen swells, it drops), hit, death
+  (legs shoot out stiff, over on its back, the legs curl in over the belly, twitch, stop; held).
+  `ThreeRenderer.vwPose(slot, dur, pose)` adds or replaces a slot.
+- THE SPELLS (data.js RACE_ABILITIES voidweaver, `animSlot` + `animStrikeMs`): Venom Fang `vwBite` (crouch, pounce a body length,
+  the front four legs wrap the target, fangs in, three pumps), Web Snare `vwSnare` (= castRanged), Dimensional Web `vwWeave` (reared,
+  turning side to side, four front legs knit fast, the abdomen high and wagging), Dimensional Fold `vwFold` (legs snap in, one turn,
+  it shrinks to a dot at the swap, unfolds). Fractal Needle / Poison Swamp / Black Hole are shared rows: they play the kind's clip
+  (the shot, the cast, the great cast). No new VFX or sound; no rule or number changed.
+- Sprite: `voidweaver_px.png` (Sprite AI restyle of a render). The old one-piece spider's files stay on R2, no longer loaded.
+- Tools in project files `voidweaver/`: gen.py (concepts), model.py (Meshy), tools/assemble.py, tools/clips-view.js + strip.py (every
+  clip as a strip of 8 frames, the game's own pose code on the model), tools/shot.py (the sprite's render).
+- Meshy: 8 pictures (72) + 5 models (150) = 222 credits.

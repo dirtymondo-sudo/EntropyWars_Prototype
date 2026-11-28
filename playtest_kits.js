@@ -91,7 +91,7 @@ const AFTER = (c) => {
   const errs = [];
   page.on('console', m => { const t = m.text(); if (/\[EW BUILD\]/.test(t)) console.log(t.slice(0, 200)); if (m.type() === 'error' && !/Raycaster/.test(t) && !/Failed to load resource|ERR_/.test(t)) { errs.push(t.slice(0, 200)); console.log('CONERR', t.slice(0, 200)); } });
   page.on('pageerror', e => { errs.push(e.message.split('\n')[0]); console.log('PAGEERR', e.message.split('\n')[0].slice(0, 200)); });
-  await page.goto('http://localhost:3000/', { waitUntil: 'load', timeout: 120000 });
+  await page.goto('http://localhost:3000/' + (process.env.GPU ? '?ew_gpu=' + process.env.GPU : ''), { waitUntil: 'load', timeout: 120000 });
   for (let i = 0; i < 120; i++) { if (await page.evaluate(() => typeof window._goToVsCpu === 'function' && !!window.GAME).catch(() => false)) break; await sleep(1000); }
   await sleep(4000);
   await page.evaluate(() => { window.EW_DISABLE_INTRO_CINE = true; });
