@@ -21,7 +21,7 @@ const READ = () => {
   const P = window.__jfN; if (!P) return { err: 'no rig' };
   const V = new THREE.Vector3(), W = new THREE.Vector3(), B = new THREE.Euler().setFromQuaternion(P.body.quaternion, 'YXZ'), d = x => +(x * 57.3).toFixed(0);
   const tip = P.tips.map((t, i) => { if (!t || !P.heads[i]) return null; P.body.worldToLocal(t.getWorldPosition(V)); P.body.worldToLocal(P.heads[i].getWorldPosition(W)); return [+(V.x - W.x).toFixed(3), +(V.y - W.y).toFixed(3), +(V.z - W.z).toFixed(3)]; });
-  let clip = null; try { const u = GAME.state.units.find(x => x.player === 1 && x.race === 'jellyfish'); clip = (window.__jfClipOf && window.__jfClipOf(u)) || null; } catch (e) {}
+  let clip = null; try { const u = GAME.state.units.find(x => x.player === 1 && x.race === (window.__pgRace || 'jellyfish')); clip = (window.__jfClipOf && window.__jfClipOf(u)) || null; } catch (e) {}
   return { bellW: +P.bell.scale.x.toFixed(3), bellH: +P.bell.scale.y.toFixed(3), rim: P.rim ? +P.rim.scale.x.toFixed(3) : null, y: +P.body.position.y.toFixed(3), z: +P.body.position.z.toFixed(3), nod: d(B.x), turn: d(B.y), roll: d(B.z), scale: +P.body.scale.x.toFixed(2), tips: tip };
 };
 (async () => {
@@ -50,7 +50,7 @@ const READ = () => {
   await sleep(2500);
   const START = () => { const st = GAME.state; try { window.applyPartyBuild(false); } catch (e) {}
     st.partyMeta[1] = st.partyMeta[1] || [];
-    st.partyMeta[1][0] = Object.assign({}, st.partyMeta[1][0], { race: 'jellyfish', gender: window.__pgGender || 'male' }); delete st.partyMeta[1][0].customSpells; delete st.partyMeta[1][0].appearance;
+    st.partyMeta[1][0] = Object.assign({}, st.partyMeta[1][0], { race: (window.__pgRace || 'jellyfish'), gender: window.__pgGender || 'male' }); delete st.partyMeta[1][0].customSpells; delete st.partyMeta[1][0].appearance;
     st.teamLockedIn = true; try { window.startMatch(); } catch (e) { return 'err ' + e.message; } return 'started'; };
   console.log('start', await page.evaluate(START));
   for (let i = 0; i < 60; i++) { if (await page.evaluate(() => window.GAME?.state?.phase) === 'battle') break; await sleep(1000); }
@@ -70,7 +70,7 @@ const READ = () => {
     window.__pgSpot = best || { x: bw >> 1, y: bh >> 1 }; return JSON.stringify(window.__pgSpot);
   }));
   /* the Point Guard at the spot, one foe three squares off, everybody else in a corner */
-  const STAGE = (zoom) => { const st = GAME.state, P = window.__pgSpot, pg = st.units.find(u => u.player === 1 && u.race === 'jellyfish'); if (!pg) return 'no jellyfish: ' + st.units.map(u => u.race).join(',');
+  const STAGE = (zoom) => { const st = GAME.state, P = window.__pgSpot, pg = st.units.find(u => u.player === 1 && u.race === (window.__pgRace || 'jellyfish')); if (!pg) return 'no jellyfish: ' + st.units.map(u => u.race).join(',');
     const foe = st.units.find(u => u.player === 2), put = (u, x, y) => { u.x = x; u.y = y; try { u.z = getHeightAt(x, y); } catch (e) {} };
     st.units.forEach(u => { u.dead = false; u._dying = false; u.maxHp = Math.max(u.maxHp, 6000); u.hp = u.maxHp; u.status = []; });
     put(pg, P.x - (window.__pgDist || 2), P.y); put(foe, P.x, P.y); let k = 0; st.units.forEach(u => { if (u !== pg && u !== foe) put(u, u.player === 1 ? 0 : 1, k++ % 4); });
@@ -95,7 +95,7 @@ const READ = () => {
   for (const act of ACTS) {
     if (act === 'idle') { for (let i = 0; i < N; i++) rows.push([act, i, await shot('idle_' + i, 400 + i * GAP)]); continue; }
     console.log(await page.evaluate(STAGE, ZOOM)); await sleep(2500);
-    const r = await page.evaluate((act) => { const st = GAME.state, pg = st.units.find(u => u.player === 1 && u.race === 'jellyfish'), foe = st.units.find(u => u.player === 2 && u.x === window.__pgSpot.x);
+    const r = await page.evaluate((act) => { const st = GAME.state, pg = st.units.find(u => u.player === 1 && u.race === (window.__pgRace || 'jellyfish')), foe = st.units.find(u => u.player === 2 && u.x === window.__pgSpot.x);
       pg.ap = 9; pg.mp = pg.maxMp = 999; pg._spellCooldowns = {}; pg._spellsUsedThisTurn = {}; pg.movesLeft = 9; pg.hasMoved = false; pg.hasAttacked = false;
       try {
         if (act === 'hit') { foe.ap = 9; foe.hasAttacked = false; foe.x = pg.x + 1; foe.y = pg.y; ThreeRenderer.invalidateUnits(); st._blitzActiveUnitId = foe.id; st.currentPlayer = 2; st.actionMode = 'attack'; const f = GAME.doAttack || window.doAttack; return 'hit ' + (f ? f(foe, pg.x, pg.y, pg.z) : 'none'); }

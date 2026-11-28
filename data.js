@@ -3156,6 +3156,7 @@ const RACE_PROFILES = {
     },
     'jellyfish ufo': {   // 2026-11-19 THE COMING RACES (mondo: "jellyfish UFO looking things", another jellyfish species, their fighter class; OK'd the kit 11-19)
         label: 'Jellyfish UFO',
+        labelMale: 'Jellyfish UFO', labelFemale: 'Deep Sea Crown', coats: { male: '\u{1F6F8}', female: '\u{1F451}' },   // THE COATS (mondo 11-28): the deep sea crown is its other look, on the female side like the Bear's polar coat
         types: ['anomaly', 'tech']   // mondo 11-19: NOT a UFO (the Grey is that); an advanced, sentient jellyfish species that lives underwater
     },
     'bear': {   // 2026-11-23 THE COMING RACES 2 — one race: the grizzly, with the polar bear as its look (mondo 11-23)
@@ -3386,6 +3387,7 @@ const RACE_PROFILES = {
     },
     'jellyfish': {
         label: 'Jellyfish',
+        labelMale: "Lion's Mane", labelFemale: 'Sea Nettle', coats: { male: '\u{1F981}', female: '\u{1F33F}' },   // THE COATS (mondo 11-28): two real species, no woman; the sea nettle sits on the female side like the Bear's polar coat
         types: ['anomaly', 'alien']
     },
     'cult leader': {
